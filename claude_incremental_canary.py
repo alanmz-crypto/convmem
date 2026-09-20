@@ -2,12 +2,17 @@
 
 Canary-only module for Arc Claude Watch Parity Gate 2. Not registered in the
 normal CLI or watcher. Live-source execution requires a separate Ryan grant.
+
+Capability-bound redesign: hold the isolation root directory descriptor after a
+single validation; publish only via directory-relative atomic rename after all
+fallible checks; Gate 0 is internal-only; evidence is closed typed objects.
 """
 
-# pylint: disable=too-many-lines,duplicate-code
+# pylint: disable=too-many-lines,duplicate-code,too-many-arguments,too-many-locals
 
 from __future__ import annotations
 
+import enum
 import hashlib
 import json
 import os
@@ -15,13 +20,15 @@ import re
 import stat
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from adapters.claude_session_jsonl import parse_complete_prefix
 from incremental_jsonl import DURABLE_TRANSITIONS, IncrementalJsonlCoordinator
 from incremental_jsonl_isolation import (
+    ISOLATION_MODE,
+    ISOLATION_MODE_ENV,
     IsolationBoundary,
     IsolationViolation,
     create_fresh_root,
@@ -34,76 +41,427 @@ CRASH_EXIT = 86
 _SOURCE_ALIAS_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_DETAIL = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]{0,63}$")
+_REBUILD_REASON = re.compile(r"^[a-z_]+$")
 _SNAPSHOT_CAPTURE_PARTS = ("sources", "claude-capture")
-_COORDINATOR_OUTCOMES = frozenset(
-    {
-        "committed",
-        "unchanged",
-        "bootstrap_required",
-        "excluded",
-        "excluded_after_checkpoint",
-        "ineligible_format",
-        "incremental_force_unsupported",
-        "disabled",
-        "invalid_state",
-        "source_moved",
-        "rolled_back",
-    }
-)
-_COORDINATOR_MODES = frozenset(
-    {
-        "incremental",
-        "unchanged",
-        "initial_full",
-        "replay_forward",
-        "aborted",
-        "rollback",
-    }
-)
-_WATCHER_STATUSES = frozenset(
-    {"inactive", "active", "failed", "activating", "unknown", "unavailable"}
-)
-_WATCHER_METHODS = frozenset({"systemctl", "hermetic", "test"})
-_GATE0_PASS_VALUES = frozenset({"true", "false"})
-_EVIDENCE_SECTION_SCHEMA: dict[str, frozenset[str]] = {
-    "gate0": frozenset({"watcher", "network", "mode"}),
-    "matrix": frozenset(
-        {
-            "first_outcome",
-            "second_outcome",
-            "third_outcome",
-            "third_mode",
-            "append_summarize",
-            "append_reused",
-        }
-    ),
-    "capture": frozenset(
-        {
-            "alias",
-            "canonical_path",
-            "device",
-            "inode",
-            "size",
-            "complete_boundary",
-            "prefix_sha256",
-            "sha256",
-            "physical_lines",
-        }
-    ),
-    "coordinator": frozenset({"outcome", "mode", "counters", "reused_artifacts"}),
-    "source": frozenset({"alias", "validated", "size"}),
-}
-EVIDENCE_SECTION_ALLOWLIST = frozenset(_EVIDENCE_SECTION_SCHEMA)
+_MARKER_NAME = ".convmem-jsonl-production-root"
+_CONFIG_REL_PARTS = ("home", ".config", "convmem", "config.toml")
+_CREDENTIAL_MARKERS = ("API_KEY", "SECRET", "PASSWORD", "CREDENTIAL", "TOKEN")
+PRODUCTION_ROOTS = known_production_roots()
+_EVIDENCE_INT_MAX = 1_000_000_000
+
 _CAPTURE_TRANSITIONS = (
     "before_snapshot_prepare",
     "after_snapshot_prepare",
-    "before_snapshot_publish",
-    "after_snapshot_publish",
+    "before_temp_stage",
+    "after_temp_stage",
     "before_source_revalidation",
     "after_source_revalidation",
+    "before_snapshot_publish",
+    "after_snapshot_publish",
 )
-_CREDENTIAL_MARKERS = ("API_KEY", "SECRET", "PASSWORD", "CREDENTIAL", "TOKEN")
-PRODUCTION_ROOTS = known_production_roots()
+
+
+# ---------------------------------------------------------------------------
+# Closed enums and value objects
+# ---------------------------------------------------------------------------
+
+
+class CanaryMode(enum.StrEnum):
+    V1 = CANARY_MODE
+
+
+class WatcherStatus(enum.StrEnum):
+    INACTIVE = "inactive"
+    ACTIVE = "active"
+    FAILED = "failed"
+    ACTIVATING = "activating"
+    UNKNOWN = "unknown"
+    UNAVAILABLE = "unavailable"
+
+
+class WatcherMethod(enum.StrEnum):
+    SYSTEMCTL = "systemctl"
+    HERMETIC = "hermetic"
+    TEST = "test"
+
+
+class PassToken(enum.StrEnum):
+    TRUE = "true"
+    FALSE = "false"
+
+
+class CoordinatorOutcome(enum.StrEnum):
+    COMMITTED = "committed"
+    UNCHANGED = "unchanged"
+    BOOTSTRAP_REQUIRED = "bootstrap_required"
+    EXCLUDED = "excluded"
+    EXCLUDED_AFTER_CHECKPOINT = "excluded_after_checkpoint"
+    INELIGIBLE_FORMAT = "ineligible_format"
+    INCREMENTAL_FORCE_UNSUPPORTED = "incremental_force_unsupported"
+    DISABLED = "disabled"
+    INVALID_STATE = "invalid_state"
+    SOURCE_MOVED = "source_moved"
+    ROLLED_BACK = "rolled_back"
+
+
+class CoordinatorMode(enum.StrEnum):
+    INCREMENTAL = "incremental"
+    UNCHANGED = "unchanged"
+    INITIAL_FULL = "initial_full"
+    REPLAY_FORWARD = "replay_forward"
+    ABORTED = "aborted"
+    ROLLBACK = "rollback"
+
+
+def _reject_coercion(value: Any, *, label: str, expected: str) -> None:
+    if isinstance(value, bool) and expected != "bool":
+        raise IsolationViolation(f"{label} must be a {expected}")
+    if expected == "str" and not isinstance(value, str):
+        raise IsolationViolation(f"{label} must be a {expected}")
+    if expected == "int" and (isinstance(value, bool) or not isinstance(value, int)):
+        raise IsolationViolation(f"{label} must be a {expected}")
+    if expected == "bool" and not isinstance(value, bool):
+        raise IsolationViolation(f"{label} must be a {expected}")
+
+
+@dataclass(frozen=True)
+class SourceAlias:
+    """Allowlisted source alias — never accepts integers or path separators."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        _reject_coercion(self.value, label="source alias", expected="str")
+        if not self.value or self.value in {".", ".."}:
+            raise IsolationViolation("invalid source alias")
+        if "/" in self.value or "\\" in self.value or os.sep in self.value:
+            raise IsolationViolation("source alias contains path separator")
+        if not _SOURCE_ALIAS_PATTERN.fullmatch(self.value):
+            raise IsolationViolation("source alias not allowlisted")
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True)
+class RelativePath:
+    """Validated relative path under the isolation root — never absolute."""
+
+    parts: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not self.parts:
+            raise IsolationViolation("relative path is empty")
+        for part in self.parts:
+            _reject_coercion(part, label="relative path component", expected="str")
+            if not part or part in {".", ".."} or os.sep in part or "/" in part or "\\" in part:
+                raise IsolationViolation("relative path component invalid")
+            if part.startswith("/"):
+                raise IsolationViolation("relative path must not be absolute")
+
+    @classmethod
+    def from_parts(cls, *parts: str) -> RelativePath:
+        return cls(parts=tuple(parts))
+
+    def joined(self) -> str:
+        return "/".join(self.parts)
+
+    def __str__(self) -> str:
+        return self.joined()
+
+
+@dataclass(frozen=True)
+class DetailToken:
+    """Closed detail token for evidence — not free-form transcript text."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        _reject_coercion(self.value, label="detail", expected="str")
+        if self.value == "":
+            return
+        if (
+            "canary-message" in self.value
+            or "/" in self.value
+            or "\\" in self.value
+            or "\n" in self.value
+        ):
+            raise IsolationViolation("detail contains transcript-like content")
+        if not _SAFE_DETAIL.fullmatch(self.value):
+            raise IsolationViolation("detail must be a safe detail token")
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True)
+class Sha256Digest:
+    value: str
+
+    def __post_init__(self) -> None:
+        _reject_coercion(self.value, label="sha256", expected="str")
+        if not _SHA256_HEX.fullmatch(self.value):
+            raise IsolationViolation("sha256 must be a sha256 hex digest")
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True)
+class BoundedInt:
+    value: int
+
+    def __post_init__(self) -> None:
+        _reject_coercion(self.value, label="bounded int", expected="int")
+        if self.value < 0 or self.value > _EVIDENCE_INT_MAX:
+            raise IsolationViolation("bounded int out of bounds")
+
+    def __int__(self) -> int:
+        return self.value
+
+
+@dataclass(frozen=True)
+class RebuildOutcome:
+    reason: str
+
+    def __post_init__(self) -> None:
+        _reject_coercion(self.reason, label="rebuild reason", expected="str")
+        if not _REBUILD_REASON.fullmatch(self.reason):
+            raise IsolationViolation("rebuild reason is not an allowed enum")
+
+    def as_value(self) -> str:
+        return f"rebuild_required:{self.reason}"
+
+
+def _parse_coordinator_outcome(value: Any, *, label: str) -> CoordinatorOutcome | RebuildOutcome:
+    if isinstance(value, CoordinatorOutcome):
+        return value
+    if isinstance(value, RebuildOutcome):
+        return value
+    _reject_coercion(value, label=label, expected="str")
+    try:
+        return CoordinatorOutcome(value)
+    except ValueError:
+        pass
+    if isinstance(value, str) and value.startswith("rebuild_required:"):
+        return RebuildOutcome(reason=value.split(":", 1)[1])
+    raise IsolationViolation(f"{label} is not an allowed coordinator outcome")
+
+
+def _parse_coordinator_mode(value: Any, *, label: str) -> CoordinatorMode:
+    if isinstance(value, CoordinatorMode):
+        return value
+    _reject_coercion(value, label=label, expected="str")
+    try:
+        return CoordinatorMode(value)
+    except ValueError as exc:
+        raise IsolationViolation(f"{label} is not an allowed enum") from exc
+
+
+def _outcome_to_str(value: CoordinatorOutcome | RebuildOutcome) -> str:
+    if isinstance(value, RebuildOutcome):
+        return value.as_value()
+    return str(value)
+
+
+@dataclass(frozen=True)
+class Gate0WatcherEvidence:
+    status: WatcherStatus
+    method: WatcherMethod
+    passed: PassToken
+    detail: DetailToken | None = None
+
+    def to_mapping(self) -> dict[str, str]:
+        payload = {
+            "status": str(self.status),
+            "method": str(self.method),
+            "pass": str(self.passed),
+        }
+        if self.detail is not None:
+            payload["detail"] = str(self.detail)
+        return payload
+
+
+@dataclass(frozen=True)
+class Gate0NetworkEvidence:
+    passed: PassToken
+    detail: DetailToken | None = None
+
+    def to_mapping(self) -> dict[str, str]:
+        payload = {"pass": str(self.passed)}
+        if self.detail is not None:
+            payload["detail"] = str(self.detail)
+        return payload
+
+
+@dataclass(frozen=True)
+class Gate0Evidence:
+    mode: CanaryMode
+    watcher: Gate0WatcherEvidence
+    network: Gate0NetworkEvidence
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "mode": str(self.mode),
+            "watcher": self.watcher.to_mapping(),
+            "network": self.network.to_mapping(),
+        }
+
+
+@dataclass(frozen=True)
+class MatrixEvidence:
+    first_outcome: CoordinatorOutcome | RebuildOutcome | None = None
+    second_outcome: CoordinatorOutcome | RebuildOutcome | None = None
+    third_outcome: CoordinatorOutcome | RebuildOutcome | None = None
+    third_mode: CoordinatorMode | None = None
+    append_summarize: BoundedInt | None = None
+    append_reused: BoundedInt | None = None
+
+    def to_mapping(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if self.first_outcome is not None:
+            payload["first_outcome"] = _outcome_to_str(self.first_outcome)
+        if self.second_outcome is not None:
+            payload["second_outcome"] = _outcome_to_str(self.second_outcome)
+        if self.third_outcome is not None:
+            payload["third_outcome"] = _outcome_to_str(self.third_outcome)
+        if self.third_mode is not None:
+            payload["third_mode"] = str(self.third_mode)
+        if self.append_summarize is not None:
+            payload["append_summarize"] = int(self.append_summarize)
+        if self.append_reused is not None:
+            payload["append_reused"] = int(self.append_reused)
+        return payload
+
+
+@dataclass(frozen=True)
+class CaptureEvidence:
+    alias: SourceAlias
+    relative_path: RelativePath
+    device: BoundedInt
+    inode: BoundedInt
+    size: BoundedInt
+    complete_boundary: BoundedInt
+    prefix_sha256: Sha256Digest
+    sha256: Sha256Digest
+    physical_lines: BoundedInt
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "alias": str(self.alias),
+            "relative_path": str(self.relative_path),
+            "device": int(self.device),
+            "inode": int(self.inode),
+            "size": int(self.size),
+            "complete_boundary": int(self.complete_boundary),
+            "prefix_sha256": str(self.prefix_sha256),
+            "sha256": str(self.sha256),
+            "physical_lines": int(self.physical_lines),
+        }
+
+
+@dataclass(frozen=True)
+class CoordinatorCountersEvidence:
+    summarize: BoundedInt | None = None
+    embed: BoundedInt | None = None
+    distill: BoundedInt | None = None
+    chroma_upsert: BoundedInt | None = None
+    total: BoundedInt | None = None
+
+    def to_mapping(self) -> dict[str, int]:
+        payload: dict[str, int] = {}
+        for name in ("summarize", "embed", "distill", "chroma_upsert", "total"):
+            value = getattr(self, name)
+            if value is not None:
+                payload[name] = int(value)
+        return payload
+
+
+@dataclass(frozen=True)
+class CoordinatorEvidence:
+    outcome: CoordinatorOutcome | RebuildOutcome | None = None
+    mode: CoordinatorMode | None = None
+    counters: CoordinatorCountersEvidence | None = None
+    reused_artifacts: BoundedInt | None = None
+
+    def to_mapping(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if self.outcome is not None:
+            payload["outcome"] = _outcome_to_str(self.outcome)
+        if self.mode is not None:
+            payload["mode"] = str(self.mode)
+        if self.counters is not None:
+            payload["counters"] = self.counters.to_mapping()
+        if self.reused_artifacts is not None:
+            payload["reused_artifacts"] = int(self.reused_artifacts)
+        return payload
+
+
+@dataclass(frozen=True)
+class SourceEvidence:
+    alias: SourceAlias
+    validated: bool
+    size: BoundedInt
+
+    def __post_init__(self) -> None:
+        _reject_coercion(self.validated, label="source.validated", expected="bool")
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "alias": str(self.alias),
+            "validated": self.validated,
+            "size": int(self.size),
+        }
+
+
+EVIDENCE_SECTION_ALLOWLIST = frozenset(
+    {"gate0", "matrix", "capture", "coordinator", "source"}
+)
+
+_SECTION_TYPES = {
+    "gate0": Gate0Evidence,
+    "matrix": MatrixEvidence,
+    "capture": CaptureEvidence,
+    "coordinator": CoordinatorEvidence,
+    "source": SourceEvidence,
+}
+
+
+def _reject_mapping_evidence(value: Any, *, label: str) -> None:
+    if isinstance(value, Mapping) and not is_dataclass(value):
+        raise IsolationViolation(f"{label} must be a closed evidence object, not a mapping")
+    if isinstance(value, dict):
+        raise IsolationViolation(f"{label} must be a closed evidence object, not a mapping")
+
+
+def assemble_evidence(**sections: Any) -> dict[str, Any]:
+    """Serialize and hash only validated closed evidence objects."""
+    unknown = set(sections) - EVIDENCE_SECTION_ALLOWLIST
+    if unknown:
+        names = ", ".join(sorted(unknown))
+        raise IsolationViolation(f"unknown evidence sections: {names}")
+    validated: dict[str, Any] = {}
+    for name, section in sections.items():
+        _reject_mapping_evidence(section, label=f"evidence section {name}")
+        expected = _SECTION_TYPES[name]
+        if not isinstance(section, expected):
+            raise IsolationViolation(
+                f"evidence section {name} must be {expected.__name__}"
+            )
+        for item in fields(section):
+            getattr(section, item.name)
+        validated[name] = section.to_mapping()
+    payload = {"mode": CANARY_MODE, "sections": validated}
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    payload["evidence_digest"] = digest
+    return payload
+
+
+# ---------------------------------------------------------------------------
+# Source grant types
+# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -117,6 +475,10 @@ class FrozenSourceSpec:
 
     def __post_init__(self) -> None:
         validate_source_alias(self.alias)
+        _reject_coercion(self.sha256, label="frozen source sha256", expected="str")
+        _reject_coercion(self.size, label="frozen source size", expected="int")
+        if not _SHA256_HEX.fullmatch(self.sha256):
+            raise IsolationViolation("frozen source sha256 must be a sha256 hex digest")
 
 
 @dataclass(frozen=True)
@@ -131,57 +493,11 @@ class SourceIdentityBinding:
 
 
 @dataclass(frozen=True)
-class Gate0Authority:
-    """In-process Gate 0 authority bound to one isolation boundary."""
-
-    root: str
-    token: str
-    config_digest: str
-    report: dict[str, Any]
-    digest: str
-
-    @classmethod
-    def establish(
-        cls,
-        boundary: IsolationBoundary,
-        *,
-        hooks: Gate0ProbeHooks | None = None,
-    ) -> Gate0Authority:
-        report = gate0(hooks=hooks)
-        config_digest = _config_digest(boundary)
-        body = {
-            "config_digest": config_digest,
-            "report": report,
-            "root": str(boundary.root.resolve()),
-            "token": boundary.token,
-        }
-        digest = hashlib.sha256(
-            json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        ).hexdigest()
-        return cls(
-            root=str(boundary.root.resolve()),
-            token=boundary.token,
-            config_digest=config_digest,
-            report=report,
-            digest=digest,
-        )
-
-    def verify_live(self, boundary: IsolationBoundary) -> None:
-        """Reject stale, cross-root, or cross-token authority replay."""
-        if str(boundary.root.resolve()) != self.root:
-            raise IsolationViolation("gate0 authority root mismatch")
-        if boundary.token != self.token:
-            raise IsolationViolation("gate0 authority token mismatch")
-        if _config_digest(boundary) != self.config_digest:
-            raise IsolationViolation("gate0 authority config mismatch")
-
-
-@dataclass(frozen=True)
 class SourceDescriptor:
-    """Content-free source identity for evidence."""
+    """Content-free source identity for evidence (relative path only)."""
 
     alias: str
-    canonical_path: str
+    relative_path: str
     device: int
     inode: int
     size: int
@@ -199,59 +515,112 @@ class Gate0ProbeHooks:
     network_self_test: Callable[[], dict[str, str]] | None = None
 
 
-def gate0_watcher_probe() -> dict[str, str]:
-    """Probe watcher state; inactive stdout is PASS even with nonzero exit."""
-    try:
-        completed = subprocess.run(
-            ["systemctl", "--user", "is-active", "convmem-watch.service"],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=2.0,
+# ---------------------------------------------------------------------------
+# Isolation root capability — open once, never reopen by pathname
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class IsolationRootCapability:
+    """Held isolation-root directory descriptor and bound stat identity."""
+
+    root_fd: int
+    st_dev: int
+    st_ino: int
+    token: str
+    config_digest: str
+    _closed: bool = field(default=False, repr=False)
+
+    def close(self) -> None:
+        if not self._closed and self.root_fd >= 0:
+            os.close(self.root_fd)
+            self.root_fd = -1
+            self._closed = True
+
+    def __enter__(self) -> IsolationRootCapability:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
+
+    def assert_identity(self) -> None:
+        if self._closed or self.root_fd < 0:
+            raise IsolationViolation("isolation root capability closed")
+        current = os.fstat(self.root_fd)
+        if (current.st_dev, current.st_ino) != (self.st_dev, self.st_ino):
+            raise IsolationViolation("isolation root identity changed")
+        if not stat.S_ISDIR(current.st_mode):
+            raise IsolationViolation("isolation root is not a directory")
+
+    def assert_still_bound(self, boundary: IsolationBoundary) -> None:
+        """Refuse replaced roots, stale markers, or replaced configuration."""
+        self.assert_identity()
+        marker_fd = os.open(
+            _MARKER_NAME,
+            _file_open_flags(),
+            dir_fd=self.root_fd,
         )
-        stdout = (completed.stdout or "").strip()
-        if stdout == "inactive":
-            return {"status": "inactive", "method": "systemctl", "pass": "true"}
-        if stdout in {"failed", "activating", "active"}:
-            return {"status": stdout, "method": "systemctl", "pass": "false"}
-        return {
-            "status": stdout or "unknown",
-            "method": "systemctl",
-            "pass": "false",
-            "detail": completed.stderr.strip(),
-        }
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return {
-            "status": "unavailable",
-            "method": "systemctl",
-            "pass": "false",
-            "detail": str(exc),
-        }
+        try:
+            marker_st = os.fstat(marker_fd)
+            if not stat.S_ISREG(marker_st.st_mode):
+                raise IsolationViolation("isolation freshness token mismatch")
+            token = os.read(marker_fd, 128).decode("ascii")
+        finally:
+            os.close(marker_fd)
+        if token != self.token or token != boundary.token:
+            raise IsolationViolation("isolation freshness token mismatch")
+        try:
+            path_st = os.stat(str(boundary.root), follow_symlinks=False)
+        except OSError as exc:
+            raise IsolationViolation("isolation root path unavailable") from exc
+        if (path_st.st_dev, path_st.st_ino) != (self.st_dev, self.st_ino):
+            raise IsolationViolation("isolation root replaced at pathname")
+        if _config_digest_via_root(self) != self.config_digest:
+            raise IsolationViolation("gate0 authority config mismatch")
+
+    def open_subdir(self, parts: tuple[str, ...], *, label: str) -> int:
+        """Resolve and create descendants relative to the held root descriptor."""
+        self.assert_identity()
+        fd = self.root_fd
+        owned: list[int] = []
+        try:
+            for part in parts:
+                if not part or part in {".", ".."} or os.sep in part or "/" in part:
+                    raise IsolationViolation(f"{label} invalid path component")
+                try:
+                    os.mkdir(part, 0o700, dir_fd=fd)
+                except FileExistsError:
+                    pass
+                try:
+                    child_fd = os.open(part, _dir_open_flags(), dir_fd=fd)
+                except OSError as exc:
+                    raise IsolationViolation(f"{label} is symlinked") from exc
+                try:
+                    child_st = os.fstat(child_fd)
+                    if not stat.S_ISDIR(child_st.st_mode):
+                        raise IsolationViolation(f"{label} is not a directory")
+                    _verify_dir_entry_identity(fd, part, child_st)
+                except Exception:
+                    os.close(child_fd)
+                    raise
+                owned.append(child_fd)
+                fd = child_fd
+            # Return the leaf; close intermediate descriptors only.
+            if not owned:
+                return self.root_fd
+            leaf = owned.pop()
+            for handle in owned:
+                os.close(handle)
+            owned.clear()
+            return leaf
+        except Exception:
+            for handle in reversed(owned):
+                os.close(handle)
+            raise
 
 
-def _default_network_self_test() -> dict[str, str]:
-    import socket
-
-    try:
-        socket.create_connection(("203.0.113.1", 9), timeout=0.01)
-        return {"pass": "false", "detail": "unexpected-success"}
-    except OSError as exc:
-        return {"pass": "true", "detail": type(exc).__name__}
-
-
-def _config_digest(boundary: IsolationBoundary) -> str:
-    config_path = boundary.layout["user_config"]
-    if config_path.is_symlink():
-        raise IsolationViolation("config path is symlinked")
-    return hashlib.sha256(config_path.read_bytes()).hexdigest()
-
-
-def _dir_open_flags(*, write: bool = False) -> int:
-    flags = os.O_DIRECTORY | os.O_CLOEXEC
-    if write:
-        flags |= os.O_RDONLY
-    else:
-        flags |= os.O_RDONLY
+def _dir_open_flags() -> int:
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
     return flags
@@ -278,57 +647,88 @@ def _verify_dir_entry_identity(parent_fd: int, name: str, st: os.stat_result) ->
         raise IsolationViolation("directory entry is symlinked")
 
 
-def _open_boundary_subdir(
-    boundary: IsolationBoundary,
-    parts: tuple[str, ...],
-    *,
-    label: str,
-) -> int:
-    """Open a boundary subdirectory via anchored descriptors."""
-    root_fd = os.open(str(boundary.root), _dir_open_flags())
-    fd = root_fd
+def _config_digest_via_root(root_cap: IsolationRootCapability) -> str:
+    """Read configuration bytes via the held root descriptor only."""
+    root_cap.assert_identity()
+    parent_fd = root_cap.root_fd
+    owned: list[int] = []
     try:
-        for part in parts:
-            if not part or part in {".", ".."} or os.sep in part:
-                raise IsolationViolation(f"{label} invalid path component")
-            try:
-                os.mkdir(part, 0o700, dir_fd=fd)
-            except FileExistsError:
-                pass
-            child_fd = os.open(part, _dir_open_flags(), dir_fd=fd)
-            try:
-                child_st = os.fstat(child_fd)
-                if not stat.S_ISDIR(child_st.st_mode):
-                    raise IsolationViolation(f"{label} is not a directory")
-                _verify_dir_entry_identity(fd, part, child_st)
-            except Exception:
-                os.close(child_fd)
-                raise
-            if fd != root_fd:
-                os.close(fd)
-            fd = child_fd
-        if fd != root_fd:
-            os.close(root_fd)
-        return fd
-    except Exception:
-        if fd != root_fd:
+        for part in _CONFIG_REL_PARTS[:-1]:
+            child_fd = os.open(part, _dir_open_flags(), dir_fd=parent_fd)
+            owned.append(child_fd)
+            parent_fd = child_fd
+        name = _CONFIG_REL_PARTS[-1]
+        fd = os.open(name, _file_open_flags(), dir_fd=parent_fd)
+        try:
+            st = os.fstat(fd)
+            if not stat.S_ISREG(st.st_mode):
+                raise IsolationViolation("config path is not a regular file")
+            data = os.read(fd, st.st_size)
+        finally:
             os.close(fd)
-        os.close(root_fd)
-        raise
+        return hashlib.sha256(data).hexdigest()
+    finally:
+        for handle in reversed(owned):
+            os.close(handle)
 
 
-def _publish_regular_file_dirfd(
+def open_isolation_root(boundary: IsolationBoundary) -> IsolationRootCapability:
+    """Open and validate the isolation root once; retain descriptor + identity."""
+    if boundary.root.is_symlink():
+        raise IsolationViolation("isolation root is symlinked")
+    root_fd = os.open(str(boundary.root), _dir_open_flags())
+    try:
+        st = os.fstat(root_fd)
+        if not stat.S_ISDIR(st.st_mode):
+            raise IsolationViolation("isolation root is not a directory")
+        marker_fd = os.open(_MARKER_NAME, _file_open_flags(), dir_fd=root_fd)
+        try:
+            marker_st = os.fstat(marker_fd)
+            if not stat.S_ISREG(marker_st.st_mode):
+                raise IsolationViolation("isolation freshness token mismatch")
+            token = os.read(marker_fd, 128).decode("ascii")
+        finally:
+            os.close(marker_fd)
+        if token != boundary.token:
+            raise IsolationViolation("isolation freshness token mismatch")
+        path_st = os.stat(str(boundary.root), follow_symlinks=False)
+        if (path_st.st_dev, path_st.st_ino) != (st.st_dev, st.st_ino):
+            raise IsolationViolation("isolation root path identity mismatch")
+        cap = IsolationRootCapability(
+            root_fd=root_fd,
+            st_dev=int(st.st_dev),
+            st_ino=int(st.st_ino),
+            token=token,
+            config_digest="",
+        )
+        digest = _config_digest_via_root(cap)
+        cap.config_digest = digest
+        root_fd = -1
+        return cap
+    finally:
+        if root_fd >= 0:
+            os.close(root_fd)
+
+
+# ---------------------------------------------------------------------------
+# Publication — stage temp, revalidate, then final atomic rename
+# ---------------------------------------------------------------------------
+
+
+def _stage_regular_file_dirfd(
     parent_fd: int,
     name: str,
     payload: bytes,
-    *,
-    label: str,
-) -> os.stat_result:
-    """Atomically publish one regular file under an already-open directory."""
+) -> str:
+    """Write and fsync a temporary file beneath the anchored destination directory."""
     temp_name = f".{name}.{os.getpid()}.{os.urandom(8).hex()}.tmp"
-    fd = -1
+    fd = os.open(
+        temp_name,
+        _file_open_flags(write=True, create=True),
+        0o600,
+        dir_fd=parent_fd,
+    )
     try:
-        fd = os.open(temp_name, _file_open_flags(write=True, create=True), 0o600, dir_fd=parent_fd)
         view = memoryview(payload)
         offset = 0
         while offset < len(view):
@@ -337,39 +737,43 @@ def _publish_regular_file_dirfd(
                 raise OSError("snapshot short write")
             offset += written
         os.fsync(fd)
-        os.close(fd)
-        fd = -1
-        os.replace(temp_name, name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
-        os.fsync(parent_fd)
-        result = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
-        if not stat.S_ISREG(result.st_mode):
-            raise IsolationViolation(f"{label} is not a regular file")
-        _verify_dir_entry_identity(parent_fd, name, result)
-        return result
-    except Exception:
-        try:
-            os.unlink(temp_name, dir_fd=parent_fd)
-        except OSError:
-            pass
-        try:
-            os.unlink(name, dir_fd=parent_fd)
-        except OSError:
-            pass
-        raise
     finally:
-        if fd >= 0:
-            os.close(fd)
+        os.close(fd)
+    return temp_name
 
 
-def _remove_regular_file_dirfd(parent_fd: int, name: str) -> None:
+def _publish_staged_rename(
+    parent_fd: int,
+    temp_name: str,
+    final_name: str,
+) -> os.stat_result:
+    """Directory-relative atomic rename — final infallible publication transition."""
     try:
-        entry = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        existing = os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        existing = None
+    if existing is not None:
+        if stat.S_ISLNK(existing.st_mode):
+            raise IsolationViolation("snapshot destination is symlinked")
+        if not stat.S_ISREG(existing.st_mode):
+            raise IsolationViolation("snapshot destination is not a regular file")
+    try:
+        temp_st = os.stat(temp_name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError as exc:
+        raise IsolationViolation("staged snapshot missing before publish") from exc
+    if not stat.S_ISREG(temp_st.st_mode):
+        raise IsolationViolation("staged snapshot is not a regular file")
+    os.replace(temp_name, final_name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+    os.fsync(parent_fd)
+    return os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
+
+
+def _unlink_dirfd(parent_fd: int, name: str) -> None:
+    try:
+        os.unlink(name, dir_fd=parent_fd)
+        os.fsync(parent_fd)
     except FileNotFoundError:
         return
-    if not stat.S_ISREG(entry.st_mode):
-        raise IsolationViolation("snapshot cleanup target is not a regular file")
-    os.unlink(name, dir_fd=parent_fd)
-    os.fsync(parent_fd)
 
 
 def snapshot_publication_paths(
@@ -404,9 +808,6 @@ def assert_no_snapshot_artifacts(boundary: IsolationBoundary, alias: str) -> Non
     if artifacts:
         names = ", ".join(sorted(artifacts))
         raise IsolationViolation(f"snapshot residue remains: {names}")
-    for artifact in artifacts:
-        if not _path_under_roots(Path(artifact), (boundary.root,)):
-            raise IsolationViolation("snapshot residue escaped isolation root")
 
 
 def _path_under_roots(path: Path, roots: tuple[Path, ...]) -> bool:
@@ -427,15 +828,11 @@ def _assert_regular_non_symlink(path: Path, *, label: str) -> None:
         raise IsolationViolation(f"{label} is not a regular file")
 
 
-def validate_source_alias(alias: str) -> str:
-    """Reject aliases that could escape snapshot containment."""
-    if not alias or alias in {".", ".."}:
-        raise IsolationViolation("invalid source alias")
-    if "/" in alias or "\\" in alias or os.sep in alias:
-        raise IsolationViolation("source alias contains path separator")
-    if not _SOURCE_ALIAS_PATTERN.fullmatch(alias):
-        raise IsolationViolation("source alias not allowlisted")
-    return alias
+def validate_source_alias(alias: Any) -> str:
+    """Reject aliases that could escape snapshot containment — no coercion."""
+    if not isinstance(alias, str):
+        raise IsolationViolation("source alias must be a str")
+    return str(SourceAlias(value=alias))
 
 
 def derive_snapshot_destination(
@@ -517,49 +914,63 @@ def capture_source(
     spec: FrozenSourceSpec,
     *,
     fault: Callable[[str], None] | None = None,
+    hooks: Gate0ProbeHooks | None = None,
 ) -> SourceDescriptor:
-    """Copy the complete prefix atomically under an isolation-bound snapshot path."""
+    """Copy the complete prefix under isolation; publication is the final step."""
+    root_cap: IsolationRootCapability | None = None
     capture_dir_fd = -1
+    temp_name: str | None = None
     snapshot_name = ""
+    published = False
+    failure: BaseException | None = None
 
     def emit(name: str) -> None:
         if fault is not None:
             fault(name)
 
     try:
+        root_cap = _enforce_gate0_for_mutable(boundary, hooks=hooks)
+        root_cap.assert_still_bound(boundary)
+
         emit("before_snapshot_prepare")
         binding, data = bind_frozen_source(spec)
         emit("after_snapshot_prepare")
         view = parse_complete_prefix(binding.canonical_path, raw=data)
-        emit("before_snapshot_publish")
+
         _capture_dir, filename = snapshot_publication_paths(boundary, spec.alias)
         snapshot_name = filename.name
-        capture_dir_fd = _open_boundary_subdir(
-            boundary,
+        capture_dir_fd = root_cap.open_subdir(
             _SNAPSHOT_CAPTURE_PARTS,
             label="snapshot capture directory",
         )
-        copied_stat = _publish_regular_file_dirfd(
-            capture_dir_fd,
-            snapshot_name,
-            view.raw_prefix,
-            label="snapshot destination",
-        )
-        emit("after_snapshot_publish")
-        emit("before_source_revalidation")
+
+        emit("before_temp_stage")
         try:
-            revalidate_source_identity(spec, binding)
-        except IsolationViolation:
-            _remove_regular_file_dirfd(capture_dir_fd, snapshot_name)
-            snapshot_name = ""
-            assert_no_snapshot_artifacts(boundary, spec.alias)
-            raise
+            temp_name = _stage_regular_file_dirfd(
+                capture_dir_fd, snapshot_name, view.raw_prefix
+            )
+        except FileNotFoundError as exc:
+            raise IsolationViolation("snapshot destination unavailable") from exc
+        emit("after_temp_stage")
+
+        emit("before_source_revalidation")
+        revalidate_source_identity(spec, binding)
         emit("after_source_revalidation")
-        capture_dir, _filename = snapshot_publication_paths(boundary, spec.alias)
-        copied_path = capture_dir / snapshot_name
+
+        root_cap.assert_still_bound(boundary)
+
+        emit("before_snapshot_publish")
+        copied_stat = _publish_staged_rename(
+            capture_dir_fd, temp_name, snapshot_name
+        )
+        temp_name = None
+        published = True
+        emit("after_snapshot_publish")
+
+        relative = RelativePath.from_parts(*_SNAPSHOT_CAPTURE_PARTS, snapshot_name)
         return SourceDescriptor(
             alias=spec.alias,
-            canonical_path=str(copied_path.resolve()),
+            relative_path=str(relative),
             device=int(copied_stat.st_dev),
             inode=int(copied_stat.st_ino),
             size=int(copied_stat.st_size),
@@ -568,20 +979,156 @@ def capture_source(
             sha256=hashlib.sha256(view.raw_prefix).hexdigest(),
             physical_lines=view.raw_prefix.count(b"\n"),
         )
-    except IsolationViolation:
-        if capture_dir_fd >= 0 and snapshot_name:
-            _remove_regular_file_dirfd(capture_dir_fd, snapshot_name)
-        assert_no_snapshot_artifacts(boundary, spec.alias)
-        raise
+    except BaseException as exc:
+        failure = exc
     finally:
+        if temp_name is not None and capture_dir_fd >= 0:
+            _unlink_dirfd(capture_dir_fd, temp_name)
+            temp_name = None
         if capture_dir_fd >= 0:
             os.close(capture_dir_fd)
+            capture_dir_fd = -1
+        if root_cap is not None:
+            root_cap.close()
+            root_cap = None
+
+    if failure is not None:
+        if not published:
+            assert_no_snapshot_artifacts(boundary, spec.alias)
+        raise failure
+    raise IsolationViolation("capture_source returned without result or failure")
+
+
+# ---------------------------------------------------------------------------
+# Gate 0 — internal only; never accept caller authority / digests / reports
+# ---------------------------------------------------------------------------
+
+
+def gate0_watcher_probe() -> dict[str, str]:
+    """Probe watcher state; inactive stdout is PASS even with nonzero exit."""
+    try:
+        completed = subprocess.run(
+            ["systemctl", "--user", "is-active", "convmem-watch.service"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2.0,
+        )
+        stdout = (completed.stdout or "").strip()
+        if stdout == "inactive":
+            return {"status": "inactive", "method": "systemctl", "pass": "true"}
+        if stdout in {"failed", "activating", "active"}:
+            return {"status": stdout, "method": "systemctl", "pass": "false"}
+        return {
+            "status": stdout or "unknown",
+            "method": "systemctl",
+            "pass": "false",
+            "detail": completed.stderr.strip(),
+        }
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "status": "unavailable",
+            "method": "systemctl",
+            "pass": "false",
+            "detail": str(exc),
+        }
+
+
+def _default_network_self_test() -> dict[str, str]:
+    import socket
+
+    try:
+        socket.create_connection(("203.0.113.1", 9), timeout=0.01)
+        return {"pass": "false", "detail": "unexpected-success"}
+    except OSError as exc:
+        return {"pass": "true", "detail": type(exc).__name__}
 
 
 def _hermetic_gate0_hooks() -> Gate0ProbeHooks:
     return Gate0ProbeHooks(
-        watcher_probe=lambda: {"status": "inactive", "method": "hermetic", "pass": "true"},
+        watcher_probe=lambda: {
+            "status": "inactive",
+            "method": "hermetic",
+            "pass": "true",
+        },
         network_self_test=lambda: {"pass": "true", "detail": "hermetic"},
+    )
+
+
+def _default_hooks_for_isolation() -> Gate0ProbeHooks | None:
+    if os.environ.get(ISOLATION_MODE_ENV) == ISOLATION_MODE:
+        return _hermetic_gate0_hooks()
+    return None
+
+
+def _validate_live_gate0_report(report: dict[str, Any]) -> Gate0Evidence:
+    """Accept only a live probe report — refuse forged / failed / nested junk."""
+    if not isinstance(report, dict):
+        raise IsolationViolation("gate0 report must be a mapping from live probes")
+    allowed_top = frozenset({"watcher", "network", "mode"})
+    unknown = set(report) - allowed_top
+    if unknown:
+        names = ", ".join(sorted(unknown))
+        raise IsolationViolation(f"gate0 report has unknown keys: {names}")
+    for required in ("watcher", "network", "mode"):
+        if required not in report:
+            raise IsolationViolation(f"gate0 report missing {required}")
+    mode_raw = report["mode"]
+    _reject_coercion(mode_raw, label="gate0.mode", expected="str")
+    try:
+        mode = CanaryMode(mode_raw)
+    except ValueError as exc:
+        raise IsolationViolation("gate0.mode is not an allowed enum") from exc
+
+    watcher = report["watcher"]
+    if not isinstance(watcher, dict):
+        raise IsolationViolation("gate0.watcher must be a mapping")
+    watcher_allowed = frozenset({"status", "method", "pass", "detail"})
+    unknown_w = set(watcher) - watcher_allowed
+    if unknown_w:
+        names = ", ".join(sorted(unknown_w))
+        raise IsolationViolation(f"gate0.watcher contains unknown keys: {names}")
+    for required in ("status", "method", "pass"):
+        if required not in watcher:
+            raise IsolationViolation(f"gate0.watcher missing {required}")
+    try:
+        status = WatcherStatus(watcher["status"])
+        method = WatcherMethod(watcher["method"])
+        passed = PassToken(watcher["pass"])
+    except (TypeError, ValueError) as exc:
+        raise IsolationViolation("gate0.watcher fields are not allowed enums") from exc
+    if passed is not PassToken.TRUE:
+        raise IsolationViolation("gate0 report did not pass")
+    detail = None
+    if "detail" in watcher:
+        detail = DetailToken(value=watcher["detail"])
+
+    network = report["network"]
+    if not isinstance(network, dict):
+        raise IsolationViolation("gate0.network must be a mapping")
+    network_allowed = frozenset({"pass", "detail"})
+    unknown_n = set(network) - network_allowed
+    if unknown_n:
+        names = ", ".join(sorted(unknown_n))
+        raise IsolationViolation(f"gate0.network contains unknown keys: {names}")
+    if "pass" not in network:
+        raise IsolationViolation("gate0.network missing pass")
+    try:
+        net_pass = PassToken(network["pass"])
+    except (TypeError, ValueError) as exc:
+        raise IsolationViolation("gate0.network.pass is not an allowed enum") from exc
+    if net_pass is not PassToken.TRUE:
+        raise IsolationViolation("gate0 report did not pass")
+    net_detail = None
+    if "detail" in network:
+        net_detail = DetailToken(value=network["detail"])
+
+    return Gate0Evidence(
+        mode=mode,
+        watcher=Gate0WatcherEvidence(
+            status=status, method=method, passed=passed, detail=detail
+        ),
+        network=Gate0NetworkEvidence(passed=net_pass, detail=net_detail),
     )
 
 
@@ -612,24 +1159,47 @@ def gate0(*, hooks: Gate0ProbeHooks | None = None) -> dict[str, Any]:
     }
 
 
-def establish_gate0_authority(
+def _enforce_gate0_for_mutable(
     boundary: IsolationBoundary,
     *,
     hooks: Gate0ProbeHooks | None = None,
-) -> Gate0Authority:
-    """Run Gate 0 and return root-bound in-process authority."""
-    return Gate0Authority.establish(boundary, hooks=hooks)
+) -> IsolationRootCapability:
+    """Internal Gate 0: open root, run live probes, bind identities, re-check.
+
+    Mutable commands call this themselves. Caller-supplied authority objects,
+    reports, digests, or environment digests are never accepted.
+    """
+    if os.environ.get("CONVMEM_CLAUDE_CANARY_GATE0_DIGEST"):
+        raise IsolationViolation("caller-supplied gate0 digest refused")
+    if os.environ.get("CONVMEM_CLAUDE_CANARY_GATE0_REPORT"):
+        raise IsolationViolation("caller-supplied gate0 report refused")
+
+    effective = hooks if hooks is not None else _default_hooks_for_isolation()
+    root_cap = open_isolation_root(boundary)
+    try:
+        report = gate0(hooks=effective)
+        evidence = _validate_live_gate0_report(report)
+        if evidence.watcher.passed is not PassToken.TRUE:
+            raise IsolationViolation("gate0 report did not pass")
+        root_cap.assert_still_bound(boundary)
+        watcher_now = (
+            (effective.watcher_probe if effective else None) or gate0_watcher_probe
+        )()
+        if watcher_now.get("pass") != "true":
+            raise IsolationViolation("watcher active or indeterminate")
+        return root_cap
+    except Exception:
+        root_cap.close()
+        raise
 
 
 def require_gate0_authority(
     boundary: IsolationBoundary,
     *,
     hooks: Gate0ProbeHooks | None = None,
-) -> Gate0Authority:
-    """Establish Gate 0 authority for one mutable command in this process."""
-    authority = establish_gate0_authority(boundary, hooks=hooks)
-    authority.verify_live(boundary)
-    return authority
+) -> IsolationRootCapability:
+    """Establish Gate 0 for one mutable command (returns held root capability)."""
+    return _enforce_gate0_for_mutable(boundary, hooks=hooks)
 
 
 def assert_transition_coverage(
@@ -744,11 +1314,50 @@ def install_fake_providers() -> None:
     ingest.distill = fake_distill
 
 
-def enable_incremental(boundary: IsolationBoundary) -> None:
+def enable_incremental(
+    boundary: IsolationBoundary,
+    *,
+    hooks: Gate0ProbeHooks | None = None,
+    _gate0: bool = True,
+) -> None:
+    if _gate0:
+        with _enforce_gate0_for_mutable(boundary, hooks=hooks) as root_cap:
+            root_cap.assert_still_bound(boundary)
+            _rewrite_config_enabled(root_cap)
+        return
     path = boundary.layout["user_config"]
     text = path.read_text(encoding="utf-8")
     text = text.replace("enabled = false", "enabled = true", 1)
     path.write_text(text, encoding="utf-8")
+
+
+def _rewrite_config_enabled(root_cap: IsolationRootCapability) -> None:
+    """Flip incremental enabled via descriptors under the held root."""
+    parent_fd = root_cap.root_fd
+    owned: list[int] = []
+    try:
+        for part in _CONFIG_REL_PARTS[:-1]:
+            child_fd = os.open(part, _dir_open_flags(), dir_fd=parent_fd)
+            owned.append(child_fd)
+            parent_fd = child_fd
+        name = _CONFIG_REL_PARTS[-1]
+        fd = os.open(name, _file_open_flags(), dir_fd=parent_fd)
+        try:
+            st = os.fstat(fd)
+            data = os.read(fd, st.st_size)
+        finally:
+            os.close(fd)
+        text = data.decode("utf-8").replace("enabled = false", "enabled = true", 1)
+        payload = text.encode("utf-8")
+        temp = _stage_regular_file_dirfd(parent_fd, name, payload)
+        try:
+            _publish_staged_rename(parent_fd, temp, name)
+        except Exception:
+            _unlink_dirfd(parent_fd, temp)
+            raise
+    finally:
+        for handle in reversed(owned):
+            os.close(handle)
 
 
 def run_coordinator(
@@ -757,326 +1366,79 @@ def run_coordinator(
     *,
     chunk_size: int = 2,
     overlap: int = 0,
+    hooks: Gate0ProbeHooks | None = None,
 ) -> dict[str, Any]:
-    install_fake_providers()
-    enable_incremental(boundary)
-    result = IncrementalJsonlCoordinator.from_isolated_boundary(
-        boundary,
-        source,
-        enabled=True,
-        chunk_size=chunk_size,
-        overlap=overlap,
-    ).run()
-    return {
-        "outcome": result.outcome,
-        "mode": result.mode,
-        "counters": result.counters.as_dict(),
-        "reused_artifacts": result.reused_artifacts,
-    }
+    with _enforce_gate0_for_mutable(boundary, hooks=hooks) as root_cap:
+        root_cap.assert_still_bound(boundary)
+        install_fake_providers()
+        _rewrite_config_enabled(root_cap)
+        # Intentional config flip: rebind digest, then re-check root/marker.
+        root_cap.config_digest = _config_digest_via_root(root_cap)
+        root_cap.assert_still_bound(boundary)
+        result = IncrementalJsonlCoordinator.from_isolated_boundary(
+            boundary,
+            source,
+            enabled=True,
+            chunk_size=chunk_size,
+            overlap=overlap,
+        ).run()
+        return {
+            "outcome": result.outcome,
+            "mode": result.mode,
+            "counters": result.counters.as_dict(),
+            "reused_artifacts": result.reused_artifacts,
+        }
 
 
 def run_hermetic_matrix(
     boundary: IsolationBoundary,
     source: Path,
+    *,
+    hooks: Gate0ProbeHooks | None = None,
 ) -> dict[str, Any]:
     """Exercise baseline, unchanged replay, and append under isolation."""
-    install_fake_providers()
-    enable_incremental(boundary)
-    first = IncrementalJsonlCoordinator.from_isolated_boundary(
-        boundary, source, enabled=True, chunk_size=2, overlap=0
-    ).run()
-    second = IncrementalJsonlCoordinator.from_isolated_boundary(
-        boundary, source, enabled=True, chunk_size=2, overlap=0
-    ).run()
-    with source.open("ab") as handle:
-        handle.write(
-            json.dumps(
-                {
-                    "type": "user",
-                    "sessionId": "sess-claude-canary",
-                    "uuid": "rec-append",
-                    "cwd": "/tmp/canary",
-                    "isSidechain": False,
-                    "timestamp": "2026-09-18T00:01:00Z",
-                    "message": {
-                        "role": "user",
-                        "content": "canary-message-append",
+    with _enforce_gate0_for_mutable(boundary, hooks=hooks) as root_cap:
+        root_cap.assert_still_bound(boundary)
+        install_fake_providers()
+        _rewrite_config_enabled(root_cap)
+        root_cap.config_digest = _config_digest_via_root(root_cap)
+        root_cap.assert_still_bound(boundary)
+        first = IncrementalJsonlCoordinator.from_isolated_boundary(
+            boundary, source, enabled=True, chunk_size=2, overlap=0
+        ).run()
+        second = IncrementalJsonlCoordinator.from_isolated_boundary(
+            boundary, source, enabled=True, chunk_size=2, overlap=0
+        ).run()
+        with source.open("ab") as handle:
+            handle.write(
+                json.dumps(
+                    {
+                        "type": "user",
+                        "sessionId": "sess-claude-canary",
+                        "uuid": "rec-append",
+                        "cwd": "/tmp/canary",
+                        "isSidechain": False,
+                        "timestamp": "2026-09-18T00:01:00Z",
+                        "message": {
+                            "role": "user",
+                            "content": "canary-message-append",
+                        },
                     },
-                },
-                sort_keys=True,
-            ).encode()
-            + b"\n"
-        )
-    third = IncrementalJsonlCoordinator.from_isolated_boundary(
-        boundary, source, enabled=True, chunk_size=2, overlap=0
-    ).run()
-    return {
-        "first_outcome": first.outcome,
-        "second_outcome": second.outcome,
-        "third_outcome": third.outcome,
-        "third_mode": third.mode,
-        "append_summarize": third.counters.summarize,
-        "append_reused": third.reused_artifacts,
-    }
-
-
-_REBUILD_OUTCOME = re.compile(r"^rebuild_required:[a-z_]+$")
-_EVIDENCE_INT_MAX = 1_000_000_000
-
-
-def _validate_enum(value: Any, *, label: str, allowed: frozenset[str]) -> str:
-    if not isinstance(value, str) or value not in allowed:
-        raise IsolationViolation(f"{label} is not an allowed enum")
-    return value
-
-
-def _validate_bool(value: Any, *, label: str) -> bool:
-    if not isinstance(value, bool):
-        raise IsolationViolation(f"{label} must be a boolean")
-    return value
-
-
-def _validate_bounded_int(
-    value: Any,
-    *,
-    label: str,
-    minimum: int = 0,
-    maximum: int = _EVIDENCE_INT_MAX,
-) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise IsolationViolation(f"{label} must be an integer")
-    if value < minimum or value > maximum:
-        raise IsolationViolation(f"{label} out of bounds")
-    return value
-
-
-def _validate_sha256(value: Any, *, label: str) -> str:
-    if not isinstance(value, str) or not _SHA256_HEX.fullmatch(value):
-        raise IsolationViolation(f"{label} must be a sha256 hex digest")
-    return value
-
-
-def _validate_safe_detail(value: Any, *, label: str) -> str:
-    if value == "":
-        return ""
-    if not isinstance(value, str) or not _SAFE_DETAIL.fullmatch(value):
-        raise IsolationViolation(f"{label} must be a safe detail token")
-    return value
-
-
-def _validate_coordinator_outcome(value: Any, *, label: str) -> str:
-    if not isinstance(value, str):
-        raise IsolationViolation(f"{label} must be a coordinator outcome")
-    if value in _COORDINATOR_OUTCOMES or _REBUILD_OUTCOME.fullmatch(value):
-        return value
-    raise IsolationViolation(f"{label} is not an allowed coordinator outcome")
-
-
-def _validate_safe_absolute_path(value: Any, *, label: str) -> str:
-    if not isinstance(value, str) or not value.startswith("/"):
-        raise IsolationViolation(f"{label} must be an absolute path")
-    if "\n" in value or "\r" in value or "\x00" in value:
-        raise IsolationViolation(f"{label} contains disallowed content")
-    if "canary-message" in value:
-        raise IsolationViolation(f"{label} contains transcript-like content")
-    candidate = Path(value)
-    if candidate.is_symlink():
-        raise IsolationViolation(f"{label} is symlinked")
-    return value
-
-
-def _validate_gate0_section(section: dict[str, Any]) -> dict[str, Any]:
-    validated: dict[str, Any] = {}
-    if "mode" in section:
-        validated["mode"] = _validate_enum(
-            section["mode"], label="gate0.mode", allowed=frozenset({CANARY_MODE})
-        )
-    if "watcher" in section:
-        watcher = section["watcher"]
-        if not isinstance(watcher, dict):
-            raise IsolationViolation("gate0.watcher must be a mapping")
-        allowed = frozenset({"status", "method", "pass", "detail"})
-        unknown = set(watcher) - allowed
-        if unknown:
-            names = ", ".join(sorted(unknown))
-            raise IsolationViolation(f"gate0.watcher contains unknown keys: {names}")
-        nested: dict[str, Any] = {}
-        if "status" in watcher:
-            nested["status"] = _validate_enum(
-                watcher["status"],
-                label="gate0.watcher.status",
-                allowed=_WATCHER_STATUSES,
+                    sort_keys=True,
+                ).encode()
+                + b"\n"
             )
-        if "method" in watcher:
-            nested["method"] = _validate_enum(
-                watcher["method"],
-                label="gate0.watcher.method",
-                allowed=_WATCHER_METHODS,
-            )
-        if "pass" in watcher:
-            nested["pass"] = _validate_enum(
-                watcher["pass"],
-                label="gate0.watcher.pass",
-                allowed=_GATE0_PASS_VALUES,
-            )
-        if "detail" in watcher:
-            nested["detail"] = _validate_safe_detail(
-                watcher["detail"], label="gate0.watcher.detail"
-            )
-        validated["watcher"] = nested
-    if "network" in section:
-        network = section["network"]
-        if not isinstance(network, dict):
-            raise IsolationViolation("gate0.network must be a mapping")
-        allowed = frozenset({"pass", "detail"})
-        unknown = set(network) - allowed
-        if unknown:
-            names = ", ".join(sorted(unknown))
-            raise IsolationViolation(f"gate0.network contains unknown keys: {names}")
-        nested = {}
-        if "pass" in network:
-            nested["pass"] = _validate_enum(
-                network["pass"],
-                label="gate0.network.pass",
-                allowed=_GATE0_PASS_VALUES,
-            )
-        if "detail" in network:
-            nested["detail"] = _validate_safe_detail(
-                network["detail"], label="gate0.network.detail"
-            )
-        validated["network"] = nested
-    return validated
-
-
-def _validate_matrix_section(section: dict[str, Any]) -> dict[str, Any]:
-    validated: dict[str, Any] = {}
-    for key in ("first_outcome", "second_outcome", "third_outcome"):
-        if key in section:
-            validated[key] = _validate_coordinator_outcome(
-                section[key], label=f"matrix.{key}"
-            )
-    if "third_mode" in section:
-        validated["third_mode"] = _validate_enum(
-            section["third_mode"],
-            label="matrix.third_mode",
-            allowed=_COORDINATOR_MODES,
-        )
-    for key in ("append_summarize", "append_reused"):
-        if key in section:
-            validated[key] = _validate_bounded_int(section[key], label=f"matrix.{key}")
-    return validated
-
-
-def _validate_capture_section(section: dict[str, Any]) -> dict[str, Any]:
-    validated: dict[str, Any] = {}
-    if "alias" in section:
-        validated["alias"] = validate_source_alias(str(section["alias"]))
-    if "canonical_path" in section:
-        validated["canonical_path"] = _validate_safe_absolute_path(
-            section["canonical_path"], label="capture.canonical_path"
-        )
-    for key in ("device", "inode", "size", "complete_boundary", "physical_lines"):
-        if key in section:
-            validated[key] = _validate_bounded_int(section[key], label=f"capture.{key}")
-    for key in ("prefix_sha256", "sha256"):
-        if key in section:
-            validated[key] = _validate_sha256(section[key], label=f"capture.{key}")
-    return validated
-
-
-def _validate_coordinator_section(section: dict[str, Any]) -> dict[str, Any]:
-    validated: dict[str, Any] = {}
-    if "outcome" in section:
-        validated["outcome"] = _validate_coordinator_outcome(
-            section["outcome"], label="coordinator.outcome"
-        )
-    if "mode" in section:
-        validated["mode"] = _validate_enum(
-            section["mode"], label="coordinator.mode", allowed=_COORDINATOR_MODES
-        )
-    if "reused_artifacts" in section:
-        validated["reused_artifacts"] = _validate_bounded_int(
-            section["reused_artifacts"], label="coordinator.reused_artifacts"
-        )
-    if "counters" in section:
-        counters = section["counters"]
-        if not isinstance(counters, dict):
-            raise IsolationViolation("coordinator.counters must be a mapping")
-        allowed = frozenset({"summarize", "embed", "distill", "chroma_upsert", "total"})
-        unknown = set(counters) - allowed
-        if unknown:
-            names = ", ".join(sorted(unknown))
-            raise IsolationViolation(f"coordinator.counters contains unknown keys: {names}")
-        validated["counters"] = {
-            key: _validate_bounded_int(counters[key], label=f"coordinator.counters.{key}")
-            for key in counters
-            if key in allowed
+        third = IncrementalJsonlCoordinator.from_isolated_boundary(
+            boundary, source, enabled=True, chunk_size=2, overlap=0
+        ).run()
+        return {
+            "first_outcome": first.outcome,
+            "second_outcome": second.outcome,
+            "third_outcome": third.outcome,
+            "third_mode": third.mode,
+            "append_summarize": third.counters.summarize,
+            "append_reused": third.reused_artifacts,
         }
-    return validated
-
-
-def _validate_source_section(section: dict[str, Any]) -> dict[str, Any]:
-    validated: dict[str, Any] = {}
-    if "alias" in section:
-        validated["alias"] = validate_source_alias(str(section["alias"]))
-    if "validated" in section:
-        validated["validated"] = _validate_bool(section["validated"], label="source.validated")
-    if "size" in section:
-        validated["size"] = _validate_bounded_int(section["size"], label="source.size")
-    return validated
-
-
-_SECTION_VALIDATORS = {
-    "gate0": _validate_gate0_section,
-    "matrix": _validate_matrix_section,
-    "capture": _validate_capture_section,
-    "coordinator": _validate_coordinator_section,
-    "source": _validate_source_section,
-}
-
-
-def _evidence_key_allowed(key: str, schema: frozenset[str]) -> bool:
-    if key not in schema:
-        return False
-    upper = key.upper()
-    if any(marker in upper for marker in _CREDENTIAL_MARKERS):
-        return False
-    return True
-
-
-def _validate_evidence_section(name: str, section: Any) -> dict[str, Any]:
-    schema = _EVIDENCE_SECTION_SCHEMA.get(name)
-    if schema is None:
-        raise IsolationViolation(f"unknown evidence section: {name}")
-    if not isinstance(section, dict):
-        raise IsolationViolation(f"evidence section {name} must be a mapping")
-    unknown = set(section) - schema
-    if unknown:
-        names = ", ".join(sorted(unknown))
-        raise IsolationViolation(f"evidence section {name} has unknown keys: {names}")
-    for key in section:
-        if not _evidence_key_allowed(key, schema):
-            raise IsolationViolation(f"evidence section {name} rejects key: {key}")
-    validator = _SECTION_VALIDATORS[name]
-    return validator(section)
-
-
-def assemble_evidence(**sections: Any) -> dict[str, Any]:
-    """Return content-free evidence with a closed typed section allowlist."""
-    unknown = set(sections) - EVIDENCE_SECTION_ALLOWLIST
-    if unknown:
-        names = ", ".join(sorted(unknown))
-        raise IsolationViolation(f"unknown evidence sections: {names}")
-    validated = {
-        name: _validate_evidence_section(name, section)
-        for name, section in sections.items()
-    }
-    payload = {"mode": CANARY_MODE, "sections": validated}
-    digest = hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
-    payload["evidence_digest"] = digest
-    return payload
 
 
 def worker_env(
@@ -1132,12 +1494,32 @@ __all__ = [
     "DURABLE_TRANSITIONS",
     "EVIDENCE_SECTION_ALLOWLIST",
     "_CAPTURE_TRANSITIONS",
+    "BoundedInt",
+    "CanaryMode",
+    "CaptureEvidence",
+    "CoordinatorCountersEvidence",
+    "CoordinatorEvidence",
+    "CoordinatorMode",
+    "CoordinatorOutcome",
+    "DetailToken",
     "FrozenSourceSpec",
-    "Gate0Authority",
+    "Gate0Evidence",
+    "Gate0NetworkEvidence",
     "Gate0ProbeHooks",
+    "Gate0WatcherEvidence",
+    "IsolationRootCapability",
+    "MatrixEvidence",
     "PRODUCTION_ROOTS",
+    "PassToken",
+    "RebuildOutcome",
+    "RelativePath",
+    "Sha256Digest",
+    "SourceAlias",
     "SourceDescriptor",
+    "SourceEvidence",
     "SourceIdentityBinding",
+    "WatcherMethod",
+    "WatcherStatus",
     "assemble_evidence",
     "assert_no_snapshot_artifacts",
     "assert_transition_coverage",
@@ -1145,15 +1527,15 @@ __all__ = [
     "capture_source",
     "derive_snapshot_destination",
     "enable_incremental",
-    "establish_gate0_authority",
     "gate0",
     "gate0_watcher_probe",
     "_hermetic_gate0_hooks",
     "install_fake_providers",
     "list_snapshot_artifacts",
+    "open_isolation_root",
     "prepare_fixture_env",
-    "revalidate_source_identity",
     "require_gate0_authority",
+    "revalidate_source_identity",
     "run_coordinator",
     "run_hermetic_matrix",
     "run_worker",

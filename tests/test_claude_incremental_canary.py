@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -15,10 +16,27 @@ from claude_incremental_canary import (
     CRASH_EXIT,
     DURABLE_TRANSITIONS,
     EVIDENCE_SECTION_ALLOWLIST,
+    BoundedInt,
+    CanaryMode,
+    CaptureEvidence,
+    CoordinatorMode,
+    CoordinatorOutcome,
+    DetailToken,
     FrozenSourceSpec,
-    Gate0Authority,
+    Gate0Evidence,
+    Gate0NetworkEvidence,
     Gate0ProbeHooks,
+    Gate0WatcherEvidence,
+    MatrixEvidence,
     PRODUCTION_ROOTS,
+    PassToken,
+    RebuildOutcome,
+    RelativePath,
+    Sha256Digest,
+    SourceAlias,
+    SourceEvidence,
+    WatcherMethod,
+    WatcherStatus,
     _CAPTURE_TRANSITIONS,
     _hermetic_gate0_hooks,
     assemble_evidence,
@@ -28,10 +46,11 @@ from claude_incremental_canary import (
     capture_source,
     derive_snapshot_destination,
     enable_incremental,
-    establish_gate0_authority,
     gate0,
     list_snapshot_artifacts,
+    open_isolation_root,
     prepare_fixture_env,
+    require_gate0_authority,
     revalidate_source_identity,
     run_worker,
     snapshot_publication_paths,
@@ -47,6 +66,21 @@ def _apply_env(monkeypatch: pytest.MonkeyPatch, env: dict[str, str]) -> None:
             monkeypatch.delenv(key, raising=False)
     for key, value in env.items():
         monkeypatch.setenv(key, value)
+
+
+def _gate0_evidence() -> Gate0Evidence:
+    return Gate0Evidence(
+        mode=CanaryMode.V1,
+        watcher=Gate0WatcherEvidence(
+            status=WatcherStatus.INACTIVE,
+            method=WatcherMethod.HERMETIC,
+            passed=PassToken.TRUE,
+        ),
+        network=Gate0NetworkEvidence(
+            passed=PassToken.TRUE,
+            detail=DetailToken(value="hermetic"),
+        ),
+    )
 
 
 def test_frozen_source_validates_exact_identity_digest_and_boundary(
@@ -99,10 +133,12 @@ def test_capture_is_atomic_read_only_and_content_free(
     assert calls
     write_flags = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC
     assert all(not (flags & write_flags) for _path, flags in calls)
-    copied = Path(descriptor.canonical_path)
+    copied = derive_snapshot_destination(boundary, descriptor.alias)
     assert copied.is_file()
+    assert descriptor.relative_path == f"sources/claude-capture/{spec.alias}.jsonl"
     evidence = json.dumps(descriptor.__dict__, sort_keys=True)
     assert "canary-message" not in evidence
+    assert not descriptor.relative_path.startswith("/")
 
 
 def test_capture_fault_inventory_is_explicit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -182,12 +218,11 @@ def test_worker_network_denied(tmp_path: Path) -> None:
 
 def test_evidence_is_content_free() -> None:
     payload = assemble_evidence(
-        gate0={
-            "watcher": {"status": "inactive", "method": "hermetic", "pass": "true"},
-            "network": {"pass": "true", "detail": "hermetic"},
-            "mode": "claude-incremental-canary-v1",
-        },
-        matrix={"first_outcome": "committed", "append_summarize": 1},
+        gate0=_gate0_evidence(),
+        matrix=MatrixEvidence(
+            first_outcome=CoordinatorOutcome.COMMITTED,
+            append_summarize=BoundedInt(value=1),
+        ),
     )
     text = json.dumps(payload, sort_keys=True)
     assert "canary-message" not in text
@@ -256,21 +291,16 @@ def test_gate0_authority_rejects_cross_root_replay(
     root_a, token_a, env_a, _source_a, _spec_a = prepare_fixture_env(tmp_path, alias="root-a")
     _root_b, token_b, env_b, _source_b, _spec_b = prepare_fixture_env(tmp_path, alias="root-b")
     _apply_env(monkeypatch, env_a)
-    authority_a = establish_gate0_authority(
+    authority_a = require_gate0_authority(
         IsolationBoundary.from_environment(), hooks=_hermetic_gate0_hooks()
     )
-    _apply_env(monkeypatch, env_b)
-    boundary_b = IsolationBoundary.from_environment()
-    with pytest.raises(IsolationViolation, match="root mismatch"):
-        authority_a.verify_live(boundary_b)
-    with pytest.raises(IsolationViolation, match="token mismatch"):
-        Gate0Authority(
-            root=str(boundary_b.root.resolve()),
-            token=token_a,
-            config_digest=authority_a.config_digest,
-            report=authority_a.report,
-            digest=authority_a.digest,
-        ).verify_live(boundary_b)
+    try:
+        _apply_env(monkeypatch, env_b)
+        boundary_b = IsolationBoundary.from_environment()
+        with pytest.raises(IsolationViolation, match="replaced at pathname|token mismatch|root"):
+            authority_a.assert_still_bound(boundary_b)
+    finally:
+        authority_a.close()
 
 
 def test_gate0_authority_rejects_stale_config(
@@ -279,10 +309,13 @@ def test_gate0_authority_rejects_stale_config(
     root, token, env, _source, _spec = prepare_fixture_env(tmp_path)
     _apply_env(monkeypatch, env)
     boundary = IsolationBoundary.from_environment()
-    authority = establish_gate0_authority(boundary, hooks=_hermetic_gate0_hooks())
-    enable_incremental(boundary)
-    with pytest.raises(IsolationViolation, match="config mismatch"):
-        authority.verify_live(boundary)
+    authority = require_gate0_authority(boundary, hooks=_hermetic_gate0_hooks())
+    try:
+        enable_incremental(boundary, hooks=_hermetic_gate0_hooks(), _gate0=False)
+        with pytest.raises(IsolationViolation, match="config mismatch"):
+            authority.assert_still_bound(boundary)
+    finally:
+        authority.close()
 
 
 def test_gate0_env_digest_replay_grants_nothing(tmp_path: Path) -> None:
@@ -294,7 +327,10 @@ def test_gate0_env_digest_replay_grants_nothing(tmp_path: Path) -> None:
         source=source,
         extra_env={"CONVMEM_CLAUDE_CANARY_GATE0_DIGEST": "deadbeef" * 8},
     )
-    assert blocked.returncode == 0, blocked.stderr
+    assert blocked.returncode == 74, blocked.stdout + blocked.stderr
+    payload = json.loads(blocked.stdout)
+    assert payload["error"] == "IsolationViolation"
+    assert "digest" in payload["detail"]
 
 
 def test_capture_refusal_cleans_snapshot_and_leaves_no_residue(
@@ -335,17 +371,15 @@ def test_snapshot_publication_rejects_directory_substitution(
 
 
 def test_evidence_rejects_innocuous_short_string_injection() -> None:
-    with pytest.raises(IsolationViolation, match="not an allowed coordinator outcome"):
-        assemble_evidence(
-            matrix={
-                "first_outcome": "ok",
-                "second_outcome": "unchanged",
-                "third_outcome": "committed",
-                "third_mode": "incremental",
-                "append_summarize": 1,
-                "append_reused": 1,
-            }
-        )
+    with pytest.raises(ValueError):
+        CoordinatorOutcome("ok")
+
+
+def test_evidence_rejects_bad_outcome_via_rebuild_and_enum() -> None:
+    with pytest.raises(ValueError):
+        CoordinatorOutcome("ok")
+    with pytest.raises(IsolationViolation, match="rebuild reason"):
+        RebuildOutcome(reason="NOT_VALID")
 
 
 def test_capture_rejects_same_size_identity_rewrite(
@@ -394,9 +428,9 @@ def test_evidence_rejects_unknown_sections_and_credential_like_values() -> None:
     )
     with pytest.raises(IsolationViolation, match="unknown evidence sections"):
         assemble_evidence(transcript={"text": "canary-message-00000"})
-    with pytest.raises(IsolationViolation, match="unknown keys"):
+    with pytest.raises(IsolationViolation, match="closed evidence object|mapping"):
         assemble_evidence(gate0={"watcher": {"status": "inactive", "api_key": "secret"}})
-    with pytest.raises(IsolationViolation, match="credential-like|not an allowed enum"):
+    with pytest.raises(IsolationViolation, match="closed evidence object|mapping"):
         assemble_evidence(
             gate0={
                 "watcher": {"status": "inactive", "pass": "true"},
@@ -404,14 +438,275 @@ def test_evidence_rejects_unknown_sections_and_credential_like_values() -> None:
                 "mode": "token-leak",
             }
         )
-    with pytest.raises(IsolationViolation, match="not an allowed coordinator outcome"):
+    with pytest.raises(ValueError):
+        CoordinatorOutcome("canary-message-00001")
+
+
+# ---------------------------------------------------------------------------
+# Adversarial capability-bound regressions (Copilot corrective handoff)
+# ---------------------------------------------------------------------------
+
+
+def test_refuse_root_directory_replacement_after_gate0(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    cap = require_gate0_authority(boundary, hooks=_hermetic_gate0_hooks())
+    try:
+        marker = root / ".convmem-jsonl-production-root"
+        marker_text = marker.read_text(encoding="ascii")
+        relocated = tmp_path / "old-root-inode"
+        root.rename(relocated)
+        root.mkdir()
+        (root / ".convmem-jsonl-production-root").write_text(marker_text, encoding="ascii")
+        shutil.copytree(relocated / "home", root / "home")
+        with pytest.raises(IsolationViolation, match="replaced at pathname"):
+            cap.assert_still_bound(boundary)
+    finally:
+        cap.close()
+
+    # Within capture: replace after Gate 0 while the capability is held.
+    second_parent = tmp_path / "second"
+    second_parent.mkdir()
+    root2, token2, env2, source2, spec2 = prepare_fixture_env(second_parent, alias="root-2")
+    _apply_env(monkeypatch, env2)
+    boundary2 = IsolationBoundary.from_environment()
+
+    def replace_root(name: str) -> None:
+        if name != "after_source_revalidation":
+            return
+        marker = root2 / ".convmem-jsonl-production-root"
+        marker_text = marker.read_text(encoding="ascii")
+        relocated = tmp_path / "old-root-inode-2"
+        if root2.exists():
+            root2.rename(relocated)
+        root2.mkdir()
+        (root2 / ".convmem-jsonl-production-root").write_text(marker_text, encoding="ascii")
+        if (relocated / "home").exists():
+            shutil.copytree(relocated / "home", root2 / "home")
+
+    with pytest.raises(IsolationViolation, match="replaced at pathname"):
+        capture_source(boundary2, spec2, fault=replace_root)
+
+
+def test_refuse_destination_directory_and_symlink_substitution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    capture_dir, _filename = snapshot_publication_paths(boundary, spec.alias)
+    capture_dir.mkdir(parents=True, exist_ok=True)
+    outside = tmp_path / "symlink-dest"
+    outside.mkdir()
+    # Replace parent "sources" with a symlink.
+    sources = boundary.root / "sources"
+    if sources.exists():
+        shutil.rmtree(sources)
+    sources.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(IsolationViolation, match="symlink"):
+        capture_source(boundary, spec)
+    assert list(outside.rglob("*")) == []
+
+
+def test_source_removal_before_publication_leaves_zero_residue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+
+    def remove_source(name: str) -> None:
+        if name == "before_source_revalidation":
+            source.unlink()
+
+    with pytest.raises((IsolationViolation, FileNotFoundError)):
+        capture_source(boundary, spec, fault=remove_source)
+    assert_no_snapshot_artifacts(boundary, spec.alias)
+
+
+def test_renamed_temp_artifact_and_exception_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    capture_dir, filename = snapshot_publication_paths(boundary, spec.alias)
+
+    def rename_temp(name: str) -> None:
+        if name == "after_temp_stage":
+            capture_dir.mkdir(parents=True, exist_ok=True)
+            temps = [
+                entry
+                for entry in capture_dir.iterdir()
+                if entry.name.startswith(f".{filename.name}.") and entry.name.endswith(".tmp")
+            ]
+            assert temps
+            temps[0].rename(capture_dir / f".attacker-renamed-{temps[0].name}")
+
+    with pytest.raises(IsolationViolation, match="staged snapshot missing|residue"):
+        capture_source(boundary, spec, fault=rename_temp)
+    # Cleanup must not leave published final name; attacker-renamed temp may remain
+    # only if outside the cleanup name — assert no final publish artifact.
+    final = capture_dir / filename.name
+    assert not final.exists()
+
+
+def test_forged_failed_gate0_report_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from claude_incremental_canary import CANARY_MODE
+
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    monkeypatch.setenv(
+        "CONVMEM_CLAUDE_CANARY_GATE0_REPORT",
+        json.dumps(
+            {
+                "watcher": {"pass": "false", "status": "active", "method": "test"},
+                "network": {"pass": "true"},
+                "mode": CANARY_MODE,
+            }
+        ),
+    )
+    boundary = IsolationBoundary.from_environment()
+    with pytest.raises(IsolationViolation, match="caller-supplied gate0 report"):
+        capture_source(boundary, spec)
+
+
+def test_arbitrary_digest_and_stale_token_marker_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    # Stale token marker on disk.
+    marker = root / ".convmem-jsonl-production-root"
+    marker.write_text("0" * 48, encoding="ascii")
+    with pytest.raises(IsolationViolation, match="freshness token mismatch"):
+        capture_source(boundary, spec)
+    # Restore marker; arbitrary digest env must still refuse.
+    marker.write_text(token, encoding="ascii")
+    monkeypatch.setenv("CONVMEM_CLAUDE_CANARY_GATE0_DIGEST", "ab" * 32)
+    with pytest.raises(IsolationViolation, match="caller-supplied gate0 digest"):
+        capture_source(boundary, spec)
+
+
+def test_root_and_config_replacement_after_gate0(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    cap = open_isolation_root(boundary)
+    try:
+        # Config replacement after Gate 0 bind.
+        config = boundary.layout["user_config"]
+        config.write_text(config.read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8")
+        with pytest.raises(IsolationViolation, match="config mismatch"):
+            cap.assert_still_bound(boundary)
+    finally:
+        cap.close()
+
+
+def test_evidence_rejects_arbitrary_detail_and_rebuild_strings() -> None:
+    with pytest.raises(IsolationViolation, match="detail|transcript"):
+        DetailToken(value="canary-message-00000")
+    with pytest.raises(IsolationViolation, match="detail|transcript"):
+        DetailToken(value="../etc/passwd")
+    with pytest.raises(IsolationViolation, match="rebuild reason"):
+        RebuildOutcome(reason="arbitrary Detail")
+    with pytest.raises(ValueError):
+        CanaryMode("not-a-mode")
+    with pytest.raises(IsolationViolation, match="closed evidence object|mapping"):
+        assemble_evidence(gate0={"mode": "not-a-mode", "watcher": {}, "network": {}})
+
+
+def test_evidence_rejects_credential_and_transcript_like_absolute_paths() -> None:
+    with pytest.raises(IsolationViolation, match="relative path|absolute|invalid"):
+        RelativePath(parts=("/home/lauer/.claude/projects/x/session.jsonl",))
+    with pytest.raises(IsolationViolation, match="relative path component invalid"):
+        RelativePath.from_parts("..", "escape")
+    with pytest.raises(IsolationViolation, match="closed evidence object|mapping"):
         assemble_evidence(
-            matrix={
-                "first_outcome": "canary-message-00001",
-                "second_outcome": "unchanged",
-                "third_outcome": "committed",
-                "third_mode": "incremental",
-                "append_summarize": 1,
-                "append_reused": 1,
+            capture={
+                "alias": "x",
+                "canonical_path": "/home/lauer/.config/convmem/env.local",
+                "device": 1,
+                "inode": 1,
+                "size": 1,
+                "complete_boundary": 1,
+                "prefix_sha256": "a" * 64,
+                "sha256": "b" * 64,
+                "physical_lines": 1,
             }
         )
+
+
+def test_evidence_rejects_integer_aliases_and_bool_int_confusion() -> None:
+    with pytest.raises(IsolationViolation, match="str"):
+        SourceAlias(value=123)  # type: ignore[arg-type]
+    with pytest.raises(IsolationViolation, match="str"):
+        validate_source_alias(123)
+    with pytest.raises(IsolationViolation, match="int"):
+        BoundedInt(value=True)  # type: ignore[arg-type]
+    with pytest.raises(IsolationViolation, match="bool"):
+        SourceEvidence(
+            alias=SourceAlias(value="ok"),
+            validated=1,  # type: ignore[arg-type]
+            size=BoundedInt(value=1),
+        )
+
+
+def test_evidence_rejects_unknown_and_nested_values() -> None:
+    with pytest.raises(IsolationViolation, match="unknown evidence sections"):
+        assemble_evidence(nested={"a": {"b": 1}})
+    with pytest.raises(IsolationViolation, match="closed evidence object|mapping"):
+        assemble_evidence(matrix={"first_outcome": {"nested": True}})
+    # Closed CaptureEvidence construction succeeds; dict form refused above.
+    digest = Sha256Digest(value="a" * 64)
+    payload = assemble_evidence(
+        capture=CaptureEvidence(
+            alias=SourceAlias(value="fixture"),
+            relative_path=RelativePath.from_parts("sources", "claude-capture", "fixture.jsonl"),
+            device=BoundedInt(value=1),
+            inode=BoundedInt(value=2),
+            size=BoundedInt(value=3),
+            complete_boundary=BoundedInt(value=4),
+            prefix_sha256=digest,
+            sha256=digest,
+            physical_lines=BoundedInt(value=5),
+        ),
+        gate0=_gate0_evidence(),
+        matrix=MatrixEvidence(
+            first_outcome=CoordinatorOutcome.COMMITTED,
+            third_mode=CoordinatorMode.INCREMENTAL,
+            append_summarize=BoundedInt(value=1),
+            append_reused=BoundedInt(value=1),
+        ),
+        source=SourceEvidence(
+            alias=SourceAlias(value="fixture"),
+            validated=True,
+            size=BoundedInt(value=3),
+        ),
+    )
+    assert "evidence_digest" in payload
+    assert not payload["sections"]["capture"]["relative_path"].startswith("/")
+
+
+def test_temp_stage_fault_before_publish_leaves_no_residue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+
+    def crash_after_temp(name: str) -> None:
+        if name == "after_temp_stage":
+            raise IsolationViolation("injected failure before publish")
+
+    with pytest.raises(IsolationViolation, match="injected failure"):
+        capture_source(boundary, spec, fault=crash_after_temp)
+    assert_no_snapshot_artifacts(boundary, spec.alias)

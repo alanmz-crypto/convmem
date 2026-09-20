@@ -48,7 +48,9 @@ def _frozen_spec(source: Path):
 
 
 def _require_gate0(boundary) -> None:
-    require_gate0_authority(boundary, hooks=_hermetic_gate0_hooks())
+    # Mutable commands also enforce Gate 0 internally; this closes the outer probe.
+    with require_gate0_authority(boundary, hooks=_hermetic_gate0_hooks()):
+        return
 
 
 def main() -> int:
