@@ -29,6 +29,27 @@ _VERBATIM_PREAMBLE = (
 )
 
 
+def _validated_summary_offsets(meta: dict) -> tuple[int | None, int | None, bool]:
+    """Return (start, end, valid). Reject non-integers and partial pairs."""
+
+    def _as_offset(value: object) -> int | None | str:
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, int):
+            return "invalid"
+        return value
+
+    start = _as_offset(meta.get("start_offset"))
+    end = _as_offset(meta.get("end_offset"))
+    if start == "invalid" or end == "invalid":
+        return None, None, False
+    if (start is None) ^ (end is None):
+        return None, None, False
+    if start is None:
+        return None, None, True
+    return start, end, True
+
+
 def format_labeled_context(
     *,
     summary_text: str,
@@ -111,12 +132,18 @@ def format_labeled_context(
         if label == LABEL_SUMMARY:
             tool = escape_metadata(item_meta.get("tool") or "?")
             when = escape_metadata(item_meta.get("when") or "")
-            start = item_meta.get("start_offset")
-            end = item_meta.get("end_offset")
+            start, end, offsets_valid = _validated_summary_offsets(item_meta)
             header = f"[{n}] (label={escape_metadata(label)}, {tool}"
             if when:
                 header += f", {when}"
-            header += f") messages {start}–{end}"
+            if offsets_valid and start is not None and end is not None:
+                header += f") messages {start}–{end}"
+            elif item_meta.get("start_offset") is not None or item_meta.get(
+                "end_offset"
+            ) is not None:
+                header += ", reason=invalid_locator)"
+            else:
+                header += ")"
             lines.append(
                 f"{header}\n{quote_block(text)}\n    Source: {src}"
             )

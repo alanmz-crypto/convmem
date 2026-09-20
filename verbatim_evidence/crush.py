@@ -121,7 +121,7 @@ def _session_key(locator: EvidenceLocator) -> str | None:
     conversation = (conversation or "").strip() or None
     if session and conversation and session != conversation:
         return None
-    return session or conversation
+    return session
 
 
 def _has_offsets(locator: EvidenceLocator) -> bool:
@@ -279,7 +279,6 @@ def _bound_excerpt(
     query = query_hint.strip()
 
     marker_len = len(TRUNCATION_MARKER)
-    leading_marker = False
 
     if query:
         match = None
@@ -294,18 +293,33 @@ def _bound_excerpt(
                 match = (regex.start(), len(regex.group(0)))
         if match is not None:
             idx, query_len = match
-            budget = max(0, max_chars - marker_len)
-            if budget <= 0:
-                return TRUNCATION_MARKER, True
-            start = max(0, idx - max(0, (budget - query_len) // 2))
-            end = min(len(text), start + budget)
-            start = max(0, end - budget)
+            leading = idx > 0
+            trailing = True
+            marker_budget = marker_len * (int(leading) + int(trailing))
+            if marker_budget >= max_chars:
+                return TRUNCATION_MARKER[:max_chars], True
+            content_budget = max_chars - marker_budget
+            start = max(0, idx - max(0, (content_budget - query_len) // 2))
+            end = min(len(text), start + content_budget)
+            start = max(0, end - content_budget)
             excerpt = text[start:end]
-            leading_marker = start > 0
-            if end < len(text):
-                excerpt = excerpt + TRUNCATION_MARKER
-            if leading_marker:
+            leading = start > 0
+            trailing = end < len(text)
+            if leading:
                 excerpt = TRUNCATION_MARKER + excerpt
+            if trailing:
+                excerpt = excerpt + TRUNCATION_MARKER
+            if len(excerpt) > max_chars:
+                if trailing and len(excerpt) >= marker_len:
+                    excerpt = excerpt[: len(excerpt) - marker_len]
+                    trailing = False
+                if len(excerpt) > max_chars and leading and excerpt.startswith(
+                    TRUNCATION_MARKER
+                ):
+                    excerpt = excerpt[marker_len:]
+                    leading = False
+                if len(excerpt) > max_chars:
+                    excerpt = excerpt[:max_chars]
             return excerpt, True
 
     keep = max(0, max_chars - marker_len)
@@ -391,6 +405,19 @@ def _prevalidate_locator(
             reason="offset_retrieval_unavailable",
         )
 
+    has_session = isinstance(locator.session_id, str) and bool(locator.session_id.strip())
+    has_conversation = isinstance(locator.conversation_id, str) and bool(
+        locator.conversation_id.strip()
+    )
+
+    if has_conversation and not has_session:
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            source_path=source,
+            adapter_kind=ADAPTER_KIND_CRUSH,
+            reason="conversation_only_locator",
+        )
+
     if not session_hint:
         return EvidenceResult(
             status=EvidenceStatus.INVALID_LOCATOR,
@@ -399,13 +426,7 @@ def _prevalidate_locator(
             reason="missing_session_conversation_or_offsets",
         )
 
-    if (
-        isinstance(locator.session_id, str)
-        and isinstance(locator.conversation_id, str)
-        and locator.session_id.strip()
-        and locator.conversation_id.strip()
-        and locator.session_id.strip() != locator.conversation_id.strip()
-    ):
+    if has_session and has_conversation and locator.session_id.strip() != locator.conversation_id.strip():
         return EvidenceResult(
             status=EvidenceStatus.INVALID_LOCATOR,
             source_path=source,
@@ -586,6 +607,7 @@ def _scan_session(
     bytes_scanned = 0
     partial_reason: str | None = None
     scan_capped = False
+    result_capped = False
 
     stage1_rows = conn.execute(_STAGE1_SQL, (session_key, max_scan_rows + 1)).fetchall()
     if len(stage1_rows) > max_scan_rows:
@@ -666,6 +688,7 @@ def _scan_session(
             )
         )
         if len(matches) >= max_result_messages:
+            result_capped = True
             break
 
     if not matches:
@@ -693,9 +716,11 @@ def _scan_session(
             scope=EvidenceScope.SESSION,
         )
 
-    partial = bool(partial_reason or scan_capped)
+    partial = bool(partial_reason or scan_capped or result_capped)
     if scan_capped:
         partial_reason = "scan_limit"
+    elif result_capped:
+        partial_reason = "result_limit"
     elif not partial_reason:
         partial_reason = None
 
