@@ -20,16 +20,25 @@ def normalize_evidence_text(text: str) -> str:
     return normalized.replace("\r\n", "\n").replace("\r", "\n")
 
 
-def message_matches(normalized_message: str, normalized_query: str) -> bool:
-    """Conservative exact match with length-preserving IGNORECASE fallback."""
+def find_match_span(
+    normalized_message: str, normalized_query: str
+) -> tuple[int, int] | None:
+    """Return the first match span using the same rules as ``message_matches``."""
     query = normalized_query.strip()
     if not query:
-        return False
-    if query in normalized_message:
-        return True
-    return (
-        re.search(re.escape(query), normalized_message, flags=re.IGNORECASE) is not None
-    )
+        return None
+    idx = normalized_message.find(query)
+    if idx >= 0:
+        return idx, idx + len(query)
+    regex = re.search(re.escape(query), normalized_message, flags=re.IGNORECASE)
+    if regex is not None:
+        return regex.start(), regex.end()
+    return None
+
+
+def message_matches(normalized_message: str, normalized_query: str) -> bool:
+    """Conservative exact match with length-preserving IGNORECASE fallback."""
+    return find_match_span(normalized_message, normalized_query) is not None
 
 
 def digest_excerpt(excerpt: str) -> str:

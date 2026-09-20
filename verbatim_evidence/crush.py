@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -17,6 +16,7 @@ from adapters.sqlite_chat import (
 )
 from verbatim_evidence.normalize import (
     digest_excerpt,
+    find_match_span,
     message_matches,
     normalize_evidence_text,
 )
@@ -269,61 +269,54 @@ def _bound_excerpt(
     text: str,
     max_chars: int,
     *,
-    query_hint: str = "",
+    normalized_query: str = "",
+    match_span: tuple[int, int] | None = None,
 ) -> tuple[str, bool]:
     if max_chars <= 0:
-        return TRUNCATION_MARKER, True
+        return "", True
     if len(text) <= max_chars:
         return text, False
 
-    query = query_hint.strip()
-
     marker_len = len(TRUNCATION_MARKER)
 
-    if query:
-        match = None
-        for candidate in (query, query.casefold()):
-            found = text.find(candidate)
-            if found >= 0:
-                match = (found, len(candidate))
-                break
-        if match is None:
-            regex = re.search(re.escape(query), text, flags=re.IGNORECASE)
-            if regex is not None:
-                match = (regex.start(), len(regex.group(0)))
-        if match is not None:
-            idx, query_len = match
-            leading = idx > 0
-            trailing = True
-            marker_budget = marker_len * (int(leading) + int(trailing))
-            if marker_budget >= max_chars:
-                return TRUNCATION_MARKER[:max_chars], True
+    if match_span is None and normalized_query.strip():
+        match_span = find_match_span(text, normalized_query)
+
+    if match_span is not None:
+        idx, match_end = match_span
+        query_len = match_end - idx
+        marker_plans = (
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        )
+        for plan_leading, plan_trailing in marker_plans:
+            marker_budget = marker_len * (int(plan_leading) + int(plan_trailing))
+            if marker_budget > max_chars:
+                continue
             content_budget = max_chars - marker_budget
+            if content_budget <= 0:
+                continue
             start = max(0, idx - max(0, (content_budget - query_len) // 2))
             end = min(len(text), start + content_budget)
             start = max(0, end - content_budget)
-            excerpt = text[start:end]
-            leading = start > 0
-            trailing = end < len(text)
+            content = text[start:end]
+            leading = plan_leading and start > 0
+            trailing = plan_trailing and end < len(text)
+            excerpt = content
             if leading:
                 excerpt = TRUNCATION_MARKER + excerpt
             if trailing:
                 excerpt = excerpt + TRUNCATION_MARKER
-            if len(excerpt) > max_chars:
-                if trailing and len(excerpt) >= marker_len:
-                    excerpt = excerpt[: len(excerpt) - marker_len]
-                    trailing = False
-                if len(excerpt) > max_chars and leading and excerpt.startswith(
-                    TRUNCATION_MARKER
-                ):
-                    excerpt = excerpt[marker_len:]
-                    leading = False
-                if len(excerpt) > max_chars:
-                    excerpt = excerpt[:max_chars]
-            return excerpt, True
+            if len(excerpt) <= max_chars:
+                return excerpt, True
 
-    keep = max(0, max_chars - marker_len)
-    return text[:keep] + TRUNCATION_MARKER, True
+        return TRUNCATION_MARKER[:max_chars], True
+
+    if max_chars <= marker_len:
+        return TRUNCATION_MARKER[:max_chars], True
+    return text[: max_chars - marker_len] + TRUNCATION_MARKER, True
 
 
 def _prevalidate_locator(
@@ -608,6 +601,7 @@ def _scan_session(
     partial_reason: str | None = None
     scan_capped = False
     result_capped = False
+    at_result_limit = False
 
     stage1_rows = conn.execute(_STAGE1_SQL, (session_key, max_scan_rows + 1)).fetchall()
     if len(stage1_rows) > max_scan_rows:
@@ -666,10 +660,16 @@ def _scan_session(
         if not message_matches(normalized_content, normalized_query):
             continue
 
+        if at_result_limit:
+            result_capped = True
+            break
+
+        match_span = find_match_span(normalized_content, normalized_query)
         excerpt_text, truncated = _bound_excerpt(
             normalized_content,
             max_excerpt_chars,
-            query_hint=query_text,
+            normalized_query=normalized_query,
+            match_span=match_span,
         )
 
         matches.append(
@@ -688,8 +688,7 @@ def _scan_session(
             )
         )
         if len(matches) >= max_result_messages:
-            result_capped = True
-            break
+            at_result_limit = True
 
     if not matches:
         if scan_capped:

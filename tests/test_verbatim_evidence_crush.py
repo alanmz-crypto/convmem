@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import unicodedata
 import tempfile
 import unittest
 from pathlib import Path
@@ -454,6 +455,10 @@ class TestVerbatimEvidenceAcceptance(unittest.TestCase):
         cls.multi_match_db.parent.mkdir(parents=True)
         _write_multi_match_fixture(cls.multi_match_db, match_count=5)
 
+        cls.exact_limit_db = root / "exact-limit" / ".crush" / "crush.db"
+        cls.exact_limit_db.parent.mkdir(parents=True)
+        _write_multi_match_fixture(cls.exact_limit_db, match_count=3)
+
     @classmethod
     def tearDownClass(cls):
         cls.tmp.cleanup()
@@ -890,10 +895,72 @@ class TestVerbatimEvidenceAcceptance(unittest.TestCase):
             excerpt, truncated = _bound_excerpt(
                 text,
                 max_chars,
-                query_hint=SID_HEADING,
+                normalized_query=SID_HEADING,
             )
             self.assertTrue(truncated)
             self.assertLessEqual(len(excerpt), max_chars)
+
+    def test_bound_excerpt_truncates_marker_when_budget_smaller(self):
+        from verbatim_evidence.crush import TRUNCATION_MARKER, _bound_excerpt
+
+        text = "hello world!!"
+        for max_chars in (1, 5, len(TRUNCATION_MARKER) - 1):
+            excerpt, truncated = _bound_excerpt(
+                text,
+                max_chars,
+                normalized_query="world",
+            )
+            self.assertTrue(truncated)
+            self.assertLessEqual(len(excerpt), max_chars)
+            self.assertNotEqual(excerpt, text)
+
+    def test_bound_excerpt_nfc_nfd_query_with_tiny_budget(self):
+        from verbatim_evidence.crush import _bound_excerpt
+        from verbatim_evidence.normalize import find_match_span
+
+        nfc_cafe = "caf\u00e9"
+        nfd_cafe = unicodedata.normalize("NFD", nfc_cafe)
+        text = normalize_evidence_text(f"prefix {nfc_cafe} suffix")
+        query = normalize_evidence_text(nfd_cafe)
+        span = find_match_span(text, query)
+        self.assertIsNotNone(span)
+        excerpt, truncated = _bound_excerpt(
+            text,
+            12,
+            normalized_query=query,
+            match_span=span,
+        )
+        self.assertTrue(truncated)
+        self.assertLessEqual(len(excerpt), 12)
+        self.assertIn(nfc_cafe, excerpt)
+
+    def test_exact_result_limit_complete_without_partial(self):
+        result = retrieve_verbatim_evidence(
+            EvidenceLocator(
+                source_path=str(self.exact_limit_db.resolve()),
+                session_id=SESSION_ID,
+            ),
+            MULTI_MATCH_TOKEN,
+            max_result_messages=3,
+        )
+        self.assertEqual(result.status, EvidenceStatus.AVAILABLE)
+        self.assertEqual(len(result.excerpts), 3)
+        self.assertFalse(result.partial)
+        self.assertIsNone(result.partial_reason)
+
+    def test_result_limit_not_assumed_when_scan_interrupts(self):
+        result = retrieve_verbatim_evidence(
+            EvidenceLocator(
+                source_path=str(self.multi_match_db.resolve()),
+                session_id=SESSION_ID,
+            ),
+            MULTI_MATCH_TOKEN,
+            max_result_messages=3,
+            max_scan_rows=3,
+        )
+        self.assertEqual(len(result.excerpts), 3)
+        self.assertTrue(result.partial)
+        self.assertEqual(result.partial_reason, "scan_limit")
 
     def test_scan_limit_renders_as_unavailable_not_source_missing(self):
         evidence = retrieve_verbatim_evidence(
