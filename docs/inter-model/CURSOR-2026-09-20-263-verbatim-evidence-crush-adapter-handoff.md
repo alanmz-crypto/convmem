@@ -15,7 +15,7 @@
 |-------|--------|
 | **State** | `READY_FOR_REVIEW` |
 | **Branch** | `feat/2026-09-20-263-verbatim-evidence-crush-adapter` |
-| **Tip SHA** | `c7cae91bfc5591ec2636b66789429660ee0be8b7` (audit this pushed tip) |
+| **Tip SHA** | `git rev-parse origin/feat/2026-09-20-263-verbatim-evidence-crush-adapter` after fetch (do not trust a stale embedded SHA) |
 | **Push status** | pushed to `origin` |
 | **PR** | not opened |
 | **Ryan GATE** | none for audit; PR open remains Ryan-gated |
