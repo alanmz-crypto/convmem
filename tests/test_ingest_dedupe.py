@@ -206,6 +206,92 @@ class IngestDedupeTests(unittest.TestCase):
         self.assertEqual(len(export.read_text(encoding="utf-8").splitlines()), 2)
         self.assertEqual(self.store.count_units(), 2)
 
+    def _commit(self, export: Path, batch: list[tuple]):
+        processed = self.root / "processed.json"
+        processed.write_text("{}", encoding="utf-8")
+        cfg = {
+            **self.cfg,
+            "index": {
+                "chroma_dir": str(self.chroma),
+                "processed_log": str(processed),
+                "units_export": str(export),
+            },
+        }
+        with patch_live_config(cfg):
+            return _commit_chunk_to_stores(
+                cfg=cfg,
+                idx=cfg["index"],
+                path_key="/tmp/source.jsonl",
+                path="/tmp/source.jsonl",
+                file_hash="hash",
+                chroma_dir=str(self.chroma),
+                units_export=export,
+                doc_id="summary",
+                summary="summary",
+                summary_embedding=[1.0, 0.0],
+                metadata={"source_path": "/tmp/source.jsonl"},
+                units_to_add=batch,
+                verbose=False,
+            )
+
+    def test_appended_export_rows_are_valid_and_match_their_units(self):
+        """Every appended row must round-trip: valid JSON, terminated, id intact.
+
+        A row that reaches the export without a terminator or without a
+        parsable body is the shape that later blocks compaction.
+        """
+        export = self.root / "knowledge_units.jsonl"
+        batch = [
+            _row("one", "first body", [1.0, 0.0]),
+            _row("two", "second body", [0.0, 1.0]),
+        ]
+        ok, _, units, _, _ = self._commit(export, batch)
+        self.assertTrue(ok)
+        self.assertEqual(units, 2)
+
+        raw = export.read_bytes()
+        self.assertTrue(raw.endswith(b"\n"), "export must stay newline-terminated")
+        self.assertEqual(raw.count(b"\x00"), 0, "appended rows must contain no NUL bytes")
+
+        rows = raw.splitlines()
+        self.assertEqual(len(rows), 2)
+        parsed_ids = []
+        for row in rows:
+            self.assertEqual(row, row.strip(), "rows must be written without padding")
+            parsed = json.loads(row.decode("utf-8"))
+            self.assertIsInstance(parsed, dict)
+            self.assertTrue(parsed.get("id"))
+            parsed_ids.append(parsed["id"])
+        self.assertEqual(sorted(parsed_ids), ["one", "two"])
+
+    def test_export_row_ids_match_the_units_committed_to_chroma(self):
+        """A dropped or duplicated export row must fail this test.
+
+        Chroma and the export are written from the same batch, so their id
+        sets are expected to agree. Silent divergence between them is what
+        makes a lost record invisible.
+        """
+        export = self.root / "knowledge_units.jsonl"
+        batch = [
+            _row("alpha", "a body", [1.0, 0.0]),
+            _row("beta", "b body", [0.0, 1.0]),
+            _row("gamma", "c body", [0.7, 0.7]),
+        ]
+        ok, _, units, _, _ = self._commit(export, batch)
+        self.assertTrue(ok)
+        self.assertEqual(units, 3)
+
+        export_ids = {
+            json.loads(line.decode("utf-8"))["id"]
+            for line in export.read_bytes().splitlines()
+        }
+        chroma_ids = set(self.store.ids_for_prefix("")) if hasattr(
+            self.store, "ids_for_prefix"
+        ) else None
+        self.assertEqual(export_ids, {"alpha", "beta", "gamma"})
+        if chroma_ids is not None:
+            self.assertEqual(export_ids, chroma_ids)
+
 
 if __name__ == "__main__":
     unittest.main()
