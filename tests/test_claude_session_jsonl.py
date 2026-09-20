@@ -9,6 +9,7 @@ from unittest import mock
 from adapters.claude_session_jsonl import (
     is_claude_session_jsonl,
     parse,
+    read_session_meta,
     strip_injected_context,
     text_from_message_content,
 )
@@ -397,6 +398,93 @@ class TestClaudeSessionJsonl(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(detect_format(msg_path), "jsonl_kiro_session")
+
+
+class TestClaudeSessionJsonlInvalidUtf8(unittest.TestCase):
+    def _write_claude_transcript_bytes(self, tmp: Path, parts: list[bytes]) -> Path:
+        root = tmp / ".claude" / "projects" / "my-project-slug"
+        root.mkdir(parents=True)
+        path = root / "session-uuid.jsonl"
+        path.write_bytes(b"".join(parts))
+        return path
+
+    @staticmethod
+    def _invalid_utf8_line() -> bytes:
+        return b"\xff\xfe stray invalid bytes\n"
+
+    def test_read_session_meta_survives_invalid_utf8(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            meta_record = _claude_record(
+                rtype="system",
+                content="",
+                session_id="sess-after-bad",
+                cwd="/tmp/after-bad",
+            )
+            path = self._write_claude_transcript_bytes(
+                Path(tmp),
+                [
+                    self._invalid_utf8_line(),
+                    (json.dumps(meta_record) + "\n").encode("utf-8"),
+                ],
+            )
+            meta = read_session_meta(str(path))
+            self.assertEqual(meta["session_id"], "sess-after-bad")
+            self.assertEqual(meta["workspace_directory"], "/tmp/after-bad")
+
+    def test_parse_survives_invalid_utf8(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            before = _claude_record(rtype="user", content="before bad line")
+            after = _claude_record(rtype="assistant", content="after bad line")
+            path = self._write_claude_transcript_bytes(
+                Path(tmp),
+                [
+                    (json.dumps(before) + "\n").encode("utf-8"),
+                    self._invalid_utf8_line(),
+                    (json.dumps(after) + "\n").encode("utf-8"),
+                ],
+            )
+            messages = parse(str(path))
+            self.assertEqual(len(messages), 2)
+            self.assertEqual(messages[0]["content"], "before bad line")
+            self.assertEqual(messages[1]["content"], "after bad line")
+
+    def test_is_claude_session_jsonl_survives_invalid_utf8(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_claude_transcript_bytes(
+                Path(tmp),
+                [
+                    (json.dumps(_claude_record(rtype="system", content="")) + "\n").encode(
+                        "utf-8"
+                    ),
+                    self._invalid_utf8_line(),
+                    (
+                        json.dumps(_claude_record(rtype="user", content="probe me"))
+                        + "\n"
+                    ).encode("utf-8"),
+                ],
+            )
+            with mock.patch(
+                "adapters.claude_session_jsonl.Path.home",
+                return_value=Path(tmp),
+            ):
+                self.assertTrue(is_claude_session_jsonl(path))
+
+    def test_invalid_utf8_never_surfaces_in_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_claude_transcript_bytes(
+                Path(tmp),
+                [
+                    (json.dumps(_claude_record(rtype="user", content="safe")) + "\n").encode(
+                        "utf-8"
+                    ),
+                    self._invalid_utf8_line(),
+                ],
+            )
+            meta = read_session_meta(str(path))
+            messages = parse(str(path))
+            serialized = json.dumps({"meta": meta, "messages": messages})
+            self.assertNotIn("\xff", serialized)
+            self.assertNotIn("\xfe", serialized)
 
 
 if __name__ == "__main__":
