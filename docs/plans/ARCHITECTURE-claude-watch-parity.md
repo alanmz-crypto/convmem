@@ -2,7 +2,7 @@
 
 **Arc:** Claude Watch Parity
 
-**State:** `READY_FOR_KIRO_REVIEW`
+**State:** `READY_FOR_KIRO_REVIEW` (conditional-FAIL corrections applied)
 
 **Decision scope:** Gate 2 isolation-boundary blocker only
 
@@ -46,10 +46,14 @@ process-level namespace or a shared runtime authority redesign.
 ### Option A — descriptor-bound bubblewrap namespace (chosen)
 
 The launcher opens the scratch root and granted source with no-follow flags,
-performs host Gate 0, then passes those descriptors to bubblewrap. Bubblewrap
-mounts the root at `/canary-root` and the source read-only at a fixed internal
-path. The worker sees no host pathname alias and no production home or data
-directories.
+performs host Gate 0, and publishes an immutable snapshot through the held root
+descriptor before bubblewrap starts. It then opens that published snapshot and
+passes the root and snapshot descriptors to bubblewrap. Bubblewrap mounts the
+root at `/canary-root` and the snapshot read-only at
+`/canary-root/home/.claude/projects/granted/<alias>.jsonl`. The worker uses
+`HOME=/canary-root/home`, so normal `detect_format()` dispatch recognizes the
+source as Claude input. It sees no host pathname alias and no production home or
+data directories.
 
 Advantages:
 
@@ -103,12 +107,21 @@ The planning host reported:
 - writes remained attached to the mounted inode after the host root pathname
   was renamed and replaced.
 
-These observations establish feasibility on this host. They are not a runtime
-grant or a substitute for implementation review.
+These observations establish feasibility on this host. A follow-up experiment
+also reproduced empty effective and bounding capability sets, read-only source
+and configuration mounts, and no inherited host descriptors beyond standard
+stdio plus bubblewrap's child status channel. A synthetic adapter probe confirmed
+that the Claude-compatible path dispatches normally when `sessionId` is present,
+that missing-id input remains unroutable, and that `read_session_meta()` falls
+back to the validated filename alias. They are not a runtime grant or a
+substitute for implementation review.
 
 Bubblewrap is a sandbox construction tool rather than a complete policy. The
-launcher therefore owns the allowlist. Version 0.12.0 is the minimum because it
-contains the upstream fix for the 2026 setup-time symlink traversal advisory.
+launcher therefore owns the allowlist. Version 0.12.0 is the minimum because
+the upstream release and advisory identify 0.12.0 as the fix for
+GHSA-pxhw-h44j-8pfx, the setup-time absolute-symlink traversal defect. The
+launcher still runs a real descriptor-bind fitness probe; version alone is not
+acceptance evidence and a distribution backport does not waive the probe.
 
 ## 5. Namespace contract
 
@@ -117,13 +130,25 @@ The launcher must build one fixed command shape:
 1. Resolve `/usr/bin/bwrap`; reject another binary, a setuid binary, or a
    version below 0.12.0.
 2. Run an actual disposable namespace probe before opening transcript content.
-3. Open the scratch root with `O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC`; bind that fd
-   read-write to `/canary-root` with `--bind-fd`.
-4. Open the exact granted source read-only with `O_NOFOLLOW|O_CLOEXEC`; expose
-   it read-only at `/source/session.jsonl` with `--ro-bind-fd`.
-5. Supply the final validated config as read-only data at
+3. Open the scratch root with `O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC`, run host Gate
+   0, and capture the exact granted source through the held root descriptor.
+   Host capture owns the existing `O_TMPFILE` plus capability-relative `linkat`
+   publication. The worker never republishes the live source.
+4. Open the published snapshot read-only with `O_NOFOLLOW|O_CLOEXEC`; bind the
+   root fd read-write to `/canary-root` and expose the snapshot read-only at
+   `/canary-root/home/.claude/projects/granted/<alias>.jsonl`. The alias is the
+   validated `SourceAlias`. Routed fixtures must carry `sessionId`, as required
+   by the existing detector. A separate metadata-contract test must prove that
+   the helper fallback uses this alias rather than the generic name `session`;
+   missing-id input must remain unroutable through normal detection.
+5. Pre-create the final validated config at
+   `/canary-root/home/.config/convmem/config.toml`, record its host digest, and
+   supply the same bytes as read-only data at
    `/canary-root/home/.config/convmem/config.toml`. Every path in it uses the
-   stable `/canary-root/...` prefix.
+   stable `/canary-root/...` prefix. The destination already exists, so the
+   overlay must not leave a zero-byte configuration placeholder. The declared
+   source mountpoint placeholder is zero-length on the host and must be recorded
+   and ignored outside the namespace.
 6. Bind only the interpreter/runtime, repository code, required shared
    libraries, and certificate-independent resources needed by the offline
    worker. Do not bind the host home, `/run/user`, production ConvMem data,
@@ -131,7 +156,8 @@ The launcher must build one fixed command shape:
 7. Use `--unshare-all`, explicit `--unshare-user`, `--disable-userns`,
    `--die-with-parent`, and `--new-session`. Never use
    `--not-a-security-boundary` or `--share-net`.
-8. Start from `--clearenv` and add only the fixed canary environment.
+8. Start from `--clearenv`, set `HOME=/canary-root/home`, and add only the fixed
+   canary environment.
 9. Run the worker at a stable read-only application path and use
    `/canary-root` for every mutable output.
 
@@ -148,7 +174,11 @@ host exact-source grant
 host Gate 0 + O_NOFOLLOW source/root descriptors
         |
         v
-bwrap --ro-bind-fd source -> /source/session.jsonl
+host O_TMPFILE/linkat capture -> immutable scratch snapshot
+        |
+        v
+bwrap --ro-bind-fd snapshot
+      -> /canary-root/home/.claude/projects/granted/<alias>.jsonl
       --bind-fd scratch   -> /canary-root
         |
         v
@@ -172,16 +202,20 @@ descriptor number, or `/proc/self/fd`.
 ## 7. Gate 0 placement
 
 The real watcher and credential probes run in the host launcher immediately
-before bubblewrap starts, because the isolated PID and service view cannot
-observe the host watcher reliably. The launcher does not accept a caller
-report, digest, hook object, or environment override.
+before capture and again immediately after the worker exits, because the
+isolated PID and service view cannot observe the host watcher reliably. The
+launcher does not accept a caller report, digest, hook object, or environment
+override. A post-run active or indeterminate watcher makes the canary evidence
+fail; it does not attempt to roll back scratch-only output.
 
 The worker independently verifies namespace properties, fixed paths, config,
 source identity, network denial, and production-path absence. It does not
 claim to re-run the host watcher probe.
 
 Live execution still requires Ryan to arrange an inactive watcher window. The
-namespace does not grant permission to stop or start services.
+pre/post checks are boundary evidence, not proof that a watcher could not start
+and stop entirely during the run. The namespace does not grant permission to
+stop or start services.
 
 ## 8. Threat model and limits
 
@@ -208,6 +242,11 @@ Implementation is acceptable only if adversarial tests prove:
 - host production paths and sockets are absent;
 - network access is unavailable;
 - config is immutable at the coordinator's expected pathname;
+- normal `detect_format()` returns `jsonl_claude_session` for the mounted path;
+- first-run evidence asserts the explicit expected session id and sanitized unit
+  content; missing-id input is refused by normal detection, and a separate
+  metadata-contract test asserts its fallback id equals the validated alias
+  rather than the generic name `session`;
 - first run, replay, append, repair, and crash recovery use the same stable
   `/canary-root` paths;
 - checkpoints and evidence contain no host path, fd number, transcript text,
@@ -216,8 +255,22 @@ Implementation is acceptable only if adversarial tests prove:
 - Kiro-only default routing and isolated Codex behavior remain unchanged.
 
 The implementation must rerun the existing Claude, Kiro, and Codex focused
-route suites plus the Gate 1 containment suite. Shared runtime files must have
-an empty diff against the execution base.
+route suites plus the Gate 1 containment suite. Namespace integration tests may
+use one explicit prerequisite skip reason on incompatible hosted runners, but
+any skip means finding #2 remains unproved. Exact-tip acceptance on the intended
+host requires every finding-#2 namespace test to run and pass.
+
+The baseline has three layers and must not be summarized as merely "shared code
+unchanged":
+
+1. merged base `e6a0634c214cf07c89b551d13410bb276a93b38d`;
+2. expected Gate 2 adapter and registry additions, including
+   `incremental_jsonl_formats.py` (byte-identical at `a95cef3` and `e007a22`,
+   and previously included in Kiro's implementation PASS; later safety FAILs
+   concerned the canary);
+3. protected runtime files `incremental_jsonl.py`,
+   `incremental_jsonl_isolation.py`, and `chroma_write_store.py`, whose diffs
+   must be empty from the merged base through the final implementation.
 
 ## 10. Exit condition
 
@@ -229,9 +282,12 @@ Return `NO_GATE2_ROUTE` if any of these is true:
   production paths;
 - descriptor mounts do not preserve the fixed path across replay/crash runs;
 - security review finds an escape that requires modifying shared runtime code;
-- the maintenance burden exceeds the value of automatic Claude capture.
+- the maintenance burden exceeds the value of automatic Claude capture, as
+  decided by Ryan after the Kiro design verdict and namespace fitness evidence.
 
-`NO_GATE2_ROUTE` is a valid completion. Gate 1 remains available on demand.
+`NO_GATE2_ROUTE` is a valid completion. Gate 1 remains available on demand. The
+five local corrections at `e007a22` remain branch-only evidence and are not
+proposed for a standalone PR unless Ryan separately authorizes that disposition.
 
 ## 11. Shared-code fallback boundary
 

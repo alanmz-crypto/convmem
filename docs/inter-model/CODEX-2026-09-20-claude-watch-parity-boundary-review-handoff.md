@@ -19,8 +19,10 @@ Primary files:
 ## Decision
 
 The plan chooses a descriptor-bound bubblewrap namespace for Gate 2 finding #2.
-The existing coordinator runs unchanged at `/canary-root`; the launcher passes
-the already-open scratch root and exact source via bubblewrap fd-bind options.
+The existing coordinator runs unchanged at `/canary-root`; host capture first
+publishes an immutable snapshot through the held scratch-root descriptor, then
+the launcher binds that snapshot at a normal Claude project path under
+`HOME=/canary-root/home`.
 Shared-code authority changes are rejected for this slice because they would
 touch the production Chroma writer and `convmem.py add` path.
 
@@ -39,10 +41,17 @@ inputs, not accepted evidence. Gate 2 still has no PASS.
 5. Are the regression matrix and `NO_GATE2_ROUTE` exit sufficient?
 6. Does the plan preserve Kiro/Codex/shared-writer behavior by leaving shared
    runtime files untouched?
+7. Are host capture ownership, pre/post watcher evidence, and namespace-test
+   skip semantics now explicit enough to prevent a false PASS?
+
+The baseline is intentionally precise: Gate 2 adds the Claude adapter and
+`incremental_jsonl_formats.py` registry entry, while `incremental_jsonl.py`,
+`incremental_jsonl_isolation.py`, and `chroma_write_store.py` remain unchanged
+from merged base `e6a0634`. Do not treat either category as the other.
 
 Return PASS or specific blocking corrections on the full exact SHA. Review
 grants no implementation, PR, live source, canary, routing, watcher, or
 activation action.
 
 **TL;DR [Arc Claude Watch Parity]:** Review the namespace architecture only;
-Gate 2 remains closed and shared runtime code remains unchanged.
+Gate 2 remains closed and protected shared runtime files remain unchanged.

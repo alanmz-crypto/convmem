@@ -12,9 +12,18 @@
 
 Before editing, fetch and verify that
 `origin/fix/2026-09-20-claude-gate2-local-safety-corrective` resolves to the
-reviewed local-safety tip. Confirm its diff leaves `incremental_jsonl.py`,
-`incremental_jsonl_isolation.py`, `chroma_write_store.py`, production config,
-watcher surfaces, and routing untouched.
+reviewed local-safety tip. Use merged base
+`e6a0634c214cf07c89b551d13410bb276a93b38d`. Confirm:
+
+- empty diffs from the merged base through `e007a22` for
+  `incremental_jsonl.py`, `incremental_jsonl_isolation.py`, and
+  `chroma_write_store.py`;
+- the expected `incremental_jsonl_formats.py` Gate 2 registry addition is
+  byte-identical to the Kiro-reviewed `a95cef3` blob;
+- no production config, watcher, source, service, or activation change.
+
+Do not claim that the whole Gate 2 stack is unchanged from main: the adapter,
+format registry, route tests, and canary are expected branch additions.
 
 Create a new clean worktree outside the repository root. Install repository
 configuration with `bash scripts/install-repo-config.sh`.
@@ -38,13 +47,21 @@ environment, or a generic sandbox helper.
 
 ## E2 — Descriptor-bind the fixed filesystem
 
-Open and retain the scratch root and exact source. Pass them with
+Open and retain the scratch root and exact source. Host capture runs before the
+namespace: publish the snapshot through the held root descriptor, then open the
+published snapshot read-only. Pass the root and snapshot with
 `subprocess.run(..., pass_fds=...)` to bubblewrap:
 
 - scratch root fd -> `--bind-fd ... /canary-root`;
-- source fd -> `--ro-bind-fd ... /source/session.jsonl`;
+- snapshot fd -> `--ro-bind-fd ...
+  /canary-root/home/.claude/projects/granted/<alias>.jsonl`;
 - final configuration fd -> `--ro-bind-data ...
   /canary-root/home/.config/convmem/config.toml`.
+
+Set `HOME=/canary-root/home`. Pre-create the final config with the validated
+bytes before the overlay and assert its host digest remains unchanged. Treat
+the zero-length source mountpoint as a declared scratch-only artifact; assert it
+is unchanged and never selected as a host source.
 
 Mount the runtime and application code read-only. Start with an empty root,
 clear environment, isolated network/PID/IPC/UTS/cgroup/user namespaces, new
@@ -57,9 +74,10 @@ credential path may appear in the command.
 
 Inside the worker:
 
-- require `/canary-root` and `/source/session.jsonl` exactly;
+- require `/canary-root` and the Claude-compatible source path exactly;
 - build `IsolationBoundary` normally from those fixed paths;
 - validate the read-only config and all mutable targets;
+- require normal `detect_format()` dispatch to `jsonl_claude_session`;
 - prove network denial and production-path absence;
 - run the existing coordinator and fake providers;
 - emit only the closed evidence schema from the local-safety corrective.
@@ -78,12 +96,21 @@ Add hermetic tests for:
 5. absent production home/data/lock/socket paths;
 6. network denial;
 7. immutable configuration at the expected path;
-8. stable paths across first run, unchanged replay, append, repair, and crash;
-9. namespace setup failure before coordinator mutation;
-10. descriptor closure after success, ordinary exception, timeout, and
+8. normal Claude detection plus first-run explicit session-id and
+   sanitized-unit-content assertions; missing-id detection refusal and a
+   separate metadata-helper alias-fallback assertion;
+9. stable paths across first run, unchanged replay, append, repair, and crash;
+10. namespace setup failure before coordinator mutation;
+11. descriptor closure after success, ordinary exception, timeout, and
     `BaseException` fault injection;
-11. no forbidden host paths, fd numbers, content, environment, or credentials
+12. no forbidden host paths, fd numbers, content, environment, or credentials
     in evidence and persisted state.
+
+Host-side tests must also prove that snapshot capture and O_TMPFILE/linkat
+publication finish before bubblewrap starts, root identity checks remain
+descriptor-anchored, the config overlay leaves no zero-byte replacement, and
+the real watcher probe passes both immediately before capture and immediately
+after worker exit.
 
 Use synthetic fixtures only.
 
@@ -99,6 +126,13 @@ Run:
 - R2b static coverage tests if the changed canary remains governed;
 - `compileall`, pylint on touched Python, and full branch `git diff --check`.
 
+Split the namespace tests into always-runnable command/policy unit tests and
+real bubblewrap integration tests. On a runner without the prerequisite, the
+integration suite may skip only with the explicit reason
+`namespace prerequisite unavailable`. Report the count. A skip is never PASS
+evidence for finding #2; the intended execution host must run the complete
+namespace suite with zero skips before exact-tip review.
+
 Static assertions must show empty diffs for:
 
 - `incremental_jsonl.py`;
@@ -106,6 +140,10 @@ Static assertions must show empty diffs for:
 - `chroma_write_store.py`;
 - watcher/source/service configuration;
 - `KIRO_ROUTE_FORMATS` and production activation.
+
+Separately report the expected adapter and `incremental_jsonl_formats.py`
+branch additions against merged base `e6a0634`; do not hide them behind the
+protected-runtime assertion.
 
 ## E6 — Evidence and review
 

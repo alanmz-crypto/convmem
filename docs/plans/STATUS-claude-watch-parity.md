@@ -41,16 +41,18 @@ exports are derived. Default routing stays Kiro-only.
 | Gate 1 | **MERGED** | remains on-demand |
 | Gate 2 original implementation | **SECURITY FAIL** at `10322a6` | superseded by corrective work |
 | Five local findings | **CORRECTED / UNREVIEWED** at `e007a22b24754a93d9cbd15d02269d422d371c4a` | integrate with reviewed boundary solution |
-| Finding #2 architecture | **READY_FOR_KIRO_REVIEW** | Kiro PASS or correction |
+| Finding #2 architecture | **READY_FOR_KIRO_REVIEW** after conditional-FAIL corrections | Kiro PASS or correction |
 | Namespace implementation | **NOT AUTHORIZED** | Ryan Execute grant after plan PASS |
 | Exact-tip security audit | **NOT_RUN** | fresh Ryan exception after implementation |
 | Live canary / promotion | **NOT AUTHORIZED** | separate later decisions |
 
 ## 5. Your Role
 
-**Kiro:** review the namespace decision, fixed sandbox policy, tests, and
-`NO_GATE2_ROUTE` exit. Confirm that shared coordinator, isolation, Chroma, Kiro,
-and Codex behavior remain outside the implementation slice.
+**Kiro:** review the corrected namespace decision, Claude-compatible source
+mount, host-owned capture, explicit merged/runtime baselines, CI skip semantics,
+and `NO_GATE2_ROUTE` exit. Confirm that coordinator, isolation, and Chroma
+runtime files remain outside the implementation slice while the expected Claude
+format-registry addition stays visible.
 
 **Ryan:** after Kiro's verdict, either grant the bounded namespace Execute or
 close Gate 2 at Gate 1 on-demand support.
@@ -98,7 +100,7 @@ remain separate.
 
 | Date | Who | Milestone-level change |
 |---|---|---|
-| 2026-09-20 | Codex | Chose descriptor-bound bubblewrap containment for finding #2; shared-code fallback rejected; Kiro review next. |
+| 2026-09-20 | Codex | Corrected namespace plan for Claude detection, baseline authority, capture ownership, and non-passing CI skips; Kiro review next. |
 
 **TL;DR [Arc Claude Watch Parity]:** Gate 1 is merged; five local Gate 2
 correctives are pushed but unreviewed. Finding #2 now has a namespace design
