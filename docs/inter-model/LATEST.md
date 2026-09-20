@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-18
+**Updated:** 2026-09-20
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Claude Watch Parity Gate 2 — capability-bound corrective (AUTHORIZED successor tip; Copilot exact-tip next; Kiro blocked until Copilot PASS):** Predecessor `a5ccc68…` remained FAIL. Cursor Composer replaced pathname reopen, post-publication refusal, caller-supplied Gate 0 authority, and dictionary evidence with held root capabilities, publication-final rename, internal Gate 0, and closed typed evidence on `fix/2026-09-20-claude-gate2-cap-bound`. Focused suite 97 PASS; production boundary unchanged; live canary NOT_RUN. Resume from [`VERIFY-claude-watch-parity-gate2.md`](VERIFY-claude-watch-parity-gate2.md).
+- **Claude Watch Parity Gate 2 — local safety corrective (READY_FOR_REVIEW; finding #2 OPEN):** Cursor closed Security Review findings #1 and #3–#6 on branch `fix/2026-09-20-claude-gate2-local-safety-corrective` (base `10322a6…`). Private Gate 0 probes, O_TMPFILE/linkat publication, closed evidence; 43 tests PASS. Finding #2 recorded as `OPEN_SHARED_BOUNDARY_BLOCKER` — await Codex architecture lane. Gate 2 PASS **not** claimed. Resume from [`CURSOR-2026-09-20-claude-gate2-local-safety-corrective-handoff.md`](CURSOR-2026-09-20-claude-gate2-local-safety-corrective-handoff.md) and [`VERIFY-claude-watch-parity-gate2.md`](VERIFY-claude-watch-parity-gate2.md).
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as

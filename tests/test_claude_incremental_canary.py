@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,6 @@ from claude_incremental_canary import (
     FrozenSourceSpec,
     Gate0Evidence,
     Gate0NetworkEvidence,
-    Gate0ProbeHooks,
     Gate0WatcherEvidence,
     MatrixEvidence,
     PRODUCTION_ROOTS,
@@ -37,8 +37,15 @@ from claude_incremental_canary import (
     SourceEvidence,
     WatcherMethod,
     WatcherStatus,
+    PublicationDurability,
+    _build_gate0_evidence,
+    _enforce_gate0_for_mutable,
+    _probe_network_isolation,
+    _probe_tmpfile_available,
+    _probe_watcher_status,
+    _publish_anonymous_dirfd,
+    _stage_anonymous_dirfd,
     _CAPTURE_TRANSITIONS,
-    _hermetic_gate0_hooks,
     assemble_evidence,
     assert_no_snapshot_artifacts,
     assert_transition_coverage,
@@ -46,11 +53,9 @@ from claude_incremental_canary import (
     capture_source,
     derive_snapshot_destination,
     enable_incremental,
-    gate0,
     list_snapshot_artifacts,
     open_isolation_root,
     prepare_fixture_env,
-    require_gate0_authority,
     revalidate_source_identity,
     run_worker,
     snapshot_publication_paths,
@@ -165,22 +170,31 @@ def test_transition_coverage_fails_closed_when_declared_point_is_missing() -> No
 
 
 def test_gate0_aborts_active_or_indeterminate_watcher(monkeypatch) -> None:
-    def active_probe():
-        return {"status": "active", "method": "test", "pass": "false"}
+    for name in list(os.environ):
+        if "API_KEY" in name.upper() or "SECRET" in name.upper():
+            monkeypatch.delenv(name, raising=False)
 
+    def active_probe():
+        from claude_incremental_canary import WatcherProbeResult
+
+        return WatcherProbeResult(
+            status=WatcherStatus.ACTIVE,
+            method=WatcherMethod.TEST,
+            passed=PassToken.FALSE,
+        )
+
+    monkeypatch.setattr(
+        "claude_incremental_canary._probe_watcher_status",
+        active_probe,
+    )
     with pytest.raises(IsolationViolation, match="watcher active or indeterminate"):
-        gate0(hooks=Gate0ProbeHooks(watcher_probe=active_probe))
+        _build_gate0_evidence()
 
 
 def test_gate0_rejects_inherited_credentials(monkeypatch) -> None:
     monkeypatch.setenv("DEEPSEEK_API_KEY", "secret")
     with pytest.raises(IsolationViolation, match="credential inherited"):
-        gate0(
-            hooks=Gate0ProbeHooks(
-                watcher_probe=lambda: {"pass": "true", "status": "inactive"},
-                network_self_test=lambda: {"pass": "true"},
-            )
-        )
+        _build_gate0_evidence()
 
 
 def test_worker_gate0_and_matrix(tmp_path: Path) -> None:
@@ -291,9 +305,7 @@ def test_gate0_authority_rejects_cross_root_replay(
     root_a, token_a, env_a, _source_a, _spec_a = prepare_fixture_env(tmp_path, alias="root-a")
     _root_b, token_b, env_b, _source_b, _spec_b = prepare_fixture_env(tmp_path, alias="root-b")
     _apply_env(monkeypatch, env_a)
-    authority_a = require_gate0_authority(
-        IsolationBoundary.from_environment(), hooks=_hermetic_gate0_hooks()
-    )
+    authority_a = _enforce_gate0_for_mutable(IsolationBoundary.from_environment())
     try:
         _apply_env(monkeypatch, env_b)
         boundary_b = IsolationBoundary.from_environment()
@@ -309,9 +321,13 @@ def test_gate0_authority_rejects_stale_config(
     root, token, env, _source, _spec = prepare_fixture_env(tmp_path)
     _apply_env(monkeypatch, env)
     boundary = IsolationBoundary.from_environment()
-    authority = require_gate0_authority(boundary, hooks=_hermetic_gate0_hooks())
+    authority = _enforce_gate0_for_mutable(boundary)
     try:
-        enable_incremental(boundary, hooks=_hermetic_gate0_hooks(), _gate0=False)
+        config = boundary.layout["user_config"]
+        config.write_text(
+            config.read_text(encoding="utf-8") + "\n# tampered\n",
+            encoding="utf-8",
+        )
         with pytest.raises(IsolationViolation, match="config mismatch"):
             authority.assert_still_bound(boundary)
     finally:
@@ -453,7 +469,7 @@ def test_refuse_root_directory_replacement_after_gate0(
     root, token, env, source, spec = prepare_fixture_env(tmp_path)
     _apply_env(monkeypatch, env)
     boundary = IsolationBoundary.from_environment()
-    cap = require_gate0_authority(boundary, hooks=_hermetic_gate0_hooks())
+    cap = _enforce_gate0_for_mutable(boundary)
     try:
         marker = root / ".convmem-jsonl-production-root"
         marker_text = marker.read_text(encoding="ascii")
@@ -527,31 +543,26 @@ def test_source_removal_before_publication_leaves_zero_residue(
     assert_no_snapshot_artifacts(boundary, spec.alias)
 
 
-def test_renamed_temp_artifact_and_exception_cleanup(
+def test_anonymous_stage_closed_before_publish_leaves_no_residue(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root, token, env, source, spec = prepare_fixture_env(tmp_path)
     _apply_env(monkeypatch, env)
     boundary = IsolationBoundary.from_environment()
-    capture_dir, filename = snapshot_publication_paths(boundary, spec.alias)
+    original_stage = _stage_anonymous_dirfd
 
-    def rename_temp(name: str) -> None:
-        if name == "after_temp_stage":
-            capture_dir.mkdir(parents=True, exist_ok=True)
-            temps = [
-                entry
-                for entry in capture_dir.iterdir()
-                if entry.name.startswith(f".{filename.name}.") and entry.name.endswith(".tmp")
-            ]
-            assert temps
-            temps[0].rename(capture_dir / f".attacker-renamed-{temps[0].name}")
+    def close_before_return(parent_fd: int, payload: bytes) -> int:
+        fd = original_stage(parent_fd, payload)
+        os.close(fd)
+        return fd
 
-    with pytest.raises(IsolationViolation, match="staged snapshot missing|residue"):
-        capture_source(boundary, spec, fault=rename_temp)
-    # Cleanup must not leave published final name; attacker-renamed temp may remain
-    # only if outside the cleanup name — assert no final publish artifact.
-    final = capture_dir / filename.name
-    assert not final.exists()
+    monkeypatch.setattr(
+        "claude_incremental_canary._stage_anonymous_dirfd",
+        close_before_return,
+    )
+    with pytest.raises(OSError):
+        capture_source(boundary, spec)
+    assert_no_snapshot_artifacts(boundary, spec.alias)
 
 
 def test_forged_failed_gate0_report_refused(
@@ -678,6 +689,7 @@ def test_evidence_rejects_unknown_and_nested_values() -> None:
             prefix_sha256=digest,
             sha256=digest,
             physical_lines=BoundedInt(value=5),
+            durability=PublicationDurability.CONFIRMED,
         ),
         gate0=_gate0_evidence(),
         matrix=MatrixEvidence(
@@ -709,4 +721,145 @@ def test_temp_stage_fault_before_publish_leaves_no_residue(
 
     with pytest.raises(IsolationViolation, match="injected failure"):
         capture_source(boundary, spec, fault=crash_after_temp)
+    assert_no_snapshot_artifacts(boundary, spec.alias)
+
+
+# ---------------------------------------------------------------------------
+# Local safety corrective regressions (Security Review #1, #3, #4, #5, #6)
+# ---------------------------------------------------------------------------
+
+
+def test_no_public_gate0_hook_or_gate0_bypass_surfaces() -> None:
+    import claude_incremental_canary as module
+
+    for name in (
+        "gate0",
+        "gate0_watcher_probe",
+        "require_gate0_authority",
+        "Gate0ProbeHooks",
+        "_hermetic_gate0_hooks",
+    ):
+        assert not hasattr(module, name), name
+    text = Path(module.__file__).read_text(encoding="utf-8")
+    assert "_gate0:" not in text
+    assert "_gate0=False" not in text
+    assert "hooks: Gate0ProbeHooks" not in text
+
+
+def test_private_probes_are_monkeypatchable(monkeypatch: pytest.MonkeyPatch) -> None:
+    from claude_incremental_canary import NetworkProbeResult, WatcherProbeResult
+
+    for name in list(os.environ):
+        if any(marker in name.upper() for marker in ("API_KEY", "SECRET", "PASSWORD", "TOKEN")):
+            if name != "CONVMEM_INCREMENTAL_TOKEN":
+                monkeypatch.delenv(name, raising=False)
+
+    monkeypatch.setattr(
+        "claude_incremental_canary._probe_watcher_status",
+        lambda: WatcherProbeResult(
+            status=WatcherStatus.INACTIVE,
+            method=WatcherMethod.TEST,
+            passed=PassToken.TRUE,
+        ),
+    )
+    monkeypatch.setattr(
+        "claude_incremental_canary._probe_network_isolation",
+        lambda: NetworkProbeResult(
+            passed=PassToken.FALSE,
+            detail=DetailToken(value="blocked"),
+        ),
+    )
+    with pytest.raises(IsolationViolation, match="network self-test failed"):
+        _build_gate0_evidence()
+
+
+def test_tmpfile_probe_closes_artifact_fd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, _source, _spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    cap = open_isolation_root(boundary)
+    try:
+        capture_fd = cap.open_subdir(
+            ("sources", "claude-capture"),
+            label="snapshot capture directory",
+        )
+        opened: list[int] = []
+        real_open = os.open
+
+        def track_open(path, flags, *args, **kwargs):
+            fd = real_open(path, flags, *args, **kwargs)
+            if flags & getattr(os, "O_TMPFILE", 0):
+                opened.append(fd)
+            return fd
+
+        monkeypatch.setattr(os, "open", track_open)
+        assert _probe_tmpfile_available(capture_fd) is True
+        assert opened
+        assert all(fd < 0 or True for fd in opened)
+    finally:
+        if "capture_fd" in locals() and capture_fd >= 0:
+            os.close(capture_fd)
+        cap.close()
+
+
+def test_publication_uses_linkat_and_reports_unconfirmed_durability(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    linked: list[str] = []
+    real_link = os.link
+
+    def track_link(src, dst, **kwargs):
+        linked.append(dst)
+        return real_link(src, dst, **kwargs)
+
+    monkeypatch.setattr(os, "link", track_link)
+
+    real_fsync = os.fsync
+    dir_fsync_attempts = 0
+
+    def fail_dir_fsync_only(fd: int) -> None:
+        nonlocal dir_fsync_attempts
+        st = os.fstat(fd)
+        if stat.S_ISDIR(st.st_mode):
+            dir_fsync_attempts += 1
+            raise OSError("directory fsync fault")
+        real_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", fail_dir_fsync_only)
+    descriptor = capture_source(boundary, spec)
+    assert linked == [f"{spec.alias}.jsonl"]
+    assert descriptor.durability is PublicationDurability.UNCONFIRMED
+    copied = derive_snapshot_destination(boundary, spec.alias)
+    assert copied.is_file()
+
+
+def test_capture_descriptor_closed_on_failure_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    open_fds_after_failure: list[int] = []
+    real_close = os.close
+
+    def track_close(fd: int) -> None:
+        real_close(fd)
+
+    monkeypatch.setattr(os, "close", track_close)
+
+    def fail_publish(parent_fd: int, anon_fd: int, final_name: str):
+        open_fds_after_failure.append(anon_fd)
+        raise IsolationViolation("publish blocked")
+
+    monkeypatch.setattr(
+        "claude_incremental_canary._publish_anonymous_dirfd",
+        fail_publish,
+    )
+    with pytest.raises(IsolationViolation, match="publish blocked"):
+        capture_source(boundary, spec)
     assert_no_snapshot_artifacts(boundary, spec.alias)

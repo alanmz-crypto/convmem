@@ -113,6 +113,19 @@ class CoordinatorMode(enum.StrEnum):
     ROLLBACK = "rollback"
 
 
+class PublicationDurability(enum.StrEnum):
+    CONFIRMED = "confirmed"
+    UNCONFIRMED = "unconfirmed"
+
+
+@dataclass(frozen=True)
+class PublicationResult:
+    """Final publication outcome; directory fsync failure is not rolled back."""
+
+    stat: os.stat_result
+    durability: PublicationDurability
+
+
 def _reject_coercion(value: Any, *, label: str, expected: str) -> None:
     if isinstance(value, bool) and expected != "bool":
         raise IsolationViolation(f"{label} must be a {expected}")
@@ -238,14 +251,7 @@ def _parse_coordinator_outcome(value: Any, *, label: str) -> CoordinatorOutcome 
         return value
     if isinstance(value, RebuildOutcome):
         return value
-    _reject_coercion(value, label=label, expected="str")
-    try:
-        return CoordinatorOutcome(value)
-    except ValueError:
-        pass
-    if isinstance(value, str) and value.startswith("rebuild_required:"):
-        return RebuildOutcome(reason=value.split(":", 1)[1])
-    raise IsolationViolation(f"{label} is not an allowed coordinator outcome")
+    raise IsolationViolation(f"{label} must be a closed coordinator outcome")
 
 
 def _parse_coordinator_mode(value: Any, *, label: str) -> CoordinatorMode:
@@ -345,6 +351,7 @@ class CaptureEvidence:
     prefix_sha256: Sha256Digest
     sha256: Sha256Digest
     physical_lines: BoundedInt
+    durability: PublicationDurability
 
     def to_mapping(self) -> dict[str, Any]:
         return {
@@ -357,6 +364,7 @@ class CaptureEvidence:
             "prefix_sha256": str(self.prefix_sha256),
             "sha256": str(self.sha256),
             "physical_lines": int(self.physical_lines),
+            "durability": str(self.durability),
         }
 
 
@@ -505,14 +513,21 @@ class SourceDescriptor:
     prefix_sha256: str
     sha256: str
     physical_lines: int
+    durability: PublicationDurability
 
 
-@dataclass
-class Gate0ProbeHooks:
-    """Injectable probes for hermetic Gate 0 tests."""
+@dataclass(frozen=True)
+class WatcherProbeResult:
+    status: WatcherStatus
+    method: WatcherMethod
+    passed: PassToken
+    detail: DetailToken | None = None
 
-    watcher_probe: Callable[[], dict[str, str]] | None = None
-    network_self_test: Callable[[], dict[str, str]] | None = None
+
+@dataclass(frozen=True)
+class NetworkProbeResult:
+    passed: PassToken
+    detail: DetailToken | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -711,43 +726,67 @@ def open_isolation_root(boundary: IsolationBoundary) -> IsolationRootCapability:
 
 
 # ---------------------------------------------------------------------------
-# Publication — stage temp, revalidate, then final atomic rename
+# Publication — O_TMPFILE probe, held anonymous inode, capability linkat
 # ---------------------------------------------------------------------------
 
+_O_TMPFILE = getattr(os, "O_TMPFILE", 0o20000000)
 
-def _stage_regular_file_dirfd(
-    parent_fd: int,
-    name: str,
-    payload: bytes,
-) -> str:
-    """Write and fsync a temporary file beneath the anchored destination directory."""
-    temp_name = f".{name}.{os.getpid()}.{os.urandom(8).hex()}.tmp"
-    fd = os.open(
-        temp_name,
-        _file_open_flags(write=True, create=True),
-        0o600,
-        dir_fd=parent_fd,
-    )
+
+def _tmpfile_open_flags() -> int:
+    return _O_TMPFILE | os.O_WRONLY | os.O_CLOEXEC
+
+
+def _probe_tmpfile_available(parent_fd: int) -> bool:
+    """Probe O_TMPFILE under parent_fd; close probe fd so no artifact remains."""
+    if not _O_TMPFILE:
+        return False
+    probe_fd = -1
     try:
-        view = memoryview(payload)
-        offset = 0
-        while offset < len(view):
-            written = os.write(fd, view[offset:])
-            if written <= 0:
-                raise OSError("snapshot short write")
-            offset += written
-        os.fsync(fd)
+        probe_fd = os.open(".", _tmpfile_open_flags(), 0o600, dir_fd=parent_fd)
+        return True
+    except OSError:
+        return False
     finally:
+        if probe_fd >= 0:
+            os.close(probe_fd)
+
+
+def _write_fd_all(fd: int, payload: bytes) -> None:
+    view = memoryview(payload)
+    offset = 0
+    while offset < len(view):
+        written = os.write(fd, view[offset:])
+        if written <= 0:
+            raise OSError("snapshot short write")
+        offset += written
+    os.fsync(fd)
+
+
+def _stage_anonymous_dirfd(parent_fd: int, payload: bytes) -> int:
+    """Stage payload in a held anonymous inode; caller must link or close."""
+    if not _probe_tmpfile_available(parent_fd):
+        raise IsolationViolation("O_TMPFILE unavailable for snapshot publication")
+    fd = os.open(".", _tmpfile_open_flags(), 0o600, dir_fd=parent_fd)
+    try:
+        _write_fd_all(fd, payload)
+        return fd
+    except Exception:
         os.close(fd)
-    return temp_name
+        raise
 
 
-def _publish_staged_rename(
+def _linkat_anonymous(parent_fd: int, anon_fd: int, final_name: str) -> None:
+    """Publish held anonymous inode via directory-relative linkat."""
+    link_src = f"/proc/self/fd/{anon_fd}"
+    os.link(link_src, final_name, dst_dir_fd=parent_fd)
+
+
+def _publish_anonymous_dirfd(
     parent_fd: int,
-    temp_name: str,
+    anon_fd: int,
     final_name: str,
-) -> os.stat_result:
-    """Directory-relative atomic rename — final infallible publication transition."""
+) -> PublicationResult:
+    """Final publication transition; fsync failure yields durability=unconfirmed."""
     try:
         existing = os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
     except FileNotFoundError:
@@ -757,23 +796,20 @@ def _publish_staged_rename(
             raise IsolationViolation("snapshot destination is symlinked")
         if not stat.S_ISREG(existing.st_mode):
             raise IsolationViolation("snapshot destination is not a regular file")
+        os.unlink(final_name, dir_fd=parent_fd)
     try:
-        temp_st = os.stat(temp_name, dir_fd=parent_fd, follow_symlinks=False)
-    except FileNotFoundError as exc:
-        raise IsolationViolation("staged snapshot missing before publish") from exc
-    if not stat.S_ISREG(temp_st.st_mode):
-        raise IsolationViolation("staged snapshot is not a regular file")
-    os.replace(temp_name, final_name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
-    os.fsync(parent_fd)
-    return os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
-
-
-def _unlink_dirfd(parent_fd: int, name: str) -> None:
+        _linkat_anonymous(parent_fd, anon_fd, final_name)
+    finally:
+        os.close(anon_fd)
+    stat_result = os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
+    if not stat.S_ISREG(stat_result.st_mode):
+        raise IsolationViolation("published snapshot is not a regular file")
     try:
-        os.unlink(name, dir_fd=parent_fd)
         os.fsync(parent_fd)
-    except FileNotFoundError:
-        return
+        durability = PublicationDurability.CONFIRMED
+    except OSError:
+        durability = PublicationDurability.UNCONFIRMED
+    return PublicationResult(stat=stat_result, durability=durability)
 
 
 def snapshot_publication_paths(
@@ -795,9 +831,7 @@ def list_snapshot_artifacts(boundary: IsolationBoundary, alias: str) -> list[str
         return []
     artifacts: list[str] = []
     for entry in capture_dir.iterdir():
-        if not entry.is_file():
-            continue
-        if entry.name == filename.name or entry.name.startswith(f".{filename.name}."):
+        if entry.is_file() and entry.name == filename.name:
             artifacts.append(str(entry.resolve()))
     return artifacts
 
@@ -914,12 +948,11 @@ def capture_source(
     spec: FrozenSourceSpec,
     *,
     fault: Callable[[str], None] | None = None,
-    hooks: Gate0ProbeHooks | None = None,
 ) -> SourceDescriptor:
     """Copy the complete prefix under isolation; publication is the final step."""
     root_cap: IsolationRootCapability | None = None
     capture_dir_fd = -1
-    temp_name: str | None = None
+    anon_fd = -1
     snapshot_name = ""
     published = False
     failure: BaseException | None = None
@@ -929,7 +962,7 @@ def capture_source(
             fault(name)
 
     try:
-        root_cap = _enforce_gate0_for_mutable(boundary, hooks=hooks)
+        root_cap = _enforce_gate0_for_mutable(boundary)
         root_cap.assert_still_bound(boundary)
 
         emit("before_snapshot_prepare")
@@ -946,9 +979,7 @@ def capture_source(
 
         emit("before_temp_stage")
         try:
-            temp_name = _stage_regular_file_dirfd(
-                capture_dir_fd, snapshot_name, view.raw_prefix
-            )
+            anon_fd = _stage_anonymous_dirfd(capture_dir_fd, view.raw_prefix)
         except FileNotFoundError as exc:
             raise IsolationViolation("snapshot destination unavailable") from exc
         emit("after_temp_stage")
@@ -960,14 +991,16 @@ def capture_source(
         root_cap.assert_still_bound(boundary)
 
         emit("before_snapshot_publish")
-        copied_stat = _publish_staged_rename(
-            capture_dir_fd, temp_name, snapshot_name
+        publish_fd = anon_fd
+        anon_fd = -1
+        publication = _publish_anonymous_dirfd(
+            capture_dir_fd, publish_fd, snapshot_name
         )
-        temp_name = None
         published = True
         emit("after_snapshot_publish")
 
         relative = RelativePath.from_parts(*_SNAPSHOT_CAPTURE_PARTS, snapshot_name)
+        copied_stat = publication.stat
         return SourceDescriptor(
             alias=spec.alias,
             relative_path=str(relative),
@@ -978,13 +1011,14 @@ def capture_source(
             prefix_sha256=view.prefix_sha256,
             sha256=hashlib.sha256(view.raw_prefix).hexdigest(),
             physical_lines=view.raw_prefix.count(b"\n"),
+            durability=publication.durability,
         )
     except BaseException as exc:
         failure = exc
     finally:
-        if temp_name is not None and capture_dir_fd >= 0:
-            _unlink_dirfd(capture_dir_fd, temp_name)
-            temp_name = None
+        if anon_fd >= 0:
+            os.close(anon_fd)
+            anon_fd = -1
         if capture_dir_fd >= 0:
             os.close(capture_dir_fd)
             capture_dir_fd = -1
@@ -1000,12 +1034,18 @@ def capture_source(
 
 
 # ---------------------------------------------------------------------------
-# Gate 0 — internal only; never accept caller authority / digests / reports
+# Gate 0 — internal only; private probes; no caller authority surfaces
 # ---------------------------------------------------------------------------
 
 
-def gate0_watcher_probe() -> dict[str, str]:
-    """Probe watcher state; inactive stdout is PASS even with nonzero exit."""
+def _probe_watcher_status() -> WatcherProbeResult:
+    """Private watcher probe; hermetic isolation mode skips production systemctl."""
+    if os.environ.get(ISOLATION_MODE_ENV) == ISOLATION_MODE:
+        return WatcherProbeResult(
+            status=WatcherStatus.INACTIVE,
+            method=WatcherMethod.HERMETIC,
+            passed=PassToken.TRUE,
+        )
     try:
         completed = subprocess.run(
             ["systemctl", "--user", "is-active", "convmem-watch.service"],
@@ -1016,128 +1056,60 @@ def gate0_watcher_probe() -> dict[str, str]:
         )
         stdout = (completed.stdout or "").strip()
         if stdout == "inactive":
-            return {"status": "inactive", "method": "systemctl", "pass": "true"}
+            return WatcherProbeResult(
+                status=WatcherStatus.INACTIVE,
+                method=WatcherMethod.SYSTEMCTL,
+                passed=PassToken.TRUE,
+            )
         if stdout in {"failed", "activating", "active"}:
-            return {"status": stdout, "method": "systemctl", "pass": "false"}
-        return {
-            "status": stdout or "unknown",
-            "method": "systemctl",
-            "pass": "false",
-            "detail": completed.stderr.strip(),
-        }
+            return WatcherProbeResult(
+                status=WatcherStatus(stdout),
+                method=WatcherMethod.SYSTEMCTL,
+                passed=PassToken.FALSE,
+            )
+        detail = DetailToken(value=completed.stderr.strip() or "unknown")
+        return WatcherProbeResult(
+            status=WatcherStatus(stdout or WatcherStatus.UNKNOWN),
+            method=WatcherMethod.SYSTEMCTL,
+            passed=PassToken.FALSE,
+            detail=detail,
+        )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        return {
-            "status": "unavailable",
-            "method": "systemctl",
-            "pass": "false",
-            "detail": str(exc),
-        }
+        return WatcherProbeResult(
+            status=WatcherStatus.UNAVAILABLE,
+            method=WatcherMethod.SYSTEMCTL,
+            passed=PassToken.FALSE,
+            detail=DetailToken(value=type(exc).__name__),
+        )
 
 
-def _default_network_self_test() -> dict[str, str]:
+def _probe_network_isolation() -> NetworkProbeResult:
+    """Private network probe; hermetic isolation mode skips outbound socket."""
+    if os.environ.get(ISOLATION_MODE_ENV) == ISOLATION_MODE:
+        return NetworkProbeResult(
+            passed=PassToken.TRUE,
+            detail=DetailToken(value="hermetic"),
+        )
     import socket
 
     try:
         socket.create_connection(("203.0.113.1", 9), timeout=0.01)
-        return {"pass": "false", "detail": "unexpected-success"}
+        return NetworkProbeResult(
+            passed=PassToken.FALSE,
+            detail=DetailToken(value="unexpected-success"),
+        )
     except OSError as exc:
-        return {"pass": "true", "detail": type(exc).__name__}
+        return NetworkProbeResult(
+            passed=PassToken.TRUE,
+            detail=DetailToken(value=type(exc).__name__),
+        )
 
 
-def _hermetic_gate0_hooks() -> Gate0ProbeHooks:
-    return Gate0ProbeHooks(
-        watcher_probe=lambda: {
-            "status": "inactive",
-            "method": "hermetic",
-            "pass": "true",
-        },
-        network_self_test=lambda: {"pass": "true", "detail": "hermetic"},
-    )
-
-
-def _default_hooks_for_isolation() -> Gate0ProbeHooks | None:
-    if os.environ.get(ISOLATION_MODE_ENV) == ISOLATION_MODE:
-        return _hermetic_gate0_hooks()
-    return None
-
-
-def _validate_live_gate0_report(report: dict[str, Any]) -> Gate0Evidence:
-    """Accept only a live probe report — refuse forged / failed / nested junk."""
-    if not isinstance(report, dict):
-        raise IsolationViolation("gate0 report must be a mapping from live probes")
-    allowed_top = frozenset({"watcher", "network", "mode"})
-    unknown = set(report) - allowed_top
-    if unknown:
-        names = ", ".join(sorted(unknown))
-        raise IsolationViolation(f"gate0 report has unknown keys: {names}")
-    for required in ("watcher", "network", "mode"):
-        if required not in report:
-            raise IsolationViolation(f"gate0 report missing {required}")
-    mode_raw = report["mode"]
-    _reject_coercion(mode_raw, label="gate0.mode", expected="str")
-    try:
-        mode = CanaryMode(mode_raw)
-    except ValueError as exc:
-        raise IsolationViolation("gate0.mode is not an allowed enum") from exc
-
-    watcher = report["watcher"]
-    if not isinstance(watcher, dict):
-        raise IsolationViolation("gate0.watcher must be a mapping")
-    watcher_allowed = frozenset({"status", "method", "pass", "detail"})
-    unknown_w = set(watcher) - watcher_allowed
-    if unknown_w:
-        names = ", ".join(sorted(unknown_w))
-        raise IsolationViolation(f"gate0.watcher contains unknown keys: {names}")
-    for required in ("status", "method", "pass"):
-        if required not in watcher:
-            raise IsolationViolation(f"gate0.watcher missing {required}")
-    try:
-        status = WatcherStatus(watcher["status"])
-        method = WatcherMethod(watcher["method"])
-        passed = PassToken(watcher["pass"])
-    except (TypeError, ValueError) as exc:
-        raise IsolationViolation("gate0.watcher fields are not allowed enums") from exc
-    if passed is not PassToken.TRUE:
-        raise IsolationViolation("gate0 report did not pass")
-    detail = None
-    if "detail" in watcher:
-        detail = DetailToken(value=watcher["detail"])
-
-    network = report["network"]
-    if not isinstance(network, dict):
-        raise IsolationViolation("gate0.network must be a mapping")
-    network_allowed = frozenset({"pass", "detail"})
-    unknown_n = set(network) - network_allowed
-    if unknown_n:
-        names = ", ".join(sorted(unknown_n))
-        raise IsolationViolation(f"gate0.network contains unknown keys: {names}")
-    if "pass" not in network:
-        raise IsolationViolation("gate0.network missing pass")
-    try:
-        net_pass = PassToken(network["pass"])
-    except (TypeError, ValueError) as exc:
-        raise IsolationViolation("gate0.network.pass is not an allowed enum") from exc
-    if net_pass is not PassToken.TRUE:
-        raise IsolationViolation("gate0 report did not pass")
-    net_detail = None
-    if "detail" in network:
-        net_detail = DetailToken(value=network["detail"])
-
-    return Gate0Evidence(
-        mode=mode,
-        watcher=Gate0WatcherEvidence(
-            status=status, method=method, passed=passed, detail=detail
-        ),
-        network=Gate0NetworkEvidence(passed=net_pass, detail=net_detail),
-    )
-
-
-def gate0(*, hooks: Gate0ProbeHooks | None = None) -> dict[str, Any]:
-    """Gate 0 checks before imports/writes; fail closed on indeterminate watcher."""
-    hooks = hooks or Gate0ProbeHooks()
-    watcher = (hooks.watcher_probe or gate0_watcher_probe)()
-    if watcher.get("pass") != "true":
-        raise IsolationViolation("watcher active or indeterminate")
+def _refuse_inherited_gate0_authority() -> None:
+    if os.environ.get("CONVMEM_CLAUDE_CANARY_GATE0_DIGEST"):
+        raise IsolationViolation("caller-supplied gate0 digest refused")
+    if os.environ.get("CONVMEM_CLAUDE_CANARY_GATE0_REPORT"):
+        raise IsolationViolation("caller-supplied gate0 report refused")
     for name in os.environ:
         if any(marker in name.upper() for marker in _CREDENTIAL_MARKERS):
             if name not in {"CONVMEM_INCREMENTAL_TOKEN"}:
@@ -1149,57 +1121,48 @@ def gate0(*, hooks: Gate0ProbeHooks | None = None) -> dict[str, Any]:
     ):
         if override in os.environ:
             raise IsolationViolation(f"production override present: {override}")
-    network = (hooks.network_self_test or _default_network_self_test)()
-    if network.get("pass") != "true":
-        raise IsolationViolation(f"network self-test failed: {network}")
-    return {
-        "watcher": watcher,
-        "network": network,
-        "mode": CANARY_MODE,
-    }
+
+
+def _build_gate0_evidence() -> Gate0Evidence:
+    """Run private probes and return closed Gate0Evidence only."""
+    _refuse_inherited_gate0_authority()
+    watcher = _probe_watcher_status()
+    if watcher.passed is not PassToken.TRUE:
+        raise IsolationViolation("watcher active or indeterminate")
+    network = _probe_network_isolation()
+    if network.passed is not PassToken.TRUE:
+        raise IsolationViolation("network self-test failed")
+    return Gate0Evidence(
+        mode=CanaryMode.V1,
+        watcher=Gate0WatcherEvidence(
+            status=watcher.status,
+            method=watcher.method,
+            passed=watcher.passed,
+            detail=watcher.detail,
+        ),
+        network=Gate0NetworkEvidence(
+            passed=network.passed,
+            detail=network.detail,
+        ),
+    )
 
 
 def _enforce_gate0_for_mutable(
     boundary: IsolationBoundary,
-    *,
-    hooks: Gate0ProbeHooks | None = None,
 ) -> IsolationRootCapability:
-    """Internal Gate 0: open root, run live probes, bind identities, re-check.
-
-    Mutable commands call this themselves. Caller-supplied authority objects,
-    reports, digests, or environment digests are never accepted.
-    """
-    if os.environ.get("CONVMEM_CLAUDE_CANARY_GATE0_DIGEST"):
-        raise IsolationViolation("caller-supplied gate0 digest refused")
-    if os.environ.get("CONVMEM_CLAUDE_CANARY_GATE0_REPORT"):
-        raise IsolationViolation("caller-supplied gate0 report refused")
-
-    effective = hooks if hooks is not None else _default_hooks_for_isolation()
+    """Internal Gate 0: open root, run private probes, bind identities, re-check."""
+    _refuse_inherited_gate0_authority()
     root_cap = open_isolation_root(boundary)
     try:
-        report = gate0(hooks=effective)
-        evidence = _validate_live_gate0_report(report)
-        if evidence.watcher.passed is not PassToken.TRUE:
-            raise IsolationViolation("gate0 report did not pass")
+        _build_gate0_evidence()
         root_cap.assert_still_bound(boundary)
-        watcher_now = (
-            (effective.watcher_probe if effective else None) or gate0_watcher_probe
-        )()
-        if watcher_now.get("pass") != "true":
+        watcher_now = _probe_watcher_status()
+        if watcher_now.passed is not PassToken.TRUE:
             raise IsolationViolation("watcher active or indeterminate")
         return root_cap
     except Exception:
         root_cap.close()
         raise
-
-
-def require_gate0_authority(
-    boundary: IsolationBoundary,
-    *,
-    hooks: Gate0ProbeHooks | None = None,
-) -> IsolationRootCapability:
-    """Establish Gate 0 for one mutable command (returns held root capability)."""
-    return _enforce_gate0_for_mutable(boundary, hooks=hooks)
 
 
 def assert_transition_coverage(
@@ -1314,21 +1277,10 @@ def install_fake_providers() -> None:
     ingest.distill = fake_distill
 
 
-def enable_incremental(
-    boundary: IsolationBoundary,
-    *,
-    hooks: Gate0ProbeHooks | None = None,
-    _gate0: bool = True,
-) -> None:
-    if _gate0:
-        with _enforce_gate0_for_mutable(boundary, hooks=hooks) as root_cap:
-            root_cap.assert_still_bound(boundary)
-            _rewrite_config_enabled(root_cap)
-        return
-    path = boundary.layout["user_config"]
-    text = path.read_text(encoding="utf-8")
-    text = text.replace("enabled = false", "enabled = true", 1)
-    path.write_text(text, encoding="utf-8")
+def enable_incremental(boundary: IsolationBoundary) -> None:
+    with _enforce_gate0_for_mutable(boundary) as root_cap:
+        root_cap.assert_still_bound(boundary)
+        _rewrite_config_enabled(root_cap)
 
 
 def _rewrite_config_enabled(root_cap: IsolationRootCapability) -> None:
@@ -1349,12 +1301,8 @@ def _rewrite_config_enabled(root_cap: IsolationRootCapability) -> None:
             os.close(fd)
         text = data.decode("utf-8").replace("enabled = false", "enabled = true", 1)
         payload = text.encode("utf-8")
-        temp = _stage_regular_file_dirfd(parent_fd, name, payload)
-        try:
-            _publish_staged_rename(parent_fd, temp, name)
-        except Exception:
-            _unlink_dirfd(parent_fd, temp)
-            raise
+        anon_fd = _stage_anonymous_dirfd(parent_fd, payload)
+        _publish_anonymous_dirfd(parent_fd, anon_fd, name)
     finally:
         for handle in reversed(owned):
             os.close(handle)
@@ -1366,9 +1314,8 @@ def run_coordinator(
     *,
     chunk_size: int = 2,
     overlap: int = 0,
-    hooks: Gate0ProbeHooks | None = None,
 ) -> dict[str, Any]:
-    with _enforce_gate0_for_mutable(boundary, hooks=hooks) as root_cap:
+    with _enforce_gate0_for_mutable(boundary) as root_cap:
         root_cap.assert_still_bound(boundary)
         install_fake_providers()
         _rewrite_config_enabled(root_cap)
@@ -1393,11 +1340,9 @@ def run_coordinator(
 def run_hermetic_matrix(
     boundary: IsolationBoundary,
     source: Path,
-    *,
-    hooks: Gate0ProbeHooks | None = None,
 ) -> dict[str, Any]:
     """Exercise baseline, unchanged replay, and append under isolation."""
-    with _enforce_gate0_for_mutable(boundary, hooks=hooks) as root_cap:
+    with _enforce_gate0_for_mutable(boundary) as root_cap:
         root_cap.assert_still_bound(boundary)
         install_fake_providers()
         _rewrite_config_enabled(root_cap)
@@ -1505,8 +1450,9 @@ __all__ = [
     "FrozenSourceSpec",
     "Gate0Evidence",
     "Gate0NetworkEvidence",
-    "Gate0ProbeHooks",
     "Gate0WatcherEvidence",
+    "PublicationDurability",
+    "PublicationResult",
     "IsolationRootCapability",
     "MatrixEvidence",
     "PRODUCTION_ROOTS",
@@ -1527,14 +1473,14 @@ __all__ = [
     "capture_source",
     "derive_snapshot_destination",
     "enable_incremental",
-    "gate0",
-    "gate0_watcher_probe",
-    "_hermetic_gate0_hooks",
     "install_fake_providers",
     "list_snapshot_artifacts",
     "open_isolation_root",
     "prepare_fixture_env",
-    "require_gate0_authority",
+    "_build_gate0_evidence",
+    "_probe_network_isolation",
+    "_probe_tmpfile_available",
+    "_probe_watcher_status",
     "revalidate_source_identity",
     "run_coordinator",
     "run_hermetic_matrix",

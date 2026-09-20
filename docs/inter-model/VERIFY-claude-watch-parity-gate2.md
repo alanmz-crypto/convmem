@@ -1,91 +1,32 @@
 # VERIFY — Claude Watch Parity Gate 2
 
 **Arc:** Claude Watch Parity
-**Code revision:** capability-bound redesign — replace pathname reopen, post-publication
-refusal, caller-supplied Gate 0 authority, and dictionary evidence
-**Review tip:** exact HEAD of `fix/2026-09-20-claude-gate2-cap-bound` (implementation `3d00819…`; VERIFY stamp follow-up on same branch) — Copilot exact-tip re-audit before Kiro (Kiro blocked until Copilot PASS)
-**Predecessor tip (FAIL):** `a5ccc68f47f54c9cfabf00411d1c292b3185864d`
+**Code revision:** local safety corrective — private Gate 0 probes, O_TMPFILE/linkat
+publication, closed evidence only, no caller bypass surfaces
+**Review tip:** exact HEAD of `fix/2026-09-20-claude-gate2-local-safety-corrective` (after
+push; predecessor Copilot FAIL at `10322a6…`)
+**Predecessor tip (FAIL):** `10322a6bc23a9ca38da310520f28395eaddda219`
 **Base:** `e6a0634c214cf07c89b551d13410bb276a93b38d` (`origin/main` after Gate 1 #311)
 **Plan:** `a811f58` — `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md`
 **Live-source canary:** `NOT_RUN` (Ryan grant required; hermetic harness only)
 
-## Scope delivered
+## Scope delivered (this corrective)
 
-- `adapters/claude_session_jsonl.py`: shared `_accepted_message()` mapper;
-  `parse_complete_prefix()` via `complete_prefix_view`; byte-tolerant
-  `read_session_meta()` for invalid UTF-8 lines in the prefix scan path.
-- `incremental_jsonl_formats.py`: `jsonl_claude_session` spec
-  (`claude-complete-prefix-v1`); `ISOLATED_CLAUDE_FORMATS`; union into
-  `ALL_ISOLATED_FORMATS`; `KIRO_ROUTE_FORMATS` unchanged.
-- `claude_incremental_canary.py` + `tests/claude_incremental_canary_worker.py`:
-  **capability-bound redesign**
-  - Isolation root opened and validated once; directory descriptor + stat identity
-    retained; descendants resolved via anchored `dir_fd` only (no pathname reopen).
-  - Publication is the final transition: stage+fsync temp under destination dirfd,
-    revalidate source identity/digest, then directory-relative atomic rename only.
-    Failures before publish unlink the temp via dirfd; no post-publish refusal that
-    must locate a published inode by pathname.
-  - Mutable commands call one internal Gate 0 routine; caller/env authority objects,
-    reports, and digests are refused. Report must pass and is bound to open root
-    identity, token marker, config digest, and current watcher result; freshness and
-    config are re-read before the first mutable transition.
-  - Evidence is closed typed dataclasses/enums (`Gate0Evidence`, `MatrixEvidence`,
-    `CaptureEvidence`, …); paths only via `RelativePath` / `SourceAlias`; no type
-    coercion; serialize/hash only validated objects.
-- Focused tests: prefix, route/replay/fallback/repair/isolation, canary contract,
-  plus adversarial capability-bound regressions.
-- Production surfaces **not** changed: `incremental_jsonl.py`, watcher config,
-  sources, services, activation.
+Corrects Security Review findings **#1, #3, #4, #5, #6** on the capability-bound
+redesign at `10322a6…`:
 
-## Routing oracle
-
-| Condition | Expected routed formats |
+| Finding | Corrective |
 |---|---|
-| Default (`CONVMEM_INCREMENTAL_ROOT` absent) | `jsonl_kiro_session` only |
-| Isolation root present (`isolated_codex=True`) | Kiro + Codex history/rollout + Claude session |
+| **#1** Gate 0 bypass / production hook surfaces | Removed public `gate0`, `gate0_watcher_probe`, `require_gate0_authority`, `Gate0ProbeHooks`, `_hermetic_gate0_hooks`, and `_gate0` bypass; internal `_enforce_gate0_for_mutable` only |
+| **#3** Injectable hook indirection | Private `_probe_watcher_status` / `_probe_network_isolation`; tests monkeypatch those functions |
+| **#4** Dictionary evidence coercion | `_build_gate0_evidence` returns closed `Gate0Evidence` only; coordinator outcome parsing rejects free-form strings |
+| **#5** Named temp publication | Dynamic `_probe_tmpfile_available`; stage via `O_TMPFILE`; publish via capability-relative `linkat` |
+| **#6** Descriptor / artifact cleanup | Probe fd closed on every path; anonymous fd ownership handoff prevents double-close; `durability` on capture evidence |
 
-Verified by `test_claude_format_spec_and_default_routing` and existing Codex/Kiro
-route regressions.
-
-## Commands and results
-
-Environment: Python 3.12 venv (`.venv` from main checkout), deps from `requirements.txt`.
-
-```bash
-cd .worktrees/fix-2026-09-20-claude-gate2-cap-bound
-/home/lauer/Projects/convmem/.venv/bin/python -m pytest \
-  tests/test_claude_session_jsonl.py \
-  tests/test_claude_jsonl_prefix_adapters.py \
-  tests/test_claude_incremental_jsonl_route.py \
-  tests/test_claude_incremental_canary.py \
-  tests/test_codex_jsonl_prefix_adapters.py \
-  tests/test_codex_incremental_jsonl_route.py \
-  -q
-# 97 passed (84 prior regressions + adversarial capability-bound tests)
-
-/home/lauer/Projects/convmem/.venv/bin/python -m compileall -q \
-  claude_incremental_canary.py tests/claude_incremental_canary_worker.py \
-  tests/test_claude_incremental_canary.py
-# exit 0
-
-git diff --check a5ccc68f47f54c9cfabf00411d1c292b3185864d..HEAD
-# exit 0
-
-git diff origin/main -- incremental_jsonl.py watch.py config/
-# (empty — unchanged)
-```
-
-## Static diff checks
-
-| Surface | Status |
-|---|---|
-| `incremental_jsonl.py` | unchanged |
-| `KIRO_ROUTE_FORMATS` | unchanged (`jsonl_kiro_session` only) |
-| Watcher / sources / services / activation | unchanged |
-| Real Claude transcript access | none |
-| Network / provider calls | none |
-| Production Chroma / ledger mutation | none |
-| PR opened | no (Copilot exact-tip gate; Kiro blocked until Copilot PASS) |
+**Not attempted (finding #2):** `OPEN_SHARED_BOUNDARY_BLOCKER` — coordinator/root
+authority still routes through shared `IncrementalJsonlCoordinator` and production
+config surfaces; requires Codex architecture decision (mount namespace vs shared-code
+authority vs `NO_GATE2_ROUTE`).
 
 ## Changed files (this corrective)
 
@@ -94,28 +35,36 @@ git diff origin/main -- incremental_jsonl.py watch.py config/
 - `tests/test_claude_incremental_canary.py`
 - `docs/inter-model/VERIFY-claude-watch-parity-gate2.md`
 
+## Commands and results
+
+```bash
+/home/lauer/Projects/convmem/.venv/bin/python -m pytest \
+  tests/test_claude_incremental_canary.py -q
+# 43 passed (38 prior + 5 local-safety regressions)
+
+/home/lauer/Projects/convmem/.venv/bin/python -m compileall -q \
+  claude_incremental_canary.py tests/claude_incremental_canary_worker.py \
+  tests/test_claude_incremental_canary.py
+# exit 0
+```
+
+## Static diff checks
+
+| Surface | Status |
+|---|---|
+| `incremental_jsonl.py` | unchanged |
+| `KIRO_ROUTE_FORMATS` | unchanged |
+| Watcher / sources / services / activation | unchanged |
+| Gate 2 PASS claimed | **no** — finding #2 open; Copilot re-audit not requested |
+| PR opened | no |
+
 ## Known limits
 
-- Live-source canary marked **NOT_RUN**; Ryan must grant exact file identity
-  before any read of a real Claude transcript.
-- Watcher was not stopped; Gate 0 live watcher probe requires an inactive window
-  or hermetic hooks (hermetic tests use injectable probes / worker hermetic hooks).
-- `read_session_meta()` now skips invalid UTF-8 lines when scanning for session
-  id (prefix scan still records `skipped_invalid_utf8` per complete line).
+- **OPEN_SHARED_BOUNDARY_BLOCKER:** finding #2 deferred to Codex architecture lane.
+- Live-source canary **NOT_RUN**.
+- Successful publication is final; directory `fsync` failure yields
+  `durability=unconfirmed` (not rolled back).
 
-## Evidence (content-free)
-
-- Gate 2 hermetic matrix: first run `committed`, unchanged replay `unchanged`,
-  append `committed`/`incremental` with bounded transform reuse counters.
-- Prefix oracle: `parse(path) == parse_complete_prefix(path).messages` on complete
-  fixtures; full byte-range coverage; partial line excluded until newline.
-- Canary capture emits relative-path descriptor fields only; no transcript text
-  and no absolute credential/transcript paths in evidence payloads.
-- Adversarial: root replacement after Gate 0, destination symlink substitution,
-  source removal / temp rename cleanup, forged Gate 0 report/digest, stale marker,
-  config replacement, closed evidence coercion/injection refusals.
-
-**TL;DR [Arc Claude Watch Parity]:** Capability-bound redesign replaces the four
-Copilot residual mechanisms (anchored root capability, publication-final rename,
-internal Gate 0, closed typed evidence); 97 focused tests PASS; live canary
-NOT_RUN; stopped for Copilot exact-tip re-audit before Kiro.
+**TL;DR [Arc Claude Watch Parity]:** Five local Security Review defects corrected on
+branch `fix/2026-09-20-claude-gate2-local-safety-corrective`; finding #2 recorded as
+`OPEN_SHARED_BOUNDARY_BLOCKER`; 43 focused tests PASS; Gate 2 PASS not claimed.

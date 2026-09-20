@@ -15,10 +15,8 @@ sys.path.insert(0, str(REPO_ROOT))
 from claude_incremental_canary import (  # noqa: E402
     CRASH_EXIT,
     _CAPTURE_TRANSITIONS,
-    _hermetic_gate0_hooks,
+    _build_gate0_evidence,
     capture_source,
-    gate0,
-    require_gate0_authority,
     run_coordinator,
     run_hermetic_matrix,
     validate_frozen_source,
@@ -47,21 +45,14 @@ def _frozen_spec(source: Path):
     )
 
 
-def _require_gate0(boundary) -> None:
-    # Mutable commands also enforce Gate 0 internally; this closes the outer probe.
-    with require_gate0_authority(boundary, hooks=_hermetic_gate0_hooks()):
-        return
-
-
 def main() -> int:
     install_network_denial()
     command = sys.argv[1]
     boundary = _boundary()
     if command == "gate0":
-        report = gate0(hooks=_hermetic_gate0_hooks())
-        print(json.dumps(report, sort_keys=True))
+        evidence = _build_gate0_evidence()
+        print(json.dumps(evidence.to_mapping(), sort_keys=True))
         return 0
-    _require_gate0(boundary)
     if command == "refuse-network":
         import socket
 
