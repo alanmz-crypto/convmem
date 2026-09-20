@@ -1,8 +1,8 @@
 # Arc Brief — Poison Pill (convmem indexer SIGSEGV / Chroma upsert crash)
 
 **Arc codename:** Poison Pill · **Slug:** `chroma-upsert-crash`
-**Opened:** 2026-09-20 · **State:** Active — software cause excluded; platform cause favoured and
-awaiting an observation window
+**Opened:** 2026-09-20 · **State:** Active — proceeding under an adopted (unproven) BIOS-misconfiguration
+assumption; resume plan in [`EXECUTION-poison-pill-resume.md`](EXECUTION-poison-pill-resume.md)
 
 ---
 
@@ -37,6 +37,7 @@ hold the live store open whenever the editors are running.
 | `~/.cache/arc-poison-pill/{probe.py,matrix.sh,matrix.log}` | Scratch probe + results, retained. The 4.5 GB index copies were deleted (reproducible in ~2 s from the quarantine) |
 | `~/.local/share/convmem/chroma.corrupt-2026-09-19` (4.7 G), `…-2026-09-20` (4.5 G) | Quarantined evidence; forensically examined, **structurally sound** |
 | Live `~/.local/share/convmem/chroma` | Rebuilt 2026-09-20 04:57. Still written by MCP readers even with all units down |
+| `docs/plans/EXECUTION-poison-pill-resume.md` | On this branch. Staged resumption, pre-registered proof, tripwires, hardening backlog |
 | Poison-pill quarantine / circuit breaker | **Does not exist** — no code written |
 | Phase C′ replay harness | **Not needed as designed** — see § 4 |
 
@@ -50,12 +51,18 @@ hold the live store open whenever the editors are running.
 - [x] **Ryan platform gate**: Intel defaults restored (PL2 4095 W → 253 W), XMP off, memory at 4533 MT/s (normal four-DIMM downclock)
 - [x] **Upsert matrix: 15/15 CLEAN** — 300,000 update-in-place upserts into the crashing index across
       default threads, `num_threads=1`, and nine-concurrent-readers. Software cause excluded
-- [ ] **Observation window** — ~5–6 hours of loaded use with a clean `coredumpctl` before the BIOS fix is credible
+- [x] Working assumption adopted (Ryan, 2026-09-20): BIOS misconfiguration, mitigated — resume plan written
+- [ ] **Observation window** — ≥6 loaded hours clean = credible; ≥24 h = accepted (pre-registered)
+- [ ] Stage 0: fresh restic snapshot while quiescent (newest is `e51f849a…`, taken 00:19 = pre-rebuild)
 - [ ] If faults return: two-DIMM test, then RMA under Intel's extended warranty
 - [ ] Remediation: per-file quarantine + global crash circuit breaker (Cursor)
 - [ ] Ledger corrections to the three `obs_` records (Ryan)
 
 ## 5. Your Role (read this to know what you're here to do)
+
+**Read [`EXECUTION-poison-pill-resume.md`](EXECUTION-poison-pill-resume.md) first** — Ryan adopted the
+BIOS-misconfiguration assumption on 2026-09-20, so work proceeds in staged resumption with
+pre-registered proof thresholds and tripwires. Nothing below licenses closing the arc.
 
 The diagnostic phase is essentially finished and the answer is **not a convmem bug**. Do not restart
 the Phase C′ replay experiment — the matrix already answered the question it was designed to ask.
@@ -128,6 +135,8 @@ fresh model read only this file and orient itself?
 
 ## Update Log
 
+- 2026-09-20 — Claude Opus 5 (Kiro design/plan lane): Ryan adopted the BIOS-misconfiguration
+  assumption; staged resume plan + pre-registered proof written to `EXECUTION-poison-pill-resume.md`.
 - 2026-09-20 — Claude Opus 5 (Kiro design/plan lane): arc opened; writers stopped and disabled;
   forensics found no index corruption; replay fidelity proven offline; Intel defaults restored;
   upsert matrix 15/15 clean excluded the software cause; platform favoured, awaiting an

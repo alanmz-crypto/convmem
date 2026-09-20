@@ -9,8 +9,8 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Poison Pill / convmem indexer SIGSEGV (software cause EXCLUDED; platform
-  favoured, awaiting observation):** the indexer, `refine` and the watcher parent were all dying
+- **Arc Poison Pill / convmem indexer SIGSEGV (RESUMING under an adopted, unproven
+  BIOS-misconfiguration assumption):** the indexer, `refine` and the watcher parent were all dying
   with SIGSEGV/SIGABRT from 2026-09-18. All Chroma writers were stopped **and disabled** (they
   survive reboot) at 2026-09-20T09:57:02-05:00. Read-only forensics found **no structural
   corruption** in either quarantined index or in the live index as it stood two minutes before the
@@ -19,9 +19,12 @@ cross-arc snapshot and the linked arc brief below.
   300,000 update-in-place upserts** across default threads, `num_threads=1`, and nine concurrent
   readers, excluding the chroma #6895 thread-race hypothesis. Evidence now favours a **platform**
   cause: 78% of pre-fix faults on CPUs 4/8/10 (including both Turbo Boost Max favoured cores) and
-  unrelated programs faulting (udevadm at boot, `git` SIGBUS, chrome, electron). **Next:** ~5-6
-  hours of loaded use with a clean `coredumpctl` before the BIOS fix is credible; then a two-DIMM
-  test; then RMA. Watcher stays down until a crash circuit breaker exists. Resume from
+  unrelated programs faulting (udevadm at boot, `git` SIGBUS, chrome, electron). **Ryan adopted the BIOS-misconfiguration
+  assumption on 2026-09-20** and work resumes under it, staged and gated — see
+  [`EXECUTION-poison-pill-resume.md`](../plans/EXECUTION-poison-pill-resume.md) for the pre-registered
+  proof (≥6 loaded hours clean = credible, ≥24 h = accepted) and the tripwires that revoke it.
+  **Next:** stage 0 — fresh restic snapshot while quiescent. Writers return at stage 2; the watcher
+  not until the crash circuit breaker exists or the known poison file is excluded. Resume from
   [`KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md`](KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md);
   arc brief [`STATUS-chroma-upsert-crash.md`](../plans/STATUS-chroma-upsert-crash.md).
   Arc: Poison Pill.
