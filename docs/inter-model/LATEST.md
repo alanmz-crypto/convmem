@@ -9,6 +9,23 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Poison Pill / convmem indexer SIGSEGV (BLOCKED_ON_RYAN — platform gate):**
+  the indexer, the `refine` daemon and the watcher parent have all been dying with
+  SIGSEGV/SIGABRT since 2026-09-18. A Kiro-lane session stopped every Chroma writer
+  (`refine`, `reconcile`, `monitor`, `cg2-soak-check`; restic left running) at
+  **2026-09-20T09:57:02-05:00** and ran read-only forensics. Three premises of the original
+  diagnosis are contradicted: the crash is **not file-specific** (`index --file LATEST.md`
+  SIGSEGVs, so does `convmem refine`), both quarantined indices and the live index at crash
+  time are **structurally sound** (exact size invariants, no out-of-range neighbours, clean
+  link-list walks, no duplicate labels, SQLite `quick_check` ok), and the 12 G subprocess
+  memory cap is not binding. Unrelated programs (udevadm, git SIGBUS, chrome, borg, ChatGPT,
+  copilot) are faulting across four boots including the current one. **Next:** Ryan's platform
+  gate — kernel A/B against `linux 7.2.4` (in the pacman cache; 7.2.6 landed 09-16) then
+  memtest86+ and a quiet verdict. Phase C′ is designed and **held** until then; no watcher
+  restart, no live-store writes, no Phase C run. Resume from
+  [`KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md`](KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md);
+  arc brief [`STATUS-chroma-upsert-crash.md`](../plans/STATUS-chroma-upsert-crash.md).
+  Arc: Poison Pill.
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as

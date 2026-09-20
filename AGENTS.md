@@ -55,6 +55,7 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 - [`docs/plans/STATUS-recovery-authority.md`](docs/plans/STATUS-recovery-authority.md) — Recovery Authority T1/T2 execution (**landed via PR #234 and #236; T3 not authorized**)
 - [`docs/plans/STATUS-naturalistic-product-value.md`](docs/plans/STATUS-naturalistic-product-value.md) — Naturalistic ConvMem product-value evaluation (**G1–G5 landed; G6 Ryan-gated**)
 - [`docs/plans/STATUS-codex-jsonl-production-integration.md`](docs/plans/STATUS-codex-jsonl-production-integration.md) — Arc Codex Kiro JSONL incremental production integration (**implementation merged; production canary Ryan-gated**)
+- [`docs/plans/STATUS-chroma-upsert-crash.md`](docs/plans/STATUS-chroma-upsert-crash.md) — Arc Poison Pill: convmem indexer SIGSEGV / Chroma upsert crash (**active**; Phase C′ blocked on a Ryan platform gate)
 
 **Cross-arc rollup:** [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) — active vs closed arcs and next authorized actions (not a per-arc brief).
 
