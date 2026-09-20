@@ -2,9 +2,12 @@
 
 **Arc: none (ad-hoc Gate 1 maintenance)**
 
-**Date:** 2026-09-20  
-**Author:** Codex coordination / PR Steward  
-**For:** Cursor Composer implementation lane  
+**Date:** 2026-09-20
+
+**Author:** Codex coordination / PR Steward
+
+**For:** Cursor Composer implementation lane
+
 **Authorization:** Ryan, 2026-09-20, explicit chat grant for issue #316
 
 ---
@@ -198,9 +201,12 @@ Do not open a PR. Return the exact pushed SHA and test evidence for review.
 
 ---
 
-I finished: [Arc none] issue #316 implementation handoff  
-Next step: Cursor implements the synthetic invalid-UTF-8 corrective and pushes the exact tip  
-Next lane: Cursor Composer  
+I finished: [Arc none] issue #316 implementation handoff
+
+Next step: Cursor implements the synthetic invalid-UTF-8 corrective and pushes the exact tip
+
+Next lane: Cursor Composer
+
 See my work: `docs/inter-model/CODEX-2026-09-20-claude-gate1-invalid-utf8-handoff.md`
 
 **TL;DR:** [Arc none] Ryan authorized a synthetic-only Gate 1 fix for issue
