@@ -13,7 +13,6 @@ class EvidenceStatus(str, Enum):
     UNAVAILABLE_SOURCE = "unavailable_source"
     UNAVAILABLE_MATCH = "unavailable_match"
     INVALID_LOCATOR = "invalid_locator"
-    SCAN_LIMIT = "scan_limit"
 
 
 class EvidenceScope(str, Enum):

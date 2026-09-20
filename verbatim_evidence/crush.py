@@ -671,10 +671,10 @@ def _scan_session(
     if not matches:
         if scan_capped:
             return EvidenceResult(
-                status=EvidenceStatus.SCAN_LIMIT,
+                status=EvidenceStatus.UNAVAILABLE_MATCH,
                 source_path=resolved_path,
                 adapter_kind=ADAPTER_KIND_CRUSH,
-                reason="max_scan_rows_exceeded",
+                reason="scan_limit",
                 scope=EvidenceScope.SESSION,
             )
         if state.deadline_hit:
@@ -694,8 +694,10 @@ def _scan_session(
         )
 
     partial = bool(partial_reason or scan_capped)
-    if partial and not partial_reason:
-        partial_reason = "max_scan_rows_exceeded" if scan_capped else None
+    if scan_capped:
+        partial_reason = "scan_limit"
+    elif not partial_reason:
+        partial_reason = None
 
     status = EvidenceStatus.AVAILABLE
     reason = "offsets_ignored_session_scope" if offsets_ignored else None

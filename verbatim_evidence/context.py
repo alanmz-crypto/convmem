@@ -75,11 +75,6 @@ def format_labeled_context(
                 }
             )
     else:
-        status = evidence.status
-        if status is EvidenceStatus.SCAN_LIMIT:
-            unavailable_reason = evidence.reason or "scan_limit"
-        else:
-            unavailable_reason = evidence.reason
         items.append(
             {
                 "label": LABEL_UNAVAILABLE,
@@ -87,8 +82,8 @@ def format_labeled_context(
                 "metadata": {
                     "source_path": evidence.source_path or meta.get("source_path"),
                     "adapter_kind": evidence.adapter_kind,
-                    "evidence_status": status.value,
-                    "reason": unavailable_reason,
+                    "evidence_status": evidence.status.value,
+                    "reason": evidence.reason,
                     "scope": evidence.scope.value if evidence.scope else None,
                     "partial": evidence.partial,
                     "partial_reason": evidence.partial_reason,
