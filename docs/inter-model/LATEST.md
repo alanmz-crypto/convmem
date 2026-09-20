@@ -9,20 +9,19 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Poison Pill / convmem indexer SIGSEGV (BLOCKED_ON_RYAN — platform gate):**
-  the indexer, the `refine` daemon and the watcher parent have all been dying with
-  SIGSEGV/SIGABRT since 2026-09-18. A Kiro-lane session stopped every Chroma writer
-  (`refine`, `reconcile`, `monitor`, `cg2-soak-check`; restic left running) at
-  **2026-09-20T09:57:02-05:00** and ran read-only forensics. Three premises of the original
-  diagnosis are contradicted: the crash is **not file-specific** (`index --file LATEST.md`
-  SIGSEGVs, so does `convmem refine`), both quarantined indices and the live index at crash
-  time are **structurally sound** (exact size invariants, no out-of-range neighbours, clean
-  link-list walks, no duplicate labels, SQLite `quick_check` ok), and the 12 G subprocess
-  memory cap is not binding. Unrelated programs (udevadm, git SIGBUS, chrome, borg, ChatGPT,
-  copilot) are faulting across four boots including the current one. **Next:** Ryan's platform
-  gate — kernel A/B against `linux 7.2.4` (in the pacman cache; 7.2.6 landed 09-16) then
-  memtest86+ and a quiet verdict. Phase C′ is designed and **held** until then; no watcher
-  restart, no live-store writes, no Phase C run. Resume from
+- **Arc Poison Pill / convmem indexer SIGSEGV (software cause EXCLUDED; platform
+  favoured, awaiting observation):** the indexer, `refine` and the watcher parent were all dying
+  with SIGSEGV/SIGABRT from 2026-09-18. All Chroma writers were stopped **and disabled** (they
+  survive reboot) at 2026-09-20T09:57:02-05:00. Read-only forensics found **no structural
+  corruption** in either quarantined index or in the live index as it stood two minutes before the
+  07:20 crash. Ryan restored Intel defaults (PL2 was unenforced at 4095 W against a correct 253 W
+  PL1; XMP off). An upsert matrix on isolated scratch copies then returned **15/15 CLEAN —
+  300,000 update-in-place upserts** across default threads, `num_threads=1`, and nine concurrent
+  readers, excluding the chroma #6895 thread-race hypothesis. Evidence now favours a **platform**
+  cause: 78% of pre-fix faults on CPUs 4/8/10 (including both Turbo Boost Max favoured cores) and
+  unrelated programs faulting (udevadm at boot, `git` SIGBUS, chrome, electron). **Next:** ~5-6
+  hours of loaded use with a clean `coredumpctl` before the BIOS fix is credible; then a two-DIMM
+  test; then RMA. Watcher stays down until a crash circuit breaker exists. Resume from
   [`KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md`](KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md);
   arc brief [`STATUS-chroma-upsert-crash.md`](../plans/STATUS-chroma-upsert-crash.md).
   Arc: Poison Pill.

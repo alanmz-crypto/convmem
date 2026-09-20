@@ -13,15 +13,50 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `BLOCKED_ON_RYAN` (platform gate) |
+| **State** | `ANSWERED` — software cause excluded by the upsert matrix; platform favoured, awaiting observation |
 | **Branch** | `fix/2026-09-20-chroma-upsert-poison-pill` (pushed) |
 | **Push status** | pushed |
 | **PR** | not opened |
-| **Ryan GATE** | platform quiet verdict required before any Phase C′ run (§ Ryan GATE) |
+| **Ryan GATE** | cleared 2026-09-20: Intel defaults restored (PL2 253 W), XMP off |
 | **Related ledger** | `obs_a09dbfa9e237`, `obs_e8db779df8c3`, `obs_c1499a660d4f` (all three need correction — see § Ledger corrections) |
 
 ---
 
+---
+
+## RESULT — the matrix answered it, 2026-09-20 11:11 (read this before the design below)
+
+The platform gate cleared (PL2 4095 W → 253 W, XMP off, memory 4533 MT/s = normal four-DIMM
+downclock), and the upsert arm ran on isolated scratch copies of the pre-rebuild quarantined index
+(153,626 elements, 73,545 delete-marked). Each trial restored a pristine 4.5 GB copy first and
+forced HNSW catch-up with a query after every batch, so the vector segment really was exercised
+(`data_level0.bin` grew 493,446,712 → 495,569,844 in the smoke run).
+
+| Arm | Condition | Result |
+|---|---|---|
+| A | 20,000 update-in-place upserts, default threads (24) | **5/5 CLEAN** |
+| B | Same, `hnsw:num_threads = 1` | **5/5 CLEAN** |
+| C | Same as A, plus 9 concurrent reader processes | **5/5 CLEAN** |
+
+**300,000 upserts over existing ids into the index that was crashing, zero faults, zero kernel
+faults during the run.** Production was dying roughly once per 50 units committed. The chroma #6895
+thread-race hypothesis predicted arm A would crash; it did not, and arm B has no difference to
+explain. **The software cause is excluded for this condition**, including the nine-reader shape.
+
+Consequently the Phase C′ replay design below is **retired as the primary experiment**. Its offline
+products stand and remain useful (raw-dict reconstruction verified 3,548/3,548; the replay set is
+the 436 live ids, not 3,548 rows across ~67 generations; 14 chunks, not 13). Do not rebuild the
+harness to re-ask a question already answered.
+
+**Honest limit:** the BIOS correction and this matrix fall in the same window, so "chromadb is
+innocent" and "the platform now behaves" cannot be fully separated. Both readings exclude a
+chromadb bug. Only elapsed clean loaded time distinguishes them — see the arc brief § 6.1.
+
+**Incidental finding worth owning:** nine `mcp_server.py` processes hold the live store outside the
+writer lease, and one wrote to it at 11:01:48 with every systemd unit disabled. The live store
+cannot be frozen while the editors run, which breaks the after-proof any future experiment depends on.
+
+---
 ## Why this supersedes the earlier experiment design
 
 Three premises the previous design rested on are contradicted by evidence already on disk.

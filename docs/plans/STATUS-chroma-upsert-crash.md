@@ -1,17 +1,18 @@
 # Arc Brief — Poison Pill (convmem indexer SIGSEGV / Chroma upsert crash)
 
 **Arc codename:** Poison Pill · **Slug:** `chroma-upsert-crash`
-**Opened:** 2026-09-20 · **State:** Active — diagnosis re-scoped; execution blocked on a Ryan platform gate
+**Opened:** 2026-09-20 · **State:** Active — software cause excluded; platform cause favoured and
+awaiting an observation window
 
 ---
 
 ## 1. What This Is For (product goal)
 
-convmem's corpus is only trustworthy if ingest is trustworthy. Since 2026-09-18 the indexer has
-been dying with SIGSEGV/SIGABRT during Chroma writes, the watcher has been retrying crashing files
-indefinitely, and the HNSW index has twice been rebuilt and quarantined. The arc is done when we
-know **why** writes crash, the watcher can no longer loop on a crashing input, and the corpus can
-be written to again with confidence.
+convmem's corpus is only trustworthy if ingest is trustworthy. From 2026-09-18 the indexer died
+repeatedly with SIGSEGV/SIGABRT during Chroma writes, the watcher retried crashing files forever,
+and the HNSW index was rebuilt and quarantined twice. The arc is done when the cause is known, the
+watcher can no longer loop on a crashing input, and the corpus can be written to again with
+confidence.
 
 ## 2. System Design (how the pieces connect)
 
@@ -19,112 +20,115 @@ be written to again with confidence.
 → exclusive flock) → `_index_one_file` → `_process_file_chunks` → `build_chunk_artifact`
 (summarize + distill + `ollama_embed` per unit) → `commit_chunk_artifact` → `_commit_chunk_to_stores`
 → `ChromaStore.add_summary` (`chroma_store.py:227`) and `add_unit` (`:282`), both `upsert` over
-**deterministic, content-addressed ids**, followed by `_prune_completed_reindex`.
+**deterministic, content-addressed ids**, then `_prune_completed_reindex`.
 
-The watcher (`watch.py`) spawns one child per file: `<python> convmem.py index --file <path>`, no
-`--force`, wrapped in `systemd-run --user --scope -p MemoryMax=12G -p MemorySwapMax=0`. Writers —
-ingest, `refine`, `monitor`, `propose_decision`, `conflict_events` — serialize through
-`exclusive_writer_lease` (`chroma_write_store.py:502`). Readers (`doctor`, `ask`, the MCP servers)
-do not take that lease.
+The watcher spawns one child per file: `<python> convmem.py index --file <path>`, no `--force`,
+under `systemd-run --scope -p MemoryMax=12G -p MemorySwapMax=0`. Writers (ingest, `refine`,
+`monitor`, `propose_decision`) serialise through `exclusive_writer_lease`
+(`chroma_write_store.py:502`). **Readers do not** — and nine long-lived `mcp_server.py` processes
+hold the live store open whenever the editors are running.
 
 ## 3. What Exists Right Now (file map)
 
 | Surface | State |
 |---|---|
-| `docs/inter-model/KIRO-2026-09-20-chroma-upsert-heap-corruption-handoff.md` | On this branch (`aaa6eff`). Remediation spec (Part A/B) valid; **root-cause premise superseded** |
-| `docs/inter-model/KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md` | On this branch. Corrected Phase C′ design + the evidence that superseded the old one |
-| `~/.local/share/convmem/chroma.corrupt-2026-09-19` (4.7 G), `…-2026-09-20` (4.5 G) | Quarantined evidence; **forensically examined, structurally sound** |
-| Live `~/.local/share/convmem/chroma` | Rebuilt 2026-09-20 04:57; last write 09:53:01; all writers stopped 09:57:02 |
+| `docs/inter-model/KIRO-2026-09-20-chroma-upsert-heap-corruption-handoff.md` | On this branch. Remediation spec (Part A/B) valid; **root-cause premise superseded** |
+| `docs/inter-model/KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md` | On this branch. Phase C′ design, offline findings, and the matrix result that retires most of it |
+| `~/.cache/arc-poison-pill/{probe.py,matrix.sh,matrix.log}` | Scratch probe + results, retained. The 4.5 GB index copies were deleted (reproducible in ~2 s from the quarantine) |
+| `~/.local/share/convmem/chroma.corrupt-2026-09-19` (4.7 G), `…-2026-09-20` (4.5 G) | Quarantined evidence; forensically examined, **structurally sound** |
+| Live `~/.local/share/convmem/chroma` | Rebuilt 2026-09-20 04:57. Still written by MCP readers even with all units down |
 | Poison-pill quarantine / circuit breaker | **Does not exist** — no code written |
-| Phase C′ replay harness | **Does not exist** — Cursor's to build, after the gate |
-| Replay set + raw reconstruction method | **Verified offline**; specified in the Phase C′ handoff |
+| Phase C′ replay harness | **Not needed as designed** — see § 4 |
 
 ## 4. Completion State
 
-- [x] Crash reproduced and characterized (Kiro, 2026-09-20)
-- [x] C0 code trace: upsert-not-insert, `ingest.distill` seam, no export→Chroma rebuild path
-- [x] Chroma writers stopped; quiet window opened 2026-09-20T09:57:02-05:00
-- [x] Read-only forensics on both quarantined indices and the live index
-- [x] Experiment redesigned (Phase C′) against the evidence
-- [x] Replay fidelity **proven offline**: 3,548/3,548 assertion ids reconstruct from the export
-- [x] Replay set identified: the 436 live unit ids, not the 3,548 export rows (~67 generations)
-- [ ] **Ryan platform gate** — kernel A/B, memtest86+, quiet verdict
-- [ ] Phase C′ execution (Cursor) — blocked on the gate
+- [x] Crash characterised; C0 code trace (upsert-not-insert, `ingest.distill` seam, no export→Chroma rebuild)
+- [x] Chroma writers stopped and **disabled** (survive reboot); quiet window from 2026-09-20T09:57:02-05:00
+- [x] Forensics: no structural corruption in either quarantined index, nor in the live index at crash time
+- [x] Replay fidelity proven offline — 3,548/3,548 assertion ids reconstruct from the export
+- [x] Replay set corrected — 436 live units, not the 3,548 export rows spanning ~67 generations
+- [x] **Ryan platform gate**: Intel defaults restored (PL2 4095 W → 253 W), XMP off, memory at 4533 MT/s (normal four-DIMM downclock)
+- [x] **Upsert matrix: 15/15 CLEAN** — 300,000 update-in-place upserts into the crashing index across
+      default threads, `num_threads=1`, and nine-concurrent-readers. Software cause excluded
+- [ ] **Observation window** — ~5–6 hours of loaded use with a clean `coredumpctl` before the BIOS fix is credible
+- [ ] If faults return: two-DIMM test, then RMA under Intel's extended warranty
 - [ ] Remediation: per-file quarantine + global crash circuit breaker (Cursor)
 - [ ] Ledger corrections to the three `obs_` records (Ryan)
 
 ## 5. Your Role (read this to know what you're here to do)
 
-If you are picking this up **before the platform gate clears**: you are not running experiments.
-Read § 6, and do only work that does not depend on crash counts.
+The diagnostic phase is essentially finished and the answer is **not a convmem bug**. Do not restart
+the Phase C′ replay experiment — the matrix already answered the question it was designed to ask.
 
-If the gate has cleared: you are Cursor, and your brief is
-`KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md`. Run the id-fidelity preflight before you
-count a single run.
+If you are picking this up to **build**: the remaining convmem work is the circuit breaker (§ 6.3),
+which is worth doing regardless of cause because it is what let one file burn 67 DeepSeek passes.
 
-Whoever you are: do not restart the watcher, do not open the live Chroma directory with a client,
-and do not reintroduce the "poison transcript" framing — it is refuted (§ 6).
+If you are picking this up to **assess the platform**: read § 6.1. The instrument is elapsed loaded
+time, not another test.
+
+Do not restart the watcher, do not open the live Chroma with a client, and do not revive the
+"poison transcript" framing — it is refuted.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. **Platform gate (Ryan).** Kernel A/B against `linux 7.2.4` (in the pacman cache) first; then
-   memtest86+ with XMP off; then a quiet verdict — zero non-convmem core dumps under load for a
-   duration Ryan sets.
-2. **Phase C′ (Cursor).** The 2×2 arms, id-fidelity preflight, crash/hang/clean counted separately,
-   every count paired with its background fault count.
-3. **Thread-count arm (Cursor).** Replay the live set with default vs `hnsw:num_threads: 1`.
-   Runs before the gate: a systematic difference between two identical arms survives noise.
-4. **Remediation (Cursor).** Per-file quarantine **and** a global circuit breaker; accurate
-   crash accounting so `doctor synthesis_gate` stops absorbing native crashes as provider drops.
-5. **Ledger correction (Ryan).** Three `obs_` records assert a two-problem split and a
-   file-specific cause that the evidence contradicts.
+1. **Observation window (Ryan).** At the pre-fix rate (~0.57 faults/hour machine-wide) the chance of
+   a wholly clean stretch falls below 5% at roughly 5–6 loaded hours. Watch `coredumpctl` under
+   normal workload. A clean day makes the BIOS correction credible.
+2. **If faults return.** Pull two of the four DIMMs — four sticks is the hardest case for the memory
+   controller that degrades on this generation. If they persist on two, it is an RMA conversation
+   (Intel extended the warranty to 5 years for affected 13th/14th-gen parts), not more tuning.
+3. **Remediation (Cursor).** Per-file quarantine **plus** a global circuit breaker: if N index
+   children die from signals within M minutes regardless of file, stop spawning and raise an
+   observation. File-scoped logic alone would have quarantined `LATEST.md`, which the corpus needs.
+4. **Reader discipline (design question, unowned).** Nine `mcp_server.py` processes hold the live
+   store outside the writer lease, and one wrote to it at 11:01:48 with every unit disabled. The
+   store cannot be frozen while editors run, which breaks any future after-proof.
+5. **Ledger correction (Ryan).** Three `obs_` records assert a two-problem split and a file-specific
+   cause that the evidence contradicts.
 
-**Hypothesis status:** (a) poison payload — **refuted** (`LATEST.md` and `refine` crash identically).
-(b) index size / accumulated state — open, and now has a **mechanism**: chroma #6895 reports
-SIGSEGV on upsert-over-existing via hnswlib `updatePoint`/`repairConnectionsForUpdate`, with
-thread-count workarounds. convmem never sets `hnsw:num_threads`, so the default is 24 here.
-Testable without the platform gate; see the Phase C′ handoff.
-(c) residual on-disk corruption — **unsupported**; the quarantined indices and the live index at
-crash time all validate clean. (d) platform-level memory corruption — **strongly indicated**, untested; the distill survival
-curve (67 runs start, 2 finish, deaths spread across all 14 chunks) is independent support.
+**Hypothesis status.** (a) poison payload — **refuted**: `LATEST.md` and `refine` crash identically.
+(b) index size / accumulated state — **refuted for the upsert path**: 300,000 upserts into the
+153,626-element pre-rebuild index, clean. (c) residual on-disk corruption — **unsupported**: every
+structural check passes. (d) platform — **favoured**: faults concentrate 78% on CPUs 4, 8 and 10
+(including both Turbo Boost Max favoured cores at 5400 MHz), unrelated programs fault (udevadm at
+boot, `git` SIGBUS, chrome, electron, borg), and PL2 was unenforced at 4095 W against a correct
+253 W PL1. **Unproven** — the BIOS change and the matrix happened in the same window, so the two
+cannot be fully separated; only elapsed clean time settles it.
 
 ## 7. Hard Stops (models cannot cross)
 
-- No Phase C′ run before the Ryan platform gate.
-- No live-store writes; no Chroma-client open on the live directory; read-only SQLite via backup
-  API or `mode=ro` only.
-- No watcher restart, no corpus-wide reindex, no external provider calls, no hardware/BIOS action.
+- No live-store writes; no Chroma-client open on the live directory.
+- No watcher restart until the circuit breaker exists.
+- No corpus-wide reindex, no external provider calls, no hardware/BIOS action by a model.
 - Ledger writes and merges are Ryan's.
 
 ## 8. Relationship to ConvMem (the bigger picture)
 
-This arc gates everything that writes: with writers stopped, the corpus is frozen, `brief`/`doctor`
-counts go stale, and Track A session indexing is paused. It is adjacent to **Trapdoor Hunt / #268**
-(watcher OOM) but distinct — #268 is about memory bounds under load, this is about writes aborting
-in the native allocator. Do not merge the two without Ryan's say-so. The platform question also
-reaches beyond convmem: `git` took a SIGBUS today, so any repo work on this machine carries risk
-until the gate clears.
+With writers disabled the corpus is frozen: `brief`/`doctor` counts go stale and Track A session
+indexing is paused. Adjacent to **Trapdoor Hunt / #268** (watcher OOM) but distinct. The platform
+question reaches past convmem — `git` took a SIGBUS — so repo work on this machine carried risk
+during the fault window, though a full `git fsck` came back clean.
 
 ## 9. Key Design Files (for deep dives)
 
 | What | Path |
 |---|---|
-| Corrected experiment brief | `docs/inter-model/KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md` |
+| Phase C′ design + findings + matrix result | `docs/inter-model/KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md` |
 | Original remediation spec | `docs/inter-model/KIRO-2026-09-20-chroma-upsert-heap-corruption-handoff.md` |
 | Crash surface | `chroma_store.py:227`, `:282` |
-| Id determinism | `ingest.py:918-922` (`assertion_seed`), `:121-144` (`_uuid4_from_seed`) |
-| Writer serialization | `chroma_write_store.py:502-575` |
+| Id determinism | `ingest.py:918-922`, `:121-144` |
+| Writer serialisation | `chroma_write_store.py:502-575` |
 | Watcher spawn + caps | `watch.py:160`, `:169`, `:203-233`; `config.toml` `[watch]` |
 
 ## 10. How to Update This Brief (departure protocol)
 
-Overwrite §§ 3–6 to reflect reality now — move items from "does not exist" to "on branch" to
-"on `main`", delete completed checklist items, rewrite § 5 for the next model. Do not append
-session narrative; that belongs in Track A. One line in the Update Log. Test: could a fresh model
-read only this file and orient itself?
+Overwrite §§ 3–6 to reflect reality now. Delete completed items, rewrite § 5 for the next model, do
+not append session narrative — that belongs in Track A. One line in the Update Log. Test: could a
+fresh model read only this file and orient itself?
 
 ## Update Log
 
-- 2026-09-20 — Claude Opus 5 (Kiro design/plan lane): arc opened. Chroma writers stopped (quiet
-  window 09:57:02); read-only forensics found no structural corruption in either quarantined index;
-  poison-payload premise refuted; Phase C′ redesigned and blocked on a Ryan platform gate.
+- 2026-09-20 — Claude Opus 5 (Kiro design/plan lane): arc opened; writers stopped and disabled;
+  forensics found no index corruption; replay fidelity proven offline; Intel defaults restored;
+  upsert matrix 15/15 clean excluded the software cause; platform favoured, awaiting an
+  observation window.
