@@ -1,17 +1,19 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Status:** CLAUDE ADVISORY PASS; TWO PREVENTIVE CORRECTIONS APPLIED; KIRO
-DESIGN REVIEW PENDING — no implementation, OpenClaw configuration, production
-smoke, or capture is authorized
+**Status:** CLAUDE `ADVISORY FAIL` ON COMMIT `9364546`; NINE CORRECTIONS APPLIED
+FOR RE-REVIEW; KIRO REVIEW BLOCKED UNTIL ADVISORY RECHECK — no implementation,
+OpenClaw configuration, production smoke, or capture is authorized
 
 **Date:** 2026-09-20
 
 **Arc:** none (ad-hoc integration)
 
-**Authority:** Codex architecture/planning lane. Claude issued `ADVISORY PASS`
-on commit `4f5e42c9620518dc8bbf041f82eed86b4d38dc20`; its two implementation-risk
-findings are incorporated here. Kiro remains the required design-review lane
-and Ryan remains the approval authority. Claude cannot authorize execution.
+**Authority:** Codex architecture/planning lane. Claude's prior advisory PASS on
+commit `4f5e42c9620518dc8bbf041f82eed86b4d38dc20` was superseded by an independent
+`ADVISORY FAIL` on commit `936454643f11a2e2dfd89b8b7413a2e5ddd016f5`.
+This revision incorporates all nine reported findings. Kiro remains the
+required design-review lane and Ryan remains the approval authority. Claude
+cannot authorize execution.
 
 **Supersedes for review:** the untracked local draft whose SHA-256 was
 `9846e4df1211359b30427fc4ceebe108616e1dd6de9cb773648ed6cf0ed67f09`.
@@ -101,16 +103,31 @@ These claims are grounded in the installed package, not current web docs:
 - `docs/automation/hooks.md:42-85,420-475` documents bundled, managed, and
   workspace hooks plus the internal-hook disable surface.
 
+Read-only capability probes on 2026-09-20 independently returned version
+`2026.3.2`, a top-level command inventory with no `mcp` command, and a
+`config validate` command that validates without starting the gateway. The next
+portable review bundle must include the literal stdout of `openclaw --version`,
+`openclaw --help`, and `openclaw config validate --help` plus their SHA-256
+digests. Exact integration-config validation remains Gate D evidence because
+Gate A does not authorize creating a live profile or config.
+
 Phase 1 therefore uses a narrow OpenClaw plugin that is an MCP client for a
 local ConvMem strict-profile subprocess. It contains no retrieval or scope
 policy. It translates three fixed plugin tool calls to MCP stdio and returns
 the server response unchanged inside an untrusted-evidence envelope.
 
 The connector must spawn with a fixed executable, fixed argument vector, fixed
-working directory, sanitized environment, and no shell. Query text, selectors,
-ledger IDs, channel messages, and corpus content may never influence the
-executable path, arguments before the MCP protocol boundary, environment keys,
-scope-file path, project-binding-registry path, or working directory.
+working directory, explicitly constructed environment, and no shell. The child
+environment starts empty; it does not copy `process.env`. A closed launch
+schema supplies fixed reviewed values for `CONVMEM_MCP_PROFILE`,
+`CONVMEM_BOUND_READ_SCOPE_FILE`, `CONVMEM_PROJECT_BINDING_REGISTRY_FILE`, a
+reviewed `CONVMEM_CONFIG`, fixed `HOME`, minimal `PATH`, and locale variables.
+Every other variable is absent. Strict server startup hard-ignores and tests
+hostile values for legacy `CONVMEM_READ_SCOPE_DOMAIN` and
+`CONVMEM_READ_SCOPE_FILE`. Query text, selectors, ledger IDs, channel messages,
+and corpus content may never influence the executable path, arguments before
+the MCP protocol boundary, environment keys or values, scope-file path,
+project-binding-registry path, config path, or working directory.
 
 An OpenClaw upgrade, discovery of a native MCP surface, or connector transport
 change invalidates this lock and requires a new capability probe plus design
@@ -139,6 +156,15 @@ The plan is intentionally not a description of already-enforced behavior:
   project binding or protected authorization namespace.
 - `brief.py:255-273` uses title, document, site, and source-path substring
   heuristics for project matching.
+- `query.py:205-206,298-346,507-519,569-574` extracts ledger IDs from free-text
+  search, resolves them outside bound scope, and injects priority hits after
+  ordinary candidate filtering.
+- `ledger.py:176-181,348-382,415-497` accepts caller-supplied IDs without the
+  proposed grammar and resolves a global last-write-wins map before scope.
+- `ledger_ids.py:20-48` truncates site identity to the first hostname label and
+  can mint IDs outside the proposed ASCII grammar.
+- `unresolved.py:21-56` computes status from the global child graph before its
+  current site/domain filtering.
 - `mcp_server.py:898-939` renders a related chain without scope authorization
   and distinguishes a missing ID, while `ledger.py:415-430,456-497` accepts raw
   Chroma IDs and omits unknown-kind children from the rendered subsets.
@@ -221,23 +247,35 @@ an ingest-owned assertion with three parts:
    `project:convmem:v1`, to one canonical project and a set of reviewed ingest
    source-registration IDs. It receives the same regular-file, ownership,
    symlink, mode, closed-schema, startup, and restart checks as the scope file.
-2. During trusted ingestion, after source parsing, ConvMem constructs a reserved
-   `_convmem_auth` record containing `project_binding_id`, normalized `site`,
-   normalized `domain`, and `source_registration_id`. The ingest API strips and
-   rejects that namespace in adapter output and corpus input before constructing
-   it from operator/CLI/watch configuration. It never copies authorization
-   values out of document content.
+2. During trusted ingestion, after source parsing, ConvMem constructs exactly
+   four reserved scalar keys because Chroma metadata is flat:
+   `_convmem_auth.project_binding_id`, `_convmem_auth.site`,
+   `_convmem_auth.domain`, and `_convmem_auth.source_registration_id`. Every
+   adapter discards both the bare `_convmem_auth` key and every key beginning
+   `_convmem_auth.` from its output, and the ingest trust boundary rejects the
+   source/batch if it observes that an untrusted input attempted either form.
+   Only after that check does trusted code construct the four-key set from
+   operator/CLI/watch configuration. It never copies an authorization value out
+   of document content.
 3. The query authorizer accepts a row only when its service-owned binding ID is
    in `allowed_project_bindings`, the registry maps that ID to the bound
    canonical project, the source registration is allowed by that binding, and
    the service-owned site/domain labels satisfy the effective scope.
 
-The ledger record and its Chroma projection carry the same `_convmem_auth`
-record, with Chroma remaining a follower. Rebuild regenerates the projection
+The ledger record and its Chroma projection carry the same four scalar keys,
+with Chroma remaining a follower. The prefix schema is closed: all four keys
+must be present, non-empty, scalar, well-typed, and mutually consistent, and no
+unknown `_convmem_auth.*` key may exist. Any partial, duplicate, conflicting,
+or additional prefixed set denies the row. Rebuild regenerates the projection
 from ledger authority; it does not infer authorization from filenames or prose.
-If the current ledger/storage path cannot reserve and protect this namespace,
-Gate B stops: copying a claimed `_convmem_auth` or `project_binding_id` from a
-document or adapter is not a substitute.
+If the current ledger/storage path cannot reserve and protect the whole prefix,
+Gate B stops: copying a claimed authorization key from a document or adapter is
+not a substitute.
+
+The service-owned site value is either a normalized hostname or the literal
+`not_applicable`; ordinary blank values are invalid. Exact-site scope requires a
+hostname and exact normalized equality. A `not_applicable` bound scope ignores
+row-site selection but does not weaken project-binding or domain proof.
 
 Titles, summaries, documents, ordinary `project`, `domain`, `site`,
 `workspace_directory`, `source_path`, model names, repo basenames, cwd, and MCP
@@ -313,11 +351,20 @@ retrieval and before serialization:
   domain subtree;
 - required provenance fields are present and well-typed.
 
-Unknown or missing metadata denies the row. Search may return fewer than
-`top_k`; it may not refill from unauthorized rows after a bound is reached.
-Keyword fallback, exact-ledger priority injection, vector retrieval, reranking,
-recent-result injection, and any future fallback must all pass the same final
-authorizer.
+Unknown or missing metadata denies the row. Strict search candidate selection
+must be confined to an already authorized bound-scope view before ranking,
+truncation, or result counting; out-of-scope rows may not compete for candidate
+slots or affect response shape. Search may return fewer than `top_k` only
+because fewer eligible in-scope rows matched. Keyword fallback, vector
+retrieval, reranking, recent-result injection, and any future fallback must use
+that same authorized candidate universe and final authorizer. If the serving
+backend cannot constrain candidates before ranking, strict startup fails.
+
+Exact-ledger extraction and priority injection are disabled entirely in strict
+search. Any case-insensitive occurrence of the reserved handle prefixes
+`obs_`, `dec_`, `ver_`, or `dec_prop_` in query text is rejected before
+embedding with one fixed, non-reflecting `identifier_query_not_supported`
+response. `related()` is the only strict handle-lookup surface.
 
 ## 7. Deep module boundary
 
@@ -339,6 +386,9 @@ The module owns:
 `mcp_server.py` owns only profile selection, fixed tool registration, argument
 decoding, delegation, and serialization. Query, unresolved, and ledger modules
 continue to own their domain behavior; they do not learn about OpenClaw.
+`ledger_ids.py` owns external-ID generation and validation. The strict-scope
+module owns binding-scoped identity resolution and hands ledger traversal an
+already authorized, unambiguous graph rather than a global index.
 
 There must be one policy path shared by all three strict tools. A handler-local
 check is not acceptable.
@@ -388,30 +438,58 @@ no synthesis.
 
 Inputs are an optional bounded `limit`, optional project/site/domain selectors,
 and optional `cross_domain`. Omitted selectors inherit the bound scope. Domain
-matching is hierarchical, not the current exact-string comparison. Every
-observation and every child consulted to determine status must be within scope
-or the observation is omitted. Results use the same untrusted-evidence
-envelope.
+matching is hierarchical, not the current exact-string comparison. Strict
+unresolved first authorizes observations and children independently, constructs
+an in-scope-only graph, and computes each observation's status from that graph.
+An out-of-scope child is treated as absent and cannot cause an otherwise
+in-scope observation to disappear. If the only pass verification is out of
+scope, the safe result is to report the observation as unresolved. Results use
+the same untrusted-evidence envelope.
 
 ### 8.3 `related`
 
 Strict `related` accepts only a syntactically valid external ledger ID, never a
 raw Chroma storage ID. `ledger_ids.py` becomes the single owner of the input
-grammar and exposes a validator that applies full-string matching, not search
-or extraction:
+grammar, generation, and validation. Its validator uses `re.fullmatch()` over
+this ASCII grammar, not `match`, `search`, extraction, or an appended `$`:
 
 ```text
 (?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+
 ```
 
-The separate extraction regexes currently in `query.py`,
-`cross_project_digest.py`, and `agent_run_ledger.py` are not authorization
-APIs. Gate B either replaces their validation uses with the centralized helper
-or leaves them explicitly extraction-only. Strict input validation rejects
-Unicode confusables, whitespace, slashes, colons, missing suffixes, embedded
-IDs, trailing text, and values longer than the bound below. Compatibility tests
-must accept representative IDs produced by `ledger_ids.py` and every supported
-ledger writer.
+All ID generators call the validator before returning. Site-derived IDs use the
+entire normalized hostname converted to its ASCII IDNA form; they never use the
+current first-label `site_short()` truncation. Ports, user info, paths, empty
+labels, and invalid IDNA are rejected before minting. Dots remain dots, so
+`staging2.willowyhollow.com` and `staging2.othersite.com` cannot collide, while
+Unicode hostnames have one canonical A-label representation. Invalid legacy IDs
+fail closed in strict mode until a separately reviewed migration exists.
+
+`agent_run_ledger.py` already performs full-string validation at an integrity
+boundary. Gate B replaces that local validator with the centralized helper and
+must not weaken it. The regexes in `query.py` and `cross_project_digest.py` are
+extraction helpers only; strict search disables the former, and the latter's
+narrower shape is a known non-authoritative recall limitation. Strict input
+validation rejects Unicode confusables, whitespace, slashes, colons, missing
+suffixes, embedded IDs, trailing text, and values longer than the bound below.
+
+Every ledger write validates `id` and every non-empty `relates_to` with the
+centralized helper before append. Within one service-owned project binding, an
+external ID is unique: a duplicate is rejected rather than overwritten, and a
+relation must resolve unambiguously inside the same binding or the write fails.
+Cross-binding reuse is allowed because binding is part of identity.
+
+Strict lookup never consults the current global last-write-wins map. It first
+restricts metadata to the allowed project binding, then builds a
+binding-scoped multimap from external ID to all matching rows. Zero matches
+returns the generic denial; more than one match is an integrity failure with
+the same public denial; exactly one becomes the candidate target. Traversal and
+every `relates_to` edge stay inside that same project-binding graph, so a row in
+another binding with the same external ID is a different identity, not a child
+or overwrite. Only after the full same-binding chain is collected does the
+authorizer check target and every traversed node against the effective site and
+domain scope. Duplicate child identities, ambiguous anchors, or any node that
+fails those checks deny the whole chain.
 
 The traversal must collect before rendering:
 
@@ -534,7 +612,14 @@ sufficient by itself: the dedicated profile's managed/local skill and hook
 directories must also be empty, no extra skill or hook directory may be
 configured, and the actual new-session prompt/eligible-skill/hook inventory
 must prove that zero loaded. The watcher is disabled to prevent a mid-session
-skill eligibility change.
+filesystem-triggered skill refresh.
+
+The installed version has a second mid-session refresh trigger when a newly
+eligible remote node appears. The isolated profile starts with no paired or
+connected nodes and accepts no node pairing. Gate D records an empty node
+inventory before and after the hostile-content test. If any node connects or
+the eligible-skill snapshot changes, the session stops and fails; disabling
+the watcher alone is not accepted as proof.
 
 The dedicated profile's managed extension directory is also empty. The single
 connector is loaded only from the approved absolute path, and activation pins
@@ -615,9 +700,10 @@ defines false background completion out of existence for the initial phases.
 
 ### Gate A — plan review
 
-- Claude advisory review passed the prior exact revision; its two preventive
-  findings are resolved in this revision.
-- Kiro performs the charter-required binary design review on the corrected
+- Claude returned `ADVISORY FAIL` on commit `9364546`; all nine findings are
+  corrected in this revision and require advisory recheck.
+- Kiro review remains blocked until that recheck finds no material unresolved
+  bypass, then Kiro performs the charter-required binary review on the same
   exact revision.
 - Ryan approves or rejects architecture and execution planning.
 
@@ -632,6 +718,10 @@ After a Ryan Execute grant, Cursor implements only:
 - the exact three-tool strict profile;
 - empty resources and templates;
 - the ingest-owned project-binding mechanism and hermetic bound fixtures;
+- centralized ID generation/write validation, binding-scoped uniqueness, and
+  ambiguity-denying strict lookup;
+- strict search with no ledger-ID extraction/priority path and an authorized
+  candidate universe;
 - focused hermetic tests.
 
 No live-corpus binding migration, OpenClaw plugin, or OpenClaw configuration is
@@ -652,11 +742,13 @@ Requires a separate Ryan grant naming the profile and exact config path.
 - loopback/local stdio only;
 - synthetic ConvMem corpus and reviewed local inference only;
 - exact reviewed scope file;
+- exact reviewed project-binding registry and child-environment allowlist;
 - no external channels;
 - native memory disabled;
 - ACP disabled;
 - exact three-tool inventory;
 - zero eligible skills, workspace instructions, and plugin prompts;
+- zero paired or connected remote nodes before and after the session;
 - no resources;
 - no transcript capture;
 - no ConvMem writes.
@@ -722,78 +814,108 @@ unexpected surface, or reports false completion.
 
 12. Authorize rows only when the trusted ingest path assigned a binding that is
     allowed by the immutable scope and resolves to the bound canonical project.
-13. Forge matching `project`, `domain`, `site`, `_convmem_auth`,
-    `project_binding_id`, `workspace_directory`, and `source_path` values
-    through corpus or adapter input; prove none can create or override a
-    service-owned authorization record. Reject unknown, stale, conflicting, and
-    cross-project registry bindings.
+13. Forge matching `project`, `domain`, `site`, the bare `_convmem_auth` key,
+    each `_convmem_auth.*` key individually, the complete four-key set, an
+    additional prefixed key, `project_binding_id`, `workspace_directory`, and
+    `source_path` through corpus or adapter input. Prove ingress strips and
+    rejects the whole reserved prefix and only trusted code can construct an
+    all-or-nothing set. Reject partial, unknown, stale, conflicting, and
+    cross-project bindings.
 14. Prove legacy rows without a service-owned binding reduce recall rather than
     leak, and prove Gate B never backfills the live corpus.
 15. Prove strict site filtering rejects source-path-only site inference.
-16. Prove every fallback and priority-injection path receives the same final
-    row authorizer.
+16. Prove vector retrieval, keyword fallback, reranking, and every future
+    fallback select candidates from the authorized view before ranking and
+    truncation. Add or remove out-of-scope rows and prove the response shape,
+    count, and order for a fixed query do not change.
+
+### Cross-surface oracle resistance
+
+17. Put an in-scope, out-of-scope, unknown, and malformed ledger-like handle in
+    otherwise identical search text. Prove all four receive the byte-identical
+    fixed `identifier_query_not_supported` response before embedding and that
+    neither ledger extraction nor priority injection runs.
+18. Give an in-scope observation an out-of-scope pass verification. Prove
+    strict unresolved computes from the scoped graph, returns the observation
+    as unresolved, and is byte-equivalent to the same graph with that child
+    absent.
 
 ### Project selectors and resources
 
-17. Attempt another project through `brief`, `folder_state`,
+19. Attempt another project through `brief`, `folder_state`,
     `memories://brief/{project}`, and `memory://brief/{project}`. Prove the
     surfaces are absent in strict mode.
-18. Call `resources/read` directly with both aliases, another project, URI
+20. Call `resources/read` directly with both aliases, another project, URI
     encoding, and malformed URIs; prove strict mode resolves none and reveals no
     project information.
 
-### Related-chain authorization
+### Ledger identity and related-chain authorization
 
-19. Retrieve a fully in-scope chain.
-20. Request an out-of-scope, unknown, malformed, and raw-Chroma ID; prove
-    byte-equivalent public denial shapes. Exercise the centralized
-    `ledger_ids.py` full-string validator with IDs from every supported writer,
-    embedded-ID strings, trailing text, Unicode confusables, missing suffixes,
-    and all three legacy extraction regex shapes.
-21. Put one out-of-scope decision, verification, sibling, unknown-kind child,
+21. Property-test every ID generator against the centralized `re.fullmatch`
+    validator using full multi-label hosts, two hosts sharing the same first
+    label, `www.*`, Unicode/IDNA, single-label hosts, ports, user info, paths,
+    empty labels, trailing newlines, confusables, and maximum length.
+22. At ledger write time, reject malformed `id` and `relates_to`, a duplicate ID
+    within one binding, and an ambiguous relation. Prove the existing
+    `agent_run_ledger` integrity check is preserved through centralization and
+    cross-binding ID reuse remains distinguishable.
+23. Build collisions across two bindings and within one binding, including two
+    sites while `site_mode=not_applicable`. Prove strict lookup filters by
+    binding before identity resolution, resolves one authorized row, and gives
+    the generic denial for more than one authorized match—never last-write-wins.
+24. Retrieve a fully in-scope, unambiguous chain.
+25. Request an out-of-scope, unknown, malformed, embedded, trailing-text, and
+    raw-Chroma ID; prove byte-equivalent public denial shapes.
+26. Put one out-of-scope decision, verification, sibling, unknown-kind child,
     or metadata-incomplete node behind an in-scope target; prove the entire
     chain is denied without partial output.
-22. Prove authorization occurs before formatting and private audit output does
+27. Prove authorization occurs before formatting and private audit output does
     not contain corpus text.
 
 ### OpenClaw isolation and hostile evidence
 
-23. Validate the exact `2026.3.2` config and inspect effective tool, plugin,
+28. Validate the exact `2026.3.2` config and inspect effective tool, plugin,
     skill, hook, bootstrap, workspace, and prompt-source inventories in a new
     session.
-24. Prove `memory-core`, `memory_search`, `memory_get`, automatic memory flush,
+29. Prove `memory-core`, `memory_search`, `memory_get`, automatic memory flush,
     filesystem, runtime, browser, session, messaging, cron, gateway, and node
     tools are absent. Prove the ungrouped built-in `image` tool is absent and
     `group:openclaw` does not suppress the three explicitly allowed plugin
     tools.
-25. Attempt ACP spawn through natural language, slash command, and tool call;
+30. Record an empty paired/connected-node inventory, attempt a node connection,
+    and re-inspect the eligible-skill snapshot. Any node or new skill fails the
+    gate even though the skill watcher is disabled.
+31. Attempt ACP spawn through natural language, slash command, and tool call;
     prove no child session is created.
-26. Retrieve hostile corpus content containing tool calls, role labels, scope
+32. Retrieve hostile corpus content containing tool calls, role labels, scope
     overrides, memory instructions, and false-completion claims. Prove it stays
     inside the untrusted result envelope and causes no action.
-27. Attempt command, argv, cwd, environment, and scope-file injection through
-    every connector input.
-28. Inspect the effective model/provider route, disable fallback, deny general
+33. Attempt command, argv, cwd, environment, config-path, registry-path, and
+    scope-file injection through every connector input. Start the parent with
+    hostile legacy and unrelated variables; prove the child receives exactly
+    the closed environment schema and strict mode ignores both legacy read-scope
+    variables.
+34. Inspect the effective model/provider route, disable fallback, deny general
     egress, and prove synthetic evidence never reaches a remote model or
     unapproved endpoint.
 
 ### Interruption and perimeter
 
-29. Kill the ConvMem child before response, during response, and after response
+35. Kill the ConvMem child before response, during response, and after response
     receipt but before outer serialization; only the last fully serialized path
     may succeed.
-30. Restart the OpenClaw gateway during a call and prove no persisted false
+36. Restart the OpenClaw gateway during a call and prove no persisted false
     completion or automatic replay.
-31. For Phase 1B, test every configured channel, account, sender allowlist,
+37. For Phase 1B, test every configured channel, account, sender allowlist,
     group policy, mention rule, pairing policy, and Gateway exposure. Unknown or
     unapproved origins must fail before tool invocation.
 
 ### Capture negative controls
 
-32. Prove no OpenClaw transcript path is watched or indexed.
-33. Prove successful MCP retrieval does not create a capture authorization,
+38. Prove no OpenClaw transcript path is watched or indexed.
+39. Prove successful MCP retrieval does not create a capture authorization,
     quarantine claim, or background indexing route.
-34. Exercise every request, graph, document, response, timeout, and wrong-type
+40. Exercise every request, graph, document, response, timeout, and wrong-type
     bound; prove rejection or marked truncation cannot become partial success or
     change scope.
 
@@ -803,12 +925,16 @@ The future execution plan must name exact commands, but the minimum evidence
 set is already fixed:
 
 - focused unit tests for selector resolution and membership proof;
-- trusted-ingest tests proving corpus and adapter inputs cannot forge project
-  bindings;
+- trusted-ingest tests proving corpus and adapter inputs cannot forge any
+  `_convmem_auth.*` key or create a partial authorization set;
+- authorized-candidate-view tests proving out-of-scope rows cannot affect
+  strict search response count, order, or shape;
 - focused MCP inventory tests for tools, resources, and templates;
 - focused related-chain graph tests;
-- centralized external-ledger-ID grammar tests against real generator/writer
-  samples and adversarial embedded or trailing-text inputs;
+- generator/validator property tests plus binding-scoped ID uniqueness,
+  collision, ambiguous-relation, and write-rejection tests;
+- scoped unresolved-graph tests with out-of-scope child verifications;
+- connector child-environment allowlist and remote-node refresh tests;
 - existing retrieval, brief, resource, and ledger regression tests;
 - ConvMem smoke checks from `docs/CODEX-DEEPSEEK-VERIFY.md` where relevant;
 - `openclaw --version`, command inventory, config validation, plugin inventory,
@@ -818,6 +944,12 @@ set is already fixed:
 - production-path and network denial in hermetic tests;
 - exact revision, config digest, scope-file digest, and test output in the
   review handoff.
+
+Every portable review handoff includes immutable text captures and digests for
+the installed `openclaw --version`, top-level `--help`, and
+`config validate --help` probes. Gate D adds the exact isolated config-validation
+result and effective runtime inventories; Gate A evidence never substitutes a
+current web page for an installed-binary probe.
 
 No test may read or mutate the live ConvMem database, live OpenClaw state,
 external channels, or production transcript paths without the later named Ryan
@@ -832,16 +964,25 @@ Stop and return FAIL if any of the following occurs:
   was omitted;
 - an explicit selector widens project, site, or domain;
 - project membership depends on corpus prose or an untrusted substring;
-- a corpus or adapter field can forge, preserve, or override a service-owned
-  project binding;
+- a corpus or adapter field can forge, preserve, or override any reserved
+  authorization key, or a partial/additional `_convmem_auth.*` set authorizes;
 - a row with missing proof is returned;
 - `cross_domain=true` widens retrieval;
 - a resource or unexpected tool appears;
-- `related()` reveals any partial or existence information across scope;
+- any strict surface reveals whether a ledger-like handle is unknown versus
+  out of scope, or out-of-scope rows influence an authorized response shape;
+- strict search extracts or priority-injects a ledger ID from query text;
+- unresolved status or inclusion changes because of an out-of-scope child;
+- an ID generator can emit a value rejected by the canonical validator;
+- a duplicate ID within one binding is accepted, last-write-wins is consulted,
+  or identity resolution occurs before binding scope;
 - strict ledger-ID authorization uses an extraction regex or anything other
   than the centralized full-string validator;
 - OpenClaw native memory or ACP is active;
 - an eligible skill, workspace instruction, hook, or plugin prompt is injected;
+- a remote node pairs/connects or changes the eligible-skill snapshot;
+- the connector child inherits ambient environment variables or consults a
+  legacy read-scope variable;
 - a same-ID plugin resolves outside the approved path or has the wrong digest;
 - inference or connector traffic reaches an unapproved network destination;
 - hostile corpus content reaches an instruction channel or triggers an action;
@@ -890,11 +1031,11 @@ tools and memory outside the initial integration's proof boundary.
 Rejected because capture has independent ingestion, quarantine, completeness,
 and crash-loop failure modes.
 
-## 17. Formal review questions for Kiro
+## 17. Adversarial re-review questions
 
-Claude answered these questions on the prior revision and returned advisory
-PASS with the two preventive findings now incorporated. Kiro must independently
-try to falsify this corrected exact revision and answer with exact references:
+Claude returned `ADVISORY FAIL` on commit `9364546`. A fresh advisory reviewer
+must independently try to falsify this corrected exact revision and answer with
+exact references before Kiro review resumes:
 
 1. Can any request-time input affect the bound scope or connector process
    launch before server authorization?
@@ -905,8 +1046,8 @@ try to falsify this corrected exact revision and answer with exact references:
 4. Can omission, explicit blank, normalization, aliasing, or malformed values
    create a wider result?
 5. Does project proof trust any attacker-controlled prose or ambiguous path?
-6. Can `related()` act as an existence oracle or return a misleading partial
-   chain?
+6. Can search, unresolved, or related act as an existence oracle, resolve a
+   colliding identity, or return a misleading partial chain?
 7. Can OpenClaw `2026.3.2` still expose core tools despite the plugin allowlist?
 8. Can native memory, automatic memory flush, skills, plugin prompts, or ACP
    child configuration reintroduce a second authority or injection route?
@@ -915,20 +1056,22 @@ try to falsify this corrected exact revision and answer with exact references:
 10. Can a crash, timeout, cancellation, or restart become false completion?
 11. Does any phase silently authorize external config, channels, capture,
     indexing, durable writes, or ACP?
-12. Is any acceptance test circular, unverifiable, or dependent on current web
-    documentation rather than the installed binary?
+12. Is any acceptance test circular, unverifiable, internally contradictory,
+    or dependent on current web documentation rather than bundled
+    installed-binary evidence?
 
-Kiro returns the charter-required binary design-review `PASS` or `FAIL`. A
-`FAIL` names each material bypass, exact affected section, exploit path, and
-required correction. Only Ryan may authorize implementation after a Kiro
-`PASS`.
+The advisory reviewer returns `ADVISORY PASS`, `ADVISORY FAIL`, or `INCOMPLETE`.
+After advisory PASS, Kiro independently returns the charter-required binary
+design-review `PASS` or `FAIL` on the same revision. Only Ryan may authorize
+implementation after a Kiro `PASS`.
 
 ## 18. Exit state
 
-This document stops at architecture. It is not an Execute grant. Claude's
-advisory findings are incorporated; this exact corrected revision is presented
-to Kiro next. A separate execution plan and Cursor handoff are created only
-after Kiro PASS and Ryan architecture approval.
+This document stops at architecture. It is not an Execute grant. All nine
+findings from the advisory FAIL on commit `9364546` are incorporated, but Kiro
+remains blocked until the corrected exact revision receives advisory re-review.
+A separate execution plan and Cursor handoff are created only after advisory
+PASS, Kiro PASS, and Ryan architecture approval.
 
 ## Jargon TL;DR
 
