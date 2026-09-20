@@ -9,15 +9,23 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Issue #315 — invalid export record at line 147814 (BLOCKED_ON_RYAN):**
-  read-only Crush diagnosis complete; **no production export mutation performed**.
-  The record is **not** invalid UTF-8 — it is valid JSON byte-identical to clean
-  writer output, preceded by **1661 NUL bytes** (sparse-hole / lost append
-  durability). Exactly one anomalous record in 148,324; Chroma still holds the
-  unit with a matching `content_hash`. Introduced between 2026-09-20 00:18 and
-  04:03 CDT (restic `e51f849a` and `48fde3d7` both scan clean). **Next:** Ryan
-  approves Repair Option A (strip the NUL span, atomic publish) or Option B
-  (reconstruct from Chroma). Diagnosis + authorization packet:
+- **Issue #315 — invalid export record at line 147814 (RESOLVED, one unit lost):**
+  read-only Crush diagnosis found the record was **not** invalid UTF-8 — it was
+  valid JSON preceded by **1661 NUL bytes** (torn append), which is now fixed by
+  a code corrective on branch
+  `docs/2026-09-20-315-invalid-export-record-diagnosis` (commit `0f3c089`; zero-fill
+  has its own error class, every invalid row reports record number/offset/length/
+  digest, and tests now catch a dropped export row). **The row has since vanished
+  from the export entirely:** the file was rewritten out-of-band (three inodes
+  observed) and the export now scans clean — zero anomalies, `logical_projection`
+  PASS. **Consequence: one active unit was silently dropped** —
+  `ca9e3739736068c7…` (`type=pattern`, `content_hash=349edcd651731bb7…`), export
+  8→7 rows for its source while Chroma still holds 8. Cause: the Chroma HNSW
+  SIGSEGV rebuild loop documented in
+  [`KIRO-2026-09-20-chroma-upsert-heap-corruption-handoff.md`](KIRO-2026-09-20-chroma-upsert-heap-corruption-handoff.md).
+  **Next:** Ryan decides (a) restore the one unit row from Chroma, or (b) accept
+  the divergence as derived-state; and the Kiro poison-pill/upsert fix is the
+  real prevention. Diagnosis:
   [`CRUSH-2026-09-20-issue-315-invalid-export-record-diagnosis.md`](CRUSH-2026-09-20-issue-315-invalid-export-record-diagnosis.md).
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
