@@ -9,13 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Issue #263 — Crush verbatim evidence adapter (AUTHORIZED, READY_FOR_REVIEW):**
-  Kiro PASSed architecture tip `3a49408`. Cursor implemented the Crush-only
-  read-only adapter slice on `feat/2026-09-20-263-verbatim-evidence-crush-adapter`
-  (fixtures; NFC+LF match+digest; four evidence states; eight acceptance tests).
-  **Next:** Copilot audit lane on exact pushed tip; no PR until Ryan authorizes.
+- **Issue #263 — bounded session-only Crush evidence (AUTHORIZED, CONTRACT_PUBLISHED):**
+  Ryan selected option B: offset-only retrieval is disabled for this first slice;
+  locators carrying offsets plus a session use explicitly labelled session scope.
+  The canonical contract covers bounded transactional reads, hostile-source and
+  hostile-rendering defenses, partial outcomes, deadlines, and the full test
+  inventory. **Next:** Cursor implements from the single canonical handoff; no
+  PR or activation until independent security review and Copilot audit.
   Resume from
-  [`CURSOR-2026-09-20-263-verbatim-evidence-crush-adapter-handoff.md`](CURSOR-2026-09-20-263-verbatim-evidence-crush-adapter-handoff.md).
+  [`CURSOR-2026-09-20-263-verbatim-evidence-session-only-handoff.md`](CURSOR-2026-09-20-263-verbatim-evidence-session-only-handoff.md).
   Arc: none (ad-hoc).
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
