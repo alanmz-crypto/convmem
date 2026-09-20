@@ -165,3 +165,73 @@ software hypothesis; the matrix closed it.
 
 - **2026-09-20** — Ryan adopted the BIOS-misconfiguration assumption and authorised proceeding
   under it, with proof to follow. Revocation conditions are §5. Review at 24 clean loaded hours.
+
+---
+
+## 9. Monitoring runbook (written for a light-weight model)
+
+**Your job is to report, not to interpret.** Run the block, match the output against the table, and
+do exactly what the matching row says. Do not diagnose, do not form theories about causes, and do
+not run anything not listed here. If output does not match any row, say so and stop.
+
+**Cadence:** every 30–60 minutes while the machine is in use. Skip checks while it is idle — idle
+hours do not count toward the clock.
+
+### The check
+
+```bash
+echo "boot: $(uptime -s)   now: $(date '+%F %T')   $(uptime -p)"
+journalctl -k -b 0 --no-pager | grep -E 'segfault|general protection' | tail -5
+echo "kernel_faults=$(journalctl -k -b 0 --no-pager | grep -cE 'segfault|general protection')"
+coredumpctl list --since "$(uptime -s)" --no-pager 2>&1 | tail -5
+```
+
+### Decision table
+
+| Output | Action |
+|---|---|
+| `kernel_faults=0` and `No coredumps found.` | Report: "clean, N hours since boot". Nothing else. |
+| Any core dump whose executable is **not** under `…/envs/convmem/…` | **TRIPWIRE.** Run the stop block below, then escalate. |
+| Any core dump that **is** convmem, with signal SIGSEGV/SIGABRT | **TRIPWIRE.** Run the stop block below, then escalate. |
+| Any `segfault` / `general protection` line | **TRIPWIRE.** Run the stop block below, then escalate. |
+| Command errors, or output you cannot match | Report the raw output verbatim and stop. |
+
+### Stop block (run on any tripwire, before escalating)
+
+```bash
+systemctl --user stop    convmem-watch.service convmem-refine.service
+systemctl --user disable convmem-watch.service convmem-refine.service
+systemctl --user stop    convmem-reconcile.timer convmem-monitor.timer convmem-cg2-soak-check.timer
+systemctl --user disable convmem-reconcile.timer convmem-monitor.timer convmem-cg2-soak-check.timer
+date -Is
+```
+
+### Escalation message (send this to Ryan verbatim, filling the blanks)
+
+> Arc Poison Pill tripwire at `<timestamp>`. Faulting process `<name>`, signal `<sig>`, CPU `<n>`.
+> Writers stopped and disabled. The BIOS-misconfiguration assumption is **revoked** per
+> `EXECUTION-poison-pill-resume.md` §5. Next step is §6.2 of the arc brief: two-DIMM test, then RMA.
+> Do not re-open the software hypothesis — the upsert matrix closed it.
+
+### Clock
+
+Report hours since boot and the fault count. **Ryan judges whether those hours were loaded** —
+do not estimate that yourself. Thresholds are in §3: ≥6 loaded hours clean is credible, ≥24 accepted.
+
+---
+
+## 10. Ledger corrections (Ryan runs these; stage 2 or later)
+
+Three observations assert a cause the evidence contradicts. `convmem verify` writes to Chroma, so
+these are **stage-2 actions** — not to be run while the store is held at stage 1.
+
+```bash
+convmem verify obs_a09dbfa9e237 --model claude-opus-5 --result fail \
+  --notes "Two-problem separation not supported: the crash is not file-specific (index --file LATEST.md and the refine daemon both SIGSEGV), and 'XMP-off fixed it' does not hold — unrelated programs kept faulting across four boots. Superseded by Arc Poison Pill; see docs/plans/STATUS-chroma-upsert-crash.md."
+
+convmem verify obs_e8db779df8c3 --model claude-opus-5 --result fail \
+  --notes "Chroma 1.5.9 heap corruption not supported: 300,000 update-in-place upserts into the same pre-rebuild index across default threads, num_threads=1, and nine concurrent readers returned 15/15 clean. Cause reattributed to platform (PL2 unenforced at 4095 W on a 13700K), now mitigated but unproven."
+
+convmem verify obs_c1499a660d4f --model claude-opus-5 --result fail \
+  --notes "Live Chroma index corruption not supported: both quarantined indices and the live index as it stood two minutes before the 07:20 crash pass every structural check — size invariants, neighbour ranges, link-list walk to exact EOF, unique labels, pickle/delete-mark consistency, SQLite quick_check."
+```
