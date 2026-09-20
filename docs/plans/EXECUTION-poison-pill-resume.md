@@ -33,7 +33,7 @@ converting the assumption into evidence.
 
 | Stage | Action | Gate to enter |
 |---|---|---|
-| **0** | Fresh restic snapshot + structural baseline of the live index | now |
+| **0** | Record the rollback point (see §2.2 — a *fresh* one is not currently possible) + structural baseline | now |
 | **1** | Readers and queries only (already the case: MCP servers, `ask`, `search`) | stage 0 complete |
 | **2** | `systemctl --user enable --now convmem-refine convmem-reconcile.timer convmem-monitor.timer convmem-cg2-soak-check.timer` | ≥6 loaded hours clean (§3) |
 | **3** | Watcher back: `systemctl --user enable --now convmem-watch` | circuit breaker merged (§7.1) **or** interim exclusion in place (§2.1), **and** ≥24 h clean |
@@ -46,11 +46,24 @@ Exclude the known 67-retry input rather than leaving the loop unguarded:
 This is a stopgap for one known file, not a substitute for §7.1 — any *other* file that starts
 crashing will loop exactly the same way.
 
-### 2.2 Stage 0 detail
+### 2.2 Stage 0 detail — and a blocker found while executing it
 
-- Take a snapshot **now, while the store is quiescent**. The newest complete-data-v2 snapshot
-  (`e51f849a…`) was taken 00:19 today, which is *before* the 04:57 rebuild — so today's only
-  rollback point is a pre-rebuild state.
+**Attempted 2026-09-20 11:21: a fresh snapshot could not be taken.** Starting
+`convmem-restic-local.service` succeeded (`Result=success`) but deliberately took no snapshot —
+it reported *"current — snapshot covers today (id=e51f849a…)"* and exited. `ensure_current_snapshot`
+(`backup_workflows.py:128`) is a **guarantee** function: it ensures a current-day snapshot exists.
+It is not an on-demand snapshot, and neither `scripts/restic-ensure-chroma-snapshot.sh` nor the
+`backup_workflows` CLI exposes a force path.
+
+**Do not work around this with a raw `restic backup`.** The complete-data-v2 workflow carries
+lineage and provenance semantics (see the Recovery Authority arc); a snapshot taken outside it may
+not satisfy the verification tooling.
+
+**So the rollback point for this resumption is `e51f849a…`, taken 00:19 today**, with an honest gap:
+it predates the 04:57 HNSW rebuild and the ~234 units indexed at 10:38–10:41. Restoring it would
+cost roughly eleven hours of corpus change. The offsite copy (`f27bd91e…`) matches it.
+
+- Proceed on that rollback point, knowing its age.
 - Record the structural baseline of the live index with the validator described in §4.2, so later
   corruption is detectable by comparison rather than by a crash.
 
@@ -113,7 +126,7 @@ software hypothesis; the matrix closed it.
 
 ## 6. Safety nets while the assumption is unproven
 
-- **Rollback point** before each stage (§2.2).
+- **Rollback point** before each stage — currently `e51f849a…` (00:19), ~11 hours stale (§2.2).
 - **Keep both quarantined indices** (`chroma.corrupt-2026-09-19`, `…-2026-09-20`, 9.2 GB) until the
   arc closes. They are the only surviving pre-fix artefacts.
 - **Keep** `~/.cache/arc-poison-pill/{probe.py,matrix.sh,matrix.log}`. The 4.5 GB index copies were
@@ -136,7 +149,13 @@ software hypothesis; the matrix closed it.
    CLI honours) or we stop claiming the store is frozen. Today the honest statement is the latter.
 4. **Reader discipline (design question, unowned).** Nine `mcp_server.py` processes hold the live
    store outside the writer lease, and one wrote to it with every unit disabled.
-5. **Export/projection drift.** 3,548 export rows against 436 live units for a single source;
+5. **No on-demand pre-change snapshot (Cursor/Codex — new, found 2026-09-20).** The backup system
+   guarantees one snapshot per day and offers no way to checkpoint before a risky operation. For a
+   safety story that rests on "the restic gate covers today", that is a real gap: today it meant a
+   staged resumption had to proceed on an eleven-hour-old rollback point. Needs a
+   `take_snapshot(reason=…)` sibling or a `--force` path that **preserves** complete-data-v2 lineage
+   semantics — design care, not a quick flag, since it intersects the Recovery Authority arc.
+6. **Export/projection drift.** 3,548 export rows against 436 live units for a single source;
    ~3,100 of `doctor index_drift`'s ~69,040 historical-only ids come from that one file. Export
    compaction dedupes by id and these ids are all distinct, so it cannot reclaim them.
 
