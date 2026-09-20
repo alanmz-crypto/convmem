@@ -3,8 +3,7 @@
 **Arc:** Claude Watch Parity
 **Code revision:** capability-bound redesign — replace pathname reopen, post-publication
 refusal, caller-supplied Gate 0 authority, and dictionary evidence
-**Review tip:** `fix/2026-09-20-claude-gate2-cap-bound` — Copilot exact-tip re-audit
-before Kiro (Kiro blocked until Copilot PASS)
+**Review tip:** `fix/2026-09-20-claude-gate2-cap-bound` @ `3d00819d9f4b02a7700a7bf28768f987c5f6aa88` — Copilot exact-tip re-audit before Kiro (Kiro blocked until Copilot PASS)
 **Predecessor tip (FAIL):** `a5ccc68f47f54c9cfabf00411d1c292b3185864d`
 **Base:** `e6a0634c214cf07c89b551d13410bb276a93b38d` (`origin/main` after Gate 1 #311)
 **Plan:** `a811f58` — `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md`
