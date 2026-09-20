@@ -72,13 +72,18 @@ and do not reintroduce the "poison transcript" framing — it is refuted (§ 6).
    duration Ryan sets.
 2. **Phase C′ (Cursor).** The 2×2 arms, id-fidelity preflight, crash/hang/clean counted separately,
    every count paired with its background fault count.
-3. **Remediation (Cursor).** Per-file quarantine **and** a global circuit breaker; accurate
+3. **Thread-count arm (Cursor).** Replay the live set with default vs `hnsw:num_threads: 1`.
+   Runs before the gate: a systematic difference between two identical arms survives noise.
+4. **Remediation (Cursor).** Per-file quarantine **and** a global circuit breaker; accurate
    crash accounting so `doctor synthesis_gate` stops absorbing native crashes as provider drops.
-4. **Ledger correction (Ryan).** Three `obs_` records assert a two-problem split and a
+5. **Ledger correction (Ryan).** Three `obs_` records assert a two-problem split and a
    file-specific cause that the evidence contradicts.
 
 **Hypothesis status:** (a) poison payload — **refuted** (`LATEST.md` and `refine` crash identically).
-(b) index size / accumulated state — open; rebuild halves the element count and buys ~2 h.
+(b) index size / accumulated state — open, and now has a **mechanism**: chroma #6895 reports
+SIGSEGV on upsert-over-existing via hnswlib `updatePoint`/`repairConnectionsForUpdate`, with
+thread-count workarounds. convmem never sets `hnsw:num_threads`, so the default is 24 here.
+Testable without the platform gate; see the Phase C′ handoff.
 (c) residual on-disk corruption — **unsupported**; the quarantined indices and the live index at
 crash time all validate clean. (d) platform-level memory corruption — **strongly indicated**, untested; the distill survival
 curve (67 runs start, 2 finish, deaths spread across all 14 chunks) is independent support.

@@ -232,6 +232,53 @@ Sixty-seven distill passes over a 40 MB transcript went to `deepseek-v4-flash` (
 this, because a signal death is not a non-zero exit. The circuit breaker below is the control that
 would have stopped it.
 
+## Upstream lead: hnswlib `updatePoint` under multiple threads (2026-09-20, pre-gate)
+
+chroma-core/chroma **#6895** reports a SIGSEGV whose trigger shape is ours exactly: *upserting
+documents that already exist in the index*, where hnswlib's `updatePoint()` calls
+`repairConnectionsForUpdate()` and hits an invalid memory access. The reporter's three workarounds
+are all thread-count related — force `num_threads = 1`, or create the collection with
+`{"hnsw:num_threads": 1}`, or mark the old label deleted and assign a new one instead of reusing
+it — and they report 50,000+ documents indexed with zero crashes afterwards. No fixed version
+exists. chroma-core/chroma **#6852** and neo-cortex-mcp **#2** describe related SIGSEGVs in the
+Rust bindings, the latter with a corrupted/oversized HNSW index on 1.5.5.
+
+**This fits every convmem-side observation that the payload hypothesis could not:**
+
+| Observation | Explained by a multithreaded `updatePoint` race |
+|---|---|
+| Fresh client, 1,200 upserts, no crash | An empty collection has no existing elements to *update* |
+| `LATEST.md` (11 KB) crashes too | Also an upsert over existing ids |
+| `refine` crashes | `update_unit_metadata` is an update path |
+| Rebuild buys ~2 h | Rebuild drops 153,626 elements / 73,545 tombstones to 81,575 / 566; a smaller, less-tombstoned graph means shorter repair walks and a narrower race window, which re-widens as it grows |
+| Survival curve is stochastic | A data race fires probabilistically, not at a fixed chunk |
+| `tokio-rt-worker` threads faulting inside `chromadb_rust_bindings.abi3.so` | The faulting threads are index-update workers |
+
+**Our exposure:** `chroma_store.py:213-214` creates collections with `metadata={"hnsw:space":
+"cosine"}` and **never sets `hnsw:num_threads`**, so Chroma's default applies —
+`multiprocessing.cpu_count()`, which is **24** on this host.
+
+**Honest limits of the match:** the upstream report is macOS 26.5 beta / Apple M5 / Python 3.13 /
+`chroma-hnswlib` 0.7.6; we are Linux x86_64 / Python 3.11 / chromadb 1.5.9 Rust bindings. The
+trigger shape matches, the binary does not. Treat it as a strong lead, not a confirmed match.
+
+**Version reality:** `requirements.txt:3` already pins `chromadb==1.5.9`, and **1.5.9 is the
+latest published release** — there is no upgrade to move to. The only version move available is a
+downgrade below 1.5.4, which is a large step back. So the mitigation to test is the thread setting,
+not a version bump.
+
+### New arm — and it should run FIRST, because it does not need the platform gate
+
+Replay the 436-unit live set against a scratch copy twice: once with the collections as they are,
+once created with `{"hnsw:num_threads": 1}`. A **positive** result (crashes with default threads,
+none single-threaded) is informative even with platform noise in the background, because noise
+cannot explain a systematic difference between two otherwise identical arms. Only a negative
+result stays ambiguous until the platform is quiet.
+
+Note the trade-off if this becomes the fix: single-threaded HNSW updates are slower, and
+`hnsw:num_threads` is set at collection creation — whether it can be changed on an existing
+collection via `modify()` or needs a rebuild is for the implementer to determine, not to assume.
+
 ## What NOT to build
 
 - No fix code in Phase C′ — diagnose, report, stop.
