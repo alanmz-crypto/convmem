@@ -86,6 +86,13 @@ Adapters must treat offsets as untrusted hints. They must validate the source
 identity and search only within a bounded candidate window. A missing or
 ambiguous locator yields `invalid_locator`, not a whole-source scan.
 
+The bounded-window precedence is deterministic: use valid offsets when both
+offsets are present; otherwise constrain the lookup by `session_id` plus
+`conversation_id` when both are present; otherwise constrain it by
+`session_id` alone. Each fallback is capped by the same maximum-message budget.
+If neither a usable session nor conversation identity exists, return
+`invalid_locator` rather than widening to a source-wide search.
+
 For Crush, the adapter may use the existing `sessions` and `messages` tables
 with parameterized queries, preserve `session_id`, `role`, `created_at`, and
 message order, and reuse the existing text-part filtering that excludes
@@ -104,7 +111,9 @@ Each returned excerpt should carry:
 - source timestamp when available;
 - bounded message ordinal or source window;
 - a short excerpt with an explicit truncation marker when truncated;
-- a source-content digest for the returned excerpt;
+- a SHA-256 source-content digest over the post-truncation excerpt after
+  Unicode NFC normalization and LF line-ending normalization, encoded as
+  UTF-8; the digest is not over the pre-truncation source text;
 - evidence status.
 
 The contract should enforce both a maximum number of messages and a maximum

@@ -14,7 +14,7 @@
 |-------|-------|
 | **State** | `READY_FOR_REVIEW` |
 | **Branch** | `plan/2026-09-20-263-verbatim-evidence-contract` |
-| **Tip SHA** | `a90cb0c` |
+| **Tip SHA** | `f946bb9` (Kiro-reviewed architecture tip; this handoff carries the C1/C2/A1 corrections) |
 | **Push status** | pushed to `origin` |
 | **PR** | not opened |
 | **Ryan GATE** | No additional Ryan gate for Kiro architecture review; Cursor implementation requires the normal reviewed-plan/Execute path |
@@ -60,7 +60,11 @@ conversation summary reaches retrieval.
 
 ## Kiro review request
 
-Review the architecture document at the exact pushed tip and answer:
+Review the architecture document and this corrected handoff at the exact pushed
+tip. The prior architecture review covered tip `f946bb9`; the current tip adds
+only the required documentation corrections C1/C2 and advisory A1 below.
+
+Answer:
 
 1. Is a read-only source evidence adapter the correct boundary, rather than
    storing verbatim text in Chroma?
@@ -73,6 +77,9 @@ Review the architecture document at the exact pushed tip and answer:
 5. Are the acceptance tests strong enough to prevent fabricated evidence,
    hidden reasoning/tool-part leakage, unbounded transcript output, and live
    source/config mutation?
+6. Does the pinned SHA-256 normalization rule make evidence digests
+   deterministic and comparable?
+7. Does the locator fallback precedence prevent an unbounded source scan?
 
 Return a verdict on this exact tip: `PASS`, `FAIL`, or `CONDITIONAL PASS`, with
 any required changes named by section.
@@ -139,7 +146,8 @@ Do not:
 
 **Kiro (picking up):**
 
-- [ ] Read the architecture document at tip `a90cb0c`.
+- [ ] Read the architecture document at the reviewed tip `f946bb9` and inspect
+      the corrected handoff at the current branch tip.
 - [ ] Review the boundary and acceptance bar above.
 - [ ] Return an exact-tip verdict with section-level findings.
 
