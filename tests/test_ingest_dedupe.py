@@ -285,12 +285,18 @@ class IngestDedupeTests(unittest.TestCase):
             json.loads(line.decode("utf-8"))["id"]
             for line in export.read_bytes().splitlines()
         }
-        chroma_ids = set(self.store.ids_for_prefix("")) if hasattr(
-            self.store, "ids_for_prefix"
-        ) else None
         self.assertEqual(export_ids, {"alpha", "beta", "gamma"})
-        if chroma_ids is not None:
-            self.assertEqual(export_ids, chroma_ids)
+
+        chroma_ids = {
+            str(row.get("id") or "").strip()
+            for row in self.store.units_metadata()
+            if str(row.get("id") or "").strip()
+        }
+        self.assertEqual(
+            export_ids,
+            chroma_ids,
+            "export and Chroma must agree on which units exist",
+        )
 
 
 if __name__ == "__main__":
