@@ -138,6 +138,11 @@ fresh model read only this file and orient itself?
 
 ## Update Log
 
+- 2026-09-21 — Kiro (design/review lane): **SESSION CLOSE-OUT.** Consolidated all open future work
+  into `KIRO-2026-09-21-poison-pill-closeout-handoff.md` (8-item hardening backlog + resolved items +
+  parked GPU arc `obs_68435fbdab34`); LATEST.md points there as the resume anchor. The Kiro session
+  that ran this arc is closing permanently. Nothing further in-lane; hardening is Cursor's when
+  scheduled. Platform accepted-stable (19 h, 0 crashes this boot).
 - 2026-09-21 — Kiro (design/review lane): housekeeping while OpenClaw install proceeds via
   Grok/Cursor. Confirmed the install is auto-recorded (Cursor is a watched source; transcripts
   indexing live) — `obs_3d9dc004a0d3`. Diagnosed the `phase1-crash-watch` hook as a false positive

@@ -38,6 +38,11 @@ cross-arc snapshot and the linked arc brief below.
   (state `ACCEPTED — hardening backlog open`); prior phase C
   [`KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md`](KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md);
   arc brief [`STATUS-chroma-upsert-crash.md`](../plans/STATUS-chroma-upsert-crash.md).
+  **CLOSE-OUT ANCHOR (resume here):**
+  [`KIRO-2026-09-21-poison-pill-closeout-handoff.md`](KIRO-2026-09-21-poison-pill-closeout-handoff.md)
+  — single durable list of all open future work (8-item hardening backlog, all Cursor lane,
+  non-blocking) + what's resolved (do not re-investigate) + the parked GPU arc `obs_68435fbdab34`.
+  The Kiro session that ran this arc is closed permanently.
   Arc: Poison Pill.
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
