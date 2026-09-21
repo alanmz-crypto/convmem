@@ -22,6 +22,7 @@ from adapters import (
     kiro_session_jsonl,
     kiro_steering,
     markdown_chat,
+    plaintext,
     sqlite_chat,
 )
 from adapters.sqlite_chat import is_sqlite_crush_schema, is_sqlite_opencode_schema
@@ -46,6 +47,7 @@ TOOL_BY_FORMAT = {
     "inter_model_doc": "inter-model",
     "kiro_steering": "kiro",
     "repository_knowledge_v1": "repository-knowledge",
+    "plaintext_document": "document",
 }
 
 # Map detected format -> parse callable. None means "recognized but not yet
@@ -68,6 +70,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "kiro_steering": kiro_steering.parse,
     "repository_knowledge_v1": repository_knowledge.parse,
     "repository_knowledge_blocked": None,
+    "plaintext_document": plaintext.parse,
 }
 
 
@@ -88,7 +91,7 @@ def detect_format(path: Path | str) -> Optional[str]:
     if kiro_steering.is_kiro_steering_doc(path):
         return "kiro_steering"
     if path.suffix == ".md":
-        return None
+        return "plaintext_document" if plaintext.is_plaintext(path) else None
 
     if path.suffix == ".jsonl":
         if "agent-transcripts" in path.parts:
@@ -109,6 +112,9 @@ def detect_format(path: Path | str) -> Optional[str]:
 
     if path.suffix == ".json":
         return _detect_json_continue(path)
+
+    if plaintext.is_plaintext(path):
+        return "plaintext_document"
 
     return None
 
