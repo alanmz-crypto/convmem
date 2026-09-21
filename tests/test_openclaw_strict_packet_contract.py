@@ -416,6 +416,9 @@ def test_m2_schema_meta_and_31_positive_negative_instances():
     assert report["schema_count"] == 31
     assert report["meta_schema_ok"] == 31
     assert report["positive_ok"] == 31
+    assert report["field_table_ok"] == 31
+    assert report["raw_roundtrip_ok"] == 31
+    assert report["nested_families_checked"] >= 20
     assert report["negative_ok"] == report["negative_total"]
     assert report["negative_total"] >= 31 * 4  # unknown/missing/wrong-type/null-discipline each
     # Every schema must include the four core negative names.
@@ -424,7 +427,10 @@ def test_m2_schema_meta_and_31_positive_negative_instances():
         build_negatives,
         load_schema,
     )
+    from protocol_fixture import schema_field_sets as field_sets
 
+    assert len(field_sets.TOP_LEVEL) == 30  # activation-control uses variant table
+    assert len(field_sets.ACTIVATION_CONTROL_VARIANTS_FIELDS) == 4
     for filename in FILENAME_TO_ID:
         schema = load_schema(Path("schemas"), filename)
         from protocol_fixture.schema_instances import POSITIVE_BY_FILENAME
@@ -605,23 +611,22 @@ def test_m2_pinned_known_answer_vectors_dual_oracles():
 
     # Semantic / payload digests for typed observation with explicit nulls.
     # Digests are over oracle-canonical bytes (not jq); both oracles must agree
-    # with the pinned constants.
+    # with the pinned constants AND the pinned digest-input byte strings.
     rec = dict(pv.TYPED_OBSERVATION_RECORD)
-    # Clear digest fields before semantic so exclusion set is the only authority.
     rec["semantic_sha256"] = "sha256:" + ("0" * 64)
     rec["payload_sha256"] = "sha256:" + ("0" * 64)
     sem_bytes_a = ora.semantic_digest_bytes(rec)
     sem_bytes_b = orb.semantic_digest_bytes(rec)
-    assert sem_bytes_a == sem_bytes_b
+    assert sem_bytes_a == sem_bytes_b == pv.TYPED_SEMANTIC_DIGEST_INPUT_UTF8
     sem = "sha256:" + ora.sha256_hex(sem_bytes_a)
     assert sem == pv.SEMANTIC_SHA256
     pay_body = dict(rec)
     pay_body["semantic_sha256"] = sem
     pay_bytes_a = ora.payload_digest_bytes(pay_body)
     pay_bytes_b = orb.payload_digest_bytes(pay_body)
-    assert pay_bytes_a == pay_bytes_b
+    assert pay_bytes_a == pay_bytes_b == pv.TYPED_PAYLOAD_DIGEST_INPUT_UTF8
     pay = "sha256:" + ora.sha256_hex(pay_bytes_a)
-    assert pay == pv.PAYLOAD_SHA256, f"payload_pin_update_needed:{pay}"
+    assert pay == pv.PAYLOAD_SHA256
     assert rec["relates_to_assertion_id"] is None
     assert rec["target_assertion_id"] is None
     assert rec["verification_result"] is None
@@ -636,14 +641,174 @@ def test_m2_pinned_known_answer_vectors_dual_oracles():
     else:
         raise AssertionError("float_accepted")
 
-    # Enrollment / publication / activation / grounding / lineage fixtures present
-    assert pv.ENROLLMENT_FIXTURE["mode"] == "fixture"
-    assert set(pv.PUBLICATION_VARIANTS) == {"serving", "unavailable", "fenced"}
-    assert set(pv.ACTIVATION_CONTROL_VARIANTS) == {"turn", "cancel", "status", "revoke"}
-    assert pv.BUFFERED_RELEASE_RESULT["schema"] == "convmem.buffered-release.v1"
-    assert pv.GROUNDING_BLOB and pv.GROUNDING_ROOT and pv.GROUNDING_EDGE and pv.GROUNDING_OUTPUT
-    assert pv.CAPTURE_RECEIPT["receipt_payload_sha256"].startswith("sha256:")
+    # Enrollment: dual oracles vs static pin (exclude only enrollment_payload_sha256)
+    enroll_a = ora.exclude_named_field_bytes(
+        pv.ENROLLMENT_FIXTURE, "enrollment_payload_sha256"
+    )
+    enroll_b = orb.exclude_named_field_bytes(
+        pv.ENROLLMENT_FIXTURE, "enrollment_payload_sha256"
+    )
+    assert enroll_a == enroll_b == pv.ENROLLMENT_CANONICAL_UTF8
+    assert (
+        ora.labeled_self_hash(pv.ENROLLMENT_FIXTURE, "enrollment_payload_sha256")
+        == orb.labeled_self_hash(pv.ENROLLMENT_FIXTURE, "enrollment_payload_sha256")
+        == pv.ENROLLMENT_PAYLOAD_SHA256
+        == pv.ENROLLMENT_FIXTURE["enrollment_payload_sha256"]
+    )
+
+    # Publication: three distinct self-hashes; dual oracles match static pins
+    pub_hashes = []
+    for name, pin_bytes, pin_sha in (
+        (
+            "serving",
+            pv.PUBLICATION_SERVING_CANONICAL_UTF8,
+            pv.PUBLICATION_SERVING_PAYLOAD_SHA256,
+        ),
+        (
+            "unavailable",
+            pv.PUBLICATION_UNAVAILABLE_CANONICAL_UTF8,
+            pv.PUBLICATION_UNAVAILABLE_PAYLOAD_SHA256,
+        ),
+        (
+            "fenced",
+            pv.PUBLICATION_FENCED_CANONICAL_UTF8,
+            pv.PUBLICATION_FENCED_PAYLOAD_SHA256,
+        ),
+    ):
+        obj = pv.PUBLICATION_VARIANTS[name]
+        body_a = ora.exclude_named_field_bytes(obj, "publication_payload_sha256")
+        body_b = orb.exclude_named_field_bytes(obj, "publication_payload_sha256")
+        assert body_a == body_b == pin_bytes
+        got = ora.labeled_self_hash(obj, "publication_payload_sha256")
+        assert got == orb.labeled_self_hash(obj, "publication_payload_sha256") == pin_sha
+        assert obj["publication_payload_sha256"] == pin_sha
+        pub_hashes.append(pin_sha)
+    assert len(set(pub_hashes)) == 3
+
+    # Grounding: decoded blob SHA + nested canonical pins + payload self-hash
+    assert (
+        ora.sha256_labeled(pv.GROUNDING_BLOB_DECODED_BYTES)
+        == orb.sha256_labeled(pv.GROUNDING_BLOB_DECODED_BYTES)
+        == pv.GROUNDING_BLOB_DECODED_SHA256
+        == pv.GROUNDING_BLOB["sha256"]
+    )
+    assert ora.encode_canonical_bytes(pv.GROUNDING_BLOB) == pv.GROUNDING_BLOB_CANONICAL_UTF8
+    assert (
+        ora.sha256_labeled(pv.GROUNDING_BLOB_CANONICAL_UTF8)
+        == pv.GROUNDING_BLOB_CANONICAL_SHA256
+    )
+    for obj, raw, digest in (
+        (pv.GROUNDING_ROOT, pv.GROUNDING_ROOT_CANONICAL_UTF8, pv.GROUNDING_ROOT_CANONICAL_SHA256),
+        (pv.GROUNDING_EDGE, pv.GROUNDING_EDGE_CANONICAL_UTF8, pv.GROUNDING_EDGE_CANONICAL_SHA256),
+        (
+            pv.GROUNDING_OUTPUT,
+            pv.GROUNDING_OUTPUT_CANONICAL_UTF8,
+            pv.GROUNDING_OUTPUT_CANONICAL_SHA256,
+        ),
+    ):
+        assert ora.encode_canonical_bytes(obj) == orb.encode_canonical_bytes(obj) == raw
+        assert ora.sha256_labeled(raw) == digest
+    g_body_a = ora.exclude_named_field_bytes(pv.GROUNDING_OBJECT, "grounding_payload_sha256")
+    g_body_b = orb.exclude_named_field_bytes(pv.GROUNDING_OBJECT, "grounding_payload_sha256")
+    assert g_body_a == g_body_b == pv.GROUNDING_CANONICAL_UTF8
+    assert (
+        ora.labeled_self_hash(pv.GROUNDING_OBJECT, "grounding_payload_sha256")
+        == pv.GROUNDING_PAYLOAD_SHA256
+    )
+    assert (
+        ora.sha256_labeled(pv.INPUT_BINDINGS_CANONICAL_UTF8)
+        == orb.sha256_labeled(pv.INPUT_BINDINGS_CANONICAL_UTF8)
+        == pv.INPUT_BINDINGS_SHA256
+    )
+    assert (
+        ora.sha256_labeled(pv.SUBMITTED_VIEWS_CANONICAL_UTF8) == pv.SUBMITTED_VIEWS_SHA256
+    )
+
+    # Capture receipt: exclude only receipt_payload_sha256; ref = capture_ + hex
+    r_body_a = ora.exclude_named_field_bytes(pv.CAPTURE_RECEIPT, "receipt_payload_sha256")
+    r_body_b = orb.exclude_named_field_bytes(pv.CAPTURE_RECEIPT, "receipt_payload_sha256")
+    assert r_body_a == r_body_b == pv.RECEIPT_CANONICAL_UTF8
+    assert (
+        ora.labeled_self_hash(pv.CAPTURE_RECEIPT, "receipt_payload_sha256")
+        == pv.RECEIPT_PAYLOAD_SHA256
+        == "sha256:" + pv.RECEIPT_PAYLOAD_HEX
+    )
+    assert pv.RECEIPT_PAYLOAD_HEX != ("a" * 64)
+    assert ora.receipt_ref(pv.RECEIPT_PAYLOAD_HEX) == pv.CAPTURE_RECEIPT_REF
+    assert pv.CAPTURE_RECEIPT_REF.startswith("capture_")
+    assert pv.CAPTURE_RECEIPT_REF.endswith(pv.RECEIPT_PAYLOAD_HEX)
+
+    # Lineage: fork heads distinct; join-set digest pinned; do not claim T2 reducer
+    assert (
+        ora.encode_canonical_bytes(pv.LINEAGE_FORK_INPUTS["head_a"])
+        == pv.LINEAGE_HEAD_A_CANONICAL_UTF8
+    )
+    assert (
+        ora.sha256_labeled(pv.LINEAGE_HEAD_A_CANONICAL_UTF8) == pv.LINEAGE_HEAD_A_SHA256
+    )
+    assert (
+        ora.encode_canonical_bytes(pv.LINEAGE_FORK_INPUTS["head_b_fork"])
+        == pv.LINEAGE_HEAD_B_CANONICAL_UTF8
+    )
+    assert (
+        ora.sha256_labeled(pv.LINEAGE_HEAD_B_CANONICAL_UTF8) == pv.LINEAGE_HEAD_B_SHA256
+    )
+    assert pv.LINEAGE_HEAD_A_SHA256 != pv.LINEAGE_HEAD_B_SHA256
+    assert (
+        ora.encode_canonical_bytes(pv.LINEAGE_FORK_INPUTS["join_targets"])
+        == pv.LINEAGE_JOIN_SET_CANONICAL_UTF8
+    )
+    assert (
+        ora.sha256_labeled(pv.LINEAGE_JOIN_SET_CANONICAL_UTF8) == pv.LINEAGE_JOIN_SET_SHA256
+    )
     assert pv.LINEAGE_FORK_INPUTS["join_requires_complete_parent_head_set"] is True
+
+    # Activation-control + buffered-release: fixture-transport known-answers
+    for name, raw, digest in (
+        (
+            "turn",
+            pv.ACTIVATION_TURN_CANONICAL_UTF8,
+            pv.ACTIVATION_TURN_FIXTURE_TRANSPORT_SHA256,
+        ),
+        (
+            "cancel",
+            pv.ACTIVATION_CANCEL_CANONICAL_UTF8,
+            pv.ACTIVATION_CANCEL_FIXTURE_TRANSPORT_SHA256,
+        ),
+        (
+            "status",
+            pv.ACTIVATION_STATUS_CANONICAL_UTF8,
+            pv.ACTIVATION_STATUS_FIXTURE_TRANSPORT_SHA256,
+        ),
+        (
+            "revoke",
+            pv.ACTIVATION_REVOKE_CANONICAL_UTF8,
+            pv.ACTIVATION_REVOKE_FIXTURE_TRANSPORT_SHA256,
+        ),
+    ):
+        assert (
+            ora.encode_canonical_bytes(pv.ACTIVATION_CONTROL_VARIANTS[name])
+            == orb.encode_canonical_bytes(pv.ACTIVATION_CONTROL_VARIANTS[name])
+            == raw
+        )
+        assert ora.sha256_labeled(raw) == digest
+    assert (
+        ora.encode_canonical_bytes(pv.BUFFERED_RELEASE_RESULT)
+        == pv.BUFFERED_RELEASE_CANONICAL_UTF8
+    )
+    assert (
+        ora.sha256_labeled(pv.BUFFERED_RELEASE_CANONICAL_UTF8)
+        == pv.BUFFERED_RELEASE_FIXTURE_TRANSPORT_SHA256
+    )
+    assert (
+        ora.encode_canonical_bytes(pv.BUFFERED_RELEASE_RESULT["committed"])
+        == pv.BUFFERED_COMMITTED_CANONICAL_UTF8
+    )
+    assert (
+        ora.sha256_labeled(pv.BUFFERED_COMMITTED_CANONICAL_UTF8)
+        == pv.BUFFERED_COMMITTED_FIXTURE_TRANSPORT_SHA256
+    )
+    assert len(pv.PINNED_OBJECT_INVENTORY) >= 10
     assert pv.DECLARED_VECTOR_FUTURE_REDS
 
 
