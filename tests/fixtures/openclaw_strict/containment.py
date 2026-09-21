@@ -27,11 +27,29 @@ def require_bwrap() -> str:
     return path
 
 
+def _mkdir_0700(path: Path) -> None:
+    path.mkdir(parents=False, exist_ok=True)
+    os.chmod(path, 0o700)
+
+
 def create_fixture_root() -> Path:
+    """Fresh disposable fixture — only synthetic identity config, never live paths."""
     root = Path(tempfile.mkdtemp(prefix="convmem-openclaw-fixture.", dir="/tmp"))
     os.chmod(root, 0o700)
     for name in ("home", "tmp", "config", "cache", "data", "pytest-strict", "pytest-legacy"):
-        (root / name).mkdir(mode=0o700)
+        _mkdir_0700(root / name)
+    # Parents mode 0700 before suites; only HOME identity config.toml (no live config/data).
+    home_dot_config = root / "home" / ".config"
+    _mkdir_0700(home_dot_config)
+    home_convmem = home_dot_config / "convmem"
+    _mkdir_0700(home_convmem)
+    (home_convmem / "config.toml").write_text(
+        '[index]\nchroma_dir = "/fixture/legacy-live-identity/chroma"\n',
+        encoding="utf-8",
+    )
+    legacy_root = root / "legacy-live-identity"
+    _mkdir_0700(legacy_root)
+    _mkdir_0700(legacy_root / "chroma")
     return root
 
 
@@ -51,7 +69,6 @@ def build_bwrap_argv(
     runtime_root: Path,
     fixture_root: Path,
     inner_argv: Sequence[str],
-    usr_source: Path | None = None,
     extra_ro_binds: Sequence[tuple[str, str]] = (),
     extra_env: Mapping[str, str] | None = None,
 ) -> list[str]:
@@ -71,6 +88,8 @@ def build_bwrap_argv(
     ):
         if required not in argv:
             raise SystemExit(f"missing_mandatory_flag:{required}")
+    # Real runtime sysroot always at /usr — never mount live host /usr.
+    usr = runtime_root / "sysroot" / "usr"
     argv += [
         "--proc", "/proc",
         "--dev", "/dev",
@@ -78,9 +97,8 @@ def build_bwrap_argv(
         "--tmpfs", "/tmp",
         "--ro-bind", str(source_root), "/src",
         "--ro-bind", str(runtime_root), "/runtime",
+        "--ro-bind", str(usr), "/usr",
     ]
-    usr = usr_source if usr_source is not None else (runtime_root / "sysroot" / "usr")
-    argv += ["--ro-bind", str(usr), "/usr"]
     argv += [
         "--symlink", "usr/bin", "/bin",
         "--symlink", "usr/lib", "/lib",

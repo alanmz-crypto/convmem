@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
 import select
 import signal
@@ -47,7 +48,7 @@ def _tmp_used_bytes(path: str = "/tmp") -> int:
     return total
 
 
-def _kill_process_group(proc: subprocess.Popen[str]) -> None:
+def _kill_process_group(proc: subprocess.Popen[bytes]) -> None:
     if proc.pid is None:
         return
     try:
@@ -59,6 +60,29 @@ def _kill_process_group(proc: subprocess.Popen[str]) -> None:
             pass
 
 
+def _set_nonblocking(fd: int) -> None:
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+
+def _bounded_drain(fd: int, limit_remaining: int) -> bytes:
+    """Drain remaining bytes after kill without treating overflow as success."""
+    chunks: list[bytes] = []
+    total = 0
+    while total < limit_remaining:
+        try:
+            chunk = os.read(fd, min(65536, limit_remaining - total))
+        except BlockingIOError:
+            break
+        except OSError:
+            break
+        if not chunk:
+            break
+        chunks.append(chunk)
+        total += len(chunk)
+    return b"".join(chunks)
+
+
 def run_suite_with_limits(
     name: str,
     argv: List[str],
@@ -67,26 +91,29 @@ def run_suite_with_limits(
     output_limit: int = SUITE_OUTPUT_LIMIT_BYTES,
     sample_interval: float = TMP_SAMPLE_INTERVAL_SEC,
 ) -> SuiteRunResult:
-    """Enforce deadline and output cap while running; reap the process group."""
+    """Enforce deadline/output live with raw os.read; reap process group on violation."""
     started = time.monotonic()
     proc = subprocess.Popen(
         argv,
         cwd="/src",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
+        text=False,
         close_fds=True,
         start_new_session=True,
     )
     assert proc.stdout is not None and proc.stderr is not None
-    out_chunks: list[str] = []
-    err_chunks: list[str] = []
+    stdout_fd = proc.stdout.fileno()
+    stderr_fd = proc.stderr.fileno()
+    _set_nonblocking(stdout_fd)
+    _set_nonblocking(stderr_fd)
+
+    out_buf = bytearray()
+    err_buf = bytearray()
     combined = 0
     max_tmp = 0
     killed_reason = None
     next_sample = started
-    stdout_fd = proc.stdout.fileno()
-    stderr_fd = proc.stderr.fileno()
     open_fds = {stdout_fd, stderr_fd}
 
     while open_fds or proc.poll() is None:
@@ -101,20 +128,21 @@ def run_suite_with_limits(
         timeout = min(0.2, max(0.0, next_sample - now))
         ready, _, _ = select.select(list(open_fds), [], [], timeout)
         for fd in ready:
+            try:
+                chunk = os.read(fd, 65536)
+            except BlockingIOError:
+                continue
+            except OSError:
+                open_fds.discard(fd)
+                continue
+            if not chunk:
+                open_fds.discard(fd)
+                continue
             if fd == stdout_fd:
-                chunk = proc.stdout.read(65536)
-                if chunk:
-                    out_chunks.append(chunk)
-                    combined += len(chunk.encode("utf-8", errors="replace"))
-                else:
-                    open_fds.discard(fd)
-            elif fd == stderr_fd:
-                chunk = proc.stderr.read(65536)
-                if chunk:
-                    err_chunks.append(chunk)
-                    combined += len(chunk.encode("utf-8", errors="replace"))
-                else:
-                    open_fds.discard(fd)
+                out_buf.extend(chunk)
+            else:
+                err_buf.extend(chunk)
+            combined += len(chunk)
             if combined > output_limit:
                 killed_reason = "output_overflow"
                 _kill_process_group(proc)
@@ -130,14 +158,21 @@ def run_suite_with_limits(
     except subprocess.TimeoutExpired:
         _kill_process_group(proc)
         proc.wait(timeout=5)
-    rem_out = proc.stdout.read() if proc.stdout else ""
-    rem_err = proc.stderr.read() if proc.stderr else ""
-    if rem_out:
-        out_chunks.append(rem_out)
-        combined += len(rem_out.encode("utf-8", errors="replace"))
-    if rem_err:
-        err_chunks.append(rem_err)
-        combined += len(rem_err.encode("utf-8", errors="replace"))
+
+    # Bounded drain after termination; overflow stays a failure.
+    remain = max(0, output_limit + 1 - combined)
+    if proc.stdout is not None:
+        drained = _bounded_drain(stdout_fd, remain)
+        out_buf.extend(drained)
+        combined += len(drained)
+        remain = max(0, output_limit + 1 - combined)
+    if proc.stderr is not None:
+        drained = _bounded_drain(stderr_fd, remain)
+        err_buf.extend(drained)
+        combined += len(drained)
+    if combined > output_limit and killed_reason is None:
+        killed_reason = "output_overflow"
+
     max_tmp = max(max_tmp, _tmp_used_bytes("/tmp"))
     elapsed = time.monotonic() - started
     rc = proc.returncode if proc.returncode is not None else 1
@@ -151,6 +186,6 @@ def run_suite_with_limits(
         max_tmp_bytes=max_tmp,
         tmp_sample_interval_sec=sample_interval,
         killed_reason=killed_reason,
-        stdout="".join(out_chunks),
-        stderr="".join(err_chunks),
+        stdout=bytes(out_buf).decode("utf-8", errors="replace"),
+        stderr=bytes(err_buf).decode("utf-8", errors="replace"),
     )

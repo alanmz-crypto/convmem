@@ -38,7 +38,6 @@ from constants import (  # noqa: E402
     EXPECTED_TEST_RUNTIME_TREE_SHA256,
     HEX40_RE,
     INNER_ROLE_ENV,
-    PLUGIN_INVENTORY_PATH,
     PREFLIGHT_OK_PATH,
     SEMANTIC_PARENT_SHA,
     SUITE_WALL_DEADLINE_SEC,
@@ -195,11 +194,31 @@ def _write_synthetic_dep(
     )
 
 
+def _write_synthetic_host_usr(fixture: Path) -> None:
+    """Disposable synthetic root for host_usr — outer /usr bind stays runtime sysroot."""
+    root = fixture / "synthetic_host_usr"
+    tree = root / "tree"
+    tree.mkdir(parents=True, exist_ok=True)
+    planted = tree / "HOST_USR_UNLISTED"
+    planted.write_bytes(b"synthetic-host-usr-unlisted\n")
+    os.chmod(planted, 0o644)
+    # Empty inventory → planted file fails closed as unlisted_or_host_usr.
+    (root / "inventory.json").write_text(json.dumps([], sort_keys=True), encoding="utf-8")
+
+
+def _usr_ro_bind_source(argv: list[str]) -> str | None:
+    for i, arg in enumerate(argv):
+        if arg == "--ro-bind" and i + 2 < len(argv) and argv[i + 2] == "/usr":
+            return argv[i + 1]
+    return None
+
+
 def _evaluate_negative_control(
     *,
     control: str,
     proc: subprocess.CompletedProcess[str],
     fixture: Path,
+    bwrap_argv: list[str],
 ) -> dict:
     """Control passes only with valid report, exact reason prefix, no sentinel, nonzero."""
     expected = CONTROL_EXPECTED_REASON_PREFIX[control]
@@ -233,6 +252,26 @@ def _evaluate_negative_control(
         "import_sentinel": report.get("import_sentinel", "not_written"),
         "expected_reason_prefix": expected,
     }
+    if control == CONTROL_HOST_USR:
+        usr_src = _usr_ro_bind_source(bwrap_argv)
+        # Evidence must show no live host /usr as a --ro-bind source.
+        live_host_usr_source = False
+        for i, arg in enumerate(bwrap_argv):
+            if arg == "--ro-bind" and i + 1 < len(bwrap_argv) and bwrap_argv[i + 1] == "/usr":
+                live_host_usr_source = True
+                break
+        if usr_src is None or usr_src == "/usr" or live_host_usr_source:
+            _die(
+                f"negative_control_invalid:{control}:live_host_usr_in_bwrap_argv:"
+                f"usr_bind_source={usr_src!r}"
+            )
+        result["bwrap_usr_bind_source"] = usr_src
+        result["live_host_usr_source_absent"] = True
+        result["bwrap_argv_ro_bind_pairs"] = [
+            [bwrap_argv[i + 1], bwrap_argv[i + 2]]
+            for i, arg in enumerate(bwrap_argv)
+            if arg == "--ro-bind" and i + 2 < len(bwrap_argv)
+        ]
     print(json.dumps(result, sort_keys=True))
     return result
 
@@ -250,14 +289,15 @@ def _run_negative_control(
     canary_paths = [str(canary_root / "outside_a"), str(canary_root / "outside_b")]
     _prepare_fixture(fixture, canary_paths=canary_paths, frozen_entries=frozen_entries)
 
-    usr_source = None
     extra_ro_binds: list[tuple[str, str]] = []
     extra_env: dict[str, str] = {}
 
     if control == CONTROL_EXPOSED_CANARY:
         extra_ro_binds.append((str(canary_root), str(canary_root)))
     elif control == CONTROL_HOST_USR:
-        usr_source = Path("/usr")
+        # Outer boundary unchanged: runtime sysroot remains at /usr.
+        # Fail via disposable synthetic root through the inventory oracle.
+        _write_synthetic_host_usr(fixture)
     elif control == CONTROL_MISSING_DEP:
         _write_synthetic_dep(fixture, mode="missing")
     elif control == CONTROL_CHANGED_DEP:
@@ -294,26 +334,12 @@ def _run_negative_control(
         runtime_root=runtime_root,
         fixture_root=fixture,
         inner_argv=_inner_argv(),
-        usr_source=usr_source,
         extra_ro_binds=extra_ro_binds,
         extra_env=extra_env,
     )
     proc = launch_contained(argv, timeout=180)
-    return _evaluate_negative_control(control=control, proc=proc, fixture=fixture)
-
-
-def _record_plugin_inventory() -> None:
-    # Autoload disabled via env; record explicit empty/baseline-required inventory.
-    inventory = {
-        "autoload": False,
-        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": os.environ.get(
-            "PYTEST_DISABLE_PLUGIN_AUTOLOAD"
-        ),
-        "explicit_plugins": ["no:cacheprovider"],
-        "baseline_required_plugins": [],
-    }
-    Path(PLUGIN_INVENTORY_PATH).write_text(
-        json.dumps(inventory, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    return _evaluate_negative_control(
+        control=control, proc=proc, fixture=fixture, bwrap_argv=argv
     )
 
 
@@ -349,7 +375,7 @@ def _inner_main() -> int:
     if not Path(PREFLIGHT_OK_PATH).exists():
         print("preflight_sentinel_missing", file=sys.stderr)
         return 1
-    _record_plugin_inventory()
+    # Plugin inventory is recorded from the live strict pytest process (packet contract).
     print(json.dumps({"preflight": report["status"]}, sort_keys=True))
 
     overall_rc = 0
