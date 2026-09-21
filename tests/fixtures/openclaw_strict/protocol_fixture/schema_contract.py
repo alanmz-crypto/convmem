@@ -163,6 +163,8 @@ def build_negatives(schema: dict[str, Any], positive: dict[str, Any]) -> list[di
         allows_null = t == "null" or (isinstance(t, list) and "null" in t)
         if not allows_null and "anyOf" in spec:
             allows_null = any(opt.get("type") == "null" for opt in spec["anyOf"])
+        if not allows_null and "enum" in spec and None in spec["enum"]:
+            allows_null = True
         if allows_null and key in positive:
             omitted = copy.deepcopy(positive)
             del omitted[key]
@@ -176,16 +178,15 @@ def build_negatives(schema: dict[str, Any], positive: dict[str, Any]) -> list[di
                 null_case = {"name": "omitted_required_null", "instance": omitted}
                 break
     if null_case is None:
-        # Schema has no nullable required field: setting a required non-null
-        # field to null must still reject (null discipline).
+        # Schema has no nullable required top-level field: setting any required
+        # non-schema field to null must still reject (null discipline).
         for key in required:
-            spec = props.get(key) or {}
-            t = spec.get("type")
-            if t == "string" or (isinstance(t, list) and "string" in t and "null" not in (t or [])):
-                bad = copy.deepcopy(positive)
-                bad[key] = None
-                null_case = {"name": "omitted_required_null", "instance": bad}
-                break
+            if key == "schema":
+                continue
+            bad = copy.deepcopy(positive)
+            bad[key] = None
+            null_case = {"name": "omitted_required_null", "instance": bad}
+            break
     if null_case is not None:
         out.append(null_case)
 
