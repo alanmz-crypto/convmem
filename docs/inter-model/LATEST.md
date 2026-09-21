@@ -2,6 +2,18 @@
 
 **Updated:** 2026-09-20
 
+## RESUME FIRST — issue #263
+
+This is the active return point after the break. Resume from the canonical
+handoff below; do not switch to Claude Watch Parity or another arc.
+
+- **Current implementation tip:** `b4af28a` — not approved.
+- **Current blocker:** `_bound_excerpt()` can return a partial-query excerpt
+  while reporting `available`, including at the 2,000-character budget.
+- **Next action:** Cursor implements the excerpt-loop addendum, pushes a new
+  exact tip, then requests independent security re-review.
+- **No PR, merge, activation, or production access is authorized.**
+
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
 state, run `convmem brief --stdout-only`. For project and arc state, use the
