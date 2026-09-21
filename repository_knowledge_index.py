@@ -1,5 +1,9 @@
 """Documentary indexing for repository_knowledge_v1 (no LLM summarize/distill)."""
 
+# The publication boundary intentionally mirrors inter_model_index while
+# retaining repository-specific identity and provenance validation.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import hashlib
@@ -92,7 +96,7 @@ def _replay_unchanged(store, unit: dict, doc: str, embedding: list[float], meta:
     return replayed, doc, embedding, replayed_meta
 
 
-def index_repository_knowledge_messages(  # pylint: disable=too-many-locals,too-many-arguments
+def index_repository_knowledge_messages(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
     path: str,
     messages: list[dict],
     *,

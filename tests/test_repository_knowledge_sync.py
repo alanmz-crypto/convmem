@@ -1,5 +1,9 @@
 """Watch routing, argv boundary, and retirement tests."""
 
+# Temp-directory lifecycle and shared repository fixtures are explicit so each
+# assertion can inspect intermediate files after setup.
+# pylint: disable=duplicate-code,consider-using-with
+
 from __future__ import annotations
 
 import json

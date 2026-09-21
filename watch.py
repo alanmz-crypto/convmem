@@ -4,6 +4,9 @@ Uses watchdog (inotify on Linux) with debounce, then spawns `convmem index --fil
 in a subprocess so Chroma/ML memory is not retained in the watch parent.
 """
 
+# The RK acceptance harness intentionally mirrors watch's process cleanup path.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import math
@@ -358,7 +361,7 @@ def load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:
     return debounce, paths, lock_path
 
 
-def run_watch(
+def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
     *,
     debounce_seconds: float | None = None,
     paths: list[str] | None = None,

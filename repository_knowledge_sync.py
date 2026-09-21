@@ -1,5 +1,9 @@
 """Startup and manifest reconciliation for repository-knowledge coverage."""
 
+# The default dispatcher deliberately enters watch's scoped subprocess boundary;
+# the import is local so normal module initialization remains acyclic.
+# pylint: disable=cyclic-import
+
 from __future__ import annotations
 
 import json
@@ -17,7 +21,6 @@ from repository_knowledge_scope import (
     ScopeError,
     apply_config,
     audit_manifest,
-    configure_manifests,
     load_and_validate_manifest,
     manifests_from_cfg,
     validate_prior_identity,
@@ -52,7 +55,9 @@ def public_index_argv(abs_file: str) -> list[str]:
     return [sys.executable, str(repo / "convmem.py"), "index", "--file", abs_file]
 
 
-def default_index_dispatch(abs_file: str, cfg: Mapping[str, Any], argv: list[str]) -> None:
+def default_index_dispatch(
+    _abs_file: str, cfg: Mapping[str, Any], argv: list[str]
+) -> None:
     import subprocess
 
     from watch import _DEFAULT_INDEX_TIMEOUT_SECONDS, _scoped_index_cmd
@@ -231,7 +236,7 @@ def reconcile_all(
 
 def _apply_retirements(
     loaded: LoadedManifest,
-    cfg: Mapping[str, Any],
+    _cfg: Mapping[str, Any],
     *,
     prior: Mapping[str, Any],
 ) -> tuple[dict[str, int], dict[str, dict[str, str]]]:
@@ -272,7 +277,7 @@ def _apply_retirements(
                     "manifest_sha256": rec.prior_manifest_sha256,
                 }
                 continue
-            col = store._collection("knowledge_units")
+            col = store._collection("knowledge_units")  # pylint: disable=protected-access
             fetched = col.get(ids=list(ids), include=["metadatas"])
             metas = fetched.get("metadatas") or []
             row_ids = fetched.get("ids") or []

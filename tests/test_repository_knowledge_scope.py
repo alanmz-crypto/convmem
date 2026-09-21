@@ -1,11 +1,14 @@
 """Table-driven tests for repository-knowledge scope and Git-clean authority."""
 
+# Temp-directory lifecycle and shared repository fixtures are explicit so each
+# assertion can inspect intermediate files after setup.
+# pylint: disable=duplicate-code,consider-using-with
+
 from __future__ import annotations
 
 import json
 import os
 import shutil
-import stat
 import subprocess
 import tempfile
 import unittest
@@ -234,7 +237,7 @@ class ScopeContractTests(unittest.TestCase):
         audit = rks.audit_manifest(man)
         self.assertEqual(audit["unclassified"], 0)
         self.assertGreaterEqual(audit["include"], 1)
-        self.assertEqual(loaded.coverage_root if False else loaded.data["coverage_root"], ".")
+        self.assertEqual(loaded.data["coverage_root"], ".")
 
     def test_unclassified_path_fails_audit(self) -> None:
         man = self._eligible_repo()

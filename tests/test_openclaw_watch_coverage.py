@@ -1,5 +1,9 @@
 """Isolated end-to-end acceptance for OpenClaw watch coverage (two fresh roots)."""
 
+# Acceptance fixtures intentionally share setup with the unit suites and inspect
+# the storage boundary directly to prove isolation and retirement behavior.
+# pylint: disable=duplicate-code,protected-access,consider-using-with
+
 from __future__ import annotations
 
 import hashlib
@@ -330,7 +334,7 @@ class IsolatedWatchCoverageTests(unittest.TestCase):
                     pass
                 proc.communicate()
 
-    def _run_root(self) -> dict:
+    def _run_root(self) -> dict:  # pylint: disable=too-many-locals
         td = tempfile.TemporaryDirectory()
         try:
             base = Path(td.name)

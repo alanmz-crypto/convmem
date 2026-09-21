@@ -13,8 +13,8 @@
     "ingest.py:1174",
     "ingest.py:1212",
     "inter_model_index.py:301",
-    "repository_knowledge_index.py:268",
-    "repository_knowledge_sync.py:242",
+    "repository_knowledge_index.py:272",
+    "repository_knowledge_sync.py:247",
     "scratch_jsonl_prototype/chroma_projection.py:66"
   ],
   "open_production_write_store_call_sites": [
@@ -214,7 +214,7 @@
     },
     {
       "file": "repository_knowledge_index.py",
-      "line": 268,
+      "line": 272,
       "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_index\") as session:",
       "class": "mutates_repository_knowledge_units",
       "required_routing": "production_chroma_write_session",
@@ -223,7 +223,7 @@
     },
     {
       "file": "repository_knowledge_sync.py",
-      "line": 242,
+      "line": 247,
       "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_retire\") as session:",
       "class": "retires_repository_knowledge_units",
       "required_routing": "production_chroma_write_session",

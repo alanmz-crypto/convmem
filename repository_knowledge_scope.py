@@ -1,4 +1,6 @@
-# pylint: disable=too-many-lines
+# The scope contract uses explicit immutable records and a small schema walker;
+# their field/branch counts are part of the frozen fail-closed contract.
+# pylint: disable=too-many-lines,duplicate-code
 """Closed repository-knowledge scope, Git-clean byte authority, and tri-state classification."""
 
 from __future__ import annotations
@@ -100,7 +102,7 @@ class Classification:
 
 
 @dataclass(frozen=True)
-class IncludeEntry:
+class IncludeEntry:  # pylint: disable=too-many-instance-attributes
     path: str
     sha256: str
     content_class: str
@@ -132,7 +134,7 @@ class RequiredWhenPresent:
 
 
 @dataclass(frozen=True)
-class LoadedManifest:
+class LoadedManifest:  # pylint: disable=too-many-instance-attributes
     path: Path
     root: Path
     identity: str
@@ -146,7 +148,7 @@ class LoadedManifest:
 
 
 @dataclass(frozen=True)
-class PathDecision:
+class PathDecision:  # pylint: disable=too-many-instance-attributes
     state: DetectState
     code: str
     detail: str
@@ -164,14 +166,14 @@ _loaded_by_path: dict[str, LoadedManifest | BaseException] = {}
 
 def reset_configuration() -> None:
     """Drop configured manifests and cached validated roots (tests / watch restart)."""
-    global _configured_manifest_paths, _loaded_by_path
+    global _configured_manifest_paths, _loaded_by_path  # pylint: disable=global-statement
     _configured_manifest_paths = ()
     _loaded_by_path = {}
 
 
 def configure_manifests(paths: Iterable[str]) -> None:
     """Replace the configured manifest set. Empty means every path is outside."""
-    global _configured_manifest_paths, _loaded_by_path
+    global _configured_manifest_paths, _loaded_by_path  # pylint: disable=global-statement
     abs_paths: list[str] = []
     seen: set[str] = set()
     for raw in paths:
@@ -213,7 +215,7 @@ def apply_config(cfg: Mapping[str, Any] | None) -> None:
     configure_manifests(manifests_from_cfg(cfg))
 
 
-def schema_path_for(manifest_path: Path) -> Path:
+def schema_path_for(_manifest_path: Path) -> Path:
     return Path(__file__).resolve().parent / SCHEMA_RELPATH
 
 
@@ -238,7 +240,13 @@ def _ptr(path: list[str | int]) -> str:
     return "/" + "/".join(str(part).replace("~", "~0").replace("/", "~1") for part in path)
 
 
-def _validate_against_schema(instance: Any, schema: Mapping[str, Any], *, root: Mapping[str, Any], path: list[str | int]) -> None:
+def _validate_against_schema(  # pylint: disable=too-many-branches
+    instance: Any,
+    schema: Mapping[str, Any],
+    *,
+    root: Mapping[str, Any],
+    path: list[str | int],
+) -> None:
     ref = schema.get("$ref")
     if isinstance(ref, str):
         if not ref.startswith("#/$defs/"):
@@ -284,7 +292,9 @@ def _validate_against_schema(instance: Any, schema: Mapping[str, Any], *, root: 
         if isinstance(item_schema, dict):
             for idx, item in enumerate(instance):
                 _validate_against_schema(item, item_schema, root=root, path=path + [idx])
-        if schema.get("uniqueItems") and len(instance) != len(set(json.dumps(x, sort_keys=True) for x in instance)):
+        if schema.get("uniqueItems") and len(instance) != len(
+            {json.dumps(item, sort_keys=True) for item in instance}
+        ):
             raise ManifestValidationError(f"{_ptr(path)} items must be unique")
         return
     if expected == "string":
@@ -299,7 +309,7 @@ def _validate_against_schema(instance: Any, schema: Mapping[str, Any], *, root: 
             raise ManifestValidationError(f"{_ptr(path)} does not match pattern")
         return
     if expected == "integer":
-        if type(instance) is not int:  # noqa: E721 — bool is a subclass of int
+        if not isinstance(instance, int) or isinstance(instance, bool):
             raise ManifestValidationError(f"{_ptr(path)} must be an integer")
         if "minimum" in schema and instance < int(schema["minimum"]):
             raise ManifestValidationError(f"{_ptr(path)} below minimum")
@@ -457,7 +467,7 @@ def resolve_under_root(root: Path, relpath: str) -> Path:
         raise ScopeError("path_escape", f"illegal repo-relative path {relpath!r}")
     if relpath.startswith("/") or relpath.endswith("/") or "\\" in relpath:
         raise ScopeError("path_escape", f"illegal repo-relative path {relpath!r}")
-    candidate = (root / relpath)
+    candidate = root / relpath
     reject_symlink_components(root, candidate)
     try:
         resolved = candidate.resolve(strict=False)
@@ -665,7 +675,8 @@ _PRIVATE_KEY_MARKERS = tuple(
     )
 )
 _CREDENTIAL_KEY_RE = re.compile(
-    r"(api_key|secret_key|access_token|private_key|password)\s*=\s*['\"]?(?!your_|changeme|placeholder|xxxx|redacted)[^\s'\"]+",
+    r"(api_key|secret_key|access_token|private_key|password)\s*=\s*['\"]?"
+    r"(?!your_|changeme|placeholder|xxxx|redacted)[^\s'\"]+",
     re.IGNORECASE,
 )
 
@@ -706,7 +717,7 @@ def _cached_manifest(manifest_abs: str) -> LoadedManifest:
             return cached
     try:
         loaded = load_and_validate_manifest(Path(manifest_abs))
-    except BaseException as exc:
+    except BaseException as exc:  # pylint: disable=broad-exception-caught
         _loaded_by_path[manifest_abs] = exc
         raise
     _loaded_by_path[manifest_abs] = loaded
@@ -730,7 +741,9 @@ def _without_following_final(path: Path) -> Path:
     return parent / raw.name
 
 
-def decide_path(path: Path | str) -> PathDecision:
+def decide_path(  # pylint: disable=broad-exception-caught
+    path: Path | str,
+) -> PathDecision:
     if not _configured_manifest_paths:
         return PathDecision("outside", "outside_unconfigured", "no repository-knowledge manifests configured")
     try:
@@ -749,7 +762,11 @@ def decide_path(path: Path | str) -> PathDecision:
             detail = getattr(exc, "detail", str(exc))
             # A configured root whose manifest cannot load still blocks paths
             # beneath that root once the root can be guessed from the path.
-            guessed_root = Path(manifest_abs).resolve().parents[1] if Path(manifest_abs).name else None
+            guessed_root = (
+                Path(manifest_abs).resolve().parents[1]
+                if Path(manifest_abs).name
+                else None
+            )
             try:
                 root = git_toplevel(Path(manifest_abs).parent)
                 guessed_root = root
@@ -760,7 +777,9 @@ def decide_path(path: Path | str) -> PathDecision:
                     resolved = abs_path.resolve(strict=False)
                     if _is_relative_to(resolved, guessed_root.resolve(strict=False)):
                         under_any_root = True
-                        last_error = PathDecision("blocked", str(code), str(detail), root=guessed_root)
+                        last_error = PathDecision(
+                            "blocked", str(code), str(detail), root=guessed_root
+                        )
                 except OSError:
                     under_any_root = True
                     last_error = PathDecision("blocked", str(code), str(detail))
@@ -801,7 +820,12 @@ def _repo_relpath(root: Path, resolved: Path) -> str:
     return rel.as_posix()
 
 
-def _decide_under_manifest(loaded: LoadedManifest, resolved: Path, *, original_rel_hint: str) -> PathDecision:
+def _decide_under_manifest(
+    loaded: LoadedManifest,
+    resolved: Path,
+    *,
+    original_rel_hint: str,  # pylint: disable=unused-argument
+) -> PathDecision:
     try:
         reject_symlink_components(loaded.root, resolved)
     except ScopeError as exc:
@@ -809,13 +833,33 @@ def _decide_under_manifest(loaded: LoadedManifest, resolved: Path, *, original_r
     try:
         relpath = _repo_relpath(loaded.root, resolved)
     except ValueError:
-        return PathDecision("blocked", "path_escape", "resolved path escaped root", root=loaded.root, manifest=loaded)
+        return PathDecision(
+            "blocked",
+            "path_escape",
+            "resolved path escaped root",
+            root=loaded.root,
+            manifest=loaded,
+        )
     if relpath != Path(relpath).as_posix() or relpath.startswith("/"):
-        return PathDecision("blocked", "path_escape", "non-posix relpath", relpath=relpath, root=loaded.root, manifest=loaded)
+        return PathDecision(
+            "blocked",
+            "path_escape",
+            "non-posix relpath",
+            relpath=relpath,
+            root=loaded.root,
+            manifest=loaded,
+        )
     try:
         file_toplevel = git_toplevel(resolved.parent if resolved.exists() else loaded.root)
     except ScopeError as exc:
-        return PathDecision("blocked", "nested_worktree", exc.detail, relpath=relpath, root=loaded.root, manifest=loaded)
+        return PathDecision(
+            "blocked",
+            "nested_worktree",
+            exc.detail,
+            relpath=relpath,
+            root=loaded.root,
+            manifest=loaded,
+        )
     if file_toplevel.resolve() != loaded.root:
         return PathDecision(
             "blocked",
@@ -1034,4 +1078,4 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except (ScopeError, ManifestValidationError) as exc:
         print(f"audit failed: {exc}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from exc

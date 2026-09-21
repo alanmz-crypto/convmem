@@ -7511,7 +7511,7 @@
     },
     {
       "path": "adapters/repository_knowledge.py",
-      "sha256": "fb6fba46ed3344da11c7f4f05c4507921601b7115232adf1e09ae22a0ac947b0",
+      "sha256": "e4450bb82e761d3bd4cfcd78c0bb8867453a44d0e2446384721096ce19b1560c",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8123,7 +8123,7 @@
     },
     {
       "path": "repository_knowledge_index.py",
-      "sha256": "d088d6fd873783ca330edb3ab35dbc3fcaf0eeaa882fc79f97fd4e8b18376967",
+      "sha256": "51505c1f2d844a22b8211d9dcfbc78529760490fef40326e7acbb6313a8d9b15",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8140,7 +8140,7 @@
     },
     {
       "path": "repository_knowledge_scope.py",
-      "sha256": "60665697fb5dca7938713fa0617b9c8edcab2a14020b854eaaaec6dd81ff4886",
+      "sha256": "6d6d7dd5e2f229dc3f0985dba3dae0e81ae2b6f52c6d73a11557ebf5715735a7",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8157,7 +8157,7 @@
     },
     {
       "path": "repository_knowledge_sync.py",
-      "sha256": "776ae78eb6eb20665f6efbeaaac78a2b110da00433fbedede24f498449c1e6bf",
+      "sha256": "0e15be89291e20dd59161b52a54bb775bf0ea711350fa154befc87fcfbf575d4",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8429,7 +8429,7 @@
     },
     {
       "path": "tests/test_openclaw_watch_coverage.py",
-      "sha256": "25fa6267f6d669bc92c271a18b84b766c689b914e097ccdea9bc2647f1ffb9bc",
+      "sha256": "ab040f7e18de366b3933bce634968d2f9c7ca9ae020bc8d8d0fda0b2f3c7f93d",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8497,7 +8497,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_adapter.py",
-      "sha256": "ac2f195628d7ab4267218b01c4894a0b9ae7d511d8e3fe15a5a7ed89cc526314",
+      "sha256": "1341a2a9dd1ea7053f727a5823657899723a5d607752cc3e76c4188e03a6b40f",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8514,7 +8514,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_scope.py",
-      "sha256": "d830a4679c704eb0714a2c179f9254baa8922fca5034208ac1360148a53d3336",
+      "sha256": "b810fb7782836d86137f0249937f71ab27e44ffc40548ff1ba4ea0f3e20d032d",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8531,7 +8531,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_sync.py",
-      "sha256": "8e523aaf17a5201d650918cd7fa8f5680a9f9c3858d030173a0a3931406aea46",
+      "sha256": "fecc1ee674f40db3bd6055940e50d9661c5bb32c55837d96e91366b51f0fc563",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8633,7 +8633,7 @@
     },
     {
       "path": "watch.py",
-      "sha256": "b80cf09ecb79860dbc5256bfb09b4647a11f8c855403c00b8b191b3d19e7666d",
+      "sha256": "4bcbfa823028fd49e03ed33f06d080ad1c3d1f399351b35da24ac4996ff62af7",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

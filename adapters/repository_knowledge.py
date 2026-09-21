@@ -1,5 +1,9 @@
 """Deterministic repository-knowledge chunkers. Never execute input or call an LLM."""
 
+# Chunk is an explicit immutable transport record; similarity with the existing
+# documentary indexer is intentional because both implement the same boundary.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import ast
@@ -30,7 +34,7 @@ class RepositoryKnowledgeParseError(ValueError):
 
 
 @dataclass(frozen=True)
-class Chunk:
+class Chunk:  # pylint: disable=too-many-instance-attributes
     label: str
     locator: str
     content: str
