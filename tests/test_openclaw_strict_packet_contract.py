@@ -596,18 +596,30 @@ def test_m2_pinned_known_answer_vectors_dual_oracles():
     else:
         raise AssertionError("underscore_site_accepted")
 
-    # Semantic / payload digests for typed observation with explicit nulls
+    # Semantic / payload digests for typed observation with explicit nulls.
+    # Digests are over oracle-canonical bytes (not jq); both oracles must agree
+    # with the pinned constants.
     rec = dict(pv.TYPED_OBSERVATION_RECORD)
-    sem = "sha256:" + ora.sha256_hex(ora.semantic_digest_bytes(rec))
+    # Clear digest fields before semantic so exclusion set is the only authority.
+    rec["semantic_sha256"] = "sha256:" + ("0" * 64)
+    rec["payload_sha256"] = "sha256:" + ("0" * 64)
+    sem_bytes_a = ora.semantic_digest_bytes(rec)
+    sem_bytes_b = orb.semantic_digest_bytes(rec)
+    assert sem_bytes_a == sem_bytes_b
+    sem = "sha256:" + ora.sha256_hex(sem_bytes_a)
+    assert sem == pv.SEMANTIC_SHA256
     pay_body = dict(rec)
     pay_body["semantic_sha256"] = sem
-    pay = "sha256:" + ora.sha256_hex(ora.payload_digest_bytes(pay_body))
-    assert sem == pv.SEMANTIC_SHA256
-    assert pay == pv.PAYLOAD_SHA256
-    assert "sha256:" + orb.sha256_hex(orb.semantic_digest_bytes(rec)) == pv.SEMANTIC_SHA256
-    pay_body_b = dict(rec)
-    pay_body_b["semantic_sha256"] = sem
-    assert "sha256:" + orb.sha256_hex(orb.payload_digest_bytes(pay_body_b)) == pv.PAYLOAD_SHA256
+    pay_bytes_a = ora.payload_digest_bytes(pay_body)
+    pay_bytes_b = orb.payload_digest_bytes(pay_body)
+    assert pay_bytes_a == pay_bytes_b
+    pay = "sha256:" + ora.sha256_hex(pay_bytes_a)
+    assert pay == pv.PAYLOAD_SHA256, f"payload_pin_update_needed:{pay}"
+    assert rec["relates_to_assertion_id"] is None
+    assert rec["target_assertion_id"] is None
+    assert rec["verification_result"] is None
+    assert rec["decision_disposition_ref"] is None
+    assert rec["supersession_disposition_ref"] is None
 
     # Float / surrogate rejects on strict encode
     try:
