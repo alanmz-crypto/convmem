@@ -116,32 +116,44 @@ def build_negatives(schema: dict[str, Any], positive: dict[str, Any]) -> list[di
         del missing[required[0]]
         out.append({"name": "missing_required_key", "instance": missing})
 
-    # Wrong type: prefer a string property.
+    # Wrong type: prefer a string property; fall back across common types.
+    wrong = None
     for key, spec in props.items():
-        if key not in positive:
+        if key not in positive or key == "schema":
             continue
-        if spec.get("type") == "string" or (
-            isinstance(spec.get("type"), list) and "string" in spec["type"] and positive[key] is not None
-        ):
-            wrong = copy.deepcopy(positive)
-            wrong[key] = 12345
-            out.append({"name": "wrong_type", "instance": wrong})
+        t = spec.get("type")
+        if t == "string" or (isinstance(t, list) and "string" in t and positive[key] is not None):
+            cand = copy.deepcopy(positive)
+            cand[key] = 12345
+            wrong = {"name": "wrong_type", "instance": cand}
             break
-        if spec.get("type") == "integer":
-            wrong = copy.deepcopy(positive)
-            wrong[key] = "not-an-integer"
-            out.append({"name": "wrong_type", "instance": wrong})
+        if t == "integer":
+            cand = copy.deepcopy(positive)
+            cand[key] = "not-an-integer"
+            wrong = {"name": "wrong_type", "instance": cand}
             break
-        if spec.get("type") == "object":
-            wrong = copy.deepcopy(positive)
-            wrong[key] = "not-an-object"
-            out.append({"name": "wrong_type", "instance": wrong})
+        if t == "boolean":
+            cand = copy.deepcopy(positive)
+            cand[key] = "not-a-boolean"
+            wrong = {"name": "wrong_type", "instance": cand}
             break
-        if spec.get("type") == "array":
-            wrong = copy.deepcopy(positive)
-            wrong[key] = "not-an-array"
-            out.append({"name": "wrong_type", "instance": wrong})
+        if t == "object":
+            cand = copy.deepcopy(positive)
+            cand[key] = "not-an-object"
+            wrong = {"name": "wrong_type", "instance": cand}
             break
+        if t == "array":
+            cand = copy.deepcopy(positive)
+            cand[key] = "not-an-array"
+            wrong = {"name": "wrong_type", "instance": cand}
+            break
+        if "enum" in spec and positive.get(key) is not None:
+            cand = copy.deepcopy(positive)
+            cand[key] = 12345
+            wrong = {"name": "wrong_type", "instance": cand}
+            break
+    if wrong is not None:
+        out.append(wrong)
 
     # Omitted required-null: required field whose type includes null must be present.
     null_case = None
