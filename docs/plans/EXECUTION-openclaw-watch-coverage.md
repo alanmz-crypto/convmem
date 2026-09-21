@@ -61,7 +61,7 @@ Minimum current inclusions:
   `source_reconciler.py`, `adapters/detect.py`,
   `adapters/inter_model_doc.py`, `inter_model_index.py`,
   `chroma_write_store.py`, `provenance.py`, `provenance_binding.py`,
-  `propose_decision.py`, `governed_admission.py`, and `observe.py`;
+  `propose_decision.py`, and `observe.py`;
 - `tests/test_watch.py`, `tests/test_watch_skip.py`,
   `tests/test_inter_model_doc.py`, `tests/test_provenance.py`,
   `tests/test_provenance_continuity.py`, and every current governed-writer
@@ -75,8 +75,9 @@ Minimum current inclusions:
 
 The exact approved OpenClaw architecture and execution documents at
 `cd9d2698b7423f907b552bc9118a0af523018ca9`, the bounded actualization brief,
-and T0–T5 files become active entries only when the same reviewed bytes exist
-in the target checkout. Until then, the audit reports them as
+T0–T5 files, and prospective Gate W files such as `governed_admission.py`
+become active entries only when the same reviewed bytes exist in the target
+checkout. Until then, the audit reports them as
 `required_when_present`, not covered. It must never copy their `/tmp` or
 worktree versions into the watched checkout.
 
@@ -91,7 +92,9 @@ mandatory exclusion has an explicit rule and fixture.
 ### W1 — Scope and byte-authority module
 
 Implement `repository_knowledge_scope.py` as the only module that loads,
-validates, resolves, and classifies repository knowledge. It must expose
+validates, resolves, and classifies repository knowledge. Implement the closed
+schema contract with the Python standard library; do not import an ambient
+`jsonschema` installation. It must expose
 side-effect-free operations for:
 
 - manifest/schema validation;

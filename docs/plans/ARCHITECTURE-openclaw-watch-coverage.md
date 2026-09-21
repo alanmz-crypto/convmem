@@ -39,9 +39,11 @@ tests, JSON Schema, JavaScript/MJS, TOML, and shell/text fixtures are not.
 ### 2.1 Closed allowlist, not extension admission
 
 The canonical scope is
-`config/repository-knowledge/openclaw-watch-scope-v1.json`, validated against
-`config/repository-knowledge/openclaw-watch-scope-v1.schema.json`. Each active
-entry contains:
+`config/repository-knowledge/openclaw-watch-scope-v1.json`. A standard-library
+validator in `repository_knowledge_scope.py` enforces the complete closed
+contract also documented by
+`config/repository-knowledge/openclaw-watch-scope-v1.schema.json`; the runtime
+does not import `jsonschema` or add a dependency. Each active entry contains:
 
 - an exact repository-relative regular-file path;
 - SHA-256 of the committed bytes;
