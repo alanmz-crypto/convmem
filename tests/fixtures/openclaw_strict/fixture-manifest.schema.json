@@ -1,0 +1,100 @@
+{
+  "$id": "convmem.strict-fixture-manifest.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_kind": {
+      "const": "protocol_fixture"
+    },
+    "artifacts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "pattern": "^[0-7]{4}$",
+            "type": "string"
+          },
+          "path": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "mode",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "code_baseline_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "components": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "enum": [
+              "builder",
+              "strict_server",
+              "supervisor",
+              "controller",
+              "plugin"
+            ]
+          },
+          "sha256": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "maxItems": 5,
+      "minItems": 5,
+      "type": "array"
+    },
+    "manifest_payload_sha256": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "plan_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "schema": {
+      "const": "convmem.strict-fixture-manifest.v1"
+    },
+    "source_tree_sha256": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "test_runtime_tree_sha256": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "artifact_kind",
+    "plan_sha",
+    "code_baseline_sha",
+    "source_tree_sha256",
+    "test_runtime_tree_sha256",
+    "components",
+    "artifacts",
+    "manifest_payload_sha256"
+  ],
+  "title": "ConvMem strict fixture manifest (test-only)",
+  "type": "object"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "openclaw-convmem-reader",
+  "version": "0.0.0-t0a",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "description": "Bounded ConvMem reader plugin — production registration refuses until Gate D."
+}

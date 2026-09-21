@@ -1,0 +1,234 @@
+"""Frozen T0a constants from Architecture §6.5.8 / Execution §5.1."""
+
+from __future__ import annotations
+
+CODE_BASELINE_SHA = "7809f20dc53d9dd19f765c3ec3214a3df54ca5bf"
+SEMANTIC_PARENT_SHA = "cd9d2698b7423f907b552bc9118a0af523018ca9"
+EXPECTED_TEST_RUNTIME_TREE_SHA256 = (
+    "sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b"
+)
+
+RUNTIME_NOT_QUALIFIED = "runtime_not_qualified"
+EX_CONFIG = 78
+HEX40_RE = r"^[0-9a-f]{40}$"
+
+TMPFS_SIZE_BYTES = 268435456
+SUITE_WALL_DEADLINE_SEC = 600
+SUITE_OUTPUT_LIMIT_BYTES = 16777216
+TMP_SAMPLE_INTERVAL_SEC = 1.0
+
+CHILD_ENV = {
+    "HOME": "/fixture/home",
+    "TMPDIR": "/fixture/tmp",
+    "XDG_CONFIG_HOME": "/fixture/config",
+    "XDG_CACHE_HOME": "/fixture/cache",
+    "XDG_DATA_HOME": "/fixture/data",
+    "PATH": "/runtime/bin:/usr/bin",
+    "LANG": "C.UTF-8",
+    "LC_ALL": "C.UTF-8",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+}
+
+# Host-only sentinels planted outside bwrap; must never appear inside.
+HOST_SENTINEL_ENV = {
+    "CONVMEM_OPENCLAW_SENTINEL_CRED": "synthetic-canary-credential",
+    "CONVMEM_OPENCLAW_SENTINEL_CONFIG": "synthetic-canary-config",
+}
+
+# Production-fake selectors — presence inside the child is an independent failure.
+FORBIDDEN_CHILD_ENV_PREFIXES = (
+    "OPENCLAW_FIXTURE_SELECT_FAKE",
+    "CONVMEM_SELECT_PRODUCTION_FAKE",
+    "OPENCLAW_USE_FAKE",
+)
+
+BWRAP_MANDATORY_FLAGS = (
+    "--unshare-user",
+    "--unshare-pid",
+    "--unshare-ipc",
+    "--unshare-net",
+    "--unshare-uts",
+    "--disable-userns",
+    "--assert-userns-disabled",
+    "--cap-drop",
+    "ALL",
+    "--new-session",
+    "--die-with-parent",
+)
+
+FORBIDDEN_BWRAP_FLAGS = (
+    "--unshare-user-try",
+    "--unshare-ipc-try",
+    "--unshare-pid-try",
+    "--unshare-net-try",
+    "--unshare-uts-try",
+    "--unshare-cgroup-try",
+    "--share-net",
+    "--not-a-security-boundary",
+    "--as-pid-1",
+)
+
+EDIT_ALLOWLIST_EXACT = frozenset(
+    {
+        "openclaw_activation_controller.py",
+        "openclaw_activation_supervisor.py",
+        "openclaw_strict_server.py",
+        "bound_read_scope.py",
+        "strict_grounding.py",
+        "strict_evidence_state.py",
+        "strict_projection_publisher.py",
+        "strict_projection.py",
+        "mcp_server.py",
+        "requirements.txt",
+        "integrations/openclaw-convmem-reader/package.json",
+        "integrations/openclaw-convmem-reader/openclaw.plugin.json",
+        "integrations/openclaw-convmem-reader/index.js",
+        "integrations/openclaw-convmem-reader/test/connector.test.mjs",
+        "tests/test_bound_read_scope.py",
+        "tests/test_strict_grounding.py",
+        "tests/test_strict_evidence_state.py",
+        "tests/test_strict_projection_publisher.py",
+        "tests/test_strict_projection.py",
+        "tests/test_strict_projection_recovery.py",
+        "tests/test_mcp_openclaw_strict.py",
+        "tests/test_strict_snapshot_revocation.py",
+        "tests/test_openclaw_lifecycle_config.py",
+        "tests/test_openclaw_connector_contract.py",
+        "tests/test_openclaw_activation_controller.py",
+        "tests/test_openclaw_activation_supervisor.py",
+        "tests/test_openclaw_strict_packet_contract.py",
+    }
+)
+
+EDIT_ALLOWLIST_PREFIXES = ("tests/fixtures/openclaw_strict/",)
+
+# Frozen later-milestone allowlist (constants only — M1 does not create these files).
+SCHEMA_ALLOWLIST = frozenset(
+    {
+        "schemas/convmem-bound-read-scope-v2.schema.json",
+        "schemas/convmem-project-binding-registry-v3.schema.json",
+        "schemas/convmem-bound-authority-record-v3.schema.json",
+        "schemas/convmem-authority-disposition-v1.schema.json",
+        "schemas/convmem-strict-provenance-context-v2.schema.json",
+        "schemas/convmem-strict-grounding-v1.schema.json",
+        "schemas/convmem-capture-receipt-v1.schema.json",
+        "schemas/convmem-strict-fixture-bundle-v2.schema.json",
+        "schemas/convmem-strict-citation-map-v1.schema.json",
+        "schemas/convmem-bound-authority-manifest-v3.schema.json",
+        "schemas/convmem-bound-projection-row-v2.schema.json",
+        "schemas/convmem-strict-graph-v1.schema.json",
+        "schemas/convmem-bound-projection-manifest-v3.schema.json",
+        "schemas/convmem-strict-generation-layout-v2.schema.json",
+        "schemas/convmem-strict-publication-v2.schema.json",
+        "schemas/convmem-strict-enrollment-v1.schema.json",
+        "schemas/convmem-strict-slot-v1.schema.json",
+        "schemas/convmem-strict-source-cutoff-v1.schema.json",
+        "schemas/convmem-strict-semantic-contract-v1.schema.json",
+        "schemas/convmem-strict-state-v2.schema.json",
+        "schemas/convmem-clock-review-v1.schema.json",
+        "schemas/convmem-raw-evidence-v3.schema.json",
+        "schemas/convmem-error-v1.schema.json",
+        "schemas/convmem-strict-config-v2.schema.json",
+        "schemas/convmem-openclaw-connector-launch-v2.schema.json",
+        "schemas/convmem-openclaw-activation-v2.schema.json",
+        "schemas/convmem-activation-control-v1.schema.json",
+        "schemas/convmem-activation-retirement-v1.schema.json",
+        "schemas/convmem-activation-launch-policy-v1.schema.json",
+        "schemas/convmem-activation-manager-policy-v1.schema.json",
+        "schemas/convmem-controller-socket-policy-v1.schema.json",
+    }
+)
+
+STRICT_PYTEST_FILES = (
+    "tests/test_bound_read_scope.py",
+    "tests/test_strict_grounding.py",
+    "tests/test_strict_evidence_state.py",
+    "tests/test_strict_projection_publisher.py",
+    "tests/test_strict_projection.py",
+    "tests/test_strict_projection_recovery.py",
+    "tests/test_mcp_openclaw_strict.py",
+    "tests/test_strict_snapshot_revocation.py",
+    "tests/test_openclaw_lifecycle_config.py",
+    "tests/test_openclaw_connector_contract.py",
+    "tests/test_openclaw_activation_controller.py",
+    "tests/test_openclaw_activation_supervisor.py",
+    "tests/test_openclaw_strict_packet_contract.py",
+)
+
+CONNECTOR_NODE_TEST = "integrations/openclaw-convmem-reader/test/connector.test.mjs"
+
+LEGACY_PYTEST_FILES = (
+    "tests/test_site_filter.py",
+    "tests/test_milestone_c.py",
+    "tests/test_agent_run_ledger.py",
+    "tests/test_query_ledger_lookup.py",
+    "tests/test_query_search_harden.py",
+    "tests/test_ledger_related.py",
+    "tests/test_unresolved_payload.py",
+    "tests/test_file_generation_store.py",
+    "tests/test_file_generation_validate.py",
+    "tests/test_governed_recovery_and_writers.py",
+    "tests/test_governed_writer_gate.py",
+    "tests/test_shadow_writer_coverage_scan.py",
+    "tests/test_provenance.py",
+    "tests/test_provenance_continuity.py",
+)
+
+LEGACY_DESELECTS = (
+    "tests/test_agent_run_ledger.py::test_v8_kiro_hook_adapter_fail_open",
+    "tests/test_agent_run_ledger.py::test_v6_git_facts_non_git_cwd",
+    "tests/test_agent_run_ledger.py::test_q7_hook_failure_writes_stderr",
+    "tests/test_agent_run_ledger.py::test_q4_hook_two_missing_id_starts_same_cwd",
+)
+
+INTEGRATION_IMPORT_SENTINELS = (
+    "openclaw_activation_controller",
+    "openclaw_activation_supervisor",
+    "openclaw_strict_server",
+    "bound_read_scope",
+    "strict_grounding",
+    "strict_evidence_state",
+    "strict_projection_publisher",
+    "strict_projection",
+)
+
+PREFLIGHT_OK_PATH = "/fixture/preflight_ok"
+PREFLIGHT_REPORT_PATH = "/fixture/preflight_report.json"
+IMPORT_TRACE_PATH = "/fixture/import_trace.json"
+FROZEN_INVENTORY_PATH = "/fixture/frozen_runtime_inventory.json"
+CANARY_PATHS_FILE = "/fixture/canary_paths.json"
+HOST_NETNS_FILE = "/fixture/host_net_ns"
+
+INNER_ROLE_ENV = "CONVMEM_OPENCLAW_INNER_ROLE"
+INNER_ROLE_VALUE = "inner"
+
+FROZEN_PYTHON = "3.13.12"
+FROZEN_UNICODE = "15.1.0"
+FROZEN_NODE = "v26.9.0"
+FROZEN_MCP = "1.28.1"
+FROZEN_IDNA = "3.18"
+
+CONTROL_EXPOSED_CANARY = "exposed_canary"
+CONTROL_HOST_USR = "host_usr"
+CONTROL_MISSING_DEP = "missing_dep"
+CONTROL_CHANGED_DEP = "changed_dep"
+CONTROL_UNLISTED_FILE = "unlisted_file"
+CONTROL_WRONG_NAMESPACE = "wrong_namespace"
+CONTROL_WRONG_ENV = "wrong_env"
+CONTROL_EXTRA_FD = "extra_fd"
+CONTROL_ARBITRARY_SUITE = "arbitrary_suite"
+CONTROL_PRODUCTION_FAKE = "production_fake"
+
+ALL_NEGATIVE_CONTROLS = (
+    CONTROL_EXPOSED_CANARY,
+    CONTROL_HOST_USR,
+    CONTROL_MISSING_DEP,
+    CONTROL_CHANGED_DEP,
+    CONTROL_UNLISTED_FILE,
+    CONTROL_WRONG_NAMESPACE,
+    CONTROL_WRONG_ENV,
+    CONTROL_EXTRA_FD,
+    CONTROL_ARBITRARY_SUITE,
+    CONTROL_PRODUCTION_FAKE,
+)
