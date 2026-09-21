@@ -135,6 +135,12 @@ fresh model read only this file and orient itself?
 
 ## Update Log
 
+- 2026-09-21 — Kiro (design/review lane): post-unfreeze verification. Staged unfreeze executed
+  (refine → watcher + reconcile.timer) against rebuilt-clean index; 18h+ boot, 0 crashes, 0 since
+  unfreeze. Read-only §4.2 validator run on the LIVE index = OVERALL PASS (both segments,
+  4000 + 82335 elements, clean walks to exact EOF). Index structurally intact under writer load;
+  ≥24 h writer-loaded "accepted" clock running from 05:11 unfreeze. Details in
+  `KIRO-2026-09-21-poison-pill-12h-gate-handoff.md` post-unfreeze section.
 - 2026-09-21 — Kiro (design/review lane): ruled Q1–Q3 in `EXECUTION-poison-pill-resume.md`
   (§3, §4.2, §7.3). Q1: ≥24 h "accepted" clock RESTARTS at stage-2 enable, "loaded" = writer-load.
   Q2: absolute §4.2 structural check sufficient, no stage-0 baseline needed. Q3: freeze is advisory,

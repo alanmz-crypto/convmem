@@ -349,3 +349,31 @@ for s in segs:
 print("\nOVERALL:", "PASS" if rc == 0 else "FAIL")
 sys.exit(rc)
 ```
+
+
+
+---
+
+## Post-unfreeze verification (Kiro, 2026-09-21)
+
+After Ryan authorized the staged unfreeze (refine → watcher + reconcile.timer, all against the
+rebuilt-clean index), the arc advanced past the freeze. Recorded state at unfreeze +~7h / boot +18h26m:
+
+- **Platform:** 18h26m uptime on the post-BIOS-fix boot, **zero coredumps this boot** (the standing
+  crash-watch list is all ≤10:24 on *prior* boots — stale, not new faults).
+- **Writers:** `convmem-refine` (incl. `chroma_dedupe`), `convmem-reconcile.timer`, and
+  `convmem-watch` all active and healthy; **zero crashes since unfreeze (05:11)**. This is the first
+  sustained *writer-loaded* operation on the rebuilt index post-fix.
+- **§4.2 structural integrity (read-only validator run against the LIVE index):** **OVERALL PASS**
+  on both segments —
+  - summaries segment: 4000 elements, 0 delete-marked, unique labels, link_lists walk 35448/35448 exact EOF, id_to_label=4000 ✓
+  - units segment: 82335 elements, 806 delete-marked, unique labels, link_lists walk 704428/704428 exact EOF, id_to_label=81529=expected ✓
+
+Interpretation: the index the writers have been actively mutating since unfreeze is **structurally
+intact under load**, corroborating (beyond an idle machine) that the platform fix holds. This is the
+post-unfreeze baseline for §4.2 (per Kiro Q2 ruling). The ≥24 h writer-loaded "accepted" clock
+(Kiro Q1 ruling) is now running from the 05:11 unfreeze.
+
+Still open (Cursor lane, unchanged): circuit breaker (§7.1), crash-vs-provider-drop accounting,
+enforceable writer-lease (Q3), and porting the validator from `~/.cache/arc-poison-pill/` +
+this appendix into `scripts/`.
