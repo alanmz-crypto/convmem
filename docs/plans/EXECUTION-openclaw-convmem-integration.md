@@ -1,17 +1,23 @@
 # Execution Plan — OpenClaw bounded ConvMem reader
 
-**Status:** CANDIDATE FOR FINAL FRESH ASTRA REVIEW — **BUILD BLOCKED — ARCHITECTURE** for the
-complete integration. No Execute grant.
+**Status:** **BUILD PASS for the frozen T0–T5 fixture contract**, subject to exact-tip review and
+Ryan's separate Execute grant. **TEST NOT YET RUN; LIVE-DATA BLOCKED; PROMOTION BLOCKED.**
+BUILD is not complete-integration readiness and does not pass any of those later gates.
 
 **Date:** 2026-09-21
 
 **Arc:** none (ad-hoc integration)
 
 **Architecture:** [revised architecture](ARCHITECTURE-openclaw-convmem-integration.md), especially
-§§6.5, 14, 17–18. This file replaces the fixture contract at planning commit
-`9b106b908b944f8bd4c3f417b576dc13884f2503`; the two files must be reviewed together.
+§§6.5, 14, 17–18. This final corrective edit starts from planning commit
+`0f1216f7249c0066dafb6fc9ef2aafa9845a7264` on
+`plan/2026-09-20-openclaw-convmem-final-readiness`; review the two files together.
+The matching final Astra report is
+`/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
+`d3d330b6195263e86f0c648f446ca9b4dbbf648983ee2ec2ad9aeacc7cc2026a`.
+It found two bounded BUILD blockers, B-FIXTURE and B-DIGEST; §§3–5 freeze their corrections.
 
-**Code baseline:** `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`. This editorial revision changes plans
+**Code baseline:** `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`. This architectural revision changes plans
 only. A later build names the exact reviewed planning revision and proves all non-plan source is
 identical to this baseline, or obtains review of an explicit new baseline. No silent rebase of the
 implementation target.
@@ -23,12 +29,21 @@ promotion. OpenClaw is the eventual bounded runtime and has no governance author
 
 ## 1. Consequence and bounded deliverable
 
-The core deliverable is a fixture-capable, read-only file evidence reader, three-tool MCP adapter
-and uninstalled OpenClaw connector, with fake-manager/controller/supervisor tests. The full
-candidate also specifies required production approval/admission corrections and real containment.
-**Core fixture acceptance cannot establish complete integration readiness.** Architecture §18
-records C-RUNTIME and D-CONTAINMENT/D-DISTRIBUTION; a working credential-free installed model route
-has not been established, and the inspected path rejects it.
+The entire authorized-to-request build scope is the T0–T5 synthetic, read-only file evidence
+reader, three-tool MCP adapter, uninstalled connector and controller/supervisor protocol cores,
+using Architecture §6.5.8's fixed injected ports. It is not a real OpenClaw runtime build.
+Actual manager/privilege/mount/socket/filter adapters, production packaging, authentication,
+provider/model selection, deployment, Gate W writers, live data, migration, capture, channels and
+promotion are non-goals. No production entrypoint can select the fake. Controller `start`,
+supervisor entrypoints and ordinary plugin registration refuse `runtime_not_qualified` until a
+separately reviewed Gate D adapter packet; command-line refusal exits 78 before OS operations.
+
+Grok can begin implementation without making an architectural decision.
+Known deferred issues do not authorize Grok to redesign the architecture.
+
+Those statements concern architectural readiness, not an Execute grant. C-RUNTIME remains a
+real, later-runtime blocker: the inspected credential-free authentication path rejects the
+configuration. The fake has no authentication operation and cannot prove OpenClaw compatibility.
 
 Preserve all frozen invariants: file/CLI governance, immutable single audience, exactly `search`,
 `unresolved`, `related`, no resources/ask/global store, no remote inference, no ambient credentials,
@@ -108,6 +123,14 @@ files. The lineage's semantic artifact binds exactly the Gate B/C schema invento
 deployment values; Gate W must version that artifact if adding a new semantic interpretation. JSON
 Schema filenames and schema literals must agree.
 
+The additional test-only `tests/fixtures/openclaw_strict/fixture-manifest.schema.json` describes
+`convmem.strict-fixture-manifest.v1` in Architecture §6.5.8. It is not a Gate B/C production schema,
+not a semantic-contract input and not a runtime distribution format. Its exact fields are `schema,
+artifact_kind, plan_sha, code_baseline_sha, source_tree_sha256, test_runtime_tree_sha256, components,
+artifacts, manifest_payload_sha256`; `artifact_kind` is always `protocol_fixture`. The hash excludes
+only its own hash field. Source inventory excludes this manifest and generated outputs to avoid a
+hash cycle. No test-only artifact can satisfy a production launch or qualification check.
+
 Registry v3 top-level fields are exactly `schema, revision, bindings`. It retains one binding with
 exact fields `id, public_ref, project, domain_root, site_mode, site, non_expanding_roots,
 source_registrations, lineage_id, capture_issuers, verification_producers`. A source registration
@@ -142,11 +165,13 @@ enrollment, authority rollback, generic metadata writer, environment override or
 same read algorithms are accessible through the direct read-only file CLI specified there, without
 OpenClaw/MCP.
 
-Runtime control is exactly Architecture §6.5.6: external controller start plus authenticated framed
+The eventual runtime control is exactly Architecture §6.5.6: external controller start plus authenticated framed
 `turn`, `cancel`, `status`, `revoke`. One turn, no turn queue, at most256 accepted turn identities,
 complete-result release. Connector **tool** queue is separately one active plus eight pending
 with10s deadline/128KiB frame and64KiB server response; do not confuse it with the turn protocol. No
 retry/rerun after uncertain delivery.
+T5 implements that protocol as a library with §6.5.8's fixed `FixturePlatform`; actual OS adapters
+are outside this build. Logical peers exercise authentication rules but prove no real host identity.
 
 Owners:
 
@@ -167,13 +192,13 @@ Owners:
 - `openclaw_strict_server.py`: closed startup, three method registrations, argument decoding,
   delegation and serialization. `mcp_server.py` changes only to reject unknown profiles and refuse
   strict mode with the dedicated-entrypoint instruction.
-- `openclaw_activation_controller.py`: operator authentication, stable slot, root-owned manager
-  control, lock ordering, external retirement/quarantine and receipts.
-- `openclaw_activation_supervisor.py`: unit MainPID, child role launches with dropped privileges,
-  turn state, watchdog, deadlines and release/revoke linearization. It cannot attest its own empty
-  cgroup.
-- Connector `index.js`: fixed manifest validation, pre-exec setpriv/filter launch and bounded stdio
-  forwarding only.
+- `openclaw_activation_controller.py`: peer-policy, stable-slot, manager-port, lock-order,
+  external retirement/quarantine and receipt core. Production `start` refuses during B/C.
+- `openclaw_activation_supervisor.py`: launch-tuple validation, turn state, watchdog, deadlines and
+  release/revoke core. It cannot attest its own empty domain. Production entrypoint refuses during
+  B/C; real MainPID/privilege/signal enforcement awaits Gate D.
+- Connector `index.js`: fixed manifest validation, launch-tuple validation and bounded stdio
+  forwarding through an injected test transport. Real registration/launch is disabled during B/C.
 - Gate W's `governed_admission.py`: protected review/ratification, explicit add, durable admission
   and consent-preserving recovery; never imported by any reader or OpenClaw adapter.
 
@@ -202,12 +227,18 @@ tests/test_openclaw_activation_supervisor.py
 tests/test_openclaw_strict_packet_contract.py
 ```
 
-The setpriv binary/filter/runtime image are qualified deployment artifacts, not permission to modify
-host packages. Fixture policies and test-only filter inputs live under the listed fixture tree. A
-production filter distribution/manager image is blocked pending the exact qualification packet. No
-unlisted code, dependency or host config is an implementation convenience.
+Test harness ownership is Cursor/Grok in `tests/fixtures/openclaw_strict/`: `run_isolated.py`, fake
+ports, closed fixture-manifest schema, deterministic scenarios and inert specimens. It implements
+the selected contract; it cannot select another isolation mechanism. Cases57–58 are owned by
+`tests/test_openclaw_strict_packet_contract.py` with lifecycle/controller/supervisor/connector tests
+owning their existing behavioral portions. Codex owns any necessary contract correction.
 
-Protected during B/C: `canonical_json.py`, `provenance.py`, `provenance_binding.py`, all legacy
+The setpriv binary/filter/runtime image remain later qualified deployment artifacts, not permission
+to modify host packages. B/C uses only marked inert specimens, never a working filter or model. A
+production filter distribution/manager image needs a separate qualification packet. No unlisted
+code, dependency, auth route or host config is an implementation convenience.
+
+Protected during B/C: `canonical_json.py`, `provenance.py`, `provenance_binding.py`, `domains.py`, all legacy
 IDs/ledger/query/unresolved/related/Chroma/store/ingest/observe/monitor/proposal/recovery modules,
 `convmem.py`, adapters, live data/config/credentials and unrelated plans. Pure
 canonical/provenance/domain functions may be imported without changing their accepted bytes. Direct
@@ -219,6 +250,31 @@ verb/API map, ownership and test/gate mapping against the reviewed packet. Compa
 filenames before handoff. Reject unmatched ownership, a stale v1 pointer/activation/raw-v2 envelope,
 or a requirement silently moved to a later gate.
 
+### 3.1 Exact hash membership is not edit permission
+
+Architecture §6.5.9 is normative. Duplicate-free `CORE` is exactly `canonical_json.py`,
+`provenance.py`, `provenance_binding.py`, `domains.py`, `bound_read_scope.py`, `strict_grounding.py`,
+`strict_evidence_state.py`, `strict_projection.py`, `requirements.txt`. `SCHEMAS_BC` is exactly the
+24 B and 7 C filenames above; no W or fixture-manifest schema. Hash canonical sorted arrays of
+`{path,mode,sha256}` with repo-relative POSIX paths and actual four-octal-digit modes; reject missing,
+duplicate, extra or symlink entries.
+
+- `builder_tree_sha256` / `builder`: CORE ∪ SCHEMAS_BC ∪ `{strict_projection_publisher.py}`.
+- `strict_server_tree_sha256` / `strict_server`: CORE ∪ SCHEMAS_BC ∪ `{openclaw_strict_server.py}`.
+- `supervisor_tree_sha256` / `supervisor`: CORE ∪ SCHEMAS_BC ∪ `{openclaw_activation_supervisor.py}`.
+- `controller_tree_sha256` / `controller`: CORE ∪ SCHEMAS_BC ∪
+  `{openclaw_activation_controller.py, openclaw_activation_supervisor.py}`.
+- `plugin_tree_sha256` / `plugin`: exactly
+  `integrations/openclaw-convmem-reader/{package.json,openclaw.plugin.json,index.js}`.
+
+Protected helpers remain unmodified. Reader/server cannot import publisher/controller/supervisor;
+controller may reuse supervisor protocol parsing. No automatic dependency discovery expands these
+sets. Tests, fake adapters, runtime/model bytes and legacy `mcp_server.py` are excluded. Separate
+fixture/source/test-runtime inventories bind fixture inputs; the eventual full Gate D image binds
+its real dependency closure. An included-file mutation must affect every consumer's digest; an
+excluded test mutation affects fixture, not component, hashes. Missing local import membership
+stops implementation for Codex, not an improvised inventory extension.
+
 ## 4. Implementation sequence after a separate grant
 
 Each coherent checkpoint is committed and pushed immediately. Stop on failure; no actual
@@ -226,11 +282,18 @@ gateway/agent/model launch or live config write in these steps.
 
 ### T0 — closed bytes and fixture contracts
 
+First implement the §5.1 isolated harness and its pre-import negative controls; do not import or
+run the integration until preflight passes. Create the test-only manifest and deterministic
+`protocol_fixture` specimens from Architecture §6.5.8. The fake supplies no OpenClaw/provider/auth
+configuration to any real executable. Production launch/registration refusal is tested first.
+
 Create schemas and known-answer vectors for every digest/ID/record, cumulative multi-head lineage,
 enrollment/publication, grounding and control variant. Two independent parsers must agree on
 canonical bytes/digests; reject malformed, reordered, duplicate or unknown fields. Include exact
 legacy-envelope byte preservation, not rewritten equivalent provenance. Synthetic issuer inventory
-is separate from source-producer inputs.
+is separate from source-producer inputs. Implement the five exact §3.1 component inventories and
+independent case58 walkers; mutate every included file/mode and all protected helper/schema inputs.
+No fixture helper can silently become part of the runtime or an attestation to real packaging.
 
 ### T1 — identity, qualification and state
 
@@ -265,21 +328,31 @@ public rows alone is not proof of their derivation, and a forged qualification f
 
 ### T4 — connector
 
-Validate connector-launch v2, runtime/policy digests and exact argv/env/cwd. Fake setpriv/child
-tests must show filter-load failure stops before Python; real filter proof is Gate D. No shell,
+Validate connector-launch v2, runtime/policy digests and exact argv/env/cwd. Invoke the connector
+library with the fixed injected `spawn` transport; do not register it with OpenClaw. A scripted
+filter-load failure must stop before the logical Python child; no real setpriv/filter is used and
+actual enforcement proof is Gate D. No shell,
 inherited secret, ambient FD, dynamic path/tool mapping or content execution. Preserve raw evidence
 only in untrusted tool-result blocks. Exercise single-active/eight-pending bounds,10s
-deadline,cancellation and no late success/retry.
+deadline,cancellation and no late success/retry. A fixed synthetic response tests framing only,
+not inference, provider behavior or OpenClaw compatibility.
 
 ### T5 — fake controller, manager and supervisor
 
-Implement slot lifecycle, peer authentication, lock order, root-controller versus unit-supervisor
-ownership, role UID drops, fixed child argv and complete framed turn protocol. Fake manager tests
+Implement slot lifecycle, peer policy, lock order, controller versus supervisor ownership,
+logical role/argv checks and complete framed turn protocol through `FixturePlatform`. Fixed logical
+UID/GIDs are operator1000/1000, controller0/0, supervisor0/0 and runtime1001/1001; no host accounts
+or privilege changes. Script clock/boot, peer identity, access, process events and manager events
+using Architecture §6.5.8's exact port, not ad hoc OS calls. Fake manager tests
 include supervisor death/hang, detached descendant, outstanding model work and unverifiable
 emptiness; only an independent empty-domain receipt permits slot reuse. Test release/revoke
 linearization without waiting for a blocked consumer, stable turn IDs and partial-frame discard.
-Persist same-boot freshness anchors; require new-boot clock review. Fake environment success is
-labeled fake and cannot close D-CONTAINMENT/D-DISTRIBUTION/C-RUNTIME.
+Manager membership survives supervisor/controller failure and is cleared only by scheduled manager
+events, not a supervisor assertion or stop acknowledgement. Reject stale boot/invocation receipts,
+unknown population and wrong peers. Persist same-boot freshness anchors; require new-boot clock
+review. Deny runtime access to private qualification/issuer/governance/control paths. Test production
+refusal even with an unwrapped specimen. Fake success cannot close D-CONTAINMENT/D-DISTRIBUTION/
+C-RUNTIME or Gate W.
 
 All actual unit/runtime/model packaging and installation is outside T0–T5. Do not run `openclaw
 config validate` against live state, start a gateway or provision UIDs/units to make tests pass. A
@@ -287,10 +360,12 @@ later qualified temporary-config probe needs its exact grant; this file grants n
 
 ## 5. Acceptance ownership and commands
 
-Architecture §13 cases1–56 are normative:
+Architecture §13 cases1–58 are normative:
 
-- **B:** 1–27,40–44,49–52, strict-server portion47 and private/public qualification portion55.
-- **C fake:** connector/lifecycle portions33,35,45,46,48,53,54 and pre-activation qualification portion55.
+- **B:** 1–27,40–44,49–52, strict-server portion47, private/public qualification portion55,
+  preflight/artifact portions57–58 and builder/server inventory portions58.
+- **C fake:** connector/lifecycle portions33,35,45,46,48,53,54, pre-activation qualification portion55,
+  fake-lifecycle/production-refusal portions57 and remaining component-inventory portions58.
 - **D real:** repeat1–4;28–36,38–39,45–47,53–55 on the actual sealed runtime. Case33/35 repetition
   proves the real launch boundary; fake success does not close it.
 - **W:**56 plus authority/publication cases41–44/49/51–52 exercised through real governed CLI code
@@ -302,22 +377,81 @@ Test every safety obligation with an independent reference or negative control w
 removed enforcement fails. Include selector/limit/depth metamorphic tests, full verification table,
 grounding substitutions, original-admission qualification, stale full CAS,
 fence/admission/projection crashes, legacy refusal and clock/release/retirement races. Never report
-“all56 passed” from B/C.
+“all58 passed” from B/C. For case57, removing empty-domain verification, retaining stale receipts,
+granting runtime private access, using ambient state or bypassing preflight must fail independent
+controls. Case58's omitted-`canonical_json.py` mutant must fail even with a recomputed matching wrong
+digest; test-file edits must leave component hashes unchanged while changing the fixture manifest.
 
-After implementation, run the named tests using disposable roots and an environment without live
-config/credentials/network:
+### 5.1 Fixed disposable runner
+
+The test-only entrypoint is `tests/fixtures/openclaw_strict/run_isolated.py`. Its closed CLI is
+`--source-commit HEX40 --plan-sha HEX40 --runtime-root ABS --suite all`; unknown/missing arguments
+fail. `source-commit` is the clean implementation commit under test, not the plan parent; `plan-sha`
+is the reviewed corrective plan commit. The runner reads only the named commit's tracked export,
+checks the baseline-to-source edit allowlist, and excludes `.git`, untracked files and generated
+outputs. No credentials or live ConvMem/OpenClaw paths are inputs. Outside the sandbox the runner
+may only inspect that commit, inventory the supplied test runtime, create fresh synthetic roots,
+launch the fixed bubblewrap command and collect bounded test evidence. It has no arbitrary-command
+or arbitrary-mount argument.
+
+Architecture §6.5.8 freezes the containment: nonprivileged bubblewrap, separate user/PID/IPC/net/UTS
+namespaces, no capabilities, new session, parent-death exit, private proc/dev, no host root/home/run
+or sockets, read-only `/src`, `/runtime`, `/usr` with `/bin`/`/lib`/`/lib64` aliases, and exactly one
+new mode0700 `/tmp/convmem-openclaw-fixture.XXXXXX` mounted read-write at `/fixture`. Private `/tmp`
+is a 256 MiB tmpfs. Use mandatory `--unshare-user --unshare-pid --unshare-ipc --unshare-net
+--unshare-uts --disable-userns --assert-userns-disabled --cap-drop ALL --new-session
+--die-with-parent`; no permissive fallback or `--as-pid-1`. Missing namespaces/bubblewrap/runtime
+bytes stop TEST before imports; do not install packages, provision host resources or run unconfined.
+
+Pre-provisioned runtime versions are CPython3.13.12 / Unicode15.1.0 / Node26.9.0 / MCP1.28.1 /
+idna3.18; remaining test dependencies follow baseline `requirements.txt`. Inventory every regular
+file/mode/hash in the supplied prefix; reject symlinks, user config, credentials, model/OpenClaw
+packages and unlisted files. Freeze that inventory for the run; no downloads or substitutions.
+It is not a production image or an architectural choice about runtime distribution.
+
+Set only `HOME=/fixture/home`, `TMPDIR=/fixture/tmp`, `XDG_CONFIG_HOME=/fixture/config`,
+`XDG_CACHE_HOME=/fixture/cache`, `XDG_DATA_HOME=/fixture/data`, `PATH=/runtime/bin:/usr/bin`,
+`LANG=C.UTF-8`, `LC_ALL=C.UTF-8`, `PYTHONDONTWRITEBYTECODE=1`,
+`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`, from an empty environment. Create those empty directories;
+close inherited FDs except stdio. Tests run from `/src`, write only under `/fixture` or private
+`/tmp`, disable pytest's cache provider and explicitly load only baseline-required test plugins.
+Record the exact plugin inventory; autoload is forbidden. Per-suite wall deadline is 600 seconds
+and captured stdout/stderr combined limit is 16 MiB; overflow/timeout fails, never silently raises
+the budget. Simulated protocol deadlines use the scripted clock, not these driver limits.
+
+Preflight checks namespace identity and absent external routes, inability to resolve/read/write
+outside-root synthetic canaries, absent inherited sentinel credential/config variables, and no
+unexpected inherited FD. It never reads real secrets or starts a host network listener. Negative
+controls deliberately expose only synthetic canaries or substitute an incorrect namespace/env/FD
+observation; the independent preflight must reject before importing implementation. Inner controls
+may not disable the outer disposable boundary. Strict imports guard OS/network/exec actions and
+writer/config imports; T4/T5 launch only virtual roles. Direct Python CLI/MCP subprocess tests use
+only the allowlisted fresh-process entrypoints in the sandbox. Wait for PID-namespace termination
+before disposal; timeout retains the exact root for operator inspection. Deletion is not recovery.
+
+After implementation invoke the fixed runner (substitute only the reviewed plan and implementation
+commit IDs and the location of the already provisioned test-runtime prefix):
 
 ```bash
-python -m pytest -q   tests/test_bound_read_scope.py   tests/test_strict_grounding.py   tests/test_strict_evidence_state.py   tests/test_strict_projection_publisher.py   tests/test_strict_projection.py   tests/test_strict_projection_recovery.py   tests/test_mcp_openclaw_strict.py   tests/test_strict_snapshot_revocation.py   tests/test_openclaw_lifecycle_config.py   tests/test_openclaw_connector_contract.py   tests/test_openclaw_activation_controller.py   tests/test_openclaw_activation_supervisor.py   tests/test_openclaw_strict_packet_contract.py
-node --test integrations/openclaw-convmem-reader/test/connector.test.mjs
+python -I tests/fixtures/openclaw_strict/run_isolated.py --source-commit IMPLEMENTATION_SHA --plan-sha REVIEWED_PLAN_SHA --runtime-root /tmp/convmem-openclaw-test-runtime --suite all
 ```
 
-Then run existing compatibility suites: `test_site_filter.py`, `test_milestone_c.py`,
-`test_agent_run_ledger.py`, `test_query_ledger_lookup.py`, `test_query_search_harden.py`,
-`test_ledger_related.py`, `test_unresolved_payload.py`, `test_file_generation_store.py`,
-`test_file_generation_validate.py`, `test_governed_recovery_and_writers.py`,
-`test_governed_writer_gate.py`, `test_shadow_writer_coverage_scan.py`, followed by the
-repository-required full pytest suite in its isolated test environment and `git diff --check`. No
+Inside that boundary the driver runs these exact strict/connector suites with the inventoried
+Python/Node, not host interpreters; these commands alone outside the runner are not acceptance:
+
+```bash
+/runtime/bin/python -m pytest -q -p no:cacheprovider --basetemp=/fixture/pytest-strict tests/test_bound_read_scope.py tests/test_strict_grounding.py tests/test_strict_evidence_state.py tests/test_strict_projection_publisher.py tests/test_strict_projection.py tests/test_strict_projection_recovery.py tests/test_mcp_openclaw_strict.py tests/test_strict_snapshot_revocation.py tests/test_openclaw_lifecycle_config.py tests/test_openclaw_connector_contract.py tests/test_openclaw_activation_controller.py tests/test_openclaw_activation_supervisor.py tests/test_openclaw_strict_packet_contract.py
+/runtime/bin/node --test integrations/openclaw-convmem-reader/test/connector.test.mjs
+```
+
+In the same boundary, separately run the compatibility and full suites:
+
+```bash
+/runtime/bin/python -m pytest -q -p no:cacheprovider --basetemp=/fixture/pytest-legacy tests/test_site_filter.py tests/test_milestone_c.py tests/test_agent_run_ledger.py tests/test_query_ledger_lookup.py tests/test_query_search_harden.py tests/test_ledger_related.py tests/test_unresolved_payload.py tests/test_file_generation_store.py tests/test_file_generation_validate.py tests/test_governed_recovery_and_writers.py tests/test_governed_writer_gate.py tests/test_shadow_writer_coverage_scan.py
+/runtime/bin/python -m pytest -q -p no:cacheprovider --basetemp=/fixture/pytest-full
+```
+
+Run `git diff --check` against the implementation branch outside the exported tree. No
 new strict-test skips; report existing production-dependent skips. B/C leaves existing
 approval/recovery tests unchanged because Gate W is separate; their baseline pass does not prove the
 corrected approval invariant.
@@ -374,55 +508,161 @@ lost revocations. No local automatic reset or anti-rollback claim.
 ## 8. Automatic stops
 
 Stop for any architecture §15 failure, unlisted change, new dependency/resolver/capture issuer,
-schema/interface ambiguity, authority/provenance weakening, missing qualified deployment input,
+schema/interface ambiguity, authority/provenance weakening, missing specified fixture input,
 skipped safety test or failed negative control. Explicit stops include dummy provider key, shared
 host inference, process-group fallback, inferred legacy consent, imported old session,
 generation-only CAS, local/display state reduction, late provenance upgrade, implicit
-approve/recover indexing and claim of actual containment based on a fake manager.
+approve/recover indexing and claim of actual containment based on a fake manager. A runtime call,
+ambient access, production-selectable fake, supervisor-authored empty proof, unknown component
+membership or unbound imported dependency stops B/C. Fix a coding defect against this contract;
+any required change to its authority/interface/security/recovery/acceptance meaning returns to
+Codex/Kiro as BUILD BLOCKER. Missing later Gate D artifacts do not block this fixture implementation.
 
 No task prompt, fixture, model output or this plan authorizes runtime start, service/user
 provisioning, network/model cost, live data, deployment, capture, merge or production write. Runtime
-incompatibility returns to architecture; Grok must not choose another provider/version/auth
-strategy.
+incompatibility stays at Gate D; Grok must not choose another provider/version/auth strategy or
+make the fixture depend on it. Missing test-runtime tools or namespace support blocks TEST until
+the specified environment is separately supplied; it never authorizes a weaker runner.
 
 ## 9. Returned evidence and independent review
 
 Return exact branch/tip/push state; baseline-to-tip allowed-file comparison; schema/fixture/runtime
-artifact digests; Python/Unicode/Node/idna/MCP versions; commands/results/skips; independent
+artifact digests and the full canonical entry arrays; Python/Unicode/Node/idna/MCP versions;
+fixture-manifest/source/test-runtime inventories and reproduction in two fresh roots;
+commands/results/skips; independent
 references and failing negative controls; every crash/clock/race outcome; read-only
 import/file/network evidence; exact three-tool/zero-resource inventory; unresolved blockers. Label
-every fake/static/real observation separately. No claim of live readiness or value.
+every fake/static/real observation separately. Return pre-import canary/namespace/env/FD checks,
+the allowlisted subprocess trace, independent fake-manager event/membership trace, stale/unknown/
+nonempty retirement refusals, production-launch refusals, and clean PID-namespace termination or
+the retained failed root. Case57 bypass mutants and case58 omitted-helper/excluded-test mutations
+must have explicit expected failure evidence. No claim of live readiness, real auth compatibility,
+real host containment, production sealing or value.
 
-This edit's gathered evidence is Architecture §14: matching Stage1/reconstruction hashes,2 passing
+Retained preceding-edit evidence is Architecture §§14.1–4: matching Stage1/reconstruction hashes,2 passing
 baseline routing tests, static governed caller mapping, installed systemd/cgroup/setpriv capability
 observations, and a negative isolated auth-resolver test tied to exact installed source hashes. None
 tests the unimplemented integration.
 
-Fresh Astra verifies Architecture §17 on **both edited files**. Kiro reviews the exact resulting
-revision; Ryan decides any subsequent scope-specific grant. Reviewer passage does not itself
-authorize execution.
+This correction's documentary evidence is Architecture §14.5: exact parent/report identity, paired
+inventory/classification/contract checks, unchanged baseline code and `git diff --check`. The
+review bundle includes the checker/output and exact committed diff. It does not relabel these
+checks as TEST PASS.
+
+A focused fresh Astra check of the substantive B-FIXTURE/B-DIGEST corrections and their regression
+matrix precedes Kiro's exact-tip binary review. Do not reopen passed semantics or demand future
+production evidence merely to perfect the packet. Ryan decides any subsequent scope-specific grant;
+reviewer passage does not itself authorize execution.
 
 ## 10. Precise changes and remaining readiness
 
-Changed from `9b106b9`: active-pointer v1→publication v2 with enrollment/authority continuity;
-manifests v2→v3; registry v2→v3; record v2→v3; provenance context v1→v2 plus grounding; projection
-row/state v1→v2; fixture bundle/layout v1→v2; raw evidence v2→v3; activation/connector v1→v2; new
-controller/retirement/launch/clock contracts. Replaced generation-only CAS and cross-head rollback,
-request-local reduction and byte-provenance overclaim, parent-death/process-group enforcement and
-implied completion. Added explicit Gate W and legacy refusal; updated file/module ownership and
-cases49–56 plus corrected18/37/44/46. Unchanged controls are listed in §1.
+This edit's parent is `0f1216f7249c0066dafb6fc9ef2aafa9845a7264`, not `9b106b9`. The preceding edit's
+authority, state, grounding, receipts, lifecycle/freshness, explicit-add and private qualification
+corrections remain intact. This edit adds only the fixed library fake/isolated-runner/artifact
+boundary, exact five-component inventories, cases57–58, owned deferrals and separate gate labels.
+Architecture §18.1 records every Astra finding/candidate, Adopt decision and cross-finding
+interaction; §18.3 records the parent-to-target adversarial regression review. No production-schema
+version or legacy identifier/envelope changes in this edit.
 
-**A:** internal implementation/test organization consistent with these contracts. **B:** recall,
-model quality, bounded performance/storage and product value. **C:** C-RUNTIME, the compatible
-credential-free exact installed local inference path/runtime decision. **D:** D-CONTAINMENT and
-D-DISTRIBUTION, concrete enforcement and runtime/model closure evidence. Gate W production
-acceptance/migration grants remain required and cannot be claimed from B/C.
+### 10.1 Remaining issues and correction paths
 
-**BUILD BLOCKED — ARCHITECTURE. Can Grok 4.5 High implement the complete architecture without making
-an architectural decision? No: C-RUNTIME remains.** The concrete synthetic core and fake lifecycle
-are reviewable; that does not make the complete candidate ready. No execution authorization is
-issued.
+Architecture §18.2's full records are normative here, including evidence, owners, locations,
+negative controls, observable failures, safety rationale, rollback and contamination stops.
+The following execution mapping uses the same exact classifications; no item grants redesign.
 
-**TL;DR:** [Arc none] The execution contract now matches the edited authority, state, grounding,
-lifecycle and explicit-add architecture. Fresh Astra must verify the pair; the complete build
-remains blocked on the exact runtime/authentication decision and containment/distribution evidence.
+- **B-FIXTURE — SAFE TO DEFER INTO ISOLATED IMPLEMENTATION.** Original missing specification is
+  corrected by Architecture §6.5.8 and execution §§3–5. Cursor/Grok implements the fixed harness,
+  injected ports and component cores in the allowlisted files; correction is conformance, before
+  B/C TEST. Acceptance: case57 plus33/35/46/48/53–55, including independent manager membership,
+  stale/nonempty/unknown refusal, blocked release/revoke, private-path/ambient denial, disposable
+  preflight and production refusal. Negative bypasses must fail, not become alternative backends.
+  Observable failures are host/ambient access, wrong-peer/receipt acceptance or unintended launch.
+  Deferral is safe because neither real provider nor privileged runtime is needed and suite entry
+  is physically isolated. Recovery preserves head/expiry, quarantines uncertainty and distinguishes
+  teardown from lineage recovery. Architectural contamination is forbidden: needing real runtime,
+  selectable fake or changed retirement/containment semantics stops BUILD for Codex/Kiro.
+  Grok architectural decision: **no**.
+- **B-DIGEST — SAFE TO DEFER INTO ISOLATED IMPLEMENTATION.** Evidence/correction: exact §3.1 and
+  Architecture §6.5.9 sets now restore the oracle; Cursor/Grok implements them in component owners
+  and packet-contract tests at T0/B/C TEST. Acceptance: case58 independent arrays/hashes, every
+  included file/mode mutation, schema-subset rejection, excluded-test invariance and an
+  omitted-canonical-helper negative mutant that must fail. Observable failure is unbound import,
+  unequal vectors or invisible included-byte drift. Deferral is safe because only computed output
+  hashes, not membership decisions, remain. Recovery refuses qualification without policy/authority
+  fallback. New/guessed membership or fake production attestation can contaminate the architecture
+  and stops BUILD; Codex owns a necessary contract correction. Grok decision: **no**.
+- **I-IMPLEMENTATION — SAFE TO DEFER INTO ISOLATED IMPLEMENTATION.** Evidence: fixed core
+  Architecture §§6–8, T1–T3 and named test owners. Cursor/Grok implements/reproduces/repairs within
+  the eight modules, schemas and tests before B/C TEST. Exact acceptance is §5's assigned cases;
+  independent reducer/qualifier references and mutants removing scope ceiling, retained history,
+  original-admission freezing, full CAS or current-head-only rollback must fail. Observable failure:
+  wrong bytes/state/assurance, stale publication or forbidden import. Deferral is safe: synthetic
+  implementation/testing is the deliverable and no durable semantics remain to choose. Recovery:
+  revert code by reviewed branch revert; preserve admitted fixture history and remain unavailable
+  on ambiguity.
+  Any needed schema, invariant, resolver, protected-writer or acceptance change can contaminate
+  architecture and stops BUILD for Codex/Kiro. Grok decision: **no**.
+- **C-RUNTIME — LIVE-DATA/PROMOTION BLOCKER.** Evidence: Architecture §14.2's no-key failure.
+  Codex/Kiro own the separate Gate D runtime/auth packet and §§9.1/14.2; Ryan grants actions.
+  Correction: prove an exact compatible local-only route or separately review one. Acceptance:
+  real cases28/34/55, one local turn without key/dummy key/auth-store/env fallback/shared host
+  inference/egress; introducing each forbidden route must fail qualification. Observable failure
+  remains resolver rejection or wider access. Recovery refuses activation or retires/quarantines;
+  no fallback. Importing this decision into T0–T5 or claiming fake compatibility contaminates scope
+  and stops BUILD. Grok T0–T5 decision: **no**.
+- **D-CONTAINMENT — LIVE-DATA/PROMOTION BLOCKER.** Evidence: no real qualification under
+  Architecture §§6.5.6/14.4. Ryan-granted provisioning/qualification lane and Codex/Kiro's separate
+  Gate D policy packet own correction. Acceptance: real cases46/53/55 and UID/peer/mount/FD/filter/
+  network/death/hang/detached-work controls; removing each enforcement in the granted disposable
+  environment must fail. Observable failure is ambient access, egress or unknown/nonempty domain.
+  Recovery quarantines without receipt/replacement/publication until independently empty.
+  Real mechanism choices during B/C or fake proof asserted as host proof contaminate scope and stop
+  BUILD. Grok T0–T5 decision: **no**.
+- **D-DISTRIBUTION — LIVE-DATA/PROMOTION BLOCKER.** Evidence: missing real sealed runtime/model
+  and inventory in Architecture §§6.5.6/14.4. The separately granted packaging lane with Codex/Kiro
+  owns exact artifacts in the Gate D packet. Acceptance: real cases28–34/45/47/55, full closure
+  and inventory; mutate imports under an unchanged launcher, poison CWD/HOME, or add FD/tool/endpoint
+  and require failure. Observable failure is digest/import/inventory drift or fallback. Recovery
+  refuses/retire-quarantines drift, preserves authority/freshness, never substitutes host packages.
+  A fixture dependency on production image/model selection or fabricated sealing contaminates
+  architecture and stops BUILD. Grok T0–T5 decision: **no**.
+- **W-PRODUCTION — LIVE-DATA/PROMOTION BLOCKER.** Evidence: Architecture §§6.5.7/14.3 and §6 here
+  remain outside B/C. Codex/Kiro own the exact-baseline Gate W packet; Cursor after Ryan's grant
+  corrects the governed engine and enumerated CLI/writer/backup/restore callers. Acceptance:
+  case56 plus41–44/49/51–52 using disposable governed CLI; bypass approval/add/backup/restoration
+  fences and require failure. Observable failure is implicit ingest/forged consent/Chroma-absence
+  authority/lost revocation/automatic migration. Recovery fences and reconciles protected history;
+  uncommitted admission needs explicit add retry. Editing protected writers or claiming production
+  consent from fixture PASS contaminates scope and stops BUILD. Grok T0–T5 decision: **no**.
+- **U-VALUE — NON-BLOCKING UNCERTAINTY.** Evidence: lexical §6.5.5 and unrun D-V; not a BUILD
+  dependency. Ryan/evaluation owner predeclare thresholds/stops in the later D-V packet, then
+  measure the 32-run paired comparison against the off arm. Fixed lexical known-answer tests are
+  the fixture acceptance; null/harmful value blocks promotion claims. Observable failure is poor
+  usefulness or exceeded fixed bounds. Recovery keeps the prototype disposable/unpromoted.
+  Adding global search/inference/authority/fallback for quality contaminates scope and stops BUILD.
+  Grok T0–T5 decision: **no**; later value thresholds are not fixture architecture choices.
+
+### 10.2 Independent gate decisions
+
+- **BUILD PASS:** only the frozen T0–T5 fixture implementation is fully specified. Exact-tip review
+  and Ryan's Execute grant remain required; neither is inferred from this author's readiness claim.
+- **TEST NOT YET RUN:** all assigned B/C cases, independent references/negative controls, isolated
+  legacy compatibility and evidence must pass. Document checks are not these tests.
+- **LIVE-DATA BLOCKED:** actual Gate D authentication/containment/distribution and applicable Gate W
+  production enrollment, plus an explicit data/config grant, are still required.
+- **PROMOTION BLOCKED:** LIVE-DATA and the later applicable Gate E/D-V/production authorization
+  requirements must be independently satisfied. No channel/gateway/consequential-data effect now.
+
+**WHAT DID THIS EDIT BREAK THAT WAS PREVIOUSLY SOUND?** No documentary regression found in the
+attempted attacks in Architecture §18.3; implementation tests are not yet run. The matrix covers
+authority rollback, canonical state/forks, grounding/receipts/original admission, retirement/
+freshness/release, explicit writes, private qualification, physical fixture/credential isolation,
+legacy bytes, recovery, Gate W separation and hash membership. Required changes were the fixture
+boundary and restored digest inventories, not a weakening of those sound contracts.
+
+Grok can begin implementation without making an architectural decision.
+Known deferred issues do not authorize Grok to redesign the architecture.
+
+**TL;DR:** [Arc none] B-FIXTURE and B-DIGEST are corrected in specification; only their conforming
+implementation/testing remains. BUILD PASS is bounded to T0–T5. TEST is not yet run, real runtime/
+live data/promotion remain blocked, and the focused exact-tip check then Kiro precede any Ryan grant.
