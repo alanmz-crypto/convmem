@@ -1,4 +1,4 @@
-"""Live suite deadline/output/tmp sampling enforcement."""
+"""Live suite deadline/output/tmp sampling with process-group reaping."""
 
 from __future__ import annotations
 
@@ -47,6 +47,18 @@ def _tmp_used_bytes(path: str = "/tmp") -> int:
     return total
 
 
+def _kill_process_group(proc: subprocess.Popen[str]) -> None:
+    if proc.pid is None:
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+
+
 def run_suite_with_limits(
     name: str,
     argv: List[str],
@@ -55,7 +67,7 @@ def run_suite_with_limits(
     output_limit: int = SUITE_OUTPUT_LIMIT_BYTES,
     sample_interval: float = TMP_SAMPLE_INTERVAL_SEC,
 ) -> SuiteRunResult:
-    """Enforce deadline and output cap while the suite runs; reap on violation."""
+    """Enforce deadline and output cap while running; reap the process group."""
     started = time.monotonic()
     proc = subprocess.Popen(
         argv,
@@ -64,6 +76,7 @@ def run_suite_with_limits(
         stderr=subprocess.PIPE,
         text=True,
         close_fds=True,
+        start_new_session=True,
     )
     assert proc.stdout is not None and proc.stderr is not None
     out_chunks: list[str] = []
@@ -80,7 +93,7 @@ def run_suite_with_limits(
         now = time.monotonic()
         if now - started > deadline_sec:
             killed_reason = "deadline"
-            proc.send_signal(signal.SIGKILL)
+            _kill_process_group(proc)
             break
         if now >= next_sample:
             max_tmp = max(max_tmp, _tmp_used_bytes("/tmp"))
@@ -104,7 +117,7 @@ def run_suite_with_limits(
                     open_fds.discard(fd)
             if combined > output_limit:
                 killed_reason = "output_overflow"
-                proc.send_signal(signal.SIGKILL)
+                _kill_process_group(proc)
                 open_fds.clear()
                 break
         if killed_reason:
@@ -115,9 +128,8 @@ def run_suite_with_limits(
     try:
         proc.wait(timeout=5)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        _kill_process_group(proc)
         proc.wait(timeout=5)
-    # Final drain
     rem_out = proc.stdout.read() if proc.stdout else ""
     rem_err = proc.stderr.read() if proc.stderr else ""
     if rem_out:

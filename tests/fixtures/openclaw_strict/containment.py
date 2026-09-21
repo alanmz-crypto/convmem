@@ -53,23 +53,24 @@ def build_bwrap_argv(
     inner_argv: Sequence[str],
     usr_source: Path | None = None,
     extra_ro_binds: Sequence[tuple[str, str]] = (),
-    extra_binds: Sequence[tuple[str, str]] = (),
-    runtime_bin_overlay: Sequence[tuple[str, str]] | None = None,
-    hide_runtime_bin: bool = False,
-    unshare_net: bool = True,
     extra_env: Mapping[str, str] | None = None,
-    omit_mandatory: Sequence[str] = (),
-    unlisted_tmpfs_dir: str | None = None,
 ) -> list[str]:
-    flags = list(BWRAP_MANDATORY_FLAGS)
-    if not unshare_net:
-        flags = [f for f in flags if f != "--unshare-net"]
-    for omit in omit_mandatory:
-        flags = [f for f in flags if f != omit]
-    argv = [bwrap, *flags]
+    argv = [bwrap, *BWRAP_MANDATORY_FLAGS]
     for flag in FORBIDDEN_BWRAP_FLAGS:
         if flag in argv:
             raise SystemExit(f"forbidden_bwrap_flag:{flag}")
+    # Every mandatory namespace flag always present — never omit --unshare-net.
+    for required in (
+        "--unshare-user",
+        "--unshare-pid",
+        "--unshare-ipc",
+        "--unshare-net",
+        "--unshare-uts",
+        "--disable-userns",
+        "--assert-userns-disabled",
+    ):
+        if required not in argv:
+            raise SystemExit(f"missing_mandatory_flag:{required}")
     argv += [
         "--proc", "/proc",
         "--dev", "/dev",
@@ -78,12 +79,6 @@ def build_bwrap_argv(
         "--ro-bind", str(source_root), "/src",
         "--ro-bind", str(runtime_root), "/runtime",
     ]
-    if hide_runtime_bin:
-        argv += ["--tmpfs", "/runtime/bin"]
-        for host_path, sandbox_path in runtime_bin_overlay or ():
-            argv += ["--ro-bind", host_path, sandbox_path]
-    if unlisted_tmpfs_dir:
-        argv += ["--tmpfs", unlisted_tmpfs_dir]
     usr = usr_source if usr_source is not None else (runtime_root / "sysroot" / "usr")
     argv += ["--ro-bind", str(usr), "/usr"]
     argv += [
@@ -102,8 +97,6 @@ def build_bwrap_argv(
             argv += ["--setenv", key, value]
     for host_path, sandbox_path in extra_ro_binds:
         argv += ["--ro-bind", host_path, sandbox_path]
-    for host_path, sandbox_path in extra_binds:
-        argv += ["--bind", host_path, sandbox_path]
     argv += list(inner_argv)
     return argv
 
@@ -112,12 +105,9 @@ def launch_contained(
     argv: list[str],
     *,
     timeout: int,
-    pass_fds: Sequence[int] = (),
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env.update(HOST_SENTINEL_ENV)
-    # Success path: close_fds True and no pass_fds. FD mutant passes an extra FD.
-    # close_fds=True always; pass_fds keeps only the listed descriptors besides stdio.
     return subprocess.run(
         argv,
         check=False,
@@ -126,7 +116,6 @@ def launch_contained(
         timeout=timeout,
         env=env,
         close_fds=True,
-        pass_fds=tuple(pass_fds),
     )
 
 

@@ -1,12 +1,9 @@
-"""Independent pre-import containment detectors (case 57 T0a).
-
-Detectors have no mutant-name switches. Outer controls change mounts/env/FDs/
-inventory views; these same checks reject deviations before integration imports.
-"""
+"""Independent pre-import containment detectors (case 57 T0a)."""
 
 from __future__ import annotations
 
 import errno
+import fcntl
 import hashlib
 import json
 import os
@@ -19,6 +16,7 @@ from typing import Any
 from constants import (
     CANARY_PATHS_FILE,
     CHILD_ENV,
+    FD_OBSERVATION_FILE,
     FORBIDDEN_CHILD_ENV_PREFIXES,
     FROZEN_IDNA,
     FROZEN_INVENTORY_PATH,
@@ -32,8 +30,12 @@ from constants import (
     INNER_ROLE_ENV,
     INNER_ROLE_VALUE,
     INTEGRATION_IMPORT_SENTINELS,
+    NS_OBSERVATION_FILE,
     PREFLIGHT_OK_PATH,
     PREFLIGHT_REPORT_PATH,
+    RESOLUTION_REPORT_PATH,
+    SYNTHETIC_DEP_INVENTORY,
+    SYNTHETIC_DEP_TREE,
     TMPFS_SIZE_BYTES,
 )
 
@@ -58,25 +60,28 @@ def _mode_octal(path: Path) -> str:
 
 
 def inspect_inherited_fds() -> dict[str, Any]:
-    """Inspect inherited FDs before closing anything. Only stdio may be present."""
-    allowed = {0, 1, 2}
-    found: list[int] = []
-    dir_fd = os.open("/proc/self/fd", os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        for name in os.listdir(dir_fd):
+    """F_GETFD scan — does not open descriptors for enumeration.
+
+    If FD_OBSERVATION_FILE exists, use that substituted observation (parent §6.5.8).
+    """
+    obs_path = Path(FD_OBSERVATION_FILE)
+    if obs_path.is_file():
+        obs = json.loads(obs_path.read_text(encoding="utf-8"))
+        found = [int(x) for x in obs["fds"]]
+        source = "substituted_observation"
+    else:
+        found = []
+        for fd in range(0, 1024):
             try:
-                fd = int(name)
-            except ValueError:
-                continue
-            if fd == dir_fd:
+                fcntl.fcntl(fd, fcntl.F_GETFD)
+            except OSError:
                 continue
             found.append(fd)
-    finally:
-        os.close(dir_fd)
-    unexpected = sorted(fd for fd in found if fd not in allowed)
+        source = "f_getfd"
+    unexpected = sorted(fd for fd in found if fd not in (0, 1, 2))
     if unexpected:
         raise PreflightFailure(f"unexpected_inherited_fds:{unexpected}")
-    return {"fds": sorted(found), "unexpected": []}
+    return {"fds": sorted(found), "unexpected": [], "source": source}
 
 
 def assert_no_integration_imports() -> list[str]:
@@ -92,9 +97,7 @@ def check_environment() -> dict[str, Any]:
             raise PreflightFailure(f"sentinel_env_present:{key}")
     for key in os.environ:
         for prefix in FORBIDDEN_CHILD_ENV_PREFIXES:
-            if key == prefix or key.startswith(prefix + "="):
-                raise PreflightFailure(f"production_fake_selector:{key}")
-            if key.startswith(prefix):
+            if key == prefix or key.startswith(prefix):
                 raise PreflightFailure(f"production_fake_selector:{key}")
     for key, expected in CHILD_ENV.items():
         actual = os.environ.get(key)
@@ -103,7 +106,6 @@ def check_environment() -> dict[str, Any]:
     role = os.environ.get(INNER_ROLE_ENV)
     if role != INNER_ROLE_VALUE:
         raise PreflightFailure(f"inner_role_missing:{role!r}")
-    # Exact empty child environment + PWD (bwrap) + role marker only.
     allowed = set(CHILD_ENV) | {INNER_ROLE_ENV, "PWD"}
     unexpected = sorted(k for k in os.environ if k not in allowed)
     if unexpected:
@@ -114,8 +116,6 @@ def check_environment() -> dict[str, Any]:
 def check_canaries(canary_paths: list[str]) -> list[dict[str, Any]]:
     results = []
     for path in canary_paths:
-        read_info: dict[str, Any]
-        write_info: dict[str, Any]
         try:
             fd = os.open(path, os.O_RDONLY)
         except OSError as exc:
@@ -133,7 +133,6 @@ def check_canaries(canary_paths: list[str]) -> list[dict[str, Any]]:
         results.append({"path": path, "read": read_info, "write": write_info})
         if read_info["ok"] or write_info["ok"]:
             raise PreflightFailure(f"canary_exposed:{path}")
-        # Require actual kernel denial (not success). ENOENT/EACCES/EPERM/EROFS acceptable.
         if read_info["errno"] is None or write_info["errno"] is None:
             raise PreflightFailure(f"canary_missing_kernel_denial:{path}")
     return results
@@ -152,14 +151,11 @@ def check_readonly_mounts() -> list[dict[str, Any]]:
         probes.append(info)
         if info["ok"]:
             raise PreflightFailure(f"readonly_mount_writable:{path}")
-        if info["errno"] not in {errno.EROFS, errno.EACCES, errno.EPERM, errno.ENOENT}:
-            # Still a denial; record and continue if not ok.
-            if info["ok"]:
-                raise PreflightFailure(f"readonly_mount_writable:{path}")
     return probes
 
 
 def check_network_namespace() -> dict[str, Any]:
+    """Keep real unshare-net. Optional substituted ns observation (§6.5.8)."""
     info: dict[str, Any] = {"connect_errno": None}
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -178,17 +174,23 @@ def check_network_namespace() -> dict[str, Any]:
                 pass
     except OSError as exc:
         info["connect_errno"] = exc.errno
-    ns_path = Path("/proc/self/ns/net")
-    if not ns_path.exists():
-        raise PreflightFailure("netns_missing")
-    child_ns = os.readlink("/proc/self/ns/net")
+
+    obs_path = Path(NS_OBSERVATION_FILE)
+    if obs_path.is_file():
+        obs = json.loads(obs_path.read_text(encoding="utf-8"))
+        child_ns = str(obs["child_net_ns"])
+        host_ns = str(obs["host_net_ns"])
+        info["source"] = "substituted_observation"
+    else:
+        if not Path("/proc/self/ns/net").exists():
+            raise PreflightFailure("netns_missing")
+        child_ns = os.readlink("/proc/self/ns/net")
+        host_ns = Path(HOST_NETNS_FILE).read_text(encoding="utf-8").strip()
+        info["source"] = "proc_ns"
     info["net_ns"] = child_ns
-    host_ns_file = Path(HOST_NETNS_FILE)
-    if host_ns_file.is_file():
-        host_ns = host_ns_file.read_text(encoding="utf-8").strip()
-        info["host_net_ns"] = host_ns
-        if host_ns and child_ns == host_ns:
-            raise PreflightFailure("netns_not_isolated")
+    info["host_net_ns"] = host_ns
+    if host_ns and child_ns == host_ns:
+        raise PreflightFailure("netns_not_isolated")
     return info
 
 
@@ -209,79 +211,83 @@ def _tmpfs_size_bytes(mount_point: str = "/tmp") -> int:
     raise PreflightFailure("tmpfs_size_unreadable")
 
 
-def check_mounted_runtime_against_inventory(frozen: list[dict[str, str]]) -> dict[str, Any]:
-    """Full /runtime and /usr walk vs frozen inventory — no shallow sample."""
+def check_tree_against_inventory(
+    *,
+    walk_roots: list[tuple[Path, str]],
+    frozen: list[dict[str, str]],
+    unlisted_prefix: str = "unlisted_or_host_usr:",
+    missing_prefix: str = "missing_dependency:",
+    changed_prefix: str = "changed_dependency:",
+) -> dict[str, Any]:
+    """Independent inventory oracle over one or more rooted trees."""
     by_path = {e["path"]: e for e in frozen}
     seen: set[str] = set()
-    mismatches: list[str] = []
-    extras: list[str] = []
 
     def consider(abs_path: Path, inventory_path: str) -> None:
-        if not abs_path.is_file() or abs_path.is_symlink():
-            if abs_path.is_symlink():
-                extras.append(f"symlink:{inventory_path}")
-                raise PreflightFailure(f"unlisted_or_host_usr:{extras[:5]}:count>={len(extras)}")
+        if abs_path.is_symlink():
+            raise PreflightFailure(f"{unlisted_prefix}symlink:{inventory_path}")
+        if not abs_path.is_file():
             return
         seen.add(inventory_path)
         expected = by_path.get(inventory_path)
         if expected is None:
-            extras.append(inventory_path)
-            raise PreflightFailure(
-                f"unlisted_or_host_usr:{extras[:5]}:count>={len(extras)}"
-            )
+            raise PreflightFailure(f"{unlisted_prefix}{inventory_path}")
         actual_mode = _mode_octal(abs_path)
         actual_hash = _sha256_file(abs_path)
         if expected["mode"] != actual_mode or expected["sha256"] != actual_hash:
-            mismatches.append(inventory_path)
-            raise PreflightFailure(
-                f"changed_dependency:{mismatches[:5]}:count>={len(mismatches)}"
-            )
+            raise PreflightFailure(f"{changed_prefix}{inventory_path}")
 
-    runtime_root = Path("/runtime")
-    for dirpath, dirnames, filenames in os.walk(runtime_root, followlinks=False):
-        for name in list(dirnames) + list(filenames):
-            p = Path(dirpath) / name
-            if p.is_symlink():
-                rel = p.relative_to(runtime_root).as_posix()
-                extras.append(f"symlink:{rel}")
-        for name in filenames:
-            p = Path(dirpath) / name
-            if not p.is_file() or p.is_symlink():
-                continue
-            rel = p.relative_to(runtime_root).as_posix()
-            consider(p, rel)
-
-    usr_root = Path("/usr")
-    if usr_root.exists():
-        for dirpath, dirnames, filenames in os.walk(usr_root, followlinks=False):
+    for root, prefix in walk_roots:
+        if not root.exists():
+            continue
+        for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
             for name in list(dirnames) + list(filenames):
                 p = Path(dirpath) / name
                 if p.is_symlink():
-                    rel = p.relative_to(usr_root).as_posix()
-                    extras.append(f"symlink:sysroot/usr/{rel}")
+                    rel = p.relative_to(root).as_posix()
+                    inv = f"{prefix}{rel}" if prefix else rel
+                    raise PreflightFailure(f"{unlisted_prefix}symlink:{inv}")
             for name in filenames:
                 p = Path(dirpath) / name
                 if not p.is_file() or p.is_symlink():
                     continue
-                rel = p.relative_to(usr_root).as_posix()
-                consider(p, f"sysroot/usr/{rel}")
+                rel = p.relative_to(root).as_posix()
+                inv = f"{prefix}{rel}" if prefix else rel
+                consider(p, inv)
 
     missing = sorted(p for p in by_path if p not in seen)
-    # Overlay mutants may hide paths under /runtime; those register as missing.
-    # Host /usr bind produces massive extras.
-    if extras:
-        raise PreflightFailure(f"unlisted_or_host_usr:{extras[:5]}:count={len(extras)}")
-    if mismatches:
-        raise PreflightFailure(f"changed_dependency:{mismatches[:5]}:count={len(mismatches)}")
     if missing:
-        raise PreflightFailure(f"missing_dependency:{missing[:5]}:count={len(missing)}")
-    return {
-        "seen": len(seen),
-        "inventory": len(by_path),
-        "extras": 0,
-        "mismatches": 0,
-        "missing": 0,
-    }
+        raise PreflightFailure(f"{missing_prefix}{missing[:5]}:count={len(missing)}")
+    return {"seen": len(seen), "inventory": len(by_path)}
+
+
+def check_mounted_runtime_against_inventory(frozen: list[dict[str, str]]) -> dict[str, Any]:
+    return check_tree_against_inventory(
+        walk_roots=[
+            (Path("/runtime"), ""),
+            (Path("/usr"), "sysroot/usr/"),
+        ],
+        frozen=frozen,
+        unlisted_prefix="unlisted_or_host_usr:",
+        missing_prefix="missing_dependency:",
+        changed_prefix="changed_dependency:",
+    )
+
+
+def check_synthetic_dep_oracle() -> dict[str, Any] | None:
+    """Optional synthetic disposable root under /fixture — same oracle."""
+    inv_path = Path(SYNTHETIC_DEP_INVENTORY)
+    tree = Path(SYNTHETIC_DEP_TREE)
+    if not inv_path.is_file():
+        return None
+    frozen = json.loads(inv_path.read_text(encoding="utf-8"))
+    return check_tree_against_inventory(
+        walk_roots=[(tree, "")],
+        frozen=frozen,
+        unlisted_prefix="unlisted_dependency:",
+        missing_prefix="missing_dependency:",
+        changed_prefix="changed_dependency:",
+    )
 
 
 def check_runtime_versions() -> dict[str, Any]:
@@ -327,6 +333,62 @@ def check_runtime_versions() -> dict[str, Any]:
     }
 
 
+def record_resolutions(frozen_paths: set[str]) -> dict[str, Any]:
+    """Record interpreter/module/ELF loader paths; each must be inventoried."""
+    resolutions: list[dict[str, str]] = []
+
+    def map_abs(abs_path: str) -> str | None:
+        if abs_path.startswith("/runtime/"):
+            return abs_path[len("/runtime/") :]
+        if abs_path.startswith("/usr/"):
+            return "sysroot/usr/" + abs_path[len("/usr/") :]
+        return None
+
+    # Interpreter
+    exe = Path(sys.executable).resolve()
+    resolutions.append({"kind": "interpreter", "path": str(exe)})
+    # Modules
+    for mod in list(sys.modules.values()):
+        f = getattr(mod, "__file__", None)
+        if f:
+            resolutions.append({"kind": "module", "path": str(Path(f).resolve())})
+    # ELF loader from /proc/self/exe and auxv-style interpreter link
+    try:
+        resolutions.append({"kind": "proc_exe", "path": str(Path("/proc/self/exe").resolve())})
+    except OSError:
+        pass
+    for loader_cand in (
+        Path("/lib64/ld-linux-x86-64.so.2"),
+        Path("/lib/ld-linux-x86-64.so.2"),
+        Path("/runtime/sysroot/usr/lib64/ld-linux-x86-64.so.2"),
+    ):
+        if loader_cand.exists():
+            resolutions.append({"kind": "elf_loader", "path": str(loader_cand.resolve())})
+            break
+
+    unlisted = []
+    mapped = []
+    for item in resolutions:
+        inv = map_abs(item["path"])
+        item["inventory_path"] = inv
+        if inv is None:
+            # /src paths are source, not runtime inventory
+            if item["path"].startswith("/src/"):
+                continue
+            unlisted.append(item["path"])
+            continue
+        mapped.append(inv)
+        if inv not in frozen_paths:
+            unlisted.append(item["path"])
+    if unlisted:
+        raise PreflightFailure(f"unlisted_resolution:{unlisted[:5]}")
+    report = {"resolutions": resolutions, "mapped_count": len(mapped)}
+    Path(RESOLUTION_REPORT_PATH).write_text(
+        json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+    return report
+
+
 def validate_suite_argv(argv: list[str], expected: list[str]) -> None:
     if argv != expected:
         raise PreflightFailure(f"arbitrary_suite_or_selector_drift:{argv[:8]}")
@@ -348,15 +410,16 @@ def run_preflight() -> dict[str, Any]:
         report["tmpfs_size_bytes"] = size
         frozen = json.loads(Path(FROZEN_INVENTORY_PATH).read_text(encoding="utf-8"))
         report["mount_inventory"] = check_mounted_runtime_against_inventory(frozen)
+        synth = check_synthetic_dep_oracle()
+        if synth is not None:
+            report["synthetic_dep"] = synth
         report["versions"] = check_runtime_versions()
+        report["resolutions"] = record_resolutions({e["path"] for e in frozen})
         assert_no_integration_imports()
         Path(PREFLIGHT_OK_PATH).write_text("ok\n", encoding="utf-8")
         Path(IMPORT_TRACE_PATH).write_text(
             json.dumps(
-                {
-                    "integration_modules_before_sentinel": [],
-                    "preflight": "passed",
-                },
+                {"integration_modules_before_sentinel": [], "preflight": "passed"},
                 sort_keys=True,
             ),
             encoding="utf-8",
@@ -370,7 +433,6 @@ def run_preflight() -> dict[str, Any]:
         Path(PREFLIGHT_REPORT_PATH).write_text(
             json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8"
         )
-        # Ensure sentinel absent on failure.
         try:
             Path(PREFLIGHT_OK_PATH).unlink()
         except FileNotFoundError:

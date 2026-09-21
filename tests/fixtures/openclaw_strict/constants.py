@@ -30,13 +30,11 @@ CHILD_ENV = {
     "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
 }
 
-# Host-only sentinels planted outside bwrap; must never appear inside.
 HOST_SENTINEL_ENV = {
     "CONVMEM_OPENCLAW_SENTINEL_CRED": "synthetic-canary-credential",
     "CONVMEM_OPENCLAW_SENTINEL_CONFIG": "synthetic-canary-config",
 }
 
-# Production-fake selectors — presence inside the child is an independent failure.
 FORBIDDEN_CHILD_ENV_PREFIXES = (
     "OPENCLAW_FIXTURE_SELECT_FAKE",
     "CONVMEM_SELECT_PRODUCTION_FAKE",
@@ -100,10 +98,7 @@ EDIT_ALLOWLIST_EXACT = frozenset(
         "tests/test_openclaw_strict_packet_contract.py",
     }
 )
-
 EDIT_ALLOWLIST_PREFIXES = ("tests/fixtures/openclaw_strict/",)
-
-# Frozen later-milestone allowlist (constants only — M1 does not create these files).
 SCHEMA_ALLOWLIST = frozenset(
     {
         "schemas/convmem-bound-read-scope-v2.schema.json",
@@ -155,9 +150,7 @@ STRICT_PYTEST_FILES = (
     "tests/test_openclaw_activation_supervisor.py",
     "tests/test_openclaw_strict_packet_contract.py",
 )
-
 CONNECTOR_NODE_TEST = "integrations/openclaw-convmem-reader/test/connector.test.mjs"
-
 LEGACY_PYTEST_FILES = (
     "tests/test_site_filter.py",
     "tests/test_milestone_c.py",
@@ -174,7 +167,6 @@ LEGACY_PYTEST_FILES = (
     "tests/test_provenance.py",
     "tests/test_provenance_continuity.py",
 )
-
 LEGACY_DESELECTS = (
     "tests/test_agent_run_ledger.py::test_v8_kiro_hook_adapter_fail_open",
     "tests/test_agent_run_ledger.py::test_v6_git_facts_non_git_cwd",
@@ -199,6 +191,13 @@ IMPORT_TRACE_PATH = "/fixture/import_trace.json"
 FROZEN_INVENTORY_PATH = "/fixture/frozen_runtime_inventory.json"
 CANARY_PATHS_FILE = "/fixture/canary_paths.json"
 HOST_NETNS_FILE = "/fixture/host_net_ns"
+FD_OBSERVATION_FILE = "/fixture/fd_observation.json"
+NS_OBSERVATION_FILE = "/fixture/ns_observation.json"
+SYNTHETIC_DEP_ROOT = "/fixture/synthetic_dep"
+SYNTHETIC_DEP_INVENTORY = "/fixture/synthetic_dep/inventory.json"
+SYNTHETIC_DEP_TREE = "/fixture/synthetic_dep/tree"
+RESOLUTION_REPORT_PATH = "/fixture/resolution_report.json"
+PLUGIN_INVENTORY_PATH = "/fixture/pytest_plugin_inventory.json"
 
 INNER_ROLE_ENV = "CONVMEM_OPENCLAW_INNER_ROLE"
 INNER_ROLE_VALUE = "inner"
@@ -232,3 +231,17 @@ ALL_NEGATIVE_CONTROLS = (
     CONTROL_ARBITRARY_SUITE,
     CONTROL_PRODUCTION_FAKE,
 )
+
+# Exact expected independent failure reason prefixes (correction 4/5).
+CONTROL_EXPECTED_REASON_PREFIX = {
+    CONTROL_EXPOSED_CANARY: "canary_exposed:",
+    CONTROL_HOST_USR: "unlisted_or_host_usr:",
+    CONTROL_MISSING_DEP: "missing_dependency:",
+    CONTROL_CHANGED_DEP: "changed_dependency:",
+    CONTROL_UNLISTED_FILE: "unlisted_dependency:",
+    CONTROL_WRONG_NAMESPACE: "netns_not_isolated",
+    CONTROL_WRONG_ENV: "sentinel_env_present:",
+    CONTROL_EXTRA_FD: "unexpected_inherited_fds:",
+    CONTROL_ARBITRARY_SUITE: "arbitrary_suite_or_selector_drift:",
+    CONTROL_PRODUCTION_FAKE: "production_fake_selector:",
+}
