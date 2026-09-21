@@ -61,6 +61,74 @@ def test_case57_runtime_not_host_usr():
     assert Path("/usr").is_dir()
 
 
+def test_case57_fixture_legacy_identity_config_only():
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    cfg = Path("/fixture/home/.config/convmem/config.toml")
+    assert cfg.is_file()
+    text = cfg.read_text(encoding="utf-8")
+    assert text == '[index]\nchroma_dir = "/fixture/legacy-live-identity/chroma"\n'
+    assert Path("/fixture/legacy-live-identity/chroma").is_dir()
+    assert (Path("/fixture/legacy-live-identity/chroma").stat().st_mode & 0o777) == 0o700
+
+
+def test_case57_pytest_plugin_inventory(pytestconfig):
+    """Record actual loaded plugins from the live strict pytest process."""
+    import importlib.metadata
+
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    assert os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
+    pm = pytestconfig.pluginmanager
+    # -p no:cacheprovider blocks cacheprovider; never treat it as loaded.
+    disabled = {"cacheprovider"}
+    loaded_names = sorted(
+        {
+            name
+            for name, _plugin in pm.list_name_plugin()
+            if name not in disabled and not name.startswith("no:")
+        }
+    )
+    assert "no:cacheprovider" not in loaded_names
+    assert "cacheprovider" not in loaded_names
+    assert not pm.has_plugin("cacheprovider")
+
+    distribution_plugins: list[dict[str, str]] = []
+    unapproved: list[str] = []
+    try:
+        eps = importlib.metadata.entry_points(group="pytest11")
+    except TypeError:
+        eps = importlib.metadata.entry_points().select(group="pytest11")
+    for ep in eps:
+        name = ep.name
+        # Blocked/disabled entry must not be recorded as a loaded plugin.
+        if name in disabled or name.startswith("no:"):
+            continue
+        dist = getattr(ep, "dist", None)
+        dist_name = dist.name if dist is not None else ""
+        if not pm.has_plugin(name):
+            continue
+        distribution_plugins.append({"plugin": name, "distribution": dist_name})
+        # Autoload false + explicitly_loaded empty → reject external dist plugins.
+        if dist_name and dist_name != "pytest":
+            unapproved.append(f"{dist_name}:{name}")
+    assert not unapproved, f"unapproved_external_distribution_plugins:{unapproved}"
+
+    inventory = {
+        "autoload": False,
+        "disabled_plugins": ["cacheprovider"],
+        "explicitly_loaded_plugins": [],
+        "loaded_plugin_names": loaded_names,
+        "loaded_distribution_plugins": sorted(
+            distribution_plugins, key=lambda d: (d["distribution"], d["plugin"])
+        ),
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": os.environ.get(
+            "PYTEST_DISABLE_PLUGIN_AUTOLOAD"
+        ),
+    }
+    Path(oc_constants.PLUGIN_INVENTORY_PATH).write_text(
+        json.dumps(inventory, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def test_runner_frozen_suite_selectors():
     strict = oc_suites.strict_pytest_argv()
     assert strict[:6] == [

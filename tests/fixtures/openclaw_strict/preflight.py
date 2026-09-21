@@ -30,12 +30,15 @@ from constants import (
     INNER_ROLE_ENV,
     INNER_ROLE_VALUE,
     INTEGRATION_IMPORT_SENTINELS,
+    NODE_RESOLUTION_REPORT_PATH,
     NS_OBSERVATION_FILE,
     PREFLIGHT_OK_PATH,
     PREFLIGHT_REPORT_PATH,
     RESOLUTION_REPORT_PATH,
     SYNTHETIC_DEP_INVENTORY,
     SYNTHETIC_DEP_TREE,
+    SYNTHETIC_HOST_USR_INVENTORY,
+    SYNTHETIC_HOST_USR_TREE,
     TMPFS_SIZE_BYTES,
 )
 
@@ -290,6 +293,22 @@ def check_synthetic_dep_oracle() -> dict[str, Any] | None:
     )
 
 
+def check_synthetic_host_usr_oracle() -> dict[str, Any] | None:
+    """Disposable synthetic host_usr root — same fail-closed inventory oracle."""
+    inv_path = Path(SYNTHETIC_HOST_USR_INVENTORY)
+    tree = Path(SYNTHETIC_HOST_USR_TREE)
+    if not inv_path.is_file():
+        return None
+    frozen = json.loads(inv_path.read_text(encoding="utf-8"))
+    return check_tree_against_inventory(
+        walk_roots=[(tree, "")],
+        frozen=frozen,
+        unlisted_prefix="unlisted_or_host_usr:",
+        missing_prefix="missing_dependency:",
+        changed_prefix="changed_dependency:",
+    )
+
+
 def check_runtime_versions() -> dict[str, Any]:
     import importlib.metadata
     import subprocess
@@ -333,60 +352,229 @@ def check_runtime_versions() -> dict[str, Any]:
     }
 
 
+def _map_abs_to_inventory(abs_path: str) -> str | None:
+    if abs_path.startswith("/runtime/"):
+        return abs_path[len("/runtime/") :]
+    if abs_path.startswith("/usr/"):
+        return "sysroot/usr/" + abs_path[len("/usr/") :]
+    return None
+
+
+def _parse_maps_regular_files(maps_text: str) -> list[str]:
+    """Parse /proc/*/maps lines into distinct regular-file pathnames."""
+    import stat as stat_mod
+
+    seen: set[str] = set()
+    out: list[str] = []
+    for line in maps_text.splitlines():
+        parts = line.split(None, 5)
+        if len(parts) < 6:
+            continue
+        raw = parts[5]
+        if " (deleted)" in raw:
+            raw = raw[: raw.index(" (deleted)")]
+        if not raw.startswith("/"):
+            continue
+        if raw in seen:
+            continue
+        seen.add(raw)
+        try:
+            st = os.lstat(raw)
+        except OSError:
+            continue
+        if stat_mod.S_ISLNK(st.st_mode) or not stat_mod.S_ISREG(st.st_mode):
+            continue
+        out.append(raw)
+    return out
+
+
+def _validate_runtime_mappings(
+    *,
+    paths: list[str],
+    frozen_paths: set[str],
+    kind_for: dict[str, str] | None = None,
+) -> tuple[list[dict[str, str]], list[str], list[dict[str, str]]]:
+    """Represent all mapped regular files; inventory-validate every /runtime or /usr path.
+
+    /src is source-only (skipped). Non-/runtime/non-/usr paths fail closed.
+    """
+    kind_for = kind_for or {}
+    mapped_items: list[dict[str, str]] = []
+    source_only: list[dict[str, str]] = []
+    unlisted: list[str] = []
+    seen_resolved: set[str] = set()
+    for abs_path in paths:
+        try:
+            resolved = str(Path(abs_path).resolve())
+        except OSError:
+            resolved = abs_path
+        if resolved in seen_resolved:
+            continue
+        seen_resolved.add(resolved)
+        kind = kind_for.get(abs_path, kind_for.get(resolved, "maps_regular_file"))
+        if resolved.startswith("/src/") or abs_path.startswith("/src/"):
+            source_only.append({"kind": kind, "path": resolved, "inventory_path": ""})
+            continue
+        inv = _map_abs_to_inventory(resolved)
+        if inv is None:
+            inv = _map_abs_to_inventory(abs_path)
+        item = {"kind": kind, "path": resolved, "inventory_path": inv or ""}
+        if inv is None:
+            unlisted.append(resolved)
+            continue
+        mapped_items.append(item)
+        if inv not in frozen_paths:
+            unlisted.append(resolved)
+    return mapped_items, unlisted, source_only
+
+
 def record_resolutions(frozen_paths: set[str]) -> dict[str, Any]:
-    """Record interpreter/module/ELF loader paths; each must be inventoried."""
-    resolutions: list[dict[str, str]] = []
+    """Record actual process mappings; validate /runtime and /usr against inventory."""
+    import subprocess
 
-    def map_abs(abs_path: str) -> str | None:
-        if abs_path.startswith("/runtime/"):
-            return abs_path[len("/runtime/") :]
-        if abs_path.startswith("/usr/"):
-            return "sysroot/usr/" + abs_path[len("/usr/") :]
-        return None
+    maps_text = Path("/proc/self/maps").read_text(encoding="utf-8", errors="replace")
+    maps_files = _parse_maps_regular_files(maps_text)
 
-    # Interpreter
-    exe = Path(sys.executable).resolve()
-    resolutions.append({"kind": "interpreter", "path": str(exe)})
-    # Modules
+    kind_for: dict[str, str] = {}
+    exe = str(Path(sys.executable).resolve())
+    kind_for[exe] = "interpreter"
+    try:
+        proc_exe = str(Path("/proc/self/exe").resolve())
+        kind_for[proc_exe] = "proc_exe"
+    except OSError:
+        proc_exe = None
     for mod in list(sys.modules.values()):
         f = getattr(mod, "__file__", None)
-        if f:
-            resolutions.append({"kind": "module", "path": str(Path(f).resolve())})
-    # ELF loader from /proc/self/exe and auxv-style interpreter link
-    try:
-        resolutions.append({"kind": "proc_exe", "path": str(Path("/proc/self/exe").resolve())})
-    except OSError:
-        pass
-    for loader_cand in (
-        Path("/lib64/ld-linux-x86-64.so.2"),
-        Path("/lib/ld-linux-x86-64.so.2"),
-        Path("/runtime/sysroot/usr/lib64/ld-linux-x86-64.so.2"),
-    ):
-        if loader_cand.exists():
-            resolutions.append({"kind": "elf_loader", "path": str(loader_cand.resolve())})
-            break
-
-    unlisted = []
-    mapped = []
-    for item in resolutions:
-        inv = map_abs(item["path"])
-        item["inventory_path"] = inv
-        if inv is None:
-            # /src paths are source, not runtime inventory
-            if item["path"].startswith("/src/"):
-                continue
-            unlisted.append(item["path"])
+        if not f:
             continue
-        mapped.append(inv)
-        if inv not in frozen_paths:
-            unlisted.append(item["path"])
+        try:
+            mp = str(Path(f).resolve())
+        except OSError:
+            continue
+        kind_for.setdefault(mp, "module")
+
+    # Union maps regular files with interpreter/modules so classification is complete.
+    all_paths: list[str] = []
+    seen: set[str] = set()
+    for p in [exe] + ([proc_exe] if proc_exe else []) + list(kind_for) + maps_files:
+        if p and p not in seen:
+            seen.add(p)
+            all_paths.append(p)
+
+    for p in maps_files:
+        name = Path(p).name
+        if name.startswith("ld-") or ".so" in name:
+            kind_for.setdefault(p, "elf_loader_or_shared_lib")
+
+    mapped_items, unlisted, source_only = _validate_runtime_mappings(
+        paths=all_paths, frozen_paths=frozen_paths, kind_for=kind_for
+    )
     if unlisted:
         raise PreflightFailure(f"unlisted_resolution:{unlisted[:5]}")
-    report = {"resolutions": resolutions, "mapped_count": len(mapped)}
+    # Every maps regular file under /runtime or /usr must appear in the report.
+    maps_runtime_validated = {
+        item["path"]
+        for item in mapped_items
+        if item["path"].startswith("/runtime/") or item["path"].startswith("/usr/")
+    }
+    for raw in maps_files:
+        try:
+            resolved = str(Path(raw).resolve())
+        except OSError:
+            resolved = raw
+        if resolved.startswith("/src/"):
+            continue
+        if resolved.startswith("/runtime/") or resolved.startswith("/usr/"):
+            if resolved not in maps_runtime_validated:
+                raise PreflightFailure(f"unlisted_resolution:{resolved}")
+
+    python_report = {
+        "resolutions": mapped_items,
+        "source_only": source_only,
+        "maps_regular_files": maps_files,
+        "maps_regular_file_count": len(maps_files),
+        "mapped_count": len(mapped_items),
+        "source": "python_/proc/self/maps",
+    }
     Path(RESOLUTION_REPORT_PATH).write_text(
-        json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+        json.dumps(python_report, sort_keys=True, indent=2) + "\n", encoding="utf-8"
     )
-    return report
+
+    # Fixed Node probe: execPath, exact version, own /proc/self/maps regular files.
+    node_probe = (
+        "const fs=require('fs');"
+        "const maps=fs.readFileSync('/proc/self/maps','utf8');"
+        "const seen=new Set();"
+        "const files=[];"
+        "for (const line of maps.split('\\n')) {"
+        "  const parts=line.trim().split(/\\s+/);"
+        "  if (parts.length<6) continue;"
+        "  let p=parts.slice(5).join(' ');"
+        "  const del=p.indexOf(' (deleted)');"
+        "  if (del>=0) p=p.slice(0,del);"
+        "  if (!p.startsWith('/')||seen.has(p)) continue;"
+        "  seen.add(p);"
+        "  try {"
+        "    const st=fs.lstatSync(p);"
+        "    if (st.isSymbolicLink()) continue;"
+        "    if (st.isFile()) files.push(p);"
+        "  } catch (e) {}"
+        "}"
+        "process.stdout.write(JSON.stringify({"
+        "execPath:process.execPath,"
+        "version:process.version,"
+        "maps_regular_files:files"
+        "}));"
+    )
+    node = subprocess.run(
+        ["/runtime/bin/node", "-e", node_probe],
+        check=True,
+        capture_output=True,
+        text=True,
+        close_fds=True,
+    )
+    node_payload = json.loads(node.stdout)
+    if node_payload.get("version") != FROZEN_NODE:
+        raise PreflightFailure(f"node_version:{node_payload.get('version')}")
+    node_paths = [str(node_payload["execPath"]), *list(node_payload["maps_regular_files"])]
+    node_kind = {str(node_payload["execPath"]): "node_execPath"}
+    for p in node_payload["maps_regular_files"]:
+        name = Path(p).name
+        if name.startswith("ld-") or ".so" in name:
+            node_kind.setdefault(p, "elf_loader_or_shared_lib")
+    node_mapped, node_unlisted, node_source_only = _validate_runtime_mappings(
+        paths=node_paths, frozen_paths=frozen_paths, kind_for=node_kind
+    )
+    if node_unlisted:
+        raise PreflightFailure(f"unlisted_resolution:{node_unlisted[:5]}")
+    node_runtime_validated = {
+        item["path"]
+        for item in node_mapped
+        if item["path"].startswith("/runtime/") or item["path"].startswith("/usr/")
+    }
+    for raw in node_payload["maps_regular_files"]:
+        try:
+            resolved = str(Path(raw).resolve())
+        except OSError:
+            resolved = raw
+        if resolved.startswith("/src/"):
+            continue
+        if resolved.startswith("/runtime/") or resolved.startswith("/usr/"):
+            if resolved not in node_runtime_validated:
+                raise PreflightFailure(f"unlisted_resolution:{resolved}")
+    node_report = {
+        "execPath": node_payload["execPath"],
+        "version": node_payload["version"],
+        "maps_regular_files": node_payload["maps_regular_files"],
+        "resolutions": node_mapped,
+        "source_only": node_source_only,
+        "mapped_count": len(node_mapped),
+        "source": "node_/proc/self/maps",
+    }
+    Path(NODE_RESOLUTION_REPORT_PATH).write_text(
+        json.dumps(node_report, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+    return {"python": python_report, "node": node_report}
 
 
 def validate_suite_argv(argv: list[str], expected: list[str]) -> None:
@@ -413,6 +601,9 @@ def run_preflight() -> dict[str, Any]:
         synth = check_synthetic_dep_oracle()
         if synth is not None:
             report["synthetic_dep"] = synth
+        host_usr = check_synthetic_host_usr_oracle()
+        if host_usr is not None:
+            report["synthetic_host_usr"] = host_usr
         report["versions"] = check_runtime_versions()
         report["resolutions"] = record_resolutions({e["path"] for e in frozen})
         assert_no_integration_imports()

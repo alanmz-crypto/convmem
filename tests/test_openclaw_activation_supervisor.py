@@ -16,7 +16,7 @@ def test_production_entrypoint_refuses_runtime_not_qualified():
     )
     assert proc.returncode == 78
     assert proc.stdout == ""
-    assert proc.stderr.strip() == "runtime_not_qualified"
+    assert proc.stderr == "runtime_not_qualified\n"
 
 
 def test_run_function_refuses_before_os_effects():
