@@ -298,3 +298,240 @@ def reject_symlink_member(root: Path, component: str, rel_path: str) -> None:
         return
     shutil.rmtree(base, ignore_errors=True)
     raise InventoryError("symlink_accepted")
+
+
+def inert_hash(label: str) -> str:
+    """Fixture-only inert digest — never a source-component hash."""
+    return _sha256_bytes(f"fixture-inert:{label}".encode("utf-8"))
+
+
+def fixture_supplied_builder_inventory(*, omit_canonical_json: bool = False) -> list[dict[str, str]]:
+    """All expected builder paths with clearly fixture-only inert hashes/modes.
+
+    This is a supplied-inventory membership probe, not a source-component digest.
+    """
+    entries: list[dict[str, str]] = []
+    for rel in COMPONENT_MEMBERSHIP["builder"]:
+        if omit_canonical_json and rel == "canonical_json.py":
+            continue
+        entries.append({"path": rel, "mode": "0644", "sha256": inert_hash(rel)})
+    entries.sort(key=lambda e: e["path"])
+    return entries
+
+
+def reject_supplied_omit_only_canonical_json_forged_digest() -> None:
+    """Omit only canonical_json.py; forged recomputed wrong digest agrees.
+
+    Rejection must be exact-set membership, not other absent future sources.
+    """
+    full = fixture_supplied_builder_inventory(omit_canonical_json=False)
+    omitted = fixture_supplied_builder_inventory(omit_canonical_json=True)
+    assert len(omitted) == len(full) - 1
+    assert all(e["path"] != "canonical_json.py" for e in omitted)
+    # Other future production members remain listed in the supplied array with
+    # inert hashes — absence on disk is irrelevant to this membership probe.
+    for future in FUTURE_PRODUCTION_MEMBERS:
+        if future == "canonical_json.py":
+            continue
+        if future in COMPONENT_MEMBERSHIP["builder"]:
+            assert any(e["path"] == future for e in omitted), future
+    forged_digest = component_tree_digest(omitted)
+    fake_manifest = {"builder": forged_digest}
+    assert fake_manifest["builder"] == forged_digest
+    try:
+        reject_supplied_inventory_extra_entry("builder", omitted)
+    except InventoryError as exc:
+        if "missing_supplied_member" not in str(exc):
+            raise
+        if "canonical_json.py" not in str(exc):
+            raise InventoryError(f"reject_not_canonical_json:{exc}")
+        return
+    raise InventoryError("omitted_canonical_json_supplied_accepted")
+
+
+def assert_plugin_byte_and_mode_mutations(root: Path) -> dict[str, Any]:
+    """Independent byte-only and mode-only mutants for each plugin member.
+
+    For each of the three members, two disposable copies are taken from the same
+    baseline: one changes bytes while preserving the original mode; one changes
+    mode while preserving the original bytes. A walker that omitted mode would
+    miss the mode-only control. Both walkers must agree; each mutant alone must
+    change the tree digest. Reports 6 controls (3 byte-only + 3 mode-only).
+    """
+    import case58_oracle as oracle
+
+    members = list(COMPONENT_MEMBERSHIP["plugin"])
+    assert len(members) == 3
+    results: list[dict[str, str]] = []
+
+    def _baseline_digests(base: Path) -> tuple[str, str]:
+        before_ref = component_tree_digest(reference_walk_component(base, "plugin"))
+        before_ora = oracle.independent_tree_digest(oracle.independent_walk(base, "plugin"))
+        if before_ref != before_ora:
+            shutil.rmtree(base, ignore_errors=True)
+            raise InventoryError("plugin_baseline_walker_disagreement")
+        return before_ref, before_ora
+
+    def _after_digests(base: Path, before: str, *, label: str) -> str:
+        after_ref = component_tree_digest(reference_walk_component(base, "plugin"))
+        after_ora = oracle.independent_tree_digest(oracle.independent_walk(base, "plugin"))
+        if after_ref != after_ora:
+            shutil.rmtree(base, ignore_errors=True)
+            raise InventoryError(f"plugin_walker_disagreement:{label}")
+        if after_ref == before:
+            shutil.rmtree(base, ignore_errors=True)
+            raise InventoryError(f"plugin_mutant_digest_unchanged:{label}")
+        return after_ref
+
+    for rel in members:
+        # --- byte-only: original mode unchanged ---
+        base_bytes = disposable_copy_members(root, members)
+        before_ref, _ = _baseline_digests(base_bytes)
+        target = base_bytes / rel
+        mode_before = target.stat().st_mode & 0o7777
+        original_mode_octal = _mode_octal(target)
+        target.write_bytes(target.read_bytes() + b"\n#byte-mut\n")
+        os.chmod(target, mode_before)
+        if _mode_octal(target) != original_mode_octal:
+            shutil.rmtree(base_bytes, ignore_errors=True)
+            raise InventoryError(f"byte_only_mode_changed:{rel}")
+        after_bytes = _after_digests(base_bytes, before_ref, label=f"byte_only:{rel}")
+        results.append(
+            {
+                "path": rel,
+                "kind": "byte_only",
+                "before": before_ref,
+                "after": after_bytes,
+                "mode": original_mode_octal,
+            }
+        )
+        shutil.rmtree(base_bytes, ignore_errors=True)
+
+        # --- mode-only: original bytes unchanged ---
+        base_mode = disposable_copy_members(root, members)
+        before_ref, _ = _baseline_digests(base_mode)
+        target = base_mode / rel
+        bytes_before = target.read_bytes()
+        original_mode_octal = _mode_octal(target)
+        current_mode = target.stat().st_mode & 0o7777
+        # Flip to a distinct permission bit so mode alone is bound.
+        new_mode = 0o0400 if current_mode != 0o0400 else 0o0644
+        os.chmod(target, new_mode)
+        if target.read_bytes() != bytes_before:
+            shutil.rmtree(base_mode, ignore_errors=True)
+            raise InventoryError(f"mode_only_bytes_changed:{rel}")
+        if _mode_octal(target) == original_mode_octal:
+            shutil.rmtree(base_mode, ignore_errors=True)
+            raise InventoryError(f"mode_only_mode_unchanged:{rel}")
+        after_mode = _after_digests(base_mode, before_ref, label=f"mode_only:{rel}")
+        results.append(
+            {
+                "path": rel,
+                "kind": "mode_only",
+                "before": before_ref,
+                "after": after_mode,
+                "mode_before": original_mode_octal,
+                "mode_after": _mode_octal(target),
+            }
+        )
+        shutil.rmtree(base_mode, ignore_errors=True)
+
+    byte_only = [r for r in results if r["kind"] == "byte_only"]
+    mode_only = [r for r in results if r["kind"] == "mode_only"]
+    if len(results) != 6 or len(byte_only) != 3 or len(mode_only) != 3:
+        raise InventoryError(
+            f"plugin_mutant_count:{len(results)}:byte={len(byte_only)}:mode={len(mode_only)}"
+        )
+    return {
+        "plugin_mutants": results,
+        "mutant_count": 6,
+        "byte_only_count": 3,
+        "mode_only_count": 3,
+    }
+
+
+def reject_supplied_schema_subset() -> None:
+    """Schema-subset substitution on a fixture-only supplied builder array."""
+    full = fixture_supplied_builder_inventory()
+    # Drop one Gate B schema entry → subset.
+    subset = [e for e in full if e["path"] != SCHEMAS_BC[0]]
+    try:
+        reject_supplied_inventory_extra_entry("builder", subset)
+    except InventoryError as exc:
+        if "missing_supplied_member" not in str(exc):
+            raise
+        return
+    raise InventoryError("schema_subset_accepted")
+
+
+def reject_supplied_protected_helper_mutation() -> None:
+    """Protected-helper entry mutation on fixture-only supplied arrays."""
+    entries = fixture_supplied_builder_inventory()
+    # Mutate the inert hash of a CORE protected helper (canonical_json.py).
+    mutated = []
+    for e in entries:
+        if e["path"] == "canonical_json.py":
+            mutated.append(
+                {
+                    "path": e["path"],
+                    "mode": e["mode"],
+                    "sha256": inert_hash("canonical_json.py:MUTATED"),
+                }
+            )
+        else:
+            mutated.append(e)
+    before = component_tree_digest(entries)
+    after = component_tree_digest(mutated)
+    if before == after:
+        raise InventoryError("protected_helper_mutation_digest_unchanged")
+    # Membership still exact — mutation is hash/mode evidence, not set error.
+    reject_supplied_inventory_extra_entry("builder", mutated)
+
+
+def reject_supplied_duplicate_missing_extra_path_escape() -> None:
+    """Duplicate / missing / extra / path-escape controls on supplied arrays."""
+    base = fixture_supplied_builder_inventory()
+    dup = list(base) + [dict(base[0])]
+    try:
+        reject_supplied_inventory_extra_entry("builder", dup)
+    except InventoryError as exc:
+        if "duplicate_supplied_path" not in str(exc):
+            raise
+    else:
+        raise InventoryError("duplicate_accepted")
+
+    missing = [e for e in base if e["path"] != "requirements.txt"]
+    try:
+        reject_supplied_inventory_extra_entry("builder", missing)
+    except InventoryError as exc:
+        if "missing_supplied_member" not in str(exc):
+            raise
+    else:
+        raise InventoryError("missing_accepted")
+
+    extra = list(base) + [
+        {"path": "../escape.py", "mode": "0644", "sha256": inert_hash("escape")}
+    ]
+    try:
+        reject_supplied_inventory_extra_entry("builder", extra)
+    except InventoryError as exc:
+        if "extra_supplied_member" not in str(exc):
+            raise
+    else:
+        raise InventoryError("extra_accepted")
+
+    escaped = list(base)
+    # Path-escape disguised as a membership path.
+    escaped[0] = {
+        "path": "schemas/../../etc/passwd",
+        "mode": "0644",
+        "sha256": inert_hash("passwd"),
+    }
+    try:
+        reject_supplied_inventory_extra_entry("builder", escaped)
+    except InventoryError as exc:
+        msg = str(exc)
+        if "extra_supplied_member" not in msg and "missing_supplied_member" not in msg:
+            raise
+    else:
+        raise InventoryError("path_escape_accepted")

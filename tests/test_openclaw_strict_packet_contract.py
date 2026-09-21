@@ -319,14 +319,23 @@ def test_m2_case58_plugin_mutation_and_symlink_controls():
     import component_inventory as inv
 
     root = Path(".")
-    result = inv.assert_present_member_mutation_changes_digest(
-        root, "plugin", "integrations/openclaw-convmem-reader/package.json"
-    )
-    assert result["before"] != result["after"]
+    # Independent byte-only and mode-only mutants (6 controls: 3+3); both walkers.
+    plugin_report = inv.assert_plugin_byte_and_mode_mutations(root)
+    assert plugin_report["mutant_count"] == 6
+    assert plugin_report["byte_only_count"] == 3
+    assert plugin_report["mode_only_count"] == 3
+    kinds = {(m["path"], m["kind"]) for m in plugin_report["plugin_mutants"]}
+    assert len(kinds) == 6
     inv.reject_symlink_member(
         root, "plugin", "integrations/openclaw-convmem-reader/index.js"
     )
+    # Literal supplied-inventory: omit only canonical_json; forged digest agrees;
+    # reject is exact-set membership (not other absent future sources).
+    inv.reject_supplied_omit_only_canonical_json_forged_digest()
     inv.assert_omitted_canonical_json_mutant_fails(root)
+    inv.reject_supplied_schema_subset()
+    inv.reject_supplied_protected_helper_mutation()
+    inv.reject_supplied_duplicate_missing_extra_path_escape()
     # Distinct cases: supplied extra inventory entry rejects; on-disk unrelated ignored.
     good = inv.reference_walk_component(root, "plugin")
     bad = list(good) + [
@@ -398,6 +407,300 @@ def test_m2_dual_independent_canonical_parsers_and_vectors():
         raise AssertionError("reordered_raw_accepted_by_oracle_b")
 
 
+def test_m2_schema_meta_and_31_positive_negative_instances():
+    """Draft 2020-12 meta-schema + 31 positives + per-schema negatives inside runner."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    from protocol_fixture.schema_contract import run_all_schema_contract_checks
+
+    report = run_all_schema_contract_checks(Path("schemas"))
+    assert report["schema_count"] == 31
+    assert report["meta_schema_ok"] == 31
+    assert report["positive_ok"] == 31
+    assert report["negative_ok"] == report["negative_total"]
+    assert report["negative_total"] >= 31 * 4  # unknown/missing/wrong-type/null-discipline each
+    # Every schema must include the four core negative names.
+    from protocol_fixture.schema_contract import (
+        FILENAME_TO_ID,
+        build_negatives,
+        load_schema,
+    )
+
+    for filename in FILENAME_TO_ID:
+        schema = load_schema(Path("schemas"), filename)
+        from protocol_fixture.schema_instances import POSITIVE_BY_FILENAME
+
+        names = {n["name"] for n in build_negatives(schema, POSITIVE_BY_FILENAME[filename])}
+        assert "unknown_top_level_key" in names, filename
+        assert "missing_required_key" in names, filename
+        assert "wrong_type" in names, filename
+        assert "omitted_required_null" in names, filename
+    assert report["activation_control_variants_ok"] == 4
+    assert report["filename_to_id_exact"] is True
+    assert report["deferred_cross_object_invariants"]
+
+
+def test_m2_pinned_known_answer_vectors_dual_oracles():
+    """Parent-defined vectors; dual fixture oracles recompute pinned constants."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import digest_oracle as ora
+    import digest_oracle_b as orb
+    from protocol_fixture import pinned_vectors as pv
+
+    # Owner digest
+    assert ora.owner_digest(**pv.OWNER_INPUT) == orb.owner_digest(**pv.OWNER_INPUT) == pv.OWNER_DIGEST
+    assert ora.encode_canonical_bytes(
+        {
+            "schema": "convmem.strict-owner.v1",
+            **{k: pv.OWNER_INPUT[k] for k in ("scope_sha256", "registry_sha256", "project_binding_id")},
+        }
+    ) == pv.OWNER_CANONICAL_UTF8
+
+    # Event ID
+    assert (
+        ora.fixture_scan_event_id(**pv.SCAN_INPUT)
+        == orb.fixture_scan_event_id(**pv.SCAN_INPUT)
+        == pv.EVT_ID
+    )
+
+    # Logical IDs — prefixes derived from subject_kind only
+    find2 = ora.logical_id(**pv.LOGICAL_COMMON, subject_kind="finding")
+    choice2 = ora.logical_id(**pv.LOGICAL_COMMON, subject_kind="decision")
+    assert find2 == orb.logical_id(**pv.LOGICAL_COMMON, subject_kind="finding") == pv.FIND2_ID
+    assert choice2 == orb.logical_id(**pv.LOGICAL_COMMON, subject_kind="decision") == pv.CHOICE2_ID
+
+    # Assertion IDs
+    obs2 = ora.assertion_id(
+        project_binding_id="project:convmem:v1",
+        source_registration_id="src-reg-1",
+        source_event_id=pv.EVT_ID,
+        record_kind="observation",
+        logical_id_value=pv.FIND2_ID,
+    )
+    assert obs2 == orb.assertion_id(
+        project_binding_id="project:convmem:v1",
+        source_registration_id="src-reg-1",
+        source_event_id=pv.EVT_ID,
+        record_kind="observation",
+        logical_id_value=pv.FIND2_ID,
+    ) == pv.OBS2_ID
+
+    check2 = ora.logical_id(
+        **pv.LOGICAL_COMMON,
+        subject_kind="verification",
+        target_assertion_id_or_empty=pv.OBS2_ID,
+    )
+    assert check2 == orb.logical_id(
+        **pv.LOGICAL_COMMON,
+        subject_kind="verification",
+        target_assertion_id_or_empty=pv.OBS2_ID,
+    ) == pv.CHECK2_ID
+
+    dec2 = ora.assertion_id(
+        project_binding_id="project:convmem:v1",
+        source_registration_id="src-reg-1",
+        source_event_id=pv.EVT_ID,
+        record_kind="decision",
+        logical_id_value=pv.CHOICE2_ID,
+    )
+    assert dec2 == pv.DEC2_ID == orb.assertion_id(
+        project_binding_id="project:convmem:v1",
+        source_registration_id="src-reg-1",
+        source_event_id=pv.EVT_ID,
+        record_kind="decision",
+        logical_id_value=pv.CHOICE2_ID,
+    )
+    ver2 = ora.assertion_id(
+        project_binding_id="project:convmem:v1",
+        source_registration_id="src-reg-1",
+        source_event_id=pv.EVT_ID,
+        record_kind="verification",
+        logical_id_value=pv.CHECK2_ID,
+    )
+    assert ver2 == pv.VER2_ID
+
+    # Kind/prefix mismatch must reject (no generic prefix minting)
+    try:
+        ora.assertion_id(
+            project_binding_id="project:convmem:v1",
+            source_registration_id="src-reg-1",
+            source_event_id=pv.EVT_ID,
+            record_kind="observation",
+            logical_id_value=pv.CHOICE2_ID,
+        )
+    except ora.DigestOracleError as exc:
+        assert "kind_prefix_mismatch" in str(exc)
+    else:
+        raise AssertionError("kind_prefix_mismatch_accepted")
+
+    # Citation / receipt / public handle
+    assert (
+        ora.citation_ref(
+            project_binding_id="project:convmem:v1",
+            assertion_id_value=pv.OBS2_ID,
+            provenance_commitment=pv.PROVENANCE_COMMITMENT,
+        )
+        == orb.citation_ref(
+            project_binding_id="project:convmem:v1",
+            assertion_id_value=pv.OBS2_ID,
+            provenance_commitment=pv.PROVENANCE_COMMITMENT,
+        )
+        == pv.CITE1_REF
+    )
+    assert ora.receipt_ref(pv.RECEIPT_PAYLOAD_HEX) == pv.CAPTURE_RECEIPT_REF
+    assert (
+        ora.public_handle(public_ref=pv.PUBLIC_REF, stored_external_id=pv.OBS2_ID)
+        == orb.public_handle(public_ref=pv.PUBLIC_REF, stored_external_id=pv.OBS2_ID)
+        == pv.PUBLIC_HANDLE
+    )
+
+    # NFC LP equivalence + already-NFC gate for minting
+    assert ora.lp(pv.NFC_COMPOSED).hex() == orb.lp(pv.NFC_DECOMPOSED).hex() == pv.LP_CAFE_HEX
+    cafe = ora.logical_id(
+        project_binding_id="project:convmem:v1",
+        source_identity="fixture/source-a",
+        authority_site="example.com",
+        producer="form-prod",
+        logical_key=pv.NFC_COMPOSED,
+        subject_kind="finding",
+    )
+    assert cafe == pv.CAFE_FIND2_ID == orb.logical_id(
+        project_binding_id="project:convmem:v1",
+        source_identity="fixture/source-a",
+        authority_site="example.com",
+        producer="form-prod",
+        logical_key=pv.NFC_COMPOSED,
+        subject_kind="finding",
+    )
+    try:
+        ora.logical_id(
+            project_binding_id="project:convmem:v1",
+            source_identity="fixture/source-a",
+            authority_site="example.com",
+            producer="form-prod",
+            logical_key=pv.NFC_DECOMPOSED,
+            subject_kind="finding",
+        )
+    except ora.DigestOracleError as exc:
+        assert "non_nfc" in str(exc)
+    else:
+        raise AssertionError("non_nfc_logical_key_accepted")
+
+    # Underscore site rejected before hashing
+    try:
+        ora.logical_id(
+            **{**pv.LOGICAL_COMMON, "authority_site": "bad_host.example"},
+            subject_kind="finding",
+        )
+    except ora.DigestOracleError:
+        pass
+    else:
+        raise AssertionError("underscore_site_accepted")
+
+    # Semantic / payload digests for typed observation with explicit nulls
+    rec = dict(pv.TYPED_OBSERVATION_RECORD)
+    sem = "sha256:" + ora.sha256_hex(ora.semantic_digest_bytes(rec))
+    pay_body = dict(rec)
+    pay_body["semantic_sha256"] = sem
+    pay = "sha256:" + ora.sha256_hex(ora.payload_digest_bytes(pay_body))
+    assert sem == pv.SEMANTIC_SHA256
+    assert pay == pv.PAYLOAD_SHA256
+    assert "sha256:" + orb.sha256_hex(orb.semantic_digest_bytes(rec)) == pv.SEMANTIC_SHA256
+    pay_body_b = dict(rec)
+    pay_body_b["semantic_sha256"] = sem
+    assert "sha256:" + orb.sha256_hex(orb.payload_digest_bytes(pay_body_b)) == pv.PAYLOAD_SHA256
+
+    # Float / surrogate rejects on strict encode
+    try:
+        ora.encode_canonical_bytes({"x": 1.5})
+    except ora.DigestOracleError as exc:
+        assert "float_forbidden" in str(exc)
+    else:
+        raise AssertionError("float_accepted")
+
+    # Enrollment / publication / activation / grounding / lineage fixtures present
+    assert pv.ENROLLMENT_FIXTURE["mode"] == "fixture"
+    assert set(pv.PUBLICATION_VARIANTS) == {"serving", "unavailable", "fenced"}
+    assert set(pv.ACTIVATION_CONTROL_VARIANTS) == {"turn", "cancel", "status", "revoke"}
+    assert pv.BUFFERED_RELEASE_RESULT["schema"] == "convmem.buffered-release.v1"
+    assert pv.GROUNDING_BLOB and pv.GROUNDING_ROOT and pv.GROUNDING_EDGE and pv.GROUNDING_OUTPUT
+    assert pv.CAPTURE_RECEIPT["receipt_payload_sha256"].startswith("sha256:")
+    assert pv.LINEAGE_FORK_INPUTS["join_requires_complete_parent_head_set"] is True
+    assert pv.DECLARED_VECTOR_FUTURE_REDS
+
+
+def test_m2_idna2008_vectors_and_legacy_v1_retention():
+    """Parent IDNA2008 vectors via runtime idna; legacy-v1 vectors remain owned elsewhere."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import idna
+    from protocol_fixture import pinned_vectors as pv
+
+    assert idna.__version__ == "3.18"
+    for row in pv.IDNA2008_VECTORS:
+        if row["expect_accept"]:
+            got = idna.encode(row["input"], uts46=True, transitional=False, std3_rules=True).decode(
+                "ascii"
+            )
+            assert got == row["expected_ascii"], row["name"]
+        else:
+            try:
+                idna.encode(row["input"], uts46=True, transitional=False, std3_rules=True)
+            except idna.IDNAError:
+                pass
+            else:
+                raise AssertionError(f"idna_should_reject:{row['name']}")
+    assert "test_site_filter" in pv.LEGACY_V1_NORMALIZE_VECTORS_OWNER
+
+
+def test_m2_legacy_envelope_bytes_preserved():
+    """Bind legacy provenance golden bytes + UUID/commitment into M2 evidence.
+
+    Execution proof remains tests/test_provenance.py (legacy suite); this test
+    re-asserts the exact pinned constants without rewriting provenance.py.
+    """
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import provenance
+    from protocol_fixture import pinned_vectors as pv
+    import constants as oc_constants
+
+    assert provenance.SCHEMA_VERSION == "convmem/provenance-envelope-v1"
+    assert "test_canonicalization_literal_golden_vector" in pv.LEGACY_PROVENANCE_GOLDEN_TEST
+    assert "tests/test_provenance.py" in oc_constants.LEGACY_PYTEST_FILES
+    assert pv.LEGACY_PROVENANCE_COMMITMENT == (
+        "1849adc132d5d41c1ae3868eaf952b89fd2ccbe3c4373788717e3c34ee6f7418"
+    )
+    assert pv.LEGACY_PROVENANCE_ASSERTION_UUID == "00000000-0000-4000-8000-000000000001"
+
+    # Same construction as tests/test_provenance.py::test_canonicalization_literal_golden_vector
+    root = provenance.root_binding(
+        source_identity="fixture/source",
+        record_locator="event-1",
+        raw_record_sha256=provenance.sha256_hex("raw record"),
+        input_view_sha256=provenance.sha256_hex("raw record"),
+        origin_class="synthetic",
+        origin_assurance="unknown",
+        channel_class="unverified",
+        channel_locator="unverified://none",
+        channel_evidence_sha256=provenance.sha256_hex("no authenticated channel"),
+    )
+    envelope = provenance.base_envelope(
+        assertion_id=pv.LEGACY_PROVENANCE_ASSERTION_UUID,
+        root_bindings=[root],
+        selection_parameters={"z": "é", "a": 1},
+    )
+    canonical = provenance.canonical_envelope_bytes(envelope)
+    assert canonical.startswith(pv.LEGACY_PROVENANCE_CANONICAL_PREFIX)
+    assert provenance.provenance_commitment(envelope) == pv.LEGACY_PROVENANCE_COMMITMENT
+    # Domain unchanged: incomplete envelope still rejects.
+    try:
+        provenance.validate_envelope({"schema": provenance.SCHEMA_VERSION})
+    except provenance.EnvelopeValidationError:
+        pass
+    else:
+        raise AssertionError("incomplete_envelope_must_reject")
+    text = Path("requirements.txt").read_text(encoding="utf-8")
+    assert "idna==3.18" in text
+
+
 def test_m2_registry_schema_exact_binding_fields():
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     data = json.loads(
@@ -433,25 +736,6 @@ def test_m2_registry_schema_exact_binding_fields():
     ]
     assert src["properties"]["identity_match"] == {"const": "exact"}
     assert src["properties"]["event_id_resolver"] == {"const": "fixture_scan_event_v1"}
-
-
-def test_m2_legacy_envelope_bytes_preserved():
-    """Legacy provenance envelope acceptance/bytes remain unchanged."""
-    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    import provenance
-
-    # Minimal structurally empty-domain probe: module surface and schema constant.
-    assert provenance.SCHEMA_VERSION == "convmem/provenance-envelope-v1"
-    # Re-encode path must still exist and refuse unknown fields.
-    try:
-        provenance.validate_envelope({"schema": provenance.SCHEMA_VERSION})
-    except provenance.EnvelopeValidationError:
-        pass
-    else:
-        raise AssertionError("incomplete_envelope_must_reject")
-    # idna pin present for Gate B site normalization path.
-    text = Path("requirements.txt").read_text(encoding="utf-8")
-    assert "idna==3.18" in text
 
 
 def test_m2_protocol_fixture_specimens_present():
