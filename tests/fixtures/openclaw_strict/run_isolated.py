@@ -117,14 +117,16 @@ def _repo_root() -> Path:
 
 
 def _inner_argv() -> list[str]:
+    # Import-based entry avoids runpy keeping an open script FD.
     return [
         "/runtime/bin/python",
         "-I",
         "-c",
         (
-            "import runpy; "
-            "runpy.run_path('/src/tests/fixtures/openclaw_strict/run_isolated.py', "
-            "run_name='__inner__')"
+            "import sys;"
+            "sys.path.insert(0, '/src/tests/fixtures/openclaw_strict');"
+            "import run_isolated as ri;"
+            "raise SystemExit(ri._inner_main())"
         ),
     ]
 
@@ -165,6 +167,7 @@ def _run_negative_control(
     pass_fds: list[int] = []
     inner = _inner_argv()
     synthetic_fd = None
+    unlisted_tmpfs_dir = None
 
     if control == CONTROL_EXPOSED_CANARY:
         # Mount the distinct canary root at its host path so canaries become readable.
@@ -198,7 +201,8 @@ def _run_negative_control(
     elif control == CONTROL_UNLISTED_FILE:
         unlisted = fixture / "unlisted_bytes"
         unlisted.write_text("unlisted\n", encoding="utf-8")
-        extra_binds.append((str(unlisted), "/runtime/UNLISTED_CANARY"))
+        unlisted_tmpfs_dir = "/runtime/unlisted_overlay"
+        extra_binds.append((str(unlisted), "/runtime/unlisted_overlay/UNLISTED_CANARY"))
     elif control == CONTROL_WRONG_NAMESPACE:
         unshare_net = False
     elif control == CONTROL_WRONG_ENV:
@@ -228,6 +232,7 @@ def _run_negative_control(
         hide_runtime_bin=hide_runtime_bin,
         unshare_net=unshare_net,
         extra_env=extra_env,
+        unlisted_tmpfs_dir=unlisted_tmpfs_dir,
     )
     try:
         proc = launch_contained(argv, timeout=180, pass_fds=pass_fds)
@@ -270,7 +275,7 @@ def _inner_main() -> int:
     validate_frozen_selectors()
     # Arbitrary-suite control: if marker present, attempt forbidden discovery argv check.
     if Path("/fixture/force_arbitrary_suite").is_file():
-        from preflight import PreflightFailure, validate_suite_argv
+        from preflight import validate_suite_argv
         from suites import strict_pytest_argv
 
         try:

@@ -59,6 +59,7 @@ def build_bwrap_argv(
     unshare_net: bool = True,
     extra_env: Mapping[str, str] | None = None,
     omit_mandatory: Sequence[str] = (),
+    unlisted_tmpfs_dir: str | None = None,
 ) -> list[str]:
     flags = list(BWRAP_MANDATORY_FLAGS)
     if not unshare_net:
@@ -81,6 +82,8 @@ def build_bwrap_argv(
         argv += ["--tmpfs", "/runtime/bin"]
         for host_path, sandbox_path in runtime_bin_overlay or ():
             argv += ["--ro-bind", host_path, sandbox_path]
+    if unlisted_tmpfs_dir:
+        argv += ["--tmpfs", unlisted_tmpfs_dir]
     usr = usr_source if usr_source is not None else (runtime_root / "sysroot" / "usr")
     argv += ["--ro-bind", str(usr), "/usr"]
     argv += [
