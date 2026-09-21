@@ -1,7 +1,9 @@
 # Grok actualization brief — OpenClaw bounded ConvMem reader
 
-**Status:** READY FOR RYAN'S BOUNDED EXECUTE DECISION. This brief does not
-authorize implementation.
+**Status:** READY FOR RYAN'S BOUNDED T0–T5 EXECUTE DECISION. This brief does
+not authorize implementation. The separately required maintenance watch-
+coverage gate is BLOCKED on a reviewed repository-knowledge indexing design
+and has no Execute grant.
 
 **Arc:** none (ad-hoc integration)
 
@@ -27,6 +29,8 @@ TEST=NOT_YET_RUN
 LIVE_DATA=BLOCKED
 PROMOTION=BLOCKED
 EXECUTE_AUTHORIZED=NO
+WATCH_COVERAGE=BLOCKED
+WATCH_EXECUTE_AUTHORIZED=NO
 ```
 
 The authoritative inputs are the following two files at
@@ -48,6 +52,12 @@ files are byte-identical to `CODE_BASELINE_SHA`, and that the parent-to-tip
 change touches only those plans. Kiro's PASS establishes design and scope
 readiness only. Ryan must issue a separate grant that names this exact plan
 SHA and the bounded T0–T5 scope before any implementation begins.
+
+The watch-coverage requirement in §10 was added after Kiro's exact-tip review.
+It does not amend Kiro's PASS or enter T0–T5 by implication. Its inventory,
+exclusions, and acceptance conditions are binding maintenance requirements;
+the missing repository-knowledge adapter/indexing route requires a separate
+Codex/Kiro design and Ryan grant before implementation or live configuration.
 
 ## 2. Role and decision boundary
 
@@ -796,7 +806,272 @@ The following classifications are frozen. They do not authorize redesign:
   runs the 32-run paired value experiment. T0–T5 uses only fixed lexical
   known-answer tests.
 
-## 10. Immediate stop conditions
+## 10. Maintenance watch-coverage gate
+
+Future agents must be able to retrieve the knowledge needed to understand,
+maintain, test, and safely modify the combined ConvMem + OpenClaw system
+without a human remembering which repository areas to attach as context.
+Meeting this requirement needs both path observation and eligible-content
+indexing. Merely adding a directory to `[watch].extra_paths` is not coverage
+when `adapters.detect.get_parser()` returns no parser for its files.
+
+This is a separate maintenance gate, outside T0–T5. It does not authorize a
+generic repository parser, live config change, watcher restart, bulk index,
+production corpus mutation, or expansion of the strict OpenClaw runtime.
+Codex/Kiro must approve the repository-knowledge ingestion design; Ryan must
+grant its implementation and any live configuration change.
+
+### 10.1 Current-state finding
+
+At the baseline inspected for this brief:
+
+- `convmem watch` recursively observes `[watch].paths` plus
+  `[watch].extra_paths`, debounces eligible file events, and dispatches the
+  ordinary `convmem index --file PATH` path in a subprocess.
+- `is_watchable()` requires an existing parser, rejects configured exclusions,
+  and hard-skips known live databases.
+- Active Markdown under `docs/inter-model/` has the
+  `inter_model_doc` section adapter and is indexable.
+- Ordinary Markdown outside `docs/inter-model/`, Python, JavaScript, MJS,
+  TOML, generic JSON/JSON Schema, shell, and arbitrary fixture formats have no
+  repository-knowledge parser. Watching their folders today observes events
+  but does not index their contents.
+- The live config already observes the main checkout's `docs/inter-model/`.
+  It does not make the remaining inventory below retrievable.
+
+Therefore `WATCH_COVERAGE=BLOCKED`. Do not claim that watching the repository
+root, `docs/`, or another broad parent closes the gate. That would still skip
+most required content and would expose unrelated files to future parsers.
+
+### 10.2 Required watch-scope inventory
+
+The implementation packet must materialize this inventory as a reviewed,
+machine-readable allowlist. Each entry records exact repo-relative path or
+closed path set, content class, parser/adapter ID and version, expected
+`source_type`, watch-versus-explicit-index mode, owner, required query needles,
+and exclusion reason when applicable. Directory membership alone is not an
+allowlist. A wildcard may be used only when the packet freezes its expanded
+file inventory and rejects additions until review.
+
+The required included classes are:
+
+1. **ConvMem + OpenClaw architecture and plans.** Include exact content from
+   `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` and
+   `docs/plans/EXECUTION-openclaw-convmem-integration.md` at
+   `cd9d2698b7423f907b552bc9118a0af523018ca9`, this actualization brief, and
+   any later reviewed STATUS/VERIFY/runbook document that expressly governs
+   this integration. Superseded drafts and review copies are provenance
+   references, not current instructions, and must be labeled historical or
+   excluded.
+2. **ConvMem implementation modules needed to operate or change the reader.**
+   Include the exact eight T0–T5 modules, the four protected canonical/
+   provenance/domain helpers, `requirements.txt`, reject-only `mcp_server.py`,
+   and the exact component sets from §6. Include the maintenance boundary
+   modules `convmem.py`, `config.py`, `watch.py`, `ingest.py`,
+   `source_reconciler.py`, `adapters/detect.py`,
+   `adapters/inter_model_doc.py`, `propose_decision.py`, `observe.py`, and the
+   governed writer/provenance guards needed to prove non-bypass. Inclusion for
+   retrieval never grants edit or runtime-import permission.
+3. **Tests and fixtures.** Include `tests/fixtures/openclaw_strict/**`, the
+   exact T0–T5 test files in §5, and maintenance controls
+   `tests/test_watch.py`, `tests/test_watch_skip.py`,
+   `tests/test_provenance.py`, `tests/test_provenance_continuity.py`,
+   `tests/test_governed_recovery_and_writers.py`,
+   `tests/test_governed_writer_gate.py`, and
+   `tests/test_shadow_writer_coverage_scan.py`. Generated pytest output and
+   disposable runtime roots are excluded.
+4. **Schemas and interfaces.** Include the exact 24 Gate B and seven Gate C
+   schemas from §5, the fixture-manifest schema, connector package/plugin
+   manifests, and the closed CLI/MCP/platform-port definitions in §6.1. Gate W
+   schemas enter only after their separate reviewed packet lands.
+5. **OpenClaw integration implementation and documentation.** Include
+   `integrations/openclaw-convmem-reader/package.json`,
+   `openclaw.plugin.json`, `index.js`, `test/connector.test.mjs`, and safe
+   operator documentation that explains the disabled registration state,
+   runtime qualification boundary, and later activation procedure. Never
+   index a live OpenClaw profile, auth store, workspace memory, transcript,
+   or runtime state merely because it sits near the integration.
+6. **Safe configuration knowledge.** Include `config.example.toml`,
+   `config/agent-protocol.md`, and reviewed redacted examples that explain
+   watch paths, strict profile selection, environment construction, and
+   refusal behavior. Include only literal examples proven to contain no
+   credential, host identity, private path, live grant, or deployment value.
+   The operator's real `~/.config/convmem/config.toml` and any real OpenClaw
+   configuration remain excluded.
+7. **Execution, acceptance, and operational documentation.** Include this
+   brief, `AGENTS.md`, `docs/MODEL-WORKFLOW.md`,
+   `docs/CODEX-DEEPSEEK-VERIFY.md`, `docs/RECOVER.md`, `docs/MILESTONE-F.md`,
+   `docs/plans/ARCHITECTURE-watch-incremental-index.md`,
+   `docs/plans/INVARIANTS-watch-incremental-index.md`,
+   `docs/plans/EXECUTION-watch-incremental-index.md`, and the applicable
+   Git-hygiene/always-available-fallback plans. Include the architecture-
+   maintenance references `docs/builder-reference/ousterhout-builder-digest.md`,
+   `manning-builder-digest.md`, `zeller-builder-digest.md`, and
+   `hard-parts-builder-digest.md`. Include the exact acceptance map, negative
+   controls, rollback/recovery procedure, and evidence format used by the
+   implementation tip.
+8. **Maintenance and troubleshooting knowledge.** Include reviewed material
+   explaining parser detection, watch path loading, file-event debounce,
+   exclusion handling, source reconciliation, index-child containment,
+   provenance validation, proposal/approval separation, common refusal
+   reasons, and how to prove coverage drift. Active incident handoffs enter
+   only when they concern this combined system and are explicitly marked with
+   freshness/current-state metadata. Do not recursively admit all
+   `docs/inter-model/` or all historical incident archives as OpenClaw system
+   knowledge merely because the global watcher observes them for other uses.
+
+Planned files enter the inventory only after they exist as reviewed tracked
+bytes. Every required item must resolve to a clean Git commit or to a reviewed
+immutable reference. Untracked drafts, `/tmp` reports, review bundles, and a
+developer's current working copy cannot satisfy coverage.
+
+The inventory audit begins from the complete tracked repository tree and must
+classify every file under each named root as included, excluded, or unrelated,
+with a reason. No unclassified file is silently accepted or silently counted
+as covered. Changes to a required module's local import/dependency closure,
+test ownership, schema inventory, or operational-document link set fail the
+coverage check until the reviewed inventory is updated.
+
+### 10.3 Mandatory exclusions
+
+The allowlist and adapter must reject these classes before content parsing or
+embedding:
+
+- **Credentials and secrets:** `.env*`, tokens, cookies, API keys, auth stores,
+  SSH/GPG material, password files, real provider settings, credential-bearing
+  command output, and real ConvMem/OpenClaw user configuration.
+- **Private authority data:** production authority roots, admitted source
+  artifacts, private grounding/citation/issuer stores, governance intents,
+  capture receipts, approval files, protected backup/recovery evidence, and
+  any real strict lineage or publication state. Synthetic inert fixtures are
+  allowed only through their reviewed fixture inventory and remain labeled
+  synthetic.
+- **Live databases and corpora:** Chroma directories, SQLite databases and
+  WAL/SHM siblings, live transcript/session stores, corpus exports,
+  `knowledge_units.jsonl`, `processed.json`, inventory state, live source
+  trees, and mutable OpenClaw memory/workspaces.
+- **Caches and transient state:** `.git`, worktree administrative state,
+  `__pycache__`, `.pytest_cache`, coverage caches, virtual environments,
+  `node_modules`, build/dist/temp directories, locks, sockets, PIDs, service
+  state, and editor caches.
+- **Generated artifacts that are not project knowledge:** review ZIPs,
+  generated manifests and run outputs, compiled/minified bundles, copied
+  runtime trees, test reports, screenshots, logs, coverage output, temporary
+  canaries, and duplicate review/worktree copies. A generated artifact may be
+  indexed only when a separate reviewed contract declares it canonical
+  knowledge and defines its provenance and supersession behavior.
+- **Unrelated repository material:** other arcs, client/site material, generic
+  historical debates, unrelated tests/config, vendored dependencies, and
+  repository files outside the frozen combined-system inventory.
+
+Exclusions win over includes. Symlinks, traversal, path aliases, case tricks,
+and a matching filename under an unapproved root fail. A newly added file in
+an included directory is excluded until the machine-readable inventory is
+reviewed or its closed expansion is regenerated and accepted.
+
+### 10.4 Positive coverage verification
+
+Run this verification only in a separately granted disposable ConvMem data
+root with synthetic content and no live corpus/config. The eventual design
+must supply an executable harness; prose or `is_watchable()==true` is not
+evidence.
+
+1. Freeze the reviewed inventory, adapter versions, clean source commit,
+   isolated config, and empty derived index state.
+2. For every included content class and parser, select at least one tracked,
+   safe representative and one negative representative. For closed exact file
+   sets, verify every path resolves and hashes to the committed bytes.
+3. Prove the unique positive canary is absent from retrieval before its folder
+   is added to the isolated watch set.
+4. Add one previously unwatched relevant folder to the isolated
+   `[watch].extra_paths`, restart the isolated watcher so configuration is
+   reloaded, and create or modify a tracked eligible file containing a unique
+   nonce plus an unambiguous maintenance statement.
+5. Observe one debounced watch event, one normal `index --file` dispatch, a
+   successful eligible-file parse, and the normal source-scoped durable ingest
+   result. No direct adapter-to-store shortcut is allowed.
+6. Query through normal ConvMem retrieval using the unique nonce and a natural
+   maintenance question. Require the eligible content to be returned with the
+   exact committed source path, content hash, adapter/source type, provenance
+   envelope/commitment, and current text.
+7. Modify the same eligible file in a new clean synthetic commit, wait for the
+   watch path, and require current retrieval plus the normal source-scoped
+   supersession/reconciliation behavior. The old text cannot remain an
+   unlabeled current duplicate.
+8. Repeat from a second fresh isolated data root and require the same inventory
+   membership, parsed units, provenance identities, and retrieval needles.
+9. Report watched roots, eligible and rejected files, hashes, event/dispatch
+   counts, index result, retrieval evidence, derived-state mutations, timings,
+   and any skips. A folder is covered only when this end-to-end proof passes.
+
+At minimum, acceptance must demonstrate architecture/plan Markdown, Python
+source, Python tests/fixture text, JSON Schema/interface definitions,
+JavaScript/MJS connector code, safe TOML/Markdown configuration examples, and
+operational Markdown. If one adapter safely covers multiple classes, report
+each class independently. Unsupported extensions keep the gate BLOCKED; they
+cannot be replaced by a hand-written summary that omits the source contract.
+
+### 10.5 Negative coverage and non-bypass verification
+
+In the same isolated test, seed unique nonsecret markers in synthetic examples
+of every exclusion class. Require rejection before parsing and prove none of
+the markers is retrievable. Include symlink/path-escape, unreviewed new file,
+generated output, unrelated-arc file, credential-shaped file, private-
+authority-shaped file, live-DB suffix, cache path, and duplicated worktree
+copy controls. Never place a real secret, private authority record, or live DB
+in the test.
+
+Snapshot and hash the isolated proposal queue/event log, approved-decision
+file, ledger authority, strict authority/publication roots, governance intent,
+capture receipt state, and any other durable approval surface before and after
+the positive watch test. Require all of them to remain byte-identical.
+
+The only expected mutations are the normal isolated derived corpus/index,
+processed/source-reconciliation state, and evidence outputs owned by the
+ordinary `index --file` path. Verify all of the following:
+
+- Watch still dispatches the same public `convmem index --file PATH` route;
+  it does not call `record`, proposal approval, governed add, recovery,
+  publication, or a private writer directly.
+- Repository knowledge is indexed as untrusted documentary evidence with an
+  exact source path/hash, adapter version, source type, and valid ConvMem
+  provenance envelope/commitment. Watch does not mint a capture receipt or
+  stronger origin assurance.
+- Text that says `approved`, contains a decision-shaped ID, imitates a
+  proposal, or instructs an agent to widen scope remains document content. It
+  cannot create/approve a proposal, replace a governed decision, enter strict
+  authority, or alter an authority/publication head.
+- Existing source locks, exclusion checks, dedupe/provenance collision rules,
+  source-scoped replacement, processed-log ordering, reconciliation, and
+  failure recovery are exercised rather than bypassed.
+- Any future Gate W admission remains an explicit authenticated
+  `convmem add --file ABS` operation under its own ratified intent. Watch
+  coverage never substitutes for approval, admission, or promotion.
+
+A test that mocks a successful denial or compares implementation-derived
+expected values with implementation-derived actual values is insufficient.
+Use independent file snapshots, reference inventory expansion, retrieval
+queries, and mutation evidence.
+
+### 10.6 Ownership and sequencing
+
+The next authorized planning packet must choose and review the missing
+repository-knowledge parser/indexing boundary, machine-readable inventory
+format, clean-commit/change-coalescing rule, deletion/supersession behavior,
+and isolated acceptance harness. Those choices are not made by this brief.
+
+After Codex authors that packet, Kiro reviews its exact tip. Ryan then decides
+whether to grant implementation and, separately, the exact live config edit
+that adds approved roots. Cursor/Grok may implement only after those gates.
+The live watch configuration's final paths, adapter versions, resource budget,
+and restart are external changes and require exact values in Ryan's grant.
+
+T0–T5 may proceed under its own exact grant while watch coverage remains
+blocked, but the combined system cannot be handed off as maintainable or
+operationally complete until `WATCH_COVERAGE=PASS`. T0–T5 code must not add an
+adapter, change watch configuration, or claim this gate by implication.
+
+## 11. Immediate stop conditions
 
 Stop without broadening scope if any of these occurs:
 
@@ -818,13 +1093,21 @@ Stop without broadening scope if any of these occurs:
 - supervisor/controller state is used to manufacture manager emptiness;
 - fake/static evidence is offered as actual containment, auth, distribution,
   live-data, or promotion evidence.
+- watch-folder observation is presented as retrieval coverage without an
+  eligible parser and end-to-end query result;
+- a broad repository root, live config, secret/private authority path, live
+  database/corpus, generated state, or unrelated material is added to watch;
+- watched document text is allowed to create authority, approval, admission,
+  capture, or promotion state;
+- T0–T5 implementation attempts to design or implement the separately gated
+  repository-knowledge adapter or live watch configuration.
 
 On a test provisioning failure, preserve the contract and request the missing
 pre-provisioned bytes/environment. On a coding defect, correct the code inside
 scope. On a contract defect, stop for Codex/Kiro. Do not lower a control to
 obtain a green result.
 
-## 11. Required handoff
+## 12. Required handoff
 
 Return a handoff that a reviewer can verify without reconstructing the run:
 
@@ -838,6 +1121,9 @@ BUILD_SCOPE: T0-T5_ONLY
 TEST: PASS | BLOCKED | NOT_YET_RUN
 LIVE_DATA: BLOCKED
 PROMOTION: BLOCKED
+WATCH_COVERAGE: BLOCKED | PASS | NOT_YET_RUN
+WATCH_INVENTORY_REVISION: <exact commit/hash or BLOCKED>
+WATCH_CONFIG_CHANGE: NONE | <separately authorized exact change>
 CHANGED_FILES: <complete allowed-list comparison>
 STRICT_SUITE: <result, selected node ids, time, bytes, tmp peak>
 CONNECTOR_SUITE: <result, selected node ids, time, bytes, tmp peak>
@@ -847,6 +1133,7 @@ CASE_57: <preflight, containment, manager, refusal, bypass evidence>
 CASE_58: <five arrays/hashes and mutation evidence>
 REPRODUCTION: <two fresh roots and matching results>
 DEFERRED_ITEMS: <observations routed without redesign>
+WATCH_EVIDENCE: <isolated path-to-index-to-retrieval and non-bypass result>
 BLOCKERS: <none, or exact failed frozen criterion>
 ```
 
@@ -854,6 +1141,10 @@ Do not merge, activate, configure, provision, access live data, promote, or
 claim complete-integration readiness. A successful T0–T5 result can change
 only `TEST` for the bounded B/C fixture; `LIVE_DATA` and `PROMOTION` stay
 blocked until their separately owned gates pass.
+
+The handoff must state that watch coverage is blocked until its separately
+reviewed design and executable isolated verification pass. Do not omit the
+gate merely because T0–T5 tests pass.
 
 Grok can begin implementation without making an architectural decision only
 after Ryan issues the exact bounded Execute grant. Known deferred issues do
@@ -863,5 +1154,7 @@ not authorize Grok to redesign the architecture.
 fixture after Ryan's matching Execute grant. Follow Steps 0–9 in order, edit
 only the frozen allowlist, run only the closed three-suite runner, return the
 independent case 57/58 and gate evidence, and stop for Codex/Kiro rather than
-making any architectural choice. TEST is not yet run; LIVE-DATA and PROMOTION
-remain blocked.
+making any architectural choice. The combined system also requires the §10
+watch inventory, isolated retrieval proof, and governance non-bypass proof;
+that separate gate is currently BLOCKED. TEST is not yet run; LIVE-DATA and
+PROMOTION remain blocked.
