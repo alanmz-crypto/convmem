@@ -85,7 +85,7 @@ TYPED_OBSERVATION_RECORD: dict[str, Any] = {
     "producer": "form-prod",
     "logical_key": "subject-key-1",
     "semantic_sha256": "sha256:04cc2275f206df5d81cc82a986d612fcd0bb9c905dc12896f1e3c946d8a21088",
-    "payload_sha256": "sha256:UPDATE_AFTER_DUAL_ORACLE_AGREEMENT",
+    "payload_sha256": "sha256:9ca72119937a31ae7c2d9758a3790fc20f6df90791feebd5fe721d9d4a6b0dd1",
     "title": "fixture title",
     "document": "fixture document",
     "observed_at": "2026-09-21T00:00:00Z",
@@ -113,7 +113,7 @@ SEMANTIC_SHA256 = (
     "sha256:04cc2275f206df5d81cc82a986d612fcd0bb9c905dc12896f1e3c946d8a21088"
 )
 PAYLOAD_SHA256 = (
-    "sha256:UPDATE_AFTER_DUAL_ORACLE_AGREEMENT"
+    "sha256:9ca72119937a31ae7c2d9758a3790fc20f6df90791feebd5fe721d9d4a6b0dd1"
 )
 
 # --- Cumulative lineage / fork / multi-head join (algorithm freeze; T2 red) ---
