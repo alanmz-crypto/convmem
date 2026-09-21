@@ -237,3 +237,59 @@ deadline > row_cap > byte_cap > oversized/malformed
 Test each terminal condition alone and test dropped-excerpt combinations with
 each terminal condition. Do not write impossible tests that require a stream to
 reach two mutually exclusive terminal conditions in sequence.
+
+## Excerpt algorithm addendum (b4af28a failed review)
+
+**Resume state: BLOCKED_ON_CURSOR.** Tip `b4af28a` (`_bound_excerpt`,
+`verbatim_evidence/crush.py:268-319`) must not be sent to review again.
+
+### Failure evidence
+
+Adversarial grid over 9,150 cases (budgets 1..60, query length 1..budget):
+length bound held; a visible marker was missing when `truncated=True` in 615
+cases; the complete query was absent from an AVAILABLE excerpt in 5,040 cases.
+At the production budget, a 1,977-character query returned a 2,000-character
+excerpt without the query (1,976 passed). The loop returned the first plan that
+merely fit the length and never checked that the window contained the match
+span. The `(False, False)` plan and the no-span fallback both emit unmarked or
+query-free text.
+
+### Required rules
+
+- **Pre-check:** reject early only when `len(stripped_query) > max_excerpt_chars`.
+  Do not reject on marker cost before examining a message; a short message can
+  hold a query equal to the budget with no marker.
+- **Stripped query:** normalize, then strip once. Use that exact string for
+  length validation, matching, span calculation, and feasibility. Add padding
+  cases.
+- **Candidates, in order** (`M = len(TRUNCATION_MARKER)`, `Q = match_end -
+  match_start`): (1) whole text if `len(text) <= max_chars`, no markers;
+  (2) left-anchored prefix plus one trailing marker, valid if `match_end <=
+  max_chars - M`; (3) right-anchored leading marker plus suffix, valid if
+  `len(text) - match_start <= max_chars - M`; (4) centered window with both
+  markers, valid if `Q <= max_chars - 2*M`. If none fits, return `None`.
+  Candidate 4 always cuts both sides; assert it.
+- **No clipped markers.** If `max_chars < M` and the text needs truncation,
+  return `None`. Never return marker-only or partial-query AVAILABLE evidence.
+- **`None` handling:** the caller converts it per the Excerpt-loop addendum
+  (dropped match; `unavailable_match/query_exceeds_excerpt_budget` only if no
+  usable excerpt survives and the scan completed).
+- **Structured flags:** add `cut_leading` and `cut_trailing` to
+  `EvidenceExcerpt`; keep `truncated == (cut_leading or cut_trailing)`. Render
+  both in `context.py`. Consumers and tests must not infer cuts from the
+  in-band marker text, which source content can contain literally.
+- **`partial_reason` is single-valued.** Precedence: source failure / deadline /
+  busy / malformed / oversized > `scan_limit` > `result_limit` >
+  `excerpt_budget`. Use `excerpt_budget` only when the scan completed and
+  dropped matches are the only incompleteness.
+- **Regressions:** the brute-force oracle and matrix in the two addenda, plus
+  the full grid (budgets 1..60, unique-character queries; matches at start,
+  near-start, middle, near-end, end; lengths at, one over, far over budget), a
+  query equal to the budget in a short message, the 1,976/1,977/1,978 cliff, all
+  matching messages unable to fit, some fitting and some dropped, and an
+  end-to-end matching message that cannot yield a truthful excerpt.
+
+Preserve NFC normalization, digest the final unescaped excerpt, and keep
+default-off `verbatim_source` unchanged. After implementation run the focused
+suites (Crush plus the naturalistic contract files), push a new exact tip, and
+request independent security re-review.

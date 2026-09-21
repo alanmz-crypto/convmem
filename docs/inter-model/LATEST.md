@@ -9,13 +9,18 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Issue #263 — bounded session-only Crush evidence (AUTHORIZED, CONTRACT_PUBLISHED):**
+- **Issue #263 — bounded session-only Crush evidence (BLOCKED_ON_CURSOR — excerpt defect):**
+  Implementation tip `b4af28a…` on `feat/2026-09-20-263-verbatim-evidence-global-offsets`
+  **FAILS adversarial review and must not go to review again.** `_bound_excerpt()`
+  returns AVAILABLE excerpts that omit part or all of the matched query (5,040 of
+  9,150 grid cases; reproduces at the 2,000-char default with a 1,977-char query)
+  and can return truncated text with no marker (615 cases). **Next:** Cursor
+  reworks `_bound_excerpt()` window-first per the "Excerpt algorithm addendum" and
+  "Excerpt-loop addendum" in the canonical handoff, then pushes a new exact tip for
+  independent security re-review. No Kiro, Copilot, PR, or activation yet.
   Ryan selected option B: offset-only retrieval is disabled for this first slice;
   locators carrying offsets plus a session use explicitly labelled session scope.
-  The canonical contract covers bounded transactional reads, hostile-source and
-  hostile-rendering defenses, partial outcomes, deadlines, and the full test
-  inventory. **Next:** Cursor implements from the single canonical handoff; no
-  PR or activation until independent security review and Copilot audit.
+  Resume from the canonical handoff below.
   Resume from
   [`CURSOR-2026-09-20-263-verbatim-evidence-session-only-handoff.md`](CURSOR-2026-09-20-263-verbatim-evidence-session-only-handoff.md).
   Arc: none (ad-hoc).
