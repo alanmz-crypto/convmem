@@ -425,15 +425,22 @@ def test_m2_schema_meta_and_31_positive_negative_instances():
         load_schema,
     )
 
-    for filename in FILENAME_TO_ID:
-        schema = load_schema(Path("schemas"), filename)
-        from protocol_fixture.schema_instances import POSITIVE_BY_FILENAME
+        for filename in FILENAME_TO_ID:
+            schema = load_schema(Path("schemas"), filename)
+            from protocol_fixture.schema_instances import POSITIVE_BY_FILENAME
 
-        names = {n["name"] for n in build_negatives(schema, POSITIVE_BY_FILENAME[filename])}
-        assert "unknown_top_level_key" in names, filename
-        assert "missing_required_key" in names, filename
-        assert "wrong_type" in names, filename
-        assert "omitted_required_null" in names, filename
+            names = {n["name"] for n in build_negatives(schema, POSITIVE_BY_FILENAME[filename])}
+            missing = {
+                n
+                for n in (
+                    "unknown_top_level_key",
+                    "missing_required_key",
+                    "wrong_type",
+                    "omitted_required_null",
+                )
+                if n not in names
+            }
+            assert not missing, f"{filename}:missing_negatives:{sorted(missing)}:got={sorted(names)}"
     assert report["activation_control_variants_ok"] == 4
     assert report["filename_to_id_exact"] is True
     assert report["deferred_cross_object_invariants"]
