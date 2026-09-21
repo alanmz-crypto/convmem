@@ -1,6 +1,6 @@
 # ARCHITECTURE — OpenClaw maintenance watch coverage
 
-**Arc: OpenClaw Watch Coverage** · **State: DRAFT FOR KIRO REVIEW** ·
+**Arc: OpenClaw Watch Coverage** · **State: KIRO PASS at `19dea97`; EXECUTE NOT AUTHORIZED** ·
 **Date: 2026-09-21** · **Baseline: `5ab03a37559a93f1b51932c57a2a2a783da3354b`**
 
 This design covers only ConvMem watching and indexing safe repository knowledge
