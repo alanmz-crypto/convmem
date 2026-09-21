@@ -1,25 +1,40 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Status:** ASTRA FINAL REVIEW ON COMMIT `2424857` BLOCKED BUILD; C1–C6
-CONTRACT DECISIONS CORRECTED FOR RE-REVIEW — no implementation, OpenClaw
-configuration, live-data use, production smoke, or capture is authorized
+**Status:** CANDIDATE FOR FINAL FRESH ASTRA REVIEW — **BUILD BLOCKED — ARCHITECTURE** for the
+complete integration. The installed credential-free model route is incompatible with the inspected
+authentication path (§14.2). Containment and runtime closure also require evidence. No
+implementation, runtime start, configuration change, live-data use, capture, or promotion is
+authorized.
 
-**Date:** 2026-09-20
+**Date:** 2026-09-21
 
 **Arc:** none (ad-hoc integration)
 
-**Authority:** Codex architecture/planning lane. Astra's two-stage independent
-review of commit `2424857a2df505b262645143a35eb024ccca3586` found six
-remaining category-3 decisions: monotonic state reduction, exact
-approval/provenance binding, closed publication schemas, the strict search
-kernel, lifecycle/revocation ownership, and one executable file/API/test
-contract. This revision freezes those decisions and remains paired with a
-fixture-first execution plan. Kiro remains the required binary design-review
-lane and Ryan remains the approval and execution authority. Neither Astra nor
-Claude authorized implementation.
+**Authority:** Codex architectural editing lane. This revision edits the actual architecture and
+paired execution contract after the sealed Stage 1 review of planning commit
+`9b106b908b944f8bd4c3f417b576dc13884f2503`. It incorporates the surviving reconstruction solutions;
+it does not accept the reconstruction as proof of runtime compatibility. The precise changes,
+evidence, remaining blockers and fresh-review obligations are in §§14, 17 and 18. Kiro owns the
+required design review; Ryan owns policy approval and any later Execute grant.
 
-**Supersedes for review:** the untracked local draft whose SHA-256 was
-`9846e4df1211359b30427fc4ceebe108616e1dd6de9cb773648ed6cf0ed67f09`.
+**Review inputs:** Stage 1 report SHA-256
+`fc402286dbb720f3752613e3fe982c4542b168eda9609416b1dd4c51eff5c979`; reconstruction report SHA-256
+`73ebe0f606551eb9ece035722d5af05468c9168b6b279abbcd444ec35b03b827`. The code evidence baseline
+remains `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; no implementation changes are made here.
+Supersedes the two plan files at `9b106b9`, not the frozen invariants below.
+
+**Frozen invariants:** ConvMem files/CLI retain governance and durable-memory ownership; OpenClaw is
+only a bounded, disposable reader/orchestrator. Exactly three read-only tools, one immutable
+audience, no resources/ask/global index, no native memory/capture/automatic
+indexing/ACP/subagents/channels, no remote inference or ambient credentials. Preserve legacy IDs,
+provenance envelope bytes/UUIDs, existing production writer/backup safeguards, exact approval,
+permanent revocation/supersession, and explicit Ryan-run approved-file ingestion. No
+fixture-to-production promotion or silent legacy migration.
+
+**Contract precedence:** this architecture defines meaning; the paired execution plan defines build
+ownership and phase scope. A disagreement stops implementation. Old schemas are rejected, not
+adapted with defaults. Fixture construction is neither production approval nor evidence that the
+installed adapter can run.
 
 ## 1. Consequence for Ryan
 
@@ -64,18 +79,25 @@ The design assumes all of the following can be hostile or mistaken:
 
 The trusted computing base is limited to the reviewed ConvMem strict-scope and
 state modules, the operator-owned project-binding registry and dispositions,
-the immutable strict file projection, the fixed connector, the local
-activation supervisor, the operator-owned scope/activation files, and the
-installed OpenClaw binary/config revision that passed the gate.
+the immutable strict file projection, the fixed connector, the operator-owned controller and
+main-process supervisor, immutable launch/enrollment files, the sealed runtime/dependency/model
+distribution, and the Linux kernel/systemd manager enforcing its boundary. The model, plugin data,
+corpus producers and their runtime UID cannot modify governance, capture issuer inventories,
+publication, or controller state. A distribution hash establishes bytes, not trust in arbitrary
+code.
 
 ## 3. Authority and data ownership
 
-1. ConvMem's append-only ledger remains the durable fact and evidence
-   authority. The bound authority snapshot is an immutable, content-addressed
+1. For this strict lineage, ConvMem's operator-governed source files and append-only
+   admission/disposition history are durable authority. This is a target contract for newly enrolled
+   data, not a claim that the current legacy observation corpus is reconstructible from its mutable
+   JSONL export. Legacy Chroma authority and Recovery Authority safeguards remain unchanged until
+   separately reviewed migration. The bound authority snapshot is an immutable, content-addressed
    read model derived from ledger records plus operator-owned disposition
    artifacts; it cannot introduce or approve a fact and is not a second
    authority.
-2. Chroma remains the rebuildable serving projection for legacy profiles. The
+2. Legacy Chroma retains its existing record-specific authority/recovery role; this plan does not
+   assert a completed corpus-wide ledger-first migration. The
    strict profile does not open Chroma: it serves a separate immutable,
    content-addressed file projection derived from the authority snapshot.
 3. Git, GitHub, and project-native tools remain authoritative for live project
@@ -87,6 +109,29 @@ installed OpenClaw binary/config revision that passed the gate.
    equivalent write path.
 7. Retrieved evidence has zero instruction authority. It cannot grant tool
    access, alter scope, authorize writes, or change completion state.
+
+The dependency chain is one architecture: operator ratification fences the stable slot; explicit add
+commits a forward-only source operation; cumulative authority conserves identity and original
+provenance context; the full-bound reducer fixes canonical state; serving publication may expose
+that exact head or nothing; the activation lease pins that publication until external retirement.
+Retrieval narrows display only, rollback changes serving only, and OpenClaw cannot act upstream of
+either boundary. Thus a failed projection cannot undo revocation, a hidden check cannot create pass,
+and approval cannot upgrade provenance.
+
+```mermaid
+flowchart LR
+    O[Ryan / file CLI] --> I[Ratified intent]
+    I -->|explicit add| S[Durable admitted source]
+    S --> H[Cumulative authority head]
+    H --> V[Complete-bound state and qualification]
+    V --> P[Immutable file projection]
+    P --> R[Read-only CLI / MCP]
+    R --> A[Disposable OpenClaw adapter]
+    C[External controller / systemd] -->|retire and fence before writes| I
+    C -->|pin lease / authorize complete release| A
+    H --> U[Publication: exact head, serving or unavailable]
+    U --> R
+```
 
 ## 4. Installed capability lock
 
@@ -126,46 +171,42 @@ local ConvMem strict-profile subprocess. It contains no retrieval or scope
 policy. It translates three fixed plugin tool calls to MCP stdio and returns
 the server response unchanged inside an untrusted-evidence envelope.
 
-The connector must spawn with a fixed executable, fixed argument vector, fixed
-working directory, explicitly constructed environment, and no shell. The child
-environment starts empty; it does not copy `process.env`. The closed
-`convmem.openclaw-connector-launch.v1` manifest contains exactly:
+The connector receives only an immutable operator-owned manifest path.
+`convmem.openclaw-connector-launch.v2` contains exactly:
 
 ```text
 schema, python_executable, python_executable_sha256, strict_server_path,
 strict_server_tree_sha256, working_directory, scope_file, registry_file,
 strict_config_file, scope_sha256, registry_sha256, strict_config_sha256,
-service_home, path_value, lang, lc_all,
+service_home, path_value, lang, lc_all, temp_directory,
+setpriv_executable, setpriv_sha256, seccomp_filter_file, seccomp_filter_sha256,
+runtime_distribution_sha256, launch_policy_sha256, manager_policy_sha256,
 launch_payload_sha256
 ```
 
-Every path is absolute. The executable/script/config inputs receive the same
-owner, mode, regular-file, and no-symlink checks as the scope file; the working
-directory and service home are operator-owned, empty, non-workspace
-directories. The payload hash excludes only itself. The connector receives
-only this manifest's absolute path from its reviewed plugin config, verifies
-it, verifies the three file digests and executable/server-tree digests, and
-launches exact argv `[python_executable, "-B", "-s",
-strict_server_path]`. It constructs an environment containing exactly fixed
-`CONVMEM_MCP_PROFILE=openclaw-strict`, the three reviewed file paths as
-`CONVMEM_BOUND_READ_SCOPE_FILE`, `CONVMEM_PROJECT_BINDING_REGISTRY_FILE`, and
-`CONVMEM_STRICT_CONFIG_FILE`, plus `HOME=service_home`, `PATH=path_value`,
-`LANG=lang`, and `LC_ALL=lc_all`. Every other variable is absent. The strict
-config is a new closed,
-read-only schema containing only the bound projection root and read-only store
-parameters; credential, provider, API-key, model, watch, ingest, and write keys
-are rejected. The connector launches a dedicated strict entry point that
-selects and validates `openclaw-strict` before importing general ConvMem config
-or any module that performs home-directory credential lookup. It never uses the
-legacy `CONVMEM_CONFIG` loader. Fixed `HOME` points to an empty service home
-that contains no ConvMem or provider credentials.
+Every path is absolute inside the sealed runtime; inputs are regular read-only files owned by the
+operator/root, never symlinks or model writable. The manifest self-hash excludes only itself.
+Connector launch is exactly `[SETPRIV, "--no-new-privs", "--seccomp-filter", FILTER, PYTHON, "-B",
+"-s", STRICT_SERVER]`, no shell. All executable, dependency, filter and config bytes are pinned by
+the runtime image and manifest. Its cwd is fixed, empty and read-only; its dedicated HOME has no
+credentials. It closes every inherited descriptor except stdin/stdout/stderr transport. Seccomp
+failure is fatal before Python imports.
 
-Strict server startup hard-ignores and tests hostile values for legacy
-`CONVMEM_READ_SCOPE_DOMAIN`, `CONVMEM_READ_SCOPE_FILE`, `CONVMEM_CONFIG`, and
-credential variables. Query text, selectors, ledger IDs, channel messages, and
-corpus content may never influence the executable path, arguments before the
-MCP protocol boundary, environment keys or values, scope-file path,
-project-binding-registry path, strict-config path, or working directory.
+Construct the child environment from empty, with exactly `CONVMEM_MCP_PROFILE=openclaw-strict`,
+`CONVMEM_BOUND_READ_SCOPE_FILE`, `CONVMEM_PROJECT_BINDING_REGISTRY_FILE`,
+`CONVMEM_STRICT_CONFIG_FILE`, `HOME`, `PATH`, `LANG`, `LC_ALL`, `TMPDIR` from the manifest. The
+launch policy's strict-server map must be byte-equivalent. No `process.env` copy, Node/Python loader
+override, proxy/provider variable or token is inherited. Startup selects strict mode before any
+general ConvMem loader import and rejects any non-allowlisted key; hostile legacy
+scope/config/credential variables therefore cannot affect behavior. The closed
+`convmem.strict-config.v2` has only `schema, projection_root, max_projection_rows:10000,
+max_projection_bytes:67108864, telemetry:false`; no legacy credential/provider/watch/ingest/write
+settings are accepted.
+
+Tool arguments, query text, corpus data, channel messages and public IDs cannot change these fields,
+argv, role UID, policy or file paths. The dedicated entry point and read-only reader never import
+the publisher, controller, governed engine or general config. This adapter is replaceable: direct
+file/CLI qualification and the three retrieval algorithms do not require OpenClaw.
 
 An OpenClaw upgrade, discovery of a native MCP surface, or connector transport
 change invalidates this lock and requires a new capability probe plus design
@@ -298,8 +339,10 @@ the profile exposes no filesystem or runtime tool. It uses this closed schema:
 `serving_projection` are mandatory and non-empty.
 `authority_snapshot` and `serving_projection` are stable, operator-chosen
 namespace identifiers, not content digests and never caller selectors. The
-scope digest binds them into `owner_digest`; the active pointer selects one
-content-addressed generation beneath that owner. Exact `snapshot_id` and
+scope digest binds them into `owner_digest`; the publication record selects a serving generation
+within an independently enrolled stable `lineage_id`. The slot and lineage identities do not change
+with `owner_digest`. An absent pointer or changed scope cannot create a new lineage or reset
+history. Exact `snapshot_id` and
 manifest digests are pinned by the activation manifest, avoiding any
 self-referential hash between scope, owner, snapshot, and generation. Changing
 either namespace requires a new scope file; publishing within a namespace
@@ -324,8 +367,9 @@ location, owner, regular-file type, mode, schema, keys, and binding references
 before registering tools. Missing, empty, malformed, unknown-key, writable,
 symlinked, relative, stale-binding, or otherwise ambiguous scope files prevent
 startup. The parsed scope is immutable for the process lifetime. The projection
-manifest must name the exact authority-manifest digest; both manifests must
-name the same snapshot, generation, owner, and scope digest. A scope, registry,
+manifest must name the exact authority-manifest digest; the projection manifest must name the
+authority manifest's snapshot, lineage, owner and scope digest. Only the projection manifest names a
+generation; the authority manifest cannot depend on its derivative. A scope, registry,
 active authority snapshot, projection generation,
 freshness, or revocation change requires a new reviewed activation and a fresh
 OpenClaw state directory; an earlier OpenClaw session is never resumed.
@@ -373,7 +417,7 @@ an ingest-owned assertion with three parts:
 2. Gate B has one fixture-only materialization boundary owned by
    `strict_evidence_state.py`. The launcher resolves an exact source
    registration before parsing and supplies it out of band. The strict fixture
-   parser rejects the complete batch if source bytes contain a bare
+   parser rejects the complete batch if source object keys contain a bare
    `_convmem_auth`/`_convmem_state` key, any key beginning either prefix, or any
    field named like an authority/disposition digest. It never imports a legacy
    adapter or `ingest.py`. Only after rejection does trusted code construct
@@ -572,7 +616,7 @@ materializer must read an immutable ledger/disposition snapshot and preserve
 its provenance under a separately reviewed migration; it may not promote this
 fixture parser into a second production write path.
 
-Each record has schema `convmem.bound-authority-record.v2`. Every optional
+Each record has schema `convmem.bound-authority-record.v3`. Every optional
 field is present as JSON `null` or an empty array, so omission cannot change
 meaning. Its exact fields are:
 
@@ -584,7 +628,7 @@ observed_at, recorded_at, confidence_bps, relates_to_assertion_id,
 target_assertion_id,
 verification_result, supersedes_assertion_ids, decision_disposition_ref,
 supersession_disposition_ref, provenance_envelope, provenance_commitment,
-origin_assurance
+origin_assurance, provenance_qualification, check_eligibility
 ```
 
 `record_kind` is `observation`, `decision`, or `verification`.
@@ -654,19 +698,22 @@ The action matrix is exact:
   and sets `target_assertion_ids` and `expected_head_assertion_ids` empty and
   `basis_snapshot_id` and `replaces_disposition_ref` to `null`;
 - revocation names that same decision and semantic digest, requires `pass`,
-  sets both arrays empty and `basis_snapshot_id` to the immediately active
-  snapshot, and names the exact prior approval in `replaces_disposition_ref`;
+  sets both arrays empty and `basis_snapshot_id` to the immediate admitted
+  parent snapshot, and names the exact prior approval in `replaces_disposition_ref`;
 - withdrawal names an observation or verification and its semantic digest,
   requires `pass`, sets both arrays empty,
-  `basis_snapshot_id` to the immediately active snapshot, and
+  `basis_snapshot_id` to the immediate admitted parent snapshot, and
   `replaces_disposition_ref` to `null`;
 - supersession names the replacement assertion as subject, requires `pass`,
-  binds its exact semantic digest, sorted target set, immutable immediately
-  active `basis_snapshot_id`, and exact active head set in that basis, and sets
+  binds its exact semantic digest, sorted target set, immutable immediate
+  admitted parent `basis_snapshot_id`, and exact active head set in that basis, and sets
   `replaces_disposition_ref` to `null`.
 
-Any competing, cross-binding, wrong-kind, wrong-logical-ID, stale-basis, or
-partially matched disposition fails the complete authority snapshot. A
+New dispositions are validated against the immediate admitted parent; retained dispositions are
+replayed against their original admission parent, never against the current head. Any competing,
+cross-binding, wrong-kind, wrong-logical-ID, stale new basis, or partially matched disposition fails
+the candidate. A new terminal action targets a parent record, never an addition in the same batch. A
+join and any other head-changing operation on the same logical identity in one batch are rejected. A
 revoked or withdrawn record remains historical; no artifact is rewritten or
 deleted.
 
@@ -685,9 +732,10 @@ it only contributes to the reducer for the snapshot that contains it.
 Every authority record carries a byte-for-byte valid existing
 `convmem/provenance-envelope-v1` plus its recomputed
 `provenance_commitment`. The authority snapshot also contains closed
-`convmem.strict-provenance-context.v1` with exact top-level fields `schema`,
+`convmem.strict-provenance-context.v2` with exact top-level fields `schema`,
 `schema_semantics`, `policies`, `recipes`, `verified_channels`,
-`registered_assertions`, and `context_payload_sha256`. `schema_semantics` entries contain exactly
+`registered_assertions`, `grounding_sha256`, and `context_payload_sha256`. `schema_semantics`
+entries contain exactly
 `schema_version`, `binding_version`, `semantic_bytes_b64`, and
 `semantic_sha256`; policy entries contain exactly `policy_version`,
 `semantic_bytes_b64`, `semantic_sha256`, and `rules`. Each rule contains
@@ -706,15 +754,10 @@ entry. Arrays are duplicate-free and already sorted respectively by
 `(transformer_class,transformer_identity,transformer_version,recipe_id)`.
 Base64 is canonical padded RFC 4648,
 and every embedded digest is recomputed. The context payload hash excludes only
-itself. Validation uses the existing
-recursive provenance verifier against those exact snapshots; it verifies root
-source locators/raw/input-view hashes or parent assertion/commitment/input-view
-links. Missing parents, changed commitments, incomplete ancestry, or unavailable
-policy bytes can never increase assurance. The only mapping is:
-
-- recursively verified `trusted` integrity -> `origin_assurance: verified`;
-- recursively verified `agent` integrity -> `origin_assurance: claimed`;
-- every other result -> `origin_assurance: untrusted`.
+itself. The existing recursive verifier validates commitments, declared policies, channels and
+ancestry. It does **not** establish source bytes, consumed view bytes or actual execution. Strict
+qualification composes that result with the grounding contract below; no direct `trusted ->
+verified` mapping is permitted.
 
 The source record supplies only a provenance assertion UUID. Trusted code must
 resolve it in `registered_assertions`, recursively verify that exact immutable
@@ -727,7 +770,7 @@ binding fails the complete snapshot; matching provenance identity alone is
 never payload proof. The
 envelope's existing UUID identity remains unchanged and is not replaced by the
 strict record's v2 `assertion_id`. The containing record is the explicit
-mapping between those identities. Within one authority snapshot, one existing
+mapping between those identities. Across the entire enrolled lineage, one existing
 provenance assertion/commitment pair may map to only one strict assertion
 except for a byte-identical retry; reusing it for different semantic bytes or
 multiple apparently independent assertions fails the snapshot.
@@ -740,11 +783,140 @@ contains exactly `schema`, `citations`, and `citation_map_payload_sha256`.
 `provenance_commitment`, `root_bindings`, and `input_bindings`, with the last
 two copied byte-equivalently from the validated envelope. The map payload hash
 excludes only itself. It is hashed by the authority manifest, excluded from
-the serving projection, and readable only by the operator audit path. Public
+the serving projection, and excluded from public tool data and runtime model mounts; the trusted
+cold qualifier and operator audit path may read it. Public
 `citation_ref` is `cite1_` plus SHA-256 of the canonical object with exact
 fields `schema: convmem.strict-citation-ref.v1`, `project_binding_id`,
 `assertion_id`, and `provenance_commitment`; it is never accepted as authority
 or a tool input.
+
+##### Byte grounding and capture contract
+
+Keep `provenance.py` and its accepted envelope bytes/UUIDs unchanged. The strict qualifier composes
+its narrower result with new immutable evidence. A legacy verifier result is never by itself mapped
+to stronger byte/capture assurance.
+
+Add `convmem.strict-grounding.v1` with exact fields `schema, blobs, roots, edges, outputs, receipts,
+grounding_payload_sha256`. Blob entries are `sha256, length, bytes_b64`; arrays are canonical and
+duplicate-free. Embedded bytes are never executable. Blob hashing covers decoded bytes; padded
+base64 is canonical. The total decoded blob budget is 32 MiB and is also included in the existing
+128-MiB authority budget; encoded overhead must fit that total. Exceeding a budget rejects the
+candidate, never causes incomplete verification to pass.
+
+Root bindings contain exactly `provenance_assertion_id, provenance_commitment,
+source_registration_id, source_event_id, source_identity, record_locator, raw_blob_sha256,
+view_blob_sha256, selector, receipt_ref`. Edge bindings contain exactly
+`child_provenance_assertion_id, child_provenance_commitment, parent_provenance_assertion_id,
+parent_provenance_commitment, parent_output_blob_sha256, view_blob_sha256, selector, receipt_ref`.
+Output bindings contain exactly `provenance_assertion_id, provenance_commitment,
+output_blob_sha256`.
+
+The only selectors are closed objects `{kind:"identity"}` and `{kind:"byte_range", start, end}` with
+integer half-open byte offsets `0 <= start <= end <= input_length`. Views intended as text must be
+valid UTF-8. There are no runtime-loaded recipes, URLs, arbitrary file paths, JSON programs or
+model-provided selectors. The input is the root's exact captured raw blob, or the exact output blob
+bound to the named parent commitment. Recompute the view and compare it with the envelope's
+root/input-view hash and binding identities. Check every claimed edge, not merely those reached by a
+convenient displayed path.
+
+Every included grounding blob and ancestor must be authorized for the same immutable audience;
+private witness storage is not permission to import another project's bytes. An unavailable or
+foreign ancestor stays absent and prevents stronger assurance. The qualifier never fetches it from a
+global corpus to complete the chain.
+
+A capture receipt contains exactly `schema, capture_id, capture_class, capture_issuer_id,
+source_registration_id, source_event_id, provenance_assertion_id, provenance_commitment,
+input_bindings_sha256, transformer_artifact_sha256, recipe_sha256, submitted_views_sha256,
+returned_output_sha256, captured_at, receipt_payload_sha256`. There is exactly one invocation
+receipt per provenance assertion. `input_bindings_sha256` hashes the complete ordered array of that
+assertion's root/parent-input bindings, each tagged `{kind, binding}` with `receipt_ref` removed;
+root entries precede edge entries and each group uses the grounding sort order below. Every binding
+of that assertion references this same receipt. `submitted_views_sha256` hashes the corresponding
+ordered array of view blob hashes (repeated uses retained). The recorder attests that whole ordered
+input set and one returned output in one invocation. Receipts from separate calls cannot be
+assembled into a stronger multi-input execution claim. These hashes avoid a receipt/commitment
+cycle. `receipt_ref` is the receipt's content address. Each receipt is imported only from a
+protected issuer inventory pinned in the registration; a row's receipt-shaped object is not
+authenticated. The issuer inventory binds exact receipt bytes, not just an actor name.
+
+For deterministic fixture evidence, the trusted fixture harness constructs raw bytes, performs the
+declared selection/transformation, retains the exact input/output and issues
+`capture_class=synthetic_fixture`. It does not attest a real website, production capture or
+historical model run. Production can use `controlled_capture` only after an independent recorder is
+qualified to own the invocation boundary and immutable receipt publication. Source producer/model
+processes cannot write that inventory. No production recorder is assumed to exist in the supplied
+code.
+
+Qualification returns a closed tuple:
+
+`commitments: valid|incomplete; byte_grounding: complete|missing; capture:
+synthetic_fixture|controlled_capture|unattested; transformer_cap: trusted|agent|untrusted`.
+
+Supplied mismatched bytes, wrong identities/locators/events, receipt reuse for a different binding,
+changed retained receipts or commitments, or impossible selectors fail the complete candidate.
+Missing witnesses/receipts or incomplete ancestry produce a weaker tuple, not a stronger claim. A
+mismatched claimed hash cannot be treated as merely missing. Runtime disappearance/corruption of
+previously admitted files fails cold qualification rather than retrospectively downgrading history.
+
+`origin_assurance=verified` is allowed only with valid commitments, complete byte grounding, an
+accepted capture class, complete ancestry and a trusted transformer cap. Public `provenance_basis`
+explicitly says `synthetic_fixture` or `controlled_capture`; it never says historical execution was
+independently proven. With complete recorded lineage but an agent cap, assurance is at most
+`claimed`; missing grounding/capture is `untrusted`. Add the qualification tuple to public results
+so the single legacy-style label cannot conceal its basis.
+
+Actual consumption is stated narrowly: a controlled receipt attests bytes supplied and outputs
+returned at the recorder's boundary. It does not prove that a model attended to all supplied
+content. For an unrecorded past call, consumption is **not established**, even if deterministic
+replay succeeds. Old envelopes are not rewritten; a later correction needs a new assertion/receipt
+and forward admission. Approval never upgrades capture evidence, and repeated derivation never
+creates independent support.
+
+Qualification is frozen at the assertion's original admission context, found from the lineage's
+added-ID arrays. Cold replay uses that original context. Appending a formerly missing parent or
+witness cannot silently upgrade an old assertion. An explicit new assertion is required. Synthetic
+and controlled-capture ancestry may not be mixed into a production-qualified chain. Sidecar receipt
+addresses are not inserted into old envelopes; this avoids both reminting and a receipt/commitment
+hash cycle.
+
+The registry uses closed `convmem.project-binding-registry.v3` with top-level `schema, revision,
+bindings`; its existing revision hash excludes only revision. The single registry-v3 binding adds
+exactly `lineage_id`, `capture_issuers` and `verification_producers` to §6.2's binding fields.
+`lineage_id` is 32 lowercase hex. Capture issuers are sorted by `issuer_id`; each closed entry is
+`{issuer_id, capture_class, enrollment_sha256, receipt_root, source_registration_ids}`. Issuer IDs
+match `[a-z0-9][a-z0-9._-]{0,63}`; class is `synthetic_fixture` or `controlled_capture`;
+receipt_root is a protected absolute operator path, never mounted into OpenClaw. Source IDs are
+sorted unique registered IDs. Enrollment binds the issuer and permission boundary; actual receipt
+bytes are committed at admission. Runtime/model/source UIDs cannot enroll an issuer or write its
+inventory. Gate B accepts fixture issuers only. A receipt is authentic only if its exact
+content-addressed bytes are already in that issuer's protected inventory; importing a receipt-shaped
+object cannot create authenticity.
+
+`verification_producers` is a sorted unique array of closed entries `{source_registration_id,
+producer, transformer_identity, transformer_version, transformer_artifact_sha256, recipe_sha256,
+capture_class}`. It binds an exact non-LLM check implementation and capture class. Missing match
+yields `inconclusive_only`; it never removes the check. Match plus full trusted qualification yields
+`qualified`; non-verifications use `not_applicable`.
+
+Grounding arrays sort by blob hash; root `(provenance_assertion_id, source_registration_id,
+source_event_id, record_locator)`; edge `(child_provenance_assertion_id,
+parent_provenance_assertion_id, view_blob_sha256)`; output provenance assertion ID; receipt capture
+ID, respectively. Duplicate keys fail. Receipt schema is `convmem.capture-receipt.v1`; `capture_id`
+is 32 lowercase hex and `receipt_ref` is `capture_` plus its payload hash. Every envelope root/input
+must match one grounding binding for complete grounding, and every supplied binding must match an
+envelope edge. No orphan, duplicate or unused witness claims are accepted. A blob may be referenced
+by multiple exact bindings; it is stored once. Receipt IDs cannot be reused across different bytes
+or assertion invocations; multiple bindings of the one attested invocation must share its receipt.
+All referenced receipt output hashes must agree with that assertion's unique output binding and the
+envelope's output commitment. An absent required binding is missing evidence; an included but
+dangling/mismatched binding is invalid input.
+
+Qualification fields are deterministic, included in record semantic/payload hashes, and frozen at
+original admission. `provenance_basis` is derived from capture class (`synthetic_fixture`,
+`controlled_capture`, or `unattested`) and is public; complete ancestry must have a homogeneous
+accepted class. `claimed` requires valid complete lineage/grounding/capture with an agent cap; all
+other non-verified combinations are `untrusted`. No receipt proves model attention, factual truth or
+measurement freshness.
 
 #### 6.5.2 Logical identity, immutable assertions, and replay
 
@@ -817,7 +989,7 @@ missing targets, cross-binding/logical-ID/kind edges, and rejected-decision
 successors fail the generation.
 
 A successor may join multiple heads only when its supersession disposition's
-`basis_snapshot_id` names the immediately active predecessor snapshot and its
+`basis_snapshot_id` names the immediate admitted parent snapshot and its
 `expected_head_assertion_ids` and target array exactly equal the complete
 active head set for that logical ID in that basis. Publication compare-and-swap
 then prevents two joins from both claiming the same basis. A stale or partial
@@ -848,152 +1020,218 @@ are all `conflict`; one approved decision head is `approved` and two or more
 approved heads are all `conflict`. Zero eligible heads is allowed and means the
 logical subject has no current direction; no predecessor is reactivated.
 
-Multiple unsuperseded heads of one record kind and logical ID are each
-presented as `authority_state: conflict`; the immutable record itself is not
-rewritten. Different verification logical IDs are independent checks, not
-competing heads. Verification may target an observation or an approved
-decision in the same binding, never another verification. A
-verification whose target is historical remains context and does not affect a
-different target. Every non-historical verification head whose authority state
-is `current` or `conflict` counts. For
-the set of distinct results, the complete reduction is: empty -> `unverified`;
-`{pass}` -> `pass`; `{fail}` or `{fail,inconclusive}` -> `fail`;
-`{inconclusive}` or `{pass,inconclusive}` -> `inconclusive`; any set containing
-both pass and fail -> `conflict`. Thus uncertainty never becomes pass.
-Decision rows use the same verification reduction but retain their authority
-state separately. Observation and decision rows use the reduced value;
-verification rows always use `verification_state: not_applicable` while their
-own `verification_result` remains explicit.
+Verification targets may name an observation or an approved decision in the same binding, never
+another verification. Historical-target checks remain context and cannot verify a successor.
+Contextual `relates_to` edges never change state.
 
-Strict `unresolved` includes every current/conflicting observation head whose
-verification state is `unverified`, `fail`, `inconclusive`, or `conflict`.
-Only a current head with `pass`, or a non-current historical row, is excluded.
-Search and related may return historical rows only through their normal
-lexical/neighborhood rules and must label them. Inline legacy outcomes,
-summaries, timestamps, and text equality never participate. Reducer output is
-materialized and recomputed independently during cold validation; any mismatch
-fails publication.
+For observation/decision `a`, collect every live `current` or `conflict` verification head targeting
+the **exact assertion ID** of `a` in the complete admitted bound history. A check against a
+predecessor does not verify a successor. `relates_to` never substitutes for `target_assertion_id`.
 
-#### 6.5.4 Authority-first materialization and exact artifact schemas
+First, if any contributing verification logical identity has competing live heads, the target's
+canonical verification state is `conflict`, even when those heads report the same result. Otherwise
+assign each head an effective result:
 
-The authority snapshot is the sole input to strict publication. Chroma,
-ordinary exports, global ledger maps, summaries, caches, and projection rows
-are never recovery authority. A strict generation has this fixed layout:
+- A registered check producer with fully qualified evidence and an accepted deterministic/capture
+  contract contributes its recorded `pass`, `fail`, or `inconclusive`.
+- Any live check lacking that eligibility contributes `inconclusive`; it is never silently omitted.
+  A claimed or LLM-derived pass cannot close an observation. A weak fail likewise cannot disappear
+  and expose a sole pass.
 
-Gate B's only publisher input is closed
-`convmem.strict-fixture-bundle.v1`, with exact top-level fields `schema`,
-`batches`, `dispositions`, `provenance_context`, `built_at`, `as_of`,
-`expires_at`, and `fixture_payload_sha256`. Each already-sorted batch contains
-exactly `source_registration_id` and `source`; `source` is the closed
-`convmem.fixture-scan.v1` object from Section 6.5.2. Each source record contains
-exactly `record_kind`, `producer`, `logical_key`, `title`, `document`,
-`observed_at`, `confidence_bps`, `relates_to_assertion_id`,
-`target_assertion_id`, `verification_result`, and
-`provenance_assertion_id`, using
-explicit `null` for kind-inapplicable fields. Authority scope/domain/site,
-disposition references, supersession targets, IDs, recorded time, assurance,
-and every digest are absent from source records and constructed or resolved by
-trusted code. The bundle hash excludes only itself; its dispositions and
-provenance context must independently satisfy their closed schemas. `built_at`
-is not earlier than any batch `captured_at`; `as_of` is not earlier than any
-admitted `observed_at`; and `expires_at` equals `as_of` plus the bound scope's
-`max_snapshot_age_seconds` exactly.
+Apply the original conservative truth table to effective results: empty→unverified; pass only→pass;
+fail only or fail+inconclusive→fail; inconclusive only or pass+inconclusive→inconclusive; any
+pass+fail→conflict. Verification rows themselves retain their immutable reported result and use
+`verification_state=not_applicable`.
 
-The sole write interfaces are:
+Check eligibility is fixed by the registry's closed `verification_producers` inventory: exact
+`source_registration_id, producer, transformer_identity, transformer_version,
+transformer_artifact_sha256, recipe_sha256, capture_class`, sorted by that tuple. Entries are
+supplied by the operator, never by corpus text. `capture_class` is `synthetic_fixture` for fixtures;
+production requires a separately established protected recorder identity. No matching inventory
+entry means ineligible, not an error in ordinary document retrieval. No LLM transformer is eligible
+to close a check in this version.
+
+This adds a necessary F2/F3 contract: uncertain evidence stays visible without receiving closure
+power. It does not prove that a qualified measurement is correct or that every possible test was
+run. Public responses name the basis `recorded_qualified_checks`; “pass” means the complete live
+qualified recorded set has passed under the above rules, not “the website is correct.” Approval,
+authority currency, provenance, measurement freshness and deployment completion remain separate.
+
+Unresolved's predicate is precisely:
+
+`record_kind == observation AND (authority_state == conflict OR (authority_state == current AND
+verification_state != pass))`.
+
+Order by conflict before current, then descending `observed_at`, then ascending `assertion_id`,
+before applying the requested limit and byte bound. There is no positive “all resolved” conclusion
+inferred from a limited empty query over a selected subtree.
+
+The state map is computed over the **complete immutable authorized bound authority**, before
+selectors, ranking, top-k, truncation or related depth. Every tool copies it. The immutable source
+record never accepts current-state fields. Cold validation independently recomputes the state map;
+any mismatch fails qualification. Appending cross-audience witnesses is forbidden, so complete-bound
+reduction does not mean global reduction.
+
+#### 6.5.4 Cumulative authority and derivative publication
+
+The publisher owns admission qualification and derivative publication; it is not an approver. Gate
+B's input is synthetic. Production intent and source admission use §6.5.7's governed engine, not
+this fixture parser. Chroma, exports, cached rows and model output never supply missing authority.
+
+**Stable enrollment.** One operator-created lineage owns exactly one audience and at most one
+runtime slot. `lineage_id`, `slot_id`, `operation_id` and activation IDs are independent random
+128-bit lowercase hex identities. `owner_digest` remains SHA-256 of canonical
+`{schema:"convmem.strict-owner.v1", scope_sha256, registry_sha256, project_binding_id}`. It is a
+configuration identity, not a lock name or enrollment identity. Changing scope, registry, producer
+policy, binding or enrollment is unsupported in this version: retire/fence and require a separately
+reviewed continuity-preserving migration. Starting a new owner root cannot evade old revocations.
+
+Enrollment uses closed `convmem.strict-enrollment.v1` with exactly `schema, lineage_id, slot_id,
+mode, owner_digest, operator_uid, controller_uid, supervisor_uid, runtime_uid, scope_sha256,
+registry_sha256, semantic_contract_sha256, initial_source_cutoff_sha256, enrollment_payload_sha256`.
+Mode is `fixture` or `production`; Gate B's enrollment command accepts only `fixture`. Controller
+and supervisor identities are trusted; runtime UID differs from all three and cannot signal, ptrace,
+read private process state of, or write their sockets/files. Exact UID/mount/IPC enforcement is part
+of the manager-policy qualification. Production enrollment cannot be inferred from an empty
+directory. No flag promotes fixtures.
+
+A new authority head H[n+1] preserves every admitted record, disposition, source-event mapping,
+provenance envelope, policy/recipe/channel inventory key, receipt and evidence blob byte-for-byte
+from H[n]. Only a closed append delta is legal. Qualify every parent link from genesis; validate old
+dispositions and qualification at their original admission context; validate new transitions against
+H[n]. Added-ID lists equal exact recomputed set differences. Independent additions may create
+conflict. Joining heads must target the complete parent head set, and no same-batch action may also
+change that logical identity. A later withdrawn/revoked successor does not erase its supersession
+edges. Restoring meaning requires a newly admitted assertion and governance.
+
+The fixture bundle is closed `convmem.strict-fixture-bundle.v2`, with exactly `schema, lineage_id,
+operation_id, expected_parent_manifest_sha256, batches, dispositions, provenance_context, grounding,
+built_at, as_of, expires_at, fixture_payload_sha256`. Batches are cumulative, sorted by
+`(source_registration_id, source.event_key)`, and contain exactly `source_registration_id, source`.
+`source` is §6.5.2's fixture-scan object. Its source records contain exactly `record_kind, producer,
+logical_key, title, document, observed_at, confidence_bps, relates_to_assertion_id,
+target_assertion_id, verification_result, provenance_assertion_id`. Explicit kind-inapplicable nulls
+are required. Other authority/ID/state/digest fields are rejected before trusted construction.
+Supersession targets come from exact validated dispositions, not text. Each scan's records are
+sorted by `(record_kind, producer, logical_key, target_assertion_id-or-empty)`; duplicate tuples
+reject.
+
+A bundle must add assertions, dispositions, or reviewed source-cutoff evidence. Merely rebuilding
+cannot advance `as_of`. Retained events cannot change captured time. `built_at` is at least every
+captured/recorded time; `observed_at <= as_of <= built_at`; `expires_at = as_of +
+scope.max_snapshot_age_seconds`. A newer source cutoff must be backed by a new captured scan/event
+or ratified transition, even if no new substantive text. No changing a timestamp to refresh old
+measurements. Public `observed_at` remains independent of cutoff freshness.
+
+Operation idempotence compares the exact bundle/artifact payload digest. Same operation ID/same
+bytes returns the historic outcome **and the current head** without changing publication. Different
+bytes under the same ID reject. Same source occurrence/different record bytes rejects across all
+heads. Retrying an old successful operation cannot republish its head.
+
+**Closed file layout and schemas.** JSON uses §6.5's canonical profile, duplicate-key rejection and
+explicit nulls. Every listed object is closed, has its literal schema value, and self-hashes by
+excluding only its named payload-hash field. Hashes are lowercase SHA-256. Canonical JSONL has one
+object plus LF per line; records sort by assertion ID, dispositions by computed `disp_` address. All
+arrays described as sets must arrive sorted and unique; parsers do not repair them.
 
 ```text
-python -B -s strict_projection_publisher.py build-fixture \
-  --bundle ABS --scope ABS --registry ABS --strict-config ABS \
-  --expected-generation none|gen1_<64 lowercase hex>
-
-python -B -s strict_projection_publisher.py rollback-fixture \
-  --scope ABS --registry ABS --strict-config ABS \
-  --expected-generation gen1_<64 lowercase hex> \
-  --target-generation gen1_<64 lowercase hex>
+<root>/layout.json
+<root>/control/enrollment.json
+<root>/control/semantic-contract.json
+<root>/control/slot.json
+<root>/control/clock/<receipt-hash>.json
+<root>/authority/<snapshot_id>/input.json
+<root>/authority/<snapshot_id>/source-cutoff.json
+<root>/authority/<snapshot_id>/records.jsonl
+<root>/authority/<snapshot_id>/dispositions.jsonl
+<root>/authority/<snapshot_id>/citation-map.json
+<root>/authority/<snapshot_id>/provenance-context.json
+<root>/authority/<snapshot_id>/grounding.json
+<root>/authority/<snapshot_id>/manifest.json
+<root>/projection/<generation_id>/rows.jsonl
+<root>/projection/<generation_id>/graph.json
+<root>/projection/<generation_id>/manifest.json
+<root>/active/<lineage_id>.json
+<root>/active/history/<publication-payload-sha256>.json
+<root>/locks/<lineage_id>.lock
+<root>/locks/<slot_id>.transition.lock
 ```
 
-All paths must pass the operator-file checks; output comes only from the
-already validated strict config. No other subcommand, environment override,
-stdin record stream, live source, Chroma source, or recovery shortcut exists.
-`strict_projection.py` contains only cold validation and the sealed read-only
-reader and is the only projection module imported by the strict server.
+`convmem.strict-generation-layout.v2` has exactly `schema, authority_dir, projection_dir,
+active_dir, locks_dir, control_dir, layout_payload_sha256`; directory values are exactly
+`authority`, `projection`, `active`, `locks`, `control`. Slot state lives outside runtime-writable
+mounts. Its closed `convmem.strict-slot.v1` record is `schema, slot_id, lineage_id, activation_id,
+activation_manifest_sha256, unit_invocation_id, state, retirement_ref, slot_payload_sha256`;
+nullable activation/invocation fields are null only when never launched/retired; state is `empty`,
+`starting`, `active`, `retiring`, or `quarantined`. It records containment bookkeeping, never fact
+approval. Missing/corrupt slot state on an enrolled slot requires reconciliation, not a new launch.
+
+`convmem.strict-source-cutoff.v1` has exactly `schema, lineage_id, mode, operations,
+cutoff_payload_sha256`. Operations are admission-ordered closed `{operation_id, input_sha256,
+source_prefix_sha256}` objects. A fixture's source prefix hashes its cumulative canonical `batches`;
+production hashes the canonical object `{schema:"convmem.admitted-source-prefix.v1", lineage_id,
+previous_source_prefix_sha256, operation_id, artifact_sha256, ratification_ref}`. The previous
+prefix is null only at first admission. Every referenced artifact/ratification is retained in
+protected source storage; the prefix chain is independently replayed. It excludes the later ADMITTED
+receipt and authority manifest, avoiding a cycle. The source step is written only by the explicit
+add operation under its durable ADMISSION_PREPARED consent, not by a rebuild. Each operation ID
+occurs once. `input.json` is the exact fixture bundle or approved admission artifact and its hash is
+committed in the manifest. Cutoff history is cumulative; no wall-clock-only cutoff. The empty
+genesis cutoff is explicit and hashed.
+
+`convmem.bound-authority-manifest.v3` exact fields:
 
 ```text
-<projection_root>/layout.json
-<projection_root>/authority/<snapshot_id>/records.jsonl
-<projection_root>/authority/<snapshot_id>/dispositions.jsonl
-<projection_root>/authority/<snapshot_id>/citation-map.json
-<projection_root>/authority/<snapshot_id>/provenance-context.json
-<projection_root>/authority/<snapshot_id>/manifest.json
-<projection_root>/projection/<generation_id>/rows.jsonl
-<projection_root>/projection/<generation_id>/graph.json
-<projection_root>/projection/<generation_id>/manifest.json
-<projection_root>/active/<owner_digest>.json
-<projection_root>/locks/<owner_digest>.lock
+schema, lineage_id, authority_seq, owner_digest, snapshot_id,
+parent_snapshot_id, parent_manifest_sha256, scope_sha256, registry_sha256,
+input_sha256, source_cutoff_sha256, operation_id,
+authority_records_sha256, record_count, dispositions_sha256, disposition_count,
+citation_map_sha256, provenance_context_sha256, grounding_sha256,
+added_assertion_ids, added_disposition_ids, added_provenance_ids,
+added_grounding_refs, semantic_contract_sha256, reducer_version,
+canonicalization_version, builder_version, builder_tree_sha256,
+built_at, as_of, expires_at, manifest_payload_sha256
 ```
 
-`layout.json` is the self-hashed closed schema
-`convmem.strict-generation-layout.v1` and names only the four fixed
-directories. Its exact fields are `schema`, `authority_dir`, `projection_dir`,
-`active_dir`, `locks_dir`, and `layout_payload_sha256`; the four directory
-values are exactly `authority`, `projection`, `active`, and `locks`, and the
-payload hash excludes only itself. `owner_digest` is the lowercase hexadecimal
-SHA-256 over canonical JSON with the exact fields `schema`, `scope_sha256`,
-`registry_sha256`, and `project_binding_id`, where `schema` is
-`convmem.strict-owner.v1`; it is not derived from a path.
+Sequence starts at 1 with null parent fields; otherwise it is parent+1 with exact parent ID/hash.
+`snapshot_id = snap2_` plus SHA-256 of this canonical manifest excluding only `snapshot_id` and
+`manifest_payload_sha256`; then compute the payload hash. Added provenance IDs are envelope UUIDs.
+Added grounding refs are sorted hashes of the canonical newly admitted blob/root/edge/output/receipt
+entries (schema fixes the entry type in a tagged `{kind, entry}` hash). Grounding and context
+inventories are retained even when an assertion is withdrawn.
 
-The closed authority manifest `convmem.bound-authority-manifest.v2` contains
-exactly:
+`convmem.bound-projection-manifest.v3` exact fields:
 
 ```text
-schema, owner_digest, snapshot_id, scope_sha256, registry_sha256,
-authority_records_sha256, record_count,
-dispositions_sha256, disposition_count, citation_map_sha256,
-provenance_context_sha256,
-reducer_version, canonicalization_version, builder_version,
-builder_tree_sha256, built_at, as_of,
-expires_at, manifest_payload_sha256
+schema, lineage_id, authority_seq, owner_digest, generation_id,
+previous_generation_id, snapshot_id, authority_manifest_sha256,
+scope_sha256, registry_sha256, semantic_contract_sha256,
+rows_sha256, row_count, graph_sha256, graph_node_count,
+search_kernel, search_kernel_version, tokenizer_unicode_version,
+builder_version, builder_tree_sha256, built_at, as_of, expires_at,
+manifest_payload_sha256
 ```
 
-The closed projection manifest `convmem.bound-projection-manifest.v2` contains
-exactly:
+`generation_id = gen2_` plus SHA-256 of the canonical projection manifest excluding only
+`generation_id` and `manifest_payload_sha256`. `previous_generation_id` is audit context only; null
+on the first generation, otherwise the generation serving when the build began (or null if none). It
+never selects authority. Projection times `as_of/expires_at` copy authority exactly; generation
+`built_at` may be later. A manifest contains no self-referential downstream identity.
 
-```text
-schema, owner_digest, generation_id, previous_generation_id, snapshot_id,
-authority_manifest_sha256, scope_sha256, registry_sha256, rows_sha256,
-row_count, graph_sha256, graph_node_count, search_kernel,
-search_kernel_version, tokenizer_unicode_version, builder_version, built_at,
-builder_tree_sha256, as_of, expires_at, manifest_payload_sha256
-```
+`semantic_contract_sha256` hashes the canonical closed `convmem.strict-semantic-contract.v1` object
+`schema, reducer_version, grounding_version, canonicalization_version, identity_version,
+search_kernel, search_kernel_version, tokenizer_unicode_version, schema_digests,
+contract_payload_sha256` excluding its payload hash. `schema_digests` is sorted closed `{path,
+sha256}` for the execution plan's complete strict schema inventory. The semantic artifact excludes
+deployment-specific enrollment/launch values. Its schema list is exactly the Gate B/C inventory in
+the paired execution plan. Hash the schema bytes, not their future deployment instances.
+Governance/capture files remain outside the sealed code image, so image→policy→activation digests
+are acyclic. `builder_tree_sha256` uses §6.5.6's tree recipe over exact production files listed for
+Gate B plus this schema inventory and pinned dependency manifest. Neither tests nor mutable outputs
+enter it. Deployment permits only exact reviewed builder/runtime digests. Changing contract
+semantics requires review, never an old-generation rollback.
 
-Both payload hashes cover the canonical object with only that hash field
-removed. `snapshot_id` is `snap1_` plus the lowercase SHA-256 over canonical
-JSON with the exact fields `schema`, `owner_digest`, `authority_records_sha256`,
-`dispositions_sha256`, `citation_map_sha256`,
-`provenance_context_sha256`,
-`reducer_version`, `canonicalization_version`, `builder_version`, `built_at`,
-`builder_tree_sha256`, `as_of`, and `expires_at`, where
-`schema` is `convmem.strict-snapshot-id.v1`. The authority manifest is complete
-at this point and contains no projection or predecessor identifier.
-`generation_id` is `gen1_` plus the lowercase SHA-256 over canonical JSON with
-the exact fields `schema`, `owner_digest`, `snapshot_id`, `scope_sha256`,
-`registry_sha256`, `authority_manifest_sha256`, `rows_sha256`, `graph_sha256`, `reducer_version`,
-`canonicalization_version`, `search_kernel`, `search_kernel_version`,
-`tokenizer_unicode_version`, `builder_version`, `builder_tree_sha256`,
-`previous_generation_id`, and `built_at`, where `schema` is
-`convmem.strict-generation-id.v1`. The projection manifest names that
-generation ID and the authority snapshot ID; the authority manifest names only
-the snapshot ID. Both share the same owner and scope/registry digests.
-`builder_tree_sha256` uses the tree-digest recipe in Section 6.5.6 over exactly
-`canonical_json.py`, `provenance.py`, `domains.py`, `bound_read_scope.py`,
-`strict_evidence_state.py`, `strict_projection_publisher.py`,
-`strict_projection.py`, `requirements.txt`, and all seventeen schema files in
-the paired execution plan. No test or mutable artifact enters that digest.
-Records are sorted by `assertion_id`; dispositions are sorted by their
-recomputed `disp_...` content address. Each file contains one canonical object
-plus LF per line; duplicate identities or noncanonical order fail. Projection
-rows use closed
-schema `convmem.bound-projection-row.v1` and contain exactly:
+`convmem.bound-projection-row.v2` exact fields:
 
 ```text
 schema, project_binding_id, public_binding_ref, source_registration_id,
@@ -1001,79 +1239,127 @@ authority_site, authority_domain, record_kind, logical_id, assertion_id,
 public_ledger_id, citation_ref, title, document, observed_at, recorded_at,
 confidence_bps, relates_to_assertion_id, target_assertion_id,
 verification_result, supersedes_assertion_ids, decision_disposition_ref,
-supersession_disposition_ref, origin_assurance, authority_state,
-verification_state, state_disposition_refs, payload_sha256, state_sha256
+supersession_disposition_ref, origin_assurance, provenance_qualification,
+check_eligibility, authority_state, verification_state,
+state_disposition_refs, payload_sha256, state_sha256
 ```
 
-`public_ledger_id` is the qualified handle from Section 8.1. `state_sha256` is
-the lowercase SHA-256 over canonical JSON containing exactly `schema:
-convmem.strict-state.v1`, `assertion_id`, `authority_state`,
-`verification_state`, the sorted active head assertion IDs for that logical
-ID, the sorted current verification assertion IDs, and the sorted disposition
-references consulted by the reducer. `state_disposition_refs` is that same
-sorted, duplicate-free disposition-reference array. Every other row value is copied from or deterministically derived from
-the qualified authority snapshot. `graph.json` has schema
-`convmem.strict-graph.v1` and exact fields `schema`, `nodes`, `edges`, and
-`graph_payload_sha256`; `nodes` is the sorted unique assertion-ID array and
-`edges` is the sorted array of closed objects `{kind, from_assertion_id,
-to_assertion_id}`, where `kind` is `relates_to`, `targets`, or `supersedes`.
-The graph payload hash excludes only itself. Neither file contains operator
-paths or private citation locators.
+`payload_sha256` is the linked authority record's hash. `state_sha256` hashes closed
+`convmem.strict-state.v2` with exact fields `schema, lineage_id, authority_seq,
+authority_manifest_sha256, semantic_contract_sha256, assertion_id, authority_state,
+verification_state, subject_head_assertion_ids, verification_inputs, state_disposition_refs`.
+Subject heads and disposition refs are sorted unique; each verification input is closed
+`{assertion_id, logical_id, authority_state, reported_result, effective_result, check_eligibility}`
+sorted by assertion ID. All live check heads are present, including ineligible/conflicting ones.
+Verification rows have an empty verification-input array and `not_applicable` verification state.
+State hashes do not enter authority identity, avoiding a cycle.
 
-The fixed fixture safety bounds are 1–10,000 authority records, 0–30,000
-dispositions, one citation entry per record, at most 350,000 graph edges, a
-64-MiB provenance-context file, and 128 MiB for all canonical authority files
-combined. Each private locator string is at most 4,096 code points. The
-projection's separate 10,000-row/64-MiB bounds remain Section 6.5.5. Crossing a
-bound fails before publication; no file is truncated, sampled, or spilled.
+`convmem.strict-graph.v1` remains exactly `schema, nodes, edges, graph_payload_sha256`; sorted
+unique nodes are assertion IDs and sorted unique edges are `{kind, from_assertion_id,
+to_assertion_id}` with kind `relates_to`, `targets` or `supersedes`. Every edge resolves inside the
+bound history. No private paths or source locators enter rows/graph.
 
-The active pointer `convmem.strict-active-pointer.v1` contains exactly
-`schema`, `owner_digest`, `epoch`, `active_generation_id`,
-`authority_manifest_sha256`, `projection_manifest_sha256`,
-`previous_generation_id`, `published_at`, and `pointer_payload_sha256`.
-`previous_generation_id` is `null` only for first publication. Its payload
-hash excludes only itself.
+Limits: 1–10,000 records, 0–30,000 dispositions, one citation per record, 350,000 graph edges, 64
+MiB provenance context, 32 MiB decoded grounding blobs, 128 MiB all authority files combined, 10,000
+rows/64 MiB projection, 512 MiB total retained lineage root. Locators are at most 4,096 code points.
+Encoding overhead counts toward file/root limits. No truncation, spill, history pruning or witness
+garbage collection; quota failure means unavailable/rejected, never resurrection. Reserve fence/slot
+bookkeeping space before starting a write; if even the fence cannot become durable, retire and deny
+further activation pending recovery, and do not claim the operation committed.
 
-Fixture construction and any later granted materialization follow this order
-under an exclusive `flock` on the owner lock:
+**Publication record.** Replace the old active pointer with closed `convmem.strict-publication.v2`:
 
-1. validate source registrations and canonical records;
-2. compute `snapshot_id`, then write the selected, validated immutable
-   assertion view to a temporary authority snapshot without modifying its
-   source ledger/dispositions;
-3. fsync every authority file and its directory;
-4. write and fsync the exact authority manifest above;
-5. close the authority snapshot; no later mutation is permitted;
-6. build the bound projection in a new generation from that closed snapshot;
-7. validate every row, recompute payload/state digests and the reducer, and
-   write the exact projection manifest above;
-8. fsync the projection files/directories and run strict cold validation in a
-   fresh interpreter;
-9. publish by compare-and-swap of the strict active pointer and fsync its
-   directory.
+```text
+schema, lineage_id, owner_digest, epoch, authority_seq, authority_snapshot_id,
+authority_manifest_sha256, authority_source_cutoff_sha256,
+serving_generation_id, projection_manifest_sha256, semantic_contract_sha256,
+pending_operation_id, mode, previous_publication_sha256, freshness_anchor,
+published_at, publication_payload_sha256
+```
 
-The first publication requires pointer absence, `expected_generation_id=null`,
-`epoch=1`, and `previous_generation_id=null`. Forward publication requires the
-caller's exact expected active generation and writes `epoch+1`; stale callers
-fail. Rollback requires the expected current generation, a retained target with
-the same owner, its retained authority snapshot, successful fresh-process
-qualification, and an unexpired target snapshot; it writes a new pointer epoch
-with the target active and the replaced generation as `previous_generation_id`.
-It never edits snapshots or generations. The
-existing generic file-generation pointer is not reused because its canonical
-source-path/Chroma manifest is a different contract; only its reviewed atomic
-file-write and lock primitives may be reused.
+Mode is `serving`, `unavailable` or `fenced`. Serving/projection IDs are both non-null only for
+serving. Pending operation is non-null only when fenced. Authority identity remains present when
+unavailable/fenced; only enrolled empty genesis has sequence 0 and null authority ID/hash/anchor,
+with a hashed empty cutoff and never serving mode. Every mutation increments epoch, including
+fences, rebuilds and rollback; predecessor hash is null only at epoch1. CAS compares the **entire
+publication payload hash**, not a generation/sequence. A→B→A serving cannot defeat CAS.
+`freshness_anchor` is §6.5.6's persisted closed object.
 
-The cold validator hashes every file, validates both exact manifests, rebuilds
-graph/state/search rows from authority, and returns a module-sealed
-`QualifiedStrictGeneration`. The server accepts no unsealed mapping or raw
-path. It opens files with `O_RDONLY|O_NOFOLLOW`, checks regular-file owner/mode,
-holds descriptors to validated inodes, and performs no create, journal, cache,
-temp, Chroma, or network operation. A crash before durable pointer publication
-leaves the old generation. A post-rename directory-fsync failure is ambiguous:
-no process may serve until cold recovery rereads and qualifies the pointer.
-Disk-full, torn-tail, duplicate delivery, concurrent writer, stale builder,
-stale pointer, and missing first-generation cases fail closed.
+The direct read-only CLI is `python -B -s strict_projection.py read --method
+search|unresolved|related --scope ABS --registry ABS --strict-config ABS --request-file ABS
+--expected-publication SHA256`. The canonical request object uses exactly the same method argument
+keys and bounds as MCP. It acquires the already-created lineage lock shared through a read-only
+descriptor, qualifies the exact serving publication and persisted anchor, and buffers one v3
+response. It enforces a 10-second BOOTTIME request bound and rechecks time/publication before committing stdout; no creates, credentials, model, MCP
+or OpenClaw are needed. It does not create an activation or write a lease/clock anchor.
+Missing/expired anchor means no read. Preexisting lease/lock handles for the runtime are opened by
+the trusted controller, not created by the read-only child.
+
+The exact fixture CLI is:
+
+```text
+python -B -s strict_projection_publisher.py enroll-fixture --enrollment ABS --semantic-contract ABS --strict-config ABS
+python -B -s strict_projection_publisher.py build-fixture --bundle ABS --scope ABS --registry ABS --strict-config ABS --expected-publication SHA256
+python -B -s strict_projection_publisher.py rebuild-fixture --scope ABS --registry ABS --strict-config ABS --expected-publication SHA256
+python -B -s strict_projection_publisher.py rollback-fixture --scope ABS --registry ABS --strict-config ABS --expected-publication SHA256 --target-generation gen2_SHA256
+python -B -s strict_projection_publisher.py recover-fixture --scope ABS --registry ABS --strict-config ABS --expected-publication SHA256
+```
+
+Enrollment requires an empty fixture root, creates epoch1 unavailable/seq0 plus the stable
+slot/locks, and fails on any prior enrollment or retained history. `build-fixture` uses the bundle's
+operation ID, not a CLI-generated fallback; rebuild/rollback/recovery never admit new source.
+Missing/corrupt publication after enrollment is an operator recovery error; it does not accept
+`none` as a CAS bypass. Recovery of a completely lost current pointer requires separate operator
+reconciliation, not this routine CLI. All paths pass operator-file checks; no stdin records, ambient
+config or live-source input.
+
+Under slot-transition then lineage-exclusive locks (production additionally uses §6.5.6's
+writer/governance locks):
+
+1. Validate new input and its parent without changing admitted history; retire the old activation
+   and independently prove its domain empty before writing.
+2. Persist a new fenced publication naming this operation. Fsync the file and directory before
+   committing source/intent. The fence is durable even if later work fails.
+3. Write immutable input/cutoff/authority files, fsync each and directory, compute manifest;
+   independently qualify cumulative authority in a fresh interpreter.
+4. Publish the new authority head with mode unavailable and null serving. For production the durable
+   source append precedes this step; a crash leaves the fence for exact reconciliation. Authority
+   admission cannot depend on successful projection.
+5. Build rows/graph in a new generation from that exact head; fsync files/manifests/directories;
+   independently recompute all bytes/state in a fresh process.
+6. Recheck exact current publication under the exclusive lock; publish serving for the **same**
+   head, retaining its freshness anchor. Atomic rename plus directory fsync is the publication
+   durability boundary.
+
+Retained content-addressed publication files are audit history, not alternative selectors.
+Write/fsync the immutable history entry before replacing the current record. Qualification verifies
+history continuity and the enrolled source cutoff, plus any pending protected governance intent. A
+stale serving record cannot override an unsettled ratification. Orphans written before a commit do
+not create approval/admission. After durable admission, projection failure leaves the new head
+unavailable. A retry reports or finishes that exact operation without changing historical meaning.
+
+`rollback-fixture` selects only a retained generation of the **exact current authority manifest**,
+unchanged enrollment/scope/registry/semantic contract, currently allowed builder/launch policy,
+successful cold qualification and unexpired anchor. It retires first and creates a new epoch. It
+never selects old authority, old semantic policy or a new lease. If no eligible generation exists,
+rebuild current authority or remain unavailable.
+
+Crash before rename leaves the previous publication, which may already be fenced/unavailable. Rename
+without successful directory fsync is ambiguous: retire/fence the slot, cold-reconcile exact
+history/source and fsync before serving. Torn authority, changed retained bytes, unknown source
+cutoff, missing current pointer, stale CAS or conflicting operation IDs deny serving; no automatic
+rollback or lineage reset. Recovery may clear an abandoned unratified fence only after proving no
+durable intent/admission; it then requalifies the same head with unchanged expiry. A fixture root
+may be discarded only as a test teardown, never as a recovery that preserves its enrollment
+identity.
+
+The cold validator returns a module-sealed `QualifiedStrictGeneration`. Reader inputs are that
+capability, never raw caller paths. It opens `O_RDONLY|O_NOFOLLOW`, checks ownership/type/mode, pins
+validated inodes and rechecks manifest/state. It performs no
+create/journal/cache/temp/model/network/Chroma operation. Host operator is trusted against arbitrary
+offline rollback. Whole-authority backup restoration cannot prove that a later lost history never
+existed; activation requires independent latest-history evidence under the existing owner-controlled
+recovery process. A local self-hash is not an anti-rollback oracle.
 
 #### 6.5.5 Deterministic strict search and read-only projection
 
@@ -1112,142 +1398,494 @@ authorization. An empty-token query is `invalid_request`. All tools share one
 `search_rows`, `unresolved_rows`, and `related_neighborhood`, never a raw file
 handle or wider store.
 
-#### 6.5.6 Freshness, activation, and revocation
+#### 6.5.6 Lifecycle, containment and freshness
 
-The projection manifest contains the exact freshness and identity fields in
-Section 6.5.4. `expires_at` equals `as_of` plus the scope's reviewed maximum
-age. Clock rollback, an already expired view, or a request beginning after
-expiry returns `snapshot_stale` before retrieval. No automatic rebuild or
-silent extension is allowed.
+An operator-side controller owns the stable slot and interacts with the OS manager. It is outside
+the managed activation's failure domain. The inner supervisor is the unit's main process and owns
+turn execution, deadlines and release. The controller can retire the unit after the supervisor has
+died; the dead supervisor is never asked to certify its own cleanup.
 
-Every successful tool response carries `snapshot_id`, `as_of`, and
-`expires_at`. One OpenClaw task session is pinned to one tuple of scope,
-registry, authority, projection, and snapshot digests. Activation creates a
-fresh, empty, generation-specific `OPENCLAW_STATE_DIR`; no prior session store,
-compaction summary, cached tool result, or credential directory is copied.
-When scope narrows, authority changes, a correction publishes, the view expires,
-or rollback occurs, the gateway and connector stop and all sessions for that
-activation become non-resumable. The next activation uses a new state directory
-and session identity. Old session artifacts may be retained offline for audit
-but are never mounted or resumed. Because a model cannot be made to forget
-already disclosed text, continuing an old session after revocation is a hard
-failure, not a refresh strategy.
+Activation states are `NEW → QUALIFYING → ACTIVE_IDLE ↔ TURN_RUNNING → REVOKING → SEALED`. The only
+back-and-forth transition is idle/running within the same valid activation. NEW/QUALIFYING may fail
+directly into REVOKING; SEALED requires external retirement proof, never a supervisor
+self-certification. Any terminal error, cancellation, lease loss, manifest drift, pointer change,
+disconnect during a turn or unexpected child exit enters REVOKING. SEALED has no outgoing
+transition. Failure to establish cleanup leaves the slot `QUARANTINED`, which is an operator-control
+condition, never an ACTIVE state. No activation or publication follows until cleanup is
+independently established.
 
-The trusted enforcement owner for Phase 1A is a separate local process,
-`openclaw_activation_supervisor.py`, started only by the operator. The model,
-plugin, corpus, and MCP child have no control method. It consumes a closed
-`convmem.openclaw-activation.v1` manifest containing exactly:
+The external local control protocol uses one length-prefixed UTF-8 canonical JSON object per
+request, a four-byte unsigned big-endian length, maximum 128 KiB request frame and 2 MiB response
+frame, duplicate-key rejection, no trailing frames and no implicit defaults. It is carried over an
+operator-only Unix socket with filesystem access checks and peer-credential validation against the
+enrolled operator UID. The endpoint belongs to the outer controller, not the model process. The
+controller authenticates the enrolled operator UID; a private inherited supervisor-control
+descriptor carries forwarded operations. Runtime children inherit neither that descriptor nor the
+external control socket. Runtime UID differs from operator, controller and supervisor UIDs;
+filesystem mode alone is insufficient. Request IDs correlate operations; they confer no authority.
+
+Common request fields are `schema, op, request_id, slot_id, activation_id`. `schema` is
+`convmem.activation-control.v1`; IDs are 128-bit lowercase hex. The four closed variants add:
+
+- `turn`: `turn_id, text, expected_publication_sha256`;
+- `cancel`: `turn_id`;
+- `status`: no extra fields;
+- `revoke`: `reason`, one of `operator`, `publish`, `scope_change`, `expiry`, `clock_anomaly`,
+  `integrity_failure`, `disconnect`, `shutdown`.
+
+Text uses the existing 16,384-code-point/64-KiB UTF-8 bounds and rejects NUL and surrogates. One
+turn may run per activation, with no queue. A second turn returns `busy`. Control frames have a
+10-second receive/send timeout and at most 8 concurrent authenticated control connections; exceeding
+either closes that connection with no partial success. Status/busy/invalid responses are not stored
+as turn identities. At most 256 accepted turns are retained for request deduplication; reaching that
+cap seals the activation rather than evicting retry identity. Same turn ID/same text returns its
+existing state, never reruns it. Same ID/different bytes rejects. Canceling a live turn seals the
+activation because a gateway may retain context or continue work after its CLI client exits.
+Canceling an already committed turn reports `already_committed` and cannot retract its answer.
+
+Responses have `schema, request_id, slot_id, activation_id, outcome, payload`; every variant's
+payload is closed. Outcomes are `status`, `running`, `committed`, `busy`, `cancelled`, `revoking`,
+`sealed`, `already_committed`, `request_conflict`, `unavailable`, `invalid_request`. `status`
+returns only state, current turn ID or null, pinned publication digest, lease deadline and a fixed
+terminal reason or null. It never returns prompts, credentials, raw environment or private paths.
+
+The inner supervisor buffers at most 1 MiB combined agent stdout/stderr. A committed result contains
+`turn_id, publication_sha256, committed_wall_time, committed_boottime_ns, output_sha256,
+model_output, evidence_basis`. Output hash covers the exact canonical UTF-8 model-output object;
+parse with duplicate-key/surrogate/non-finite-number rejection, no executable evaluation. The input
+is one complete JSON object followed only by whitespace, and agent exit must be zero.
+Integer/finite-float values inside this opaque untrusted object use the existing canonical JSON
+number encoding; strict envelope/control fields remain integer-only. `model_output` is the parsed
+complete bounded JSON result treated as **untrusted data**, never executable markup or a
+task-completion certificate. `evidence_basis` is exactly `model_output_unverified`. Tool-call
+evidence is collected independently by the trusted connector/strict server; fields inside model
+stdout cannot attest that retrieval ran or that a deployment passed. The operator client renders
+only a complete validated response frame. A partial frame, disconnect, timeout or malformed child
+output yields no successful answer.
+
+Release commits and revoke acceptance serialize through one supervisor control mutex. The release
+operation revalidates lease, pinned publication and activation identity while holding it, then
+commits the complete result to the authenticated response path. A revoke that wins first prevents
+commitment. A committed answer can be observed later because of transport backpressure; it remains
+an answer authorized at its commitment time, never authorization to continue work. This explicitly
+replaces the impossible promise of retroactively recalling already authorized bytes. Uncommitted
+buffers are discarded, and result retransmission requires a still-valid activation/lease; a new
+session cannot fetch an old session's answer.
+
+The control front end does not hold this mutex while waiting for the output consumer. It services
+revoke/cancel through separate control connections. Once release is committed, transport bookkeeping
+cannot keep a model turn alive or delay unit retirement. On crash, uncertain delivery is reported
+through the closed `unavailable` outcome; there is no automatic re-execution and no claim of
+exactly-once human observation.
+
+##### Containment and launch boundary
+
+The selected platform is **Linux with an externally owned systemd system service and cgroup v2**. It
+is not a user-shell process group or an ad hoc watchdog. A static reviewed unit policy uses the
+supervisor as MainPID, `Type=notify`, `NotifyAccess=main`, `ExitType=main`, `Restart=no`,
+`KillMode=control-group`, `SendSIGKILL=yes`, `TimeoutStopSec=2s`, `WatchdogSec=1s`,
+`RuntimeMaxSec=24h`, `Delegate=no`, `LimitCORE=0`, a read-only root image and private network. No
+runtime child receives the notify socket or permission to control the manager. The supervisor alone
+owns the watchdog; a separate heartbeat thread may not keep a hung event loop alive. An
+authenticated main-process watchdog detects a hung supervisor. Killing the supervisor terminates the
+unit; the manager then retires its entire containment domain. Systemd documents group-wide stop
+semantics and main-process service lifetime; the kernel exposes descendant-wide kill and
+populated-state evidence. These documented mechanisms are capability evidence, not proof that this
+target is configured correctly. [systemd kill
+contract](https://raw.githubusercontent.com/systemd/systemd/main/man/systemd.kill.xml), [service
+lifetime contract](https://raw.githubusercontent.com/systemd/systemd/main/man/systemd.service.xml),
+[kernel cgroup v2 contract](https://docs.kernel.org/admin-guide/cgroup-v2.html)
+
+Select a read-only root image/distribution with explicit read-only authority/config/runtime mounts
+and private activation-local writable mounts. No host home, project checkout, user service bus,
+container socket, cgroup control handle, cloud credential directory or arbitrary host filesystem is
+mounted. Runtime credentials cannot control the manager, publisher or operator socket. The reviewed
+launcher closes unrelated inherited descriptors. The control socket/lease descriptors are explicitly
+enumerated exceptions, not an ambient inheritance rule.
+
+Use one private network namespace with no external interface or route. The gateway/client and a
+dedicated credential-free local inference worker use pinned loopback endpoints **inside that
+namespace**. The inference worker is in the same retirement domain and uses prepackaged read-only
+model artifacts; no model pulling is allowed. A shared host inference endpoint is not used by this
+candidate. The strict ConvMem child is launched through the sealed `setpriv --no-new-privs
+--seccomp-filter FILE` executable before Python imports. The pinned BPF program rejects `socket` and
+`socketpair` (including alternate ABI forms), network io_uring paths and privilege/namespace
+changes; stdin/stdout are its only transport. Unexpected ABI kills the child. All unrelated
+inherited descriptors are closed before exec. Filter-load failure aborts; Python-level network mocks
+are not enforcement. The connector's only network-capable host is the already contained OpenClaw
+process; the connector code may use only its fixed stdio transport.
+
+This is more packaging work than an empty HOME, but it closes several paths with one existing OS
+boundary: ambient config, unintended persistence, arbitrary host-loopback access and orphan
+inference. It introduces no new durable-memory authority. A full general container platform,
+orchestration cluster or internet proxy is unnecessary. If the exact OpenClaw/local-model
+combination cannot operate here, activation is unsupported; Grok may not relax the boundary or
+replace the provider without architecture review. [systemd execution isolation
+contract](https://raw.githubusercontent.com/systemd/systemd/main/man/systemd.exec.xml)
+
+The controller's retirement receipt is `convmem.activation-retirement.v1`, with exact fields
+`schema, slot_id, activation_id, activation_manifest_sha256, pinned_publication_sha256,
+manager_boot_id, unit_invocation_id, containment_id, terminal_reason, observed_empty_boottime_ns,
+receipt_payload_sha256`. The protected controller issues it only after the manager reports the unit
+terminal and the cgroup hierarchy empty. A stale receipt for a previous invocation or activation
+fails. The inner supervisor's terminal note is diagnostic; only the controller can mark externally
+confirmed SEALED after empty-domain proof.
+
+SIGKILL is a termination request, not a claim that every uninterruptible process has vanished by a
+wall-clock deadline. If emptiness cannot be established, the slot stays quarantined,
+authority/serving mutation cannot race old readers, and the operator gets no successful retirement
+receipt. A manager/OS outage is an explicit TCB failure: do not promise magical cleanup if the
+kernel and manager both fail. On recovery, independently retire the old domain before reenabling
+anything.
+
+##### Locks, clock and publication ordering
+
+One stable slot transition lock serializes launch, retirement, governance fencing and publication
+preparation. The controller runs as root outside the service; the unit supervisor also runs as root
+in the sealed image and drops supplementary groups, UID/GID and every capability before exec of any
+runtime child. Its trusted launch code performs only the fixed role launches. Runtime UID is an
+enrolled dedicated non-root account distinct from the operator. Runtime /proc visibility, ptrace and
+signals must not reach the privileged supervisor/controller. This is an explicit privileged TCB, not
+a claim of same-UID isolation. During ACTIVE, the supervisor holds the lineage's shared serving
+lock. This lock is not the transition lock. The supervisor can process revoke and exit without
+acquiring a lock held by the controller waiting for its exit.
+
+The lock order for participating production operations is **slot transition → existing universal
+production-writer boundary → existing governed-ledger lock → lineage publication exclusive lock**.
+The controller retires the activation before requesting the exclusive lineage lock; the supervisor
+holds no production/governed lock. A publisher never waits for retirement while holding a lock
+needed by retirement. Fixture-only operations omit the production/governed layers but preserve
+slot→lineage order. No implementation may introduce a reverse path; Gate W must prove this order
+against §14.3’s census and all restore entry points before acceptance. This initial version enrolls
+at most one runtime slot for a lineage, so there is no unspecified multi-slot lock order.
+
+Launch holds the transition lock, verifies no pending governance and no old populated unit,
+qualifies the exact publication, obtains the serving lease, starts the manager-owned unit and waits
+for the exact activation's READY response. Only then does it release the transition lock. A failure
+anywhere retires the incomplete activation. An operator controller crash leaves manager state and
+slot evidence for recovery; it does not entitle the next caller to start a second unit.
+
+Lease creation captures both wall time and `CLOCK_BOOTTIME`, with deadline
+`min(persisted_snapshot_deadline_boottime_ns, boottime_now_ns + 1000000000 * min(expires_at -
+wall_now, max_lifetime))`. Nonpositive remaining lifetime denies. Use integer nanoseconds, not float
+rounding. Test both bounds at turn start, at least every 100 ms during work and at release. A
+wall-time decrease or disagreement indicating a backwards step seals rather than extending
+authority; false-positive retirement under clock adjustment is an accepted availability cost.
+BOOTTIME includes suspended time, unlike MONOTONIC. A suspend/resume therefore cannot extend the
+lease. After reboot every activation is dead and non-resumable. [Linux clock
+semantics](https://man7.org/linux/man-pages/man3/clock_gettime.3.html)
+
+Process restart must not reset snapshot age. At first qualification on a boot, persist
+`freshness_anchor={boot_id, authority_snapshot_id, sampled_wall_time, sampled_boottime_ns,
+snapshot_deadline_boottime_ns, clock_review_ref}`. The snapshot deadline is sampled BOOTTIME plus
+the nonnegative remaining absolute snapshot lifetime. All activations/generations of that authority
+snapshot on that boot reuse that deadline or a smaller one; the per-activation lifetime is an
+additional bound. Rollback copies the current anchor, not the target generation's launch time. Clock
+samples and release commitment are taken under the control mutex with no intervening awaited work;
+the final valid clock sample is the release decision's linearization point.
+
+For clock-anomaly detection, compare wall samples for an observed decrease and maintain the maximum
+lower bound on the wall-minus-BOOTTIME offset using paired BOOTTIME-before/wall/BOOTTIME-after
+samples. A new offset interval entirely below the retained lower bound seals. No claim is made to
+detect every sub-sample correction; none can extend the persisted BOOTTIME deadline. On a new boot,
+an old anchor is invalid. The initial contract requires an operator clock-review receipt binding the
+new boot and the still-fixed `expires_at` before making a new anchor; it may only establish the
+remaining absolute lifetime, never renew the source cutoff. Without trustworthy current time, no
+activation. This is a deliberately manual, file-backed reboot boundary, not an invented secure clock
+or silent lease refresh.
+
+`as_of` denotes the admitted source cutoff, not the time a builder happened to run. Rebuilding or
+rollback cannot extend `expires_at`. A new source cutoff requires new reviewed capture/admission
+evidence; merely changing `built_at` or resubmitting identical bytes does not refresh measurements.
+Even an unexpired snapshot can contain old measurements, so each result retains its `observed_at`;
+snapshot freshness is not a claim that the underlying world was rechecked.
+
+##### Activation inputs, outputs and configuration
+
+Extend the activation manifest to bind `slot_id, lineage_id, publication_sha256,
+runtime_distribution_sha256, model_artifacts_sha256, launch_policy_sha256, manager_policy_sha256,
+control_protocol_version, release_protocol_version`, alongside the
+scope/registry/config/plugin/server/supervisor identities and time bounds listed in the exact
+manifest below. The launch policy is a closed hashed artifact specifying exact executable arrays,
+empty working directories, environment maps by child role, read-only mounts, writable mounts with
+size ceilings, endpoint tuples and descriptor inheritance. Runtime root-image bytes bind the actual
+Node/Python/OpenClaw/imported-dependency closure, not just package/version names. Kernel, system
+manager and required device-driver versions are named TCB assumptions and separately recorded; the
+entire host is not hashed.
+
+The launch-policy top-level field set is `schema, runtime_distribution_sha256,
+model_artifacts_sha256, processes, read_only_mounts, writable_mounts, endpoints, operator_uid,
+controller_uid, supervisor_uid, runtime_uid, manager_policy_sha256, policy_payload_sha256`.
+`processes` has exactly the role keys `supervisor, gateway, agent, strict_server, model_worker`;
+each value contains `executable, argv_template, cwd, environment, inherited_fd_roles,
+network_policy`. All substitutions are typed activation values, except the single already-bounded
+TURN_TEXT sentinel; no shell expansion is allowed. `network_policy` is `activation_loopback` or
+`none`, with strict_server fixed to `none`. Mount entries are closed `source_role, destination,
+mode, max_bytes` objects; max_bytes is null for immutable mounts and a positive reviewed integer for
+writable mounts. Only declared runtime/authority/config/model/control/state source roles are
+allowed, never a supplied arbitrary host path. Endpoints contain exactly `gateway_port, model_port,
+model_api, model_id`; ports are distinct reviewed high ports, addresses are the literal namespace
+loopback, model_api is the bundled `openai-completions` adapter, and model_id is one packaged
+identifier. A target-specific model worker command is an input artifact requiring evidence, not
+permission to choose another provider.
+
+Both gateway and agent run from the fixed read-only empty cwd. HOME, workspace, state, agent-model
+config, caches, temp, logs and session roots are fresh activation-local mounts. Disable
+shell-environment import; reject inline environment additions. Every documented `.env` discovery
+point is absent inside the sealed root. OpenClaw config includes the exact gateway port, a single
+local provider/model route, mandatory replace-not-merge provider catalog behavior, no fallback, no
+secret lookup, and no inherited `models.json`. Host log/journal sockets are absent; captured stderr
+stays bounded/private. Default shared `/tmp/openclaw` resolves only inside the private activation
+filesystem, and an explicit private log path is still configured.
+
+Keep the original disabling of native memory, automatic memory flush, heartbeat, ACP, subagents,
+skills, hooks, discovery, channels, runtime/filesystem/browser/write tools and automatic transcript
+capture. Verify effective inventory in the actual child session; configuration syntax alone does not
+establish the boundary. The precise pinned build must also demonstrate that no implicit provider
+credential or broader tool profile is required. Read-only inspection in §14.2 found that the
+currently selected local route fails this requirement; this is an unresolved runtime architecture
+blocker, not a task for Grok to bypass. Empty-secret placeholders may not be invented to hide that
+incompatibility.
+
+Runtime writable state is transient. On retirement it is made inaccessible for resumption;
+subsequent controlled cleanup may remove it. The normal durable diagnostic receipt contains
+IDs/digests/reasons only, with no prompts, corpus text, token or model answer. An optional retained
+audit artifact containing content would require an explicit separate retention decision; it is not a
+new default sink. Crash dumps are disabled. Evidence-rich fake tests use synthetic inputs only.
+
+##### Closed activation/control artifacts
+
+`convmem.openclaw-activation.v2` has exactly:
 
 ```text
-schema, activation_id, owner_digest, scope_sha256, registry_sha256,
-strict_config_sha256, authority_manifest_sha256, projection_manifest_sha256, snapshot_id, as_of,
-expires_at, openclaw_version, openclaw_config_sha256, plugin_tree_sha256,
-connector_launch_sha256, strict_server_tree_sha256, supervisor_tree_sha256,
-openclaw_binary_sha256, state_dir, gateway_port,
-gateway_argv_sha256, agent_argv_sha256, created_at,
-max_monotonic_lifetime_seconds,
-manifest_payload_sha256
+schema, activation_id, slot_id, lineage_id, owner_digest, publication_sha256,
+scope_sha256, registry_sha256, strict_config_sha256,
+authority_manifest_sha256, projection_manifest_sha256, snapshot_id,
+as_of, expires_at, openclaw_version, openclaw_config_sha256,
+plugin_tree_sha256, connector_launch_sha256, strict_server_tree_sha256,
+supervisor_tree_sha256, controller_tree_sha256, runtime_distribution_sha256,
+model_artifacts_sha256, launch_policy_sha256, manager_policy_sha256,
+control_protocol_version, release_protocol_version, state_dir,
+gateway_port, gateway_argv_sha256, agent_argv_sha256, created_at,
+max_monotonic_lifetime_seconds, manifest_payload_sha256
 ```
 
-The connector-launch digest and its embedded strict-server-tree digest must
-match the activation fields exactly; the scope, registry, strict config,
-plugin, supervisor, OpenClaw binary, and both authority/projection manifests
-must also hash to the activation values before any child starts.
-Every `*_tree_sha256` is the lowercase SHA-256 over canonical JSON containing
-the exact sorted array of closed entries `{path, mode, sha256}`. Paths are
-relative POSIX paths, modes are four-digit octal strings, entries are regular
-non-symlink files, and duplicate/unlisted paths fail. The plugin tree contains
-only its production `package.json`, `openclaw.plugin.json`, and `index.js`; the
-strict-server tree contains only `bound_read_scope.py`,
-`strict_evidence_state.py`, `strict_projection.py`, `canonical_json.py`,
-`provenance.py`, `domains.py`, `openclaw_strict_server.py`, `requirements.txt`,
-and all seventeen
-schemas except the fixture-bundle, connector-launch, and activation schemas.
-The supervisor
-tree contains only `openclaw_activation_supervisor.py`. Test files,
-`strict_projection_publisher.py`, caches, and mutable state are excluded from
-runtime trees and cannot be loaded by those processes.
+Protocol versions are `convmem.activation-control.v1` and `convmem.buffered-release.v1`. Maximum
+lifetime is an integer 1–86400, bounded again by the persisted snapshot deadline. State directory
+must be nonexistent under the enrolled activation parent; no reuse. Launch uses
+`openclaw_activation_controller.py start --activation-manifest ABS --launch-policy ABS
+--manager-policy ABS --openclaw-config ABS`; the controller alone starts the system unit. The unit
+invokes `openclaw_activation_supervisor.py --activation-manifest ABS` with its private
+control/lease/notify descriptors. Controller control operations use the authenticated framed Unix
+socket. No OpenClaw/MCP tool can call them.
 
-`activation_id` is a random 128-bit lowercase-hex value created by the
-operator-side launcher. The manifest is regular, non-symlinked, mode `0400`,
-operator-owned, self-hashed, and outside the model workspace. `gateway_port` is
-an operator-selected integer from 49152 through 65535 and must be unused at
-activation; the supervisor refuses fallback to another port. `state_dir` must
-be a nonexistent path beneath one reviewed empty parent; the supervisor
-creates it mode `0700` and refuses any reuse. The argv hashes bind the fixed
-arrays derived from the manifest:
+Tree hashes use canonical sorted closed `{path, mode, sha256}` entries: relative POSIX paths,
+four-octal-digit mode, regular files only, no symlinks/unlisted loads. Runtime-distribution SHA-256
+binds the complete immutable image containing actual Node, Python, OpenClaw, MCP/idna dependencies,
+dynamic loader/libraries, plugin, setpriv and BPF bytes. Model-artifact digest uses the same tree
+recipe for exact packaged model files. Host pnpm symlinks and a launcher hash are not a
+distribution. No linker/import fallback to the host. Exact TCB kernel/manager versions and necessary
+device policy are separately recorded; CPU-only is the initial profile, with no GPU/device-driver
+delegation.
 
-```text
-[OPENCLAW, "gateway", "run", "--bind", "loopback", "--port", PORT,
- "--auth", "token", "--tailscale", "off", "--ws-log", "compact"]
-[OPENCLAW, "agent", "--json", "--session-id", ACTIVATION_ID,
- "--timeout", "120", "--message", TURN_TEXT]
-```
+The manager policy is closed `convmem.activation-manager-policy.v1`: `schema, unit_bytes_b64,
+unit_sha256, controller_socket_policy_sha256, runtime_distribution_sha256, operator_uid,
+controller_uid, supervisor_uid, runtime_uid, kernel_release, systemd_version,
+capability_evidence_sha256, policy_payload_sha256`. Decoded canonical unit bytes must implement
+every setting and isolation property above. UIDs and paths are concrete reviewed evidence inputs,
+never defaults. The controller socket policy is closed `convmem.controller-socket-policy.v1`:
+`schema, socket_path, socket_mode, owner_uid, permitted_peer_uid, max_request_bytes,
+max_response_bytes, policy_payload_sha256`; mode is `0600`, path outside runtime mounts, peer UID
+equals operator UID, limits 131072/2097152. UID/GID provisioning and manager authorization are not
+granted by this plan.
 
-The agent hash is computed with the literal sentinel `TURN_TEXT`, not request
-text; the supervisor substitutes only that final value after rejecting NUL,
-surrogates, more than 16,384 Unicode code points, or more than 64 KiB UTF-8.
-Combined agent stdout/stderr is capped at 1 MiB; exceeding the cap kills the
-turn and releases no output. The supervisor generates one random 256-bit
-gateway token in memory, supplies it to
-only the gateway and agent children as `OPENCLAW_GATEWAY_TOKEN`, and never
-persists, logs, or forwards it to the MCP child or model. The child environment
-contains exactly `OPENCLAW_GATEWAY_TOKEN`, `OPENCLAW_STATE_DIR`,
-`OPENCLAW_CONFIG_PATH`, `HOME`, `PATH`, `LANG`, and `LC_ALL`. `HOME` is the
-fresh empty activation home beneath `state_dir`; executable paths inside the
-OpenClaw config and plugin launch are absolute. No provider, proxy, cloud,
-credential, Node-option, or inherited ambient variable is permitted. The
-reviewed Gate-D config must select a credential-free local model endpoint; if
-the installed runtime cannot do so under this environment, Gate D stops and
-returns to architecture. `--deliver`, `--local`, `--channel`, `--to`, every
-reply option, service install/start, discovery, and non-loopback binding are
-forbidden.
+The launch-policy schema is `convmem.activation-launch-policy.v1` with the field set above.
+`processes` entries additionally require `uid, gid, seccomp_filter_sha256` (null except the
+mandatory strict-server filter). Environments are exact sorted key/value objects for each role; no
+wildcard copying. Gateway/agent keys are only `OPENCLAW_GATEWAY_TOKEN, OPENCLAW_STATE_DIR,
+OPENCLAW_CONFIG_PATH, HOME, PATH, LANG, LC_ALL, TMPDIR, XDG_CACHE_HOME`. Supervisor's separate map
+adds only manager-supplied notify/watchdog values and fixed private descriptor roles. Model worker
+receives only its packaged command's explicit local state/cache/thread settings, no provider
+credentials. Strict-server map is exactly §4 (including `TMPDIR`); the connector clears all parent
+variables. Every path resolves inside the sealed namespace. Directory ceilings total at most 1 GiB
+writable state per activation; hitting any ceiling retires. Mount modes are `ro` or `rw`;
+authority/config/runtime/model mounts are ro, state/temp rw; no other source role. Gateway and model
+ports are distinct fixed 49152–65535 integers on namespace loopback.
 
-The only supervisor start interface is
-`python openclaw_activation_supervisor.py --activation-manifest <absolute>
---openclaw-config <absolute>`. Both files receive the same owner/mode/symlink
-checks as the scope file. Before starting a child, the supervisor verifies the
-config bytes against `openclaw_config_sha256`, creates the fresh state
-directory, copies those bytes to the sole fixed
-`OPENCLAW_CONFIG_PATH=<state_dir>/openclaw.json` with mode `0400`, and creates
-an empty `<state_dir>/home` mode `0700`. No other source file is copied. The
-control socket is exactly `<state_dir>/supervisor.sock`; the audit-only sealed
-status is exactly `<state_dir>/SEALED.json` and contains no token, prompt, model
-output, or corpus text.
+Gateway/agent/model-worker stdout and stderr, not just the final agent frame, are supervised bounded
+private sinks; no host journal/syslog socket or inherited terminal is attached. A per-activation 1
+MiB cumulative gateway/model diagnostic-output budget and 1 MiB per-turn agent budget apply;
+overflow retires instead of spilling. Normal retirement retains only content-free receipts;
+transient session/log files are never resumed. Optional retained content requires a separate
+retention decision.
 
-The supervisor holds a shared owner-generation lock and the sole exclusive
-profile-activation lock. Publication/rollback requires the owner lock
-exclusively; a new activation requires the profile lock, so neither can race an
-old session. For each local operator turn the supervisor starts the fixed agent
-command, buffers all stdout/stderr, and releases only stdout containing one
-complete UTF-8 JSON object with no trailing non-whitespace bytes after
-rechecking the activation manifest, pointer, wall-clock expiry, and monotonic
-lease. Stderr is audit-only and never released as an answer. No streaming chunk
-or direct OpenClaw delivery reaches the user. It checks wall time at start,
-every 100 ms while a child runs, and before
-release. At activation it also sets a monotonic deadline from
-`min(expires_at - wall_now, max_monotonic_lifetime_seconds)`; either deadline
-expiring wins, so clock rollback cannot extend authority.
+Fixed gateway argv is `[NODE, OPENCLAW_ENTRY, "gateway", "run", "--bind", "loopback", "--port",
+PORT, "--auth", "token", "--tailscale", "off", "--ws-log", "compact"]`; agent argv is `[NODE,
+OPENCLAW_ENTRY, "agent", "--json", "--session-id", ACTIVATION_ID, "--timeout", "120", "--message",
+TURN_TEXT]`. Node/entry are sealed absolute paths, not the host pnpm shell wrapper. The agent argv
+hash uses literal `TURN_TEXT`; only that field accepts bounded operator text. Both run from the same
+fixed empty read-only cwd. The gateway token is random 256-bit activation-local data supplied to
+gateway/agent only, never persisted or sent to the strict child/model. The model worker's exact
+executable/argv/model digest remain a required compatibility artifact; no guessed provider/worker is
+implied by this document.
 
-The operator-only Unix control socket is mode `0600` in a non-workspace runtime
-directory and accepts only `status` and
-`revoke(activation_id, reason_code)`; `reason_code` is a fixed enum and no
-corpus/request text is accepted. Revoke, expiry, manifest/pointer drift, scope
-correction, rollback preparation, or lease loss terminates the entire child
-process group (`SIGTERM`, two-second bound, then `SIGKILL`), discards every
-buffered or in-flight response, closes the connector, releases locks, and seals
-the state directory offline as non-resumable. Linux parent-death signal and a
-dedicated process group make supervisor death kill the gateway; the connector
-must exit on stdio EOF. A process-group or lock failure is fatal before output.
-The publication operator must obtain a revocation receipt and the released
-exclusive owner lock before changing the pointer.
+For activation control, `status` outcome payload is exactly `{state, turn_id, publication_sha256,
+lease_deadline_boottime_ns, terminal_reason}`; `running` is `{turn_id}`; `busy` is
+`{active_turn_id}`; `cancelled` is `{turn_id}`; `revoking` is `{reason}`; `sealed` is `{reason,
+retirement_ref}`; `already_committed` is `{turn_id, output_sha256}`; `request_conflict` is
+`{turn_id}`; `unavailable` and `invalid_request` are `{reason}` with a fixed reason enum drawn from
+revoke reasons plus `not_active`, `stale_publication`, `bad_frame`, `bad_arguments`, `capacity`. No
+free-form errors. `committed` has the exact result fields defined above. Status is read-only;
+cancel/revoke are terminal control operations, not changes to evidence authority. Repeated request
+ID for an accepted turn with changed canonical request bytes is invalid; turn ID deduplication also
+covers a new request ID retry. Results are retransmitted only while that activation's lease remains
+valid. After supervisor crash, uncertainty is unavailable; neither controller nor new activation
+reruns an uncertain turn.
 
-Gate B/C implement and test this supervisor against fake gateway/agent
-processes only. Gate D is the first point at which the installed binary may be
-started, and it must reproduce expiry, correction, rollback, sleep,
-clock-change, supervisor-crash, no-tool inference, and buffered-response tests.
-External channels and streaming delivery remain outside this architecture;
-Phase 1B cannot proceed without a separate delivery-control design.
+`convmem.clock-review.v1` has `schema, lineage_id, authority_snapshot_id, boot_id, expires_at,
+reviewed_wall_time, reviewer_uid, review_payload_sha256`. It is owner-produced, protected, and
+content-addressed; a copied reviewer UID is not authorization. New-boot qualification must
+authenticate it in the protected operator inventory. An old same-boot anchor may only shrink.
+`freshness_anchor` fields and sampling rule above also apply to CLI readers; reader process restart
+never renews age.
+
+#### 6.5.7 Explicit approval, admission and recovery
+
+The selected contract keeps the user's literal route. Approval/rejection are governance operations.
+**Approval does not invoke indexing.** `record --approve-last` persists ratified intent and reports
+the exact artifact for a later `convmem add --file ABS`. Existing `--no-index` may remain a
+compatibility no-op with clear output; no flag on the approval command enables automatic indexing.
+`record --recover` can reconcile intent bookkeeping but cannot ingest. This is a necessary behavior
+change to the combined default, not a claim that the existing stable CLI already implements the new
+invariant.
+
+The approved artifact is closed `convmem.approved-admission.v1` with `schema, operation_id,
+proposal_id, lineage_id, expected_authority_manifest_sha256, source_registration_id, records,
+dispositions, grounding_refs, intent_sha256, review_ref, ratification_ref, artifact_payload_sha256`.
+Each reference names exact bytes in the operator-owned governance/capture inventory. The artifact is
+a transport of already ratified intent, never independent approval authority. Records and
+dispositions are the exact canonical new delta (not a rewrite of parent contents); record kind/IDs
+and dispositions use §6.5's schemas. `grounding_refs` is a sorted unique array of `{kind, sha256}`
+references, with kind `provenance_context` or `grounding`, naming exactly one new cumulative object
+of each kind in protected immutable storage. Those bytes are authenticated and merged only by the
+qualifier; the artifact cannot cause arbitrary filesystem/URL lookup. Proposal IDs preserve the
+existing proposal-ID grammar; no implicit identifier migration. Expected parent is null only for
+explicitly enrolled genesis.
+
+Approval hashing is deliberately two-level to avoid both reference cycles and a demand that review
+predict a future ratification timestamp. `intent_sha256` hashes the canonical closed object
+`schema:"convmem.admission-intent.v1", operation_id, proposal_id, lineage_id,
+expected_authority_manifest_sha256, source_registration_id, record_semantics, transition_semantics,
+grounding_refs`. `record_semantics` is the assertion-ID-sorted array of exact `{assertion_id,
+semantic_sha256}` objects, with semantic hashes recomputed under §6.5’s exclusions for disposition
+references. `transition_semantics` contains each disposition's exact `action, project_binding_id,
+subject_assertion_id, subject_semantic_sha256, target_assertion_ids, basis_snapshot_id,
+expected_head_assertion_ids, replaces_disposition_ref, rationale_sha256`, canonically sorted by
+action/subject/targets. These bind the entire proposed meaning and capture commitments without
+binding future review/ratification metadata.
+
+The review binds that intent digest; ratification binds the same digest and exact review reference.
+Final disposition actor/role/outcome/time fields must equal the protected review/ratification
+receipts, and the final source-record disposition references must equal the recomputed final
+dispositions. The full artifact payload hash excludes only itself and binds all final bytes and both
+references. The engine reconstructs these relationships; it does not trust a supplied
+`intent_sha256`. Copied signer/status fields, plausible proposal IDs, an in-memory boolean or
+`_governed_protocol` cannot authenticate approval. A review or ratification receipt is not hashed
+recursively through the finalized artifact it authorizes.
+
+The governed engine implements:
+
+`PROPOSED → RATIFIED_AWAITING_ADD → ADMISSION_PREPARED → ADMITTED_UNPROJECTED → PROJECTED`.
+
+`REJECTED` and `CANCELLED_BEFORE_ADMISSION` are terminal alternatives with exact owner-authored
+events. They cannot undo ADMITTED. Revocation after admission is a separate forward authority
+operation. At most one unsettled ratified operation exists per lineage; more drafts may exist, but
+another ratification waits. This removes ambiguous competing recovery order without moving authority
+into a queue daemon.
+
+Before a ratification affecting an enrolled strict lineage becomes durable, the controller retires
+its activation and persists a serving fence naming the operation. The ratified payload is then
+durably recorded. A crash before ratification is distinguished from a committed intent by the
+protected governance record, never by Chroma. Recovery may abandon an unratified preparation or
+expose a missing artifact for reconstruction from the exact ratified bytes; it cannot infer approval
+from a half-written queue row. A committed intent keeps the fence until explicit add or an
+owner-authored pre-admission cancellation.
+
+`add --file` validates exact approval, expected prior authority, full content and identity, source
+registration and capture qualification under the existing writer discipline. It records the
+operation's durable preparation, admits the immutable source/transition exactly once, advances the
+authoritative source cutoff, and publishes an unavailable head before attempting projection.
+Projection completion is derivative bookkeeping. A failure after admission leaves
+ADMITTED_UNPROJECTED; retry rebuilds from admitted authority and never re-ratifies or duplicates the
+decision. A crash after publication but before completion bookkeeping is reconciled by exact
+operation/head/hash equality.
+
+The protected admitted-source prefix is the admission commit boundary for production; qualified
+authority publication and ADMITTED event may follow it. A crash after that commit must reconcile
+forward from the durable exact operation, never restore old serving. A crash at ADMISSION_PREPARED
+with no proven source-prefix commit requires explicit add retry; `recover` may report/repair
+bookkeeping but cannot complete that uncommitted admission. A crash after admission may be
+reconciled without repeating admission, even if the ADMITTED event was not appended. An
+authenticated committed source operation cannot be cancelled; a stale queue marker cannot reopen it.
+
+No recovery routine may treat a Chroma read exception as “no previous decision.” Chroma can be
+inspected to repair serving, but expected-state validation uses the protected durable
+admission/approval history. Unknown history is an error. Ordinary ungoverned observations remain
+distinct from governed decision admission; generic add cannot convert a decision-shaped input into
+approved strict authority. Existing legacy writers cannot set strict authority metadata or produce a
+qualified strict generation.
+
+This architecture requires a narrowly scoped follow-on change to the protected CLI,
+proposal/recovery and governed-write boundary. The paired execution plan assigns this correction to
+Gate W; Gate B/C preserve the legacy files byte-for-byte. Gate W is an explicit required production
+boundary, not a claimed property of a fixture build. The baseline census and required compatibility
+routing in §14.3 enumerate approval, recovery, watch/index, repair and raw-writer families. Gate W
+must recheck that census on its exact implementation baseline; preserve existing outer
+safety/backup/recovery guarantees; and show all governed routes resolve through the same engine. New
+schema bytes cannot repair unknown historical consent. **No automatic legacy migration is
+selected.** Existing ambiguous history stays in the legacy surface until an explicit reviewed
+migration or fresh ratification establishes the needed binding; neither is delegated to Grok as an
+implementation convenience.
+
+Protected governance receipts use `convmem.admission-review.v1` (`schema, intent_sha256,
+reviewer_actor, reviewer_role, outcome, reviewed_at, receipt_payload_sha256`) and
+`convmem.admission-ratification.v1` (`schema, operation_id, intent_sha256, review_ref,
+ratifier_actor, ratifier_role, ratified_at, receipt_payload_sha256`). Their refs are
+`review_`/`ratify_` plus recomputed payload hash. Role/outcome enums equal §6.5.1.
+Operator-controlled publication into the governance inventory authenticates them; artifact-supplied
+names do not. A rejection is durably recorded but never admitted as approved.
+
+The new admission event stream is a versioned extension beside the legacy events, not a
+reinterpretation of old `APPROVED`: closed `convmem.admission-event.v1` has `schema, event_id,
+sequence, previous_event_sha256, event_type, operation_id, proposal_id, lineage_id, intent_sha256,
+artifact_sha256, authority_manifest_sha256, recorded_at, event_payload_sha256`. Event type is
+exactly `PROPOSED`, `RATIFIED_AWAITING_ADD`, `ADMISSION_PREPARED`, `ADMITTED_UNPROJECTED`,
+`PROJECTED`, `REJECTED`, or `CANCELLED_BEFORE_ADMISSION`; inapplicable hashes are explicit null.
+Sequence is per lineage, starts1, exact+1, parent-hashed; duplicate event ID/same bytes is
+idempotent, changed bytes reject. Unknown/truncated tail blocks admission/recovery. The semantic
+state transition is validated independently from append order. An admission receipt is this stream's
+exact ADMITTED_UNPROJECTED event referring to qualified authority, never a Chroma marker. Durable
+intent and admitted source remain owner-governed files; projection bookkeeping cannot redefine them.
+
+Legacy transition rule: `PROPOSED`, `APPROVAL_STARTED`, `APPROVED`, `REJECTED`, `SUPERSEDED` remain
+readable in their existing schema, never automatically mapped to the new states. No legacy proposal
+enters an enrolled lineage or receives new closure authority by inference. New-format fresh
+ratification must explicitly bind any legacy material as new assertions with preserved old
+references; no overwrite/renumber/reinterpretation of history. Old incomplete approvals are reported
+`legacy_review_required`; recovery does not ingest them. Existing completed legacy approvals remain
+historical evidence under the legacy authority map, not new admission receipts. After Gate W
+cutover, approval commands persist intent only for all governed writes, and any legacy approved-file
+add without the new authenticated artifact fails with a migration-required diagnostic. Ordinary
+ungoverned observation ingestion remains outside strict admission.
+
+All new-format artifacts, governance roots, capture inventories and strict authority roots are
+excluded from generic index/watch/repair/discovery ingestion. No model-distilled copy qualifies.
+Generic add may ingest ordinary legacy observations but rejects governed decisions/strict metadata
+unless dispatched to the authenticated engine; both create and upsert are checked. A private Python
+flag is not a transferable capability. Existing backup and recovery authorization remain outer
+gates; a recovery path cannot become an alternate add command. Startup after a restore must
+reconcile latest history before clearing the slot fence. The migration of any live corpus remains
+unsupported in this candidate, rather than a decision for the implementer.
 
 ## 7. Deep module boundary
 
@@ -1277,8 +1915,12 @@ layout, compare-and-swap publication, and rollback. A fourth module,
 `strict_projection.py`, owns cold validation, deterministic lexical search,
 and the sealed read-only reader; it exports no publication or generic write
 API. A fifth module, `openclaw_activation_supervisor.py`, owns
-activation manifests, locks, deadlines, child process groups, buffered local
-delivery, and revocation. These responsibilities must not be reimplemented in
+turn state, deadlines and buffered release inside the unit. A sixth module,
+`openclaw_activation_controller.py`, owns slot enrollment, manager control, authenticated local
+control, retirement attestation and lock ordering outside the unit. `strict_grounding.py` composes
+unchanged legacy provenance verification with exact byte/receipt qualification. Gate W alone adds
+`governed_admission.py` for authenticated intent/admission/recovery; it is never imported by the
+reader. These responsibilities must not be reimplemented in
 handlers, adapters, or the plugin.
 
 The dedicated `openclaw_strict_server.py` owns only closed startup, the exact
@@ -1314,13 +1956,21 @@ executable fields:
 
 ```json
 {
-  "schema": "convmem.raw-evidence.v2",
+  "schema": "convmem.raw-evidence.v3",
   "instruction_authority": "none",
   "snapshot": {
     "snapshot_id": "...",
+    "lineage_id": "...",
+    "authority_seq": 1,
+    "authority_manifest_sha256": "...",
+    "semantic_contract_sha256": "...",
+    "state_basis": "complete_bound_authority",
+    "verification_basis": "recorded_qualified_checks",
     "as_of": "2026-09-20T00:00:00Z",
     "expires_at": "2026-09-21T00:00:00Z"
   },
+  "selection_complete": true,
+  "display_basis": "ranked_selection",
   "results": [
     {
       "title": "...",
@@ -1334,7 +1984,16 @@ executable fields:
       "verification_result": null,
       "target_ledger_id": null,
       "supersedes_ledger_ids": [],
-      "origin_assurance": "claimed",
+      "origin_assurance": "untrusted",
+      "provenance_qualification": {
+        "commitments": "valid",
+        "byte_grounding": "missing",
+        "capture": "unattested",
+        "transformer_cap": "agent"
+      },
+      "provenance_basis": "unattested",
+      "check_eligibility": "not_applicable",
+      "state_sha256": "...",
       "confidence_bps": 7000,
       "observed_at": "2026-09-20T00:00:00Z",
       "recorded_at": "2026-09-20T00:00:01Z",
@@ -1350,8 +2009,12 @@ executable fields:
 ```
 
 The top-level success object contains exactly `schema`,
-`instruction_authority`, `snapshot`, and `results`; `snapshot` contains exactly
-`snapshot_id`, `as_of`, and `expires_at`. Each result contains exactly the
+`instruction_authority`, `snapshot`, `selection_complete`, `display_basis`, and `results`;
+`snapshot` contains exactly the fields shown. `selection_complete` is false whenever an otherwise
+qualifying authorized row is omitted by top-k, limit or response bytes. `display_basis` is
+`ranked_selection` for search/unresolved, `bounded_context` for related. Related's true completeness
+means only its defined neighborhood; no response claims complete history or all possible real-world
+checks. Each result contains exactly the
 fields shown above. `truncated` is always present and is true only when the
 document was cut at the Section 8.4 per-document bound. `target_ledger_id` and
 every `supersedes_ledger_ids` element are qualified public handles derived from
@@ -1387,14 +2050,13 @@ no synthesis.
 
 Inputs are an optional bounded `limit`, optional project/site/domain selectors,
 and optional `cross_domain`. Omitted selectors inherit the bound scope. Domain
-matching is hierarchical, not the current exact-string comparison. Strict
-unresolved loads observations and children only from the named bound projection,
-authorizes them independently, constructs an effective-selector-scoped graph,
-and computes each observation's status from that graph.
-An out-of-scope child is treated as absent and cannot cause an otherwise
-in-scope observation to disappear. If the only pass verification is out of
-scope, the safe result is to report the observation as unresolved. Results use
-the same untrusted-evidence envelope.
+matching is hierarchical, not the current exact-string comparison. Strict unresolved reads the
+canonical complete-bound state map (§6.5.3), applies its exact predicate and ordering, then applies
+effective selectors, limit and byte cap. An excluded-by-selector verification still contributes to
+canonical state because it belongs to the same already authorized bound history. Search and related
+report exactly the same state/hash for the same assertion at the same authority head. Rows outside
+the immutable audience never enter that graph. Empty or limited selections never establish that the
+entire project is resolved. Results use the v3 envelope and completeness metadata.
 
 ### 8.3 `related`
 
@@ -1434,7 +2096,7 @@ Switching any live writer, including the monitor, to v2 requires
 a separate Ryan-granted ledger-ID migration with continuity, collision, and
 rollback evidence.
 
-Every registry-v2 generator calls its centralized full-string validator before
+Every strict-v2 ID generator calls its centralized full-string validator before
 returning. Logical-ID digest inputs use `normalize_authority_site()` with pinned UTS
 #46 non-transitional processing, IDNA2008 semantics, and STD3 rules; Python's
 standard-library IDNA2003 codec is forbidden. Gate B pins the exact third-party
@@ -1446,7 +2108,7 @@ underscore vectors for the v2 path while retaining legacy-v1 vectors unchanged.
 The logical key, source event, and assertion digest inputs are length-prefixed
 canonical UTF-8 fields; concatenated free text is forbidden. No authorization
 decision parses site identity back out of an ID; protected metadata remains
-authoritative. A registry-v2 generator that cannot produce a valid ID fails the
+authoritative. A strict-v2 ID generator that cannot produce a valid ID fails the
 entire authority snapshot with the operator-visible reason
 `ledger_id_mint_denied`; this read-only slice creates no mutable quarantine.
 It must never substitute a UUID, truncate without a digest, or silently skip
@@ -1503,7 +2165,7 @@ whole undirected connected component:
    kind. This includes a verification attached to a target decision.
 3. If step 1 found an observation anchor, collect that observation's descendant
    subtree to depth two, including sibling decisions, direct verifications,
-   verifications attached to decisions, and unknown kinds. This step does not
+   verifications attached to decisions, and any malformed/unknown kind causes denial. This step does not
    run when that observation is also a registered non-expanding root.
 4. If step 1 found a non-expanding root, include that root as lineage context
    but never enumerate its other children. Non-expanding-root status takes
@@ -1514,7 +2176,14 @@ whole undirected connected component:
    hermetic and synthetic deployments use only their own declared fixture
    roots. Request or corpus text cannot add a root.
 
-Traversal uses a visited set and collects no more than 200 nodes. The complete
+5. Add every live competing head of the explicitly queried target's logical identity. For each
+   observation/decision in that queried head set, add all its live `targets` verification heads,
+   including conflicting and ineligible heads. These support additions do not recursively expand
+   `relates_to` context. A non-expanding root cannot suppress this support for an explicitly queried
+   target. Other context rows carry canonical state without promising a complete explanation of each
+   of their checks.
+
+Traversal uses a visited set and collects no more than 200 nodes across the entire union. The complete
 neighborhood either passes authorization and renders or receives the generic
 denial; it is never silently truncated. Because sibling expansion occurs only
 under an observation anchor, the protocol fallback may have arbitrarily many
@@ -1528,12 +2197,16 @@ resolved, the public response is the same generic denial:
 
 ```json
 {
+  "schema": "convmem.error.v1",
   "error": {
     "code": "scope_denied",
     "message": "The requested evidence chain is unavailable in this scope."
-  }
+  },
+  "correlation_id": "00000000000000000000000000000000"
 }
 ```
+
+The example correlation ID is illustrative; each real response uses §11’s fresh random ID. Denial equivalence compares the fixed schema/code/message after removing this independent ID, never its random bytes.
 
 Unknown IDs, malformed IDs, and out-of-scope IDs are deliberately
 indistinguishable. The response contains no IDs, titles, counts, chain shape,
@@ -1545,9 +2218,10 @@ failures without exposing the private reason to OpenClaw. A binding/site/domain
 registry mismatch is a startup failure, so ordinary writes from a different
 exact site or domain authority cannot silently poison a live chain.
 
-No partial normative neighborhood is returned. Authorization and deterministic
-state reduction occur on its full protected graph before the strict v2
-formatter.
+No partial normative neighborhood is returned. Authorization of the union precedes the v3 formatter;
+canonical state was already reduced over complete bound authority and is never recomputed from this
+union. A hidden support node cannot turn conflict into pass. The operator's private file/CLI audit
+can inspect the complete history and qualification witnesses.
 
 ### 8.4 Request and response bounds
 
@@ -1591,6 +2265,8 @@ Normative settings for Phase 1A and Phase 1B are:
 
 ```json5
 {
+  env: { shellEnv: { enabled: false } },
+  logging: { file: "/activation/tmp/openclaw.log" },
   agents: {
     defaults: {
       workspace: "/operator/provisioned/empty-openclaw-convmem-workspace",
@@ -1744,18 +2420,32 @@ without producing a session. Disabling `acp.enabled` or
 
 ### 9.1 Model-provider and network boundary
 
-Phase 1A uses synthetic corpus fixtures and a reviewed local inference endpoint.
-The effective model route must be inspected from the running session, and
-provider fallback must be disabled. If installed OpenClaw cannot keep inference
-local without a remote fallback, the smoke stops. A transport-only MCP smoke
-may still run without claiming the hostile-content gate passed.
+The selected profile has no external channels and no host-network inference in Phase 1A or Phase 1B.
+Use one private network namespace with loopback only and no external interfaces/routes, containing
+gateway, client and a dedicated CPU local model worker in the same systemd retirement domain. No
+host Ollama socket, shared host model daemon, proxy, model download, fallback, or cloud endpoint is
+reachable. The strict child additionally has §4's pre-import socket denial. Connector transport
+remains stdio.
 
-Phase 1B under this plan also keeps model inference local. Sending real ConvMem
-evidence to a hosted model is a distinct privacy, retention, cost, and authority
-decision requiring a new architecture delta and an exact Ryan grant. Network
-egress is denied by default; Phase 1B opens only the individually approved
-external channel endpoints after its sender/perimeter tests pass. Neither the
-connector nor the ConvMem child receives general network access.
+The exact config must select one packaged model, `models.mode: "replace"`, the bundled
+`openai-completions` adapter, no fallback and no inherited models/auth files. It must work without a
+provider credential or dummy placeholder; the gateway's private activation token is a separate local
+transport credential. **This combination is not qualified on OpenClaw 2026.3.2:** §14.2 establishes
+a concrete authentication-path conflict. Do not fill in a fake key, loosen the environment, switch
+provider/runtime, or introduce an auth proxy during implementation. A reviewed compatible route or
+explicit architecture decision is required. Config schema acceptance alone would not close this
+blocker.
+
+The configuration example above specifies disabling controls, not a launchable final config. All
+paths are replaced by exact namespace paths and the complete closed launch-policy bytes before
+qualification. No per-agent/env override may widen it. Private
+CWD/HOME/TMPDIR/workspace/cache/session/log directories and immutable imports close documented
+`.env` and discovery routes; a fresh state directory alone is insufficient. Actual child inventories
+and negative egress/write tests remain required.
+
+Phase 1B stays local operator only. Channels, hosted inference and remote workers require another
+reviewed architecture with privacy, retention, sender and delivery semantics; this candidate does
+not open endpoints later as a config convenience.
 
 ## 10. Prompt-injection boundary
 
@@ -1777,19 +2467,24 @@ failure consequence small by removing consequential tools and durable memory.
 
 ## 11. Synchronous completion contract
 
-Phase 1A and Phase 1B contain no background worker and no ACP delegation. Each
+Phase 1A and Phase 1B contain no autonomous background task or ACP delegation. The contained model
+worker serves only supervised local inference and owns no durable memory or independent task queue.
+Each
 connector call is synchronous and has one request correlation ID.
 
 The only terminal outcomes are `succeeded`, `denied`, `failed`, and
-`interrupted`. `accepted` and `running` are non-terminal. A user-visible claim
-of completion may be produced only after a complete MCP response has been
-received and serialized. Process exit, timeout, broken stdio, gateway restart,
+`interrupted`. `accepted` and `running` are non-terminal. A connector call may report successful
+transport only after a complete valid MCP response is received and serialized. A model answer may be
+released only through §6.5.6's complete-result commit. Neither transport success nor arbitrary model
+JSON proves that a tool ran, a fact is true or a deployment completed; model results are
+`model_output_unverified`. Process exit, timeout, broken stdio, gateway restart,
 or cancellation before that point is `interrupted` or `failed`, never
 `succeeded`.
 
 No connector completion state is written to ConvMem, OpenClaw memory, or a new
-durable ledger. Retrying after interruption creates a new request ID. This
-defines false background completion out of existence for the initial phases.
+durable ledger. Retrying after interruption creates a new request ID. This prevents the adapter from
+attesting background completion; arbitrary model assertions remain untrusted and cannot create a
+completion receipt.
 
 The connector uses one long-lived strict child per activation, permits one
 in-flight request, and queues at most eight additional requests FIFO. A ninth
@@ -1802,7 +2497,8 @@ Startup failure, child exit, protocol desynchronization, or a snapshot-expiry
 response terminates the activation and requires a fresh child; it never falls
 back to another ConvMem profile.
 
-The complete public error vocabulary is closed:
+The complete public MCP error vocabulary is closed (activation-control outcomes are the separate
+§6.5.6 protocol):
 `invalid_request`, `identifier_query_not_supported`, `scope_denied`,
 `snapshot_stale`, `response_too_large`, `temporarily_unavailable`, and
 `internal_failure`. The schema literal is `convmem.error.v1`; its top level
@@ -1822,16 +2518,11 @@ scope values, or credentials.
 
 ### Gate A — plan review
 
-- Astra's final review of commit `2424857` blocked build on C1–C6. This
-  revision freezes monotonic state/join semantics, exact dispositions and
-  provenance continuity, strict file manifests/publication, deterministic
-  lexical search, the Phase-1A activation supervisor, and one consistent
-  file/API/test contract.
-- Kiro performs the charter-required binary review only after an independent
-  recheck confirms that no category-3 or category-4 build decision remains.
-- Ryan approves or rejects architecture and execution planning.
-
-No code or OpenClaw configuration is authorized by Gate A.
+This revision is a concrete candidate, not BUILD READY. Fresh Astra checks §§17–18 on the exact
+edited pair, including the known runtime incompatibility. Kiro's binary design review and Ryan's
+approval remain separate. No implementation or runtime/config action is authorized. A bounded core
+build, if separately approved, cannot be described as completion of the full adapter or production
+boundary.
 
 ### Gate B — strict ConvMem contract implementation
 
@@ -1853,11 +2544,12 @@ After a Ryan Execute grant, Cursor implements only:
 - versioned strict logical/source-event/assertion IDs that preserve legacy-v1,
   payload-bound exact replay, fresh-observation admission, binding-qualified
   public handles, and ambiguity-denying lookup;
-- operator-owned fixture authority/disposition snapshots, monotonic state
-  reduction, atomic strict-pointer publication, crash recovery, and rollback;
+- operator-enrolled cumulative fixture authority/disposition history, original-admission
+  qualification, byte grounding, complete-bound state reduction, fenced atomic publication, crash
+  recovery, and serving-only rollback;
 - deterministic lexical strict search with no ledger-ID extraction, embedding,
   reranking, model, Chroma, or fallback path;
-- projection-only unresolved and bounded target-neighborhood related graphs;
+- one canonical state map shared by all tools and bounded related display with explicit verification support;
 - focused hermetic tests.
 
 No live-corpus binding migration, OpenClaw plugin, or OpenClaw configuration is
@@ -1866,15 +2558,18 @@ included in this gate.
 ### Gate C — connector implementation
 
 After Gate B review passes, Cursor may implement the fixed local OpenClaw
-connector plugin and activation supervisor in the repository with hermetic
-fake-MCP, fake-gateway, and fake-agent tests. It may not
+connector plugin, external controller and in-unit supervisor in the repository with hermetic
+fake-manager, fake-MCP, fake-gateway, fake-model-worker and fake-agent tests. No mock can qualify
+actual containment, credentials or tool inventory. It may not
 install or enable the plugin, create a live OpenClaw profile, or contact an
 external channel.
 
 ### Gate D — Phase 1A isolated smoke
 
-Requires Kiro conformance PASS on the Gate B/C implementation and a separate
-Ryan grant naming the profile and exact config path.
+Requires closure of §18's runtime architecture/qualification blockers, Kiro conformance PASS on the
+Gate B/C implementation, exact reviewed runtime/model image and manager/launch policy bytes, and a
+separate Ryan grant naming the unit/profile/config. Installed package inspection is not launch
+authorization.
 
 - local operator only;
 - loopback/local stdio only;
@@ -1892,7 +2587,7 @@ Ryan grant naming the profile and exact config path.
 - no ConvMem writes;
 - a fresh snapshot-bound `OPENCLAW_STATE_DIR`, with memory flush and heartbeat
   independently disabled and no resumable prior session.
-- the reviewed activation supervisor as the only user-facing local entrypoint;
+- the operator-only controller and reviewed supervisor as the only user-facing local entrypoint;
   OpenClaw `--deliver`, direct gateway UI, channels, and streaming output stay
   disabled.
 
@@ -1924,18 +2619,24 @@ of incremental value and blocks Phase 1B promotion, but does not retroactively
 invalidate a safe disposable reader prototype. This plan does not authorize the
 model runs or claim that value has been demonstrated.
 
+### Gate W — governed production write boundary (separate slice)
+
+Required before any production lineage enrollment. Implement §6.5.7's one governed engine, literal
+separate approval/add route, explicit legacy refusal, prefix protection and recovery ordering. Apply
+§14.3's caller mapping; preserve all existing production writer/backup/recovery safeguards. Gate B/C
+do not modify those legacy files. Gate W's exact baseline, allowlist and acceptance plan need a
+separate reviewed packet and Ryan grant; no production source resolver, old-consent migration,
+capture recorder or live data is granted here. The semantic contract is fixed here; an execution
+packet must instantiate it rather than make these choices anew.
+
 ### Gate E — Phase 1B scoped normal operation
 
-Requires fresh Kiro review and Ryan approval after all adversarial tests pass
-and Gate D-V supplies a positive, independently graded result rather than a
-retrieval-only success claim.
-Every enabled channel/account/sender/group policy must be enumerated and
-tested. Unknown senders, unapproved groups, and unbound channels must be unable
-to invoke the integration. Each approved origin must map statically to this
-profile's single audience policy; no inbound field may select or widen scope.
-
-ACP, background workers, transcript capture, automatic indexing, and durable
-OpenClaw memory remain disabled.
+Requires Gate W, qualified source/capture/enrollment artifacts, separately reviewed live-data
+completeness and latest-history recovery evidence, fresh Kiro review and Ryan approval after all
+assigned adversarial tests, plus a positive independently graded Gate D-V result. It remains local
+operator only under the same containment and release rules. ACP, background workers, transcript
+capture, automatic indexing and OpenClaw memory remain disabled. External sender/channel support is
+outside this candidate and requires a new delivery/perimeter design.
 
 ### Gate F — later capabilities
 
@@ -1953,12 +2654,13 @@ not sufficient.
 The implementation is FAIL if any test leaks data, widens authority, exposes an
 unexpected surface, or reports false completion.
 
-Phase ownership is normative. Gate B must pass cases 1–27 and 40–44 plus the
-strict-server portion of 47. Gate C must pass the fake-process contract portions
-of 33, 35, 45, 46, and 48. Those fake tests do not satisfy runtime acceptance.
+Phase ownership is normative. Gate B owns cases 1–27, 40–44, 49–52 and the strict-server portion of case 47.
+Gate C owns fake-process portions of 33, 35, 45, 46, 48 and 53–54; Gate W owns 56. Every case
+may have multiple explicitly named layers, not an ambiguous single gate. Those fake tests do not
+satisfy runtime acceptance.
 Gate D repeats cases 1–4 against the installed child and owns cases 28–36,
-38–39, 45–47 against the actual isolated runtime. Gate E alone owns case 37.
-No Gate B/C handoff may claim “all 48 passed”; it reports only its assigned
+38–39, 45–47 and 53–55 against the actual isolated runtime. Gate E alone owns case 37.
+No Gate B/C handoff may claim all 56 passed; it reports only its assigned
 cases, and every later case remains a blocking future gate.
 
 ### Profile and enumeration
@@ -2026,16 +2728,18 @@ cases, and every later case remains a blocking future gate.
 17. Put syntax-valid qualified handles containing an allowed, disallowed, and
     unknown public binding reference in otherwise identical
     whitespace-delimited search text. Prove the grammar/length stage gives all
-    three the byte-identical fixed `identifier_query_not_supported` response
+    three the identical fixed `identifier_query_not_supported` code/message (with a fresh independent correlation ID)
     before binding lookup, tokenization, or scoring and that neither ledger extraction nor
     priority injection runs.
     Prove malformed/punctuation-wrapped strings receive no lookup treatment,
     and `server_name`, `codec_config`, and `observer_pattern` are not rejected.
-18. Under a caller-chosen descendant narrowing, give an included observation a
-    verification elsewhere in the same authorized bound projection but outside
-    the effective descendant. Prove strict unresolved computes from the
-    effective-selector-scoped graph, returns the observation as unresolved, and
-    is byte-equivalent to the same graph with that child absent.
+18. Keep the same complete authorized authority head; move a pass or fail check outside an
+    observation's selected descendant domain, lexical top-k, limit and displayed related depth.
+    Across search/unresolved/related, prove the observation retains the same canonical state/hash:
+    pass+fail remains conflict, pass+inconclusive remains inconclusive, and an ineligible live check
+    contributes inconclusive. A related response requiring excluded support denies as a whole.
+    Out-of-immutable-audience rows remain absent and cannot affect state. The former test that
+    deleted the narrowed-out check is explicitly replaced.
 
 ### Project selectors and resources
 
@@ -2048,7 +2752,7 @@ cases, and every later case remains a blocking future gate.
 
 ### Ledger identity and related-chain authorization
 
-21. Property-test every registry-v2 ID generator against the centralized
+21. Property-test every strict-v2 ID generator against the centralized
     `re.fullmatch` and length validator. Prove canonical length-prefixed digest
     inputs separate field boundaries and that `find2_`, `choice2_`, `check2_`,
     `evt_`, `obs2_`, `dec2_`, and `ver2_` are deterministic and kind-disjoint. Use full
@@ -2092,7 +2796,7 @@ cases, and every later case remains a blocking future gate.
     observation-anchor expansion. Prove an empty root list starts successfully
     in a fixture that contains no high-degree protocol anchor.
 25. Request an out-of-scope, unknown, malformed, embedded, trailing-text, and
-    raw storage ID; prove byte-equivalent public denial shapes.
+    raw storage ID; prove equivalent public denial shapes after removing the independent correlation ID.
 26. Put one out-of-effective-scope decision, verification, sibling,
     unknown-kind child, or metadata-incomplete node behind an in-scope target;
     prove the entire chain is denied without partial output. Prove registry
@@ -2141,9 +2845,9 @@ cases, and every later case remains a blocking future gate.
     may succeed.
 36. Restart the OpenClaw gateway during a call and prove no persisted false
     completion or automatic replay.
-37. For Phase 1B, test every configured channel, account, sender allowlist,
-    group policy, mention rule, pairing policy, and Gateway exposure. Unknown or
-    unapproved origins must fail before tool invocation.
+37. For Phase 1B prove all channels, remote senders, pairing and external Gateway exposure remain
+    absent; only the authenticated local controller accepts turns. Channel enablement is not a Gate
+    E option under this candidate.
 
 ### Capture negative controls
 
@@ -2182,9 +2886,11 @@ cases, and every later case remains a blocking future gate.
     fsync, manifest close, projection write, cold validation, pointer rename,
     and pointer-directory fsync. Include absent-pointer first publication,
     forward CAS, torn tail, disk full, concurrent delivery, stale builder,
-    ambiguous post-rename durability, and stale/expired rollback. Prove restart
-    selects exactly one qualified generation and rebuild/rollback are
-    authority-equivalent.
+    ambiguous post-rename durability, and stale/expired rollback. Prove restart serves only an exact
+    qualified current head or nothing. A committed revocation followed by projection failure must
+    remain admitted/unavailable; an old unexpired head cannot serve. Rebuild/rollback may select
+    only generations of the current authority and semantic contract. Test stale full-publication CAS
+    after serving A→B→A.
 45. Drive the actual installed runtime across compaction thresholds, heartbeat
     intervals, restart, and malicious per-agent overrides. Prove effective
     memory flush and heartbeat remain disabled and that no unsolicited model
@@ -2193,9 +2899,11 @@ cases, and every later case remains a blocking future gate.
     no-tool inference, and buffered response delivery. Kill the supervisor,
     move wall time backward/forward, suspend/resume, and attempt old
     state/session reuse. Exercise the turn-input and 1-MiB combined-output
-    bounds. Prove no byte is released after lease loss or overflow, the whole
-    process group dies, every response exposes pinned times, and old sessions
-    cannot resume.
+    bounds. Race release commitment against revoke under the mutex; no new result may commit after
+    lease loss or overflow. Already committed bytes may arrive later. Prove manager-owned domain
+    retirement including detached grandchildren and the model worker, or quarantine on uncertain
+    emptiness; a supervisor note is insufficient. Every successful result names its pinned basis and
+    old sessions cannot resume.
 47. Start the strict entry point with populated legacy home credentials,
     credential environment variables, and a general ConvMem config. Prove its
     empty fixed home and closed strict config prevent credential/provider
@@ -2204,6 +2912,46 @@ cases, and every later case remains a blocking future gate.
     cancellation, timeout, oversized frame, malformed frame, and child exit.
     Prove FIFO bounds, fixed errors, no automatic retry, no late success, and no
     fallback to a wider profile.
+
+49. Delete/change a retained assertion, disposition, policy key, source event, capture receipt or
+    blob in a later head; reject. Replay original admissions against their own contexts, including
+    an earlier supersession followed by withdrawal of its successor; no predecessor becomes current.
+    New conflicting operation bytes reject; exact old retry returns its historic outcome with
+    current head.
+50. Permute selectors/top-k/limit/depth/document cap without changing authority; every returned
+    assertion retains identical canonical state/hash. Same-check pass/pass forks remain conflict;
+    conflicting observations remain unresolved even if each has pass checks. Verify completeness
+    flags and no partial related support.
+51. Swap raw/view/output bytes, locators, events, parents, selectors, receipts and issuer
+    inventories; supplied contradiction rejects, missing evidence weakens. Deny cross-audience
+    witnesses, receipt self-authentication and LLM closure. Later witnesses cannot upgrade old
+    admission qualification. Preserve envelope UUIDs/bytes, including the valid legacy
+    canonicalization domain; compare an independent reference qualifier.
+52. Fail at fence, intent/source append, authority admission, projection, publication rename/fsync
+    and recovery bookkeeping. Exercise empty enrolled genesis, lost pointer, torn tail, quota
+    exhaustion, concurrent writer and stale operation. A valid preexisting authority remains
+    history; serving never bypasses an unsettled terminal intent. Restoring the root without
+    independent latest-history evidence stays unavailable.
+53. Exercise turn/cancel/status/revoke, peer UID forgery, blocked consumer, repeated request/turn
+    IDs, capacity exhaustion, partial frames, supervisor crash/hang, controller crash and stale
+    retirement receipt. No lock inversion, automatic rerun or success from a half-frame. Supervisor
+    cannot attest its own empty domain; unresolved containment prevents a replacement.
+54. Restart against the same snapshot/boot, suspend/resume, step wall clock backwards, roll back a
+    generation, rebuild without new capture, and reboot with/without a valid clock review. None
+    renews source age. Retained BOOTTIME deadline never increases; release linearization uses the
+    final valid sample without intervening awaited work.
+55. On the sealed real runtime, poison caller cwd/.env/HOME/import paths/agent models, mutate a
+    dependency without changing the launcher, inherit an unwanted FD, attempt all undeclared
+    writes/network paths and invoke gateway/local model work while killing the supervisor. Exact
+    effective tools/prompt/skills/hooks/model route must match policy. A dummy key or relaxed
+    provider rule is failure, not successful compatibility.
+56. At Gate W, exercise explicit approved-file admission with forged signer/status/IDs,
+    pending/rejected/cancelled/old-format artifacts, stale expected parent, unknown prior state,
+    duplicate add, admitted-unprojected retry and later revocation.
+    Approval/recover/watch/index/repair do not ingest or authenticate themselves; all raw
+    create/upsert paths reject strict authority fields. Existing legacy events remain bytes/IDs
+    unchanged. Preserve production writer lock/backup gates and restore fencing; require no
+    automatic migration of old approvals.
 
 ## 14. Verification commands and evidence
 
@@ -2231,7 +2979,7 @@ fixture-only build. Its minimum evidence set includes:
   stale-view, and supervisor-revocation tests;
 - unchanged legacy compatibility tests for `tests/test_site_filter.py`,
   `tests/test_milestone_c.py`, and `monitor.py` ID lookup/write behavior;
-- scoped unresolved-graph tests with out-of-scope child verifications;
+- complete-bound state metamorphic tests with selected-out same-audience checks;
 - connector child-environment allowlist and remote-node refresh tests;
 - installed-runtime memory-flush, heartbeat, state-directory, queue, deadline,
   cancellation, frame-limit, and credential-isolation tests;
@@ -2263,6 +3011,140 @@ compatibility, and non-import claims are reviewable rather than asserted.
 No test may read or mutate the live ConvMem database, live OpenClaw state,
 external channels, or production transcript paths without the later named Ryan
 grant.
+
+### 14.1 Evidence gathered in this editorial pass
+
+Read-only inspection on 2026-09-21, against the exact code baseline; no live
+corpus/config/credential reads, gateway/agent/model launch, service mutation, implementation code or
+production writer operation. Stage 1's sealed bundle and 31 baseline tests remain baseline evidence
+only. Both supplied report hashes were recomputed and matched the values at the top of this
+document.
+
+The existing writer inventory was checked mechanically with:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests/test_shadow_writer_coverage_scan.py::test_inventory_documents_gated_routing tests/test_shadow_writer_coverage_scan.py::test_static_scan_matches_inventory_routing
+```
+
+Result: **2 passed in 0.10s**, exit0. This is a static repository routing check; it neither opens
+Chroma nor proves future authentication semantics. The reviewed inventory is
+`docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json`, SHA-256
+`1254d410c8dedd773530de7e1ba690714fccaac13f08c1adffc76194ccda827b`. Targeted `rg` inspection covered
+approval/recovery/approved-file helpers, direct observation ingestion, decision files/events and
+writer-boundary callers across tracked production Python and scripts; docs/tests were separately
+treated as evidence, not callers.
+
+Platform probes (`uname -srmo`, `/usr/lib/systemd/systemd --version`, `/usr/bin/systemctl
+--version`, `node --version`, `python --version`, `setpriv --help`, cgroup/proc capability files)
+returned Linux `7.2.6-arch2-1`, systemd `261.3-1-arch` with SECCOMP/BPF support, Node `v26.9.0`,
+Python `3.13.12`, operator UID/GID1000. `/proc/self/cgroup` is unified cgroup v2; cgroup controllers
+and network-namespace capacity are present. `setpriv` advertises pre-exec `--seccomp-filter`. The
+shell name `systemd` was absent from PATH; absolute installed binaries succeeded. These establish
+available mechanisms, not system-service privilege, valid unit/mount policy, actual filter
+enforcement or a successful retirement. No new unit was installed or started.
+
+The editorial consistency check also passed: 36 distinct named schema files have matching contract literals, acceptance cases are exactly 1–56, Markdown fences balance, retired pointer/envelope/state-contract text is absent, and baseline-to-worktree changes are confined to these two plan files. `git diff --check` passed. These are document checks, not validation of executable schemas or integration behavior.
+
+### 14.2 Installed runtime compatibility result
+
+Inspected installed OpenClaw root (a pnpm symlink closure, not a sealed image):
+
+`/home/lauer/.local/share/pnpm/global/5/.pnpm/openclaw@2026.3.2_@napi-rs+canvas@0.1.96_@types+express@5.0.6_hono@4.11.9_node-llama-cpp@3.16.2/node_modules/openclaw`.
+
+Exact byte identities:
+
+- `package.json`: `4d2de1208138f9e8fd10a532c78defc2d942cc2c523adb2f90adff4209f1a5cb`.
+- `openclaw.mjs`: `a5dd83191d4854dcb3f4d9b827a03917db020c458587427b3301553ea7b4c8ca`.
+- `dist/auth-profiles-CNyDTsy4.js`: `5540085eeb079a811b1858874764506c57f8a421634ac25f60b8d415d3c831ee`.
+- `dist/model-selection-Zb7eBzSY.js`: `2c99278b0426d032d59969b29eed78ea8bf91189c510835ed4a9645124009850`.
+- `dist/model-selection-CjMYMtR0.js`: `1777c2eae39e52f2c15d5c36e1ef84524352080c468c782273a49b1f384a8573`.
+- `dist/pi-embedded-DgYXShcG.js`: `f58ae685bb01c5327c082c6f1625e401cadd7c5b6a4b3d05f0c5a83c8f21fc37`.
+
+`resolveApiKeyForProvider` at auth-profiles lines936–1003 checks explicit profile, auth store,
+environment, then custom configured key; absent those it throws. `getApiKeyForModel` delegates to
+it. The embedded run path at pi-embedded lines94213–94230 calls that resolver and rejects a missing
+key except for AWS SDK authentication, which this local profile excludes. `authHeader:false` is a
+request-header setting; it is not an exemption in this resolver/run branch. Compaction also uses the
+resolver. The exact extracted function is byte-identical in both model-selection bundles; its
+SHA-256 is `14c351c2e402bafe0cf1d71a19530767ecc28032fdcaef5f55e13ff9cb720b28`.
+
+An isolated Node VM test evaluated **only that extracted function**, with an explicit empty
+auth-store object and pure stubs returning no profiles/env/custom key. For provider names
+`convmem-local`, `ollama`, `vllm`, all three returned `No API key found for provider ...`. Exit0
+means the negative probe completed, not that a provider worked. It imported no OpenClaw modules,
+performed no config lookup, made no network call and wrote no state. Reproduce by extracting from
+the function declaration through the next `function resolveEnvApiKey` boundary, verifying the
+function hash, and supplying the same empty auth dependencies. This proves the inspected branch's
+incompatibility, not that no imaginable alternative runtime path exists.
+
+**Consequence:** credential-free `openai-completions` under the inspected pinned run path cannot be
+assumed implementable. A compatible exact route must be proven, or a separately reviewed
+architecture decision must select a compatible runtime/authentication contract while retaining
+local-only isolation and no ambient credentials. No dummy key, shared host service or hidden
+fallback is an allowed repair. Neither a compatible sealed distribution nor exact
+model-worker/config/inventory evidence exists yet.
+
+### 14.3 Caller and legacy-transition mapping for Gate W
+
+The missing baseline caller identification is resolved to these explicit routing requirements;
+production behavior is not claimed fixed. This is repository-source coverage, not a census of
+untracked operator scripts or current live in-flight proposals. Unsupported legacy admission is
+refused, so missing historical consent does not become an automatic migration decision.
+
+- `convmem.py` record/propose aliases (lines1298,1353,1521), `propose_decision.approve`,
+  `_approve_unlocked`, `approve_and_ingest`: route all new ratification through the governed engine;
+  approval emits the exact artifact and never indexes. Preserve interactive confirmation/write
+  guard. `--no-index` is a documented compatibility no-op, not an optional control.
+- `convmem.py:add` (lines393–410), `ingest_approved_file`, `ingest_approved_ledger`,
+  `observe.ingest_observation[_file]`, observation/verification helpers: only explicit add may
+  dispatch an authenticated approved-admission artifact. Remove transfer of authority via
+  `proposal_id`/`_governed_protocol`; reject governed creates and upserts through generic paths. Old
+  approved-file bulk ingestion becomes migration-required, never an implicit engine call.
+- `recover_approval`, `recovery_action`, `live_decision_state`, `live_decision_snapshot`,
+  `rebase_proposal`, `mark_approved`: use protected exact intent/admission state for new governed
+  operations. Recovery can repair bookkeeping and already-admitted projections, not invent approval
+  or perform an unissued add. A missing/failed Chroma read is unknown, never evidence of absent
+  prior authority. A stale proposal requires fresh review/ratification.
+- `conflict_events.py`: retain legacy reducer and identities; add a separate versioned admission
+  event parser with byte-bound event deduplication. Preserve the existing universal
+  production-writer boundary outside governed lock. New operation order is slot→production
+  writer→governed ledger→lineage exclusive; do not call slot retirement while holding a
+  reverse-order existing lock.
+- `cross_project_digest.py` invokes proposal creation only, and `ledger_recent.py` reads approved
+  intent only; neither receives admission authority. `scripts/convmem-live-write.sh` is a CLI
+  wrapper, not approval. Change its examples with Gate W so they cannot promise legacy approved-file
+  automatic ingestion.
+- Ingest/index/watch families (`ingest.py`, `incremental_jsonl.py`, `inter_model_index.py`, watch
+  dispatch), `refine.py`, monitor/evidence/forget/purge paths and generic Chroma mutation factories
+  retain existing write gates but cannot emit reserved strict fields or ingest strict
+  control/approval/capture roots. Mutable summaries are not authority. The inventoried 10
+  production-session sites, 6 production-open sites and 15 allowlisted direct constructors must
+  remain covered; the latter include read-only/disposable recovery/evaluation paths, not permission
+  to write strict roots.
+- `complete_data_restore.py` explicitly validates/restores `decisions-approved.jsonl` and
+  `pending_decision_events.jsonl`; `recovery_authority.py`, file-generation/mixed-mode/shadow/eval
+  routes can restore serving data but cannot mint enrollment, admission, or a fresh lease. Gate W
+  must extend complete-data manifests/validators for the new protected admission files and retain
+  existing backup authorization. Restored strict roots remain fenced until independent
+  latest-history and empty-slot reconciliation; no source-of-truth flip for the existing legacy
+  observation corpus.
+
+Baseline source hashes: `convmem.py`
+`0c278be127ac0f3f29815a283bf59b58d6520fbb5d390ae123733260d1897ad3`; `propose_decision.py`
+`1bc098ad9275c8729269da90875eec83a65da7e3d37d288e091659f893b49dd1`; `observe.py`
+`2d50037cdc9fddf919996f52f98109bfb8acf106b918855300a6b7d6bcc34599`; `conflict_events.py`
+`0d41dbe4dca05e250ff2940698f5f1b36514365684198752a4258e393cc11a99`; `complete_data_restore.py`
+`15dace7743f6cdaf067be4bc714749d6f6541fe7e042b0facd6b7c5c4e0c43f1`.
+
+### 14.4 Evidence still required
+
+Before qualifying the full adapter: exact root/model image and worker command/config, successful
+credential-free run-path evidence, concrete manager/socket/mount/UID assignments, pre-exec filter
+bytes, effective child inventory/output shape and independent cgroup-empty receipts across failure.
+Static capability probes cannot replace these. Tests of the not-yet-built strict core are future
+acceptance evidence, not a circular prerequisite to authoring its code. Gate W additionally requires
+rechecking its complete caller/restore inventory and negative controls on its approved
+implementation baseline; no live historical-consent scan is authorized or used as proof here.
 
 ## 15. Stop conditions
 
@@ -2297,11 +3179,12 @@ Stop and return FAIL if any of the following occurs:
 - strict search extracts or priority-injects a ledger ID from query text;
 - strict search consults binding allowlists while screening syntactically valid
   handle tokens;
-- unresolved status or inclusion changes because of an out-of-scope child;
-- a registry-v2 ID generator can emit a value rejected by the canonical
+- canonical status changes under a voluntary selector, display limit or depth, or depends on any row
+  outside the immutable audience;
+- a strict-v2 ID generator can emit a value rejected by the canonical
   length/grammar validator, uses unpinned/IDNA2003 normalization, or falls back
   to a UUID;
-- Gate B changes legacy-v1 monitor IDs, a live writer selects registry-v2
+- Gate B changes legacy-v1 monitor IDs, a live writer selects strict-v2 identity
   without a migration grant, or one scheme can be mistaken for the other;
 - a changed payload reuses a source event/assertion, an exact preserved retry
   is duplicated, a later legitimate scan cannot create a new assertion under
@@ -2337,9 +3220,9 @@ Stop and return FAIL if any of the following occurs:
 - a stale/expired snapshot returns evidence, a response omits snapshot times,
   or a prior activation's session/state directory can resume after correction,
   scope change, expiry, or rollback;
-- the activation supervisor releases bytes after lease/pointer loss, fails to
-  own the whole child process group, accepts corpus-controlled revocation, or
-  permits direct/streaming/`--deliver` output in Phase 1A;
+- a result commits after lease/pointer loss, retirement lacks an independent empty-domain receipt,
+  runtime UID can impersonate the operator/supervisor, or any direct/streaming/`--deliver` output
+  bypasses the controller;
 - a strict process reads a home credential/general config, exceeds its one-plus-eight
   concurrency bound, retries automatically, or accepts an oversized frame;
 - any external sender or channel bypasses the perimeter;
@@ -2400,82 +3283,120 @@ tools and memory outside the initial integration's proof boundary.
 Rejected because capture has independent ingestion, quarantine, completeness,
 and crash-loop failure modes.
 
-## 17. Adversarial re-review questions
+## 17. Exact obligations for the final fresh Astra review
 
-Astra's final review of commit `2424857` blocked build. A fresh reviewer must
-independently falsify the corrected architecture and paired execution plan and
-answer with exact references:
+Audit the revised pair, not merely the sealed report. State PASS/FAIL/INCOMPLETE for each obligation
+with exact section/schema references and a counterexample where it fails:
 
-1. Can any request-time input affect the bound scope or connector process
-   launch before server authorization?
-2. Can a legacy row, ledger child, fallback result, or resource escape project,
-   site, or domain proof?
-3. Is `domain_matches()` called in the correct direction at both selector and
-   row-authorization stages?
-4. Can omission, explicit blank, normalization, aliasing, or malformed values
-   create a wider result?
-5. Does project proof trust any attacker-controlled prose or ambiguous path?
-   Is the protected domain sourced only from the immutable registration rather
-   than the distiller's semantic label?
-6. Can search, unresolved, or related act as an existence oracle, resolve a
-   colliding or cross-binding identity, reject legitimate code substrings, or
-   return a misleading partial chain?
-7. Can OpenClaw `2026.3.2` still expose core tools despite the plugin allowlist?
-8. Can native memory, automatic memory flush, skills, plugin prompts, or ACP
-   child configuration reintroduce a second authority or injection route?
-9. Can hostile evidence cross from tool-result data into an instruction
-   channel?
-10. Can a crash, timeout, cancellation, or restart become false completion?
-11. Does any phase silently authorize external config, channels, capture,
-    indexing, durable writes, or ACP?
-12. Can an open-taxonomy domain escape or poison the physical bound projection,
-    or can shared-index/global-graph density influence any tool's results,
-    cache, or query cost?
-13. Can exact replay, remint, later observation, or changed payload be
-    conflated; can strict v2 IDs alter legacy monitor identity; can
-    IDNA/library variation split or merge identities; or can any generator
-    exceed its validator?
-14. Can the bounded target-neighborhood traversal become unavailable because
-    of the high-degree protocol fallback, miss required depth-two context, or
-    cross a binding?
-15. Does the fixture-only strict publisher avoid every legacy metadata writer,
-    adapter, ingest, supersede, mixed-mode, eval/shadow, generation, restore,
-    and Chroma path, with any future live prefix enforcement left to a separate
-    reviewed migration?
-16. Do site identity, response-size precedence, or child-session controls have
-    more than one interpretation?
-17. Is any acceptance test circular, unverifiable, internally contradictory,
-    or dependent on current web documentation rather than bundled
-    installed-binary evidence?
-18. Can a pending, rejected, model-derived, or forged decision acquire approved
-    state, or can a result lose kind, assurance, confidence, disposition,
-    verification target, supersession, or time?
-19. Can an outcome-only update be skipped, an inline pass mask a fail, a
-    contextual relation act as supersession, or conflicting active assertions
-    reduce to a reassuring state?
-20. Are exact retry, identical-input remint, later observation, and changed
-    payload distinct, payload-bound operations with no overwrite or lost event?
-21. Can any crash/concurrency point publish projection state before durable
-    authority or make restart/rollback select a different reduction?
-22. Can memory flush, heartbeat, credential discovery, an old session/state
-    directory, or an expired snapshot survive the effective runtime controls?
-23. Does the execution plan leave Cursor/Grok any category-3 or category-4
-    choice about schemas, authority, interfaces, recovery, containment,
-    acceptance, or rollback?
+1. **Continuity and publication:** reconstruct genesis, new admission, fence, unavailable head,
+   rebuild, rollback and retry from the exact field sets. Check no hash cycle, no authority
+   rollback, no lost disposition/witness, full-publication CAS under ABA, and original-admission
+   basis replay. Trace every crash point from fence to bookkeeping.
+2. **State and retrieval:** independently apply the truth table, check-fork precedence and
+   unresolved predicate. A selected-out conflict/ineligible check must never create pass. Confirm no
+   global cross-audience influence, support-union denial and honest completeness metadata on all
+   tools.
+3. **Identity and provenance:** prove source occurrences cannot be reminted/reused, envelopes remain
+   unchanged, grounding covers exact root/view/parent/output and protected receipt issuance, and no
+   missing/late witness upgrades old assurance or LLM closure power. Confirm the separate meanings
+   of approval, state, byte grounding, capture and factual truth.
+4. **Ownership and concurrency:** validate slot/lineage independence from scope digests, UID
+   separation, lock order, supervisor/controller distinction, manager-empty retirement and
+   quarantine. Challenge forks, detached workers, controller/supervisor death, stale receipts,
+   concurrent publish, blocked consumers and incomplete responses.
+5. **Freshness and release:** test the specified release linearization against revoke, clock
+   rollback, suspend, same-boot restart, rebuild/rollback and new-boot review. Reject promises to
+   retract committed bytes or renew evidence by process restart.
+6. **Closed runtime:** independently confirm or refute §14.2's exact authentication-path evidence.
+   Identify the concrete compatible route or leave C-RUNTIME open; do not approve dummy credentials
+   or a weaker fallback. Check complete dependency image, CWD/env/discovery/FD/mount/network closure
+   and actual inventory obligations.
+7. **Explicit writes and recovery:** trace every §14.3 caller family through the planned engine or
+   refusal. Verify no implicit add, copied signer/marker, Chroma-absence authority, automatic legacy
+   consent migration, restore bypass or lost backup/writer guard. Distinguish the fixture contract
+   from unimplemented Gate W production compliance.
+8. **Packet completeness:** compare all schema inventories, fields, CLI verbs, files, gate owners,
+   test cases and remaining classifications between the two edited files. Any newly discovered
+   architecture choice is C; any integrity weakness is D. A proposed remedy alone cannot earn BUILD
+   READY.
 
-The advisory reviewer returns `ADVISORY PASS`, `ADVISORY FAIL`, or `INCOMPLETE`.
-After advisory PASS, Kiro independently returns the charter-required binary
-design-review `PASS` or `FAIL` on the same revision. Only Ryan may authorize
-implementation after a Kiro `PASS`.
+Kiro's binary review follows the independent advisory audit on the exact revision. Ryan alone grants
+execution. This checklist authorizes no runtime/config/data operation.
 
-## 18. Exit state
+## 18. Change log, resolution and readiness
 
-This document and its paired execution plan stop before implementation. They
-are not an Execute grant. Astra's C1–C6 build decisions are resolved as explicit
-contracts; incremental web-development value remains deliberately unproven and
-is assigned to Gate D-V rather than asserted. The next step is independent
-re-review, then Kiro's exact-revision binary design/scope review. Cursor/Grok
-may implement only after both pass and Ryan issues an explicit Execute grant.
+Precise editorial changes from planning commit `9b106b9`:
+
+- **F1 resolved in specification (§§6.1, 6.5.3–6):** replace owner/generation-only pointers with
+  stable enrollment, conserved parent-linked authority, exact added sets, durable fences, null
+  serving and whole-publication CAS. Replace arbitrary unexpired-snapshot rollback with
+  same-head/same-contract serving rollback; retain original expiry and operation history.
+- **F2 resolved in specification (§§6.5.3, 8, tests18/42/50):** delete
+  effective-selector/related-neighborhood state reduction. Introduce one canonical full-bound state,
+  fork precedence even for pass/pass, weak-check inconclusive contribution, conflict-preserving
+  unresolved predicate, verification-support union and completeness fields.
+- **F3 resolved in specification (§6.5.1, tests41/51):** remove the false byte-verification claim
+  about `provenance.py`. Keep envelopes unchanged; add grounding/receipts, explicit qualification
+  dimensions, original-admission freezing and registered non-LLM closure eligibility. Missing
+  history stays weak; contradictory evidence rejects.
+- **F4 resolved in specification (§6.5.6, tests46/53/54):** replace process-group/self-receipt
+  control with stable slot, external root controller/systemd ownership, separate runtime UID,
+  complete turn protocol, serialized release/revoke, empty-domain receipt/quarantine and persisted
+  BOOTTIME anchor. Already committed output is not retroactively recalled.
+- **F5 corrected but runtime remains blocked (§§4, 9, 14.2):** replace launcher-only hashing and
+  ambient host endpoint with full sealed imports/model image, private CWD/HOME/temp/network,
+  dedicated contained worker and pre-import network filter. Read-only evidence now contradicts the
+  assumed credential-free local auth path. No workaround is silently selected.
+- **F6 resolved in specification; production acceptance pending (§6.5.7, §14.3, Gate W):** separate
+  ratification, explicit `add --file`, durable admission and projection; authenticate the two-level
+  intent/review/ratification chain; forbid implicit recovery ingestion and Chroma-derived prior
+  authority. Add exact caller/legacy refusal mapping and preserve existing backup/restore/writer
+  guards. Gate B/C protection of legacy files remains explicit; Gate W is required before production
+  and is not covered by the fixture result.
+- **Editorial closure refinements:** define empty enrolled genesis, non-circular production
+  source-prefix hashing and the admission commit/recovery boundary; make capture receipts bind one
+  whole multi-input invocation; specify direct file reads and preexisting read-only lock handles;
+  separate root controller/supervisor from runtime UID and require pre-exec socket denial. These
+  refine rather than assume the reconstruction remedies.
+- **Paired contract revised:** version all changed schemas together; update file owners, publisher
+  verbs, control protocol, return envelopes, gate mapping, 56 acceptance cases, recovery and
+  readiness. Preserve lexical ranking, scope normalization, legacy IDs, three tools, no resources
+  and all frozen runtime restrictions.
+
+Remaining items and classification:
+
+- **C — C-RUNTIME:** the exact credential-free local provider/run route for OpenClaw `2026.3.2` has
+  no working instantiation in the inspected path. Required decision if no compatible path can be
+  proven: choose a reviewed runtime/authentication contract without weakening
+  local-only/no-ambient-credential invariants. This editor leaves that incompatibility explicit
+  rather than authorizing an unproven route, fake key or new provider.
+- **D — D-CONTAINMENT:** concrete service/socket/UID/mount/filter policy and actual
+  crash/empty-domain enforcement are unqualified. Host mechanisms exist; deployment proof does not.
+  No process-group fallback.
+- **D — D-DISTRIBUTION:** complete sealed runtime/model artifacts, worker argv/config and effective
+  child inventory are missing. Package/help/source evidence is insufficient for actual closure.
+  These are required evidence inputs, not Grok-selected defaults.
+- **A — implementation detail:** internal helper decomposition, immutable lookup construction,
+  bounded hashing/serialization, reference-test structure and packaging already selected/qualified
+  bytes. Implementation acceptance includes the adversarial fault/race suites; it is not represented
+  as completed here.
+- **B — non-blocking uncertainty:** lexical recall, bounded cold-start performance, local model
+  quality, storage cost and product value. Gate D-V still governs promotion claims.
+
+No automatic legacy/live-data/source/capture/authority migration, in-place audience change, pruning,
+hosted inference or channel support is specified or delegated. A separate Gate W execution packet
+and production data grant remain required scope prerequisites, not hidden permission in this file.
+The baseline caller evidence is now available; deployed Gate W enforcement is not claimed.
+
+**BUILD BLOCKED — ARCHITECTURE.** D-CONTAINMENT and D-DISTRIBUTION also remain open. **Can Grok 4.5
+High implement this architecture without making an architectural decision? No for the complete
+integration: C-RUNTIME is still unresolved.** The synthetic file/state/retrieval and fake-control
+contracts are concrete candidates for independent review, but that narrower statement is not BUILD
+READY or execution authorization.
+
+Next review should evaluate these edited documents. It should not treat the original 31 baseline
+tests, the two new static tests, a proposed contract or this editor's judgment as integration
+acceptance.
 
 ## Jargon TL;DR
 
@@ -2488,12 +3409,17 @@ may implement only after both pass and Ryan issues an explicit Execute grant.
 | Evidence envelope | The stable JSON wrapper marking retrieved corpus content as data with no instruction authority. |
 | Full profile | ConvMem's existing MCP profile that exposes brief tools and resources in addition to retrieval tools. |
 | Native memory | OpenClaw's `memory-core` or another OpenClaw memory plugin, disabled in the isolated integration profile. |
-| Activation supervisor | The trusted local process that owns the OpenClaw process group, pins one snapshot/session, buffers output, and kills stale or revoked work before release. |
+| Activation supervisor | The trusted main process that pins one snapshot/session and commits bounded output; an external controller/system manager owns containment and retirement. |
 | Authority disposition | An operator-owned, content-addressed approval, rejection, revocation, withdrawal, or supersession decision bound to exact assertion semantics. |
 | Lexical kernel | The deterministic, version-pinned tokenization and integer-ranking algorithm used by strict search instead of embeddings or a shared vector index. |
 | Monotonic supersession | Once a valid successor supersedes an assertion, that predecessor stays historical even if later successors are revoked or themselves superseded. |
 | Project binding | An opaque, service-owned membership assertion assigned only by trusted ingestion and resolved through an operator-owned registry; ordinary corpus metadata and paths cannot supply it. |
 | Scope oracle | A response difference that lets a caller infer whether an otherwise inaccessible record exists. |
-| Strict generation | One immutable authority snapshot plus its derived lexical rows/graph and content-addressed manifests, activated through a compare-and-swap pointer. |
+| Strict generation | A derivative of one exact cumulative authority head; atomic publication may instead select no serving generation. |
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
+
+**TL;DR:** [Arc none] This revised candidate preserves the file/CLI authority and edits the six
+interacting contracts in place. The complete integration remains BUILD BLOCKED — ARCHITECTURE on the
+proven local authentication-path incompatibility, with containment and distribution evidence still
+required. No execution is authorized.
