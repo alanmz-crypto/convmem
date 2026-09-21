@@ -73,52 +73,53 @@ def test_case57_fixture_legacy_identity_config_only():
 
 def test_case57_pytest_plugin_inventory(pytestconfig):
     """Record actual loaded plugins from the live strict pytest process."""
-    import importlib.metadata
-
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     assert os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
     pm = pytestconfig.pluginmanager
-    # -p no:cacheprovider blocks cacheprovider; never treat it as loaded.
-    disabled = {"cacheprovider"}
-    loaded_names = sorted(
-        {
-            name
-            for name, _plugin in pm.list_name_plugin()
-            if name not in disabled and not name.startswith("no:")
-        }
-    )
-    assert "no:cacheprovider" not in loaded_names
-    assert "cacheprovider" not in loaded_names
-    assert not pm.has_plugin("cacheprovider")
 
+    # Live loaded names only: blocked registrations keep the name with plugin=None.
+    loaded_pairs = [(name, plugin) for name, plugin in pm.list_name_plugin() if plugin is not None]
+    loaded_plugin_names = sorted({name for name, _plugin in loaded_pairs})
+    assert "cacheprovider" not in loaded_plugin_names
+    assert "pytest_cacheprovider" not in loaded_plugin_names
+    assert "no:cacheprovider" not in loaded_plugin_names
+    assert pm.has_plugin("cacheprovider") is False
+    assert pm.has_plugin("pytest_cacheprovider") is False
+
+    # Distribution plugins from the live manager only (not registry-wide entry points).
     distribution_plugins: list[dict[str, str]] = []
     unapproved: list[str] = []
-    try:
-        eps = importlib.metadata.entry_points(group="pytest11")
-    except TypeError:
-        eps = importlib.metadata.entry_points().select(group="pytest11")
-    for ep in eps:
-        name = ep.name
-        # Blocked/disabled entry must not be recorded as a loaded plugin.
-        if name in disabled or name.startswith("no:"):
-            continue
-        dist = getattr(ep, "dist", None)
-        dist_name = dist.name if dist is not None else ""
-        if not pm.has_plugin(name):
-            continue
-        distribution_plugins.append({"plugin": name, "distribution": dist_name})
-        # Autoload false + explicitly_loaded empty → reject external dist plugins.
+    for plugin, dist in pm.list_plugin_distinfo():
+        plugin_name = None
+        for name, obj in loaded_pairs:
+            if obj is plugin:
+                plugin_name = name
+                break
+        if plugin_name is None:
+            plugin_name = getattr(plugin, "__name__", type(plugin).__name__)
+        module_name = getattr(plugin, "__module__", "") or ""
+        dist_name = getattr(dist, "project_name", None) or getattr(dist, "name", "") or ""
+        dist_version = getattr(dist, "version", "") or ""
+        entry = {
+            "plugin": plugin_name,
+            "module": module_name,
+            "distribution": dist_name,
+            "version": dist_version,
+        }
+        distribution_plugins.append(entry)
+        # Autoload false + explicitly_loaded empty → any live external dist plugin fails.
         if dist_name and dist_name != "pytest":
-            unapproved.append(f"{dist_name}:{name}")
+            unapproved.append(f"{dist_name}:{plugin_name}")
     assert not unapproved, f"unapproved_external_distribution_plugins:{unapproved}"
 
     inventory = {
         "autoload": False,
         "disabled_plugins": ["cacheprovider"],
         "explicitly_loaded_plugins": [],
-        "loaded_plugin_names": loaded_names,
+        "loaded_plugin_names": loaded_plugin_names,
         "loaded_distribution_plugins": sorted(
-            distribution_plugins, key=lambda d: (d["distribution"], d["plugin"])
+            distribution_plugins,
+            key=lambda d: (d["distribution"], d["version"], d["plugin"], d["module"]),
         ),
         "PYTEST_DISABLE_PLUGIN_AUTOLOAD": os.environ.get(
             "PYTEST_DISABLE_PLUGIN_AUTOLOAD"
