@@ -62,11 +62,29 @@ class ChunkerTests(unittest.TestCase):
             chunks[0].original_source_text,
             '{ "escaped": "a\\u0062", "order": [3, 2, 1] }',
         )
-        self.assertEqual(source.encode("utf-8")[chunks[0].byte_start : chunks[0].byte_end].decode(), chunks[0].original_source_text)
+        self.assertEqual(
+            source.encode("utf-8")[chunks[0].byte_start : chunks[0].byte_end].decode(),
+            chunks[0].original_source_text,
+        )
 
     def test_overlong_source_line_refuses_atomically(self) -> None:
         with self.assertRaisesRegex(RepositoryKnowledgeParseError, "resource_limit"):
             chunk_text("x" * 6001)
+
+    def test_aggregate_windows_cover_every_line_without_truncation(self) -> None:
+        lines = [f"{index:03d}-" + ("x" * 96) for index in range(120)]
+        chunks = chunk_text("\n".join(lines))
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(chunk.content) <= 6000 for chunk in chunks))
+        for chunk in chunks:
+            self.assertEqual(
+                chunk.content,
+                "\n".join(lines[chunk.start_line - 1 : chunk.end_line]),
+            )
+        covered = {
+            line for chunk in chunks for line in chunk.content.splitlines()
+        }
+        self.assertEqual(covered, set(lines))
 
 
 class DetectorOrderTests(unittest.TestCase):

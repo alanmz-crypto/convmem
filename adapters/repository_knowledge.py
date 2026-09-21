@@ -71,13 +71,14 @@ def _line_windows(text: str, *, label: str, start_line: int = 1) -> list[Chunk]:
     if any(len(line) > MAX_CHUNK_CHARS for line in lines):
         _refuse("resource_limit", "source line exceeds max_chunk_chars")
     chunks: list[Chunk] = []
-    step = max(1, FALLBACK_WINDOW_LINES - OVERLAP_LINES)
     idx = 0
     while idx < len(lines):
         end = min(len(lines), idx + FALLBACK_WINDOW_LINES)
+        while end > idx and len("\n".join(lines[idx:end])) > MAX_CHUNK_CHARS:
+            end -= 1
+        if end == idx:
+            _refuse("resource_limit", "source line exceeds max_chunk_chars")
         body = "\n".join(lines[idx:end])
-        if len(body) > MAX_CHUNK_CHARS:
-            body = body[:MAX_CHUNK_CHARS]
         first = start_line + idx
         last = start_line + end - 1
         chunks.append(
@@ -91,7 +92,7 @@ def _line_windows(text: str, *, label: str, start_line: int = 1) -> list[Chunk]:
         )
         if end >= len(lines):
             break
-        idx += step
+        idx = max(idx + 1, end - OVERLAP_LINES)
     if len(chunks) > MAX_CHUNKS_PER_FILE:
         _refuse("resource_limit", "file exceeds max_chunks_per_file")
     return chunks

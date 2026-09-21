@@ -218,6 +218,15 @@ class SyncRoutingTests(unittest.TestCase):
             },
         )
         payload = json.loads(man.read_text(encoding="utf-8"))
+        (self.root / "docs/plan.md").unlink()
+        payload["entries"] = [
+            entry for entry in payload["entries"] if entry["path"] != "docs/plan.md"
+        ]
+        payload["classifications"] = [
+            row
+            for row in payload["classifications"]
+            if row["path"] != "docs/plan.md"
+        ]
         payload["retire"] = [
             {
                 "path": "docs/plan.md",
@@ -243,6 +252,12 @@ class SyncRoutingTests(unittest.TestCase):
         self.assertFalse(
             store.get_unit("wrong-manifest-row")["metadata"].get("superseded", False)
         )
+        with mock.patch(
+            "repository_knowledge_sync.production_chroma_write_session", fake_session
+        ):
+            retried = reconcile_manifest(str(man), cfg, dispatch=lambda *_: None)
+        self.assertEqual(retried["retired"]["already_gone"], 1)
+        self.assertEqual(retried["retired"]["refused"], 0)
 
 
 class DebounceControlTokenTests(unittest.TestCase):

@@ -7511,7 +7511,7 @@
     },
     {
       "path": "adapters/repository_knowledge.py",
-      "sha256": "eb275e31b629a4238bc68ac2906cf4b6cd8d664cde58eddbab2e9c8a27d50e1d",
+      "sha256": "fb6fba46ed3344da11c7f4f05c4507921601b7115232adf1e09ae22a0ac947b0",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7953,7 +7953,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "743865db15e50cb85e8946b048da02a54de971bc3fe98d35f06d0ab62a63f045",
+      "sha256": "62d1093bc0674772d7c5cf3ed4262e5e63379dfdc4356e12a5fd808f08226d72",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7970,7 +7970,7 @@
     },
     {
       "path": "docs/plans/VERIFY-openclaw-watch-coverage.md",
-      "sha256": "99b7638aa3a4b0359d1b006920f511d0d506d174bc7fb90afd9fb5fc9c8fff60",
+      "sha256": "e9a092c63e324a9d241dd7b7995fffb07ca9d64bb2abe13f121a1551c53aecd2",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8157,7 +8157,7 @@
     },
     {
       "path": "repository_knowledge_sync.py",
-      "sha256": "ce2f81fdb426966d3dfa41b62509d96371960f9e6ec0a050a4a474cf16843924",
+      "sha256": "776ae78eb6eb20665f6efbeaaac78a2b110da00433fbedede24f498449c1e6bf",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8497,7 +8497,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_adapter.py",
-      "sha256": "fe2752c1109c35a730763c78eed9cfe6e37248e177b10cfea660ef99ab3ef39c",
+      "sha256": "ac2f195628d7ab4267218b01c4894a0b9ae7d511d8e3fe15a5a7ed89cc526314",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8531,7 +8531,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_sync.py",
-      "sha256": "b3c8ebe40e361b9efb708802cc42ef4c3ee0fc9f5470e0a6a546198acea3ac36",
+      "sha256": "8e523aaf17a5201d650918cd7fa8f5680a9f9c3858d030173a0a3931406aea46",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

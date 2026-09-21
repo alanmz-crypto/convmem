@@ -105,10 +105,10 @@ Exclude reasons: `unrelated_material` 146, `vcs_caches_build` 9,
 |---|---|---|
 | A1 | PASS (isolated) | Scope tests: unclassified tree fails; complete fixture classification; production generator reports unclassified=0 |
 | A2 | PASS | Dirty/staged/untracked/copy/symlink/hash-mismatch tests refuse before parse |
-| A3 | PASS | Documentary fixture E2E retrieved markdown, python, JSON, JavaScript, TOML, text, and ops needles |
+| A3 | PASS | Documentary fixture E2E retrieved markdown, python, JSON, JavaScript, TOML, text, and ops needles; aggregate line windows remain bounded while covering every source line without truncation |
 | A4 | PASS | Real watchdog E2E: folder canary absent, filesystem event/debounce fired, exact public `index --file` subprocess ran, and public `search` retrieved the nonce |
 | A5 | PASS | Real watcher E2E replaced the changed file and public `search` retrieved the new nonce; manifest-only/Git-only identity changes re-dispatch every included file |
-| A6 | PASS | Retirement requires the prior sync-state file+manifest identity and row metadata match; mismatched-manifest and non-`repository_knowledge_v1` rows remain untouched |
+| A6 | PASS | Retirement requires the prior sync-state file+manifest identity and row metadata match; completed retirements persist exact resolved identity and remain idempotent on later startup; mismatched-manifest and non-`repository_knowledge_v1` rows remain untouched |
 | A7 | PASS | Credential nonce unretrievable; detector maps excludes to blocked with no parser |
 | A8 | PASS | Units carry root-bound deterministic IDs, exact JSON source spans/byte locators, `source_type`, path, commit, file/manifest hashes, locator, adapter version, claimed envelope, `effective_integrity=untrusted` |
 | A9 | PASS | Isolated governance tree hash identical before and after indexing |
@@ -144,7 +144,7 @@ python -m pytest -q \
   tests/test_chroma_approve_index.py \
   tests/test_shadow_writer_coverage_scan.py \
   tests/test_writer_census.py
-# 163 passed, 2 warnings, 12 subtests passed in 27.91s
+# 164 passed, 2 warnings, 12 subtests passed in 27.59s
 
 python repository_knowledge_scope.py audit \
   --manifest config/repository-knowledge/openclaw-watch-scope-v1.json

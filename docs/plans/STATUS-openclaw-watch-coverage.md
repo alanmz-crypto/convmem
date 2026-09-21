@@ -50,7 +50,7 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 | Surface | State |
 |---|---|
 | Existing `convmem watch` | On `main`; recursive observer, debounce, normal `index --file` child, existing memory/timeout containment |
-| Repository-knowledge coverage (W0–W6 corrective) | Implemented on `fix/2026-09-21-openclaw-watch-coverage-refinement`: root-bound IDs, exact JSON source spans, identity-aware reconciliation/retirement, real watchdog/subprocess/public-query E2E |
+| Repository-knowledge coverage (W0–W6 corrective) | Implemented on `fix/2026-09-21-openclaw-watch-coverage-refinement`: root-bound IDs, exact JSON source spans, lossless bounded windows, identity-aware and retry-idempotent reconciliation/retirement, real watchdog/subprocess/public-query E2E |
 | Manifest inventory | Git-clean audit PASS: 70 include / 169 exclude / 1226 unrelated / 68 `required_when_present` / 0 unclassified across 1465 tracked paths |
 | Example config | Commented `watch.repository_knowledge_manifests` only; live config untouched |
 | OpenClaw T0–T5 design | Kiro-approved at `cd9d2698b7423f907b552bc9118a0af523018ca9`; still absent; listed as `required_when_present` |
@@ -141,6 +141,7 @@ milestone-level line below. A fresh model should orient from this file alone.
 | 2026-09-21 | Ryan / Codex | Ryan authorized bounded W0–W6 implementation at Kiro-reviewed `19dea97`; live activation remains separately gated. |
 | 2026-09-21 | Cursor | Allowlisted W0–W6 implemented on `feat/2026-09-21-openclaw-watch-coverage`; isolated A1–A11 PASS; A12 blocked on off-allowlist writer inventory; live watch not activated. |
 | 2026-09-21 | Codex | Corrective implementation closed six review defects plus identity-transition ingest; real watcher E2E and A1–A12 pass; review remains required and live watch remains off. |
+| 2026-09-21 | Codex | Targeted Bugbot follow-up found two residual defects; lossless aggregate windows and retry-idempotent retirement now have direct regressions. |
 
 **TL;DR [Arc OpenClaw Watch Coverage]:** Corrected W0–W6 passes A1–A12 and the
 focused regression suite on the corrective branch. Review, merge, required
