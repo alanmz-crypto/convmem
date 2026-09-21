@@ -108,10 +108,11 @@ expected value may be its own independent oracle.
 
 ## Stop and hand back
 
-When W0–W6 pass, update the STATUS snapshot and LATEST, commit and push the
-exact implementation tip, and return the complete implementation handoff shape
-from Execution §5. Stop for focused review. Do not open a PR or activate the
-watch path.
+When W0–W6 pass, update the STATUS snapshot, commit and push the exact
+implementation tip, and return the complete implementation handoff shape from
+Execution §5 in chat. `LATEST.md` is outside the implementation allowlist and
+remains Codex handoff work. Stop for focused review. Do not open a PR or
+activate the watch path.
 
 ## Related files
 
@@ -121,6 +122,89 @@ watch path.
 | Reviewed architecture | `docs/plans/ARCHITECTURE-openclaw-watch-coverage.md` |
 | Authorized execution | `docs/plans/EXECUTION-openclaw-watch-coverage.md` |
 | Required verification | `docs/plans/VERIFY-openclaw-watch-coverage.md` |
+
+## Copy-paste Cursor/Grok launch prompt
+
+```text
+You are Cursor, the sole implementation writer, using Grok 4.5 High for a
+bounded implementation of Arc OpenClaw Watch Coverage.
+
+Authority:
+REVIEWED_PLAN_SHA=19dea97368408ee0b179c05c942306f6d8f1a2e8
+CODE_BASELINE_SHA=5ab03a37559a93f1b51932c57a2a2a783da3354b
+AUTHORIZATION_COMMIT=33d7412f648b18049c4f38ea5a1a5064d9c9bfa4
+HANDOFF_BRANCH=docs/2026-09-21-openclaw-watch-coverage-execute-handoff
+AUTHORIZED_SCOPE=W0-W6_ONLY
+LIVE_CONFIG_AUTHORIZED=NO
+WATCH_RESTART_AUTHORIZED=NO
+LIVE_ACTIVATION_AUTHORIZED=NO
+PR_OR_MERGE_AUTHORIZED=NO
+
+Ryan has authorized W0–W6 implementation and isolated acceptance. Do not ask
+again for permission to perform work inside that exact scope.
+
+First run the repository session protocol: convmem doctor, then
+convmem brief --stdout-only, then convmem unresolved. Read completely, in this
+order:
+
+1. docs/plans/STATUS-openclaw-watch-coverage.md
+2. docs/plans/ARCHITECTURE-openclaw-watch-coverage.md
+3. docs/plans/EXECUTION-openclaw-watch-coverage.md
+4. docs/inter-model/CODEX-2026-09-21-openclaw-watch-coverage-execute.md
+
+State this orientation before editing:
+Goal: make safe committed ConvMem + OpenClaw repository knowledge retrievable
+through normal ConvMem watch/indexing without weakening governance.
+My role: implement and verify W0–W6 only.
+The system currently: Kiro-approved design and Ryan Execute grant exist;
+inventory, adapter, indexer, reconciliation, retirement, and acceptance code do
+not yet exist.
+Next action: create or resume the isolated implementation worktree, bind it to
+the authorization lineage, then begin W0.
+Arc: OpenClaw Watch Coverage.
+
+Fetch origin. Create
+feat/2026-09-21-openclaw-watch-coverage in an isolated worktree with
+convmem work start feat openclaw-watch-coverage --worktree, or resume that
+exact branch if it already exists. Before the first tracked edit, fast-forward
+the new branch to
+origin/docs/2026-09-21-openclaw-watch-coverage-execute-handoff and verify that
+AUTHORIZATION_COMMIT is an ancestor. Do not substitute current main, another
+plan revision, or another implementation branch.
+
+The architecture and execution bytes at REVIEWED_PLAN_SHA are normative.
+Implement W0, W1, W2, W3, W4, W5, then W6 in order. The exact Execution §1
+allowlist is the complete edit boundary. Do not edit LATEST.md, either watch
+architecture/execution plan, any OpenClaw T0–T5 file, convmem.py, governed
+proposal/admission/publication code, Gate W call sites, live config, or any
+unlisted path. STATUS and VERIFY may change only as permitted by the allowlist.
+
+Preserve these fixed decisions: closed exact-file inventory; exclusions win;
+Git-clean hash authority; tri-state outside|eligible|blocked classification
+before every legacy detector; deterministic non-LLM chunkers; normal
+index --file and production-writer paths; source-scoped replacement and exact
+retirement; inert instruction-shaped text; and byte-identical governance
+surfaces.
+
+Run the exact focused tests and audits in Execution W5. Complete acceptance
+A1–A12 and reproduce the isolated end-to-end result in two fresh roots. Tests
+must not access live corpus/config, a real OpenClaw profile, credentials,
+network, providers, models, private authority, or the live watcher. No mocked
+denial or implementation-derived self-oracle counts as independent evidence.
+
+Commit coherent slices and immediately push each commit with an explicit
+refspec. If any required edit, dependency, parser class, source identity,
+writer route, retirement rule, config field, or acceptance meaning differs
+from the frozen plan, stop and return the exact contradiction to Codex/Kiro.
+Do not redesign around it.
+
+At completion, update STATUS and VERIFY within the allowlist, run
+git diff --check, push the exact implementation tip, and return the complete
+Execution §5 handoff fields. Report IMPLEMENTATION PASS or the exact blocker.
+Keep WATCH_COVERAGE BLOCKED and LIVE_WATCH NOT_ACTIVATED. Do not open a PR,
+merge, edit live config, restart the watcher, activate coverage, or touch the
+separate OpenClaw T0–T5 arc.
+```
 
 ## Picking up checklist
 
