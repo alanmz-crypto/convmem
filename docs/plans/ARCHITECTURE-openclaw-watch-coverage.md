@@ -1,6 +1,6 @@
 # ARCHITECTURE — OpenClaw maintenance watch coverage
 
-**Arc: OpenClaw Watch Coverage** · **State: KIRO PASS at `19dea97`; EXECUTE NOT AUTHORIZED** ·
+**Arc: OpenClaw Watch Coverage** · **State: KIRO PASS at `19dea97`; W0–W6 EXECUTE AUTHORIZED** ·
 **Date: 2026-09-21** · **Baseline: `5ab03a37559a93f1b51932c57a2a2a783da3354b`**
 
 This design covers only ConvMem watching and indexing safe repository knowledge
@@ -9,9 +9,9 @@ change the OpenClaw reader, strict runtime, connector, authority model, live
 OpenClaw configuration, or the Kiro-approved T0–T5 plan at
 `cd9d2698b7423f907b552bc9118a0af523018ca9`.
 
-This document is not an Execute grant. Kiro must review the exact planning tip;
-Ryan must separately authorize implementation and any live configuration or
-watch-service restart.
+Ryan authorized bounded W0–W6 implementation on 2026-09-21 against Kiro's
+exact reviewed plan `19dea97368408ee0b179c05c942306f6d8f1a2e8`. Live
+configuration, watch-service restart, and activation remain separately gated.
 
 ## 1. Product outcome
 

@@ -1,7 +1,7 @@
 # EXECUTION — OpenClaw maintenance watch coverage
 
-**Arc: OpenClaw Watch Coverage** · **State: KIRO PASS at `19dea97`; EXECUTE
-NOT AUTHORIZED** · **Date: 2026-09-21**
+**Arc: OpenClaw Watch Coverage** · **State: KIRO PASS at `19dea97`; W0–W6
+EXECUTE AUTHORIZED** · **Date: 2026-09-21**
 
 Companion:
 [ARCHITECTURE-openclaw-watch-coverage.md](ARCHITECTURE-openclaw-watch-coverage.md).
