@@ -655,11 +655,14 @@ def load_and_validate_manifest(manifest_path: Path, *, schema: Mapping[str, Any]
     )
 
 
-_PRIVATE_KEY_MARKERS = (
-    b"BEGIN OPENSSH PRIVATE KEY",
-    b"BEGIN RSA PRIVATE KEY",
-    b"BEGIN EC PRIVATE KEY",
-    b"BEGIN PRIVATE KEY",
+_PRIVATE_KEY_MARKERS = tuple(
+    b"BEGIN " + suffix
+    for suffix in (
+        b"OPENSSH PRIVATE KEY",
+        b"RSA PRIVATE KEY",
+        b"EC PRIVATE KEY",
+        b"PRIVATE KEY",
+    )
 )
 _CREDENTIAL_KEY_RE = re.compile(
     r"(api_key|secret_key|access_token|private_key|password)\s*=\s*['\"]?(?!your_|changeme|placeholder|xxxx|redacted)[^\s'\"]+",

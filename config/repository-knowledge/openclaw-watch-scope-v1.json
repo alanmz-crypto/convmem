@@ -8135,7 +8135,7 @@
     },
     {
       "path": "repository_knowledge_scope.py",
-      "sha256": "18b815d1ebba21b360f15b39ab5ca966a4983bd88d19e9fcb67a35d588a2ef38",
+      "sha256": "224633cf32fb2308f1873686abec7f67c4415c04e9af1c50888792d6872681d7",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
