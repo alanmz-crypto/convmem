@@ -187,6 +187,17 @@ software hypothesis; the matrix closed it.
 6. **Export/projection drift.** 3,548 export rows against 436 live units for a single source;
    ~3,100 of `doctor index_drift`'s ~69,040 historical-only ids come from that one file. Export
    compaction dedupes by id and these ids are all distinct, so it cannot reclaim them.
+7. **`phase1-crash-watch` hook is a false positive (Cursor — found 2026-09-21, `obs_4aefca3bbb49`).**
+   The hook re-emits the full historical coredump census every turn as "NEW crashes since 10:04
+   baseline", but every entry is from a *prior* boot (≤2026-09-20 10:24:58); the current boot has 0.
+   It keys its baseline to a stale fixed timestamp instead of the current boot. Fix: key the baseline
+   to boot start (`uptime -s` / `journalctl -b 0`). Cosmetic noise, but it would mask a genuinely new
+   crash by burying it — worth fixing before relying on the hook as a tripwire.
+8. **OpenClaw native output is unwatched (Cursor — found 2026-09-21, `obs_3d9dc004a0d3`).** The
+   OpenClaw 2026.3.2 install (via Grok/Cursor) is auto-recorded because Cursor transcripts are
+   watched, but OpenClaw's *own* runtime/session output has no path in `[sources].paths`. To capture
+   post-install OpenClaw activity long-term, add its data dir to the watch config once it exists.
+   Not needed to record the install itself.
 
 ---
 

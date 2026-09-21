@@ -138,6 +138,11 @@ fresh model read only this file and orient itself?
 
 ## Update Log
 
+- 2026-09-21 — Kiro (design/review lane): housekeeping while OpenClaw install proceeds via
+  Grok/Cursor. Confirmed the install is auto-recorded (Cursor is a watched source; transcripts
+  indexing live) — `obs_3d9dc004a0d3`. Diagnosed the `phase1-crash-watch` hook as a false positive
+  (stale-baseline; 0 crashes on the current 19 h boot) — `obs_4aefca3bbb49`. Added both to the §7
+  hardening backlog (items 7–8, Cursor lane). Platform remains accepted-stable, 0 crashes this boot.
 - 2026-09-21 — Kiro (design/review lane): **ARC ACCEPTED on Ryan authority.** Ryan waived the
   literal ≥24 h bar and accepted the ~18 h 40 m writer-loaded window (0 crashes this boot, 0 since
   the 05:11 unfreeze, §4.2 structural OVERALL PASS on both live segments under load). Arc downgraded
