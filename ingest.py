@@ -751,6 +751,42 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     return True, n_units, unit_ids
 
 
+def _index_repository_knowledge_file(  # pylint: disable=too-many-arguments,too-many-locals
+    *,
+    cfg: dict,
+    idx: dict,
+    path: str,
+    path_key: str,
+    messages: list,
+    models: dict,
+    units_export: Path | None,
+    verbose: bool,
+) -> tuple[bool, int, set[str]]:
+    """Build one repository-knowledge file without pruning old rows."""
+    from repository_knowledge_index import index_repository_knowledge_messages
+
+    chroma_dir = idx["chroma_dir"]
+    unit_ids: set[str] = set()
+    try:
+        n_units = index_repository_knowledge_messages(
+            path,
+            messages,
+            path_key=path_key,
+            chroma_dir=chroma_dir,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            cfg=cfg,
+            verbose=verbose,
+            units_export=units_export if units_export else None,
+            unit_ids_out=unit_ids,
+        )
+    except Exception as exc:
+        if verbose:
+            print(f"  [skip] repository-knowledge index failed {path}: {exc}")
+        return False, 0, set()
+    return True, n_units, unit_ids
+
+
 def _bump_counter(counters: object | None, name: str) -> None:
     if counters is None:
         return
@@ -1352,6 +1388,50 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             return "skipped", 0, n_units, 0, 0
         return "processed", 0, n_units, 0, 0
 
+    if fmt == "repository_knowledge_v1":
+        completed, n_units, unit_ids = _index_repository_knowledge_file(
+            cfg=cfg,
+            idx=idx,
+            path=path,
+            path_key=path_key,
+            messages=messages,
+            models=models,
+            units_export=units_export,
+            verbose=verbose,
+        )
+        if not completed:
+            if verbose and n_units == 0:
+                print(
+                    "  [skip] repository-knowledge index failed or excluded "
+                    f"{Path(path).name}"
+                )
+            return "skipped", 0, 0, 0, 0
+        if snapshot is not None and not _prune_completed_reindex(
+            cfg=cfg,
+            idx=idx,
+            path=path,
+            path_key=path_key,
+            file_hash=file_hash,
+            snapshot=snapshot,
+            keep_unit_ids=unit_ids,
+            keep_summary_ids=set(),
+            supersede_on_reindex=supersede_on_reindex,
+            verbose=verbose,
+        ):
+            return "skipped", 0, n_units, 0, 0
+        committed = commit_processed_index_entry(
+            idx["processed_log"],
+            file_hash=file_hash,
+            path_key=path_key,
+            chunks=0,
+            units=n_units,
+        )
+        if not committed:
+            if verbose:
+                print(f"  [skip] excluded during index {Path(path).name}")
+            return "skipped", 0, n_units, 0, 0
+        return "processed", 0, n_units, 0, 0
+
     result = _process_file_chunks(
         cfg=cfg,
         idx=idx,
@@ -1451,6 +1531,9 @@ def _index_impl(
 ) -> dict:
     """Run the summary ingest. Returns a stats dict."""
     cfg = load_config()
+    from repository_knowledge_scope import apply_config
+
+    apply_config(cfg)
     idx = cfg["index"]
     models = cfg["models"]
     distill_cfg = cfg.get("distill", {})
@@ -1474,6 +1557,7 @@ def _index_impl(
         "semantic_candidates_queued": 0,
     }
     seen_files = 0
+    needs_brief_refresh = False
 
     for rec in targets:
         path = rec["path"]
@@ -1519,11 +1603,15 @@ def _index_impl(
             stats["units_indexed"] += n_units
             stats["exact_duplicates_suppressed"] += n_exact
             stats["semantic_candidates_queued"] += n_semantic
+            # Documentary repository-knowledge children must not rewrite the
+            # live session brief (live path, live chroma census, watch lock).
+            if detect_format(path) != "repository_knowledge_v1":
+                needs_brief_refresh = True
         elif status == "skipped":
             stats["files_skipped"] += 1
         # status == "ignored": unreadable / parse-failed — prior behavior: no files_skipped
 
-    if stats["files_processed"] > 0:
+    if needs_brief_refresh:
         try:
             from brief import refresh_brief_after_change
 

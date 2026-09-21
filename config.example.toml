@@ -69,6 +69,12 @@ debounce_seconds = 90
 # and a tuned timeout awaits the watch-OOM design. Uncomment only to set an explicit
 # ceiling; the shipped default is an interim backstop, not a recommendation.
 # subprocess_timeout_seconds = 900
+# Closed repository-knowledge manifests. Live activation of this list is a
+# separate Ryan grant; leave it unset or empty until that grant names the
+# exact absolute path.
+# repository_knowledge_manifests = [
+#   "/ABSOLUTE/REPO/config/repository-knowledge/openclaw-watch-scope-v1.json",
+# ]
 # Optional: override [sources].paths for watch only (defaults to sources.paths)
 # Optional: append repo coordination docs without replacing transcript roots
 # extra_paths = [

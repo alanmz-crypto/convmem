@@ -387,7 +387,20 @@ def run_watch(
     else:
         watch_paths = config_paths
 
-    roots = watch_roots(watch_paths)
+    from repository_knowledge_scope import apply_config, manifests_from_cfg
+    from repository_knowledge_sync import (
+        ManifestPoller,
+        is_reconcile_token,
+        reconcile_all,
+        reconcile_manifest,
+        reconcile_token,
+        repository_roots_from_cfg,
+        token_manifest_path,
+    )
+
+    apply_config(cfg)
+    rk_roots = repository_roots_from_cfg(cfg)
+    roots = sorted(set(watch_roots(watch_paths)) | set(rk_roots))
     if not roots:
         print("[watch] no existing watch roots — check [sources].paths", file=sys.stderr)
         raise SystemExit(1)
@@ -402,7 +415,19 @@ def run_watch(
     except (OSError, RuntimeError) as exc:
         print(f"[watch] source reconciliation sweep failed: {exc}", file=sys.stderr)
 
+    try:
+        reconcile_all(cfg)
+    except Exception as exc:
+        print(f"[watch] repository-knowledge startup sync failed: {exc}", file=sys.stderr)
+
     scheduler = DebounceScheduler(debounce_seconds=debounce)
+    poller = ManifestPoller()
+    manifest_abs = set()
+    for raw in manifests_from_cfg(cfg):
+        try:
+            manifest_abs.add(str(Path(raw).expanduser().resolve()))
+        except OSError:
+            manifest_abs.add(str(Path(raw).expanduser()))
 
     # Batching: the inotify handler thread only records raw paths (no detection).
     # The main loop drains the batch and runs expensive is_watchable() + format
@@ -435,6 +460,9 @@ def run_watch(
             if path_str in seen:
                 continue
             seen.add(path_str)
+            if path_str in manifest_abs:
+                scheduler.note(reconcile_token(path_str))
+                continue
             if is_watchable(p):
                 scheduler.note(path_str)
 
@@ -456,9 +484,16 @@ def run_watch(
     try:
         while True:
             _drain_batch()
+            if poller.due():
+                for manifest_path in manifest_abs:
+                    if poller.changed(manifest_path):
+                        scheduler.note(reconcile_token(manifest_path))
             for path in scheduler.ready():
                 try:
-                    flush_path(path, verbose=verbose, use_subprocess=True)
+                    if is_reconcile_token(path):
+                        reconcile_manifest(token_manifest_path(path), cfg)
+                    else:
+                        flush_path(path, verbose=verbose, use_subprocess=True)
                 except Exception as e:
                     print(f"[watch] error processing {path}: {e}", file=sys.stderr)
                 scheduler.forget(path)
