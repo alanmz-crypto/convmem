@@ -1068,7 +1068,8 @@ inferred from a limited empty query over a selected subtree.
 
 The state map is computed over the **complete immutable authorized bound authority**, before
 selectors, ranking, top-k, truncation or related depth. Every tool copies it. The immutable source
-record never accepts current-state fields. Cold validation independently recomputes the state map;
+record never accepts current-state fields. Operator-side cold qualification independently recomputes
+the state map;
 any mismatch fails qualification. Appending cross-audience witnesses is forbidden, so complete-bound
 reduction does not mean global reduction.
 
@@ -1290,7 +1291,8 @@ search|unresolved|related --scope ABS --registry ABS --strict-config ABS --reque
 --expected-publication SHA256`. The canonical request object uses exactly the same method argument
 keys and bounds as MCP. It acquires the already-created lineage lock shared through a read-only
 descriptor, qualifies the exact serving publication and persisted anchor, and buffers one v3
-response. It enforces a 10-second BOOTTIME request bound and rechecks time/publication before committing stdout; no creates, credentials, model, MCP
+response. It enforces a 10-second BOOTTIME request bound and rechecks time/publication before
+committing stdout; no creates, credentials, model, MCP
 or OpenClaw are needed. It does not create an activation or write a lease/clock anchor.
 Missing/expired anchor means no read. Preexisting lease/lock handles for the runtime are opened by
 the trusted controller, not created by the read-only child.
@@ -1353,13 +1355,42 @@ durable intent/admission; it then requalifies the same head with unchanged expir
 may be discarded only as a test teardown, never as a recovery that preserves its enrollment
 identity.
 
-The cold validator returns a module-sealed `QualifiedStrictGeneration`. Reader inputs are that
+After private cold qualification, the public-opening boundary below returns a module-sealed
+`QualifiedStrictGeneration`. Reader inputs are that
 capability, never raw caller paths. It opens `O_RDONLY|O_NOFOLLOW`, checks ownership/type/mode, pins
 validated inodes and rechecks manifest/state. It performs no
 create/journal/cache/temp/model/network/Chroma operation. Host operator is trusted against arbitrary
 offline rollback. Whole-authority backup restoration cannot prove that a later lost history never
 existed; activation requires independent latest-history evidence under the existing owner-controlled
 recovery process. A local self-hash is not an anti-rollback oracle.
+
+##### Private qualification versus runtime read opening
+
+Full independent cold qualification runs in the operator/publisher process and again in a fresh
+operator-controlled process immediately before each activation. It reads private authority,
+provenance, grounding and citation files, recomputes state/rows/graph, and returns the exact qualified
+manifest/row/graph digests to the controller. The slot transition and lineage locks keep that result
+bound to the publication being activated. Qualification failure prevents start.
+
+The runtime mount includes only the public authority manifest, public projection files, exact serving
+publication, unchanged scope/registry/config bytes and precreated read-lock files. Private issuer-store paths
+have no mount in that namespace; config bytes are never rewritten after hashing. It never includes
+private citation maps, source inputs, receipts'
+issuer directories, raw grounding blobs or governance files. Registry strings naming private audit
+paths are not resolvable there and are never exposed in tool data. Public evidence/config files are operator/root-owned, runtime-readable and non-writable (files0444, directories0555), while private source/witness/governance trees stay outside the mount. The strict child need not have the operator's UID or private read permissions. The controller and direct operator file CLI perform private
+qualification outside the runtime namespace; the model/plugin cannot invoke that path.
+
+`strict_projection.py` owns two explicit boundaries: `qualify_authority_generation` performs the full
+private reconstruction; `open_published_generation` validates the protected public publication,
+manifest linkage, row/graph hashes, closed row schemas, authorization and freshness before constructing
+the module-sealed read capability. The latter does not pretend to reverify absent source bytes. It
+accepts only the configured operator-owned immutable files matching the controller's pinned digests,
+never an MCP-supplied path, mapping or claimed qualification flag. The existing protected projection
+manifest is the publisher's exact commitment to qualified rows; no new approval service or independent
+source of truth is introduced. Reader startup validates projection bytes; publisher/pre-activation
+qualification validates their derivation. Direct file CLI use performs both boundaries under the same
+shared lineage lock. Tests must distinguish these two proof obligations and deny swapped public files,
+wrong owner/mode, omitted private qualification or changed publication before launch.
 
 #### 6.5.5 Deterministic strict search and read-only projection
 
@@ -1496,7 +1527,8 @@ contract](https://raw.githubusercontent.com/systemd/systemd/main/man/systemd.kil
 lifetime contract](https://raw.githubusercontent.com/systemd/systemd/main/man/systemd.service.xml),
 [kernel cgroup v2 contract](https://docs.kernel.org/admin-guide/cgroup-v2.html)
 
-Select a read-only root image/distribution with explicit read-only authority/config/runtime mounts
+Select a read-only root image/distribution with explicit read-only
+public-manifest/projection/config/runtime mounts
 and private activation-local writable mounts. No host home, project checkout, user service bus,
 container socket, cgroup control handle, cloud credential directory or arbitrary host filesystem is
 mounted. Runtime credentials cannot control the manager, publisher or operator socket. The reviewed
@@ -1622,7 +1654,7 @@ network_policy`. All substitutions are typed activation values, except the singl
 TURN_TEXT sentinel; no shell expansion is allowed. `network_policy` is `activation_loopback` or
 `none`, with strict_server fixed to `none`. Mount entries are closed `source_role, destination,
 mode, max_bytes` objects; max_bytes is null for immutable mounts and a positive reviewed integer for
-writable mounts. Only declared runtime/authority/config/model/control/state source roles are
+writable mounts. Only declared runtime/public_evidence/config/model/control/state source roles are
 allowed, never a supplied arbitrary host path. Endpoints contain exactly `gateway_port, model_port,
 model_api, model_id`; ports are distinct reviewed high ports, addresses are the literal namespace
 loopback, model_api is the bundled `openai-completions` adapter, and model_id is one packaged
@@ -1709,7 +1741,8 @@ receives only its packaged command's explicit local state/cache/thread settings,
 credentials. Strict-server map is exactly §4 (including `TMPDIR`); the connector clears all parent
 variables. Every path resolves inside the sealed namespace. Directory ceilings total at most 1 GiB
 writable state per activation; hitting any ceiling retires. Mount modes are `ro` or `rw`;
-authority/config/runtime/model mounts are ro, state/temp rw; no other source role. Gateway and model
+public-authority-manifest/projection/config/runtime/model mounts are ro, state/temp rw; no other
+source role. Gateway and model
 ports are distinct fixed 49152–65535 integers on namespace loopback.
 
 Gateway/agent/model-worker stdout and stderr, not just the final agent frame, are supervised bounded
@@ -1899,7 +1932,7 @@ The module owns:
 - the omitted-selector sentinel;
 - selector resolution;
 - project membership proof;
-- bound-projection manifest validation;
+- bound-projection manifest validation (public opening; private derivation is qualified separately);
 - row authorization;
 - related-chain authorization;
 - public non-revealing denial payloads;
@@ -1913,8 +1946,8 @@ reducer, and public state fields. A third module,
 authority-snapshot-to-projection path and owns exact manifests, immutable file
 layout, compare-and-swap publication, and rollback. A fourth module,
 `strict_projection.py`, owns cold validation, deterministic lexical search,
-and the sealed read-only reader; it exports no publication or generic write
-API. A fifth module, `openclaw_activation_supervisor.py`, owns
+and the sealed read-only reader through the two §6.5.4 boundaries; it exports no publication or
+generic write API. A fifth module, `openclaw_activation_supervisor.py`, owns
 turn state, deadlines and buffered release inside the unit. A sixth module,
 `openclaw_activation_controller.py`, owns slot enrollment, manager control, authenticated local
 control, retirement attestation and lock ordering outside the unit. `strict_grounding.py` composes
@@ -2206,7 +2239,9 @@ resolved, the public response is the same generic denial:
 }
 ```
 
-The example correlation ID is illustrative; each real response uses §11’s fresh random ID. Denial equivalence compares the fixed schema/code/message after removing this independent ID, never its random bytes.
+The example correlation ID is illustrative; each real response uses §11’s fresh random ID. Denial
+equivalence compares the fixed schema/code/message after removing this independent ID, never its
+random bytes.
 
 Unknown IDs, malformed IDs, and out-of-scope IDs are deliberately
 indistinguishable. The response contains no IDs, titles, counts, chain shape,
@@ -2655,7 +2690,7 @@ The implementation is FAIL if any test leaks data, widens authority, exposes an
 unexpected surface, or reports false completion.
 
 Phase ownership is normative. Gate B owns cases 1–27, 40–44, 49–52 and the strict-server portion of case 47.
-Gate C owns fake-process portions of 33, 35, 45, 46, 48 and 53–54; Gate W owns 56. Every case
+Gate B also owns case55's private/public qualification boundary; Gate C owns its fake pre-activation repetition. Gate C owns fake-process portions of 33, 35, 45, 46, 48 and 53–54; Gate W owns 56. Every case
 may have multiple explicitly named layers, not an ambiguous single gate. Those fake tests do not
 satisfy runtime acceptance.
 Gate D repeats cases 1–4 against the installed child and owns cases 28–36,
@@ -2728,7 +2763,8 @@ cases, and every later case remains a blocking future gate.
 17. Put syntax-valid qualified handles containing an allowed, disallowed, and
     unknown public binding reference in otherwise identical
     whitespace-delimited search text. Prove the grammar/length stage gives all
-    three the identical fixed `identifier_query_not_supported` code/message (with a fresh independent correlation ID)
+    three the identical fixed `identifier_query_not_supported` code/message (with a fresh
+    independent correlation ID)
     before binding lookup, tokenization, or scoring and that neither ledger extraction nor
     priority injection runs.
     Prove malformed/punctuation-wrapped strings receive no lookup treatment,
@@ -2940,7 +2976,11 @@ cases, and every later case remains a blocking future gate.
     generation, rebuild without new capture, and reboot with/without a valid clock review. None
     renews source age. Retained BOOTTIME deadline never increases; release linearization uses the
     final valid sample without intervening awaited work.
-55. On the sealed real runtime, poison caller cwd/.env/HOME/import paths/agent models, mutate a
+55. Prove full private cold qualification precedes activation and exact committed public files are
+    the only evidence files mounted into the runtime. Deny
+    source/citation/grounding/issuer/governance file access by runtime UID; corrupt public
+    manifests/rows or omit the private qualification and prove no start. On the sealed real runtime,
+    poison caller cwd/.env/HOME/import paths/agent models, mutate a
     dependency without changing the launcher, inherit an unwanted FD, attempt all undeclared
     writes/network paths and invoke gateway/local model work while killing the supervisor. Exact
     effective tools/prompt/skills/hooks/model route must match policy. A dummy key or relaxed
@@ -3014,9 +3054,10 @@ grant.
 
 ### 14.1 Evidence gathered in this editorial pass
 
-Read-only inspection on 2026-09-21, against the exact code baseline; no live
-corpus/config/credential reads, gateway/agent/model launch, service mutation, implementation code or
-production writer operation. Stage 1's sealed bundle and 31 baseline tests remain baseline evidence
+Evidence probes on 2026-09-21 inspected source and platform metadata against the exact code baseline.
+They did not inspect live corpus content, live OpenClaw state or credential material, launch a
+gateway/agent/model, mutate services, or run a production writer. Required session orientation/tracking
+is separate from these probes. Stage 1's sealed bundle and 31 baseline tests remain baseline evidence
 only. Both supplied report hashes were recomputed and matched the values at the top of this
 document.
 
@@ -3043,7 +3084,11 @@ shell name `systemd` was absent from PATH; absolute installed binaries succeeded
 available mechanisms, not system-service privilege, valid unit/mount policy, actual filter
 enforcement or a successful retirement. No new unit was installed or started.
 
-The editorial consistency check also passed: 36 distinct named schema files have matching contract literals, acceptance cases are exactly 1–56, Markdown fences balance, retired pointer/envelope/state-contract text is absent, and baseline-to-worktree changes are confined to these two plan files. `git diff --check` passed. These are document checks, not validation of executable schemas or integration behavior.
+The editorial consistency check also passed: 36 distinct named schema files have matching contract
+literals, acceptance cases are exactly 1–56, Markdown fences balance, retired
+pointer/envelope/state-contract text is absent, and baseline-to-worktree changes are confined to
+these two plan files. `git diff --check` passed. These are document checks, not validation of
+executable schemas or integration behavior.
 
 ### 14.2 Installed runtime compatibility result
 
@@ -3353,7 +3398,9 @@ Precise editorial changes from planning commit `9b106b9`:
   authority. Add exact caller/legacy refusal mapping and preserve existing backup/restore/writer
   guards. Gate B/C protection of legacy files remains explicit; Gate W is required before production
   and is not covered by the fixture result.
-- **Editorial closure refinements:** define empty enrolled genesis, non-circular production
+- **Editorial closure refinements:** keep private authority qualification in the
+  publisher/controller and mount only committed public projection files into the runtime; define
+  empty enrolled genesis, non-circular production
   source-prefix hashing and the admission commit/recovery boundary; make capture receipts bind one
   whole multi-input invocation; specify direct file reads and preexisting read-only lock handles;
   separate root controller/supervisor from runtime UID and require pre-exec socket denial. These

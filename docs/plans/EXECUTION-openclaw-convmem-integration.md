@@ -161,8 +161,9 @@ Owners:
 - `strict_projection_publisher.py`: fixture enrollment, authority/serving files, fences, exact
   publication CAS, fresh-process qualification orchestration, serving-only
   rebuild/rollback/recovery. It never imports a legacy writer or approves a record.
-- `strict_projection.py`: cold qualification, immutable state/search/graph reader, direct read CLI;
-  no publisher imports, mutable store, model or network.
+- `strict_projection.py`: private cold qualification outside the runtime plus separate public-only
+  immutable opening, state/search/graph reads and direct read CLI; no publisher imports, mutable store,
+  model or network.
 - `openclaw_strict_server.py`: closed startup, three method registrations, argument decoding,
   delegation and serialization. `mcp_server.py` changes only to reject unknown profiles and refuse
   strict mode with the dedicated-entrypoint instruction.
@@ -256,6 +257,12 @@ unavailable/oversized support. Emit v3 qualification/basis/state and completenes
 exact qualified file projection read-only; prove no mtime/file/cache change and no general
 config/model/Chroma imports. Register only three MCP tools and empty resource/template surfaces.
 
+Full private authority/state/provenance reconstruction runs in a fresh operator-controlled process
+before publication and before activation. The unprivileged runtime opens only the exact committed
+public projection/manifests under the controller's pinned publication; it cannot read private grounding,
+citation, source or issuer/governance files. Test both boundaries and their binding explicitly; hashing
+public rows alone is not proof of their derivation, and a forged qualification flag is never accepted.
+
 ### T4 — connector
 
 Validate connector-launch v2, runtime/policy digests and exact argv/env/cwd. Fake setpriv/child
@@ -282,8 +289,8 @@ later qualified temporary-config probe needs its exact grant; this file grants n
 
 Architecture §13 cases1–56 are normative:
 
-- **B:** 1–27,40–44,49–52 and strict-server portion47.
-- **C fake:** connector/lifecycle portions33,35,45,46,48,53,54.
+- **B:** 1–27,40–44,49–52, strict-server portion47 and private/public qualification portion55.
+- **C fake:** connector/lifecycle portions33,35,45,46,48,53,54 and pre-activation qualification portion55.
 - **D real:** repeat1–4;28–36,38–39,45–47,53–55 on the actual sealed runtime. Case33/35 repetition
   proves the real launch boundary; fake success does not close it.
 - **W:**56 plus authority/publication cases41–44/49/51–52 exercised through real governed CLI code
