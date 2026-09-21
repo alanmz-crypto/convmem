@@ -143,6 +143,107 @@ class SyncRoutingTests(unittest.TestCase):
         self.assertTrue(store.get_unit(other_id).get("id") or True)
         del later
 
+    def test_manifest_or_git_identity_change_reindexes_all_entries(self) -> None:
+        man = _write_manifest(
+            self.root,
+            {
+                "docs/a.md": ("# A\n", "markdown"),
+                "docs/b.md": ("# B\n", "markdown"),
+            },
+        )
+        _commit_all(self.root)
+        cfg = {
+            "index": {
+                "chroma_dir": str(Path(self._td.name) / "chroma"),
+                "processed_log": str(Path(self._td.name) / "processed.json"),
+                "units_export": str(Path(self._td.name) / "units.jsonl"),
+            },
+            "watch": {"repository_knowledge_manifests": [str(man)]},
+        }
+        seen: list[str] = []
+        reconcile_manifest(str(man), cfg, dispatch=lambda path, *_: seen.append(path))
+        self.assertEqual(len(seen), 2)
+
+        payload = json.loads(man.read_text(encoding="utf-8"))
+        manifest_row = next(row for row in payload["classifications"] if row["path"] == "scope.json")
+        manifest_row["reason"] = "control_state updated"
+        man.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        _commit_all(self.root, "manifest-only change")
+
+        seen.clear()
+        reconcile_manifest(str(man), cfg, dispatch=lambda path, *_: seen.append(path))
+        self.assertEqual(
+            {Path(item).relative_to(self.root).as_posix() for item in seen},
+            {"docs/a.md", "docs/b.md"},
+        )
+
+    def test_retirement_requires_prior_state_and_row_manifest_identity(self) -> None:
+        man = _write_manifest(self.root, {"docs/plan.md": ("# Plan\n", "markdown")})
+        _commit_all(self.root)
+        cfg = {
+            "index": {
+                "chroma_dir": str(Path(self._td.name) / "chroma"),
+                "processed_log": str(Path(self._td.name) / "processed.json"),
+                "units_export": str(Path(self._td.name) / "units.jsonl"),
+            },
+            "watch": {"repository_knowledge_manifests": [str(man)]},
+        }
+        reconcile_manifest(str(man), cfg, dispatch=lambda *_: None)
+        prior_manifest = rks.sha256_file(man)
+        prior_file = rks.sha256_file(self.root / "docs/plan.md")
+        store = ChromaStore(cfg["index"]["chroma_dir"])
+        source = str((self.root / "docs/plan.md").resolve())
+        store.add_unit(
+            "right-row",
+            "right",
+            [0.0, 0.1, 0.2],
+            {
+                "id": "right-row",
+                "source_path": source,
+                "source_type": "repository_knowledge_v1",
+                "file_sha256": prior_file,
+                "manifest_sha256": prior_manifest,
+            },
+        )
+        store.add_unit(
+            "wrong-manifest-row",
+            "wrong",
+            [0.0, 0.1, 0.2],
+            {
+                "id": "wrong-manifest-row",
+                "source_path": source,
+                "source_type": "repository_knowledge_v1",
+                "file_sha256": prior_file,
+                "manifest_sha256": "f" * 64,
+            },
+        )
+        payload = json.loads(man.read_text(encoding="utf-8"))
+        payload["retire"] = [
+            {
+                "path": "docs/plan.md",
+                "prior_file_sha256": prior_file,
+                "prior_manifest_sha256": prior_manifest,
+                "reason": "test retire",
+            }
+        ]
+        man.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        _commit_all(self.root, "retire exact prior identity")
+
+        @contextmanager
+        def fake_session(*, entrypoint=None):
+            del entrypoint
+            yield _FakeProductionWrite(store, cfg)
+
+        with mock.patch(
+            "repository_knowledge_sync.production_chroma_write_session", fake_session
+        ):
+            result = reconcile_manifest(str(man), cfg, dispatch=lambda *_: None)
+        self.assertEqual(result["retired"]["superseded"], 1)
+        self.assertTrue(store.get_unit("right-row")["metadata"].get("superseded"))
+        self.assertFalse(
+            store.get_unit("wrong-manifest-row")["metadata"].get("superseded", False)
+        )
+
 
 class DebounceControlTokenTests(unittest.TestCase):
     def test_scheduler_notes_token(self) -> None:

@@ -35,12 +35,16 @@ class RepositoryKnowledgeIndexError(RuntimeError):
 
 def make_repository_unit_id(
     *,
+    source_identity: str,
     relpath: str,
     locator: str,
     chunk_sha256: str,
     adapter_version: str,
 ) -> str:
-    key = f"{relpath}\0{locator}\0{chunk_sha256}\0{adapter_version}"
+    key = (
+        f"{source_identity}\0{relpath}\0{locator}\0"
+        f"{chunk_sha256}\0{adapter_version}"
+    )
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
@@ -114,8 +118,14 @@ def index_repository_knowledge_messages(  # pylint: disable=too-many-locals,too-
         locator = str(msg.get("locator") or "")
         label = str(msg.get("chunk_label") or src.name)
         relpath = str(msg.get("repo_relpath") or decision.relpath or src.name)
+        identity = str(msg.get("source_identity") or "")
+        if not identity:
+            raise RepositoryKnowledgeIndexError(
+                f"missing source identity for {relpath}#{locator}"
+            )
         chunk_sha = sha256_hex(content)
         unit_id = make_repository_unit_id(
+            source_identity=identity,
             relpath=relpath,
             locator=locator,
             chunk_sha256=chunk_sha,
@@ -154,11 +164,13 @@ def index_repository_knowledge_messages(  # pylint: disable=too-many-locals,too-
             "git_commit": msg.get("git_commit") or decision.git_commit,
             "adapter_version": ADAPTER_CONTRACT_VERSION,
             "content_class": msg.get("content_class") or decision.entry.content_class,
+            "byte_start": msg.get("byte_start"),
+            "byte_end": msg.get("byte_end"),
         }
         envelope = build_ingest_envelope(
             records=[msg],
             consumed_views=[content],
-            source_identity=str(msg.get("source_identity") or path_key),
+            source_identity=identity,
             locator_prefix=locator,
             source_type=SOURCE_TYPE,
             transformer_class="packaging",

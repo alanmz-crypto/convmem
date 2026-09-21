@@ -939,15 +939,11 @@ def validate_prior_identity(
     relpath: str,
     prior_file_sha256: str,
     prior_manifest_sha256: str,
+    expected_file_sha256: str | None,
+    expected_manifest_sha256: str | None,
 ) -> None:
     if not _PATH_RE.match(relpath):
         raise ScopeError("path_escape", f"illegal retire path {relpath}")
-    if prior_manifest_sha256 != manifest.identity and not any(
-        rec.prior_manifest_sha256 == prior_manifest_sha256 and rec.path == relpath
-        for rec in manifest.retire
-    ):
-        # Caller supplies the prior identity; the retire record must match it.
-        pass
     rec = next((item for item in manifest.retire if item.path == relpath), None)
     if rec is None:
         raise ScopeError("retire_missing", f"no retire record for {relpath}")
@@ -955,6 +951,14 @@ def validate_prior_identity(
         raise ScopeError("identity_mismatch", "prior file hash does not match retire record")
     if rec.prior_manifest_sha256 != prior_manifest_sha256:
         raise ScopeError("identity_mismatch", "prior manifest hash does not match retire record")
+    if expected_file_sha256 is None or expected_manifest_sha256 is None:
+        raise ScopeError("identity_missing", "prior sync-state identity is unavailable")
+    if rec.prior_file_sha256 != expected_file_sha256:
+        raise ScopeError("identity_mismatch", "retire file hash does not match prior sync state")
+    if rec.prior_manifest_sha256 != expected_manifest_sha256:
+        raise ScopeError(
+            "identity_mismatch", "retire manifest hash does not match prior sync state"
+        )
 
 
 def audit_manifest(manifest_path: Path) -> dict[str, Any]:

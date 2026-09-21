@@ -6162,6 +6162,11 @@
       "reason": "exclusion:live_data_stores"
     },
     {
+      "path": "tests/fixtures/repository_knowledge/subprocess/sitecustomize.py",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "tests/generation_read_fixtures.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7506,7 +7511,7 @@
     },
     {
       "path": "adapters/repository_knowledge.py",
-      "sha256": "c912ca0407f8d5bc5c681d0c364fb95a849307c7e7b4f5f1f3b3f72b0775c294",
+      "sha256": "eb275e31b629a4238bc68ac2906cf4b6cd8d664cde58eddbab2e9c8a27d50e1d",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7948,7 +7953,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "b6c734ca3d29194d7b58e14bf5712ef5efe4ad2f5587961c0e7cf54620146f6a",
+      "sha256": "79ef5b04332b8cfee4b360e84fedc779cbc3d66d55464ad7a313a42936d045be",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7965,7 +7970,7 @@
     },
     {
       "path": "docs/plans/VERIFY-openclaw-watch-coverage.md",
-      "sha256": "e87830f0b5256ba015f53c85f570013fd42c9d8ff593343ec9809694b7900a3a",
+      "sha256": "d00553cd6656ef626ff0580672ea18a0adf3d7f5641c2c5066f377aa67b70496",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7999,7 +8004,7 @@
     },
     {
       "path": "ingest.py",
-      "sha256": "cb694d521352d0a95e9e143b63a2ba682beec983e45bf043e727d9cdc2325ba8",
+      "sha256": "a3c20269537735a096921bdfd25451c403a83305c1d7f729962b453bd6a7a4f3",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8118,7 +8123,7 @@
     },
     {
       "path": "repository_knowledge_index.py",
-      "sha256": "72a51c904a0f7e03dae3e4e0a3a51d2d6c87b6b5eba904e66c50ea47c8439054",
+      "sha256": "d088d6fd873783ca330edb3ab35dbc3fcaf0eeaa882fc79f97fd4e8b18376967",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8135,7 +8140,7 @@
     },
     {
       "path": "repository_knowledge_scope.py",
-      "sha256": "224633cf32fb2308f1873686abec7f67c4415c04e9af1c50888792d6872681d7",
+      "sha256": "60665697fb5dca7938713fa0617b9c8edcab2a14020b854eaaaec6dd81ff4886",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8152,7 +8157,7 @@
     },
     {
       "path": "repository_knowledge_sync.py",
-      "sha256": "10095b3f869e353fb56932ad6cc61d515c58bba9b1e8983febd88aa5bbc13994",
+      "sha256": "ce2f81fdb426966d3dfa41b62509d96371960f9e6ec0a050a4a474cf16843924",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8338,6 +8343,23 @@
       "sensitivity": "synthetic"
     },
     {
+      "path": "tests/fixtures/repository_knowledge/subprocess/sitecustomize.py",
+      "sha256": "5dfed8d946ee44d1dd009469a1a90787471ea91119525f62100314de0261e693",
+      "content_class": "python",
+      "parser_mode": "python_ast_spans",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "tests/fixtures/repository_knowledge/subprocess/sitecustomize.py",
+        "repository knowledge subprocess test"
+      ],
+      "sensitivity": "synthetic"
+    },
+    {
       "path": "tests/test_chroma_approve_index.py",
       "sha256": "10e54226d3259d20d055ddac96548e68e4d5451a7bd1ea7aa50fdbfe9f71157c",
       "content_class": "python",
@@ -8407,7 +8429,7 @@
     },
     {
       "path": "tests/test_openclaw_watch_coverage.py",
-      "sha256": "6b8ff23e02a8616d00378e4505e80a896db938641cf6fa903aae6b739a300fb6",
+      "sha256": "25fa6267f6d669bc92c271a18b84b766c689b914e097ccdea9bc2647f1ffb9bc",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8475,7 +8497,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_adapter.py",
-      "sha256": "f3e471c647f44b0d17bf1c5e0adbaf23b1aa38a0b872ef1a47cb99f6bc82a5cf",
+      "sha256": "fe2752c1109c35a730763c78eed9cfe6e37248e177b10cfea660ef99ab3ef39c",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8509,7 +8531,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_sync.py",
-      "sha256": "3e2cb4e7ffad5697a287da2ad6bf30dd13e7f89d8a3f39ed110946bbec88c7bf",
+      "sha256": "b3c8ebe40e361b9efb708802cc42ef4c3ee0fc9f5470e0a6a546198acea3ac36",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8543,7 +8565,7 @@
     },
     {
       "path": "tests/test_shadow_writer_gate_c3.py",
-      "sha256": "081755f0e952dc043e6e05d9a49b31dd1ad4f813e7ef1e9d7a8153b92102f8b3",
+      "sha256": "c346d81633c686f46f85078862e179e46fe0a750a24bfa4aa67e3cc01f57e30d",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

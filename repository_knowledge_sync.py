@@ -127,11 +127,19 @@ def _entry_snapshot(loaded: LoadedManifest) -> dict[str, Any]:
 
 def _pending_relpaths(loaded: LoadedManifest, prior: Mapping[str, Any]) -> list[str]:
     prior_entries = (prior.get("entries") or {}) if isinstance(prior, dict) else {}
+    identity_changed = (
+        prior.get("manifest_sha256") != loaded.identity
+        or prior.get("git_head") != loaded.git_head
+    )
     pending: list[str] = []
     for relpath in sorted(loaded.entries):
         entry = loaded.entries[relpath]
         old = prior_entries.get(relpath) or {}
-        if old.get("file_sha256") != entry.sha256 or old.get("status") != "indexed":
+        if (
+            identity_changed
+            or old.get("file_sha256") != entry.sha256
+            or old.get("status") != "indexed"
+        ):
             pending.append(relpath)
     return pending
 
@@ -186,7 +194,7 @@ def reconcile_manifest(
             raise RepositoryKnowledgeSyncError("manifest bytes changed during reconciliation")
         indexed.append(relpath)
         remaining = remaining[1:]
-    retire_counts = _apply_retirements(loaded, cfg)
+    retire_counts = _apply_retirements(loaded, cfg, prior=prior)
     snapshot = _entry_snapshot(loaded)
     snapshot["retirements"] = retire_counts
     state.setdefault("manifests", {})[str(loaded.path)] = snapshot
@@ -219,19 +227,28 @@ def reconcile_all(
     return results
 
 
-def _apply_retirements(loaded: LoadedManifest, cfg: Mapping[str, Any]) -> dict[str, int]:
+def _apply_retirements(
+    loaded: LoadedManifest,
+    cfg: Mapping[str, Any],
+    *,
+    prior: Mapping[str, Any],
+) -> dict[str, int]:
     counts = {"superseded": 0, "already_gone": 0, "refused": 0}
     if not loaded.retire:
         return counts
     with production_chroma_write_session(entrypoint="repository_knowledge_retire") as session:
         store = session.store
         for rec in loaded.retire:
+            prior_entries = prior.get("entries") or {}
+            prior_entry = prior_entries.get(rec.path) or {}
             try:
                 validate_prior_identity(
                     manifest=loaded,
                     relpath=rec.path,
                     prior_file_sha256=rec.prior_file_sha256,
                     prior_manifest_sha256=rec.prior_manifest_sha256,
+                    expected_file_sha256=prior_entry.get("file_sha256"),
+                    expected_manifest_sha256=prior.get("manifest_sha256"),
                 )
             except ScopeError:
                 counts["refused"] += 1
@@ -252,11 +269,13 @@ def _apply_retirements(loaded: LoadedManifest, cfg: Mapping[str, Any]) -> dict[s
                     continue
                 if row.get("source_type") != SOURCE_TYPE:
                     continue
-                if row.get("file_sha256") and row.get("file_sha256") != rec.prior_file_sha256:
+                if row.get("file_sha256") != rec.prior_file_sha256:
+                    continue
+                if row.get("manifest_sha256") != rec.prior_manifest_sha256:
                     continue
                 candidates.add(unit_id)
             if not candidates:
-                counts["already_gone"] += 1
+                counts["refused"] += 1
                 continue
             n = store.supersede_units_for_source(
                 source_path,

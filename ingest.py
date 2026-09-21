@@ -1297,13 +1297,16 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             print(f"  [skip] excluded {Path(path).name}")
         return "skipped", 0, 0, 0, 0
 
-    if not force_reindex:
-        if file_hash in processed:
-            if verbose:
-                print(f"  [skip] unchanged {Path(path).name}")
-            return "skipped", 0, 0, 0, 0
-
     fmt = detect_format(path)
+    # Repository-knowledge identity includes Git HEAD and the manifest hash,
+    # not only file bytes. Reconciliation intentionally dispatches the public
+    # ``index --file`` path when either identity changes, so the generic
+    # content-hash shortcut must not discard that request.
+    if not force_reindex and file_hash in processed and fmt != "repository_knowledge_v1":
+        if verbose:
+            print(f"  [skip] unchanged {Path(path).name}")
+        return "skipped", 0, 0, 0, 0
+
     tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
     chroma_dir = idx["chroma_dir"]
 

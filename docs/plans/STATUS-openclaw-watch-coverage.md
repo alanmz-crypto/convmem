@@ -50,11 +50,11 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 | Surface | State |
 |---|---|
 | Existing `convmem watch` | On `main`; recursive observer, debounce, normal `index --file` child, existing memory/timeout containment |
-| Repository-knowledge coverage (allowlisted W0–W6) | Implemented on `feat/2026-09-21-openclaw-watch-coverage`: closed manifest/schema, Git-clean classifier, documentary chunkers, watch reconcile, isolated two-root E2E |
-| Manifest inventory | 69 include / 169 exclude / 1226 unrelated / 68 `required_when_present`; control-state JSON is excluded |
+| Repository-knowledge coverage (W0–W6 corrective) | Implemented on `fix/2026-09-21-openclaw-watch-coverage-refinement`: root-bound IDs, exact JSON source spans, identity-aware reconciliation/retirement, real watchdog/subprocess/public-query E2E |
+| Manifest inventory | Closed inventory with the real subprocess test hook included; final counts are recorded by the clean-tip audit |
 | Example config | Commented `watch.repository_knowledge_manifests` only; live config untouched |
 | OpenClaw T0–T5 design | Kiro-approved at `cd9d2698b7423f907b552bc9118a0af523018ca9`; still absent; listed as `required_when_present` |
-| Writer-coverage inventory | Stale vs new `production_chroma_write_session` sites; JSON is outside the Execute allowlist |
+| Writer-coverage inventory | Ryan-authorized correction complete; 18 routes inventoried and A12 passes |
 | Live watch activation | Not authorized and not attempted |
 
 ## 4. Completion State
@@ -65,38 +65,33 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 | Architecture and execution plan | KIRO PASS at `19dea97` | — |
 | Kiro design review | PASS at `19dea97` | — |
 | Ryan Execute grant | AUTHORIZED 2026-09-21 for W0–W6 at `19dea97` | live activation excluded |
-| W0–W6 allowlisted implementation | ON BRANCH | A12 writer-inventory JSON off allowlist |
+| W0–W6 implementation | PASS ON CORRECTIVE BRANCH | final review required |
 | Isolated A1–A11 | PASS | — |
-| A12 writer scan | FAIL | authorize `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json` (and line updates) |
+| A12 writer scan | PASS | Ryan authorized the inventory/count correction |
 | Merge | NOT STARTED | review and Ryan; do not open a PR from this lane |
 | Required OpenClaw bytes in watched checkout | MISSING | separate OpenClaw plan/implementation landing |
 | Live activation | NOT AUTHORIZED | merged implementation + exact external-change grant |
-| `WATCH_COVERAGE=PASS` | BLOCKED | A12 + review + merge + OpenClaw bytes + live grant |
+| `WATCH_COVERAGE=PASS` | BLOCKED | review + merge + OpenClaw bytes + live grant |
 
 ## 5. Your Role
 
-**If Ryan sent you to review this implementation:** inspect the feature-branch
-tip against Kiro-reviewed `19dea97`. Confirm Git-clean authority, documentary
-indexing, isolated A1–A11, no live activation, and the A12 inventory mismatch.
+**If Ryan sent you to review this implementation:** inspect the corrective
+branch tip against Kiro-reviewed `19dea97`. Confirm Git-clean authority,
+root-bound documentary identity, exact JSON source preservation, real watcher
+subprocess/public-query evidence, identity-safe retirement, and A1–A12.
 Return PASS or FAIL; do not implement, merge, or activate.
-
-**If Ryan sent you to unstick A12:** require an exact allowlist expansion for
-`docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json` (writer-session line
-inventory only). Do not weaken exclusions or edit OpenClaw T0–T5.
 
 **If Ryan sent you to activate:** refuse unless a later grant names the exact
 manifest path, config value, service, limits, pre-state, and rollback.
 
 ## 6. What Remains Before Live Coverage
 
-1. Ryan (or Codex/Kiro) authorizes updating the shadow-writer coverage
-   inventory so A12 can pass without leaving the contract.
-2. Focused review of the implementation tip.
-3. Ryan decides PR creation and merge. Do not open a PR from the Execute lane.
-4. Approved OpenClaw planning/implementation bytes land in the watched checkout
+1. Focused review of the corrective implementation tip.
+2. Ryan decides PR creation and merge. Do not open a PR from this lane.
+3. Approved OpenClaw planning/implementation bytes land in the watched checkout
    and the exact manifest is updated in the same reviewed commits.
-5. Ryan grants the exact live config edit and service restart.
-6. Startup sync, retrieval needles, exclusion controls, and governance
+4. Ryan grants the exact live config edit and service restart.
+5. Startup sync, retrieval needles, exclusion controls, and governance
    before/after hashes pass; then `WATCH_COVERAGE=PASS`.
 
 ## 7. Hard Stops
@@ -145,8 +140,9 @@ milestone-level line below. A fresh model should orient from this file alone.
 | 2026-09-21 | Kiro | Exact-tip `19dea97` corrective re-review PASS; both blockers closed without regression; Execute remains Ryan-gated. |
 | 2026-09-21 | Ryan / Codex | Ryan authorized bounded W0–W6 implementation at Kiro-reviewed `19dea97`; live activation remains separately gated. |
 | 2026-09-21 | Cursor | Allowlisted W0–W6 implemented on `feat/2026-09-21-openclaw-watch-coverage`; isolated A1–A11 PASS; A12 blocked on off-allowlist writer inventory; live watch not activated. |
+| 2026-09-21 | Codex | Corrective implementation closed six review defects plus identity-transition ingest; real watcher E2E and A1–A12 pass; review remains required and live watch remains off. |
 
-**TL;DR [Arc OpenClaw Watch Coverage]:** Allowlisted W0–W6 is on the feature
-branch with isolated A1–A11 passing. `IMPLEMENTATION` stays BLOCKED on the
-off-allowlist writer-coverage inventory. Live configuration, restart, merge,
-and `WATCH_COVERAGE=PASS` remain separately gated.
+**TL;DR [Arc OpenClaw Watch Coverage]:** Corrected W0–W6 passes A1–A12 and the
+focused regression suite on the corrective branch. Review, merge, required
+OpenClaw bytes, and an exact live-activation grant still gate
+`WATCH_COVERAGE=PASS`; live watch remains off.

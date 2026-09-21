@@ -36,6 +36,9 @@ class Chunk:
     content: str
     start_line: int
     end_line: int
+    original_source_text: str | None = None
+    byte_start: int | None = None
+    byte_end: int | None = None
 
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
@@ -65,6 +68,8 @@ def _line_windows(text: str, *, label: str, start_line: int = 1) -> list[Chunk]:
     lines = text.splitlines()
     if not lines:
         return []
+    if any(len(line) > MAX_CHUNK_CHARS for line in lines):
+        _refuse("resource_limit", "source line exceeds max_chunk_chars")
     chunks: list[Chunk] = []
     step = max(1, FALLBACK_WINDOW_LINES - OVERLAP_LINES)
     idx = 0
@@ -229,43 +234,71 @@ def chunk_json(text: str) -> list[Chunk]:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         _refuse("parse_error", f"json failed: {exc}")
+    decoder = json.JSONDecoder()
     chunks: list[Chunk] = []
-    if isinstance(data, dict) and data:
-        for key, value in data.items():
-            pointer = "/" + _escape_pointer(str(key))
-            dumped = json.dumps(value, ensure_ascii=False, indent=2)
-            chunks.append(
-                Chunk(
-                    label=f"json {pointer}",
-                    locator=f"pointer:{pointer}",
-                    content=dumped,
-                    start_line=1,
-                    end_line=max(1, dumped.count("\n") + 1),
-                )
-            )
-    elif isinstance(data, list) and data:
-        for idx, value in enumerate(data):
-            pointer = f"/{idx}"
-            dumped = json.dumps(value, ensure_ascii=False, indent=2)
-            chunks.append(
-                Chunk(
-                    label=f"json {pointer}",
-                    locator=f"pointer:{pointer}",
-                    content=dumped,
-                    start_line=1,
-                    end_line=max(1, dumped.count("\n") + 1),
-                )
-            )
-    else:
+
+    def add_chunk(pointer: str, value: object, start: int, end: int) -> None:
+        dumped = json.dumps(value, ensure_ascii=False, indent=2)
+        original = text[start:end]
+        if max(len(dumped), len(original)) > MAX_CHUNK_CHARS:
+            _refuse("resource_limit", f"json {pointer or '/'} exceeds max_chunk_chars")
+        start_line = text.count("\n", 0, start) + 1
+        end_line = start_line + original.count("\n")
         chunks.append(
             Chunk(
-                label="json document",
-                locator="pointer:",
-                content=text,
-                start_line=1,
-                end_line=max(1, text.count("\n") + 1),
+                label=f"json {pointer}" if pointer else "json document",
+                locator=f"pointer:{pointer}",
+                content=dumped,
+                start_line=start_line,
+                end_line=end_line,
+                original_source_text=original,
+                byte_start=len(text[:start].encode("utf-8")),
+                byte_end=len(text[:end].encode("utf-8")),
             )
         )
+
+    def skip_ws(offset: int) -> int:
+        while offset < len(text) and text[offset].isspace():
+            offset += 1
+        return offset
+
+    if isinstance(data, dict) and data:
+        offset = skip_ws(0)
+        if text[offset : offset + 1] != "{":
+            _refuse("parse_error", "json object boundary missing")
+        offset += 1
+        for expected_key, value in data.items():
+            offset = skip_ws(offset)
+            key, offset = decoder.raw_decode(text, offset)
+            if key != expected_key:
+                _refuse("parse_error", "json key decode mismatch")
+            offset = skip_ws(offset)
+            if text[offset : offset + 1] != ":":
+                _refuse("parse_error", "json object colon missing")
+            start = skip_ws(offset + 1)
+            _decoded, end = decoder.raw_decode(text, start)
+            pointer = "/" + _escape_pointer(str(key))
+            add_chunk(pointer, value, start, end)
+            offset = skip_ws(end)
+            if text[offset : offset + 1] == ",":
+                offset += 1
+    elif isinstance(data, list) and data:
+        offset = skip_ws(0)
+        if text[offset : offset + 1] != "[":
+            _refuse("parse_error", "json array boundary missing")
+        offset += 1
+        for idx, value in enumerate(data):
+            start = skip_ws(offset)
+            _decoded, end = decoder.raw_decode(text, start)
+            pointer = f"/{idx}"
+            add_chunk(pointer, value, start, end)
+            offset = skip_ws(end)
+            if text[offset : offset + 1] == ",":
+                offset += 1
+    else:
+        start = skip_ws(0)
+        _decoded, end = decoder.raw_decode(text, start)
+        add_chunk("", data, start, end)
     return _bounded(chunks, label="json")
 
 
@@ -359,7 +392,13 @@ def parse(filepath: str) -> list[dict]:
                 "adapter_version": ADAPTER_VERSION,
                 "source_identity": identity,
                 "canonical_root": str(after.root),
-                "original_source_text": chunk.content,
+                "original_source_text": (
+                    chunk.original_source_text
+                    if chunk.original_source_text is not None
+                    else chunk.content
+                ),
+                "byte_start": chunk.byte_start,
+                "byte_end": chunk.byte_end,
             }
         )
     return messages

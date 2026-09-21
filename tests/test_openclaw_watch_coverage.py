@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import signal
+import subprocess
 import tempfile
+import time
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
@@ -62,11 +66,11 @@ class IsolatedWatchCoverageTests(unittest.TestCase):
     def tearDown(self) -> None:
         rks.reset_configuration()
 
-    def test_two_roots_match(self) -> None:
+    def test_repository_roots_are_identity_namespaces(self) -> None:
         first = self._run_root()
         second = self._run_root()
         self.assertEqual(first["needles"], second["needles"])
-        self.assertEqual(first["unit_ids"], second["unit_ids"])
+        self.assertNotEqual(first["unit_ids"], second["unit_ids"])
         self.assertEqual(first["governance"], second["governance"])
         self.assertEqual(first["governance"][0], first["governance"][1])
         self.assertTrue(first["folder_add"])
@@ -74,6 +78,257 @@ class IsolatedWatchCoverageTests(unittest.TestCase):
         self.assertTrue(first["inert"])
         self.assertTrue(first["exclusions"])
         self.assertTrue(first["argv_ok"])
+
+    def test_real_watch_subprocess_and_public_query_reproduce_across_data_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = Path(raw)
+            repo = base / "repo"
+            repo.mkdir()
+            _init_repo(repo)
+            man = _write_manifest(
+                repo,
+                {"docs/changing.md": (f"# Initial\n{NONCES['update_old']}\n", "markdown")},
+                extra_unrelated=["secret.env"],
+            )
+            (repo / "secret.env").write_text(NONCES["exclude_cred"] + "\n", encoding="utf-8")
+            _commit_all(repo, "seed")
+
+            first = self._run_real_watch_sequence(base / "data-one", repo, man, mutate=True)
+            second = self._run_real_watch_sequence(base / "data-two", repo, man, mutate=False)
+            self.assertEqual(first["unit_ids"], second["unit_ids"])
+            self.assertEqual(first["metadata"], second["metadata"])
+            self.assertEqual(first["inventory"], second["inventory"])
+            self.assertTrue(first["folder_add"])
+            self.assertTrue(first["update"])
+            self.assertTrue(first["excluded"])
+
+    def _run_real_watch_sequence(
+        self,
+        data: Path,
+        repo: Path,
+        man: Path,
+        *,
+        mutate: bool,
+    ) -> dict:
+        data.mkdir()
+        config_path = data / "config.toml"
+        processed = data / "processed.json"
+        processed.write_text("{}\n", encoding="utf-8")
+        config_path.write_text(
+            "\n".join(
+                [
+                    "[index]",
+                    f'chroma_dir = {json.dumps(str(data / "chroma"))}',
+                    f'processed_log = {json.dumps(str(processed))}',
+                    f'units_export = {json.dumps(str(data / "units.jsonl"))}',
+                    "",
+                    "[models]",
+                    'embed_model = "test-embed"',
+                    'ollama_host = "http://127.0.0.1:9"',
+                    'rerank_model = "unused"',
+                    "",
+                    "[query]",
+                    "top_k_candidates = 20",
+                    "recency_weight = 0",
+                    "",
+                    "[eval]",
+                    'retrieval_view = "embedding_influenced"',
+                    'rerank_mode = "identity"',
+                    "",
+                    "[ingest_dedup]",
+                    "semantic_similarity = 0.92",
+                    "candidate_k = 10",
+                    "max_semantic_candidates_per_unit = 3",
+                    "",
+                    "[sources]",
+                    f'paths = [{json.dumps(str(repo))}]',
+                    f'inventory = {json.dumps(str(data / "inventory.json"))}',
+                    "",
+                    "[watch]",
+                    f'paths = [{json.dumps(str(repo))}]',
+                    f'repository_knowledge_manifests = [{json.dumps(str(man))}]',
+                    "debounce_seconds = 0.05",
+                    "subprocess_timeout_seconds = 30",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        fixture = Path(__file__).parent / "fixtures/repository_knowledge/subprocess"
+        env = os.environ.copy()
+        env.update(
+            {
+                "CONVMEM_CONFIG": str(config_path),
+                "CONVMEM_RK_SUBPROCESS_TEST": "1",
+                "CONVMEM_RK_WRITER_LOCK": str(data / "writer.lock"),
+                "CONVMEM_RK_ATTEST_DIR": str(data / "attest"),
+                "PYTHONPATH": os.pathsep.join(
+                    [str(fixture), str(Path(__file__).resolve().parents[1])]
+                ),
+                "XDG_RUNTIME_DIR": "",
+            }
+        )
+        cli = str(Path(__file__).resolve().parents[1] / "convmem.py")
+        proc = subprocess.Popen(
+            [os.sys.executable, cli, "watch", "--debounce", "0.05", "--no-lock"],
+            cwd=str(Path(__file__).resolve().parents[1]),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+
+        def search(nonce: str, expected_path: str, *, timeout: float = 35.0) -> str:
+            deadline = time.monotonic() + timeout
+            latest = ""
+            while time.monotonic() < deadline:
+                if proc.poll() is not None:
+                    stdout, stderr = proc.communicate()
+                    self.fail(
+                        "watch exited before retrieval:\n"
+                        + (stdout or "")[-2000:]
+                        + (stderr or "")[-4000:]
+                    )
+                result = subprocess.run(
+                    [os.sys.executable, cli, "search", nonce, "--top", "10"],
+                    cwd=str(Path(__file__).resolve().parents[1]),
+                    env=env,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                )
+                latest = result.stdout + result.stderr
+                if result.returncode == 0 and nonce in latest and expected_path in latest:
+                    return latest
+                time.sleep(0.5)
+            self.fail(f"public query did not retrieve {nonce}: {latest[-2000:]}")
+
+        def wait_converged(*, timeout: float = 15.0) -> None:
+            deadline = time.monotonic() + timeout
+            state_path = data / "repository_knowledge_sync.json"
+            expected_manifest = rks.sha256_file(man)
+            expected_head = _git(repo, "rev-parse", "HEAD").strip()
+            latest_state = "missing"
+            while time.monotonic() < deadline:
+                try:
+                    latest_state = state_path.read_text(encoding="utf-8")
+                    state = json.loads(latest_state)
+                    snapshot = state["manifests"][str(man.resolve())]
+                except (OSError, KeyError, json.JSONDecodeError):
+                    time.sleep(0.25)
+                    continue
+                entries = snapshot.get("entries") or {}
+                if (
+                    snapshot.get("manifest_sha256") == expected_manifest
+                    and snapshot.get("git_head") == expected_head
+                    and all(row.get("status") == "indexed" for row in entries.values())
+                ):
+                    return
+                time.sleep(0.25)
+            self.fail(
+                "watch reconciliation did not converge on current manifest and Git HEAD: "
+                f"expected_manifest={expected_manifest} expected_head={expected_head} "
+                f"state={latest_state[-3000:]}"
+            )
+
+        try:
+            search(
+                NONCES["update_old"] if mutate else NONCES["update_new"],
+                "docs/changing.md",
+            )
+            if mutate:
+                payload = json.loads(man.read_text(encoding="utf-8"))
+                new_rel = "docs/new-folder/canary.md"
+                new_path = repo / new_rel
+                new_path.parent.mkdir(parents=True, exist_ok=True)
+                new_path.write_text(f"# Canary\n{NONCES['folder']}\n", encoding="utf-8")
+                payload["classifications"].append(
+                    {"path": new_rel, "class": "include", "reason": "folder add"}
+                )
+                payload["entries"].append(
+                    {
+                        "path": new_rel,
+                        "sha256": rks.sha256_file(new_path),
+                        "content_class": "markdown",
+                        "parser_mode": "markdown_heading_sections",
+                        "adapter_contract_version": "repository_knowledge_v1",
+                        "source_type": "repository_knowledge_v1",
+                        "required_state": "current",
+                        "reviewed_state": "reviewed",
+                        "owner": "tests",
+                        "freshness_role": "current_guidance",
+                        "retrieval_needles": [new_rel, NONCES["folder"]],
+                        "sensitivity": "synthetic",
+                    }
+                )
+                man.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+                _commit_all(repo, "folder add")
+                search(NONCES["folder"], "docs/new-folder/canary.md")
+
+                changing = repo / "docs/changing.md"
+                changing.write_text(f"# Updated\n{NONCES['update_new']}\n", encoding="utf-8")
+                payload = json.loads(man.read_text(encoding="utf-8"))
+                for entry in payload["entries"]:
+                    if entry["path"] == "docs/changing.md":
+                        entry["sha256"] = rks.sha256_file(changing)
+                man.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+                _commit_all(repo, "update")
+                search(NONCES["update_new"], "docs/changing.md")
+            wait_converged()
+            folder_output = search(NONCES["folder"], "docs/new-folder/canary.md")
+            update_output = search(NONCES["update_new"], "docs/changing.md")
+            store = ChromaStore(str(data / "chroma"))
+            collection = store._collection("knowledge_units")
+            rows = collection.get(include=["metadatas", "documents"])
+            paired = sorted(
+                zip(
+                    rows.get("ids") or [],
+                    rows.get("metadatas") or [],
+                    rows.get("documents") or [],
+                )
+            )
+            metadata = [
+                {
+                    key: (meta or {}).get(key)
+                    for key in (
+                        "source_type",
+                        "repo_relpath",
+                        "locator",
+                        "file_sha256",
+                        "manifest_sha256",
+                        "git_commit",
+                        "adapter_version",
+                    )
+                }
+                for _unit_id, meta, _document in paired
+                if not (meta or {}).get("superseded")
+            ]
+            return {
+                "unit_ids": [
+                    unit_id
+                    for unit_id, meta, _document in paired
+                    if not (meta or {}).get("superseded")
+                ],
+                "metadata": metadata,
+                "inventory": rks.audit_manifest(man),
+                "folder_add": NONCES["folder"] in folder_output,
+                "update": NONCES["update_new"] in update_output,
+                "excluded": NONCES["exclude_cred"] not in json.dumps(
+                    [{"metadata": meta, "document": document} for _, meta, document in paired]
+                ),
+            }
+        finally:
+            try:
+                os.killpg(proc.pid, signal.SIGINT)
+                proc.communicate(timeout=10)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                proc.communicate()
 
     def _run_root(self) -> dict:
         td = tempfile.TemporaryDirectory()
@@ -259,7 +514,7 @@ class IsolatedWatchCoverageTests(unittest.TestCase):
                 fake_session,
             ), mock.patch("brief.refresh_brief_after_change"):
                 reconcile_manifest(str(man), cfg, dispatch=dispatch)
-            self.assertEqual(len(dispatched), before_count + 1)
+            self.assertEqual(len(dispatched), before_count + len(payload["entries"]))
             folder_add = any(NONCES["folder"] in json.dumps(hit) for hit in retrieve(NONCES["folder"]))
 
             # Update

@@ -54,6 +54,20 @@ class ChunkerTests(unittest.TestCase):
         with self.assertRaises(RepositoryKnowledgeParseError):
             chunk_json("{not json")
 
+    def test_json_preserves_exact_source_span(self) -> None:
+        source = '{\n  "needle" : { "escaped": "a\\u0062", "order": [3, 2, 1] }\n}\n'
+        chunks = chunk_json(source)
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(
+            chunks[0].original_source_text,
+            '{ "escaped": "a\\u0062", "order": [3, 2, 1] }',
+        )
+        self.assertEqual(source.encode("utf-8")[chunks[0].byte_start : chunks[0].byte_end].decode(), chunks[0].original_source_text)
+
+    def test_overlong_source_line_refuses_atomically(self) -> None:
+        with self.assertRaisesRegex(RepositoryKnowledgeParseError, "resource_limit"):
+            chunk_text("x" * 6001)
+
 
 class DetectorOrderTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -176,6 +190,19 @@ class IndexerTests(unittest.TestCase):
         self.assertEqual(meta.get("source_type") or unit.get("source_type"), "repository_knowledge_v1")
         self.assertEqual(meta.get("tool") or unit.get("tool"), "repository-knowledge")
         self.assertIn("provenance_commitment", json.dumps(unit))
+
+    def test_unit_identity_is_namespaced_by_frozen_source_identity(self) -> None:
+        from repository_knowledge_index import make_repository_unit_id
+
+        common = {
+            "relpath": "docs/plan.md",
+            "locator": "lines:1-2",
+            "chunk_sha256": "a" * 64,
+            "adapter_version": "repository_knowledge_v1",
+        }
+        first = make_repository_unit_id(source_identity="/repo/a|frozen", **common)
+        second = make_repository_unit_id(source_identity="/repo/b|frozen", **common)
+        self.assertNotEqual(first, second)
 
 
 if __name__ == "__main__":

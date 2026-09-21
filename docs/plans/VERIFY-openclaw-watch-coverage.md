@@ -103,16 +103,16 @@ Exclude reasons: `unrelated_material` 146, `vcs_caches_build` 9,
 |---|---|---|
 | A1 | PASS (isolated) | Scope tests: unclassified tree fails; complete fixture classification; production generator reports unclassified=0 |
 | A2 | PASS | Dirty/staged/untracked/copy/symlink/hash-mismatch tests refuse before parse |
-| A3 | PASS | Two-root E2E retrieved markdown, python, json, javascript, toml, text, and ops needles |
-| A4 | PASS | Folder canary absent, then one public `index --file` child, then retrievable |
-| A5 | PASS | Clean commit + manifest hash update replaced retrieval with the new nonce |
-| A6 | PASS | Sync test: retirement refuses stale prior-manifest identity and does not touch `inter_model_doc` rows |
+| A3 | PASS | Documentary fixture E2E retrieved markdown, python, JSON, JavaScript, TOML, text, and ops needles |
+| A4 | PASS | Real watchdog E2E: folder canary absent, filesystem event/debounce fired, exact public `index --file` subprocess ran, and public `search` retrieved the nonce |
+| A5 | PASS | Real watcher E2E replaced the changed file and public `search` retrieved the new nonce; manifest-only/Git-only identity changes re-dispatch every included file |
+| A6 | PASS | Retirement requires the prior sync-state file+manifest identity and row metadata match; mismatched-manifest and non-`repository_knowledge_v1` rows remain untouched |
 | A7 | PASS | Credential nonce unretrievable; detector maps excludes to blocked with no parser |
-| A8 | PASS | E2E units carry `source_type`, path, commit, file/manifest hashes, locator, adapter version, claimed envelope, `effective_integrity=untrusted` |
+| A8 | PASS | Units carry root-bound deterministic IDs, exact JSON source spans/byte locators, `source_type`, path, commit, file/manifest hashes, locator, adapter version, claimed envelope, `effective_integrity=untrusted` |
 | A9 | PASS | Isolated governance tree hash identical before and after indexing |
 | A10 | PASS | Inert `approved propose_decision convmem record` text retrieved as documentary content |
-| A11 | PASS | Second fresh root: same needles, same content-addressed unit IDs, same governance hashes |
-| A12 | FAIL | Focused watch/inter-model/provenance tests passed; `tests/test_shadow_writer_coverage_scan.py::test_static_scan_matches_inventory_routing` failed because new `production_chroma_write_session` call sites are in allowlisted modules while `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json` is outside the frozen edit surface |
+| A11 | PASS | Same canonical repository replayed into a second fresh ConvMem data root: identical inventory, active unit IDs, metadata, and public-query needles; distinct repository roots intentionally produce distinct IDs |
+| A12 | PASS | Ryan authorized the writer-inventory correction; all 18 production/ScratchBoundary writer routes are inventoried and both writer coverage tests pass |
 
 ## Commands
 
@@ -122,8 +122,8 @@ python -m pytest -q \
   tests/test_repository_knowledge_adapter.py \
   tests/test_repository_knowledge_sync.py \
   tests/test_openclaw_watch_coverage.py
-# 22 passed, 7 subtests passed in 9.54s
-# wall 9.76s, max RSS 145060 kB (Linux ru_maxrss)
+# 29 passed, 7 subtests passed in 29.19s
+# Includes the real watcher/subprocess/public-query two-data-root E2E.
 
 python -m pytest -q \
   tests/test_repository_knowledge_scope.py \
@@ -142,17 +142,11 @@ python -m pytest -q \
   tests/test_chroma_approve_index.py \
   tests/test_shadow_writer_coverage_scan.py \
   tests/test_writer_census.py
-# 1 failed, 156 passed, 2 warnings, 12 subtests passed in 16.00s
-# FAIL: test_static_scan_matches_inventory_routing
-# extra={'ingest.py:1212', 'ingest.py:1174',
-#        'repository_knowledge_index.py:256',
-#        'repository_knowledge_sync.py:226'}
-# missing={'ingest.py:1138', 'ingest.py:1176'}
+# 163 passed, 2 warnings, 12 subtests passed in 27.91s
 
 python repository_knowledge_scope.py audit \
   --manifest config/repository-knowledge/openclaw-watch-scope-v1.json
-# pre-commit: fails Git-clean (manifest/worktree dirty vs HEAD)
-# post-commit: re-run on the clean tip
+# post-commit result recorded below
 
 git diff --check
 # clean
@@ -174,9 +168,9 @@ governance paths were not opened.
 
 | Item | Value |
 |---|---|
-| Isolated E2E wall | 8.6–9.2s for two roots |
-| RK unit+E2E wall | 9.76s |
-| RK unit+E2E max RSS | 145060 kB |
+| Real watcher E2E wall | 12.96s for one mutation run plus one fresh-data-root reproduction |
+| RK unit+E2E wall | 29.19s including real watcher and writer scan |
+| RK unit+E2E max RSS | not captured; `/usr/bin/time` is unavailable in this environment |
 | Fixture files/bytes | 14 files, 1243 bytes |
 | Temporary disk | pytest tempdirs only; no live chroma/config |
 | Hermetic RSS utility | none applicable; used `resource.getrusage` |
@@ -190,7 +184,8 @@ is in the manifest `required_when_present` array.
 
 ## Verdict
 
-- `IMPLEMENTATION`: BLOCKED (A12 writer-inventory JSON is outside the Execute allowlist)
+- `IMPLEMENTATION`: PASS (A1–A12 and focused regression suite)
+- `REVIEW`: REQUIRED on the corrective tip
 - `WATCH_COVERAGE`: BLOCKED
 - `LIVE_WATCH`: NOT_ACTIVATED
 - `CURRENT_OPENCLAW_PLAN_BYTES`: REQUIRED_WHEN_PRESENT
