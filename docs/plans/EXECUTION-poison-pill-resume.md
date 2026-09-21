@@ -85,6 +85,16 @@ use (idle hours do not count — the pre-fix faults occurred under load).
 | Clean | **≥24 loaded hours** | Provisional fix **accepted**; downgrade the arc to hardening only |
 | Any non-convmem fault | any | **Revoke** — go to §5 |
 
+> **Kiro ruling — Q1 (2026-09-21): the ≥24 h "accepted" clock RESTARTS at stage-2 enable.**
+> The first clean window (≈15 h at reading time) was desktop + agent load with the *writers off*,
+> so it never exercised the Chroma upsert path that actually crashes. Certifying "accepted" on it
+> would validate the fix against a workload that never touched the failure mode. Therefore:
+> (a) the ≥24 h "accepted" counter begins when stage 2 (writers) is enabled, not at boot; and
+> (b) **"loaded" for the ≥24 h threshold is defined as WRITER-load** — the window must include real
+> indexer upsert activity against the live-scale HNSW, not merely desktop/agent activity. The ≥6 h
+> "credible" reading may stand on the pre-stage-2 window; only "accepted" requires the writer-loaded
+> restart. This is a deliberate amendment to a pre-registration and is recorded as such.
+
 **How to read the counter** (no daemon required; the journal already holds the history):
 
 ```bash
@@ -107,6 +117,15 @@ hnswlib's delete-mark bit 0x10000**, neighbour ids in range, a clean `link_lists
 EOF, unique labels, and `len(id_to_label)` == elements − delete-marked. Reference implementation:
 `~/.cache/arc-poison-pill/` plus this session's transcript. This detects corruption **structurally,
 before a crash** — the check that would have settled hypothesis (c) on day one.
+
+> **Kiro ruling — Q2 (2026-09-21): an absolute structural check is sufficient at the transition;
+> no stage-0 baseline is required.** The §4.2 invariants are *structural truths* (they either hold
+> or they do not — size equalities, in-range neighbour ids, a clean walk to EOF), not drift measures
+> that need a prior reference. A missing stage-0 baseline therefore does not weaken an absolute PASS.
+> Record today's PASS as the baseline going forward so future runs *may additionally* do drift
+> comparison, but absolute PASS stands on its own at the stage transition. No amendment to the check
+> is needed. (Also: the reference implementation must be ported into `scripts/` — it currently lives
+> only in the non-durable `~/.cache/arc-poison-pill/`; that port is Cursor's §4.2 item.)
 
 ---
 
@@ -147,6 +166,16 @@ software hypothesis; the matrix closed it.
    stop an agent running `convmem index --file`: one did exactly that at 10:38–10:41 today, inside
    a declared quiet window, adding ~234 units. Either the freeze becomes enforceable (a flag the
    CLI honours) or we stop claiming the store is frozen. Today the honest statement is the latter.
+
+   > **Kiro ruling — Q3 (2026-09-21): stop claiming the freeze as enforced.** The freeze has now
+   > been observed to fail twice; an invariant nothing enforces is worse than none, because every
+   > future arc that says "writers stopped" inherits the false guarantee. Ruling: the docs must
+   > describe the freeze as an **advisory operational convention, NOT a guaranteed invariant**,
+   > until a real enforcement mechanism exists and is owned. Enforcement (a CLI writer-lease / gate
+   > the `index`/`add` paths honour) is **implementation → Cursor's lane**; Kiro can spec it but not
+   > build it. Until then, no doc may assert the live store "is frozen" — only that writers were
+   > *asked* to stand down. Owner for the enforcement mechanism: **unassigned → propose Cursor**,
+   > pending Ryan.
 4. **Reader discipline (design question, unowned).** Nine `mcp_server.py` processes hold the live
    store outside the writer lease, and one wrote to it with every unit disabled.
 5. **No on-demand pre-change snapshot (Cursor/Codex — new, found 2026-09-20).** The backup system

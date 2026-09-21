@@ -135,6 +135,11 @@ fresh model read only this file and orient itself?
 
 ## Update Log
 
+- 2026-09-21 — Kiro (design/review lane): ruled Q1–Q3 in `EXECUTION-poison-pill-resume.md`
+  (§3, §4.2, §7.3). Q1: ≥24 h "accepted" clock RESTARTS at stage-2 enable, "loaded" = writer-load.
+  Q2: absolute §4.2 structural check sufficient, no stage-0 baseline needed. Q3: freeze is advisory,
+  not enforced, until an owned CLI writer-lease exists (Cursor lane). Platform then 17 h clean this
+  boot; staged unfreeze authorised by Ryan.
 - 2026-09-21 — Claude Opus 5 (Kiro design/plan lane): first observation reading — 14.97 clean
   loaded hours (0 faults / 0 dumps / 0 MCEs) and §4.2 structural PASS on both live segments;
   §3 ≥6 h credible gate met, stage 2 authorised-pending-Ryan, stage 3 still shut. §4.2 had no
