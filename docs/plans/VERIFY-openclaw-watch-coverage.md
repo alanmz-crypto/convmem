@@ -2,7 +2,9 @@
 
 **Arc: OpenClaw Watch Coverage**
 
-**Implementation branch:** `feat/2026-09-21-openclaw-watch-coverage`
+**Implementation branch:** `fix/2026-09-21-openclaw-watch-coverage-refinement`
+
+**Corrective implementation commit:** `fa7f62926c2831817273fb98fa3be3d762f1cd7d`
 
 **Reviewed plan:** `19dea97368408ee0b179c05c942306f6d8f1a2e8`
 
@@ -10,20 +12,19 @@
 
 The machine authority is
 `config/repository-knowledge/openclaw-watch-scope-v1.json`. The table below is
-a review snapshot, not a second source of truth. Git-clean `audit --manifest`
-is recorded after the implementation commit lands; until then the working
-tree is dirty by construction.
+a review snapshot, not a second source of truth. The Git-clean audit below was
+run at the pushed corrective implementation commit.
 
 ## Inventory snapshot
 
-Worktree generator after staging W0–W6 files:
+Git-clean audit at `fa7f62926c2831817273fb98fa3be3d762f1cd7d`:
 
 | Class | Count |
 |---|---|
-| include | 69 |
+| include | 70 |
 | exclude | 169 |
 | unrelated | 1226 |
-| tracked classifications | 1464 |
+| tracked classifications | 1465 |
 | required_when_present (absent) | 68 |
 | retire | 0 |
 | unclassified | 0 |
@@ -81,6 +82,7 @@ Exclude reasons: `unrelated_material` 146, `vcs_caches_build` 9,
 | `repository_knowledge_sync.py` | python |
 | `source_reconciler.py` | python |
 | `tests/fixtures/repository_knowledge/eligible/*` (9 files) | markdown/python/javascript/json/toml/text |
+| `tests/fixtures/repository_knowledge/subprocess/sitecustomize.py` | python |
 | `tests/test_chroma_approve_index.py` | python |
 | `tests/test_governed_recovery_and_writers.py` | python |
 | `tests/test_governed_writer_gate.py` | python |
@@ -146,7 +148,10 @@ python -m pytest -q \
 
 python repository_knowledge_scope.py audit \
   --manifest config/repository-knowledge/openclaw-watch-scope-v1.json
-# post-commit result recorded below
+# PASS at fa7f62926c2831817273fb98fa3be3d762f1cd7d
+# include=70 exclude=169 unrelated=1226 tracked=1465
+# required_when_present=68 retire=0 unclassified=0
+# manifest_sha256=afbad7c6edb587b2674e6f8a78fcadb6ecd1e2b97c633f02fff2304df1a70d3e
 
 git diff --check
 # clean

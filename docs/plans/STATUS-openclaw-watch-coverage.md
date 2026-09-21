@@ -51,7 +51,7 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 |---|---|
 | Existing `convmem watch` | On `main`; recursive observer, debounce, normal `index --file` child, existing memory/timeout containment |
 | Repository-knowledge coverage (W0–W6 corrective) | Implemented on `fix/2026-09-21-openclaw-watch-coverage-refinement`: root-bound IDs, exact JSON source spans, identity-aware reconciliation/retirement, real watchdog/subprocess/public-query E2E |
-| Manifest inventory | Closed inventory with the real subprocess test hook included; final counts are recorded by the clean-tip audit |
+| Manifest inventory | Git-clean audit PASS: 70 include / 169 exclude / 1226 unrelated / 68 `required_when_present` / 0 unclassified across 1465 tracked paths |
 | Example config | Commented `watch.repository_knowledge_manifests` only; live config untouched |
 | OpenClaw T0–T5 design | Kiro-approved at `cd9d2698b7423f907b552bc9118a0af523018ca9`; still absent; listed as `required_when_present` |
 | Writer-coverage inventory | Ryan-authorized correction complete; 18 routes inventoried and A12 passes |
