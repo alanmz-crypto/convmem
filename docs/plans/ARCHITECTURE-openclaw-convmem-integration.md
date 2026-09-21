@@ -1,23 +1,22 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Status:** ASTRA FINAL REVIEW ON COMMIT `7809f20` BLOCKED BUILD; STATE,
-REPLAY, RECOVERY, LIFECYCLE, AND FRESHNESS CONTRACTS CORRECTED FOR RE-REVIEW —
-no implementation, OpenClaw configuration, live-data use, production smoke, or
-capture is authorized
+**Status:** ASTRA FINAL REVIEW ON COMMIT `2424857` BLOCKED BUILD; C1–C6
+CONTRACT DECISIONS CORRECTED FOR RE-REVIEW — no implementation, OpenClaw
+configuration, live-data use, production smoke, or capture is authorized
 
 **Date:** 2026-09-20
 
 **Arc:** none (ad-hoc integration)
 
-**Authority:** Codex architecture/planning lane. Astra's independent final
-review of commit `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf` found the
-previous scope/isolation corrections materially useful but blocked build on an
-unfinished authority/state model, replay identity, payload binding,
-publication recovery, OpenClaw lifecycle shutdown, and snapshot/session
-revocation. This revision resolves those architecture choices and is paired
-with an execution-complete build plan. Kiro remains the required binary
-design-review lane and Ryan remains the approval and execution authority.
-Neither Astra nor Claude authorized implementation.
+**Authority:** Codex architecture/planning lane. Astra's two-stage independent
+review of commit `2424857a2df505b262645143a35eb024ccca3586` found six
+remaining category-3 decisions: monotonic state reduction, exact
+approval/provenance binding, closed publication schemas, the strict search
+kernel, lifecycle/revocation ownership, and one executable file/API/test
+contract. This revision freezes those decisions and remains paired with a
+fixture-first execution plan. Kiro remains the required binary design-review
+lane and Ryan remains the approval and execution authority. Neither Astra nor
+Claude authorized implementation.
 
 **Supersedes for review:** the untracked local draft whose SHA-256 was
 `9846e4df1211359b30427fc4ceebe108616e1dd6de9cb773648ed6cf0ed67f09`.
@@ -63,10 +62,11 @@ The design assumes all of the following can be hostile or mistaken:
 9. Process interruption between request acceptance and response delivery.
 10. Documentation for an OpenClaw version other than the installed binary.
 
-The trusted computing base is limited to the reviewed ConvMem strict-scope
-module, the ingest-owned project-binding registry, the fixed connector plugin,
-the operator-owned scope file, and the installed OpenClaw binary/config
-revision that passed the gate.
+The trusted computing base is limited to the reviewed ConvMem strict-scope and
+state modules, the operator-owned project-binding registry and dispositions,
+the immutable strict file projection, the fixed connector, the local
+activation supervisor, the operator-owned scope/activation files, and the
+installed OpenClaw binary/config revision that passed the gate.
 
 ## 3. Authority and data ownership
 
@@ -75,7 +75,9 @@ revision that passed the gate.
    read model derived from ledger records plus operator-owned disposition
    artifacts; it cannot introduce or approve a fact and is not a second
    authority.
-2. Chroma remains a rebuildable serving projection, never the sole authority.
+2. Chroma remains the rebuildable serving projection for legacy profiles. The
+   strict profile does not open Chroma: it serves a separate immutable,
+   content-addressed file projection derived from the authority snapshot.
 3. Git, GitHub, and project-native tools remain authoritative for live project
    state.
 4. OpenClaw owns only workflow coordination and transient request state.
@@ -114,8 +116,9 @@ Read-only capability probes on 2026-09-20 independently returned version
 `2026.3.2`, a top-level command inventory with no `mcp` command, and a
 `config validate` command that validates without starting the gateway. The next
 portable review bundle must include the literal stdout of `openclaw --version`,
-`openclaw --help`, and `openclaw config validate --help` plus their SHA-256
-digests. Exact integration-config validation remains Gate D evidence because
+`openclaw --help`, `openclaw gateway --help`, `openclaw agent --help`, and
+`openclaw config validate --help` plus their SHA-256 digests. Exact
+integration-config validation remains Gate D evidence because
 Gate A does not authorize creating a live profile or config.
 
 Phase 1 therefore uses a narrow OpenClaw plugin that is an MCP client for a
@@ -125,11 +128,30 @@ the server response unchanged inside an untrusted-evidence envelope.
 
 The connector must spawn with a fixed executable, fixed argument vector, fixed
 working directory, explicitly constructed environment, and no shell. The child
-environment starts empty; it does not copy `process.env`. A closed launch
-schema supplies fixed reviewed values for `CONVMEM_MCP_PROFILE`,
-`CONVMEM_BOUND_READ_SCOPE_FILE`, `CONVMEM_PROJECT_BINDING_REGISTRY_FILE`,
-`CONVMEM_STRICT_CONFIG_FILE`, fixed `HOME`, minimal `PATH`, and locale
-variables. Every other variable is absent. The strict config is a new closed,
+environment starts empty; it does not copy `process.env`. The closed
+`convmem.openclaw-connector-launch.v1` manifest contains exactly:
+
+```text
+schema, python_executable, python_executable_sha256, strict_server_path,
+strict_server_tree_sha256, working_directory, scope_file, registry_file,
+strict_config_file, scope_sha256, registry_sha256, strict_config_sha256,
+service_home, path_value, lang, lc_all,
+launch_payload_sha256
+```
+
+Every path is absolute. The executable/script/config inputs receive the same
+owner, mode, regular-file, and no-symlink checks as the scope file; the working
+directory and service home are operator-owned, empty, non-workspace
+directories. The payload hash excludes only itself. The connector receives
+only this manifest's absolute path from its reviewed plugin config, verifies
+it, verifies the three file digests and executable/server-tree digests, and
+launches exact argv `[python_executable, "-B", "-s",
+strict_server_path]`. It constructs an environment containing exactly fixed
+`CONVMEM_MCP_PROFILE=openclaw-strict`, the three reviewed file paths as
+`CONVMEM_BOUND_READ_SCOPE_FILE`, `CONVMEM_PROJECT_BINDING_REGISTRY_FILE`, and
+`CONVMEM_STRICT_CONFIG_FILE`, plus `HOME=service_home`, `PATH=path_value`,
+`LANG=lang`, and `LC_ALL=lc_all`. Every other variable is absent. The strict
+config is a new closed,
 read-only schema containing only the bound projection root and read-only store
 parameters; credential, provider, API-key, model, watch, ingest, and write keys
 are rejected. The connector launches a dedicated strict entry point that
@@ -195,7 +217,8 @@ The plan is intentionally not a description of already-enforced behavior:
   change it.
 - `provenance_binding.py:210-226,260-295` already distinguishes replayed
   assertion identity from a different assertion and owns projection metadata;
-  Gate B must extend, not bypass, those boundaries.
+  Gate B preserves its envelope/commitment semantics but does not treat that
+  identity pair as payload equality.
 - `chroma_store.py:300-325` and `file_generation_store.py:718-760` query shared
   serving indexes and have no immutable bound-scope projection contract.
 - `chroma_store.py:219-232,418-435` provides additional summary/unit metadata
@@ -204,8 +227,8 @@ The plan is intentionally not a description of already-enforced behavior:
   enforcing the reserved authorization prefix.
 - Metadata also crosses `chroma_store.py:286,480,619`,
   `file_generation_store.py:165`, `mixed_mode_control.py:64`, and
-  `eval_corpus/shadow_build.py:386`; the strict prefix guarantee requires an
-  audited writer census, not a hand-picked method list.
+  `eval_corpus/shadow_build.py:386`. Those paths remain a live-migration
+  blocker, but the fixture strict projection bypasses and does not modify them.
 - `unresolved.py:21-56` computes status from the global child graph before its
   current site/domain filtering.
 - `mcp_server.py:898-939` renders a related chain without scope authorization
@@ -232,6 +255,11 @@ The complete strict inventory is:
 - `search` — raw scoped retrieval;
 - `unresolved` — raw scoped unresolved observations;
 - `related` — raw scoped, all-or-nothing bounded target-neighborhood traversal.
+
+Those are the exact MCP `tools/list` names. The OpenClaw plugin exposes the
+user-facing aliases `convmem_search`, `convmem_unresolved`, and
+`convmem_related`; each alias maps one-to-one to the correspondingly named MCP
+method and no name is accepted dynamically.
 
 The strict profile exposes no other tools. In particular, `ask`, `search_fast`,
 `brief`, `folder_state`, and `stats` are absent. Both `resources/list` and
@@ -260,14 +288,22 @@ the profile exposes no filesystem or runtime tool. It uses this closed schema:
   "domain": "coding",
   "site_mode": "not_applicable",
   "site": null,
-  "authority_snapshot": "authority:convmem-coding:fixture-v1",
-  "serving_projection": "scope:convmem-coding:v1",
+  "authority_snapshot": "authority:convmem-coding:v1",
+  "serving_projection": "projection:convmem-coding:v1",
   "max_snapshot_age_seconds": 86400
 }
 ```
 
 `project`, `allowed_project_bindings`, `domain`, `authority_snapshot`, and
 `serving_projection` are mandatory and non-empty.
+`authority_snapshot` and `serving_projection` are stable, operator-chosen
+namespace identifiers, not content digests and never caller selectors. The
+scope digest binds them into `owner_digest`; the active pointer selects one
+content-addressed generation beneath that owner. Exact `snapshot_id` and
+manifest digests are pinned by the activation manifest, avoiding any
+self-referential hash between scope, owner, snapshot, and generation. Changing
+either namespace requires a new scope file; publishing within a namespace
+requires revoking the old activation before the pointer changes.
 `max_snapshot_age_seconds` is a mandatory integer from 60 through 86400; it is
 an operator policy, not a caller selector. Schema v2 requires
 `allowed_project_bindings` to
@@ -277,20 +313,20 @@ named by the scope; all reviewed source registrations for the audience live
 inside it, so relations across sources remain same-binding. Zero or multiple
 bindings prevent startup. `site_mode` is either `exact` or `not_applicable`. `site`
 is mandatory and non-empty only in `exact` mode. No dimension has an implicit
-unscoped state. The named serving projection is immutable and its signed or
+unscoped state. The named serving projection is immutable and its
 content-digested manifest must exactly match the scope, registry revision,
-included-row content digest, embedding model, and builder version before tool
-registration; a mismatch prevents startup. The manifest separately records the
-source authority checkpoint for freshness/audit, but that checkpoint is not part
-of the projection's authorization identity.
+authority manifest, included-row and graph digests, lexical search-kernel
+version, tokenizer Unicode version, and builder version before tool
+registration; a mismatch prevents startup.
 
 The server opens the file without following symlinks and validates its resolved
 location, owner, regular-file type, mode, schema, keys, and binding references
 before registering tools. Missing, empty, malformed, unknown-key, writable,
 symlinked, relative, stale-binding, or otherwise ambiguous scope files prevent
-startup. The parsed scope is immutable for the process lifetime. The authority
-snapshot and projection manifest must name each other and the exact scope
-digest. A scope, registry, authority snapshot, projection generation,
+startup. The parsed scope is immutable for the process lifetime. The projection
+manifest must name the exact authority-manifest digest; both manifests must
+name the same snapshot, generation, owner, and scope digest. A scope, registry,
+active authority snapshot, projection generation,
 freshness, or revocation change requires a new reviewed activation and a fresh
 OpenClaw state directory; an earlier OpenClaw session is never resumed.
 
@@ -321,6 +357,11 @@ an ingest-owned assertion with three parts:
    binding cannot be used by an exact-site scope. Every allowed binding must
    have a domain root exactly equal to the scope's bound domain, not merely an
    ancestor.
+   The registry's top-level `revision` is `sha256:` plus the lowercase SHA-256
+   over the canonical top-level object with only `revision` removed. Binding,
+   source-registration, and root arrays must already be sorted by `id`/stored
+   ID; duplicate IDs or noncanonical input order fail rather than being
+   silently reordered before hashing.
    Each binding record also has a closed `non_expanding_roots` list for
    high-degree protocol anchors. The list may be empty. Every declared entry
    must be a valid stored ledger ID resolving unambiguously inside that
@@ -329,67 +370,49 @@ an ingest-owned assertion with three parts:
    named in Section 8.3 only after binding materialization proves that it
    resolves. Hermetic and synthetic registries declare only roots that exist in
    their own fixture stores; they do not inherit the production root.
-2. During trusted ingestion, after source parsing, ConvMem constructs exactly
-   four reserved scalar keys because Chroma metadata is flat:
-   `_convmem_auth.project_binding_id`, `_convmem_auth.site`,
-   `_convmem_auth.domain`, and `_convmem_auth.source_registration_id`. Every
-   adapter discards both the bare `_convmem_auth` key and every key beginning
-   `_convmem_auth.` from its output, and the ingest trust boundary rejects the
-   source/batch if it observes that an untrusted input attempted either form.
-   Only after that check does trusted code construct the four-key set from the
-   matched immutable binding and source-registration record. In particular,
-   `_convmem_auth.domain` is the registration's operator-owned authorization
-   domain; it is never copied from `unit["domain"]`, model/distiller output,
-   keywords, document content, or an adapter. The existing model-derived
-   `unit["domain"]` remains under its legacy `domain` key for full/shell
-   compatibility, but is semantic context only; strict projection membership,
-   selectors, graphs, and response envelopes never consult it.
+2. Gate B has one fixture-only materialization boundary owned by
+   `strict_evidence_state.py`. The launcher resolves an exact source
+   registration before parsing and supplies it out of band. The strict fixture
+   parser rejects the complete batch if source bytes contain a bare
+   `_convmem_auth`/`_convmem_state` key, any key beginning either prefix, or any
+   field named like an authority/disposition digest. It never imports a legacy
+   adapter or `ingest.py`. Only after rejection does trusted code construct
+   `project_binding_id`, `source_registration_id`, `authority_site`, and
+   `authority_domain` from the immutable registry record. In particular,
+   authority domain never comes from a source `domain`, model/distiller output,
+   keywords, document text, or filename. Ordinary semantic domain may remain
+   inside untrusted document content but is never a selector, graph, or response
+   authority value.
 
-   The enforcement rule is exhaustive rather than tied to selected method
-   names: every production, control, evaluation, migration, restore, or
-   file-generation path that passes `metadatas=` to a collection must route
-   through one reserved-prefix verifier. At this revision the audited census
-   includes every metadata-writing `ChromaStore` method (including
-   `add_summary()`, `add_unit()`, `update_unit_metadata()`, `update_unit()`,
-   `supersede_units_for_source()`, and restore delegation),
-   `file_generation_store.py:165`, `mixed_mode_control.py:64`, and
-   `eval_corpus/shadow_build.py:386`. Read-modify-write paths such as
-   `supersede_units_for_source()` must re-verify the stored four-key set against
-   the registry before preserving it; copying stored keys is not proof.
-
-   `provenance_binding.projection_metadata()` and
-   `provenance_binding.enforce_projection_metadata()` reject the bare key and
-   every `_convmem_auth.*` caller key before trusted code constructs or verifies
-   the exact four-key set from separately supplied authorization context. No
-   adapter or caller mapping is merged afterward. `chroma_write_store.py`
-   carries no metadata itself; its obligation is to vend only enforcing store
-   APIs and never a raw collection handle. A static writer-census test fails on
-   any new direct `.add`, `.upsert`, or `.update` metadata call until that path
-   is routed through the verifier and added to the reviewed census. Existing
-   provenance-only validation is insufficient.
+   The resulting strict records and file projection are written only by the
+   fixture-only `strict_projection_publisher.py`; no generic metadata mapping
+   is accepted and no raw
+   writer handle is exposed. Legacy Chroma writers, adapters, ingest, restore,
+   mixed-mode, eval, and file-generation paths are outside Gate B and remain
+   byte-unchanged. They cannot create a strict generation or a module-sealed
+   `QualifiedStrictGeneration`. Any future production resolver or Chroma-backed
+   strict projection requires a separate writer-census/prefix-enforcement
+   architecture and Ryan-granted migration; this fixture build does not claim
+   that legacy writers protect strict prefixes.
 3. The query authorizer accepts a row only when its service-owned binding ID is
    in `allowed_project_bindings`, the registry maps that ID to the bound
    canonical project, the source registration is allowed by that binding, the
    protected site/domain values exactly equal that registration's immutable
    values, and those values satisfy the effective scope.
 
-The authority record and its Chroma projection carry the same four scalar keys,
-with Chroma remaining a follower. The prefix schema is closed: all four keys
-must be present, non-empty, scalar, well-typed, and mutually consistent, and no
-unknown `_convmem_auth.*` key may exist. Any partial, duplicate, conflicting,
-or additional prefixed set denies the row. Rebuild regenerates the projection
-from the closed authority snapshot; it does not infer authorization from
-filenames, ordinary exports, Chroma, or prose.
-If the current ledger/storage path cannot reserve and protect the whole prefix,
-Gate B stops: copying a claimed authorization key from a document or adapter is
-not a substitute.
+The authority record and strict projection row carry the same four protected
+values under their closed schemas. All must be present, non-empty, well-typed,
+and registry-consistent. A partial, duplicate, conflicting, or additional
+authority field denies the complete generation. Rebuild regenerates the
+projection from authority; it never infers membership from filenames, ordinary
+exports, Chroma, or prose.
 
 The service-owned site value is either a normalized hostname or the literal
 `not_applicable`; ordinary blank values are invalid. Exact-site scope requires a
 hostname and exact normalized equality. A `not_applicable` bound scope ignores
 row-site selection but does not weaken project-binding or domain proof.
 
-Trusted ingest rejects any row whose service-owned domain is not exact or a
+Trusted strict materialization rejects any row whose service-owned domain is not exact or a
 descendant of its binding's declared domain root. The projection builder
 repeats this check from the authority snapshot and fails the whole build on a
 mismatch; it never silently drops or repairs the row. Because every allowed
@@ -403,21 +426,21 @@ exactly match the operator's configuration. Missing, unknown, conflicting,
 stale, or caller-supplied authorization claims deny the row.
 
 Existing rows have no service-owned binding and therefore deny in strict mode.
-Gate B may use hermetic fixtures whose binding is assigned through the trusted
-ingest path. It may not mutate or backfill the live corpus. A live-corpus
+Gate B may use hermetic fixtures whose binding is assigned through the strict
+fixture materializer. It may not mutate or backfill the live corpus. A live-corpus
 project-binding materialization or rebuild is a separate Ryan-granted data
 migration with its own completeness and rollback evidence.
 
 Gate B also builds a physical serving projection for each reviewed bound-scope
 manifest. Rebuild scans the closed authority snapshot, applies the full bound project,
 binding, site, and service-owned domain authorizer, and writes only accepted
-rows into a dedicated collection/index. Domain descendants are discovered by
+rows into the dedicated canonical file projection. Domain descendants are discovered by
 applying `domain_matches(auth_domain, bound_domain)` to the protected ledger
 field during rebuild; model-derived ordinary `domain` is ignored. The open
-taxonomy is never pre-enumerated into an `$in` filter. Shared global ANN indexes
-and post-query over-fetch are forbidden in strict mode. The strict process
+taxonomy is never pre-enumerated. Shared/global indexes, Chroma, ANN,
+embedding, and post-query over-fetch are forbidden in strict mode. The process
 opens only its named projection read-only and fails startup if the manifest or
-collection contains a row outside the bound scope.
+file contains a row outside the bound scope.
 The projection remains immutable for that process lifetime. New ledger data is
 visible only after an operator-run rebuild, manifest review, and server restart;
 Phase 1 contains no background refresh or index mutation.
@@ -499,11 +522,11 @@ retrieval and before serialization:
 Unknown or missing metadata denies the row. All three strict tools open only
 the physical bound-scope projection described in Section 6.2 as their sole
 candidate and graph universe. Rows outside the profile's project, allowed
-bindings, exact site, or bound domain subtree never enter search's ANN/keyword
-corpus or unresolved/related's metadata graph, result count, ordering, response
-shape, first-call cost, or process cache. Keyword fallback, vector retrieval,
-reranking, graph indexing, and any future fallback operate only inside that
-projection and still apply the final row authorizer before serialization.
+bindings, exact site, or bound domain subtree never enter search's lexical
+candidate set or unresolved/related's graph, result count, ordering, response shape,
+first-call cost, or process cache. The single deterministic lexical path and
+graph traversal operate only inside that projection and still apply the final
+row authorizer before serialization. There is no fallback.
 Strict mode never calls the current shared index, `_fetch_scoped_units()`
 adaptive over-fetch, `build_ledger_index()` over a global store, or
 `units_metadata()` on a wider collection. Failure to open or validate the exact
@@ -519,12 +542,12 @@ excluded by a voluntary narrowing. Search may return fewer than `top_k`; it
 does not refill from a shared or wider index.
 
 Exact-ledger extraction and priority injection are disabled entirely in strict
-search. Before embedding, the server splits query text only on whitespace and
+search. Before lexical tokenization or scoring, the server splits query text only on whitespace and
 applies only the grammar-and-length stage of the centralized strict
 public-handle parser with `re.fullmatch()` to each token. It never tests whether
 the token's public binding reference is known or allowed. Every syntactically
 valid qualified handle therefore receives the same fixed, non-reflecting
-`identifier_query_not_supported` response before embedding. Binding
+`identifier_query_not_supported` response before tokenization or scoring. Binding
 authorization is a separate stage used only by `related()`. Substrings such as
 `server_name`, `codec_config`, and `observer_pattern` are ordinary search text
 and must not be rejected. Punctuation-wrapped or malformed strings are not
@@ -539,152 +562,562 @@ immutable operator-reviewed authority snapshot. It never treats an existing
 Chroma row, model summary, ordinary export row, source-registration label,
 signer string, or `status=accepted` field as authority by itself.
 
-The snapshot is a JSONL file plus a closed manifest. Each line has schema
-`convmem.bound-authority-record.v1` and exactly these semantic fields:
+The snapshot is an immutable directory containing canonical authority records,
+governance dispositions, a private citation map, and a closed manifest. Pending
+proposal files are never inputs. The live ledger/export and Chroma are not
+silently converted; Gate B uses only hermetic fixtures. The Gate-B fixture file
+is a synthetic stand-in for ledger-plus-disposition
+input and has no durable-memory authority outside its test. A later live
+materializer must read an immutable ledger/disposition snapshot and preserve
+its provenance under a separately reviewed migration; it may not promote this
+fixture parser into a second production write path.
 
-- `project_binding_id`, `source_registration_id`, and the protected site/domain;
-- `record_kind`: `observation`, `decision`, or `verification`;
-- `logical_id`: the continuing finding or decision subject;
-- `assertion_id`: one immutable occurrence of that subject;
-- `source_event_id`: the registered source's stable occurrence identity;
-- `payload_sha256`: SHA-256 of the canonical semantic payload;
-- `title`, `document`, `observed_at`, `recorded_at`, and integer
-  `confidence_bps` from 0 through 10000;
-- optional contextual `relates_to_assertion_id`;
-- optional typed `supersedes_assertion_id`;
-- `origin_assurance`: `untrusted`, `claimed`, or `verified`;
-- for decisions only, `decision_state`: `approved` or `rejected` and a
-  non-empty `disposition_ref` naming an operator-owned approval disposition;
-- for verifications only, `verification_result`: `pass`, `fail`, or
-  `inconclusive` and a required `target_assertion_id`.
+Each record has schema `convmem.bound-authority-record.v2`. Every optional
+field is present as JSON `null` or an empty array, so omission cannot change
+meaning. Its exact fields are:
 
-All IDs are lowercase ASCII. Times are RFC 3339 UTC with `Z` and whole-second
-precision; `observed_at` must not exceed manifest `as_of`, and `recorded_at`
-must be at or after `observed_at` and not exceed manifest `built_at`. A
-violation fails the snapshot rather than being repaired. `title` is 1–512
-Unicode code points, `document` is 1–65536
-code points before response truncation, and confidence is an integer. These
-bounds are schema rules, not implementation defaults.
+```text
+schema, project_binding_id, source_registration_id, authority_site,
+authority_domain, record_kind, logical_id, assertion_id, source_event_id,
+producer, logical_key, semantic_sha256, payload_sha256, title, document,
+observed_at, recorded_at, confidence_bps, relates_to_assertion_id,
+target_assertion_id,
+verification_result, supersedes_assertion_ids, decision_disposition_ref,
+supersession_disposition_ref, provenance_envelope, provenance_commitment,
+origin_assurance
+```
 
-Pending proposals never enter the authority snapshot. A decision enters only
-when its disposition is present in the operator-owned approved/rejected queue
-artifact and its digest equals `disposition_ref`; a permitted signer name is
-not proof. A rejected decision may be returned as historical evidence but can
-never supersede an approved decision or establish current direction.
-Observations and verifications remain evidence claims even when their origin
-assurance is `verified`; source authorization is disclosure authority, not a
-truth certificate. Model-derived decisions remain ordinary untrusted evidence
-unless the governed disposition artifact exists.
+`record_kind` is `observation`, `decision`, or `verification`.
+`supersedes_assertion_ids` is a sorted, duplicate-free array of zero through 32
+assertion IDs. A verification has a required `target_assertion_id`; other kinds
+set it to `null`. A verification also has `verification_result` equal to exactly
+`pass`, `fail`, or `inconclusive`; other kinds set it to `null`. A decision has
+a required `decision_disposition_ref`; other kinds set it to `null`.
+`supersession_disposition_ref` is required exactly when the supersession array
+is non-empty. Contextual `relates_to_assertion_id` never changes state. All IDs
+are lowercase ASCII. Times are RFC 3339 UTC with `Z` and whole-second precision;
+`observed_at <= recorded_at <= manifest.built_at` and `observed_at <=
+manifest.as_of`. `title` is 1–512 Unicode code points, `document` is 1–65536,
+and `confidence_bps` is an integer from 0 through 10000.
+`producer` matches `[a-z0-9][a-z0-9._-]{0,15}`. `logical_key` is 1–256 NFC
+code points and is stable for one source-native subject/check across scans; it
+is not generated from title/document text. Observation, decision, and
+verification records require `find2_`, `choice2_`, and `check2_` logical-ID
+prefixes respectively; a kind/prefix mismatch fails the snapshot.
 
-The canonical payload is UTF-8 canonical JSON with sorted keys, no insignificant
-whitespace, no floats, NFC strings, and explicit `null` for absent optional
-semantic fields. It includes every field above except `payload_sha256`, plus
-the four protected authorization values. Unknown keys, duplicate JSON keys,
-non-NFC strings, NaN/infinity, or non-canonical encodings fail materialization.
-The projection carries the resulting state under a second protected, closed
-flat prefix `_convmem_state.*`. The same prefix-wide strip, construction,
-writer-census, and all-or-nothing rules used for `_convmem_auth.*` apply to
-`_convmem_state.*`; caller input may construct neither prefix.
+Canonical JSON uses the repository's `canonical_json_bytes()` profile plus
+strict duplicate-key rejection: UTF-8, sorted object keys, `,`/`:` separators,
+no insignificant whitespace, no surrogates, and explicit `null`. Every new
+strict string is NFC and every new strict field forbids floats. The nested
+`provenance_envelope` instead remains byte-equivalent to its existing v1
+acceptance domain, including any finite float or non-NFC string that domain
+validly contains; it is never normalized or rewritten. The semantic digest is SHA-256 over a closed
+object containing every record field except `semantic_sha256`, `payload_sha256`,
+`decision_disposition_ref`, `supersession_disposition_ref`,
+and the full `provenance_envelope`; it includes
+`provenance_commitment`. Thus approval binds the exact identity, text,
+confidence, times, target, relation, and supersession targets without a digest
+cycle. `payload_sha256` is SHA-256 over the final record with only
+`payload_sha256` removed, so it additionally binds both disposition references
+and the complete provenance envelope. A parser must re-encode and compare the
+bytes; a matching hash over noncanonical input is not accepted.
 
-#### 6.5.1 Logical identity, immutable assertions, and replay
+#### 6.5.1 Closed dispositions and provenance continuity
 
-Strict v2 separates a continuing subject from an immutable assertion:
+Governance artifacts use schema `convmem.authority-disposition.v1`. The exact
+fields are:
 
-- `logical_id` is `find2_<64-lowercase-hex>` for a finding or
-  `choice2_<64-lowercase-hex>` for a decision subject. The digest input is the
-  canonical binding, registered source identity, normalized site, producer,
-  and operator-defined finding/decision key. It does not identify a scan.
+```text
+schema, action, project_binding_id, subject_assertion_id,
+subject_semantic_sha256, target_assertion_ids, basis_snapshot_id,
+expected_head_assertion_ids, replaces_disposition_ref, review_actor,
+review_role, review_outcome, reviewed_at, ratifier_actor, ratifier_role,
+ratified_at, rationale_sha256
+```
+
+The content address is `disp_` plus SHA-256 of the canonical disposition bytes;
+the object contains no self-reference. That recomputed address is its logical
+ID inside `dispositions.jsonl`, and a record reference must equal it.
+`review_role` is exactly
+`kiro-design-reviewer`; `ratifier_role` is exactly
+`ryan-authority-owner`; `review_outcome` is `pass` or `fail`. These fields are
+not cryptographic identity: the trust root is the reviewed, non-writable,
+operator-owned disposition directory populated only through the authorized
+file/CLI approval path. A signer string copied from corpus content never
+qualifies.
+
+`action` is one of `decision_approved`, `decision_rejected`,
+`decision_revoked`, `evidence_withdrawn`, or `supersession_authorized`.
+The action matrix is exact:
+
+- approval/rejection names a decision, requires `pass`/`fail` respectively,
+  and sets `target_assertion_ids` and `expected_head_assertion_ids` empty and
+  `basis_snapshot_id` and `replaces_disposition_ref` to `null`;
+- revocation names that same decision and semantic digest, requires `pass`,
+  sets both arrays empty and `basis_snapshot_id` to the immediately active
+  snapshot, and names the exact prior approval in `replaces_disposition_ref`;
+- withdrawal names an observation or verification and its semantic digest,
+  requires `pass`, sets both arrays empty,
+  `basis_snapshot_id` to the immediately active snapshot, and
+  `replaces_disposition_ref` to `null`;
+- supersession names the replacement assertion as subject, requires `pass`,
+  binds its exact semantic digest, sorted target set, immutable immediately
+  active `basis_snapshot_id`, and exact active head set in that basis, and sets
+  `replaces_disposition_ref` to `null`.
+
+Any competing, cross-binding, wrong-kind, wrong-logical-ID, stale-basis, or
+partially matched disposition fails the complete authority snapshot. A
+revoked or withdrawn record remains historical; no artifact is rewritten or
+deleted.
+
+The disposition set is itself closed and reduced deterministically. Each
+decision record names exactly one matching approval or rejection disposition;
+the same disposition cannot approve two records. At most one later revocation
+may replace that approval. At most one withdrawal may target an observation or
+verification. Each non-empty supersession array names exactly one matching
+supersession disposition, and every disposition in the manifest must be
+consumed by exactly one allowed state transition. Duplicate actions,
+unreferenced dispositions, two dispositions for the same transition, a
+revocation of a rejection, or incompatible approval/rejection/revocation
+chains fail the snapshot. A disposition never changes bytes in its subject;
+it only contributes to the reducer for the snapshot that contains it.
+
+Every authority record carries a byte-for-byte valid existing
+`convmem/provenance-envelope-v1` plus its recomputed
+`provenance_commitment`. The authority snapshot also contains closed
+`convmem.strict-provenance-context.v1` with exact top-level fields `schema`,
+`schema_semantics`, `policies`, `recipes`, `verified_channels`,
+`registered_assertions`, and `context_payload_sha256`. `schema_semantics` entries contain exactly
+`schema_version`, `binding_version`, `semantic_bytes_b64`, and
+`semantic_sha256`; policy entries contain exactly `policy_version`,
+`semantic_bytes_b64`, `semantic_sha256`, and `rules`. Each rule contains
+exactly `transformer_class`, `transformer_identity`, `transformer_version`,
+`recipe_id`, `cap`, `preservation_contract`, and `artifact_sha256`, with the
+last two explicitly `null` when absent. Recipe entries contain exactly `recipe_id`,
+`recipe_bytes_b64`, and `recipe_sha256`; verified-channel entries contain
+exactly `origin_class`, `channel_class`, `channel_locator`, and
+`channel_evidence_sha256`. Registered-assertion entries contain exactly
+`assertion_id`, `provenance_commitment`, and `envelope`; the envelope must
+recompute to that commitment and its internal assertion ID must match the
+entry. Arrays are duplicate-free and already sorted respectively by
+`(schema_version,binding_version)`, `policy_version`, `recipe_id`,
+`(origin_class,channel_class,channel_locator,channel_evidence_sha256)`, and
+`assertion_id`; each policy's rules are sorted by
+`(transformer_class,transformer_identity,transformer_version,recipe_id)`.
+Base64 is canonical padded RFC 4648,
+and every embedded digest is recomputed. The context payload hash excludes only
+itself. Validation uses the existing
+recursive provenance verifier against those exact snapshots; it verifies root
+source locators/raw/input-view hashes or parent assertion/commitment/input-view
+links. Missing parents, changed commitments, incomplete ancestry, or unavailable
+policy bytes can never increase assurance. The only mapping is:
+
+- recursively verified `trusted` integrity -> `origin_assurance: verified`;
+- recursively verified `agent` integrity -> `origin_assurance: claimed`;
+- every other result -> `origin_assurance: untrusted`.
+
+The source record supplies only a provenance assertion UUID. Trusted code must
+resolve it in `registered_assertions`, recursively verify that exact immutable
+inventory entry, and copy its envelope/commitment into the authority record;
+an envelope or assurance claim inside source content is rejected. The
+publisher computes `strict_source_payload_sha256` over the canonical source
+record with only `provenance_assertion_id` removed and requires the resolved
+envelope's `selection_parameters.output_sha256` to equal it. Missing or unequal
+binding fails the complete snapshot; matching provenance identity alone is
+never payload proof. The
+envelope's existing UUID identity remains unchanged and is not replaced by the
+strict record's v2 `assertion_id`. The containing record is the explicit
+mapping between those identities. Within one authority snapshot, one existing
+provenance assertion/commitment pair may map to only one strict assertion
+except for a byte-identical retry; reusing it for different semantic bytes or
+multiple apparently independent assertions fails the snapshot.
+
+The builder does not mint replacement provenance. Its private
+`citation-map.json` uses closed schema `convmem.strict-citation-map.v1` and
+contains exactly `schema`, `citations`, and `citation_map_payload_sha256`.
+`citations` is sorted by `citation_ref`; each entry contains exactly
+`citation_ref`, `assertion_id`, `provenance_assertion_id`,
+`provenance_commitment`, `root_bindings`, and `input_bindings`, with the last
+two copied byte-equivalently from the validated envelope. The map payload hash
+excludes only itself. It is hashed by the authority manifest, excluded from
+the serving projection, and readable only by the operator audit path. Public
+`citation_ref` is `cite1_` plus SHA-256 of the canonical object with exact
+fields `schema: convmem.strict-citation-ref.v1`, `project_binding_id`,
+`assertion_id`, and `provenance_commitment`; it is never accepted as authority
+or a tool input.
+
+#### 6.5.2 Logical identity, immutable assertions, and replay
+
+Strict v2 separates a continuing subject from an immutable assertion. Digest
+inputs use one binary encoding, not delimiter-concatenated text:
+
+```text
+LP(value) = uint32_be(len(UTF8(NFC(value)))) || UTF8(NFC(value))
+H(tag, fields...) = SHA256(ASCII(tag) || 0x00 || LP(field1) || ...)
+```
+
+Each input must satisfy its field grammar before hashing; a byte length above
+`2^32-1` is invalid. The field orders below are normative.
+
+- `logical_id` is `find2_`, `choice2_`, or `check2_` plus
+  `H("convmem-logical-id-v2", project_binding_id, source_identity,
+  authority_site, producer, logical_key, subject_kind,
+  target_assertion_id_or_empty)`. `subject_kind` is `finding`, `decision`, or
+  `verification`; the prefix follows that kind. The logical key is
+  source-registration-defined and does not identify a scan. A verification
+  includes its exact target assertion ID as the final digest field; other kinds
+  use the empty string. Thus independent check keys remain independent while a
+  revision of one check can supersede only its own prior head.
 - `source_event_id` is `evt_<64-lowercase-hex>` derived by the registered
   adapter from a source-native occurrence locator, never from mutable payload
   text. The registry pins the resolver and test vectors. It is stable for an
   exact delivery retry and distinct for a genuinely later scan/event. A source
   without such an identity is ineligible for strict materialization.
 - `assertion_id` is `<kind>2_<64-lowercase-hex>`, where kind is `obs`, `dec`, or
-  `ver` and the digest covers binding ID, source-registration ID,
-  `source_event_id`, `record_kind`, and `logical_id`. It deliberately excludes
-  payload bytes so changed bytes under one source occurrence collide and deny
-  rather than masquerading as a new event.
+  `ver`, followed by `H("convmem-assertion-id-v2", project_binding_id,
+  source_registration_id, source_event_id, record_kind, logical_id)`. It
+  deliberately excludes payload bytes so changed bytes under one occurrence
+  collide and deny rather than masquerading as a new event.
 
-An exact retry is a no-op only when binding, source registration, source event,
-assertion ID, payload digest, complete canonical payload, and relation fields
-are byte-equivalent to the committed authority record. Reprocessing identical
-input must recover and reuse the preserved source-event identity; minting a new
-UUID or occurrence ID is not a retry. A later legitimate scan has a distinct
-source event and assertion ID even when its visible text is unchanged. Reusing
-one source event with changed content, reusing one assertion ID with another
-payload, or presenting the same payload digest with different canonical bytes
-is `source_event_conflict` and fails the whole snapshot. Nothing overwrites an
-assertion. Live adoption of this schema remains a separately granted migration.
+The only Gate-B resolver is `fixture_scan_event_v1`. Its registered source
+object has the closed fields `schema`, `event_key`, `captured_at`, and
+`records`; `schema` is `convmem.fixture-scan.v1`, `event_key` is 1–256 NFC code
+points and matches `[A-Za-z0-9][A-Za-z0-9._:-]*`, and `records` may contain
+many typed source records. Every record in one scan shares
+`evt_ + H("convmem-fixture-scan-event-v1", source_registration_id,
+source_identity, event_key)`; assertion uniqueness still includes each
+record's logical ID. The scan's validated `captured_at` becomes each record's
+`recorded_at`; source records cannot supply another recorded time. The collision key is the exact five-tuple
+`(project_binding_id, source_registration_id, source_event_id, record_kind,
+logical_id)`. No UUID, timestamp fallback, record index, or payload-derived
+event key is permitted. Adding a production resolver is a later architecture
+decision.
 
-#### 6.5.2 Deterministic current-state reduction
+An exact retry is a no-op only when the collision key, assertion ID, semantic
+digest, payload digest, complete canonical record bytes, dispositions, and
+relation fields are byte-equivalent. Reprocessing identical input must recover
+the registered event key; reminting an occurrence is not a retry. A later scan
+has a distinct event and assertion even when visible text is unchanged. A
+reminted event for one registered event key, changed content under one
+collision key, same digest with different canonical bytes, or duplicate
+assertion with different provenance is `source_event_conflict` and fails the
+generation. Nothing overwrites an assertion. Live adoption remains a
+separately granted migration.
 
-`relates_to_assertion_id` is contextual lineage only; it never means
-replacement. Supersession occurs only through `supersedes_assertion_id`. The
-builder rejects a supersession edge that is ambiguous, cyclic, cross-binding,
-cross-logical-ID, cross-kind, self-referential, or points to a missing
-assertion. A decision supersession is effective only when both decisions are
-approved. Rejected and pending decisions never hide an approved decision.
+#### 6.5.3 Deterministic current-state reduction
 
-An assertion is active when no valid active assertion explicitly supersedes
-it. Multiple active observations or approved decisions for one logical ID are
-returned as `current_state: conflict`; the builder never picks the latest
-timestamp. A verification applies only to its exact target assertion. Active
-verification results reduce conservatively: no result is `unverified`; only
-passes are `pass`; any fail without a pass is `fail`; pass plus fail is
-`conflict`; and inconclusive without fail/pass is `inconclusive`. A fail or
-conflict can never be masked by an inline observation field, a newer timestamp,
-or a summary. Outcome, decision state, disposition, target, supersession,
-confidence basis points, and relation changes are semantic payload changes and can never be
-skipped as text-identical updates.
+`relates_to_assertion_id` is context only. `target_assertion_id` is used only by
+verification. State replacement uses only the disposition-backed
+`supersedes_assertion_ids`. A valid supersession is permanent within and after
+the snapshot in which it first appears: a target is historical when *any*
+valid admitted successor supersedes it, regardless of whether that successor
+is later superseded, withdrawn, or revoked. This monotonic rule prevents
+`A <- B <- C` from resurrecting A; only C is a head. Cycles, self-edges,
+missing targets, cross-binding/logical-ID/kind edges, and rejected-decision
+successors fail the generation.
 
-Strict `unresolved` includes active observations whose reduced state is
-`unverified`, `fail`, `inconclusive`, or `conflict`. It excludes only an
-explicitly superseded observation or one whose exact active assertion reduces
-to `pass`. Search and related may return historical/superseded records, but
-must label their state and never describe them as current. The reducer output
-is materialized and independently recomputed during validation; disagreement
+A successor may join multiple heads only when its supersession disposition's
+`basis_snapshot_id` names the immediately active predecessor snapshot and its
+`expected_head_assertion_ids` and target array exactly equal the complete
+active head set for that logical ID in that basis. Publication compare-and-swap
+then prevents two joins from both claiming the same basis. A stale or partial
+join fails; concurrent independently admitted heads remain `conflict`. The
+builder never chooses by timestamp. Rejected decisions are historical.
+`decision_revoked` and `evidence_withdrawn` remove the subject from the active
+head set but do not undo its already-authorized supersession edges; restoring
+old meaning requires a new explicit assertion and disposition, never
+resurrection.
+
+The public state vocabulary is closed:
+
+- observation `authority_state`: `current`, `conflict`, `superseded`, or
+  `withdrawn`;
+- decision `authority_state`: `approved`, `rejected`, `revoked`,
+  `superseded`, or `conflict`;
+- verification `authority_state`: `current`, `conflict`, `superseded`, or
+  `withdrawn`;
+- every row `verification_state`: `not_applicable`, `unverified`, `pass`,
+  `fail`, `inconclusive`, or `conflict`.
+
+Reducer precedence is exact. First apply a valid withdrawal, rejection, or
+revocation to its subject. Next mark every target of any valid admitted
+supersession `superseded` unless the earlier terminal state is
+withdrawn/rejected/revoked. From the remaining eligible heads, one observation
+or verification head is `current` and two or more heads of the same logical ID
+are all `conflict`; one approved decision head is `approved` and two or more
+approved heads are all `conflict`. Zero eligible heads is allowed and means the
+logical subject has no current direction; no predecessor is reactivated.
+
+Multiple unsuperseded heads of one record kind and logical ID are each
+presented as `authority_state: conflict`; the immutable record itself is not
+rewritten. Different verification logical IDs are independent checks, not
+competing heads. Verification may target an observation or an approved
+decision in the same binding, never another verification. A
+verification whose target is historical remains context and does not affect a
+different target. Every non-historical verification head whose authority state
+is `current` or `conflict` counts. For
+the set of distinct results, the complete reduction is: empty -> `unverified`;
+`{pass}` -> `pass`; `{fail}` or `{fail,inconclusive}` -> `fail`;
+`{inconclusive}` or `{pass,inconclusive}` -> `inconclusive`; any set containing
+both pass and fail -> `conflict`. Thus uncertainty never becomes pass.
+Decision rows use the same verification reduction but retain their authority
+state separately. Observation and decision rows use the reduced value;
+verification rows always use `verification_state: not_applicable` while their
+own `verification_result` remains explicit.
+
+Strict `unresolved` includes every current/conflicting observation head whose
+verification state is `unverified`, `fail`, `inconclusive`, or `conflict`.
+Only a current head with `pass`, or a non-current historical row, is excluded.
+Search and related may return historical rows only through their normal
+lexical/neighborhood rules and must label them. Inline legacy outcomes,
+summaries, timestamps, and text equality never participate. Reducer output is
+materialized and recomputed independently during cold validation; any mismatch
 fails publication.
 
-#### 6.5.3 Authority-first materialization and recovery
+#### 6.5.4 Authority-first materialization and exact artifact schemas
 
 The authority snapshot is the sole input to strict publication. Chroma,
-ordinary unit exports, global ledger maps, summaries, caches, and projection
-rows are never recovery authority. Fixture construction and any later granted
-materialization follow this order under one authority-writer lease:
+ordinary exports, global ledger maps, summaries, caches, and projection rows
+are never recovery authority. A strict generation has this fixed layout:
+
+Gate B's only publisher input is closed
+`convmem.strict-fixture-bundle.v1`, with exact top-level fields `schema`,
+`batches`, `dispositions`, `provenance_context`, `built_at`, `as_of`,
+`expires_at`, and `fixture_payload_sha256`. Each already-sorted batch contains
+exactly `source_registration_id` and `source`; `source` is the closed
+`convmem.fixture-scan.v1` object from Section 6.5.2. Each source record contains
+exactly `record_kind`, `producer`, `logical_key`, `title`, `document`,
+`observed_at`, `confidence_bps`, `relates_to_assertion_id`,
+`target_assertion_id`, `verification_result`, and
+`provenance_assertion_id`, using
+explicit `null` for kind-inapplicable fields. Authority scope/domain/site,
+disposition references, supersession targets, IDs, recorded time, assurance,
+and every digest are absent from source records and constructed or resolved by
+trusted code. The bundle hash excludes only itself; its dispositions and
+provenance context must independently satisfy their closed schemas. `built_at`
+is not earlier than any batch `captured_at`; `as_of` is not earlier than any
+admitted `observed_at`; and `expires_at` equals `as_of` plus the bound scope's
+`max_snapshot_age_seconds` exactly.
+
+The sole write interfaces are:
+
+```text
+python -B -s strict_projection_publisher.py build-fixture \
+  --bundle ABS --scope ABS --registry ABS --strict-config ABS \
+  --expected-generation none|gen1_<64 lowercase hex>
+
+python -B -s strict_projection_publisher.py rollback-fixture \
+  --scope ABS --registry ABS --strict-config ABS \
+  --expected-generation gen1_<64 lowercase hex> \
+  --target-generation gen1_<64 lowercase hex>
+```
+
+All paths must pass the operator-file checks; output comes only from the
+already validated strict config. No other subcommand, environment override,
+stdin record stream, live source, Chroma source, or recovery shortcut exists.
+`strict_projection.py` contains only cold validation and the sealed read-only
+reader and is the only projection module imported by the strict server.
+
+```text
+<projection_root>/layout.json
+<projection_root>/authority/<snapshot_id>/records.jsonl
+<projection_root>/authority/<snapshot_id>/dispositions.jsonl
+<projection_root>/authority/<snapshot_id>/citation-map.json
+<projection_root>/authority/<snapshot_id>/provenance-context.json
+<projection_root>/authority/<snapshot_id>/manifest.json
+<projection_root>/projection/<generation_id>/rows.jsonl
+<projection_root>/projection/<generation_id>/graph.json
+<projection_root>/projection/<generation_id>/manifest.json
+<projection_root>/active/<owner_digest>.json
+<projection_root>/locks/<owner_digest>.lock
+```
+
+`layout.json` is the self-hashed closed schema
+`convmem.strict-generation-layout.v1` and names only the four fixed
+directories. Its exact fields are `schema`, `authority_dir`, `projection_dir`,
+`active_dir`, `locks_dir`, and `layout_payload_sha256`; the four directory
+values are exactly `authority`, `projection`, `active`, and `locks`, and the
+payload hash excludes only itself. `owner_digest` is the lowercase hexadecimal
+SHA-256 over canonical JSON with the exact fields `schema`, `scope_sha256`,
+`registry_sha256`, and `project_binding_id`, where `schema` is
+`convmem.strict-owner.v1`; it is not derived from a path.
+
+The closed authority manifest `convmem.bound-authority-manifest.v2` contains
+exactly:
+
+```text
+schema, owner_digest, snapshot_id, scope_sha256, registry_sha256,
+authority_records_sha256, record_count,
+dispositions_sha256, disposition_count, citation_map_sha256,
+provenance_context_sha256,
+reducer_version, canonicalization_version, builder_version,
+builder_tree_sha256, built_at, as_of,
+expires_at, manifest_payload_sha256
+```
+
+The closed projection manifest `convmem.bound-projection-manifest.v2` contains
+exactly:
+
+```text
+schema, owner_digest, generation_id, previous_generation_id, snapshot_id,
+authority_manifest_sha256, scope_sha256, registry_sha256, rows_sha256,
+row_count, graph_sha256, graph_node_count, search_kernel,
+search_kernel_version, tokenizer_unicode_version, builder_version, built_at,
+builder_tree_sha256, as_of, expires_at, manifest_payload_sha256
+```
+
+Both payload hashes cover the canonical object with only that hash field
+removed. `snapshot_id` is `snap1_` plus the lowercase SHA-256 over canonical
+JSON with the exact fields `schema`, `owner_digest`, `authority_records_sha256`,
+`dispositions_sha256`, `citation_map_sha256`,
+`provenance_context_sha256`,
+`reducer_version`, `canonicalization_version`, `builder_version`, `built_at`,
+`builder_tree_sha256`, `as_of`, and `expires_at`, where
+`schema` is `convmem.strict-snapshot-id.v1`. The authority manifest is complete
+at this point and contains no projection or predecessor identifier.
+`generation_id` is `gen1_` plus the lowercase SHA-256 over canonical JSON with
+the exact fields `schema`, `owner_digest`, `snapshot_id`, `scope_sha256`,
+`registry_sha256`, `authority_manifest_sha256`, `rows_sha256`, `graph_sha256`, `reducer_version`,
+`canonicalization_version`, `search_kernel`, `search_kernel_version`,
+`tokenizer_unicode_version`, `builder_version`, `builder_tree_sha256`,
+`previous_generation_id`, and `built_at`, where `schema` is
+`convmem.strict-generation-id.v1`. The projection manifest names that
+generation ID and the authority snapshot ID; the authority manifest names only
+the snapshot ID. Both share the same owner and scope/registry digests.
+`builder_tree_sha256` uses the tree-digest recipe in Section 6.5.6 over exactly
+`canonical_json.py`, `provenance.py`, `domains.py`, `bound_read_scope.py`,
+`strict_evidence_state.py`, `strict_projection_publisher.py`,
+`strict_projection.py`, `requirements.txt`, and all seventeen schema files in
+the paired execution plan. No test or mutable artifact enters that digest.
+Records are sorted by `assertion_id`; dispositions are sorted by their
+recomputed `disp_...` content address. Each file contains one canonical object
+plus LF per line; duplicate identities or noncanonical order fail. Projection
+rows use closed
+schema `convmem.bound-projection-row.v1` and contain exactly:
+
+```text
+schema, project_binding_id, public_binding_ref, source_registration_id,
+authority_site, authority_domain, record_kind, logical_id, assertion_id,
+public_ledger_id, citation_ref, title, document, observed_at, recorded_at,
+confidence_bps, relates_to_assertion_id, target_assertion_id,
+verification_result, supersedes_assertion_ids, decision_disposition_ref,
+supersession_disposition_ref, origin_assurance, authority_state,
+verification_state, state_disposition_refs, payload_sha256, state_sha256
+```
+
+`public_ledger_id` is the qualified handle from Section 8.1. `state_sha256` is
+the lowercase SHA-256 over canonical JSON containing exactly `schema:
+convmem.strict-state.v1`, `assertion_id`, `authority_state`,
+`verification_state`, the sorted active head assertion IDs for that logical
+ID, the sorted current verification assertion IDs, and the sorted disposition
+references consulted by the reducer. `state_disposition_refs` is that same
+sorted, duplicate-free disposition-reference array. Every other row value is copied from or deterministically derived from
+the qualified authority snapshot. `graph.json` has schema
+`convmem.strict-graph.v1` and exact fields `schema`, `nodes`, `edges`, and
+`graph_payload_sha256`; `nodes` is the sorted unique assertion-ID array and
+`edges` is the sorted array of closed objects `{kind, from_assertion_id,
+to_assertion_id}`, where `kind` is `relates_to`, `targets`, or `supersedes`.
+The graph payload hash excludes only itself. Neither file contains operator
+paths or private citation locators.
+
+The fixed fixture safety bounds are 1–10,000 authority records, 0–30,000
+dispositions, one citation entry per record, at most 350,000 graph edges, a
+64-MiB provenance-context file, and 128 MiB for all canonical authority files
+combined. Each private locator string is at most 4,096 code points. The
+projection's separate 10,000-row/64-MiB bounds remain Section 6.5.5. Crossing a
+bound fails before publication; no file is truncated, sampled, or spilled.
+
+The active pointer `convmem.strict-active-pointer.v1` contains exactly
+`schema`, `owner_digest`, `epoch`, `active_generation_id`,
+`authority_manifest_sha256`, `projection_manifest_sha256`,
+`previous_generation_id`, `published_at`, and `pointer_payload_sha256`.
+`previous_generation_id` is `null` only for first publication. Its payload
+hash excludes only itself.
+
+Fixture construction and any later granted materialization follow this order
+under an exclusive `flock` on the owner lock:
 
 1. validate source registrations and canonical records;
-2. write the selected, validated immutable assertion view to a temporary
-   authority generation without modifying its source ledger/dispositions;
+2. compute `snapshot_id`, then write the selected, validated immutable
+   assertion view to a temporary authority snapshot without modifying its
+   source ledger/dispositions;
 3. fsync every authority file and its directory;
-4. write and fsync a manifest containing the scope/registry digests, complete
-   file hashes, record count, authority checkpoint, reducer version, and
-   `as_of` time;
-5. close the authority generation; no later mutation is permitted;
+4. write and fsync the exact authority manifest above;
+5. close the authority snapshot; no later mutation is permitted;
 6. build the bound projection in a new generation from that closed snapshot;
 7. validate every row, recompute payload/state digests and the reducer, and
-   record collection, embedding, builder, dependency, and row-content digests;
-8. fsync the projection and manifest, then publish with one compare-and-swap
-   active-pointer update using the existing generation-publication primitive.
+   write the exact projection manifest above;
+8. fsync the projection files/directories and run strict cold validation in a
+   fresh interpreter;
+9. publish by compare-and-swap of the strict active pointer and fsync its
+   directory.
 
-The builder pins one authority checkpoint. Assertions committed afterward are
-absent until a later reviewed generation. A crash before pointer publication
-leaves the previous generation active; an incomplete generation is never
-opened. A crash after the atomic pointer update opens only the fully validated
-new generation. Startup validates pointer lineage and both manifests before
-tool registration. Rollback is a compare-and-swap pointer change to the
-retained prior verified generation; it never edits or deletes authority
-records. Projection-only rows are quarantined from consideration and are never
-silently imported. Disk-full, torn-tail, duplicate delivery, concurrent
-writer, stale builder, and stale-pointer cases must fail without changing the
-active view.
+The first publication requires pointer absence, `expected_generation_id=null`,
+`epoch=1`, and `previous_generation_id=null`. Forward publication requires the
+caller's exact expected active generation and writes `epoch+1`; stale callers
+fail. Rollback requires the expected current generation, a retained target with
+the same owner, its retained authority snapshot, successful fresh-process
+qualification, and an unexpired target snapshot; it writes a new pointer epoch
+with the target active and the replaced generation as `previous_generation_id`.
+It never edits snapshots or generations. The
+existing generic file-generation pointer is not reused because its canonical
+source-path/Chroma manifest is a different contract; only its reviewed atomic
+file-write and lock primitives may be reused.
 
-#### 6.5.4 Freshness, activation, and revocation
+The cold validator hashes every file, validates both exact manifests, rebuilds
+graph/state/search rows from authority, and returns a module-sealed
+`QualifiedStrictGeneration`. The server accepts no unsealed mapping or raw
+path. It opens files with `O_RDONLY|O_NOFOLLOW`, checks regular-file owner/mode,
+holds descriptors to validated inodes, and performs no create, journal, cache,
+temp, Chroma, or network operation. A crash before durable pointer publication
+leaves the old generation. A post-rename directory-fsync failure is ambiguous:
+no process may serve until cold recovery rereads and qualifies the pointer.
+Disk-full, torn-tail, duplicate delivery, concurrent writer, stale builder,
+stale pointer, and missing first-generation cases fail closed.
 
-The projection manifest contains an opaque `snapshot_id`, `authority_snapshot`,
-`source_checkpoint_sha256`, `scope_sha256`, `registry_sha256`, `built_at`,
-`as_of`, and `expires_at`. `expires_at` equals `as_of` plus the scope's reviewed
-maximum age. Clock rollback, an already expired view, or a request beginning
-after expiry returns `snapshot_stale` before retrieval. No automatic rebuild or
+#### 6.5.5 Deterministic strict search and read-only projection
+
+Gate B deliberately implements lexical search only. It promises no semantic or
+paraphrase recall. Strict mode never imports `query.py`, an embedder, reranker,
+Ollama, Chroma, a model cache, or general ConvMem config. The projection is
+bounded to 10,000 rows and 64 MiB of canonical row bytes; exceeding either
+limit fails the build rather than degrading or spilling.
+
+The tokenizer applies NFC, Unicode `casefold()`, then emits maximal runs whose
+code points have Unicode general category beginning `L` or `N`, plus internal
+underscore. Other code points are separators; empty tokens disappear. The
+manifest pins `unicodedata.unidata_version`. Query input is at most 2,048 code
+points and 64 distinct tokens after stable first-occurrence deduplication.
+`normalized_query`, `normalized_title`, and `normalized_document` are the
+single-ASCII-space joins of the tokenizer's full token sequence before token
+deduplication. Per-token terms use the stable first-occurrence distinct query
+tokens. Occurrences are counted at every code-point start position, including
+overlaps, before the cap is applied. A row is a candidate only if one query
+token appears in its normalized title or document. Its integer score is:
+
+```text
+16 if normalized query is a title substring
+ 4 if normalized query is a document substring
++ 8 * min(3, title occurrences) for each distinct query token
++ 1 * min(3, document occurrences) for each distinct query token
+```
+
+The leading sort key is zero exactly for `authority_state` in `current`,
+`approved`, or `conflict`, and one for every historical state. Rows sort by
+that key, then descending integer score, descending `observed_at`, and ascending
+`assertion_id`. No clock, confidence, vector distance, model output, random
+order, or fallback changes ranking. `top_k` truncation occurs after final
+authorization. An empty-token query is `invalid_request`. All tools share one
+`StrictProjectionReader` over the qualified generation; it exposes only
+`search_rows`, `unresolved_rows`, and `related_neighborhood`, never a raw file
+handle or wider store.
+
+#### 6.5.6 Freshness, activation, and revocation
+
+The projection manifest contains the exact freshness and identity fields in
+Section 6.5.4. `expires_at` equals `as_of` plus the scope's reviewed maximum
+age. Clock rollback, an already expired view, or a request beginning after
+expiry returns `snapshot_stale` before retrieval. No automatic rebuild or
 silent extension is allowed.
 
 Every successful tool response carries `snapshot_id`, `as_of`, and
@@ -699,6 +1132,122 @@ and session identity. Old session artifacts may be retained offline for audit
 but are never mounted or resumed. Because a model cannot be made to forget
 already disclosed text, continuing an old session after revocation is a hard
 failure, not a refresh strategy.
+
+The trusted enforcement owner for Phase 1A is a separate local process,
+`openclaw_activation_supervisor.py`, started only by the operator. The model,
+plugin, corpus, and MCP child have no control method. It consumes a closed
+`convmem.openclaw-activation.v1` manifest containing exactly:
+
+```text
+schema, activation_id, owner_digest, scope_sha256, registry_sha256,
+strict_config_sha256, authority_manifest_sha256, projection_manifest_sha256, snapshot_id, as_of,
+expires_at, openclaw_version, openclaw_config_sha256, plugin_tree_sha256,
+connector_launch_sha256, strict_server_tree_sha256, supervisor_tree_sha256,
+openclaw_binary_sha256, state_dir, gateway_port,
+gateway_argv_sha256, agent_argv_sha256, created_at,
+max_monotonic_lifetime_seconds,
+manifest_payload_sha256
+```
+
+The connector-launch digest and its embedded strict-server-tree digest must
+match the activation fields exactly; the scope, registry, strict config,
+plugin, supervisor, OpenClaw binary, and both authority/projection manifests
+must also hash to the activation values before any child starts.
+Every `*_tree_sha256` is the lowercase SHA-256 over canonical JSON containing
+the exact sorted array of closed entries `{path, mode, sha256}`. Paths are
+relative POSIX paths, modes are four-digit octal strings, entries are regular
+non-symlink files, and duplicate/unlisted paths fail. The plugin tree contains
+only its production `package.json`, `openclaw.plugin.json`, and `index.js`; the
+strict-server tree contains only `bound_read_scope.py`,
+`strict_evidence_state.py`, `strict_projection.py`, `canonical_json.py`,
+`provenance.py`, `domains.py`, `openclaw_strict_server.py`, `requirements.txt`,
+and all seventeen
+schemas except the fixture-bundle, connector-launch, and activation schemas.
+The supervisor
+tree contains only `openclaw_activation_supervisor.py`. Test files,
+`strict_projection_publisher.py`, caches, and mutable state are excluded from
+runtime trees and cannot be loaded by those processes.
+
+`activation_id` is a random 128-bit lowercase-hex value created by the
+operator-side launcher. The manifest is regular, non-symlinked, mode `0400`,
+operator-owned, self-hashed, and outside the model workspace. `gateway_port` is
+an operator-selected integer from 49152 through 65535 and must be unused at
+activation; the supervisor refuses fallback to another port. `state_dir` must
+be a nonexistent path beneath one reviewed empty parent; the supervisor
+creates it mode `0700` and refuses any reuse. The argv hashes bind the fixed
+arrays derived from the manifest:
+
+```text
+[OPENCLAW, "gateway", "run", "--bind", "loopback", "--port", PORT,
+ "--auth", "token", "--tailscale", "off", "--ws-log", "compact"]
+[OPENCLAW, "agent", "--json", "--session-id", ACTIVATION_ID,
+ "--timeout", "120", "--message", TURN_TEXT]
+```
+
+The agent hash is computed with the literal sentinel `TURN_TEXT`, not request
+text; the supervisor substitutes only that final value after rejecting NUL,
+surrogates, more than 16,384 Unicode code points, or more than 64 KiB UTF-8.
+Combined agent stdout/stderr is capped at 1 MiB; exceeding the cap kills the
+turn and releases no output. The supervisor generates one random 256-bit
+gateway token in memory, supplies it to
+only the gateway and agent children as `OPENCLAW_GATEWAY_TOKEN`, and never
+persists, logs, or forwards it to the MCP child or model. The child environment
+contains exactly `OPENCLAW_GATEWAY_TOKEN`, `OPENCLAW_STATE_DIR`,
+`OPENCLAW_CONFIG_PATH`, `HOME`, `PATH`, `LANG`, and `LC_ALL`. `HOME` is the
+fresh empty activation home beneath `state_dir`; executable paths inside the
+OpenClaw config and plugin launch are absolute. No provider, proxy, cloud,
+credential, Node-option, or inherited ambient variable is permitted. The
+reviewed Gate-D config must select a credential-free local model endpoint; if
+the installed runtime cannot do so under this environment, Gate D stops and
+returns to architecture. `--deliver`, `--local`, `--channel`, `--to`, every
+reply option, service install/start, discovery, and non-loopback binding are
+forbidden.
+
+The only supervisor start interface is
+`python openclaw_activation_supervisor.py --activation-manifest <absolute>
+--openclaw-config <absolute>`. Both files receive the same owner/mode/symlink
+checks as the scope file. Before starting a child, the supervisor verifies the
+config bytes against `openclaw_config_sha256`, creates the fresh state
+directory, copies those bytes to the sole fixed
+`OPENCLAW_CONFIG_PATH=<state_dir>/openclaw.json` with mode `0400`, and creates
+an empty `<state_dir>/home` mode `0700`. No other source file is copied. The
+control socket is exactly `<state_dir>/supervisor.sock`; the audit-only sealed
+status is exactly `<state_dir>/SEALED.json` and contains no token, prompt, model
+output, or corpus text.
+
+The supervisor holds a shared owner-generation lock and the sole exclusive
+profile-activation lock. Publication/rollback requires the owner lock
+exclusively; a new activation requires the profile lock, so neither can race an
+old session. For each local operator turn the supervisor starts the fixed agent
+command, buffers all stdout/stderr, and releases only stdout containing one
+complete UTF-8 JSON object with no trailing non-whitespace bytes after
+rechecking the activation manifest, pointer, wall-clock expiry, and monotonic
+lease. Stderr is audit-only and never released as an answer. No streaming chunk
+or direct OpenClaw delivery reaches the user. It checks wall time at start,
+every 100 ms while a child runs, and before
+release. At activation it also sets a monotonic deadline from
+`min(expires_at - wall_now, max_monotonic_lifetime_seconds)`; either deadline
+expiring wins, so clock rollback cannot extend authority.
+
+The operator-only Unix control socket is mode `0600` in a non-workspace runtime
+directory and accepts only `status` and
+`revoke(activation_id, reason_code)`; `reason_code` is a fixed enum and no
+corpus/request text is accepted. Revoke, expiry, manifest/pointer drift, scope
+correction, rollback preparation, or lease loss terminates the entire child
+process group (`SIGTERM`, two-second bound, then `SIGKILL`), discards every
+buffered or in-flight response, closes the connector, releases locks, and seals
+the state directory offline as non-resumable. Linux parent-death signal and a
+dedicated process group make supervisor death kill the gateway; the connector
+must exit on stdio EOF. A process-group or lock failure is fatal before output.
+The publication operator must obtain a revocation receipt and the released
+exclusive owner lock before changing the pointer.
+
+Gate B/C implement and test this supervisor against fake gateway/agent
+processes only. Gate D is the first point at which the installed binary may be
+started, and it must reproduce expiry, correction, rollback, sleep,
+clock-change, supervisor-crash, no-tool inference, and buffered-response tests.
+External channels and streaming delivery remain outside this architecture;
+Phase 1B cannot proceed without a separate delivery-control design.
 
 ## 7. Deep module boundary
 
@@ -722,22 +1271,29 @@ A second new deep module, `strict_evidence_state.py`, owns the closed authority
 record schema, canonical payload, logical/source-event/assertion identifiers,
 approval-disposition validation, supersession graph, conservative verification
 reducer, and public state fields. A third module,
-`bound_projection_builder.py`, is the only authority-snapshot-to-projection
-path and owns generation manifests, checkpoint pinning, validation,
-compare-and-swap publication, and rollback integration. These responsibilities
-must not be reimplemented in handlers or adapters.
+`strict_projection_publisher.py`, is the fixture-only
+authority-snapshot-to-projection path and owns exact manifests, immutable file
+layout, compare-and-swap publication, and rollback. A fourth module,
+`strict_projection.py`, owns cold validation, deterministic lexical search,
+and the sealed read-only reader; it exports no publication or generic write
+API. A fifth module, `openclaw_activation_supervisor.py`, owns
+activation manifests, locks, deadlines, child process groups, buffered local
+delivery, and revocation. These responsibilities must not be reimplemented in
+handlers, adapters, or the plugin.
 
-`mcp_server.py` owns only profile selection, fixed tool registration, argument
-decoding, delegation, and serialization. Query, unresolved, and ledger modules
-continue to own their domain behavior; they do not learn about OpenClaw.
-`ledger_ids.py` preserves legacy v1 IDs and owns qualified public-handle syntax;
-`strict_evidence_state.py` owns v2 logical/source-event/assertion generation
-and validation. The strict-scope module owns
+The dedicated `openclaw_strict_server.py` owns only closed startup, the exact
+three MCP method names, argument decoding, delegation, and serialization.
+`mcp_server.py` changes only to reject `openclaw-strict` and unknown profiles;
+it never serves the strict tools. Legacy query, unresolved, ledger, Chroma,
+and file-generation modules are not imported by the strict executable.
+`ledger_ids.py` and `agent_run_ledger.py` remain byte-compatible legacy APIs;
+`strict_evidence_state.py` exclusively owns v2 IDs and qualified public-handle
+syntax. The strict-scope module owns
 `normalize_authority_site()`, the pinned authority-host algorithm used by the
 registry and v2 site normalization. The dedicated projection builder owns
-authority-snapshot-to-bound-index materialization; `chroma_store.py` and
-`file_generation_store.py` expose the
-result read-only but do not decide scope. The strict-scope module owns
+authority-snapshot-to-bound-file materialization; the separate reader owns
+qualified access. The
+strict-scope module owns
 binding-scoped identity resolution and hands ledger traversal an already
 authorized, unambiguous graph rather than a global index.
 
@@ -773,22 +1329,34 @@ executable fields:
       "citation_ref": "...",
       "record_kind": "observation",
       "logical_id": "find2_...",
-      "current_state": "unverified",
-      "decision_state": null,
+      "authority_state": "current",
+      "verification_state": "unverified",
       "verification_result": null,
       "target_ledger_id": null,
-      "superseded": false,
+      "supersedes_ledger_ids": [],
       "origin_assurance": "claimed",
       "confidence_bps": 7000,
       "observed_at": "2026-09-20T00:00:00Z",
       "recorded_at": "2026-09-20T00:00:01Z",
-      "disposition_ref": null,
+      "decision_disposition_ref": null,
+      "supersession_disposition_ref": null,
+      "state_disposition_refs": [],
+      "truncated": false,
       "domain": "...",
       "site": "..."
     }
   ]
 }
 ```
+
+The top-level success object contains exactly `schema`,
+`instruction_authority`, `snapshot`, and `results`; `snapshot` contains exactly
+`snapshot_id`, `as_of`, and `expires_at`. Each result contains exactly the
+fields shown above. `truncated` is always present and is true only when the
+document was cut at the Section 8.4 per-document bound. `target_ledger_id` and
+every `supersedes_ledger_ids` element are qualified public handles derived from
+same-binding assertion IDs. Kind-inapplicable values are explicit `null` or an
+empty array.
 
 The connector must return this as tool-result data. It must not concatenate the
 document into a system, developer, skill, tool-description, or user message.
@@ -807,7 +1375,7 @@ strict handle therefore names one identity across profiles without exposing a
 project name or accepting a request-time scope selector. A row without a valid
 stored external ID and binding reference has no public handle and cannot be
 passed to `related()`. The envelope's `domain` and `site` fields are rendered
-only from `_convmem_auth.domain` and `_convmem_auth.site`; the legacy ordinary
+only from `authority_domain` and `authority_site`; legacy ordinary
 `domain`/`site` metadata is never exposed as strict authorization context.
 
 OpenClaw may summarize the returned data for its user, but no second model call
@@ -832,19 +1400,19 @@ the same untrusted-evidence envelope.
 
 Strict `related(ledger_id=...)` accepts only the binding-qualified public handle
 returned by strict search or unresolved, never a bare stored ledger ID or raw
-Chroma storage ID. `ledger_ids.py` remains the owner of legacy IDs and
-public-handle parsing; `strict_evidence_state.py` owns v2 assertion IDs. Both
-use the same centralized stored-ID validator. The strict
+storage ID. `ledger_ids.py` remains the owner of legacy IDs;
+`strict_evidence_state.py` exclusively owns v2 assertion IDs, strict
+public-handle parsing, and the strict stored-ID validator. The strict
 stored-ID validator uses
 `re.fullmatch()` over this ASCII grammar plus a 160-code-point maximum, not
 `match`, `search`, extraction, or an appended `$`:
 
 ```text
-(?:dec_prop|obs2|dec2|ver2|obs|dec|ver)_[A-Za-z0-9_.-]+
+(?:(?:obs2|dec2|ver2)_[a-f0-9]{64}|(?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+)
 ```
 
 The public-handle validator uses `re.fullmatch()` over
-`cm1\.[a-f0-9]{32}\.(?:dec_prop|obs2|dec2|ver2|obs|dec|ver)_[A-Za-z0-9_.-]+`, enforces a
+`cm1\.[a-f0-9]{32}\.(?:(?:obs2|dec2|ver2)_[a-f0-9]{64}|(?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+)`, enforces a
 200-code-point maximum, and then validates the captured stored ID separately.
 This is the syntax/length stage used by search. Only `related()` continues to
 the authorization stage, where the public binding reference must equal an
@@ -879,7 +1447,7 @@ The logical key, source event, and assertion digest inputs are length-prefixed
 canonical UTF-8 fields; concatenated free text is forbidden. No authorization
 decision parses site identity back out of an ID; protected metadata remains
 authoritative. A registry-v2 generator that cannot produce a valid ID fails the
-entire authority generation with the operator-visible reason
+entire authority snapshot with the operator-visible reason
 `ledger_id_mint_denied`; this read-only slice creates no mutable quarantine.
 It must never substitute a UUID, truncate without a digest, or silently skip
 the item. Existing legacy IDs that already satisfy the strict grammar may be
@@ -887,20 +1455,20 @@ qualified only after the separately reviewed binding-materialization migration;
 invalid legacy IDs fail closed until a separately reviewed ID migration exists.
 
 `agent_run_ledger.py` already performs full-string validation at an integrity
-boundary. Gate B replaces that local validator with the centralized helper and
-must not weaken it. The regexes in `query.py` and `cross_project_digest.py` are
+boundary and remains byte-unchanged. Its legacy validator is not a strict
+authorization API. The regexes in `query.py` and `cross_project_digest.py` are
 extraction helpers only; strict search disables the former, and the latter's
 narrower shape is a known non-authoritative recall limitation. Strict input
 validation rejects Unicode confusables, whitespace, slashes, colons, missing
 suffixes, embedded IDs, trailing text, and values longer than the bound below.
 
-Every registry-aware authority record validates its assertion ID and every
-non-empty relation with the centralized helper before authority-generation
+Every strict authority record validates its assertion ID and every non-empty
+relation with `strict_evidence_state.py` before authority-generation
 publication. Legacy writers remain unchanged and outside strict authority until
 their own migration. Strict identity is `(project binding, assertion_id)`;
 `logical_id` groups assertions but is never a lookup overwrite key.
-`provenance_identity()` remains context and may be checked, but it is not the
-payload-integrity or retry predicate. Exact retry, changed-payload conflict,
+`provenance_identity()` is not the payload-integrity or retry predicate. Exact
+retry, changed-payload conflict,
 fresh-observation admission, and relation resolution follow Section 6.5. A
 relation must resolve unambiguously inside the same binding or materialization
 fails. Cross-binding assertion-ID reuse is allowed because the public handle
@@ -1038,10 +1606,20 @@ Normative settings for Phase 1A and Phase 1B are:
     load: { extraDirs: [], watch: false }
   },
   plugins: {
+    enabled: true,
     slots: { memory: "none" },
     allow: ["convmem-reader"],
+    deny: [],
     load: {
       paths: ["/operator/provisioned/convmem-reader"]
+    },
+    entries: {
+      "convmem-reader": {
+        enabled: true,
+        config: {
+          launchManifest: "/operator/provisioned/connector-launch.json"
+        }
+      }
     }
   },
   hooks: {
@@ -1065,7 +1643,27 @@ Normative settings for Phase 1A and Phase 1B are:
       "group:nodes"
     ]
   },
-  acp: { enabled: false, dispatch: { enabled: false } }
+  acp: { enabled: false, dispatch: { enabled: false } },
+  discovery: {
+    mdns: { mode: "off" },
+    wideArea: { enabled: false }
+  },
+  gateway: {
+    mode: "local",
+    bind: "loopback",
+    auth: {
+      mode: "token",
+      allowTailscale: false,
+      rateLimit: {
+        maxAttempts: 10,
+        windowMs: 60000,
+        lockoutMs: 300000,
+        exemptLoopback: false
+      }
+    },
+    tailscale: { mode: "off", resetOnExit: false },
+    controlUi: { enabled: false }
+  }
 }
 ```
 
@@ -1207,8 +1805,16 @@ back to another ConvMem profile.
 The complete public error vocabulary is closed:
 `invalid_request`, `identifier_query_not_supported`, `scope_denied`,
 `snapshot_stale`, `response_too_large`, `temporarily_unavailable`, and
-`internal_failure`. Every error contains only `schema`, `error.code`, a fixed
-non-reflecting message, and `correlation_id`. Private reason enums may add
+`internal_failure`. The schema literal is `convmem.error.v1`; its top level
+contains exactly `schema`, `error`, and `correlation_id`, and `error` contains
+exactly `code` and `message`. Messages are respectively: `The request is
+invalid.`, `Ledger handles are not supported in search.`, `The requested
+evidence chain is unavailable in this scope.`, `The evidence snapshot is
+unavailable.`, `The evidence response exceeds the allowed size.`, `The
+evidence service is temporarily unavailable.`, and `The evidence service
+failed.` `correlation_id` is a fresh 32-character lowercase hexadecimal
+128-bit random value generated before argument validation and has no semantic
+content. Private reason enums may add
 diagnostic specificity but never corpus text, request text, filesystem paths,
 scope values, or credentials.
 
@@ -1216,11 +1822,11 @@ scope values, or credentials.
 
 ### Gate A — plan review
 
-- Astra's final review of commit `7809f20` blocked build on seven incomplete
-  contracts. This revision defines the bounded-reader deliverable, typed
-  authority/state model, logical-versus-assertion identity, payload-bound
-  replay, authority-first publication/recovery, lifecycle shutdown,
-  freshness/revocation, and exact build packet.
+- Astra's final review of commit `2424857` blocked build on C1–C6. This
+  revision freezes monotonic state/join semantics, exact dispositions and
+  provenance continuity, strict file manifests/publication, deterministic
+  lexical search, the Phase-1A activation supervisor, and one consistent
+  file/API/test contract.
 - Kiro performs the charter-required binary review only after an independent
   recheck confirms that no category-3 or category-4 build decision remains.
 - Ryan approves or rejects architecture and execution planning.
@@ -1232,25 +1838,26 @@ No code or OpenClaw configuration is authorized by Gate A.
 After a Ryan Execute grant, Cursor implements only:
 
 - the deep bound-scope module;
-- the strict evidence-state and bound-projection-builder modules;
+- the strict evidence-state and strict-projection modules;
+- the fixture-only strict projection publisher CLI;
 - fail-closed profile parsing;
 - the exact three-tool strict profile;
 - empty resources and templates;
-- the ingest-owned project-binding mechanism and hermetic bound fixtures;
+- the registry-owned project-binding mechanism and hermetic fixture
+  materializer;
 - registry-owned source authorization domains separated from model-derived
   semantic domains;
 - strict-only site normalization and versioned strict ID generation that leave
   legacy full/shell and monitor identity unchanged;
-- immutable physical serving projections for each bound-scope manifest;
+- immutable canonical file projections for each bound-scope manifest;
 - versioned strict logical/source-event/assertion IDs that preserve legacy-v1,
   payload-bound exact replay, fresh-observation admission, binding-qualified
   public handles, and ambiguity-denying lookup;
-- operator-owned fixture authority generations, deterministic state reduction,
-  atomic generation publication, crash recovery, and rollback;
-- strict search with no ledger-ID extraction/priority path and an authorized
-  physical candidate universe;
+- operator-owned fixture authority/disposition snapshots, monotonic state
+  reduction, atomic strict-pointer publication, crash recovery, and rollback;
+- deterministic lexical strict search with no ledger-ID extraction, embedding,
+  reranking, model, Chroma, or fallback path;
 - projection-only unresolved and bounded target-neighborhood related graphs;
-- exhaustive metadata-writer census and reserved-prefix enforcement;
 - focused hermetic tests.
 
 No live-corpus binding migration, OpenClaw plugin, or OpenClaw configuration is
@@ -1259,17 +1866,19 @@ included in this gate.
 ### Gate C — connector implementation
 
 After Gate B review passes, Cursor may implement the fixed local OpenClaw
-connector plugin in the repository with hermetic fake-MCP tests. It may not
+connector plugin and activation supervisor in the repository with hermetic
+fake-MCP, fake-gateway, and fake-agent tests. It may not
 install or enable the plugin, create a live OpenClaw profile, or contact an
 external channel.
 
 ### Gate D — Phase 1A isolated smoke
 
-Requires a separate Ryan grant naming the profile and exact config path.
+Requires Kiro conformance PASS on the Gate B/C implementation and a separate
+Ryan grant naming the profile and exact config path.
 
 - local operator only;
 - loopback/local stdio only;
-- synthetic ConvMem corpus and reviewed local inference only;
+- synthetic strict fixture projection and reviewed local inference only;
 - exact reviewed scope file;
 - exact reviewed project-binding registry and child-environment allowlist;
 - no external channels;
@@ -1280,12 +1889,16 @@ Requires a separate Ryan grant naming the profile and exact config path.
 - zero paired or connected remote nodes before and after the session;
 - no resources;
 - no transcript capture;
-- no ConvMem writes.
+- no ConvMem writes;
 - a fresh snapshot-bound `OPENCLAW_STATE_DIR`, with memory flush and heartbeat
   independently disabled and no resumable prior session.
+- the reviewed activation supervisor as the only user-facing local entrypoint;
+  OpenClaw `--deliver`, direct gateway UI, channels, and streaming output stay
+  disabled.
 
-The first smoke uses an isolated synthetic ConvMem store whose project bindings
-were assigned through the reviewed ingest path. It proves transport and denial
+The first smoke uses an isolated synthetic strict file projection whose project
+bindings were assigned through the reviewed fixture materializer. It proves
+transport and denial
 behavior, not live-corpus readiness, channel safety, or capture safety. A smoke
 against the live corpus remains blocked until Ryan separately authorizes and
 reviews project-binding materialization or rebuild evidence.
@@ -1340,6 +1953,14 @@ not sufficient.
 The implementation is FAIL if any test leaks data, widens authority, exposes an
 unexpected surface, or reports false completion.
 
+Phase ownership is normative. Gate B must pass cases 1–27 and 40–44 plus the
+strict-server portion of 47. Gate C must pass the fake-process contract portions
+of 33, 35, 45, 46, and 48. Those fake tests do not satisfy runtime acceptance.
+Gate D repeats cases 1–4 against the installed child and owns cases 28–36,
+38–39, 45–47 against the actual isolated runtime. Gate E alone owns case 37.
+No Gate B/C handoff may claim “all 48 passed”; it reports only its assigned
+cases, and every later case remains a blocking future gate.
+
 ### Profile and enumeration
 
 1. Enumerate `tools/list`, `resources/list`, and resource templates from the
@@ -1368,41 +1989,35 @@ unexpected surface, or reports false completion.
 
 ### Project and row proof
 
-12. Authorize rows only when the trusted ingest path assigned a binding that is
+12. Authorize rows only when the strict fixture materializer assigned a binding that is
     allowed by the immutable scope and resolves to the bound canonical project.
     Prove schema v2 rejects zero or multiple `allowed_project_bindings`.
-13. Forge matching `project`, `domain`, `site`, the bare `_convmem_auth` key,
-    each `_convmem_auth.*` key individually, the complete four-key set, an
-    additional prefixed key, the bare `_convmem_state` key, every
-    `_convmem_state.*` field individually and together, `project_binding_id`,
-    `workspace_directory`, and
-    `source_path` through corpus or adapter input. Also prompt the distiller to
-    emit an allowed descendant domain from hostile source text. Prove every
-    adapter, provenance projection helper, unit/summary add, metadata update,
-    file-generation writer, and production writer boundary rejects the whole
-    reserved prefixes; prove the protected domain remains the source
-    registration's value while model output survives only as semantic context.
-    Prove an unregistered or differently bound source cannot self-label into
-    the projection. Only trusted code may construct an all-or-nothing set.
-    Reject partial, unknown, stale, conflicting, cross-project, and
-    row-domain-outside-binding assertions. Run the static writer census over
-    the repository and prove every `metadatas=` add/upsert/update routes through
-    enforcement; specifically exercise `supersede_units_for_source()`, mixed
-    mode control-copy, shadow/eval build, file-generation, and restore paths.
-    Prove `chroma_write_store.py` never vends a raw collection handle.
+13. Forge matching `project`, `domain`, `site`, bare or prefixed
+    `_convmem_auth`/`_convmem_state`, authority/disposition digests,
+    `project_binding_id`, `workspace_directory`, and `source_path` inside every
+    fixture-source location. Prove the strict parser rejects the complete batch
+    before trusted construction. Also put an allowed descendant domain in
+    hostile source text and prove authority domain stays the registration's
+    value. Prove unregistered/differently bound sources cannot self-label into
+    the projection and partial, unknown, stale, conflicting, cross-project, or
+    row-domain-outside-binding authority fails. Prove no legacy ingest,
+    adapter, Chroma, restore, mixed-mode, eval, or file-generation module is
+    imported or written by Gate B.
 14. Prove legacy rows without a service-owned binding reduce recall rather than
     leak, and prove Gate B never backfills the live corpus.
 15. Prove strict site filtering rejects source-path-only site inference.
 16. Build a physical projection from an open domain taxonomy and prove search,
-    unresolved, related, vector retrieval, keyword fallback, reranking, graph
-    construction, and every future fallback read only that exact projection.
+    unresolved, related, deterministic lexical ranking, and graph construction
+    read only that exact projection, with no fallback.
     Add or remove rows outside the immutable bound scope and prove its
     included-row content digest and each tool's query cost, process cache,
-    response shape, count, and order do not change (the source-checkpoint audit
-    field may advance). Include an unknown but registry-authorized descendant
+    response shape, count, and order do not change. Include an unknown but registry-authorized descendant
     domain and prove it is included by rebuild without an enumerated `$in`
-    list. Prove strict mode never calls `_fetch_scoped_units()`,
-    `build_ledger_index()` over a global store, or any wider collection.
+    list. Prove strict mode never imports/calls `_fetch_scoped_units()`, an
+    embedder, reranker, Chroma, `build_ledger_index()`, or any wider store. Pin
+    tokenizer and integer-ranking known-answer vectors and prove the projection
+    opens on a read-only mount without creating any file. Prove the server and
+    reader import graphs exclude `strict_projection_publisher.py`.
     Separately prove an explicit descendant selector may narrow results only
     inside the already authorized projection.
 
@@ -1412,7 +2027,7 @@ unexpected surface, or reports false completion.
     unknown public binding reference in otherwise identical
     whitespace-delimited search text. Prove the grammar/length stage gives all
     three the byte-identical fixed `identifier_query_not_supported` response
-    before binding lookup or embedding and that neither ledger extraction nor
+    before binding lookup, tokenization, or scoring and that neither ledger extraction nor
     priority injection runs.
     Prove malformed/punctuation-wrapped strings receive no lookup treatment,
     and `server_name`, `codec_config`, and `observer_pattern` are not rejected.
@@ -1435,8 +2050,8 @@ unexpected surface, or reports false completion.
 
 21. Property-test every registry-v2 ID generator against the centralized
     `re.fullmatch` and length validator. Prove canonical length-prefixed digest
-    inputs separate field boundaries and that `find2_`, `choice2_`, `evt_`,
-    `obs2_`, `dec2_`, and `ver2_` are deterministic and kind-disjoint. Use full
+    inputs separate field boundaries and that `find2_`, `choice2_`, `check2_`,
+    `evt_`, `obs2_`, `dec2_`, and `ver2_` are deterministic and kind-disjoint. Use full
     multi-label hosts, two hosts sharing the same first label, `www.*`,
     single-label hosts, ports, user info, paths, empty labels, trailing
     newlines, confusables, and maximum length. Pin UTS
@@ -1445,7 +2060,7 @@ unexpected surface, or reports false completion.
     Prove generator failure aborts with
     `ledger_id_mint_denied` rather than a UUID fallback or partial generation.
     Separately prove legacy
-    `site_short()`/`observation_id()`, `monitor.py`, and
+    `site_short()`/`observation_id()`, `monitor.py`, `agent_run_ledger.py`, and
     `tests/test_milestone_c.py` remain byte-compatible and that live writers
     cannot select v2 without the later migration grant.
 22. On the registry-aware authority path, reject malformed IDs and relations,
@@ -1453,11 +2068,13 @@ unexpected surface, or reports false completion.
     source registration, and an ambiguous relation. Replay the exact preserved
     source event, assertion, payload, and registration and prove it is a no-op;
     then admit a distinct later source event under the same logical ID.
-    Prove the existing `agent_run_ledger` integrity check is preserved through centralization and
+    Prove the existing `agent_run_ledger` integrity check remains unchanged and
     cross-binding stored-ID reuse yields distinct qualified public handles.
 23. Using two separate single-binding profiles, build stored-ID reuse across
-    bindings; separately build a collision within one binding, including two
-    sites while `site_mode=not_applicable`. Prove strict lookup validates the
+    bindings. Within one `site_mode=not_applicable` binding, use two source
+    registrations representing different sites and prove their source
+    identities keep valid IDs distinct; then force a duplicate assertion ID
+    with different bytes and prove the snapshot fails. Prove strict lookup validates the
     public binding reference before identity resolution, resolves one
     authorized row, and gives the generic denial for more than one authorized
     match—never last-write-wins. Paste a valid qualified handle from binding A
@@ -1475,12 +2092,12 @@ unexpected surface, or reports false completion.
     observation-anchor expansion. Prove an empty root list starts successfully
     in a fixture that contains no high-degree protocol anchor.
 25. Request an out-of-scope, unknown, malformed, embedded, trailing-text, and
-    raw-Chroma ID; prove byte-equivalent public denial shapes.
+    raw storage ID; prove byte-equivalent public denial shapes.
 26. Put one out-of-effective-scope decision, verification, sibling,
     unknown-kind child, or metadata-incomplete node behind an in-scope target;
     prove the entire chain is denied without partial output. Prove registry
     startup rejects an exact-site binding spanning two sites or a binding whose
-    domain root differs from the profile bound, and prove trusted ingest plus
+    domain root differs from the profile bound, and prove strict materialization plus
     rebuild reject a row whose protected domain lies outside its binding root.
     Prove startup rejects a scope containing two otherwise valid bindings and
     a missing, ambiguous, or cross-binding non-expanding root.
@@ -1538,33 +2155,47 @@ unexpected surface, or reports false completion.
     the response cap may reduce search/unresolved row count before
     `top_k`/`limit`, related denies rather than truncating a chain, and
     connector-side truncation cannot become partial success or change scope.
-41. Mix pending, approved, rejected, superseded, and model-derived
-    decision-shaped records with identical prose. Prove only operator-disposed
-    records receive decision state, rejected records never suppress approved
-    records, and every response preserves kind, state, assurance, confidence,
-    time, disposition, and snapshot fields.
-42. Reproduce outcome-only pass-to-fail updates, an inline pass with a failing
-    child, pass/fail contradictions, late and out-of-order checks, and rejected
-    replacement edges. Prove the conservative reducer returns fail or conflict
-    and never skips a semantic change because visible text is unchanged.
+41. Mix pending, approved, rejected, revoked, superseded, and model-derived
+    decision-shaped records with identical prose. Copy A's disposition onto B,
+    change one byte/target/binding/event, forge actor strings, create competing
+    dispositions, swap a registered provenance UUID between unequal payloads,
+    change `selection_parameters.output_sha256`, and remove/change a provenance
+    parent commitment. Prove only
+    exact operator-owned dispositions bind, rejected/revoked records never
+    establish current direction, assurance never rises on incomplete ancestry,
+    and every response preserves kind, authority/verification state,
+    assurance, confidence, time, disposition, and snapshot fields.
+42. Reproduce 2-, 3-, 4-, and long supersession chains; forks; an approved
+    multi-head join; stale/partial and concurrent joins; withdrawal/revocation;
+    rejected replacement edges; out-of-order input; and every subset of
+    pass/fail/inconclusive across independent `check2_` logical IDs, including
+    pass+inconclusive, plus two competing revisions of one check. Prove superseded
+    ancestors never resurrect, stale joins fail, concurrent heads conflict,
+    the complete truth table holds, and visible-text equality never skips a
+    semantic change. Compare an independently written reference reducer.
 43. Distinguish exact preserved-envelope retry, identical-source remint, a
     genuine later scan, and changed payload under one source event. Prove only
     the exact retry is a no-op; a later scan creates a new assertion under the
     same logical ID; remint/conflict fails; and payload bytes are recomputed and
     compared rather than inferred from `provenance_identity()`.
 44. Inject failure before/after every authority append, file and directory
-    fsync, manifest close, projection write, validation, and active-pointer
-    compare-and-swap. Include torn tail, disk full, concurrent delivery, stale
-    builder, and stale rollback. Prove restart selects exactly one complete
-    generation and rebuild/rollback are authority-equivalent.
+    fsync, manifest close, projection write, cold validation, pointer rename,
+    and pointer-directory fsync. Include absent-pointer first publication,
+    forward CAS, torn tail, disk full, concurrent delivery, stale builder,
+    ambiguous post-rename durability, and stale/expired rollback. Prove restart
+    selects exactly one qualified generation and rebuild/rollback are
+    authority-equivalent.
 45. Drive the actual installed runtime across compaction thresholds, heartbeat
     intervals, restart, and malicious per-agent overrides. Prove effective
     memory flush and heartbeat remain disabled and that no unsolicited model
     turn occurs.
-46. Expire, correct, narrow, and roll back a snapshot while attempting to reuse
-    the old OpenClaw state/session directory. Prove every response exposes the
-    pinned snapshot times, stale requests fail before retrieval, and old
-    sessions cannot resume under the new activation.
+46. Expire, correct, narrow, and roll back a snapshot during idle, queued,
+    no-tool inference, and buffered response delivery. Kill the supervisor,
+    move wall time backward/forward, suspend/resume, and attempt old
+    state/session reuse. Exercise the turn-input and 1-MiB combined-output
+    bounds. Prove no byte is released after lease loss or overflow, the whole
+    process group dies, every response exposes pinned times, and old sessions
+    cannot resume.
 47. Start the strict entry point with populated legacy home credentials,
     credential environment variables, and a general ConvMem config. Prove its
     empty fixed home and closed strict config prevent credential/provider
@@ -1581,11 +2212,11 @@ scope, sequence, commands, evidence, stop conditions, and rollback for the
 fixture-only build. Its minimum evidence set includes:
 
 - focused unit tests for selector resolution and membership proof;
-- trusted-ingest tests proving corpus and adapter inputs cannot forge any
-  `_convmem_auth.*` key or create a partial authorization set, and proving
-  hostile distiller domain output cannot affect the registry-owned domain;
-- a repository-wide metadata-writer census plus mutation tests for every
-  production, control, eval, file-generation, supersede, and restore path;
+- strict fixture-materializer tests proving source bytes cannot forge authority,
+  state, disposition, or provenance fields and proving hostile semantic domain
+  content cannot affect the registry-owned domain;
+- import/write-denial tests proving Gate B never reaches legacy ingest,
+  adapters, Chroma, restore, mixed-mode, eval, or file-generation paths;
 - physical bound-projection tests proving rows outside the immutable profile
   scope cannot affect any strict tool's cost, cache, count, order, or shape;
 - focused MCP inventory tests for tools, resources, and templates;
@@ -1594,21 +2225,19 @@ fixture-only build. Its minimum evidence set includes:
 - generator/validator property tests plus UTS #46/IDNA2008 vectors,
   payload-bound exact replay, fresh-observation versioning, binding-scoped
   collision, qualified-handle, ambiguous-relation, and write-rejection tests;
-- typed authority/state, approval-disposition, conservative reducer, semantic
-  equality, immutable-generation publication, crash/recovery, stale-view, and
-  session-revocation tests;
+- typed authority/state, exact disposition substitution, provenance continuity,
+  monotonic chain/fork/join, complete verification truth-table, semantic
+  equality, strict first/forward/rollback publication, crash/recovery,
+  stale-view, and supervisor-revocation tests;
 - unchanged legacy compatibility tests for `tests/test_site_filter.py`,
   `tests/test_milestone_c.py`, and `monitor.py` ID lookup/write behavior;
 - scoped unresolved-graph tests with out-of-scope child verifications;
 - connector child-environment allowlist and remote-node refresh tests;
 - installed-runtime memory-flush, heartbeat, state-directory, queue, deadline,
   cancellation, frame-limit, and credential-isolation tests;
-- existing retrieval, brief, resource, and ledger regression tests, with
-  `tests/test_query_ledger_lookup.py` and
-  `tests/test_query_search_harden.py::QueryLimitTests::test_scoped_fetch_adapts_to_collection_size`
-  parameterized by profile: their current priority-injection and adaptive
-  over-fetch assertions remain required for `full`/`shell`, while
-  `openclaw-strict` must prove both paths absent;
+- existing retrieval, brief, resource, and ledger regression tests unchanged;
+  strict tests separately prove the dedicated executable never imports the
+  legacy priority-injection, over-fetch, Chroma, embedding, or rerank paths;
 - ConvMem smoke checks from `docs/CODEX-DEEPSEEK-VERIFY.md` where relevant;
 - `openclaw --version`, command inventory, config validation, plugin inventory,
   effective agent tool inventory, prompt/skill/hook inventory, model-provider
@@ -1619,8 +2248,8 @@ fixture-only build. Its minimum evidence set includes:
   review handoff.
 
 Every portable review handoff includes immutable text captures and digests for
-the installed `openclaw --version`, top-level `--help`, and
-`config validate --help` probes. Gate D adds the exact isolated config-validation
+the installed `openclaw --version`, top-level `--help`, `gateway --help`,
+`agent --help`, and `config validate --help` probes. Gate D adds the exact isolated config-validation
 result and effective runtime inventories; Gate A evidence never substitutes a
 current web page for an installed-binary probe.
 
@@ -1628,8 +2257,8 @@ The Gate A review bundle also includes `chroma_store.py`,
 `file_generation_store.py`, `provenance_binding.py`, the adapter output
 boundary, `chroma_write_store.py`, `mixed_mode_control.py`,
 `eval_corpus/shadow_build.py`, `monitor.py`, and the ingest/distill merge points
-so candidate-store capabilities, domain ownership, writer coverage, identity
-compatibility, and prefix stripping are reviewable rather than asserted.
+so the decision to bypass legacy storage, domain ownership, identity
+compatibility, and non-import claims are reviewable rather than asserted.
 
 No test may read or mutate the live ConvMem database, live OpenClaw state,
 external channels, or production transcript paths without the later named Ryan
@@ -1644,27 +2273,27 @@ Stop and return FAIL if any of the following occurs:
   was omitted;
 - an explicit selector widens project, site, or domain;
 - project membership depends on corpus prose or an untrusted substring;
-- `_convmem_auth.domain` comes from model/distiller output, ordinary
-  `unit["domain"]`, document content, or anything other than the matched
+- authority domain comes from model/distiller output, ordinary semantic
+  `domain`, document content, or anything other than the matched
   operator-owned source registration;
 - a protected row domain lies outside its binding root, or strict site identity
   uses a normalizer other than the one pinned authority-site function;
 - strict authorization calls legacy `site_filter.normalize_site()`, or Gate B
   changes that legacy function's URL/path behavior;
-- a corpus or adapter field can forge, preserve, or override any reserved
-  authorization key, or a partial/additional `_convmem_auth.*` set authorizes;
-- any metadata writer bypasses the reserved-prefix verifier, a read-modify-write
-  preserves unverified authorization/state keys, or the writer census is incomplete;
-- a caller can forge, partially supply, or preserve `_convmem_state.*`, or a
-  response state is derived from prose, inline legacy fields, or timestamps;
+- source bytes can forge, preserve, or override authority, state, disposition,
+  provenance, or manifest fields; or Gate B imports/writes any legacy ingest,
+  adapter, Chroma, restore, mixed-mode, eval, or file-generation path;
+- a response state is derived from prose, inline legacy fields, or timestamps;
 - a row with missing proof is returned;
 - `cross_domain=true` widens retrieval;
 - a resource or unexpected tool appears;
 - any strict surface reveals whether a valid qualified handle is unknown
   versus out of scope, or a row outside the immutable bound projection
   influences authorized response cost, count, order, or shape;
-- unresolved or related reads a global ledger index, wider collection, or
-  metadata cache rather than the named bound projection;
+- any strict tool reads a global ledger index, wider store, Chroma, model,
+  embedding, reranker, cache, or fallback rather than the named file projection;
+- the strict server or read-only projection module imports the fixture
+  publisher or exposes any publication/write entry point;
 - strict search extracts or priority-injects a ledger ID from query text;
 - strict search consults binding allowlists while screening syntactically valid
   handle tokens;
@@ -1678,12 +2307,15 @@ Stop and return FAIL if any of the following occurs:
   is duplicated, a later legitimate scan cannot create a new assertion under
   its logical ID, last-write-wins is consulted, or identity resolution occurs
   before the qualified binding check;
-- a pending/model-derived decision becomes approved, a signer string acts as
-  approval proof, a rejected decision suppresses an approved decision, a
-  relation is treated as supersession, or fail/conflict reduces to pass;
+- a pending/model-derived decision becomes approved, a signer string or stolen
+  disposition acts as proof, provenance ancestry is invented/upgraded, a
+  rejected/revoked decision establishes current direction, contextual relation
+  becomes supersession, a superseded ancestor resurrects, a partial/stale join
+  resolves conflict, or the frozen verification truth table is violated;
 - projection state precedes durable authority, a partial generation becomes
-  active, restart/rollback changes the authority reduction, or concurrent
-  publication bypasses compare-and-swap;
+  active, first/forward/rollback publication violates its exact CAS contract,
+  restart/rollback changes authority reduction, or concurrent publication
+  bypasses compare-and-swap/cold qualification;
 - an exact-site binding spans sites, a binding domain differs from the profile
   bound, schema v2 accepts other than one allowed binding, or a cross-profile
   qualified handle resolves locally;
@@ -1705,6 +2337,9 @@ Stop and return FAIL if any of the following occurs:
 - a stale/expired snapshot returns evidence, a response omits snapshot times,
   or a prior activation's session/state directory can resume after correction,
   scope change, expiry, or rollback;
+- the activation supervisor releases bytes after lease/pointer loss, fails to
+  own the whole child process group, accepts corpus-controlled revocation, or
+  permits direct/streaming/`--deliver` output in Phase 1A;
 - a strict process reads a home credential/general config, exceeds its one-plus-eight
   concurrency bound, retries automatically, or accepts an oversized frame;
 - any external sender or channel bypasses the perimeter;
@@ -1767,7 +2402,7 @@ and crash-loop failure modes.
 
 ## 17. Adversarial re-review questions
 
-Astra's final review of commit `7809f20` blocked build. A fresh reviewer must
+Astra's final review of commit `2424857` blocked build. A fresh reviewer must
 independently falsify the corrected architecture and paired execution plan and
 answer with exact references:
 
@@ -1803,8 +2438,10 @@ answer with exact references:
 14. Can the bounded target-neighborhood traversal become unavailable because
     of the high-degree protocol fallback, miss required depth-two context, or
     cross a binding?
-15. Does every metadata writer route through prefix enforcement, including
-    supersede, mixed-mode, eval/shadow, generation, and restore paths?
+15. Does the fixture-only strict publisher avoid every legacy metadata writer,
+    adapter, ingest, supersede, mixed-mode, eval/shadow, generation, restore,
+    and Chroma path, with any future live prefix enforcement left to a separate
+    reviewed migration?
 16. Do site identity, response-size precedence, or child-session controls have
     more than one interpretation?
 17. Is any acceptance test circular, unverifiable, internally contradictory,
@@ -1834,7 +2471,7 @@ implementation after a Kiro `PASS`.
 ## 18. Exit state
 
 This document and its paired execution plan stop before implementation. They
-are not an Execute grant. Astra's seven build blockers are resolved as explicit
+are not an Execute grant. Astra's C1–C6 build decisions are resolved as explicit
 contracts; incremental web-development value remains deliberately unproven and
 is assigned to Gate D-V rather than asserted. The next step is independent
 re-review, then Kiro's exact-revision binary design/scope review. Cursor/Grok
@@ -1851,7 +2488,12 @@ may implement only after both pass and Ryan issues an explicit Execute grant.
 | Evidence envelope | The stable JSON wrapper marking retrieved corpus content as data with no instruction authority. |
 | Full profile | ConvMem's existing MCP profile that exposes brief tools and resources in addition to retrieval tools. |
 | Native memory | OpenClaw's `memory-core` or another OpenClaw memory plugin, disabled in the isolated integration profile. |
+| Activation supervisor | The trusted local process that owns the OpenClaw process group, pins one snapshot/session, buffers output, and kills stale or revoked work before release. |
+| Authority disposition | An operator-owned, content-addressed approval, rejection, revocation, withdrawal, or supersession decision bound to exact assertion semantics. |
+| Lexical kernel | The deterministic, version-pinned tokenization and integer-ranking algorithm used by strict search instead of embeddings or a shared vector index. |
+| Monotonic supersession | Once a valid successor supersedes an assertion, that predecessor stays historical even if later successors are revoked or themselves superseded. |
 | Project binding | An opaque, service-owned membership assertion assigned only by trusted ingestion and resolved through an operator-owned registry; ordinary corpus metadata and paths cannot supply it. |
 | Scope oracle | A response difference that lets a caller infer whether an otherwise inaccessible record exists. |
+| Strict generation | One immutable authority snapshot plus its derived lexical rows/graph and content-addressed manifests, activated through a compare-and-swap pointer. |
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
