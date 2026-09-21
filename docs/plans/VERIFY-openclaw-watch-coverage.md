@@ -190,7 +190,7 @@ is in the manifest `required_when_present` array.
 ## Verdict
 
 - `IMPLEMENTATION`: PASS (A1–A12 and focused regression suite)
-- `REVIEW`: REQUIRED on the corrective tip
+- `REVIEW`: PASS — targeted Bugbot re-review found no remaining findings at `324ab174b33916332563c90c285166d0a6b9fa03`
 - `WATCH_COVERAGE`: BLOCKED
 - `LIVE_WATCH`: NOT_ACTIVATED
 - `CURRENT_OPENCLAW_PLAN_BYTES`: REQUIRED_WHEN_PRESENT

@@ -65,33 +65,31 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 | Architecture and execution plan | KIRO PASS at `19dea97` | — |
 | Kiro design review | PASS at `19dea97` | — |
 | Ryan Execute grant | AUTHORIZED 2026-09-21 for W0–W6 at `19dea97` | live activation excluded |
-| W0–W6 implementation | PASS ON CORRECTIVE BRANCH | final review required |
+| W0–W6 implementation | PASS ON CORRECTIVE BRANCH | — |
 | Isolated A1–A11 | PASS | — |
 | A12 writer scan | PASS | Ryan authorized the inventory/count correction |
-| Merge | NOT STARTED | review and Ryan; do not open a PR from this lane |
+| Final targeted Bugbot review | PASS at `324ab17` | no remaining findings |
+| GitHub PR | OPEN as `#322` | Ryan owns merge |
 | Required OpenClaw bytes in watched checkout | MISSING | separate OpenClaw plan/implementation landing |
 | Live activation | NOT AUTHORIZED | merged implementation + exact external-change grant |
-| `WATCH_COVERAGE=PASS` | BLOCKED | review + merge + OpenClaw bytes + live grant |
+| `WATCH_COVERAGE=PASS` | BLOCKED | merge + OpenClaw bytes + live grant |
 
 ## 5. Your Role
 
-**If Ryan sent you to review this implementation:** inspect the corrective
-branch tip against Kiro-reviewed `19dea97`. Confirm Git-clean authority,
-root-bound documentary identity, exact JSON source preservation, real watcher
-subprocess/public-query evidence, identity-safe retirement, and A1–A12.
-Return PASS or FAIL; do not implement, merge, or activate.
+**If Ryan sent you after review:** inspect GitHub PR `#322`; Bugbot already
+returned PASS on the exact corrective implementation at `324ab17`. Ryan owns
+merge. Do not activate before the merged revision and exact live grant exist.
 
 **If Ryan sent you to activate:** refuse unless a later grant names the exact
 manifest path, config value, service, limits, pre-state, and rollback.
 
 ## 6. What Remains Before Live Coverage
 
-1. Focused review of the corrective implementation tip.
-2. Ryan decides PR creation and merge. Do not open a PR from this lane.
-3. Approved OpenClaw planning/implementation bytes land in the watched checkout
+1. Ryan reviews and merges GitHub PR `#322`.
+2. Approved OpenClaw planning/implementation bytes land in the watched checkout
    and the exact manifest is updated in the same reviewed commits.
-4. Ryan grants the exact live config edit and service restart.
-5. Startup sync, retrieval needles, exclusion controls, and governance
+3. Ryan grants the exact live config edit and service restart.
+4. Startup sync, retrieval needles, exclusion controls, and governance
    before/after hashes pass; then `WATCH_COVERAGE=PASS`.
 
 ## 7. Hard Stops
@@ -142,8 +140,9 @@ milestone-level line below. A fresh model should orient from this file alone.
 | 2026-09-21 | Cursor | Allowlisted W0–W6 implemented on `feat/2026-09-21-openclaw-watch-coverage`; isolated A1–A11 PASS; A12 blocked on off-allowlist writer inventory; live watch not activated. |
 | 2026-09-21 | Codex | Corrective implementation closed six review defects plus identity-transition ingest; real watcher E2E and A1–A12 pass; review remains required and live watch remains off. |
 | 2026-09-21 | Codex | Targeted Bugbot follow-up found two residual defects; lossless aggregate windows and retry-idempotent retirement now have direct regressions. |
+| 2026-09-21 | Bugbot / Codex | Final targeted Bugbot review PASS at `324ab17`; GitHub PR `#322` opened for Ryan-owned merge. |
 
-**TL;DR [Arc OpenClaw Watch Coverage]:** Corrected W0–W6 passes A1–A12 and the
-focused regression suite on the corrective branch. Review, merge, required
-OpenClaw bytes, and an exact live-activation grant still gate
+**TL;DR [Arc OpenClaw Watch Coverage]:** Corrected W0–W6 passes A1–A12, the
+focused regression suite, and final Bugbot review; GitHub PR `#322` is open.
+Merge, required OpenClaw bytes, and an exact live-activation grant still gate
 `WATCH_COVERAGE=PASS`; live watch remains off.
