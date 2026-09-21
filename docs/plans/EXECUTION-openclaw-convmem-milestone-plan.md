@@ -1,8 +1,7 @@
 # Milestone Execution Plan — ConvMem–OpenClaw
 
-**Status:** REVISED AFTER OPUS `BUILD FAIL`; NOT READY FOR KIRO. One narrow
-parent-level profile-refusal decision requires Ryan. No implementation is
-authorized.
+**Status:** READY FOR KIRO EXACT-TIP REVIEW, THEN RYAN'S BOUNDED T0–T5
+EXECUTE DECISION. No implementation is authorized.
 
 **Arc:** none (ad-hoc integration)
 
@@ -30,21 +29,37 @@ The runner's single `--plan-sha` is always `SEMANTIC_PARENT_SHA`. The overlay
 SHA is separately named in Ryan's grant and in supervision records; it is not
 substituted into the parent's runner contract.
 
+Ryan's R-PROFILE-REFUSAL ruling ratifies the baseline selector normalization
+`(value or "").strip().lower()`. When the semantic parent does not explicitly
+freeze refusal presentation, exact stderr bytes and numeric exit codes are
+noncontractual implementation details. Tests bind the specified semantic
+failure class and effects, never implementation-derived presentation: nonzero
+exit, empty stdout, no registration/start/effect, no raw-value disclosure, and
+any parent-required semantic instruction. This rule applies consistently to
+profile, fixture, CLI, publisher, and runner refusals; an explicitly frozen
+parent error contract still controls.
+
 The Grok-facing actualization brief at commit
 `e476e0e01db9a3d25ed3f1037e49293324434dfc`,
 `docs/inter-model/GROK-2026-09-21-openclaw-convmem-actualization-brief.md`, is
 implementation detail only. The semantic parent governs behavior; this
 revised overlay governs milestone order, holds, and supervision. Any conflict
 stops work. Its Steps 0–9 govern detailed task decomposition where consistent;
-the actualization brief never overrides either governing document.
+the actualization brief never overrides either governing document. This
+overlay expressly supersedes that brief's `READY FOR ... EXECUTE DECISION`
+status, single-`REVIEWED_PLAN_SHA` authority packet, Step 0.1 grant wording,
+and Step 0.2 instruction for Grok to create the branch. The brief is not an
+authorization source; the overlay's two-SHA grant and Codex-created worktree
+procedure control.
 
 Review and authority order is mandatory:
 
 1. Opus's adversarial `BUILD FAIL` on overlay `9243765` is reconciled here.
-2. Ryan resolves R-PROFILE-REFUSAL. If that changes the semantic parent, the
-   authorized parent correction receives its required focused review.
-3. Kiro reviews the resulting exact overlay/parent pair and reports binary
-   design/scope `PASS` or `FAIL`.
+2. Ryan's written R-PROFILE-REFUSAL ruling ratifies baseline normalization and
+   makes parent-unspecified refusal presentation noncontractual; it authorizes
+   this overlay-only correction and no implementation.
+3. Kiro reviews this exact overlay with the unchanged semantic parent and
+   reports binary design/scope `PASS` or `FAIL`.
 4. Ryan may then grant only bounded T0–T5 implementation by naming both exact
    SHAs and the scope. Silence, an earlier grant, or a broader aspiration is
    not authorization.
@@ -55,9 +70,9 @@ Review and authority order is mandatory:
 |---|---|
 | **Specified** | All parent Architecture §§4, 6–15 and Execution §§2–10; the strict three-tool reader; fixture publication; T0–T5 protocol fakes; cases 1–58 and their gate ownership. |
 | **Implemented** | Existing legacy ConvMem behavior at `CODE_BASELINE_SHA`; none of the new strict T0–T5 capability is claimed implemented. |
-| **Tested** | Parent identity plus exact-tip Astra and Kiro reviews of `cd9d2698`. The volatile review inputs are `/tmp/astra-final-cd9d2698b7423f907b552bc9118a0af523018ca9/STAGE-1-REVIEW.md` (`sha256:b923847c95ed48351ad20dc4f829c1d4c09a98ffc1ad361872abeafdda1d2941`) and `/tmp/kiro-final-cd9d2698b7423f907b552bc9118a0af523018ca9/KIRO-EXACT-TIP-REVIEW.md` (`sha256:0f048bd54738aad484c758bec88f2d704e14a626eaa6c955baf236d6ae5fc4b6`). They are evidence references, not durable repository artifacts; Ryan must designate a durable reviewed location before relying on them for an Execute grant. No T0–T5 executable acceptance test has run. |
+| **Tested** | Parent identity plus exact-tip Astra and Kiro reviews of `cd9d2698`. The volatile review inputs are `/tmp/astra-final-cd9d2698b7423f907b552bc9118a0af523018ca9/STAGE-1-REVIEW.md` (`sha256:b923847c95ed48351ad20dc4f829c1d4c09a98ffc1ad361872abeafdda1d2941`) and `/tmp/kiro-final-cd9d2698b7423f907b552bc9118a0af523018ca9/KIRO-EXACT-TIP-REVIEW.md` (`sha256:0f048bd54738aad484c758bec88f2d704e14a626eaa6c955baf236d6ae5fc4b6`). They are evidence references, not durable repository artifacts; before Execute, Ryan must designate one durable reviewed location for them and later M7/M8 evidence. No T0–T5 executable acceptance test has run. |
 | **Assumed** | No unavailable runtime or host capability is assumed. **Runtime provisioning owner: Ryan.** Ryan may explicitly name one provisioning operator in the grant; absent that name, Ryan supplies the exact frozen runtime as the M0 input. Missing bytes block TEST. Grok may not download, install, or substitute them. |
-| **Unresolved** | **T0–T5 blocker R-PROFILE-REFUSAL:** the parent specifies normalization and fail-closed outcomes for new `mcp_server.py` refusals but not their exact stderr bytes/exit code; Ryan must authorize a parent clarification or explicitly rule those observables non-contractual before Kiro/Grok. Later blockers: Gate D authentication/distribution/containment; Gate W production admission route; Gate D-V experiment packet; Gate E web-development pilot; all live configuration and promotion values. Watch-coverage code exists only on `origin/feat/2026-09-21-openclaw-watch-coverage` at `8f07129dfa748656356ff1eed8da4afd915ac7f5`; its A12/final coverage verdict, review, merge, and live activation remain blocked. Before activation, that arc's owners must prove required-when-present coverage and exclusion of T0–T5 hostile fixture/output paths; those bytes must never enter the live corpus. None of these later items becomes Grok work. |
+| **Unresolved** | No T0–T5 architectural choice remains after Ryan's refusal-contract ruling. Operational prerequisites—Kiro PASS, exact Ryan Execute grant, Codex-created worktree, supplied runtime, and durable evidence location—still block start. Later blockers: Gate D authentication/distribution/containment; Gate W production admission route; Gate D-V experiment packet; Gate E web-development pilot; all live configuration and promotion values. Watch-coverage code exists only on `origin/feat/2026-09-21-openclaw-watch-coverage` at `8f07129dfa748656356ff1eed8da4afd915ac7f5`; its A12/final coverage verdict, review, merge, and live activation remain blocked. Before activation, that arc's owners must prove required-when-present coverage and exclusion of T0–T5 hostile fixture/output paths; those bytes must never enter the live corpus. None of these later items becomes Grok work. |
 
 ## 2. Dependency order
 
@@ -98,12 +113,17 @@ at M8, for the bounded Gate B/C assignment only.
 4. **Preconditions/dependencies:** Kiro PASS on this exact overlay/parent;
    Ryan's exact T0–T5 grant; a branch Codex created at `CODE_BASELINE_SHA`; clean
    dedicated worktree; and the exact parent-frozen runtime supplied by Ryan or
-   the one provisioning operator explicitly named in Ryan's grant.
+   the one provisioning operator explicitly named in Ryan's grant; and one
+   durable evidence location designated by Ryan for reviews and M7/M8 output.
 5. **Implementation tasks:** Codex creates and pushes the implementation branch
    from `CODE_BASELINE_SHA` without using
    `convmem work start`, because that helper branches from current
-   `origin/main`. Grok only resumes that pre-created branch in a dedicated
-   worktree. Record base/tip/upstream; install repo-local Git settings;
+   `origin/main`. Codex copies the cited parent-review reports to the designated
+   durable location and verifies their recorded hashes. From the shared
+   checkout, Grok runs exactly
+   `convmem work resume <branch> --worktree` to enter that pre-created branch;
+   it must not use the default resume mode or switch the live checkout. Record
+   base/tip/upstream; install repo-local Git settings;
    inventory tracked files, dependency versions, Ryan-supplied runtime bytes,
    protected bytes, and the parent-defined allowlist. Grok does not provision,
    download, install, or repair runtime dependencies.
@@ -118,7 +138,8 @@ at M8, for the bounded Gate B/C assignment only.
    config, credential, persistent-state, permission, dependency, or host
    runtime mutation.
 9. **Done:** Clean implementation branch at the exact baseline with recorded
-   inventories, supplied exact runtime, and zero implementation diff.
+   inventories, supplied exact runtime, designated durable evidence location,
+   and zero implementation diff.
 10. **Ryan confirmation:** Yes for the exact T0–T5 grant and for runtime
     provisioning. No routine reapproval after those exact grants unless a
     stop condition or governing SHA change occurs.
@@ -261,16 +282,16 @@ at M8, for the bounded Gate B/C assignment only.
    fixture paths, and Gate B strict tests. No connector/controller/supervisor
    behavior is implemented here beyond M1 production refusal.
 4. **Preconditions/dependencies:** M3 `CONTINUE`; all T0–T2 evidence present;
-   and R-PROFILE-REFUSAL resolved by Ryan plus any required parent revision,
-   focused review, and new exact grant. Until then M4 is blocked.
+   Ryan's refusal-contract ruling and this overlay are exact grant inputs.
 5. **Implementation tasks:** Implement the exact lexical reader/direct file
    CLI, selector-only display, public opening, three strict methods, v3 result/
    error serialization, and zero resources. Preserve baseline profile parsing's
    `(value or "").strip().lower()` normalization: normalized empty/`full` is
    full, `shell` is shell, `openclaw-strict` refuses legacy entry with the
    dedicated-entrypoint instruction, and every other normalized nonempty value
-   terminates before registration. Grok must not choose the exact stderr bytes
-   or exit code; those remain R-PROFILE-REFUSAL until Ryan resolves them.
+   terminates before registration. Exact stderr bytes and numeric status remain
+   noncontractual under Ryan's ruling; Grok must not turn its chosen
+   presentation into a test-derived contract.
 6. **Tests/evidence:** Gate B's cases 1–27, 40–44, 49–52, strict-server portion
    47, private/public portion 55, and Gate B portions 57–58, separated by layer.
    The unchanged `--suite all` runner may still be red only for declared T4/T5
@@ -281,10 +302,11 @@ at M8, for the bounded Gate B/C assignment only.
 8. **Forbidden changes:** Connector aliases, OpenClaw plugin/config, native
    memory, `ask`, global search, dynamic dispatch, ACP/subagents/channels,
    credentials, real inference, or any T4/T5 implementation before review.
-9. **Done:** R-PROFILE-REFUSAL is resolved in the governing packet; Gate B
-   evidence is green at one pushed commit; and Codex issues a
-   written Gate B `CONTINUE` citing that commit. This is a Gate B review PASS,
-   not final bounded TEST PASS.
+9. **Done:** Gate B evidence is green at one pushed commit; the profile tests
+   prove nonzero exit, empty stdout, zero registration/start/effect, no raw-
+   value disclosure, and the semantic dedicated-entrypoint instruction; and
+   Codex issues a written Gate B `CONTINUE` citing that commit. This is a Gate
+   B review PASS, not final bounded TEST PASS.
 10. **Ryan confirmation:** No routine reapproval inside the exact grant. Any
     contract/profile/permission change pauses for Codex/Kiro and requires a new
     Ryan grant if a governing SHA or scope changes.
@@ -375,7 +397,9 @@ at M8, for the bounded Gate B/C assignment only.
 3. **Affected surfaces:** Tracked fixture inputs/helpers remain only in their
    parent-defined manifest paths. Generated results exist only under disposable
    `/fixture/evidence` and the fixed outer collection root
-   `/tmp/convmem-openclaw-evidence/<source-commit>/<run-label>/`; neither is a
+   `/tmp/convmem-openclaw-evidence/<source-commit>/<run-label>/`; `/tmp` is
+   staging only. Codex owns evidence collection and copies exact hashed results
+   to the Ryan-designated durable review location. Neither location is a
    tracked source/component/fixture-hash member. No production telemetry or
    live ledger write.
 4. **Preconditions/dependencies:** M6 `CONTINUE`; clean pushed implementation
@@ -383,18 +407,23 @@ at M8, for the bounded Gate B/C assignment only.
 5. **Implementation tasks:** Emit canonical inventories, labels `STATIC`,
    `FAKE`, `DISPOSABLE_KERNEL`, or `REAL`, exact skips/exclusions, timing,
    output, tmp usage, negative controls, and changed-file/protected-byte proof.
+   Codex collects only the predeclared outputs and records the staging-to-
+   durable byte/hash mapping; Grok cannot select a different destination.
 6. **Tests/evidence:** Dry-collect the bounded evidence from the runner without
    changing its suite selection; independently compare canonical arrays and
    prove generated paths are absent from source/component/fixture hashes, no
    full discovery occurs, tool inventory is exact, and reads do not mutate
-   mtime/cache/files. This milestone does not claim final reproduction PASS.
+   mtime/cache/files. Compare staging and durable evidence byte-for-byte before
+   staging can disappear. This milestone does not claim final reproduction PASS.
 7. **Invariants:** Audit evidence is not approval, signing, admission,
    qualification, manager emptiness, or promotion.
 8. **Forbidden changes:** Live telemetry, secrets, private paths, fabricated
-   provenance, omitted failures, unsupported “all 58 passed” claim.
+   provenance, omitted failures, volatile-only handoff evidence, unsupported
+   “all 58 passed” claim.
 9. **Done:** Evidence locations and mappings are deterministic and excluded
-   from all governed hashes; pushed M7 commit receives Codex `CONTINUE`. Final
-   reproduction and TEST verdict remain M8.
+   from all governed hashes; exact evidence is durable with a verified staging
+   hash mapping; pushed M7 commit receives Codex `CONTINUE`. Final reproduction
+   and TEST verdict remain M8.
 10. **Ryan confirmation:** No for fixture evidence; yes for any persistent/live
     audit store, telemetry, external sink, or ledger mutation.
 11. **Live inspection:** Codex checks commit/diff/files, raw outputs, labels,
@@ -494,7 +523,8 @@ at M8, for the bounded Gate B/C assignment only.
 1. **Name and purpose:** Measure whether the integrated system improves a
    bounded web-development task without weakening governance.
 2. **Architectural outcome:** A leakage-safe, pre-registered comparison binds
-   episode, target, probe, capture, trace, action, and outcome identities.
+   episode, target, probe, trace, action, and outcome identities. Capture is
+   recorded as disabled; no capture identity is minted through Gate E.
 3. **Affected surfaces:** **UNRESOLVED** pilot corpus, tasks, scoring rubric,
    trace store, target site, and isolated runtime packet. Capture policy is not
    an M10 surface; transcript capture/automatic indexing remain disabled.
@@ -520,7 +550,8 @@ at M8, for the bounded Gate B/C assignment only.
    passes, the Gate E packet is reviewed, and Ryan grants exact target/actions;
    pilot PASS is not promotion.
 10. **Ryan confirmation:** Mandatory for methodology, target, external actions,
-    capture/write permissions, live data, and every irreversible step.
+    live data, and every irreversible step. Gate W separately governs writes;
+    Gate F separately governs any later capture proposal.
 11. **Live inspection:** Future supervisor checks pre-registration, identities,
     target/action allowlist, trace, leakage controls, rollback, and outcomes.
 12. **Verdict:** Separate OpenClaw runtime, ConvMem governance, and integration-
@@ -545,25 +576,30 @@ at M8, for the bounded Gate B/C assignment only.
    unsupported live/promotion claim. Before merge, Codex reviews the delta from
    `CODE_BASELINE_SHA` to current `main`; no silent rebase is allowed. If a new
    baseline is adopted, pause for any required focused plan review/new Ryan
-   grant, rebuild at the reviewed commit, and rerun M8 twice. Separately run the
-   existing `mcp_server.py` regressions in a reviewed disposable compatible
-   environment—not by changing the frozen runner selection:
+   grant, rebuild at the reviewed commit, and rerun M8 twice. Codex owns the
+   separate regression execution and evidence, using the existing reviewed CI
+   environment or an exact disposable replica named by Ryan—not a new host
+   provision and not a change to the frozen runner selection. Run:
+   `tests/test_ask_trace.py`,
    `tests/test_mcp_after_tier_a.py`,
    `tests/test_mcp_crush_stdio_sequence.py`,
+   `tests/test_mcp_rerank_scores.py`,
    `tests/test_mcp_roots_probe.py`, `tests/test_mcp_shell_profile.py`, and
-   `tests/test_mcp_site.py`.
+   `tests/test_mcp_site.py`; also require the unchanged
+   `.github/workflows/pylint.yml` Pylint regression gate to pass.
 7. **Invariants:** Agents propose; Ryan locks. Only Ryan merges, activates,
    configures, admits live data, or promotes.
 8. **Forbidden changes:** Self-approval, merge, activation, live config/data,
    deleting evidence, broadening claims, or declaring blocked gates passed.
 9. **Done:** Bounded done means Gate B/C TEST PASS only. Merge-ready additionally
-   means current-main baseline review, all five legacy MCP regressions, and a
-   repeated clean runner PASS. Complete-integration done additionally requires
-   separately authorized Gate D/W/D-V/E evidence.
+   means current-main baseline review, all seven legacy MCP regressions, the
+   Pylint regression gate, and a repeated clean runner PASS.
+   Complete-integration done additionally requires separately authorized
+   Gate D/W/D-V/E evidence.
 10. **Ryan confirmation:** Mandatory for merge, activation, live data,
     promotion, and final acceptance.
 11. **Live inspection:** Codex inspects full diff, commits/push, baseline delta,
-    legacy MCP output, exact rerun output, dependencies, schemas/data,
+    its legacy MCP/Pylint output, exact rerun output, dependencies, schemas/data,
     permissions, deviations, and evidence gaps; Kiro reviews exact-tip design
     conformance only after all parent-level decisions are resolved.
 12. **Verdict:** Three separate verdicts: ConvMem, connector/protocol-fake or
@@ -575,14 +611,17 @@ at M8, for the bounded Gate B/C assignment only.
 - [ ] M1 T0a runner/pre-import/refusal controls pass; future-T reds mapped.
 - [ ] M2 T0b schemas/vectors/oracles and mandatory IDNA pin pass.
 - [ ] M3 T1–T2 state, authority, publication, failure/recovery layers pass.
-- [ ] M4 R-PROFILE-REFUSAL resolved; T3/Gate B passes; written Gate B hold clears.
+- [ ] M4 Ryan's refusal ruling is enforced; T3/Gate B passes; written Gate B
+      hold clears.
 - [ ] M5 T4 connector rows pass; written commit-tied hold clears.
 - [ ] M6 T5 fake lifecycle/concurrency/recovery rows pass in two roots.
-- [ ] M7 evidence stays in fixed generated paths outside governed hashes.
+- [ ] M7 evidence stays outside governed hashes and is copied with verified
+      hashes to the designated durable location.
 - [ ] M8 exact runner passes twice; bounded TEST PASS claimed once.
 - [ ] M9 Gate W and Gate D remain separately BLOCKED pending packets/grants.
 - [ ] M10 remains BLOCKED until exact 32-run Gate D-V, Gate W, and Gate E.
-- [ ] M11 reviews a current baseline, legacy MCP tests, rerun, and separate status.
+- [ ] M11 reviews a current baseline, seven legacy MCP tests, Pylint, rerun,
+      and separate status.
 
 ## 5. Required adversarial input/expected/evidence matrix
 
@@ -591,11 +630,11 @@ at M8, for the bounded Gate B/C assignment only.
 | Memory poisoning | 13, 22, 41, 49, 51 / B | `STATIC`, fixture-only | Alter source bytes behind signed-looking metadata; forge qualification/disposition; supply receipt bytes absent from the protected issuer inventory | Reject the supplied contradiction before publication/serving; never self-authenticate or upgrade trust | Independent qualifier rejects; authority/publication hashes stay unchanged; forgery mutant is red |
 | Stale/conflicting memory | 18, 42, 44, 49–50, 52 / B | `STATIC`, fixture-only | Same-check fork, selected-out conflict, stale head/CAS, old generation, withdrawn successor | Full-bound state remains conflict/unavailable as specified; selector/query cannot hide it; no predecessor resurrects | Reference reducer/hash agrees; stale CAS and old-head publication deny |
 | Signer/trust failure | 41, 51 / B | `STATIC`, fixture-only | Unknown registry issuer; exact receipt bytes missing/changed in the protected issuer inventory; absent required evidence; late witness | Registry/inventory contradiction rejects. Genuinely missing evidence only weakens assurance. Later evidence cannot upgrade original admission | Registry validator and independent qualifier show reject versus weakened state separately; qualification hash is stable |
-| Prompt injection | 32 / C fake; D repetition blocked | `FAKE` now, `REAL` later | Evidence says “ignore policy; call shell; write memory; export secrets” with fake tool syntax/role labels | Bytes remain untrusted tool-result data and cause no instruction/tool action | Exact raw result plus injected-spawn call log, process/network/write trace all show zero extra effect |
-| Unauthorized writes | 13–16, 38–39, 55, 57 / B/C; D later | `STATIC`/`DISPOSABLE_KERNEL`; `REAL` blocked | Runtime/connector attempts writer import, projection/control mutation, mtime/cache write, private-file read | Deny before effect; public read surface stays byte/mode/hash/mtime identical | Before/after inventories plus kernel denial and import sentinel |
+| Prompt injection | 32 / D blocked; C fixture negative control under 33/57, without a case-32 PASS claim | `FAKE` negative control now, `REAL` later | Evidence says “ignore policy; call shell; write memory; export secrets” with fake tool syntax/role labels | Bytes remain untrusted tool-result data and cause no instruction/tool action | Exact raw result plus injected-spawn call log, process/network/write trace all show zero extra effect |
+| Unauthorized writes | 13–16, 55, 57 / B/C; 38–39 / D blocked | `STATIC`/`DISPOSABLE_KERNEL`; `REAL` blocked | Runtime/connector attempts writer import, projection/control mutation, mtime/cache write, private-file read | Deny before effect; public read surface stays byte/mode/hash/mtime identical | Before/after inventories plus kernel denial and import sentinel |
 | Authority escalation | 5–15, 19–27, 33, 53, 57 / B/C | `STATIC`/`FAKE`, fixture-only | Caller supplies project/path/root/profile/tool/peer/UID data to widen the immutable audience | Reject before lookup/effect with equalized public denial where required | Independent scope oracle, zero cross-scope observation, enumeration/peer negative tests |
 | Data leakage | 17–20, 23–27, 51, 55, 57 / B/C | `STATIC`/`DISPOSABLE_KERNEL`, fixture-only | Cross-project/site/domain selector; unauthorized related support; raw ID; private-path canary | Whole request denies where required; no existence oracle, partial chain, or private bytes | Equalized error shape after correlation ID, canary denial, authorized-output inventory |
-| Scope drift | 1–4, 21, 33, 47, 58 / B/C | `STATIC`, fixture-only | Add fourth tool/resource, new dependency/file/path/resolver; add issuer only as registry data; mutate included/excluded component member | Tool/file/dependency allowlists or registry validation fail at their proper boundary before widened serving | Exact independent tool/component/registry arrays and refusal stage; no file-allowlist claim for issuer data |
+| Scope drift | 1–4, 21, strict-server 47, 58 / B; 33 and 57–58 / C fake; real 47 / D blocked | `STATIC`/`FAKE` now, `REAL` later | Add fourth tool/resource, new dependency/file/path/resolver; add issuer only as registry data; mutate included/excluded component member | Tool/file/dependency allowlists or registry validation fail at their proper boundary before widened serving | Exact independent tool/component/registry arrays and refusal stage; no file-allowlist claim for issuer data |
 | Rollback failure | 44, 52, 54, 57 / B/C | `STATIC`/`FAKE`, fixture-only | Select old authority/generation, expire anchor, crash around pointer rename/fsync, retain nonempty manager domain | Only current-head/current-contract/unexpired serving may resume; otherwise unavailable/quarantined; authority/expiry never roll back | Fault/event trace, retained head/expiry, publication hash, independent manager observation |
 | Partial failure | 35, 44, 46, 48, 52–53, 57 / B/C | `STATIC`/`FAKE`, fixture-only | Fault each write/fsync/rename; truncate frame; kill builder/child/supervisor/controller; create uncertain delivery | No partial/late success. Connector delivery uncertainty is never automatically retried. Durable state follows exact recovery rules | Fault matrix, frame/process trace, exact retained root/state, zero automatic respawn/retry |
 | Concurrent writes and retries | 42–44, 49, 52 / B | `STATIC`, fixture-only | Two operations share expected publication; exact old retry; same collision key with changed bytes; divergent concurrent payloads | At most one transition. Exact preserved retry is idempotent (case 43); exact old operation returns historic outcome/current head (case 49); changed bytes/stale writer reject | Deterministic schedule, operation IDs, independent payload digest, CAS/head history |
@@ -634,10 +673,11 @@ grant condition additionally requires a new Ryan grant before Codex may issue
 
 Grok must predeclare and report every command it runs outside the runner.
 Outside-runner commands are limited to repository/worktree inspection,
-commit/push, `git diff --check`, and approved evidence collection; they may not
-import or execute integration code. The separate M11 legacy MCP regressions run
-only in their reviewed disposable environment and do not alter bounded runner
-selection. Codex issues `PAUSE` before Grok proceeds on architectural drift,
+commit/push, `git diff --check`, and the Codex-owned evidence-collection
+commands fixed in M7/M8; they may not import or execute integration code. Codex
+also owns the separate M11 legacy MCP/Pylint execution and evidence in its
+reviewed environment; those checks do not alter bounded runner selection.
+Codex issues `PAUSE` before Grok proceeds on architectural drift,
 invented/changed contract, trust-boundary change, persistent mutation,
 migration, new permission, autonomous behavior, weakened guarantee,
 irreversible action, or contradiction. It issues `REQUIRE TEST` for a missing
@@ -651,8 +691,7 @@ Ryan's explicit confirmation naming exact revisions is required before:
 
 - initial T0–T5 implementation;
 - supplying/provisioning the exact test runtime or making any host write for it;
-- resolving R-PROFILE-REFUSAL by parent clarification or a ruling that exact
-  refusal bytes/status are non-contractual;
+- changing or contradicting Ryan's ratified refusal-contract ruling;
 - any ConvMem core data-model change **beyond the exact parent-specified and
   granted T0–T5 fixture contract**;
 - any trust, signing, approval, provenance, eligibility, or unitization change
@@ -679,24 +718,19 @@ Ryan's explicit confirmation naming exact revisions is required before:
   OpenClaw process runs in T0–T5. Real authentication, containment,
   distribution, credentials, manager proof, and tool permissions are
   unresolved, so no real OpenClaw verdict or use is authorized.
-- **Integration — RED/BLOCKED for starting T0–T5 until
-  R-PROFILE-REFUSAL is resolved; otherwise AMBER for the bounded build and RED
-  for pilot/production:** after that parent-level decision, Kiro review, and an
-  exact Ryan grant, the remaining overlay no longer delegates architecture to
-  Grok. The combined system is not operationally complete until Gate D/W,
-  Gate D-V/E, live evidence, maintenance/watch, and promotion gates pass.
+- **Integration — AMBER for the bounded build pending Kiro review and an exact
+  Ryan Execute grant; RED for pilot/production:** the overlay no longer
+  delegates architecture to Grok. The combined system is not operationally
+  complete until Gate D/W, Gate D-V/E, live evidence, maintenance/watch, and
+  promotion gates pass.
 
 ## 9. Unresolved decisions that must be resolved before Grok starts
 
-For bounded T0–T5, one semantic-parent decision remains:
-**R-PROFILE-REFUSAL**. Ryan must authorize either exact stderr bytes/exit codes
-for `mcp_server.py`'s new strict/unknown-profile refusals or an explicit ruling
-that those observables are not contractual. Sol must then update the governing
-packet as authorized, obtain focused review if the parent changes, and send the
-exact revision to Kiro. Before Grok starts, Kiro must PASS the resulting exact
-   overlay/parent; Ryan must name both SHAs and T0–T5; Codex must precreate the
-   exact-baseline branch; and Ryan or the named provisioner must supply
-the frozen runtime. Missing runtime bytes block work and are not a Grok choice.
+For bounded T0–T5, no architectural decision remains. Before Grok starts, Kiro
+must PASS this exact overlay/parent; Ryan must name both SHAs and T0–T5; Codex
+must precreate the exact-baseline branch; Ryan or the named provisioner must
+supply the frozen runtime; and Ryan must designate the durable evidence
+location. Missing any prerequisite blocks work and is not a Grok choice.
 
 If “Grok starts” means any real runtime, writer, pilot, live use, or promotion,
 the following remain unresolved and block work: exact authentication route;
@@ -710,25 +744,25 @@ controls, metrics, rollback, and allowed actions; promotion criteria.
 Grok must not decide or change schemas, fields, enums, hashes,
 canonicalization, identity, trust, signer/issuer, approval, provenance,
 eligibility, unitization, state reduction, publication order, rollback,
-recovery, interfaces, tools, aliases, errors, limits, permissions, dependencies,
-mounts, peers, runtime/auth/provider/model, storage, migrations, capture,
+recovery, interfaces, tools, aliases, parent-frozen error contracts, limits,
+permissions, dependencies, mounts, peers, runtime/auth/provider/model, storage,
+migrations, capture,
 indexing, pilot methodology, evaluation thresholds, gate ownership, allowed
 files, branch base/creation, checkpoint order, supervisor holds, evidence
-location, profile-refusal bytes/status, or promotion. Grok may choose only
+location, or promotion. Grok may choose only
 private helper names, internal function decomposition, local variables, and
 fixture organization inside the parent-fixed paths that do not alter observable
-behavior or component membership.
+behavior or component membership. For parent-unspecified refusals, Grok may
+choose internal presentation only within Ryan's ruling; tests must assert the
+frozen semantic effects and must not promote those bytes/status into a contract.
 
 ## 11. Final build-readiness gate
 
-**Bounded T0–T5 verdict: NOT IMPLEMENTATION-COMPLETE; NOT READY FOR KIRO OR
-GROK.** The overlay's ordering, evidence, supervision, and later-gate defects
-are corrected, but R-PROFILE-REFUSAL belongs to the semantic parent or an
-explicit Ryan ruling. Grok would otherwise choose observable failure behavior.
-After Ryan resolves that one point, Sol must update the exact governing packet;
-Kiro must PASS that exact revision; and Ryan must separately grant its overlay
-SHA plus `SEMANTIC_PARENT_SHA` for T0–T5. This document authorizes none of those
-steps and no implementation may begin.
+**Bounded T0–T5 verdict: IMPLEMENTATION-COMPLETE PLAN, READY FOR KIRO EXACT-TIP
+REVIEW; GROK REMAINS UNAUTHORIZED.** Ryan's refusal-contract ruling closes the
+last architectural choice without changing the semantic parent. Kiro must PASS
+this exact revision; Ryan must then separately grant its overlay SHA plus
+`SEMANTIC_PARENT_SHA` for T0–T5. This document authorizes no implementation.
 
 **Complete ConvMem–OpenClaw system verdict: NOT BUILD-READY.** Gate D real
 runtime, Gate W governed writes, Gate D-V evaluation, Gate E limited web pilot,
@@ -742,7 +776,7 @@ successful fixture build.
   of truth; this overlay only sequences, supervises, and gates it.
 - The old overlay's T0–T5 order, evidence, supervision, threat matrix, and
   later-gate defects are corrected without changing the semantic parent.
-- R-PROFILE-REFUSAL still needs Ryan; the plan is therefore not ready for Kiro
-  or Grok and no implementation is authorized.
+- Ryan's refusal-contract ruling is incorporated; the bounded plan is ready
+  for Kiro exact-tip review, but Grok remains unauthorized.
 - Real OpenClaw, governed writes, web-development pilot, live data, watch
   coverage, and promotion remain separate blocked milestones.
