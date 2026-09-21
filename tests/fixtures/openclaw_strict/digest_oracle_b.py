@@ -317,3 +317,18 @@ def semantic_digest_bytes(record: dict[str, Any]) -> bytes:
 def payload_digest_bytes(record: dict[str, Any]) -> bytes:
     body = {k: v for k, v in record.items() if k != "payload_sha256"}
     return encode_canonical_bytes(body)
+
+
+def exclude_named_field_bytes(obj: dict[str, Any], field: str) -> bytes:
+    """Parent self-hash rule: canonical bytes excluding only the named payload-hash field."""
+    if not isinstance(obj, dict):
+        raise DigestOracleBError("exclude_not_object")
+    if not isinstance(field, str) or not field:
+        raise DigestOracleBError("exclude_field_invalid")
+    body = {k: v for k, v in obj.items() if k != field}
+    return encode_canonical_bytes(body)
+
+
+def labeled_self_hash(obj: dict[str, Any], field: str) -> str:
+    """sha256: hex of exclude_named_field_bytes(obj, field)."""
+    return sha256_labeled(exclude_named_field_bytes(obj, field))

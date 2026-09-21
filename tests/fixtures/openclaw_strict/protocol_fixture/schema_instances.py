@@ -255,7 +255,9 @@ POSITIVE_BY_FILENAME: dict[str, Any] = {
             {
                 "source_registration_id": "src-reg-1",
                 "source": {
+                    "schema": "convmem.fixture-scan.v1",
                     "event_key": "scan-key-1",
+                    "captured_at": TS,
                     "records": [
                         {
                             "record_kind": "observation",
