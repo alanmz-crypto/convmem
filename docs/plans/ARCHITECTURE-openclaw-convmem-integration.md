@@ -11,10 +11,11 @@ This planning edit authorizes no implementation, runtime start, configuration ch
 **Arc:** none (ad-hoc integration)
 
 **Authority:** Codex architectural editing lane. This final corrective edit starts from planning
-commit `0f1216f7249c0066dafb6fc9ef2aafa9845a7264` on
-`plan/2026-09-20-openclaw-convmem-final-readiness`. The exact-target Astra report identifies only
-B-FIXTURE and B-DIGEST as bounded BUILD blockers. Sections 6.5.8–9 select their corrections;
-§18 records every finding, disposition and attempted regression. Kiro owns design review; Ryan
+commit `2aa66a8753db3be6adce7cb17533eae96aee609d` on
+`plan/2026-09-20-openclaw-convmem-final-readiness`. Astra reviewed its parent `0f1216f`, not
+`2aa66a8` or this correction. The preceding correction resolved B-FIXTURE and B-DIGEST;
+§18.4 records two concrete runner-contract repairs without reopening those sound semantics.
+Sections 6.5.8–9 freeze the fixture and hash contracts. Kiro owns design review; Ryan
 owns policy approval and any later Execute grant. No complete-integration readiness is claimed.
 
 **Review inputs:** Final Astra report
@@ -25,7 +26,7 @@ Earlier Stage 1 report SHA-256
 `fc402286dbb720f3752613e3fe982c4542b168eda9609416b1dd4c51eff5c979`; reconstruction report SHA-256
 `73ebe0f606551eb9ece035722d5af05468c9168b6b279abbcd444ec35b03b827`. The code evidence baseline
 remains `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; no implementation changes are made here.
-Supersedes the two plan files at `0f1216f`, not the frozen invariants below.
+Supersedes the two plan files at `2aa66a8`, not the frozen invariants below.
 
 **Frozen invariants:** ConvMem files/CLI retain governance and durable-memory ownership; OpenClaw is
 only a bounded, disposable reader/orchestrator. Exactly three read-only tools, one immutable
@@ -2019,8 +2020,8 @@ not proof of real UID/mount separation. Gate D repeats it with real enforcement.
 harness before importing the implementation: fresh user/PID/IPC/network/UTS namespaces, empty root,
 capabilities dropped, new session, parent-death termination and private proc/dev. Bind only an
 export of the exact tracked source at `/src` read-only, an explicitly inventoried test-runtime
-prefix at `/runtime` read-only, necessary read-only system libraries at `/usr` (with `/bin`, `/lib`,
-`/lib64` aliases into it), and one newly created mode0700 `/tmp/convmem-openclaw-fixture.XXXXXX`
+prefix at `/runtime` read-only, that prefix's `sysroot/usr` subtree at `/usr` read-only (with
+`/bin`, `/lib`, `/lib64` aliases into it), and one newly created mode0700 `/tmp/convmem-openclaw-fixture.XXXXXX`
 root at `/fixture`. No host root/home, `/run`, service bus, Docker socket, live checkout `.git`,
 ConvMem/OpenClaw state or host temp tree is mounted. Private `/tmp` is a 256 MiB tmpfs.
 Use mandatory `--unshare-user --unshare-pid --unshare-ipc --unshare-net --unshare-uts`,
@@ -2037,18 +2038,41 @@ image. Missing tools/dependencies block TEST provisioning, not the specified BUI
 download or version substitution occurs inside the harness. Supplying the specified bytes does
 not let Grok choose a production distribution.
 
+The supplied prefix is the complete test dependency closure: interpreter/stdlib, Python packages,
+Node, ELF loaders/shared libraries and any locale/data files they load. Its `sysroot/usr` contains
+only those inventoried support files, never host `/usr`, host executables or a package-manager
+tree. `test_runtime_tree_sha256` hashes the canonical sorted `{path,mode,sha256}` array for every
+regular file relative to this prefix, including `sysroot/usr/`; there is no second unbound library
+input. The runner creates only the fixed sandbox aliases `/bin -> usr/bin`, `/lib -> usr/lib`,
+`/lib64 -> usr/lib64`; these are not symlinks admitted into the supplied prefix. Provisioned files
+must resolve at `/runtime` and these fixed aliases under the empty environment below, without
+`LD_LIBRARY_PATH`, `PYTHONHOME`, host loader caches or additional mounts. Missing closure is a
+TEST provisioning failure: supply the specified files in the same prefix and rerun preflight;
+never discover/bind host libraries as a repair. Preflight records actual interpreter/version,
+module and loader resolutions, checks that every loaded regular file is inventoried at its
+mapped path, and rejects a missing/changed/unlisted dependency before implementation imports.
+The prefix's independently computed inventory/hash is frozen before launch and checked again
+afterward. It is fixture evidence only, not Gate D sealing.
+
 Environment starts empty: `HOME=/fixture/home`, `TMPDIR=/fixture/tmp`,
 `XDG_CONFIG_HOME=/fixture/config`, `XDG_CACHE_HOME=/fixture/cache`, `XDG_DATA_HOME=/fixture/data`,
 `PATH=/runtime/bin:/usr/bin`, `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`,
 `PYTHONDONTWRITEBYTECODE=1`, `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`; no other inherited variables.
 Create these empty directories before tests. Close inherited FDs except bounded stdio. The driver
-allows only Python pytest, Node `--test`, and fresh Python invocations of the named publisher,
+allows only the exact execution §5.1 pytest/Node suites and fresh Python invocations of the named publisher,
 reader and strict-server entrypoints; it has no general command runner. T4/T5 spawn remains virtual.
 Run from read-only `/src`, disable pytest's cache provider, and place its explicit base-temp roots
 under `/fixture`. Explicitly load only baseline-required test plugins and record their inventory;
 never enable plugin autoload. Per-suite wall deadline is 600 seconds; captured stdout/stderr has a
 combined 16 MiB limit. Exceeding either fails without budget expansion. Execution §5.1 fixes the
 test-only runner's closed CLI, pre-import setup operations and exact inner commands.
+These are unmeasured limits, not demonstrated capacity. TEST records monotonic elapsed time,
+combined output bytes and maximum sampled `/tmp` allocated bytes (with sampling interval), verifies the tmpfs size
+is 268435456 bytes, and fails on deadline/output overflow or ENOSPC. The `/tmp` limit does not
+describe `/fixture` storage. Thresholds remain 600 seconds, 16777216 output bytes and the fixed
+256 MiB tmpfs; no harness limit changes protocol deadlines, authority or freshness. Cursor/Grok
+repairs inefficient test/runner code within scope; a necessary limit change returns to Codex/Kiro
+with the measurement, not an automatic BUILD downgrade or silent budget expansion.
 No real OpenClaw/systemd/model executable or credential/auth request is ever allowed. Network
 denial is independently checked before suite entry; network calls in B/C are additionally forbidden
 by the test port/import guards. Failure cannot fall back to running on the host.
@@ -2063,6 +2087,33 @@ paths. Missing containment, an ambient open/exec/network
 attempt, forbidden import, or an unexpected surviving real test child fails the suite. The driver
 waits for the sandbox PID namespace to terminate before test teardown; a timeout retains the root
 and returns failure for operator cleanup. It never calls deletion “lineage recovery.”
+
+**Closed suite selection.** Execution §5.1's `--suite all` is exactly strict Python, connector
+Node and bounded legacy Python, not repository-wide pytest discovery. Its legacy command keeps
+the named compatibility files and explicitly adds `tests/test_provenance.py` and
+`tests/test_provenance_continuity.py`. Exactly four nodes in `tests/test_agent_run_ledger.py` are
+outside this fixture selection: `test_v8_kiro_hook_adapter_fail_open`,
+`test_v6_git_facts_non_git_cwd`, `test_q7_hook_failure_writes_stderr`, and
+`test_q4_hook_two_missing_id_starts_same_cwd`. They require real hook/Git subprocesses forbidden
+by this runner. The baseline's full suite also requires Git/shell/systemd probes. Report these
+exclusions and no full-repository result; do not call them passed, replace them with mocked
+success, alter protected tests, or broaden the process/mount inventory. Existing repository-wide
+checks remain separate work. Every other node in the named legacy files remains selected.
+The runner verifies the exact §5.1 selectors/deselections against test-owned constants before
+collection, rejects extra deselections/full discovery, and reports the collected node IDs.
+No new selected safety-test skip is accepted. Legacy compatibility uses a separate fresh pytest
+process, the same physical containment and no subprocess allowance. Only that process may import
+unchanged legacy config/writers for its synthetic stores; strict components retain their original
+import restrictions. This preserves legacy behavior without granting strict readers write access.
+
+Case57 must observe actual kernel denials for outside-root canary opens/writes and read-only
+mount writes, not merely a fake `access()` denial. A separate synthetic-only inner exposure of
+a canary must make the independent preflight fail while the outer boundary stays intact. Fake
+role permissions, peers and manager membership remain modeled contracts with independent oracles;
+these tests do not require Gate D UID/systemd enforcement. Copy input files to fresh disposable
+`/fixture` subtrees before any case58 mutation; never mutate `/src`, `/runtime`, `/usr` or the
+protected checkout. The reference walker owns its literal inventory and computes canonical bytes
+and expected hashes itself, never asking the implementation for its expected set or digest.
 
 **Reproducible fixture artifacts.** T0 adds the closed test-only schema
 `tests/fixtures/openclaw_strict/fixture-manifest.schema.json` and canonical `fixture-manifest.json`:
@@ -3238,6 +3289,15 @@ cases, and every later case remains a blocking future gate.
     the path/env guard, trust supervisor emptiness, accept a stale receipt or enable a production
     fake must fail. Test sandbox-negative controls against synthetic canaries only. Rollback must
     still retain the authority head/expiry, and teardown is not recovery.
+    For the runner corrections, independently compare the actual mounts and runtime inventory:
+    `/usr` must be the supplied `sysroot/usr`, with no host library bind. After freezing the
+    inventory, remove/mutate one copied loader/library or add an unlisted file; preflight rejects
+    before an implementation-import sentinel runs. Record real canary/read-only denial results;
+    an inner synthetic canary exposure must be detected, not hidden by mocked denial results.
+    Verify the exact three suite commands, the four declared legacy exclusions and every selected
+    node. A full-discovery command, extra deselection, hook/Git spawn or strict writer import fails.
+    Measure the existing capacity bounds; inject counter overflow/deadline and fill only private
+    `/tmp` past its cap as negative controls. Failure never raises budgets or changes protocol time.
 58. Build independently the five exact §6.5.9 component entry arrays and hashes plus the separate
     §6.5.8 fixture manifest. Mutate each included file's bytes/mode, including every unchanged
     CORE helper; all consuming hashes change or reject. Missing/extra/duplicate entries, substituted
@@ -3452,18 +3512,21 @@ implementation baseline; no live historical-consent scan is authorized or used a
 ### 14.5 Final corrective-edit documentary verification
 
 The final Astra report explicitly reviewed `0f1216f7249c0066dafb6fc9ef2aafa9845a7264`; its recorded
-plan-file hashes match that commit, and the report SHA-256 is pinned above. The corrective diff is
+plan-file hashes match that commit, and the report SHA-256 is pinned above. It is not an exact-tip
+review of `2aa66a8` or this correction. The new diff starts at `2aa66a8` and is
 limited to the two plans; all non-plan source remains identical to
 `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`. The document checker compares both schema inventories
 (24 B, 7 C, 5 W), all original fenced contract bytes, cases1–56 unchanged plus57–58, CORE and all
 five component sets, fixture fields, exact issue classes, containment constants, gate statements,
-and Markdown/whitespace. Section18.3 adds the semantic counterexample review. The bundle carries
+and Markdown/whitespace. It additionally compares the mirrored runtime closure, exact bounded
+suite selection, repair records and unchanged manager/core semantics against `2aa66a8`.
+Section18.5 records the focused regression review; §18.3 retains the preceding correction's matrix. The bundle carries
 the checker, its output and parent-to-target diff so these assertions are reproducible.
 
 No integration acceptance is claimed: TEST remains NOT YET RUN. Prior static routing/auth probes
 were not rerun for this correction. No implementation, OpenClaw configuration, package install,
 credential read or gateway/service start is part of this edit. The final exact-commit bundle must
-bind the committed plan bytes, sealed parent review, unchanged code evidence and historical probe
+bind the committed plan bytes, correctly labeled historical review, unchanged code evidence and historical probe
 captures with a complete SHA-256 manifest; verify the archive before handoff.
 
 ## 15. Stop conditions
@@ -3695,10 +3758,10 @@ Retained change history: the preceding edit from `9b106b9` to `0f1216f` made the
   readiness. Preserve lexical ranking, scope normalization, legacy IDs, three tools, no resources
   and all frozen runtime restrictions.
 
-### 18.1 Final corrective edit from `0f1216f`
+### 18.1 Preceding corrective edit from `0f1216f`
 
-The sealed final Astra report reviewed exactly the requested parent; its file hashes match this
-edit's starting files. Classification preceded editing: B-FIXTURE and B-DIGEST were BUILD BLOCKER;
+The sealed final Astra report reviewed that correction's parent `0f1216f`; its file hashes match
+that correction's starting files. Classification preceded editing: B-FIXTURE and B-DIGEST were BUILD BLOCKER;
 C-RUNTIME, D-CONTAINMENT, D-DISTRIBUTION and W-PRODUCTION were LIVE-DATA/PROMOTION BLOCKER;
 I-IMPLEMENTATION was SAFE TO DEFER INTO ISOLATED IMPLEMENTATION; U-VALUE was NON-BLOCKING
 UNCERTAINTY. Thus the no-edit path did not apply. This edit changes only the paired plans.
@@ -3818,9 +3881,9 @@ implementation defect from authorizing architectural change or consequential use
   or fallback stops BUILD. Grok T0–T5 decision: **no**. No new value threshold is needed to implement
   the already bounded reader.
 
-### 18.3 Parent-to-target regression matrix
+### 18.3 Preceding correction's regression matrix (`0f1216f` to `2aa66a8`)
 
-Parent is `0f1216f7249c0066dafb6fc9ef2aafa9845a7264`; target is this corrective commit. These are
+Parent is `0f1216f7249c0066dafb6fc9ef2aafa9845a7264`; target is `2aa66a8`. These are
 documentary counterexample checks and diff evidence, not claims that future executable tests ran.
 
 | Previously sound property | Changed section | Adversarial regression attempted | Result/evidence |
@@ -3847,6 +3910,108 @@ tests remain NOT YET RUN. A focused fresh Astra check is justified by these subs
 artifact choices, followed by Kiro exact-tip review; missing production evidence alone does not
 justify another general planning cycle. No Execute, live-data or promotion authority is issued.
 
+### 18.4 Final focused repair from `2aa66a8`
+
+Decision: **EDIT REQUIRED**, only for the two concrete runner contradictions below. The exact
+starting branch/commit, both Git/file/archive plan copies and all 139 bundle manifest entries were
+verified against bundle SHA-256
+`ebbc2d8cf3344cd6c82cb9793c0d137d8f72cf36dd1595ff2398d58467e03d92`. The retained Astra report is
+evidence about `0f1216f` only. A coherent normative contract resolves a specification blocker;
+reassuring assertions or promises of evidence do not. Executable conformance remains TEST work.
+
+BLOCKER_ID: B-RUNNER-CLOSURE
+FAILED_BUILD_CRITERION: Every executable fixture dependency has a fixed, nonambient input boundary.
+WHY_CURRENT_CONTRACT_FAILS: At `2aa66a8`, §6.5.8 inventories only the `/runtime` prefix but also
+mounts system libraries at `/usr`. Changing those library bytes need not change the fixture's
+runtime hash. The promised closed runtime therefore admits an unbound host dependency.
+MINIMUM_REPAIR: Mount only the supplied prefix's inventoried `sysroot/usr` at `/usr`; freeze loader,
+stdlib, package and data resolution at the existing mount paths without environment/mount fallback.
+FILES_AND_SECTIONS_CHANGED: This plan §§6.5.8, 13 case57, 14.5, 18.4–5; execution §§5.1, 9, 10.3.
+FROZEN_FIXTURE_CONTRACT: All runtime regular files, including `sysroot/usr/`, enter the single
+canonical sorted runtime inventory/hash; only the three fixed sandbox aliases are created.
+No host `/usr`, new mount, inherited loader setting, systemd/OpenClaw/model or credential is admitted.
+EXACT_ACCEPTANCE_TEST: Case57 preflight verifies mount source mapping, pinned versions, resolution
+and every frozen file/mode/hash before strict imports; the independent reference recomputes the
+runtime hash including support files. Return the inventory, resolution and post-run comparison.
+NEGATIVE_CONTROL: In a disposable prefix copy after inventory freeze, remove or change one loader/
+library, add an unlisted regular file, or propose a host-`/usr` bind. Each rejects before the strict
+import sentinel; recalculating only the implementation's claimed hash cannot satisfy the reference.
+ROLLBACK_OR_RECOVERY_BEHAVIOR: Refuse suite entry; on a running failure wait for namespace exit,
+retain the root on uncertain teardown, and preserve synthetic authority head/expiry. No host fallback.
+OWNER_AND_CORRECTION_PATH: Cursor/Grok implements preflight and case57 in the existing test-helper/
+packet-test allowance. The provisioning owner supplies missing pinned bytes separately before TEST;
+any proposed dependency/mount semantics change returns to Codex/Kiro.
+REGRESSION_TEST: Case58 component sets stay identical; cases33/47/55/57 still deny ambient paths,
+credentials and real launch. Runtime mutation affects the fixture hash, not production component sets.
+NEW_STATUS: RESOLVED — normative contract; execution NOT YET RUN.
+
+BLOCKER_ID: B-RUNNER-SUITES
+FAILED_BUILD_CRITERION: Mandatory acceptance commands obey the runner's frozen process/import scope.
+WHY_CURRENT_CONTRACT_FAILS: At `2aa66a8`, execution §5.1 requires unqualified full pytest and all
+ledger tests while forbidding their required subprocesses. At unchanged baseline `7809f20`,
+`tests/test_work_git.py` executes Git; `tests/test_restic_systemd.py` probes systemd-analyze; the
+four ledger nodes now named in §6.5.8 execute `scripts/kiro-agent-run-hook.py` or Git. Applying
+strict writer/config import guards to the mandatory legacy suite also rejects its intended imports.
+MINIMUM_REPAIR: Freeze three bounded suites, explicitly exclude those four unrelated subprocess
+nodes and full-repository discovery, retain all other named legacy nodes, and isolate legacy
+compatibility imports in their own contained pytest process. Do not add host tools or modify tests.
+FILES_AND_SECTIONS_CHANGED: This plan §§6.5.8, 13 case57, 14.5, 18.4–5; execution §§5.1, 9, 10.3.
+FROZEN_FIXTURE_CONTRACT: Execution §5.1 supplies the exact command/node set. The driver compares it
+with an independent test-owned constant before collection. Strict/connector safety coverage is
+unchanged; legacy byte/UUID/continuity tests are explicit; no extra deselection or subprocess is allowed.
+EXACT_ACCEPTANCE_TEST: Case57 compares command arrays and collected node IDs, all selected tests
+pass with no new safety skip, and traces show only allowed strict subprocesses and none from the
+legacy suite. Protected baseline files remain byte/mode identical. Report the four exclusions and
+no full-repository result; do not claim coverage for unrun host-tool tests.
+NEGATIVE_CONTROL: A full-discovery command, extra deselection, omitted selected safety test, real
+hook/Git launch or strict reader importing a legacy writer must fail the independent packet guard.
+ROLLBACK_OR_RECOVERY_BEHAVIOR: Fail TEST without widening process/mount access or fabricating skips;
+retain failed evidence until namespace teardown is established. Fixture disposal is not recovery.
+OWNER_AND_CORRECTION_PATH: Cursor/Grok implements the exact selection/guards in the existing runner
+and packet-test allowance. Broader repository regression remains separately reported work; it is
+not silently satisfied or turned into Gate D compatibility proof. Selection changes require Codex/Kiro.
+REGRESSION_TEST: Every B/C case remains assigned; all selected legacy ID, provenance, writer and
+recovery tests remain mandatory. Case57 rejects scope expansion and case58 keeps protected inputs bound.
+NEW_STATUS: RESOLVED — normative contract; execution NOT YET RUN.
+
+Other focused results: capacity is unmeasured, with unchanged limits now assigned measurement and
+failure evidence in TEST. Manager membership remains independently owned: supervisor death, stop
+acknowledgement and cleanup callbacks cannot remove detached descendants or outstanding model work;
+only separately scheduled manager removals may produce an exact terminal/empty observation.
+Case57 must test that sequence, partial independent removal, unknown/stale observations and genuine final emptiness.
+Case58's expected inventory/hashes remain reference-owned; mutations are on disposable copies.
+Real denial evidence concerns the disposable sandbox only. No real authentication, provider,
+host UID/systemd deployment, production image or Gate W operation is introduced.
+
+### 18.5 Final correction regression matrix (`2aa66a8` to this edit)
+
+**WHAT DID THIS EDIT BREAK THAT WAS PREVIOUSLY SOUND?** No previously sound semantic contract is
+changed. One coverage claim is deliberately narrowed: this closed runner cannot claim a full
+repository regression run or the four excluded hook/Git cases. That requirement was incompatible
+with its existing process restrictions, not demonstrated passing coverage. The following are
+documentary comparisons and required future tests, never claims of executed conformance.
+
+| Property | Documentary comparison / attack | Required TEST evidence |
+|---|---|---|
+| Authority-head continuity | §§6.5.3–4 unchanged; support-library or suite changes cannot restore an old head. | Cases44/49/52, old-head publication rejected. |
+| Canonical verification | Full-bound reducer and canonical contracts unchanged; narrowing test selection grants no query-local reducer. | Cases18/42/50, hidden fail/fork still prevents pass. |
+| Byte grounding | §6.5.1 unchanged; runtime inventory cannot authenticate source/output bytes. | Case51 substitutions rejected; protected provenance tests. |
+| Receipts | Issuer inventories and original-admission context unchanged; no fixture self-attestation. | Cases49/51, forged/late receipt does not elevate assurance. |
+| Retirement/freshness | §6.5.6 and fake manager port unchanged; death, stop ACK and cleanup leave membership populated. | Cases46/53/54/57: detached child/work persist; partial removal refuses; independent final terminal/empty event permits retirement; expiry never renews. |
+| Explicit ingestion/admission/projection | §6.5.7 unchanged; legacy test imports stay in their separate synthetic process. | Cases52/57; future case56 remains Gate W, never claimed here. |
+| Physical isolation | Namespace/capability/root/FD rules retained; host `/usr` input removed. | Case57 actual canary and read-only denials plus detected synthetic exposure; no mock-only PASS. |
+| No ambient credentials | Empty environment and fake's no-auth port retained; no loader-variable fallback. | Cases33/47/55/57 and absent sentinel env/FD evidence. |
+| Legacy behavior | All non-plan source remains baseline-identical; selected legacy tests plus explicit provenance/continuity tests stay required. | Exact selected nodes/results; four named exclusions and no whole-repository PASS. |
+| Rollback | Current head, contract and freshness anchor unchanged. | Cases44/52/57, old authority or renewed expiry rejected. |
+| Recovery | Unknown history/emptiness stays unavailable; disposal still is not lineage recovery. | Cases52/53/57, no reset or implicit add. |
+| Hash contracts / safe mutations | Five component sets and schemas unchanged; full test dependency closure separately bound. | Case58 independent literal inventories; omit canonical helper/recompute wrong digest still fails; disposable-copy mutation leaves protected originals unchanged. |
+| Fixture/live-data/promotion separation | Fake remains unselectable and unauthenticating; four gate statuses retained. | Case57 disabled launch/registration; no Gate D/W/E PASS from fixture success. |
+| Capacity versus protocol | 600 seconds, 16 MiB output, 256 MiB private `/tmp` unchanged and unmeasured. | Record measurements and failing over-limit controls; protocol deadlines/authority/freshness unchanged. |
+
+BUILD remains PASS after these specification repairs. TEST remains NOT YET RUN; LIVE-DATA and
+PROMOTION remain BLOCKED. Fresh Astra must review this exact tip's runner/fixture/hash contracts
+before Kiro; the `0f1216f` report does not certify either later revision.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -3868,6 +4033,6 @@ justify another general planning cycle. No Execute, live-data or promotion autho
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
 
-**TL;DR:** [Arc none] The two bounded BUILD blockers now have frozen fixture and component-hash
-contracts. BUILD PASS; TEST NOT YET RUN; LIVE-DATA and PROMOTION BLOCKED. Grok implements the fixed
+**TL;DR:** [Arc none] Two concrete runner contradictions are repaired; independent manager and
+component-hash contracts are preserved. BUILD PASS; TEST NOT YET RUN; LIVE-DATA and PROMOTION BLOCKED. Grok implements the fixed
 T0–T5 scope only after exact-tip review and Ryan's grant; production gaps authorize no redesign.
