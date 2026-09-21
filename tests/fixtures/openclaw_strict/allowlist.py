@@ -35,8 +35,15 @@ def assert_allowlist(repo: Path, source_commit: str) -> list[str]:
     forbidden = [p for p in paths if not path_allowed(p)]
     if forbidden:
         raise SystemExit("allowlist_violation:" + ",".join(forbidden))
-    # M1 must not touch these even though the parent lists them for later milestones.
-    protected = [p for p in paths if p in {"mcp_server.py", "requirements.txt"} or p.startswith("schemas/")]
+    # Gate W schemas and reject-only mcp_server remain out of M2 unless allowlisted.
+    gate_w = (
+        "schemas/convmem-approved-admission-v1.schema.json",
+        "schemas/convmem-admission-intent-v1.schema.json",
+        "schemas/convmem-admission-review-v1.schema.json",
+        "schemas/convmem-admission-ratification-v1.schema.json",
+        "schemas/convmem-admission-event-v1.schema.json",
+    )
+    protected = [p for p in paths if p == "mcp_server.py" or p in gate_w]
     if protected:
-        raise SystemExit("m1_forbidden_change:" + ",".join(protected))
+        raise SystemExit("m2_forbidden_change:" + ",".join(protected))
     return paths

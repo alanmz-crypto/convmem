@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-config.v2",
+  "title": "convmem.strict-config.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "projection_root",
+    "max_projection_rows",
+    "max_projection_bytes",
+    "telemetry"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-config.v2"
+    },
+    "projection_root": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "max_projection_rows": {
+      "const": 10000
+    },
+    "max_projection_bytes": {
+      "const": 67108864
+    },
+    "telemetry": {
+      "const": false
+    }
+  }
+}

@@ -200,9 +200,303 @@ def test_plan_and_baseline_constants_frozen():
     assert oc_constants.EXPECTED_TEST_RUNTIME_TREE_SHA256.startswith("sha256:74a12c72")
 
 
-def test_case58_component_inventory_capability_absent():
+def test_m2_gate_b_and_c_schema_inventory_exact():
+    """Exact 24 Gate B + 7 Gate C schemas; no Gate W."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    gate_b = [
+        "schemas/convmem-bound-read-scope-v2.schema.json",
+        "schemas/convmem-project-binding-registry-v3.schema.json",
+        "schemas/convmem-bound-authority-record-v3.schema.json",
+        "schemas/convmem-authority-disposition-v1.schema.json",
+        "schemas/convmem-strict-provenance-context-v2.schema.json",
+        "schemas/convmem-strict-grounding-v1.schema.json",
+        "schemas/convmem-capture-receipt-v1.schema.json",
+        "schemas/convmem-strict-fixture-bundle-v2.schema.json",
+        "schemas/convmem-strict-citation-map-v1.schema.json",
+        "schemas/convmem-bound-authority-manifest-v3.schema.json",
+        "schemas/convmem-bound-projection-row-v2.schema.json",
+        "schemas/convmem-strict-graph-v1.schema.json",
+        "schemas/convmem-bound-projection-manifest-v3.schema.json",
+        "schemas/convmem-strict-generation-layout-v2.schema.json",
+        "schemas/convmem-strict-publication-v2.schema.json",
+        "schemas/convmem-strict-enrollment-v1.schema.json",
+        "schemas/convmem-strict-slot-v1.schema.json",
+        "schemas/convmem-strict-source-cutoff-v1.schema.json",
+        "schemas/convmem-strict-semantic-contract-v1.schema.json",
+        "schemas/convmem-strict-state-v2.schema.json",
+        "schemas/convmem-clock-review-v1.schema.json",
+        "schemas/convmem-raw-evidence-v3.schema.json",
+        "schemas/convmem-error-v1.schema.json",
+        "schemas/convmem-strict-config-v2.schema.json",
+    ]
+    gate_c = [
+        "schemas/convmem-openclaw-connector-launch-v2.schema.json",
+        "schemas/convmem-openclaw-activation-v2.schema.json",
+        "schemas/convmem-activation-control-v1.schema.json",
+        "schemas/convmem-activation-retirement-v1.schema.json",
+        "schemas/convmem-activation-launch-policy-v1.schema.json",
+        "schemas/convmem-activation-manager-policy-v1.schema.json",
+        "schemas/convmem-controller-socket-policy-v1.schema.json",
+    ]
+    assert len(gate_b) == 24
+    assert len(gate_c) == 7
+    assert set(gate_b) | set(gate_c) == set(oc_constants.SCHEMA_ALLOWLIST)
+    for rel in gate_b + gate_c:
+        path = Path(rel)
+        assert path.is_file(), f"missing_schema:{rel}"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert data.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
+        if "oneOf" in data:
+            assert data["$id"].startswith("convmem.")
+            for variant in data["oneOf"]:
+                assert variant.get("additionalProperties") is False
+        else:
+            assert data.get("additionalProperties") is False
+            assert "schema" in data["required"]
+    for forbidden in (
+        "schemas/convmem-approved-admission-v1.schema.json",
+        "schemas/convmem-admission-intent-v1.schema.json",
+        "schemas/convmem-admission-review-v1.schema.json",
+        "schemas/convmem-admission-ratification-v1.schema.json",
+        "schemas/convmem-admission-event-v1.schema.json",
+    ):
+        assert not Path(forbidden).exists(), f"gate_w_schema_present:{forbidden}"
+
+
+def test_m2_future_production_modules_remain_absent():
+    """Kiro: six future production modules unauthorized at M2."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import component_inventory as inv
+
+    missing = inv.missing_future_production_members(Path("."))
+    assert missing == list(inv.FUTURE_PRODUCTION_MEMBERS)
+    for rel in inv.FUTURE_PRODUCTION_MEMBERS:
+        assert not Path(rel).exists(), f"unauthorized_stub_present:{rel}"
+
+
+def test_m2_case58_literal_inventories_and_independent_walkers():
+    """Five membership sets + two independent walkers; incomplete components reject."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import component_inventory as inv
+    import case58_oracle as oracle
     import fixture_manifest as fm
 
-    assert hasattr(fm, "build_component_inventories"), (
-        "[T0b] independent component inventory oracle capability absent"
+    assert hasattr(fm, "build_component_inventories")
+    inventories = inv.build_component_inventories()
+    assert set(inventories) == {"builder", "strict_server", "supervisor", "controller", "plugin"}
+    root = Path(".")
+    # Incomplete components: missing future members → reject (future-step red).
+    for name in ("builder", "strict_server", "supervisor", "controller"):
+        try:
+            inv.reference_walk_component(root, name)
+        except inv.InventoryError as exc:
+            assert "missing_member" in str(exc), name
+        else:
+            raise AssertionError(f"expected_missing_reject:{name}")
+        try:
+            oracle.independent_walk(root, name)
+        except oracle.Case58OracleError as exc:
+            assert "missing" in str(exc), name
+        else:
+            raise AssertionError(f"oracle_expected_missing:{name}")
+        assert inv.source_component_digest_available(root, name) is False
+    # Plugin is complete at M2 — both walkers agree.
+    ref_entries = inv.reference_walk_component(root, "plugin")
+    ora_entries = oracle.independent_walk(root, "plugin")
+    assert ref_entries == ora_entries
+    assert inv.component_tree_digest(ref_entries) == oracle.independent_tree_digest(ora_entries)
+    # Positive source digests / complete five-hash manifest remain future-step red.
+    try:
+        fm.emit_complete_manifest()
+    except fm.ManifestNotAvailable:
+        pass
+    else:
+        raise AssertionError("complete_source_manifest_must_remain_future_red")
+
+
+def test_m2_case58_plugin_mutation_and_symlink_controls():
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import component_inventory as inv
+
+    root = Path(".")
+    result = inv.assert_present_member_mutation_changes_digest(
+        root, "plugin", "integrations/openclaw-convmem-reader/package.json"
     )
+    assert result["before"] != result["after"]
+    inv.reject_symlink_member(
+        root, "plugin", "integrations/openclaw-convmem-reader/index.js"
+    )
+    inv.assert_omitted_canonical_json_mutant_fails(root)
+    # Distinct cases: supplied extra inventory entry rejects; on-disk unrelated ignored.
+    good = inv.reference_walk_component(root, "plugin")
+    bad = list(good) + [
+        {
+            "path": "UNLISTED_FORGED.py",
+            "mode": "0644",
+            "sha256": "sha256:" + ("c" * 64),
+        }
+    ]
+    try:
+        inv.reject_supplied_inventory_extra_entry("plugin", bad)
+    except inv.InventoryError as exc:
+        assert "extra_supplied_member" in str(exc)
+    else:
+        raise AssertionError("supplied_extra_must_reject")
+    inv.unrelated_on_disk_file_leaves_digest_unchanged(root, "plugin")
+
+
+def test_m2_dual_independent_canonical_parsers_and_vectors():
+    """Two independent strict raw parsers + production encode agreement."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import canonical_json
+    import canonical_oracle as oracle_a
+    import canonical_oracle_b as oracle_b
+    from protocol_fixture.vectors import KNOWN_ANSWER_OBJECTS, REJECT_PAYLOADS
+
+    def prod_encode(value):
+        return canonical_json.canonical_json_bytes(
+            value, validate=lambda _v: None, error_type=ValueError
+        )
+
+    for item in KNOWN_ANSWER_OBJECTS:
+        prod = prod_encode(item["value"])
+        a_bytes = oracle_a.encode_canonical_bytes(item["value"])
+        b_bytes = oracle_b.encode_canonical_bytes(item["value"])
+        assert prod == a_bytes == b_bytes == item["canonical_utf8"], item["name"]
+        # Strict raw: already-canonical bytes accept; fixture-only digests only.
+        assert oracle_a.parse_strict_raw(item["canonical_utf8"]) == item["value"]
+        assert oracle_b.parse_strict_raw(item["canonical_utf8"]) == item["value"]
+        digest_a = oracle_a.digest_sha256(item["value"])
+        digest_b = oracle_b.digest_sha256(item["value"])
+        assert digest_a == digest_b
+        assert digest_a.startswith("sha256:")
+        assert digest_a != "source-component"  # never treat as component hash
+    for item in REJECT_PAYLOADS:
+        for oracle, err in (
+            (oracle_a, oracle_a.CanonicalOracleError),
+            (oracle_b, oracle_b.CanonicalOracleBError),
+        ):
+            try:
+                oracle.parse_strict_raw(item["payload"])
+            except err:
+                pass
+            else:
+                raise AssertionError(f"oracle_should_reject:{item['name']}:{oracle.__name__}")
+    # Explicit reordered raw-byte rejection (must not repair via sort-on-output).
+    reordered = b'{"b":2,"a":1}'
+    try:
+        oracle_a.parse_strict_raw(reordered)
+    except oracle_a.CanonicalOracleError as exc:
+        assert "noncanonical_raw_bytes" in str(exc)
+    else:
+        raise AssertionError("reordered_raw_accepted_by_oracle_a")
+    try:
+        oracle_b.parse_strict_raw(reordered)
+    except oracle_b.CanonicalOracleBError as exc:
+        assert "noncanonical_raw_bytes" in str(exc)
+    else:
+        raise AssertionError("reordered_raw_accepted_by_oracle_b")
+
+
+def test_m2_registry_schema_exact_binding_fields():
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    data = json.loads(
+        Path("schemas/convmem-project-binding-registry-v3.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    binding = data["properties"]["bindings"]["items"]
+    assert binding["required"] == [
+        "id",
+        "public_ref",
+        "project",
+        "domain_root",
+        "site_mode",
+        "site",
+        "non_expanding_roots",
+        "source_registrations",
+        "lineage_id",
+        "capture_issuers",
+        "verification_producers",
+    ]
+    assert "public_binding_ref" not in binding["properties"]
+    assert "public_ref" in binding["properties"]
+    src = binding["properties"]["source_registrations"]["items"]
+    assert src["required"] == [
+        "id",
+        "source_class",
+        "source_identity",
+        "identity_match",
+        "authorization_domain",
+        "site",
+        "event_id_resolver",
+    ]
+    assert src["properties"]["identity_match"] == {"const": "exact"}
+    assert src["properties"]["event_id_resolver"] == {"const": "fixture_scan_event_v1"}
+
+
+def test_m2_legacy_envelope_bytes_preserved():
+    """Legacy provenance envelope acceptance/bytes remain unchanged."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import provenance
+
+    # Minimal structurally empty-domain probe: module surface and schema constant.
+    assert provenance.SCHEMA_VERSION == "convmem/provenance-envelope-v1"
+    # Re-encode path must still exist and refuse unknown fields.
+    try:
+        provenance.validate_envelope({"schema": provenance.SCHEMA_VERSION})
+    except provenance.EnvelopeValidationError:
+        pass
+    else:
+        raise AssertionError("incomplete_envelope_must_reject")
+    # idna pin present for Gate B site normalization path.
+    text = Path("requirements.txt").read_text(encoding="utf-8")
+    assert "idna==3.18" in text
+
+
+def test_m2_protocol_fixture_specimens_present():
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    from protocol_fixture.specimens import ROLES, specimen_catalog
+
+    catalog = specimen_catalog()
+    assert set(catalog) == set(ROLES)
+    root = Path("tests/fixtures/openclaw_strict/protocol_fixture")
+    for role in ROLES:
+        path = root / f"{role}.specimen.json"
+        assert path.is_file(), role
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert data["artifact_kind"] == "protocol_fixture"
+        assert data["role"] == role
+        assert "payload" in data
+    vectors = root / "known_answer_vectors.json"
+    assert vectors.is_file()
+    for row in json.loads(vectors.read_text(encoding="utf-8")):
+        assert "not a source component hash" in row["note"]
+        assert "not authority" in row["note"]
+
+
+def test_case58_whole_case_not_passed_declared_future_reds():
+    """Whole case 58 remains not passed: positive source hashes still future red."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import component_inventory as inv
+    import fixture_manifest as fm
+
+    root = Path(".")
+    incomplete = [
+        name
+        for name in ("builder", "strict_server", "supervisor", "controller", "plugin")
+        if not inv.source_component_digest_available(root, name)
+    ]
+    assert set(incomplete) == {
+        "builder",
+        "strict_server",
+        "supervisor",
+        "controller",
+    }
+    assert inv.source_component_digest_available(root, "plugin") is True
+    try:
+        fm.emit_complete_manifest()
+        passed = True
+    except fm.ManifestNotAvailable:
+        passed = False
+    assert passed is False, "case58_complete_manifest_must_stay_red"

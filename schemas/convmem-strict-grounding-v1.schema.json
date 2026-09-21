@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-grounding.v1",
+  "title": "convmem.strict-grounding.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "blobs",
+    "roots",
+    "edges",
+    "outputs",
+    "receipts",
+    "grounding_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-grounding.v1"
+    },
+    "blobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sha256",
+          "length",
+          "bytes_b64"
+        ],
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "length": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bytes_b64": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "roots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provenance_assertion_id",
+          "provenance_commitment",
+          "source_registration_id",
+          "source_event_id",
+          "source_identity",
+          "record_locator",
+          "raw_blob_sha256",
+          "view_blob_sha256",
+          "selector",
+          "receipt_ref"
+        ],
+        "properties": {
+          "provenance_assertion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "provenance_commitment": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "source_registration_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_identity": {
+            "type": "string",
+            "minLength": 1
+          },
+          "record_locator": {
+            "type": "string",
+            "minLength": 1
+          },
+          "raw_blob_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "view_blob_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "selector": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "identity"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "start",
+                  "end"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "byte_range"
+                  },
+                  "start": {
+                    "type": "integer"
+                  },
+                  "end": {
+                    "type": "integer"
+                  }
+                }
+              }
+            ]
+          },
+          "receipt_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "child_provenance_assertion_id",
+          "child_provenance_commitment",
+          "parent_provenance_assertion_id",
+          "parent_provenance_commitment",
+          "parent_output_blob_sha256",
+          "view_blob_sha256",
+          "selector",
+          "receipt_ref"
+        ],
+        "properties": {
+          "child_provenance_assertion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "child_provenance_commitment": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "parent_provenance_assertion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parent_provenance_commitment": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "parent_output_blob_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "view_blob_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "selector": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "identity"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "start",
+                  "end"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "byte_range"
+                  },
+                  "start": {
+                    "type": "integer"
+                  },
+                  "end": {
+                    "type": "integer"
+                  }
+                }
+              }
+            ]
+          },
+          "receipt_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provenance_assertion_id",
+          "provenance_commitment",
+          "output_blob_sha256"
+        ],
+        "properties": {
+          "provenance_assertion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "provenance_commitment": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "output_blob_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "receipts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "grounding_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

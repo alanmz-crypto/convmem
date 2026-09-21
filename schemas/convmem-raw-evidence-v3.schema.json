@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.raw-evidence.v3",
+  "title": "convmem.raw-evidence.v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "instruction_authority",
+    "snapshot",
+    "selection_complete",
+    "display_basis",
+    "results"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.raw-evidence.v3"
+    },
+    "instruction_authority": {
+      "const": "none"
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshot_id",
+        "lineage_id",
+        "authority_seq",
+        "authority_manifest_sha256",
+        "semantic_contract_sha256",
+        "state_basis",
+        "verification_basis",
+        "as_of",
+        "expires_at"
+      ],
+      "properties": {
+        "snapshot_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lineage_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "authority_seq": {
+          "type": "integer"
+        },
+        "authority_manifest_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "semantic_contract_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "state_basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verification_basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "as_of": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "expires_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        }
+      }
+    },
+    "selection_complete": {
+      "type": "boolean"
+    },
+    "display_basis": {
+      "enum": [
+        "ranked_selection",
+        "bounded_context"
+      ]
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "document",
+          "ledger_id",
+          "citation_ref",
+          "record_kind",
+          "logical_id",
+          "authority_state",
+          "verification_state",
+          "verification_result",
+          "target_ledger_id",
+          "supersedes_ledger_ids",
+          "origin_assurance",
+          "provenance_qualification",
+          "provenance_basis",
+          "check_eligibility",
+          "state_sha256",
+          "confidence_bps",
+          "observed_at",
+          "recorded_at",
+          "decision_disposition_ref",
+          "supersession_disposition_ref",
+          "state_disposition_refs",
+          "truncated",
+          "domain",
+          "site"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "document": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ledger_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "citation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "record_kind": {
+            "enum": [
+              "observation",
+              "decision",
+              "verification"
+            ]
+          },
+          "logical_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "authority_state": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verification_state": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verification_result": {
+            "enum": [
+              "pass",
+              "fail",
+              "inconclusive",
+              null
+            ]
+          },
+          "target_ledger_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "supersedes_ledger_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "origin_assurance": {
+            "type": "string",
+            "minLength": 1
+          },
+          "provenance_qualification": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "commitments",
+              "byte_grounding",
+              "capture",
+              "transformer_cap"
+            ],
+            "properties": {
+              "commitments": {
+                "enum": [
+                  "valid",
+                  "incomplete"
+                ]
+              },
+              "byte_grounding": {
+                "enum": [
+                  "complete",
+                  "missing"
+                ]
+              },
+              "capture": {
+                "enum": [
+                  "synthetic_fixture",
+                  "controlled_capture",
+                  "unattested"
+                ]
+              },
+              "transformer_cap": {
+                "enum": [
+                  "trusted",
+                  "agent",
+                  "untrusted"
+                ]
+              }
+            }
+          },
+          "provenance_basis": {
+            "type": "string",
+            "minLength": 1
+          },
+          "check_eligibility": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "confidence_bps": {
+            "type": "integer"
+          },
+          "observed_at": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+          },
+          "recorded_at": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+          },
+          "decision_disposition_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "supersession_disposition_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state_disposition_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "domain": {
+            "type": "string",
+            "minLength": 1
+          },
+          "site": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

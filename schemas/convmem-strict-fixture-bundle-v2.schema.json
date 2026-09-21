@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-fixture-bundle.v2",
+  "title": "convmem.strict-fixture-bundle.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "lineage_id",
+    "operation_id",
+    "expected_parent_manifest_sha256",
+    "batches",
+    "dispositions",
+    "provenance_context",
+    "grounding",
+    "built_at",
+    "as_of",
+    "expires_at",
+    "fixture_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-fixture-bundle.v2"
+    },
+    "lineage_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "expected_parent_manifest_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "batches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_registration_id",
+          "source"
+        ],
+        "properties": {
+          "source_registration_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_key",
+              "records"
+            ],
+            "properties": {
+              "event_key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "records": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "record_kind",
+                    "producer",
+                    "logical_key",
+                    "title",
+                    "document",
+                    "observed_at",
+                    "confidence_bps",
+                    "relates_to_assertion_id",
+                    "target_assertion_id",
+                    "verification_result",
+                    "provenance_assertion_id"
+                  ],
+                  "properties": {
+                    "record_kind": {
+                      "enum": [
+                        "observation",
+                        "decision",
+                        "verification"
+                      ]
+                    },
+                    "producer": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "logical_key": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "document": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "observed_at": {
+                      "type": "string",
+                      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+                    },
+                    "confidence_bps": {
+                      "type": "integer"
+                    },
+                    "relates_to_assertion_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "target_assertion_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "verification_result": {
+                      "enum": [
+                        "pass",
+                        "fail",
+                        "inconclusive",
+                        null
+                      ]
+                    },
+                    "provenance_assertion_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "dispositions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "provenance_context": {
+      "type": "object"
+    },
+    "grounding": {
+      "type": "object"
+    },
+    "built_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "as_of": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "fixture_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
