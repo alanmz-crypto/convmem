@@ -92,12 +92,24 @@ identical file under another root is a different and ineligible source.
 
 ### 2.3 One repository adapter with content-specific chunkers
 
-Add `adapters/repository_knowledge.py`. Detection returns
-`repository_knowledge_v1` only after the allowlist and byte-authority checks
-pass. Existing transcript and SQLite detectors do not run as a fallback for a
-path under the configured repository-knowledge root; an unlisted path there is
-rejected. This prevents watching the repository root from accidentally
-admitting a transcript-shaped fixture or database through another adapter.
+Add `adapters/repository_knowledge.py`. `adapters.detect.detect_format()` must
+call a cached tri-state scope classifier from `repository_knowledge_scope.py`
+**before every existing suffix/path detector**. The classifier returns exactly
+one of:
+
+- `outside`: continue through the existing detectors unchanged;
+- `eligible`: return `repository_knowledge_v1`; or
+- `blocked`: return `repository_knowledge_blocked`, whose parser is permanently
+  `None`, without evaluating any transcript, JSON, or SQLite detector.
+
+The cache contains only validated manifest roots and exact path classifications,
+is keyed by configured manifest path plus clean manifest identity, and is
+invalidated by startup/manifest reconciliation. It never converts a validation
+failure into `outside`; a path beneath a configured root fails blocked until the
+manifest is valid. This same detector order governs watch and manual
+`convmem index --file`, so an unlisted path cannot fall through to another
+adapter. The blocked format is included in no supported-format list and cannot
+be parsed or indexed.
 
 The adapter supports only these declared content classes:
 
@@ -159,14 +171,21 @@ repository_knowledge_manifests = [
 ```
 
 Each manifest supplies its repository root relative to its own checked-in
-location; live configuration does not duplicate an allowlist. Watch attaches a
-dedicated recursive repository handler to that root. That handler places every
-event through the repository allowlist before format detection and never falls
-back to transcript/SQLite adapters. Existing configured watch roots retain a
-separate generic handler and their current behavior; an overlapping legacy root
-may still index a file under its existing source contract, but that result does
-not count as OpenClaw repository coverage. Only an eligible exact file or the
-manifest itself enters the repository debounce scheduler.
+location; live configuration does not duplicate an allowlist. `run_watch()`
+adds those repository roots to the existing observer-root set and retains the
+single existing handler, raw-event batch, debounce scheduler, and sequential
+flush loop. `_drain_batch()` recognizes an exact configured manifest path as a
+control event and schedules reconciliation rather than indexing that file. All
+other paths continue through `is_watchable()`; the root-aware tri-state detector
+above makes repository scope authoritative before any legacy detector.
+
+If an existing generic watch root overlaps a configured repository root, both
+observer registrations may emit the same filesystem event, but the existing
+resolved-path batch deduplication and single scheduler collapse it. The path is
+then eligible once as `repository_knowledge_v1` or blocked; it cannot be indexed
+under a legacy source contract. This intentionally makes the reviewed manifest
+authoritative for the configured repository while leaving every path outside
+its root on current behavior.
 
 On watch startup and after a debounced manifest event,
 `repository_knowledge_sync.py` validates the whole manifest and compares its
@@ -350,6 +369,10 @@ workspace, auth store, memory, transcript, or live database.
 
 - no changes to Kiro-approved OpenClaw T0–T5 architecture or acceptance;
 - no OpenClaw reader/runtime/connector implementation in this arc;
+- no edit to `convmem.py`, `propose_decision.py`, `observe.py`,
+  `conflict_events.py`, prospective `governed_admission.py`, or any Gate W
+  record/propose/add/admission call site; those files may be indexed as
+  documentary knowledge only when the manifest admits their exact bytes;
 - no broad generic repository parser or automatic suffix admission;
 - no indexing of dirty/untracked bytes, live configuration, secrets, authority,
   live corpora, sessions, caches, generated output, or unrelated material;

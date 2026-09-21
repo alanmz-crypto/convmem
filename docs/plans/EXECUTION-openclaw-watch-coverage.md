@@ -19,7 +19,6 @@ adapters/repository_knowledge.py
 config.example.toml
 config/repository-knowledge/openclaw-watch-scope-v1.json
 config/repository-knowledge/openclaw-watch-scope-v1.schema.json
-convmem.py
 ingest.py
 repository_knowledge_index.py
 repository_knowledge_scope.py
@@ -104,8 +103,11 @@ side-effect-free operations for:
 - closed parser/resource/sensitivity policies; and
 - prior-source identity validation for retirement.
 
-All path comparisons use resolved absolute paths plus the original
-repo-relative path. Reject symlinks at any component, nested worktrees, `.git`,
+It must also expose the exact cached `outside|eligible|blocked` classification
+contract consumed first by `adapters.detect.detect_format()`. Manifest or Git
+validation failure for a path beneath a configured root returns `blocked`,
+never `outside`. All path comparisons use resolved absolute paths plus the
+original repo-relative path. Reject symlinks at any component, nested worktrees, `.git`,
 case collisions, traversal, aliases, missing files, and a manifest outside its
 own checkout. Git commands use argv arrays, fixed cwd, closed stdin, bounded
 output/time, and no shell.
@@ -115,10 +117,13 @@ staged and unstaged changes and identical bytes in a duplicate checkout.
 
 ### W2 — Deterministic adapter and documentary indexer
 
-Implement the six content-class chunkers and wire
-`repository_knowledge_v1` detection. A path beneath a configured repository
-root that is not eligible must stop at this detector boundary; it cannot fall
-through to a transcript/SQLite adapter.
+Implement the six content-class chunkers and wire the exact detection order:
+call the W1 classifier first; map `eligible` to `repository_knowledge_v1`, map
+`blocked` to `repository_knowledge_blocked` with parser `None`, and run the
+existing detector body only for `outside`. A path beneath a configured
+repository root that is not eligible therefore stops before every
+transcript/JSON/SQLite detector. Manual `index --file` and watch use the same
+order.
 
 Implement `repository_knowledge_index.py` using exact chunks, deterministic
 content-addressed unit IDs, current provenance helpers, and the existing
@@ -137,11 +142,15 @@ source generation.
 
 ### W3 — Watch routing, startup sync, and retirement
 
-Add the `repository_knowledge_manifests` watch setting. `watch.py` uses a
-dedicated handler for manifest roots and routes those events through W1 before
-format detection, without generic fallback. Existing roots keep a separate
-generic handler and current behavior. Keep the current debounce, subprocess,
-timeout, memory scope, lock, and one-child behavior.
+Add the `repository_knowledge_manifests` watch setting. `watch.py` appends the
+validated repository roots to the existing observer-root set and keeps one
+handler, one raw batch, one debounce scheduler, and the sequential flush loop.
+Before `is_watchable()`, `_drain_batch()` maps an exact configured manifest path
+to a reconciliation control token; every other event uses W2's root-aware
+detector. Overlapping observer registrations are allowed, but resolved-path
+batch deduplication must collapse them before classification and child dispatch.
+Keep the current subprocess, timeout, memory scope, lock, and one-child
+behavior.
 
 Implement startup/manifest reconciliation in
 `repository_knowledge_sync.py`. It validates the whole manifest before
@@ -163,7 +172,9 @@ writer.
 
 **Exit:** startup indexes preexisting eligible files; one committed manifest
 change causes one bounded reconciliation; a dirty/unlisted event causes zero
-child dispatches; retirement cannot touch another source/type.
+child dispatches; a transcript-shaped in-scope file cannot reach a legacy
+parser; overlapping roots yield one repository dispatch; retirement cannot
+touch another source/type.
 
 ### W4 — Isolated end-to-end acceptance harness
 
@@ -209,8 +220,9 @@ pytest -q \
   tests/test_provenance_continuity.py
 ```
 
-Also run the repository's targeted governed-writer tests selected by W0, the
-manifest audit command, `git diff --check`, and a source scan proving the new
+Also run the repository's targeted governed-writer tests selected by W0,
+`python repository_knowledge_scope.py audit --manifest ABS`,
+`git diff --check`, and a source scan proving the new
 adapter/sync modules do not import or invoke governed proposal/admission/
 publication routes. Report wall time, maximum fixture files/bytes/units, peak
 RSS if the existing hermetic measurement utility supports it, and temporary
@@ -261,6 +273,8 @@ only with another value computed by the implementation under test.
 Stop and return to Codex/Kiro if:
 
 - a file outside the frozen implementation surface must change;
+- `convmem.py`, `propose_decision.py`, `observe.py`, `conflict_events.py`,
+  prospective `governed_admission.py`, or any Gate W call site would change;
 - a dependency, content class, suffix, parser, source identity, writer route,
   retirement rule, or config field differs from this plan;
 - exact OpenClaw paths cannot be derived from the approved plans without

@@ -65,7 +65,7 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 |---|---|---|
 | Product scope and current-state audit | DONE in planning | — |
 | Architecture and execution draft | IN PROGRESS | exact-tip self-check and Kiro review |
-| Kiro design review | NOT STARTED | pushed exact planning tip |
+| Kiro design review | FAIL at `4fe8662`; two blockers corrected in next tip | exact-tip re-review required |
 | Ryan Execute grant | NOT AUTHORIZED | Kiro PASS on exact SHA |
 | W0–W6 implementation | NOT STARTED | exact Execute grant and Cursor lane |
 | Implementation verification | NOT STARTED | W0–W4 |
@@ -92,9 +92,9 @@ config and do not touch OpenClaw user data or authority state.
 
 ## 6. What Remains Before Live Coverage
 
-1. Finish and push the planning tip.
-2. Kiro independently reviews that exact SHA; fix any blocking finding and
-   re-review the new exact SHA.
+1. Push the corrective tip resolving Kiro's `4fe8662` FAIL: remove
+   `convmem.py` from the edit surface and freeze one root-aware detector route.
+2. Kiro independently re-reviews the corrected exact SHA.
 3. Ryan grants or declines bounded W0–W6 Execute.
 4. Cursor implements W0–W6; focused review and acceptance pass.
 5. Ryan merges implementation.
@@ -146,6 +146,7 @@ milestone-level line below. A fresh model should orient from this file alone.
 | Date | Who | Change |
 |---|---|---|
 | 2026-09-21 | Codex | Created the watch-only arc brief and draft W0–W6 planning boundary. |
+| 2026-09-21 | Kiro / Codex | Exact-tip `4fe8662` review found two blockers; corrective removes the Gate W file overlap and freezes root-aware routing for re-review. |
 
 **TL;DR [Arc OpenClaw Watch Coverage]:** Planning is being prepared for Kiro;
 the current watcher cannot index most required repository knowledge. Inventory,
