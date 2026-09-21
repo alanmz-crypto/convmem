@@ -1,8 +1,11 @@
 # Arc Brief — Poison Pill (convmem indexer SIGSEGV / Chroma upsert crash)
 
 **Arc codename:** Poison Pill · **Slug:** `chroma-upsert-crash`
-**Opened:** 2026-09-20 · **State:** Active — proceeding under an adopted (unproven) BIOS-misconfiguration
-assumption; resume plan in [`EXECUTION-poison-pill-resume.md`](EXECUTION-poison-pill-resume.md)
+**Opened:** 2026-09-20 · **State:** **ACCEPTED (2026-09-21, Ryan authority) — downgraded to
+hardening-only.** BIOS-misconfiguration fix accepted on an ~18 h writer-loaded clean window
+(0 crashes, §4.2 structural OVERALL PASS under load); the literal ≥24 h bar was waived by Ryan.
+Remaining work is the §7 hardening backlog in Cursor's lane; nothing blocks normal operation.
+See [`EXECUTION-poison-pill-resume.md`](EXECUTION-poison-pill-resume.md) §8 decision record.
 
 ---
 
@@ -135,6 +138,11 @@ fresh model read only this file and orient itself?
 
 ## Update Log
 
+- 2026-09-21 — Kiro (design/review lane): **ARC ACCEPTED on Ryan authority.** Ryan waived the
+  literal ≥24 h bar and accepted the ~18 h 40 m writer-loaded window (0 crashes this boot, 0 since
+  the 05:11 unfreeze, §4.2 structural OVERALL PASS on both live segments under load). Arc downgraded
+  from active incident to hardening-only; §7 backlog remains in Cursor's lane, non-blocking.
+  Decision recorded in EXECUTION §8.
 - 2026-09-21 — Kiro (design/review lane): post-unfreeze verification. Staged unfreeze executed
   (refine → watcher + reconcile.timer) against rebuilt-clean index; 18h+ boot, 0 crashes, 0 since
   unfreeze. Read-only §4.2 validator run on the LIVE index = OVERALL PASS (both segments,

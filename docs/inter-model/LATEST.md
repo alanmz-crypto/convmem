@@ -9,8 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Poison Pill / convmem indexer SIGSEGV (RESUMING under an adopted, unproven
-  BIOS-misconfiguration assumption):** the indexer, `refine` and the watcher parent were all dying
+- **Arc Poison Pill / convmem indexer SIGSEGV (ACCEPTED 2026-09-21 — hardening-only):** the indexer, `refine` and the watcher parent were all dying
   with SIGSEGV/SIGABRT from 2026-09-18. All Chroma writers were stopped **and disabled** (they
   survive reboot) at 2026-09-20T09:57:02-05:00. Read-only forensics found **no structural
   corruption** in either quarantined index or in the live index as it stood two minutes before the
@@ -28,13 +27,15 @@ cross-arc snapshot and the linked arc brief below.
   clears §3's ≥6 h bar, so the fix is **credible** and stage 2 may be entered; it is **not** the
   ≥24 h that would make it accepted, so the watcher stays down. Today's rollback point is fresh
   (`8034fe4d…`, offsite `a344fdc3…`), retiring §2.2's eleven-hour gap.
-  **Next:** Ryan to authorise the stage 2 enable (command verified and unrun), and Kiro to rule on
-  three design questions the plan left open — whether the ≥24 h clock restarts at stage-2 enable
-  (the clean window contained no upsert load), whether an absolute structural check suffices at a
-  transition with no stage-0 baseline, and who owns the unenforceable freeze (§7.3/§7.4: the store
-  took +411 units while every writer unit was disabled). Resume from
+  **Next:** **ACCEPTED 2026-09-21 (Ryan authority).** Ryan waived the literal ≥24 h bar and accepted
+  the ~18 h 40 m writer-loaded clean window (0 crashes this boot, 0 since the 05:11 unfreeze, §4.2
+  structural OVERALL PASS on both live segments under load; Q1–Q3 ruled by Kiro). Writers are all
+  running normally. Arc **downgraded to hardening-only** — the §7 backlog (circuit breaker, crash
+  accounting, enforceable writer-lease per Q3, validator → `scripts/`, on-demand snapshot, export
+  drift) remains in **Cursor's lane** and does not block operation. Decision recorded in
+  [`EXECUTION-poison-pill-resume.md`](../plans/EXECUTION-poison-pill-resume.md) §8. Resume from
   [`KIRO-2026-09-21-poison-pill-12h-gate-handoff.md`](KIRO-2026-09-21-poison-pill-12h-gate-handoff.md)
-  (`BLOCKED_ON_RYAN`); prior phase C
+  (state `ACCEPTED — hardening backlog open`); prior phase C
   [`KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md`](KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md);
   arc brief [`STATUS-chroma-upsert-crash.md`](../plans/STATUS-chroma-upsert-crash.md).
   Arc: Poison Pill.

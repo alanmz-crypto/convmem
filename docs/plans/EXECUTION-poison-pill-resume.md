@@ -194,6 +194,16 @@ software hypothesis; the matrix closed it.
 
 - **2026-09-20** — Ryan adopted the BIOS-misconfiguration assumption and authorised proceeding
   under it, with proof to follow. Revocation conditions are §5. Review at 24 clean loaded hours.
+- **2026-09-21 — ARC ACCEPTED (Ryan authority).** Ryan exercised judgment to accept the
+  ~18 h writer-loaded window in lieu of the literal ≥24 h §3 threshold. Acceptance reading:
+  18 h 40 m uptime on the post-BIOS-fix boot, **0 crashes this boot / 0 since the 05:11 unfreeze**,
+  all three writers (refine, watcher, reconcile.timer) healthy under load, and **§4.2 structural
+  integrity OVERALL PASS** on both live segments (read-only validator). Per §3, the provisional
+  BIOS-misconfiguration fix is **accepted**; **Arc Poison Pill downgrades from active incident to
+  hardening-only.** The §7 backlog (circuit breaker, crash accounting, enforceable writer-lease per
+  Q3, validator → `scripts/`, on-demand snapshot, export drift) survives as hardening work in
+  Cursor's lane — none of it blocks normal operation. Basis is Ryan's explicit authority over the
+  "loaded hours" judgment (§3 / §9 Clock), recorded as a deliberate acceptance below the literal bar.
 
 ---
 
