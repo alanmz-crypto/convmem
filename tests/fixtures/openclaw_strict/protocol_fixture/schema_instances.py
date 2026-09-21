@@ -539,8 +539,11 @@ POSITIVE_BY_FILENAME: dict[str, Any] = {
     },
     "convmem-error-v1.schema.json": {
         "schema": "convmem.error.v1",
-        "error": "scope_denied",
-        "correlation_id": "corr-1",
+        "error": {
+            "code": "scope_denied",
+            "message": "The requested evidence chain is unavailable in this scope.",
+        },
+        "correlation_id": HEX32_A,
     },
     "convmem-strict-config-v2.schema.json": {
         "schema": "convmem.strict-config.v2",
