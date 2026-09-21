@@ -6,6 +6,7 @@ import fcntl
 import os
 import select
 import signal
+import stat as stat_mod
 import subprocess
 import time
 from dataclasses import dataclass
@@ -33,7 +34,9 @@ class SuiteRunResult:
 
 
 def _tmp_used_bytes(path: str = "/tmp") -> int:
+    """Allocated bytes under path: sum(st_blocks * 512), each inode once."""
     total = 0
+    seen: set[tuple[int, int]] = set()
     root = Path(path)
     if not root.exists():
         return 0
@@ -41,10 +44,16 @@ def _tmp_used_bytes(path: str = "/tmp") -> int:
         for name in filenames:
             p = Path(dirpath) / name
             try:
-                if p.is_file() and not p.is_symlink():
-                    total += p.stat().st_size
+                st = os.lstat(p)
             except OSError:
                 continue
+            if not stat_mod.S_ISREG(st.st_mode):
+                continue
+            key = (st.st_dev, st.st_ino)
+            if key in seen:
+                continue
+            seen.add(key)
+            total += st.st_blocks * 512
     return total
 
 
@@ -66,7 +75,9 @@ def _set_nonblocking(fd: int) -> None:
 
 
 def _bounded_drain(fd: int, limit_remaining: int) -> bytes:
-    """Drain remaining bytes after kill without treating overflow as success."""
+    """Drain at most limit_remaining bytes after kill."""
+    if limit_remaining <= 0:
+        return b""
     chunks: list[bytes] = []
     total = 0
     while total < limit_remaining:
@@ -81,6 +92,24 @@ def _bounded_drain(fd: int, limit_remaining: int) -> bytes:
         chunks.append(chunk)
         total += len(chunk)
     return b"".join(chunks)
+
+
+def _take_into_cap(
+    buf: bytearray,
+    chunk: bytes,
+    *,
+    buffered: int,
+    output_limit: int,
+) -> tuple[int, bool]:
+    """Append at most enough to reach the cap. Returns (new_buffered, overflow)."""
+    room = output_limit - buffered
+    if room <= 0:
+        return buffered, True
+    if len(chunk) <= room:
+        buf.extend(chunk)
+        return buffered + len(chunk), False
+    buf.extend(chunk[:room])
+    return output_limit, True
 
 
 def run_suite_with_limits(
@@ -110,7 +139,8 @@ def run_suite_with_limits(
 
     out_buf = bytearray()
     err_buf = bytearray()
-    combined = 0
+    buffered = 0
+    overflow = False
     max_tmp = 0
     killed_reason = None
     next_sample = started
@@ -138,12 +168,12 @@ def run_suite_with_limits(
             if not chunk:
                 open_fds.discard(fd)
                 continue
-            if fd == stdout_fd:
-                out_buf.extend(chunk)
-            else:
-                err_buf.extend(chunk)
-            combined += len(chunk)
-            if combined > output_limit:
+            target = out_buf if fd == stdout_fd else err_buf
+            buffered, saw_overflow = _take_into_cap(
+                target, chunk, buffered=buffered, output_limit=output_limit
+            )
+            if saw_overflow:
+                overflow = True
                 killed_reason = "output_overflow"
                 _kill_process_group(proc)
                 open_fds.clear()
@@ -159,19 +189,27 @@ def run_suite_with_limits(
         _kill_process_group(proc)
         proc.wait(timeout=5)
 
-    # Bounded drain after termination; overflow stays a failure.
-    remain = max(0, output_limit + 1 - combined)
-    if proc.stdout is not None:
-        drained = _bounded_drain(stdout_fd, remain)
-        out_buf.extend(drained)
-        combined += len(drained)
-        remain = max(0, output_limit + 1 - combined)
-    if proc.stderr is not None:
-        drained = _bounded_drain(stderr_fd, remain)
-        err_buf.extend(drained)
-        combined += len(drained)
-    if combined > output_limit and killed_reason is None:
+    # Bounded drain: retain at most the cap; one extra readable byte marks overflow.
+    for fd, target in ((stdout_fd, out_buf), (stderr_fd, err_buf)):
+        room = output_limit - buffered
+        if room > 0:
+            drained = _bounded_drain(fd, room)
+            if drained:
+                target.extend(drained)
+                buffered += len(drained)
+        if buffered >= output_limit and not overflow:
+            extra = _bounded_drain(fd, 1)
+            if extra:
+                overflow = True
+                if killed_reason is None:
+                    killed_reason = "output_overflow"
+
+    if overflow and killed_reason is None:
         killed_reason = "output_overflow"
+
+    # Buffers never exceed the cap; overflow reports cap+1 as observed-at-least.
+    assert len(out_buf) + len(err_buf) <= output_limit
+    combined_report = output_limit + 1 if overflow else buffered
 
     max_tmp = max(max_tmp, _tmp_used_bytes("/tmp"))
     elapsed = time.monotonic() - started
@@ -182,7 +220,7 @@ def run_suite_with_limits(
         name=name,
         returncode=rc,
         elapsed_sec=elapsed,
-        combined_output_bytes=combined,
+        combined_output_bytes=combined_report,
         max_tmp_bytes=max_tmp,
         tmp_sample_interval_sec=sample_interval,
         killed_reason=killed_reason,

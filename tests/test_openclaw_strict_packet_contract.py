@@ -24,6 +24,34 @@ def test_case57_preflight_sentinel_present_inside_runner():
     assert report.get("import_sentinel") == "written"
 
 
+def test_case57_preflight_fds_proc_self_fd_f_getfd():
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    report = json.loads(Path("/fixture/preflight_report.json").read_text(encoding="utf-8"))
+    fds = report["fds"]
+    assert fds["source"] == "proc_self_fd_f_getfd"
+    assert fds["fds"] == [0, 1, 2]
+    assert fds["unexpected"] == []
+
+
+def test_case57_tmp_allocated_bytes_uses_st_blocks():
+    """Allocated-byte helper uses st_blocks*512 and counts each inode once."""
+    import limits as oc_limits
+
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    root = Path("/fixture/tmp_alloc_probe")
+    root.mkdir(mode=0o700, exist_ok=True)
+    blob = root / "blob"
+    blob.write_bytes(b"x" * 100)
+    st = os.lstat(blob)
+    expected = st.st_blocks * 512
+    assert oc_limits._tmp_used_bytes(str(root)) == expected
+    link = root / "blob_hardlink"
+    os.link(blob, link)
+    # Hardlink shares inode — must not double-count allocated blocks.
+    assert oc_limits._tmp_used_bytes(str(root)) == expected
+    assert expected != st.st_size or expected == st.st_blocks * 512
+
+
 def test_case57_kernel_denial_readonly_mount_writes():
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     for path in ("/src/.case57_write", "/runtime/.case57_write", "/usr/.case57_write"):
