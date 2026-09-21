@@ -84,8 +84,8 @@ TYPED_OBSERVATION_RECORD: dict[str, Any] = {
     "source_event_id": EVT_ID,
     "producer": "form-prod",
     "logical_key": "subject-key-1",
-    "semantic_sha256": "sha256:5eb50c7decda5bd2d347d03294fc07098332c9d63cd33310553ca004a669116b",
-    "payload_sha256": "sha256:c86076e33de5ca4d4cd416b262d7fdc91734337ba9dc0485d5280b2a0ed96b8d",
+    "semantic_sha256": "sha256:04cc2275f206df5d81cc82a986d612fcd0bb9c905dc12896f1e3c946d8a21088",
+    "payload_sha256": "sha256:UPDATE_AFTER_DUAL_ORACLE_AGREEMENT",
     "title": "fixture title",
     "document": "fixture document",
     "observed_at": "2026-09-21T00:00:00Z",
@@ -110,10 +110,10 @@ TYPED_OBSERVATION_RECORD: dict[str, Any] = {
 }
 
 SEMANTIC_SHA256 = (
-    "sha256:5eb50c7decda5bd2d347d03294fc07098332c9d63cd33310553ca004a669116b"
+    "sha256:04cc2275f206df5d81cc82a986d612fcd0bb9c905dc12896f1e3c946d8a21088"
 )
 PAYLOAD_SHA256 = (
-    "sha256:c86076e33de5ca4d4cd416b262d7fdc91734337ba9dc0485d5280b2a0ed96b8d"
+    "sha256:UPDATE_AFTER_DUAL_ORACLE_AGREEMENT"
 )
 
 # --- Cumulative lineage / fork / multi-head join (algorithm freeze; T2 red) ---

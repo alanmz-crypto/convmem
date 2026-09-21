@@ -531,7 +531,7 @@ POSITIVE_BY_FILENAME: dict[str, Any] = {
                 "decision_disposition_ref": None,
                 "supersession_disposition_ref": None,
                 "state_disposition_refs": [],
-                "timestamp": TS,
+                "tokenize": True,
                 "domain": "coding",
                 "site": "example.com",
             }
