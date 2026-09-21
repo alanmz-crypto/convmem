@@ -63,7 +63,7 @@ def _mode_octal(path: Path) -> str:
 
 
 def inspect_inherited_fds() -> dict[str, Any]:
-    """F_GETFD scan — does not open descriptors for enumeration.
+    """Prove no inherited FD beyond 0/1/2 using the complete /proc/self/fd set.
 
     If FD_OBSERVATION_FILE exists, use that substituted observation (parent §6.5.8).
     """
@@ -73,18 +73,36 @@ def inspect_inherited_fds() -> dict[str, Any]:
         found = [int(x) for x in obs["fds"]]
         source = "substituted_observation"
     else:
+        proc_fd_dir = Path("/proc/self/fd")
+        try:
+            names = os.listdir(proc_fd_dir)
+        except OSError as exc:
+            raise PreflightFailure(
+                f"proc_self_fd_unreadable:{getattr(exc, 'errno', None)}"
+            ) from exc
+        candidates: list[int] = []
+        for name in names:
+            try:
+                candidates.append(int(name))
+            except ValueError:
+                continue
         found = []
-        for fd in range(0, 1024):
+        # F_GETFD after directory enumeration so the listdir FD is ignored once closed.
+        for fd in sorted(set(candidates)):
             try:
                 fcntl.fcntl(fd, fcntl.F_GETFD)
             except OSError:
                 continue
             found.append(fd)
-        source = "f_getfd"
+        source = "proc_self_fd_f_getfd"
     unexpected = sorted(fd for fd in found if fd not in (0, 1, 2))
     if unexpected:
         raise PreflightFailure(f"unexpected_inherited_fds:{unexpected}")
-    return {"fds": sorted(found), "unexpected": [], "source": source}
+    # Success reports only stdin/stdout/stderr.
+    reported = sorted(found)
+    if reported != [0, 1, 2]:
+        raise PreflightFailure(f"unexpected_inherited_fds:{reported}")
+    return {"fds": reported, "unexpected": [], "source": source}
 
 
 def assert_no_integration_imports() -> list[str]:
