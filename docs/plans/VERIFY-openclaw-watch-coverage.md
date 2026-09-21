@@ -6,6 +6,8 @@
 
 **Corrective implementation commit:** `fa7f62926c2831817273fb98fa3be3d762f1cd7d`
 
+**Merged main commit:** `dc79eeb328c98f34add4d51b73d23b114afcfc21`
+
 **Reviewed plan:** `19dea97368408ee0b179c05c942306f6d8f1a2e8`
 
 **Code baseline:** `5ab03a37559a93f1b51932c57a2a2a783da3354b`
@@ -167,7 +169,43 @@ Fixture/E2E strings mentioning those names are inert content only.
 
 Isolated E2E writes empty proposal/approval/ledger/receipt/publication files
 in a temp tree and asserts the tree hash is unchanged after indexing. Live
-governance paths were not opened.
+activation also captured before/after SHA-256 values for
+`pending_decisions.jsonl`, `pending_decision_events.jsonl`,
+`decisions-approved.jsonl`, the authorization tree, and the file-generation
+authority tree. Every value was byte-identical after startup reconciliation.
+
+## Live activation — 2026-09-21
+
+Ryan separately authorized the exact live configuration, service, resource
+limits, clean runtime checkout, and rollback. Activation used:
+
+- clean `main` runtime worktree:
+  `/home/lauer/Projects/convmem/.worktrees/runtime-main` at `dc79eeb`;
+- manifest:
+  `config/repository-knowledge/openclaw-watch-scope-v1.json` at SHA-256
+  `a376c6c9d0e2182969a94d67a23759c7b25aa01da0f35a64efc792332bf60141`;
+- service: `convmem-watch.service`, enabled and active;
+- effective limits: `MemoryMax=4G`, `MemoryHigh=3G`,
+  `MemorySwapMax=0`; and
+- timestamped live-config and unit backups from
+  `20260921T162819Z`.
+
+Live evidence:
+
+| Check | Result |
+|---|---|
+| Git-clean manifest audit | PASS — 70 include, 169 exclude, 1226 unrelated, 68 required-when-present, 0 unclassified |
+| Startup reconciliation | PASS — all 70 entries published as `indexed`; 0 pending |
+| Live Chroma inventory | PASS — 1,115 `repository_knowledge_v1` units across exactly 70 paths |
+| Identity binding | PASS — every live unit binds merged commit `dc79eeb` and manifest SHA `a376c6c9…` |
+| Public vector retrieval | PASS — `ARCHITECTURE openclaw watch coverage` returned the runtime-main architecture as `repository-knowledge` |
+| Exclusion control | PASS — zero active repository-knowledge rows map to an excluded manifest path |
+| Governance/authority non-bypass | PASS — all captured before/after hashes are identical |
+| Service health | PASS — enabled, active/running, exact effective resource limits; observed startup peak about 466 MiB |
+
+The live activation superseded one legacy unmanaged watcher process after its
+PID lock correctly prevented overlap. The systemd-managed service then
+completed startup reconciliation without rollback.
 
 ## Resource measurements
 
@@ -191,6 +229,7 @@ is in the manifest `required_when_present` array.
 
 - `IMPLEMENTATION`: PASS (A1–A12 and focused regression suite)
 - `REVIEW`: PASS — targeted Bugbot re-review found no remaining findings at `324ab174b33916332563c90c285166d0a6b9fa03`
-- `WATCH_COVERAGE`: BLOCKED
-- `LIVE_WATCH`: NOT_ACTIVATED
+- `LIVE_WATCH`: PASS
+- `WATCH_COVERAGE`: BLOCKED only on the 68 absent
+  `required_when_present` OpenClaw T0–T5/Gate W paths
 - `CURRENT_OPENCLAW_PLAN_BYTES`: REQUIRED_WHEN_PRESENT

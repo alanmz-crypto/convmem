@@ -49,13 +49,13 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 
 | Surface | State |
 |---|---|
-| Existing `convmem watch` | On `main`; recursive observer, debounce, normal `index --file` child, existing memory/timeout containment |
-| Repository-knowledge coverage (W0–W6 corrective) | Implemented on `fix/2026-09-21-openclaw-watch-coverage-refinement`: root-bound IDs, exact JSON source spans, lossless bounded windows, identity-aware and retry-idempotent reconciliation/retirement, real watchdog/subprocess/public-query E2E |
+| Existing `convmem watch` | Enabled and active as `convmem-watch.service`; runs from the dedicated clean `main` worktree at `dc79eeb` with effective limits `MemoryMax=4G`, `MemoryHigh=3G`, `MemorySwapMax=0` |
+| Repository-knowledge coverage (W0–W6 corrective) | Merged on `main` by GitHub PR `#322` at `dc79eeb`: root-bound IDs, exact JSON source spans, lossless bounded windows, identity-aware and retry-idempotent reconciliation/retirement, real watchdog/subprocess/public-query E2E |
 | Manifest inventory | Git-clean audit PASS: 70 include / 169 exclude / 1226 unrelated / 68 `required_when_present` / 0 unclassified across 1465 tracked paths |
-| Example config | Commented `watch.repository_knowledge_manifests` only; live config untouched |
+| Live configuration | `watch.repository_knowledge_manifests` points to the manifest in `/home/lauer/Projects/convmem/.worktrees/runtime-main`; rollback backups were captured before activation |
 | OpenClaw T0–T5 design | Kiro-approved at `cd9d2698b7423f907b552bc9118a0af523018ca9`; still absent; listed as `required_when_present` |
 | Writer-coverage inventory | Ryan-authorized correction complete; 18 routes inventoried and A12 passes |
-| Live watch activation | Not authorized and not attempted |
+| Live watch activation | PASS: startup reconciliation indexed all 70 admitted paths into 1,115 units; vector retrieval returned the architecture; excluded-path hits are zero; governance/authority hashes are unchanged |
 
 ## 4. Completion State
 
@@ -65,32 +65,32 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 | Architecture and execution plan | KIRO PASS at `19dea97` | — |
 | Kiro design review | PASS at `19dea97` | — |
 | Ryan Execute grant | AUTHORIZED 2026-09-21 for W0–W6 at `19dea97` | live activation excluded |
-| W0–W6 implementation | PASS ON CORRECTIVE BRANCH | — |
+| W0–W6 implementation | MERGED / PASS at `dc79eeb` | — |
 | Isolated A1–A11 | PASS | — |
 | A12 writer scan | PASS | Ryan authorized the inventory/count correction |
 | Final targeted Bugbot review | PASS at `324ab17` | no remaining findings |
-| GitHub PR | OPEN as `#322` | Ryan owns merge |
+| GitHub PR | MERGED as `#322` | — |
 | Required OpenClaw bytes in watched checkout | MISSING | separate OpenClaw plan/implementation landing |
-| Live activation | NOT AUTHORIZED | merged implementation + exact external-change grant |
-| `WATCH_COVERAGE=PASS` | BLOCKED | merge + OpenClaw bytes + live grant |
+| Live activation | PASS | — |
+| `WATCH_COVERAGE=PASS` | BLOCKED | required OpenClaw T0–T5 files are not yet present |
 
 ## 5. Your Role
 
-**If Ryan sent you after review:** inspect GitHub PR `#322`; Bugbot already
-returned PASS on the exact corrective implementation at `324ab17`. Ryan owns
-merge. Do not activate before the merged revision and exact live grant exist.
-
-**If Ryan sent you to activate:** refuse unless a later grant names the exact
-manifest path, config value, service, limits, pre-state, and rollback.
+**If Ryan sent you after activation:** preserve the clean runtime `main`
+worktree and live service configuration. Do not change the manifest or
+repository files without a reviewed clean commit that updates both together.
+The next work belongs to the separate OpenClaw T0–T5 arc.
 
 ## 6. What Remains Before Live Coverage
 
-1. Ryan reviews and merges GitHub PR `#322`.
-2. Approved OpenClaw planning/implementation bytes land in the watched checkout
-   and the exact manifest is updated in the same reviewed commits.
-3. Ryan grants the exact live config edit and service restart.
-4. Startup sync, retrieval needles, exclusion controls, and governance
-   before/after hashes pass; then `WATCH_COVERAGE=PASS`.
+1. Approved OpenClaw planning/implementation bytes land through their separate
+   authorized T0–T5 arc.
+2. The exact manifest is updated with those reviewed paths and hashes in the
+   same clean commit.
+3. The dedicated runtime `main` worktree fast-forwards to that merge and the
+   live watcher reconciles it.
+4. Retrieval and exclusion controls pass for the newly present OpenClaw files;
+   then `WATCH_COVERAGE=PASS`.
 
 ## 7. Hard Stops
 
@@ -141,8 +141,10 @@ milestone-level line below. A fresh model should orient from this file alone.
 | 2026-09-21 | Codex | Corrective implementation closed six review defects plus identity-transition ingest; real watcher E2E and A1–A12 pass; review remains required and live watch remains off. |
 | 2026-09-21 | Codex | Targeted Bugbot follow-up found two residual defects; lossless aggregate windows and retry-idempotent retirement now have direct regressions. |
 | 2026-09-21 | Bugbot / Codex | Final targeted Bugbot review PASS at `324ab17`; GitHub PR `#322` opened for Ryan-owned merge. |
+| 2026-09-21 | Ryan / Codex | PR `#322` merged at `dc79eeb`; exact-grant live activation indexed all 70 admitted paths, passed retrieval/exclusion/non-bypass checks, and left only absent OpenClaw T0–T5 bytes blocking complete coverage. |
 
-**TL;DR [Arc OpenClaw Watch Coverage]:** Corrected W0–W6 passes A1–A12, the
-focused regression suite, and final Bugbot review; GitHub PR `#322` is open.
-Merge, required OpenClaw bytes, and an exact live-activation grant still gate
-`WATCH_COVERAGE=PASS`; live watch remains off.
+**TL;DR [Arc OpenClaw Watch Coverage]:** W0–W6 is merged and live:
+`convmem-watch.service` is enabled, all 70 current admitted paths are indexed,
+retrieval works, exclusions hold, and governance hashes are unchanged. Complete
+ConvMem + OpenClaw coverage remains blocked only until the separate T0–T5 files
+land and are added to the manifest.
