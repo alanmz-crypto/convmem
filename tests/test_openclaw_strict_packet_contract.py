@@ -269,7 +269,7 @@ def test_m2_future_production_modules_remain_absent():
     import component_inventory as inv
 
     missing = inv.missing_future_production_members(Path("."))
-    assert missing == list(inv.FUTURE_PRODUCTION_MEMBERS)
+    assert missing == sorted(inv.FUTURE_PRODUCTION_MEMBERS)
     for rel in inv.FUTURE_PRODUCTION_MEMBERS:
         assert not Path(rel).exists(), f"unauthorized_stub_present:{rel}"
 
