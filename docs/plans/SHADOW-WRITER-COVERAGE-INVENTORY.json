@@ -10,9 +10,11 @@
     "convmem.py:1733",
     "incremental_jsonl.py:584",
     "ingest.py:637",
-    "ingest.py:1138",
-    "ingest.py:1176",
+    "ingest.py:1174",
+    "ingest.py:1212",
     "inter_model_index.py:301",
+    "repository_knowledge_index.py:272",
+    "repository_knowledge_sync.py:247",
     "scratch_jsonl_prototype/chroma_projection.py:66"
   ],
   "open_production_write_store_call_sites": [
@@ -184,7 +186,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 1138,
+      "line": 1174,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "reads_reindex_snapshot_under_writer_gate",
       "required_routing": "production_chroma_write_session",
@@ -193,7 +195,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 1176,
+      "line": 1212,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -209,6 +211,24 @@
       "uses_open_chroma_for_write": false,
       "uses_production_session": true,
       "note": "Default-off Kiro JSONL incremental apply; hermetic isolated config and paths only in this Execute."
+    },
+    {
+      "file": "repository_knowledge_index.py",
+      "line": 272,
+      "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_index\") as session:",
+      "class": "mutates_repository_knowledge_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "repository_knowledge_sync.py",
+      "line": 247,
+      "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_retire\") as session:",
+      "class": "retires_repository_knowledge_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
     },
     {
       "file": "inter_model_index.py",

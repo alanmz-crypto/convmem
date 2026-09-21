@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "openclaw-watch-scope-v1.schema.json",
+  "title": "OpenClaw watch coverage scope manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_id",
+    "adapter_contract_version",
+    "source_type",
+    "coverage_root",
+    "schema_id",
+    "limits",
+    "exclusion_rules",
+    "classifications",
+    "entries",
+    "required_when_present",
+    "retire"
+  ],
+  "properties": {
+    "manifest_id": { "const": "openclaw-watch-scope-v1" },
+    "schema_id": { "const": "openclaw-watch-scope-v1" },
+    "adapter_contract_version": { "const": "repository_knowledge_v1" },
+    "source_type": { "const": "repository_knowledge_v1" },
+    "coverage_root": { "const": "." },
+    "reviewed_plan_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_file_bytes",
+        "max_included_files",
+        "max_classification_entries",
+        "max_included_bytes",
+        "max_chunk_chars",
+        "fallback_window_lines",
+        "overlap_lines",
+        "max_chunks_per_file",
+        "max_configured_manifests",
+        "manifest_poll_seconds"
+      ],
+      "properties": {
+        "max_file_bytes": { "const": 2097152 },
+        "max_included_files": { "const": 512 },
+        "max_classification_entries": { "const": 2048 },
+        "max_included_bytes": { "const": 67108864 },
+        "max_chunk_chars": { "const": 6000 },
+        "fallback_window_lines": { "const": 120 },
+        "overlap_lines": { "const": 20 },
+        "max_chunks_per_file": { "const": 256 },
+        "max_configured_manifests": { "const": 4 },
+        "manifest_poll_seconds": { "const": 30 }
+      }
+    },
+    "exclusion_rules": {
+      "type": "array",
+      "minItems": 6,
+      "items": { "$ref": "#/$defs/exclusion_rule" }
+    },
+    "classifications": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": { "$ref": "#/$defs/classification" }
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 512,
+      "items": { "$ref": "#/$defs/include_entry" }
+    },
+    "required_when_present": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/required_when_present" }
+    },
+    "retire": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/retire_record" }
+    }
+  },
+  "$defs": {
+    "repo_relpath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "classification_class": {
+      "type": "string",
+      "enum": ["include", "exclude", "unrelated"]
+    },
+    "content_class": {
+      "type": "string",
+      "enum": ["markdown", "python", "javascript", "json", "toml", "text"]
+    },
+    "parser_mode": {
+      "type": "string",
+      "enum": [
+        "markdown_heading_sections",
+        "python_ast_spans",
+        "javascript_line_windows",
+        "json_pointer_groups",
+        "toml_table_spans",
+        "text_line_windows"
+      ]
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": [
+        "documentation",
+        "source_code",
+        "schema",
+        "strict_example",
+        "synthetic"
+      ]
+    },
+    "required_state": {
+      "type": "string",
+      "enum": ["current", "historical", "required_when_present"]
+    },
+    "freshness_role": {
+      "type": "string",
+      "enum": [
+        "current_guidance",
+        "historical_context",
+        "future_when_present",
+        "operational_runbook",
+        "safety_boundary"
+      ]
+    },
+    "exclusion_id": {
+      "type": "string",
+      "enum": [
+        "credentials",
+        "authority_private",
+        "live_data_stores",
+        "vcs_caches_build",
+        "generated_duplicates",
+        "unrelated_material"
+      ]
+    },
+    "exclusion_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "reason", "match"],
+      "properties": {
+        "id": { "$ref": "#/$defs/exclusion_id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "match": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path_prefixes", "path_substrings", "basename_globs"],
+          "properties": {
+            "path_prefixes": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+            },
+            "path_substrings": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+            },
+            "basename_globs": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+            }
+          }
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "class", "reason"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repo_relpath" },
+        "class": { "$ref": "#/$defs/classification_class" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 240 }
+      }
+    },
+    "include_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "content_class",
+        "parser_mode",
+        "adapter_contract_version",
+        "source_type",
+        "required_state",
+        "reviewed_state",
+        "owner",
+        "freshness_role",
+        "retrieval_needles",
+        "sensitivity"
+      ],
+      "properties": {
+        "path": { "$ref": "#/$defs/repo_relpath" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "content_class": { "$ref": "#/$defs/content_class" },
+        "parser_mode": { "$ref": "#/$defs/parser_mode" },
+        "adapter_contract_version": { "const": "repository_knowledge_v1" },
+        "source_type": { "const": "repository_knowledge_v1" },
+        "required_state": { "$ref": "#/$defs/required_state" },
+        "reviewed_state": { "const": "reviewed" },
+        "owner": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "freshness_role": { "$ref": "#/$defs/freshness_role" },
+        "retrieval_needles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 3, "maxLength": 160 }
+        },
+        "sensitivity": { "$ref": "#/$defs/sensitivity" }
+      }
+    },
+    "required_when_present": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "reason", "origin"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repo_relpath" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "origin": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
+    },
+    "retire_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "prior_file_sha256",
+        "prior_manifest_sha256",
+        "reason"
+      ],
+      "properties": {
+        "path": { "$ref": "#/$defs/repo_relpath" },
+        "prior_file_sha256": { "$ref": "#/$defs/sha256" },
+        "prior_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "replacement_path": { "$ref": "#/$defs/repo_relpath" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 240 }
+      }
+    }
+  }
+}

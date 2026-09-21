@@ -129,6 +129,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-naturalistic-product-value.md` — Naturalistic ConvMem product-value evaluation (**G1–G5 landed; G6 Ryan-gated**)
 - `docs/plans/STATUS-codex-jsonl-production-integration.md` — Arc Codex Kiro JSONL incremental production integration (**implementation merged; production canary Ryan-gated**)
 - `docs/plans/STATUS-claude-watch-parity.md` — Claude on-demand indexing and rejected automatic capture (**closed `NO_GATE2_ROUTE`; reference only**)
+- `docs/plans/STATUS-openclaw-watch-coverage.md` — safe repository watch/index/retrieval coverage for maintaining ConvMem + OpenClaw (**planning; Kiro review next**)
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 
@@ -153,6 +154,7 @@ Known arc codenames (update when new arcs are named):
 | Codex | Kiro JSONL incremental production integration | Planning — Kiro review next |
 | Recovery Authority | Provenance-aware complete-data recovery and rollback continuity | Active — T1 landed (PR #234); T2 landed (PR #236); T3 not authorized; V4k blocked on CG-2 Design A |
 | Claude Watch Parity | Claude transcript indexing and automatic-capture evaluation | **Closed `NO_GATE2_ROUTE`** — Gate 1 on-demand supported; Gate 2 rejected |
+| OpenClaw Watch Coverage | Safe repository knowledge indexing for ConvMem + OpenClaw maintenance | Planning — Kiro review next |
 
 <!-- TIER_A_END -->
 
