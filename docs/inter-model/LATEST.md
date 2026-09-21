@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-18
+**Updated:** 2026-09-21
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -23,8 +23,18 @@ cross-arc snapshot and the linked arc brief below.
   assumption on 2026-09-20** and work resumes under it, staged and gated — see
   [`EXECUTION-poison-pill-resume.md`](../plans/EXECUTION-poison-pill-resume.md) for the pre-registered
   proof (≥6 loaded hours clean = credible, ≥24 h = accepted) and the tripwires that revoke it.
-  **Next:** stage 0 — fresh restic snapshot while quiescent. Writers return at stage 2; the watcher
-  not until the crash circuit breaker exists or the known poison file is excluded. Resume from
+  **First reading in, 2026-09-21:** 14.97 clean loaded hours — 0 kernel faults, 0 core dumps, 0
+  machine-check events — and the §4.2 structural validator returns PASS on both live segments. That
+  clears §3's ≥6 h bar, so the fix is **credible** and stage 2 may be entered; it is **not** the
+  ≥24 h that would make it accepted, so the watcher stays down. Today's rollback point is fresh
+  (`8034fe4d…`, offsite `a344fdc3…`), retiring §2.2's eleven-hour gap.
+  **Next:** Ryan to authorise the stage 2 enable (command verified and unrun), and Kiro to rule on
+  three design questions the plan left open — whether the ≥24 h clock restarts at stage-2 enable
+  (the clean window contained no upsert load), whether an absolute structural check suffices at a
+  transition with no stage-0 baseline, and who owns the unenforceable freeze (§7.3/§7.4: the store
+  took +411 units while every writer unit was disabled). Resume from
+  [`KIRO-2026-09-21-poison-pill-12h-gate-handoff.md`](KIRO-2026-09-21-poison-pill-12h-gate-handoff.md)
+  (`BLOCKED_ON_RYAN`); prior phase C
   [`KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md`](KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md);
   arc brief [`STATUS-chroma-upsert-crash.md`](../plans/STATUS-chroma-upsert-crash.md).
   Arc: Poison Pill.

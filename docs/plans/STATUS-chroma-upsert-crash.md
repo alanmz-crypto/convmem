@@ -135,6 +135,11 @@ fresh model read only this file and orient itself?
 
 ## Update Log
 
+- 2026-09-21 — Claude Opus 5 (Kiro design/plan lane): first observation reading — 14.97 clean
+  loaded hours (0 faults / 0 dumps / 0 MCEs) and §4.2 structural PASS on both live segments;
+  §3 ≥6 h credible gate met, stage 2 authorised-pending-Ryan, stage 3 still shut. §4.2 had no
+  implementation, so a read-only validator was written; three design questions raised for Kiro
+  in `KIRO-2026-09-21-poison-pill-12h-gate-handoff.md`.
 - 2026-09-20 — Claude Opus 5 (Kiro design/plan lane): Ryan adopted the BIOS-misconfiguration
   assumption; staged resume plan + pre-registered proof written to `EXECUTION-poison-pill-resume.md`.
 - 2026-09-20 — Claude Opus 5 (Kiro design/plan lane): arc opened; writers stopped and disabled;
