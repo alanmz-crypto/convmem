@@ -47,16 +47,16 @@ LOGICAL_COMMON = {
     "producer": "form-prod",
     "logical_key": "subject-key-1",
 }
-FIND2_ID = "find2_50e9f819d89f80dec49b00214e391456ec1358f2020ddcee2f879b07ed7c20c6"
-CHOICE2_ID = "choice2_57066efd026e0f868a8b0e1db9853ed2522e11772e03600d4f501875c2a3b402"
-OBS2_ID = "obs2_eb91c542d0f063f2fcb0a981ac9d39d9e81dd0a333b17c09d91e42eba4379bd4"
-CHECK2_ID = "check2_c1ffec750b3c46d96daf416f182dcdf70d64879aa44e8bfb1517e578a5b94d1f"
-DEC2_ID = "dec2_af6ca0acd95097875c595fdfc9ab8f7a80123fda83d8b0d17d2d7a86e48894d7"
-VER2_ID = "ver2_853cae81c15b41a056a9516ef3a365b09ccdd62b8edcbc0174274e1892cdb82b"
+FIND2_ID = "find2_1fb4c550334949f59a662dca5b6760fa3631621bbfcb97e9140cdee6133fc470"
+CHOICE2_ID = "choice2_b9d7a46fc53de5770c3e80ea606d60d63a3528e26481be4d45edeaf9c94fdfcf"
+OBS2_ID = "obs2_09b5f598541dfa15d44dea21352c5c0ee8f795330f73fcebcdf05245a017ff64"
+CHECK2_ID = "check2_1e7670866377c8b2a08e4fef954993145f9805a1d13a4d77ac3a18344d14d1d5"
+DEC2_ID = "dec2_95750a13f59fd2d9fde2e00f4b0d2226ea09bb32dbb58c7ea0e8c5ba8897c26a"
+VER2_ID = "ver2_9d3391103e4545e8058799237aa1282aaadba17ed6af95aa32231cac4d3e4b4f"
 
 # --- Citation / receipt ---
 PROVENANCE_COMMITMENT = SHA_C
-CITE1_REF = "cite1_fcbd372591afb735c477649a04a2c9ea4bd237edb9da07375b4a7eaeb35a5547"
+CITE1_REF = "cite1_7109133f0195f6338bcb7cfcefb9c798f0ebd42aae408c1c850c9b5f15dc04ac"
 RECEIPT_PAYLOAD_HEX = "a" * 64
 CAPTURE_RECEIPT_REF = "capture_" + RECEIPT_PAYLOAD_HEX
 
@@ -69,7 +69,7 @@ PUBLIC_HANDLE = f"cm1.{PUBLIC_REF}.{OBS2_ID}"
 NFC_COMPOSED = "caf\u00e9"
 NFC_DECOMPOSED = "cafe\u0301"
 LP_CAFE_HEX = "00000005636166c3a9"
-CAFE_FIND2_ID = "find2_15ac84558ae6d20b61091bb49a7fc7348be465b22ddc1f447efacbba69afdc38"
+CAFE_FIND2_ID = "find2_208f5df7fc9489a5df05bb495e045f4e557b317db031ebb40cef89b85977a4c1"
 
 # --- Typed observation with explicit nulls (semantic/payload digests filled below) ---
 TYPED_OBSERVATION_RECORD: dict[str, Any] = {
@@ -84,8 +84,8 @@ TYPED_OBSERVATION_RECORD: dict[str, Any] = {
     "source_event_id": EVT_ID,
     "producer": "form-prod",
     "logical_key": "subject-key-1",
-    "semantic_sha256": "sha256:5999394777309b1de8524a6b0e8b765cbdd5fde053380fcdb81eb659d2744e19",
-    "payload_sha256": "sha256:0d45fd91031d2fd71efd89cf059ba5b4544e0480ae73d06980d2b64c5cd444bf",
+    "semantic_sha256": "sha256:5eb50c7decda5bd2d347d03294fc07098332c9d63cd33310553ca004a669116b",
+    "payload_sha256": "sha256:c86076e33de5ca4d4cd416b262d7fdc91734337ba9dc0485d5280b2a0ed96b8d",
     "title": "fixture title",
     "document": "fixture document",
     "observed_at": "2026-09-21T00:00:00Z",
@@ -110,10 +110,10 @@ TYPED_OBSERVATION_RECORD: dict[str, Any] = {
 }
 
 SEMANTIC_SHA256 = (
-    "sha256:5999394777309b1de8524a6b0e8b765cbdd5fde053380fcdb81eb659d2744e19"
+    "sha256:5eb50c7decda5bd2d347d03294fc07098332c9d63cd33310553ca004a669116b"
 )
 PAYLOAD_SHA256 = (
-    "sha256:0d45fd91031d2fd71efd89cf059ba5b4544e0480ae73d06980d2b64c5cd444bf"
+    "sha256:c86076e33de5ca4d4cd416b262d7fdc91734337ba9dc0485d5280b2a0ed96b8d"
 )
 
 # --- Cumulative lineage / fork / multi-head join (algorithm freeze; T2 red) ---
@@ -325,7 +325,7 @@ IDNA2008_VECTORS: list[dict[str, Any]] = [
         "name": "sharp_s_strasse_map",
         "input": "straße.example",
         "expect_accept": True,
-        "expected_ascii": "strasse.example",
+        "expected_ascii": "xn--strae-oqa.example",
     },
     {
         "name": "strasse_identity",

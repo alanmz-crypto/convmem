@@ -100,8 +100,26 @@ POSITIVE_BY_FILENAME: dict[str, Any] = {
                     }
                 ],
                 "lineage_id": HEX32,
-                "capture_issuers": ["fixture-issuer"],
-                "verification_producers": ["form-prod"],
+                "capture_issuers": [
+                    {
+                        "issuer_id": "fixture-issuer",
+                        "capture_class": "synthetic_fixture",
+                        "enrollment_sha256": SHA,
+                        "receipt_root": "/fixture/receipts",
+                        "source_registration_ids": ["src-reg-1"],
+                    }
+                ],
+                "verification_producers": [
+                    {
+                        "source_registration_id": "src-reg-1",
+                        "producer": "form-prod",
+                        "transformer_identity": "fixture-transformer",
+                        "transformer_version": "1",
+                        "transformer_artifact_sha256": SHA_B,
+                        "recipe_sha256": SHA_C,
+                        "capture_class": "synthetic_fixture",
+                    }
+                ],
             }
         ],
     },
