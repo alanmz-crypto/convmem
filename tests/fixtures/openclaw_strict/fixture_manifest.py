@@ -1,8 +1,9 @@
-"""Test-only fixture-manifest schema and T0a machinery.
+"""Test-only fixture-manifest schema and machinery.
 
-A valid manifest with exact five component hashes is T0b/M2.
-M1 provides schema + helpers only; emission of a complete valid manifest
-fails closed as not-yet-available.
+Complete five-component *source* manifests with positive source-component
+hashes remain future-step red at M2 while future production members are
+absent (Kiro ruling). Membership definitions and independent walkers live in
+component_inventory / case58_oracle.
 """
 
 from __future__ import annotations
@@ -11,6 +12,21 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Any
+
+from component_inventory import (  # noqa: F401 — re-export for packet contract
+    FUTURE_PRODUCTION_MEMBERS,
+    InventoryError,
+    assert_omitted_canonical_json_mutant_fails,
+    assert_present_member_mutation_changes_digest,
+    build_component_inventories,
+    component_tree_digest,
+    missing_future_production_members,
+    reference_walk_component,
+    reject_supplied_inventory_extra_entry,
+    reject_symlink_member,
+    source_component_digest_available,
+    unrelated_on_disk_file_leaves_digest_unchanged,
+)
 
 SCHEMA_ID = "convmem.strict-fixture-manifest.v1"
 ARTIFACT_KIND = "protocol_fixture"
@@ -99,10 +115,10 @@ def validate_manifest_structure(manifest: dict[str, Any]) -> None:
 
 
 def emit_complete_manifest(*_args, **_kwargs) -> dict[str, Any]:
-    """T0a fail-closed: complete five-component manifest is T0b."""
+    """Fail-closed: positive five-component source hashes need real T1–T3 files."""
     raise ManifestNotAvailable(
-        "complete fixture-manifest with exact five component hashes is T0b/M2; "
-        "M1 provides schema and machinery only"
+        "complete five-component source manifest with positive source-component "
+        "hashes remains future-step red at M2 while future production members are absent"
     )
 
 

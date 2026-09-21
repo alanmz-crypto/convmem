@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.activation-manager-policy.v1",
+  "title": "convmem.activation-manager-policy.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "unit_bytes_b64",
+    "unit_sha256",
+    "controller_socket_policy_sha256",
+    "runtime_distribution_sha256",
+    "operator_uid",
+    "controller_uid",
+    "supervisor_uid",
+    "runtime_uid",
+    "kernel_release",
+    "systemd_version",
+    "capability_evidence_sha256",
+    "policy_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.activation-manager-policy.v1"
+    },
+    "unit_bytes_b64": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unit_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "controller_socket_policy_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "runtime_distribution_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "operator_uid": {
+      "type": "integer"
+    },
+    "controller_uid": {
+      "type": "integer"
+    },
+    "supervisor_uid": {
+      "type": "integer"
+    },
+    "runtime_uid": {
+      "type": "integer"
+    },
+    "kernel_release": {
+      "type": "string",
+      "minLength": 1
+    },
+    "systemd_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capability_evidence_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "policy_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
