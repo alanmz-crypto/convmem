@@ -63,12 +63,8 @@ SCHEMAS_BC: tuple[str, ...] = (
     "schemas/convmem-controller-socket-policy-v1.schema.json",
 )
 
+# After M3 T1–T2 land, only the T3 server member remains future-absent.
 FUTURE_PRODUCTION_MEMBERS: tuple[str, ...] = (
-    "bound_read_scope.py",
-    "strict_grounding.py",
-    "strict_evidence_state.py",
-    "strict_projection.py",
-    "strict_projection_publisher.py",
     "openclaw_strict_server.py",
 )
 
