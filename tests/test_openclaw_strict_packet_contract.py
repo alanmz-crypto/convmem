@@ -264,18 +264,28 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
 
 
 def test_m2_future_production_modules_remain_absent():
-    """Kiro: six future production modules unauthorized at M2."""
+    """M3 transition: T1–T2 modules present; only T3 server stays future-absent."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import component_inventory as inv
 
+    m3_present = (
+        "bound_read_scope.py",
+        "strict_grounding.py",
+        "strict_evidence_state.py",
+        "strict_projection.py",
+        "strict_projection_publisher.py",
+    )
+    for rel in m3_present:
+        assert Path(rel).is_file(), f"m3_module_absent:{rel}"
     missing = inv.missing_future_production_members(Path("."))
     assert missing == sorted(inv.FUTURE_PRODUCTION_MEMBERS)
+    assert missing == ["openclaw_strict_server.py"]
     for rel in inv.FUTURE_PRODUCTION_MEMBERS:
         assert not Path(rel).exists(), f"unauthorized_stub_present:{rel}"
 
 
 def test_m2_case58_literal_inventories_and_independent_walkers():
-    """Five membership sets + two independent walkers; incomplete components reject."""
+    """Five membership sets + two independent walkers; M3 present, T3 still red."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import component_inventory as inv
     import case58_oracle as oracle
@@ -285,27 +295,30 @@ def test_m2_case58_literal_inventories_and_independent_walkers():
     inventories = inv.build_component_inventories()
     assert set(inventories) == {"builder", "strict_server", "supervisor", "controller", "plugin"}
     root = Path(".")
-    # Incomplete components: missing future members → reject (future-step red).
-    for name in ("builder", "strict_server", "supervisor", "controller"):
-        try:
-            inv.reference_walk_component(root, name)
-        except inv.InventoryError as exc:
-            assert "missing_member" in str(exc), name
-        else:
-            raise AssertionError(f"expected_missing_reject:{name}")
-        try:
-            oracle.independent_walk(root, name)
-        except oracle.Case58OracleError as exc:
-            assert "missing" in str(exc), name
-        else:
-            raise AssertionError(f"oracle_expected_missing:{name}")
-        assert inv.source_component_digest_available(root, name) is False
-    # Plugin is complete at M2 — both walkers agree.
-    ref_entries = inv.reference_walk_component(root, "plugin")
-    ora_entries = oracle.independent_walk(root, "plugin")
-    assert ref_entries == ora_entries
-    assert inv.component_tree_digest(ref_entries) == oracle.independent_tree_digest(ora_entries)
-    # Positive source digests / complete five-hash manifest remain future-step red.
+    # M3: builder + already-landed activation surfaces positively verified.
+    for name in ("builder", "supervisor", "controller", "plugin"):
+        ref_entries = inv.reference_walk_component(root, name)
+        ora_entries = oracle.independent_walk(root, name)
+        assert ref_entries == ora_entries
+        assert inv.component_tree_digest(ref_entries) == oracle.independent_tree_digest(
+            ora_entries
+        )
+        assert inv.source_component_digest_available(root, name) is True
+    # T3 strict_server remains incomplete — both walkers reject independently.
+    try:
+        inv.reference_walk_component(root, "strict_server")
+    except inv.InventoryError as exc:
+        assert "missing_member" in str(exc)
+    else:
+        raise AssertionError("expected_missing_reject:strict_server")
+    try:
+        oracle.independent_walk(root, "strict_server")
+    except oracle.Case58OracleError as exc:
+        assert "missing" in str(exc)
+    else:
+        raise AssertionError("oracle_expected_missing:strict_server")
+    assert inv.source_component_digest_available(root, "strict_server") is False
+    # Complete five-hash source manifest remains future-step red (T3 absent).
     try:
         fm.emit_complete_manifest()
     except fm.ManifestNotAvailable:
@@ -944,7 +957,7 @@ def test_m2_protocol_fixture_specimens_present():
 
 
 def test_case58_whole_case_not_passed_declared_future_reds():
-    """Whole case 58 remains not passed: positive source hashes still future red."""
+    """Whole case 58 remains not passed: T3 strict_server keeps five-hash red."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import component_inventory as inv
     import fixture_manifest as fm
@@ -955,13 +968,9 @@ def test_case58_whole_case_not_passed_declared_future_reds():
         for name in ("builder", "strict_server", "supervisor", "controller", "plugin")
         if not inv.source_component_digest_available(root, name)
     ]
-    assert set(incomplete) == {
-        "builder",
-        "strict_server",
-        "supervisor",
-        "controller",
-    }
-    assert inv.source_component_digest_available(root, "plugin") is True
+    assert set(incomplete) == {"strict_server"}
+    for name in ("builder", "supervisor", "controller", "plugin"):
+        assert inv.source_component_digest_available(root, name) is True
     try:
         fm.emit_complete_manifest()
         passed = True

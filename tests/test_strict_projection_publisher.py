@@ -164,9 +164,13 @@ def _scope_registry_with_owner(tmp_path: Path) -> tuple[Path, Path]:
         "serving_projection": "/fixture/serving",
         "max_snapshot_age_seconds": 3600,
     }
-    registry = {
+    # Parent: registry.revision = sha256 of canonical top-level object with
+    # only the revision field removed (same recipe as load_project_binding_registry).
+    from bound_read_scope import BoundScopeError
+    from canonical_json import canonical_json_bytes
+
+    without_revision = {
         "schema": "convmem.project-binding-registry.v3",
-        "revision": "rev-1",
         "bindings": [
             {
                 "id": "project:convmem:v1",
@@ -201,6 +205,14 @@ def _scope_registry_with_owner(tmp_path: Path) -> tuple[Path, Path]:
             }
         ],
     }
+    revision = sha256_digest(
+        canonical_json_bytes(
+            without_revision,
+            validate=lambda _obj: None,
+            error_type=BoundScopeError,
+        )
+    )
+    registry = {**without_revision, "revision": revision}
     scope_path = (tmp_path / "scope.json").resolve()
     registry_path = (tmp_path / "registry.json").resolve()
     _write_json(scope_path, scope)
