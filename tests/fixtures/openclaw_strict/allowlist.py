@@ -35,7 +35,8 @@ def assert_allowlist(repo: Path, source_commit: str) -> list[str]:
     forbidden = [p for p in paths if not path_allowed(p)]
     if forbidden:
         raise SystemExit("allowlist_violation:" + ",".join(forbidden))
-    # Gate W schemas and reject-only mcp_server remain out of M2 unless allowlisted.
+    # Gate W admission schemas stay reject-only even if mistakenly allowlisted.
+    # mcp_server.py is an authorized M4/T3 legacy-profile refusal surface.
     gate_w = (
         "schemas/convmem-approved-admission-v1.schema.json",
         "schemas/convmem-admission-intent-v1.schema.json",
@@ -43,7 +44,7 @@ def assert_allowlist(repo: Path, source_commit: str) -> list[str]:
         "schemas/convmem-admission-ratification-v1.schema.json",
         "schemas/convmem-admission-event-v1.schema.json",
     )
-    protected = [p for p in paths if p == "mcp_server.py" or p in gate_w]
+    protected = [p for p in paths if p in gate_w]
     if protected:
-        raise SystemExit("m2_forbidden_change:" + ",".join(protected))
+        raise SystemExit("gate_w_forbidden_change:" + ",".join(protected))
     return paths
