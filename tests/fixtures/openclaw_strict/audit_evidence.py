@@ -491,13 +491,24 @@ def run_junit_parser_negative_controls() -> list[dict[str, str]]:
     deselect_file, deselect_name = deselect_node.split("::", 1)
     deselect_dotted = _file_to_dotted(deselect_file)
     path_label = "/fixture/evidence/parser-negative-control.xml"
+    absent_report = Path(
+        "/fixture/evidence/absent-parser-negative-control.xml"
+    )
 
-    # Each entry: stable control name, input description, kwargs builder.
-    # Builders return the exact kwargs for _parse_junit_xml_text.
-    specs: list[tuple[str, str, Any]] = []
+    # Each entry: stable control name, input description, kwargs builder,
+    # and whether to invoke the existing file-backed wrapper.
+    # Text builders return kwargs for _parse_junit_xml_text; file-wrapper
+    # builders return kwargs for _parse_one_junit_suite.
+    specs: list[tuple[str, str, Any, bool]] = []
 
-    def _add(name: str, description: str, builder: Any) -> None:
-        specs.append((name, description, builder))
+    def _add(
+        name: str,
+        description: str,
+        builder: Any,
+        *,
+        via_file_wrapper: bool = False,
+    ) -> None:
+        specs.append((name, description, builder, via_file_wrapper))
 
     _add(
         "dtd_or_entity",
@@ -514,6 +525,129 @@ def run_junit_parser_negative_controls() -> list[dict[str, str]]:
                     tests=1,
                     body=_passed_case(file_a, dotted_a, "test_ok"),
                 )
+            ),
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
+    _add(
+        "entity_declaration",
+        "JUnit XML containing ENTITY declaration without DOCTYPE",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "raw": (
+                '<?xml version="1.0"?>\n'
+                '<!ENTITY xxe "xxe">\n'
+                + _mini_suite_xml(
+                    tests=1,
+                    body=_passed_case(file_a, dotted_a, "test_ok"),
+                )
+            ),
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
+    _add(
+        "missing_report_file",
+        "File-backed wrapper rejects absent JUnit report path",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "report_file": absent_report,
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+        via_file_wrapper=True,
+    )
+    _add(
+        "missing_process_status",
+        "Python suite process_returncode is None",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=_passed_case(file_a, dotted_a, "test_ok"),
+            ),
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": None,
+        },
+    )
+    _add(
+        "empty_file_attribute",
+        "Testcase file attribute is empty",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=(
+                    f'<testcase classname="{dotted_a}" file="" '
+                    f'name="test_ok" time="0.001" />'
+                ),
+            ),
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
+    _add(
+        "empty_classname_attribute",
+        "Testcase classname attribute is empty",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=(
+                    f'<testcase classname="" file="{file_a}" '
+                    f'name="test_ok" time="0.001" />'
+                ),
+            ),
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
+    _add(
+        "empty_name_attribute",
+        "Testcase name attribute is empty",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=(
+                    f'<testcase classname="{dotted_a}" file="{file_a}" '
+                    f'name="" time="0.001" />'
+                ),
+            ),
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
+    _add(
+        "unique_round_trip_failure",
+        "Otherwise valid attributes contain ambiguous double-colon segment",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=_passed_case(file_a, dotted_a, "segment::ambiguous"),
             ),
             "selector_files": (file_a,),
             "deselections": (),
@@ -646,6 +780,22 @@ def run_junit_parser_negative_controls() -> list[dict[str, str]]:
         },
     )
     _add(
+        "lossy_escape_marker_four_hex",
+        "Test name contains lossy #xNNNN four-hex escape marker",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=_passed_case(file_a, dotted_a, "test_#x002F_slash"),
+            ),
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
+    _add(
         "duplicate_reconstructed_node_id",
         "Two testcases reconstruct to the same node ID",
         lambda: {
@@ -759,6 +909,72 @@ def run_junit_parser_negative_controls() -> list[dict[str, str]]:
             "process_returncode": 0,
         },
     )
+    # Indices 1–3: each remaining fixed LEGACY_DESELECT independently.
+    # Index 0 remains covered by deselected_legacy_node_present above.
+    _deselect_1 = LEGACY_DESELECTS[1]
+    _deselect_1_file, _deselect_1_name = _deselect_1.split("::", 1)
+    _deselect_1_dotted = _file_to_dotted(_deselect_1_file)
+    _add(
+        "deselected_legacy_node_present_v6_git_facts",
+        "Fixed deselected legacy node appears (test_v6_git_facts_non_git_cwd)",
+        lambda: {
+            "suite_name": "legacy_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=_passed_case(
+                    _deselect_1_file, _deselect_1_dotted, _deselect_1_name
+                ),
+            ),
+            "selector_files": (_deselect_1_file,),
+            "deselections": LEGACY_DESELECTS,
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
+    _deselect_2 = LEGACY_DESELECTS[2]
+    _deselect_2_file, _deselect_2_name = _deselect_2.split("::", 1)
+    _deselect_2_dotted = _file_to_dotted(_deselect_2_file)
+    _add(
+        "deselected_legacy_node_present_q7_hook_failure",
+        "Fixed deselected legacy node appears (test_q7_hook_failure_writes_stderr)",
+        lambda: {
+            "suite_name": "legacy_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=_passed_case(
+                    _deselect_2_file, _deselect_2_dotted, _deselect_2_name
+                ),
+            ),
+            "selector_files": (_deselect_2_file,),
+            "deselections": LEGACY_DESELECTS,
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
+    _deselect_3 = LEGACY_DESELECTS[3]
+    _deselect_3_file, _deselect_3_name = _deselect_3.split("::", 1)
+    _deselect_3_dotted = _file_to_dotted(_deselect_3_file)
+    _add(
+        "deselected_legacy_node_present_q4_hook_two_missing",
+        "Fixed deselected legacy node appears "
+        "(test_q4_hook_two_missing_id_starts_same_cwd)",
+        lambda: {
+            "suite_name": "legacy_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                body=_passed_case(
+                    _deselect_3_file, _deselect_3_dotted, _deselect_3_name
+                ),
+            ),
+            "selector_files": (_deselect_3_file,),
+            "deselections": LEGACY_DESELECTS,
+            "expected_counts": _mini_counts(collected=1, passed=1),
+            "process_returncode": 0,
+        },
+    )
     _add(
         "selected_file_without_testcase",
         "One exact selector file contributes no testcase",
@@ -844,12 +1060,36 @@ def run_junit_parser_negative_controls() -> list[dict[str, str]]:
             "process_returncode": 0,
         },
     )
+    _add(
+        "error_outcome",
+        "Report contains an error testcase outcome",
+        lambda: {
+            "suite_name": "strict_python",
+            "junit_path": path_label,
+            "raw": _mini_suite_xml(
+                tests=1,
+                errors=1,
+                body=(
+                    f'<testcase classname="{dotted_a}" file="{file_a}" '
+                    f'name="test_err" time="0.001">'
+                    f"<error /></testcase>"
+                ),
+            ),
+            "selector_files": (file_a,),
+            "deselections": (),
+            "expected_counts": _mini_counts(collected=1, passed=0, error=1),
+            "process_returncode": 0,
+        },
+    )
 
     results: list[dict[str, str]] = []
-    for control, description, builder in specs:
+    for control, description, builder, via_file_wrapper in specs:
         kwargs = builder()
         try:
-            _parse_junit_xml_text(**kwargs)
+            if via_file_wrapper:
+                _parse_one_junit_suite(**kwargs)
+            else:
+                _parse_junit_xml_text(**kwargs)
         except JUnitNodeEvidenceError as exc:
             results.append(
                 {
