@@ -53,11 +53,11 @@ crash-loop fix, not ordinary wiring.
 
 | Surface | State |
 |---|---|
-| Architecture direction | Drafted 2026-09-20 by Codex; chooses Option A (version-adapted read-only connector) over a broker or OpenClaw-native-memory-primary design |
-| Kiro review | **Not started** |
-| Ryan approval | **Not given** |
-| Execution plan | **Does not exist yet** — architecture-only; no `EXECUTION-openclaw-convmem-integration.md` |
-| Implementation | **None** — no code, no live connector, no OpenClaw MCP wiring |
+| Architecture direction | **BOUNDED BUILD PASS** at semantic parent `cd9d2698b7423f907b552bc9118a0af523018ca9`; chooses the strict, version-adapted read-only connector and preserves separate live-runtime gates |
+| Kiro review | **PASS** on exact overlay tip `d1ca459960e42458b352dfd0e76a7f55db67416b` |
+| Ryan approval | **Execute grant pending** — no implementation or production authorization is implied by the review |
+| Execution plan | **Present and reviewed** — `EXECUTION-openclaw-convmem-integration.md` plus the bounded `EXECUTION-openclaw-convmem-milestone-plan.md` overlay |
+| Implementation | **Partial, separate branch** — another agent reached M3/T1–T2 at `1edc54b`; no bounded TEST PASS or Execute acceptance yet |
 | Installed OpenClaw capability | Probed at `2026.3.2`: no `openclaw mcp` command exposed yet, no `~/.openclaw/openclaw.json`; capability discovery must precede any configuration |
 | Related arc | [`STATUS-openclaw-watch-coverage.md`](STATUS-openclaw-watch-coverage.md) — separate arc, covers ConvMem watching OpenClaw's *committed repo files*, not this runtime connector |
 
@@ -65,34 +65,33 @@ crash-loop fix, not ordinary wiring.
 
 | Milestone | Status | Blocking on |
 |---|---|---|
-| Architecture direction drafted | DONE | — |
-| Kiro design/adversarial review | **NOT STARTED** | needs to be scheduled against the exact committed revision |
-| Ryan approval of direction | **NOT GIVEN** | Kiro review first |
-| Execution plan (Cursor) | **NOT STARTED** | Ryan approval first — architecture explicitly says "do not implement from this architecture document alone" |
-| Phase 0 (perimeter + capability lock) | NOT STARTED | execution plan |
-| Phase 1A (isolated read-only smoke) | NOT STARTED | Phase 0 |
-| Phase 1B (scoped normal operation) | NOT STARTED | full tool/resource/scope/related/perimeter review |
+| Architecture direction and bounded fixture contract | **DONE — BUILD PASS** | TEST, live-data, and promotion remain separate gates |
+| Kiro design/scope review | **DONE — PASS** at exact overlay tip `d1ca459` | review authorizes no implementation |
+| Ryan bounded T0–T5 Execute grant | **PENDING** | must name overlay SHA, semantic parent SHA, scope, runtime, and durable evidence location |
+| Execution plan and supervision overlay | **DONE** | Codex must still establish the exact implementation worktree after the grant |
+| T0–T2 implementation | **IN PROGRESS / UNACCEPTED** | existing separate branch is at `1edc54b`; no TEST PASS claim |
+| T3–T5 implementation and Gate B/C evidence | **NOT STARTED / NOT VERIFIED** | M4–M8 remain |
+| Phase 1A/1B real OpenClaw operation | **BLOCKED** | Gate D runtime qualification and later production gates |
 | Child-agent inheritance question | **UNANSWERED** | requires observing a real OpenClaw dispatch run after Phase 1B lands |
 | Transcript capture | **BLOCKED** | independent poison-transcript/Chroma upsert crash-loop fix; explicitly out of scope for this phase |
 
 ## 5. Your Role
 
-**If Ryan sent you here:** this arc is still pre-review. Do not implement
-against the architecture document alone — per its own downstream handoff,
-Cursor only shapes an execution plan *after* HITL (Kiro + Ryan) approval.
-If you are Kiro: perform the read-only PASS/FAIL adversarial review listed in
-`ARCHITECTURE-openclaw-convmem-integration.md` §"Adversarial review matrix"
-against the exact committed revision. If you are anyone else: the next
-unblocking action is getting that review scheduled, not writing code.
+**If Ryan sent you here:** the bounded fixture plan has passed exact-tip Kiro
+review, but Ryan has not issued the two-SHA Execute grant. Do not advance the
+existing partial implementation until that grant and the Codex worktree/runtime/
+evidence prerequisites are satisfied. Real OpenClaw operation remains separately
+blocked by Gate D/W and later gates.
 
 ## 6. What Remains Before This Arc Is Live
 
-1. Kiro performs the adversarial PASS/FAIL review against the committed
-   architecture revision (14 test cases listed in the architecture doc).
-2. Ryan approves or rejects the architecture direction.
-3. Cursor authors an execution plan and implementation slices from the
-   approved direction (not before).
-4. Phase 0 → 1A → 1B land in order, each gated on the prior phase's evidence.
+1. Ryan issues the bounded two-SHA T0–T5 Execute grant and names the frozen
+   runtime plus durable evidence location.
+2. Codex creates or verifies the exact-baseline implementation worktree and
+   supervises T0–T5 checkpoint by checkpoint.
+3. T0–T5 implementation completes through M8, with bounded TEST PASS claimed
+   only after the exact isolated runner passes twice.
+4. Gate D/W, then Gate D-V and Gate E, remain separate later decisions.
 5. A real OpenClaw run is observed to settle whether dispatched child agents
    inherit ConvMem access by default; that observation becomes its own
    Kiro-reviewed design decision, not an assumption.
@@ -102,8 +101,8 @@ unblocking action is getting that review scheduled, not writing code.
 
 ## 7. Hard Stops
 
-- No implementation from the architecture document alone — execution plan
-  required first, and only after Kiro PASS + Ryan approval.
+- No implementation from the architecture or review alone — the execution plan,
+  exact-tip Kiro PASS, and Ryan's bounded Execute grant are all required.
 - No durable ConvMem write/approve capability exposed to OpenClaw.
 - No unscoped retrieval; a bound project/site/domain scope is a hard ceiling.
 - No `ask()` exposure to OpenClaw until synthesized-result handling is
@@ -129,7 +128,7 @@ actually reaches for it.
 | Purpose | Path |
 |---|---|
 | Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` |
-| Execution | *(does not exist yet — created after Ryan approval)* |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` and the T0–T5 milestone overlay |
 | Arc status | `docs/plans/STATUS-openclaw-convmem-integration.md` (this file) |
 | Human-language orientation | `docs/plans/README-openclaw-convmem-integration.md` |
 | Sibling arc | `docs/plans/STATUS-openclaw-watch-coverage.md` |
@@ -142,4 +141,4 @@ session narrative. Add one line below per milestone-level change.
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-23 | Claude | Created this STATUS file; named the arc "ConvMem Switchboard" (matching the now-locked-in product name) at Ryan's direction. Architecture is still pre-Kiro-review; no execution plan or implementation exists. |
+| 2026-09-23 | Codex | Exact-tip Kiro PASS at `d1ca459`; bounded execution overlay and PR #327 are ready for Ryan's two-SHA Execute decision. Separate implementation branch is partial through M3/T1–T2; no TEST PASS or live authorization. |
