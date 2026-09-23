@@ -42,7 +42,7 @@ from strict_evidence_state import (
 from strict_grounding import (
     compute_added_grounding_refs,
     compute_added_provenance_ids,
-    grounding_entry_hash,
+    grounding_ref_set,
     load_bound_issuer_inventories,
     qualify_assertions,
     receipt_ref_for,
@@ -950,24 +950,30 @@ def test_cold_rejects_forged_stored_hashes_and_citation_bindings(
         )
 
 
-def test_delta_helpers_are_set_difference_not_all_registered():
-    parent_g = _empty_grounding()
-    child_g = _empty_grounding()
-    blob = {"sha256": sha256_digest(b"a"), "length": 1, "bytes_b64": "YQ=="}
-    child_g["blobs"] = [blob]
-    child_g["grounding_payload_sha256"] = _self_hash(child_g, "grounding_payload_sha256")
+def test_delta_helpers_are_set_difference_not_all_registered(tmp_path: Path):
+    # Valid closed parent (one admission) vs cumulative child (two admissions).
+    first = _closed_admission_bundle(tmp_path / "delta-parent")
+    second = _closed_admission_bundle(
+        tmp_path / "delta-second",
+        event_key="scan-key-2",
+        logical_key="subject-key-2",
+        assertion_id=_AID2,
+        capture_id=_CAPTURE_ID2,
+        record_locator="event-2",
+    )
+    _binding, parent_g, parent_c, _recs, _batch = first
+    _binding2, second_g, _second_c, _recs2, _batch2 = second
+    del _binding, _binding2, _recs, _recs2, _batch, _batch2, _second_c
+    _binding3, child_g, _child_c, _recs3, _ba, _bb = _combine_materializable_admissions(
+        first, second
+    )
+    del _binding3, _child_c, _recs3, _ba, _bb
+
+    second_only = compute_added_grounding_refs(None, second_g)
     refs = compute_added_grounding_refs(parent_g, child_g)
-    assert refs == [grounding_entry_hash("blob", blob)]
-    parent_c = _empty_context(parent_g["grounding_payload_sha256"])
-    child_c = _empty_context(child_g["grounding_payload_sha256"])
-    child_c["registered_assertions"] = [
-        {
-            "assertion_id": "00000000-0000-4000-8000-000000000099",
-            "provenance_commitment": "sha256:" + ("b" * 64),
-            "envelope": {"assertion_id": "00000000-0000-4000-8000-000000000099"},
-        }
-    ]
-    # Unsealed child will fail validate — only test set-difference helper shape via empty.
+    assert refs == second_only
+    assert refs != sorted(grounding_ref_set(child_g))
+    # Empty self-difference for provenance (set-difference, not all registered).
     assert compute_added_provenance_ids(parent_c, parent_c) == []
 
 
@@ -1157,7 +1163,7 @@ def _closed_admission_bundle(
     inv_root = tmp_path / "issuer_inventory"
     if inv_root.is_dir():
         os.chmod(inv_root, 0o755)
-    inv_root.mkdir(exist_ok=True)
+    inv_root.mkdir(parents=True, exist_ok=True)
     inv_path = inv_root / f"{capture_id}.json"
     inv_path.write_bytes(strict_canonical_bytes(receipt))
     os.chmod(inv_path, 0o444)
@@ -1320,7 +1326,7 @@ def _materializable_seq1_root(
     tmp_path: Path,
 ) -> tuple[Path, ProjectBinding, str, list[dict[str, Any]], dict[str, Any]]:
     root = tmp_path / "mat-root"
-    root.mkdir()
+    root.mkdir(parents=True)
     for name in ("authority", "active", "control", "projection", "locks"):
         (root / name).mkdir()
     _layout_enrollment(root)
@@ -1364,7 +1370,7 @@ def _two_batch_materializable_seq1_root(
 ]:
     """Seq-1 head whose cumulative batches are two distinct materializable scans."""
     root = tmp_path / "mat-root-2"
-    root.mkdir()
+    root.mkdir(parents=True)
     for name in ("authority", "active", "control", "projection", "locks"):
         (root / name).mkdir()
     _layout_enrollment(root)
