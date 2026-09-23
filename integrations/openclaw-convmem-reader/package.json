@@ -4,5 +4,5 @@
   "private": true,
   "type": "module",
   "main": "index.js",
-  "description": "Bounded ConvMem reader plugin — production registration refuses until Gate D."
+  "description": "Bounded ConvMem reader plugin — T4 uninstalled connector; production registration refuses until Gate D."
 }
