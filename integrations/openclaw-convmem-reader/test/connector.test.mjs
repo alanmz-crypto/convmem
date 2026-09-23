@@ -844,7 +844,7 @@ test("next_event null/undefined is malformed and terminates", async () => {
     const clock = { t: 1_000 };
     const session = createConnectorSession({
       manifest,
-      spawn: () => "n".repeat(32),
+      spawn: () => "1".repeat(32),
       nextEvent: () => bad,
       capabilityData: virtualPathCaps(manifest),
       now: () => clock.t,
@@ -967,7 +967,7 @@ test("output partial-frame accounting resets only after consumption/completion",
     manifest,
     spawn: (_role, _argv, _env, _cwd, fd) => {
       roles = fd;
-      return "o".repeat(32);
+      return "2".repeat(32);
     },
     nextEvent: () => {
       if (phase === 0) {
@@ -1032,7 +1032,7 @@ test("stdout trailing bytes after one newline frame are protocol desync", async 
   const desync = Buffer.from(`${frame}trailing-garbage`, "utf8");
   const session = createConnectorSession({
     manifest,
-    spawn: () => "t".repeat(32),
+    spawn: () => "3".repeat(32),
     nextEvent: () => ({
       kind: "stdout",
       bytes_b64: b64(desync),
