@@ -1703,10 +1703,24 @@ def _seal_public_mount_modes(root: Path) -> None:
         os.chmod(dirpath, 0o555)
 
 
+def _load_sibling_test_module(name: str):
+    """Load a sibling tests/*.py by path — frozen pytest does not put tests/ on sys.path."""
+
+    if name in sys.modules:
+        return sys.modules[name]
+    path = Path(__file__).resolve().parent / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def _m4_two_serving_roots(tmp_path: Path):
     """Build two fresh serving roots via the publisher helpers (byte-identical)."""
 
-    import test_strict_projection_publisher as pub_tests
+    pub_tests = _load_sibling_test_module("test_strict_projection_publisher")
     from bound_read_scope import resolve_scope
 
     shared = tmp_path / "shared"
