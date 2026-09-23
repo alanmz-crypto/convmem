@@ -57,6 +57,7 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 - [`docs/plans/STATUS-codex-jsonl-production-integration.md`](docs/plans/STATUS-codex-jsonl-production-integration.md) — Arc Codex Kiro JSONL incremental production integration (**implementation merged; production canary Ryan-gated**)
 - [`docs/plans/STATUS-claude-watch-parity.md`](docs/plans/STATUS-claude-watch-parity.md) — Claude on-demand indexing and rejected automatic capture (**closed `NO_GATE2_ROUTE`; reference only**)
 - [`docs/plans/STATUS-openclaw-watch-coverage.md`](docs/plans/STATUS-openclaw-watch-coverage.md) — safe repository watch/index/retrieval coverage for maintaining ConvMem + OpenClaw (**planning; Kiro review next**)
+- [`docs/plans/STATUS-openclaw-convmem-integration.md`](docs/plans/STATUS-openclaw-convmem-integration.md) — ConvMem Switchboard: read-only OpenClaw-to-ConvMem runtime connector (**architecture drafted; Kiro review not started; no execution plan yet**)
 
 **Cross-arc rollup:** [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) — active vs closed arcs and next authorized actions (not a per-arc brief).
 
@@ -86,6 +87,7 @@ Known arc codenames (canonical list in `config/agent-protocol.md`):
 | Codex | Kiro JSONL incremental production integration | Planning — Kiro review next |
 | Claude Watch Parity | Claude transcript indexing and automatic-capture evaluation | **Closed `NO_GATE2_ROUTE`** — Gate 1 on-demand supported; Gate 2 rejected |
 | OpenClaw Watch Coverage | Safe repository knowledge indexing for ConvMem + OpenClaw maintenance | Planning — Kiro review next |
+| ConvMem Switchboard | Read-only OpenClaw-to-ConvMem runtime connector | Planning — architecture drafted, Kiro review not started, no execution plan yet |
 
 ---
 
