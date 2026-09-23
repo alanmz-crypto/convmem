@@ -500,7 +500,7 @@ def _two_head_root(
     batches) for cumulative-retention / forged-input adversarials.
     """
     root = tmp_path / "root"
-    root.mkdir()
+    root.mkdir(parents=True)
     (root / "authority").mkdir()
     (root / "active").mkdir()
     (root / "control").mkdir()
@@ -953,16 +953,24 @@ def _closed_admission_bundle(
     )
 
     source = _source_record(provenance_assertion_id=_AID, logical_key=logical_key)
+    # Blob bytes must be the exact canonical source payload (excl. provenance_assertion_id).
+    source_payload_body = {
+        k: v for k, v in source.items() if k != "provenance_assertion_id"
+    }
+    blob = strict_canonical_bytes(source_payload_body)
     payload = strict_source_payload_sha256(source)
-    unlabeled = payload.removeprefix("sha256:")
+    blob_hex = payload.removeprefix("sha256:")
+    blob_sha = payload
+    blob_b64 = _b64(blob)
+    unlabeled = blob_hex
     env = base_envelope(
         assertion_id=_AID,
         root_bindings=[
             root_binding(
                 source_identity="fixture/source-a",
                 record_locator="event-1",
-                raw_record_sha256=_BLOB_HEX,
-                input_view_sha256=_BLOB_HEX,
+                raw_record_sha256=blob_hex,
+                input_view_sha256=blob_hex,
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
@@ -987,7 +995,7 @@ def _closed_admission_bundle(
             "transformer_artifact_sha256": _BLOB_SHA,
             "recipe_sha256": _BLOB_SHA,
             "submitted_views_sha256": compute_submitted_views_sha256(roots, []),
-            "returned_output_sha256": _BLOB_SHA,
+            "returned_output_sha256": blob_sha,
             "captured_at": _TS,
             "receipt_payload_sha256": "sha256:" + ("0" * 64),
         }
@@ -1001,8 +1009,8 @@ def _closed_admission_bundle(
         "source_event_id": "evt_placeholder",
         "source_identity": "fixture/source-a",
         "record_locator": "event-1",
-        "raw_blob_sha256": _BLOB_SHA,
-        "view_blob_sha256": _BLOB_SHA,
+        "raw_blob_sha256": blob_sha,
+        "view_blob_sha256": blob_sha,
         "selector": {"kind": "identity"},
         "receipt_ref": "capture_" + ("0" * 64),
     }
@@ -1015,14 +1023,14 @@ def _closed_admission_bundle(
 
     grounding = {
         "schema": "convmem.strict-grounding.v1",
-        "blobs": [{"sha256": _BLOB_SHA, "length": len(_BLOB), "bytes_b64": _BLOB_B64}],
+        "blobs": [{"sha256": blob_sha, "length": len(blob), "bytes_b64": blob_b64}],
         "roots": [root_bind],
         "edges": [],
         "outputs": [
             {
                 "provenance_assertion_id": _AID,
                 "provenance_commitment": commitment,
-                "output_blob_sha256": _BLOB_SHA,
+                "output_blob_sha256": blob_sha,
             }
         ],
         "receipts": [receipt],
