@@ -8,12 +8,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterator
 from pathlib import Path
 
-from adapters.jsonl_io import (
-    iter_jsonl_dicts,
-    session_parse_context,
-)
+from adapters.jsonl_io import session_parse_context
 
 _MESSAGE_TYPES = frozenset({"user", "assistant"})
 _SIGNAL_TYPES = frozenset({"user", "assistant", "system"})
@@ -38,6 +36,42 @@ def _claude_projects_root() -> Path:
     return (Path.home() / ".claude" / "projects").resolve()
 
 
+def _iter_claude_jsonl_entries(
+    filepath: str, *, max_nonblank: int | None = None
+) -> Iterator[dict | None]:
+    """Yield dict records; yield None for tolerated non-blank line skips."""
+    count = 0
+    with open(filepath, "rb") as f:
+        for raw_line in f:
+            stripped = raw_line.strip()
+            if not stripped:
+                continue
+            count += 1
+            if max_nonblank is not None and count > max_nonblank:
+                return
+            try:
+                text = stripped.decode("utf-8")
+            except UnicodeDecodeError:
+                yield None
+                continue
+            try:
+                record = json.loads(text)
+            except json.JSONDecodeError:
+                yield None
+                continue
+            if isinstance(record, dict):
+                yield record
+            else:
+                yield None
+
+
+def _iter_claude_jsonl_dicts(filepath: str) -> Iterator[dict]:
+    """Yield dict records; skip blank, invalid UTF-8, and bad JSON lines."""
+    for entry in _iter_claude_jsonl_entries(filepath):
+        if entry is not None:
+            yield entry
+
+
 def is_claude_session_jsonl(path: Path | str) -> bool:
     """True for Claude Code project session *.jsonl files."""
     p = Path(path)
@@ -54,30 +88,20 @@ def _probe_claude_session(path: Path) -> bool:
     """First N non-blank lines must carry sessionId and a signal type."""
     seen_session = False
     seen_type = False
-    count = 0
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                count += 1
-                if count > _PROBE_LINES:
-                    break
-                try:
-                    record = json.loads(line)
-                    if not isinstance(record, dict):
-                        continue
-                except json.JSONDecodeError:
-                    continue
-                sid = record.get("sessionId") or record.get("session_id")
-                if isinstance(sid, str) and sid:
-                    seen_session = True
-                rtype = record.get("type")
-                if rtype in _SIGNAL_TYPES:
-                    seen_type = True
-                if seen_session and seen_type:
-                    return True
+        for record in _iter_claude_jsonl_entries(
+            str(path), max_nonblank=_PROBE_LINES
+        ):
+            if record is None:
+                continue
+            sid = record.get("sessionId") or record.get("session_id")
+            if isinstance(sid, str) and sid:
+                seen_session = True
+            rtype = record.get("type")
+            if rtype in _SIGNAL_TYPES:
+                seen_type = True
+            if seen_session and seen_type:
+                return True
     except OSError:
         return False
     return False
@@ -89,7 +113,7 @@ def read_session_meta(filepath: str) -> dict:
         "session_id": "",
         "workspace_directory": "",
     }
-    for record in iter_jsonl_dicts(filepath):
+    for record in _iter_claude_jsonl_dicts(filepath):
         sid = record.get("sessionId") or record.get("session_id")
         if isinstance(sid, str) and sid and not meta["session_id"]:
             meta["session_id"] = sid
@@ -149,7 +173,7 @@ def parse(filepath: str) -> list[dict]:
     session_id, workspace = session_parse_context(filepath, read_session_meta)
 
     messages: list[dict] = []
-    for record in iter_jsonl_dicts(filepath):
+    for record in _iter_claude_jsonl_dicts(filepath):
         rtype = record.get("type")
         if rtype not in _MESSAGE_TYPES:
             continue

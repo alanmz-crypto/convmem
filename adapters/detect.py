@@ -25,6 +25,8 @@ from adapters import (
     sqlite_chat,
 )
 from adapters.sqlite_chat import is_sqlite_crush_schema, is_sqlite_opencode_schema
+from adapters import repository_knowledge
+from repository_knowledge_scope import BLOCKED_FORMAT, ELIGIBLE_FORMAT, classify_detect_state
 
 # Map detected format -> human-facing tool name (used in metadata).
 TOOL_BY_FORMAT = {
@@ -43,6 +45,7 @@ TOOL_BY_FORMAT = {
     "sqlite_opencode": "opencode",
     "inter_model_doc": "inter-model",
     "kiro_steering": "kiro",
+    "repository_knowledge_v1": "repository-knowledge",
 }
 
 # Map detected format -> parse callable. None means "recognized but not yet
@@ -63,12 +66,20 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "sqlite_opencode": sqlite_chat.parse,
     "inter_model_doc": inter_model_doc.parse,
     "kiro_steering": kiro_steering.parse,
+    "repository_knowledge_v1": repository_knowledge.parse,
+    "repository_knowledge_blocked": None,
 }
 
 
 def detect_format(path: Path | str) -> Optional[str]:
     """Classify a file by format, or return None if unrecognized."""
     path = Path(path)
+
+    state = classify_detect_state(path)
+    if state == "eligible":
+        return ELIGIBLE_FORMAT
+    if state == "blocked":
+        return BLOCKED_FORMAT
 
     if path.name == ".aider.chat.history.md":
         return "aider_markdown"

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RK eligible JSON Schema fixture",
+  "type": "object",
+  "properties": {
+    "needle": {
+      "const": "RK_ELIGIBLE_JSON_NONCE_e54b03aa"
+    }
+  }
+}
