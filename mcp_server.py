@@ -32,6 +32,27 @@ def _load_convmem_env_files() -> None:
         os.environ.setdefault("DEEPSEEK_API_KEY", key)
 
 
+# Fail-closed profile gate (Architecture §5 + overlay M4 / Ryan refusal ruling).
+# Normalization is exactly (value or "").strip().lower(). Refuse BEFORE
+# _load_convmem_env_files(), FastMCP import, registration, start, or other
+# effect. Exact stderr bytes and numeric exit are noncontractual; effects are
+# contractual: nonzero exit, empty stdout, zero registration/start/effect, no
+# raw-value disclosure, dedicated-entrypoint instruction for openclaw-strict.
+_raw_mcp_profile = (os.environ.get("CONVMEM_MCP_PROFILE") or "").strip().lower()
+if _raw_mcp_profile == "openclaw-strict":
+    # Semantic dedicated-entrypoint instruction; do not echo the raw env value.
+    sys.stderr.write(
+        "openclaw-strict requires the dedicated openclaw_strict_server.py "
+        "entrypoint; the legacy MCP entrypoint refuses this profile.\n"
+    )
+    raise SystemExit(2)
+if _raw_mcp_profile not in ("", "full", "shell"):
+    # Unknown nonempty normalized values fail closed without disclosing raw input.
+    sys.stderr.write(
+        "Invalid CONVMEM_MCP_PROFILE; refusing to start before registration.\n"
+    )
+    raise SystemExit(2)
+
 _load_convmem_env_files()
 
 from mcp.server.fastmcp import FastMCP
@@ -74,8 +95,7 @@ _SHELL_AFTER_TIER_A = (
 def _mcp_profile() -> str:
     """MCP instruction/tool surface: 'shell' or 'full' (default)."""
 
-    raw = (os.environ.get("CONVMEM_MCP_PROFILE") or "").strip().lower()
-    return "shell" if raw == "shell" else "full"
+    return "shell" if _raw_mcp_profile == "shell" else "full"
 
 
 # Optional: load from generated file for easier auditing

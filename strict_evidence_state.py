@@ -283,6 +283,55 @@ def public_ledger_id(*, public_binding_ref: str, assertion_id: str) -> str:
     return f"cm1.{public_binding_ref}.{assertion_id}"
 
 
+# Architecture §8.3 — fullmatch grammars; max lengths are code-point counts.
+_STORED_LEDGER_ID_RE = re.compile(
+    r"(?:(?:obs2|dec2|ver2)_[a-f0-9]{64}|(?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+)"
+)
+_PUBLIC_LEDGER_HANDLE_RE = re.compile(
+    r"cm1\.([a-f0-9]{32})\."
+    r"((?:(?:obs2|dec2|ver2)_[a-f0-9]{64}|(?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+))"
+)
+_STORED_LEDGER_ID_MAX = 160
+_PUBLIC_LEDGER_HANDLE_MAX = 200
+
+
+def validate_stored_ledger_id(value: Any) -> str:
+    """Syntax/length stage for stored ledger IDs (Architecture §8.3)."""
+
+    if not isinstance(value, str):
+        raise StrictEvidenceError("stored_ledger_id_type")
+    if len(value) > _STORED_LEDGER_ID_MAX:
+        raise StrictEvidenceError("stored_ledger_id_length")
+    if not _STORED_LEDGER_ID_RE.fullmatch(value):
+        raise StrictEvidenceError("stored_ledger_id_grammar")
+    return value
+
+
+def parse_public_ledger_handle(value: Any) -> tuple[str, str]:
+    """Parse ``cm1.<public_ref>.<stored_id>``; returns (public_binding_ref, stored_id)."""
+
+    if not isinstance(value, str):
+        raise StrictEvidenceError("public_handle_type")
+    if len(value) > _PUBLIC_LEDGER_HANDLE_MAX:
+        raise StrictEvidenceError("public_handle_length")
+    match = _PUBLIC_LEDGER_HANDLE_RE.fullmatch(value)
+    if match is None:
+        raise StrictEvidenceError("public_handle_grammar")
+    public_ref, stored = match.group(1), match.group(2)
+    validate_stored_ledger_id(stored)
+    return public_ref, stored
+
+
+def looks_like_public_ledger_handle(value: Any) -> bool:
+    """True when value matches the public-handle grammar (search reject path)."""
+
+    if not isinstance(value, str):
+        return False
+    if len(value) > _PUBLIC_LEDGER_HANDLE_MAX:
+        return False
+    return _PUBLIC_LEDGER_HANDLE_RE.fullmatch(value) is not None
+
+
 def strict_source_payload_sha256(source_record: Mapping[str, Any]) -> str:
     if not isinstance(source_record, Mapping):
         raise StrictEvidenceError("source_record_type")
@@ -1399,6 +1448,8 @@ __all__ = [
     "logical_id_v2",
     "materialize_authority_records",
     "payload_sha256",
+    "looks_like_public_ledger_handle",
+    "parse_public_ledger_handle",
     "public_ledger_id",
     "reduce_complete_bound_state",
     "semantic_sha256",
@@ -1407,4 +1458,5 @@ __all__ = [
     "strict_source_payload_sha256",
     "unresolved_predicate",
     "validate_dispositions",
+    "validate_stored_ledger_id",
 ]

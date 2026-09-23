@@ -63,10 +63,8 @@ SCHEMAS_BC: tuple[str, ...] = (
     "schemas/convmem-controller-socket-policy-v1.schema.json",
 )
 
-# After M3 T1–T2 land, only the T3 server member remains future-absent.
-FUTURE_PRODUCTION_MEMBERS: tuple[str, ...] = (
-    "openclaw_strict_server.py",
-)
+# After M4 T3 lands, no future-absent production members remain in this set.
+FUTURE_PRODUCTION_MEMBERS: tuple[str, ...] = ()
 
 COMPONENT_MEMBERSHIP: dict[str, tuple[str, ...]] = {
     "builder": tuple(

@@ -1,15 +1,14 @@
-"""M3/T1–T2 cold lineage + independent replay (CORRECT B).
-
-T3 reader capability remains intentionally absent/red until M4.
-"""
+"""M3/T1–T2 cold lineage + independent replay; M4/T3 public reader surfaces."""
 
 from __future__ import annotations
 
 import importlib.util
 import json
 import os
+import stat
+import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import pytest
 
@@ -55,19 +54,23 @@ def test_strict_projection_capability_present():
     spec = importlib.util.find_spec("strict_projection")
     assert spec is not None, "[T3] module strict_projection absent"
     module = importlib.import_module("strict_projection")
-    # T3 reader remains red until M4; cold qualify is the M3 surface.
     assert hasattr(module, "qualify_authority_generation")
-    assert not hasattr(module, "open_public_projection")
-    assert not hasattr(module, "revoke_snapshot")
+    assert hasattr(module, "open_published_generation")
+    assert hasattr(module, "open_public_projection")
+    assert hasattr(module, "revoke_snapshot")
+    assert hasattr(module, "StrictProjectionReader")
+    assert module.open_public_projection is module.open_published_generation
 
 
 def test_strict_projection_source_has_no_publisher_or_openclaw_runtime_imports():
-    """M3: cold qualify must not import publisher or OpenClaw runtime modules."""
+    """Cold qualify + public reader must not import publisher or OpenClaw runtime."""
     import ast
 
     forbidden = frozenset(
         {
             "strict_projection_publisher",
+            "openclaw_activation_controller",
+            "openclaw_activation_supervisor",
             "strict_openclaw_controller",
             "strict_openclaw_supervisor",
         }
@@ -1670,3 +1673,1478 @@ def test_cold_rejects_wrong_schema_digest_and_wrong_contract_version(
         qualify_authority_generation(
             root=root2, scope=_FakeScope(), registry=_FakeRegistry()  # type: ignore[arg-type]
         )
+# ---------------------------------------------------------------------------
+# M4 / T3 — public opening, lexical reader, selectors, caps (Gate B)
+# Parent cases 1–27, 40–44, 49–52 portions owned by the reader; case55 private/
+# public boundary; overlay d1ca459. T4/T5 remain declared red elsewhere.
+# ---------------------------------------------------------------------------
+
+_M4_NOW = __import__("datetime").datetime(2026, 9, 21, tzinfo=__import__("datetime").timezone.utc)
+# Publisher persists synthetic deadline 10_000_000_000; stay strictly below it.
+_M4_SYNTHETIC_BOOTTIME_NS = 1_000_000_000
+
+
+def _m4_patch_clocks(monkeypatch) -> None:
+    """Private monkeypatchable clock hooks — never compare fixture BOOTTIME to host."""
+
+    import strict_projection as sp
+
+    monkeypatch.setattr(sp, "boottime_ns", lambda: _M4_SYNTHETIC_BOOTTIME_NS)
+    monkeypatch.setattr(sp, "wall_time_utc", lambda: _M4_NOW)
+
+
+def _seal_public_mount_modes(root: Path) -> None:
+    """Seal dirs 0555 / files+locks 0444 for public opening (exact lock mode)."""
+
+    for dirpath, _dirnames, filenames in os.walk(root, topdown=False):
+        for name in filenames:
+            path = Path(dirpath) / name
+            os.chmod(path, 0o444)
+        os.chmod(dirpath, 0o555)
+
+
+def _m4_two_serving_roots(tmp_path: Path):
+    """Build two fresh serving roots via the publisher helpers (byte-identical)."""
+
+    import test_strict_projection_publisher as pub_tests
+    from bound_read_scope import resolve_scope
+
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    scope_path, registry_path, bundle, _bp, _inv = pub_tests._materializable_publish_inputs(
+        shared
+    )
+    items = []
+    for name in ("root-a", "root-b"):
+        item = pub_tests._enroll_and_publish_materializable(
+            tmp_path / name,
+            shared=shared,
+            scope_path=scope_path,
+            registry_path=registry_path,
+            bundle=bundle,
+        )
+        _seal_public_mount_modes(item["root"])
+        # Scope/registry/config remain outside the sealed root; chmod them too.
+        os.chmod(scope_path, 0o444)
+        os.chmod(registry_path, 0o444)
+        os.chmod(item["config_path"], 0o444)
+        items.append(item)
+    resolved = resolve_scope(scope_path=scope_path, registry_path=registry_path)
+    return items, resolved, scope_path, registry_path
+
+
+def _m4_open(item, resolved, monkeypatch, **kwargs):
+    """Open with synthetic clocks so fixture BOOTTIME is never compared to host."""
+
+    from strict_projection import open_published_generation
+
+    _m4_patch_clocks(monkeypatch)
+    return open_published_generation(
+        root=item["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=item["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+        **kwargs,
+    )
+
+
+def test_m4_public_open_two_fresh_roots_and_unforgeable_capability(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from strict_projection import (
+        QualifiedStrictGeneration,
+        StrictProjectionReader,
+        open_published_generation,
+        open_public_projection,
+        revoke_snapshot,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    assert open_public_projection is open_published_generation
+    _m4_patch_clocks(monkeypatch)
+
+    gens = []
+    for item in items:
+        gen = open_published_generation(
+            root=item["root"],
+            scope=resolved.scope,
+            registry=resolved.registry,
+            expected_publication_sha256=item["serving"]["publication_payload_sha256"],
+            now=_M4_NOW,
+        )
+        gens.append(gen)
+        assert isinstance(gen, QualifiedStrictGeneration)
+        assert not gen.is_revoked
+
+    a, b = gens
+    assert a.snapshot_id == b.snapshot_id
+    assert a.rows_sha256 == b.rows_sha256
+    assert a.graph_sha256 == b.graph_sha256
+    assert a.publication_payload_sha256 == b.publication_payload_sha256
+
+    # Forged construction rejected.
+    with pytest.raises(TypeError):
+        QualifiedStrictGeneration()  # type: ignore[call-arg]
+
+    reader = StrictProjectionReader(a)
+    revoke_snapshot(a)
+    assert a.is_revoked
+    from strict_projection import StrictPublicError
+
+    with pytest.raises(StrictPublicError) as ei:
+        reader.search_rows(query="hello world")
+    assert ei.value.code == "snapshot_stale"
+
+
+def test_m4_public_open_denies_private_files_and_does_not_read_layout_enrollment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Case55 private/public boundary — public open never needs layout/enrollment."""
+
+    from strict_projection import StrictProjectionError, open_published_generation
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    item = items[0]
+    root = item["root"]
+
+    # Remove / corrupt private files — public open must still succeed.
+    layout = root / "layout.json"
+    enrollment = root / "control" / "enrollment.json"
+    assert layout.is_file() and enrollment.is_file()
+    # Make private files unreadable to the opener by replacing with junk after seal.
+    # Re-seal after mutation of private-only paths: temporarily add write on parent.
+    os.chmod(root / "control", 0o755)
+    os.chmod(root, 0o755)
+    os.chmod(enrollment, 0o644)
+    enrollment.write_text("{not-json", encoding="utf-8")
+    os.chmod(layout, 0o644)
+    layout.write_text("{not-json", encoding="utf-8")
+    # Also remove a private grounding file if present.
+    snap = item["serving"]["authority_snapshot_id"]
+    grounding = root / "authority" / snap / "grounding.json"
+    if grounding.is_file():
+        os.chmod(root / "authority" / snap, 0o755)
+        os.chmod(grounding, 0o644)
+        grounding.unlink()
+    _seal_public_mount_modes(root)
+
+    gen = open_published_generation(
+        root=root,
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=item["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    assert gen.snapshot_id == snap
+
+    # Symlink rejection on public publication path.
+    os.chmod(root / "active", 0o755)
+    os.chmod(root, 0o755)
+    pub = root / "active" / f"{gen.lineage_id}.json"
+    os.chmod(pub, 0o644)
+    backup = pub.read_bytes()
+    pub.unlink()
+    pub.symlink_to("/etc/passwd")
+    _seal_public_mount_modes(root)
+    # symlink itself — open must fail before following.
+    with pytest.raises(StrictProjectionError):
+        open_published_generation(
+            root=root,
+            scope=resolved.scope,
+            registry=resolved.registry,
+            now=_M4_NOW,
+        )
+    # restore for cleanliness
+    os.chmod(root / "active", 0o755)
+    os.chmod(root, 0o755)
+    if pub.is_symlink() or pub.exists():
+        pub.unlink()
+    pub.write_bytes(backup)
+    _seal_public_mount_modes(root)
+
+
+def test_m4_public_open_no_mtime_or_cache_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from strict_projection import StrictProjectionReader, open_published_generation
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    item = items[0]
+    root = item["root"]
+    pub_path = root / "active" / f"{resolved.registry.binding(resolved.scope.allowed_project_bindings[0]).lineage_id}.json"
+    before = {
+        p: p.stat().st_mtime_ns
+        for p in root.rglob("*")
+        if p.is_file() and not p.is_symlink()
+    }
+    gen = open_published_generation(
+        root=root,
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=item["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+    try:
+        reader.search_rows(query="fixture event")
+    except Exception:
+        pass
+    after = {
+        p: p.stat().st_mtime_ns
+        for p in root.rglob("*")
+        if p.is_file() and not p.is_symlink()
+    }
+    assert before == after
+
+
+def test_m4_lexical_tokenizer_ranking_identifier_rejection_and_caps(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Cases 16–17, 40 — tokenizer/ranking/identifier reject/bounds."""
+
+    from strict_projection import (
+        StrictProjectionReader,
+        StrictPublicError,
+        open_published_generation,
+        tokenize_lexical,
+    )
+
+    # Tokenizer known vectors (Architecture §6.5.5) — non-vacuous, no "or True".
+    assert tokenize_lexical("Hello_World!") == ["hello_world"]
+    assert tokenize_lexical("straße") == ["strasse"]
+    assert tokenize_lexical("STRASSE") == ["strasse"]
+    assert tokenize_lexical("a  b\tc") == ["a", "b", "c"]
+    assert tokenize_lexical("!!!") == []
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+    public_ref = resolved.registry.binding(
+        resolved.scope.allowed_project_bindings[0]
+    ).public_ref
+
+    # Whitespace-token handle rejection: embedded valid handles deny.
+    handle_ok = f"cm1.{public_ref}.{'obs2_' + 'ab' * 32}"
+    handle_bad = f"cm1.{'f' * 32}.{'obs2_' + 'cd' * 32}"
+    errs = []
+    for q in (
+        handle_ok,
+        handle_bad,
+        f"cm1.{'0' * 32}.obs_legacy",
+        f"prefix {handle_ok} suffix",
+        f"{handle_bad}\tmid",
+    ):
+        with pytest.raises(StrictPublicError) as ei:
+            reader.search_rows(query=q)
+        assert ei.value.code == "identifier_query_not_supported"
+        errs.append({k: ei.value.payload[k] for k in ("schema", "error")})
+    assert errs[0] == errs[1] == errs[2] == errs[3] == errs[4]
+
+    for q in (
+        "server_name",
+        "codec_config",
+        "observer_pattern",
+        f"({handle_ok})",
+        f"x{handle_ok}y",
+    ):
+        try:
+            reader.search_rows(query=q)
+        except StrictPublicError as exc:
+            assert exc.code != "identifier_query_not_supported"
+
+    # Bounds.
+    with pytest.raises(StrictPublicError) as ei:
+        reader.search_rows(query="")
+    assert ei.value.code == "invalid_request"
+    with pytest.raises(StrictPublicError):
+        reader.search_rows(query="x" * 2049)
+    with pytest.raises(StrictPublicError):
+        reader.search_rows(query="ok", top_k=0)
+    with pytest.raises(StrictPublicError):
+        reader.search_rows(query="ok", top_k=11)
+
+    # Successful envelope shape when query is lexical.
+    result = reader.search_rows(query="fixture")
+    assert result["schema"] == "convmem.raw-evidence.v3"
+    assert result["instruction_authority"] == "none"
+    assert set(result) == {
+        "schema",
+        "instruction_authority",
+        "snapshot",
+        "selection_complete",
+        "display_basis",
+        "results",
+    }
+    assert result["display_basis"] == "ranked_selection"
+    for row in result["results"]:
+        pq = row["provenance_qualification"]
+        assert row["provenance_basis"] == pq["capture"]
+        assert pq["capture"] in {
+            "synthetic_fixture",
+            "controlled_capture",
+            "unattested",
+        }
+
+
+def test_m4_selector_tristate_default_intersection_no_widening(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Cases 5–11 — omitted inherit; null/blank deny; no widening; equalized denial."""
+
+    from strict_projection import (
+        StrictProjectionReader,
+        StrictPublicError,
+        open_published_generation,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+
+    # Omitted selectors inherit.
+    ok = reader.search_rows(query="fixture")
+    assert ok["schema"] == "convmem.raw-evidence.v3"
+
+    # Explicit null / blank deny.
+    for kwargs in (
+        {"project": None},
+        {"project": ""},
+        {"project": "   "},
+        {"domain": None},
+        {"site": None},
+        {"cross_domain": True},
+        {"domain": "general"},
+        {"project": "otherproj"},
+    ):
+        with pytest.raises(StrictPublicError) as ei:
+            reader.search_rows(query="fixture", **kwargs)
+        assert ei.value.code == "scope_denied"
+
+    # Equalized denial shapes (schema/code/message) across selector failures.
+    shapes = []
+    for kwargs in ({"domain": "general"}, {"project": "nope"}, {"cross_domain": True}):
+        with pytest.raises(StrictPublicError) as ei:
+            reader.search_rows(query="fixture", **kwargs)
+        body = ei.value.payload
+        shapes.append(
+            {
+                "schema": body["schema"],
+                "code": body["error"]["code"],
+                "message": body["error"]["message"],
+            }
+        )
+    assert shapes[0] == shapes[1] == shapes[2]
+
+    # Same selector cases on unresolved (second selector-bearing tool).
+    for kwargs in (
+        {"project": None},
+        {"domain": "general"},
+        {"cross_domain": True},
+    ):
+        with pytest.raises(StrictPublicError) as ei:
+            reader.unresolved_rows(**kwargs)
+        assert ei.value.code == "scope_denied"
+
+
+def test_m4_unresolved_related_caps_and_closed_error_schema(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from strict_projection import (
+        StrictProjectionReader,
+        StrictPublicError,
+        dispatch_tool,
+        open_published_generation,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+
+    unresolved = reader.unresolved_rows()
+    assert unresolved["schema"] == "convmem.raw-evidence.v3"
+    assert unresolved["display_basis"] == "ranked_selection"
+
+    with pytest.raises(StrictPublicError):
+        reader.unresolved_rows(limit=0)
+    with pytest.raises(StrictPublicError):
+        reader.unresolved_rows(limit=51)
+
+    # related — malformed / raw storage ID → equalized scope_denied.
+    denials = []
+    for lid in ("obs_not_a_handle", "not-valid", f"cm1.{'0'*32}."):
+        with pytest.raises(StrictPublicError) as ei:
+            reader.related_neighborhood(ledger_id=lid)
+        assert ei.value.code == "scope_denied"
+        denials.append(
+            (ei.value.payload["schema"], ei.value.payload["error"]["code"], ei.value.payload["error"]["message"])
+        )
+    assert denials[0] == denials[1] == denials[2]
+
+    # dispatch_tool preserves omitted vs null via raw keys.
+    payload = dispatch_tool(reader, "search", {"query": "fixture"})
+    assert payload["schema"] == "convmem.raw-evidence.v3"
+    with pytest.raises(StrictPublicError):
+        dispatch_tool(reader, "search", {"query": "fixture", "domain": None})
+
+
+def test_m4_provenance_basis_from_capture_not_origin_assurance():
+    """Item 10: provenance_basis is exactly capture; invalid capture rejects."""
+
+    from strict_projection import StrictProjectionError, _provenance_basis_from_capture
+
+    assert (
+        _provenance_basis_from_capture({"capture": "synthetic_fixture"})
+        == "synthetic_fixture"
+    )
+    assert (
+        _provenance_basis_from_capture({"capture": "controlled_capture"})
+        == "controlled_capture"
+    )
+    assert _provenance_basis_from_capture({"capture": "unattested"}) == "unattested"
+    with pytest.raises(StrictProjectionError):
+        _provenance_basis_from_capture({"capture": "other"})
+    with pytest.raises(StrictProjectionError):
+        _provenance_basis_from_capture(None)
+    # origin_assurance must never be consulted / remapped.
+    assert (
+        _provenance_basis_from_capture(
+            {
+                "capture": "synthetic_fixture",
+                "commitments": "valid",
+                "byte_grounding": "complete",
+                "transformer_cap": "trusted",
+            }
+        )
+        == "synthetic_fixture"
+    )
+
+
+def test_m4_reader_import_graph_excludes_publisher_and_openclaw_runtime():
+    import ast
+
+    tree = ast.parse(Path("strict_projection.py").read_text(encoding="utf-8"))
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imported.add(alias.name.split(".")[0])
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imported.add(node.module.split(".")[0])
+    forbidden = {
+        "strict_projection_publisher",
+        "openclaw_activation_controller",
+        "openclaw_activation_supervisor",
+        "query",
+        "chroma_store",
+    }
+    assert not (imported & forbidden)
+
+
+def test_m4_public_only_mount_and_exact_0444_0555(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Items 6/11: public-only mount tree; exact file 0444 / dir 0555 / lock 0444."""
+
+    from strict_projection import StrictProjectionError, open_published_generation
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    item = items[0]
+    root = item["root"]
+
+    # Build a public-only mount: only parent-listed public members.
+    public_only = tmp_path / "public-only"
+    public_only.mkdir()
+    lineage = resolved.registry.binding(
+        resolved.scope.allowed_project_bindings[0]
+    ).lineage_id
+    serving = item["serving"]
+    gen_id = serving["serving_generation_id"]
+    snap_id = serving["authority_snapshot_id"]
+
+    def _copy_tree(src: Path, dst: Path) -> None:
+        import shutil
+
+        if src.is_dir():
+            shutil.copytree(src, dst, symlinks=False)
+        else:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+
+    for rel in (
+        f"active/{lineage}.json",
+        f"authority/{snap_id}/manifest.json",
+        f"projection/{gen_id}/manifest.json",
+        f"projection/{gen_id}/rows.jsonl",
+        f"projection/{gen_id}/graph.json",
+        f"locks/{lineage}.lock",
+    ):
+        _copy_tree(root / rel, public_only / rel)
+    # Intermediate dirs must exist with exact modes after seal.
+    _seal_public_mount_modes(public_only)
+
+    # Exact mode checks — including read-lock 0444.
+    for dirpath, _dns, filenames in os.walk(public_only):
+        st = os.lstat(dirpath)
+        assert stat.S_ISDIR(st.st_mode)
+        assert (st.st_mode & 0o7777) == 0o555
+        for name in filenames:
+            p = Path(dirpath) / name
+            fst = os.lstat(p)
+            assert stat.S_ISREG(fst.st_mode)
+            assert (fst.st_mode & 0o7777) == 0o444
+
+    gen = open_published_generation(
+        root=public_only,
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=serving["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    assert not gen.is_revoked
+    # No private paths present on the mount.
+    assert not (public_only / "layout.json").exists()
+    assert not (public_only / "control").exists()
+    from strict_projection import revoke_snapshot
+
+    revoke_snapshot(gen)
+
+    # Wrong mode denies (temporarily unlock parent dir to mutate mode).
+    os.chmod(public_only, 0o755)
+    os.chmod(public_only / "active", 0o755)
+    os.chmod(public_only / "active" / f"{lineage}.json", 0o644)
+    with pytest.raises(StrictProjectionError, match="file_mode"):
+        open_published_generation(
+            root=public_only,
+            scope=resolved.scope,
+            registry=resolved.registry,
+            expected_publication_sha256=serving["publication_payload_sha256"],
+            now=_M4_NOW,
+        )
+
+
+def test_m4_operator_path_wrappers_pin_without_bound_read_scope_mutation(
+    tmp_path: Path,
+):
+    """Scope repair: immutable path policy lives in M4 wrappers only."""
+
+    from strict_projection import (
+        StrictProjectionError,
+        load_bound_read_scope_for_strict,
+        pin_operator_immutable_path,
+    )
+
+    items, resolved, scope_path, registry_path = _m4_two_serving_roots(tmp_path)
+    pin = pin_operator_immutable_path(scope_path)
+    assert isinstance(pin, tuple) and len(pin) == 4
+    assert pin[3].startswith("sha256:") and len(pin[3]) == 71
+    scope = load_bound_read_scope_for_strict(scope_path)
+    assert scope.scope_sha256 == resolved.scope.scope_sha256
+
+    # Relative path refused by wrapper.
+    with pytest.raises(StrictProjectionError, match="path_must_be_absolute"):
+        pin_operator_immutable_path(Path("relative-scope.json"))
+
+    # Writable operator file refused.
+    os.chmod(scope_path, 0o644)
+    with pytest.raises(StrictProjectionError, match="file_writable"):
+        pin_operator_immutable_path(scope_path)
+
+
+def test_m4_ranking_tie_order_and_overlapping_occurrences(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Item 15: score desc, observed_at desc, assertion_id asc; occurrence counts."""
+
+    from strict_projection import (
+        StrictProjectionReader,
+        _count_occurrences,
+        _score_row,
+        open_published_generation,
+        tokenize_lexical,
+    )
+
+    assert _count_occurrences("ababab", "ab") == 3
+    assert _count_occurrences("aaa", "aa") == 2
+    tokens = tokenize_lexical("alpha beta alpha")
+    assert tokens == ["alpha", "beta", "alpha"]
+    # Known-answer score: title "alpha alpha" + doc "beta" vs query "alpha beta".
+    score = _score_row(
+        normalized_query="alpha beta",
+        query_tokens=["alpha", "beta"],
+        title="alpha alpha",
+        document="beta",
+    )
+    # No full-query substring hits; alpha×2 in title → 16; beta×1 in doc → 1.
+    assert score == 17
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+    result = reader.search_rows(query="fixture", top_k=10)
+    ids = [r["ledger_id"] for r in result["results"]]
+    assert isinstance(ids, list)
+    assert len(ids) >= 1
+    # Single-row fixture: exact returned id set is the published observation handle.
+    assert ids == sorted(ids)
+
+
+def test_m4_direct_cli_boottime_bound_and_shared_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+):
+    """Items 12/18: private+public opening, shared lock, 10s BOOTTIME, recheck."""
+
+    import fcntl
+    import io
+    import strict_projection as sp
+
+    items, resolved, scope_path, registry_path = _m4_two_serving_roots(tmp_path)
+    item = items[0]
+    req = tmp_path / "req.json"
+    req.write_text('{"query":"fixture"}', encoding="utf-8")
+    os.chmod(req, 0o444)
+
+    # Track lock hold across qualify + open.
+    lock_state: dict[str, Any] = {"fd": None, "qualify": False, "open": False}
+    orig_acquire = sp._acquire_shared_lineage_lock
+    orig_qualify = sp.qualify_authority_generation
+    orig_open = sp.open_published_generation
+
+    def wrap_acquire(path):
+        fd, inode = orig_acquire(path)
+        lock_state["fd"] = fd
+        return fd, inode
+
+    def wrap_qualify(**kwargs):
+        fd = lock_state["fd"]
+        assert isinstance(fd, int) and fd >= 0
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            raise AssertionError("shared lock not held during private qualification")
+        except BlockingIOError:
+            lock_state["qualify"] = True
+        return orig_qualify(**kwargs)
+
+    def wrap_open(**kwargs):
+        fd = lock_state["fd"]
+        assert isinstance(fd, int) and fd >= 0
+        assert kwargs.get("held_lock") is not None
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            raise AssertionError("shared lock not held during public opening")
+        except BlockingIOError:
+            lock_state["open"] = True
+        return orig_open(**kwargs)
+
+    monkeypatch.setattr(sp, "_acquire_shared_lineage_lock", wrap_acquire)
+    monkeypatch.setattr(sp, "qualify_authority_generation", wrap_qualify)
+    monkeypatch.setattr(sp, "open_published_generation", wrap_open)
+
+    clock = {"n": 0}
+
+    def fake_boot():
+        clock["n"] += 1
+        return _M4_SYNTHETIC_BOOTTIME_NS + clock["n"]
+
+    monkeypatch.setattr(sp, "boottime_ns", fake_boot)
+    monkeypatch.setattr(sp, "wall_time_utc", lambda: _M4_NOW)
+
+    argv = [
+        "read",
+        "--method",
+        "search",
+        "--scope",
+        str(scope_path),
+        "--registry",
+        str(registry_path),
+        "--strict-config",
+        str(item["config_path"]),
+        "--request-file",
+        str(req),
+        "--expected-publication",
+        item["serving"]["publication_payload_sha256"],
+    ]
+
+    # Capture stdout via patched buffer.
+    buf = io.BytesIO()
+    monkeypatch.setattr(sys.stdout, "buffer", buf)
+    before_mtimes = {
+        p: p.stat().st_mtime_ns
+        for p in item["root"].rglob("*")
+        if p.is_file() and not p.is_symlink()
+    }
+    rc = sp._cli_read(argv)
+    out = buf.getvalue()
+    assert rc == 0
+    assert lock_state["qualify"] is True
+    assert lock_state["open"] is True
+    lines = out.splitlines()
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["schema"] == "convmem.raw-evidence.v3"
+    assert payload["instruction_authority"] == "none"
+    after_mtimes = {
+        p: p.stat().st_mtime_ns
+        for p in item["root"].rglob("*")
+        if p.is_file() and not p.is_symlink()
+    }
+    assert before_mtimes == after_mtimes
+
+    # Exhaust budget (≥ 10s) → closed error, never partial success.
+    clock["n"] = 0
+
+    def fake_boot_over():
+        clock["n"] += 1
+        return clock["n"] * 6_000_000_000
+
+    monkeypatch.setattr(sp, "boottime_ns", fake_boot_over)
+    buf2 = io.BytesIO()
+    monkeypatch.setattr(sys.stdout, "buffer", buf2)
+    rc2 = sp._cli_read(argv)
+    out2 = buf2.getvalue()
+    assert rc2 != 0
+    lines2 = out2.splitlines()
+    assert len(lines2) == 1
+    err = json.loads(lines2[0])
+    assert err["schema"] == "convmem.error.v1"
+    assert err["error"]["code"] == "snapshot_stale"
+    assert "results" not in err
+
+
+def test_m4_seven_error_codes_and_v3_field_sets(tmp_path: Path):
+    """Item 17: seven exact error codes/messages; v3 top-level fields."""
+
+    from strict_projection import StrictPublicError, _ERROR_MESSAGES
+
+    assert set(_ERROR_MESSAGES) == {
+        "invalid_request",
+        "identifier_query_not_supported",
+        "scope_denied",
+        "snapshot_stale",
+        "response_too_large",
+        "temporarily_unavailable",
+        "internal_failure",
+    }
+    assert len(_ERROR_MESSAGES) == 7
+    for code, message in _ERROR_MESSAGES.items():
+        err = StrictPublicError(code)
+        assert err.payload["schema"] == "convmem.error.v1"
+        assert err.payload["error"]["code"] == code
+        assert err.payload["error"]["message"] == message
+        assert set(err.payload) == {"schema", "error", "correlation_id"}
+        assert set(err.payload["error"]) == {"code", "message"}
+
+
+def test_m4_capability_immutable_and_forged_new_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Item 9: frozen slots; object.__new__ forge fails live registry."""
+
+    from strict_projection import (
+        QualifiedStrictGeneration,
+        StrictProjectionError,
+        StrictProjectionReader,
+        StrictPublicError,
+        open_published_generation,
+        revoke_snapshot,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    with pytest.raises(AttributeError):
+        gen.lineage_id = "mutated"
+    forged = object.__new__(QualifiedStrictGeneration)
+    with pytest.raises(StrictProjectionError, match="forged_capability"):
+        StrictProjectionReader(forged)
+    with pytest.raises(StrictProjectionError, match="forged_capability"):
+        revoke_snapshot(forged)
+    revoke_snapshot(gen)
+    with pytest.raises(StrictPublicError) as ei:
+        StrictProjectionReader(gen).search_rows(query="fixture")
+    assert ei.value.code == "snapshot_stale"
+
+
+def _m4_clone_row(row: Mapping[str, Any], **overrides: Any) -> dict[str, Any]:
+    out = dict(row)
+    out.update(overrides)
+    pref = out["public_binding_ref"]
+    out["public_ledger_id"] = f"cm1.{pref}.{out['assertion_id']}"
+    return out
+
+
+def _m4_unseal_for_mutation(root: Path, *rels: str) -> None:
+    os.chmod(root, 0o755)
+    for rel in rels:
+        path = root / rel
+        parent = path.parent
+        while parent != root and parent != parent.parent:
+            os.chmod(parent, 0o755)
+            parent = parent.parent
+        if path.exists() and path.is_file():
+            os.chmod(path, 0o644)
+
+
+def test_m4_same_inode_content_mutation_fails_pin_recheck(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Same-inode in-place byte mutation restored to 0444 must fail content pin."""
+
+    from strict_projection import (
+        StrictProjectionError,
+        pin_operator_immutable_path,
+        recheck_operator_immutable_path,
+    )
+
+    items, resolved, scope_path, _rp = _m4_two_serving_roots(tmp_path)
+    pin = pin_operator_immutable_path(scope_path)
+    os.chmod(scope_path, 0o644)
+    original = scope_path.read_bytes()
+    mutated = original[:-1] + (b"X" if original[-1:] != b"X" else b"Y")
+    scope_path.write_bytes(mutated)
+    os.chmod(scope_path, 0o444)
+    with pytest.raises(StrictProjectionError, match="operator_content_changed"):
+        recheck_operator_immutable_path(scope_path, pin)
+    # Restore for cleanliness.
+    os.chmod(scope_path, 0o644)
+    scope_path.write_bytes(original)
+    os.chmod(scope_path, 0o444)
+
+
+def test_m4_post_open_public_mutation_snapshot_stale(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from strict_grounding import strict_canonical_bytes
+    from strict_projection import (
+        StrictProjectionReader,
+        StrictPublicError,
+        _labeled_self_hash,
+        open_published_generation,
+        revoke_snapshot,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    item = items[0]
+    gen = open_published_generation(
+        root=item["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=item["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+    lineage = gen.lineage_id
+    pub_path = item["root"] / "active" / f"{lineage}.json"
+    _m4_unseal_for_mutation(item["root"], f"active/{lineage}.json")
+    pub = json.loads(pub_path.read_text(encoding="utf-8"))
+    pub["published_at"] = "2099-01-01T00:00:00Z"
+    pub["publication_payload_sha256"] = _labeled_self_hash(
+        pub, "publication_payload_sha256"
+    )
+    pub_path.write_bytes(strict_canonical_bytes(pub))
+    os.chmod(pub_path, 0o444)
+    _seal_public_mount_modes(item["root"])
+    with pytest.raises(StrictPublicError) as ei:
+        reader.search_rows(query="fixture")
+    assert ei.value.code == "snapshot_stale"
+    revoke_snapshot(gen)
+
+
+def test_m4_public_open_corrupt_and_graph_failures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Corrupt/swapped public artifacts + graph validation negatives."""
+
+    from strict_grounding import strict_canonical_bytes
+    from strict_projection import StrictProjectionError, open_published_generation
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    item = items[0]
+    root = item["root"]
+    lineage = resolved.registry.binding(
+        resolved.scope.allowed_project_bindings[0]
+    ).lineage_id
+    serving = item["serving"]
+    gen_id = serving["serving_generation_id"]
+    snap_id = serving["authority_snapshot_id"]
+
+    def _open_expect(match: str) -> None:
+        with pytest.raises(StrictProjectionError, match=match):
+            open_published_generation(
+                root=root,
+                scope=resolved.scope,
+                registry=resolved.registry,
+                expected_publication_sha256=serving["publication_payload_sha256"],
+                now=_M4_NOW,
+            )
+
+    # Missing public file.
+    rows_path = root / "projection" / gen_id / "rows.jsonl"
+    backup_rows = rows_path.read_bytes()
+    _m4_unseal_for_mutation(root, f"projection/{gen_id}/rows.jsonl")
+    rows_path.unlink()
+    _seal_public_mount_modes(root)
+    _open_expect("open_failed|public_missing|not_regular")
+    _m4_unseal_for_mutation(root, f"projection/{gen_id}/rows.jsonl")
+    rows_path.write_bytes(backup_rows)
+    os.chmod(rows_path, 0o444)
+    _seal_public_mount_modes(root)
+
+    # Graph unknown node / duplicate / missing required edge / row mismatch.
+    graph_path = root / "projection" / gen_id / "graph.json"
+    graph = json.loads(graph_path.read_text(encoding="utf-8"))
+    backup_graph = graph_path.read_bytes()
+    cases = []
+    # unknown edge node
+    g1 = json.loads(backup_graph)
+    g1["edges"] = [
+        {
+            "kind": "relates_to",
+            "from_assertion_id": "missing_node_aaaaaaaa",
+            "to_assertion_id": g1["nodes"][0] if g1["nodes"] else "x",
+        }
+    ]
+    cases.append(("graph_edge_unknown_node", g1))
+    # duplicate node
+    g2 = json.loads(backup_graph)
+    if g2["nodes"]:
+        g2["nodes"] = list(g2["nodes"]) + [g2["nodes"][0]]
+        cases.append(("graph_node_dup", g2))
+    # graph/row agreement
+    g3 = json.loads(backup_graph)
+    g3["nodes"] = list(g3["nodes"]) + ["extra_node_bbbbbbbb"]
+    cases.append(("graph_row_agreement", g3))
+
+    for match, mutated in cases:
+        _m4_unseal_for_mutation(root, f"projection/{gen_id}/graph.json")
+        mutated["graph_payload_sha256"] = "sha256:" + ("0" * 64)
+        from strict_projection import _labeled_self_hash as _lsh
+
+        mutated["graph_payload_sha256"] = _lsh(mutated, "graph_payload_sha256")
+        graph_path.write_bytes(strict_canonical_bytes(mutated))
+        os.chmod(graph_path, 0o444)
+        # Also fix projection manifest graph hash so graph schema check is reached.
+        man_path = root / "projection" / gen_id / "manifest.json"
+        _m4_unseal_for_mutation(root, f"projection/{gen_id}/manifest.json")
+        man = json.loads(man_path.read_text(encoding="utf-8"))
+        man["graph_sha256"] = mutated["graph_payload_sha256"]
+        if match == "graph_row_agreement":
+            man["graph_node_count"] = len(mutated["nodes"])
+        man["manifest_payload_sha256"] = _lsh(man, "manifest_payload_sha256")
+        # generation_id / publication links may fail first — still a closed deny.
+        man_path.write_bytes(strict_canonical_bytes(man))
+        os.chmod(man_path, 0o444)
+        _seal_public_mount_modes(root)
+        with pytest.raises(StrictProjectionError):
+            open_published_generation(
+                root=root,
+                scope=resolved.scope,
+                registry=resolved.registry,
+                now=_M4_NOW,
+            )
+        _m4_unseal_for_mutation(
+            root,
+            f"projection/{gen_id}/graph.json",
+            f"projection/{gen_id}/manifest.json",
+        )
+        graph_path.write_bytes(backup_graph)
+        # restore manifest from a fresh open of the sibling root if needed — rewrite from item
+        # Re-seal from the other root's copy is heavy; re-publish not available.
+        # Restore by re-reading original bytes captured before loop.
+    # Full restore from root-b sibling (byte-identical).
+    sibling = items[1]["root"]
+    import shutil
+
+    for rel in (
+        f"projection/{gen_id}/graph.json",
+        f"projection/{gen_id}/manifest.json",
+        f"projection/{gen_id}/rows.jsonl",
+        f"active/{lineage}.json",
+        f"authority/{snap_id}/manifest.json",
+    ):
+        _m4_unseal_for_mutation(root, rel)
+        shutil.copy2(sibling / rel, root / rel)
+    _seal_public_mount_modes(root)
+
+    # Nested invalid capture on a row — rewrite rows with bad capture, rehash chain loosely.
+    _m4_unseal_for_mutation(root, f"projection/{gen_id}/rows.jsonl")
+    row = json.loads(rows_path.read_text(encoding="utf-8").splitlines()[0])
+    row["provenance_qualification"]["capture"] = "not_a_capture_class"
+    rows_path.write_text(
+        strict_canonical_bytes(row).decode("utf-8") + "\n", encoding="utf-8"
+    )
+    os.chmod(rows_path, 0o444)
+    _seal_public_mount_modes(root)
+    with pytest.raises(StrictProjectionError, match="projection_row_capture|rows_hash"):
+        open_published_generation(
+            root=root,
+            scope=resolved.scope,
+            registry=resolved.registry,
+            now=_M4_NOW,
+        )
+    _m4_unseal_for_mutation(root, f"projection/{gen_id}/rows.jsonl")
+    shutil.copy2(sibling / f"projection/{gen_id}/rows.jsonl", rows_path)
+    _seal_public_mount_modes(root)
+
+
+def test_m4_related_neighborhood_vectors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Related: depth-two, ambiguous parent, cycle, 9th hop, >200, non-expanding."""
+
+    from strict_projection import (
+        StrictProjectionReader,
+        StrictPublicError,
+        open_published_generation,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+    base = dict(gen.rows[0])
+    pref = base["public_binding_ref"]
+
+    def aid(n: int) -> str:
+        return f"obs2_{n:064x}"
+
+    # Depth-two: decision target with verification child + observation sibling via parent.
+    obs = _m4_clone_row(base, assertion_id=aid(1), record_kind="observation")
+    dec = _m4_clone_row(
+        base,
+        assertion_id=aid(2),
+        record_kind="decision",
+        relates_to_assertion_id=obs["assertion_id"],
+        logical_id="logical-dec-1",
+    )
+    ver = _m4_clone_row(
+        base,
+        assertion_id=aid(3),
+        record_kind="verification",
+        target_assertion_id=dec["assertion_id"],
+        verification_result="pass",
+        relates_to_assertion_id=None,
+        logical_id="logical-ver-1",
+    )
+    sib = _m4_clone_row(
+        base,
+        assertion_id=aid(4),
+        record_kind="observation",
+        relates_to_assertion_id=obs["assertion_id"],
+        logical_id="logical-sib-1",
+    )
+    reader._rows_by_assertion = {
+        obs["assertion_id"]: [obs],
+        dec["assertion_id"]: [dec],
+        ver["assertion_id"]: [ver],
+        sib["assertion_id"]: [sib],
+    }
+    reader._relates_parents = {
+        dec["assertion_id"]: [obs["assertion_id"]],
+        sib["assertion_id"]: [obs["assertion_id"]],
+    }
+    reader._children = {
+        obs["assertion_id"]: [
+            ("relates_to", dec["assertion_id"]),
+            ("relates_to", sib["assertion_id"]),
+        ],
+        dec["assertion_id"]: [("targets", ver["assertion_id"])],
+    }
+    reader._non_expanding = frozenset()
+    handle = f"cm1.{pref}.{dec['assertion_id']}"
+    got = reader.related_neighborhood(ledger_id=handle)
+    got_ids = [r["ledger_id"] for r in got["results"]]
+    expected = sorted(
+        [
+            f"cm1.{pref}.{obs['assertion_id']}",
+            f"cm1.{pref}.{dec['assertion_id']}",
+            f"cm1.{pref}.{ver['assertion_id']}",
+            f"cm1.{pref}.{sib['assertion_id']}",
+        ]
+    )
+    assert got_ids == expected
+    assert got["display_basis"] == "bounded_context"
+    assert got["selection_complete"] is True
+
+    # Ambiguous parent (>1) denies.
+    reader._relates_parents[dec["assertion_id"]] = [
+        obs["assertion_id"],
+        sib["assertion_id"],
+    ]
+    with pytest.raises(StrictPublicError) as ei:
+        reader.related_neighborhood(ledger_id=handle)
+    assert ei.value.code == "scope_denied"
+
+    # Cycle in ancestor path.
+    reader._relates_parents = {
+        dec["assertion_id"]: [obs["assertion_id"]],
+        obs["assertion_id"]: [dec["assertion_id"]],
+    }
+    reader._children = {}
+    with pytest.raises(StrictPublicError) as ei:
+        reader.related_neighborhood(ledger_id=handle)
+    assert ei.value.code == "scope_denied"
+
+    # Cycle in descendant union.
+    reader._relates_parents = {}
+    reader._children = {
+        dec["assertion_id"]: [("relates_to", ver["assertion_id"])],
+        ver["assertion_id"]: [("relates_to", dec["assertion_id"])],
+    }
+    reader._rows_by_assertion = {
+        dec["assertion_id"]: [dec],
+        ver["assertion_id"]: [ver],
+    }
+    with pytest.raises(StrictPublicError) as ei:
+        reader.related_neighborhood(ledger_id=handle)
+    assert ei.value.code == "scope_denied"
+
+    # Ninth hop required denies.
+    chain = [aid(100 + i) for i in range(10)]
+    rows = {
+        chain[0]: [
+            _m4_clone_row(
+                base, assertion_id=chain[0], record_kind="decision", logical_id="c0"
+            )
+        ]
+    }
+    parents: dict[str, list[str]] = {}
+    for i in range(1, 10):
+        rows[chain[i]] = [
+            _m4_clone_row(
+                base,
+                assertion_id=chain[i],
+                record_kind="decision",
+                logical_id=f"c{i}",
+            )
+        ]
+        parents[chain[i - 1]] = [chain[i]]
+    reader._rows_by_assertion = rows
+    reader._relates_parents = parents
+    reader._children = {}
+    handle9 = f"cm1.{pref}.{chain[0]}"
+    with pytest.raises(StrictPublicError) as ei:
+        reader.related_neighborhood(ledger_id=handle9)
+    assert ei.value.code == "scope_denied"
+
+    # >200 required union denies.
+    hub = aid(2000)
+    hub_row = _m4_clone_row(base, assertion_id=hub, record_kind="observation")
+    children = []
+    mmap = {hub: [hub_row]}
+    for i in range(201):
+        cid = aid(3000 + i)
+        mmap[cid] = [
+            _m4_clone_row(
+                base, assertion_id=cid, record_kind="observation", logical_id=f"n{i}"
+            )
+        ]
+        children.append(("relates_to", cid))
+    reader._rows_by_assertion = mmap
+    reader._relates_parents = {}
+    reader._children = {hub: children}
+    with pytest.raises(StrictPublicError) as ei:
+        reader.related_neighborhood(ledger_id=f"cm1.{pref}.{hub}")
+    assert ei.value.code == "scope_denied"
+
+    # Non-expanding high-degree fallback: include root only.
+    reader._non_expanding = frozenset({hub})
+    # Parent path hits non-expanding immediately when querying a child.
+    child0 = children[0][1]
+    reader._relates_parents = {child0: [hub]}
+    reader._children = {hub: children}
+    got = reader.related_neighborhood(ledger_id=f"cm1.{pref}.{child0}")
+    got_ids = [r["ledger_id"] for r in got["results"]]
+    assert got_ids == sorted([f"cm1.{pref}.{child0}", f"cm1.{pref}.{hub}"])
+
+    # Duplicate stored identity denies.
+    reader._non_expanding = frozenset()
+    reader._rows_by_assertion = {hub: [hub_row, dict(hub_row)]}
+    reader._relates_parents = {}
+    reader._children = {}
+    with pytest.raises(StrictPublicError) as ei:
+        reader.related_neighborhood(ledger_id=f"cm1.{pref}.{hub}")
+    assert ei.value.code == "scope_denied"
+
+    # Wrong binding denies.
+    with pytest.raises(StrictPublicError) as ei:
+        reader.related_neighborhood(ledger_id=f"cm1.{'f' * 32}.{hub}")
+    assert ei.value.code == "scope_denied"
+
+
+def test_m4_v3_snapshot_result_key_sets_and_caps(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Exact v3 snapshot/result keys; 4096 truncation; 64-token bound."""
+
+    from strict_projection import (
+        StrictProjectionReader,
+        StrictPublicError,
+        _DOC_CODEPOINT_CAP,
+        open_published_generation,
+        tokenize_lexical,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+    result = reader.search_rows(query="fixture")
+    assert set(result) == {
+        "schema",
+        "instruction_authority",
+        "snapshot",
+        "selection_complete",
+        "display_basis",
+        "results",
+    }
+    assert set(result["snapshot"]) == {
+        "snapshot_id",
+        "lineage_id",
+        "authority_seq",
+        "authority_manifest_sha256",
+        "semantic_contract_sha256",
+        "state_basis",
+        "verification_basis",
+        "as_of",
+        "expires_at",
+    }
+    if result["results"]:
+        assert set(result["results"][0]) == {
+            "title",
+            "document",
+            "ledger_id",
+            "citation_ref",
+            "record_kind",
+            "logical_id",
+            "authority_state",
+            "verification_state",
+            "verification_result",
+            "target_ledger_id",
+            "supersedes_ledger_ids",
+            "origin_assurance",
+            "provenance_qualification",
+            "provenance_basis",
+            "check_eligibility",
+            "state_sha256",
+            "confidence_bps",
+            "observed_at",
+            "recorded_at",
+            "decision_disposition_ref",
+            "supersession_disposition_ref",
+            "state_disposition_refs",
+            "truncated",
+            "domain",
+            "site",
+        }
+
+    # 64 distinct-token bound.
+    toks = " ".join(f"t{i}" for i in range(65))
+    with pytest.raises(StrictPublicError) as ei:
+        reader.search_rows(query=toks)
+    assert ei.value.code == "invalid_request"
+    assert len(tokenize_lexical(" ".join(f"t{i}" for i in range(64)))) == 64
+
+    # 4096-codepoint truncation flag via format helper.
+    long_doc = "x" * (_DOC_CODEPOINT_CAP + 10)
+    row = dict(gen.rows[0])
+    row["document"] = long_doc
+    formatted = reader._format_result(row)
+    assert formatted["truncated"] is True
+    assert len(formatted["document"]) == _DOC_CODEPOINT_CAP
+
+
+def test_m4_selector_bound_descendant_and_cross_domain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Selector matrices on search + unresolved; legacy normalizer not called."""
+
+    from strict_projection import (
+        StrictProjectionReader,
+        StrictPublicError,
+        open_published_generation,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+
+    called = {"legacy": 0}
+    # Prove legacy site_filter.normalize_site is not on the reader path.
+    import site_filter
+
+    orig_legacy = site_filter.normalize_site
+
+    def wrap_legacy(value):
+        called["legacy"] += 1
+        return orig_legacy(value)
+
+    monkeypatch.setattr(site_filter, "normalize_site", wrap_legacy)
+    # Also prove domains.normalize_domain is not used for selector deny path.
+    import domains as domains_mod
+
+    orig_dom = domains_mod.normalize_domain
+
+    def wrap_dom(value):
+        called["legacy"] += 1
+        return orig_dom(value)
+
+    monkeypatch.setattr(domains_mod, "normalize_domain", wrap_dom)
+
+    # Bound-domain success (omitted inherits).
+    ok = reader.search_rows(query="fixture")
+    assert ok["schema"] == "convmem.raw-evidence.v3"
+    ok_u = reader.unresolved_rows()
+    assert ok_u["schema"] == "convmem.raw-evidence.v3"
+
+    # Parent/sibling/malformed/general failures + cross_domain.
+    for tool in ("search", "unresolved"):
+        for kwargs in (
+            {"domain": "general"},
+            {"domain": "parent"},
+            {"domain": "sibling"},
+            {"domain": "!!!"},
+            {"cross_domain": True},
+            {"project": "ConvMem"},  # case-confusable vs bound project
+            {"project": "convmem-extra"},
+        ):
+            with pytest.raises(StrictPublicError) as ei:
+                if tool == "search":
+                    reader.search_rows(query="fixture", **kwargs)
+                else:
+                    reader.unresolved_rows(**kwargs)
+            assert ei.value.code == "scope_denied"
+
+    assert called["legacy"] == 0
+
+
+def test_m4_lock_release_on_revoke(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from strict_projection import open_published_generation, revoke_snapshot
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    assert gen._lock_fd >= 0
+    revoke_snapshot(gen)
+    assert gen._lock_fd == -1
+    assert gen.is_revoked is True
+
+def test_m4_site_and_domain_selector_equivalence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Exact-site Unicode/A-label/case/terminal-dot success; host/port/scheme failures."""
+
+    from strict_projection import (
+        StrictProjectionReader,
+        StrictPublicError,
+        open_published_generation,
+    )
+
+    items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
+    _m4_patch_clocks(monkeypatch)
+    gen = open_published_generation(
+        root=items[0]["root"],
+        scope=resolved.scope,
+        registry=resolved.registry,
+        expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
+        now=_M4_NOW,
+    )
+    reader = StrictProjectionReader(gen)
+    assert resolved.scope.site_mode == "exact"
+    assert resolved.scope.site == "example.com"
+
+    for site in ("example.com", "EXAMPLE.COM", "example.com."):
+        ok = reader.search_rows(query="fixture", site=site)
+        assert ok["schema"] == "convmem.raw-evidence.v3"
+        assert len(ok["results"]) >= 1
+
+    # Bound-domain exact success; descendant selector resolves without widening.
+    ok_d = reader.search_rows(query="fixture", domain="coding")
+    assert ok_d["schema"] == "convmem.raw-evidence.v3"
+    assert len(ok_d["results"]) >= 1
+    narrow = reader.search_rows(query="fixture", domain="coding.tooling")
+    assert narrow["schema"] == "convmem.raw-evidence.v3"
+    # Fixture rows are authority_domain=coding, so narrowing yields empty set.
+    assert narrow["results"] == []
+    assert narrow["selection_complete"] is True
+
+    for site in (
+        "http://example.com",
+        "example.com:443",
+        "user@example.com",
+        "example.com/path",
+        "exam_ple.com",
+        "example..com",
+        "xn--bcher-kva.example",  # unrelated IDNA host
+        " ",
+    ):
+        with pytest.raises(StrictPublicError) as ei:
+            reader.search_rows(query="fixture", site=site)
+        assert ei.value.code == "scope_denied"

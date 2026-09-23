@@ -114,3 +114,101 @@ def independent_tree_digest(entries: list[dict[str, str]]) -> str:
         entries, sort_keys=True, separators=(",", ":"), ensure_ascii=True
     ).encode("utf-8")
     return f"sha256:{hashlib.sha256(raw).hexdigest()}"
+
+
+_EXCLUDED_FIXTURE_RELS = frozenset(
+    {
+        "fixture-manifest.json",
+        "suite_results.json",
+        "evidence/fixture-manifest.json",
+    }
+)
+_EXCLUDED_SOURCE_RELS = frozenset(
+    {
+        "tests/fixtures/openclaw_strict/fixture-manifest.json",
+        "tests/fixtures/openclaw_strict/suite_results.json",
+        "tests/fixtures/openclaw_strict/evidence/fixture-manifest.json",
+    }
+)
+
+
+def reference_fixture_artifact_walk(fixture_tree: Path) -> list[dict[str, str]]:
+    """Independent fixture-tree walker — does not import fixture_manifest inventores."""
+
+    root = fixture_tree.resolve()
+    if not root.is_dir():
+        raise Case58OracleError(f"fixture_missing:{root}")
+    out: list[dict[str, str]] = []
+    stack = [root]
+    while stack:
+        cur = stack.pop()
+        try:
+            children = sorted(cur.iterdir(), key=lambda p: p.name)
+        except OSError as exc:
+            raise Case58OracleError(f"walk_failed:{cur}") from exc
+        for child in children:
+            if child.is_symlink():
+                raise Case58OracleError(
+                    f"symlink:{child.relative_to(root).as_posix()}"
+                )
+            if child.is_dir():
+                stack.append(child)
+                continue
+            if not child.is_file():
+                continue
+            rel = child.relative_to(root).as_posix()
+            if rel in _EXCLUDED_FIXTURE_RELS:
+                continue
+            mode = f"{child.stat().st_mode & 0o7777:04o}"
+            digest = hashlib.sha256(child.read_bytes()).hexdigest()
+            out.append(
+                {
+                    "mode": mode,
+                    "path": f"tests/fixtures/openclaw_strict/{rel}",
+                    "sha256": f"sha256:{digest}",
+                }
+            )
+    out.sort(key=lambda e: e["path"])
+    return out
+
+
+def reference_source_export_walk(source_root: Path) -> list[dict[str, str]]:
+    """Independent source-export walker — does not import fixture_manifest inventores."""
+
+    root = source_root.resolve()
+    if not root.is_dir():
+        raise Case58OracleError(f"source_missing:{root}")
+    out: list[dict[str, str]] = []
+    stack = [root]
+    while stack:
+        cur = stack.pop()
+        try:
+            children = sorted(cur.iterdir(), key=lambda p: p.name)
+        except OSError as exc:
+            raise Case58OracleError(f"walk_failed:{cur}") from exc
+        for child in children:
+            if child.name == ".git" and child.is_dir():
+                continue
+            if child.is_symlink():
+                raise Case58OracleError(
+                    f"symlink:{child.relative_to(root).as_posix()}"
+                )
+            if child.is_dir():
+                stack.append(child)
+                continue
+            if not child.is_file():
+                continue
+            rel = child.relative_to(root).as_posix()
+            if rel in _EXCLUDED_SOURCE_RELS:
+                continue
+            mode = f"{child.stat().st_mode & 0o7777:04o}"
+            digest = hashlib.sha256(child.read_bytes()).hexdigest()
+            out.append(
+                {
+                    "mode": mode,
+                    "path": rel,
+                    "sha256": f"sha256:{digest}",
+                }
+            )
+    out.sort(key=lambda e: e["path"])
+    return out
