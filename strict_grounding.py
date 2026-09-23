@@ -13,6 +13,7 @@ from canonical_json import canonical_json_bytes
 from provenance import (
     EnvelopeValidationError,
     ProvenanceRegistry,
+    TransformerRule,
     provenance_commitment as legacy_provenance_commitment,
     validate_envelope,
 )
@@ -57,6 +58,58 @@ _OUTPUT_KEYS = frozenset(
         "provenance_commitment",
         "output_blob_sha256",
     }
+)
+
+_PROVENANCE_CONTEXT_KEYS = frozenset(
+    {
+        "schema",
+        "schema_semantics",
+        "policies",
+        "recipes",
+        "verified_channels",
+        "registered_assertions",
+        "grounding_sha256",
+        "context_payload_sha256",
+    }
+)
+_SCHEMA_SEMANTICS_KEYS = frozenset(
+    {
+        "schema_version",
+        "binding_version",
+        "semantic_bytes_b64",
+        "semantic_sha256",
+    }
+)
+_POLICY_KEYS = frozenset(
+    {
+        "policy_version",
+        "semantic_bytes_b64",
+        "semantic_sha256",
+        "rules",
+    }
+)
+_RULE_KEYS = frozenset(
+    {
+        "transformer_class",
+        "transformer_identity",
+        "transformer_version",
+        "recipe_id",
+        "cap",
+        "preservation_contract",
+        "artifact_sha256",
+    }
+)
+_RECIPE_KEYS = frozenset({"recipe_id", "recipe_bytes_b64", "recipe_sha256"})
+_CHANNEL_KEYS = frozenset(
+    {
+        "origin_class",
+        "channel_class",
+        "channel_locator",
+        "channel_evidence_sha256",
+    }
+)
+_REGISTERED_ASSERTION_KEYS = frozenset(
+    {"assertion_id", "provenance_commitment", "envelope"}
 )
 
 
@@ -137,6 +190,22 @@ def _hashes_equal(left: Any, right: Any) -> bool:
     return a is not None and a == b
 
 
+def _bare_hex(value: Any, *, field: str) -> str:
+    """Accept labeled sha256:<hex> or bare hex; return bare lowercase hex."""
+
+    if not isinstance(value, str) or not value:
+        raise StrictGroundingError(field)
+    if _SHA_RE.fullmatch(value):
+        return value.removeprefix("sha256:")
+    if _HEX64_RE.fullmatch(value):
+        return value
+    raise StrictGroundingError(field)
+
+
+def _to_labeled(value: Any, *, field: str) -> str:
+    return "sha256:" + _bare_hex(value, field=field)
+
+
 def _strip_receipt_ref(binding: Mapping[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in binding.items() if k != "receipt_ref"}
 
@@ -183,12 +252,15 @@ def load_issuer_receipt_inventory(receipt_root: str | Path) -> dict[str, bytes]:
     """Load protected issuer inventory: receipt_ref -> exact receipt bytes.
 
     Exact bytes only. No newline/format normalization, aliases, or overwrite of
-    duplicate receipt_ref / capture_id rows.
+    duplicate receipt_ref / capture_id rows. The receipt_root directory itself
+    must not be writable (protected inventory).
     """
 
     root = Path(receipt_root)
     if not root.is_absolute() or root.is_symlink() or not root.is_dir():
         raise StrictGroundingError("receipt_root_invalid")
+    if root.stat().st_mode & 0o222:
+        raise StrictGroundingError("receipt_root_writable")
     inventory: dict[str, bytes] = {}
     seen_capture_ids: set[str] = set()
     for path in sorted(root.iterdir()):
@@ -502,17 +574,30 @@ def verify_legacy_commitments(
     *,
     envelope: Mapping[str, Any],
     registry: ProvenanceRegistry | None = None,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
 ) -> str:
-    """Return valid|incomplete for legacy envelope verification (never upgrades alone)."""
+    """Return valid|incomplete for legacy envelope verification (never upgrades alone).
+
+    When a reconstructed ProvenanceRegistry is supplied, recursive verify against
+    that context-fixed inventory decides validity. Missing/changed ancestry yields
+    incomplete; this never maps legacy trust into stronger byte/capture assurance.
+    """
 
     try:
-        validate_envelope(envelope)
-        commitment = legacy_provenance_commitment(envelope)
+        validated = validate_envelope(envelope, schema_semantics=schema_semantics)
+        commitment = legacy_provenance_commitment(
+            validated, schema_semantics=schema_semantics
+        )
+        if not commitment:
+            return "incomplete"
         if registry is not None:
-            pin = getattr(registry, "active_pin", None)
-            if pin is None:
+            assertion_id = validated.get("assertion_id")
+            if not isinstance(assertion_id, str) or not assertion_id:
                 return "incomplete"
-        return "valid" if commitment else "incomplete"
+            result = registry.verify(assertion_id)
+            if not result.verified:
+                return "incomplete"
+        return "valid"
     except EnvelopeValidationError:
         return "incomplete"
     except Exception:  # noqa: BLE001
@@ -545,11 +630,23 @@ def derive_provenance_basis(qualification: QualificationTuple) -> str:
     return "unattested"
 
 
-def _envelope_commitment(envelope: Mapping[str, Any]) -> str | None:
+def _envelope_commitment(
+    envelope: Mapping[str, Any],
+    *,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
+) -> str:
+    """Recompute commitment only. Never fall back to an envelope-supplied claim."""
+
     try:
-        return _labeled_hash(legacy_provenance_commitment(envelope))
-    except Exception:  # noqa: BLE001
-        return _labeled_hash(envelope.get("provenance_commitment"))
+        digest = legacy_provenance_commitment(
+            envelope, schema_semantics=schema_semantics
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise StrictGroundingError("envelope_commitment") from exc
+    labeled = _labeled_hash(digest)
+    if labeled is None:
+        raise StrictGroundingError("envelope_commitment")
+    return labeled
 
 
 def _bindings_for_assertion(
@@ -639,6 +736,7 @@ def _verify_assertion_grounding(
     used_edges: set[int],
     used_outputs: set[int],
     used_receipts: set[str],
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
 ) -> tuple[bool, str | None]:
     """Return (complete_for_assertion, capture_class_or_None).
 
@@ -649,9 +747,7 @@ def _verify_assertion_grounding(
     assertion_id = envelope.get("assertion_id")
     if not isinstance(assertion_id, str) or not assertion_id:
         raise StrictGroundingError("envelope_assertion_id")
-    commitment = _envelope_commitment(envelope)
-    if commitment is None:
-        raise StrictGroundingError("envelope_commitment")
+    commitment = _envelope_commitment(envelope, schema_semantics=schema_semantics)
 
     env_roots = list(envelope.get("root_bindings") or [])
     env_inputs = list(envelope.get("input_bindings") or [])
@@ -841,6 +937,569 @@ def _verify_assertion_grounding(
     return True, receipt["capture_class"]
 
 
+def merge_issuer_receipt_inventories(
+    inventories: Sequence[Mapping[str, bytes]],
+) -> dict[str, bytes]:
+    """Merge protected inventories; duplicate receipt_ref or capture_id rejects."""
+
+    merged: dict[str, bytes] = {}
+    seen_capture_ids: set[str] = set()
+    for inventory in inventories:
+        if not isinstance(inventory, Mapping):
+            raise StrictGroundingError("issuer_inventory_type")
+        for ref, raw in inventory.items():
+            if not isinstance(ref, str) or not ref.startswith("capture_"):
+                raise StrictGroundingError("receipt_ref")
+            if not isinstance(raw, (bytes, bytearray)):
+                raise StrictGroundingError("receipt_inventory_bytes")
+            exact = bytes(raw)
+            if ref in merged:
+                raise StrictGroundingError("receipt_ref_duplicate")
+            try:
+                obj = json.loads(
+                    exact.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+                )
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise StrictGroundingError("receipt_inventory_json") from exc
+            validated = validate_receipt_object(obj)
+            if receipt_ref_for(validated) != ref:
+                raise StrictGroundingError("receipt_ref_mismatch")
+            capture_id = validated["capture_id"]
+            if capture_id in seen_capture_ids:
+                raise StrictGroundingError("capture_id_duplicate")
+            seen_capture_ids.add(capture_id)
+            merged[ref] = exact
+    return merged
+
+
+def load_bound_issuer_inventories(
+    capture_issuers: Sequence[CaptureIssuer],
+) -> dict[str, bytes]:
+    """Load each enrolled issuer receipt_root and merge under enrollment permissions."""
+
+    if not isinstance(capture_issuers, Sequence):
+        raise StrictGroundingError("capture_issuers_type")
+    per_issuer: list[dict[str, bytes]] = []
+    for issuer in capture_issuers:
+        if not isinstance(issuer, CaptureIssuer):
+            raise StrictGroundingError("capture_issuer_type")
+        inventory = load_issuer_receipt_inventory(issuer.receipt_root)
+        allowed_sources = set(issuer.source_registration_ids)
+        for ref, raw in inventory.items():
+            try:
+                obj = json.loads(
+                    raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+                )
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise StrictGroundingError("receipt_inventory_json") from exc
+            validated = validate_receipt_object(obj)
+            if validated["capture_issuer_id"] != issuer.issuer_id:
+                raise StrictGroundingError("receipt_issuer_unenrolled")
+            if validated["capture_class"] != issuer.capture_class:
+                raise StrictGroundingError("receipt_issuer_class_mismatch")
+            if validated["source_registration_id"] not in allowed_sources:
+                raise StrictGroundingError("receipt_source_unenrolled")
+            if receipt_ref_for(validated) != ref:
+                raise StrictGroundingError("receipt_ref_mismatch")
+        per_issuer.append(inventory)
+    return merge_issuer_receipt_inventories(per_issuer)
+
+
+def validate_provenance_context(
+    provenance_context: Mapping[str, Any],
+    *,
+    expected_grounding_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Validate closed provenance-context.v2 field sets, sort, and recomputed digests."""
+
+    if not isinstance(provenance_context, Mapping):
+        raise StrictGroundingError("provenance_context_type")
+    if set(provenance_context) != _PROVENANCE_CONTEXT_KEYS:
+        raise StrictGroundingError("provenance_context_keys")
+    if provenance_context.get("schema") != "convmem.strict-provenance-context.v2":
+        raise StrictGroundingError("provenance_context_schema")
+
+    grounding_sha = provenance_context["grounding_sha256"]
+    if not isinstance(grounding_sha, str) or not _SHA_RE.fullmatch(grounding_sha):
+        raise StrictGroundingError("grounding_sha256")
+    if expected_grounding_sha256 is not None and grounding_sha != expected_grounding_sha256:
+        raise StrictGroundingError("provenance_grounding_link")
+
+    schema_semantics_out: list[dict[str, Any]] = []
+    prev_sem_key: tuple[str, str] | None = None
+    seen_sem: set[tuple[str, str]] = set()
+    for entry in provenance_context["schema_semantics"]:
+        if not isinstance(entry, Mapping) or set(entry) != _SCHEMA_SEMANTICS_KEYS:
+            raise StrictGroundingError("schema_semantics_keys")
+        schema_version = entry["schema_version"]
+        binding_version = entry["binding_version"]
+        if not isinstance(schema_version, str) or not schema_version:
+            raise StrictGroundingError("schema_version")
+        if not isinstance(binding_version, str) or not binding_version:
+            raise StrictGroundingError("binding_version")
+        key = (schema_version, binding_version)
+        if key in seen_sem:
+            raise StrictGroundingError("schema_semantics_duplicate")
+        seen_sem.add(key)
+        if prev_sem_key is not None and key < prev_sem_key:
+            raise StrictGroundingError("schema_semantics_unsorted")
+        prev_sem_key = key
+        raw = _b64_decode(entry["semantic_bytes_b64"])
+        digest = sha256_digest(raw)
+        if entry["semantic_sha256"] != digest:
+            raise StrictGroundingError("schema_semantics_digest_mismatch")
+        schema_semantics_out.append(dict(entry))
+
+    policies_out: list[dict[str, Any]] = []
+    prev_policy: str | None = None
+    seen_policies: set[str] = set()
+    for policy in provenance_context["policies"]:
+        if not isinstance(policy, Mapping) or set(policy) != _POLICY_KEYS:
+            raise StrictGroundingError("policy_keys")
+        version = policy["policy_version"]
+        if not isinstance(version, str) or not version:
+            raise StrictGroundingError("policy_version")
+        if version in seen_policies:
+            raise StrictGroundingError("policy_duplicate")
+        seen_policies.add(version)
+        if prev_policy is not None and version < prev_policy:
+            raise StrictGroundingError("policies_unsorted")
+        prev_policy = version
+        policy_bytes = _b64_decode(policy["semantic_bytes_b64"])
+        if policy["semantic_sha256"] != sha256_digest(policy_bytes):
+            raise StrictGroundingError("policy_digest_mismatch")
+        rules = policy["rules"]
+        if not isinstance(rules, list):
+            raise StrictGroundingError("policy_rules_type")
+        prev_rule_key: tuple[str, str, str, str] | None = None
+        seen_rules: set[tuple[str, str, str, str]] = set()
+        rules_out: list[dict[str, Any]] = []
+        for rule in rules:
+            if not isinstance(rule, Mapping) or set(rule) != _RULE_KEYS:
+                raise StrictGroundingError("policy_rule_keys")
+            for field in (
+                "transformer_class",
+                "transformer_identity",
+                "transformer_version",
+                "recipe_id",
+                "cap",
+            ):
+                if not isinstance(rule[field], str) or not rule[field]:
+                    raise StrictGroundingError(f"policy_rule_{field}")
+            if rule["cap"] not in {"trusted", "agent", "untrusted"}:
+                raise StrictGroundingError("policy_rule_cap")
+            preservation = rule["preservation_contract"]
+            if preservation is not None and (
+                not isinstance(preservation, str) or not preservation
+            ):
+                raise StrictGroundingError("policy_rule_preservation_contract")
+            artifact = rule["artifact_sha256"]
+            if artifact is not None:
+                if not isinstance(artifact, str) or not _SHA_RE.fullmatch(artifact):
+                    raise StrictGroundingError("policy_rule_artifact_sha256")
+            rule_key = (
+                rule["transformer_class"],
+                rule["transformer_identity"],
+                rule["transformer_version"],
+                rule["recipe_id"],
+            )
+            if rule_key in seen_rules:
+                raise StrictGroundingError("policy_rule_duplicate")
+            seen_rules.add(rule_key)
+            if prev_rule_key is not None and rule_key < prev_rule_key:
+                raise StrictGroundingError("policy_rules_unsorted")
+            prev_rule_key = rule_key
+            rules_out.append(dict(rule))
+        policies_out.append(
+            {
+                "policy_version": version,
+                "semantic_bytes_b64": policy["semantic_bytes_b64"],
+                "semantic_sha256": policy["semantic_sha256"],
+                "rules": rules_out,
+            }
+        )
+
+    recipes_out: list[dict[str, Any]] = []
+    prev_recipe: str | None = None
+    seen_recipes: set[str] = set()
+    for recipe in provenance_context["recipes"]:
+        if not isinstance(recipe, Mapping) or set(recipe) != _RECIPE_KEYS:
+            raise StrictGroundingError("recipe_keys")
+        recipe_id = recipe["recipe_id"]
+        if not isinstance(recipe_id, str) or not recipe_id:
+            raise StrictGroundingError("recipe_id")
+        if recipe_id in seen_recipes:
+            raise StrictGroundingError("recipe_duplicate")
+        seen_recipes.add(recipe_id)
+        if prev_recipe is not None and recipe_id < prev_recipe:
+            raise StrictGroundingError("recipes_unsorted")
+        prev_recipe = recipe_id
+        recipe_bytes = _b64_decode(recipe["recipe_bytes_b64"])
+        if recipe["recipe_sha256"] != sha256_digest(recipe_bytes):
+            raise StrictGroundingError("recipe_digest_mismatch")
+        recipes_out.append(dict(recipe))
+
+    channels_out: list[dict[str, Any]] = []
+    prev_channel: tuple[str, str, str, str] | None = None
+    seen_channels: set[tuple[str, str, str, str]] = set()
+    for channel in provenance_context["verified_channels"]:
+        if not isinstance(channel, Mapping) or set(channel) != _CHANNEL_KEYS:
+            raise StrictGroundingError("channel_keys")
+        for field in ("origin_class", "channel_class", "channel_locator"):
+            if not isinstance(channel[field], str) or not channel[field]:
+                raise StrictGroundingError(f"channel_{field}")
+        evidence = channel["channel_evidence_sha256"]
+        if not isinstance(evidence, str) or not _SHA_RE.fullmatch(evidence):
+            raise StrictGroundingError("channel_evidence_sha256")
+        key = (
+            channel["origin_class"],
+            channel["channel_class"],
+            channel["channel_locator"],
+            evidence,
+        )
+        if key in seen_channels:
+            raise StrictGroundingError("channel_duplicate")
+        seen_channels.add(key)
+        if prev_channel is not None and key < prev_channel:
+            raise StrictGroundingError("channels_unsorted")
+        prev_channel = key
+        channels_out.append(dict(channel))
+
+    registered_raw = provenance_context["registered_assertions"]
+    if not isinstance(registered_raw, list):
+        raise StrictGroundingError("registered_assertions_type")
+    seen_assertion_ids: set[str] = set()
+    prev_aid: str | None = None
+    registered_out: list[dict[str, Any]] = []
+    for entry in registered_raw:
+        if not isinstance(entry, Mapping) or set(entry) != _REGISTERED_ASSERTION_KEYS:
+            raise StrictGroundingError("registered_assertion_keys")
+        assertion_id = entry["assertion_id"]
+        if not isinstance(assertion_id, str) or not assertion_id:
+            raise StrictGroundingError("registered_assertion_id")
+        if assertion_id in seen_assertion_ids:
+            raise StrictGroundingError("registered_assertion_duplicate")
+        seen_assertion_ids.add(assertion_id)
+        if prev_aid is not None and assertion_id < prev_aid:
+            raise StrictGroundingError("registered_assertions_unsorted")
+        prev_aid = assertion_id
+        envelope = entry["envelope"]
+        if not isinstance(envelope, Mapping):
+            raise StrictGroundingError("registered_envelope_type")
+        env_id = envelope.get("assertion_id")
+        if env_id != assertion_id:
+            raise StrictGroundingError("registered_assertion_id_mismatch")
+        registered_out.append(
+            {
+                "assertion_id": assertion_id,
+                "provenance_commitment": entry["provenance_commitment"],
+                "envelope": dict(envelope),
+            }
+        )
+
+    closed = {
+        "schema": "convmem.strict-provenance-context.v2",
+        "schema_semantics": schema_semantics_out,
+        "policies": policies_out,
+        "recipes": recipes_out,
+        "verified_channels": channels_out,
+        "registered_assertions": registered_out,
+        "grounding_sha256": grounding_sha,
+        "context_payload_sha256": provenance_context["context_payload_sha256"],
+    }
+    payload = {k: v for k, v in closed.items() if k != "context_payload_sha256"}
+    digest = sha256_digest(strict_canonical_bytes(payload))
+    if provenance_context["context_payload_sha256"] != digest:
+        raise StrictGroundingError("context_payload_mismatch")
+    closed["context_payload_sha256"] = digest
+
+    # Recompute entry commitments against context-fixed schema semantics only.
+    schema_map = {
+        (e["schema_version"], e["binding_version"]): _b64_decode(e["semantic_bytes_b64"])
+        for e in schema_semantics_out
+    }
+    for entry in closed["registered_assertions"]:
+        recomputed = _envelope_commitment(
+            entry["envelope"], schema_semantics=schema_map
+        )
+        claimed = entry["provenance_commitment"]
+        # v2 provenance-context digest fields are labeled sha256 values. Do not
+        # normalize a bare registered commitment — that would return an object
+        # whose context hash no longer matches its bytes.
+        if not isinstance(claimed, str) or not _SHA_RE.fullmatch(claimed):
+            raise StrictGroundingError("registered_provenance_commitment")
+        if claimed != recomputed:
+            raise StrictGroundingError("registered_commitment_mismatch")
+    return closed
+
+
+def reconstruct_provenance_registry(
+    provenance_context: Mapping[str, Any],
+) -> tuple[ProvenanceRegistry, Mapping[tuple[str, str], bytes]]:
+    """Build ProvenanceRegistry from a validated provenance-context inventory.
+
+    Defaults are cleared so only context-fixed schema semantics, policies,
+    recipes, channels, and assertions participate. Envelope content alone is
+    never authority; missing parents remain incomplete under verify().
+    """
+
+    validated = validate_provenance_context(provenance_context)
+
+    registry = ProvenanceRegistry()
+    with registry._lock:  # noqa: SLF001 — reconstruct over empty context inventory
+        registry._policies.clear()
+        registry._recipes.clear()
+        registry._schema_semantics.clear()
+        registry._verified_channels.clear()
+        registry._records.clear()
+        registry._publish_snapshot()
+
+    schema_map: dict[tuple[str, str], bytes] = {}
+    for entry in validated["schema_semantics"]:
+        raw = _b64_decode(entry["semantic_bytes_b64"])
+        schema_map[(entry["schema_version"], entry["binding_version"])] = raw
+        registry.register_schema_semantics(
+            entry["schema_version"], entry["binding_version"], raw
+        )
+
+    for policy in validated["policies"]:
+        rules: list[TransformerRule] = []
+        for rule in policy["rules"]:
+            artifact = rule["artifact_sha256"]
+            artifact_bare = (
+                None if artifact is None else _bare_hex(artifact, field="artifact_sha256")
+            )
+            rules.append(
+                TransformerRule(
+                    transformer_class=rule["transformer_class"],
+                    transformer_identity=rule["transformer_identity"],
+                    transformer_version=rule["transformer_version"],
+                    recipe_id=rule["recipe_id"],
+                    cap=rule["cap"],
+                    preservation_contract=rule["preservation_contract"],
+                    artifact_sha256=artifact_bare,
+                )
+            )
+        registry.register_policy(
+            policy["policy_version"],
+            _b64_decode(policy["semantic_bytes_b64"]),
+            rules=tuple(rules),
+        )
+
+    for recipe in validated["recipes"]:
+        registry.register_recipe(
+            recipe["recipe_id"], _b64_decode(recipe["recipe_bytes_b64"])
+        )
+
+    for channel in validated["verified_channels"]:
+        registry._register_monitor_verified_channel(  # noqa: SLF001
+            origin_class=channel["origin_class"],
+            channel_class=channel["channel_class"],
+            channel_locator=channel["channel_locator"],
+            channel_evidence_sha256=_bare_hex(
+                channel["channel_evidence_sha256"], field="channel_evidence_sha256"
+            ),
+        )
+
+    # Store assertions without requiring recursive verify at import time so a
+    # missing parent yields incomplete (not silent overwrite). Duplicate IDs
+    # already rejected during validate_provenance_context.
+    for entry in validated["registered_assertions"]:
+        registry._store_record(  # noqa: SLF001
+            entry["envelope"], schema_semantics=schema_map
+        )
+        stored = registry.get(entry["assertion_id"])
+        if stored is None:
+            raise StrictGroundingError("registered_store_missing")
+        expected = _bare_hex(
+            entry["provenance_commitment"], field="registered_provenance_commitment"
+        )
+        if stored.commitment != expected:
+            raise StrictGroundingError("registered_commitment_mismatch")
+
+    return registry, schema_map
+
+
+def _derive_transformer_cap(
+    envelope: Mapping[str, Any],
+    *,
+    registry: ProvenanceRegistry,
+) -> str:
+    """Derive transformer_cap from context-fixed policy/rule + envelope only.
+
+    Callers cannot select or upgrade the cap. Receipt shape is never authority.
+    """
+
+    version = envelope.get("provenance_policy_version")
+    if not isinstance(version, str) or not version:
+        return "untrusted"
+    try:
+        with registry.pin() as pin:
+            policy = pin.snapshot.policies.get(version)
+        if policy is None:
+            return "untrusted"
+        return policy.transformer_cap(envelope)
+    except Exception:  # noqa: BLE001
+        return "untrusted"
+
+
+def _registered_ancestry_envelopes(
+    assertion_id: str,
+    registered_by_id: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Mapping[str, Any]]:
+    """Full recursively registered ancestry closure for one assertion."""
+
+    out: dict[str, Mapping[str, Any]] = {}
+    stack = [assertion_id]
+    seen: set[str] = set()
+    while stack:
+        current = stack.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        entry = registered_by_id.get(current)
+        if entry is None:
+            continue
+        envelope = entry["envelope"]
+        if not isinstance(envelope, Mapping):
+            raise StrictGroundingError("registered_envelope_type")
+        out[current] = envelope
+        for binding in envelope.get("input_bindings") or []:
+            if not isinstance(binding, Mapping):
+                continue
+            parent = binding.get("parent_assertion_id")
+            if isinstance(parent, str) and parent:
+                stack.append(parent)
+    return out
+
+
+def _assert_closed_document_coverage(
+    *,
+    grounding: Mapping[str, Any],
+    envelopes: Mapping[str, Mapping[str, Any]],
+    issuer_inventory: Mapping[str, bytes] | None,
+    allowed_issuer_ids: set[str],
+    allowed_source_registration_ids: set[str],
+    capture_issuers: Sequence[CaptureIssuer] | None,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None,
+) -> None:
+    """Every supplied witness must match some registered assertion (no orphans).
+
+    Does not collapse per-assertion qualification into one shared tuple — it only
+    enforces closed-document coverage across the full registered inventory.
+    """
+
+    validated = validate_grounding_document(grounding)
+    if issuer_inventory is not None:
+        for receipt in validated["receipts"]:
+            authenticate_receipt(
+                receipt,
+                inventory_bytes=issuer_inventory,
+                allowed_issuer_ids=allowed_issuer_ids,
+                allowed_source_registration_ids=allowed_source_registration_ids,
+                capture_issuers=capture_issuers,
+            )
+
+    receipt_by_ref = _receipt_index(validated)
+    used_roots: set[int] = set()
+    used_edges: set[int] = set()
+    used_outputs: set[int] = set()
+    used_receipts: set[str] = set()
+
+    for env in envelopes.values():
+        _verify_assertion_grounding(
+            grounding=validated,
+            envelope=env,
+            receipt_by_ref=receipt_by_ref,
+            issuer_inventory=issuer_inventory,
+            allowed_issuer_ids=allowed_issuer_ids,
+            allowed_source_registration_ids=allowed_source_registration_ids,
+            capture_issuers=capture_issuers,
+            expected_source_payload_sha256=None,
+            used_roots=used_roots,
+            used_edges=used_edges,
+            used_outputs=used_outputs,
+            used_receipts=used_receipts,
+            schema_semantics=schema_semantics,
+        )
+
+    if len(used_roots) != len(validated["roots"]):
+        raise StrictGroundingError("root_unused")
+    if len(used_edges) != len(validated["edges"]):
+        raise StrictGroundingError("edge_unused")
+    if len(used_outputs) != len(validated["outputs"]):
+        raise StrictGroundingError("output_unused")
+    if len(used_receipts) != len(validated["receipts"]):
+        raise StrictGroundingError("receipt_unused")
+
+
+def qualify_assertions(
+    *,
+    grounding: Mapping[str, Any] | None,
+    provenance_context: Mapping[str, Any],
+    issuer_inventory: Mapping[str, bytes] | None = None,
+    allowed_issuer_ids: set[str] | None = None,
+    allowed_source_registration_ids: set[str] | None = None,
+    capture_issuers: Sequence[CaptureIssuer] | None = None,
+    original_qualifications: Mapping[str, Mapping[str, str]] | None = None,
+    require_complete: bool = False,
+) -> dict[str, QualificationTuple]:
+    """Freeze one QualificationTuple per registered assertion at admission context.
+
+    Does not copy one aggregate tuple onto every record. Homogeneous capture is
+    enforced per assertion ancestry closure; late evidence cannot upgrade a frozen
+    original. transformer_cap is derived from context-fixed policy only.
+    """
+
+    validated_ctx = validate_provenance_context(provenance_context)
+    registry, schema_map = reconstruct_provenance_registry(validated_ctx)
+    registered_by_id = {
+        entry["assertion_id"]: entry for entry in validated_ctx["registered_assertions"]
+    }
+    originals = original_qualifications or {}
+
+    allowed_issuers = allowed_issuer_ids or set()
+    allowed_sources = allowed_source_registration_ids or set()
+    if capture_issuers is not None:
+        allowed_issuers = allowed_issuers | {i.issuer_id for i in capture_issuers}
+        allowed_sources = allowed_sources | {
+            sid for i in capture_issuers for sid in i.source_registration_ids
+        }
+
+    if grounding is not None:
+        _assert_closed_document_coverage(
+            grounding=grounding,
+            envelopes={aid: e["envelope"] for aid, e in registered_by_id.items()},
+            issuer_inventory=issuer_inventory,
+            allowed_issuer_ids=allowed_issuers,
+            allowed_source_registration_ids=allowed_sources,
+            capture_issuers=capture_issuers,
+            schema_semantics=schema_map,
+        )
+
+    out: dict[str, QualificationTuple] = {}
+    for entry in validated_ctx["registered_assertions"]:
+        assertion_id = entry["assertion_id"]
+        ancestry = _registered_ancestry_envelopes(assertion_id, registered_by_id)
+        derived_cap = _derive_transformer_cap(entry["envelope"], registry=registry)
+        out[assertion_id] = qualify_grounding(
+            grounding=grounding,
+            envelope=entry["envelope"],
+            envelopes=ancestry,
+            issuer_inventory=issuer_inventory,
+            allowed_issuer_ids=allowed_issuer_ids,
+            allowed_source_registration_ids=allowed_source_registration_ids,
+            capture_issuers=capture_issuers,
+            transformer_cap=derived_cap,
+            require_complete=require_complete,
+            original_qualification=originals.get(assertion_id),
+            registry=registry,
+            schema_semantics=schema_map,
+            orphan_check=False,
+        )
+    return out
+
+
 def qualify_grounding(
     *,
     grounding: Mapping[str, Any] | None,
@@ -854,12 +1513,17 @@ def qualify_grounding(
     transformer_cap: str = "untrusted",
     require_complete: bool = False,
     original_qualification: Mapping[str, str] | None = None,
+    registry: ProvenanceRegistry | None = None,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
+    orphan_check: bool = True,
 ) -> QualificationTuple:
     """Compose legacy verification with byte/capture grounding.
 
     Missing evidence weakens only where the parent allows. Contradictory supplied
     evidence rejects. Original admission qualification is immutable; late evidence
-    never upgrades it.
+    never upgrades it. When a reconstructed registry is supplied, transformer_cap
+    is derived from that context-fixed policy and the focus envelope — callers
+    cannot upgrade it.
     """
 
     if original_qualification is not None:
@@ -881,6 +1545,9 @@ def qualify_grounding(
             transformer_cap=transformer_cap,
             require_complete=False,
             original_qualification=None,
+            registry=registry,
+            schema_semantics=schema_semantics,
+            orphan_check=orphan_check,
         )
         order_commitments = {"incomplete": 0, "valid": 1}
         order_bytes = {"missing": 0, "complete": 1}
@@ -899,24 +1566,40 @@ def qualify_grounding(
             raise StrictGroundingError("qualification_immutable")
         return frozen
 
-    cap = transformer_cap if transformer_cap in {"trusted", "agent", "untrusted"} else "untrusted"
+    if registry is not None and envelope is not None:
+        cap = _derive_transformer_cap(envelope, registry=registry)
+    else:
+        cap = (
+            transformer_cap
+            if transformer_cap in {"trusted", "agent", "untrusted"}
+            else "untrusted"
+        )
 
     envelope_map: dict[str, Mapping[str, Any]] = {}
     if envelopes:
         for key, value in envelopes.items():
             if not isinstance(key, str) or not isinstance(value, Mapping):
                 raise StrictGroundingError("envelopes_type")
+            if key in envelope_map:
+                raise StrictGroundingError("envelopes_duplicate")
             envelope_map[key] = value
     if envelope is not None:
         aid = envelope.get("assertion_id")
         if not isinstance(aid, str) or not aid:
             raise StrictGroundingError("envelope_assertion_id")
+        # Ancestry maps intentionally include the focus assertion; overlay is
+        # identity, not a duplicate registration.
         envelope_map[aid] = envelope
 
     commitments = "incomplete"
     if envelope_map:
         statuses = [
-            verify_legacy_commitments(envelope=env) for env in envelope_map.values()
+            verify_legacy_commitments(
+                envelope=env,
+                registry=registry,
+                schema_semantics=schema_semantics,
+            )
+            for env in envelope_map.values()
         ]
         commitments = "valid" if statuses and all(s == "valid" for s in statuses) else "incomplete"
         if expected_source_payload_sha256 is not None and envelope is not None:
@@ -994,35 +1677,45 @@ def qualify_grounding(
             used_edges=used_edges,
             used_outputs=used_outputs,
             used_receipts=used_receipts,
+            schema_semantics=schema_semantics,
         )
         if not complete:
             all_complete = False
         if capture_class is not None:
             capture_classes.add(capture_class)
 
-    # Reject dangling / unused / orphan witness claims against the closed object.
-    if len(used_roots) != len(validated["roots"]):
-        raise StrictGroundingError("root_unused")
-    if len(used_edges) != len(validated["edges"]):
-        raise StrictGroundingError("edge_unused")
-    if len(used_outputs) != len(validated["outputs"]):
-        raise StrictGroundingError("output_unused")
-    if len(used_receipts) != len(validated["receipts"]):
-        raise StrictGroundingError("receipt_unused")
+    if orphan_check:
+        # Reject dangling / unused / orphan witness claims against the closed object.
+        if len(used_roots) != len(validated["roots"]):
+            raise StrictGroundingError("root_unused")
+        if len(used_edges) != len(validated["edges"]):
+            raise StrictGroundingError("edge_unused")
+        if len(used_outputs) != len(validated["outputs"]):
+            raise StrictGroundingError("output_unused")
+        if len(used_receipts) != len(validated["receipts"]):
+            raise StrictGroundingError("receipt_unused")
 
     if all_complete and commitments == "valid":
         byte_grounding = "complete"
     else:
         byte_grounding = "missing"
 
+    # Capture stays unattested unless byte ancestry is complete, legacy
+    # commitments are valid, and exactly one authenticated class is present.
+    # Absent registered parents yield incomplete commitments and must not
+    # advertise a capture class from the child's witnesses alone.
     if issuer_inventory is None:
         capture = "unattested"
-    elif not capture_classes:
-        capture = "unattested"
-    elif len(capture_classes) != 1:
+    elif (
+        all_complete
+        and commitments == "valid"
+        and len(capture_classes) == 1
+    ):
+        capture = next(iter(capture_classes))
+    elif all_complete and capture_classes and len(capture_classes) != 1:
         raise StrictGroundingError("capture_ancestry_mixed")
     else:
-        capture = next(iter(capture_classes))
+        capture = "unattested"
 
     result = QualificationTuple(commitments, byte_grounding, capture, cap)
     if require_complete and (
@@ -1037,24 +1730,161 @@ def qualify_grounding(
 def grounding_entry_hash(kind: str, entry: Mapping[str, Any]) -> str:
     """Tagged hash for added_grounding_refs."""
 
+    if kind not in {"blob", "root", "edge", "output", "receipt"}:
+        raise StrictGroundingError("grounding_entry_kind")
+    if not isinstance(entry, Mapping):
+        raise StrictGroundingError("grounding_entry_type")
     return sha256_digest(strict_canonical_bytes({"kind": kind, "entry": dict(entry)}))
+
+
+_GROUNDING_KIND_ARRAYS: tuple[tuple[str, str], ...] = (
+    ("blob", "blobs"),
+    ("root", "roots"),
+    ("edge", "edges"),
+    ("output", "outputs"),
+    ("receipt", "receipts"),
+)
+
+
+def grounding_ref_set(grounding: Mapping[str, Any]) -> dict[str, bytes]:
+    """Map tagged grounding-ref digest -> exact canonical entry bytes."""
+
+    validated = validate_grounding_document(grounding)
+    out: dict[str, bytes] = {}
+    for kind, array_name in _GROUNDING_KIND_ARRAYS:
+        for entry in validated[array_name]:
+            ref = grounding_entry_hash(kind, entry)
+            raw = strict_canonical_bytes(dict(entry))
+            if ref in out and out[ref] != raw:
+                raise StrictGroundingError("grounding_ref_collision")
+            out[ref] = raw
+    return out
+
+
+def assert_cumulative_grounding(
+    parent: Mapping[str, Any] | None,
+    child: Mapping[str, Any],
+) -> None:
+    """Child must retain every parent grounding entry byte-for-byte (append-only)."""
+
+    if parent is None:
+        validate_grounding_document(child)
+        return
+    parent_refs = grounding_ref_set(parent)
+    child_refs = grounding_ref_set(child)
+    for ref, raw in parent_refs.items():
+        if ref not in child_refs:
+            raise StrictGroundingError("grounding_cumulative_deleted")
+        if child_refs[ref] != raw:
+            raise StrictGroundingError("grounding_cumulative_mutated")
+
+
+def _entry_canonical_map(
+    entries: Sequence[Any], *, key_fields: Sequence[str], label: str
+) -> dict[tuple[Any, ...], bytes]:
+    out: dict[tuple[Any, ...], bytes] = {}
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            raise StrictGroundingError(f"{label}_entry_type")
+        key = tuple(entry[f] for f in key_fields)
+        raw = strict_canonical_bytes(dict(entry))
+        if key in out:
+            raise StrictGroundingError(f"{label}_duplicate")
+        out[key] = raw
+    return out
+
+
+def assert_cumulative_provenance_context(
+    parent: Mapping[str, Any] | None,
+    child: Mapping[str, Any],
+) -> None:
+    """Child context inventories must retain every parent entry byte-for-byte."""
+
+    child_closed = validate_provenance_context(child)
+    if parent is None:
+        return
+    parent_closed = validate_provenance_context(parent)
+    checks: tuple[tuple[str, Sequence[str]], ...] = (
+        ("schema_semantics", ("schema_version", "binding_version")),
+        ("policies", ("policy_version",)),
+        ("recipes", ("recipe_id",)),
+        (
+            "verified_channels",
+            (
+                "origin_class",
+                "channel_class",
+                "channel_locator",
+                "channel_evidence_sha256",
+            ),
+        ),
+        ("registered_assertions", ("assertion_id",)),
+    )
+    for array_name, key_fields in checks:
+        parent_map = _entry_canonical_map(
+            parent_closed[array_name], key_fields=key_fields, label=array_name
+        )
+        child_map = _entry_canonical_map(
+            child_closed[array_name], key_fields=key_fields, label=array_name
+        )
+        for key, raw in parent_map.items():
+            if key not in child_map:
+                raise StrictGroundingError(f"{array_name}_cumulative_deleted")
+            if child_map[key] != raw:
+                raise StrictGroundingError(f"{array_name}_cumulative_mutated")
+
+
+def compute_added_grounding_refs(
+    parent: Mapping[str, Any] | None,
+    child: Mapping[str, Any],
+) -> list[str]:
+    """Sorted unique set-difference of tagged grounding entry hashes."""
+
+    child_refs = set(grounding_ref_set(child))
+    parent_refs = set(grounding_ref_set(parent)) if parent is not None else set()
+    added = sorted(child_refs - parent_refs)
+    return added
+
+
+def compute_added_provenance_ids(
+    parent: Mapping[str, Any] | None,
+    child: Mapping[str, Any],
+) -> list[str]:
+    """Sorted unique envelope UUID set-difference (not all registered IDs)."""
+
+    child_closed = validate_provenance_context(child)
+    child_ids = {e["assertion_id"] for e in child_closed["registered_assertions"]}
+    if parent is None:
+        return sorted(child_ids)
+    parent_closed = validate_provenance_context(parent)
+    parent_ids = {e["assertion_id"] for e in parent_closed["registered_assertions"]}
+    return sorted(child_ids - parent_ids)
 
 
 __all__ = [
     "QualificationTuple",
     "StrictGroundingError",
+    "assert_cumulative_grounding",
+    "assert_cumulative_provenance_context",
     "authenticate_receipt",
+    "compute_added_grounding_refs",
+    "compute_added_provenance_ids",
     "compute_input_bindings_sha256",
     "compute_submitted_views_sha256",
     "derive_origin_assurance",
     "derive_provenance_basis",
     "grounding_entry_hash",
+    "grounding_ref_set",
+    "load_bound_issuer_inventories",
     "load_issuer_receipt_inventory",
+    "merge_issuer_receipt_inventories",
+    "qualify_assertions",
     "qualify_grounding",
     "receipt_ref_for",
+    "reconstruct_provenance_registry",
     "strict_canonical_bytes",
     "tagged_bindings_for_hash",
     "validate_grounding_document",
+    "validate_provenance_context",
     "validate_receipt_object",
     "verify_legacy_commitments",
 ]
