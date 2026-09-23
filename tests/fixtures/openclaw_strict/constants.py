@@ -174,6 +174,46 @@ LEGACY_DESELECTS = (
     "tests/test_agent_run_ledger.py::test_q4_hook_two_missing_id_starts_same_cwd",
 )
 
+# Exact closed MCP tool inventory (Architecture §8 / Execution §9).
+STRICT_TOOL_NAMES = ("search", "unresolved", "related")
+
+# M7 evidence-class labels — never upgrade FAKE/STATIC/DISPOSABLE to REAL success.
+EVIDENCE_LABELS = ("STATIC", "FAKE", "DISPOSABLE_KERNEL", "REAL")
+
+# Disposable fixture evidence paths (host fixture_root/evidence ↔ /fixture/evidence).
+EVIDENCE_MANIFEST_REL = "evidence/fixture-manifest.json"
+EVIDENCE_AUDIT_REL = "evidence/bounded-audit-evidence.json"
+EVIDENCE_SUITE_RESULTS_REL = "evidence/suite_results.json"
+
+# Exact generated relative paths excluded from fixture/source inventories.
+GENERATED_EVIDENCE_FIXTURE_RELS = frozenset(
+    {
+        "fixture-manifest.json",
+        "suite_results.json",
+        "evidence/fixture-manifest.json",
+        "evidence/bounded-audit-evidence.json",
+        "evidence/suite_results.json",
+    }
+)
+GENERATED_EVIDENCE_SOURCE_RELS = frozenset(
+    {
+        "tests/fixtures/openclaw_strict/fixture-manifest.json",
+        "tests/fixtures/openclaw_strict/suite_results.json",
+        "tests/fixtures/openclaw_strict/evidence/fixture-manifest.json",
+        "tests/fixtures/openclaw_strict/evidence/bounded-audit-evidence.json",
+        "tests/fixtures/openclaw_strict/evidence/suite_results.json",
+    }
+)
+
+# Protected CORE helpers for M7 protected-byte proof (Architecture §6.5.9 CORE).
+PROTECTED_BYTE_PROOF_PATHS = (
+    "canonical_json.py",
+    "provenance.py",
+    "provenance_binding.py",
+    "domains.py",
+    "requirements.txt",
+)
+
 INTEGRATION_IMPORT_SENTINELS = (
     "openclaw_activation_controller",
     "openclaw_activation_supervisor",

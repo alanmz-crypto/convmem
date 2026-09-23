@@ -1030,6 +1030,8 @@ def test_case58_whole_case_not_passed_declared_future_reds():
     assert isinstance(manifest, dict)
     assert isinstance(source_inventory, list)
     assert manifest["source_tree_sha256"] == fm.hash_inventory_entries(source_inventory)
+
+
 def test_m4_fixture_manifest_independent_controls_and_exclusions(tmp_path: Path):
     """Missing/extra/duplicate/symlink/path-escape; regen identity; exclusion exactness."""
 
@@ -1056,10 +1058,16 @@ def test_m4_fixture_manifest_independent_controls_and_exclusions(tmp_path: Path)
     (nested / "fixture-manifest.json").write_text("tracked-lookalike\n", encoding="utf-8")
     (lookalike / "suite_results.json").write_text("generated-root\n", encoding="utf-8")
     (lookalike / "helper.py").write_text("x\n", encoding="utf-8")
+    evidence = lookalike / "evidence"
+    evidence.mkdir()
+    (evidence / "bounded-audit-evidence.json").write_text("generated-audit\n", encoding="utf-8")
+    (evidence / "suite_results.json").write_text("generated-suite\n", encoding="utf-8")
     entries = fm.inventory_fixture_artifacts(lookalike)
     paths = {e["path"] for e in entries}
     assert "tests/fixtures/openclaw_strict/protocol_fixture/fixture-manifest.json" in paths
     assert "tests/fixtures/openclaw_strict/suite_results.json" not in paths
+    assert "tests/fixtures/openclaw_strict/evidence/bounded-audit-evidence.json" not in paths
+    assert "tests/fixtures/openclaw_strict/evidence/suite_results.json" not in paths
     assert "tests/fixtures/openclaw_strict/helper.py" in paths
 
     # Symlink forbidden.
@@ -1092,3 +1100,231 @@ def test_m4_fixture_manifest_independent_controls_and_exclusions(tmp_path: Path)
     manifest2, src_inv2 = fm.emit_complete_manifest(root=Path("."), source_root=Path("."))
     assert manifest == manifest2
     assert src_inv == src_inv2
+
+
+def test_m7_canonical_audit_arrays_and_inventories():
+    """M7: dry-collect canonical arrays, exact tools/suites, no broad discovery."""
+    import audit_evidence as ae
+
+    assert ae.exact_legacy_exclusions() == list(oc_constants.LEGACY_DESELECTS)
+    assert len(ae.exact_legacy_exclusions()) == 4
+    assert ae.exact_tool_inventory() == {
+        "tools": ["search", "unresolved", "related"],
+        "resources": [],
+        "resource_templates": [],
+    }
+    assert ae.exact_tool_inventory()["tools"] == list(oc_constants.STRICT_TOOL_NAMES)
+    suites = ae.exact_selected_suites()
+    assert len(suites) == 3
+    assert [s["name"] for s in suites] == [
+        "strict_python",
+        "connector_node",
+        "legacy_python",
+    ]
+    discovery = ae.suite_discovery_contract()
+    assert discovery["full_repository_discovery"] is False
+    assert discovery["mode"] == "exact_selectors"
+    # No broad discovery tokens in frozen argv.
+    for suite in suites:
+        joined = " ".join(suite["argv"])
+        assert " tests " not in f" {joined} "
+        assert "-k" not in suite["argv"]
+        assert "--ignore" not in suite["argv"]
+        assert suite["argv"].count("pytest") <= 1
+    legacy = next(s for s in suites if s["name"] == "legacy_python")
+    for node in oc_constants.LEGACY_DESELECTS:
+        assert f"--deselect={node}" in legacy["argv"]
+    files = ae.exact_selected_test_files()
+    assert files["strict_python"] == list(oc_constants.STRICT_PYTEST_FILES)
+    assert files["connector_node"] == [oc_constants.CONNECTOR_NODE_TEST]
+    assert files["legacy_python"] == list(oc_constants.LEGACY_PYTEST_FILES)
+
+    package = ae.build_audit_package(
+        plan_sha=oc_constants.SEMANTIC_PARENT_SHA,
+        source_commit="a" * 40,
+        source_tree_sha256="sha256:" + ("b" * 64),
+        test_runtime_tree_sha256=oc_constants.EXPECTED_TEST_RUNTIME_TREE_SHA256,
+        components=[
+            {"name": name, "sha256": "sha256:" + (c * 64)}
+            for name, c in zip(
+                ("builder", "strict_server", "supervisor", "controller", "plugin"),
+                "cdefg",
+            )
+        ],
+        suite_results=[
+            {
+                "name": "strict_python",
+                "returncode": 0,
+                "elapsed_sec": 1.0,
+                "combined_output_bytes": 10,
+                "max_tmp_bytes": 0,
+                "tmp_sample_interval_sec": 1.0,
+                "killed_reason": None,
+            }
+        ],
+        negative_controls=[
+            {
+                "control": "production_fake",
+                "status": "FAIL_AS_REQUIRED",
+                "independent_failure_reason": "production_fake_selector:x",
+            }
+        ],
+        changed_files=["tests/fixtures/openclaw_strict/audit_evidence.py"],
+        protected_byte_proof=[
+            {
+                "path": "provenance.py",
+                "unchanged": True,
+                "status": "compared",
+                "baseline_sha256": "sha256:" + ("1" * 64),
+                "source_sha256": "sha256:" + ("1" * 64),
+            }
+        ],
+        outer_returncode=0,
+        preflight_ok=True,
+    )
+    ae.validate_audit_package(package)
+    assert package["plan_sha"] == oc_constants.SEMANTIC_PARENT_SHA
+    assert package["source_commit"] == "a" * 40
+    assert package["legacy_exclusions"] == list(oc_constants.LEGACY_DESELECTS)
+    assert package["authority"]["evidence_is_not_approval"] is True
+    assert package["authority"]["evidence_is_not_qualification"] is True
+    assert package["authority"]["evidence_is_not_promotion"] is True
+    assert package["outcomes"]["claims_live_readiness"] is False
+    labels = {o["label"] for o in package["observations"]}
+    assert labels <= set(oc_constants.EVIDENCE_LABELS)
+    fake = [o for o in package["observations"] if o["id"] == "negative_control:production_fake"]
+    assert fake and fake[0]["label"] == "FAKE"
+    real = [o for o in package["observations"] if o["id"] == "openclaw_real_runtime"]
+    assert real and real[0]["label"] == "REAL"
+    assert real[0]["outcome"] == "NOT_EXECUTED_BLOCKED"
+    # Self-hash regenerates.
+    again = ae.compute_evidence_payload_sha256(package)
+    assert again == package["evidence_payload_sha256"]
+
+
+def test_m7_label_upgrade_and_closed_cli_forbidden():
+    """M7: refuse fake→REAL upgrade; closed runner CLI has no run-label."""
+    import audit_evidence as ae
+    import run_isolated as ri
+
+    try:
+        ae.label_observation(
+            observation_id="x",
+            label="FAKE",
+            outcome="REAL_PASS",
+        )
+        raise AssertionError("label_upgrade_accepted")
+    except ValueError as exc:
+        assert "label_upgrade_forbidden" in str(exc)
+    try:
+        ae.label_observation(
+            observation_id="y",
+            label="REAL",
+            outcome="PASS",
+        )
+        raise AssertionError("real_pass_accepted")
+    except ValueError as exc:
+        assert "real_pass_forbidden" in str(exc)
+
+    # Closed CLI: exactly four flags; no --run-label.
+    try:
+        ri._parse_args(
+            [
+                "--source-commit",
+                "a" * 40,
+                "--plan-sha",
+                oc_constants.SEMANTIC_PARENT_SHA,
+                "--runtime-root",
+                "/tmp",
+                "--suite",
+                "all",
+                "--run-label",
+                "x",
+            ]
+        )
+        raise AssertionError("run_label_cli_accepted")
+    except SystemExit:
+        pass
+    src = Path("tests/fixtures/openclaw_strict/run_isolated.py").read_text(encoding="utf-8")
+    assert "--run-label" not in src
+    assert "run_label_cli" in src  # explicit forbidden marker in evidence emit
+
+
+def test_m7_generated_path_hash_exclusion_and_read_nonmutation(tmp_path: Path):
+    """M7: generated evidence paths excluded from hashes; reads do not mutate."""
+    import audit_evidence as ae
+    import fixture_manifest as fm
+
+    tree = tmp_path / "fixture_tree"
+    tree.mkdir()
+    (tree / "helper.py").write_text("tracked\n", encoding="utf-8")
+    evidence = tree / "evidence"
+    evidence.mkdir()
+    audit_path = evidence / "bounded-audit-evidence.json"
+    audit_path.write_text('{"schema":"convmem.bounded-audit-evidence.v1"}\n', encoding="utf-8")
+    (evidence / "fixture-manifest.json").write_text("{}\n", encoding="utf-8")
+    (evidence / "suite_results.json").write_text("[]\n", encoding="utf-8")
+    (tree / "suite_results.json").write_text("[]\n", encoding="utf-8")
+
+    before = {
+        p: (p.stat().st_mtime_ns, p.stat().st_size, p.read_bytes())
+        for p in (
+            audit_path,
+            evidence / "fixture-manifest.json",
+            tree / "helper.py",
+        )
+    }
+    # Read-only inventory must not mutate files.
+    entries = fm.inventory_fixture_artifacts(tree)
+    paths = {e["path"] for e in entries}
+    assert "tests/fixtures/openclaw_strict/helper.py" in paths
+    assert "tests/fixtures/openclaw_strict/evidence/bounded-audit-evidence.json" not in paths
+    assert "tests/fixtures/openclaw_strict/evidence/fixture-manifest.json" not in paths
+    assert "tests/fixtures/openclaw_strict/evidence/suite_results.json" not in paths
+    assert "tests/fixtures/openclaw_strict/suite_results.json" not in paths
+    after = {
+        p: (p.stat().st_mtime_ns, p.stat().st_size, p.read_bytes())
+        for p in before
+    }
+    assert before == after
+
+    # Independent oracle walker agrees on exclusion.
+    import case58_oracle as oracle
+
+    ref = oracle.reference_fixture_artifact_walk(tree)
+    ref_paths = {e["path"] for e in ref}
+    assert "tests/fixtures/openclaw_strict/evidence/bounded-audit-evidence.json" not in ref_paths
+    assert ae.generated_paths_excluded_from_fixture_inventory() == (
+        oc_constants.GENERATED_EVIDENCE_FIXTURE_RELS
+    )
+    # Emit under disposable evidence only.
+    out_dir = tmp_path / "evidence"
+    package = ae.build_audit_package(
+        plan_sha=oc_constants.SEMANTIC_PARENT_SHA,
+        source_commit="c" * 40,
+        source_tree_sha256="sha256:" + ("d" * 64),
+        test_runtime_tree_sha256=oc_constants.EXPECTED_TEST_RUNTIME_TREE_SHA256,
+        components=[
+            {"name": name, "sha256": "sha256:" + ("e" * 64)}
+            for name in (
+                "builder",
+                "strict_server",
+                "supervisor",
+                "controller",
+                "plugin",
+            )
+        ],
+        suite_results=[],
+        negative_controls=[],
+        changed_files=[],
+        protected_byte_proof=[],
+        outer_returncode=None,
+        preflight_ok=False,
+    )
+    written = ae.emit_audit_package(out_dir, package)
+    assert written.parent == out_dir
+    assert written.name == "bounded-audit-evidence.json"
+    assert written.is_file()
+    # No write into source fixture tree from emit.
+    tracked_audit = Path("tests/fixtures/openclaw_strict/evidence/bounded-audit-evidence.json")
+    assert not tracked_audit.exists()

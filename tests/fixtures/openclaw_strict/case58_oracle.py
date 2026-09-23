@@ -116,11 +116,14 @@ def independent_tree_digest(entries: list[dict[str, str]]) -> str:
     return f"sha256:{hashlib.sha256(raw).hexdigest()}"
 
 
+# Keep exact generated-path exclusions aligned with constants / fixture_manifest.
 _EXCLUDED_FIXTURE_RELS = frozenset(
     {
         "fixture-manifest.json",
         "suite_results.json",
         "evidence/fixture-manifest.json",
+        "evidence/bounded-audit-evidence.json",
+        "evidence/suite_results.json",
     }
 )
 _EXCLUDED_SOURCE_RELS = frozenset(
@@ -128,6 +131,8 @@ _EXCLUDED_SOURCE_RELS = frozenset(
         "tests/fixtures/openclaw_strict/fixture-manifest.json",
         "tests/fixtures/openclaw_strict/suite_results.json",
         "tests/fixtures/openclaw_strict/evidence/fixture-manifest.json",
+        "tests/fixtures/openclaw_strict/evidence/bounded-audit-evidence.json",
+        "tests/fixtures/openclaw_strict/evidence/suite_results.json",
     }
 )
 

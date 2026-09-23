@@ -21,6 +21,11 @@ if str(_FIXTURE_DIR) not in sys.path:
     sys.path.insert(0, str(_FIXTURE_DIR))
 
 from allowlist import assert_allowlist  # noqa: E402
+from audit_evidence import (  # noqa: E402
+    build_audit_package,
+    build_protected_byte_proof,
+    emit_audit_package,
+)
 from constants import (  # noqa: E402
     ALL_NEGATIVE_CONTROLS,
     CODE_BASELINE_SHA,
@@ -39,6 +44,7 @@ from constants import (  # noqa: E402
     HEX40_RE,
     INNER_ROLE_ENV,
     PREFLIGHT_OK_PATH,
+    PROTECTED_BYTE_PROOF_PATHS,
     SEMANTIC_PARENT_SHA,
     SUITE_WALL_DEADLINE_SEC,
 )
@@ -447,10 +453,11 @@ def outer_main(argv: list[str] | None = None) -> int:
     # evidence directory (host fixture_root/evidence ↔ /fixture/evidence) AFTER
     # fixture creation. Component + source digests both use the exact export —
     # never the dirty checkout.
+    evidence_dir = fixture / "evidence"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(evidence_dir, 0o700)
+    manifest: dict | None = None
     try:
-        evidence_dir = fixture / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        os.chmod(evidence_dir, 0o700)
         manifest, _src_inv = emit_complete_manifest(
             root=source_root,
             source_root=source_root,
@@ -497,11 +504,69 @@ def outer_main(argv: list[str] | None = None) -> int:
     if post["test_runtime_tree_sha256"] != prelaunch["test_runtime_tree_sha256"]:
         _die("runtime_digest_changed_after_run")
 
+    # M7: copy suite results into disposable evidence and emit canonical audit.
+    suite_results: list = []
+    suite_path = fixture / "suite_results.json"
+    if suite_path.is_file():
+        suite_results = json.loads(suite_path.read_text(encoding="utf-8"))
+        (evidence_dir / "suite_results.json").write_text(
+            suite_path.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+    protected_proof = build_protected_byte_proof(
+        repo=repo,
+        baseline=CODE_BASELINE_SHA,
+        source_root=source_root,
+        changed_files=changed,
+        protected_paths=list(PROTECTED_BYTE_PROOF_PATHS),
+    )
+    if manifest is not None:
+        audit = build_audit_package(
+            plan_sha=args.plan_sha,
+            source_commit=args.source_commit,
+            source_tree_sha256=manifest["source_tree_sha256"],
+            test_runtime_tree_sha256=prelaunch["test_runtime_tree_sha256"],
+            components=list(manifest["components"]),
+            suite_results=suite_results,
+            negative_controls=control_results,
+            changed_files=changed,
+            protected_byte_proof=protected_proof,
+            outer_returncode=proc.returncode,
+            preflight_ok=(fixture / "preflight_ok").exists(),
+        )
+        audit_path = emit_audit_package(evidence_dir, audit)
+        print(
+            json.dumps(
+                {
+                    "bounded_audit_evidence": "emitted_disposable",
+                    "evidence_path": str(audit_path),
+                    "evidence_payload_sha256": audit["evidence_payload_sha256"],
+                    "outer_collection_staging_hint": (
+                        f"/tmp/convmem-openclaw-evidence/{args.source_commit}/"
+                        "<run-label>/"
+                    ),
+                    "run_label_cli": "forbidden",
+                },
+                sort_keys=True,
+            )
+        )
+    else:
+        print(
+            json.dumps(
+                {
+                    "bounded_audit_evidence": "deferred_manifest_unavailable",
+                    "protected_byte_proof_entries": len(protected_proof),
+                },
+                sort_keys=True,
+            )
+        )
+
     print(
         json.dumps(
             {
                 "outer_returncode": proc.returncode,
                 "fixture_root": str(fixture),
+                "evidence_dir": str(evidence_dir),
                 "canary_root": str(canary_root),
                 "source_export": str(source_root),
                 "baseline": CODE_BASELINE_SHA,
@@ -512,6 +577,8 @@ def outer_main(argv: list[str] | None = None) -> int:
                 ],
                 "postlaunch_test_runtime_tree_sha256": post["test_runtime_tree_sha256"],
                 "negative_controls": control_results,
+                "changed_files": changed,
+                "protected_byte_proof": protected_proof,
                 "preflight_ok": (fixture / "preflight_ok").exists(),
             },
             sort_keys=True,
