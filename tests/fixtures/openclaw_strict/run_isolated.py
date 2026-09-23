@@ -424,17 +424,8 @@ def outer_main(argv: list[str] | None = None) -> int:
         )
     )
 
-    try:
-        emit_complete_manifest()
-    except ManifestNotAvailable as exc:
-        print(
-            json.dumps(
-                {"fixture_manifest": "not_available_t0a", "detail": str(exc)},
-                sort_keys=True,
-            )
-        )
-
     source_root = export_source_commit(repo, args.source_commit)
+
     bwrap = require_bwrap()
     canary_root = create_canary_root()
 
@@ -452,6 +443,41 @@ def outer_main(argv: list[str] | None = None) -> int:
         )
 
     fixture = create_fixture_root()
+    # Materialize canonical fixture-manifest.json under the disposable fixture
+    # evidence directory (host fixture_root/evidence ↔ /fixture/evidence) AFTER
+    # fixture creation. Component + source digests both use the exact export —
+    # never the dirty checkout.
+    try:
+        evidence_dir = fixture / "evidence"
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(evidence_dir, 0o700)
+        manifest, _src_inv = emit_complete_manifest(
+            root=source_root,
+            source_root=source_root,
+        )
+        evidence_path = evidence_dir / "fixture-manifest.json"
+        evidence_path.write_text(
+            json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        print(
+            json.dumps(
+                {
+                    "fixture_manifest": "emitted_disposable",
+                    "evidence_path": str(evidence_path),
+                    "source_export": str(source_root),
+                },
+                sort_keys=True,
+            )
+        )
+    except ManifestNotAvailable as exc:
+        print(
+            json.dumps(
+                {"fixture_manifest": "not_available_t0a", "detail": str(exc)},
+                sort_keys=True,
+            )
+        )
+
     canary_paths = [str(canary_root / "outside_a"), str(canary_root / "outside_b")]
     _prepare_fixture(
         fixture, canary_paths=canary_paths, frozen_entries=prelaunch["entries"]

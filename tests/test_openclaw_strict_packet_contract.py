@@ -186,12 +186,26 @@ def test_fixture_manifest_schema_exists_and_complete_emit_deferred():
     assert schema.is_file()
     data = json.loads(schema.read_text(encoding="utf-8"))
     assert data["$id"] == "convmem.strict-fixture-manifest.v1"
-    try:
-        emit_complete_manifest()
-    except ManifestNotAvailable:
-        pass
-    else:
-        raise AssertionError("complete manifest must be unavailable at T0a")
+    # M4: complete five-component manifest is available; source inventory returned alongside.
+    manifest, source_inventory = emit_complete_manifest()
+    assert manifest["schema"] == "convmem.strict-fixture-manifest.v1"
+    assert [c["name"] for c in manifest["components"]] == [
+        "builder",
+        "strict_server",
+        "supervisor",
+        "controller",
+        "plugin",
+    ]
+    assert isinstance(source_inventory, list) and source_inventory
+    assert all({"path", "mode", "sha256"} <= set(e) for e in source_inventory)
+    # artifacts are fixture-tree helpers — not the component membership set.
+    assert all(
+        e["path"].startswith("tests/fixtures/openclaw_strict/")
+        for e in manifest["artifacts"]
+    )
+    assert not any(
+        e["path"].endswith("fixture-manifest.json") for e in manifest["artifacts"]
+    )
 
 
 def test_plan_and_baseline_constants_frozen():
@@ -264,28 +278,27 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
 
 
 def test_m2_future_production_modules_remain_absent():
-    """M3 transition: T1–T2 modules present; only T3 server stays future-absent."""
+    """M4: T3 server present; future-production set is empty for Gate B."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import component_inventory as inv
 
-    m3_present = (
+    m4_present = (
         "bound_read_scope.py",
         "strict_grounding.py",
         "strict_evidence_state.py",
         "strict_projection.py",
         "strict_projection_publisher.py",
+        "openclaw_strict_server.py",
     )
-    for rel in m3_present:
-        assert Path(rel).is_file(), f"m3_module_absent:{rel}"
+    for rel in m4_present:
+        assert Path(rel).is_file(), f"m4_module_absent:{rel}"
     missing = inv.missing_future_production_members(Path("."))
     assert missing == sorted(inv.FUTURE_PRODUCTION_MEMBERS)
-    assert missing == ["openclaw_strict_server.py"]
-    for rel in inv.FUTURE_PRODUCTION_MEMBERS:
-        assert not Path(rel).exists(), f"unauthorized_stub_present:{rel}"
+    assert missing == []
 
 
 def test_m2_case58_literal_inventories_and_independent_walkers():
-    """Five membership sets + two independent walkers; M3 present, T3 still red."""
+    """Five membership sets + two independent walkers; M4 includes strict_server."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import component_inventory as inv
     import case58_oracle as oracle
@@ -295,8 +308,7 @@ def test_m2_case58_literal_inventories_and_independent_walkers():
     inventories = inv.build_component_inventories()
     assert set(inventories) == {"builder", "strict_server", "supervisor", "controller", "plugin"}
     root = Path(".")
-    # M3: builder + already-landed activation surfaces positively verified.
-    for name in ("builder", "supervisor", "controller", "plugin"):
+    for name in ("builder", "strict_server", "supervisor", "controller", "plugin"):
         ref_entries = inv.reference_walk_component(root, name)
         ora_entries = oracle.independent_walk(root, name)
         assert ref_entries == ora_entries
@@ -304,27 +316,33 @@ def test_m2_case58_literal_inventories_and_independent_walkers():
             ora_entries
         )
         assert inv.source_component_digest_available(root, name) is True
-    # T3 strict_server remains incomplete — both walkers reject independently.
-    try:
-        inv.reference_walk_component(root, "strict_server")
-    except inv.InventoryError as exc:
-        assert "missing_member" in str(exc)
-    else:
-        raise AssertionError("expected_missing_reject:strict_server")
-    try:
-        oracle.independent_walk(root, "strict_server")
-    except oracle.Case58OracleError as exc:
-        assert "missing" in str(exc)
-    else:
-        raise AssertionError("oracle_expected_missing:strict_server")
-    assert inv.source_component_digest_available(root, "strict_server") is False
-    # Complete five-hash source manifest remains future-step red (T3 absent).
-    try:
-        fm.emit_complete_manifest()
-    except fm.ManifestNotAvailable:
-        pass
-    else:
-        raise AssertionError("complete_source_manifest_must_remain_future_red")
+    # Complete five-hash source manifest is available once T3 lands.
+    manifest, source_inventory = fm.emit_complete_manifest()
+    assert isinstance(manifest, dict)
+    assert isinstance(source_inventory, list)
+    # Two independent inventory/hash paths (parent §6.5.8): fixture artifacts
+    # and source export — neither is a component-membership substitute.
+    # independent_* walkers must not call inventory_* (case58_oracle reference).
+    art_a, dig_a = fm.independent_fixture_artifact_digest(
+        Path("tests/fixtures/openclaw_strict")
+    )
+    art_b = fm.inventory_fixture_artifacts(Path("tests/fixtures/openclaw_strict"))
+    assert art_a == art_b == manifest["artifacts"]
+    assert dig_a == fm.hash_inventory_entries(manifest["artifacts"])
+    import case58_oracle as oracle2
+
+    assert oracle2.reference_fixture_artifact_walk(
+        Path("tests/fixtures/openclaw_strict")
+    ) == art_b
+    src_a, src_dig = fm.independent_source_tree_digest(Path("."))
+    assert src_a == source_inventory
+    assert src_dig == manifest["source_tree_sha256"]
+    assert src_dig != dig_a  # independent inventories must not collapse
+    # Prove independence of call graph: helpers are distinct callables.
+    assert (
+        fm.independent_fixture_artifact_digest.__code__.co_names
+        != fm.inventory_fixture_artifacts.__code__.co_names
+    )
 
 
 def test_m2_case58_plugin_mutation_and_symlink_controls():
@@ -957,7 +975,7 @@ def test_m2_protocol_fixture_specimens_present():
 
 
 def test_case58_whole_case_not_passed_declared_future_reds():
-    """Whole case 58 remains not passed: T3 strict_server keeps five-hash red."""
+    """Case 58 five-hash inventory is complete after M4; remaining reds are T4/T5 behavior."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import component_inventory as inv
     import fixture_manifest as fm
@@ -968,12 +986,72 @@ def test_case58_whole_case_not_passed_declared_future_reds():
         for name in ("builder", "strict_server", "supervisor", "controller", "plugin")
         if not inv.source_component_digest_available(root, name)
     ]
-    assert set(incomplete) == {"strict_server"}
-    for name in ("builder", "supervisor", "controller", "plugin"):
+    assert incomplete == []
+    for name in ("builder", "strict_server", "supervisor", "controller", "plugin"):
         assert inv.source_component_digest_available(root, name) is True
+    manifest, source_inventory = fm.emit_complete_manifest()
+    assert isinstance(manifest, dict)
+    assert isinstance(source_inventory, list)
+    assert manifest["source_tree_sha256"] == fm.hash_inventory_entries(source_inventory)
+def test_m4_fixture_manifest_independent_controls_and_exclusions(tmp_path: Path):
+    """Missing/extra/duplicate/symlink/path-escape; regen identity; exclusion exactness."""
+
+    import fixture_manifest as fm
+    import component_inventory as inv
+    from fixture_manifest import ManifestNotAvailable
+
+    # Component supplied-array controls remain independent.
+    inv.reject_supplied_duplicate_missing_extra_path_escape()
+
+    fixture_src = Path("tests/fixtures/openclaw_strict")
+    a1 = fm.inventory_fixture_artifacts(fixture_src)
+    a2 = fm.inventory_fixture_artifacts(fixture_src)
+    assert a1 == a2
+    d1 = fm.hash_inventory_entries(a1)
+    d2 = fm.hash_inventory_entries(a2)
+    assert d1 == d2
+
+    # Basename lookalike elsewhere must NOT be excluded from fixtures inventory.
+    lookalike = tmp_path / "tree"
+    lookalike.mkdir()
+    nested = lookalike / "protocol_fixture"
+    nested.mkdir()
+    (nested / "fixture-manifest.json").write_text("tracked-lookalike\n", encoding="utf-8")
+    (lookalike / "suite_results.json").write_text("generated-root\n", encoding="utf-8")
+    (lookalike / "helper.py").write_text("x\n", encoding="utf-8")
+    entries = fm.inventory_fixture_artifacts(lookalike)
+    paths = {e["path"] for e in entries}
+    assert "tests/fixtures/openclaw_strict/protocol_fixture/fixture-manifest.json" in paths
+    assert "tests/fixtures/openclaw_strict/suite_results.json" not in paths
+    assert "tests/fixtures/openclaw_strict/helper.py" in paths
+
+    # Symlink forbidden.
+    bad = tmp_path / "sym"
+    bad.mkdir()
+    target = bad / "real.py"
+    target.write_text("x\n", encoding="utf-8")
+    (bad / "link.py").symlink_to(target)
     try:
-        fm.emit_complete_manifest()
-        passed = True
-    except fm.ManifestNotAvailable:
-        passed = False
-    assert passed is False, "case58_complete_manifest_must_stay_red"
+        fm.inventory_fixture_artifacts(bad)
+        raise AssertionError("symlink_accepted")
+    except ValueError as exc:
+        assert "symlink" in str(exc)
+
+    # Component digest vs fixture artifact digest separation.
+    try:
+        manifest, src_inv = fm.emit_complete_manifest(root=Path("."), source_root=Path("."))
+    except ManifestNotAvailable:
+        # Inner-role / future members may be absent outside sealed runner — still
+        # prove artifact/source digesters are distinct callables.
+        art_entries, art_dig = fm.independent_fixture_artifact_digest(fixture_src)
+        src_entries, src_dig = fm.independent_source_tree_digest(Path("."))
+        assert art_dig != src_dig or art_entries != src_entries
+        assert callable(fm.inventory_fixture_artifacts)
+        assert callable(fm.inventory_source_export)
+        return
+    assert manifest["source_tree_sha256"] != manifest["components"][0]["sha256"]
+    assert isinstance(src_inv, list)
+    # Identical regeneration.
+    manifest2, src_inv2 = fm.emit_complete_manifest(root=Path("."), source_root=Path("."))
+    assert manifest == manifest2
+    assert src_inv == src_inv2

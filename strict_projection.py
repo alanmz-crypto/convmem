@@ -1,7 +1,4 @@
-"""Private cold qualification and public projection boundary (T1/T2 cold path only).
-
-T3 reader APIs (`open_public_projection`, `revoke_snapshot`, search CLI) intentionally
-absent so M4 remains red.
+"""Private cold qualification and public projection read surface (T1–T3).
 
 Parent recipes (cd9d2698 §6.5.4) — one exclusion/link rule each, no alternates:
 - closed object self-hash excludes ONLY its named ``*_payload_sha256`` field
@@ -12,25 +9,42 @@ Parent recipes (cd9d2698 §6.5.4) — one exclusion/link rule each, no alternate
 - canonical JSONL: one object + LF per line; records by assertion_id; dispositions
   by ``disp_`` address; rows hash is SHA-256 of those exact JSONL bytes
 - graph self-hash excludes only ``graph_payload_sha256``
+
+T3 public opening: ``open_published_generation`` (parent) / ``open_public_projection``
+(capability alias), ``StrictProjectionReader``, ``revoke_snapshot``, and the
+``read`` CLI. Public opening does not import the publisher.
 """
 
 from __future__ import annotations
 
+import argparse
+import fcntl
 import hashlib
 import json
+import os
+import re
+import secrets
 import stat
+import sys
+import time
 import unicodedata
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from types import MappingProxyType
+from typing import Any, Mapping, Sequence
 
 from bound_read_scope import (
     BoundReadScope,
     BoundScopeError,
     EffectiveSelectors,
+    OMITTED,
     ProjectBindingRegistry,
     authorize_row,
+    load_bound_read_scope,
+    load_project_binding_registry,
     owner_digest,
+    resolve_selectors,
     sha256_digest,
 )
 from strict_evidence_state import (
@@ -41,7 +55,9 @@ from strict_evidence_state import (
     build_citation_map,
     build_projection_rows_and_graph,
     disposition_id,
+    looks_like_public_ledger_handle,
     materialize_authority_records,
+    parse_public_ledger_handle,
     payload_sha256,
     reduce_complete_bound_state,
     semantic_sha256,
@@ -1848,11 +1864,1960 @@ def qualify_authority_generation(
     )
 
 
-# Intentionally no open_public_projection / revoke_snapshot / read CLI here (M4/T3).
+# ---------------------------------------------------------------------------
+# T3 — public opening, lexical reader, errors, CLI (Architecture §§6.5.4–6.5.5, 8, 11)
+# ---------------------------------------------------------------------------
+
+_ERROR_MESSAGES: Mapping[str, str] = {
+    "invalid_request": "The request is invalid.",
+    "identifier_query_not_supported": "Ledger handles are not supported in search.",
+    "scope_denied": "The requested evidence chain is unavailable in this scope.",
+    "snapshot_stale": "The evidence snapshot is unavailable.",
+    "response_too_large": "The evidence response exceeds the allowed size.",
+    "temporarily_unavailable": "The evidence service is temporarily unavailable.",
+    "internal_failure": "The evidence service failed.",
+}
+
+_RESPONSE_BYTE_CAP = 65536
+_DOC_CODEPOINT_CAP = 4096
+_QUERY_CODEPOINT_CAP = 2048
+_QUERY_TOKEN_CAP = 64
+_SEARCH_TOP_K_DEFAULT = 5
+_SEARCH_TOP_K_MAX = 10
+_UNRESOLVED_LIMIT_DEFAULT = 20
+_UNRESOLVED_LIMIT_MAX = 50
+_RELATED_NEIGHBORHOOD_CAP = 200
+_RELATED_PARENT_HOPS = 8
+_RELATED_DESCENDANT_DEPTH = 2
+_CURRENT_RANK_STATES = frozenset({"current", "approved", "conflict"})
+_STRICT_CONFIG_FIELDS = frozenset(
+    {
+        "schema",
+        "projection_root",
+        "max_projection_rows",
+        "max_projection_bytes",
+        "telemetry",
+    }
+)
+
+
+class StrictPublicError(Exception):
+    """Public tool/CLI error carrying a closed convmem.error.v1 payload."""
+
+    def __init__(self, code: str, *, correlation_id: str | None = None) -> None:
+        if code not in _ERROR_MESSAGES:
+            code = "internal_failure"
+        self.code = code
+        self.correlation_id = correlation_id or secrets.token_hex(16)
+        self.payload = {
+            "schema": "convmem.error.v1",
+            "error": {"code": self.code, "message": _ERROR_MESSAGES[self.code]},
+            "correlation_id": self.correlation_id,
+        }
+        super().__init__(self.code)
+
+
+# Module seal for QualifiedStrictGeneration — forge attempts never become live.
+_CAPABILITY_SEAL = object()
+# Token-keyed live set — never keyed by id() (id reuse after GC is unsafe).
+_LIVE_CAPABILITY_TOKENS: set[object] = set()
+
+_PUBLIC_FILE_MODE = 0o444
+_PUBLIC_DIR_MODE = 0o555
+_GRAPH_EDGE_KINDS = frozenset({"relates_to", "targets", "supersedes"})
+_RECORD_KINDS = frozenset({"observation", "decision", "verification"})
+_CAPTURE_VALUES = frozenset(
+    {"synthetic_fixture", "controlled_capture", "unattested"}
+)
+_PROVENANCE_QUAL_FIELDS = frozenset(
+    {"commitments", "byte_grounding", "capture", "transformer_cap"}
+)
+_CLI_BOOTTIME_BUDGET_NS = 10_000_000_000
+# Pin identity: (st_dev, st_ino, mode, content_sha256).
+OperatorPin = tuple[int, int, int, str]
+PublicPin = tuple[int, int, int, str]
+
+# Public-opening must never consult these private relative paths.
+_PRIVATE_RELATIVE_FORBIDDEN = frozenset(
+    {
+        "layout.json",
+        "control/enrollment.json",
+        "control/slot.json",
+        "control/semantic-contract.json",
+    }
+)
+_PRIVATE_BASENAMES_FORBIDDEN = frozenset(
+    {
+        "input.json",
+        "source-cutoff.json",
+        "records.jsonl",
+        "dispositions.jsonl",
+        "citation-map.json",
+        "provenance-context.json",
+        "grounding.json",
+    }
+)
+
+# Public mount members (Architecture §6.5.4) — only these are opened.
+_PUBLIC_MOUNT_FILES = (
+    "active/{lineage_id}.json",
+    "authority/{snapshot_id}/manifest.json",
+    "projection/{generation_id}/manifest.json",
+    "projection/{generation_id}/rows.jsonl",
+    "projection/{generation_id}/graph.json",
+    "locks/{lineage_id}.lock",
+)
+
+
+class QualifiedStrictGeneration:
+    """Module-sealed public read capability (Architecture §6.5.4).
+
+    Constructible only via ``_seal_qualified_generation`` from
+    ``open_published_generation``. Dataclass-style construction and public-field
+    mutation cannot mint a usable live capability.
+    """
+
+    __slots__ = (
+        "lineage_id",
+        "authority_seq",
+        "snapshot_id",
+        "authority_manifest_sha256",
+        "generation_id",
+        "projection_manifest_sha256",
+        "rows_sha256",
+        "graph_sha256",
+        "publication_payload_sha256",
+        "semantic_contract_sha256",
+        "as_of",
+        "expires_at",
+        "scope",
+        "registry",
+        "rows",
+        "graph",
+        "_revoked",
+        "_seal",
+        "_token",
+        "_frozen",
+        "_lock_fd",
+        "_lock_inode",
+        "_pinned_public",
+        "_operator_path_pins",
+        "_root",
+        "_publication_path",
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        raise TypeError(
+            "QualifiedStrictGeneration is module-sealed; use open_published_generation"
+        )
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("QualifiedStrictGeneration is immutable after mint")
+        object.__setattr__(self, name, value)
+
+    def __delattr__(self, name: str) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("QualifiedStrictGeneration is immutable after mint")
+        object.__delattr__(self, name)
+
+    @property
+    def is_revoked(self) -> bool:
+        return bool(getattr(self, "_revoked", True))
+
+    def mark_revoked(self) -> None:
+        if getattr(self, "_seal", None) is not _CAPABILITY_SEAL:
+            raise StrictProjectionError("forged_capability")
+        token = getattr(self, "_token", None)
+        object.__setattr__(self, "_frozen", False)
+        object.__setattr__(self, "_revoked", True)
+        if token is not None:
+            _LIVE_CAPABILITY_TOKENS.discard(token)
+        lock_fd = getattr(self, "_lock_fd", None)
+        if isinstance(lock_fd, int) and lock_fd >= 0:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            except OSError:
+                pass
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+            object.__setattr__(self, "_lock_fd", -1)
+        object.__setattr__(self, "_frozen", True)
+
+
+def _seal_qualified_generation(**fields: Any) -> QualifiedStrictGeneration:
+    """Internal factory — the only way to mint a live public capability."""
+
+    self = object.__new__(QualifiedStrictGeneration)
+    object.__setattr__(self, "_frozen", False)
+    token = object()
+    for key, value in fields.items():
+        object.__setattr__(self, key, value)
+    object.__setattr__(self, "_revoked", False)
+    object.__setattr__(self, "_seal", _CAPABILITY_SEAL)
+    object.__setattr__(self, "_token", token)
+    object.__setattr__(self, "_frozen", True)
+    _LIVE_CAPABILITY_TOKENS.add(token)
+    return self
+
+
+def _require_live_capability(generation: Any) -> QualifiedStrictGeneration:
+    if not isinstance(generation, QualifiedStrictGeneration):
+        raise StrictProjectionError("forged_capability")
+    if getattr(generation, "_seal", None) is not _CAPABILITY_SEAL:
+        raise StrictProjectionError("forged_capability")
+    token = getattr(generation, "_token", None)
+    if token is None or token not in _LIVE_CAPABILITY_TOKENS or generation.is_revoked:
+        raise StrictProjectionError("revoked_capability")
+    return generation
+
+
+@dataclass(frozen=True, slots=True)
+class StrictConfig:
+    projection_root: Path
+    max_projection_rows: int
+    max_projection_bytes: int
+
+
+def _public_owner_ok(st: os.stat_result) -> bool:
+    return st.st_uid in {0, os.geteuid()}
+
+
+def _require_trusted_parent_dir(path: Path) -> None:
+    parent = path.parent
+    if parent.is_symlink():
+        raise StrictProjectionError(f"parent_symlink:{path}")
+    if not parent.is_dir():
+        raise StrictProjectionError(f"parent_not_directory:{path}")
+    pst = parent.lstat()
+    if not stat.S_ISDIR(pst.st_mode):
+        raise StrictProjectionError(f"parent_not_directory:{path}")
+    # Parent must not be writable by untrusted OS users (other-write).
+    if pst.st_mode & 0o002:
+        raise StrictProjectionError(f"parent_world_writable:{path}")
+
+
+def _content_digest(data: bytes) -> str:
+    return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+
+def _read_exact_bounded(fd: int, expected_size: int, *, label: str) -> bytes:
+    """Exact full read of ``expected_size`` bytes; detect short-read and size drift."""
+
+    if expected_size < 0:
+        raise StrictProjectionError(f"negative_size:{label}")
+    chunks: list[bytes] = []
+    remaining = expected_size
+    while remaining > 0:
+        chunk = os.read(fd, remaining)
+        if not chunk:
+            raise StrictProjectionError(f"short_read:{label}")
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    extra = os.read(fd, 1)
+    if extra:
+        raise StrictProjectionError(f"size_drift:{label}")
+    return b"".join(chunks)
+
+
+def pin_operator_immutable_path(path: Path) -> OperatorPin:
+    """Validate absolute/parent/owner/mode/nofollow; return (dev, ino, mode, digest).
+
+    Architecture §6.1/§6.2: scope/registry/config are regular, non-symlink,
+    operator/root-owned, with no owner/group/other write bit; parent is not
+    writable by untrusted OS users. Opens with O_NOFOLLOW. Does not mutate
+    ``bound_read_scope`` loaders — callers wrap those loaders after pinning.
+    Binds exact content digest as well as identity/mode.
+    """
+
+    if not path.is_absolute():
+        raise StrictProjectionError("path_must_be_absolute")
+    if path.is_symlink() or not path.is_file():
+        raise StrictProjectionError(f"path_not_regular:{path}")
+    _require_trusted_parent_dir(path)
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise StrictProjectionError(f"open_failed:{path}") from exc
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise StrictProjectionError(f"not_regular:{path}")
+        mode = st.st_mode & 0o7777
+        if mode & 0o222:
+            raise StrictProjectionError(f"file_writable:{path}")
+        if not _public_owner_ok(st):
+            raise StrictProjectionError(f"file_owner:{path}")
+        data = _read_exact_bounded(fd, st.st_size, label=str(path))
+        return (st.st_dev, st.st_ino, mode, _content_digest(data))
+    finally:
+        os.close(fd)
+
+
+def recheck_operator_immutable_path(path: Path, expected: OperatorPin) -> None:
+    """Recheck pinned operator path identity/mode/content via O_NOFOLLOW reread."""
+
+    if path.is_symlink():
+        raise StrictProjectionError(f"symlink_forbidden:{path}")
+    if not path.is_file():
+        raise StrictProjectionError(f"operator_path_missing:{path}")
+    _require_trusted_parent_dir(path)
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise StrictProjectionError(f"open_failed:{path}") from exc
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise StrictProjectionError(f"not_regular:{path}")
+        mode = st.st_mode & 0o7777
+        got_id = (st.st_dev, st.st_ino, mode)
+        if got_id != expected[:3]:
+            raise StrictProjectionError(f"operator_identity_changed:{path}")
+        if mode & 0o222:
+            raise StrictProjectionError(f"file_writable:{path}")
+        if not _public_owner_ok(st):
+            raise StrictProjectionError(f"file_owner:{path}")
+        data = _read_exact_bounded(fd, st.st_size, label=str(path))
+        if _content_digest(data) != expected[3]:
+            raise StrictProjectionError(f"operator_content_changed:{path}")
+    finally:
+        os.close(fd)
+
+
+def load_bound_read_scope_for_strict(path: str | Path) -> BoundReadScope:
+    """Pin/validate path, then call unchanged M3 ``load_bound_read_scope``."""
+
+    p = Path(path)
+    pin = pin_operator_immutable_path(p)
+    scope = load_bound_read_scope(p)
+    recheck_operator_immutable_path(p, pin)
+    return scope
+
+
+def load_project_binding_registry_for_strict(
+    path: str | Path,
+) -> ProjectBindingRegistry:
+    """Pin/validate path, then call unchanged M3 registry loader."""
+
+    p = Path(path)
+    pin = pin_operator_immutable_path(p)
+    registry = load_project_binding_registry(p)
+    recheck_operator_immutable_path(p, pin)
+    return registry
+
+
+def _open_operator_immutable_json(path: Path) -> dict[str, Any]:
+    """Absolute, non-symlink, non-writable operator file (scope/registry/config)."""
+
+    pin = pin_operator_immutable_path(path)
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise StrictProjectionError(f"open_failed:{path}") from exc
+    try:
+        st = os.fstat(fd)
+        got = (st.st_dev, st.st_ino, st.st_mode & 0o7777)
+        if got != pin[:3]:
+            raise StrictProjectionError(f"operator_identity_changed:{path}")
+        raw = _read_exact_bounded(fd, st.st_size, label=str(path))
+        if _content_digest(raw) != pin[3]:
+            raise StrictProjectionError(f"operator_content_changed:{path}")
+    finally:
+        os.close(fd)
+    recheck_operator_immutable_path(path, pin)
+    try:
+        obj = json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise StrictProjectionError(f"json_invalid:{path}") from exc
+    if not isinstance(obj, dict):
+        raise StrictProjectionError(f"json_object_required:{path}")
+    return obj
+
+
+def collect_operator_path_pins(
+    *paths: str | Path,
+) -> MappingProxyType[str, OperatorPin]:
+    """Pin every operator authority path; used at server/CLI startup."""
+
+    pinned: dict[str, OperatorPin] = {}
+    for raw in paths:
+        path = Path(raw)
+        pinned[str(path)] = pin_operator_immutable_path(path)
+    return MappingProxyType(pinned)
+
+
+def _require_public_dir(path: Path) -> tuple[int, int]:
+    """Public mount dirs: no symlink, exact mode 0555, operator/root-owned."""
+
+    if path.is_symlink():
+        raise StrictProjectionError(f"symlink_forbidden:{path}")
+    if not path.is_dir():
+        raise StrictProjectionError(f"not_directory:{path}")
+    st = path.lstat()
+    if not stat.S_ISDIR(st.st_mode):
+        raise StrictProjectionError(f"not_directory:{path}")
+    if not _public_owner_ok(st):
+        raise StrictProjectionError(f"dir_owner:{path}")
+    mode = st.st_mode & 0o7777
+    if mode != _PUBLIC_DIR_MODE:
+        raise StrictProjectionError(f"dir_mode:{path}:{mode:04o}")
+    return (st.st_dev, st.st_ino)
+
+
+def _open_public_regular(path: Path) -> tuple[bytes, PublicPin]:
+    """O_RDONLY|O_NOFOLLOW public evidence file; exact mode 0444; identity+content pin."""
+
+    rel = path.name
+    if rel in _PRIVATE_BASENAMES_FORBIDDEN:
+        raise StrictProjectionError(f"private_file_forbidden:{rel}")
+    if path.is_symlink():
+        raise StrictProjectionError(f"symlink_forbidden:{path}")
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise StrictProjectionError(f"open_failed:{path}") from exc
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise StrictProjectionError(f"not_regular:{path}")
+        mode = st.st_mode & 0o7777
+        if mode != _PUBLIC_FILE_MODE:
+            raise StrictProjectionError(f"file_mode:{path}:{mode:04o}")
+        if not _public_owner_ok(st):
+            raise StrictProjectionError(f"file_owner:{path}")
+        data = _read_exact_bounded(fd, st.st_size, label=str(path))
+        st2 = os.fstat(fd)
+        if (st2.st_dev, st2.st_ino, st2.st_mode & 0o7777) != (
+            st.st_dev,
+            st.st_ino,
+            mode,
+        ):
+            raise StrictProjectionError(f"inode_drift:{path}")
+        pinned: PublicPin = (st.st_dev, st.st_ino, mode, _content_digest(data))
+        return data, pinned
+    finally:
+        os.close(fd)
+
+
+def _open_regular_readonly(path: Path) -> bytes:
+    """Read a public regular file without following links; no writes."""
+
+    data, _pinned = _open_public_regular(path)
+    return data
+
+
+def _read_json_public(path: Path) -> dict[str, Any]:
+    raw = _open_regular_readonly(path)
+    try:
+        obj = json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise StrictProjectionError(f"json_invalid:{path}") from exc
+    if not isinstance(obj, dict):
+        raise StrictProjectionError(f"json_object_required:{path}")
+    return obj
+
+
+def _read_jsonl_public(path: Path) -> list[dict[str, Any]]:
+    raw = _open_regular_readonly(path)
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise StrictProjectionError(f"jsonl_invalid:{path}") from exc
+    rows: list[dict[str, Any]] = []
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        if not line:
+            raise StrictProjectionError(f"jsonl_empty_line:{path}:{line_no}")
+        try:
+            obj = json.loads(line, object_pairs_hook=_reject_duplicate_keys)
+        except json.JSONDecodeError as exc:
+            raise StrictProjectionError(f"jsonl_invalid:{path}:{line_no}") from exc
+        if not isinstance(obj, dict):
+            raise StrictProjectionError(f"jsonl_object_required:{path}:{line_no}")
+        rows.append(obj)
+    return rows
+
+
+def _assert_not_private_relative(root: Path, candidate: Path) -> None:
+    try:
+        rel = candidate.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError as exc:
+        raise StrictProjectionError("path_escape") from exc
+    if rel in _PRIVATE_RELATIVE_FORBIDDEN:
+        raise StrictProjectionError(f"private_file_forbidden:{rel}")
+    base = Path(rel).name
+    if base in _PRIVATE_BASENAMES_FORBIDDEN:
+        raise StrictProjectionError(f"private_file_forbidden:{rel}")
+
+
+def _acquire_shared_lineage_lock(path: Path) -> tuple[int, tuple[int, int]]:
+    """Hold shared flock on an already-created lineage lock; never create.
+
+    Parent public lock policy: regular file, O_NOFOLLOW, exact mode 0444,
+    operator/root-owned. Does not create or mutate the lock file.
+    """
+
+    if path.is_symlink():
+        raise StrictProjectionError(f"lock_symlink:{path}")
+    if not path.is_file():
+        raise StrictProjectionError(f"lock_missing:{path}")
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise StrictProjectionError(f"lock_open_failed:{path}") from exc
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise StrictProjectionError(f"lock_not_regular:{path}")
+        mode = st.st_mode & 0o7777
+        if mode != _PUBLIC_FILE_MODE:
+            raise StrictProjectionError(f"lock_mode:{path}:{mode:04o}")
+        if not _public_owner_ok(st):
+            raise StrictProjectionError(f"lock_owner:{path}")
+        fcntl.flock(fd, fcntl.LOCK_SH)
+        return fd, (st.st_dev, st.st_ino)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        raise
+
+
+def _recheck_pinned_public(
+    pinned: Mapping[str, PublicPin],
+) -> None:
+    """Recheck every pinned public file identity/mode/content via O_NOFOLLOW."""
+
+    for path_s, expected in pinned.items():
+        path = Path(path_s)
+        if path.is_symlink():
+            raise StrictProjectionError(f"symlink_forbidden:{path}")
+        if not path.is_file():
+            raise StrictProjectionError(f"public_missing:{path}")
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            fd = os.open(path, flags)
+        except OSError as exc:
+            raise StrictProjectionError(f"open_failed:{path}") from exc
+        try:
+            st = os.fstat(fd)
+            if not stat.S_ISREG(st.st_mode):
+                raise StrictProjectionError(f"not_regular:{path}")
+            mode = st.st_mode & 0o7777
+            if (st.st_dev, st.st_ino, mode) != expected[:3]:
+                raise StrictProjectionError(f"public_identity_changed:{path}")
+            if mode != _PUBLIC_FILE_MODE:
+                raise StrictProjectionError(f"file_mode:{path}:{mode:04o}")
+            data = _read_exact_bounded(fd, st.st_size, label=str(path))
+            if _content_digest(data) != expected[3]:
+                raise StrictProjectionError(f"public_content_changed:{path}")
+        finally:
+            os.close(fd)
+
+
+def _validate_public_projection_row(row: Mapping[str, Any]) -> None:
+    """Full closed public row schema including nested enums/types."""
+
+    _require_closed(
+        row,
+        _PROJECTION_ROW_FIELDS,
+        schema="convmem.bound-projection-row.v2",
+        label="projection_row",
+    )
+    if row["record_kind"] not in _RECORD_KINDS:
+        raise StrictProjectionError("projection_row_record_kind")
+    if not isinstance(row["confidence_bps"], int) or isinstance(row["confidence_bps"], bool):
+        raise StrictProjectionError("projection_row_confidence")
+    if not (0 <= row["confidence_bps"] <= 10000):
+        raise StrictProjectionError("projection_row_confidence_range")
+    for ts_key in ("observed_at", "recorded_at"):
+        if not isinstance(row[ts_key], str) or not re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", row[ts_key]
+        ):
+            raise StrictProjectionError(f"projection_row_{ts_key}")
+    pq = row["provenance_qualification"]
+    if not isinstance(pq, Mapping) or set(pq) != _PROVENANCE_QUAL_FIELDS:
+        raise StrictProjectionError("projection_row_provenance_qualification")
+    if pq["commitments"] not in {"valid", "incomplete"}:
+        raise StrictProjectionError("projection_row_commitments")
+    if pq["byte_grounding"] not in {"complete", "missing"}:
+        raise StrictProjectionError("projection_row_byte_grounding")
+    if pq["capture"] not in _CAPTURE_VALUES:
+        raise StrictProjectionError("projection_row_capture")
+    if pq["transformer_cap"] not in {"trusted", "agent", "untrusted"}:
+        raise StrictProjectionError("projection_row_transformer_cap")
+    handle = row["public_ledger_id"]
+    if not looks_like_public_ledger_handle(handle):
+        raise StrictProjectionError("projection_row_public_ledger_id")
+    try:
+        pref, stored = parse_public_ledger_handle(handle)
+    except StrictEvidenceError as exc:
+        raise StrictProjectionError("projection_row_public_ledger_id") from exc
+    if pref != row["public_binding_ref"] or stored != row["assertion_id"]:
+        raise StrictProjectionError("projection_row_handle_mismatch")
+    if row["record_kind"] == "verification":
+        if row["verification_result"] not in {"pass", "fail", "inconclusive"}:
+            raise StrictProjectionError("projection_row_verification_result")
+        if not isinstance(row["target_assertion_id"], str) or not row["target_assertion_id"]:
+            raise StrictProjectionError("projection_row_target_required")
+    else:
+        if row["verification_result"] is not None:
+            raise StrictProjectionError("projection_row_verification_null")
+    supersedes = row["supersedes_assertion_ids"]
+    if not isinstance(supersedes, list):
+        raise StrictProjectionError("projection_row_supersedes")
+    if any(not isinstance(x, str) or not x for x in supersedes):
+        raise StrictProjectionError("projection_row_supersedes_items")
+    if len(supersedes) != len(set(supersedes)):
+        raise StrictProjectionError("projection_row_supersedes_dup")
+
+
+def _validate_public_graph(
+    graph: Mapping[str, Any],
+    *,
+    rows: Sequence[Mapping[str, Any]],
+) -> None:
+    """Closed graph schema, unique identities, edge kinds, row agreement."""
+
+    _require_closed(
+        graph, _GRAPH_FIELDS, schema="convmem.strict-graph.v1", label="graph"
+    )
+    nodes = graph["nodes"]
+    edges = graph["edges"]
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        raise StrictProjectionError("graph_collections")
+    if any(not isinstance(n, str) or not n for n in nodes):
+        raise StrictProjectionError("graph_node_type")
+    if len(nodes) != len(set(nodes)):
+        raise StrictProjectionError("graph_node_dup")
+    row_ids = [r["assertion_id"] for r in rows]
+    if len(row_ids) != len(set(row_ids)):
+        raise StrictProjectionError("projection_row_assertion_dup")
+    if set(nodes) != set(row_ids):
+        raise StrictProjectionError("graph_row_agreement")
+    seen_edges: set[tuple[str, str, str]] = set()
+    for edge in edges:
+        if not isinstance(edge, Mapping):
+            raise StrictProjectionError("graph_edge_type")
+        if set(edge) != _GRAPH_EDGE_FIELDS:
+            raise StrictProjectionError("graph_edge_keys")
+        kind = edge["kind"]
+        src = edge["from_assertion_id"]
+        dst = edge["to_assertion_id"]
+        if kind not in _GRAPH_EDGE_KINDS:
+            raise StrictProjectionError("graph_edge_kind")
+        if not isinstance(src, str) or not isinstance(dst, str) or not src or not dst:
+            raise StrictProjectionError("graph_edge_endpoints")
+        if src not in nodes or dst not in nodes:
+            raise StrictProjectionError("graph_edge_unknown_node")
+        key = (kind, src, dst)
+        if key in seen_edges:
+            raise StrictProjectionError("graph_edge_dup")
+        seen_edges.add(key)
+    # Required parent edges: non-null relates_to_assertion_id must appear.
+    by_id = {r["assertion_id"]: r for r in rows}
+    for row in rows:
+        parent = row.get("relates_to_assertion_id")
+        if parent is None:
+            continue
+        if not isinstance(parent, str) or not parent:
+            raise StrictProjectionError("graph_relates_parent_type")
+        if parent not in by_id:
+            raise StrictProjectionError("graph_relates_parent_missing")
+        expected = ("relates_to", row["assertion_id"], parent)
+        if expected not in seen_edges:
+            raise StrictProjectionError("graph_relates_edge_missing")
+
+
+def load_strict_config(path: str | Path) -> StrictConfig:
+    """Independent strict-config.v2 parser (no legacy config loader)."""
+
+    cfg_path = Path(path)
+    obj = _open_operator_immutable_json(cfg_path)
+    _require_closed(
+        obj,
+        _STRICT_CONFIG_FIELDS,
+        schema="convmem.strict-config.v2",
+        label="strict_config",
+    )
+    if obj["max_projection_rows"] != 10000:
+        raise StrictProjectionError("strict_config_max_rows")
+    if obj["max_projection_bytes"] != 67108864:
+        raise StrictProjectionError("strict_config_max_bytes")
+    if obj["telemetry"] is not False:
+        raise StrictProjectionError("strict_config_telemetry")
+    root = obj["projection_root"]
+    if not isinstance(root, str) or not root.startswith("/"):
+        raise StrictProjectionError("strict_config_projection_root")
+    return StrictConfig(
+        projection_root=Path(root),
+        max_projection_rows=10000,
+        max_projection_bytes=67108864,
+    )
+
+
+def _parse_ts(value: str) -> datetime:
+    if not isinstance(value, str) or not re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value
+    ):
+        raise StrictProjectionError("timestamp_invalid")
+    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+
+def boottime_ns() -> int:
+    """Monkeypatchable CLOCK_BOOTTIME sample (CLI 10s bound / freshness)."""
+
+    return time.clock_gettime_ns(time.CLOCK_BOOTTIME)
+
+
+def wall_time_utc() -> datetime:
+    """Monkeypatchable wall clock for active-serving / freshness checks."""
+
+    return datetime.now(timezone.utc)
+
+
+def open_published_generation(
+    *,
+    root: str | Path,
+    scope: BoundReadScope,
+    registry: ProjectBindingRegistry,
+    expected_publication_sha256: str | None = None,
+    now: datetime | None = None,
+    operator_path_pins: Mapping[str, OperatorPin] | None = None,
+    held_lock: tuple[int, tuple[int, int]] | None = None,
+) -> QualifiedStrictGeneration:
+    """Public-only opening: publication + public authority manifest + projection.
+
+    Architecture §6.5.4: runtime mount inputs are only the public authority
+    manifest, public projection files, exact serving publication, unchanged
+    scope/registry/config, and precreated read-lock files. Does not read
+    layout.json, control/enrollment.json, citation maps, inputs, grounding, or
+    any other private file. Holds a shared flock on the lineage lock while the
+    capability is live. Reader path is read-only: no cache, mtime, manifest,
+    publication, or lock mutation.
+
+    ``held_lock`` — optional already-acquired ``(fd, (dev, ino))`` from
+    ``_acquire_shared_lineage_lock``. Direct CLI passes this so the same lock
+    spans private qualification + public opening. On success the capability
+    owns the fd; on failure a held lock is left for the caller to release.
+    """
+
+    if operator_path_pins:
+        for path_s, expected in operator_path_pins.items():
+            recheck_operator_immutable_path(Path(path_s), expected)
+
+    root_path = Path(root)
+    if root_path.is_symlink() or not root_path.is_dir():
+        raise StrictProjectionError("root_invalid")
+    _require_public_dir(root_path)
+
+    try:
+        binding_id = scope.allowed_project_bindings[0]
+        recomputed_owner = owner_digest(
+            scope_sha256=scope.scope_sha256,
+            registry_sha256=registry.registry_sha256,
+            project_binding_id=binding_id,
+        )
+        binding = registry.binding(binding_id)
+    except (BoundScopeError, IndexError, KeyError) as exc:
+        raise StrictProjectionError("scope_registry") from exc
+
+    lineage_id = binding.lineage_id
+    if not isinstance(lineage_id, str) or len(lineage_id) != 32:
+        raise StrictProjectionError("binding_lineage_id")
+
+    locks_dir = root_path / "locks"
+    _require_public_dir(locks_dir)
+    lock_path = locks_dir / f"{lineage_id}.lock"
+    owns_lock = False
+    if held_lock is not None:
+        lock_fd, lock_inode = held_lock
+        if not isinstance(lock_fd, int) or lock_fd < 0:
+            raise StrictProjectionError("lock_released")
+        held_st = os.fstat(lock_fd)
+        if (held_st.st_dev, held_st.st_ino) != lock_inode:
+            raise StrictProjectionError("lock_inode_drift")
+        # Confirm the held fd still names the expected lineage lock path.
+        if lock_path.is_symlink() or not lock_path.is_file():
+            raise StrictProjectionError(f"lock_missing:{lock_path}")
+        path_st = lock_path.lstat()
+        if (path_st.st_dev, path_st.st_ino) != lock_inode:
+            raise StrictProjectionError("lock_path_mismatch")
+        if (path_st.st_mode & 0o7777) != _PUBLIC_FILE_MODE:
+            raise StrictProjectionError(f"lock_mode:{lock_path}")
+    else:
+        lock_fd, lock_inode = _acquire_shared_lineage_lock(lock_path)
+        owns_lock = True
+
+    pinned_public: dict[str, PublicPin] = {}
+    try:
+        active_dir = root_path / "active"
+        _require_public_dir(active_dir)
+        publication_path = active_dir / f"{lineage_id}.json"
+        _assert_not_private_relative(root_path, publication_path)
+        publication_raw, pub_pin = _open_public_regular(publication_path)
+        pinned_public[str(publication_path)] = pub_pin
+        try:
+            publication = json.loads(
+                publication_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise StrictProjectionError(f"json_invalid:{publication_path}") from exc
+        if not isinstance(publication, dict):
+            raise StrictProjectionError(f"json_object_required:{publication_path}")
+        _require_closed(
+            publication,
+            _PUBLICATION_FIELDS,
+            schema="convmem.strict-publication.v2",
+            label="publication",
+        )
+        if publication["lineage_id"] != lineage_id:
+            raise StrictProjectionError("publication_lineage")
+        pub_hash = _require_self_hash(
+            publication, "publication_payload_sha256", label="publication"
+        )
+        if (
+            expected_publication_sha256 is not None
+            and pub_hash != expected_publication_sha256
+        ):
+            raise StrictProjectionError("publication_cas_mismatch")
+        if publication["owner_digest"] != recomputed_owner:
+            raise StrictProjectionError("publication_owner_digest")
+        if publication["mode"] != "serving":
+            raise StrictProjectionError("publication_not_serving")
+
+        serving_generation_id = publication["serving_generation_id"]
+        projection_manifest_sha256 = publication["projection_manifest_sha256"]
+        authority_seq = publication["authority_seq"]
+        snapshot_id = publication["authority_snapshot_id"]
+        authority_manifest_sha256 = publication["authority_manifest_sha256"]
+        semantic_contract_sha256 = publication["semantic_contract_sha256"]
+        if not isinstance(serving_generation_id, str) or not serving_generation_id:
+            raise StrictProjectionError("serving_generation_required")
+        if not isinstance(projection_manifest_sha256, str):
+            raise StrictProjectionError("projection_manifest_required")
+        if not isinstance(snapshot_id, str) or not isinstance(
+            authority_manifest_sha256, str
+        ):
+            raise StrictProjectionError("authority_identity_required")
+
+        anchor = publication["freshness_anchor"]
+        if not isinstance(anchor, Mapping):
+            raise StrictProjectionError("freshness_anchor")
+        if set(anchor) != _FRESHNESS_ANCHOR_FIELDS:
+            raise StrictProjectionError("freshness_anchor_keys")
+        if anchor["authority_snapshot_id"] != snapshot_id:
+            raise StrictProjectionError("freshness_anchor_snapshot")
+        deadline = anchor["snapshot_deadline_boottime_ns"]
+        if not isinstance(deadline, int) or isinstance(deadline, bool):
+            raise StrictProjectionError("freshness_anchor_deadline")
+        if boottime_ns() >= deadline:
+            raise StrictProjectionError("snapshot_expired")
+
+        auth_dir = root_path / "authority" / snapshot_id
+        _require_public_dir(root_path / "authority")
+        _require_public_dir(auth_dir)
+        auth_manifest_path = auth_dir / "manifest.json"
+        _assert_not_private_relative(root_path, auth_manifest_path)
+        auth_raw, auth_pin = _open_public_regular(auth_manifest_path)
+        pinned_public[str(auth_manifest_path)] = auth_pin
+        try:
+            auth_manifest = json.loads(
+                auth_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise StrictProjectionError(f"json_invalid:{auth_manifest_path}") from exc
+        if not isinstance(auth_manifest, dict):
+            raise StrictProjectionError(f"json_object_required:{auth_manifest_path}")
+        _require_closed(
+            auth_manifest,
+            _AUTHORITY_MANIFEST_FIELDS,
+            schema="convmem.bound-authority-manifest.v3",
+            label="authority_manifest",
+        )
+        if auth_manifest["lineage_id"] != lineage_id:
+            raise StrictProjectionError("authority_manifest_lineage")
+        if auth_manifest["owner_digest"] != recomputed_owner:
+            raise StrictProjectionError("authority_manifest_owner")
+        if auth_manifest["authority_seq"] != authority_seq:
+            raise StrictProjectionError("authority_manifest_seq")
+        if auth_manifest["snapshot_id"] != snapshot_id:
+            raise StrictProjectionError("authority_manifest_snapshot")
+        if auth_manifest["scope_sha256"] != scope.scope_sha256:
+            raise StrictProjectionError("authority_manifest_scope_link")
+        if auth_manifest["registry_sha256"] != registry.registry_sha256:
+            raise StrictProjectionError("authority_manifest_registry_link")
+        if auth_manifest["semantic_contract_sha256"] != semantic_contract_sha256:
+            raise StrictProjectionError("authority_manifest_semantic_contract_link")
+        recomputed_auth_payload = _labeled_self_hash(
+            auth_manifest, "manifest_payload_sha256"
+        )
+        if auth_manifest["manifest_payload_sha256"] != recomputed_auth_payload:
+            raise StrictProjectionError("authority_manifest_hash")
+        if authority_manifest_sha256 != recomputed_auth_payload:
+            raise StrictProjectionError("authority_manifest_link")
+        recomputed_snapshot_id = _authority_snapshot_id(auth_manifest)
+        if auth_manifest["snapshot_id"] != recomputed_snapshot_id:
+            raise StrictProjectionError("authority_snapshot_id_mismatch")
+
+        as_of = auth_manifest["as_of"]
+        expires_at = auth_manifest["expires_at"]
+        wall = now if now is not None else wall_time_utc()
+        if wall >= _parse_ts(expires_at):
+            raise StrictProjectionError("snapshot_expired")
+
+        gen_dir = root_path / "projection" / serving_generation_id
+        _require_public_dir(root_path / "projection")
+        _require_public_dir(gen_dir)
+
+        proj_manifest_path = gen_dir / "manifest.json"
+        proj_raw, proj_pin = _open_public_regular(proj_manifest_path)
+        pinned_public[str(proj_manifest_path)] = proj_pin
+        try:
+            proj_manifest = json.loads(
+                proj_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise StrictProjectionError(f"json_invalid:{proj_manifest_path}") from exc
+        if not isinstance(proj_manifest, dict):
+            raise StrictProjectionError(f"json_object_required:{proj_manifest_path}")
+        _require_closed(
+            proj_manifest,
+            _PROJECTION_MANIFEST_FIELDS,
+            schema="convmem.bound-projection-manifest.v3",
+            label="projection_manifest",
+        )
+        if proj_manifest["lineage_id"] != lineage_id:
+            raise StrictProjectionError("projection_manifest_lineage")
+        if proj_manifest["authority_seq"] != authority_seq:
+            raise StrictProjectionError("projection_manifest_seq")
+        if proj_manifest["owner_digest"] != recomputed_owner:
+            raise StrictProjectionError("projection_manifest_owner")
+        if proj_manifest["snapshot_id"] != snapshot_id:
+            raise StrictProjectionError("projection_snapshot_link")
+        if proj_manifest["authority_manifest_sha256"] != authority_manifest_sha256:
+            raise StrictProjectionError("projection_authority_manifest_link")
+        if proj_manifest["semantic_contract_sha256"] != semantic_contract_sha256:
+            raise StrictProjectionError("projection_semantic_contract_link")
+        if proj_manifest["scope_sha256"] != scope.scope_sha256:
+            raise StrictProjectionError("projection_scope_link")
+        if proj_manifest["registry_sha256"] != registry.registry_sha256:
+            raise StrictProjectionError("projection_registry_link")
+        if proj_manifest["as_of"] != as_of or proj_manifest["expires_at"] != expires_at:
+            raise StrictProjectionError("projection_freshness_link")
+
+        recomputed_generation_id = _projection_generation_id(proj_manifest)
+        if proj_manifest["generation_id"] != recomputed_generation_id:
+            raise StrictProjectionError("projection_generation_id_mismatch")
+        if serving_generation_id != recomputed_generation_id:
+            raise StrictProjectionError("publication_generation_id_link")
+        recomputed_proj_payload = _labeled_self_hash(
+            proj_manifest, "manifest_payload_sha256"
+        )
+        if proj_manifest["manifest_payload_sha256"] != recomputed_proj_payload:
+            raise StrictProjectionError("projection_manifest_hash")
+        if projection_manifest_sha256 != recomputed_proj_payload:
+            raise StrictProjectionError("projection_manifest_link")
+
+        rows_path = gen_dir / "rows.jsonl"
+        rows_raw, rows_pin = _open_public_regular(rows_path)
+        pinned_public[str(rows_path)] = rows_pin
+        try:
+            text = rows_raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise StrictProjectionError(f"jsonl_invalid:{rows_path}") from exc
+        stored_rows: list[dict[str, Any]] = []
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            if not line:
+                raise StrictProjectionError(f"jsonl_empty_line:{rows_path}:{line_no}")
+            try:
+                obj = json.loads(line, object_pairs_hook=_reject_duplicate_keys)
+            except json.JSONDecodeError as exc:
+                raise StrictProjectionError(
+                    f"jsonl_invalid:{rows_path}:{line_no}"
+                ) from exc
+            if not isinstance(obj, dict):
+                raise StrictProjectionError(
+                    f"jsonl_object_required:{rows_path}:{line_no}"
+                )
+            stored_rows.append(obj)
+        if len(stored_rows) > 10000:
+            raise StrictProjectionError("projection_row_cap")
+        row_bytes = _canonical_jsonl_bytes(stored_rows)
+        if len(row_bytes) > 67108864:
+            raise StrictProjectionError("projection_byte_cap")
+        for row in stored_rows:
+            _validate_public_projection_row(row)
+
+        graph_path = gen_dir / "graph.json"
+        graph_raw, graph_pin = _open_public_regular(graph_path)
+        pinned_public[str(graph_path)] = graph_pin
+        try:
+            stored_graph = json.loads(
+                graph_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise StrictProjectionError(f"json_invalid:{graph_path}") from exc
+        if not isinstance(stored_graph, dict):
+            raise StrictProjectionError(f"json_object_required:{graph_path}")
+        _validate_public_graph(stored_graph, rows=stored_rows)
+
+        rows_digest = sha256_digest(row_bytes)
+        if proj_manifest["rows_sha256"] != rows_digest:
+            raise StrictProjectionError("rows_hash_mismatch")
+        if proj_manifest["row_count"] != len(stored_rows):
+            raise StrictProjectionError("row_count")
+        graph_digest = _require_self_hash(
+            stored_graph, "graph_payload_sha256", label="graph"
+        )
+        if proj_manifest["graph_sha256"] != graph_digest:
+            raise StrictProjectionError("graph_hash_mismatch")
+        if proj_manifest["graph_node_count"] != len(stored_graph["nodes"]):
+            raise StrictProjectionError("graph_node_count")
+
+        selectors = EffectiveSelectors(
+            project=scope.project,
+            site=scope.site,
+            site_mode=scope.site_mode,
+            domain=scope.domain,
+            binding_id=binding_id,
+        )
+        for row in stored_rows:
+            if row["public_binding_ref"] != binding.public_ref:
+                raise StrictProjectionError("row_public_ref")
+            try:
+                authorize_row(
+                    scope=scope,
+                    registry=registry,
+                    selectors=selectors,
+                    project_binding_id=row["project_binding_id"],
+                    source_registration_id=row["source_registration_id"],
+                    authority_site=row["authority_site"],
+                    authority_domain=row["authority_domain"],
+                )
+            except BoundScopeError as exc:
+                raise StrictProjectionError(f"row_authorization:{exc}") from exc
+
+        # Final pin recheck before minting a live capability.
+        _recheck_pinned_public(pinned_public)
+        lock_st = os.fstat(lock_fd)
+        if (lock_st.st_dev, lock_st.st_ino) != lock_inode:
+            raise StrictProjectionError("lock_inode_drift")
+        # Recheck serving publication identity after all reads.
+        _recheck_pinned_public({str(publication_path): pub_pin})
+        wall2 = now if now is not None else wall_time_utc()
+        if wall2 >= _parse_ts(expires_at):
+            raise StrictProjectionError("snapshot_expired")
+        if boottime_ns() >= deadline:
+            raise StrictProjectionError("snapshot_expired")
+
+        return _seal_qualified_generation(
+            lineage_id=lineage_id,
+            authority_seq=authority_seq,
+            snapshot_id=snapshot_id,
+            authority_manifest_sha256=authority_manifest_sha256,
+            generation_id=serving_generation_id,
+            projection_manifest_sha256=projection_manifest_sha256,
+            rows_sha256=rows_digest,
+            graph_sha256=graph_digest,
+            publication_payload_sha256=pub_hash,
+            semantic_contract_sha256=semantic_contract_sha256,
+            as_of=as_of,
+            expires_at=expires_at,
+            scope=scope,
+            registry=registry,
+            rows=tuple(stored_rows),
+            graph=MappingProxyType(dict(stored_graph)),
+            _lock_fd=lock_fd,
+            _lock_inode=lock_inode,
+            _pinned_public=MappingProxyType(dict(pinned_public)),
+            _operator_path_pins=MappingProxyType(
+                dict(operator_path_pins) if operator_path_pins else {}
+            ),
+            _root=root_path,
+            _publication_path=publication_path,
+        )
+    except Exception:
+        if owns_lock:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            except OSError:
+                pass
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+        raise
+
+
+# Capability-probe alias used by T0a/M3 red markers; same public opening as parent.
+open_public_projection = open_published_generation
+
+
+def revoke_snapshot(generation: QualifiedStrictGeneration) -> None:
+    """In-process seal of a public capability. No filesystem mutation."""
+
+    live = _require_live_capability(generation)
+    live.mark_revoked()
+
+
+def recheck_live_public_capability(generation: QualifiedStrictGeneration) -> None:
+    """Recheck pinned public identities + active serving/freshness while locked."""
+
+    live = _require_live_capability(generation)
+    _recheck_pinned_public(live._pinned_public)
+    for path_s, expected in live._operator_path_pins.items():
+        recheck_operator_immutable_path(Path(path_s), expected)
+    lock_fd = live._lock_fd
+    if not isinstance(lock_fd, int) or lock_fd < 0:
+        raise StrictProjectionError("lock_released")
+    st = os.fstat(lock_fd)
+    if (st.st_dev, st.st_ino) != live._lock_inode:
+        raise StrictProjectionError("lock_inode_drift")
+    if wall_time_utc() >= _parse_ts(live.expires_at):
+        raise StrictProjectionError("snapshot_expired")
+    publication_raw, _ = _open_public_regular(live._publication_path)
+    try:
+        publication = json.loads(
+            publication_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise StrictProjectionError(
+            f"json_invalid:{live._publication_path}"
+        ) from exc
+    if not isinstance(publication, dict):
+        raise StrictProjectionError(f"json_object_required:{live._publication_path}")
+    _require_closed(
+        publication,
+        _PUBLICATION_FIELDS,
+        schema="convmem.strict-publication.v2",
+        label="publication",
+    )
+    if publication.get("mode") != "serving":
+        raise StrictProjectionError("publication_not_serving")
+    recomputed = _require_self_hash(
+        publication, "publication_payload_sha256", label="publication"
+    )
+    if recomputed != live.publication_payload_sha256:
+        raise StrictProjectionError("publication_cas_mismatch")
+    anchor = publication.get("freshness_anchor")
+    if not isinstance(anchor, Mapping):
+        raise StrictProjectionError("freshness_anchor")
+    if set(anchor) != _FRESHNESS_ANCHOR_FIELDS:
+        raise StrictProjectionError("freshness_anchor_keys")
+    deadline = anchor.get("snapshot_deadline_boottime_ns")
+    if not isinstance(deadline, int) or isinstance(deadline, bool):
+        raise StrictProjectionError("freshness_anchor_deadline")
+    if boottime_ns() >= deadline:
+        raise StrictProjectionError("snapshot_expired")
+
+
+def tokenize_lexical(text: str) -> list[str]:
+    """NFC + casefold + maximal L/N/_ runs (Architecture §6.5.5)."""
+
+    if not isinstance(text, str):
+        raise StrictPublicError("invalid_request")
+    normalized = unicodedata.normalize("NFC", text).casefold()
+    tokens: list[str] = []
+    current: list[str] = []
+    for ch in normalized:
+        cat = unicodedata.category(ch)
+        if cat.startswith("L") or cat.startswith("N") or ch == "_":
+            current.append(ch)
+        else:
+            if current:
+                tokens.append("".join(current))
+                current = []
+    if current:
+        tokens.append("".join(current))
+    return tokens
+
+
+def _distinct_first(tokens: Sequence[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for tok in tokens:
+        if tok in seen:
+            continue
+        seen.add(tok)
+        out.append(tok)
+    return out
+
+
+def _count_occurrences(haystack: str, needle: str) -> int:
+    if not needle:
+        return 0
+    count = 0
+    start = 0
+    while True:
+        idx = haystack.find(needle, start)
+        if idx < 0:
+            break
+        count += 1
+        start = idx + 1
+    return count
+
+
+def _score_row(
+    *,
+    normalized_query: str,
+    query_tokens: Sequence[str],
+    title: str,
+    document: str,
+) -> int:
+    title_tokens = tokenize_lexical(title)
+    doc_tokens = tokenize_lexical(document)
+    normalized_title = " ".join(title_tokens)
+    normalized_document = " ".join(doc_tokens)
+    score = 0
+    if normalized_query and normalized_query in normalized_title:
+        score += 16
+    if normalized_query and normalized_query in normalized_document:
+        score += 4
+    for tok in query_tokens:
+        score += 8 * min(3, _count_occurrences(normalized_title, tok))
+        score += 1 * min(3, _count_occurrences(normalized_document, tok))
+    return score
+
+
+def _truncate_document(document: str) -> tuple[str, bool]:
+    if len(document) <= _DOC_CODEPOINT_CAP:
+        return document, False
+    return document[:_DOC_CODEPOINT_CAP], True
+
+
+def _new_correlation_id() -> str:
+    return secrets.token_hex(16)
+
+
+def _provenance_basis_from_capture(qualification: Any) -> str:
+    """Public provenance_basis is exactly the validated capture class."""
+
+    if not isinstance(qualification, Mapping):
+        raise StrictProjectionError("provenance_qualification_type")
+    capture = qualification.get("capture")
+    if capture not in _CAPTURE_VALUES:
+        raise StrictProjectionError("provenance_capture_invalid")
+    return str(capture)
+
+
+class StrictProjectionReader:
+    """Shared lexical reader over one sealed public generation."""
+
+    def __init__(self, generation: QualifiedStrictGeneration) -> None:
+        self._generation = _require_live_capability(generation)
+        # Binding-scoped multimap: assertion_id → all matching rows (never LWW).
+        multimap: dict[str, list[dict[str, Any]]] = {}
+        for row in generation.rows:
+            multimap.setdefault(row["assertion_id"], []).append(dict(row))
+        self._rows_by_assertion = multimap
+        # Edge convention from builder: from=child/dependent, to=parent/target.
+        self._children: dict[str, list[tuple[str, str]]] = {}
+        self._relates_parents: dict[str, list[str]] = {}
+        for edge in generation.graph.get("edges", []):
+            if not isinstance(edge, Mapping):
+                raise StrictProjectionError("graph_edge_type")
+            if set(edge) != _GRAPH_EDGE_FIELDS:
+                raise StrictProjectionError("graph_edge_keys")
+            kind = edge.get("kind")
+            src = edge.get("from_assertion_id")
+            dst = edge.get("to_assertion_id")
+            if kind not in _GRAPH_EDGE_KINDS:
+                raise StrictProjectionError("graph_edge_kind")
+            if not isinstance(src, str) or not isinstance(dst, str):
+                raise StrictProjectionError("graph_edge_endpoints")
+            self._children.setdefault(dst, []).append((kind, src))
+            if kind == "relates_to":
+                self._relates_parents.setdefault(src, []).append(dst)
+        self._non_expanding = frozenset(
+            generation.registry.binding(
+                generation.scope.allowed_project_bindings[0]
+            ).non_expanding_roots
+        )
+
+    def _ensure_active(self, correlation_id: str) -> None:
+        try:
+            _require_live_capability(self._generation)
+            recheck_live_public_capability(self._generation)
+        except StrictProjectionError as exc:
+            raise StrictPublicError("snapshot_stale", correlation_id=correlation_id) from exc
+        if self._generation.is_revoked:
+            raise StrictPublicError("snapshot_stale", correlation_id=correlation_id)
+        if wall_time_utc() >= _parse_ts(self._generation.expires_at):
+            raise StrictPublicError("snapshot_stale", correlation_id=correlation_id)
+
+    def _resolve_selectors(
+        self,
+        *,
+        correlation_id: str,
+        project: Any = OMITTED,
+        site: Any = OMITTED,
+        domain: Any = OMITTED,
+        cross_domain: Any = OMITTED,
+    ) -> EffectiveSelectors:
+        try:
+            return resolve_selectors(
+                self._generation.scope,
+                project=project,
+                site=site,
+                domain=domain,
+                cross_domain=cross_domain,
+            )
+        except BoundScopeError as exc:
+            raise StrictPublicError("scope_denied", correlation_id=correlation_id) from exc
+
+    def _authorize(
+        self,
+        row: Mapping[str, Any],
+        selectors: EffectiveSelectors,
+        *,
+        correlation_id: str,
+    ) -> None:
+        try:
+            authorize_row(
+                scope=self._generation.scope,
+                registry=self._generation.registry,
+                selectors=selectors,
+                project_binding_id=row["project_binding_id"],
+                source_registration_id=row["source_registration_id"],
+                authority_site=row["authority_site"],
+                authority_domain=row["authority_domain"],
+            )
+        except BoundScopeError as exc:
+            raise StrictPublicError("scope_denied", correlation_id=correlation_id) from exc
+
+    def _snapshot_fields(self) -> dict[str, Any]:
+        gen = self._generation
+        return {
+            "snapshot_id": gen.snapshot_id,
+            "lineage_id": gen.lineage_id,
+            "authority_seq": gen.authority_seq,
+            "authority_manifest_sha256": gen.authority_manifest_sha256,
+            "semantic_contract_sha256": gen.semantic_contract_sha256,
+            "state_basis": "complete_bound_authority",
+            "verification_basis": "recorded_qualified_checks",
+            "as_of": gen.as_of,
+            "expires_at": gen.expires_at,
+        }
+
+    def _format_result(self, row: Mapping[str, Any]) -> dict[str, Any]:
+        document, truncated = _truncate_document(str(row["document"]))
+        target = row.get("target_assertion_id")
+        target_ledger = None
+        if isinstance(target, str) and target:
+            target_ledger = f"cm1.{row['public_binding_ref']}.{target}"
+        supersedes = [
+            f"cm1.{row['public_binding_ref']}.{aid}"
+            for aid in row.get("supersedes_assertion_ids", [])
+            if isinstance(aid, str) and aid
+        ]
+        site_val = row["authority_site"]
+        if not isinstance(site_val, str) or not site_val:
+            site_val = "not_applicable"
+        return {
+            "title": row["title"],
+            "document": document,
+            "ledger_id": row["public_ledger_id"],
+            "citation_ref": row["citation_ref"],
+            "record_kind": row["record_kind"],
+            "logical_id": row["logical_id"],
+            "authority_state": row["authority_state"],
+            "verification_state": row["verification_state"],
+            "verification_result": row["verification_result"],
+            "target_ledger_id": target_ledger,
+            "supersedes_ledger_ids": supersedes,
+            "origin_assurance": row["origin_assurance"],
+            "provenance_qualification": dict(row["provenance_qualification"]),
+            "provenance_basis": _provenance_basis_from_capture(
+                row.get("provenance_qualification")
+            ),
+            "check_eligibility": row["check_eligibility"],
+            "state_sha256": row["state_sha256"],
+            "confidence_bps": row["confidence_bps"],
+            "observed_at": row["observed_at"],
+            "recorded_at": row["recorded_at"],
+            "decision_disposition_ref": row["decision_disposition_ref"],
+            "supersession_disposition_ref": row["supersession_disposition_ref"],
+            "state_disposition_refs": list(row["state_disposition_refs"]),
+            "truncated": truncated,
+            "domain": row["authority_domain"],
+            "site": site_val,
+        }
+
+    def _pack_success(
+        self,
+        *,
+        results: list[dict[str, Any]],
+        selection_complete: bool,
+        display_basis: str,
+        correlation_id: str,
+    ) -> dict[str, Any]:
+        payload = {
+            "schema": "convmem.raw-evidence.v3",
+            "instruction_authority": "none",
+            "snapshot": self._snapshot_fields(),
+            "selection_complete": selection_complete,
+            "display_basis": display_basis,
+            "results": results,
+        }
+        encoded = strict_canonical_bytes(payload)
+        if len(encoded) > _RESPONSE_BYTE_CAP:
+            raise StrictPublicError("response_too_large", correlation_id=correlation_id)
+        return payload
+
+    def search_rows(
+        self,
+        *,
+        query: Any,
+        top_k: Any = _SEARCH_TOP_K_DEFAULT,
+        project: Any = OMITTED,
+        site: Any = OMITTED,
+        domain: Any = OMITTED,
+        cross_domain: Any = OMITTED,
+        correlation_id: str | None = None,
+    ) -> dict[str, Any]:
+        cid = correlation_id or _new_correlation_id()
+        self._ensure_active(cid)
+        if not isinstance(query, str):
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        if len(query) < 1 or len(query) > _QUERY_CODEPOINT_CAP:
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        # Architecture §6.5.5: split only on whitespace; grammar/length stage on
+        # every token before tokenization/scoring. Punctuation-wrapped tokens
+        # remain ordinary search text.
+        for ws_token in query.split():
+            if looks_like_public_ledger_handle(ws_token):
+                raise StrictPublicError(
+                    "identifier_query_not_supported", correlation_id=cid
+                )
+        if top_k is None:
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        if not isinstance(top_k, int) or isinstance(top_k, bool):
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        if top_k < 1 or top_k > _SEARCH_TOP_K_MAX:
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+
+        selectors = self._resolve_selectors(
+            correlation_id=cid,
+            project=project,
+            site=site,
+            domain=domain,
+            cross_domain=cross_domain,
+        )
+        tokens = tokenize_lexical(query)
+        if not tokens:
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        distinct = _distinct_first(tokens)
+        if len(distinct) > _QUERY_TOKEN_CAP:
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        normalized_query = " ".join(tokens)
+
+        # Parent §6.5.5: hist asc, score desc, observed_at desc, assertion_id asc.
+        ranked: list[tuple[int, int, str, str, dict[str, Any]]] = []
+        for row in self._generation.rows:
+            title = str(row["title"])
+            document = str(row["document"])
+            title_n = " ".join(tokenize_lexical(title))
+            doc_n = " ".join(tokenize_lexical(document))
+            if not any(tok in title_n or tok in doc_n for tok in distinct):
+                continue
+            if not self._row_authorized_or_false(row, selectors):
+                continue
+            score = _score_row(
+                normalized_query=normalized_query,
+                query_tokens=distinct,
+                title=title,
+                document=document,
+            )
+            hist = 0 if row["authority_state"] in _CURRENT_RANK_STATES else 1
+            ranked.append(
+                (hist, score, str(row["observed_at"]), str(row["assertion_id"]), row)
+            )
+
+        ranked.sort(key=lambda t: (t[0], -t[1], tuple(-ord(c) for c in t[2]), t[3]))
+        limited = ranked[:top_k]
+        packed_results: list[dict[str, Any]] = []
+        for item in limited:
+            formatted = self._format_result(item[4])
+            candidate = packed_results + [formatted]
+            trial = {
+                "schema": "convmem.raw-evidence.v3",
+                "instruction_authority": "none",
+                "snapshot": self._snapshot_fields(),
+                "selection_complete": False,
+                "display_basis": "ranked_selection",
+                "results": candidate,
+            }
+            if len(strict_canonical_bytes(trial)) > _RESPONSE_BYTE_CAP:
+                if not packed_results:
+                    raise StrictPublicError("response_too_large", correlation_id=cid)
+                break
+            packed_results.append(formatted)
+
+        selection_complete = len(ranked) <= len(packed_results)
+        return self._pack_success(
+            results=packed_results,
+            selection_complete=selection_complete,
+            display_basis="ranked_selection",
+            correlation_id=cid,
+        )
+
+    def _row_authorized_or_false(
+        self, row: Mapping[str, Any], selectors: EffectiveSelectors
+    ) -> bool:
+        try:
+            authorize_row(
+                scope=self._generation.scope,
+                registry=self._generation.registry,
+                selectors=selectors,
+                project_binding_id=row["project_binding_id"],
+                source_registration_id=row["source_registration_id"],
+                authority_site=row["authority_site"],
+                authority_domain=row["authority_domain"],
+            )
+            return True
+        except BoundScopeError:
+            return False
+
+    def unresolved_rows(
+        self,
+        *,
+        limit: Any = _UNRESOLVED_LIMIT_DEFAULT,
+        project: Any = OMITTED,
+        site: Any = OMITTED,
+        domain: Any = OMITTED,
+        cross_domain: Any = OMITTED,
+        correlation_id: str | None = None,
+    ) -> dict[str, Any]:
+        cid = correlation_id or _new_correlation_id()
+        self._ensure_active(cid)
+        if limit is None:
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        if not isinstance(limit, int) or isinstance(limit, bool):
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        if limit < 1 or limit > _UNRESOLVED_LIMIT_MAX:
+            raise StrictPublicError("invalid_request", correlation_id=cid)
+        selectors = self._resolve_selectors(
+            correlation_id=cid,
+            project=project,
+            site=site,
+            domain=domain,
+            cross_domain=cross_domain,
+        )
+
+        candidates: list[dict[str, Any]] = []
+        for row in self._generation.rows:
+            # Display-only unresolved filter over already-reduced public row fields.
+            # Do not invoke a separate query-time state reducer.
+            if row["record_kind"] != "observation":
+                continue
+            if row["authority_state"] == "conflict" or (
+                row["authority_state"] == "current"
+                and row["verification_state"] != "pass"
+            ):
+                pass
+            else:
+                continue
+            if not self._row_authorized_or_false(row, selectors):
+                continue
+            candidates.append(row)
+
+        candidates.sort(
+            key=lambda r: (
+                0 if r["authority_state"] in _CURRENT_RANK_STATES else 1,
+                tuple(-ord(c) for c in str(r["observed_at"])),
+                r["assertion_id"],
+            )
+        )
+
+        limited = candidates[:limit]
+        packed_results: list[dict[str, Any]] = []
+        for row in limited:
+            formatted = self._format_result(row)
+            candidate = packed_results + [formatted]
+            trial = {
+                "schema": "convmem.raw-evidence.v3",
+                "instruction_authority": "none",
+                "snapshot": self._snapshot_fields(),
+                "selection_complete": False,
+                "display_basis": "ranked_selection",
+                "results": candidate,
+            }
+            if len(strict_canonical_bytes(trial)) > _RESPONSE_BYTE_CAP:
+                if not packed_results:
+                    raise StrictPublicError("response_too_large", correlation_id=cid)
+                break
+            packed_results.append(formatted)
+
+        selection_complete = len(candidates) <= len(packed_results)
+        return self._pack_success(
+            results=packed_results,
+            selection_complete=selection_complete,
+            display_basis="ranked_selection",
+            correlation_id=cid,
+        )
+
+    def related_neighborhood(
+        self,
+        *,
+        ledger_id: Any,
+        project: Any = OMITTED,
+        site: Any = OMITTED,
+        domain: Any = OMITTED,
+        cross_domain: Any = OMITTED,
+        correlation_id: str | None = None,
+    ) -> dict[str, Any]:
+        cid = correlation_id or _new_correlation_id()
+        self._ensure_active(cid)
+        selectors = self._resolve_selectors(
+            correlation_id=cid,
+            project=project,
+            site=site,
+            domain=domain,
+            cross_domain=cross_domain,
+        )
+        try:
+            public_ref, stored_id = parse_public_ledger_handle(ledger_id)
+        except StrictEvidenceError as exc:
+            raise StrictPublicError("scope_denied", correlation_id=cid) from exc
+
+        binding_id = self._generation.scope.allowed_project_bindings[0]
+        binding = self._generation.registry.binding(binding_id)
+        if public_ref != binding.public_ref:
+            raise StrictPublicError("scope_denied", correlation_id=cid)
+
+        # Binding-scoped multimap: zero or multiple authorized matches deny.
+        matches = self._rows_by_assertion.get(stored_id)
+        if matches is None or len(matches) != 1:
+            raise StrictPublicError("scope_denied", correlation_id=cid)
+        target = matches[0]
+
+        collected: dict[str, dict[str, Any]] = {}
+
+        def _add(row: Mapping[str, Any]) -> None:
+            if len(collected) >= _RELATED_NEIGHBORHOOD_CAP and row["assertion_id"] not in collected:
+                raise StrictPublicError("scope_denied", correlation_id=cid)
+            collected[row["assertion_id"]] = dict(row)
+
+        def _row_or_deny(assertion_id: str) -> dict[str, Any]:
+            rows = self._rows_by_assertion.get(assertion_id)
+            if rows is None or len(rows) != 1:
+                raise StrictPublicError("scope_denied", correlation_id=cid)
+            return rows[0]
+
+        # Step 1: parent relates_to path ≤ 8 hops.
+        cursor = target
+        _add(cursor)
+        observation_anchor: str | None = None
+        non_expanding_hit: str | None = None
+        for _ in range(_RELATED_PARENT_HOPS):
+            parents = self._relates_parents.get(cursor["assertion_id"], [])
+            if not parents:
+                break
+            if len(parents) != 1:
+                raise StrictPublicError("scope_denied", correlation_id=cid)
+            parent_id = parents[0]
+            if parent_id in collected:
+                raise StrictPublicError("scope_denied", correlation_id=cid)  # cycle
+            parent_row = _row_or_deny(parent_id)
+            _add(parent_row)
+            if parent_id in self._non_expanding:
+                non_expanding_hit = parent_id
+                break
+            if parent_row["record_kind"] == "observation":
+                observation_anchor = parent_id
+                break
+            cursor = parent_row
+        else:
+            # ninth hop would be required
+            if self._relates_parents.get(cursor["assertion_id"]):
+                raise StrictPublicError("scope_denied", correlation_id=cid)
+
+        def _collect_descendants(
+            root_id: str, depth: int, stack: frozenset[str] = frozenset()
+        ) -> None:
+            if depth <= 0:
+                return
+            if root_id in stack:
+                raise StrictPublicError("scope_denied", correlation_id=cid)
+            next_stack = stack | {root_id}
+            for kind, child_id in self._children.get(root_id, []):
+                if kind not in _GRAPH_EDGE_KINDS:
+                    raise StrictPublicError("scope_denied", correlation_id=cid)
+                if child_id in next_stack:
+                    raise StrictPublicError("scope_denied", correlation_id=cid)
+                child = _row_or_deny(child_id)
+                kind_ok = child.get("record_kind")
+                if kind_ok not in _RECORD_KINDS:
+                    raise StrictPublicError("scope_denied", correlation_id=cid)
+                if child_id not in collected and len(collected) >= _RELATED_NEIGHBORHOOD_CAP:
+                    raise StrictPublicError("scope_denied", correlation_id=cid)
+                _add(child)
+                _collect_descendants(child_id, depth - 1, next_stack)
+
+        # Step 2: target descendants depth 2.
+        _collect_descendants(target["assertion_id"], _RELATED_DESCENDANT_DEPTH)
+
+        # Steps 3–4: observation-anchor vs non-expanding precedence.
+        if non_expanding_hit is not None:
+            pass  # include root only (already added); do not enumerate other children
+        elif observation_anchor is not None:
+            _collect_descendants(observation_anchor, _RELATED_DESCENDANT_DEPTH)
+
+        # Step 5: live competing heads of queried target's logical identity +
+        # only live queried-head verification support (obs/dec heads → targets).
+        logical_id = target["logical_id"]
+        head_rows = [
+            row
+            for row in self._generation.rows
+            if row["logical_id"] == logical_id
+            and row["authority_state"] in {"current", "conflict", "approved"}
+        ]
+        for head in head_rows:
+            _add(head)
+            if head["record_kind"] not in {"observation", "decision"}:
+                continue
+            for kind, child_id in self._children.get(head["assertion_id"], []):
+                if kind != "targets":
+                    continue
+                child = _row_or_deny(child_id)
+                if child["record_kind"] == "verification":
+                    _add(child)
+
+        # Authorize every collected node; any failure → equalized denial.
+        for row in collected.values():
+            self._authorize(row, selectors, correlation_id=cid)
+
+        ordered = sorted(collected.values(), key=lambda r: r["assertion_id"])
+        results = [self._format_result(row) for row in ordered]
+        try:
+            return self._pack_success(
+                results=results,
+                selection_complete=True,
+                display_basis="bounded_context",
+                correlation_id=cid,
+            )
+        except StrictPublicError:
+            raise StrictPublicError("scope_denied", correlation_id=cid)
+
+
+def dispatch_tool(
+    reader: StrictProjectionReader,
+    method: str,
+    arguments: Mapping[str, Any],
+    *,
+    correlation_id: str | None = None,
+) -> dict[str, Any]:
+    """Dispatch one of the three fixed methods; preserve omitted vs null via raw keys."""
+
+    cid = correlation_id or _new_correlation_id()
+    raw = dict(arguments)
+    def _sel(name: str) -> Any:
+        return raw[name] if name in raw else OMITTED
+
+    try:
+        if method == "search":
+            if "query" not in raw:
+                raise StrictPublicError("invalid_request", correlation_id=cid)
+            top_k = raw["top_k"] if "top_k" in raw else _SEARCH_TOP_K_DEFAULT
+            return reader.search_rows(
+                query=raw["query"],
+                top_k=top_k,
+                project=_sel("project"),
+                site=_sel("site"),
+                domain=_sel("domain"),
+                cross_domain=_sel("cross_domain"),
+                correlation_id=cid,
+            )
+        if method == "unresolved":
+            limit = raw["limit"] if "limit" in raw else _UNRESOLVED_LIMIT_DEFAULT
+            return reader.unresolved_rows(
+                limit=limit,
+                project=_sel("project"),
+                site=_sel("site"),
+                domain=_sel("domain"),
+                cross_domain=_sel("cross_domain"),
+                correlation_id=cid,
+            )
+        if method == "related":
+            if "ledger_id" not in raw:
+                raise StrictPublicError("invalid_request", correlation_id=cid)
+            return reader.related_neighborhood(
+                ledger_id=raw["ledger_id"],
+                project=_sel("project"),
+                site=_sel("site"),
+                domain=_sel("domain"),
+                cross_domain=_sel("cross_domain"),
+                correlation_id=cid,
+            )
+        raise StrictPublicError("invalid_request", correlation_id=cid)
+    except StrictPublicError:
+        raise
+    except StrictProjectionError as exc:
+        msg = str(exc)
+        if msg in {"snapshot_expired", "publication_not_serving"} or "snapshot" in msg:
+            raise StrictPublicError("snapshot_stale", correlation_id=cid) from exc
+        raise StrictPublicError("internal_failure", correlation_id=cid) from exc
+    except Exception as exc:  # noqa: BLE001 — equalized public failure
+        raise StrictPublicError("internal_failure", correlation_id=cid) from exc
+
+
+def _cli_read(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="strict_projection.py")
+    sub = parser.add_subparsers(dest="command", required=True)
+    read_p = sub.add_parser("read")
+    read_p.add_argument("--method", required=True, choices=("search", "unresolved", "related"))
+    read_p.add_argument("--scope", required=True)
+    read_p.add_argument("--registry", required=True)
+    read_p.add_argument("--strict-config", required=True)
+    read_p.add_argument("--request-file", required=True)
+    read_p.add_argument("--expected-publication", required=True)
+    args = parser.parse_args(argv)
+
+    correlation_id = _new_correlation_id()
+    generation: QualifiedStrictGeneration | None = None
+    lock_fd = -1
+    started_boottime_ns = boottime_ns()
+    try:
+        scope_path = Path(args.scope)
+        registry_path = Path(args.registry)
+        config_path = Path(args.strict_config)
+        operator_pins = collect_operator_path_pins(
+            scope_path, registry_path, config_path
+        )
+        scope = load_bound_read_scope_for_strict(scope_path)
+        registry = load_project_binding_registry_for_strict(registry_path)
+        config = load_strict_config(config_path)
+        request_obj = _read_json_public(Path(args.request_file))
+        if not isinstance(request_obj, dict):
+            raise StrictPublicError("invalid_request", correlation_id=correlation_id)
+
+        # Acquire shared lineage lock BEFORE private qualification; hold the
+        # same lock across qualify → public open → dispatch → final recheck →
+        # buffered stdout commit.
+        try:
+            binding_id = scope.allowed_project_bindings[0]
+            lineage_id = registry.binding(binding_id).lineage_id
+        except (BoundScopeError, IndexError, KeyError) as exc:
+            raise StrictProjectionError("scope_registry") from exc
+        locks_dir = config.projection_root / "locks"
+        _require_public_dir(locks_dir)
+        lock_path = locks_dir / f"{lineage_id}.lock"
+        lock_fd, lock_inode = _acquire_shared_lineage_lock(lock_path)
+
+        qualify_authority_generation(
+            root=config.projection_root,
+            scope=scope,
+            registry=registry,
+            expected_publication_sha256=args.expected_publication,
+            require_serving=True,
+        )
+        generation = open_published_generation(
+            root=config.projection_root,
+            scope=scope,
+            registry=registry,
+            expected_publication_sha256=args.expected_publication,
+            operator_path_pins=operator_pins,
+            held_lock=(lock_fd, lock_inode),
+        )
+        # Capability now owns the lock fd.
+        lock_fd = -1
+        reader = StrictProjectionReader(generation)
+        result = dispatch_tool(
+            reader, args.method, request_obj, correlation_id=correlation_id
+        )
+        # 10-second CLOCK_BOOTTIME bound: elapsed >= 10s is stale.
+        # Final publication/time recheck before a single buffered stdout commit.
+        if boottime_ns() - started_boottime_ns >= _CLI_BOOTTIME_BUDGET_NS:
+            raise StrictPublicError("snapshot_stale", correlation_id=correlation_id)
+        recheck_live_public_capability(generation)
+        if boottime_ns() - started_boottime_ns >= _CLI_BOOTTIME_BUDGET_NS:
+            raise StrictPublicError("snapshot_stale", correlation_id=correlation_id)
+        out = strict_canonical_bytes(result) + b"\n"
+        sys.stdout.buffer.write(out)
+        return 0
+    except StrictPublicError as exc:
+        # No partial success stdout: errors still emit one closed error envelope.
+        sys.stdout.buffer.write(strict_canonical_bytes(exc.payload))
+        sys.stdout.buffer.write(b"\n")
+        return 1
+    except (StrictProjectionError, BoundScopeError, StrictEvidenceError, OSError) as exc:
+        err = StrictPublicError("internal_failure", correlation_id=correlation_id)
+        if isinstance(exc, StrictProjectionError) and str(exc) in {
+            "snapshot_expired",
+            "publication_not_serving",
+            "publication_cas_mismatch",
+        }:
+            err = StrictPublicError("snapshot_stale", correlation_id=correlation_id)
+        sys.stdout.buffer.write(strict_canonical_bytes(err.payload))
+        sys.stdout.buffer.write(b"\n")
+        return 1
+    finally:
+        if generation is not None and not generation.is_revoked:
+            try:
+                revoke_snapshot(generation)
+            except StrictProjectionError:
+                pass
+        elif lock_fd >= 0:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            except OSError:
+                pass
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    return _cli_read(argv)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 
 
 __all__ = [
     "QualifiedAuthorityGeneration",
+    "QualifiedStrictGeneration",
+    "StrictConfig",
     "StrictProjectionError",
+    "StrictProjectionReader",
+    "StrictPublicError",
+    "boottime_ns",
+    "collect_operator_path_pins",
+    "dispatch_tool",
+    "load_bound_read_scope_for_strict",
+    "load_project_binding_registry_for_strict",
+    "load_strict_config",
+    "main",
+    "open_public_projection",
+    "open_published_generation",
+    "pin_operator_immutable_path",
     "qualify_authority_generation",
+    "recheck_live_public_capability",
+    "recheck_operator_immutable_path",
+    "revoke_snapshot",
+    "tokenize_lexical",
+    "wall_time_utc",
 ]

@@ -2192,8 +2192,10 @@ def test_m3_true_positive_two_root_byte_identical_serving(tmp_path: Path):
         return canon(payload)
 
     assert _state_map(qa) == _state_map(qb)
-    # M4 reader/server remains absent.
+    # M4 reader surfaces are present; publisher still must not import them for writes.
     import strict_projection as sp
 
-    assert not hasattr(sp, "open_public_projection")
-    assert not hasattr(sp, "revoke_snapshot")
+    assert hasattr(sp, "open_published_generation")
+    assert hasattr(sp, "open_public_projection")
+    assert hasattr(sp, "revoke_snapshot")
+    assert sp.open_public_projection is sp.open_published_generation
