@@ -7,6 +7,7 @@ import json
 import struct
 import subprocess
 import sys
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
@@ -298,7 +299,7 @@ def test_sealed_immutability_and_fresh_activation_history():
     assert predecessor in live.sealed_history
     with pytest.raises(TypeError):
         predecessor.retirement_receipt["tampered"] = True  # type: ignore[index]
-    with pytest.raises(TypeError):
+    with pytest.raises(FrozenInstanceError):
         predecessor.state = "QUALIFYING"  # type: ignore[misc]
     # Live mutation must not alter the sealed predecessor / old slot.
     live.retirement_receipt = {"tampered": True}
