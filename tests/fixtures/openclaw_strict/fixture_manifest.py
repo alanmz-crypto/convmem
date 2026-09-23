@@ -33,7 +33,13 @@ from component_inventory import (  # noqa: F401 — re-export for packet contrac
     source_component_digest_available,
     unrelated_on_disk_file_leaves_digest_unchanged,
 )
-from constants import CODE_BASELINE_SHA, EXPECTED_TEST_RUNTIME_TREE_SHA256, SEMANTIC_PARENT_SHA
+from constants import (
+    CODE_BASELINE_SHA,
+    EXPECTED_TEST_RUNTIME_TREE_SHA256,
+    GENERATED_EVIDENCE_FIXTURE_RELS,
+    GENERATED_EVIDENCE_SOURCE_RELS,
+    SEMANTIC_PARENT_SHA,
+)
 
 SCHEMA_ID = "convmem.strict-fixture-manifest.v1"
 ARTIFACT_KIND = "protocol_fixture"
@@ -60,20 +66,8 @@ COMPONENT_NAMES = (
 
 # Generated run outputs excluded from inventories by exact relative path only.
 # Never use a global basename exclusion (would hide a tracked file elsewhere).
-_EXCLUDED_FIXTURE_RELS = frozenset(
-    {
-        "fixture-manifest.json",
-        "suite_results.json",
-        "evidence/fixture-manifest.json",
-    }
-)
-_EXCLUDED_SOURCE_RELS = frozenset(
-    {
-        "tests/fixtures/openclaw_strict/fixture-manifest.json",
-        "tests/fixtures/openclaw_strict/suite_results.json",
-        "tests/fixtures/openclaw_strict/evidence/fixture-manifest.json",
-    }
-)
+_EXCLUDED_FIXTURE_RELS = GENERATED_EVIDENCE_FIXTURE_RELS
+_EXCLUDED_SOURCE_RELS = GENERATED_EVIDENCE_SOURCE_RELS
 
 
 class ManifestNotAvailable(Exception):
