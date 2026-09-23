@@ -277,6 +277,43 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
         assert not Path(forbidden).exists(), f"gate_w_schema_present:{forbidden}"
 
 
+def test_m4_edit_allowlist_permits_mcp_server_protects_gate_w(monkeypatch):
+    """M4/T3: mcp_server.py is bounded-edit allowlisted; Gate W stays reject-only."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import allowlist as oc_allowlist
+
+    assert "mcp_server.py" in oc_constants.EDIT_ALLOWLIST_EXACT
+    assert oc_allowlist.path_allowed("mcp_server.py") is True
+
+    gate_w = (
+        "schemas/convmem-approved-admission-v1.schema.json",
+        "schemas/convmem-admission-intent-v1.schema.json",
+        "schemas/convmem-admission-review-v1.schema.json",
+        "schemas/convmem-admission-ratification-v1.schema.json",
+        "schemas/convmem-admission-event-v1.schema.json",
+    )
+    for path in gate_w:
+        assert path not in oc_constants.EDIT_ALLOWLIST_EXACT
+        assert path not in oc_constants.SCHEMA_ALLOWLIST
+        assert oc_allowlist.path_allowed(path) is False
+
+    monkeypatch.setattr(
+        oc_allowlist, "changed_paths", lambda *_a, **_k: ["mcp_server.py"]
+    )
+    assert oc_allowlist.assert_allowlist(Path("."), "deadbeef") == ["mcp_server.py"]
+
+    # Second layer must still reject Gate W even if path_allowed were bypassed.
+    monkeypatch.setattr(oc_allowlist, "path_allowed", lambda _p: True)
+    monkeypatch.setattr(
+        oc_allowlist, "changed_paths", lambda *_a, **_k: [gate_w[0]]
+    )
+    try:
+        oc_allowlist.assert_allowlist(Path("."), "deadbeef")
+        raise AssertionError("gate_w_second_layer_bypassed")
+    except SystemExit as exc:
+        assert str(exc) == f"gate_w_forbidden_change:{gate_w[0]}"
+
+
 def test_m2_future_production_modules_remain_absent():
     """M4: T3 server present; future-production set is empty for Gate B."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
