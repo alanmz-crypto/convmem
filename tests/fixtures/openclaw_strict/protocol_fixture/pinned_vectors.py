@@ -369,7 +369,6 @@ DECLARED_VECTOR_FUTURE_REDS: tuple[str, ...] = (
     "T1 finding_id_v2/assertion_id_v2 production generators",
     "T2 lineage join/reducer over fork heads",
     "T2 publication CAS machine",
-    "T5 activation-control runtime framing",
 )
 
 PINNED_OBJECT_INVENTORY: tuple[str, ...] = (
