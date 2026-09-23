@@ -29,6 +29,7 @@ from audit_evidence import (  # noqa: E402
     collect_containment_evidence,
     emit_audit_package,
     emit_pytest_node_outcomes,
+    run_junit_parser_negative_controls,
 )
 from constants import (  # noqa: E402
     ALL_NEGATIVE_CONTROLS,
@@ -539,6 +540,21 @@ def outer_main(argv: list[str] | None = None) -> int:
                     "legacy_collected": node_outcomes["suites"][1]["counts"][
                         "collected"
                     ],
+                },
+                sort_keys=True,
+            )
+        )
+        # Overlay M8 field 9: every parent JUnit/parser negative must reject.
+        # In-process disposable mutants only — no new process, file, or schema field.
+        try:
+            parser_negatives = run_junit_parser_negative_controls()
+        except RuntimeError as exc:
+            _die(str(exc))
+        print(
+            json.dumps(
+                {
+                    "junit_parser_negative_controls": parser_negatives,
+                    "status": "PASS",
                 },
                 sort_keys=True,
             )
