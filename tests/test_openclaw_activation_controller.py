@@ -201,8 +201,10 @@ def test_framed_closed_requests_and_request_id_conflict():
 
     bad = turn_request()
     bad["extra"] = "nope"
+    before = len(platform.control_outbound("op1").write_trace)
     framed = controller.handle_framed_bytes("op1", encode_control_frame(bad))
     assert framed is not None
+    assert len(platform.control_outbound("op1").write_trace) == before + 1
     obj, _, _ = try_decode_control_frame(framed)
     assert obj["outcome"] == "invalid_request"
 
@@ -211,6 +213,7 @@ def test_framed_closed_requests_and_request_id_conflict():
     framed2 = controller.handle_framed_bytes("op1", encode_control_frame(bad2))
     obj2, _, _ = try_decode_control_frame(framed2)
     assert obj2["outcome"] == "invalid_request"
+    assert len(platform.control_outbound("op1").write_trace) == before + 2
 
     opd = open_operator_session(controller, platform, "opd")
     r1 = controller.handle_control(opd, turn_request())
@@ -265,8 +268,9 @@ def test_sealed_immutability_and_fresh_activation_history():
     platform.force_observe(inv, terminal=True, populated=False)
     first_receipt = controller.attempt_retirement(HEX_B, terminal_reason="operator")
     first_act = controller.slots[HEX_B].activation_id
-    assert controller.slots[HEX_B].state == "SEALED"
-    predecessor = controller.slots[HEX_B].sealed_record
+    sealed_slot = controller.slots[HEX_B]
+    assert sealed_slot.state == "SEALED"
+    predecessor = sealed_slot.sealed_record
     assert predecessor is not None
     assert predecessor.state == "SEALED"
     pred_receipt = dict(predecessor.retirement_receipt)
@@ -280,16 +284,26 @@ def test_sealed_immutability_and_fresh_activation_history():
         policy2,
         lifecycle_config={},
     )
-    st = controller.slots[HEX_B]
-    assert st.state == "ACTIVE_IDLE"
-    assert st.activation_id == act2
+    live = controller.slots[HEX_B]
+    assert live is not sealed_slot
+    assert live.state == "ACTIVE_IDLE"
+    assert live.activation_id == act2
+    # Retained OLD SlotState stays SEALED with unchanged identity/receipt.
+    assert sealed_slot.state == "SEALED"
+    assert sealed_slot.activation_id == pred_id == first_act
+    assert sealed_slot.retirement_receipt == first_receipt
     assert predecessor.state == "SEALED"
     assert predecessor.activation_id == pred_id == first_act
     assert predecessor.retirement_receipt == pred_receipt == first_receipt
-    assert predecessor in st.sealed_history
-    # Live mutation must not alter the sealed predecessor object.
-    st.retirement_receipt = {"tampered": True}
+    assert predecessor in live.sealed_history
+    with pytest.raises(TypeError):
+        predecessor.retirement_receipt["tampered"] = True  # type: ignore[index]
+    with pytest.raises(TypeError):
+        predecessor.state = "QUALIFYING"  # type: ignore[misc]
+    # Live mutation must not alter the sealed predecessor / old slot.
+    live.retirement_receipt = {"tampered": True}
     assert predecessor.retirement_receipt == first_receipt
+    assert sealed_slot.retirement_receipt == first_receipt
     assert supervisor.accepted == {}
     assert supervisor.pending_delivery is None
 
@@ -772,3 +786,280 @@ def test_negative_empty_fd_roles_not_unconstrained():
             "/fixture/empty",
             {},
         )
+
+
+def test_capacity_drives_manager_stop_and_capacity_receipt():
+    """cap → REVOKING+stop → uncertain/nonempty refuse → exact empty permits capacity."""
+
+    platform, controller, supervisor, _ = _pair()
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+    )
+    # Fill accepted history to 256 via one live commit + 255 preload.
+    op = open_operator_session(controller, platform, "cap-op")
+    assert controller.handle_control(op, turn_request())["outcome"] == "running"
+    handle = supervisor.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    platform.schedule_agent_success(handle)
+    supervisor.ingest_agent_event(platform.next_event(handle))
+    supervisor.ingest_agent_event(platform.next_event(handle))
+    supervisor.release_commit()
+    controller.slots[HEX_B].state = "ACTIVE_IDLE"
+    records = platform.preload_accepted_turn_history(count=255, turn_state="committed")
+    supervisor.preload_completed_history(records)
+    assert len(supervisor.accepted) == 256
+
+    capped = controller.handle_control(
+        op,
+        turn_request(
+            request_id="99999999999999999999999999999999",
+            turn_id="88888888888888888888888888888888",
+            text="cap",
+        ),
+    )
+    assert capped["outcome"] == "unavailable"
+    assert capped["payload"]["reason"] == "capacity"
+    st = controller.slots[HEX_B]
+    assert st.state == "REVOKING"
+    assert st.terminal_reason == "capacity"
+    assert st.stop_requested is True
+    assert st.persisted.get("stop_requested") is True
+    assert "manager_stop" in platform.port_ops()
+
+    inv = st.unit_invocation_id
+    platform.force_observe(inv, terminal=True, populated=None)
+    with pytest.raises(ValueError, match="quarantined"):
+        controller.attempt_retirement(HEX_B)
+    assert controller.slots[HEX_B].state == "QUARANTINED"
+
+    # Fresh activation path for nonempty refuse (re-enroll via new controller pair).
+    platform2, controller2, supervisor2, _ = _pair()
+    controller2.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller2.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+    )
+    op2 = open_operator_session(controller2, platform2, "cap-op2")
+    assert controller2.handle_control(op2, turn_request())["outcome"] == "running"
+    h2 = supervisor2.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    platform2.schedule_agent_success(h2)
+    supervisor2.ingest_agent_event(platform2.next_event(h2))
+    supervisor2.ingest_agent_event(platform2.next_event(h2))
+    supervisor2.release_commit()
+    controller2.slots[HEX_B].state = "ACTIVE_IDLE"
+    supervisor2.preload_completed_history(
+        platform2.preload_accepted_turn_history(count=255, turn_state="committed")
+    )
+    controller2.handle_control(
+        op2,
+        turn_request(
+            request_id="99999999999999999999999999999999",
+            turn_id="88888888888888888888888888888888",
+            text="cap",
+        ),
+    )
+    inv2 = controller2.slots[HEX_B].unit_invocation_id
+    platform2.force_observe(inv2, terminal=True, populated=True)
+    with pytest.raises(ValueError, match="quarantined"):
+        controller2.attempt_retirement(HEX_B)
+
+    platform3, controller3, supervisor3, _ = _pair()
+    controller3.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller3.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+    )
+    op3 = open_operator_session(controller3, platform3, "cap-op3")
+    assert controller3.handle_control(op3, turn_request())["outcome"] == "running"
+    h3 = supervisor3.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    platform3.schedule_agent_success(h3)
+    supervisor3.ingest_agent_event(platform3.next_event(h3))
+    supervisor3.ingest_agent_event(platform3.next_event(h3))
+    supervisor3.release_commit()
+    controller3.slots[HEX_B].state = "ACTIVE_IDLE"
+    supervisor3.preload_completed_history(
+        platform3.preload_accepted_turn_history(count=255, turn_state="committed")
+    )
+    controller3.handle_control(
+        op3,
+        turn_request(
+            request_id="99999999999999999999999999999999",
+            turn_id="88888888888888888888888888888888",
+            text="cap",
+        ),
+    )
+    st3 = controller3.slots[HEX_B]
+    assert st3.state == "REVOKING"
+    assert st3.terminal_reason == "capacity"
+    inv3 = st3.unit_invocation_id
+    platform3.clear_all_members(inv3)
+    platform3.force_observe(inv3, terminal=True, populated=False)
+    receipt = controller3.attempt_retirement(HEX_B)
+    assert receipt["terminal_reason"] == "capacity"
+    assert st3.state == "SEALED"
+    sealed = controller3.handle_control(op3, status_request(request_id=HEX_E))
+    assert sealed["outcome"] == "sealed"
+    assert sealed["payload"]["retirement_ref"] == receipt["receipt_payload_sha256"]
+    assert sealed["payload"]["retirement_ref"] is not None
+
+
+def test_launch_policy_fixed_fd_roles_and_executable_constraints():
+    import openclaw_activation_controller as ctl
+
+    policy = base_launch_policy()
+    # Remove required supervisor descriptor role.
+    bad_sup = copy.deepcopy(policy)
+    bad_sup["processes"]["supervisor"]["inherited_fd_roles"] = [
+        "supervisor_control",
+        "notify",
+    ]
+    bad_sup["policy_payload_sha256"] = independent_content_hash(
+        bad_sup, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="fd_roles_fixed:supervisor"):
+        ctl.validate_launch_policy(bad_sup)
+
+    # Remove required agent stdin role.
+    bad_ag = copy.deepcopy(policy)
+    bad_ag["processes"]["agent"]["inherited_fd_roles"] = ["stdout", "stderr"]
+    bad_ag["policy_payload_sha256"] = independent_content_hash(
+        bad_ag, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="fd_roles_fixed:agent"):
+        ctl.validate_launch_policy(bad_ag)
+
+    # Swap executable while re-self-hashing — argv[0] must equal executable.
+    bad_exe = copy.deepcopy(policy)
+    bad_exe["processes"]["gateway"]["executable"] = "/fixture/bin/evil-node"
+    bad_exe["policy_payload_sha256"] = independent_content_hash(
+        bad_exe, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="executable_mismatch:gateway"):
+        ctl.validate_launch_policy(bad_exe)
+
+    bad_agent_exe = copy.deepcopy(policy)
+    bad_agent_exe["processes"]["agent"]["executable"] = "/fixture/bin/evil-node"
+    bad_agent_exe["policy_payload_sha256"] = independent_content_hash(
+        bad_agent_exe, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="executable_mismatch:agent"):
+        ctl.validate_launch_policy(bad_agent_exe)
+
+    # strict_server setpriv structure / executable relationship.
+    bad_ss = copy.deepcopy(policy)
+    bad_ss["processes"]["strict_server"]["argv_template"][7] = "/fixture/bin/other"
+    bad_ss["policy_payload_sha256"] = independent_content_hash(
+        bad_ss, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="strict_server_executable_mismatch"):
+        ctl.validate_launch_policy(bad_ss)
+
+
+def test_lifetime_authority_negative_and_caller_max_cannot_enlarge():
+    platform, controller, supervisor, _ = _pair()
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    with pytest.raises(ValueError, match="negative_snapshot_lifetime"):
+        controller.qualify_and_activate(
+            HEX_B,
+            base_activation_manifest(),
+            base_launch_policy(),
+            lifecycle_config={},
+            remaining_snapshot_lifetime_ns=-1,
+        )
+    assert controller.slots[HEX_B].state in ("NEW", "REVOKING")
+    assert controller.slots[HEX_B].freshness_anchor is None
+
+    platform2, controller2, supervisor2, _ = _pair()
+    controller2.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    manifest = base_activation_manifest()
+    manifest_max = manifest["max_monotonic_lifetime_seconds"]
+    assert manifest_max == 3600
+    st = controller2.qualify_and_activate(
+        HEX_B,
+        manifest,
+        base_launch_policy(),
+        lifecycle_config={},
+        max_activation_lifetime_s=86_400,  # larger than manifest — must not enlarge
+    )
+    # Lease bound uses min(manifest_max, remaining_wall) — not the enlarged caller max.
+    sample = platform2.sample_clock()
+    # Effective max stays manifest_max (3600), not 86400.
+    expected_lease_cap = int(sample["boottime_after_ns"]) + 1_000_000_000 * manifest_max
+    assert st.lease_deadline_boottime_ns is not None
+    assert st.lease_deadline_boottime_ns <= expected_lease_cap
+    assert st.lease_deadline_boottime_ns < int(sample["boottime_after_ns"]) + 1_000_000_000 * 86_400
+
+
+def test_closed_scalar_path_and_timestamp_validation():
+    import openclaw_activation_controller as ctl
+
+    with pytest.raises(ValueError, match="bad_wall_time"):
+        ctl._parse_wall("2026-09-21 00:00:00Z")
+    with pytest.raises(ValueError, match="bad_wall_time"):
+        ctl._parse_wall("2026/09/21T00:00:00Z")
+    with pytest.raises(ValueError, match="bad_wall_time"):
+        ctl._parse_wall("2026-02-30T00:00:00Z")
+    with pytest.raises(ValueError, match="bad_wall_time"):
+        ctl._parse_wall("2026-09-21T24:00:00Z")
+    with pytest.raises(ValueError, match="bad_wall_time"):
+        ctl._parse_wall("2026-09-21T00:60:00Z")
+    assert ctl._parse_wall("2026-09-21T00:00:00Z") > 0
+
+    for bad_dir in (
+        "/fixture/state/",
+        "/fixture/state//act",
+        "/fixture/state/./act",
+        "/fixture/state/../etc",
+        "/fixture/state/act/../x",
+        "/fixture/state",
+        "/other/state/act-1",
+    ):
+        with pytest.raises(ValueError, match="bad_state_dir"):
+            ctl._validate_state_dir(bad_dir)
+    assert ctl._validate_state_dir("/fixture/state/act-1") == "/fixture/state/act-1"
+
+    manifest = base_activation_manifest()
+    bad_port = dict(manifest)
+    bad_port["gateway_port"] = True  # bool must not pass as int
+    bad_port["manifest_payload_sha256"] = independent_content_hash(
+        bad_port, "manifest_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="bad_gateway_port"):
+        ctl.validate_activation_manifest(
+            bad_port,
+            slot_id=HEX_B,
+            lineage_id=HEX_A,
+            authority_head=PUB,
+            expires_at="2026-09-22T00:00:00Z",
+        )
+
+    policy = base_launch_policy()
+    bad_uid = copy.deepcopy(policy)
+    bad_uid["operator_uid"] = True
+    bad_uid["policy_payload_sha256"] = independent_content_hash(
+        bad_uid, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="bad_operator_uid"):
+        ctl.validate_launch_policy(bad_uid)
+
+
+def test_framed_send_timeout_closes_without_partial_success():
+    platform, controller, supervisor, _ = _pair()
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+    )
+    platform.open_control_connection("opsend", "operator")
+    controller.open_control_session("opsend")
+    outbound = platform.control_outbound("opsend")
+    outbound.blocked = True
+    frame = encode_control_frame(status_request(request_id=HEX_E))
+    # First attempt: blocked send — no partial success; pending SEND armed.
+    assert controller.handle_framed_bytes("opsend", frame) is None
+    assert len(outbound.write_trace) == 0
+    assert "opsend" in controller._open_sessions
+    assert "opsend" in controller._pending_outbound
+    # Scripted 10s SEND timeout via pending flush (fixture boottime — not host time).
+    platform.advance_boottime(CONTROL_IO_TIMEOUT_NS + 1)
+    assert controller.handle_framed_bytes("opsend", b"") is None
+    assert "opsend" not in controller._open_sessions
+    assert len(outbound.write_trace) == 0
+    assert "opsend" not in controller._pending_outbound

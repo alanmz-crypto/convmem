@@ -12,6 +12,7 @@ import json
 import struct
 import sys
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Mapping, MutableMapping, Protocol
 
 from openclaw_activation_supervisor import validate_launch_tuple
@@ -51,6 +52,11 @@ REVOKE_REASONS = frozenset(
     }
 )
 
+# Internal terminal reasons only — never accepted on external revoke requests.
+INTERNAL_TERMINAL_REASONS = frozenset({"capacity"})
+
+TERMINAL_RECEIPT_REASONS = REVOKE_REASONS | INTERNAL_TERMINAL_REASONS
+
 INVALID_REASONS = frozenset(
     {
         "not_active",
@@ -60,6 +66,25 @@ INVALID_REASONS = frozenset(
         "capacity",
         *REVOKE_REASONS,
     }
+)
+
+# Parent-fixed descriptor-role sets — policy cannot invent alternatives.
+FIXED_FD_ROLES: dict[str, frozenset[str]] = {
+    "supervisor": frozenset({"supervisor_control", "lease", "notify"}),
+    "gateway": frozenset({"stdout", "stderr"}),
+    "agent": frozenset({"stdin", "stdout", "stderr"}),
+    "strict_server": frozenset({"stdin", "stdout", "stderr"}),
+    "model_worker": frozenset({"stdout", "stderr"}),
+}
+
+STRICT_SERVER_ARGV_PREFIX = (
+    "/fixture/bin/setpriv",
+    "--no-new-privs",
+    "--seccomp-filter",
+    "/fixture/filter/strict.bpf",
+    "/fixture/bin/python",
+    "-B",
+    "-s",
 )
 
 ACTIVATION_KEYS = (
@@ -299,17 +324,54 @@ def _sha_digest(value: Any) -> bool:
     )
 
 
-def _parse_wall(wall: str) -> int:
-    """Parse ``YYYY-MM-DDTHH:MM:SSZ`` to epoch seconds (integer, no float)."""
+def _require_int(value: Any, err: str) -> int:
+    """Exact integer — reject bools (``True`` is an ``int`` subclass)."""
 
-    if not isinstance(wall, str) or len(wall) != 20 or wall[10] != "T" or wall[-1] != "Z":
+    if type(value) is not int:
+        raise ValueError(err)
+    return value
+
+
+def _days_in_month(year: int, month: int) -> int:
+    if month in (1, 3, 5, 7, 8, 10, 12):
+        return 31
+    if month in (4, 6, 9, 11):
+        return 30
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    return 29 if leap else 28
+
+
+def _parse_wall(wall: str) -> int:
+    """Parse canonical ``YYYY-MM-DDTHH:MM:SSZ`` to epoch seconds (integer, no float)."""
+
+    if not isinstance(wall, str) or len(wall) != 20:
         raise ValueError("bad_wall_time")
+    if (
+        wall[4] != "-"
+        or wall[7] != "-"
+        or wall[10] != "T"
+        or wall[13] != ":"
+        or wall[16] != ":"
+        or wall[19] != "Z"
+    ):
+        raise ValueError("bad_wall_time")
+    for idx, ch in enumerate(wall):
+        if idx in (4, 7, 10, 13, 16, 19):
+            continue
+        if ch not in "0123456789":
+            raise ValueError("bad_wall_time")
     year = int(wall[0:4])
     month = int(wall[5:7])
     day = int(wall[8:10])
     hour = int(wall[11:13])
     minute = int(wall[14:16])
     second = int(wall[17:19])
+    if not (1 <= month <= 12):
+        raise ValueError("bad_wall_time")
+    if not (1 <= day <= _days_in_month(year, month)):
+        raise ValueError("bad_wall_time")
+    if not (0 <= hour <= 23 and 0 <= minute <= 59 and 0 <= second <= 59):
+        raise ValueError("bad_wall_time")
     y = year
     m = month
     if m <= 2:
@@ -321,6 +383,33 @@ def _parse_wall(wall: str) -> int:
     doe = yoe * 365 + yoe // 4 - yoe // 100 + doy
     days = era * 146097 + doe - 719468
     return days * 86400 + hour * 3600 + minute * 60 + second
+
+
+def _validate_state_dir(path: Any) -> str:
+    """Require a proper path-component child of ``/fixture/state`` (no escapes)."""
+
+    if not isinstance(path, str):
+        raise ValueError("bad_state_dir")
+    prefix = "/fixture/state/"
+    if not path.startswith(prefix):
+        raise ValueError("bad_state_dir")
+    if "//" in path or "/./" in path or "/../" in path:
+        raise ValueError("bad_state_dir")
+    if path.endswith("/.") or path.endswith("/.."):
+        raise ValueError("bad_state_dir")
+    rest = path[len(prefix) :]
+    if not rest or rest.startswith("/") or rest.endswith("/"):
+        raise ValueError("bad_state_dir")
+    for part in rest.split("/"):
+        if part in ("", ".", ".."):
+            raise ValueError("bad_state_dir")
+        if any(c in part for c in ("\\", "\x00")):
+            raise ValueError("bad_state_dir")
+    return path
+
+
+def _frozen_map(obj: Mapping[str, Any]) -> MappingProxyType[str, Any]:
+    return MappingProxyType(dict(obj))
 
 
 def lifecycle_config_core(config: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -475,21 +564,17 @@ def validate_activation_manifest(
     if not isinstance(manifest["openclaw_version"], str):
         raise ValueError("bad_openclaw_version")
     for wall_key in ("as_of", "expires_at", "created_at"):
-        if not isinstance(manifest[wall_key], str) or len(str(manifest[wall_key])) != 20:
+        if not isinstance(manifest[wall_key], str):
             raise ValueError(f"bad_{wall_key}")
         _parse_wall(str(manifest[wall_key]))
-    if not isinstance(manifest["state_dir"], str) or not manifest["state_dir"].startswith(
-        "/fixture/state/"
-    ):
-        raise ValueError("bad_state_dir")
+    _validate_state_dir(manifest["state_dir"])
     if known_state_dirs is not None and manifest["state_dir"] in known_state_dirs:
         raise ValueError("state_dir_reuse")
-    if not isinstance(manifest["gateway_port"], int) or not (
-        49152 <= int(manifest["gateway_port"]) <= 65535
-    ):
+    gw_port = _require_int(manifest["gateway_port"], "bad_gateway_port")
+    if not (49152 <= gw_port <= 65535):
         raise ValueError("bad_gateway_port")
-    max_life = manifest["max_monotonic_lifetime_seconds"]
-    if not isinstance(max_life, int) or max_life < 1 or max_life > 86400:
+    max_life = _require_int(manifest["max_monotonic_lifetime_seconds"], "bad_max_lifetime")
+    if max_life < 1 or max_life > 86400:
         raise ValueError("bad_max_lifetime")
     # Self-hash is mandatory — capability digests cannot excuse a wrong hash.
     content = _content_hash(manifest, "manifest_payload_sha256")
@@ -545,9 +630,10 @@ def _validate_mount_list(entries: Any, *, writable: bool) -> int:
             if entry["mode"] != "rw" or role not in RW_SOURCE_ROLES:
                 raise ValueError("writable_mount_mode")
             mb = entry["max_bytes"]
-            if not isinstance(mb, int) or mb < 1:
+            mb_i = _require_int(mb, "writable_max_bytes")
+            if mb_i < 1:
                 raise ValueError("writable_max_bytes")
-            total += mb
+            total += mb_i
         else:
             if entry["mode"] != "ro" or role not in RO_SOURCE_ROLES:
                 raise ValueError("readonly_mount_mode")
@@ -586,6 +672,15 @@ def _validate_agent_argv(argv: list[str]) -> None:
         raise ValueError("turn_text_count")
 
 
+def _validate_strict_server_argv(argv: list[str], *, executable: str) -> None:
+    if len(argv) != 8:
+        raise ValueError("strict_server_argv_structure")
+    if tuple(argv[:7]) != STRICT_SERVER_ARGV_PREFIX:
+        raise ValueError("strict_server_setpriv")
+    if argv[7] != executable:
+        raise ValueError("strict_server_executable_mismatch")
+
+
 def validate_launch_policy(
     policy: Mapping[str, Any],
     *,
@@ -609,7 +704,8 @@ def validate_launch_policy(
         ("supervisor_uid", LOGICAL_UID["supervisor"]),
         ("runtime_uid", LOGICAL_UID["runtime"]),
     ):
-        if policy.get(role_key) != expected_uid:
+        uid_val = _require_int(policy.get(role_key), f"bad_{role_key}")
+        if uid_val != expected_uid:
             raise ValueError(f"bad_{role_key}")
     processes = policy["processes"]
     if not isinstance(processes, dict) or set(processes.keys()) != set(PROCESS_ROLES):
@@ -617,10 +713,8 @@ def validate_launch_policy(
     endpoints = policy["endpoints"]
     if not isinstance(endpoints, dict) or set(endpoints.keys()) != ENDPOINT_KEYS:
         raise ValueError("bad_endpoints")
-    gw_port = endpoints["gateway_port"]
-    model_port = endpoints["model_port"]
-    if not isinstance(gw_port, int) or not isinstance(model_port, int):
-        raise ValueError("bad_endpoint_ports")
+    gw_port = _require_int(endpoints["gateway_port"], "bad_endpoint_ports")
+    model_port = _require_int(endpoints["model_port"], "bad_endpoint_ports")
     if not (49152 <= gw_port <= 65535 and 49152 <= model_port <= 65535):
         raise ValueError("bad_endpoint_ports")
     if gw_port == model_port:
@@ -640,13 +734,11 @@ def validate_launch_policy(
             raise ValueError(f"bad_argv:{role}")
         if not all(isinstance(x, str) for x in proc["argv_template"]):
             raise ValueError(f"bad_argv_types:{role}")
-        if proc["argv_template"][0] != proc["executable"] and role not in (
-            "gateway",
-            "agent",
-            "strict_server",
-        ):
-            if proc["executable"] not in proc["argv_template"]:
-                raise ValueError(f"executable_mismatch:{role}")
+        argv = list(proc["argv_template"])
+        if role == "strict_server":
+            _validate_strict_server_argv(argv, executable=str(proc["executable"]))
+        elif argv[0] != proc["executable"]:
+            raise ValueError(f"executable_mismatch:{role}")
         if role in ("gateway", "agent") and proc["cwd"] != EMPTY_CWD:
             raise ValueError(f"bad_cwd:{role}")
         if not isinstance(proc["cwd"], str) or not proc["cwd"].startswith("/"):
@@ -675,16 +767,20 @@ def validate_launch_policy(
             isinstance(x, str) for x in proc["inherited_fd_roles"]
         ):
             raise ValueError(f"bad_fd_roles:{role}")
+        if frozenset(proc["inherited_fd_roles"]) != FIXED_FD_ROLES[role]:
+            raise ValueError(f"fd_roles_fixed:{role}")
+        if len(proc["inherited_fd_roles"]) != len(FIXED_FD_ROLES[role]):
+            raise ValueError(f"fd_roles_fixed:{role}")
         if proc["network_policy"] not in ("activation_loopback", "none"):
             raise ValueError(f"bad_network:{role}")
         if role == "strict_server" and proc["network_policy"] != "none":
             raise ValueError("strict_server_network")
-        if not isinstance(proc["uid"], int) or not isinstance(proc["gid"], int):
-            raise ValueError(f"uid_gid_types:{role}")
-        if int(proc["uid"]) != int(proc["gid"]):
+        uid = _require_int(proc["uid"], f"uid_gid_types:{role}")
+        gid = _require_int(proc["gid"], f"uid_gid_types:{role}")
+        if uid != gid:
             raise ValueError(f"uid_gid:{role}")
         expected = 0 if role == "supervisor" else LOGICAL_UID["runtime"]
-        if int(proc["uid"]) != expected:
+        if uid != expected:
             raise ValueError(f"role_uid:{role}")
         seccomp = proc["seccomp_filter_sha256"]
         if role == "strict_server":
@@ -692,17 +788,17 @@ def validate_launch_policy(
                 raise ValueError("strict_server_seccomp")
         elif seccomp is not None:
             raise ValueError(f"seccomp_must_be_null:{role}")
-        turn_count = sum(1 for part in proc["argv_template"] if part == "TURN_TEXT")
+        turn_count = sum(1 for part in argv if part == "TURN_TEXT")
         if role == "agent":
             if turn_count != 1:
                 raise ValueError("turn_text_count")
-            _validate_agent_argv(list(proc["argv_template"]))
+            _validate_agent_argv(argv)
         else:
             if turn_count != 0:
                 raise ValueError("turn_text_role")
         if role == "gateway":
-            _validate_gateway_argv(list(proc["argv_template"]), gateway_port=gw_port)
-        if role == "model_worker" and list(proc["argv_template"]) != ["/fixture/bin/model-worker"]:
+            _validate_gateway_argv(argv, gateway_port=gw_port)
+        if role == "model_worker" and argv != ["/fixture/bin/model-worker"]:
             raise ValueError("model_worker_argv")
         if role in ("gateway", "agent", "strict_server", "model_worker"):
             forbidden = {"control", "notify", "lease", "operator_control", "supervisor_control"}
@@ -744,20 +840,32 @@ class FreshnessAnchor:
         }
 
 
-@dataclass
+@dataclass(frozen=True)
 class SealedActivationRecord:
     """Immutable sealed predecessor — SEALED has no outgoing transition."""
 
     activation_id: str
-    activation_manifest: dict[str, Any]
+    activation_manifest: Mapping[str, Any]
     publication_sha256: str | None
     manager_boot_id: str | None
     unit_invocation_id: str | None
     containment_id: str | None
     terminal_reason: str | None
-    retirement_receipt: dict[str, Any]
+    retirement_receipt: Mapping[str, Any]
     verified_manifest_content_sha256: str
     state: str = "SEALED"
+
+    def __post_init__(self) -> None:
+        if self.state != "SEALED":
+            raise ValueError("sealed_record_state")
+        if not isinstance(self.activation_manifest, MappingProxyType):
+            object.__setattr__(
+                self, "activation_manifest", _frozen_map(self.activation_manifest)
+            )
+        if not isinstance(self.retirement_receipt, MappingProxyType):
+            object.__setattr__(
+                self, "retirement_receipt", _frozen_map(self.retirement_receipt)
+            )
 
 
 @dataclass
@@ -766,7 +874,7 @@ class SlotState:
     lineage_id: str
     state: str = "NEW"
     activation_id: str | None = None
-    activation_manifest: dict[str, Any] | None = None
+    activation_manifest: Mapping[str, Any] | None = None
     verified_manifest_content_sha256: str | None = None
     publication_sha256: str | None = None
     manager_boot_id: str | None = None
@@ -778,7 +886,7 @@ class SlotState:
     expires_at: str | None = None
     lease_deadline_boottime_ns: int | None = None
     terminal_reason: str | None = None
-    retirement_receipt: dict[str, Any] | None = None
+    retirement_receipt: Mapping[str, Any] | None = None
     quarantine_reason: str | None = None
     wall_offset_lower_bound: int | None = None
     last_wall_s: int | None = None
@@ -801,6 +909,8 @@ class ControllerCore:
     MAX_CONTROL_CONNECTIONS: int = MAX_CONTROL_CONNECTIONS
     _inbound_bufs: dict[str, bytearray] = field(default_factory=dict)
     _conn_activity_ns: dict[str, int] = field(default_factory=dict)
+    _conn_send_started_ns: dict[str, int] = field(default_factory=dict)
+    _pending_outbound: dict[str, bytes] = field(default_factory=dict)
 
     @property
     def _active_control_connections(self) -> int:
@@ -931,11 +1041,15 @@ class ControllerCore:
         remaining_snapshot_lifetime_ns = min(
             int(remaining_snapshot_lifetime_ns), remaining_wall_ns
         )
+        if remaining_snapshot_lifetime_ns <= 0:
+            raise ValueError("nonpositive_remaining_lifetime")
         if st.freshness_anchor is not None and st.freshness_anchor.boot_id == boot_id:
             deadline = min(
                 st.freshness_anchor.snapshot_deadline_boottime_ns,
                 int(sample["boottime_after_ns"]) + remaining_snapshot_lifetime_ns,
             )
+            if deadline <= int(sample["boottime_after_ns"]):
+                raise ValueError("nonpositive_deadline")
             anchor = FreshnessAnchor(
                 boot_id=boot_id,
                 authority_snapshot_id=authority_snapshot_id,
@@ -961,13 +1075,16 @@ class ControllerCore:
             raise ValueError("clock_review_lineage_mismatch")
         if clock_review.get("authority_snapshot_id") != authority_snapshot_id:
             raise ValueError("clock_review_snapshot_mismatch")
-        if int(clock_review.get("reviewer_uid", -1)) != LOGICAL_UID["operator"]:
+        if int(clock_review.get("reviewer_uid", -1)) != LOGICAL_UID["operator"] or type(
+            clock_review.get("reviewer_uid")
+        ) is not int:
             raise ValueError("clock_review_reviewer_uid")
         if not isinstance(clock_review.get("reviewed_wall_time"), str):
             raise ValueError("clock_review_wall")
         # Reviewed wall must bind the new-boot wall sample — not an unrelated value.
         if clock_review.get("reviewed_wall_time") != str(sample["wall_time"]):
             raise ValueError("clock_review_wall_mismatch")
+        _parse_wall(str(clock_review["reviewed_wall_time"]))
         content = _content_hash(clock_review, "review_payload_sha256")
         if clock_review.get("review_payload_sha256") != content:
             raise ValueError("clock_review_self_hash")
@@ -982,6 +1099,8 @@ class ControllerCore:
             # Copied reviewer UID / body-without-hash / wrong hash must fail.
             raise ValueError("clock_review_inventory_miss")
         deadline = int(sample["boottime_after_ns"]) + remaining_snapshot_lifetime_ns
+        if deadline <= int(sample["boottime_after_ns"]):
+            raise ValueError("nonpositive_deadline")
         ref = content
         anchor = FreshnessAnchor(
             boot_id=boot_id,
@@ -999,44 +1118,51 @@ class ControllerCore:
             raise ValueError("sealed_without_receipt")
         return SealedActivationRecord(
             activation_id=st.activation_id,
-            activation_manifest=dict(st.activation_manifest or {}),
+            activation_manifest=_frozen_map(st.activation_manifest or {}),
             publication_sha256=st.publication_sha256,
             manager_boot_id=st.manager_boot_id,
             unit_invocation_id=st.unit_invocation_id,
             containment_id=st.containment_id,
             terminal_reason=st.terminal_reason,
-            retirement_receipt=dict(st.retirement_receipt),
+            retirement_receipt=_frozen_map(st.retirement_receipt),
             verified_manifest_content_sha256=st.verified_manifest_content_sha256 or "",
             state="SEALED",
         )
 
-    def _archive_sealed_if_reusing(self, st: SlotState) -> None:
-        """SEALED has no outgoing transition — retain immutable predecessor, clear live fields."""
+    def _fresh_slot_after_sealed(self, sealed_st: SlotState) -> SlotState:
+        """Replace a SEALED slot with a fresh live SlotState — never mutate SEALED."""
 
-        if st.state != "SEALED":
-            return
-        predecessor = st.sealed_record or self._make_sealed_record(st)
-        # Never mutate the sealed predecessor object.
+        if sealed_st.state != "SEALED":
+            raise ValueError("not_sealed")
+        predecessor = sealed_st.sealed_record
+        if predecessor is None:
+            predecessor = self._make_sealed_record(sealed_st)
         if predecessor.state != "SEALED":
             raise ValueError("sealed_predecessor_corrupt")
-        st.sealed_history.append(predecessor)
-        st.sealed_record = None
-        # Fresh live activation fields only — do not transition the sealed record.
-        st.activation_id = None
-        st.activation_manifest = None
-        st.verified_manifest_content_sha256 = None
-        st.publication_sha256 = None
-        st.manager_boot_id = None
-        st.unit_invocation_id = None
-        st.containment_id = None
-        st.stop_requested = False
-        st.lease_deadline_boottime_ns = None
-        st.terminal_reason = None
-        st.retirement_receipt = None
-        st.quarantine_reason = None
-        # Freshness anchor may shrink on same boot; do not resume turn state.
+        history = list(sealed_st.sealed_history)
+        history.append(predecessor)
+        new_st = SlotState(
+            slot_id=sealed_st.slot_id,
+            lineage_id=sealed_st.lineage_id,
+            state="NEW",
+            authority_head=sealed_st.authority_head,
+            expires_at=sealed_st.expires_at,
+            wall_offset_lower_bound=sealed_st.wall_offset_lower_bound,
+            last_wall_s=sealed_st.last_wall_s,
+            freshness_anchor=sealed_st.freshness_anchor,
+            sealed_history=history,
+            used_state_dirs=set(sealed_st.used_state_dirs),
+            sealed_record=None,
+        )
+        new_st.persisted = {
+            "slot_id": new_st.slot_id,
+            "lineage_id": new_st.lineage_id,
+            "authority_head": new_st.authority_head,
+            "expires_at": new_st.expires_at,
+            "state": "NEW",
+        }
         self.supervisor.reset_for_new_activation()
-        # Slot may host a new activation; sealed predecessor remains SEALED in history.
+        return new_st
 
     def qualify_and_activate(
         self,
@@ -1055,7 +1181,9 @@ class ControllerCore:
             if st.state in ("QUARANTINED", "ACTIVE_IDLE", "TURN_RUNNING", "REVOKING"):
                 raise ValueError(f"slot_not_activatable:{st.state}")
             if st.state == "SEALED":
-                self._archive_sealed_if_reusing(st)
+                # Genuine fresh live SlotState — retained SEALED object stays SEALED.
+                st = self._fresh_slot_after_sealed(st)
+                self.slots[slot_id] = st
             st.state = "QUALIFYING"
             lifecycle_config_core(lifecycle_config)
             for path in (
@@ -1113,12 +1241,21 @@ class ControllerCore:
                 rem_wall_ns = (expires_s - wall_now) * 1_000_000_000
                 if rem_wall_ns <= 0:
                     raise ValueError("nonpositive_remaining_lifetime")
+                if remaining_snapshot_lifetime_ns is not None:
+                    if type(remaining_snapshot_lifetime_ns) is not int:
+                        raise ValueError("bad_snapshot_lifetime")
+                    if remaining_snapshot_lifetime_ns < 0:
+                        raise ValueError("negative_snapshot_lifetime")
                 rem = (
                     rem_wall_ns
                     if remaining_snapshot_lifetime_ns is None
                     else min(int(remaining_snapshot_lifetime_ns), rem_wall_ns)
                 )
+                if rem <= 0:
+                    raise ValueError("nonpositive_remaining_lifetime")
                 deadline = int(sample["boottime_after_ns"]) + rem
+                if deadline <= int(sample["boottime_after_ns"]):
+                    raise ValueError("nonpositive_deadline")
                 st.freshness_anchor = FreshnessAnchor(
                     boot_id=str(sample["boot_id"]),
                     authority_snapshot_id=snap_id,
@@ -1135,11 +1272,17 @@ class ControllerCore:
                     clock_review=None,
                 )
             assert st.freshness_anchor is not None
-            max_life = int(
-                max_activation_lifetime_s
-                if max_activation_lifetime_s is not None
-                else activation_manifest["max_monotonic_lifetime_seconds"]
+            manifest_max = _require_int(
+                activation_manifest["max_monotonic_lifetime_seconds"], "bad_max_lifetime"
             )
+            if max_activation_lifetime_s is not None:
+                caller_max = _require_int(max_activation_lifetime_s, "bad_max_lifetime")
+                if caller_max < 1 or caller_max > 86400:
+                    raise ValueError("bad_max_lifetime")
+                # Caller shrink only — never enlarge the manifest bound.
+                max_life = min(manifest_max, caller_max)
+            else:
+                max_life = manifest_max
             if max_life < 1 or max_life > 86400:
                 raise ValueError("bad_max_lifetime")
             expires_at = str(st.expires_at or activation_manifest["expires_at"])
@@ -1244,9 +1387,84 @@ class ControllerCore:
         self._open_sessions.discard(connection_id)
         self._inbound_bufs.pop(connection_id, None)
         self._conn_activity_ns.pop(connection_id, None)
+        self._conn_send_started_ns.pop(connection_id, None)
+        self._pending_outbound.pop(connection_id, None)
         closer = getattr(self.platform, "close_control_connection", None)
         if callable(closer):
             closer(connection_id)
+
+    def _flush_pending_outbound(self, connection_id: str) -> bytes | None:
+        """Complete or SEND-timeout a previously blocked framed response."""
+
+        framed = self._pending_outbound.get(connection_id)
+        if framed is None:
+            return None
+        outbound = getattr(self.platform, "control_outbound", None)
+        if not callable(outbound):
+            self._pending_outbound.pop(connection_id, None)
+            self._conn_send_started_ns.pop(connection_id, None)
+            return framed
+        try:
+            q = outbound(connection_id)
+        except Exception:
+            self.close_control_session(connection_id)
+            return None
+        sample = self._sample_paired()
+        now = int(sample["boottime_after_ns"])
+        started = self._conn_send_started_ns.get(connection_id, now)
+        if getattr(q, "blocked", False):
+            if now - started > CONTROL_IO_TIMEOUT_NS:
+                self.close_control_session(connection_id)
+                return None
+            return None
+        try:
+            q.write(framed)
+        except Exception:
+            self.close_control_session(connection_id)
+            return None
+        self._pending_outbound.pop(connection_id, None)
+        self._conn_send_started_ns.pop(connection_id, None)
+        self._conn_activity_ns[connection_id] = now
+        return framed
+
+    def _write_framed_response(
+        self, connection_id: str, resp: Mapping[str, Any]
+    ) -> bytes | None:
+        """Encode and write every framed response through the bounded outbound path."""
+
+        try:
+            framed = encode_framed_response(resp)
+        except ValueError:
+            self.close_control_session(connection_id)
+            return None
+        outbound = getattr(self.platform, "control_outbound", None)
+        if callable(outbound):
+            try:
+                q = outbound(connection_id)
+            except Exception:
+                self.close_control_session(connection_id)
+                return None
+            sample = self._sample_paired()
+            now = int(sample["boottime_after_ns"])
+            if getattr(q, "blocked", False):
+                self._pending_outbound[connection_id] = framed
+                if connection_id not in self._conn_send_started_ns:
+                    self._conn_send_started_ns[connection_id] = now
+                started = self._conn_send_started_ns[connection_id]
+                if now - started > CONTROL_IO_TIMEOUT_NS:
+                    self.close_control_session(connection_id)
+                    return None
+                # Still within send window but blocked — no partial write.
+                return None
+            try:
+                q.write(framed)
+            except Exception:
+                self.close_control_session(connection_id)
+                return None
+            self._pending_outbound.pop(connection_id, None)
+            self._conn_send_started_ns.pop(connection_id, None)
+            self._conn_activity_ns[connection_id] = now
+        return framed
 
     def handle_framed_bytes(self, connection_id: str, chunk: bytes) -> bytes | None:
         """External control front end via FixturePlatform ByteQueues.
@@ -1258,6 +1476,9 @@ class ControllerCore:
 
         if connection_id not in self._open_sessions:
             return None
+        # Prefer completing a blocked SEND before receive-timeout accounting.
+        if connection_id in self._pending_outbound:
+            return self._flush_pending_outbound(connection_id)
         sample = self._sample_paired()
         now = int(sample["boottime_after_ns"])
         last = self._conn_activity_ns.get(connection_id, now)
@@ -1294,21 +1515,9 @@ class ControllerCore:
             validate_control_request(obj)
         except ValueError:
             resp = self._response(obj, "invalid_request", {"reason": "bad_arguments"})
-            return encode_framed_response(resp)
+            return self._write_framed_response(connection_id, resp)
         resp = self._dispatch_validated(connection_id, obj)
-        try:
-            framed = encode_framed_response(resp)
-        except ValueError:
-            self.close_control_session(connection_id)
-            return None
-        outbound = getattr(self.platform, "control_outbound", None)
-        if callable(outbound):
-            try:
-                outbound(connection_id).write(framed)
-            except Exception:
-                self.close_control_session(connection_id)
-                return None
-        return framed
+        return self._write_framed_response(connection_id, resp)
 
     def handle_control(
         self,
@@ -1391,10 +1600,17 @@ class ControllerCore:
             elif resp["outcome"] == "unavailable" and resp.get("payload", {}).get(
                 "reason"
             ) == "capacity":
-                # Capacity is internal terminal reasoning; map to revoke enum for seal path.
-                self._enter_revoking(st, "integrity_failure")
-                st.terminal_reason = "integrity_failure"
-                st.persisted["internal_terminal"] = "capacity"
+                # Capacity is an INTERNAL terminal reason; drive stop + REVOKING.
+                if st.state not in ("SEALED", "QUARANTINED"):
+                    st.state = "REVOKING"
+                    st.terminal_reason = "capacity"
+                    st.persisted["state"] = "REVOKING"
+                    st.persisted["terminal_reason"] = "capacity"
+                    st.persisted["internal_terminal"] = "capacity"
+                    if st.unit_invocation_id and not st.stop_requested:
+                        self.platform.manager_stop(st.unit_invocation_id)
+                        st.stop_requested = True
+                        st.persisted["stop_requested"] = True
             elif resp["outcome"] == "sealed":
                 # Must not accept sealed-with-null; drive REVOKING instead.
                 self._enter_revoking(st, "integrity_failure")
@@ -1432,12 +1648,16 @@ class ControllerCore:
     def _enter_revoking(self, st: SlotState, reason: str) -> None:
         if st.state in ("SEALED", "QUARANTINED"):
             return
-        if reason not in REVOKE_REASONS:
-            reason = "integrity_failure"
+        if reason in INTERNAL_TERMINAL_REASONS:
+            terminal = reason
+        elif reason not in REVOKE_REASONS:
+            terminal = "integrity_failure"
+        else:
+            terminal = reason
         st.state = "REVOKING"
-        st.terminal_reason = reason
+        st.terminal_reason = terminal
         st.persisted["state"] = st.state
-        st.persisted["terminal_reason"] = reason
+        st.persisted["terminal_reason"] = terminal
 
     def request_manager_stop(self, slot_id: str) -> dict[str, Any]:
         st = self.slots[slot_id]
@@ -1461,7 +1681,7 @@ class ControllerCore:
             raise ValueError("quarantined:missing_invocation")
         obs = self.platform.manager_observe(st.unit_invocation_id)
         reason = terminal_reason or st.terminal_reason or "operator"
-        if reason not in REVOKE_REASONS:
+        if reason not in TERMINAL_RECEIPT_REASONS:
             raise ValueError("bad_terminal_reason")
         if obs.get("manager_boot_id") != st.manager_boot_id:
             self._quarantine(st, "stale_boot")
@@ -1501,13 +1721,14 @@ class ControllerCore:
         receipt = dict(body)
         receipt["receipt_payload_sha256"] = _sha256_labeled(_canonical(body))
         self.check_access("controller", "/fixture/receipt/retirement.json", "create")
-        st.retirement_receipt = receipt
+        frozen_receipt = _frozen_map(receipt)
+        st.retirement_receipt = frozen_receipt
         st.state = "SEALED"
         st.terminal_reason = reason
         st.sealed_record = self._make_sealed_record(st)
         st.persisted["state"] = "SEALED"
-        st.persisted["retirement_receipt"] = receipt
-        return receipt
+        st.persisted["retirement_receipt"] = dict(receipt)
+        return dict(receipt)
 
     def _quarantine(self, st: SlotState, reason: str) -> None:
         st.state = "QUARANTINED"
