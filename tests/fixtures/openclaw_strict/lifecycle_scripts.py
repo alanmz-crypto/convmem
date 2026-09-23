@@ -476,7 +476,7 @@ def _enter_revoking_for_retirement(controller: Any, slot_id: str = HEX_B) -> Non
     cid = open_operator_session(controller, platform, "retire-op")
     controller.handle_control(
         cid,
-        revoke_request(request_id="f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"),
+        revoke_request(request_id="f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"),
     )
     assert controller.slots[slot_id].state == "REVOKING"
     controller.request_manager_stop(slot_id)

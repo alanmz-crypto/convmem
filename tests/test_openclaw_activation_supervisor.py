@@ -79,7 +79,8 @@ def test_validate_launch_tuple_exact_roles():
             fd,
         )
         assert got["role"] == role
-    with pytest.raises(ValueError, match="runtime_fd_forbidden"):
+    # Fail-closed on bad FD map; do not freeze internal check ordering.
+    with pytest.raises(ValueError, match="fd_roles_mismatch|runtime_fd_forbidden"):
         sup.validate_launch_tuple(
             policy,
             "agent",
@@ -115,10 +116,17 @@ def test_one_turn_no_queue_and_accepted_cap_via_preload():
     )
     r1 = core.handle_request(turn_request())
     assert r1["outcome"] == "running"
+    # Busy requires a distinct request_id; same id + changed bytes is request_conflict.
     r2 = core.handle_request(
-        turn_request(turn_id="eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", text="x")
+        turn_request(
+            request_id="eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            turn_id="ffffffffffffffffffffffffffffffff",
+            text="x",
+        )
     )
     assert r2["outcome"] == "busy"
+    conflict = core.handle_request(turn_request(text="changed-bytes"))
+    assert conflict["outcome"] == "request_conflict"
 
     handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
     platform.schedule_agent_success(handle)
@@ -165,8 +173,13 @@ def test_release_revoke_race_revoke_wins():
     platform.next_event(handle)
     core.ingest_agent_event({"kind": "exit", "bytes_b64": None, "exit_code": 0})
     core.revoke("operator")
-    with pytest.raises(ValueError, match="revoked_before_commit"):
+    assert core.state == "REVOKING"
+    with pytest.raises(ValueError):
         core.release_commit()
+    assert core.state == "REVOKING"
+    # Parent freezes revoke-wins / no commit — not a specific error string.
+    assert all(rec.state != "committed" for rec in core.accepted.values())
+    assert all(rec.result is None for rec in core.accepted.values())
 
 
 def test_release_linearization_uses_final_clock_and_actual_exit():

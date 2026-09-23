@@ -15,8 +15,6 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Mapping, MutableMapping, Protocol
 
-from openclaw_activation_supervisor import validate_launch_tuple
-
 RUNTIME_NOT_QUALIFIED = "runtime_not_qualified"
 EX_CONFIG = 78
 
@@ -1318,6 +1316,9 @@ class ControllerCore:
                 env = dict(sup_proc["environment"])
                 cwd = str(sup_proc["cwd"])
                 # Validate and spawn the identical typed tuple — never mutate policy.
+                # Lazy import: production ``python -I`` refusal must not load supervisor.
+                from openclaw_activation_supervisor import validate_launch_tuple
+
                 validate_launch_tuple(launch_policy, "supervisor", argv, env, cwd, fd_roles)
                 handle = self.platform.spawn("supervisor", argv, env, cwd, fd_roles)
                 ready = self.platform.next_event(handle)
