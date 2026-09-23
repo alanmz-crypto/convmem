@@ -463,3 +463,74 @@ def test_negative_policy_mutation_not_required_for_turn_text():
     core.spawn_agent_for_active_turn(policy, "fixture turn")
     assert policy == frozen
     assert "TURN_TEXT" in policy["processes"]["agent"]["argv_template"]
+
+
+def test_malformed_base64_and_missing_exit_enter_revoking():
+    import openclaw_activation_supervisor as sup
+
+    platform = FixturePlatform()
+    core = sup.SupervisorCore(platform=platform)
+    core.bind_activation(
+        activation_manifest=base_activation_manifest(),
+        publication_sha256=PUB,
+        lease_deadline_boottime_ns=10_000_000_000_000,
+        slot_id=HEX_B,
+        supervisor_handle="1" * 32,
+    )
+    core.handle_request(turn_request())
+    handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    with pytest.raises(ValueError, match="bad_base64"):
+        core.ingest_agent_event(
+            {"kind": "stdout", "bytes_b64": "***not-base64***", "exit_code": None}
+        )
+    assert core.state == "REVOKING"
+    assert len(core._stdout_buffer) == 0
+    assert len(core._stderr_buffer) == 0
+
+    core2 = sup.SupervisorCore(platform=FixturePlatform())
+    core2.bind_activation(
+        activation_manifest=base_activation_manifest(),
+        publication_sha256=PUB,
+        lease_deadline_boottime_ns=10_000_000_000_000,
+        slot_id=HEX_B,
+        supervisor_handle="1" * 32,
+    )
+    core2.handle_request(turn_request())
+    with pytest.raises(ValueError, match="bad_event_kind"):
+        core2.ingest_agent_event({"kind": "partial", "bytes_b64": None, "exit_code": None})
+    assert core2.state == "REVOKING"
+
+    core3 = sup.SupervisorCore(platform=FixturePlatform())
+    core3.bind_activation(
+        activation_manifest=base_activation_manifest(),
+        publication_sha256=PUB,
+        lease_deadline_boottime_ns=10_000_000_000_000,
+        slot_id=HEX_B,
+        supervisor_handle="1" * 32,
+    )
+    core3.handle_request(turn_request())
+    h3 = core3.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    plat3 = core3.platform
+    plat3.schedule_event(
+        h3, "stdout", bytes_b64=base64.b64encode(AGENT_SUCCESS_BYTES).decode("ascii")
+    )
+    core3.ingest_agent_event(plat3.next_event(h3))
+    # Missing observed exit at attempted release → REVOKING, buffers discarded.
+    with pytest.raises(ValueError, match="no_observed_exit"):
+        core3.release_commit()
+    assert core3.state == "REVOKING"
+    assert len(core3._stdout_buffer) == 0
+    assert len(core3._stderr_buffer) == 0
+
+    core4 = sup.SupervisorCore(platform=FixturePlatform())
+    core4.bind_activation(
+        activation_manifest=base_activation_manifest(),
+        publication_sha256=PUB,
+        lease_deadline_boottime_ns=10_000_000_000_000,
+        slot_id=HEX_B,
+        supervisor_handle="1" * 32,
+    )
+    core4.handle_request(turn_request())
+    with pytest.raises(ValueError, match="bad_exit"):
+        core4.ingest_agent_event({"kind": "exit", "bytes_b64": None, "exit_code": True})
+    assert core4.state == "REVOKING"

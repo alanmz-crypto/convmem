@@ -658,6 +658,17 @@ class SupervisorCore:
         return handle
 
     def ingest_agent_event(self, event: Mapping[str, Any]) -> None:
+        try:
+            self._ingest_agent_event_body(event)
+        except ValueError:
+            # Malformed/partial child output must not leave the activation live.
+            if not self._revoked and (
+                self.state == "TURN_RUNNING" or self.active_turn_id is not None
+            ):
+                self._enter_revoking_internal("integrity_failure")
+            raise
+
+    def _ingest_agent_event_body(self, event: Mapping[str, Any]) -> None:
         kind = event.get("kind")
         if kind not in ("ready", "stdout", "stderr", "exit", "hang"):
             raise ValueError("bad_event_kind")
@@ -667,7 +678,10 @@ class SupervisorCore:
             b64 = event.get("bytes_b64")
             if not isinstance(b64, str) or event.get("exit_code") is not None:
                 raise ValueError("bad_stdout")
-            chunk = base64.b64decode(b64.encode("ascii"), validate=True)
+            try:
+                chunk = base64.b64decode(b64.encode("ascii"), validate=True)
+            except Exception as exc:
+                raise ValueError("bad_base64") from exc
             if len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
                 self.revoke("integrity_failure")
                 self._stdout_buffer.clear()
@@ -677,13 +691,16 @@ class SupervisorCore:
             b64 = event.get("bytes_b64")
             if not isinstance(b64, str) or event.get("exit_code") is not None:
                 raise ValueError("bad_stderr")
-            chunk = base64.b64decode(b64.encode("ascii"), validate=True)
+            try:
+                chunk = base64.b64decode(b64.encode("ascii"), validate=True)
+            except Exception as exc:
+                raise ValueError("bad_base64") from exc
             if len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
                 self.revoke("integrity_failure")
                 raise ValueError("agent_output_overflow")
             self._stderr_buffer.extend(chunk)
         elif kind == "exit":
-            if event.get("bytes_b64") is not None or not isinstance(event.get("exit_code"), int):
+            if event.get("bytes_b64") is not None or type(event.get("exit_code")) is not int:
                 raise ValueError("bad_exit")
             code = int(event["exit_code"])
             self._observed_exit_code = code
@@ -736,6 +753,9 @@ class SupervisorCore:
                     self._stderr_buffer.clear()
                     raise ValueError("lease_lost")
             if self._observed_exit_code is None:
+                self._enter_revoking_internal("integrity_failure")
+                self._stdout_buffer.clear()
+                self._stderr_buffer.clear()
                 raise ValueError("no_observed_exit")
             if self._observed_exit_code != 0:
                 self._enter_revoking_internal("integrity_failure")
