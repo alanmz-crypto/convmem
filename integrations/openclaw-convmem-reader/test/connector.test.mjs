@@ -13,13 +13,14 @@ import {
   activate,
   validateLaunchTuple,
   createConnectorSession,
-  createStrictFdRoles,
   computeLaunchPayloadSha256,
   canonicalJsonBytes,
   closedErrorPayload,
 } from "../index.js";
 
 const SHA_A = `sha256:${"a".repeat(64)}`;
+const DEADLINE_MS = 10_000;
+const MAX_RESPONSE_BYTES = 64 * 1024;
 
 function baseManifest(overrides = {}) {
   const body = {
@@ -67,7 +68,7 @@ function virtualPathCaps(manifest) {
   ];
   for (const p of filePaths) {
     paths[p] = {
-      kind: p.endsWith(".py") || p.includes("strict_server") ? "tree" : "file",
+      kind: "file",
       mode: 0o444,
       uid: 0,
       gid: 0,
@@ -82,6 +83,7 @@ function virtualPathCaps(manifest) {
     uid: 0,
     gid: 0,
     symlink: false,
+    empty: true,
   };
   paths[manifest.service_home] = {
     kind: "dir",
@@ -89,6 +91,7 @@ function virtualPathCaps(manifest) {
     uid: 1001,
     gid: 1001,
     symlink: false,
+    credentials: false,
   };
   paths[manifest.temp_directory] = {
     kind: "dir",
@@ -96,6 +99,7 @@ function virtualPathCaps(manifest) {
     uid: 1001,
     gid: 1001,
     symlink: false,
+    bounded: true,
   };
   return { paths };
 }
@@ -123,6 +127,14 @@ function evidencePayload() {
     display_basis: "ranked_selection",
     results: [],
   };
+}
+
+function rpcStdoutFrame(id, rawEvidenceText, { isError = false } = {}) {
+  const result = {
+    content: [{ type: "text", text: rawEvidenceText }],
+    isError,
+  };
+  return `${JSON.stringify({ jsonrpc: "2.0", id, result })}\n`;
 }
 
 /**
@@ -173,11 +185,7 @@ function createFakeTransport({
     const req = JSON.parse(line);
     assert.equal(req.method, "tools/call");
     const id = rpcId === "auto" ? req.id : rpcId;
-    const result = {
-      content: [{ type: "text", text: rawEvidenceText }],
-      isError,
-    };
-    const frame = `${JSON.stringify({ jsonrpc: "2.0", id, result })}\n`;
+    const frame = rpcStdoutFrame(id, rawEvidenceText, { isError });
     eventQ.push({
       kind: "stdout",
       bytes_b64: b64(frame),
@@ -277,6 +285,52 @@ test("launch_payload_sha256 matches parent canonical JSON excluding only itself"
     .digest("hex")}`;
   assert.equal(computeLaunchPayloadSha256(manifest), expected);
   assert.equal(manifest.launch_payload_sha256, expected);
+});
+
+test("capability proof fails closed without paths or required attrs", () => {
+  const manifest = baseManifest();
+  assert.throws(() => validateLaunchTuple(manifest, {}), /capability_paths/);
+  assert.throws(() => validateLaunchTuple(manifest, { paths: null }), /capability_paths/);
+
+  const missingEntry = virtualPathCaps(manifest);
+  delete missingEntry.paths[manifest.scope_file];
+  assert.throws(() => validateLaunchTuple(manifest, missingEntry), /capability_missing/);
+
+  const missingKind = virtualPathCaps(manifest);
+  delete missingKind.paths[manifest.scope_file].kind;
+  assert.throws(() => validateLaunchTuple(manifest, missingKind), /capability_missing_attr/);
+
+  const missingMode = virtualPathCaps(manifest);
+  delete missingMode.paths[manifest.scope_file].mode;
+  assert.throws(() => validateLaunchTuple(manifest, missingMode), /capability_missing_attr/);
+
+  const missingUid = virtualPathCaps(manifest);
+  delete missingUid.paths[manifest.scope_file].uid;
+  assert.throws(() => validateLaunchTuple(manifest, missingUid), /capability_missing_attr/);
+
+  const missingDigest = virtualPathCaps(manifest);
+  delete missingDigest.paths[manifest.scope_file].digest;
+  assert.throws(() => validateLaunchTuple(manifest, missingDigest), /capability_missing_attr/);
+
+  const badCwd = virtualPathCaps(manifest);
+  badCwd.paths[manifest.working_directory].empty = false;
+  assert.throws(() => validateLaunchTuple(manifest, badCwd), /capability_cwd_empty/);
+
+  const badHome = virtualPathCaps(manifest);
+  badHome.paths[manifest.service_home].credentials = true;
+  assert.throws(() => validateLaunchTuple(manifest, badHome), /capability_home_credentials/);
+
+  const badTemp = virtualPathCaps(manifest);
+  badTemp.paths[manifest.temp_directory].bounded = false;
+  assert.throws(() => validateLaunchTuple(manifest, badTemp), /capability_temp_bounded/);
+
+  const traversal = baseManifest({
+    scope_file: "/fixture/../etc/passwd",
+  });
+  assert.throws(
+    () => validateLaunchTuple(traversal, virtualPathCaps(traversal)),
+    /path_traversal/,
+  );
 });
 
 test("case33: tool args cannot inject argv/env/cwd/paths; closed env only at spawn", async () => {
@@ -388,11 +442,7 @@ test("case35: child exit before response is failure; no late success", async () 
   fake.pushEvent({
     kind: "stdout",
     bytes_b64: b64(
-      `${JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        result: { content: [{ type: "text", text: JSON.stringify(evidencePayload()) }], isError: false },
-      })}\n`,
+      rpcStdoutFrame(1, JSON.stringify(evidencePayload())),
     ),
     exit_code: null,
   });
@@ -412,14 +462,7 @@ test("case35: cancel discards late success", async () => {
       return {
         kind: "stdout",
         bytes_b64: b64(
-          `${JSON.stringify({
-            jsonrpc: "2.0",
-            id: 1,
-            result: {
-              content: [{ type: "text", text: JSON.stringify(evidencePayload()) }],
-              isError: false,
-            },
-          })}\n`,
+          rpcStdoutFrame(1, JSON.stringify(evidencePayload())),
         ),
         exit_code: null,
       };
@@ -434,7 +477,7 @@ test("case35: cancel discards late success", async () => {
   assert.equal(JSON.parse(result.content[0].text).error.code, "internal_failure");
 });
 
-test("case48: one active + eight pending; ninth temporarily_unavailable; FIFO; no retry", async () => {
+test("case48: one active + eight pending; ninth denied; FIFO identity; one stdin write each", async () => {
   const manifest = baseManifest();
   const clock = { t: 1_000 };
   const responseQ = [];
@@ -481,33 +524,40 @@ test("case48: one active + eight pending; ninth temporarily_unavailable; FIFO; n
   await Promise.resolve();
   await Promise.resolve();
 
+  const writesBeforeDenied = fdRoles.stdin.writeTrace().length;
+  assert.equal(writesBeforeDenied, 1, "exactly one stdin write for the active call");
+
   const ninth = await session.invokeAlias("convmem_search", { query: "overflow" });
   assert.equal(ninth.isError, true);
   assert.equal(JSON.parse(ninth.content[0].text).error.code, "temporarily_unavailable");
+  assert.equal(
+    fdRoles.stdin.writeTrace().length,
+    writesBeforeDenied,
+    "denied call must not write stdin or retry",
+  );
+  const deniedTrace = Buffer.concat(fdRoles.stdin.writeTrace()).toString("utf8");
+  assert.equal(deniedTrace.includes('"query":"overflow"'), false);
 
   // Exact bytes crossed fake stdin for the active request.
   const stdinBytes = Buffer.concat(fdRoles.stdin.writeTrace());
   assert.ok(stdinBytes.byteLength > 0, "active request must write stdin");
   assert.ok(stdinBytes.includes(Buffer.from("tools/call")));
 
-  // Release the gate and feed FIFO responses for each accepted job.
-  // Re-arm gate after each response cycle so pending jobs can block again.
+  // Release the gate and feed FIFO responses for each accepted job by request id.
   async function releaseOne() {
     const lines = Buffer.concat(fdRoles.stdin.writeTrace())
       .toString("utf8")
       .split("\n")
       .filter(Boolean);
     const last = JSON.parse(lines.at(-1));
-    const evidence = JSON.stringify(evidencePayload());
+    const evidence = JSON.stringify({
+      ...evidencePayload(),
+      fifo_query: last.params.arguments.query,
+      fifo_id: last.id,
+    });
     responseQ.push({
       kind: "stdout",
-      bytes_b64: b64(
-        `${JSON.stringify({
-          jsonrpc: "2.0",
-          id: last.id,
-          result: { content: [{ type: "text", text: evidence }], isError: false },
-        })}\n`,
-      ),
+      bytes_b64: b64(rpcStdoutFrame(last.id, evidence)),
       exit_code: null,
     });
     const prev = gateResolve;
@@ -527,12 +577,236 @@ test("case48: one active + eight pending; ninth temporarily_unavailable; FIFO; n
 
   const results = await Promise.all(promises);
   assert.equal(results.length, 9);
-  for (const r of results) {
+  for (let i = 0; i < 9; i += 1) {
+    const r = results[i];
     assert.equal(r.isError, false);
-    assert.match(r.content[0].text, /"instruction_authority":"none"/);
+    const body = JSON.parse(r.content[0].text);
+    assert.equal(body.instruction_authority, "none");
+    assert.equal(body.fifo_query, `q${i}`, "FIFO by request-specific identity");
+    assert.equal(body.fifo_id, i + 1);
   }
+  assert.equal(fdRoles.stdin.writeTrace().length, 9, "one stdin write per accepted call");
   assert.equal(spawnLog.length, 1);
   // No automatic retry after the ninth denial — still a single spawn.
+});
+
+test("exact 10s scripted-clock deadline fails without invented poll-count cutoff", async () => {
+  const manifest = baseManifest();
+  const clock = { t: 5_000 };
+  let hangPolls = 0;
+  const session = createConnectorSession({
+    manifest,
+    spawn: () => "a".repeat(32),
+    nextEvent: () => ({ kind: "hang", bytes_b64: null, exit_code: null }),
+    capabilityData: virtualPathCaps(manifest),
+    now: () => clock.t,
+    pollWait: async () => {
+      hangPolls += 1;
+      // Advance only after well past the old invented 256-poll cap would have fired.
+      if (hangPolls === 300) {
+        clock.t = 5_000 + DEADLINE_MS + 1;
+      }
+    },
+  });
+  const result = await session.invokeAlias("convmem_search", { query: "deadline" });
+  assert.equal(result.isError, true);
+  assert.equal(JSON.parse(result.content[0].text).error.code, "internal_failure");
+  assert.ok(hangPolls >= 300, "must survive beyond 256 polls until scripted 10s elapses");
+  assert.equal(clock.t, 5_000 + DEADLINE_MS + 1);
+});
+
+test("partial frame succeeds before deadline; incomplete frame fails at deadline", async () => {
+  const manifest = baseManifest();
+  const evidence = JSON.stringify(evidencePayload());
+
+  // Success path: two stdout chunks assemble one newline-terminated frame.
+  {
+    const clock = { t: 1_000 };
+    let phase = 0;
+    const session = createConnectorSession({
+      manifest,
+      spawn: () => "b".repeat(32),
+      nextEvent: () => {
+        if (phase === 0) {
+          phase = 1;
+          return {
+            kind: "ready",
+            bytes_b64: null,
+            exit_code: null,
+          };
+        }
+        if (phase === 1) {
+          phase = 2;
+          const prefix = `{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":`;
+          return { kind: "stdout", bytes_b64: b64(prefix), exit_code: null };
+        }
+        if (phase === 2) {
+          phase = 3;
+          const suffix = `${JSON.stringify(evidence)}}],"isError":false}}\n`;
+          return { kind: "stdout", bytes_b64: b64(suffix), exit_code: null };
+        }
+        return null;
+      },
+      capabilityData: virtualPathCaps(manifest),
+      now: () => clock.t,
+    });
+    const ok = await session.invokeAlias("convmem_search", { query: "partial-ok" });
+    assert.equal(ok.isError, false);
+    assert.equal(ok.content[0].text, evidence);
+  }
+
+  // Failure path: incomplete frame until scripted deadline.
+  {
+    const clock = { t: 2_000 };
+    let polls = 0;
+    const session = createConnectorSession({
+      manifest,
+      spawn: () => "c".repeat(32),
+      nextEvent: () => {
+        if (polls === 0) {
+          polls = 1;
+          return {
+            kind: "stdout",
+            bytes_b64: b64('{"jsonrpc":"2.0","id":1,"result":'),
+            exit_code: null,
+          };
+        }
+        return { kind: "hang", bytes_b64: null, exit_code: null };
+      },
+      capabilityData: virtualPathCaps(manifest),
+      now: () => clock.t,
+      pollWait: async () => {
+        clock.t = 2_000 + DEADLINE_MS + 1;
+      },
+    });
+    const bad = await session.invokeAlias("convmem_search", { query: "partial-fail" });
+    assert.equal(bad.isError, true);
+    assert.equal(JSON.parse(bad.content[0].text).error.code, "internal_failure");
+  }
+});
+
+test("64KiB stdout overflow fails closed as response_too_large", async () => {
+  const manifest = baseManifest();
+  const clock = { t: 1_000 };
+  const oversize = Buffer.alloc(MAX_RESPONSE_BYTES + 1, 0x61);
+  const session = createConnectorSession({
+    manifest,
+    spawn: () => "d".repeat(32),
+    nextEvent: () => ({
+      kind: "stdout",
+      bytes_b64: b64(oversize),
+      exit_code: null,
+    }),
+    capabilityData: virtualPathCaps(manifest),
+    now: () => clock.t,
+  });
+  const result = await session.invokeAlias("convmem_search", { query: "overflow64" });
+  assert.equal(result.isError, true);
+  assert.equal(JSON.parse(result.content[0].text).error.code, "response_too_large");
+  assert.equal(session.terminated, true);
+});
+
+test("next_event contract rejects extra fields, unknown kinds, and non-canonical base64", async () => {
+  const manifest = baseManifest();
+
+  async function expectEventReject(badEvent) {
+    const clock = { t: 1_000 };
+    const session = createConnectorSession({
+      manifest,
+      spawn: () => "e".repeat(32),
+      nextEvent: () => badEvent,
+      capabilityData: virtualPathCaps(manifest),
+      now: () => clock.t,
+    });
+    const result = await session.invokeAlias("convmem_search", { query: "bad-event" });
+    assert.equal(result.isError, true);
+    assert.equal(JSON.parse(result.content[0].text).error.code, "internal_failure");
+    assert.equal(session.terminated, true);
+  }
+
+  await expectEventReject({
+    kind: "stdout",
+    bytes_b64: b64("x\n"),
+    exit_code: null,
+    extra: true,
+  });
+  await expectEventReject({
+    kind: "unknown",
+    bytes_b64: null,
+    exit_code: null,
+  });
+  await expectEventReject({
+    kind: "stdout",
+    bytes_b64: "$$$$",
+    exit_code: null,
+  });
+  await expectEventReject({
+    kind: "ready",
+    bytes_b64: null,
+    exit_code: null,
+    again: 1,
+  });
+  await expectEventReject({
+    kind: "exit",
+    bytes_b64: null,
+    exit_code: 1.5,
+  });
+});
+
+test("ready is allowed once; second ready fails closed without retry", async () => {
+  const manifest = baseManifest();
+  const clock = { t: 1_000 };
+  let n = 0;
+  const session = createConnectorSession({
+    manifest,
+    spawn: () => "f".repeat(32),
+    nextEvent: () => {
+      n += 1;
+      return { kind: "ready", bytes_b64: null, exit_code: null };
+    },
+    capabilityData: virtualPathCaps(manifest),
+    now: () => clock.t,
+  });
+  const result = await session.invokeAlias("convmem_search", { query: "ready-twice" });
+  assert.equal(result.isError, true);
+  assert.equal(JSON.parse(result.content[0].text).error.code, "internal_failure");
+  assert.equal(session.terminated, true);
+  assert.ok(n >= 2);
+});
+
+test("per-frame caps are not cumulative across consumed calls; writeTrace stays", async () => {
+  const manifest = baseManifest();
+  const fake = createFakeTransport();
+  const session = createConnectorSession({
+    manifest,
+    spawn: fake.spawn,
+    nextEvent: fake.next_event,
+    capabilityData: virtualPathCaps(manifest),
+    now: fake.now,
+  });
+
+  const raw = JSON.stringify(evidencePayload());
+  for (let i = 0; i < 3; i += 1) {
+    const pending = session.invokeAlias("convmem_search", {
+      query: `cap-${i}-${"x".repeat(1024)}`,
+    });
+    queueMicrotask(() => {
+      fake.respondToNextStdinWrite(raw, { rpcId: "auto" });
+    });
+    const result = await pending;
+    assert.equal(result.isError, false);
+    // Live queue size resets after each consumed call.
+    assert.equal(session.fdRoles.stdin.byteLength, 0);
+    assert.equal(session.fdRoles.stdout.byteLength, 0);
+  }
+  const trace = session.fdRoles.stdin.writeTrace();
+  assert.equal(trace.length, 3);
+  assert.ok(trace.every((b) => b.byteLength > 1024));
+  // Immutable evidence still names each accepted query.
+  const joined = Buffer.concat(trace).toString("utf8");
+  assert.match(joined, /cap-0-/);
+  assert.match(joined, /cap-1-/);
+  assert.match(joined, /cap-2-/);
 });
 
 test("case48: oversized request frame denied; malformed response fails closed; no retry", async () => {

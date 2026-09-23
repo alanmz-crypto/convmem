@@ -178,6 +178,7 @@ export function createStrictFdRoles({
 function createByteQueue(maxBytes, role) {
   const chunks = [];
   let size = 0;
+  /** Immutable per-write evidence — never cleared when live bytes are consumed. */
   const writeTrace = [];
   return {
     role,
@@ -198,6 +199,10 @@ function createByteQueue(maxBytes, role) {
     push(bytes) {
       return this.write(bytes);
     },
+    /**
+     * Consume live queue bytes and reset the per-frame size cap.
+     * Does not alter writeTrace evidence.
+     */
     drain() {
       if (chunks.length === 0) return Buffer.alloc(0);
       const out = Buffer.concat(chunks);
@@ -211,13 +216,46 @@ function createByteQueue(maxBytes, role) {
     writeTrace() {
       return writeTrace.map((b) => Buffer.from(b));
     },
-    clearTrace() {
-      writeTrace.length = 0;
-    },
     get byteLength() {
       return size;
     },
   };
+}
+
+const INPUT_EXPECTED_KIND = Object.freeze({
+  python_executable: "file",
+  strict_server_path: "tree",
+  scope_file: "file",
+  registry_file: "file",
+  strict_config_file: "file",
+  setpriv_executable: "file",
+  seccomp_filter_file: "file",
+});
+
+/** Reject symlink/traversal segments in absolute sealed paths (data-only). */
+function pathHasTraversal(path) {
+  if (typeof path !== "string" || path.includes("\0")) return true;
+  const segments = path.split("/");
+  for (let i = 1; i < segments.length; i += 1) {
+    const seg = segments[i];
+    if (seg === "" || seg === "." || seg === "..") return true;
+  }
+  return false;
+}
+
+function requireCapabilityEntry(pathCaps, path) {
+  const entry = pathCaps[path];
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    throw launchError(`capability_missing:${path}`);
+  }
+  return entry;
+}
+
+function requireCapabilityAttr(entry, path, key) {
+  if (!Object.prototype.hasOwnProperty.call(entry, key)) {
+    throw launchError(`capability_missing_attr:${path}:${key}`);
+  }
+  return entry[key];
 }
 
 /**
@@ -263,6 +301,9 @@ export function validateLaunchTuple(manifest, capabilityData = {}) {
     if (typeof value !== "string" || !ABS_PATH_RE.test(value) || value.includes("\0")) {
       throw launchError(`path:${field}`);
     }
+    if (pathHasTraversal(value)) {
+      throw launchError(`path_traversal:${field}`);
+    }
   }
   for (const field of [
     "python_executable_sha256",
@@ -292,42 +333,110 @@ export function validateLaunchTuple(manifest, capabilityData = {}) {
     throw launchError("launch_payload_sha256");
   }
 
-  const caps = capabilityData && typeof capabilityData === "object" ? capabilityData : {};
-  const pathCaps = caps.paths && typeof caps.paths === "object" ? caps.paths : null;
-  if (pathCaps) {
-    for (const [pathField, digestField] of PATH_DIGEST_FIELDS) {
-      const path = manifest[pathField];
-      const entry = pathCaps[path];
-      if (!entry || typeof entry !== "object") {
-        throw launchError(`capability_missing:${path}`);
-      }
-      if (entry.symlink === true) {
-        throw launchError(`capability_symlink:${path}`);
-      }
-      if (entry.kind !== undefined && entry.kind !== "file" && entry.kind !== "tree") {
-        throw launchError(`capability_kind:${path}`);
-      }
-      if (typeof entry.mode === "number") {
-        // Public/runtime artifacts are read-only for the runtime role (no owner-write bit).
-        if ((entry.mode & 0o222) !== 0) {
-          throw launchError(`capability_writable:${path}`);
-        }
-      }
-      if (entry.uid !== undefined && entry.uid !== 0 && entry.uid !== 1000) {
-        // Operator/root ownership assumption only (virtual).
-        throw launchError(`capability_uid:${path}`);
-      }
-      if (typeof entry.digest === "string" && entry.digest !== manifest[digestField]) {
-        throw launchError(`capability_digest:${path}`);
-      }
+  // Fail closed: capability proof is mandatory and test-owned (no host fs/stat).
+  if (
+    !capabilityData ||
+    typeof capabilityData !== "object" ||
+    Array.isArray(capabilityData)
+  ) {
+    throw launchError("capability_data");
+  }
+  const caps = capabilityData;
+  const pathCaps = caps.paths;
+  if (!pathCaps || typeof pathCaps !== "object" || Array.isArray(pathCaps)) {
+    throw launchError("capability_paths");
+  }
+
+  for (const [pathField, digestField] of PATH_DIGEST_FIELDS) {
+    const path = manifest[pathField];
+    const entry = requireCapabilityEntry(pathCaps, path);
+    if (requireCapabilityAttr(entry, path, "symlink") !== false) {
+      throw launchError(`capability_symlink:${path}`);
     }
-    for (const dirField of ["working_directory", "service_home", "temp_directory"]) {
-      const path = manifest[dirField];
-      const entry = pathCaps[path];
-      if (!entry) continue;
-      if (entry.symlink === true) {
-        throw launchError(`capability_symlink:${path}`);
-      }
+    const expectedKind = INPUT_EXPECTED_KIND[pathField];
+    if (requireCapabilityAttr(entry, path, "kind") !== expectedKind) {
+      throw launchError(`capability_kind:${path}`);
+    }
+    const mode = requireCapabilityAttr(entry, path, "mode");
+    if (typeof mode !== "number" || (mode & 0o222) !== 0) {
+      throw launchError(`capability_writable:${path}`);
+    }
+    const uid = requireCapabilityAttr(entry, path, "uid");
+    if (uid !== 0 && uid !== 1000) {
+      throw launchError(`capability_uid:${path}`);
+    }
+    const digest = requireCapabilityAttr(entry, path, "digest");
+    if (typeof digest !== "string" || digest !== manifest[digestField]) {
+      throw launchError(`capability_digest:${path}`);
+    }
+  }
+
+  // Fixed empty read-only cwd.
+  {
+    const path = manifest.working_directory;
+    const entry = requireCapabilityEntry(pathCaps, path);
+    if (requireCapabilityAttr(entry, path, "symlink") !== false) {
+      throw launchError(`capability_symlink:${path}`);
+    }
+    if (requireCapabilityAttr(entry, path, "kind") !== "dir") {
+      throw launchError(`capability_kind:${path}`);
+    }
+    if (requireCapabilityAttr(entry, path, "empty") !== true) {
+      throw launchError(`capability_cwd_empty:${path}`);
+    }
+    const mode = requireCapabilityAttr(entry, path, "mode");
+    if (typeof mode !== "number" || (mode & 0o222) !== 0) {
+      throw launchError(`capability_writable:${path}`);
+    }
+    const uid = requireCapabilityAttr(entry, path, "uid");
+    if (uid !== 0 && uid !== 1000) {
+      throw launchError(`capability_uid:${path}`);
+    }
+  }
+
+  // Dedicated credential-free HOME.
+  {
+    const path = manifest.service_home;
+    const entry = requireCapabilityEntry(pathCaps, path);
+    if (requireCapabilityAttr(entry, path, "symlink") !== false) {
+      throw launchError(`capability_symlink:${path}`);
+    }
+    if (requireCapabilityAttr(entry, path, "kind") !== "dir") {
+      throw launchError(`capability_kind:${path}`);
+    }
+    if (requireCapabilityAttr(entry, path, "credentials") !== false) {
+      throw launchError(`capability_home_credentials:${path}`);
+    }
+    const mode = requireCapabilityAttr(entry, path, "mode");
+    if (typeof mode !== "number") {
+      throw launchError(`capability_mode:${path}`);
+    }
+    const uid = requireCapabilityAttr(entry, path, "uid");
+    if (typeof uid !== "number") {
+      throw launchError(`capability_uid:${path}`);
+    }
+  }
+
+  // Bounded temp semantics.
+  {
+    const path = manifest.temp_directory;
+    const entry = requireCapabilityEntry(pathCaps, path);
+    if (requireCapabilityAttr(entry, path, "symlink") !== false) {
+      throw launchError(`capability_symlink:${path}`);
+    }
+    if (requireCapabilityAttr(entry, path, "kind") !== "dir") {
+      throw launchError(`capability_kind:${path}`);
+    }
+    if (requireCapabilityAttr(entry, path, "bounded") !== true) {
+      throw launchError(`capability_temp_bounded:${path}`);
+    }
+    const mode = requireCapabilityAttr(entry, path, "mode");
+    if (typeof mode !== "number") {
+      throw launchError(`capability_mode:${path}`);
+    }
+    const uid = requireCapabilityAttr(entry, path, "uid");
+    if (typeof uid !== "number") {
+      throw launchError(`capability_uid:${path}`);
     }
   }
 
@@ -369,6 +478,89 @@ function launchError(reason) {
   err.code = "launch_tuple_invalid";
   err.reason = reason;
   return err;
+}
+
+const NEXT_EVENT_KINDS = Object.freeze([
+  "ready",
+  "stdout",
+  "stderr",
+  "exit",
+  "hang",
+]);
+const NEXT_EVENT_KEYS = Object.freeze(["bytes_b64", "exit_code", "kind"]);
+
+/** Canonical standard base64 (alphabet + padding round-trip). */
+function isCanonicalBase64(value) {
+  if (typeof value !== "string") return false;
+  if (value.length % 4 !== 0) return false;
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(value)) return false;
+  try {
+    const decoded = Buffer.from(value, "base64");
+    return decoded.toString("base64") === value;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Closed next_event port: exactly {kind, bytes_b64, exit_code}.
+ * Fail closed on unknown kind, extra fields, or wrong null/typed payload.
+ */
+function parseClosedNextEvent(event, readySeen) {
+  if (event === null || event === undefined) {
+    return { idle: true };
+  }
+  if (typeof event !== "object" || Array.isArray(event)) {
+    return { error: "event_type" };
+  }
+  const keys = Object.keys(event).sort();
+  if (keys.length !== NEXT_EVENT_KEYS.length) {
+    return { error: "event_key_set" };
+  }
+  for (let i = 0; i < NEXT_EVENT_KEYS.length; i += 1) {
+    if (keys[i] !== NEXT_EVENT_KEYS[i]) {
+      return { error: "event_key_set" };
+    }
+  }
+  const { kind, bytes_b64: bytesB64, exit_code: exitCode } = event;
+  if (!NEXT_EVENT_KINDS.includes(kind)) {
+    return { error: "event_kind" };
+  }
+  if (kind === "ready") {
+    if (bytesB64 !== null || exitCode !== null) {
+      return { error: "event_ready_fields" };
+    }
+    if (readySeen) {
+      return { error: "event_ready_once" };
+    }
+    return { kind: "ready" };
+  }
+  if (kind === "hang") {
+    if (bytesB64 !== null || exitCode !== null) {
+      return { error: "event_hang_fields" };
+    }
+    return { kind: "hang" };
+  }
+  if (kind === "exit") {
+    if (bytesB64 !== null) {
+      return { error: "event_exit_bytes" };
+    }
+    if (!Number.isInteger(exitCode)) {
+      return { error: "event_exit_code" };
+    }
+    return { kind: "exit", exitCode };
+  }
+  // stdout / stderr
+  if (exitCode !== null) {
+    return { error: "event_stream_exit_code" };
+  }
+  if (!isCanonicalBase64(bytesB64)) {
+    return { error: "event_bytes_b64" };
+  }
+  return {
+    kind,
+    bytes: Buffer.from(bytesB64, "base64"),
+  };
 }
 
 /**
@@ -536,57 +728,59 @@ export function createConnectorSession({
       terminated = true;
       return encodeClosedError("internal_failure");
     }
+    // Per-frame request cap must not accumulate across consumed calls; keep writeTrace.
+    roles.stdin.drain();
 
     const deadlineAt = job.startedAt + DEADLINE_MS;
     let responseBytes = null;
-    let idlePolls = 0;
+    let readySeen = false;
 
     while (now() <= deadlineAt) {
       if (job.cancelled) {
+        roles.stdout.drain();
         return encodeClosedError("internal_failure");
       }
-      const event = nextEvent(handle);
-      if (!event || typeof event !== "object") {
-        idlePolls += 1;
+      const parsedEvent = parseClosedNextEvent(nextEvent(handle), readySeen);
+      if (parsedEvent.idle) {
         await idleYield();
-        if (idlePolls > 256 || now() > deadlineAt) break;
         continue;
       }
-      idlePolls = 0;
-      const kind = event.kind;
-      if (kind === "ready") {
-        continue;
-      }
-      if (kind === "hang") {
-        await idleYield();
-        if (typeof pollWait === "function") {
-          idlePolls = 0;
-        } else {
-          idlePolls += 1;
-        }
-        if (idlePolls > 256 || now() > deadlineAt) break;
-        continue;
-      }
-      if (kind === "exit") {
+      if (parsedEvent.error) {
         terminated = true;
+        roles.stdout.drain();
+        return encodeClosedError("internal_failure");
+      }
+      if (parsedEvent.kind === "ready") {
+        readySeen = true;
+        continue;
+      }
+      if (parsedEvent.kind === "hang") {
+        await idleYield();
+        continue;
+      }
+      if (parsedEvent.kind === "exit") {
+        terminated = true;
+        roles.stdout.drain();
         // Child died before a complete matched response — not success.
         return encodeClosedError("internal_failure");
       }
-      if (kind === "stderr") {
+      if (parsedEvent.kind === "stderr") {
         continue;
       }
-      if (kind === "stdout") {
-        const chunk = decodeEventBytes(event);
+      if (parsedEvent.kind === "stdout") {
+        const chunk = parsedEvent.bytes;
         if (chunk.length === 0) continue;
         try {
           roles.stdout.push(chunk);
         } catch {
           terminated = true;
+          roles.stdout.drain();
           return encodeClosedError("response_too_large");
         }
         const buffered = roles.stdout.peekAll();
         if (buffered.length > MAX_RESPONSE_BYTES) {
           terminated = true;
+          roles.stdout.drain();
           return encodeClosedError("response_too_large");
         }
         const nl = buffered.indexOf(0x0a);
@@ -594,18 +788,23 @@ export function createConnectorSession({
           // Partial frame — keep waiting until deadline or more bytes.
           continue;
         }
-        responseBytes = buffered.subarray(0, nl);
-        // Consume the completed line from the queue.
+        responseBytes = Buffer.from(buffered.subarray(0, nl));
+        // Consume the completed line from the queue (resets output frame cap).
         roles.stdout.drain();
         break;
       }
+      terminated = true;
+      roles.stdout.drain();
+      return encodeClosedError("internal_failure");
     }
 
     if (job.cancelled) {
+      roles.stdout.drain();
       return encodeClosedError("internal_failure");
     }
     if (responseBytes === null) {
-      // Timeout / incomplete — no automatic retry.
+      // Timeout / incomplete — no automatic retry; reset output frame accounting.
+      roles.stdout.drain();
       return encodeClosedError("internal_failure");
     }
     if (responseBytes.length > MAX_RESPONSE_BYTES) {
@@ -652,13 +851,6 @@ export function createConnectorSession({
     return toolResultBlock(raw, { isError: result.isError === true });
   }
 
-  function decodeEventBytes(event) {
-    if (typeof event.bytes_b64 === "string" && event.bytes_b64.length > 0) {
-      return Buffer.from(event.bytes_b64, "base64");
-    }
-    return Buffer.alloc(0);
-  }
-
   return {
     handle,
     launchTuple,
@@ -666,7 +858,7 @@ export function createConnectorSession({
     invokeAlias,
     cancel,
     get terminated() {
-      return terminated,
+      return terminated;
     },
     markTerminated() {
       terminated = true;
