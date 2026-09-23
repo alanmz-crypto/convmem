@@ -461,7 +461,11 @@ def test_case54_clock_interval_review_inventory():
     view = controller.serving_rollback_view(HEX_B)
     assert view["authority_head"] == PUB
     assert view["session_resumable"] is False
-    bad_review = base_clock_review(expires_at="2026-09-23T00:00:00Z")
+    bad_review = base_clock_review(
+        boot_id="boot-fixture-0003",
+        expires_at="2026-09-23T00:00:00Z",
+        reviewed_wall_time="2026-09-21T13:00:00Z",
+    )
     platform.new_boot("boot-fixture-0003", wall_time="2026-09-21T13:00:00Z")
     install_clock_review_inventory(platform, bad_review)
     with pytest.raises(ValueError, match="expiry_renewal_forbidden"):
@@ -580,6 +584,7 @@ def test_all_platform_ops_traced_for_clock_peer_access_spawn_manager():
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
     platform.set_peer("op1", "operator")
+    platform.peer("op1")  # authenticated peer observation (set_peer alone is harness)
     platform.access("controller", "/fixture/receipt/x", "create")
     platform.sample_clock()
     inv = controller.slots[HEX_B].unit_invocation_id
@@ -674,7 +679,7 @@ def test_negative_nested_launch_shape_env_fd_mount_endpoint():
     bad_fd["policy_payload_sha256"] = independent_content_hash(
         bad_fd, "policy_payload_sha256"
     )
-    with pytest.raises(ValueError, match="runtime_fd_forbidden|bad_fd"):
+    with pytest.raises(ValueError, match="fd_roles_fixed:agent|runtime_fd_forbidden|bad_fd"):
         ctl.validate_launch_policy(bad_fd)
 
     # Mount source role mutation.
@@ -711,19 +716,25 @@ def test_negative_noncanonical_frame_and_connection_accounting():
         controller.open_control_session("op1")
     assert controller._active_control_connections == 1
 
-    # Non-canonical JSON (space after colon) rejected even if parseable.
+    # Non-canonical JSON (space after colon) rejected even if parseable; closes op1.
     obj = status_request()
     ugly = json.dumps(obj, separators=(", ", ": ")).encode("utf-8")
     frame = struct.pack(">I", len(ugly)) + ugly
     assert controller.handle_framed_bytes("op1", frame) is None
+    assert controller._active_control_connections == 0
 
-    # Unknown close must not decrement.
+    # Unknown close must not decrement — exercise on a newly opened live connection.
+    platform.open_control_connection("op-live", "operator")
+    controller.open_control_session("op-live")
     before = controller._active_control_connections
+    assert before == 1
     controller.close_control_session("unknown-id")
     assert controller._active_control_connections == before
-    controller.close_control_session("op1")
+    controller.close_control_session("op-live")
     assert controller._active_control_connections == before - 1
-    controller.close_control_session("op1")  # already closed
+    controller.close_control_session("op-live")  # already closed
+    assert controller._active_control_connections == before - 1
+    controller.close_control_session("op1")  # already closed by malformed frame
     assert controller._active_control_connections == before - 1
 
 
