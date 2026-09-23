@@ -2361,7 +2361,12 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
     os.chmod(req, 0o444)
 
     # Track lock hold across qualify + open.
-    lock_state: dict[str, Any] = {"fd": None, "qualify": False, "open": False}
+    lock_state: dict[str, Any] = {
+        "fd": None,
+        "path": None,
+        "qualify": False,
+        "open": False,
+    }
     orig_acquire = sp._acquire_shared_lineage_lock
     orig_qualify = sp.qualify_authority_generation
     orig_open = sp.open_published_generation
@@ -2369,27 +2374,37 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
     def wrap_acquire(path):
         fd, inode = orig_acquire(path)
         lock_state["fd"] = fd
+        lock_state["path"] = path
         return fd, inode
 
-    def wrap_qualify(**kwargs):
-        fd = lock_state["fd"]
-        assert isinstance(fd, int) and fd >= 0
+    def _assert_shared_blocks_exclusive(phase: str) -> None:
+        # flock upgrades within one open-file description; probe must use another.
+        product_fd = lock_state["fd"]
+        assert isinstance(product_fd, int) and product_fd >= 0
+        lock_path = lock_state["path"]
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        probe_fd = os.open(lock_path, flags)
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            raise AssertionError("shared lock not held during private qualification")
-        except BlockingIOError:
-            lock_state["qualify"] = True
+            try:
+                fcntl.flock(probe_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                raise AssertionError(f"shared lock not held during {phase}")
+            except BlockingIOError:
+                return
+        finally:
+            os.close(probe_fd)
+
+    def wrap_qualify(**kwargs):
+        _assert_shared_blocks_exclusive("private qualification")
+        lock_state["qualify"] = True
         return orig_qualify(**kwargs)
 
     def wrap_open(**kwargs):
-        fd = lock_state["fd"]
-        assert isinstance(fd, int) and fd >= 0
+        assert isinstance(lock_state["fd"], int) and lock_state["fd"] >= 0
         assert kwargs.get("held_lock") is not None
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            raise AssertionError("shared lock not held during public opening")
-        except BlockingIOError:
-            lock_state["open"] = True
+        _assert_shared_blocks_exclusive("public opening")
+        lock_state["open"] = True
         return orig_open(**kwargs)
 
     monkeypatch.setattr(sp, "_acquire_shared_lineage_lock", wrap_acquire)
