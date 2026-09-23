@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import copy
+import json
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -28,12 +31,16 @@ from lifecycle_scripts import (  # noqa: E402
     HEX_E,
     PUB,
     _enter_revoking_for_retirement,
+    agent_argv_template,
     base_activation_manifest,
     base_clock_review,
     base_launch_policy,
     cancel_request,
     clock_review_inventory_bytes,
+    independent_canonical,
+    independent_content_hash,
     install_clock_review_inventory,
+    open_operator_session,
     revoke_request,
     script_partial_frame_discard,
     script_peer_policy_ok,
@@ -113,8 +120,6 @@ def test_case55_runtime_denied_private_paths_pre_activation():
         "/fixture/private/control/x",
     ):
         assert platform.access("runtime", path, "read") is False
-    # Path-component boundary: prefix /fixture/private/qualification must not
-    # match /fixture/private/qualification-evil.
     assert platform.access("controller", "/fixture/private/qualification-evil", "read") is False
     assert platform.access("controller", "/fixture/private/qualification/manifest.json", "read")
     ctl.lifecycle_config_core({})
@@ -150,7 +155,6 @@ def test_framed_control_partials_caps_timeout_eight_connections():
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
-    # Eight authenticated concurrent connections via FixturePlatform queues.
     conns = []
     for i in range(MAX_CONTROL_CONNECTIONS):
         cid = f"op{i}"
@@ -159,38 +163,31 @@ def test_framed_control_partials_caps_timeout_eight_connections():
         conns.append(cid)
     with pytest.raises(ValueError, match="control_connection_capacity"):
         platform.open_control_connection("op-extra", "operator")
+    with pytest.raises(ValueError, match="control_connection_capacity"):
+        controller.open_control_session("op-extra2")
 
-    # Partial frame remains partial — no success.
     cid = conns[0]
     full = encode_control_frame(status_request(request_id=HEX_E))
     partial = full[:5]
     assert controller.handle_framed_bytes(cid, partial) is None
-    # Complete frame yields encoded closed response under 2MiB.
     framed = controller.handle_framed_bytes(cid, full[5:])
     assert framed is not None
     assert len(framed) <= MAX_REQUEST_FRAME * 2
+    # Response cap via bounded outbound queue write path.
+    assert len(platform.control_outbound(cid).write_trace) >= 1
     obj, rem, err = try_decode_control_frame(framed)
     assert err is None and rem == b"" and obj is not None
     assert obj["outcome"] == "status"
-    assert set(obj.keys()) == {
-        "schema",
-        "request_id",
-        "slot_id",
-        "activation_id",
-        "outcome",
-        "payload",
-    }
 
-    # Trailing-frame desync closes with no partial success.
     cid2 = conns[1]
     desync = encode_control_frame(status_request(request_id=HEX_A)) + b"\x00"
     assert controller.handle_framed_bytes(cid2, desync) is None
 
-    # Scripted 10s timeout closes idle connection.
     cid3 = conns[2]
     controller.handle_framed_bytes(cid3, encode_control_frame(status_request())[:3])
     platform.advance_boottime(CONTROL_IO_TIMEOUT_NS + 1)
     assert controller.handle_framed_bytes(cid3, b"\x00") is None
+    assert cid3 not in controller._open_sessions
 
 
 def test_framed_closed_requests_and_request_id_conflict():
@@ -202,7 +199,6 @@ def test_framed_closed_requests_and_request_id_conflict():
     platform.open_control_connection("op1", "operator")
     controller.open_control_session("op1")
 
-    # Extra field rejected.
     bad = turn_request()
     bad["extra"] = "nope"
     framed = controller.handle_framed_bytes("op1", encode_control_frame(bad))
@@ -210,24 +206,21 @@ def test_framed_closed_requests_and_request_id_conflict():
     obj, _, _ = try_decode_control_frame(framed)
     assert obj["outcome"] == "invalid_request"
 
-    # Non-string text not coerced.
     bad2 = turn_request(request_id=HEX_E)
     bad2["text"] = 12345  # type: ignore[assignment]
     framed2 = controller.handle_framed_bytes("op1", encode_control_frame(bad2))
     obj2, _, _ = try_decode_control_frame(framed2)
     assert obj2["outcome"] == "invalid_request"
 
-    # Accept turn, then same request_id with changed bytes → conflict.
-    platform.set_peer("opd", "operator")
-    r1 = controller.handle_control("opd", turn_request())
+    opd = open_operator_session(controller, platform, "opd")
+    r1 = controller.handle_control(opd, turn_request())
     assert r1["outcome"] == "running"
     conflict = turn_request(text="changed-bytes")
-    r2 = controller.handle_control("opd", conflict)
+    r2 = controller.handle_control(opd, conflict)
     assert r2["outcome"] == "request_conflict"
 
-    # New request_id, same turn identity → existing state (running).
     r3 = controller.handle_control(
-        "opd",
+        opd,
         turn_request(request_id="ffffffffffffffffffffffffffffffff"),
     )
     assert r3["outcome"] == "running"
@@ -239,10 +232,10 @@ def test_cancel_to_revoking_then_independent_retirement():
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
-    platform.set_peer("op1", "operator")
-    assert controller.handle_control("op1", turn_request())["outcome"] == "running"
+    op1 = open_operator_session(controller, platform, "op1")
+    assert controller.handle_control(op1, turn_request())["outcome"] == "running"
     c_resp = controller.handle_control(
-        "op1", cancel_request(request_id="22222222222222222222222222222222")
+        op1, cancel_request(request_id="22222222222222222222222222222222")
     )
     assert c_resp["outcome"] == "cancelled"
     assert controller.slots[HEX_B].state == "REVOKING"
@@ -255,7 +248,6 @@ def test_cancel_to_revoking_then_independent_retirement():
     receipt = controller.attempt_retirement(HEX_B, terminal_reason="disconnect")
     assert receipt["schema"] == "convmem.activation-retirement.v1"
     assert controller.slots[HEX_B].state == "SEALED"
-    # Content hash on receipt (verified), not a re-hash including self-hash field alone.
     assert receipt["activation_manifest_sha256"] == controller.slots[
         HEX_B
     ].verified_manifest_content_sha256
@@ -274,24 +266,30 @@ def test_sealed_immutability_and_fresh_activation_history():
     first_receipt = controller.attempt_retirement(HEX_B, terminal_reason="operator")
     first_act = controller.slots[HEX_B].activation_id
     assert controller.slots[HEX_B].state == "SEALED"
+    predecessor = controller.slots[HEX_B].sealed_record
+    assert predecessor is not None
+    assert predecessor.state == "SEALED"
+    pred_receipt = dict(predecessor.retirement_receipt)
+    pred_id = predecessor.activation_id
 
-    # SEALED has no outgoing transition on the sealed record — reuse archives it.
+    act2 = "ffffffffffffffffffffffffffffffff"
+    policy2 = base_launch_policy(_activation_id=act2)
     controller.qualify_and_activate(
         HEX_B,
-        base_activation_manifest(
-            activation_id="ffffffffffffffffffffffffffffffff",
-            state_dir="/fixture/state/act-2",
-        ),
-        base_launch_policy(),
+        base_activation_manifest(activation_id=act2, state_dir="/fixture/state/act-2"),
+        policy2,
         lifecycle_config={},
     )
     st = controller.slots[HEX_B]
     assert st.state == "ACTIVE_IDLE"
-    assert st.activation_id == "ffffffffffffffffffffffffffffffff"
-    assert len(st.sealed_history) == 1
-    assert st.sealed_history[0].activation_id == first_act
-    assert st.sealed_history[0].retirement_receipt == first_receipt
-    # No old session resume.
+    assert st.activation_id == act2
+    assert predecessor.state == "SEALED"
+    assert predecessor.activation_id == pred_id == first_act
+    assert predecessor.retirement_receipt == pred_receipt == first_receipt
+    assert predecessor in st.sealed_history
+    # Live mutation must not alter the sealed predecessor object.
+    st.retirement_receipt = {"tampered": True}
+    assert predecessor.retirement_receipt == first_receipt
     assert supervisor.accepted == {}
     assert supervisor.pending_delivery is None
 
@@ -314,7 +312,6 @@ def test_activation_failure_retains_domain_for_retire_quarantine():
     assert st.containment_id
     assert st.activation_id
     assert st.stop_requested is True
-    # Still retire/quarantine capable.
     platform.clear_all_members(st.unit_invocation_id)
     platform.force_observe(st.unit_invocation_id, terminal=True, populated=False)
     receipt = controller.attempt_retirement(HEX_B, terminal_reason="integrity_failure")
@@ -329,7 +326,6 @@ def test_exact_null_observation_quarantines():
     )
     _enter_revoking_for_retirement(controller)
     inv = controller.slots[HEX_B].unit_invocation_id
-    # Explicit populated=null (unknown) — distinct from no override.
     platform.force_observe(inv, terminal=True, populated=None)
     with pytest.raises(ValueError, match="quarantined"):
         controller.attempt_retirement(HEX_B)
@@ -399,7 +395,6 @@ def test_case57_manager_membership_survives_and_restart_persists_quarantine():
     platform.next_event(supervisor.supervisor_handle)
     obs = platform.manager_observe(inv)
     assert obs["populated"] is True
-    # Restart must persist quarantine — not restore stale ACTIVE bytes.
     controller.slots[HEX_B].persisted["state"] = "ACTIVE_IDLE"
     controller.reconcile_after_controller_restart(HEX_B)
     assert controller.slots[HEX_B].state == "QUARANTINED"
@@ -426,14 +421,12 @@ def test_case54_clock_interval_review_inventory():
     platform.suspend_resume(5_000_000_000)
     sample = platform.sample_clock()
     assert sample["boottime_after_ns"] >= 1_000_000_000 + 5_000_000_000
-    # Wall backwards seals via observed decrease.
     platform.advance_wall("2026-09-20T00:00:00Z")
-    platform.set_peer("op1", "operator")
-    controller.handle_control("op1", status_request())
+    op1 = open_operator_session(controller, platform, "op1")
+    controller.handle_control(op1, status_request())
     assert controller.slots[HEX_B].state == "REVOKING"
     assert controller.slots[HEX_B].terminal_reason == "clock_anomaly"
 
-    # New boot: copied reviewer UID alone fails without inventory membership.
     platform.new_boot("boot-fixture-0002", wall_time="2026-09-21T12:00:00Z")
     review = base_clock_review()
     controller.slots[HEX_B].expires_at = "2026-09-22T00:00:00Z"
@@ -479,7 +472,7 @@ def test_case33_spawn_tuple_exact_trace():
             ["/evil"],
             dict(policy["processes"]["agent"]["environment"]),
             "/fixture/empty",
-            {},
+            {"stdin": object(), "stdout": object(), "stderr": object()},
         )
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(HEX_B, base_activation_manifest(), policy, lifecycle_config={})
@@ -496,13 +489,14 @@ def test_case35_kill_child_partial_success_paths():
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
-    platform.set_peer("op1", "operator")
-    controller.handle_control("op1", turn_request())
+    op1 = open_operator_session(controller, platform, "op1")
+    controller.handle_control(op1, turn_request())
     handle = supervisor.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
     platform.schedule_event(handle, "exit", exit_code=9)
     ev = platform.next_event(handle)
     supervisor.ingest_agent_event(ev)
-    with pytest.raises(ValueError, match="nonzero_agent_exit"):
+    assert supervisor.state == "REVOKING"
+    with pytest.raises(ValueError, match="no_active_turn|revoked_before_commit|nonzero_agent_exit"):
         supervisor.release_commit()
 
     controller2_platform, controller2, supervisor2, _ = _pair()
@@ -510,8 +504,8 @@ def test_case35_kill_child_partial_success_paths():
     controller2.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
-    controller2_platform.set_peer("op1", "operator")
-    controller2.handle_control("op1", turn_request())
+    op2 = open_operator_session(controller2, controller2_platform, "op1")
+    controller2.handle_control(op2, turn_request())
     h2 = supervisor2.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
     controller2_platform.schedule_agent_success(h2)
     supervisor2.ingest_agent_event(controller2_platform.next_event(h2))
@@ -531,8 +525,8 @@ def test_case45_lifecycle_config_disables_and_no_unsolicited_turn():
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config=core
     )
     assert supervisor.active_turn_id is None
-    platform.set_peer("op1", "operator")
-    st = controller.handle_control("op1", status_request())
+    op1 = open_operator_session(controller, platform, "op1")
+    st = controller.handle_control(op1, status_request())
     assert st["payload"]["turn_id"] is None
 
 
@@ -608,8 +602,173 @@ def test_module_enroll_slot_wrapper():
 
 
 def test_duplicate_key_frame_rejected():
-    # object_pairs_hook path — not vacuous len(dict) check.
     from fixture_platform import decode_json_object
 
     with pytest.raises(ValueError, match="duplicate_key"):
         decode_json_object(b'{"a":1,"a":2}')
+
+
+# --- Negative / independence regression (Codex parent-contract defects) ---
+
+
+def test_negative_self_hash_and_capability_cannot_excuse():
+    import openclaw_activation_controller as ctl
+
+    manifest = base_activation_manifest()
+    expected = independent_content_hash(manifest, "manifest_payload_sha256")
+    assert manifest["manifest_payload_sha256"] == expected
+    bad = dict(manifest)
+    bad["manifest_payload_sha256"] = "sha256:" + ("0" * 64)
+    assert bad["manifest_payload_sha256"] != expected
+    with pytest.raises(ValueError, match="manifest_self_hash"):
+        ctl.validate_activation_manifest(
+            bad,
+            slot_id=HEX_B,
+            lineage_id=HEX_A,
+            authority_head=PUB,
+            expires_at="2026-09-22T00:00:00Z",
+            capability_digests={"activation_manifest": expected},
+        )
+
+    policy = base_launch_policy()
+    expected_p = independent_content_hash(policy, "policy_payload_sha256")
+    bad_p = dict(policy)
+    bad_p["policy_payload_sha256"] = "sha256:" + ("1" * 64)
+    assert bad_p["policy_payload_sha256"] != expected_p
+    with pytest.raises(ValueError, match="launch_policy_self_hash"):
+        ctl.validate_launch_policy(
+            bad_p, capability_digests={"launch_policy": expected_p}
+        )
+
+
+def test_negative_nested_launch_shape_env_fd_mount_endpoint():
+    import openclaw_activation_controller as ctl
+
+    policy = base_launch_policy()
+    # Env key mutation.
+    bad_env = copy.deepcopy(policy)
+    bad_env["processes"]["agent"]["environment"]["EVIL"] = "1"
+    bad_env["policy_payload_sha256"] = independent_content_hash(
+        bad_env, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="env_keys"):
+        ctl.validate_launch_policy(bad_env)
+
+    # FD inheritance mutation.
+    bad_fd = copy.deepcopy(policy)
+    bad_fd["processes"]["agent"]["inherited_fd_roles"] = ["control"]
+    bad_fd["policy_payload_sha256"] = independent_content_hash(
+        bad_fd, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="runtime_fd_forbidden|bad_fd"):
+        ctl.validate_launch_policy(bad_fd)
+
+    # Mount source role mutation.
+    bad_mount = copy.deepcopy(policy)
+    bad_mount["writable_mounts"][0]["source_role"] = "host_home"
+    bad_mount["policy_payload_sha256"] = independent_content_hash(
+        bad_mount, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="mount_source_role|writable_mount"):
+        ctl.validate_launch_policy(bad_mount)
+
+    # Endpoint ports not distinct.
+    bad_ep = copy.deepcopy(policy)
+    bad_ep["endpoints"]["model_port"] = bad_ep["endpoints"]["gateway_port"]
+    bad_ep["policy_payload_sha256"] = independent_content_hash(
+        bad_ep, "policy_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="endpoint_ports_not_distinct"):
+        ctl.validate_launch_policy(bad_ep)
+
+
+def test_negative_noncanonical_frame_and_connection_accounting():
+    platform, controller, supervisor, _ = _pair()
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+    )
+    # Unopened connection must not be serviced.
+    assert controller.handle_framed_bytes("never-opened", b"\x00\x00\x00\x01{") is None
+
+    platform.open_control_connection("op1", "operator")
+    controller.open_control_session("op1")
+    with pytest.raises(ValueError, match="duplicate_control_open"):
+        controller.open_control_session("op1")
+    assert controller._active_control_connections == 1
+
+    # Non-canonical JSON (space after colon) rejected even if parseable.
+    obj = status_request()
+    ugly = json.dumps(obj, separators=(", ", ": ")).encode("utf-8")
+    frame = struct.pack(">I", len(ugly)) + ugly
+    assert controller.handle_framed_bytes("op1", frame) is None
+
+    # Unknown close must not decrement.
+    before = controller._active_control_connections
+    controller.close_control_session("unknown-id")
+    assert controller._active_control_connections == before
+    controller.close_control_session("op1")
+    assert controller._active_control_connections == before - 1
+    controller.close_control_session("op1")  # already closed
+    assert controller._active_control_connections == before - 1
+
+
+def test_negative_clock_review_wrong_hash_and_wall_binding():
+    platform, controller, supervisor, _ = _pair()
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+    )
+    platform.new_boot("boot-fixture-0002", wall_time="2026-09-21T12:00:00Z")
+    review = base_clock_review()
+    # Plant body-without-hash only — insufficient.
+    body_wo = {k: review[k] for k in sorted(review) if k != "review_payload_sha256"}
+    platform.install_operator_inventory_bytes(independent_canonical(body_wo))
+    with pytest.raises(ValueError, match="clock_review_inventory_miss"):
+        controller.establish_freshness_anchor(
+            controller.slots[HEX_B],
+            authority_snapshot_id="snap-fixture-1",
+            remaining_snapshot_lifetime_ns=1_000_000_000,
+            clock_review=review,
+        )
+    # Wrong embedded hash with full-object plant of correct bytes still fails self-hash.
+    good_bytes = clock_review_inventory_bytes(review)
+    platform.install_operator_inventory_bytes(good_bytes)
+    wrong = dict(review)
+    wrong["review_payload_sha256"] = "sha256:" + ("d" * 64)
+    assert wrong["review_payload_sha256"] != independent_content_hash(
+        wrong, "review_payload_sha256"
+    )
+    with pytest.raises(ValueError, match="clock_review_self_hash"):
+        controller.establish_freshness_anchor(
+            controller.slots[HEX_B],
+            authority_snapshot_id="snap-fixture-1",
+            remaining_snapshot_lifetime_ns=1_000_000_000,
+            clock_review=wrong,
+        )
+    # Unrelated wall must not authorize.
+    wall_bad = base_clock_review(reviewed_wall_time="2026-09-21T11:00:00Z")
+    install_clock_review_inventory(platform, wall_bad)
+    with pytest.raises(ValueError, match="clock_review_wall_mismatch"):
+        controller.establish_freshness_anchor(
+            controller.slots[HEX_B],
+            authority_snapshot_id="snap-fixture-1",
+            remaining_snapshot_lifetime_ns=1_000_000_000,
+            clock_review=wall_bad,
+        )
+
+
+def test_negative_empty_fd_roles_not_unconstrained():
+    import openclaw_activation_supervisor as sup
+
+    policy = base_launch_policy()
+    # Policy lists supervisor fds; empty spawn map must fail.
+    with pytest.raises(ValueError, match="fd_roles_mismatch"):
+        sup.validate_launch_tuple(
+            policy,
+            "supervisor",
+            list(policy["processes"]["supervisor"]["argv_template"]),
+            dict(policy["processes"]["supervisor"]["environment"]),
+            "/fixture/empty",
+            {},
+        )

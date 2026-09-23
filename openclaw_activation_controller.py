@@ -138,6 +138,62 @@ CLOCK_REVIEW_KEYS = (
     "review_payload_sha256",
 )
 
+GATEWAY_AGENT_ENV_KEYS = frozenset(
+    {
+        "OPENCLAW_GATEWAY_TOKEN",
+        "OPENCLAW_STATE_DIR",
+        "OPENCLAW_CONFIG_PATH",
+        "HOME",
+        "PATH",
+        "LANG",
+        "LC_ALL",
+        "TMPDIR",
+        "XDG_CACHE_HOME",
+    }
+)
+STRICT_SERVER_ENV_KEYS = frozenset(
+    {
+        "CONVMEM_MCP_PROFILE",
+        "CONVMEM_BOUND_READ_SCOPE_FILE",
+        "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
+        "CONVMEM_STRICT_CONFIG_FILE",
+        "HOME",
+        "PATH",
+        "LANG",
+        "LC_ALL",
+        "TMPDIR",
+    }
+)
+SUPERVISOR_ENV_KEYS = frozenset({"NOTIFY_SOCKET", "WATCHDOG_USEC"})
+MODEL_WORKER_ENV_KEYS = frozenset(
+    {"HOME", "PATH", "TMPDIR", "XDG_CACHE_HOME", "OMP_NUM_THREADS"}
+)
+MOUNT_SOURCE_ROLES = frozenset(
+    {"runtime", "public_evidence", "config", "model", "control", "state", "temp"}
+)
+RO_SOURCE_ROLES = frozenset(
+    {"runtime", "public_evidence", "config", "model", "control"}
+)
+RW_SOURCE_ROLES = frozenset({"state", "temp"})
+MOUNT_KEYS = frozenset({"source_role", "destination", "mode", "max_bytes"})
+ENDPOINT_KEYS = frozenset({"gateway_port", "model_port", "model_api", "model_id"})
+MAX_WRITABLE_BYTES = 1_073_741_824
+EMPTY_CWD = "/fixture/empty"
+GATEWAY_ARGV_FIXED = (
+    "gateway",
+    "run",
+    "--bind",
+    "loopback",
+    "--auth",
+    "token",
+    "--tailscale",
+    "off",
+    "--ws-log",
+    "compact",
+)
+AGENT_ARGV_FIXED_PREFIX = ("agent", "--json", "--session-id")
+AGENT_ARGV_FIXED_MID = ("--timeout", "120", "--message", "TURN_TEXT")
+
 _LIFECYCLE_REQUIRED_FALSE = (
     "native_memory",
     "automatic_memory_flush",
@@ -325,6 +381,9 @@ def decode_framed_request(buf: bytes) -> tuple[dict[str, Any] | None, bytes, str
         return None, b"", "bad_frame"
     if not isinstance(obj, dict):
         return None, b"", "bad_frame"
+    # Reject whitespace / key-order / escape alternatives — exact canonical bytes.
+    if _canonical(obj) != raw:
+        return None, b"", "bad_frame"
     return obj, b"", None
 
 
@@ -333,6 +392,14 @@ def encode_framed_response(obj: Mapping[str, Any]) -> bytes:
     if len(body) > MAX_RESPONSE_FRAME:
         raise ValueError("response_frame_too_large")
     return struct.pack(">I", len(body)) + body
+
+
+def _argv_digest(argv: list[str]) -> str:
+    return _sha256_labeled(
+        json.dumps(
+            argv, ensure_ascii=False, allow_nan=False, separators=(",", ":")
+        ).encode("utf-8")
+    )
 
 
 def validate_control_request(request: Mapping[str, Any]) -> None:
@@ -351,7 +418,7 @@ def validate_control_request(request: Mapping[str, Any]) -> None:
             raise ValueError("bad_arguments")
         if not _hex32(request["turn_id"]):
             raise ValueError("bad_arguments")
-        if not isinstance(request["expected_publication_sha256"], str):
+        if not _sha_digest(request["expected_publication_sha256"]):
             raise ValueError("bad_arguments")
     elif op == "cancel":
         if keys != CANCEL_KEYS:
@@ -380,6 +447,7 @@ def validate_activation_manifest(
     expires_at: str,
     capability_digests: Mapping[str, str] | None = None,
     known_state_dirs: set[str] | None = None,
+    launch_policy: Mapping[str, Any] | None = None,
 ) -> str:
     """Closed key set/types/versions/self-hash; return verified content hash."""
 
@@ -398,20 +466,18 @@ def validate_activation_manifest(
         raise ValueError("slot_lineage_drift")
     if manifest["expires_at"] != expires_at:
         raise ValueError("expires_drift")
-    digest_keys = [
-        k for k in ACTIVATION_KEYS if k.endswith("_sha256") or k in ("owner_digest",)
-    ]
-    for key in digest_keys:
-        if key == "manifest_payload_sha256":
-            continue
-        if not _sha_digest(manifest[key]):
-            raise ValueError(f"bad_digest:{key}")
-    if not _sha_digest(manifest["manifest_payload_sha256"]):
-        raise ValueError("bad_manifest_payload_sha256")
+    for key in ACTIVATION_KEYS:
+        if key.endswith("_sha256") or key == "owner_digest":
+            if not _sha_digest(manifest[key]):
+                raise ValueError(f"bad_digest:{key}")
     if not isinstance(manifest["snapshot_id"], str) or not manifest["snapshot_id"]:
         raise ValueError("bad_snapshot_id")
     if not isinstance(manifest["openclaw_version"], str):
         raise ValueError("bad_openclaw_version")
+    for wall_key in ("as_of", "expires_at", "created_at"):
+        if not isinstance(manifest[wall_key], str) or len(str(manifest[wall_key])) != 20:
+            raise ValueError(f"bad_{wall_key}")
+        _parse_wall(str(manifest[wall_key]))
     if not isinstance(manifest["state_dir"], str) or not manifest["state_dir"].startswith(
         "/fixture/state/"
     ):
@@ -425,16 +491,10 @@ def validate_activation_manifest(
     max_life = manifest["max_monotonic_lifetime_seconds"]
     if not isinstance(max_life, int) or max_life < 1 or max_life > 86400:
         raise ValueError("bad_max_lifetime")
+    # Self-hash is mandatory — capability digests cannot excuse a wrong hash.
     content = _content_hash(manifest, "manifest_payload_sha256")
     if manifest["manifest_payload_sha256"] != content:
-        # Test fixtures may supply a placeholder digest; when capability map
-        # provides the independent expected digest, enforce it.
-        caps = capability_digests or {}
-        expected = caps.get("activation_manifest")
-        if expected is not None and expected != content:
-            raise ValueError("manifest_self_hash")
-        if expected is None and not _sha_digest(manifest["manifest_payload_sha256"]):
-            raise ValueError("manifest_self_hash")
+        raise ValueError("manifest_self_hash")
     if capability_digests:
         for name, digest in capability_digests.items():
             field = {
@@ -443,12 +503,87 @@ def validate_activation_manifest(
                 "manager_policy": "manager_policy_sha256",
                 "runtime_distribution": "runtime_distribution_sha256",
                 "model_artifacts": "model_artifacts_sha256",
+                "activation_manifest": "manifest_payload_sha256",
             }.get(name)
             if field and manifest.get(field) != digest:
                 raise ValueError(f"cross_digest:{name}")
     if authority_head and manifest.get("publication_sha256") != authority_head:
         raise ValueError("head_drift")
+    if launch_policy is not None:
+        policy_hash = _content_hash(launch_policy, "policy_payload_sha256")
+        if manifest["launch_policy_sha256"] != policy_hash:
+            raise ValueError("launch_policy_digest_drift")
+        if manifest["runtime_distribution_sha256"] != launch_policy["runtime_distribution_sha256"]:
+            raise ValueError("runtime_distribution_drift")
+        if manifest["model_artifacts_sha256"] != launch_policy["model_artifacts_sha256"]:
+            raise ValueError("model_artifacts_drift")
+        if manifest["manager_policy_sha256"] != launch_policy["manager_policy_sha256"]:
+            raise ValueError("manager_policy_drift")
+        endpoints = launch_policy["endpoints"]
+        if int(manifest["gateway_port"]) != int(endpoints["gateway_port"]):
+            raise ValueError("gateway_port_drift")
+        gw = launch_policy["processes"]["gateway"]["argv_template"]
+        ag = launch_policy["processes"]["agent"]["argv_template"]
+        if manifest["gateway_argv_sha256"] != _argv_digest(list(gw)):
+            raise ValueError("gateway_argv_digest_drift")
+        if manifest["agent_argv_sha256"] != _argv_digest(list(ag)):
+            raise ValueError("agent_argv_digest_drift")
     return content
+
+
+def _validate_mount_list(entries: Any, *, writable: bool) -> int:
+    if not isinstance(entries, list):
+        raise ValueError("bad_mounts")
+    total = 0
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry.keys()) != MOUNT_KEYS:
+            raise ValueError("mount_keys")
+        role = entry["source_role"]
+        if role not in MOUNT_SOURCE_ROLES:
+            raise ValueError("mount_source_role")
+        if writable:
+            if entry["mode"] != "rw" or role not in RW_SOURCE_ROLES:
+                raise ValueError("writable_mount_mode")
+            mb = entry["max_bytes"]
+            if not isinstance(mb, int) or mb < 1:
+                raise ValueError("writable_max_bytes")
+            total += mb
+        else:
+            if entry["mode"] != "ro" or role not in RO_SOURCE_ROLES:
+                raise ValueError("readonly_mount_mode")
+            if entry["max_bytes"] is not None:
+                raise ValueError("readonly_max_bytes")
+        if not isinstance(entry["destination"], str) or not entry["destination"].startswith("/"):
+            raise ValueError("mount_destination")
+    return total
+
+
+def _validate_gateway_argv(argv: list[str], *, gateway_port: int) -> None:
+    if len(argv) != 14:
+        raise ValueError("gateway_argv_structure")
+    if not argv[0].startswith("/") or not argv[1].startswith("/"):
+        raise ValueError("gateway_argv_paths")
+    if argv[2:6] != ["gateway", "run", "--bind", "loopback"]:
+        raise ValueError("gateway_argv_structure")
+    if argv[6] != "--port" or argv[7] != str(gateway_port):
+        raise ValueError("gateway_argv_port")
+    if argv[8:] != ["--auth", "token", "--tailscale", "off", "--ws-log", "compact"]:
+        raise ValueError("gateway_argv_structure")
+
+
+def _validate_agent_argv(argv: list[str]) -> None:
+    if len(argv) != 10:
+        raise ValueError("agent_argv_structure")
+    if not argv[0].startswith("/") or not argv[1].startswith("/"):
+        raise ValueError("agent_argv_paths")
+    if argv[2:5] != ["agent", "--json", "--session-id"]:
+        raise ValueError("agent_argv_structure")
+    if not _hex32(argv[5]):
+        raise ValueError("agent_argv_activation_id")
+    if argv[6:] != ["--timeout", "120", "--message", "TURN_TEXT"]:
+        raise ValueError("agent_argv_structure")
+    if sum(1 for p in argv if p == "TURN_TEXT") != 1:
+        raise ValueError("turn_text_count")
 
 
 def validate_launch_policy(
@@ -460,6 +595,14 @@ def validate_launch_policy(
         raise ValueError("launch_policy_key_set")
     if policy["schema"] != LAUNCH_POLICY_SCHEMA:
         raise ValueError("bad_launch_schema")
+    for digest_key in (
+        "runtime_distribution_sha256",
+        "model_artifacts_sha256",
+        "manager_policy_sha256",
+        "policy_payload_sha256",
+    ):
+        if not _sha_digest(policy[digest_key]):
+            raise ValueError(f"bad_digest:{digest_key}")
     for role_key, expected_uid in (
         ("operator_uid", LOGICAL_UID["operator"]),
         ("controller_uid", LOGICAL_UID["controller"]),
@@ -471,48 +614,113 @@ def validate_launch_policy(
     processes = policy["processes"]
     if not isinstance(processes, dict) or set(processes.keys()) != set(PROCESS_ROLES):
         raise ValueError("bad_processes")
+    endpoints = policy["endpoints"]
+    if not isinstance(endpoints, dict) or set(endpoints.keys()) != ENDPOINT_KEYS:
+        raise ValueError("bad_endpoints")
+    gw_port = endpoints["gateway_port"]
+    model_port = endpoints["model_port"]
+    if not isinstance(gw_port, int) or not isinstance(model_port, int):
+        raise ValueError("bad_endpoint_ports")
+    if not (49152 <= gw_port <= 65535 and 49152 <= model_port <= 65535):
+        raise ValueError("bad_endpoint_ports")
+    if gw_port == model_port:
+        raise ValueError("endpoint_ports_not_distinct")
+    if endpoints["model_api"] != "openai-completions":
+        raise ValueError("bad_model_api")
+    if not isinstance(endpoints["model_id"], str) or not endpoints["model_id"]:
+        raise ValueError("bad_model_id")
+
     for role in PROCESS_ROLES:
         proc = processes[role]
         if set(proc.keys()) != set(PROCESS_KEYS):
             raise ValueError(f"process_keys:{role}")
-        if not isinstance(proc["executable"], str) or not isinstance(proc["argv_template"], list):
+        if not isinstance(proc["executable"], str) or not proc["executable"].startswith("/"):
+            raise ValueError(f"bad_executable:{role}")
+        if not isinstance(proc["argv_template"], list) or not proc["argv_template"]:
             raise ValueError(f"bad_argv:{role}")
         if not all(isinstance(x, str) for x in proc["argv_template"]):
             raise ValueError(f"bad_argv_types:{role}")
-        if proc["argv_template"] and proc["argv_template"][0] != proc["executable"]:
-            # Allow multi-arg templates whose first element is executable.
+        if proc["argv_template"][0] != proc["executable"] and role not in (
+            "gateway",
+            "agent",
+            "strict_server",
+        ):
             if proc["executable"] not in proc["argv_template"]:
                 raise ValueError(f"executable_mismatch:{role}")
-        if not isinstance(proc["cwd"], str):
+        if role in ("gateway", "agent") and proc["cwd"] != EMPTY_CWD:
             raise ValueError(f"bad_cwd:{role}")
-        if not isinstance(proc["environment"], dict) or any(
-            not isinstance(k, str) or not isinstance(v, str)
-            for k, v in proc["environment"].items()
+        if not isinstance(proc["cwd"], str) or not proc["cwd"].startswith("/"):
+            raise ValueError(f"bad_cwd:{role}")
+        env = proc["environment"]
+        if not isinstance(env, dict) or any(
+            not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()
         ):
             raise ValueError(f"bad_env:{role}")
-        if not isinstance(proc["inherited_fd_roles"], list):
+        env_keys = frozenset(env.keys())
+        if role in ("gateway", "agent"):
+            if env_keys != GATEWAY_AGENT_ENV_KEYS:
+                raise ValueError(f"env_keys:{role}")
+        elif role == "strict_server":
+            if env_keys != STRICT_SERVER_ENV_KEYS:
+                raise ValueError(f"env_keys:{role}")
+            if env.get("CONVMEM_MCP_PROFILE") != "openclaw-strict":
+                raise ValueError("strict_profile")
+        elif role == "supervisor":
+            if env_keys != SUPERVISOR_ENV_KEYS:
+                raise ValueError(f"env_keys:{role}")
+        elif role == "model_worker":
+            if env_keys != MODEL_WORKER_ENV_KEYS:
+                raise ValueError(f"env_keys:{role}")
+        if not isinstance(proc["inherited_fd_roles"], list) or not all(
+            isinstance(x, str) for x in proc["inherited_fd_roles"]
+        ):
             raise ValueError(f"bad_fd_roles:{role}")
         if proc["network_policy"] not in ("activation_loopback", "none"):
             raise ValueError(f"bad_network:{role}")
         if role == "strict_server" and proc["network_policy"] != "none":
             raise ValueError("strict_server_network")
+        if not isinstance(proc["uid"], int) or not isinstance(proc["gid"], int):
+            raise ValueError(f"uid_gid_types:{role}")
         if int(proc["uid"]) != int(proc["gid"]):
             raise ValueError(f"uid_gid:{role}")
         expected = 0 if role == "supervisor" else LOGICAL_UID["runtime"]
         if int(proc["uid"]) != expected:
             raise ValueError(f"role_uid:{role}")
-        # TURN_TEXT may appear only in agent argv template.
-        for part in proc["argv_template"]:
-            if part == "TURN_TEXT" and role != "agent":
+        seccomp = proc["seccomp_filter_sha256"]
+        if role == "strict_server":
+            if not _sha_digest(seccomp):
+                raise ValueError("strict_server_seccomp")
+        elif seccomp is not None:
+            raise ValueError(f"seccomp_must_be_null:{role}")
+        turn_count = sum(1 for part in proc["argv_template"] if part == "TURN_TEXT")
+        if role == "agent":
+            if turn_count != 1:
+                raise ValueError("turn_text_count")
+            _validate_agent_argv(list(proc["argv_template"]))
+        else:
+            if turn_count != 0:
                 raise ValueError("turn_text_role")
+        if role == "gateway":
+            _validate_gateway_argv(list(proc["argv_template"]), gateway_port=gw_port)
+        if role == "model_worker" and list(proc["argv_template"]) != ["/fixture/bin/model-worker"]:
+            raise ValueError("model_worker_argv")
         if role in ("gateway", "agent", "strict_server", "model_worker"):
             forbidden = {"control", "notify", "lease", "operator_control", "supervisor_control"}
             if forbidden.intersection(proc["inherited_fd_roles"]):
                 raise ValueError(f"runtime_fd_forbidden:{role}")
+
+    ro_total = _validate_mount_list(policy["read_only_mounts"], writable=False)
+    _ = ro_total
+    writable_total = _validate_mount_list(policy["writable_mounts"], writable=True)
+    if writable_total > MAX_WRITABLE_BYTES:
+        raise ValueError("writable_ceiling")
+
     content = _content_hash(policy, "policy_payload_sha256")
+    if policy["policy_payload_sha256"] != content:
+        raise ValueError("launch_policy_self_hash")
     if capability_digests and "launch_policy" in capability_digests:
         if capability_digests["launch_policy"] != content:
-            raise ValueError("launch_policy_self_hash")
+            raise ValueError("launch_policy_capability_digest")
     return content
 
 
@@ -538,7 +746,7 @@ class FreshnessAnchor:
 
 @dataclass
 class SealedActivationRecord:
-    """Retained sealed predecessor — no outgoing transition, no session resume."""
+    """Immutable sealed predecessor — SEALED has no outgoing transition."""
 
     activation_id: str
     activation_manifest: dict[str, Any]
@@ -549,6 +757,7 @@ class SealedActivationRecord:
     terminal_reason: str | None
     retirement_receipt: dict[str, Any]
     verified_manifest_content_sha256: str
+    state: str = "SEALED"
 
 
 @dataclass
@@ -573,6 +782,7 @@ class SlotState:
     quarantine_reason: str | None = None
     wall_offset_lower_bound: int | None = None
     last_wall_s: int | None = None
+    sealed_record: SealedActivationRecord | None = None
     sealed_history: list[SealedActivationRecord] = field(default_factory=list)
     used_state_dirs: set[str] = field(default_factory=set)
     persisted: dict[str, Any] = field(default_factory=dict)
@@ -587,10 +797,14 @@ class ControllerCore:
     slots: MutableMapping[str, SlotState] = field(default_factory=dict)
     _slot_transition_held: bool = False
     _lineage_exclusive_held: bool = False
-    _active_control_connections: int = 0
+    _open_sessions: set[str] = field(default_factory=set)
     MAX_CONTROL_CONNECTIONS: int = MAX_CONTROL_CONNECTIONS
     _inbound_bufs: dict[str, bytearray] = field(default_factory=dict)
     _conn_activity_ns: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def _active_control_connections(self) -> int:
+        return len(self._open_sessions)
 
     def enroll_slot(
         self,
@@ -751,24 +965,21 @@ class ControllerCore:
             raise ValueError("clock_review_reviewer_uid")
         if not isinstance(clock_review.get("reviewed_wall_time"), str):
             raise ValueError("clock_review_wall")
+        # Reviewed wall must bind the new-boot wall sample — not an unrelated value.
+        if clock_review.get("reviewed_wall_time") != str(sample["wall_time"]):
+            raise ValueError("clock_review_wall_mismatch")
         content = _content_hash(clock_review, "review_payload_sha256")
         if clock_review.get("review_payload_sha256") != content:
-            # Allow fixture placeholder only when inventory membership proves bytes.
-            pass
-        review_bytes = _canonical(
-            {k: clock_review[k] for k in CLOCK_REVIEW_KEYS if k != "review_payload_sha256"}
-        )
-        # Access approval then exact bytes membership in protected inventory.
+            raise ValueError("clock_review_self_hash")
+        # Access approval then exact full receipt bytes (including self-hash) in inventory.
         self.check_access(
             "controller", "/fixture/private/operator-inventory/clock-review", "read"
         )
         inventory = self._operator_inventory()
-        # Full review object canonical bytes (excluding only self-hash field body match).
         full_body = {k: clock_review[k] for k in CLOCK_REVIEW_KEYS}
-        full_body_for_inv = {k: v for k, v in full_body.items() if k != "review_payload_sha256"}
-        inv_bytes = _canonical(full_body_for_inv)
-        if inv_bytes not in inventory and review_bytes not in inventory:
-            # Copied reviewer UID alone must fail — inventory miss.
+        inv_bytes = _canonical(full_body)
+        if inv_bytes not in inventory:
+            # Copied reviewer UID / body-without-hash / wrong hash must fail.
             raise ValueError("clock_review_inventory_miss")
         deadline = int(sample["boottime_after_ns"]) + remaining_snapshot_lifetime_ns
         ref = content
@@ -783,29 +994,34 @@ class ControllerCore:
         st.freshness_anchor = anchor
         return anchor
 
+    def _make_sealed_record(self, st: SlotState) -> SealedActivationRecord:
+        if st.retirement_receipt is None or st.activation_id is None:
+            raise ValueError("sealed_without_receipt")
+        return SealedActivationRecord(
+            activation_id=st.activation_id,
+            activation_manifest=dict(st.activation_manifest or {}),
+            publication_sha256=st.publication_sha256,
+            manager_boot_id=st.manager_boot_id,
+            unit_invocation_id=st.unit_invocation_id,
+            containment_id=st.containment_id,
+            terminal_reason=st.terminal_reason,
+            retirement_receipt=dict(st.retirement_receipt),
+            verified_manifest_content_sha256=st.verified_manifest_content_sha256 or "",
+            state="SEALED",
+        )
+
     def _archive_sealed_if_reusing(self, st: SlotState) -> None:
-        """SEALED has no outgoing transition — archive predecessor, start fresh live fields."""
+        """SEALED has no outgoing transition — retain immutable predecessor, clear live fields."""
 
         if st.state != "SEALED":
             return
-        if st.retirement_receipt is None or st.activation_id is None:
-            raise ValueError("sealed_without_receipt")
-        st.sealed_history.append(
-            SealedActivationRecord(
-                activation_id=st.activation_id,
-                activation_manifest=dict(st.activation_manifest or {}),
-                publication_sha256=st.publication_sha256,
-                manager_boot_id=st.manager_boot_id,
-                unit_invocation_id=st.unit_invocation_id,
-                containment_id=st.containment_id,
-                terminal_reason=st.terminal_reason,
-                retirement_receipt=dict(st.retirement_receipt),
-                verified_manifest_content_sha256=st.verified_manifest_content_sha256
-                or "",
-            )
-        )
-        # Fresh per-activation record — no old session/state resumes.
-        st.state = "NEW"
+        predecessor = st.sealed_record or self._make_sealed_record(st)
+        # Never mutate the sealed predecessor object.
+        if predecessor.state != "SEALED":
+            raise ValueError("sealed_predecessor_corrupt")
+        st.sealed_history.append(predecessor)
+        st.sealed_record = None
+        # Fresh live activation fields only — do not transition the sealed record.
         st.activation_id = None
         st.activation_manifest = None
         st.verified_manifest_content_sha256 = None
@@ -820,6 +1036,7 @@ class ControllerCore:
         st.quarantine_reason = None
         # Freshness anchor may shrink on same boot; do not resume turn state.
         self.supervisor.reset_for_new_activation()
+        # Slot may host a new activation; sealed predecessor remains SEALED in history.
 
     def qualify_and_activate(
         self,
@@ -862,6 +1079,7 @@ class ControllerCore:
                 if obs.get("populated") is not False:
                     raise ValueError("pending_populated_unit")
             caps = self._capability_digests()
+            policy_hash = validate_launch_policy(launch_policy, capability_digests=caps or None)
             content_hash = validate_activation_manifest(
                 activation_manifest,
                 slot_id=slot_id,
@@ -870,15 +1088,14 @@ class ControllerCore:
                 expires_at=str(st.expires_at),
                 capability_digests=caps or None,
                 known_state_dirs=st.used_state_dirs,
+                launch_policy=launch_policy,
             )
-            validate_launch_policy(launch_policy, capability_digests=caps or None)
+            _ = policy_hash
             if activation_manifest.get("publication_sha256") != st.authority_head:
-                # Head drift vs enrolled authority.
                 if st.authority_head is not None and st.authority_head != activation_manifest[
                     "publication_sha256"
                 ]:
-                    # Enrolled head is the serving pin; activation must match or be explicit.
-                    pass
+                    raise ValueError("head_drift")
             pub = str(activation_manifest["publication_sha256"])
             act_id = str(activation_manifest["activation_id"])
             snap_id = str(activation_manifest["snapshot_id"])
@@ -957,7 +1174,7 @@ class ControllerCore:
                 argv = list(sup_proc["argv_template"])
                 env = dict(sup_proc["environment"])
                 cwd = str(sup_proc["cwd"])
-                # Validate and spawn the same argv/env/cwd/fd_roles.
+                # Validate and spawn the identical typed tuple — never mutate policy.
                 validate_launch_tuple(launch_policy, "supervisor", argv, env, cwd, fd_roles)
                 handle = self.platform.spawn("supervisor", argv, env, cwd, fd_roles)
                 ready = self.platform.next_event(handle)
@@ -981,6 +1198,7 @@ class ControllerCore:
                 supervisor_handle=handle,
             )
             st.state = "ACTIVE_IDLE"
+            st.sealed_record = None
             st.persisted.update(
                 {
                     "state": st.state,
@@ -1007,31 +1225,39 @@ class ControllerCore:
             self._release_slot_transition()
 
     def open_control_session(self, connection_id: str) -> None:
-        if self._active_control_connections >= self.MAX_CONTROL_CONNECTIONS:
+        if connection_id in self._open_sessions:
+            raise ValueError("duplicate_control_open")
+        if len(self._open_sessions) >= self.MAX_CONTROL_CONNECTIONS:
             raise ValueError("control_connection_capacity")
         self.validate_peer(connection_id, expected_role="operator")
-        self._active_control_connections += 1
+        self._open_sessions.add(connection_id)
         sample = self._sample_paired()
         self._conn_activity_ns[connection_id] = int(sample["boottime_after_ns"])
         self._inbound_bufs[connection_id] = bytearray()
 
     def close_control_session(self, connection_id: str | None = None) -> None:
-        if self._active_control_connections > 0:
-            self._active_control_connections -= 1
-        if connection_id is not None:
-            self._inbound_bufs.pop(connection_id, None)
-            self._conn_activity_ns.pop(connection_id, None)
-            closer = getattr(self.platform, "close_control_connection", None)
-            if callable(closer):
-                closer(connection_id)
+        if connection_id is None:
+            return
+        if connection_id not in self._open_sessions:
+            # Unknown / already-closed — do not decrement accounting.
+            return
+        self._open_sessions.discard(connection_id)
+        self._inbound_bufs.pop(connection_id, None)
+        self._conn_activity_ns.pop(connection_id, None)
+        closer = getattr(self.platform, "close_control_connection", None)
+        if callable(closer):
+            closer(connection_id)
 
     def handle_framed_bytes(self, connection_id: str, chunk: bytes) -> bytes | None:
         """External control front end via FixturePlatform ByteQueues.
 
         Partial input remains partial until complete. Timeout/desync closes with
         no partial success. Returns encoded response bytes or None while partial.
+        Only currently opened/authenticated connections may be serviced.
         """
 
+        if connection_id not in self._open_sessions:
+            return None
         sample = self._sample_paired()
         now = int(sample["boottime_after_ns"])
         last = self._conn_activity_ns.get(connection_id, now)
@@ -1045,21 +1271,22 @@ class ControllerCore:
             return None
         buf = self._inbound_bufs.setdefault(connection_id, bytearray())
         buf.extend(chunk)
-        # Also mirror into platform inbound queue when present.
+        # Mirror into platform inbound queue when present (bounded queue evidence).
         inbound = getattr(self.platform, "control_inbound", None)
         if callable(inbound):
             try:
                 q = inbound(connection_id)
                 q.write(chunk)
             except Exception:
-                pass
+                self.close_control_session(connection_id)
+                return None
         obj, rem, err = decode_framed_request(bytes(buf))
         if err is not None:
             self._inbound_bufs[connection_id] = bytearray()
             self.close_control_session(connection_id)
             return None
         if obj is None:
-            # Still partial.
+            # Still partial — receive window remains armed via activity stamp only on complete.
             return None
         self._inbound_bufs[connection_id] = bytearray(rem)
         self._conn_activity_ns[connection_id] = now
@@ -1068,7 +1295,6 @@ class ControllerCore:
         except ValueError:
             resp = self._response(obj, "invalid_request", {"reason": "bad_arguments"})
             return encode_framed_response(resp)
-        # Private dict dispatch only after framed/authenticated validation.
         resp = self._dispatch_validated(connection_id, obj)
         try:
             framed = encode_framed_response(resp)
@@ -1091,8 +1317,10 @@ class ControllerCore:
         *,
         consumer_blocked: bool = False,
     ) -> dict[str, Any]:
-        """Private dict dispatch — callers must validate first (tests/framed path)."""
+        """Private dict dispatch helper — same open-session gate as framed path."""
 
+        if connection_id not in self._open_sessions:
+            return self._response(request, "invalid_request", {"reason": "bad_arguments"})
         try:
             validate_control_request(request)
         except ValueError:
@@ -1160,8 +1388,16 @@ class ControllerCore:
             elif resp["outcome"] == "cancelled":
                 # Cancel live turn → REVOKING; SEALED only after independent retirement.
                 self._enter_revoking(st, "disconnect")
+            elif resp["outcome"] == "unavailable" and resp.get("payload", {}).get(
+                "reason"
+            ) == "capacity":
+                # Capacity is internal terminal reasoning; map to revoke enum for seal path.
+                self._enter_revoking(st, "integrity_failure")
+                st.terminal_reason = "integrity_failure"
+                st.persisted["internal_terminal"] = "capacity"
             elif resp["outcome"] == "sealed":
-                self._enter_revoking(st, str(resp.get("payload", {}).get("reason", "capacity")))
+                # Must not accept sealed-with-null; drive REVOKING instead.
+                self._enter_revoking(st, "integrity_failure")
             elif resp["outcome"] == "revoking":
                 st.state = "REVOKING"
                 st.terminal_reason = str(resp.get("payload", {}).get("reason", "operator"))
@@ -1268,6 +1504,7 @@ class ControllerCore:
         st.retirement_receipt = receipt
         st.state = "SEALED"
         st.terminal_reason = reason
+        st.sealed_record = self._make_sealed_record(st)
         st.persisted["state"] = "SEALED"
         st.persisted["retirement_receipt"] = receipt
         return receipt

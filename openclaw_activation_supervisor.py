@@ -119,7 +119,17 @@ def validate_launch_tuple(
         raise ValueError("missing_process_role")
     expected = processes[role]
     expected_argv = list(expected["argv_template"])
-    if list(argv) != expected_argv:
+    if role == "agent" and "TURN_TEXT" in expected_argv:
+        if len(argv) != len(expected_argv):
+            raise ValueError("argv_mismatch")
+        for actual, templ in zip(argv, expected_argv):
+            if templ == "TURN_TEXT":
+                continue
+            if actual != templ:
+                raise ValueError("argv_mismatch")
+        if sum(1 for p in expected_argv if p == "TURN_TEXT") != 1:
+            raise ValueError("turn_text_count")
+    elif list(argv) != expected_argv:
         raise ValueError("argv_mismatch")
     if cwd != expected["cwd"]:
         raise ValueError("cwd_mismatch")
@@ -127,11 +137,10 @@ def validate_launch_tuple(
         raise ValueError("env_mismatch")
     if role == "model_worker" and list(argv) != ["/fixture/bin/model-worker"]:
         raise ValueError("model_worker_argv")
-    # inherited_fd_roles from policy must match spawn fd_roles keys when both given.
-    policy_fds = list(expected.get("inherited_fd_roles") or [])
-    if policy_fds:
-        if sorted(fd_roles.keys()) != sorted(policy_fds):
-            raise ValueError("fd_roles_mismatch")
+    # Always compare fd roles exactly — empty policy list is not unconstrained.
+    policy_fds = list(expected["inherited_fd_roles"])
+    if sorted(fd_roles.keys()) != sorted(policy_fds):
+        raise ValueError("fd_roles_mismatch")
     if role in ("gateway", "agent", "strict_server", "model_worker"):
         forbidden = {"control", "notify", "lease", "operator_control", "supervisor_control"}
         if forbidden.intersection(fd_roles.keys()):
@@ -207,6 +216,8 @@ class AcceptedTurn:
     request_canonical: bytes
     text: str
     expected_publication_sha256: str
+    slot_id: str
+    activation_id: str
     state: str  # running | committed | cancelled
     result: dict[str, Any] | None = None
 
@@ -231,6 +242,7 @@ class SupervisorCore:
     _control_mutex: bool = False
     _revoked: bool = False
     _revoke_reason: str | None = None
+    _internal_terminal: str | None = None
     _last_valid_clock: dict[str, Any] | None = None
     _watchdog_armed: bool = False
     _watchdog_samples: list[dict[str, Any]] = field(default_factory=list)
@@ -256,6 +268,7 @@ class SupervisorCore:
         self.supervisor_handle = supervisor_handle
         self.state = "ACTIVE_IDLE"
         self._watchdog_armed = True
+        self._internal_terminal = None
         sample = self.platform.sample_clock()
         self._watchdog_samples.append(dict(sample))
 
@@ -268,6 +281,7 @@ class SupervisorCore:
         self.active_turn_id = None
         self._revoked = False
         self._revoke_reason = None
+        self._internal_terminal = None
         self._stdout_buffer.clear()
         self._stderr_buffer.clear()
         self.agent_handle = None
@@ -280,6 +294,7 @@ class SupervisorCore:
         self.activation_id = None
         self.publication_sha256 = None
         self.lease_deadline_boottime_ns = None
+        self.slot_id = None
 
     def preload_completed_history(self, records: list[Mapping[str, Any]]) -> None:
         """Independent fixture preload consistent with parent accepted-turn semantics."""
@@ -289,13 +304,15 @@ class SupervisorCore:
             rid = str(rec["request_id"])
             text = str(rec["text"])
             pub = str(rec["expected_publication_sha256"])
+            slot_id = str(rec.get("slot_id", self.slot_id))
+            activation_id = str(rec.get("activation_id", self.activation_id))
             canon = _canonical(
                 {
                     "schema": CONTROL_SCHEMA,
                     "op": "turn",
                     "request_id": rid,
-                    "slot_id": self.slot_id,
-                    "activation_id": self.activation_id,
+                    "slot_id": slot_id,
+                    "activation_id": activation_id,
                     "turn_id": tid,
                     "text": text,
                     "expected_publication_sha256": pub,
@@ -307,6 +324,8 @@ class SupervisorCore:
                 request_canonical=canon,
                 text=text,
                 expected_publication_sha256=pub,
+                slot_id=slot_id,
+                activation_id=activation_id,
                 state=str(rec.get("state", "committed")),
                 result=None,
             )
@@ -328,14 +347,54 @@ class SupervisorCore:
     def _release_mutex(self) -> None:
         self._control_mutex = False
 
+    def _enter_revoking_internal(self, reason: str, *, internal: str | None = None) -> None:
+        self._revoked = True
+        if reason in REVOKE_REASONS:
+            self._revoke_reason = reason
+        else:
+            self._revoke_reason = "integrity_failure"
+        self._internal_terminal = internal or reason
+        self.state = "REVOKING"
+        self.active_turn_id = None
+        self._stdout_buffer.clear()
+        self._stderr_buffer.clear()
+
     def tick_watchdog(self, sample: Mapping[str, Any] | None = None) -> None:
         if not self._watchdog_armed:
             return
         clock = sample or self.platform.sample_clock()
+        now = int(clock["boottime_after_ns"])
+        if self.state == "TURN_RUNNING" and self._watchdog_samples:
+            prev = int(self._watchdog_samples[-1]["boottime_after_ns"])
+            if now - prev > WATCHDOG_INTERVAL_NS:
+                self.revoke("integrity_failure")
+                self._internal_terminal = "watchdog_interval_skipped"
+                return
         self._watchdog_samples.append(dict(clock))
         if self.lease_deadline_boottime_ns is not None:
-            if int(clock["boottime_after_ns"]) > self.lease_deadline_boottime_ns:
+            if now > self.lease_deadline_boottime_ns:
                 self.revoke("expiry")
+
+    def _assert_watchdog_coverage(self) -> None:
+        """Enforce <=100ms scripted-work sampling during a live turn."""
+
+        if not self._watchdog_armed:
+            raise ValueError("watchdog_not_armed")
+        if not self._watchdog_samples:
+            raise ValueError("watchdog_interval_skipped")
+        samples = [int(s["boottime_after_ns"]) for s in self._watchdog_samples]
+        for earlier, later in zip(samples, samples[1:]):
+            if later - earlier > WATCHDOG_INTERVAL_NS:
+                self._enter_revoking_internal(
+                    "integrity_failure", internal="watchdog_interval_skipped"
+                )
+                raise ValueError("watchdog_interval_skipped")
+        now = int(self.platform.sample_clock()["boottime_after_ns"])
+        if now - samples[-1] > WATCHDOG_INTERVAL_NS:
+            self._enter_revoking_internal(
+                "integrity_failure", internal="watchdog_interval_skipped"
+            )
+            raise ValueError("watchdog_interval_skipped")
 
     def script_work_intervals(self, count: int = 1) -> None:
         """Advance scripted clock by <=100ms intervals and sample — no real wait."""
@@ -351,12 +410,7 @@ class SupervisorCore:
             raise ValueError(f"bad_revoke_reason:{reason}")
         self._acquire_mutex()
         try:
-            self._revoked = True
-            self._revoke_reason = reason
-            self.state = "REVOKING"
-            self.active_turn_id = None
-            self._stdout_buffer.clear()
-            self._stderr_buffer.clear()
+            self._enter_revoking_internal(reason)
         finally:
             self._release_mutex()
 
@@ -373,9 +427,14 @@ class SupervisorCore:
             return self._out(request, "invalid_request", {"reason": "bad_arguments"})
         sample = clock_sample or self.platform.sample_clock()
         self.tick_watchdog(sample)
-        if self._revoked:
-            return self._out(request, "revoking", {"reason": self._revoke_reason or "operator"})
         op = request.get("op")
+        if self._revoked:
+            # Identity retries for cancelled/committed turns must not become busy/revoking.
+            if op == "turn":
+                replay = self._replay_accepted_turn(request, sample)
+                if replay is not None:
+                    return replay
+            return self._out(request, "revoking", {"reason": self._revoke_reason or "operator"})
         if op == "status":
             return self._out(
                 request,
@@ -399,6 +458,47 @@ class SupervisorCore:
             self.revoke(reason)
             return self._out(request, "revoking", {"reason": reason})
         return self._out(request, "invalid_request", {"reason": "bad_arguments"})
+
+    def _replay_accepted_turn(
+        self, request: Mapping[str, Any], sample: Mapping[str, Any]
+    ) -> dict[str, Any] | None:
+        turn_id = request.get("turn_id")
+        text = request.get("text")
+        pub = request.get("expected_publication_sha256")
+        request_id = request.get("request_id")
+        if not _hex32(turn_id) or not isinstance(text, str) or not _hex32(request_id):
+            return None
+        identity_key = self._identity_key(str(turn_id), str(text), str(pub))
+        existing_tid = self.turn_identity_index.get(identity_key)
+        existing = self.accepted.get(str(turn_id))
+        if existing_tid is not None and existing_tid == turn_id:
+            existing = self.accepted[existing_tid]
+        if existing is None:
+            return None
+        prior_identity = {
+            "turn_id": existing.turn_id,
+            "text": existing.text,
+            "expected_publication_sha256": existing.expected_publication_sha256,
+        }
+        new_identity = {
+            "turn_id": turn_id,
+            "text": text,
+            "expected_publication_sha256": pub,
+        }
+        if prior_identity != new_identity:
+            return self._out(request, "request_conflict", {"turn_id": turn_id})
+        if existing.state == "committed":
+            assert existing.result is not None
+            if self.lease_deadline_boottime_ns is not None and int(
+                sample["boottime_after_ns"]
+            ) > self.lease_deadline_boottime_ns:
+                return self._out(request, "unavailable", {"reason": "expiry"})
+            return self._out(request, "committed", existing.result)
+        if existing.state == "cancelled":
+            return self._out(request, "cancelled", {"turn_id": turn_id})
+        if existing.state == "running":
+            return self._out(request, "running", {"turn_id": turn_id})
+        return None
 
     def _cancel(self, request: Mapping[str, Any]) -> dict[str, Any]:
         turn_id = request.get("turn_id")
@@ -504,15 +604,21 @@ class SupervisorCore:
                 return self._out(request, "committed", existing.result)
             if existing.state == "running":
                 return self._out(request, "running", {"turn_id": turn_id})
+            if existing.state == "cancelled":
+                return self._out(request, "cancelled", {"turn_id": turn_id})
             return self._out(request, "busy", {"active_turn_id": self.active_turn_id})
 
         if self.active_turn_id is not None:
             return self._out(request, "busy", {"active_turn_id": self.active_turn_id})
         if len(self.accepted) >= MAX_ACCEPTED_TURNS:
-            self.state = "REVOKING"
-            self._revoke_reason = "capacity"
-            self._revoked = True
-            return self._out(request, "sealed", {"reason": "capacity", "retirement_ref": None})
+            # Capacity is internal terminal reasoning — REVOKING, never SEALED+null.
+            self._enter_revoking_internal("integrity_failure", internal="capacity")
+            return self._out(request, "unavailable", {"reason": "capacity"})
+
+        if self.slot_id is None or self.activation_id is None:
+            return self._out(request, "unavailable", {"reason": "not_active"})
+        if request.get("slot_id") != self.slot_id or request.get("activation_id") != self.activation_id:
+            return self._out(request, "invalid_request", {"reason": "bad_arguments"})
 
         self.accepted[str(turn_id)] = AcceptedTurn(
             turn_id=str(turn_id),
@@ -520,6 +626,8 @@ class SupervisorCore:
             request_canonical=canon,
             text=str(text),
             expected_publication_sha256=str(pub),
+            slot_id=str(self.slot_id),
+            activation_id=str(self.activation_id),
             state="running",
         )
         self.accepted_request_ids[str(request_id)] = canon
@@ -531,31 +639,17 @@ class SupervisorCore:
     def spawn_agent_for_active_turn(self, launch_policy: Mapping[str, Any], text: str) -> str:
         if self.active_turn_id is None:
             raise ValueError("no_active_turn")
+        self._assert_watchdog_coverage()
         agent = launch_policy["processes"]["agent"]
-        # Template keeps TURN_TEXT literal for hash/validation; spawn uses the
-        # same argv/env/cwd/fd_roles that validate_launch_tuple accepts. For
-        # templates containing TURN_TEXT, substitute then validate against the
-        # substituted form by temporarily rewriting expected — here fixture
-        # templates have no TURN_TEXT, so validate+spawn identical lists.
         template = list(agent["argv_template"])
-        if "TURN_TEXT" in template:
-            argv = [text if p == "TURN_TEXT" else p for p in template]
-            # Validate structure: only typed TURN_TEXT substitution allowed.
-            mutated = dict(launch_policy)
-            procs = dict(mutated["processes"])
-            agent_proc = dict(procs["agent"])
-            agent_proc["argv_template"] = argv
-            procs["agent"] = agent_proc
-            mutated["processes"] = procs
-            policy_for_validate = mutated
-        else:
-            argv = template
-            policy_for_validate = launch_policy
+        # Literal TURN_TEXT substitution only — never mutate the launch policy.
+        argv = [text if p == "TURN_TEXT" else p for p in template]
         env = dict(agent["environment"])
         cwd = str(agent["cwd"])
-        # Stdio roles only — never control/notify/lease. Validate and spawn identical.
-        fd_roles: dict[str, Any] = {"stdin": object(), "stdout": object(), "stderr": object()}
-        validate_launch_tuple(policy_for_validate, "agent", argv, env, cwd, fd_roles)
+        fd_roles: dict[str, Any] = {
+            role: object() for role in agent["inherited_fd_roles"]
+        }
+        validate_launch_tuple(launch_policy, "agent", argv, env, cwd, fd_roles)
         handle = self.platform.spawn("agent", argv, env, cwd, fd_roles)
         self.agent_handle = handle
         self._observed_exit_code = None
@@ -567,6 +661,8 @@ class SupervisorCore:
         kind = event.get("kind")
         if kind not in ("ready", "stdout", "stderr", "exit", "hang"):
             raise ValueError("bad_event_kind")
+        if self.state == "TURN_RUNNING":
+            self.tick_watchdog()
         if kind == "stdout":
             b64 = event.get("bytes_b64")
             if not isinstance(b64, str) or event.get("exit_code") is not None:
@@ -589,10 +685,16 @@ class SupervisorCore:
         elif kind == "exit":
             if event.get("bytes_b64") is not None or not isinstance(event.get("exit_code"), int):
                 raise ValueError("bad_exit")
-            self._observed_exit_code = int(event["exit_code"])
+            code = int(event["exit_code"])
+            self._observed_exit_code = code
+            if code != 0:
+                self._enter_revoking_internal("integrity_failure")
+                self._stdout_buffer.clear()
+                self._stderr_buffer.clear()
         elif kind == "hang":
             if event.get("bytes_b64") is not None or event.get("exit_code") is not None:
                 raise ValueError("bad_hang")
+            self._enter_revoking_internal("disconnect")
 
     def release_commit(self, *, consumer_blocked: bool = False) -> dict[str, Any]:
         """Serialize release under control mutex; use observed exit — no forged code."""
@@ -608,35 +710,48 @@ class SupervisorCore:
                 self._stderr_buffer.clear()
                 self.active_turn_id = None
                 raise ValueError("revoked_before_commit")
+            self._assert_watchdog_coverage()
             # Final paired sample under mutex — no await.
             sample = self.platform.sample_clock()
             self._last_valid_clock = dict(sample)
             self._watchdog_samples.append(dict(sample))
-            # Revalidate activation identity, pinned publication, lease.
-            if self.activation_id is None or self.publication_sha256 is None:
+            # Revalidate accepted slot/activation/publication against bound activation.
+            if self.activation_id is None or self.publication_sha256 is None or self.slot_id is None:
+                self._enter_revoking_internal("integrity_failure")
+                raise ValueError("activation_drift")
+            if accepted.slot_id != self.slot_id or accepted.activation_id != self.activation_id:
+                self._enter_revoking_internal("integrity_failure")
+                self._stdout_buffer.clear()
+                self._stderr_buffer.clear()
                 raise ValueError("activation_drift")
             if accepted.expected_publication_sha256 != self.publication_sha256:
+                self._enter_revoking_internal("integrity_failure")
+                self._stdout_buffer.clear()
+                self._stderr_buffer.clear()
                 raise ValueError("publication_drift")
             if self.lease_deadline_boottime_ns is not None:
                 if int(sample["boottime_after_ns"]) > self.lease_deadline_boottime_ns:
-                    self._revoked = True
-                    self._revoke_reason = "expiry"
+                    self._enter_revoking_internal("expiry")
                     self._stdout_buffer.clear()
                     self._stderr_buffer.clear()
                     raise ValueError("lease_lost")
             if self._observed_exit_code is None:
                 raise ValueError("no_observed_exit")
             if self._observed_exit_code != 0:
+                self._enter_revoking_internal("integrity_failure")
                 self._stdout_buffer.clear()
                 self._stderr_buffer.clear()
                 raise ValueError("nonzero_agent_exit")
             # Only complete stdout JSON becomes model_output; stderr separate.
             raw = bytes(self._stdout_buffer)
             self._stdout_buffer.clear()
-            # stderr retained only as byte length diagnostic; never model_output.
             _ = len(self._stderr_buffer)
             self._stderr_buffer.clear()
-            model_output = _parse_complete_stdout_object(raw)
+            try:
+                model_output = _parse_complete_stdout_object(raw)
+            except ValueError:
+                self._enter_revoking_internal("integrity_failure")
+                raise
             out_bytes = _canonical(model_output)
             result = {
                 "turn_id": turn_id,

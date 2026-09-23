@@ -112,6 +112,12 @@ def try_decode_control_frame(buf: bytes) -> tuple[dict[str, Any] | None, bytes, 
         return None, b"", "bad_frame"
     try:
         obj = decode_json_object(raw)
+        # Canonical-bytes gate (same contract as production framed decode).
+        canonical = json.dumps(
+            obj, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        if canonical != raw:
+            return None, b"", "bad_frame"
     except (UnicodeDecodeError, ValueError, json.JSONDecodeError):
         return None, b"", "bad_frame"
     return obj, b"", None
@@ -336,7 +342,9 @@ class FixturePlatform:
         self._log("harness_forge_peer", connection_id=connection_id, uid=uid, gid=gid)
 
     def open_control_connection(self, connection_id: str, role: str = "operator") -> ByteQueue:
-        if len(self._control_conns) >= MAX_CONTROL_CONNECTIONS:
+        if connection_id in self._control_conns and not self._control_conns[connection_id].closed:
+            raise ValueError("duplicate_control_open")
+        if self.active_control_connection_count() >= MAX_CONTROL_CONNECTIONS:
             raise ValueError("control_connection_capacity")
         self.set_peer(connection_id, role)
         inbound = ByteQueue(f"control-in:{connection_id}", max_bytes=MAX_REQUEST_FRAME)
