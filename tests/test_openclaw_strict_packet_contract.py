@@ -209,7 +209,7 @@ def test_fixture_manifest_schema_exists_and_complete_emit_deferred():
 
 
 def test_plan_and_baseline_constants_frozen():
-    assert oc_constants.SEMANTIC_PARENT_SHA == "cd9d2698b7423f907b552bc9118a0af523018ca9"
+    assert oc_constants.SEMANTIC_PARENT_SHA == "34338133186010a26ed746bbfea4c9abb958e9ca"
     assert oc_constants.CODE_BASELINE_SHA == "7809f20dc53d9dd19f765c3ec3214a3df54ca5bf"
     assert oc_constants.EXPECTED_TEST_RUNTIME_TREE_SHA256.startswith("sha256:74a12c72")
 

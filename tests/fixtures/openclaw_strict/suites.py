@@ -19,6 +19,9 @@ def strict_pytest_argv() -> list[str]:
         "-p",
         "no:cacheprovider",
         "--basetemp=/fixture/pytest-strict",
+        "-o",
+        "junit_family=xunit1",
+        "--junitxml=/fixture/evidence/pytest-strict-junit.xml",
         *STRICT_PYTEST_FILES,
     ]
 
@@ -36,6 +39,9 @@ def legacy_pytest_argv() -> list[str]:
         "-p",
         "no:cacheprovider",
         "--basetemp=/fixture/pytest-legacy",
+        "-o",
+        "junit_family=xunit1",
+        "--junitxml=/fixture/evidence/pytest-legacy-junit.xml",
     ]
     for node in LEGACY_DESELECTS:
         argv.append(f"--deselect={node}")

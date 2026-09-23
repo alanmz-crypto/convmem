@@ -22,10 +22,13 @@ if str(_FIXTURE_DIR) not in sys.path:
 
 from allowlist import assert_allowlist  # noqa: E402
 from audit_evidence import (  # noqa: E402
+    JUnitNodeEvidenceError,
     build_audit_package,
     build_protected_byte_proof,
+    build_pytest_node_outcomes,
     collect_containment_evidence,
     emit_audit_package,
+    emit_pytest_node_outcomes,
 )
 from constants import (  # noqa: E402
     ALL_NEGATIVE_CONTROLS,
@@ -514,6 +517,45 @@ def outer_main(argv: list[str] | None = None) -> int:
             suite_path.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
+
+    # M8: parse both built-in xunit1 reports only after the same Python processes finish.
+    node_outcomes_path = None
+    try:
+        node_outcomes = build_pytest_node_outcomes(
+            evidence_dir=evidence_dir,
+            suite_results=suite_results,
+        )
+        node_outcomes_path = emit_pytest_node_outcomes(evidence_dir, node_outcomes)
+        print(
+            json.dumps(
+                {
+                    "pytest_node_outcomes": "emitted_disposable",
+                    "evidence_path": str(node_outcomes_path),
+                    "schema": node_outcomes["schema"],
+                    "full_repository_discovery": False,
+                    "strict_collected": node_outcomes["suites"][0]["counts"][
+                        "collected"
+                    ],
+                    "legacy_collected": node_outcomes["suites"][1]["counts"][
+                        "collected"
+                    ],
+                },
+                sort_keys=True,
+            )
+        )
+    except JUnitNodeEvidenceError as exc:
+        print(
+            json.dumps(
+                {
+                    "pytest_node_outcomes": "FAIL_CLOSED",
+                    "error": str(exc),
+                },
+                sort_keys=True,
+            ),
+            file=sys.stderr,
+        )
+        _die(f"junit_node_evidence_fail:{exc}")
+
     protected_proof = build_protected_byte_proof(
         repo=repo,
         baseline=CODE_BASELINE_SHA,

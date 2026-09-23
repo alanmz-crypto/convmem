@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -24,13 +26,22 @@ from constants import (
     CODE_BASELINE_SHA,
     CONNECTOR_NODE_TEST,
     EVIDENCE_AUDIT_REL,
+    EVIDENCE_JUNIT_LEGACY_REL,
+    EVIDENCE_JUNIT_STRICT_REL,
     EVIDENCE_LABELS,
     EVIDENCE_MANIFEST_REL,
+    EVIDENCE_NODE_OUTCOMES_REL,
     EVIDENCE_SUITE_RESULTS_REL,
+    EXPECTED_LEGACY_DESELECTION_COUNT,
+    EXPECTED_LEGACY_JUNIT_COUNTS,
+    EXPECTED_STRICT_JUNIT_COUNTS,
     GENERATED_EVIDENCE_FIXTURE_RELS,
     GENERATED_EVIDENCE_SOURCE_RELS,
+    JUNIT_LEGACY_PATH,
+    JUNIT_STRICT_PATH,
     LEGACY_DESELECTS,
     LEGACY_PYTEST_FILES,
+    NODE_OUTCOMES_SCHEMA,
     SEMANTIC_PARENT_SHA,
     STRICT_PYTEST_FILES,
     STRICT_TOOL_NAMES,
@@ -127,6 +138,9 @@ def generated_evidence_paths() -> list[str]:
             EVIDENCE_MANIFEST_REL,
             EVIDENCE_AUDIT_REL,
             EVIDENCE_SUITE_RESULTS_REL,
+            EVIDENCE_JUNIT_STRICT_REL,
+            EVIDENCE_JUNIT_LEGACY_REL,
+            EVIDENCE_NODE_OUTCOMES_REL,
             "suite_results.json",
             *GENERATED_EVIDENCE_FIXTURE_RELS,
         }
@@ -142,6 +156,266 @@ def authority_disclaimer() -> dict[str, bool]:
         "evidence_is_not_manager_emptiness": True,
         "evidence_is_not_promotion": True,
     }
+
+
+_LOSSY_ESCAPE_RE = re.compile(r"#x[0-9A-Fa-f]{2}(?:[0-9A-Fa-f]{2})?")
+_OUTCOME_BY_TAG = {
+    "failure": "failed",
+    "error": "error",
+    "skipped": "skipped",
+}
+_SUITE_IGNORED_CHILDREN = frozenset({"properties"})
+
+
+class JUnitNodeEvidenceError(ValueError):
+    """Fail-closed JUnit / node-outcome contract violation."""
+
+
+def _file_to_dotted(file_path: str) -> str:
+    if not file_path.endswith(".py"):
+        raise JUnitNodeEvidenceError(f"junit_file_not_py:{file_path}")
+    return file_path[: -len(".py")].replace("/", ".")
+
+
+def _reject_lossy_escapes(*values: str) -> None:
+    for value in values:
+        if _LOSSY_ESCAPE_RE.search(value):
+            raise JUnitNodeEvidenceError(f"junit_lossy_escape:{value}")
+
+
+def _reconstruct_nodeid(file_attr: str, classname: str, name: str) -> str:
+    _reject_lossy_escapes(file_attr, classname, name)
+    if not file_attr or not classname or not name:
+        raise JUnitNodeEvidenceError("junit_empty_attr")
+    dotted = _file_to_dotted(file_attr)
+    if classname == dotted:
+        segments: list[str] = []
+    elif classname.startswith(dotted + "."):
+        remainder = classname[len(dotted) + 1 :]
+        if not remainder or remainder.startswith(".") or remainder.endswith("."):
+            raise JUnitNodeEvidenceError(f"junit_classname_segments:{classname}")
+        segments = remainder.split(".")
+        if any(not part for part in segments):
+            raise JUnitNodeEvidenceError(f"junit_classname_segments:{classname}")
+    else:
+        raise JUnitNodeEvidenceError(
+            f"junit_classname_prefix_mismatch:file={file_attr}:classname={classname}"
+        )
+    nodeid = file_attr + "".join(f"::{seg}" for seg in segments) + f"::{name}"
+    # Unique round-trip to the same three attributes.
+    parts = nodeid.split("::")
+    if len(parts) < 2:
+        raise JUnitNodeEvidenceError(f"junit_roundtrip_short:{nodeid}")
+    rt_file = parts[0]
+    rt_name = parts[-1]
+    rt_segments = parts[1:-1]
+    rt_dotted = _file_to_dotted(rt_file)
+    rt_classname = (
+        rt_dotted if not rt_segments else rt_dotted + "." + ".".join(rt_segments)
+    )
+    if (rt_file, rt_classname, rt_name) != (file_attr, classname, name):
+        raise JUnitNodeEvidenceError(
+            f"junit_roundtrip_mismatch:{nodeid}:"
+            f"{rt_file!r}/{rt_classname!r}/{rt_name!r}"
+        )
+    return nodeid
+
+
+def _testcase_outcome(case: ET.Element) -> str:
+    children = list(case)
+    if not children:
+        return "passed"
+    if len(children) != 1:
+        raise JUnitNodeEvidenceError(
+            f"junit_unexpected_children:{[c.tag for c in children]}"
+        )
+    tag = children[0].tag
+    if tag not in _OUTCOME_BY_TAG:
+        raise JUnitNodeEvidenceError(f"junit_unknown_child:{tag}")
+    return _OUTCOME_BY_TAG[tag]
+
+
+def _parse_one_junit_suite(
+    *,
+    suite_name: str,
+    junit_path: str,
+    report_file: Path,
+    selector_files: tuple[str, ...],
+    deselections: tuple[str, ...],
+    expected_counts: dict[str, int],
+    process_returncode: int | None,
+) -> dict[str, Any]:
+    if process_returncode is None:
+        raise JUnitNodeEvidenceError(f"junit_missing_process_status:{suite_name}")
+    if process_returncode != 0:
+        raise JUnitNodeEvidenceError(
+            f"junit_nonzero_process_status:{suite_name}:{process_returncode}"
+        )
+    if not report_file.is_file():
+        raise JUnitNodeEvidenceError(f"junit_missing:{junit_path}")
+    raw = report_file.read_text(encoding="utf-8")
+    if "<!DOCTYPE" in raw or "<!ENTITY" in raw:
+        raise JUnitNodeEvidenceError(f"junit_dtd_or_entity:{junit_path}")
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise JUnitNodeEvidenceError(f"junit_malformed:{junit_path}:{exc}") from exc
+    if root.tag != "testsuites":
+        raise JUnitNodeEvidenceError(f"junit_root_not_testsuites:{root.tag}")
+    suites = list(root)
+    if len(suites) != 1 or suites[0].tag != "testsuite":
+        raise JUnitNodeEvidenceError(
+            f"junit_suite_structure:{[c.tag for c in suites]}"
+        )
+    testsuite = suites[0]
+    if any(child.tag == "testsuite" for child in testsuite):
+        raise JUnitNodeEvidenceError("junit_nested_testsuite")
+
+    selectors = set(selector_files)
+    deselected = set(deselections)
+    seen_files: set[str] = set()
+    seen_nodeids: set[str] = set()
+    node_outcomes: list[dict[str, str]] = []
+    derived = {"collected": 0, "passed": 0, "failed": 0, "error": 0, "skipped": 0}
+
+    for child in testsuite:
+        if child.tag in _SUITE_IGNORED_CHILDREN:
+            continue
+        if child.tag != "testcase":
+            raise JUnitNodeEvidenceError(f"junit_unexpected_suite_child:{child.tag}")
+        file_attr = child.attrib.get("file", "")
+        classname = child.attrib.get("classname", "")
+        name = child.attrib.get("name", "")
+        if file_attr not in selectors:
+            raise JUnitNodeEvidenceError(f"junit_file_outside_selectors:{file_attr}")
+        # Unique file-prefix match among exact selectors (Architecture §6.5.8).
+        prefix_matches = [
+            sel
+            for sel in selector_files
+            if classname == _file_to_dotted(sel)
+            or classname.startswith(_file_to_dotted(sel) + ".")
+        ]
+        if prefix_matches != [file_attr]:
+            raise JUnitNodeEvidenceError(
+                f"junit_file_prefix_match:{classname}:{prefix_matches}:{file_attr}"
+            )
+        nodeid = _reconstruct_nodeid(file_attr, classname, name)
+        if nodeid in deselected:
+            raise JUnitNodeEvidenceError(f"junit_deselected_present:{nodeid}")
+        if nodeid in seen_nodeids:
+            raise JUnitNodeEvidenceError(f"junit_duplicate_nodeid:{nodeid}")
+        seen_nodeids.add(nodeid)
+        seen_files.add(file_attr)
+        outcome = _testcase_outcome(child)
+        derived["collected"] += 1
+        derived[outcome] += 1
+        node_outcomes.append({"nodeid": nodeid, "outcome": outcome})
+
+    missing_files = [rel for rel in selector_files if rel not in seen_files]
+    if missing_files:
+        raise JUnitNodeEvidenceError(
+            f"junit_selected_file_without_testcase:{missing_files}"
+        )
+
+    try:
+        attr_counts = {
+            "collected": int(testsuite.attrib["tests"]),
+            "failed": int(testsuite.attrib["failures"]),
+            "error": int(testsuite.attrib["errors"]),
+            "skipped": int(testsuite.attrib["skipped"]),
+        }
+    except (KeyError, ValueError) as exc:
+        raise JUnitNodeEvidenceError(
+            f"junit_suite_attr_counts:{testsuite.attrib}:{exc}"
+        ) from exc
+    attr_counts["passed"] = (
+        attr_counts["collected"]
+        - attr_counts["failed"]
+        - attr_counts["error"]
+        - attr_counts["skipped"]
+    )
+    if derived != attr_counts:
+        raise JUnitNodeEvidenceError(
+            f"junit_count_disagreement_derived_vs_attrs:{derived}:{attr_counts}"
+        )
+    if derived != expected_counts:
+        raise JUnitNodeEvidenceError(
+            f"junit_count_disagreement_behavioral:{derived}:{expected_counts}"
+        )
+    if derived["failed"] or derived["error"]:
+        raise JUnitNodeEvidenceError(
+            f"junit_failed_or_error:{suite_name}:{derived}"
+        )
+    if suite_name == "legacy_python":
+        if len(deselections) != EXPECTED_LEGACY_DESELECTION_COUNT:
+            raise JUnitNodeEvidenceError(
+                f"junit_deselect_count:{len(deselections)}"
+            )
+        if list(deselections) != list(LEGACY_DESELECTS):
+            raise JUnitNodeEvidenceError("junit_deselect_drift")
+    elif deselections:
+        raise JUnitNodeEvidenceError(f"junit_unexpected_deselections:{suite_name}")
+
+    node_outcomes.sort(key=lambda row: row["nodeid"])
+    return {
+        "suite": suite_name,
+        "junit_path": junit_path,
+        "selector_files": list(selector_files),
+        "deselections": list(deselections),
+        "counts": dict(derived),
+        "node_outcomes": node_outcomes,
+    }
+
+
+def build_pytest_node_outcomes(
+    *,
+    evidence_dir: Path,
+    suite_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Parse both built-in xunit1 reports after the existing Python processes finish."""
+
+    by_name = {str(row.get("name")): row for row in suite_results}
+    strict_rc = by_name.get("strict_python", {}).get("returncode")
+    legacy_rc = by_name.get("legacy_python", {}).get("returncode")
+    strict = _parse_one_junit_suite(
+        suite_name="strict_python",
+        junit_path=JUNIT_STRICT_PATH,
+        report_file=evidence_dir / Path(EVIDENCE_JUNIT_STRICT_REL).name,
+        selector_files=STRICT_PYTEST_FILES,
+        deselections=(),
+        expected_counts=dict(EXPECTED_STRICT_JUNIT_COUNTS),
+        process_returncode=strict_rc if isinstance(strict_rc, int) else None,
+    )
+    legacy = _parse_one_junit_suite(
+        suite_name="legacy_python",
+        junit_path=JUNIT_LEGACY_PATH,
+        report_file=evidence_dir / Path(EVIDENCE_JUNIT_LEGACY_REL).name,
+        selector_files=LEGACY_PYTEST_FILES,
+        deselections=LEGACY_DESELECTS,
+        expected_counts=dict(EXPECTED_LEGACY_JUNIT_COUNTS),
+        process_returncode=legacy_rc if isinstance(legacy_rc, int) else None,
+    )
+    return {
+        "schema": NODE_OUTCOMES_SCHEMA,
+        "full_repository_discovery": False,
+        "suites": [strict, legacy],
+    }
+
+
+def emit_pytest_node_outcomes(evidence_dir: Path, package: dict[str, Any]) -> Path:
+    """Write canonical node/outcome JSON under disposable evidence only."""
+
+    if package.get("schema") != NODE_OUTCOMES_SCHEMA:
+        raise JUnitNodeEvidenceError("node_outcomes_schema")
+    if package.get("full_repository_discovery") is not False:
+        raise JUnitNodeEvidenceError("node_outcomes_full_discovery")
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    path = evidence_dir / Path(EVIDENCE_NODE_OUTCOMES_REL).name
+    path.write_text(
+        json.dumps(package, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    return path
 
 
 def _git_blob_sha256(repo: Path, commit: str, rel: str) -> str | None:

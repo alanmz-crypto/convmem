@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 CODE_BASELINE_SHA = "7809f20dc53d9dd19f765c3ec3214a3df54ca5bf"
-SEMANTIC_PARENT_SHA = "cd9d2698b7423f907b552bc9118a0af523018ca9"
+SEMANTIC_PARENT_SHA = "34338133186010a26ed746bbfea4c9abb958e9ca"
 EXPECTED_TEST_RUNTIME_TREE_SHA256 = (
     "sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b"
 )
@@ -184,11 +184,35 @@ EVIDENCE_LABELS = ("STATIC", "FAKE", "DISPOSABLE_KERNEL", "REAL")
 EVIDENCE_MANIFEST_REL = "evidence/fixture-manifest.json"
 EVIDENCE_AUDIT_REL = "evidence/bounded-audit-evidence.json"
 EVIDENCE_SUITE_RESULTS_REL = "evidence/suite_results.json"
+EVIDENCE_JUNIT_STRICT_REL = "evidence/pytest-strict-junit.xml"
+EVIDENCE_JUNIT_LEGACY_REL = "evidence/pytest-legacy-junit.xml"
+EVIDENCE_NODE_OUTCOMES_REL = "evidence/pytest-node-outcomes.json"
+JUNIT_STRICT_PATH = "/fixture/evidence/pytest-strict-junit.xml"
+JUNIT_LEGACY_PATH = "/fixture/evidence/pytest-legacy-junit.xml"
+NODE_OUTCOMES_PATH = "/fixture/evidence/pytest-node-outcomes.json"
+NODE_OUTCOMES_SCHEMA = "convmem.pytest-node-outcomes.v1"
 SELECTED_NODES_STRICT_PATH = "/fixture/selected_nodes_strict.json"
 PROMPT_INJECTION_SPECIMEN_REL = (
     "tests/fixtures/openclaw_strict/protocol_fixture/"
     "prompt_injection_tool_result.specimen.json"
 )
+
+# Fixed M8 behavioral baseline (Execution §5.1) — correction must preserve these.
+EXPECTED_STRICT_JUNIT_COUNTS = {
+    "collected": 238,
+    "passed": 238,
+    "failed": 0,
+    "error": 0,
+    "skipped": 0,
+}
+EXPECTED_LEGACY_JUNIT_COUNTS = {
+    "collected": 116,
+    "passed": 115,
+    "failed": 0,
+    "error": 0,
+    "skipped": 1,
+}
+EXPECTED_LEGACY_DESELECTION_COUNT = 4
 
 # Exact generated relative paths excluded from fixture/source inventories.
 GENERATED_EVIDENCE_FIXTURE_RELS = frozenset(
@@ -198,6 +222,9 @@ GENERATED_EVIDENCE_FIXTURE_RELS = frozenset(
         "evidence/fixture-manifest.json",
         "evidence/bounded-audit-evidence.json",
         "evidence/suite_results.json",
+        "evidence/pytest-strict-junit.xml",
+        "evidence/pytest-legacy-junit.xml",
+        "evidence/pytest-node-outcomes.json",
     }
 )
 GENERATED_EVIDENCE_SOURCE_RELS = frozenset(
@@ -207,6 +234,9 @@ GENERATED_EVIDENCE_SOURCE_RELS = frozenset(
         "tests/fixtures/openclaw_strict/evidence/fixture-manifest.json",
         "tests/fixtures/openclaw_strict/evidence/bounded-audit-evidence.json",
         "tests/fixtures/openclaw_strict/evidence/suite_results.json",
+        "tests/fixtures/openclaw_strict/evidence/pytest-strict-junit.xml",
+        "tests/fixtures/openclaw_strict/evidence/pytest-legacy-junit.xml",
+        "tests/fixtures/openclaw_strict/evidence/pytest-node-outcomes.json",
     }
 )
 
