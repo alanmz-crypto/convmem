@@ -14,6 +14,8 @@ This README serves two purposes: it explains the architecture for curious reader
 
 > **Personal-data warning:** My local corpus contains real AI conversations and security findings. The repository does not contain that corpus, but do not publish or share `~/.local/share/convmem/`.
 
+> **Self-memorizing system:** This repository is designed to remember the workstation where it runs. A clone is only source code, but installing or enabling its commands and background services can index local chat logs, development documents, tool output, and repository files into a local corpus. Review the watch/index configuration and data paths before running it on a machine whose contents you do not intend to collect. The default storage is local, but `convmem ask` may send retrieved context or source material to whichever provider is configured for synthesis.
+
 ---
 
 ## New here? Choose the right entrance
