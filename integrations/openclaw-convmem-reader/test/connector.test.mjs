@@ -19,7 +19,12 @@ import {
 } from "../index.js";
 
 const SHA_A = `sha256:${"a".repeat(64)}`;
+/** Independently supplied capability digests (not host-derived). */
+const SHA_RUNTIME = `sha256:${"b".repeat(64)}`;
+const SHA_LAUNCH = `sha256:${"c".repeat(64)}`;
+const SHA_MANAGER = `sha256:${"d".repeat(64)}`;
 const DEADLINE_MS = 10_000;
+const MAX_REQUEST_BYTES = 128 * 1024;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 
 function baseManifest(overrides = {}) {
@@ -45,9 +50,9 @@ function baseManifest(overrides = {}) {
     setpriv_sha256: SHA_A,
     seccomp_filter_file: "/runtime/filter.bpf",
     seccomp_filter_sha256: SHA_A,
-    runtime_distribution_sha256: SHA_A,
-    launch_policy_sha256: SHA_A,
-    manager_policy_sha256: SHA_A,
+    runtime_distribution_sha256: SHA_RUNTIME,
+    launch_policy_sha256: SHA_LAUNCH,
+    manager_policy_sha256: SHA_MANAGER,
     launch_payload_sha256: SHA_A,
     ...overrides,
   };
@@ -101,7 +106,17 @@ function virtualPathCaps(manifest) {
     symlink: false,
     bounded: true,
   };
-  return { paths };
+  return {
+    paths,
+    // Independently supplied — must match manifest pins or fail closed.
+    runtime_distribution_sha256: manifest.runtime_distribution_sha256,
+    launch_policy_sha256: manifest.launch_policy_sha256,
+    manager_policy_sha256: manifest.manager_policy_sha256,
+  };
+}
+
+function hangEvent() {
+  return { kind: "hang", bytes_b64: null, exit_code: null };
 }
 
 function b64(bytes) {
@@ -174,14 +189,17 @@ function createFakeTransport({
 
   function next_event(handle) {
     assert.equal(handle, boundHandle);
-    if (eventQ.length === 0) return null;
+    // Empty schedule uses an explicit hang event — null/undefined are malformed.
+    if (eventQ.length === 0) return hangEvent();
     return eventQ.shift();
   }
 
   function respondToNextStdinWrite(rawEvidenceText, { isError = false, rpcId = 1 } = {}) {
-    // Called after connector writes: prove stdin bytes, then script stdout.
-    const written = Buffer.concat(boundRoles.stdin.writeTrace());
-    const line = written.toString("utf8").split("\n").filter(Boolean).at(-1);
+    // Transport read path: consume live queued stdin (resets per-frame capacity).
+    // writeTrace is immutable evidence and is not the read path.
+    const live = boundRoles.stdin.drain();
+    assert.ok(live.byteLength > 0, "fake must consume live stdin queue bytes");
+    const line = live.toString("utf8").split("\n").filter(Boolean).at(-1);
     const req = JSON.parse(line);
     assert.equal(req.method, "tools/call");
     const id = rpcId === "auto" ? req.id : rpcId;
@@ -191,7 +209,8 @@ function createFakeTransport({
       bytes_b64: b64(frame),
       exit_code: null,
     });
-    return { request: req, stdinBytes: written };
+    const evidence = Buffer.concat(boundRoles.stdin.writeTrace());
+    return { request: req, stdinBytes: live, writeTraceBytes: evidence };
   }
 
   function pushEvent(ev) {
@@ -308,9 +327,55 @@ test("capability proof fails closed without paths or required attrs", () => {
   delete missingUid.paths[manifest.scope_file].uid;
   assert.throws(() => validateLaunchTuple(manifest, missingUid), /capability_missing_attr/);
 
+  const missingGid = virtualPathCaps(manifest);
+  delete missingGid.paths[manifest.scope_file].gid;
+  assert.throws(() => validateLaunchTuple(manifest, missingGid), /capability_missing_attr/);
+
   const missingDigest = virtualPathCaps(manifest);
   delete missingDigest.paths[manifest.scope_file].digest;
   assert.throws(() => validateLaunchTuple(manifest, missingDigest), /capability_missing_attr/);
+
+  const missingRuntime = virtualPathCaps(manifest);
+  delete missingRuntime.runtime_distribution_sha256;
+  assert.throws(
+    () => validateLaunchTuple(manifest, missingRuntime),
+    /capability_missing:runtime_distribution_sha256/,
+  );
+
+  const missingLaunch = virtualPathCaps(manifest);
+  delete missingLaunch.launch_policy_sha256;
+  assert.throws(
+    () => validateLaunchTuple(manifest, missingLaunch),
+    /capability_missing:launch_policy_sha256/,
+  );
+
+  const missingManager = virtualPathCaps(manifest);
+  delete missingManager.manager_policy_sha256;
+  assert.throws(
+    () => validateLaunchTuple(manifest, missingManager),
+    /capability_missing:manager_policy_sha256/,
+  );
+
+  const mismatchRuntime = virtualPathCaps(manifest);
+  mismatchRuntime.runtime_distribution_sha256 = SHA_A;
+  assert.throws(
+    () => validateLaunchTuple(manifest, mismatchRuntime),
+    /capability_digest:runtime_distribution_sha256/,
+  );
+
+  const mismatchLaunch = virtualPathCaps(manifest);
+  mismatchLaunch.launch_policy_sha256 = SHA_A;
+  assert.throws(
+    () => validateLaunchTuple(manifest, mismatchLaunch),
+    /capability_digest:launch_policy_sha256/,
+  );
+
+  const mismatchManager = virtualPathCaps(manifest);
+  mismatchManager.manager_policy_sha256 = SHA_A;
+  assert.throws(
+    () => validateLaunchTuple(manifest, mismatchManager),
+    /capability_digest:manager_policy_sha256/,
+  );
 
   const badCwd = virtualPathCaps(manifest);
   badCwd.paths[manifest.working_directory].empty = false;
@@ -320,9 +385,29 @@ test("capability proof fails closed without paths or required attrs", () => {
   badHome.paths[manifest.service_home].credentials = true;
   assert.throws(() => validateLaunchTuple(manifest, badHome), /capability_home_credentials/);
 
+  const badHomeUid = virtualPathCaps(manifest);
+  badHomeUid.paths[manifest.service_home].uid = 0;
+  assert.throws(() => validateLaunchTuple(manifest, badHomeUid), /capability_uid/);
+
+  const missingHomeGid = virtualPathCaps(manifest);
+  delete missingHomeGid.paths[manifest.service_home].gid;
+  assert.throws(() => validateLaunchTuple(manifest, missingHomeGid), /capability_missing_attr/);
+
+  const missingTempMode = virtualPathCaps(manifest);
+  delete missingTempMode.paths[manifest.temp_directory].mode;
+  assert.throws(() => validateLaunchTuple(manifest, missingTempMode), /capability_missing_attr/);
+
+  const badTempGid = virtualPathCaps(manifest);
+  badTempGid.paths[manifest.temp_directory].gid = 0;
+  assert.throws(() => validateLaunchTuple(manifest, badTempGid), /capability_uid/);
+
   const badTemp = virtualPathCaps(manifest);
   badTemp.paths[manifest.temp_directory].bounded = false;
   assert.throws(() => validateLaunchTuple(manifest, badTemp), /capability_temp_bounded/);
+
+  const badInputGid = virtualPathCaps(manifest);
+  badInputGid.paths[manifest.scope_file].gid = 1001;
+  assert.throws(() => validateLaunchTuple(manifest, badInputGid), /capability_uid/);
 
   const traversal = baseManifest({
     scope_file: "/fixture/../etc/passwd",
@@ -503,7 +588,7 @@ test("case48: one active + eight pending; ninth denied; FIFO identity; one stdin
     if (responseQ.length > 0) {
       return responseQ.shift();
     }
-    return { kind: "hang", bytes_b64: null, exit_code: null };
+    return hangEvent();
   }
 
   const session = createConnectorSession({
@@ -526,6 +611,8 @@ test("case48: one active + eight pending; ninth denied; FIFO identity; one stdin
 
   const writesBeforeDenied = fdRoles.stdin.writeTrace().length;
   assert.equal(writesBeforeDenied, 1, "exactly one stdin write for the active call");
+  // Live bytes remain until the fake transport consumes them.
+  assert.ok(fdRoles.stdin.byteLength > 0, "writer must not self-drain stdin");
 
   const ninth = await session.invokeAlias("convmem_search", { query: "overflow" });
   assert.equal(ninth.isError, true);
@@ -538,18 +625,16 @@ test("case48: one active + eight pending; ninth denied; FIFO identity; one stdin
   const deniedTrace = Buffer.concat(fdRoles.stdin.writeTrace()).toString("utf8");
   assert.equal(deniedTrace.includes('"query":"overflow"'), false);
 
-  // Exact bytes crossed fake stdin for the active request.
-  const stdinBytes = Buffer.concat(fdRoles.stdin.writeTrace());
+  // Exact bytes crossed fake stdin for the active request (still live until drain).
+  const stdinBytes = fdRoles.stdin.peekAll();
   assert.ok(stdinBytes.byteLength > 0, "active request must write stdin");
   assert.ok(stdinBytes.includes(Buffer.from("tools/call")));
 
   // Release the gate and feed FIFO responses for each accepted job by request id.
   async function releaseOne() {
-    const lines = Buffer.concat(fdRoles.stdin.writeTrace())
-      .toString("utf8")
-      .split("\n")
-      .filter(Boolean);
-    const last = JSON.parse(lines.at(-1));
+    const live = fdRoles.stdin.drain();
+    assert.ok(live.byteLength > 0, "fake must drain queued request bytes");
+    const last = JSON.parse(live.toString("utf8").split("\n").filter(Boolean).at(-1));
     const evidence = JSON.stringify({
       ...evidencePayload(),
       fifo_query: last.params.arguments.query,
@@ -645,7 +730,7 @@ test("partial frame succeeds before deadline; incomplete frame fails at deadline
           const suffix = `${JSON.stringify(evidence)}}],"isError":false}}\n`;
           return { kind: "stdout", bytes_b64: b64(suffix), exit_code: null };
         }
-        return null;
+        return hangEvent();
       },
       capabilityData: virtualPathCaps(manifest),
       now: () => clock.t,
@@ -753,7 +838,25 @@ test("next_event contract rejects extra fields, unknown kinds, and non-canonical
   });
 });
 
-test("ready is allowed once; second ready fails closed without retry", async () => {
+test("next_event null/undefined is malformed and terminates", async () => {
+  const manifest = baseManifest();
+  for (const bad of [null, undefined]) {
+    const clock = { t: 1_000 };
+    const session = createConnectorSession({
+      manifest,
+      spawn: () => "n".repeat(32),
+      nextEvent: () => bad,
+      capabilityData: virtualPathCaps(manifest),
+      now: () => clock.t,
+    });
+    const result = await session.invokeAlias("convmem_search", { query: "null-event" });
+    assert.equal(result.isError, true);
+    assert.equal(JSON.parse(result.content[0].text).error.code, "internal_failure");
+    assert.equal(session.terminated, true);
+  }
+});
+
+test("ready is allowed once per session; second ready in same request fails", async () => {
   const manifest = baseManifest();
   const clock = { t: 1_000 };
   let n = 0;
@@ -774,6 +877,38 @@ test("ready is allowed once; second ready fails closed without retry", async () 
   assert.ok(n >= 2);
 });
 
+test("ready once per spawned handle: second request cannot re-ready", async () => {
+  const manifest = baseManifest();
+  const fake = createFakeTransport();
+  const session = createConnectorSession({
+    manifest,
+    spawn: fake.spawn,
+    nextEvent: fake.next_event,
+    capabilityData: virtualPathCaps(manifest),
+    now: fake.now,
+  });
+  const raw = JSON.stringify(evidencePayload());
+
+  const first = session.invokeAlias("convmem_search", { query: "ready-first" });
+  queueMicrotask(() => {
+    fake.pushEvent({ kind: "ready", bytes_b64: null, exit_code: null });
+    fake.respondToNextStdinWrite(raw, { rpcId: "auto" });
+  });
+  const ok = await first;
+  assert.equal(ok.isError, false);
+
+  const second = session.invokeAlias("convmem_search", { query: "ready-again" });
+  queueMicrotask(() => {
+    // Cross-request second ready on the same handle must fail closed.
+    fake.pushEvent({ kind: "ready", bytes_b64: null, exit_code: null });
+    fake.respondToNextStdinWrite(raw, { rpcId: "auto" });
+  });
+  const bad = await second;
+  assert.equal(bad.isError, true);
+  assert.equal(JSON.parse(bad.content[0].text).error.code, "internal_failure");
+  assert.equal(session.terminated, true);
+});
+
 test("per-frame caps are not cumulative across consumed calls; writeTrace stays", async () => {
   const manifest = baseManifest();
   const fake = createFakeTransport();
@@ -786,27 +921,130 @@ test("per-frame caps are not cumulative across consumed calls; writeTrace stays"
   });
 
   const raw = JSON.stringify(evidencePayload());
+  // Each frame individually under 128KiB; aggregate writeTrace exceeds 128KiB.
+  const chunkQuery = "x".repeat(50 * 1024);
+  let aggregate = 0;
   for (let i = 0; i < 3; i += 1) {
     const pending = session.invokeAlias("convmem_search", {
-      query: `cap-${i}-${"x".repeat(1024)}`,
+      query: `cap-${i}-${chunkQuery}`,
     });
     queueMicrotask(() => {
+      // Live queue must still hold the frame until fake consumption.
+      assert.ok(session.fdRoles.stdin.byteLength > 0);
+      assert.ok(session.fdRoles.stdin.byteLength <= MAX_REQUEST_BYTES);
       fake.respondToNextStdinWrite(raw, { rpcId: "auto" });
     });
     const result = await pending;
     assert.equal(result.isError, false);
-    // Live queue size resets after each consumed call.
+    // Live queue size resets after receiver drain, not writer self-drain.
     assert.equal(session.fdRoles.stdin.byteLength, 0);
     assert.equal(session.fdRoles.stdout.byteLength, 0);
   }
   const trace = session.fdRoles.stdin.writeTrace();
   assert.equal(trace.length, 3);
-  assert.ok(trace.every((b) => b.byteLength > 1024));
-  // Immutable evidence still names each accepted query.
+  for (const b of trace) {
+    assert.ok(b.byteLength <= MAX_REQUEST_BYTES);
+    assert.ok(b.byteLength > 50 * 1024);
+    aggregate += b.byteLength;
+  }
+  assert.ok(
+    aggregate > MAX_REQUEST_BYTES,
+    `aggregate writeTrace ${aggregate} must exceed 128KiB`,
+  );
   const joined = Buffer.concat(trace).toString("utf8");
   assert.match(joined, /cap-0-/);
   assert.match(joined, /cap-1-/);
   assert.match(joined, /cap-2-/);
+});
+
+test("output partial-frame accounting resets only after consumption/completion", async () => {
+  const manifest = baseManifest();
+  const clock = { t: 1_000 };
+  const evidence = JSON.stringify(evidencePayload());
+  let phase = 0;
+  let roles = null;
+  const session = createConnectorSession({
+    manifest,
+    spawn: (_role, _argv, _env, _cwd, fd) => {
+      roles = fd;
+      return "o".repeat(32);
+    },
+    nextEvent: () => {
+      if (phase === 0) {
+        phase = 1;
+        const prefix = `{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":`;
+        return { kind: "stdout", bytes_b64: b64(prefix), exit_code: null };
+      }
+      if (phase === 1) {
+        // Partial bytes must still occupy the output frame capacity.
+        assert.ok(roles.stdout.byteLength > 0, "partial must remain queued until completion");
+        phase = 2;
+        const suffix = `${JSON.stringify(evidence)}}],"isError":false}}\n`;
+        return { kind: "stdout", bytes_b64: b64(suffix), exit_code: null };
+      }
+      return hangEvent();
+    },
+    capabilityData: virtualPathCaps(manifest),
+    now: () => clock.t,
+  });
+  const ok = await session.invokeAlias("convmem_search", { query: "partial-reset" });
+  assert.equal(ok.isError, false);
+  assert.equal(ok.content[0].text, evidence);
+  // Capacity resets only after the completed frame is consumed.
+  assert.equal(session.fdRoles.stdout.byteLength, 0);
+});
+
+test("output frame cap resets after completed consumption for next request", async () => {
+  const manifest = baseManifest();
+  const fake = createFakeTransport();
+  const session = createConnectorSession({
+    manifest,
+    spawn: fake.spawn,
+    nextEvent: fake.next_event,
+    capabilityData: virtualPathCaps(manifest),
+    now: fake.now,
+  });
+  // Large but valid text payloads: each response under 64KiB; two together exceed.
+  const bigText = "y".repeat(40 * 1024);
+  for (let i = 0; i < 2; i += 1) {
+    const pending = session.invokeAlias("convmem_search", { query: `out-cap-${i}` });
+    queueMicrotask(() => {
+      fake.respondToNextStdinWrite(bigText, { rpcId: "auto" });
+    });
+    const result = await pending;
+    assert.equal(result.isError, false);
+    assert.equal(result.content[0].text, bigText);
+    assert.equal(session.fdRoles.stdout.byteLength, 0);
+  }
+  const outTrace = session.fdRoles.stdout.writeTrace();
+  assert.equal(outTrace.length, 2);
+  const outAgg = outTrace.reduce((n, b) => n + b.byteLength, 0);
+  assert.ok(outAgg > MAX_RESPONSE_BYTES);
+  for (const b of outTrace) {
+    assert.ok(b.byteLength <= MAX_RESPONSE_BYTES);
+  }
+});
+
+test("stdout trailing bytes after one newline frame are protocol desync", async () => {
+  const manifest = baseManifest();
+  const clock = { t: 1_000 };
+  const frame = rpcStdoutFrame(1, JSON.stringify(evidencePayload()));
+  const desync = Buffer.from(`${frame}trailing-garbage`, "utf8");
+  const session = createConnectorSession({
+    manifest,
+    spawn: () => "t".repeat(32),
+    nextEvent: () => ({
+      kind: "stdout",
+      bytes_b64: b64(desync),
+      exit_code: null,
+    }),
+    capabilityData: virtualPathCaps(manifest),
+    now: () => clock.t,
+  });
+  const result = await session.invokeAlias("convmem_search", { query: "desync-tail" });
+  assert.equal(result.isError, true);
+  assert.equal(JSON.parse(result.content[0].text).error.code, "internal_failure");
+  assert.equal(session.terminated, true);
 });
 
 test("case48: oversized request frame denied; malformed response fails closed; no retry", async () => {
@@ -828,8 +1066,8 @@ test("case48: oversized request frame denied; malformed response fails closed; n
   // Malformed frame: deliver non-JSON stdout after a normal-sized request.
   const pending = session.invokeAlias("convmem_search", { query: "ok" });
   queueMicrotask(() => {
-    const written = Buffer.concat(session.fdRoles.stdin.writeTrace());
-    assert.ok(written.byteLength > 0);
+    const live = session.fdRoles.stdin.drain();
+    assert.ok(live.byteLength > 0);
     fake.pushEvent({
       kind: "stdout",
       bytes_b64: b64("not-json\n"),

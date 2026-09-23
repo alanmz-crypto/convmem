@@ -258,6 +258,13 @@ function requireCapabilityAttr(entry, path, key) {
   return entry[key];
 }
 
+/** Parent-fixed simulation identities: operator 1000/1000 or root 0/0. */
+function isOperatorOrRootIdentity(uid, gid) {
+  return (
+    (uid === 0 && gid === 0) || (uid === 1000 && gid === 1000)
+  );
+}
+
 /**
  * Validate convmem.openclaw-connector-launch.v2 and the §4 launch tuple as data.
  * Virtual path/mode/ownership come from test-owned capabilityData — never host stat.
@@ -347,6 +354,21 @@ export function validateLaunchTuple(manifest, capabilityData = {}) {
     throw launchError("capability_paths");
   }
 
+  // Independently supplied capability digests for sealed policy/distribution pins.
+  for (const field of [
+    "runtime_distribution_sha256",
+    "launch_policy_sha256",
+    "manager_policy_sha256",
+  ]) {
+    if (!Object.prototype.hasOwnProperty.call(caps, field)) {
+      throw launchError(`capability_missing:${field}`);
+    }
+    const supplied = caps[field];
+    if (typeof supplied !== "string" || supplied !== manifest[field]) {
+      throw launchError(`capability_digest:${field}`);
+    }
+  }
+
   for (const [pathField, digestField] of PATH_DIGEST_FIELDS) {
     const path = manifest[pathField];
     const entry = requireCapabilityEntry(pathCaps, path);
@@ -362,7 +384,8 @@ export function validateLaunchTuple(manifest, capabilityData = {}) {
       throw launchError(`capability_writable:${path}`);
     }
     const uid = requireCapabilityAttr(entry, path, "uid");
-    if (uid !== 0 && uid !== 1000) {
+    const gid = requireCapabilityAttr(entry, path, "gid");
+    if (!isOperatorOrRootIdentity(uid, gid)) {
       throw launchError(`capability_uid:${path}`);
     }
     const digest = requireCapabilityAttr(entry, path, "digest");
@@ -371,7 +394,7 @@ export function validateLaunchTuple(manifest, capabilityData = {}) {
     }
   }
 
-  // Fixed empty read-only cwd.
+  // Fixed empty read-only cwd — operator/root owned.
   {
     const path = manifest.working_directory;
     const entry = requireCapabilityEntry(pathCaps, path);
@@ -389,12 +412,13 @@ export function validateLaunchTuple(manifest, capabilityData = {}) {
       throw launchError(`capability_writable:${path}`);
     }
     const uid = requireCapabilityAttr(entry, path, "uid");
-    if (uid !== 0 && uid !== 1000) {
+    const gid = requireCapabilityAttr(entry, path, "gid");
+    if (!isOperatorOrRootIdentity(uid, gid)) {
       throw launchError(`capability_uid:${path}`);
     }
   }
 
-  // Dedicated credential-free HOME.
+  // Dedicated credential-free HOME — runtime 1001/1001.
   {
     const path = manifest.service_home;
     const entry = requireCapabilityEntry(pathCaps, path);
@@ -412,12 +436,13 @@ export function validateLaunchTuple(manifest, capabilityData = {}) {
       throw launchError(`capability_mode:${path}`);
     }
     const uid = requireCapabilityAttr(entry, path, "uid");
-    if (typeof uid !== "number") {
+    const gid = requireCapabilityAttr(entry, path, "gid");
+    if (uid !== 1001 || gid !== 1001) {
       throw launchError(`capability_uid:${path}`);
     }
   }
 
-  // Bounded temp semantics.
+  // Bounded temp semantics — runtime 1001/1001.
   {
     const path = manifest.temp_directory;
     const entry = requireCapabilityEntry(pathCaps, path);
@@ -435,7 +460,8 @@ export function validateLaunchTuple(manifest, capabilityData = {}) {
       throw launchError(`capability_mode:${path}`);
     }
     const uid = requireCapabilityAttr(entry, path, "uid");
-    if (typeof uid !== "number") {
+    const gid = requireCapabilityAttr(entry, path, "gid");
+    if (uid !== 1001 || gid !== 1001) {
       throw launchError(`capability_uid:${path}`);
     }
   }
@@ -504,11 +530,12 @@ function isCanonicalBase64(value) {
 
 /**
  * Closed next_event port: exactly {kind, bytes_b64, exit_code}.
+ * Null/undefined are malformed (not idle). Empty schedules use explicit hang.
  * Fail closed on unknown kind, extra fields, or wrong null/typed payload.
  */
 function parseClosedNextEvent(event, readySeen) {
   if (event === null || event === undefined) {
-    return { idle: true };
+    return { error: "event_null" };
   }
   if (typeof event !== "object" || Array.isArray(event)) {
     return { error: "event_type" };
@@ -594,6 +621,8 @@ export function createConnectorSession({
   const pending = [];
   let terminated = false;
   let rpcId = 0;
+  /** ready is once per spawned handle/session, not once per request. */
+  let sessionReadySeen = false;
   const launchTuple = launch;
 
   async function idleYield() {
@@ -728,30 +757,28 @@ export function createConnectorSession({
       terminated = true;
       return encodeClosedError("internal_failure");
     }
-    // Per-frame request cap must not accumulate across consumed calls; keep writeTrace.
-    roles.stdin.drain();
+    // Do not drain here: the injected fake transport consumes live stdin
+    // bytes. writeTrace remains immutable evidence; capacity resets on drain.
 
     const deadlineAt = job.startedAt + DEADLINE_MS;
     let responseBytes = null;
-    let readySeen = false;
 
     while (now() <= deadlineAt) {
       if (job.cancelled) {
         roles.stdout.drain();
         return encodeClosedError("internal_failure");
       }
-      const parsedEvent = parseClosedNextEvent(nextEvent(handle), readySeen);
-      if (parsedEvent.idle) {
-        await idleYield();
-        continue;
-      }
+      const parsedEvent = parseClosedNextEvent(
+        nextEvent(handle),
+        sessionReadySeen,
+      );
       if (parsedEvent.error) {
         terminated = true;
         roles.stdout.drain();
         return encodeClosedError("internal_failure");
       }
       if (parsedEvent.kind === "ready") {
-        readySeen = true;
+        sessionReadySeen = true;
         continue;
       }
       if (parsedEvent.kind === "hang") {
@@ -787,6 +814,12 @@ export function createConnectorSession({
         if (nl === -1) {
           // Partial frame — keep waiting until deadline or more bytes.
           continue;
+        }
+        // One newline-terminated response plus trailing bytes is desync.
+        if (nl !== buffered.length - 1) {
+          terminated = true;
+          roles.stdout.drain();
+          return encodeClosedError("internal_failure");
         }
         responseBytes = Buffer.from(buffered.subarray(0, nl));
         // Consume the completed line from the queue (resets output frame cap).
