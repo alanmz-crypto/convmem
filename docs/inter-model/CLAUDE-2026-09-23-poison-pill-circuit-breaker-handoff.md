@@ -1,23 +1,30 @@
 # Implementation Handoff: Poison Pill circuit breaker + crash accounting
 
 **Date:** 2026-09-23
-**Author:** Claude (investigation/handoff)
-**For:** Cursor (implementation)
+**Author:** Claude (investigation + implementation, at Ryan's explicit direction — see Update below)
+**For:** Ryan review / PR
 **Authorization:** Ryan, 2026-09-23 (verbal in session — "finish what doesn't upset Switchboard,
 leave the rest till Switchboard is done") — scoped to the two backlog items below only.
 
 ---
 
+## Update — implemented, not by Cursor
+
+Ryan asked Claude directly to build this rather than hand off to Cursor ("can you do the work for
+Cursor"). Implemented and pushed. This is a deviation from the project's normal
+implementation-lane convention (Cursor), done at explicit user direction — noted here so a future
+reader isn't confused about why a "handoff to Cursor" doc has a finished implementation attached.
+
 ## Resume state
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` |
-| **Branch** | `fix/2026-09-23-poison-pill-circuit-breaker` (create from `fix/2026-09-20-chroma-upsert-poison-pill` @ `9ebbb2f`) |
-| **Tip SHA** | `9ebbb2fe5ea40f4aaf9fb65e8473bc932734c0a4` (poison-pill close-out anchor, current tip) |
-| **Push status** | not yet created |
-| **PR** | not opened |
-| **Ryan GATE** | None to start; PR review before merge as usual |
+| **State** | `READY_FOR_PR` |
+| **Branch** | `fix/2026-09-23-poison-pill-circuit-breaker` (created from `origin/main` @ `9193f5e`, not the stale poison-pill worktree — see rationale below) |
+| **Tip SHA** | `2ee4c12` |
+| **Push status** | pushed to origin |
+| **PR** | not opened — Ryan opens when ready; title/body below |
+| **Ryan GATE** | Review + open PR when ready; squash-merge default applies |
 | **Worktree** | Use `~/.local/share/convmem/worktrees/fix-2026-09-20-chroma-upsert-poison-pill` if free, or `--worktree` a new one — do not touch any Switchboard worktree/branch |
 
 ---
@@ -192,17 +199,30 @@ Use fixtures/mocks; no dependency on live corpus, live Chroma, or the actual `co
 
 ## Acceptance criteria
 
-- [ ] Per-file quarantine + global circuit breaker implemented at the `watch.py` scheduler loop
-- [ ] Native-fault vs. timeout vs. ordinary-failure returncode parsing is signal-aware (negative
+- [x] Per-file quarantine + global circuit breaker implemented at the `watch.py` scheduler loop
+- [x] Native-fault vs. timeout vs. ordinary-failure returncode parsing is signal-aware (negative
       returncode = signal death), not string-matched loosely
-- [ ] Quarantine state persisted atomically (temp+rename)
-- [ ] `--clear-quarantine[-all]` CLI surface added
-- [ ] `native_crash_count` doctor field added, distinct from `ingest_degraded`
-- [ ] All 9 test cases above pass
-- [ ] No Switchboard file, branch, or worktree touched (verify with `git diff --stat` against
-      `origin/main` before opening the PR — every changed path should be watcher/doctor/test files)
-- [ ] No regression in existing suite
-- [ ] Ruff / pylint clean per repo gates
+- [x] Quarantine state persisted atomically (temp+rename via `os.replace`)
+- [x] `--clear-quarantine[-all]` CLI surface added (`convmem watch --clear-quarantine <path>` /
+      `--clear-quarantine-all`)
+- [x] `native_crash_count`-equivalent doctor field added as `native_crash_gate`, distinct from
+      `ingest_degraded` and `index_gate`
+- [x] 22 circuit-breaker tests (`tests/test_watch_circuit_breaker.py`) + 5 doctor-gate tests
+      (`tests/test_native_crash_gate.py`) — all pass, covering the 9 cases the spec called for
+- [x] No Switchboard file, branch, or worktree touched — `git diff --stat origin/main` shows only
+      `config.example.toml`, `convmem.py`, `doctor.py`, `watch.py`, and the two new test files
+- [x] No regression: `test_watch*.py` (36), `test_doctor.py` (68), plus all watch/doctor-tagged
+      tests project-wide (190 passed, 2 pre-existing skips) — all green
+- [x] Pylint: new code adds zero new pylint findings beyond the file's pre-existing baseline
+      (verified by comparing `pylint doctor.py watch.py convmem.py` before/after; new test files
+      score clean). Ruff was not used as the gate — this repo's CI gate is the pylint regression
+      gate (`.github/workflows/pylint.yml`), not ruff.
+
+**Deviation from spec:** built directly on `origin/main` (`9193f5e`, current tip, already includes
+the Switchboard T0–T5 merge) rather than the stale poison-pill branch tip named in the original
+spec — that tip pre-dates the Switchboard merge and its `watch.py` changes, so branching from it
+would have created the exact merge-collision risk this handoff was written to avoid. See the new
+worktree note in "Related files" below.
 
 ---
 
@@ -222,13 +242,57 @@ open, per the "What NOT to build" section above.
 
 | What | Path |
 |------|------|
-| Scheduler loop (integration point) | `watch.py:494-502` |
-| Subprocess spawn / RuntimeError source | `watch.py:206-259` |
-| Doctor synthesis gate | `doctor.py:440-490` |
-| Full circuit-breaker design rationale | `KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md` (poison-pill worktree, §"Separable work that does not depend on root cause") |
-| Backlog anchor | `KIRO-2026-09-21-poison-pill-closeout-handoff.md` (poison-pill worktree), items 1–2 |
-| Excluded lead (do not re-touch) | `EXECUTION-poison-pill-resume.md:283` (poison-pill worktree) |
+| New worktree (built here, not the stale poison-pill one) | `~/.local/share/convmem/worktrees/fix-2026-09-23-poison-pill-circuit-breaker` |
+| Circuit breaker implementation | `watch.py` (`CircuitBreakerState`, `parse_native_fault_returncode`, `is_native_fault_returncode`, `is_timeout_message`, `log_native_crash`) |
+| Scheduler loop (integration point) | `watch.py` `run_watch()` main loop |
+| Subprocess spawn / RuntimeError source | `watch.py` `_flush_path_subprocess` |
+| Doctor gate | `doctor.py` `_check_native_crash_gate()` |
+| CLI | `convmem.py` `watch()` command, `--clear-quarantine[-all]` |
+| Tests | `tests/test_watch_circuit_breaker.py`, `tests/test_native_crash_gate.py` |
+| Config docs | `config.example.toml` `[watch]` section |
+| Full circuit-breaker design rationale | `KIRO-2026-09-20-arc-poison-pill-phase-c-handoff.md` (old poison-pill worktree, §"Separable work that does not depend on root cause") |
+| Backlog anchor | `KIRO-2026-09-21-poison-pill-closeout-handoff.md` (old poison-pill worktree), items 1–2 |
+| Excluded lead (do not re-touch) | `EXECUTION-poison-pill-resume.md:283` (old poison-pill worktree) |
 | Today's recurrence evidence | This session's transcript (Track A pending) |
+
+---
+
+## PR title/body (ready to open; not opened per policy)
+
+**Title:** Contain native-fault index crashes with a watch circuit breaker
+
+**Branch:** `fix/2026-09-23-poison-pill-circuit-breaker` → `main`
+
+**Body:**
+
+> **What changes for you:** `convmem-watch` no longer retries a file that keeps crashing the index
+> subprocess forever, and `convmem doctor` now shows native crashes as their own number instead of
+> hiding them inside provider-drop counts.
+>
+> **Who/What/When/Why/How:** Claude (at Ryan's direction) built a per-file quarantine and a global
+> circuit breaker into the watcher, plus a `native_crash_count`-equivalent doctor gate
+> (`native_crash_gate`), after a native-fault crash (SIGSEGV) recurred 2026-09-23 in
+> `convmem-watch` — the same signature Arc Poison Pill's 2026-09-21 acceptance was meant to close.
+> Rather than reopen that root-cause question mid-Switchboard, this lands only the two
+> already-authorized, non-blocking hardening backlog items (per-file/global circuit breaker,
+> crash-vs-provider-drop accounting) so a repeat crash quarantines itself instead of looping.
+>
+> **Scope:** containment only. Does not touch Chroma HNSW threading (already tested and excluded
+> as a cause), BIOS/hardware, or any Switchboard file/branch — confirmed via `git diff --stat`
+> against `origin/main`.
+>
+> **TL;DR:** Adds a watch-side circuit breaker + doctor visibility for native-fault index crashes;
+> root cause of the underlying crash stays open and deferred until the Switchboard arc is done.
+>
+> Refs: `docs/inter-model/CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md`,
+> `docs/inter-model/CLAUDE-2026-09-23-switchboard-transition-readiness-review.md`
+
+**Merge reading:** none — this is drive-by containment work, not an arc close or Execute landing.
+
+**Test plan:**
+- `pytest tests/test_watch_circuit_breaker.py tests/test_native_crash_gate.py -q` → 27 passed
+- `pytest -k "watch or doctor or native_crash" -q` → 190 passed, 2 pre-existing skips
+- `pylint watch.py convmem.py doctor.py tests/test_watch_circuit_breaker.py tests/test_native_crash_gate.py` → no new findings vs. pre-change baseline
 
 ---
 
@@ -236,14 +300,15 @@ open, per the "What NOT to build" section above.
 
 **Author (Claude, leaving):**
 
-- [x] This file committed and pushed
-- [ ] `LATEST.md` bullet at top with link and resume state
-- [ ] `STATUS-chroma-upsert-crash.md` Update Log line, if that arc brief still exists on this branch
-- [x] Branch convention specified (Cursor creates the branch itself — nothing to push from this
-      session on that branch)
+- [x] This file committed and pushed (updated with implementation results)
+- [x] `LATEST.md` bullet updated with resume state
+- [ ] `STATUS-chroma-upsert-crash.md` Update Log line — not touched; that arc brief lives only in
+      the old poison-pill worktree/branch, out of scope for this containment-only PR
+- [x] Branch pushed: `fix/2026-09-23-poison-pill-circuit-breaker` @ `2ee4c12`
 
-**Implementer (Cursor, picking up):**
+**Reviewer (Ryan, picking up):**
 
-- [ ] Read this file before first edit
-- [ ] Create `fix/2026-09-23-poison-pill-circuit-breaker` from `fix/2026-09-20-chroma-upsert-poison-pill` @ `9ebbb2f`
-- [ ] Confirm no Switchboard path appears in `git diff --stat` before opening the PR
+- [ ] Review the diff (`git diff origin/main..fix/2026-09-23-poison-pill-circuit-breaker`)
+- [ ] Open the PR using the title/body above when ready (squash-merge default applies)
+- [ ] Root-cause reopening (today's recurrence vs. 2026-09-21 acceptance) stays a separate,
+      later decision — not part of this PR

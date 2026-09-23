@@ -9,15 +9,19 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Poison Pill — recurrence 2026-09-23, containment-only fix AUTHORIZED / Cursor next:**
+- **Arc Poison Pill — recurrence 2026-09-23, containment fix READY_FOR_PR (not yet opened):**
   A native-fault crash (`convmem-watch` → `convmem index --file LATEST.md`, SIGSEGV/GP fault)
   recurred 2026-09-23 08:58 CDT, the same signature the arc's 2026-09-21 acceptance was meant to
   close. Hardware/BIOS telemetry for this recurrence is clean; root cause is **not** reopened by
-  this bullet. Ryan authorized only the two already-scoped, non-blocking hardening backlog items
-  (per-file quarantine + global circuit breaker; native-crash-vs-provider-drop doctor accounting),
-  explicitly deferring anything else until the ConvMem Switchboard arc is done and scoped to touch
-  no Switchboard branch/file. Resume from
-  [`CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md`](CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md).
+  this work. At Ryan's direction, Claude built (rather than handed to Cursor) the two already-scoped,
+  non-blocking hardening backlog items — per-file quarantine + global circuit breaker, and a
+  `native_crash_gate` doctor check distinct from `ingest_degraded` — on branch
+  `fix/2026-09-23-poison-pill-circuit-breaker` (pushed, tip `2ee4c12`, built on current `origin/main`
+  so it doesn't collide with the Switchboard T0–T5 merge). 27 new tests pass; no Switchboard file
+  touched (verified via `git diff --stat`). Root-cause reopening stays deferred until Switchboard is
+  done. Resume from
+  [`CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md`](CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md)
+  — has the ready-to-open PR title/body. **Next:** Ryan reviews and opens the PR.
 - **Arc OpenClaw Watch Coverage — W0–W6 AUTHORIZED / Cursor next:** Ryan
   explicitly authorized implementation and isolated acceptance on 2026-09-21
   against Kiro-reviewed plan `19dea97368408ee0b179c05c942306f6d8f1a2e8`.
