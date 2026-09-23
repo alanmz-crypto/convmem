@@ -19,11 +19,11 @@ reader isn't confused about why a "handoff to Cursor" doc has a finished impleme
 
 | Field | Value |
 |-------|--------|
-| **State** | `READY_FOR_PR` |
+| **State** | `PR_OPEN` — merge is Ryan's call |
 | **Branch** | `fix/2026-09-23-poison-pill-circuit-breaker` (created from `origin/main` @ `9193f5e`, not the stale poison-pill worktree — see rationale below) |
 | **Tip SHA** | `2ee4c12` |
 | **Push status** | pushed to origin |
-| **PR** | not opened — Ryan opens when ready; title/body below |
+| **PR** | [#328](https://github.com/alanmz-crypto/convmem/pull/328) — opened via PR Steward grant, not merged |
 | **Ryan GATE** | Review + open PR when ready; squash-merge default applies |
 | **Worktree** | Use `~/.local/share/convmem/worktrees/fix-2026-09-20-chroma-upsert-poison-pill` if free, or `--worktree` a new one — do not touch any Switchboard worktree/branch |
 
@@ -257,7 +257,7 @@ open, per the "What NOT to build" section above.
 
 ---
 
-## PR title/body (ready to open; not opened per policy)
+## PR — opened as [#328](https://github.com/alanmz-crypto/convmem/pull/328) (PR Steward grant, 2026-09-23; not merged)
 
 **Title:** Contain native-fault index crashes with a watch circuit breaker
 
@@ -308,7 +308,7 @@ open, per the "What NOT to build" section above.
 
 **Reviewer (Ryan, picking up):**
 
-- [ ] Review the diff (`git diff origin/main..fix/2026-09-23-poison-pill-circuit-breaker`)
-- [ ] Open the PR using the title/body above when ready (squash-merge default applies)
+- [x] PR opened: [#328](https://github.com/alanmz-crypto/convmem/pull/328)
+- [ ] Review the diff and merge when ready (squash-merge default applies unless you say otherwise)
 - [ ] Root-cause reopening (today's recurrence vs. 2026-09-21 acceptance) stays a separate,
       later decision — not part of this PR
