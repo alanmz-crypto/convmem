@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import subprocess
 import sys
 from pathlib import Path
@@ -17,8 +18,10 @@ if str(_FIXTURE) not in sys.path:
 from fixture_platform import AGENT_SUCCESS_BYTES, FixturePlatform  # noqa: E402
 from lifecycle_scripts import (  # noqa: E402
     HEX_B,
+    HEX_C,
     HEX_D,
     PUB,
+    agent_argv_template,
     base_activation_manifest,
     base_launch_policy,
     status_request,
@@ -65,9 +68,7 @@ def test_validate_launch_tuple_exact_roles():
     policy = base_launch_policy()
     for role in ("supervisor", "gateway", "agent", "strict_server", "model_worker"):
         proc = policy["processes"][role]
-        fd: dict = {}
-        if role == "supervisor":
-            fd = {"notify": object(), "lease": object()}
+        fd = {name: object() for name in proc["inherited_fd_roles"]}
         argv = list(proc["argv_template"])
         got = sup.validate_launch_tuple(
             policy,
@@ -75,7 +76,7 @@ def test_validate_launch_tuple_exact_roles():
             argv,
             dict(proc["environment"]),
             str(proc["cwd"]),
-            fd if role == "supervisor" else {},
+            fd,
         )
         assert got["role"] == role
     with pytest.raises(ValueError, match="runtime_fd_forbidden"):
@@ -94,12 +95,12 @@ def test_validate_launch_tuple_exact_roles():
             ["/evil"],
             dict(policy["processes"]["model_worker"]["environment"]),
             "/fixture/empty",
-            {},
+            {name: object() for name in policy["processes"]["model_worker"]["inherited_fd_roles"]},
         )
 
 
 def test_one_turn_no_queue_and_accepted_cap_via_preload():
-    """Capacity seal via independent fixture preload — no direct clear of turn state."""
+    """Capacity enters REVOKING — never SEALED with null retirement_ref."""
 
     import openclaw_activation_supervisor as sup
 
@@ -119,7 +120,6 @@ def test_one_turn_no_queue_and_accepted_cap_via_preload():
     )
     assert r2["outcome"] == "busy"
 
-    # Complete the live turn legitimately, then preload 255 committed histories.
     handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
     platform.schedule_agent_success(handle)
     core.ingest_agent_event(platform.next_event(handle))
@@ -128,19 +128,22 @@ def test_one_turn_no_queue_and_accepted_cap_via_preload():
     assert core.state == "ACTIVE_IDLE"
 
     records = platform.preload_accepted_turn_history(count=255, turn_state="committed")
-    # Drop the one already accepted (HEX_D) overlap by using preload ids 1..255.
     core.preload_completed_history(records)
-    # accepted already has HEX_D + 255 preload = 256 → next seals.
     assert len(core.accepted) == 256
-    sealed = core.handle_request(
+    capped = core.handle_request(
         turn_request(
             request_id="99999999999999999999999999999999",
             turn_id="88888888888888888888888888888888",
             text="cap",
         )
     )
-    assert sealed["outcome"] == "sealed"
-    assert sealed["payload"]["reason"] == "capacity"
+    assert capped["outcome"] == "unavailable"
+    assert capped["payload"]["reason"] == "capacity"
+    assert capped["outcome"] != "sealed"
+    assert core.state == "REVOKING"
+    assert core._internal_terminal == "capacity"
+    # Parent revoke-reason enum preserved for eventual seal path.
+    assert core._revoke_reason == "integrity_failure"
 
 
 def test_release_revoke_race_revoke_wins():
@@ -180,9 +183,9 @@ def test_release_linearization_uses_final_clock_and_actual_exit():
     )
     core.handle_request(turn_request())
     handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
-    # Spawn argv must equal validated substituted TURN_TEXT form.
     spawn_rec = [t for t in platform.trace if t["op"] == "spawn" and t["role"] == "agent"][-1]
-    assert spawn_rec["argv"] == ["/fixture/bin/agent", "--message", "fixture turn"]
+    expected = [p if p != "TURN_TEXT" else "fixture turn" for p in agent_argv_template()]
+    assert spawn_rec["argv"] == expected
     platform.schedule_agent_success(handle)
     core.ingest_agent_event(platform.next_event(handle))
     core.ingest_agent_event(platform.next_event(handle))
@@ -191,7 +194,6 @@ def test_release_linearization_uses_final_clock_and_actual_exit():
     assert result["committed_boottime_ns"] == core._last_valid_clock["boottime_after_ns"]
     assert result["model_output"]["text"] == "synthetic answer"
     assert len(AGENT_SUCCESS_BYTES) > 0
-    # Caller-forged exit code argument removed — observed exit only.
     with pytest.raises(TypeError):
         core.release_commit(exit_code=0)  # type: ignore[call-arg]
 
@@ -210,7 +212,6 @@ def test_stderr_separation_and_malformed_nonfinite_duplicate_output():
     )
     core.handle_request(turn_request())
     handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
-    # stderr must not become model_output.
     err_b64 = base64.b64encode(b'{"evil":true}').decode("ascii")
     platform.schedule_event(handle, "stderr", bytes_b64=err_b64)
     platform.schedule_event(handle, "stdout", bytes_b64=base64.b64encode(AGENT_SUCCESS_BYTES).decode("ascii"))
@@ -222,7 +223,6 @@ def test_stderr_separation_and_malformed_nonfinite_duplicate_output():
     assert result["model_output"]["fixture"] == "protocol-only"
     assert "evil" not in result["model_output"]
 
-    # Malformed / nonfinite / duplicate / trailing.
     for bad in (
         b'{"a":1}{"b":2}',
         b'{"a":NaN}',
@@ -246,6 +246,7 @@ def test_stderr_separation_and_malformed_nonfinite_duplicate_output():
         core2.ingest_agent_event(plat.next_event(h))
         with pytest.raises(ValueError):
             core2.release_commit()
+        assert core2.state == "REVOKING"
 
 
 def test_publication_activation_drift_at_release():
@@ -268,6 +269,7 @@ def test_publication_activation_drift_at_release():
     core.publication_sha256 = "sha256:" + ("b" * 64)
     with pytest.raises(ValueError, match="publication_drift"):
         core.release_commit()
+    assert core.state == "REVOKING"
 
 
 def test_watchdog_cadence_and_release_revoke_schedules():
@@ -286,7 +288,6 @@ def test_watchdog_cadence_and_release_revoke_schedules():
     assert samples_at_start >= 1
     core.script_work_intervals(3)
     assert len(core._watchdog_samples) >= samples_at_start + 3
-    # Intervals advanced by WATCHDOG_INTERVAL_NS on platform clock — no real wait.
     assert any(t["op"] == "harness_advance_boottime" for t in platform.trace)
 
     core.handle_request(turn_request())
@@ -298,7 +299,6 @@ def test_watchdog_cadence_and_release_revoke_schedules():
     core.release_commit()
     assert len(core._watchdog_samples) >= before + 1
 
-    # Lease expiry via watchdog.
     core2 = sup.SupervisorCore(platform=FixturePlatform())
     core2.bind_activation(
         activation_manifest=base_activation_manifest(),
@@ -373,3 +373,93 @@ def test_non_string_text_not_coerced():
     req = turn_request()
     req["text"] = 42  # type: ignore[assignment]
     assert core.handle_request(req)["outcome"] == "invalid_request"
+
+
+def test_negative_cancelled_retry_returns_cancelled_not_busy():
+    import openclaw_activation_supervisor as sup
+
+    platform = FixturePlatform()
+    core = sup.SupervisorCore(platform=platform)
+    core.bind_activation(
+        activation_manifest=base_activation_manifest(),
+        publication_sha256=PUB,
+        lease_deadline_boottime_ns=10_000_000_000_000,
+        slot_id=HEX_B,
+        supervisor_handle="1" * 32,
+    )
+    assert core.handle_request(turn_request())["outcome"] == "running"
+    assert core.handle_request(
+        {"schema": "convmem.activation-control.v1", "op": "cancel",
+         "request_id": "22222222222222222222222222222222",
+         "slot_id": HEX_B, "activation_id": HEX_C, "turn_id": HEX_D}
+    )["outcome"] == "cancelled"
+    # Same turn identity / new request id must return cancelled, not busy.
+    retry = turn_request(request_id="33333333333333333333333333333333")
+    out = core.handle_request(retry)
+    assert out["outcome"] == "cancelled"
+    assert out["outcome"] != "busy"
+
+
+def test_negative_accepted_activation_drift_at_release():
+    import openclaw_activation_supervisor as sup
+
+    platform = FixturePlatform()
+    core = sup.SupervisorCore(platform=platform)
+    core.bind_activation(
+        activation_manifest=base_activation_manifest(),
+        publication_sha256=PUB,
+        lease_deadline_boottime_ns=10_000_000_000_000,
+        slot_id=HEX_B,
+        supervisor_handle="1" * 32,
+    )
+    core.handle_request(turn_request())
+    handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    platform.schedule_agent_success(handle)
+    core.ingest_agent_event(platform.next_event(handle))
+    core.ingest_agent_event(platform.next_event(handle))
+    # Drift the bound activation identity after accept.
+    core.activation_id = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    with pytest.raises(ValueError, match="activation_drift"):
+        core.release_commit()
+    assert core.state == "REVOKING"
+
+
+def test_negative_skipped_watchdog_interval():
+    import openclaw_activation_supervisor as sup
+
+    platform = FixturePlatform()
+    core = sup.SupervisorCore(platform=platform)
+    core.bind_activation(
+        activation_manifest=base_activation_manifest(),
+        publication_sha256=PUB,
+        lease_deadline_boottime_ns=10_000_000_000_000,
+        slot_id=HEX_B,
+        supervisor_handle="1" * 32,
+    )
+    core.handle_request(turn_request())
+    # Skip the mandatory <=100ms sampling contract during TURN_RUNNING.
+    platform.advance_boottime(sup.WATCHDOG_INTERVAL_NS + 1)
+    with pytest.raises(ValueError, match="watchdog_interval_skipped"):
+        core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    assert core.state == "REVOKING"
+    assert core._internal_terminal == "watchdog_interval_skipped"
+
+
+def test_negative_policy_mutation_not_required_for_turn_text():
+    import openclaw_activation_supervisor as sup
+
+    platform = FixturePlatform()
+    core = sup.SupervisorCore(platform=platform)
+    core.bind_activation(
+        activation_manifest=base_activation_manifest(),
+        publication_sha256=PUB,
+        lease_deadline_boottime_ns=10_000_000_000_000,
+        slot_id=HEX_B,
+        supervisor_handle="1" * 32,
+    )
+    core.handle_request(turn_request())
+    policy = base_launch_policy()
+    frozen = copy.deepcopy(policy)
+    core.spawn_agent_for_active_turn(policy, "fixture turn")
+    assert policy == frozen
+    assert "TURN_TEXT" in policy["processes"]["agent"]["argv_template"]
