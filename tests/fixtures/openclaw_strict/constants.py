@@ -184,6 +184,11 @@ EVIDENCE_LABELS = ("STATIC", "FAKE", "DISPOSABLE_KERNEL", "REAL")
 EVIDENCE_MANIFEST_REL = "evidence/fixture-manifest.json"
 EVIDENCE_AUDIT_REL = "evidence/bounded-audit-evidence.json"
 EVIDENCE_SUITE_RESULTS_REL = "evidence/suite_results.json"
+SELECTED_NODES_STRICT_PATH = "/fixture/selected_nodes_strict.json"
+PROMPT_INJECTION_SPECIMEN_REL = (
+    "tests/fixtures/openclaw_strict/protocol_fixture/"
+    "prompt_injection_tool_result.specimen.json"
+)
 
 # Exact generated relative paths excluded from fixture/source inventories.
 GENERATED_EVIDENCE_FIXTURE_RELS = frozenset(

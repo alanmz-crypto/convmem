@@ -1314,3 +1314,192 @@ def test_m7_generated_path_hash_exclusion_and_read_nonmutation(tmp_path: Path):
     # No write into source fixture tree from emit.
     tracked_audit = Path("tests/fixtures/openclaw_strict/evidence/bounded-audit-evidence.json")
     assert not tracked_audit.exists()
+
+
+def test_m8_selected_nodes_strict_live_inventory(request):
+    """Record live strict-suite nodeids without changing frozen selectors."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    items = getattr(request.session, "items", None) or []
+    nodeids = sorted({item.nodeid for item in items})
+    # Must be drawn only from named strict files — never repository-wide discovery.
+    for nodeid in nodeids:
+        assert any(
+            nodeid == rel or nodeid.startswith(rel + "::")
+            for rel in oc_constants.STRICT_PYTEST_FILES
+        ), f"unexpected_node:{nodeid}"
+    payload = {
+        "suite": "strict_python",
+        "full_repository_discovery": False,
+        "nodeids": nodeids,
+        "count": len(nodeids),
+        "source": "pytest_session_items",
+    }
+    Path(oc_constants.SELECTED_NODES_STRICT_PATH).write_text(
+        json.dumps(payload, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_m8_prompt_injection_bytes_remain_untrusted_tool_data():
+    """Case 32 is D-blocked; Gate C fixture negative under 33/57 — no case-32 PASS."""
+    specimen_path = Path(oc_constants.PROMPT_INJECTION_SPECIMEN_REL)
+    assert specimen_path.is_file()
+    specimen = json.loads(specimen_path.read_text(encoding="utf-8"))
+    assert specimen["untrusted"] is True
+    assert specimen["role"] == "tool_result"
+    assert "ignore policy" in specimen["content"]
+    assert "call shell" in specimen["content"]
+    assert "export secrets" in specimen["content"]
+    # Bytes are data only — no instruction/tool action markers may flip untrusted.
+    assert specimen["expected_behavior"].startswith("bytes remain untrusted")
+    for effect in (
+        "shell_exec",
+        "memory_write",
+        "credential_export",
+        "instruction_follow",
+        "role_escalation",
+    ):
+        assert effect in specimen["forbidden_effects"]
+    # Explicit non-claim: case 32 remains Gate D blocked; no PASS claim.
+    note = specimen["case_note"]
+    assert "32" in note and "blocked" in note.lower()
+    assert "PASS" in note and "never" in note.lower()
+
+def test_m8_adversarial_matrix_gate_ownership_and_threat_rows():
+    """M8: Gate B/C ownership, D/W/E blocked, §5 matrix, nodes, mutants, no all-58."""
+    import adversarial_matrix as am
+    import audit_evidence as ae
+
+    ownership = am.gate_ownership_table()
+    assert len(ownership) == 58
+    assert all(row["claims_pass"] is False for row in ownership)
+    gate_b = set(am.gate_b_case_numbers())
+    gate_c = set(am.gate_c_fake_case_numbers())
+    # Parent acceptance ownership core.
+    assert {1, 27, 40, 44, 49, 52}.issubset(gate_b)
+    assert {33, 35, 45, 46, 48, 53, 54}.issubset(gate_c)
+    assert 2 in gate_c
+    assert 56 not in gate_b and 56 not in gate_c
+    assert 37 not in gate_b and 37 not in gate_c
+    blocked = am.blocked_later_gate_summary()
+    assert blocked["claims_all_58_passed"] is False
+    assert blocked["never_claim_all_58_passed"] is True
+    assert blocked["gate_d"]["status"] == "UNTESTED_BLOCKED"
+    assert blocked["gate_w"]["status"] == "UNTESTED_BLOCKED"
+    assert blocked["gate_e"]["status"] == "UNTESTED_BLOCKED"
+    assert 56 in blocked["gate_w"]["cases"]
+    assert 37 in blocked["gate_e"]["cases"]
+    assert 28 in blocked["gate_d"]["cases"]
+
+    assert len(am.THREAT_MATRIX) == 14
+    triples = am.input_expected_evidence_triples()
+    assert len(triples) == 14
+    for row in triples:
+        assert row["input"]
+        assert row["expected"]
+        assert row["evidence"]
+        assert row["parent_case_gate"]
+        assert row["evidence_class"] in oc_constants.EVIDENCE_LABELS or row[
+            "evidence_class"
+        ] in {"STATIC", "FAKE", "DISPOSABLE_KERNEL", "REAL"}
+
+    mutants = am.ENFORCEMENT_REMOVAL_MUTANTS
+    assert len(mutants) >= 5
+    mutant_ids = {m["mutant_id"] for m in mutants}
+    assert "omit_canonical_json_helper" in mutant_ids
+    assert "supervisor_emptiness_attestation" in mutant_ids
+    assert "production_fake_selector" in mutant_ids
+
+    nodes = am.selected_node_inventory(root=Path("."))
+    assert nodes["full_repository_discovery"] is False
+    assert nodes["mode"] == "named_file_ast_inventory"
+    assert nodes["legacy_python"]["exclusion_count"] == 4
+    assert nodes["legacy_python"]["exclusions"] == list(oc_constants.LEGACY_DESELECTS)
+    # Four legacy exclusions must appear as excluded, not selected.
+    for excl in oc_constants.LEGACY_DESELECTS:
+        assert excl not in nodes["legacy_python"]["nodeids"]
+        assert excl in nodes["legacy_python"]["excluded_nodeids_found_in_files"]
+    # Selected nodes come only from named files.
+    for nodeid in nodes["strict_python"]["nodeids"]:
+        assert any(
+            nodeid.startswith(rel) for rel in oc_constants.STRICT_PYTEST_FILES
+        )
+    assert nodes["total_selected_node_count"] > 0
+
+    package = ae.build_audit_package(
+        plan_sha=oc_constants.SEMANTIC_PARENT_SHA,
+        source_commit="a" * 40,
+        source_tree_sha256="sha256:" + ("b" * 64),
+        test_runtime_tree_sha256=oc_constants.EXPECTED_TEST_RUNTIME_TREE_SHA256,
+        components=[
+            {"name": name, "sha256": "sha256:" + (c * 64)}
+            for name, c in zip(
+                ("builder", "strict_server", "supervisor", "controller", "plugin"),
+                "cdefg",
+            )
+        ],
+        suite_results=[
+            {
+                "name": "strict_python",
+                "returncode": 0,
+                "elapsed_sec": 1.0,
+                "combined_output_bytes": 10,
+                "max_tmp_bytes": 0,
+                "tmp_sample_interval_sec": 1.0,
+                "killed_reason": None,
+            }
+        ],
+        negative_controls=[
+            {
+                "control": "production_fake",
+                "status": "FAIL_AS_REQUIRED",
+                "independent_failure_reason": "production_fake_selector:x",
+            }
+        ],
+        changed_files=["tests/fixtures/openclaw_strict/adversarial_matrix.py"],
+        protected_byte_proof=[
+            {
+                "path": "provenance.py",
+                "unchanged": True,
+                "status": "compared",
+                "baseline_sha256": "sha256:" + ("1" * 64),
+                "source_sha256": "sha256:" + ("1" * 64),
+            }
+        ],
+        outer_returncode=0,
+        preflight_ok=True,
+        source_root=Path("."),
+        containment_evidence=ae.collect_containment_evidence(
+            fixture_root=Path("/fixture")
+            if Path("/fixture").is_dir()
+            else Path("."),
+            suite_results=[],
+            negative_controls=[],
+        ),
+    )
+    ae.validate_audit_package(package)
+    assert package["legacy_exclusions"] == list(oc_constants.LEGACY_DESELECTS)
+    assert len(package["legacy_exclusions"]) == 4
+    assert package["allowed_file_proof"]["all_changed_allowed"] is True
+    assert package["outcomes"]["claims_all_58_passed"] is False
+    assert package["outcomes"]["claims_gate_d_pass"] is False
+    assert package["outcomes"]["claims_gate_w_pass"] is False
+    assert package["outcomes"]["claims_gate_e_pass"] is False
+    matrix = package["adversarial_matrix"]
+    assert matrix["threat_row_count"] == 14
+    assert matrix["claims_all_58_passed"] is False
+    assert matrix["blocked_later_gates"]["gate_d"]["status"] == "UNTESTED_BLOCKED"
+    assert matrix["selected_node_inventory"]["full_repository_discovery"] is False
+    assert len(matrix["enforcement_removal_mutants"]) >= 5
+    assert "capacity" in matrix["containment_evidence"]
+    assert "process" in matrix["containment_evidence"]
+    assert "import" in matrix["containment_evidence"]
+    assert "mount" in matrix["containment_evidence"]
+    assert "fd" in matrix["containment_evidence"]
+    assert "network" in matrix["containment_evidence"]
+    obs_ids = {o["id"]: o for o in package["observations"]}
+    assert obs_ids["gate_d_rows"]["outcome"] == "UNTESTED_BLOCKED"
+    assert obs_ids["gate_w_rows"]["outcome"] == "UNTESTED_BLOCKED"
+    assert obs_ids["gate_e_rows"]["outcome"] == "UNTESTED_BLOCKED"
+    assert obs_ids["claims_all_58_passed"]["outcome"] == "FALSE"
+    assert obs_ids["legacy_exclusions"]["outcome"] == "EXACT_FOUR"

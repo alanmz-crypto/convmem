@@ -24,6 +24,7 @@ from allowlist import assert_allowlist  # noqa: E402
 from audit_evidence import (  # noqa: E402
     build_audit_package,
     build_protected_byte_proof,
+    collect_containment_evidence,
     emit_audit_package,
 )
 from constants import (  # noqa: E402
@@ -520,6 +521,18 @@ def outer_main(argv: list[str] | None = None) -> int:
         changed_files=changed,
         protected_paths=list(PROTECTED_BYTE_PROOF_PATHS),
     )
+    containment = collect_containment_evidence(
+        fixture_root=fixture,
+        suite_results=suite_results,
+        negative_controls=control_results,
+    )
+    selected_live = None
+    live_nodes_path = fixture / "selected_nodes_strict.json"
+    if live_nodes_path.is_file():
+        try:
+            selected_live = json.loads(live_nodes_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            selected_live = {"status": "unreadable"}
     if manifest is not None:
         audit = build_audit_package(
             plan_sha=args.plan_sha,
@@ -533,6 +546,9 @@ def outer_main(argv: list[str] | None = None) -> int:
             protected_byte_proof=protected_proof,
             outer_returncode=proc.returncode,
             preflight_ok=(fixture / "preflight_ok").exists(),
+            source_root=source_root,
+            containment_evidence=containment,
+            selected_nodes_live=selected_live,
         )
         audit_path = emit_audit_package(evidence_dir, audit)
         print(

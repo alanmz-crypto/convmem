@@ -1,10 +1,13 @@
-"""M7 bounded audit evidence — attributable fixture-only run package.
+"""M7/M8 bounded audit evidence — attributable fixture-only run package.
 
-Architecture / Execution parent (cd9d2698) + overlay M7 (d1ca459):
+Architecture / Execution parent (cd9d2698) + overlay M7/M8 (d1ca459):
 emit canonical inventories, evidence-class labels, suite selection/exclusions,
-timing/output/tmp, negative controls, changed-file/protected-byte proof, and
-outcomes under disposable ``/fixture/evidence`` only. Evidence is not approval,
-signing, admission, qualification, manager emptiness, or promotion.
+timing/output/tmp, negative controls, changed-file/protected-byte proof,
+Gate B/C ownership, overlay §5 threat matrix, selected-node inventory,
+enforcement-removal mutants, containment evidence, and outcomes under
+disposable ``/fixture/evidence`` only. Evidence is not approval, signing,
+admission, qualification, manager emptiness, or promotion. Never claims all
+58 cases passed.
 """
 
 from __future__ import annotations
@@ -15,6 +18,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from adversarial_matrix import build_adversarial_evidence_section
+from allowlist import path_allowed
 from constants import (
     CODE_BASELINE_SHA,
     CONNECTOR_NODE_TEST,
@@ -52,7 +57,9 @@ REQUIRED_KEYS = (
     "suite_results",
     "negative_controls",
     "changed_files",
+    "allowed_file_proof",
     "protected_byte_proof",
+    "adversarial_matrix",
     "observations",
     "outcomes",
     "generated_paths",
@@ -190,6 +197,113 @@ def build_protected_byte_proof(
     return proof
 
 
+def build_allowed_file_proof(changed_files: list[str]) -> dict[str, Any]:
+    """Prove every changed path is on the parent edit allowlist."""
+
+    allowed = []
+    forbidden = []
+    for rel in sorted(changed_files):
+        entry = {"path": rel, "allowed": path_allowed(rel)}
+        if entry["allowed"]:
+            allowed.append(entry)
+        else:
+            forbidden.append(entry)
+    return {
+        "changed_count": len(changed_files),
+        "allowed": allowed,
+        "forbidden": forbidden,
+        "all_changed_allowed": len(forbidden) == 0,
+    }
+
+
+def collect_containment_evidence(
+    *,
+    fixture_root: Path,
+    suite_results: list[dict[str, Any]],
+    negative_controls: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Assemble capacity/process/import/mount/FD/network from disposable roots."""
+
+    from constants import (
+        FD_OBSERVATION_FILE,
+        IMPORT_TRACE_PATH,
+        NS_OBSERVATION_FILE,
+        PREFLIGHT_REPORT_PATH,
+        SUITE_OUTPUT_LIMIT_BYTES,
+        SUITE_WALL_DEADLINE_SEC,
+        TMPFS_SIZE_BYTES,
+    )
+
+    def _read_json(path: Path) -> Any | None:
+        if not path.is_file():
+            return None
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    # Inside the sandbox these are /fixture/...; on the host they live under fixture_root.
+    preflight = _read_json(fixture_root / "preflight_report.json")
+    if preflight is None:
+        preflight = _read_json(Path(PREFLIGHT_REPORT_PATH))
+    import_trace = _read_json(fixture_root / "import_trace.json")
+    if import_trace is None:
+        import_trace = _read_json(Path(IMPORT_TRACE_PATH))
+    fd_obs = _read_json(fixture_root / "fd_observation.json")
+    if fd_obs is None:
+        fd_obs = _read_json(Path(FD_OBSERVATION_FILE))
+    ns_obs = _read_json(fixture_root / "ns_observation.json")
+    if ns_obs is None:
+        ns_obs = _read_json(Path(NS_OBSERVATION_FILE))
+
+    capacity = {
+        "suite_wall_deadline_sec": SUITE_WALL_DEADLINE_SEC,
+        "suite_output_limit_bytes": SUITE_OUTPUT_LIMIT_BYTES,
+        "tmpfs_size_bytes": TMPFS_SIZE_BYTES,
+        "tmpfs_size_observed": (preflight or {}).get("tmpfs_size_bytes"),
+        "suite_measurements": [
+            {
+                "name": r.get("name"),
+                "elapsed_sec": r.get("elapsed_sec"),
+                "combined_output_bytes": r.get("combined_output_bytes"),
+                "max_tmp_bytes": r.get("max_tmp_bytes"),
+                "tmp_sample_interval_sec": r.get("tmp_sample_interval_sec"),
+                "killed_reason": r.get("killed_reason"),
+                "returncode": r.get("returncode"),
+            }
+            for r in suite_results
+        ],
+    }
+    return {
+        "capacity": capacity,
+        "process": {
+            "negative_controls": negative_controls,
+            "bwrap_mandatory": True,
+            "preflight_status": (preflight or {}).get("status"),
+        },
+        "import": {
+            "import_sentinel": (preflight or {}).get("import_sentinel"),
+            "integration_imports_before": (preflight or {}).get(
+                "integration_imports_before"
+            ),
+            "import_trace": import_trace,
+        },
+        "mount": {
+            "readonly_mounts": (preflight or {}).get("readonly_mounts"),
+            "mount_inventory": (preflight or {}).get("mount_inventory"),
+            "canaries": (preflight or {}).get("canaries"),
+        },
+        "fd": {
+            "inherited": (preflight or {}).get("fds"),
+            "observation": fd_obs,
+        },
+        "network": {
+            "namespace": (preflight or {}).get("network"),
+            "ns_observation": ns_obs,
+        },
+    }
+
+
 def label_observation(
     *,
     observation_id: str,
@@ -243,10 +357,52 @@ def default_observations(
             detail="Architecture §6.5.9",
         ),
         label_observation(
+            observation_id="legacy_exclusions",
+            label="STATIC",
+            outcome="EXACT_FOUR",
+            detail=",".join(LEGACY_DESELECTS),
+        ),
+        label_observation(
+            observation_id="gate_b_ownership",
+            label="STATIC",
+            outcome="ASSIGNED_FIXTURE",
+            detail="parent cases 1-27,40-44,49-52,47-server,55-boundary,57-58 portions",
+        ),
+        label_observation(
+            observation_id="gate_c_fake_ownership",
+            label="FAKE",
+            outcome="ASSIGNED_FIXTURE",
+            detail="connector/lifecycle portions 33,35,45-46,48,53-55,57-58",
+        ),
+        label_observation(
+            observation_id="gate_d_rows",
+            label="REAL",
+            outcome="UNTESTED_BLOCKED",
+            detail="Gate D real runtime outside T0-T5 fixture scope",
+        ),
+        label_observation(
+            observation_id="gate_w_rows",
+            label="REAL",
+            outcome="UNTESTED_BLOCKED",
+            detail="Gate W governed admission outside T0-T5 fixture scope",
+        ),
+        label_observation(
+            observation_id="gate_e_rows",
+            label="REAL",
+            outcome="UNTESTED_BLOCKED",
+            detail="Gate E pilot outside T0-T5 fixture scope",
+        ),
+        label_observation(
             observation_id="openclaw_real_runtime",
             label="REAL",
             outcome="NOT_EXECUTED_BLOCKED",
             detail="Gate D/real runtime outside T0-T5 fixture scope",
+        ),
+        label_observation(
+            observation_id="claims_all_58_passed",
+            label="STATIC",
+            outcome="FALSE",
+            detail="Never claim all 58 cases passed from B/C fixture",
         ),
     ]
     for control in negative_controls:
@@ -317,9 +473,19 @@ def build_audit_package(
     outer_returncode: int | None,
     preflight_ok: bool,
     code_baseline_sha: str = CODE_BASELINE_SHA,
+    source_root: Path | None = None,
+    containment_evidence: dict[str, Any] | None = None,
+    selected_nodes_live: dict[str, Any] | None = None,
+    mutant_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if plan_sha != SEMANTIC_PARENT_SHA:
         raise ValueError(f"plan_sha_mismatch:{plan_sha}")
+    adversarial = build_adversarial_evidence_section(
+        source_root=source_root,
+        containment=containment_evidence,
+        selected_nodes_live=selected_nodes_live,
+        mutant_results=mutant_results,
+    )
     package: dict[str, Any] = {
         "schema": SCHEMA_ID,
         "artifact_kind": ARTIFACT_KIND,
@@ -337,7 +503,9 @@ def build_audit_package(
         "suite_results": suite_results,
         "negative_controls": negative_controls,
         "changed_files": sorted(changed_files),
+        "allowed_file_proof": build_allowed_file_proof(changed_files),
         "protected_byte_proof": protected_byte_proof,
+        "adversarial_matrix": adversarial,
         "observations": default_observations(
             negative_controls=negative_controls,
             suite_results=suite_results,
@@ -354,6 +522,10 @@ def build_audit_package(
             "claims_live_readiness": False,
             "claims_real_auth_compatibility": False,
             "claims_production_sealing": False,
+            "claims_all_58_passed": False,
+            "claims_gate_d_pass": False,
+            "claims_gate_w_pass": False,
+            "claims_gate_e_pass": False,
         },
         "generated_paths": generated_evidence_paths(),
         "authority": authority_disclaimer(),
@@ -383,11 +555,31 @@ def validate_audit_package(package: dict[str, Any]) -> None:
         raise ValueError("full_discovery_forbidden")
     if len(package["selected_suites"]) != 3:
         raise ValueError("suite_count")
+    matrix = package["adversarial_matrix"]
+    if matrix.get("claims_all_58_passed") is not False:
+        raise ValueError("claims_all_58_passed")
+    if matrix.get("threat_row_count") != 14:
+        raise ValueError("threat_row_count")
+    if not matrix.get("gate_b_cases") or not matrix.get("gate_c_fake_cases"):
+        raise ValueError("gate_ownership_missing")
+    blocked = matrix.get("blocked_later_gates") or {}
+    for gate in ("gate_d", "gate_w", "gate_e"):
+        if (blocked.get(gate) or {}).get("status") != "UNTESTED_BLOCKED":
+            raise ValueError(f"later_gate_not_blocked:{gate}")
+    nodes = matrix.get("selected_node_inventory") or {}
+    if nodes.get("full_repository_discovery") is not False:
+        raise ValueError("selected_nodes_full_discovery")
+    if not package["allowed_file_proof"].get("all_changed_allowed", False):
+        # Empty changed set is allowed; forbidden non-empty is not.
+        if package["allowed_file_proof"].get("forbidden"):
+            raise ValueError("allowed_file_proof_forbidden")
     for obs in package["observations"]:
         if obs["label"] not in EVIDENCE_LABELS:
             raise ValueError(f"bad_label:{obs['label']}")
         if obs["label"] == "REAL" and obs["outcome"] in {"PASS", "QUALIFIED", "GREEN"}:
             raise ValueError("real_pass_forbidden")
+    if package["outcomes"].get("claims_all_58_passed") is not False:
+        raise ValueError("outcomes_claims_all_58")
     expected = compute_evidence_payload_sha256(package)
     if package["evidence_payload_sha256"] != expected:
         raise ValueError("evidence_payload_sha256")
