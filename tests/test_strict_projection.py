@@ -105,9 +105,11 @@ _BLOB_HEX = sha256_digest(_BLOB).removeprefix("sha256:")
 _BLOB_SHA = "sha256:" + _BLOB_HEX
 _BLOB_B64 = "dGVzdA=="
 _AID = "00000000-0000-4000-8000-000000000001"
+_AID2 = "00000000-0000-4000-8000-000000000002"
 _ISSUER = "fixture-issuer"
 _SRC = "src-reg-1"
 _CAPTURE_ID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+_CAPTURE_ID2 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 
 def _self_hash(obj: dict[str, Any], field: str) -> str:
@@ -661,28 +663,103 @@ def test_cold_rejects_non_prefix_and_reordered_batches(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     _bypass_builder_tree(monkeypatch)
-    batch_a = {"source_registration_id": "src-a", "source": {"marker": 1}}
-    batch_b = {"source_registration_id": "src-b", "source": {"marker": 2}}
-    # Non-prefix: H2 drops H1 batch and substitutes another.
-    root, sid2, _, _ = _two_head_root(
-        tmp_path / "nonprefix",
-        h1_batches=[batch_a],
-        h2_batches=[batch_b],
+    # Non-prefix: H1 admits materializable batch_a; H2 retains state but substitutes
+    # batch_b (valid scan shape) so cold reaches fixture_batches_not_prefix.
+    root, binding, sid1, records, _batch_a = _materializable_seq1_root(tmp_path / "nonprefix")
+    _, _, _, _, batch_b = _closed_admission_bundle(
+        tmp_path / "nonprefix-b",
+        event_key="scan-key-2",
+        logical_key="subject-key-2",
+        assertion_id=_AID2,
+        capture_id=_CAPTURE_ID2,
+        record_locator="event-2",
+    )
+    auth1 = root / "authority" / sid1
+    man1 = json.loads((auth1 / "manifest.json").read_text(encoding="utf-8"))
+    cutoff1 = json.loads((auth1 / "source-cutoff.json").read_text(encoding="utf-8"))
+    grounding = json.loads((auth1 / "grounding.json").read_text(encoding="utf-8"))
+    context = json.loads(
+        (auth1 / "provenance-context.json").read_text(encoding="utf-8")
+    )
+    sid2, hash2 = _write_head(
+        root,
+        seq=2,
+        parent_snapshot_id=sid1,
+        parent_manifest_sha256=man1["manifest_payload_sha256"],
+        records=sorted(records, key=lambda r: r["assertion_id"]),
+        dispositions=[],
+        grounding=grounding,
+        context=context,
+        added_assertion_ids=[],
+        added_disposition_ids=[],
+        added_provenance_ids=[],
+        added_grounding_refs=[],
+        op_id="2" * 32,
+        parent_ops=list(cutoff1["operations"]),
+        batches=[batch_b],
+    )
+    cutoff2 = json.loads(
+        (root / "authority" / sid2 / "source-cutoff.json").read_text(encoding="utf-8")
+    )
+    _publish_unavailable(
+        root,
+        seq=2,
+        snapshot_id=sid2,
+        manifest_sha=hash2,
+        cutoff_sha=cutoff2["cutoff_payload_sha256"],
     )
     with pytest.raises(StrictProjectionError, match="fixture_batches_not_prefix"):
         qualify_authority_generation(
-            root=root, scope=_FakeScope(), registry=_FakeRegistry()  # type: ignore[arg-type]
+            root=root,
+            scope=_FakeScope(),  # type: ignore[arg-type]
+            registry=_MaterialRegistry(binding),  # type: ignore[arg-type]
         )
-    # Reordered: H2 has both batches but not as an exact prefix order.
-    root2, sid2b, _, _ = _two_head_root(
-        tmp_path / "reorder",
-        h1_batches=[batch_a, batch_b],
-        h2_batches=[batch_b, batch_a],
+
+    # Reordered: H1 commits [batch_a, batch_b]; H2 has both but wrong order.
+    root2, binding2, sid1b, records2, batch_a2, batch_b2 = (
+        _two_batch_materializable_seq1_root(tmp_path / "reorder")
     )
-    del sid2, sid2b
+    auth_h1 = root2 / "authority" / sid1b
+    man_h1 = json.loads((auth_h1 / "manifest.json").read_text(encoding="utf-8"))
+    cutoff_h1 = json.loads(
+        (auth_h1 / "source-cutoff.json").read_text(encoding="utf-8")
+    )
+    g_h1 = json.loads((auth_h1 / "grounding.json").read_text(encoding="utf-8"))
+    c_h1 = json.loads(
+        (auth_h1 / "provenance-context.json").read_text(encoding="utf-8")
+    )
+    sid2b, hash2b = _write_head(
+        root2,
+        seq=2,
+        parent_snapshot_id=sid1b,
+        parent_manifest_sha256=man_h1["manifest_payload_sha256"],
+        records=sorted(records2, key=lambda r: r["assertion_id"]),
+        dispositions=[],
+        grounding=g_h1,
+        context=c_h1,
+        added_assertion_ids=[],
+        added_disposition_ids=[],
+        added_provenance_ids=[],
+        added_grounding_refs=[],
+        op_id="2" * 32,
+        parent_ops=list(cutoff_h1["operations"]),
+        batches=[batch_b2, batch_a2],
+    )
+    cutoff2b = json.loads(
+        (root2 / "authority" / sid2b / "source-cutoff.json").read_text(encoding="utf-8")
+    )
+    _publish_unavailable(
+        root2,
+        seq=2,
+        snapshot_id=sid2b,
+        manifest_sha=hash2b,
+        cutoff_sha=cutoff2b["cutoff_payload_sha256"],
+    )
     with pytest.raises(StrictProjectionError, match="fixture_batches_not_prefix"):
         qualify_authority_generation(
-            root=root2, scope=_FakeScope(), registry=_FakeRegistry()  # type: ignore[arg-type]
+            root=root2,
+            scope=_FakeScope(),  # type: ignore[arg-type]
+            registry=_MaterialRegistry(binding2),  # type: ignore[arg-type]
         )
 
 
@@ -744,7 +821,13 @@ def test_cold_rejects_deleted_or_changed_retained_record(tmp_path: Path):
     del sid1
 
 
-def test_cold_rejects_wrong_skipped_cyclic_parent_and_forged_deltas(tmp_path: Path):
+def test_cold_rejects_wrong_skipped_cyclic_parent_and_forged_deltas(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    import strict_projection as sp
+
+    # Bind real builder-tree digest so earlier checks pass without bypassing validation.
+    monkeypatch.setattr(f"{__name__}._TREE", sp._recompute_builder_tree_sha256())
     root, sid2, hash2, sid1 = _two_head_root(tmp_path)
     auth2 = root / "authority" / sid2
     man = json.loads((auth2 / "manifest.json").read_text())
@@ -776,6 +859,7 @@ def test_cold_rejects_wrong_skipped_cyclic_parent_and_forged_deltas(tmp_path: Pa
     pub = json.loads((root2 / "active" / f"{_LINEAGE}.json").read_text())
     pub["authority_snapshot_id"] = man["snapshot_id"]
     pub["authority_manifest_sha256"] = man["manifest_payload_sha256"]
+    pub["freshness_anchor"]["authority_snapshot_id"] = man["snapshot_id"]
     pub["publication_payload_sha256"] = _self_hash(pub, "publication_payload_sha256")
     _write_json(root2 / "active" / f"{_LINEAGE}.json", pub)
     with pytest.raises(StrictProjectionError, match="added_assertion_ids_mismatch"):
@@ -784,7 +868,13 @@ def test_cold_rejects_wrong_skipped_cyclic_parent_and_forged_deltas(tmp_path: Pa
         )
 
 
-def test_cold_rejects_forged_stored_hashes_and_citation_bindings(tmp_path: Path):
+def test_cold_rejects_forged_stored_hashes_and_citation_bindings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    import strict_projection as sp
+
+    # Preserve independent builder-tree validation: plant the real digest, do not bypass.
+    monkeypatch.setattr(f"{__name__}._TREE", sp._recompute_builder_tree_sha256())
     root, sid2, _, _ = _two_head_root(tmp_path, plant_hand_records=True)
     auth = root / "authority" / sid2
     rows = [
@@ -828,10 +918,11 @@ def test_cold_rejects_forged_stored_hashes_and_citation_bindings(tmp_path: Path)
             root=root, scope=_FakeScope(), registry=_FakeRegistry()  # type: ignore[arg-type]
         )
 
-    # Citation empty/swapped bindings.
-    root3, sid3, _, _ = _two_head_root(tmp_path / "cite")
+    # Citation empty/swapped bindings on an otherwise-admissible materializable head.
+    root3, binding3, sid3, _records3, _batch3 = _materializable_seq1_root(tmp_path / "cite")
     auth = root3 / "authority" / sid3
     cmap = json.loads((auth / "citation-map.json").read_text())
+    assert cmap["citations"], "materializable head must expose citations to forge"
     for c in cmap["citations"]:
         c["root_bindings"] = []
         c["input_bindings"] = [{"forged": True}]
@@ -853,14 +944,16 @@ def test_cold_rejects_forged_stored_hashes_and_citation_bindings(tmp_path: Path)
     _write_json(root3 / "active" / f"{_LINEAGE}.json", pub)
     with pytest.raises(StrictProjectionError, match="citation_map_mismatch"):
         qualify_authority_generation(
-            root=root3, scope=_FakeScope(), registry=_FakeRegistry()  # type: ignore[arg-type]
+            root=root3,
+            scope=_FakeScope(),  # type: ignore[arg-type]
+            registry=_MaterialRegistry(binding3),  # type: ignore[arg-type]
         )
 
 
 def test_delta_helpers_are_set_difference_not_all_registered():
     parent_g = _empty_grounding()
     child_g = _empty_grounding()
-    blob = {"sha256": "sha256:" + ("a" * 64), "length": 1, "bytes_b64": "YQ=="}
+    blob = {"sha256": sha256_digest(b"a"), "length": 1, "bytes_b64": "YQ=="}
     child_g["blobs"] = [blob]
     child_g["grounding_payload_sha256"] = _self_hash(child_g, "grounding_payload_sha256")
     refs = compute_added_grounding_refs(parent_g, child_g)
@@ -945,6 +1038,9 @@ def _closed_admission_bundle(
     *,
     logical_key: str = "subject-key-1",
     event_key: str = "scan-key-1",
+    assertion_id: str = _AID,
+    capture_id: str = _CAPTURE_ID,
+    record_locator: str = "event-1",
 ) -> tuple[ProjectBinding, dict[str, Any], dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
     """Build binding + grounding/context + one materializable batch/record set."""
     from strict_grounding import (
@@ -952,7 +1048,7 @@ def _closed_admission_bundle(
         compute_submitted_views_sha256,
     )
 
-    source = _source_record(provenance_assertion_id=_AID, logical_key=logical_key)
+    source = _source_record(provenance_assertion_id=assertion_id, logical_key=logical_key)
     # Blob bytes must be the exact canonical source payload (excl. provenance_assertion_id).
     source_payload_body = {
         k: v for k, v in source.items() if k != "provenance_assertion_id"
@@ -964,11 +1060,11 @@ def _closed_admission_bundle(
     blob_b64 = _b64(blob)
     unlabeled = blob_hex
     env = base_envelope(
-        assertion_id=_AID,
+        assertion_id=assertion_id,
         root_bindings=[
             root_binding(
                 source_identity="fixture/source-a",
-                record_locator="event-1",
+                record_locator=record_locator,
                 raw_record_sha256=blob_hex,
                 input_view_sha256=blob_hex,
             )
@@ -984,12 +1080,12 @@ def _closed_admission_bundle(
     def _make_receipt(roots: list[dict[str, Any]]) -> dict[str, Any]:
         receipt = {
             "schema": "convmem.capture-receipt.v1",
-            "capture_id": _CAPTURE_ID,
+            "capture_id": capture_id,
             "capture_class": "synthetic_fixture",
             "capture_issuer_id": _ISSUER,
             "source_registration_id": _SRC,
             "source_event_id": "evt_placeholder",
-            "provenance_assertion_id": _AID,
+            "provenance_assertion_id": assertion_id,
             "provenance_commitment": commitment,
             "input_bindings_sha256": compute_input_bindings_sha256(roots, []),
             "transformer_artifact_sha256": _BLOB_SHA,
@@ -1003,12 +1099,12 @@ def _closed_admission_bundle(
         return receipt
 
     root_bind = {
-        "provenance_assertion_id": _AID,
+        "provenance_assertion_id": assertion_id,
         "provenance_commitment": commitment,
         "source_registration_id": _SRC,
         "source_event_id": "evt_placeholder",
         "source_identity": "fixture/source-a",
-        "record_locator": "event-1",
+        "record_locator": record_locator,
         "raw_blob_sha256": blob_sha,
         "view_blob_sha256": blob_sha,
         "selector": {"kind": "identity"},
@@ -1028,7 +1124,7 @@ def _closed_admission_bundle(
         "edges": [],
         "outputs": [
             {
-                "provenance_assertion_id": _AID,
+                "provenance_assertion_id": assertion_id,
                 "provenance_commitment": commitment,
                 "output_blob_sha256": blob_sha,
             }
@@ -1048,7 +1144,7 @@ def _closed_admission_bundle(
             "verified_channels": [],
             "registered_assertions": [
                 {
-                    "assertion_id": _AID,
+                    "assertion_id": assertion_id,
                     "provenance_commitment": commitment,
                     "envelope": env,
                 }
@@ -1059,8 +1155,10 @@ def _closed_admission_bundle(
     )
 
     inv_root = tmp_path / "issuer_inventory"
+    if inv_root.is_dir():
+        os.chmod(inv_root, 0o755)
     inv_root.mkdir(exist_ok=True)
-    inv_path = inv_root / f"{_CAPTURE_ID}.json"
+    inv_path = inv_root / f"{capture_id}.json"
     inv_path.write_bytes(strict_canonical_bytes(receipt))
     os.chmod(inv_path, 0o444)
     os.chmod(inv_root, 0o555)
@@ -1106,8 +1204,8 @@ def _closed_admission_bundle(
         allowed_source_registration_ids={_SRC},
     )
     registered = {
-        _AID: {
-            "assertion_id": _AID,
+        assertion_id: {
+            "assertion_id": assertion_id,
             "provenance_commitment": commitment,
             "envelope": env,
         }
@@ -1127,6 +1225,59 @@ def _closed_admission_bundle(
     )
     batch = {"source_registration_id": _SRC, "source": scan}
     return binding, grounding, context, records, batch
+
+
+def _combine_materializable_admissions(
+    first: tuple[ProjectBinding, dict[str, Any], dict[str, Any], list[dict[str, Any]], dict[str, Any]],
+    second: tuple[ProjectBinding, dict[str, Any], dict[str, Any], list[dict[str, Any]], dict[str, Any]],
+) -> tuple[ProjectBinding, dict[str, Any], dict[str, Any], list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    """Merge two closed admissions into one cumulative grounding/context/record set."""
+    binding, g1, c1, recs1, batch_a = first
+    _binding2, g2, c2, recs2, batch_b = second
+    del _binding2
+    grounding = {
+        "schema": "convmem.strict-grounding.v1",
+        "blobs": sorted(g1["blobs"] + g2["blobs"], key=lambda b: b["sha256"]),
+        "roots": sorted(
+            g1["roots"] + g2["roots"],
+            key=lambda r: (
+                r["provenance_assertion_id"],
+                r["source_registration_id"],
+                r["source_event_id"],
+                r["record_locator"],
+            ),
+        ),
+        "edges": [],
+        "outputs": sorted(
+            g1["outputs"] + g2["outputs"],
+            key=lambda o: o["provenance_assertion_id"],
+        ),
+        "receipts": sorted(
+            g1["receipts"] + g2["receipts"], key=lambda r: r["capture_id"]
+        ),
+        "grounding_payload_sha256": "sha256:" + ("0" * 64),
+    }
+    grounding["grounding_payload_sha256"] = _self_hash(
+        grounding, "grounding_payload_sha256"
+    )
+    registered = sorted(
+        c1["registered_assertions"] + c2["registered_assertions"],
+        key=lambda e: e["assertion_id"],
+    )
+    context = _seal_context(
+        {
+            "schema": "convmem.strict-provenance-context.v2",
+            "schema_semantics": c1["schema_semantics"],
+            "policies": c1["policies"],
+            "recipes": c1["recipes"],
+            "verified_channels": [],
+            "registered_assertions": registered,
+            "grounding_sha256": grounding["grounding_payload_sha256"],
+            "context_payload_sha256": "sha256:" + ("0" * 64),
+        }
+    )
+    records = sorted(recs1 + recs2, key=lambda r: r["assertion_id"])
+    return binding, grounding, context, records, batch_a, batch_b
 
 
 class _MaterialRegistry:
@@ -1204,6 +1355,91 @@ def _materializable_seq1_root(
         cutoff_sha=cutoff["cutoff_payload_sha256"],
     )
     return root, binding, sid, records, batch
+
+
+def _two_batch_materializable_seq1_root(
+    tmp_path: Path,
+) -> tuple[
+    Path, ProjectBinding, str, list[dict[str, Any]], dict[str, Any], dict[str, Any]
+]:
+    """Seq-1 head whose cumulative batches are two distinct materializable scans."""
+    root = tmp_path / "mat-root-2"
+    root.mkdir()
+    for name in ("authority", "active", "control", "projection", "locks"):
+        (root / name).mkdir()
+    _layout_enrollment(root)
+    first = _closed_admission_bundle(
+        tmp_path,
+        event_key="scan-key-1",
+        logical_key="subject-key-1",
+    )
+    second = _closed_admission_bundle(
+        tmp_path,
+        event_key="scan-key-2",
+        logical_key="subject-key-2",
+        assertion_id=_AID2,
+        capture_id=_CAPTURE_ID2,
+        record_locator="event-2",
+    )
+    binding, grounding, context, records, batch_a, batch_b = (
+        _combine_materializable_admissions(first, second)
+    )
+    # Re-qualify/materialize under the merged inventories so planted records match cold replay.
+    issuer_inventory = load_bound_issuer_inventories(binding.capture_issuers)
+    quals = qualify_assertions(
+        grounding=grounding,
+        provenance_context=context,
+        issuer_inventory=issuer_inventory,
+        capture_issuers=binding.capture_issuers,
+        allowed_issuer_ids={_ISSUER},
+        allowed_source_registration_ids={_SRC},
+    )
+    registered = {
+        e["assertion_id"]: e for e in context["registered_assertions"]
+    }
+    records = []
+    for batch in (batch_a, batch_b):
+        records.extend(
+            materialize_authority_records(
+                binding=binding,
+                source_registration_id=batch["source_registration_id"],
+                scan=batch["source"],
+                registered_assertions=registered,
+                qualification_by_provenance=quals,
+                prior_records=records,
+            )
+        )
+    records = sorted(records, key=lambda r: r["assertion_id"])
+    added_prov = compute_added_provenance_ids(None, context)
+    added_g = compute_added_grounding_refs(None, grounding)
+    sid, man_hash = _write_head(
+        root,
+        seq=1,
+        parent_snapshot_id=None,
+        parent_manifest_sha256=None,
+        records=records,
+        dispositions=[],
+        grounding=grounding,
+        context=context,
+        added_assertion_ids=sorted(r["assertion_id"] for r in records),
+        added_disposition_ids=[],
+        added_provenance_ids=added_prov,
+        added_grounding_refs=added_g,
+        op_id="1" * 32,
+        parent_ops=[],
+        batches=[batch_a, batch_b],
+    )
+    cutoff = json.loads(
+        (root / "authority" / sid / "source-cutoff.json").read_text(encoding="utf-8")
+    )
+    _publish_unavailable(
+        root,
+        seq=1,
+        snapshot_id=sid,
+        manifest_sha=man_hash,
+        cutoff_sha=cutoff["cutoff_payload_sha256"],
+    )
+    return root, binding, sid, records, batch_a, batch_b
 
 
 def test_cold_admission_replay_accepts_materializable_fixture_head(

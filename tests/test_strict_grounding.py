@@ -62,6 +62,8 @@ _BLOB = b"test"
 _BLOB_HEX = sha256_digest(_BLOB).removeprefix("sha256:")
 _BLOB_SHA = "sha256:" + _BLOB_HEX  # labeled form used by strict grounding
 _BLOB_B64 = "dGVzdA=="
+# Same digest base_envelope defaults and _default_context_materials register.
+_ROOT_RECIPE_SHA256 = sha256_digest(b"convmem:root-recipe-v1")
 _TS = "2026-09-21T00:00:00Z"
 _SRC = "src-reg-1"
 _EVT = "evt_451b0b154430f2ef494001c177744e32b191c9344aff96a3b1fbd0d609cee204"
@@ -81,7 +83,6 @@ def _envelope_root() -> dict:
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -133,7 +134,7 @@ def _make_receipt(
         "provenance_commitment": commitment,
         "input_bindings_sha256": compute_input_bindings_sha256(roots, edges),
         "transformer_artifact_sha256": _BLOB_SHA,
-        "recipe_sha256": _BLOB_SHA,
+        "recipe_sha256": _ROOT_RECIPE_SHA256,
         "submitted_views_sha256": compute_submitted_views_sha256(roots, edges),
         "returned_output_sha256": _BLOB_SHA,
         "captured_at": _TS,
@@ -433,7 +434,6 @@ def test_qualify_rejects_mixed_capture_ancestry(tmp_path: Path):
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -452,7 +452,6 @@ def test_qualify_rejects_mixed_capture_ancestry(tmp_path: Path):
             }
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -731,7 +730,7 @@ def _default_context_materials() -> tuple[list, list, list]:
         {
             "recipe_id": "root-v1",
             "recipe_bytes_b64": _b64(recipe_bytes),
-            "recipe_sha256": sha256_digest(recipe_bytes),
+            "recipe_sha256": _ROOT_RECIPE_SHA256,
         }
     ]
     return schema_semantics, policies, recipes
@@ -1010,7 +1009,6 @@ def test_mixed_per_assertion_qualification_not_one_aggregate(tmp_path: Path):
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -1067,7 +1065,6 @@ def _parent_child_envelopes() -> tuple[dict, str, dict, str]:
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -1085,7 +1082,6 @@ def _parent_child_envelopes() -> tuple[dict, str, dict, str]:
             }
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -1287,7 +1283,6 @@ def test_policy_derived_caps_through_qualify_assertions_no_caller_upgrade():
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -1305,7 +1300,6 @@ def test_policy_derived_caps_through_qualify_assertions_no_caller_upgrade():
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -1344,7 +1338,6 @@ def test_policy_derived_caps_through_qualify_assertions_no_caller_upgrade():
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",
@@ -1441,7 +1434,6 @@ def test_policy_derived_caps_through_qualify_assertions_no_caller_upgrade():
             )
         ],
         transformer_artifact_sha256="a" * 64,
-        transformer_recipe_sha256=_BLOB_HEX,
         selection_parameters={"output_sha256": _BLOB_HEX},
         producer_class="agent",
         producer_assurance="claimed",

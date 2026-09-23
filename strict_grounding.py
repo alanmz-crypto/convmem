@@ -1590,28 +1590,6 @@ def qualify_grounding(
         # Ancestry maps intentionally include the focus assertion; overlay is
         # identity, not a duplicate registration.
         envelope_map[aid] = envelope
-        # Byte/capture qualification is per focus ancestry only. Unrelated
-        # siblings in `envelopes` must not weaken this assertion; closed-world
-        # orphan coverage stays a separate document-level check.
-        scoped: dict[str, Mapping[str, Any]] = {}
-        stack = [aid]
-        seen_ids: set[str] = set()
-        while stack:
-            current = stack.pop()
-            if current in seen_ids:
-                continue
-            seen_ids.add(current)
-            current_env = envelope_map.get(current)
-            if current_env is None:
-                continue
-            scoped[current] = current_env
-            for binding in current_env.get("input_bindings") or []:
-                if not isinstance(binding, Mapping):
-                    continue
-                parent = binding.get("parent_assertion_id")
-                if isinstance(parent, str) and parent:
-                    stack.append(parent)
-        envelope_map = scoped
 
     commitments = "incomplete"
     if envelope_map:
