@@ -113,10 +113,7 @@ def detect_format(path: Path | str) -> Optional[str]:
     if path.suffix == ".json":
         return _detect_json_continue(path)
 
-    if plaintext.is_plaintext(path):
-        return "plaintext_document"
-
-    return None
+    return "plaintext_document" if plaintext.is_plaintext(path) else None
 
 
 def _sqlite_tables(con: sqlite3.Connection) -> set[str]:
