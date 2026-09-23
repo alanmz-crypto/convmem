@@ -222,8 +222,22 @@ def test_strict_server_mcp_protocol_inventory_enumeration():
     assert "resource_not_found" in result["read_err"] or "Error" in result["read_err"]
 
 
+def _load_sibling_test_module(name: str):
+    """Load a sibling tests/*.py by path — frozen pytest does not put tests/ on sys.path."""
+
+    if name in sys.modules:
+        return sys.modules[name]
+    path = Path(__file__).resolve().parent / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_strict_server_closed_argument_containers_via_protocol():
-    """Thin unit: invalid argument containers / extra keys → actual error results."""
+    """Extra mapping keys via in-memory MCP; non-mapping via server-side guard."""
 
     module = importlib.import_module("openclaw_strict_server")
     from mcp.server.lowlevel import Server
@@ -253,17 +267,22 @@ def test_strict_server_closed_argument_containers_via_protocol():
         async with create_connected_server_and_client_session(server) as session:
             return await session.call_tool(name, arguments)
 
-    # Extra key.
+    # Extra key (MCP client delivers mappings; exercise the real in-memory path).
     res = asyncio.run(_call("search", {"query": "x", "unknown_prop": 1}))
     assert res.isError is True
     text = res.content[0].text if res.content else ""
     assert "invalid_request" in text
     assert text.count("\n") == 0 or text.endswith("}")
 
-    # Non-mapping container.
-    res2 = asyncio.run(_call("search", ["not", "a", "mapping"]))  # type: ignore[arg-type]
-    assert res2.isError is True
-    assert "invalid_request" in (res2.content[0].text if res2.content else "")
+    # Non-mapping: MCP 1.28.1 client Pydantic rejects lists before the server.
+    # Exercise the server-side guard directly; do not claim protocol delivery.
+    with pytest.raises(StrictPublicError) as exc_info:
+        module._closed_tool_arguments(
+            "search",
+            ["not", "a", "mapping"],
+            StrictPublicError=StrictPublicError,
+        )
+    assert exc_info.value.code == "invalid_request"
 
 
 def test_strict_server_startup_boundary_after_exact_env(
@@ -271,7 +290,7 @@ def test_strict_server_startup_boundary_after_exact_env(
 ):
     """Positive startup boundary: exact env + sealed public mount reaches construction."""
 
-    import test_strict_projection as m4
+    m4 = _load_sibling_test_module("test_strict_projection")
 
     items, resolved, scope_path, registry_path = m4._m4_two_serving_roots(tmp_path)
     item = items[0]
@@ -355,7 +374,8 @@ def test_legacy_mcp_profile_gate_precedes_env_loader_and_fastmcp_in_source():
     src = (REPO / "mcp_server.py").read_text(encoding="utf-8")
     gate = src.index("_raw_mcp_profile")
     after_def = src.index("def _load_convmem_env_files")
-    module_call = src.index("_load_convmem_env_files()", after_def + 10)
+    # Module-level call only (not the def header or comment mentions of the name).
+    module_call = src.index("\n_load_convmem_env_files()\n", after_def)
     assert gate < module_call
     fastmcp = src.index("from mcp.server.fastmcp import FastMCP")
     assert module_call < fastmcp
