@@ -95,8 +95,8 @@ class IndexLimitSkipStatsTests(unittest.TestCase):
             (root / "chroma").mkdir()
             (root / "processed.json").write_text("{}", encoding="utf-8")
             (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
-            unsupported = root / "notes.md"
-            unsupported.write_text("# hi\n", encoding="utf-8")
+            unsupported = root / "notes.bin"
+            unsupported.write_bytes(b"\x00binary-not-an-indexable-fixture")
             inv = root / "inventory.jsonl"
             _write_inventory(inv, [str(unsupported)])
             cfg = self._cfg(root, inv)
