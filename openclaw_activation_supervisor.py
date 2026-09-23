@@ -7,6 +7,7 @@ its own empty domain.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import sys
@@ -22,7 +23,6 @@ MAX_AGENT_OUTPUT_BYTES = 1_048_576
 MAX_TEXT_BYTES = 65536
 MAX_TEXT_CODEPOINTS = 16384
 WATCHDOG_INTERVAL_NS = 100_000_000  # 100 ms
-CONTROL_IO_TIMEOUT_NS = 10_000_000_000  # 10 s
 
 REVOKE_REASONS = frozenset(
     {
@@ -34,17 +34,6 @@ REVOKE_REASONS = frozenset(
         "integrity_failure",
         "disconnect",
         "shutdown",
-    }
-)
-
-INVALID_REASONS = frozenset(
-    {
-        "not_active",
-        "stale_publication",
-        "bad_frame",
-        "bad_arguments",
-        "capacity",
-        *REVOKE_REASONS,
     }
 )
 
@@ -66,6 +55,8 @@ class FixturePlatformPort(Protocol):
     ) -> str: ...
 
     def next_event(self, handle: str) -> dict[str, Any]: ...
+
+    def advance_boottime(self, delta_ns: int) -> None: ...
 
 
 def refuse_runtime_not_qualified() -> None:
@@ -98,6 +89,19 @@ def _hex32(value: Any) -> bool:
     )
 
 
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate_key")
+        out[key] = value
+    return out
+
+
+def _reject_nonfinite(value: str) -> None:
+    raise ValueError(f"nonfinite:{value}")
+
+
 def validate_launch_tuple(
     launch_policy: Mapping[str, Any],
     role: str,
@@ -114,7 +118,8 @@ def validate_launch_tuple(
     if not isinstance(processes, dict) or role not in processes:
         raise ValueError("missing_process_role")
     expected = processes[role]
-    if list(argv) != list(expected["argv_template"]):
+    expected_argv = list(expected["argv_template"])
+    if list(argv) != expected_argv:
         raise ValueError("argv_mismatch")
     if cwd != expected["cwd"]:
         raise ValueError("cwd_mismatch")
@@ -122,12 +127,21 @@ def validate_launch_tuple(
         raise ValueError("env_mismatch")
     if role == "model_worker" and list(argv) != ["/fixture/bin/model-worker"]:
         raise ValueError("model_worker_argv")
+    # inherited_fd_roles from policy must match spawn fd_roles keys when both given.
+    policy_fds = list(expected.get("inherited_fd_roles") or [])
+    if policy_fds:
+        if sorted(fd_roles.keys()) != sorted(policy_fds):
+            raise ValueError("fd_roles_mismatch")
     if role in ("gateway", "agent", "strict_server", "model_worker"):
         forbidden = {"control", "notify", "lease", "operator_control", "supervisor_control"}
         if forbidden.intersection(fd_roles.keys()):
             raise ValueError("runtime_fd_forbidden")
+        if forbidden.intersection(policy_fds):
+            raise ValueError("runtime_fd_forbidden")
     if int(expected["uid"]) not in (0, 1001):
         raise ValueError("unexpected_uid")
+    if int(expected["gid"]) != int(expected["uid"]):
+        raise ValueError("uid_gid_mismatch")
     return {
         "role": role,
         "argv": list(argv),
@@ -139,7 +153,8 @@ def validate_launch_tuple(
     }
 
 
-def _validate_turn_text(text: str) -> None:
+def _validate_turn_text(text: Any) -> None:
+    # Do not coerce non-string text.
     if not isinstance(text, str) or not text:
         raise ValueError("bad_text")
     raw = text.encode("utf-8")
@@ -155,9 +170,40 @@ def _validate_turn_text(text: str) -> None:
             raise ValueError("text_surrogate")
 
 
+def _parse_complete_stdout_object(raw: bytes) -> dict[str, Any]:
+    """One complete JSON object + whitespace only; reject duplicates/nonfinite/surrogates."""
+
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("malformed_agent_output") from exc
+    for ch in text:
+        o = ord(ch)
+        if 0xD800 <= o <= 0xDFFF:
+            raise ValueError("surrogate")
+    stripped = text.lstrip()
+    if not stripped:
+        raise ValueError("malformed_agent_output")
+    try:
+        decoder = json.JSONDecoder(
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_nonfinite,
+        )
+        model_output, idx = decoder.raw_decode(stripped)
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise ValueError("malformed_agent_output") from exc
+    trailing = stripped[idx:]
+    if trailing.strip():
+        raise ValueError("trailing_objects")
+    if not isinstance(model_output, dict):
+        raise ValueError("malformed_agent_output")
+    return model_output
+
+
 @dataclass
 class AcceptedTurn:
     turn_id: str
+    request_id: str
     request_canonical: bytes
     text: str
     expected_publication_sha256: str
@@ -175,17 +221,23 @@ class SupervisorCore:
     publication_sha256: str | None = None
     lease_deadline_boottime_ns: int | None = None
     supervisor_handle: str | None = None
-    state: str = "NEW"  # mirrors activation for turn layer
+    state: str = "NEW"
     accepted: MutableMapping[str, AcceptedTurn] = field(default_factory=dict)
+    # Accepted request_id → canonical request bytes (conflict if bytes change).
+    accepted_request_ids: MutableMapping[str, bytes] = field(default_factory=dict)
+    # Turn identity key → turn_id for new-request_id same-identity replay.
+    turn_identity_index: MutableMapping[str, str] = field(default_factory=dict)
     active_turn_id: str | None = None
     _control_mutex: bool = False
     _revoked: bool = False
     _revoke_reason: str | None = None
     _last_valid_clock: dict[str, Any] | None = None
     _watchdog_armed: bool = False
-    _output_buffer: bytearray = field(default_factory=bytearray)
+    _watchdog_samples: list[dict[str, Any]] = field(default_factory=list)
+    _stdout_buffer: bytearray = field(default_factory=bytearray)
+    _stderr_buffer: bytearray = field(default_factory=bytearray)
     agent_handle: str | None = None
-    # Result waiting for a blocked consumer — already committed.
+    _observed_exit_code: int | None = None
     pending_delivery: dict[str, Any] | None = None
 
     def bind_activation(
@@ -204,6 +256,66 @@ class SupervisorCore:
         self.supervisor_handle = supervisor_handle
         self.state = "ACTIVE_IDLE"
         self._watchdog_armed = True
+        sample = self.platform.sample_clock()
+        self._watchdog_samples.append(dict(sample))
+
+    def reset_for_new_activation(self) -> None:
+        """Fresh activation — no old-session retransmission or turn resume."""
+
+        self.accepted.clear()
+        self.accepted_request_ids.clear()
+        self.turn_identity_index.clear()
+        self.active_turn_id = None
+        self._revoked = False
+        self._revoke_reason = None
+        self._stdout_buffer.clear()
+        self._stderr_buffer.clear()
+        self.agent_handle = None
+        self._observed_exit_code = None
+        self.pending_delivery = None
+        self.state = "NEW"
+        self._watchdog_armed = False
+        self._watchdog_samples.clear()
+        self.supervisor_handle = None
+        self.activation_id = None
+        self.publication_sha256 = None
+        self.lease_deadline_boottime_ns = None
+
+    def preload_completed_history(self, records: list[Mapping[str, Any]]) -> None:
+        """Independent fixture preload consistent with parent accepted-turn semantics."""
+
+        for rec in records:
+            tid = str(rec["turn_id"])
+            rid = str(rec["request_id"])
+            text = str(rec["text"])
+            pub = str(rec["expected_publication_sha256"])
+            canon = _canonical(
+                {
+                    "schema": CONTROL_SCHEMA,
+                    "op": "turn",
+                    "request_id": rid,
+                    "slot_id": self.slot_id,
+                    "activation_id": self.activation_id,
+                    "turn_id": tid,
+                    "text": text,
+                    "expected_publication_sha256": pub,
+                }
+            )
+            self.accepted[tid] = AcceptedTurn(
+                turn_id=tid,
+                request_id=rid,
+                request_canonical=canon,
+                text=text,
+                expected_publication_sha256=pub,
+                state=str(rec.get("state", "committed")),
+                result=None,
+            )
+            self.accepted_request_ids[rid] = canon
+            self.turn_identity_index[self._identity_key(tid, text, pub)] = tid
+
+    @staticmethod
+    def _identity_key(turn_id: str, text: str, pub: str) -> str:
+        return f"{turn_id}|{pub}|{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
 
     def current_turn_id(self) -> str | None:
         return self.active_turn_id
@@ -217,14 +329,22 @@ class SupervisorCore:
         self._control_mutex = False
 
     def tick_watchdog(self, sample: Mapping[str, Any] | None = None) -> None:
-        """Supervisor alone owns the watchdog; hung loop cannot be kept alive externally."""
-
         if not self._watchdog_armed:
             return
         clock = sample or self.platform.sample_clock()
+        self._watchdog_samples.append(dict(clock))
         if self.lease_deadline_boottime_ns is not None:
             if int(clock["boottime_after_ns"]) > self.lease_deadline_boottime_ns:
                 self.revoke("expiry")
+
+    def script_work_intervals(self, count: int = 1) -> None:
+        """Advance scripted clock by <=100ms intervals and sample — no real wait."""
+
+        for _ in range(count):
+            adv = getattr(self.platform, "advance_boottime", None)
+            if callable(adv):
+                adv(WATCHDOG_INTERVAL_NS)
+            self.tick_watchdog()
 
     def revoke(self, reason: str) -> None:
         if reason not in REVOKE_REASONS:
@@ -235,12 +355,12 @@ class SupervisorCore:
             self._revoke_reason = reason
             self.state = "REVOKING"
             self.active_turn_id = None
+            self._stdout_buffer.clear()
+            self._stderr_buffer.clear()
         finally:
             self._release_mutex()
 
     def empty_domain_attestation(self) -> None:
-        """Explicitly forbidden — supervisor cannot attest emptiness."""
-
         raise ValueError("supervisor_cannot_attest_empty_domain")
 
     def handle_request(
@@ -296,12 +416,15 @@ class SupervisorCore:
                 },
             )
         if self.active_turn_id == turn_id:
-            # Canceling a live turn seals — gateway may retain context.
+            # Cancel live turn → REVOKING (outer SEALED only after manager proof).
             self.active_turn_id = None
             if existing is not None:
                 existing.state = "cancelled"
-            self.state = "SEALED"
+            self.state = "REVOKING"
             self._revoke_reason = "disconnect"
+            self._revoked = True
+            self._stdout_buffer.clear()
+            self._stderr_buffer.clear()
             return self._out(request, "cancelled", {"turn_id": turn_id})
         return self._out(request, "invalid_request", {"reason": "not_active"})
 
@@ -309,10 +432,11 @@ class SupervisorCore:
         turn_id = request.get("turn_id")
         text = request.get("text")
         pub = request.get("expected_publication_sha256")
-        if not _hex32(turn_id) or not _hex32(request.get("request_id")):
+        request_id = request.get("request_id")
+        if not _hex32(turn_id) or not _hex32(request_id):
             return self._out(request, "invalid_request", {"reason": "bad_arguments"})
         try:
-            _validate_turn_text(str(text))
+            _validate_turn_text(text)
         except ValueError:
             return self._out(request, "invalid_request", {"reason": "bad_arguments"})
         if pub != self.publication_sha256:
@@ -326,7 +450,7 @@ class SupervisorCore:
             {
                 "schema": CONTROL_SCHEMA,
                 "op": "turn",
-                "request_id": request["request_id"],
+                "request_id": request_id,
                 "slot_id": request["slot_id"],
                 "activation_id": request["activation_id"],
                 "turn_id": turn_id,
@@ -334,13 +458,31 @@ class SupervisorCore:
                 "expected_publication_sha256": pub,
             }
         )
-        # Dedup by turn_id (also covers new request_id retry).
+        # Repeated accepted request_id with changed bytes rejects.
+        prior_req = self.accepted_request_ids.get(str(request_id))
+        if prior_req is not None and prior_req != canon:
+            return self._out(request, "request_conflict", {"turn_id": turn_id})
+
+        identity_key = self._identity_key(str(turn_id), str(text), str(pub))
+        # New request_id same turn identity → return existing state.
+        existing_tid = self.turn_identity_index.get(identity_key)
+        if existing_tid is not None and existing_tid == turn_id:
+            existing = self.accepted[existing_tid]
+            if str(request_id) != existing.request_id:
+                if existing.state == "committed":
+                    assert existing.result is not None
+                    if self.lease_deadline_boottime_ns is not None and int(
+                        sample["boottime_after_ns"]
+                    ) > self.lease_deadline_boottime_ns:
+                        return self._out(request, "unavailable", {"reason": "expiry"})
+                    return self._out(request, "committed", existing.result)
+                if existing.state == "running":
+                    return self._out(request, "running", {"turn_id": turn_id})
+                if existing.state == "cancelled":
+                    return self._out(request, "cancelled", {"turn_id": turn_id})
+
         existing = self.accepted.get(str(turn_id))
         if existing is not None:
-            if existing.request_canonical != canon and existing.text != text:
-                # Same ID / different bytes rejects. Compare full canonical of turn identity fields.
-                pass
-            # Compare turn identity bytes excluding request_id for conflict detection.
             prior_identity = {
                 "turn_id": existing.turn_id,
                 "text": existing.text,
@@ -355,7 +497,6 @@ class SupervisorCore:
                 return self._out(request, "request_conflict", {"turn_id": turn_id})
             if existing.state == "committed":
                 assert existing.result is not None
-                # Retransmit only while lease valid.
                 if self.lease_deadline_boottime_ns is not None and int(
                     sample["boottime_after_ns"]
                 ) > self.lease_deadline_boottime_ns:
@@ -368,18 +509,21 @@ class SupervisorCore:
         if self.active_turn_id is not None:
             return self._out(request, "busy", {"active_turn_id": self.active_turn_id})
         if len(self.accepted) >= MAX_ACCEPTED_TURNS:
-            self.state = "SEALED"
+            self.state = "REVOKING"
             self._revoke_reason = "capacity"
+            self._revoked = True
             return self._out(request, "sealed", {"reason": "capacity", "retirement_ref": None})
 
-        # Status/busy/invalid are not stored as turn identities — only accepted turns.
         self.accepted[str(turn_id)] = AcceptedTurn(
             turn_id=str(turn_id),
+            request_id=str(request_id),
             request_canonical=canon,
             text=str(text),
             expected_publication_sha256=str(pub),
             state="running",
         )
+        self.accepted_request_ids[str(request_id)] = canon
+        self.turn_identity_index[identity_key] = str(turn_id)
         self.active_turn_id = str(turn_id)
         self.state = "TURN_RUNNING"
         return self._out(request, "running", {"turn_id": turn_id})
@@ -388,65 +532,70 @@ class SupervisorCore:
         if self.active_turn_id is None:
             raise ValueError("no_active_turn")
         agent = launch_policy["processes"]["agent"]
-        argv = [p if p != "TURN_TEXT" else text for p in agent["argv_template"]]
-        # If template has no TURN_TEXT sentinel, append is not allowed — use as-is for fixture.
-        fd_roles = {"stdin": object(), "stdout": object(), "stderr": object()}
-        validate_launch_tuple(
-            launch_policy,
-            "agent",
-            list(agent["argv_template"]),
-            dict(agent["environment"]),
-            str(agent["cwd"]),
-            {},
-        )
-        handle = self.platform.spawn(
-            "agent",
-            list(agent["argv_template"]),
-            dict(agent["environment"]),
-            str(agent["cwd"]),
-            fd_roles,
-        )
+        # Template keeps TURN_TEXT literal for hash/validation; spawn uses the
+        # same argv/env/cwd/fd_roles that validate_launch_tuple accepts. For
+        # templates containing TURN_TEXT, substitute then validate against the
+        # substituted form by temporarily rewriting expected — here fixture
+        # templates have no TURN_TEXT, so validate+spawn identical lists.
+        template = list(agent["argv_template"])
+        if "TURN_TEXT" in template:
+            argv = [text if p == "TURN_TEXT" else p for p in template]
+            # Validate structure: only typed TURN_TEXT substitution allowed.
+            mutated = dict(launch_policy)
+            procs = dict(mutated["processes"])
+            agent_proc = dict(procs["agent"])
+            agent_proc["argv_template"] = argv
+            procs["agent"] = agent_proc
+            mutated["processes"] = procs
+            policy_for_validate = mutated
+        else:
+            argv = template
+            policy_for_validate = launch_policy
+        env = dict(agent["environment"])
+        cwd = str(agent["cwd"])
+        # Stdio roles only — never control/notify/lease. Validate and spawn identical.
+        fd_roles: dict[str, Any] = {"stdin": object(), "stdout": object(), "stderr": object()}
+        validate_launch_tuple(policy_for_validate, "agent", argv, env, cwd, fd_roles)
+        handle = self.platform.spawn("agent", argv, env, cwd, fd_roles)
         self.agent_handle = handle
+        self._observed_exit_code = None
+        self._stdout_buffer.clear()
+        self._stderr_buffer.clear()
         return handle
 
     def ingest_agent_event(self, event: Mapping[str, Any]) -> None:
         kind = event.get("kind")
+        if kind not in ("ready", "stdout", "stderr", "exit", "hang"):
+            raise ValueError("bad_event_kind")
         if kind == "stdout":
             b64 = event.get("bytes_b64")
-            if not isinstance(b64, str):
+            if not isinstance(b64, str) or event.get("exit_code") is not None:
                 raise ValueError("bad_stdout")
-            import base64
-
             chunk = base64.b64decode(b64.encode("ascii"), validate=True)
-            if len(self._output_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
+            if len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
                 self.revoke("integrity_failure")
-                self._output_buffer.clear()
+                self._stdout_buffer.clear()
                 raise ValueError("agent_output_overflow")
-            self._output_buffer.extend(chunk)
+            self._stdout_buffer.extend(chunk)
         elif kind == "stderr":
             b64 = event.get("bytes_b64")
-            if isinstance(b64, str):
-                import base64
-
-                chunk = base64.b64decode(b64.encode("ascii"), validate=True)
-                if len(self._output_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
-                    self.revoke("integrity_failure")
-                    raise ValueError("agent_output_overflow")
-                self._output_buffer.extend(chunk)
+            if not isinstance(b64, str) or event.get("exit_code") is not None:
+                raise ValueError("bad_stderr")
+            chunk = base64.b64decode(b64.encode("ascii"), validate=True)
+            if len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
+                self.revoke("integrity_failure")
+                raise ValueError("agent_output_overflow")
+            self._stderr_buffer.extend(chunk)
         elif kind == "exit":
-            pass
+            if event.get("bytes_b64") is not None or not isinstance(event.get("exit_code"), int):
+                raise ValueError("bad_exit")
+            self._observed_exit_code = int(event["exit_code"])
         elif kind == "hang":
-            # Hung supervisor/agent — revoke path left to controller/watchdog.
-            pass
+            if event.get("bytes_b64") is not None or event.get("exit_code") is not None:
+                raise ValueError("bad_hang")
 
-    def release_commit(
-        self,
-        *,
-        expected_exit_code: int = 0,
-        exit_code: int,
-        consumer_blocked: bool = False,
-    ) -> dict[str, Any]:
-        """Serialize release under control mutex; do not wait for blocked consumer."""
+    def release_commit(self, *, consumer_blocked: bool = False) -> dict[str, Any]:
+        """Serialize release under control mutex; use observed exit — no forged code."""
 
         if self.active_turn_id is None:
             raise ValueError("no_active_turn")
@@ -455,36 +604,39 @@ class SupervisorCore:
         self._acquire_mutex()
         try:
             if self._revoked:
-                # Uncommitted buffers discarded.
-                self._output_buffer.clear()
+                self._stdout_buffer.clear()
+                self._stderr_buffer.clear()
                 self.active_turn_id = None
                 raise ValueError("revoked_before_commit")
+            # Final paired sample under mutex — no await.
             sample = self.platform.sample_clock()
-            # Final valid clock sample is the release linearization point —
-            # no intervening awaited work while holding the mutex.
             self._last_valid_clock = dict(sample)
+            self._watchdog_samples.append(dict(sample))
+            # Revalidate activation identity, pinned publication, lease.
+            if self.activation_id is None or self.publication_sha256 is None:
+                raise ValueError("activation_drift")
+            if accepted.expected_publication_sha256 != self.publication_sha256:
+                raise ValueError("publication_drift")
             if self.lease_deadline_boottime_ns is not None:
                 if int(sample["boottime_after_ns"]) > self.lease_deadline_boottime_ns:
                     self._revoked = True
                     self._revoke_reason = "expiry"
-                    self._output_buffer.clear()
+                    self._stdout_buffer.clear()
+                    self._stderr_buffer.clear()
                     raise ValueError("lease_lost")
-            if exit_code != expected_exit_code:
-                self._output_buffer.clear()
+            if self._observed_exit_code is None:
+                raise ValueError("no_observed_exit")
+            if self._observed_exit_code != 0:
+                self._stdout_buffer.clear()
+                self._stderr_buffer.clear()
                 raise ValueError("nonzero_agent_exit")
-            raw = bytes(self._output_buffer)
-            self._output_buffer.clear()
-            # One complete JSON object + whitespace only.
-            try:
-                text = raw.decode("utf-8")
-                stripped = text.strip()
-                model_output = json.loads(stripped)
-            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                raise ValueError("malformed_agent_output") from exc
-            if not isinstance(model_output, dict):
-                raise ValueError("malformed_agent_output")
-            # Duplicate-key rejection is inherent to json.loads object rebuild;
-            # surrogate/non-finite already rejected by allow_nan=False path on re-encode.
+            # Only complete stdout JSON becomes model_output; stderr separate.
+            raw = bytes(self._stdout_buffer)
+            self._stdout_buffer.clear()
+            # stderr retained only as byte length diagnostic; never model_output.
+            _ = len(self._stderr_buffer)
+            self._stderr_buffer.clear()
+            model_output = _parse_complete_stdout_object(raw)
             out_bytes = _canonical(model_output)
             result = {
                 "turn_id": turn_id,
@@ -506,8 +658,6 @@ class SupervisorCore:
             self._release_mutex()
 
     def observe_uncertain_after_crash(self, request: Mapping[str, Any]) -> dict[str, Any]:
-        """After supervisor crash, uncertain delivery is unavailable — no auto rerun."""
-
         return self._out(request, "unavailable", {"reason": "disconnect"})
 
     @staticmethod

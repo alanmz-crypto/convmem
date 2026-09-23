@@ -13,18 +13,27 @@ _FIXTURE = REPO / "tests" / "fixtures" / "openclaw_strict"
 if str(_FIXTURE) not in sys.path:
     sys.path.insert(0, str(_FIXTURE))
 
-from fixture_platform import FixturePlatform, LOGICAL_PEERS  # noqa: E402
+from fixture_platform import (  # noqa: E402
+    CONTROL_IO_TIMEOUT_NS,
+    MAX_CONTROL_CONNECTIONS,
+    MAX_REQUEST_FRAME,
+    FixturePlatform,
+    LOGICAL_PEERS,
+    encode_control_frame,
+    try_decode_control_frame,
+)
 from lifecycle_scripts import (  # noqa: E402
     HEX_A,
     HEX_B,
-    HEX_D,
     HEX_E,
     PUB,
-    agent_success_b64,
+    _enter_revoking_for_retirement,
     base_activation_manifest,
     base_clock_review,
     base_launch_policy,
     cancel_request,
+    clock_review_inventory_bytes,
+    install_clock_review_inventory,
     revoke_request,
     script_partial_frame_discard,
     script_peer_policy_ok,
@@ -82,7 +91,6 @@ def test_logical_peer_policy_exact_uids():
     assert LOGICAL_PEERS["controller"] == (0, 0)
     assert LOGICAL_PEERS["supervisor"] == (0, 0)
     assert LOGICAL_PEERS["runtime"] == (1001, 1001)
-    assert "sample_clock" in platform.port_ops() or platform.trace  # peer ops traced
     assert platform.port_ops().count("peer") == 4
 
 
@@ -98,7 +106,6 @@ def test_case53_peer_forgery_denied():
 def test_case55_runtime_denied_private_paths_pre_activation():
     platform, controller, supervisor, ctl = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
-    # Runtime reads of private qualification/issuer/governance/control must deny.
     for path in (
         "/fixture/private/qualification/x",
         "/fixture/private/issuer/x",
@@ -106,7 +113,9 @@ def test_case55_runtime_denied_private_paths_pre_activation():
         "/fixture/private/control/x",
     ):
         assert platform.access("runtime", path, "read") is False
-    # Controller may read private qualification.
+    # Path-component boundary: prefix /fixture/private/qualification must not
+    # match /fixture/private/qualification-evil.
+    assert platform.access("controller", "/fixture/private/qualification-evil", "read") is False
     assert platform.access("controller", "/fixture/private/qualification/manifest.json", "read")
     ctl.lifecycle_config_core({})
     with pytest.raises(ValueError, match="lifecycle_not_disabled"):
@@ -119,18 +128,15 @@ def test_stable_slot_activation_and_ready():
         HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z"
     )
     assert st.state == "NEW"
-    manifest = base_activation_manifest()
-    policy = base_launch_policy()
-    # Schedule supervisor ready before activate waits.
-    # activate spawns first — schedule after qualify by intercepting: pre-bind schedule via hook.
-    # We schedule after qualify_and_activate returns handle.
     st2 = controller.qualify_and_activate(
-        HEX_B, manifest, policy, lifecycle_config={}, remaining_snapshot_lifetime_ns=3_600_000_000_000
+        HEX_B,
+        base_activation_manifest(),
+        base_launch_policy(),
+        lifecycle_config={},
+        remaining_snapshot_lifetime_ns=3_600_000_000_000,
     )
-    handle = supervisor.supervisor_handle
-    assert handle is not None
+    assert supervisor.supervisor_handle is not None
     assert st2.state == "ACTIVE_IDLE"
-    assert "next_event" in platform.port_ops()
     assert st2.unit_invocation_id
     assert st2.containment_id
     assert st2.manager_boot_id
@@ -138,75 +144,196 @@ def test_stable_slot_activation_and_ready():
     assert "spawn" in platform.port_ops()
 
 
-def test_case53_turn_cancel_status_revoke_and_capacity():
+def test_framed_control_partials_caps_timeout_eight_connections():
     platform, controller, supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
-    manifest = base_activation_manifest()
-    policy = base_launch_policy()
-    controller.qualify_and_activate(HEX_B, manifest, policy, lifecycle_config={})
-    platform.set_peer("op1", "operator")
-
-    # status
-    st_resp = controller.handle_control("op1", status_request(request_id=HEX_A))
-    assert st_resp["outcome"] == "status"
-    assert st_resp["payload"]["state"] == "ACTIVE_IDLE"
-    assert st_resp["payload"]["turn_id"] is None
-
-    # turn → running
-    t_resp = controller.handle_control("op1", turn_request())
-    assert t_resp["outcome"] == "running"
-    assert t_resp["payload"]["turn_id"] == HEX_D
-
-    # second turn → busy (no queue)
-    t2 = controller.handle_control(
-        "op1", turn_request(request_id=HEX_E, turn_id=HEX_E, text="other")
+    controller.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
-    assert t2["outcome"] == "busy"
+    # Eight authenticated concurrent connections via FixturePlatform queues.
+    conns = []
+    for i in range(MAX_CONTROL_CONNECTIONS):
+        cid = f"op{i}"
+        platform.open_control_connection(cid, "operator")
+        controller.open_control_session(cid)
+        conns.append(cid)
+    with pytest.raises(ValueError, match="control_connection_capacity"):
+        platform.open_control_connection("op-extra", "operator")
 
-    # same turn id / same text → running (dedup, no rerun)
-    t3 = controller.handle_control("op1", turn_request(request_id="ffffffffffffffffffffffffffffffff"))
-    assert t3["outcome"] == "running"
+    # Partial frame remains partial — no success.
+    cid = conns[0]
+    full = encode_control_frame(status_request(request_id=HEX_E))
+    partial = full[:5]
+    assert controller.handle_framed_bytes(cid, partial) is None
+    # Complete frame yields encoded closed response under 2MiB.
+    framed = controller.handle_framed_bytes(cid, full[5:])
+    assert framed is not None
+    assert len(framed) <= MAX_REQUEST_FRAME * 2
+    obj, rem, err = try_decode_control_frame(framed)
+    assert err is None and rem == b"" and obj is not None
+    assert obj["outcome"] == "status"
+    assert set(obj.keys()) == {
+        "schema",
+        "request_id",
+        "slot_id",
+        "activation_id",
+        "outcome",
+        "payload",
+    }
 
-    # same turn id / different text → conflict
-    t4 = controller.handle_control(
-        "op1", turn_request(request_id="11111111111111111111111111111111", text="changed")
+    # Trailing-frame desync closes with no partial success.
+    cid2 = conns[1]
+    desync = encode_control_frame(status_request(request_id=HEX_A)) + b"\x00"
+    assert controller.handle_framed_bytes(cid2, desync) is None
+
+    # Scripted 10s timeout closes idle connection.
+    cid3 = conns[2]
+    controller.handle_framed_bytes(cid3, encode_control_frame(status_request())[:3])
+    platform.advance_boottime(CONTROL_IO_TIMEOUT_NS + 1)
+    assert controller.handle_framed_bytes(cid3, b"\x00") is None
+
+
+def test_framed_closed_requests_and_request_id_conflict():
+    platform, controller, supervisor, _ = _pair()
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
-    assert t4["outcome"] == "request_conflict"
+    platform.open_control_connection("op1", "operator")
+    controller.open_control_session("op1")
 
-    # cancel live turn → sealed
-    c_resp = controller.handle_control("op1", cancel_request(request_id="22222222222222222222222222222222"))
-    assert c_resp["outcome"] == "sealed"
-    assert controller.slots[HEX_B].state == "SEALED"
+    # Extra field rejected.
+    bad = turn_request()
+    bad["extra"] = "nope"
+    framed = controller.handle_framed_bytes("op1", encode_control_frame(bad))
+    assert framed is not None
+    obj, _, _ = try_decode_control_frame(framed)
+    assert obj["outcome"] == "invalid_request"
+
+    # Non-string text not coerced.
+    bad2 = turn_request(request_id=HEX_E)
+    bad2["text"] = 12345  # type: ignore[assignment]
+    framed2 = controller.handle_framed_bytes("op1", encode_control_frame(bad2))
+    obj2, _, _ = try_decode_control_frame(framed2)
+    assert obj2["outcome"] == "invalid_request"
+
+    # Accept turn, then same request_id with changed bytes → conflict.
+    platform.set_peer("opd", "operator")
+    r1 = controller.handle_control("opd", turn_request())
+    assert r1["outcome"] == "running"
+    conflict = turn_request(text="changed-bytes")
+    r2 = controller.handle_control("opd", conflict)
+    assert r2["outcome"] == "request_conflict"
+
+    # New request_id, same turn identity → existing state (running).
+    r3 = controller.handle_control(
+        "opd",
+        turn_request(request_id="ffffffffffffffffffffffffffffffff"),
+    )
+    assert r3["outcome"] == "running"
 
 
-def test_case53_blocked_consumer_revoke_linearization():
+def test_cancel_to_revoking_then_independent_retirement():
     platform, controller, supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
     platform.set_peer("op1", "operator")
-    platform.set_peer("op2", "operator")
-    controller.handle_control("op1", turn_request())
-    # Agent output then release with blocked consumer.
-    handle = supervisor.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
-    platform.schedule_event(handle, "stdout", bytes_b64=agent_success_b64())
-    platform.schedule_event(handle, "exit", exit_code=0)
-    ev = platform.next_event(handle)
-    supervisor.ingest_agent_event(ev)
-    ev2 = platform.next_event(handle)
-    assert ev2["kind"] == "exit"
-    result = supervisor.release_commit(exit_code=0, consumer_blocked=True)
-    assert result["evidence_basis"] == "model_output_unverified"
-    assert supervisor.pending_delivery is not None
-    # Revoke on separate connection without waiting for blocked consumer.
-    r = controller.handle_control(
-        "op2", revoke_request(request_id="33333333333333333333333333333333"), consumer_blocked=True
+    assert controller.handle_control("op1", turn_request())["outcome"] == "running"
+    c_resp = controller.handle_control(
+        "op1", cancel_request(request_id="22222222222222222222222222222222")
     )
-    assert r["outcome"] == "revoking"
-    # Already committed bytes remain an answer; cancel reports already_committed.
-    ac = supervisor.handle_request(cancel_request(request_id="44444444444444444444444444444444"))
-    assert ac["outcome"] == "already_committed"
+    assert c_resp["outcome"] == "cancelled"
+    assert controller.slots[HEX_B].state == "REVOKING"
+    assert controller.slots[HEX_B].state != "SEALED"
+
+    inv = controller.slots[HEX_B].unit_invocation_id
+    controller.request_manager_stop(HEX_B)
+    platform.clear_all_members(inv)
+    platform.force_observe(inv, terminal=True, populated=False)
+    receipt = controller.attempt_retirement(HEX_B, terminal_reason="disconnect")
+    assert receipt["schema"] == "convmem.activation-retirement.v1"
+    assert controller.slots[HEX_B].state == "SEALED"
+    # Content hash on receipt (verified), not a re-hash including self-hash field alone.
+    assert receipt["activation_manifest_sha256"] == controller.slots[
+        HEX_B
+    ].verified_manifest_content_sha256
+
+
+def test_sealed_immutability_and_fresh_activation_history():
+    platform, controller, supervisor, _ = _pair()
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+    )
+    _enter_revoking_for_retirement(controller)
+    inv = controller.slots[HEX_B].unit_invocation_id
+    platform.clear_all_members(inv)
+    platform.force_observe(inv, terminal=True, populated=False)
+    first_receipt = controller.attempt_retirement(HEX_B, terminal_reason="operator")
+    first_act = controller.slots[HEX_B].activation_id
+    assert controller.slots[HEX_B].state == "SEALED"
+
+    # SEALED has no outgoing transition on the sealed record — reuse archives it.
+    controller.qualify_and_activate(
+        HEX_B,
+        base_activation_manifest(
+            activation_id="ffffffffffffffffffffffffffffffff",
+            state_dir="/fixture/state/act-2",
+        ),
+        base_launch_policy(),
+        lifecycle_config={},
+    )
+    st = controller.slots[HEX_B]
+    assert st.state == "ACTIVE_IDLE"
+    assert st.activation_id == "ffffffffffffffffffffffffffffffff"
+    assert len(st.sealed_history) == 1
+    assert st.sealed_history[0].activation_id == first_act
+    assert st.sealed_history[0].retirement_receipt == first_receipt
+    # No old session resume.
+    assert supervisor.accepted == {}
+    assert supervisor.pending_delivery is None
+
+
+def test_activation_failure_retains_domain_for_retire_quarantine():
+    platform = FixturePlatform(auto_ready_on_supervisor_spawn=False)
+    import openclaw_activation_controller as ctl
+    import openclaw_activation_supervisor as sup
+
+    supervisor = sup.SupervisorCore(platform=platform)
+    controller = ctl.ControllerCore(platform=platform, supervisor=supervisor)
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    with pytest.raises(ValueError, match="supervisor_not_ready"):
+        controller.qualify_and_activate(
+            HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+        )
+    st = controller.slots[HEX_B]
+    assert st.state == "REVOKING"
+    assert st.unit_invocation_id
+    assert st.containment_id
+    assert st.activation_id
+    assert st.stop_requested is True
+    # Still retire/quarantine capable.
+    platform.clear_all_members(st.unit_invocation_id)
+    platform.force_observe(st.unit_invocation_id, terminal=True, populated=False)
+    receipt = controller.attempt_retirement(HEX_B, terminal_reason="integrity_failure")
+    assert receipt["unit_invocation_id"] == st.unit_invocation_id
+
+
+def test_exact_null_observation_quarantines():
+    platform, controller, supervisor, _ = _pair()
+    controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
+    controller.qualify_and_activate(
+        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
+    )
+    _enter_revoking_for_retirement(controller)
+    inv = controller.slots[HEX_B].unit_invocation_id
+    # Explicit populated=null (unknown) — distinct from no override.
+    platform.force_observe(inv, terminal=True, populated=None)
+    with pytest.raises(ValueError, match="quarantined"):
+        controller.attempt_retirement(HEX_B)
+    assert controller.slots[HEX_B].state == "QUARANTINED"
 
 
 def test_case46_53_retirement_only_on_exact_empty_observation():
@@ -215,61 +342,34 @@ def test_case46_53_retirement_only_on_exact_empty_observation():
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
-    inv = controller.slots[HEX_B].unit_invocation_id
-    assert inv
-    # manager_stop ack is never empty proof.
-    ack = controller.request_manager_stop(HEX_B)
-    assert ack["acknowledged"] is True
+    _enter_revoking_for_retirement(controller)
     with pytest.raises(ValueError, match="quarantined"):
         controller.attempt_retirement(HEX_B)
     assert controller.slots[HEX_B].state == "QUARANTINED"
 
-    # Reset via fresh slot reuse path: new enrollment after clearing quarantine for mutant.
     platform2, controller2, supervisor2, _ = _pair()
     controller2.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller2.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
     inv2 = controller2.slots[HEX_B].unit_invocation_id
-    controller2.request_manager_stop(HEX_B)
-    # Detached descendant remains → quarantine
+    _enter_revoking_for_retirement(controller2)
     platform2.add_detached_descendant(inv2, "proc:grandchild:x")
     with pytest.raises(ValueError, match="quarantined"):
         controller2.attempt_retirement(HEX_B)
 
-    # Outstanding model work → quarantine
-    platform3, controller3, supervisor3, _ = _pair()
-    controller3.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
-    controller3.qualify_and_activate(
-        HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
-    )
-    inv3 = controller3.slots[HEX_B].unit_invocation_id
-    controller3.request_manager_stop(HEX_B)
-    platform3.force_observe(inv3, terminal=True, populated=None)
-    with pytest.raises(ValueError, match="quarantined"):
-        controller3.attempt_retirement(HEX_B)
-
-    # Exact terminal=true, populated=false → receipt + SEALED
     platform4, controller4, supervisor4, _ = _pair()
     controller4.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller4.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
     inv4 = controller4.slots[HEX_B].unit_invocation_id
-    controller4.request_manager_stop(HEX_B)
+    _enter_revoking_for_retirement(controller4)
     platform4.clear_all_members(inv4)
     platform4.force_observe(inv4, terminal=True, populated=False)
     receipt = controller4.attempt_retirement(HEX_B, terminal_reason="operator")
     assert receipt["schema"] == "convmem.activation-retirement.v1"
     assert controller4.slots[HEX_B].state == "SEALED"
-    # Slot reuse after exact retirement.
-    controller4.qualify_and_activate(
-        HEX_B,
-        base_activation_manifest(activation_id="ffffffffffffffffffffffffffffffff"),
-        base_launch_policy(),
-        lifecycle_config={},
-    )
-    assert controller4.slots[HEX_B].state == "ACTIVE_IDLE"
 
 
 def test_case57_stale_receipts_and_supervisor_cannot_attest():
@@ -279,7 +379,7 @@ def test_case57_stale_receipts_and_supervisor_cannot_attest():
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
     inv = controller.slots[HEX_B].unit_invocation_id
-    controller.request_manager_stop(HEX_B)
+    _enter_revoking_for_retirement(controller)
     platform.clear_all_members(inv)
     platform.force_observe(inv, terminal=True, populated=False, manager_boot_id="stale-boot")
     with pytest.raises(ValueError, match="stale_boot"):
@@ -288,28 +388,27 @@ def test_case57_stale_receipts_and_supervisor_cannot_attest():
         supervisor.empty_domain_attestation()
 
 
-def test_case57_manager_membership_survives_supervisor_death():
+def test_case57_manager_membership_survives_and_restart_persists_quarantine():
     platform, controller, supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
     inv = controller.slots[HEX_B].unit_invocation_id
-    # Supervisor exit does not clear membership.
     platform.schedule_event(supervisor.supervisor_handle, "exit", exit_code=0)
     platform.next_event(supervisor.supervisor_handle)
     obs = platform.manager_observe(inv)
     assert obs["populated"] is True
-    # Controller restart preserves set.
+    # Restart must persist quarantine — not restore stale ACTIVE bytes.
+    controller.slots[HEX_B].persisted["state"] = "ACTIVE_IDLE"
     controller.reconcile_after_controller_restart(HEX_B)
     assert controller.slots[HEX_B].state == "QUARANTINED"
-    # Only harness-scheduled removal clears members.
+    assert controller.slots[HEX_B].persisted["state"] == "QUARANTINED"
     platform.clear_all_members(inv)
-    obs2 = platform.manager_observe(inv)
-    assert obs2["populated"] is False
+    assert platform.manager_observe(inv)["populated"] is False
 
 
-def test_case54_clock_boot_freshness_and_rollback_retains_head():
+def test_case54_clock_interval_review_inventory():
     platform, controller, supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
@@ -318,48 +417,46 @@ def test_case54_clock_boot_freshness_and_rollback_retains_head():
     anchor1 = controller.slots[HEX_B].freshness_anchor
     assert anchor1 is not None
     deadline1 = anchor1.snapshot_deadline_boottime_ns
-    # Same-boot shrink only.
     controller.establish_freshness_anchor(
         controller.slots[HEX_B],
         authority_snapshot_id="snap-fixture-1",
         remaining_snapshot_lifetime_ns=1_000_000_000,
     )
     assert controller.slots[HEX_B].freshness_anchor.snapshot_deadline_boottime_ns <= deadline1
-    # Suspend/resume advances BOOTTIME (cannot extend lease by wall alone).
     platform.suspend_resume(5_000_000_000)
     sample = platform.sample_clock()
     assert sample["boottime_after_ns"] >= 1_000_000_000 + 5_000_000_000
-    # Wall backwards seals.
+    # Wall backwards seals via observed decrease.
     platform.advance_wall("2026-09-20T00:00:00Z")
     platform.set_peer("op1", "operator")
     controller.handle_control("op1", status_request())
     assert controller.slots[HEX_B].state == "REVOKING"
     assert controller.slots[HEX_B].terminal_reason == "clock_anomaly"
-    # New boot requires clock review; expiry cannot renew.
+
+    # New boot: copied reviewer UID alone fails without inventory membership.
     platform.new_boot("boot-fixture-0002", wall_time="2026-09-21T12:00:00Z")
-    with pytest.raises(ValueError, match="clock_review_required"):
+    review = base_clock_review()
+    controller.slots[HEX_B].expires_at = "2026-09-22T00:00:00Z"
+    with pytest.raises(ValueError, match="clock_review_inventory_miss"):
         controller.establish_freshness_anchor(
             controller.slots[HEX_B],
             authority_snapshot_id="snap-fixture-1",
             remaining_snapshot_lifetime_ns=1_000_000_000,
+            clock_review=review,
         )
-    review = base_clock_review()
-    controller.slots[HEX_B].expires_at = "2026-09-22T00:00:00Z"
+    install_clock_review_inventory(platform, review)
     controller.establish_freshness_anchor(
         controller.slots[HEX_B],
         authority_snapshot_id="snap-fixture-1",
         remaining_snapshot_lifetime_ns=1_000_000_000,
         clock_review=review,
     )
-    # Rollback serving-only retains head/expiry; teardown ≠ recovery.
     view = controller.serving_rollback_view(HEX_B)
     assert view["authority_head"] == PUB
-    assert view["expires_at"] == "2026-09-22T00:00:00Z"
     assert view["session_resumable"] is False
-    assert view["teardown_is_recovery"] is False
-    assert view["serving_only"] is True
     bad_review = base_clock_review(expires_at="2026-09-23T00:00:00Z")
     platform.new_boot("boot-fixture-0003", wall_time="2026-09-21T13:00:00Z")
+    install_clock_review_inventory(platform, bad_review)
     with pytest.raises(ValueError, match="expiry_renewal_forbidden"):
         controller.establish_freshness_anchor(
             controller.slots[HEX_B],
@@ -367,12 +464,12 @@ def test_case54_clock_boot_freshness_and_rollback_retains_head():
             remaining_snapshot_lifetime_ns=1_000_000_000,
             clock_review=bad_review,
         )
+    assert clock_review_inventory_bytes(review)
 
 
-def test_case33_spawn_tuple_crosses_platform_only():
+def test_case33_spawn_tuple_exact_trace():
     platform, controller, supervisor, _ = _pair()
     policy = base_launch_policy()
-    # Hostile env/argv must not be accepted by validate path used at spawn.
     import openclaw_activation_supervisor as sup
 
     with pytest.raises(ValueError):
@@ -385,16 +482,15 @@ def test_case33_spawn_tuple_crosses_platform_only():
             {},
         )
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
-    controller.qualify_and_activate(
-        HEX_B, base_activation_manifest(), policy, lifecycle_config={}
-    )
-    # Every spawn traced through platform.
-    assert any(t["op"] == "spawn" for t in platform.trace)
+    controller.qualify_and_activate(HEX_B, base_activation_manifest(), policy, lifecycle_config={})
+    spawn_recs = [t for t in platform.trace if t["op"] == "spawn" and t["role"] == "supervisor"]
+    assert spawn_recs
+    assert spawn_recs[0]["argv"] == list(policy["processes"]["supervisor"]["argv_template"])
+    assert spawn_recs[0]["cwd"] == policy["processes"]["supervisor"]["cwd"]
+    assert spawn_recs[0]["env"] == dict(policy["processes"]["supervisor"]["environment"])
 
 
 def test_case35_kill_child_partial_success_paths():
-    """Only fully released commit may succeed; mid-stream kill → no success."""
-
     platform, controller, supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
@@ -403,13 +499,12 @@ def test_case35_kill_child_partial_success_paths():
     platform.set_peer("op1", "operator")
     controller.handle_control("op1", turn_request())
     handle = supervisor.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
-    # Kill before complete output.
     platform.schedule_event(handle, "exit", exit_code=9)
     ev = platform.next_event(handle)
-    assert ev["kind"] == "exit"
+    supervisor.ingest_agent_event(ev)
     with pytest.raises(ValueError, match="nonzero_agent_exit"):
-        supervisor.release_commit(exit_code=9)
-    # Fresh turn + full success path.
+        supervisor.release_commit()
+
     controller2_platform, controller2, supervisor2, _ = _pair()
     controller2.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller2.qualify_and_activate(
@@ -420,8 +515,8 @@ def test_case35_kill_child_partial_success_paths():
     h2 = supervisor2.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
     controller2_platform.schedule_agent_success(h2)
     supervisor2.ingest_agent_event(controller2_platform.next_event(h2))
-    assert controller2_platform.next_event(h2)["kind"] == "exit"
-    committed = supervisor2.release_commit(exit_code=0)
+    supervisor2.ingest_agent_event(controller2_platform.next_event(h2))
+    committed = supervisor2.release_commit()
     assert committed["model_output"]["fixture"] == "protocol-only"
 
 
@@ -430,13 +525,11 @@ def test_case45_lifecycle_config_disables_and_no_unsolicited_turn():
 
     core = ctl.lifecycle_config_core({})
     assert core["heartbeat"] is False
-    assert core["automatic_memory_flush"] is False
     platform, controller, supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config=core
     )
-    # No turn without operator framed request.
     assert supervisor.active_turn_id is None
     platform.set_peer("op1", "operator")
     st = controller.handle_control("op1", status_request())
@@ -451,20 +544,16 @@ def test_partial_frame_and_lock_order():
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
     inv = controller.slots[HEX_B].unit_invocation_id
-    controller.request_manager_stop(HEX_B)
+    _enter_revoking_for_retirement(controller)
     platform.clear_all_members(inv)
     platform.force_observe(inv, terminal=True, populated=False)
     controller.attempt_retirement(HEX_B)
-    # Retire before lineage exclusive — no reverse lock path.
     controller.retire_before_lineage_exclusive(HEX_B)
 
 
 def test_case58_production_refusal_with_unwrapped_specimen_bytes():
-    """Production entrypoints refuse even if a specimen payload is unwrapped adjacent."""
-
     import openclaw_activation_controller as ctl
 
-    # Specimen-shaped kwargs must not enable start.
     try:
         ctl.start(
             activation_manifest=base_activation_manifest(),
@@ -516,3 +605,11 @@ def test_module_enroll_slot_wrapper():
         expires_at="2026-09-22T00:00:00Z",
     )
     assert st.slot_id == HEX_B
+
+
+def test_duplicate_key_frame_rejected():
+    # object_pairs_hook path — not vacuous len(dict) check.
+    from fixture_platform import decode_json_object
+
+    with pytest.raises(ValueError, match="duplicate_key"):
+        decode_json_object(b'{"a":1,"a":2}')

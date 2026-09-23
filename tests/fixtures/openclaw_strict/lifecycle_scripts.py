@@ -64,10 +64,10 @@ def base_activation_manifest(**overrides: Any) -> dict[str, Any]:
 
 
 def base_launch_policy(**overrides: Any) -> dict[str, Any]:
-    def proc(uid: int, exe: str, net: str = "none") -> dict[str, Any]:
+    def proc(uid: int, exe: str, net: str = "none", argv: list[str] | None = None) -> dict[str, Any]:
         return {
             "executable": exe,
-            "argv_template": [exe],
+            "argv_template": list(argv) if argv is not None else [exe],
             "cwd": "/fixture/empty",
             "environment": {"HOME": "/fixture/home", "PATH": "/runtime/bin"},
             "inherited_fd_roles": [],
@@ -84,7 +84,12 @@ def base_launch_policy(**overrides: Any) -> dict[str, Any]:
         "processes": {
             "supervisor": proc(0, "/fixture/bin/supervisor"),
             "gateway": proc(1001, "/fixture/bin/gateway", "activation_loopback"),
-            "agent": proc(1001, "/fixture/bin/agent", "activation_loopback"),
+            "agent": proc(
+                1001,
+                "/fixture/bin/agent",
+                "activation_loopback",
+                argv=["/fixture/bin/agent", "--message", "TURN_TEXT"],
+            ),
             "strict_server": proc(1001, "/fixture/bin/strict_server"),
             "model_worker": {
                 "executable": "/fixture/bin/model-worker",
@@ -144,6 +149,22 @@ def base_clock_review(**overrides: Any) -> dict[str, Any]:
     }
     r.update(overrides)
     return r
+
+
+def clock_review_inventory_bytes(review: dict[str, Any] | None = None) -> bytes:
+    """Canonical body excluding only review_payload_sha256 (parent self-hash rule)."""
+
+    r = dict(review or base_clock_review())
+    body = {k: r[k] for k in sorted(r) if k != "review_payload_sha256"}
+    return json.dumps(
+        body, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def install_clock_review_inventory(platform: FixturePlatform, review: dict[str, Any] | None = None) -> bytes:
+    raw = clock_review_inventory_bytes(review)
+    platform.install_operator_inventory_bytes(raw)
+    return raw
 
 
 def turn_request(
@@ -232,3 +253,16 @@ def agent_success_b64() -> str:
 def assert_agent_success_bytes(raw: bytes) -> None:
     assert raw == AGENT_SUCCESS_BYTES
     assert json.loads(raw.decode("utf-8"))["fixture"] == "protocol-only"
+
+
+def _enter_revoking_for_retirement(controller: Any, slot_id: str = HEX_B) -> None:
+    """Legitimate path to REVOKING + stop before attempt_retirement."""
+
+    platform = controller.platform
+    platform.set_peer("retire-op", "operator")
+    controller.handle_control(
+        "retire-op",
+        revoke_request(request_id="f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"),
+    )
+    assert controller.slots[slot_id].state == "REVOKING"
+    controller.request_manager_stop(slot_id)
