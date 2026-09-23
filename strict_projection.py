@@ -3545,6 +3545,11 @@ class StrictProjectionReader:
                 non_expanding_hit = parent_id
                 break
             if parent_row["record_kind"] == "observation":
+                # Stop at first observation, but deny if that anchor closes
+                # back into the already-collected ancestor path (§8.3 cycles).
+                for back_id in self._relates_parents.get(parent_id, []):
+                    if back_id in collected:
+                        raise StrictPublicError("scope_denied", correlation_id=cid)
                 observation_anchor = parent_id
                 break
             cursor = parent_row

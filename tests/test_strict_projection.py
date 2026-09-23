@@ -1694,11 +1694,18 @@ def _m4_patch_clocks(monkeypatch) -> None:
 
 
 def _seal_public_mount_modes(root: Path) -> None:
-    """Seal dirs 0555 / files+locks 0444 for public opening (exact lock mode)."""
+    """Seal dirs 0555 / files+locks 0444 for public opening (exact lock mode).
+
+    Skips symlinks (lstat; never follow or mutate targets) so hostile link
+    rejection stays with the public opener.
+    """
 
     for dirpath, _dirnames, filenames in os.walk(root, topdown=False):
         for name in filenames:
             path = Path(dirpath) / name
+            st = os.lstat(path)
+            if stat.S_ISLNK(st.st_mode):
+                continue
             os.chmod(path, 0o444)
         os.chmod(dirpath, 0o555)
 
@@ -2249,9 +2256,12 @@ def test_m4_public_only_mount_and_exact_0444_0555(
     revoke_snapshot(gen)
 
     # Wrong mode denies (temporarily unlock parent dir to mutate mode).
+    # Restore dirs to exact 0555 so only the file mode is wrong.
     os.chmod(public_only, 0o755)
     os.chmod(public_only / "active", 0o755)
     os.chmod(public_only / "active" / f"{lineage}.json", 0o644)
+    os.chmod(public_only / "active", 0o555)
+    os.chmod(public_only, 0o555)
     with pytest.raises(StrictProjectionError, match="file_mode"):
         open_published_generation(
             root=public_only,
@@ -2411,9 +2421,18 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
         item["serving"]["publication_payload_sha256"],
     ]
 
-    # Capture stdout via patched buffer.
+    # Capture stdout via proxy — sys.stdout.buffer is readonly.
+    class _StdoutBufferProxy:
+        def __init__(self, real: Any, buffer: io.BytesIO) -> None:
+            self._real = real
+            self.buffer = buffer
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._real, name)
+
+    real_stdout = sys.stdout
     buf = io.BytesIO()
-    monkeypatch.setattr(sys.stdout, "buffer", buf)
+    monkeypatch.setattr(sys, "stdout", _StdoutBufferProxy(real_stdout, buf))
     before_mtimes = {
         p: p.stat().st_mtime_ns
         for p in item["root"].rglob("*")
@@ -2445,7 +2464,7 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
 
     monkeypatch.setattr(sp, "boottime_ns", fake_boot_over)
     buf2 = io.BytesIO()
-    monkeypatch.setattr(sys.stdout, "buffer", buf2)
+    monkeypatch.setattr(sys, "stdout", _StdoutBufferProxy(real_stdout, buf2))
     rc2 = sp._cli_read(argv)
     out2 = buf2.getvalue()
     assert rc2 != 0
@@ -2511,9 +2530,11 @@ def test_m4_capability_immutable_and_forged_new_fails(
         StrictProjectionReader(forged)
     with pytest.raises(StrictProjectionError, match="forged_capability"):
         revoke_snapshot(forged)
+    # Construct while live; revoke; existing reader must surface public snapshot_stale.
+    reader = StrictProjectionReader(gen)
     revoke_snapshot(gen)
     with pytest.raises(StrictPublicError) as ei:
-        StrictProjectionReader(gen).search_rows(query="fixture")
+        reader.search_rows(query="fixture")
     assert ei.value.code == "snapshot_stale"
 
 
