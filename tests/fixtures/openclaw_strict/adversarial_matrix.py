@@ -624,8 +624,10 @@ def _connector_nodeids_from_file(rel: str, root: Path) -> list[str]:
 
 
 def selected_node_inventory(*, root: Path | None = None) -> dict[str, Any]:
-    """Inventory selected nodes from exact named suite files only.
+    """Diagnostic AST inventory from exact named suite files only.
 
+    Not collected-node evidence. Exact live Python node/outcome evidence comes
+    only from the built-in JUnit reports → pytest-node-outcomes.json.
     Does not walk the repository, invoke pytest collection, or invent nodes
     outside STRICT/LEGACY/CONNECTOR selectors. Legacy exclusions are subtracted.
     """
@@ -643,6 +645,8 @@ def selected_node_inventory(*, root: Path | None = None) -> dict[str, Any]:
     connector_nodes = _connector_nodeids_from_file(CONNECTOR_NODE_TEST, base)
     return {
         "mode": "named_file_ast_inventory",
+        "diagnostic_only": True,
+        "collected_node_evidence": False,
         "full_repository_discovery": False,
         "strict_python": {
             "files": list(STRICT_PYTEST_FILES),
@@ -667,8 +671,10 @@ def selected_node_inventory(*, root: Path | None = None) -> dict[str, Any]:
         ),
         "live_collection": {
             "note": (
-                "Live pytest/node collect-only is not added to the frozen three "
-                "inner commands; inventory is fixture-owned from named files."
+                "AST definition inventory is diagnostic only and must never "
+                "populate pytest-node-outcomes.json or be labeled collected "
+                "evidence. Exact collected-node evidence is the two built-in "
+                "JUnit reports under /fixture/evidence."
             ),
             "strict_live_path": "/fixture/selected_nodes_strict.json",
         },
