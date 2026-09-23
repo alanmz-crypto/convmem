@@ -69,6 +69,11 @@ debounce_seconds = 90
 # and a tuned timeout awaits the watch-OOM design. Uncomment only to set an explicit
 # ceiling; the shipped default is an interim backstop, not a recommendation.
 # subprocess_timeout_seconds = 900
+# Native-fault circuit breaker (Arc Poison Pill hardening). Quarantines a path
+# after repeated SIGSEGV/SIGABRT/SIGBUS index-child crashes and pauses new
+# index spawns entirely if crashes cluster across many paths at once. Clear
+# with `convmem watch --clear-quarantine <path>` / `--clear-quarantine-all`.
+# circuit_breaker_state_file = "~/.local/share/convmem/watch_circuit_breaker.json"
 # Closed repository-knowledge manifests. Live activation of this list is a
 # separate Ryan grant; leave it unset or empty until that grant names the
 # exact absolute path.
