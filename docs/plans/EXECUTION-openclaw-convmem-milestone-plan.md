@@ -1,7 +1,8 @@
 # Milestone Execution Plan — ConvMem–OpenClaw
 
-**Status:** READY FOR KIRO EXACT-TIP REVIEW, THEN RYAN'S BOUNDED T0–T5
-EXECUTE DECISION. No implementation is authorized.
+**Status:** M8 NODE-EVIDENCE CORRECTION READY FOR KIRO EXACT-TIP REVIEW, THEN
+RYAN'S BOUNDED RESUME DECISION. Implementation is paused; no work may resume
+under the superseded grant.
 
 **Arc:** none (ad-hoc integration)
 
@@ -10,7 +11,7 @@ EXECUTE DECISION. No implementation is authorized.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=cd9d2698b7423f907b552bc9118a0af523018ca9
+SEMANTIC_PARENT_SHA=34338133186010a26ed746bbfea4c9abb958e9ca
 CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
 ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
@@ -39,6 +40,15 @@ any parent-required semantic instruction. This rule applies consistently to
 profile, fixture, CLI, publisher, and runner refusals; an explicitly frozen
 parent error contract still controls.
 
+Ryan's 2026-09-23 M8 node-inventory ruling authorizes only this plan correction:
+the two frozen Python commands may emit pytest's built-in JUnit XML under
+disposable `/fixture/evidence`, solely for exact collected node IDs and
+outcomes. The parent freezes the output paths, xunit1 mapping, canonical
+evidence shape and fail-closed parser. Selectors, four deselections, selected
+test logic, dependencies, permissions, containment and runtime behavior remain
+unchanged. The old Execute grant does not cover the revised SHAs; implementation
+stays paused through exact-tip review and a new Ryan resume grant.
+
 The Grok-facing actualization brief at commit
 `e476e0e01db9a3d25ed3f1037e49293324434dfc`,
 `docs/inter-model/GROK-2026-09-21-openclaw-convmem-actualization-brief.md`, is
@@ -58,21 +68,28 @@ Review and authority order is mandatory:
 2. Ryan's written R-PROFILE-REFUSAL ruling ratifies baseline normalization and
    makes parent-unspecified refusal presentation noncontractual; it authorizes
    this overlay-only correction and no implementation.
-3. Kiro reviews this exact overlay with the unchanged semantic parent and
-   reports binary design/scope `PASS` or `FAIL`.
-4. Ryan may then grant only bounded T0–T5 implementation by naming both exact
-   SHAs and the scope. Silence, an earlier grant, or a broader aspiration is
-   not authorization.
+3. Kiro PASSed overlay `d1ca459` with semantic parent `cd9d2698`; Ryan then
+   granted bounded M0–M8 implementation.
+4. Implementation reached M8 tip
+   `8b8339e53565cad2f1a5fafda6212a7c800ffbdf`. One isolated run was
+   behaviorally green, but the legacy AST inventory was not exact collected
+   node evidence, so Codex issued `REQUIRE TEST` and no TEST PASS.
+5. Ryan authorized only the parent/overlay correction above. Kiro must review
+   this exact revised parent and overlay and report binary design/scope `PASS`
+   or `FAIL`.
+6. Ryan may then grant only the bounded M8 correction and reruns by naming both
+   new exact SHAs and the unchanged implementation branch/scope. Silence, the
+   old grant, or a broader aspiration is not authorization.
 
 ## 1. State ledger
 
 | State | Items |
 |---|---|
-| **Specified** | All parent Architecture §§4, 6–15 and Execution §§2–10; the strict three-tool reader; fixture publication; T0–T5 protocol fakes; cases 1–58 and their gate ownership. |
-| **Implemented** | Existing legacy ConvMem behavior at `CODE_BASELINE_SHA`; none of the new strict T0–T5 capability is claimed implemented. |
-| **Tested** | Parent identity plus exact-tip Astra and Kiro reviews of `cd9d2698`. The volatile review inputs are `/tmp/astra-final-cd9d2698b7423f907b552bc9118a0af523018ca9/STAGE-1-REVIEW.md` (`sha256:b923847c95ed48351ad20dc4f829c1d4c09a98ffc1ad361872abeafdda1d2941`) and `/tmp/kiro-final-cd9d2698b7423f907b552bc9118a0af523018ca9/KIRO-EXACT-TIP-REVIEW.md` (`sha256:0f048bd54738aad484c758bec88f2d704e14a626eaa6c955baf236d6ae5fc4b6`). They are evidence references, not durable repository artifacts; before Execute, Ryan must designate one durable reviewed location for them and later M7/M8 evidence. No T0–T5 executable acceptance test has run. |
-| **Assumed** | No unavailable runtime or host capability is assumed. **Runtime provisioning owner: Ryan.** Ryan may explicitly name one provisioning operator in the grant; absent that name, Ryan supplies the exact frozen runtime as the M0 input. Missing bytes block TEST. Grok may not download, install, or substitute them. |
-| **Unresolved** | No T0–T5 architectural choice remains after Ryan's refusal-contract ruling. Operational prerequisites—Kiro PASS, exact Ryan Execute grant, Codex-created worktree, supplied runtime, and durable evidence location—still block start. Later blockers: Gate D authentication/distribution/containment; Gate W production admission route; Gate D-V experiment packet; Gate E web-development pilot; all live configuration and promotion values. Watch-coverage code exists only on `origin/feat/2026-09-21-openclaw-watch-coverage` at `8f07129dfa748656356ff1eed8da4afd915ac7f5`; its A12/final coverage verdict, review, merge, and live activation remain blocked. Before activation, that arc's owners must prove required-when-present coverage and exclusion of T0–T5 hostile fixture/output paths; those bytes must never enter the live corpus. None of these later items becomes Grok work. |
+| **Specified** | Revised parent Architecture §§4, 6–15, 17–18 and Execution §§2–10; the strict three-tool reader; fixture publication; T0–T5 protocol fakes; cases 1–58 and their gate ownership; and the M8-only built-in JUnit node/outcome contract. |
+| **Implemented** | Implementation branch `feat/2026-09-21-openclaw-convmem-t0-t5` is pushed at `8b8339e53565cad2f1a5fafda6212a7c800ffbdf`. M0–M7 reached commit-specific `CONTINUE`; M8 evidence mapping exists but does not yet implement this revised JUnit contract. This plan does not certify code conformance. |
+| **Tested** | Historical Astra/Kiro reviews cover parent `cd9d2698`, and Kiro PASSed overlay `d1ca459`; they do not cover the revised parent/overlay. One isolated M8 run at `8b8339e` is behaviorally green: 238 strict passes, 29 Node passes, and 115 legacy passes plus one skip and four deselections. Strict live node evidence is exact; the legacy named-file AST inventory is not exact collected evidence, so the run is `REQUIRE TEST`, not TEST PASS. Durable evidence is under `/home/lauer/.local/share/convmem-openclaw-evidence/d1ca459960e42458b352dfd0e76a7f55db67416b/runs/8b8339e53565cad2f1a5fafda6212a7c800ffbdf/m8-run1-paused-node-evidence/`. |
+| **Assumed** | No unavailable runtime or host capability is assumed. Codex already provisioned the exact immutable runtime under Ryan's prior grant; its recorded tree hash is `sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`. A resume grant must authorize reuse of those unchanged bytes; Grok may not download, install, repair or substitute them. |
+| **Unresolved** | No bounded M8 architectural choice remains after Ryan's JUnit ruling and this correction. Kiro exact-tip PASS and a new Ryan resume grant naming both revised SHAs still block implementation. Later blockers remain unchanged: Gate D authentication/distribution/containment; Gate W production admission route; Gate D-V experiment packet; Gate E web-development pilot; Gate F/capture; all live configuration, merge, deployment and promotion values. Watch activation and hostile-output exclusion remain separately governed. None becomes Grok work. |
 
 ## 2. Dependency order
 
@@ -99,6 +116,12 @@ M0–M8 are the only implementable scope in the initial grant. M9, M10, watch
 coverage, and the complete-integration part of M11
 are decision gates, not Grok work. `TEST PASS` may be claimed exactly once,
 at M8, for the bounded Gate B/C assignment only.
+
+Current resume position is M8 only. M0–M7 are not reopened or reimplemented.
+After Kiro PASS and a new exact Ryan grant, Grok applies the parent §10.4
+evidence-only correction at the existing implementation tip, pushes one held
+M8 commit, stops, and awaits Codex inspection before either of the two required
+fresh-root runs. Any need to revisit M0–M7 is a `PAUSE`, not inferred scope.
 
 ## 3. Milestones
 
@@ -170,7 +193,7 @@ at M8, for the bounded Gate B/C assignment only.
    or xfail is allowed. Later-T tests must be red only because their frozen
    capability is absent, never because a file is missing or collection fails.
 6. **Tests/evidence:** Run only the exact runner CLI with
-   `--plan-sha cd9d2698b7423f907b552bc9118a0af523018ca9`. At this checkpoint the
+   `--plan-sha 34338133186010a26ed746bbfea4c9abb958e9ca`. At this checkpoint the
    overall suite is expected red; case 57's pre-import/containment portion and
    every runner bypass mutant must be green before the declared future-T reds.
    Evidence includes import/process/network/FD/mount traces proving no strict
@@ -438,33 +461,62 @@ at M8, for the bounded Gate B/C assignment only.
    attack every assigned trust/failure boundary before conformance review.
 2. **Architectural outcome:** Parent cases 1–58 are reported by owning gate;
    fixture success cannot stand in for blocked real/live gates.
-3. **Affected surfaces:** Only named T0–T5 test and fixture paths.
-4. **Preconditions/dependencies:** M7 `CONTINUE`; all T0–T5 code/tests committed
-   at one clean pushed SHA; exact supplied runtime remains identical.
-5. **Implementation tasks:** Run only the parent §5.1 entrypoint with
-   `--source-commit` equal to the clean implementation SHA,
-   `--plan-sha cd9d2698b7423f907b552bc9118a0af523018ca9`, the supplied runtime,
-   and `--suite all`; run the matrix in §5, independent oracles, and
-   enforcement-removal mutants. Do not modify code between reproductions.
+3. **Affected surfaces:** Only
+   `tests/fixtures/openclaw_strict/{constants.py,suites.py,run_isolated.py,audit_evidence.py,adversarial_matrix.py}`
+   as needed for the parent-fixed report/validation path, plus the single
+   existing semantic-parent literal assertion in
+   `tests/test_openclaw_strict_packet_contract.py`. Generated output is only
+   `/fixture/evidence/{pytest-strict-junit.xml,pytest-legacy-junit.xml,pytest-node-outcomes.json}`.
+4. **Preconditions/dependencies:** M7 remains accepted; implementation stays
+   at clean pushed `8b8339e53565cad2f1a5fafda6212a7c800ffbdf` until Kiro PASSes this
+   revised parent/overlay and Ryan issues a new resume grant naming both SHAs,
+   the existing branch, unchanged runtime bytes and M8-only scope.
+5. **Implementation tasks:** Mechanically repin `SEMANTIC_PARENT_SHA` and its
+   existing assertion; add exactly the parent §5.1 xunit1/JUnit arguments to
+   the two existing Python argv arrays; parse the two reports after the same
+   processes finish; enforce every parent reconstruction/outcome/count rule;
+   emit the exact canonical report; keep any AST inventory diagnostic-only;
+   and leave the Node argv byte-identical. No selected test logic or file list
+   changes. Commit, push, stop for Codex inspection, then—only after a
+   commit-specific `CONTINUE`—run the parent §5.1 entrypoint with
+   `--source-commit` equal to that clean correction SHA,
+   `--plan-sha 34338133186010a26ed746bbfea4c9abb958e9ca`, the unchanged supplied
+   runtime, and `--suite all`. Do not modify code between reproductions.
 6. **Tests/evidence:** Two fresh-root green runs of the exact three commands;
-   raw stdout/stderr/status, selected node inventory/four fixed exclusions,
-   capacity/process/import/mount/FD/network evidence, exact input/expected/
-   evidence triples, failed mutants, protected-byte/allowed-file report, and
-   explicit Gate B/C case ownership. Never claim all 58 cases passed.
+   raw stdout/stderr/status; both raw JUnit files; canonical exact strict and
+   legacy node/outcome arrays; identical arrays across runs; 238 strict passes,
+   29 Node passes, 115 legacy passes, one legacy skip and four fixed
+   deselections; capacity/process/import/mount/FD/network evidence; exact
+   input/expected/evidence triples; failed mutants; protected-byte/allowed-file
+   report; and explicit Gate B/C case ownership. Never claim all 58 cases
+   passed. AST definitions are not collected-node evidence.
 7. **Invariants:** Leakage-safe fixtures; no credentials/live data; no broadened
    test selection, permissions, or scope to make tests pass.
-8. **Forbidden changes:** Skips, new deselections, mocked-success denial,
-   implementation-derived expected values, host execution called acceptance.
-9. **Done:** Every assigned Gate B/C row passes twice at the same clean commit,
-   all mutants fail, Codex issues commit-tied `CONTINUE`, and bounded `TEST
-   PASS` is claimed here exactly once. Any other result is BLOCKED with retained
-   evidence; out-of-scope rows remain explicitly untested/blocked.
-10. **Ryan confirmation:** No to run frozen disposable tests; yes for live,
-    destructive, costly, irreversible, or permission-changing tests.
-11. **Live inspection:** Codex checks the exact command/source SHA, all raw
-    outputs/statuses, selected nodes/exclusions, two roots, negative failures,
-    fixture/runtime/component hashes, resource bounds, changed files, commits/
-    push, outside-runner commands, deviations, and unsupported claims.
+8. **Forbidden changes:** Any new test/test-logic edit beyond the mechanical
+   parent-SHA assertion, selector or deselection change, collect-only/extra
+   process, conftest/environment injection, plugin/dependency, permission or
+   runtime change, report outside `/fixture/evidence`, AST-derived collected
+   claim, skip, mocked-success denial, implementation-derived expected value,
+   or host execution called acceptance.
+9. **Done:** The correction diff stays inside field 3; every parent JUnit/parser
+   negative rejects; every assigned Gate B/C row passes twice at the same clean
+   commit; both canonical arrays are exact and identical; fixed behavioral
+   counts remain unchanged; all mutants fail; Codex issues commit-tied
+   `CONTINUE`; and bounded `TEST PASS` is claimed here exactly once. Any other
+   result is BLOCKED with retained evidence; out-of-scope rows remain explicitly
+   untested/blocked.
+10. **Ryan confirmation:** Already given for this plan-only correction; a new
+    exact-SHA resume grant is required before Grok edits or runs anything.
+    Frozen disposable reruns then need no per-run approval; live, destructive,
+    costly, irreversible or permission-changing tests still require Ryan.
+11. **Live inspection:** Codex first checks the full correction diff, exact
+    argv arrays, old/new SHA pin, unchanged test logic/selectors/deselections/
+    Node argv/dependencies/permissions/runtime, generated paths and parser
+    failure rules. After `CONTINUE`, Codex checks the exact command/source SHA,
+    both raw JUnit files, canonical arrays/counts/outcomes, raw outputs/statuses,
+    two roots, negative failures, fixture/runtime/component hashes, resource
+    bounds, changed files, commits/push, outside-runner commands, deviations,
+    and unsupported claims.
 12. **Verdict:** Separate ConvMem Gate B, connector/protocol-fake Gate C, and
     bounded integration verdicts; no OpenClaw runtime verdict.
 
@@ -656,6 +708,12 @@ supervisor may issue only:
   boundary is unclear or changed; no further work until resolved.
 - `REQUIRE TEST` — a required specified test/evidence item is missing.
 
+Current status is `PAUSE` at M8 because the governing parent and overlay SHAs
+changed after `REQUIRE TEST` on `8b8339e`. No earlier `CONTINUE` or Execute
+grant can clear it. Kiro exact-tip PASS plus a new Ryan resume grant clears only
+the plan/SHA hold; Grok then submits the correction commit and stops again for
+Codex's ordinary commit-specific inspection before any rerun.
+
 Before every `CONTINUE`, Codex inspects current diff, complete changed-file
 list, commit and push state, raw runner output including declared future-T
 reds, new dependencies, schema/data changes, permission/config changes, plan
@@ -718,19 +776,21 @@ Ryan's explicit confirmation naming exact revisions is required before:
   OpenClaw process runs in T0–T5. Real authentication, containment,
   distribution, credentials, manager proof, and tool permissions are
   unresolved, so no real OpenClaw verdict or use is authorized.
-- **Integration — AMBER for the bounded build pending Kiro review and an exact
-  Ryan Execute grant; RED for pilot/production:** the overlay no longer
+- **Integration — AMBER for the bounded build, currently PAUSED pending Kiro
+  review and an exact Ryan resume grant; RED for pilot/production:** the overlay no longer
   delegates architecture to Grok. The combined system is not operationally
   complete until Gate D/W, Gate D-V/E, live evidence, maintenance/watch, and
   promotion gates pass.
 
-## 9. Unresolved decisions that must be resolved before Grok starts
+## 9. Unresolved decisions that must be resolved before Grok resumes
 
-For bounded T0–T5, no architectural decision remains. Before Grok starts, Kiro
-must PASS this exact overlay/parent; Ryan must name both SHAs and T0–T5; Codex
-must precreate the exact-baseline branch; Ryan or the named provisioner must
-supply the frozen runtime; and Ryan must designate the durable evidence
-location. Missing any prerequisite blocks work and is not a Grok choice.
+For bounded M8, no architectural decision remains. Before Grok resumes, Kiro
+must PASS this exact revised overlay/parent and Ryan must name both new SHAs,
+the existing implementation branch/tip, unchanged runtime bytes and M8-only
+scope. Codex must then inspect the correction commit before authorizing a
+rerun. The branch, runtime and durable evidence location already exist; no
+recreation, reprovisioning or substitution is authorized. Missing any
+prerequisite blocks work and is not a Grok choice.
 
 If “Grok starts” means any real runtime, writer, pilot, live use, or promotion,
 the following remain unresolved and block work: exact authentication route;
@@ -755,14 +815,19 @@ fixture organization inside the parent-fixed paths that do not alter observable
 behavior or component membership. For parent-unspecified refusals, Grok may
 choose internal presentation only within Ryan's ruling; tests must assert the
 frozen semantic effects and must not promote those bytes/status into a contract.
+For the M8 correction Grok also must not choose report paths, JUnit family,
+node reconstruction, outcome vocabulary, canonical evidence fields, expected
+counts, or failure rules; the parent freezes all of them.
 
 ## 11. Final build-readiness gate
 
-**Bounded T0–T5 verdict: IMPLEMENTATION-COMPLETE PLAN, READY FOR KIRO EXACT-TIP
-REVIEW; GROK REMAINS UNAUTHORIZED.** Ryan's refusal-contract ruling closes the
-last architectural choice without changing the semantic parent. Kiro must PASS
-this exact revision; Ryan must then separately grant its overlay SHA plus
-`SEMANTIC_PARENT_SHA` for T0–T5. This document authorizes no implementation.
+**Bounded T0–T5 verdict: IMPLEMENTATION-COMPLETE PLAN WITH AN M8-ONLY
+CORRECTION, READY FOR KIRO EXACT-TIP REVIEW; GROK REMAINS PAUSED.** Ryan's
+node-inventory ruling closes the observed evidence gap by revising the semantic
+parent without changing selectors, tests, dependencies, permissions or runtime
+behavior. Kiro must PASS this exact parent/overlay; Ryan must then separately
+grant the new overlay SHA plus `SEMANTIC_PARENT_SHA` for the M8 correction and
+reruns. This document authorizes no resumed implementation.
 
 **Complete ConvMem–OpenClaw system verdict: NOT BUILD-READY.** Gate D real
 runtime, Gate W governed writes, Gate D-V evaluation, Gate E limited web pilot,
@@ -772,11 +837,14 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `cd9d2698` architecture/execution pair remains the semantic source
-  of truth; this overlay only sequences, supervises, and gates it.
-- The old overlay's T0–T5 order, evidence, supervision, threat matrix, and
-  later-gate defects are corrected without changing the semantic parent.
-- Ryan's refusal-contract ruling is incorporated; the bounded plan is ready
-  for Kiro exact-tip review, but Grok remains unauthorized.
+- The exact `34338133186010a26ed746bbfea4c9abb958e9ca` architecture/execution
+  pair is the revised semantic source of truth; this overlay only sequences,
+  supervises and gates it.
+- M0–M7 remain accepted. M8 is paused because its first green run lacked exact
+  legacy collected-node evidence; the two frozen Python commands may now emit
+  built-in JUnit evidence under disposable `/fixture/evidence`.
+- The correction changes no selectors, four deselections, selected test logic,
+  dependencies, permissions or runtime behavior. Kiro exact-tip review and a
+  new Ryan resume grant remain mandatory.
 - Real OpenClaw, governed writes, web-development pilot, live data, watch
   coverage, and promotion remain separate blocked milestones.
