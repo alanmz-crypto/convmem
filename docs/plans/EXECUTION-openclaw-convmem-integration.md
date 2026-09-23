@@ -1,32 +1,39 @@
 # Execution Plan — OpenClaw bounded ConvMem reader
 
 **Status:** **BUILD PASS for the frozen T0–T5 fixture contract**, subject to exact-tip review and
-Ryan's separate Execute grant. **TEST NOT YET RUN; LIVE-DATA BLOCKED; PROMOTION BLOCKED.**
+Ryan's separate Execute grant. **TEST PAUSED AT M8; no TEST PASS. LIVE-DATA BLOCKED; PROMOTION
+BLOCKED.** One behaviorally green run lacks exact live legacy collected-node evidence. This
+plan-only correction does not authorize resumed implementation; exact-tip review and a new Ryan
+grant naming the revised semantic parent and overlay are required first.
 BUILD is not complete-integration readiness and does not pass any of those later gates.
 
-**Date:** 2026-09-21
+**Date:** 2026-09-23
 
 **Arc:** none (ad-hoc integration)
 
 **Architecture:** [revised architecture](ARCHITECTURE-openclaw-convmem-integration.md), especially
-§§6.5, 14, 17–18. This final corrective edit starts from planning commit
-`2aa66a8753db3be6adce7cb17533eae96aee609d` on
-`plan/2026-09-20-openclaw-convmem-final-readiness`; review the two files together.
-The retained Astra report reviews the earlier `0f1216f` revision, not this parent or new tip:
+§§6.5, 14, 17–18. The preceding runner correction began at planning commit
+`2aa66a8753db3be6adce7cb17533eae96aee609d`; its history remains in §10.3. The current M8
+node-evidence correction begins at reconciled plan tip
+`492ba7b656d065ce1eaf31a4032d6eaf0bf6dbb3` on
+`plan/2026-09-20-openclaw-convmem-final-readiness`; review the two parent files together.
+The retained Astra report reviews the earlier `0f1216f` revision, not this correction:
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
 `d3d330b6195263e86f0c648f446ca9b4dbbf648983ee2ec2ad9aeacc7cc2026a`.
-It found B-FIXTURE and B-DIGEST, corrected by `2aa66a8`. This edit repairs only the two runner
-contradictions recorded in §10.3; the fixture, manager and five component sets remain frozen.
+It found B-FIXTURE and B-DIGEST, corrected by `2aa66a8`. Section 10.3 records the later runner
+closure/suite repairs. This edit addresses only the M8 collected-node evidence blocker in §10.4;
+the fixture, manager and five component sets remain frozen.
 
 **Code baseline:** `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`. This architectural revision changes plans
-only. A later build names the exact reviewed planning revision and proves all non-plan source is
-identical to this baseline, or obtains review of an explicit new baseline. No silent rebase of the
-implementation target.
+only. The paused implementation is at
+`8b8339e53565cad2f1a5fafda6212a7c800ffbdf`; a resume grant must name the revised planning
+revisions, preserve the baseline comparison, and authorize only the M8 correction in §10.4. No
+silent rebase of the implementation target.
 
-**Roles:** Cursor using Grok 4.5 High is the proposed implementation lane. Codex owns architectural
-editing and independent verification. Fresh Astra audits this candidate; Kiro owns required binary
-design/scope review; Ryan alone grants implementation, runtime/config changes, data admission and
-promotion. OpenClaw is the eventual bounded runtime and has no governance authority.
+**Roles:** Cursor using Grok 4.5 High remains the sole implementation lane and is paused. Codex owns
+architectural editing and independent verification. Kiro owns required binary design/scope review;
+Ryan alone grants resumed implementation, runtime/config changes, data admission and promotion.
+OpenClaw is the eventual bounded runtime and has no governance authority.
 
 ## 1. Consequence and bounded deliverable
 
@@ -39,8 +46,9 @@ promotion are non-goals. No production entrypoint can select the fake. Controlle
 supervisor entrypoints and ordinary plugin registration refuse `runtime_not_qualified` until a
 separately reviewed Gate D adapter packet; command-line refusal exits 78 before OS operations.
 
-Grok can begin implementation without making an architectural decision.
-Known deferred issues do not authorize Grok to redesign the architecture.
+The bounded implementation remains architecture-complete, but Grok may resume only after exact-tip
+review and a new Ryan grant naming the revised semantic parent and milestone overlay. Known
+deferred issues do not authorize Grok to redesign the architecture.
 
 Those statements concern architectural readiness, not an Execute grant. C-RUNTIME remains a
 real, later-runtime blocker: the inspected credential-free authentication path rejects the
@@ -474,15 +482,22 @@ Inside that boundary the driver runs these exact strict/connector suites with th
 Python/Node, not host interpreters; these commands alone outside the runner are not acceptance:
 
 ```bash
-/runtime/bin/python -m pytest -q -p no:cacheprovider --basetemp=/fixture/pytest-strict tests/test_bound_read_scope.py tests/test_strict_grounding.py tests/test_strict_evidence_state.py tests/test_strict_projection_publisher.py tests/test_strict_projection.py tests/test_strict_projection_recovery.py tests/test_mcp_openclaw_strict.py tests/test_strict_snapshot_revocation.py tests/test_openclaw_lifecycle_config.py tests/test_openclaw_connector_contract.py tests/test_openclaw_activation_controller.py tests/test_openclaw_activation_supervisor.py tests/test_openclaw_strict_packet_contract.py
+/runtime/bin/python -m pytest -q -p no:cacheprovider --basetemp=/fixture/pytest-strict -o junit_family=xunit1 --junitxml=/fixture/evidence/pytest-strict-junit.xml tests/test_bound_read_scope.py tests/test_strict_grounding.py tests/test_strict_evidence_state.py tests/test_strict_projection_publisher.py tests/test_strict_projection.py tests/test_strict_projection_recovery.py tests/test_mcp_openclaw_strict.py tests/test_strict_snapshot_revocation.py tests/test_openclaw_lifecycle_config.py tests/test_openclaw_connector_contract.py tests/test_openclaw_activation_controller.py tests/test_openclaw_activation_supervisor.py tests/test_openclaw_strict_packet_contract.py
 /runtime/bin/node --test integrations/openclaw-convmem-reader/test/connector.test.mjs
 ```
 
 In the same boundary, separately run this bounded legacy compatibility suite:
 
 ```bash
-/runtime/bin/python -m pytest -q -p no:cacheprovider --basetemp=/fixture/pytest-legacy --deselect=tests/test_agent_run_ledger.py::test_v8_kiro_hook_adapter_fail_open --deselect=tests/test_agent_run_ledger.py::test_v6_git_facts_non_git_cwd --deselect=tests/test_agent_run_ledger.py::test_q7_hook_failure_writes_stderr --deselect=tests/test_agent_run_ledger.py::test_q4_hook_two_missing_id_starts_same_cwd tests/test_site_filter.py tests/test_milestone_c.py tests/test_agent_run_ledger.py tests/test_query_ledger_lookup.py tests/test_query_search_harden.py tests/test_ledger_related.py tests/test_unresolved_payload.py tests/test_file_generation_store.py tests/test_file_generation_validate.py tests/test_governed_recovery_and_writers.py tests/test_governed_writer_gate.py tests/test_shadow_writer_coverage_scan.py tests/test_provenance.py tests/test_provenance_continuity.py
+/runtime/bin/python -m pytest -q -p no:cacheprovider --basetemp=/fixture/pytest-legacy -o junit_family=xunit1 --junitxml=/fixture/evidence/pytest-legacy-junit.xml --deselect=tests/test_agent_run_ledger.py::test_v8_kiro_hook_adapter_fail_open --deselect=tests/test_agent_run_ledger.py::test_v6_git_facts_non_git_cwd --deselect=tests/test_agent_run_ledger.py::test_q7_hook_failure_writes_stderr --deselect=tests/test_agent_run_ledger.py::test_q4_hook_two_missing_id_starts_same_cwd tests/test_site_filter.py tests/test_milestone_c.py tests/test_agent_run_ledger.py tests/test_query_ledger_lookup.py tests/test_query_search_harden.py tests/test_ledger_related.py tests/test_unresolved_payload.py tests/test_file_generation_store.py tests/test_file_generation_validate.py tests/test_governed_recovery_and_writers.py tests/test_governed_writer_gate.py tests/test_shadow_writer_coverage_scan.py tests/test_provenance.py tests/test_provenance_continuity.py
 ```
+
+`junitxml` is pytest 9.1.1's built-in reporter already present and loaded in the frozen runtime;
+`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` remains unchanged. `-o junit_family=xunit1` freezes the emitted
+`file`, `classname` and `name` attributes needed for lossless node reconstruction. These output-only
+arguments add no dependency/plugin/process/environment input, do not change selection, and create
+only the two named disposable files. The sole accepted terminal-output difference is pytest's own
+built-in generated-report notice. The Node command is byte-for-byte unchanged.
 
 `--suite all` means exactly the three commands above: strict Python, connector Node and bounded
 legacy Python. It never means unqualified repository-wide pytest discovery. The frozen code
@@ -505,6 +520,36 @@ safety test may be skipped; compare collected node IDs with the frozen selection
 Packet-contract negative controls must reject a full-discovery command, a missing selected safety
 node, an extra deselection, a hook/Git spawn and a strict reader importing a legacy writer. Fix the
 runner/test selection implementation, never silently execute on the host or broaden its inventory.
+
+After the unchanged Python processes exit, parse the two raw reports with the standard library and
+write canonical `/fixture/evidence/pytest-node-outcomes.json` with exact top-level fields
+`schema, full_repository_discovery, suites`. `schema` is
+`convmem.pytest-node-outcomes.v1`; `full_repository_discovery` is false; `suites` is the ordered
+strict-then-legacy array. Each suite has exact fields `suite, junit_path, selector_files,
+deselections, counts, node_outcomes`. `counts` has `collected, passed, failed, error, skipped`;
+`node_outcomes` is sorted by node ID and contains exact `{nodeid,outcome}` objects, where outcome is
+one of `passed, failed, error, skipped`.
+
+For every xunit1 `<testcase>`, require exact nonempty `file`, `classname` and `name` attributes.
+`file` must equal one exact selector. Its dotted `.py`-stripped form must equal `classname` or be
+its unique prefix; any remaining dotted classname components are class/collector segments between
+the file and test name. Reconstruct `file::segment...::name`, require a unique round trip to the
+same three attributes, and reject any `#xNN`/`#xNNNN` lossy escape marker. Require exactly one
+`testsuites` root containing exactly one direct `testsuite`; reject DTD/entity declarations,
+malformed or additional/nested suite elements, unexpected testcase children, duplicate node IDs,
+nodes outside selectors, a selected file with no testcase, or any deselected node. A
+testcase with no outcome child is `passed`; exactly one `failure`, `error` or `skipped` child maps
+to that outcome; multiple/unknown children reject. Counts must equal both the testcase-derived
+counts and the JUnit suite attributes. `failed` or `error`, a nonzero process status, or disagreement
+with the fixed behavioral counts fails TEST. The strict and legacy canonical arrays must each be
+identical across the two fresh-root M8 runs. AST inventories are diagnostic only and may never
+populate `pytest-node-outcomes.json` or be labeled collected evidence.
+
+The pre-correction behavioral baseline is fixed as 238 strict passes; 29 Node passes; and 115
+legacy passes, one legacy skip and four deselections. The correction must preserve those results.
+No selected test logic, file inventory or outcome may change. Updating the existing exact
+semantic-parent SHA assertion to the newly reviewed parent is the sole mechanical selected-test
+file edit allowed; it may not alter test behavior.
 
 Run `git diff --check` against the implementation branch outside the exported tree. No
 new strict-test skips; report existing production-dependent skips. B/C leaves existing
@@ -604,9 +649,11 @@ inventory/classification/contract checks, unchanged baseline code and `git diff 
 review bundle includes the checker/output and exact committed diff. It does not relabel these
 checks as TEST PASS.
 For this correction return the complete inventoried `sysroot/usr` mapping, the exact three-suite
-selection with four named exclusions, selected node IDs, unchanged protected baseline bytes, and
-the capacity measurements when TEST is later run. The retained Astra report reviews `0f1216f`;
-this correction's parent is `2aa66a8`. Neither report history nor document checks certify execution.
+selection with four named exclusions, both raw JUnit reports, the canonical exact node/outcome
+report, unchanged protected baseline bytes, and the capacity measurements when TEST is later run.
+Prove both fresh runs have identical node/outcome arrays and preserve the fixed behavioral counts.
+The retained Astra report reviews `0f1216f`; the preceding runner correction's parent was
+`2aa66a8`. Neither report history nor document checks certify this M8 correction or execution.
 
 A focused fresh Astra check of the runner corrections, preserved fixture/hash contracts and their
 regression matrix precedes Kiro's exact-tip binary review. Do not reopen passed semantics or demand future
@@ -615,9 +662,11 @@ reviewer passage does not itself authorize execution.
 
 ## 10. Precise changes and remaining readiness
 
-This edit's parent is `2aa66a8753db3be6adce7cb17533eae96aee609d`. Architecture §18.4 and §10.3 here
-record the two runner contradictions and fixed remedies; Architecture §18.5 is this correction's
-regression matrix. Authority, state, grounding, receipts, lifecycle/freshness, explicit-add, private
+The preceding runner edit's parent was `2aa66a8753db3be6adce7cb17533eae96aee609d`.
+Architecture §18.4 and §10.3 here record those two contradictions and fixed remedies;
+Architecture §18.5 is that correction's regression matrix. The current M8 correction begins at
+`492ba7b656d065ce1eaf31a4032d6eaf0bf6dbb3` and is recorded in Architecture §18.6 and §10.4 here.
+Authority, state, grounding, receipts, lifecycle/freshness, explicit-add, private
 qualification, manager ownership and exact component sets remain intact. Architecture §§18.1–3
 retain the preceding `0f1216f` to `2aa66a8` correction for reference. No production-schema version,
 implementation allowance or legacy identifier/envelope changes in this edit.
@@ -704,15 +753,18 @@ The following execution mapping uses the same exact classifications; no item gra
 
 - **BUILD PASS:** only the frozen T0–T5 fixture implementation is fully specified. Exact-tip review
   and Ryan's Execute grant remain required; neither is inferred from this author's readiness claim.
-- **TEST NOT YET RUN:** all assigned B/C cases, independent references/negative controls, isolated
-  legacy compatibility and evidence must pass. Document checks are not these tests.
+- **TEST PAUSED AT M8; no TEST PASS:** one isolated reproduction is behaviorally green, but its
+  legacy AST definition inventory is not exact collected-node evidence. Implement the reviewed
+  JUnit-only correction, then repeat two fresh-root runs with identical canonical node/outcome
+  arrays and all other assigned B/C evidence. Document checks and the prior run are not a PASS.
 - **LIVE-DATA BLOCKED:** actual Gate D authentication/containment/distribution and applicable Gate W
   production enrollment, plus an explicit data/config grant, are still required.
 - **PROMOTION BLOCKED:** LIVE-DATA and the later applicable Gate E/D-V/production authorization
   requirements must be independently satisfied. No channel/gateway/consequential-data effect now.
 
 **WHAT DID THIS EDIT BREAK THAT WAS PREVIOUSLY SOUND?** No documentary regression found in the
-attempted attacks in Architecture §18.5; implementation tests are not yet run. The matrix covers
+attempted attacks in Architecture §18.5. One M8 reproduction is behaviorally green but lacks exact
+legacy collected-node evidence, so no TEST PASS exists. The matrix covers
 authority rollback, canonical state/forks, grounding/receipts/original admission, retirement/
 freshness/release, explicit writes, private qualification, physical fixture/credential isolation,
 legacy bytes, recovery, Gate W separation and hash membership. The prior full-repository test
@@ -753,9 +805,28 @@ Physical denial tests observe kernel results inside the disposable boundary, not
 Capacity remains unmeasured TEST work at the unchanged thresholds; fake success never proves real
 authentication, provider compatibility, sealed production distribution, live data or promotion.
 
-Grok can begin implementation without making an architectural decision.
-Known deferred issues do not authorize Grok to redesign the architecture.
+### 10.4 M8 node-inventory correction obligations
 
-**TL;DR:** [Arc none] Runtime dependency closure and compatible suite selection are now fixed;
-manager and component-hash semantics are preserved. BUILD PASS is bounded to T0–T5. TEST is not yet run, real runtime/
-live data/promotion remain blocked, and the focused exact-tip check then Kiro precede any Ryan grant.
+Architecture §18.6 records the authorized correction and observed blocker. When a new exact grant
+names this revised parent and overlay, Grok may change only the fixture runner/evidence helpers
+needed to add the two §5.1 JUnit arguments, parse/validate their reports, emit the fixed canonical
+node/outcome artifact, update generated-output exclusions if required by the exact walker, and
+mechanically repin the semantic-parent constant and its existing assertion. The selected test
+files, selector arrays, four deselections, Node command, dependency/runtime/plugin inventories,
+environment, mounts, permissions, negative controls and all production modules remain unchanged.
+
+Codex must inspect the complete diff before execution. Any new test or test-logic edit, new process,
+`--collect-only`, conftest or environment injection, plugin/dependency, selector/deselection change,
+report outside `/fixture/evidence`, AST-derived collected claim, changed behavioral count/outcome,
+or weakened failure rule receives `PAUSE` or `REQUIRE TEST`. The first corrected reproduction does
+not inherit the old run's status; M8 requires two fresh-root runs at one clean pushed commit and
+the exact raw/canonical evidence in §5.1/§9. TEST PASS may be issued only after both are inspected.
+
+The bounded implementation remains architecture-complete, but Grok may resume only after exact-tip
+review and a new Ryan grant naming the revised semantic parent and milestone overlay. Known
+deferred issues do not authorize Grok to redesign the architecture.
+
+**TL;DR:** [Arc none] The two frozen Python suites may emit built-in JUnit evidence so M8 can prove
+exact live node IDs and outcomes without changing selection or behavior. BUILD PASS; TEST PAUSED;
+real runtime/live data/promotion remain blocked. Grok resumes only after exact-tip review and a new
+Ryan grant naming the revised parent and overlay.

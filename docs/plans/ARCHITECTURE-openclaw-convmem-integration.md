@@ -1,22 +1,26 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
 **Status:** **BUILD PASS for the frozen T0–T5 fixture contract**, subject to exact-tip review and
-Ryan's separate Execute grant. **TEST: NOT YET RUN. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.**
+Ryan's separate Execute grant. **TEST: PAUSED AT M8; no TEST PASS. LIVE-DATA: BLOCKED.
+PROMOTION: BLOCKED.** One behaviorally green M8 reproduction exists, but its legacy AST inventory
+is not exact live collected-node evidence. This plan-only correction does not authorize resumed
+implementation; the revised semantic parent and milestone overlay require exact-tip review and a
+new Ryan grant before work continues.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
 
-**Date:** 2026-09-21
+**Date:** 2026-09-23
 
 **Arc:** none (ad-hoc integration)
 
-**Authority:** Codex architectural editing lane. This final corrective edit starts from planning
-commit `2aa66a8753db3be6adce7cb17533eae96aee609d` on
-`plan/2026-09-20-openclaw-convmem-final-readiness`. Astra reviewed its parent `0f1216f`, not
-`2aa66a8` or this correction. The preceding correction resolved B-FIXTURE and B-DIGEST;
-§18.4 records two concrete runner-contract repairs without reopening those sound semantics.
-Sections 6.5.8–9 freeze the fixture and hash contracts. Kiro owns design review; Ryan
-owns policy approval and any later Execute grant. No complete-integration readiness is claimed.
+**Authority:** Codex architectural editing lane. The preceding runner correction began at planning
+commit `2aa66a8753db3be6adce7cb17533eae96aee609d`; its history is retained in §§18.4–5. The current
+M8 node-evidence correction begins at reconciled plan tip
+`492ba7b656d065ce1eaf31a4032d6eaf0bf6dbb3` on
+`plan/2026-09-20-openclaw-convmem-final-readiness` under Ryan's written plan-only authorization.
+Sections 6.5.8–9 freeze the fixture and hash contracts. Kiro owns design review; Ryan owns policy
+approval and any later resume grant. No complete-integration readiness is claimed.
 
 **Review inputs:** Final Astra report
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -49,9 +53,10 @@ credential selection, Gate W code, live sources, migration, capture, channels an
 non-goals. Production launch entrypoints fail closed in this slice. A fake tests protocol behavior
 only; it proves neither OpenClaw compatibility nor host containment.
 
-Grok can begin implementation without making an architectural decision.
-Known deferred issues do not authorize Grok to redesign the architecture.
-These are BUILD-readiness statements, not a substitute for Kiro review or Ryan's Execute grant.
+The bounded implementation remains architecture-complete, but Grok may resume only after exact-tip
+review and a new Ryan grant naming the revised semantic parent and milestone overlay. Known
+deferred issues do not authorize Grok to redesign the architecture. These are BUILD-readiness
+statements, not a substitute for Kiro review or Ryan's Execute grant.
 
 ## 1. Consequence for Ryan
 
@@ -2063,7 +2068,12 @@ allows only the exact execution §5.1 pytest/Node suites and fresh Python invoca
 reader and strict-server entrypoints; it has no general command runner. T4/T5 spawn remains virtual.
 Run from read-only `/src`, disable pytest's cache provider, and place its explicit base-temp roots
 under `/fixture`. Explicitly load only baseline-required test plugins and record their inventory;
-never enable plugin autoload. Per-suite wall deadline is 600 seconds; captured stdout/stderr has a
+never enable plugin autoload. The two frozen Python commands additionally activate pytest's
+already-loaded built-in JUnit reporter and write only
+`/fixture/evidence/pytest-strict-junit.xml` and
+`/fixture/evidence/pytest-legacy-junit.xml`. This adds no plugin, dependency, environment input,
+process, selector, deselection, test, permission or runtime capability. The Node command is
+unchanged. Per-suite wall deadline is 600 seconds; captured stdout/stderr has a
 combined 16 MiB limit. Exceeding either fails without budget expansion. Execution §5.1 fixes the
 test-only runner's closed CLI, pre-import setup operations and exact inner commands.
 These are unmeasured limits, not demonstrated capacity. TEST records monotonic elapsed time,
@@ -2106,6 +2116,20 @@ process, the same physical containment and no subprocess allowance. Only that pr
 unchanged legacy config/writers for its synthetic stores; strict components retain their original
 import restrictions. This preserves legacy behavior without granting strict readers write access.
 
+Exact live Python node/outcome evidence comes only from the two built-in JUnit reports, never from
+AST enumeration, a test-side session dump, `--collect-only`, another pytest process, `conftest.py`,
+`PYTEST_PLUGINS`, `PYTEST_ADDOPTS` or a new plugin. After both existing Python processes finish, the
+outer runner parses the xunit1 reports as data and reconstructs each node ID losslessly from
+pytest's `file`, `classname` and `name` attributes against the exact selected-file map. It rejects missing or
+multiple file-prefix matches, duplicate reconstructed node IDs, lossy `#xNN`/`#xNNNN` escape
+markers, malformed XML, unexpected testcase children, a node outside the exact selected files, or
+any of the four deselected nodes appearing. Outcome is exactly `passed`, `failed`, `error` or
+`skipped`, derived from the testcase's zero-or-one outcome child; failures/errors, conflicting
+children, report/process-count disagreement or a nonzero Python suite status fail TEST. Each
+selected file must contribute at least one testcase. The canonical sorted node/outcome arrays from
+both fresh-root runs must be identical. Static AST inventories may remain diagnostic only and must
+not be labeled or accepted as collected-node evidence.
+
 Case57 must observe actual kernel denials for outside-root canary opens/writes and read-only
 mount writes, not merely a fake `access()` denial. A separate synthetic-only inner exposure of
 a canary must make the independent preflight fail while the outer boundary stays intact. Fake
@@ -2127,6 +2151,9 @@ manifest_payload_sha256. `source_tree_sha256` hashes the exact tracked source ex
 fixture manifest and generated run outputs excluded, preventing a self-reference; the exported
 input inventory is returned alongside the manifest. Generation uses canonical JSON, fixed clock/event/identity scenario data
 and exact source bytes; it never discovers a runtime/model/provider from the host.
+The two raw JUnit reports and the derived canonical node/outcome report are generated only under
+disposable `/fixture/evidence`; they are returned evidence, never fixture/source/component hash
+inputs or authority artifacts.
 
 Launch/activation/filter/image/model specimens are wrapped as closed
 `{artifact_kind:"protocol_fixture", role, payload}` test data. Role is one of `activation`,
@@ -3294,8 +3321,12 @@ cases, and every later case remains a blocking future gate.
     inventory, remove/mutate one copied loader/library or add an unlisted file; preflight rejects
     before an implementation-import sentinel runs. Record real canary/read-only denial results;
     an inner synthetic canary exposure must be detected, not hidden by mocked denial results.
-    Verify the exact three suite commands, the four declared legacy exclusions and every selected
-    node. A full-discovery command, extra deselection, hook/Git spawn or strict writer import fails.
+    Verify the exact three suite commands, the two exact built-in JUnit output arguments, the four
+    declared legacy exclusions and every selected node/outcome. A full-discovery command, extra
+    deselection, AST data labeled as collected evidence, hook/Git spawn or strict writer import
+    fails. The pre-correction behavioral baseline remains 238 strict passes, 29 Node passes, and
+    115 legacy passes plus one legacy skip and four deselections; any changed count/outcome is a
+    regression, not evidence collection.
     Measure the existing capacity bounds; inject counter overflow/deadline and fill only private
     `/tmp` past its cap as negative controls. Failure never raises budgets or changes protocol time.
 58. Build independently the five exact §6.5.9 component entry arrays and hashes plus the separate
@@ -3523,7 +3554,8 @@ suite selection, repair records and unchanged manager/core semantics against `2a
 Section18.5 records the focused regression review; §18.3 retains the preceding correction's matrix. The bundle carries
 the checker, its output and parent-to-target diff so these assertions are reproducible.
 
-No integration acceptance is claimed: TEST remains NOT YET RUN. Prior static routing/auth probes
+No integration acceptance is claimed: one M8 reproduction is behaviorally green but TEST remains
+PAUSED because its legacy collected-node evidence is incomplete. Prior static routing/auth probes
 were not rerun for this correction. No implementation, OpenClaw configuration, package install,
 credential read or gateway/service start is part of this edit. The final exact-commit bundle must
 bind the committed plan bytes, correctly labeled historical review, unchanged code evidence and historical probe
@@ -4008,9 +4040,40 @@ documentary comparisons and required future tests, never claims of executed conf
 | Fixture/live-data/promotion separation | Fake remains unselectable and unauthenticating; four gate statuses retained. | Case57 disabled launch/registration; no Gate D/W/E PASS from fixture success. |
 | Capacity versus protocol | 600 seconds, 16 MiB output, 256 MiB private `/tmp` unchanged and unmeasured. | Record measurements and failing over-limit controls; protocol deadlines/authority/freshness unchanged. |
 
-BUILD remains PASS after these specification repairs. TEST remains NOT YET RUN; LIVE-DATA and
-PROMOTION remain BLOCKED. Fresh Astra must review this exact tip's runner/fixture/hash contracts
-before Kiro; the `0f1216f` report does not certify either later revision.
+At the close of the preceding correction, BUILD remained PASS and TEST had not yet run. The current
+state is superseded by §18.6: one behaviorally green M8 run exists, TEST is PAUSED without a PASS,
+and LIVE-DATA/PROMOTION remain BLOCKED. The earlier reports do not certify this revision.
+
+### 18.6 M8 exact node/outcome evidence correction
+
+**Authorized correction.** On 2026-09-23 Ryan authorized only a plan correction allowing the two
+frozen Python test commands to emit built-in pytest JUnit XML under disposable
+`/fixture/evidence`, solely to obtain exact collected node IDs and outcomes. Selectors, the four
+deselections, test behavior, dependencies, permissions, isolation and runtime semantics remain
+unchanged. Gate D, real OpenClaw, merge, deployment and later gates remain unauthorized.
+
+**Observed blocker.** M8 implementation tip
+`8b8339e53565cad2f1a5fafda6212a7c800ffbdf` completed one behaviorally green isolated run: 238
+strict passes, 29 Node passes, and 115 legacy passes plus one skip and four deselections. Its strict
+suite supplied live pytest items, but its legacy report supplied only a named-file AST definition
+inventory. Parameterization made that diagnostic smaller than the live legacy collection, so it
+cannot satisfy §6.5.8's collected-node evidence requirement. No TEST PASS was issued.
+
+**Minimum repair.** Execution §5.1 adds one built-in JUnit output argument to each existing Python
+command and freezes both output paths. The runner derives canonical node/outcome arrays after the
+unchanged processes finish, using the fail-closed reconstruction and validation rules in §6.5.8.
+No new command, collection pass, plugin, environment mechanism or protected-test edit is allowed.
+The only selected-test-file change permitted when implementation resumes is the mechanical update
+of the existing semantic-parent SHA assertion required by the newly reviewed parent; it may not
+change test logic, selection or outcome.
+
+**Acceptance and regression boundary.** Both fresh-root runs must preserve the observed behavioral
+counts, yield identical canonical Python node/outcome arrays, exclude the exact four legacy nodes,
+and keep the Node command/result unchanged. Raw JUnit and derived evidence remain disposable,
+hash-excluded test output. Missing, malformed, ambiguous, lossy, duplicate, inconsistent or
+out-of-selection evidence fails M8. All authority, provenance, publication, recovery, component
+hash, containment and later-gate invariants remain unchanged. BUILD remains PASS for bounded T0–T5;
+TEST is PAUSED pending implementation of this reviewed correction and two accepted reruns.
 
 ## Jargon TL;DR
 
@@ -4033,6 +4096,7 @@ before Kiro; the `0f1216f` report does not certify either later revision.
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
 
-**TL;DR:** [Arc none] Two concrete runner contradictions are repaired; independent manager and
-component-hash contracts are preserved. BUILD PASS; TEST NOT YET RUN; LIVE-DATA and PROMOTION BLOCKED. Grok implements the fixed
-T0–T5 scope only after exact-tip review and Ryan's grant; production gaps authorize no redesign.
+**TL;DR:** [Arc none] The two frozen Python suites may emit built-in JUnit evidence so M8 can prove
+exact live node IDs and outcomes without changing selection or behavior. BUILD PASS; TEST PAUSED;
+LIVE-DATA and PROMOTION BLOCKED. Implementation resumes only after exact-tip review and a new Ryan
+grant naming the revised parent and overlay.
