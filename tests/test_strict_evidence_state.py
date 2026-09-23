@@ -18,6 +18,8 @@ from provenance import base_envelope, provenance_commitment, root_binding
 from strict_evidence_state import (
     LedgerIdMintDenied,
     StrictEvidenceError,
+    _eligibility_for_record,
+    apply_verification_eligibility,
     assertion_id_v2,
     disposition_id,
     logical_id_v2,
@@ -578,3 +580,110 @@ def _disposition(
         "ratified_at": "2026-09-21T00:00:03Z",
         "rationale_sha256": "sha256:" + "f" * 64,
     }
+
+
+def _matching_verification_envelope() -> dict[str, Any]:
+    """Envelope transformer fields that exactly match ``_binding()`` producers."""
+
+    return {
+        "transformer_identity": "fixture-transformer",
+        "transformer_version": "1",
+        "transformer_artifact_sha256": "sha256:" + ("d" * 64),
+        "transformer_recipe_sha256": "sha256:" + ("e" * 64),
+    }
+
+
+def test_eligibility_rejects_forged_stored_check_eligibility():
+    binding = _binding()
+    envelope = _matching_verification_envelope()
+    qualification = QualificationTuple(
+        "valid", "complete", "synthetic_fixture", "trusted"
+    )
+    assert (
+        _eligibility_for_record(
+            binding=binding,
+            record_kind="verification",
+            source_registration_id="src-reg-1",
+            producer="form-prod",
+            envelope=envelope,
+            qualification=qualification,
+        )
+        == "qualified"
+    )
+    # Labeled/bare digest parity uses existing parent hash comparison only.
+    bare = dict(envelope)
+    bare["transformer_artifact_sha256"] = "d" * 64
+    bare["transformer_recipe_sha256"] = "e" * 64
+    assert (
+        _eligibility_for_record(
+            binding=binding,
+            record_kind="verification",
+            source_registration_id="src-reg-1",
+            producer="form-prod",
+            envelope=bare,
+            qualification=qualification,
+        )
+        == "qualified"
+    )
+    forged = {
+        "record_kind": "verification",
+        "source_registration_id": "src-reg-1",
+        "producer": "form-prod",
+        "provenance_envelope": envelope,
+        "provenance_qualification": qualification.as_dict(),
+        "check_eligibility": "inconclusive_only",
+    }
+    with pytest.raises(StrictEvidenceError, match="qualification_immutable"):
+        apply_verification_eligibility([forged], binding=binding)
+    assert (
+        _eligibility_for_record(
+            binding=binding,
+            record_kind="observation",
+            source_registration_id="src-reg-1",
+            producer="form-prod",
+            envelope=envelope,
+            qualification=qualification,
+        )
+        == "not_applicable"
+    )
+
+
+def test_eligibility_inconclusive_when_one_transformer_tuple_field_differs():
+    binding = _binding()
+    qualification = QualificationTuple(
+        "valid", "complete", "synthetic_fixture", "trusted"
+    )
+    base = _matching_verification_envelope()
+    variants = [
+        {**base, "transformer_identity": "other-transformer"},
+        {**base, "transformer_version": "2"},
+        {**base, "transformer_artifact_sha256": "sha256:" + ("a" * 64)},
+        {**base, "transformer_recipe_sha256": "sha256:" + ("b" * 64)},
+    ]
+    for envelope in variants:
+        assert (
+            _eligibility_for_record(
+                binding=binding,
+                record_kind="verification",
+                source_registration_id="src-reg-1",
+                producer="form-prod",
+                envelope=envelope,
+                qualification=qualification,
+            )
+            == "inconclusive_only"
+        )
+    # Capture class comes from frozen original qualification, not the envelope.
+    wrong_capture = QualificationTuple(
+        "valid", "complete", "controlled_capture", "trusted"
+    )
+    assert (
+        _eligibility_for_record(
+            binding=binding,
+            record_kind="verification",
+            source_registration_id="src-reg-1",
+            producer="form-prod",
+            envelope=base,
+            qualification=wrong_capture,
+        )
+        == "inconclusive_only"
+    )

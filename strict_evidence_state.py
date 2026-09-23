@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import struct
 import unicodedata
@@ -18,6 +19,7 @@ from bound_read_scope import (
 )
 from strict_grounding import (
     QualificationTuple,
+    _hashes_equal,
     derive_origin_assurance,
     strict_canonical_bytes,
 )
@@ -505,6 +507,7 @@ def materialize_authority_records(
             record_kind=record_kind,
             source_registration_id=source_registration_id,
             producer=producer,
+            envelope=envelope,
             qualification=frozen_qualification,
         )
 
@@ -575,15 +578,39 @@ def _eligibility_for_record(
     record_kind: str,
     source_registration_id: str,
     producer: str,
+    envelope: Mapping[str, Any],
     qualification: QualificationTuple,
 ) -> str:
+    """Derive check_eligibility from the frozen registry verification_producers tuple.
+
+    Exact match requires source_registration_id + producer from the record,
+    transformer_identity / transformer_version / transformer_artifact_sha256 /
+    transformer_recipe_sha256 (registry recipe_sha256) from the immutable
+    provenance envelope, and capture_class from the frozen original
+    QualificationTuple. Digest fields accept labeled or bare hex only via the
+    existing parent ``_hashes_equal`` rule — no new normalization.
+    """
+
     if record_kind != "verification":
         return "not_applicable"
+    if not isinstance(envelope, Mapping):
+        return "inconclusive_only"
+    identity = envelope.get("transformer_identity")
+    version = envelope.get("transformer_version")
+    artifact = envelope.get("transformer_artifact_sha256")
+    # Envelope field transformer_recipe_sha256 maps to registry recipe_sha256.
+    recipe = envelope.get("transformer_recipe_sha256")
+    capture = qualification.capture
     matched: Any = None
     for entry in binding.verification_producers:
         if (
             entry.source_registration_id == source_registration_id
             and entry.producer == producer
+            and entry.transformer_identity == identity
+            and entry.transformer_version == version
+            and _hashes_equal(entry.transformer_artifact_sha256, artifact)
+            and _hashes_equal(entry.recipe_sha256, recipe)
+            and entry.capture_class == capture
         ):
             matched = entry
             break
@@ -613,6 +640,9 @@ def apply_verification_eligibility(
         pq = rec["provenance_qualification"]
         if not isinstance(pq, Mapping):
             raise StrictEvidenceError("qualification_type")
+        envelope = rec.get("provenance_envelope")
+        if not isinstance(envelope, Mapping):
+            raise StrictEvidenceError("provenance_envelope")
         qualification = QualificationTuple(
             pq["commitments"],
             pq["byte_grounding"],
@@ -624,6 +654,7 @@ def apply_verification_eligibility(
             record_kind=rec["record_kind"],
             source_registration_id=rec["source_registration_id"],
             producer=rec["producer"],
+            envelope=envelope,
             qualification=qualification,
         )
         if "check_eligibility" in rec and rec["check_eligibility"] != expected:
@@ -1173,6 +1204,183 @@ def state_sha256(
     return sha256_digest(strict_canonical_bytes(obj))
 
 
+def _canonical_copy(value: Any) -> Any:
+    """Deep-copy via canonical JSON so nested bindings stay byte-equivalent."""
+
+    return json.loads(strict_canonical_bytes(value).decode("utf-8"))
+
+
+def build_citation_map(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Exactly one citation per record, sorted by citation_ref; bindings from envelope."""
+
+    citations: list[dict[str, Any]] = []
+    seen_assertions: set[str] = set()
+    for rec in records:
+        if not isinstance(rec, Mapping):
+            raise StrictEvidenceError("citation_record_type")
+        assertion_id = rec.get("assertion_id")
+        if not isinstance(assertion_id, str) or not assertion_id:
+            raise StrictEvidenceError("citation_assertion_id")
+        if assertion_id in seen_assertions:
+            raise StrictEvidenceError("citation_duplicate_assertion")
+        seen_assertions.add(assertion_id)
+        envelope = rec.get("provenance_envelope")
+        if not isinstance(envelope, Mapping):
+            raise StrictEvidenceError("citation_envelope")
+        prov_id = envelope.get("assertion_id")
+        if not isinstance(prov_id, str) or not prov_id:
+            raise StrictEvidenceError("citation_provenance_id")
+        commitment = rec.get("provenance_commitment")
+        if not isinstance(commitment, str) or not commitment:
+            raise StrictEvidenceError("citation_commitment")
+        root_bindings = envelope.get("root_bindings")
+        input_bindings = envelope.get("input_bindings")
+        if not isinstance(root_bindings, list) or not isinstance(input_bindings, list):
+            raise StrictEvidenceError("citation_bindings_type")
+        citations.append(
+            {
+                "citation_ref": citation_ref(
+                    project_binding_id=str(rec["project_binding_id"]),
+                    assertion_id=assertion_id,
+                    provenance_commitment=commitment,
+                ),
+                "assertion_id": assertion_id,
+                "provenance_assertion_id": prov_id,
+                "provenance_commitment": commitment,
+                "root_bindings": _canonical_copy(root_bindings),
+                "input_bindings": _canonical_copy(input_bindings),
+            }
+        )
+    if len(citations) != len(records):
+        raise StrictEvidenceError("citation_count")
+    citations.sort(key=lambda c: c["citation_ref"])
+    refs = [c["citation_ref"] for c in citations]
+    if refs != sorted(set(refs)):
+        raise StrictEvidenceError("citation_ref_unique")
+    citation_map: dict[str, Any] = {
+        "schema": "convmem.strict-citation-map.v1",
+        "citations": citations,
+        "citation_map_payload_sha256": "sha256:" + ("0" * 64),
+    }
+    body = {k: v for k, v in citation_map.items() if k != "citation_map_payload_sha256"}
+    citation_map["citation_map_payload_sha256"] = sha256_digest(
+        strict_canonical_bytes(body)
+    )
+    return citation_map
+
+
+def build_projection_rows_and_graph(
+    *,
+    records: Sequence[Mapping[str, Any]],
+    reduced: Mapping[str, ReducedState],
+    lineage_id: str,
+    authority_seq: int,
+    authority_manifest_sha256: str,
+    semantic_contract_sha256: str,
+    binding_public_ref: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Rebuild serving rows/graph from authority + reduced state (independent of stored)."""
+
+    rows: list[dict[str, Any]] = []
+    nodes: set[str] = set()
+    edges: list[dict[str, str]] = []
+    for rec in sorted(records, key=lambda r: r["assertion_id"]):
+        aid = rec["assertion_id"]
+        if aid not in reduced:
+            raise StrictEvidenceError("row_missing_state")
+        st = reduced[aid]
+        nodes.add(aid)
+        cite = citation_ref(
+            project_binding_id=rec["project_binding_id"],
+            assertion_id=aid,
+            provenance_commitment=rec["provenance_commitment"],
+        )
+        row = {
+            "schema": "convmem.bound-projection-row.v2",
+            "project_binding_id": rec["project_binding_id"],
+            "public_binding_ref": binding_public_ref,
+            "source_registration_id": rec["source_registration_id"],
+            "authority_site": rec["authority_site"],
+            "authority_domain": rec["authority_domain"],
+            "record_kind": rec["record_kind"],
+            "logical_id": rec["logical_id"],
+            "assertion_id": aid,
+            "public_ledger_id": public_ledger_id(
+                public_binding_ref=binding_public_ref, assertion_id=aid
+            ),
+            "citation_ref": cite,
+            "title": rec["title"],
+            "document": rec["document"],
+            "observed_at": rec["observed_at"],
+            "recorded_at": rec["recorded_at"],
+            "confidence_bps": rec["confidence_bps"],
+            "relates_to_assertion_id": rec["relates_to_assertion_id"],
+            "target_assertion_id": rec["target_assertion_id"],
+            "verification_result": rec["verification_result"],
+            "supersedes_assertion_ids": list(rec["supersedes_assertion_ids"]),
+            "decision_disposition_ref": rec["decision_disposition_ref"],
+            "supersession_disposition_ref": rec["supersession_disposition_ref"],
+            "origin_assurance": rec["origin_assurance"],
+            "provenance_qualification": dict(rec["provenance_qualification"]),
+            "check_eligibility": rec["check_eligibility"],
+            "authority_state": st.authority_state,
+            "verification_state": st.verification_state,
+            "state_disposition_refs": list(st.state_disposition_refs),
+            "payload_sha256": rec["payload_sha256"],
+            "state_sha256": state_sha256(
+                lineage_id=lineage_id,
+                authority_seq=authority_seq,
+                authority_manifest_sha256=authority_manifest_sha256,
+                semantic_contract_sha256=semantic_contract_sha256,
+                reduced=st,
+            ),
+        }
+        rows.append(row)
+        if rec["relates_to_assertion_id"]:
+            edges.append(
+                {
+                    "kind": "relates_to",
+                    "from_assertion_id": aid,
+                    "to_assertion_id": rec["relates_to_assertion_id"],
+                }
+            )
+            nodes.add(rec["relates_to_assertion_id"])
+        if rec["target_assertion_id"]:
+            edges.append(
+                {
+                    "kind": "targets",
+                    "from_assertion_id": aid,
+                    "to_assertion_id": rec["target_assertion_id"],
+                }
+            )
+            nodes.add(rec["target_assertion_id"])
+        for target in rec["supersedes_assertion_ids"]:
+            edges.append(
+                {
+                    "kind": "supersedes",
+                    "from_assertion_id": aid,
+                    "to_assertion_id": target,
+                }
+            )
+            nodes.add(target)
+
+    edge_keys = sorted(
+        {(e["kind"], e["from_assertion_id"], e["to_assertion_id"]) for e in edges}
+    )
+    unique_edges = [
+        {"kind": k, "from_assertion_id": f, "to_assertion_id": t} for k, f, t in edge_keys
+    ]
+    graph: dict[str, Any] = {
+        "schema": "convmem.strict-graph.v1",
+        "nodes": sorted(nodes),
+        "edges": unique_edges,
+        "graph_payload_sha256": "sha256:" + ("0" * 64),
+    }
+    body = {k: v for k, v in graph.items() if k != "graph_payload_sha256"}
+    graph["graph_payload_sha256"] = sha256_digest(strict_canonical_bytes(body))
+    return rows, graph
+
+
 __all__ = [
     "CANONICALIZATION_VERSION",
     "GROUNDING_VERSION",
@@ -1183,6 +1391,8 @@ __all__ = [
     "StrictEvidenceError",
     "assertion_id_v2",
     "apply_verification_eligibility",
+    "build_citation_map",
+    "build_projection_rows_and_graph",
     "citation_ref",
     "disposition_id",
     "length_prefixed_digest",
