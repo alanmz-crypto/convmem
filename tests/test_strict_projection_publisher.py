@@ -1792,10 +1792,13 @@ def _materializable_publish_inputs(
         receipt_ref_for,
     )
 
-    blob = b"test"
-    blob_hex = sha256_digest(blob).removeprefix("sha256:")
-    blob_sha = "sha256:" + blob_hex
-    blob_b64 = base64.b64encode(blob).decode("ascii")
+    # Independent transformer artifact digest (issuer enrollment stays on this).
+    artifact = b"test"
+    artifact_sha = sha256_digest(artifact)
+    artifact_hex = artifact_sha.removeprefix("sha256:")
+    recipe_bytes = b"convmem:root-recipe-v1"
+    recipe_sha = sha256_digest(recipe_bytes)
+    recipe_hex = recipe_sha.removeprefix("sha256:")
     aid = "00000000-0000-4000-8000-000000000001"
     issuer = "fixture-issuer"
     src = "src-reg-1"
@@ -1814,8 +1817,16 @@ def _materializable_publish_inputs(
         "verification_result": None,
         "provenance_assertion_id": aid,
     }
+    # Blob bytes = exact canonical source payload (excl. provenance_assertion_id).
+    source_payload_body = {
+        k: v for k, v in source.items() if k != "provenance_assertion_id"
+    }
+    blob = strict_canonical_bytes(source_payload_body)
     payload = strict_source_payload_sha256(source)
-    unlabeled = payload.removeprefix("sha256:")
+    blob_hex = payload.removeprefix("sha256:")
+    blob_sha = payload
+    blob_b64 = base64.b64encode(blob).decode("ascii")
+    unlabeled = blob_hex
     env = base_envelope(
         assertion_id=aid,
         root_bindings=[
@@ -1826,8 +1837,8 @@ def _materializable_publish_inputs(
                 input_view_sha256=blob_hex,
             )
         ],
-        transformer_artifact_sha256=blob_hex,
-        transformer_recipe_sha256=blob_hex,
+        transformer_artifact_sha256=artifact_hex,
+        transformer_recipe_sha256=recipe_hex,
         selection_parameters={"output_sha256": unlabeled},
         producer_class="agent",
         producer_assurance="claimed",
@@ -1845,8 +1856,8 @@ def _materializable_publish_inputs(
             "provenance_assertion_id": aid,
             "provenance_commitment": commitment,
             "input_bindings_sha256": compute_input_bindings_sha256(roots, []),
-            "transformer_artifact_sha256": blob_sha,
-            "recipe_sha256": blob_sha,
+            "transformer_artifact_sha256": artifact_sha,
+            "recipe_sha256": recipe_sha,
             "submitted_views_sha256": compute_submitted_views_sha256(roots, []),
             "returned_output_sha256": blob_sha,
             "captured_at": _TS,
@@ -1899,7 +1910,6 @@ def _materializable_publish_inputs(
     grounding["grounding_payload_sha256"] = _self_hash(grounding, "grounding_payload_sha256")
 
     policy = ProvenanceRegistry().current_policy
-    recipe_bytes = b"convmem:root-recipe-v1"
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
         "schema_semantics": [
@@ -1926,7 +1936,7 @@ def _materializable_publish_inputs(
             {
                 "recipe_id": "root-v1",
                 "recipe_bytes_b64": base64.b64encode(recipe_bytes).decode("ascii"),
-                "recipe_sha256": sha256_digest(recipe_bytes),
+                "recipe_sha256": recipe_sha,
             }
         ],
         "verified_channels": [],
@@ -2006,7 +2016,7 @@ def _materializable_publish_inputs(
                     {
                         "issuer_id": issuer,
                         "capture_class": "synthetic_fixture",
-                        "enrollment_sha256": blob_sha,
+                        "enrollment_sha256": artifact_sha,
                         "receipt_root": str(inv_root.resolve()),
                         "source_registration_ids": [src],
                     }
