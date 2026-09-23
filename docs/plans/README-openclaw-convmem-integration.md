@@ -7,12 +7,11 @@ vocabulary. This file exists so a person (Ryan, or anyone he loops in later)
 can understand *what this work is and why it exists* without needing an AI
 session open to translate it.
 
-**Working name for this whole effort:** **ConvMem Switchboard** — leading
-candidate, referenced this way in the top-level repo `README.md`. Not yet
-formally locked in; other candidates considered: Agent Memory Layer, Context
-Bridge, Party Line, Commons, plain "Switchboard" without the ConvMem prefix
-(rejected — reads as OpenClaw-owned rather than ConvMem-owned). Update this
-line if the name changes, and keep it in sync with `README.md`.
+**Name for this whole effort:** **ConvMem Switchboard** — locked in
+2026-09-23. Other candidates considered and rejected: Agent Memory Layer,
+Context Bridge, Party Line, Commons, plain "Switchboard" without the ConvMem
+prefix (reads as OpenClaw-owned rather than ConvMem-owned). Update this line
+if the name ever changes, and keep it in sync with `README.md`.
 
 ## The problem, in one paragraph
 
