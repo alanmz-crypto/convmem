@@ -14,6 +14,8 @@ This README serves two purposes: it explains the architecture for curious reader
 
 > **Personal-data warning:** My local corpus contains real AI conversations and security findings. The repository does not contain that corpus, but do not publish or share `~/.local/share/convmem/`.
 
+> **Self-memorizing system:** This repository is designed to remember the workstation where it runs. A clone is only source code, but installing or enabling its commands and background services can index local chat logs, development documents, tool output, and repository files into a local corpus. Review the watch/index configuration and data paths before running it on a machine whose contents you do not intend to collect. The default storage is local, but `convmem ask` may send retrieved context or source material to whichever provider is configured for synthesis.
+
 ---
 
 ## New here? Choose the right entrance
@@ -53,7 +55,7 @@ These are current personal capabilities, not a promise that every path is equall
 - **Answers** questions with RAG citations through `convmem ask`; `--evidence` prioritizes unresolved observations and failed verifications.
 - **Traverses and triages** evidence with `convmem related`, `convmem unresolved`, and the ledger-backed decision/verification view.
 - **Orients and operates** agent sessions with `doctor`, `brief`, `tldr`, `scope`, and `agent-run`; the same core is exposed through the local MCP server and generated agent-protocol surfaces.
-- **Experiments under explicit gates** with shadow-ledger, writer-census, provenance, recovery, and evaluation machinery. These are real repository subsystems, but several remain disabled, experimental, blocked, or separately authorized; read the relevant status brief before treating one as live.
+- **Experiments under explicit gates** with shadow-ledger, writer-census, provenance, recovery, evaluation, and OpenClaw orchestrator-integration machinery (working name: **ConvMem Switchboard** — a read-only connector so agents OpenClaw dispatches can query ConvMem's memory). These are real repository subsystems, but several remain disabled, experimental, blocked, or separately authorized; read the relevant status brief before treating one as live.
 
 Past conversations and security findings become a **queryable evidence layer** — not live agent-to-agent chat. The repository also contains the controls used to test, govern, back up, recover, and evaluate that layer.
 
@@ -127,7 +129,7 @@ These labels are internal checkpoints for my own development, not a public relea
 | **B** | Graph navigability | `build_ledger_index()`, `convmem related` |
 | **C** | Scanner auto-ingest + upsert | `export_lighthouse.py`, `add --upsert`, `scripts/ingest-*.sh` |
 | **E** | Evidence-aware ask | `evidence.py`, `ask --evidence` |
-| **D** | OpenClaw probes | *deferred* |
+| **D** | OpenClaw orchestrator integration ("ConvMem Switchboard", working name) | Active design, not live — see [docs/plans/README-openclaw-convmem-integration.md](docs/plans/README-openclaw-convmem-integration.md) |
 | **F0/F1/F2b** | Always-on watch + refine + monitor | See [docs/MILESTONE-F.md](docs/MILESTONE-F.md), [docs/SYSTEMD-DEPLOY.md](docs/SYSTEMD-DEPLOY.md) |
 
 ---
@@ -433,7 +435,7 @@ Rerank: fetch 20 → semantic/lexical fusion and optional CrossEncoder → top 5
 | Crush `.crush/crush.db` | Indexed via `**/.crush/crush.db` home glob — run `python inventory.py` after new projects |
 | Durable JSONL export | Chat indexing appends then compacts repeated unit IDs; ledger upserts replace the matching ledger row. Use [docs/RECOVER.md](docs/RECOVER.md) and the focused tests before treating the export as immutable event history |
 | `find_unit_by_ledger_id` | Full metadata scan; fine at ~1.5k units |
-| OpenClaw probes | Milestone D deferred |
+| OpenClaw orchestrator integration | Read-only connector ("ConvMem Switchboard") in active design; not merged, not live. See [docs/plans/README-openclaw-convmem-integration.md](docs/plans/README-openclaw-convmem-integration.md) and [docs/plans/STATUS-openclaw-watch-coverage.md](docs/plans/STATUS-openclaw-watch-coverage.md) |
 | Guarded infrastructure | Shadow activation, live capture, recovery publication, and evaluation calls have separate status/authorization boundaries |
 | Documentation state | Dated handoffs and cross-arc snapshots can age; run `doctor`/`brief` and follow `docs/STATUS.md` before acting |
 | Personal data | The index contains real conversations — don't share `~/.local/share/convmem/` |
