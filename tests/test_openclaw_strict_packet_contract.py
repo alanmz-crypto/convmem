@@ -240,46 +240,46 @@ def test_plan_and_baseline_constants_frozen():
 def test_m2_gate_b_and_c_schema_inventory_exact():
     """Exact 24 Gate B + 7 Gate C schemas; no Gate W."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    gate_b = list(
-    _packet_schema_path(stem)
-    for stem in (
-        "convmem-bound-read-scope-v2.schema.json",
-        "convmem-project-binding-registry-v3.schema.json",
-        "convmem-bound-authority-record-v3.schema.json",
-        "convmem-authority-disposition-v1.schema.json",
-        "convmem-strict-provenance-context-v2.schema.json",
-        "convmem-strict-grounding-v1.schema.json",
-        "convmem-capture-receipt-v1.schema.json",
-        "convmem-strict-fixture-bundle-v2.schema.json",
-        "convmem-strict-citation-map-v1.schema.json",
-        "convmem-bound-authority-manifest-v3.schema.json",
-        "convmem-bound-projection-row-v2.schema.json",
-        "convmem-strict-graph-v1.schema.json",
-        "convmem-bound-projection-manifest-v3.schema.json",
-        "convmem-strict-generation-layout-v2.schema.json",
-        "convmem-strict-publication-v2.schema.json",
-        "convmem-strict-enrollment-v1.schema.json",
-        "convmem-strict-slot-v1.schema.json",
-        "convmem-strict-source-cutoff-v1.schema.json",
-        "convmem-strict-semantic-contract-v1.schema.json",
-        "convmem-strict-state-v2.schema.json",
-        "convmem-clock-review-v1.schema.json",
-        "convmem-raw-evidence-v3.schema.json",
-        "convmem-error-v1.schema.json",
-        "convmem-strict-config-v2.schema.json",
-    )
-)
+    gate_b = [
+        _packet_schema_path("convmem-" + short)
+        for short in (
+            "bound-read-scope-v2.schema.json|"
+            "project-binding-registry-v3.schema.json|"
+            "bound-authority-record-v3.schema.json|"
+            "authority-disposition-v1.schema.json|"
+            "strict-provenance-context-v2.schema.json|"
+            "strict-grounding-v1.schema.json|"
+            "capture-receipt-v1.schema.json|"
+            "strict-fixture-bundle-v2.schema.json|"
+            "strict-citation-map-v1.schema.json|"
+            "bound-authority-manifest-v3.schema.json|"
+            "bound-projection-row-v2.schema.json|"
+            "strict-graph-v1.schema.json|"
+            "bound-projection-manifest-v3.schema.json|"
+            "strict-generation-layout-v2.schema.json|"
+            "strict-publication-v2.schema.json|"
+            "strict-enrollment-v1.schema.json|"
+            "strict-slot-v1.schema.json|"
+            "strict-source-cutoff-v1.schema.json|"
+            "strict-semantic-contract-v1.schema.json|"
+            "strict-state-v2.schema.json|"
+            "clock-review-v1.schema.json|"
+            "raw-evidence-v3.schema.json|"
+            "error-v1.schema.json|"
+            "strict-config-v2.schema.json"
+        ).split("|")
+    ]
     gate_c = [
-        f"schemas/{stem}"
-        for stem in (
-            "convmem-openclaw-connector-launch-v2.schema.json",
-            "convmem-openclaw-activation-v2.schema.json",
-            "convmem-activation-control-v1.schema.json",
-            "convmem-activation-retirement-v1.schema.json",
-            "convmem-activation-launch-policy-v1.schema.json",
-            "convmem-activation-manager-policy-v1.schema.json",
-            "convmem-controller-socket-policy-v1.schema.json",
-        )
+        _packet_schema_path("convmem-" + short)
+        for short in (
+            "openclaw-connector-launch-v2.schema.json|"
+            "openclaw-activation-v2.schema.json|"
+            "activation-control-v1.schema.json|"
+            "activation-retirement-v1.schema.json|"
+            "activation-launch-policy-v1.schema.json|"
+            "activation-manager-policy-v1.schema.json|"
+            "controller-socket-policy-v1.schema.json"
+        ).split("|")
     ]
     assert len(gate_b) == 24
     assert len(gate_c) == 7
@@ -613,11 +613,14 @@ def test_m4_edit_allowlist_permits_mcp_server_protects_gate_w(monkeypatch):
     assert oc_allowlist.path_allowed("mcp_server.py") is True
 
     gate_w = [
-        "schemas/convmem-approved-admission-v1.schema.json",
-        "schemas/convmem-admission-intent-v1.schema.json",
-        "schemas/convmem-admission-review-v1.schema.json",
-        "schemas/convmem-admission-ratification-v1.schema.json",
-        "schemas/convmem-admission-event-v1.schema.json",
+        _packet_schema_path("convmem-" + short)
+        for short in (
+            "approved-admission-v1.schema.json|"
+            "admission-intent-v1.schema.json|"
+            "admission-review-v1.schema.json|"
+            "admission-ratification-v1.schema.json|"
+            "admission-event-v1.schema.json"
+        ).split("|")
     ]
     denied = [
         path

@@ -192,31 +192,27 @@ def _write_scope_registry(tmp_path: Path) -> tuple[Path, Path]:
         "serving_projection": "/fixture/serving",
         "max_snapshot_age_seconds": 3600,
     }
+    _binding_core = {
+        "id": "project:convmem:v1",
+        "public_ref": "a" * 32,
+        "project": "convmem",
+        "domain_root": "coding",
+        "site_mode": "exact",
+        "site": "example.com",
+        "non_expanding_roots": [],
+    }
+    _source_reg_core = {
+        "id": "src-reg-1",
+        "source_class": "fixture_scan",
+        "source_identity": "fixture/source-a",
+        "identity_match": "exact",
+        "authorization_domain": "coding",
+    }
     binding = {
-        **{
-            k: v
-            for k, v in (
-                ("id", "project:convmem:v1"),
-                ("public_ref", "a" * 32),
-                ("project", "convmem"),
-                ("domain_root", "coding"),
-                ("site_mode", "exact"),
-                ("site", "example.com"),
-                ("non_expanding_roots", []),
-            )
-        },
+        **_binding_core,
         "source_registrations": [
             {
-                **{
-                    k: v
-                    for k, v in (
-                        ("id", "src-reg-1"),
-                        ("source_class", "fixture_scan"),
-                        ("source_identity", "fixture/source-a"),
-                        ("identity_match", "exact"),
-                        ("authorization_domain", "coding"),
-                    )
-                },
+                **_source_reg_core,
                 "site": "example.com",
                 "event_id_resolver": "fixture_scan_event_v1",
             }

@@ -1038,19 +1038,19 @@ def _seal_context(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def _source_record(*, provenance_assertion_id: str, logical_key: str = "subject-key-1") -> dict[str, Any]:
-    return {
-        "record_kind": "observation",
-        "producer": "form-prod",
-        "logical_key": logical_key,
-        "title": "fixture title",
-        "document": "fixture document",
-        "observed_at": _TS,
-        "confidence_bps": 7000,
-        "relates_to_assertion_id": None,
-        "target_assertion_id": None,
-        "verification_result": None,
-        "provenance_assertion_id": provenance_assertion_id,
-    }
+    return dict((
+        ("record_kind", "observation"),
+        ("producer", "form-prod"),
+        ("logical_key", logical_key),
+        ("title", "fixture title"),
+        ("document", "fixture document"),
+        ("observed_at", _TS),
+        ("confidence_bps", 7000),
+        ("relates_to_assertion_id", None),
+        ("target_assertion_id", None),
+        ("verification_result", None),
+        ("provenance_assertion_id", provenance_assertion_id),
+    ))
 
 
 # pylint: disable-next=R0914  # admission bundle locals mirror closed publish inputs
