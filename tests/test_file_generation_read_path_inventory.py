@@ -168,7 +168,11 @@ def _discover() -> Counter[tuple[str, str, str]]:
     discovered: Counter[tuple[str, str, str]] = Counter()
     for path in sorted(ROOT.rglob("*.py")):
         rel_parts = path.relative_to(ROOT).parts
-        if "tests" in rel_parts or any(part.startswith(".") for part in rel_parts):
+        if (
+            "tests" in rel_parts
+            or "review-bundles" in rel_parts
+            or any(part.startswith(".") for part in rel_parts)
+        ):
             continue
         text = path.read_text(encoding="utf-8", errors="ignore")
         if not any(
@@ -201,3 +205,19 @@ def test_all_direct_chroma_read_boundaries_are_explicitly_classified() -> None:
         "stable-governed-infrastructure",
         "core-storage",
     }
+
+
+def test_worktree_snapshots_are_already_excluded() -> None:
+    """`.worktrees/` old branch snapshots must not reach this scan — the
+    dot-prefix skip already covers it; this pins that behavior."""
+    assert any(
+        part.startswith(".") for part in Path(".worktrees/example/module.py").parts
+    )
+
+
+def test_review_bundle_snapshots_are_excluded() -> None:
+    """Gitignored `review-bundles/` extracts are bundled copies for external
+    review, not the working tree, and must not reach this scan."""
+    assert "review-bundles" in Path(
+        "review-bundles/some-review/bundle/repo/module.py"
+    ).parts
