@@ -785,7 +785,8 @@ def test_full_publication_payload_cas_rejects_stale_expected(tmp_path: Path):
         )
 
 
-def test_cas_compares_entire_publication_payload_not_generation_name(_tmp_path: Path):
+# pylint: disable-next=unused-argument  # pytest injects tmp_path by name; body uses no path
+def test_cas_compares_entire_publication_payload_not_generation_name(tmp_path: Path):
     """Two publications that differ only outside generation identity still CAS-distinct."""
     from strict_projection_publisher import _seal_publication
 

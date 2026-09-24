@@ -2362,9 +2362,9 @@ def test_m4_ranking_tie_order_and_overlapping_occurrences(
     assert ids == sorted(ids)
 
 
-# pylint: disable-next=R0914  # CLI boottime lock locals mirror closed case vectors
+# pylint: disable-next=R0914,unused-argument  # CLI boottime locals; pytest capsys name kept
 def test_m4_direct_cli_boottime_bound_and_shared_lock(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, _capsys
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ):
     """Items 12/18: private+public opening, shared lock, 10s BOOTTIME, recheck."""
 
@@ -2509,7 +2509,8 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
     assert "results" not in err
 
 
-def test_m4_seven_error_codes_and_v3_field_sets(_tmp_path: Path):
+# pylint: disable-next=unused-argument  # pytest injects tmp_path by name; body uses no path
+def test_m4_seven_error_codes_and_v3_field_sets(tmp_path: Path):
     """Item 17: seven exact error codes/messages; v3 top-level fields."""
 
     from strict_projection import StrictPublicError, _ERROR_MESSAGES
@@ -2590,8 +2591,9 @@ def _m4_unseal_for_mutation(root: Path, *rels: str) -> None:
             os.chmod(path, 0o644)
 
 
+# pylint: disable-next=unused-argument  # pytest injects monkeypatch by name; body uses no patch
 def test_m4_same_inode_content_mutation_fails_pin_recheck(
-    tmp_path: Path, _monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     """Same-inode in-place byte mutation restored to 0444 must fail content pin."""
 

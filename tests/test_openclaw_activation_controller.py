@@ -96,7 +96,7 @@ def test_logical_peer_policy_exact_uids():
     script_peer_policy_ok(platform)
     assert LOGICAL_PEERS["operator"] == (1000, 1000)
     assert LOGICAL_PEERS["controller"] == (0, 0)
-    assert LOGICAL_PEERS["_supervisor"] == (0, 0)
+    assert LOGICAL_PEERS["supervisor"] == (0, 0)
     assert LOGICAL_PEERS["runtime"] == (1001, 1001)
     assert platform.port_ops().count("peer") == 4
 

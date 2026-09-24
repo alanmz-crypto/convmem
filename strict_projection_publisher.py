@@ -96,8 +96,13 @@ def _publisher_field_set(*names: str) -> frozenset[str]:
 
 
 _STRICT_CONFIG_FIELDS = frozenset(
-    ("schema", "projection_root")
-    | {"max_projection_rows", "max_projection_bytes", "telemetry"}
+    {
+        "schema",
+        "projection_root",
+        "max_projection_rows",
+        "max_projection_bytes",
+        "telemetry",
+    }
 )
 _SEMANTIC_CONTRACT_FIELDS = _publisher_field_set(
     *(

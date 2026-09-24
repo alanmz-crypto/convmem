@@ -253,7 +253,8 @@ def test_authenticate_receipt_rejects_trailing_newline_variant(tmp_path: Path):
         )
 
 
-def test_authenticate_receipt_rejects_object_not_in_inventory(_tmp_path: Path):
+# pylint: disable-next=unused-argument  # pytest injects tmp_path by name; body uses no path
+def test_authenticate_receipt_rejects_object_not_in_inventory(tmp_path: Path):
     env = _envelope_root()
     _, receipt, _ref = _closed_grounding(env)
     with pytest.raises(StrictGroundingError, match="receipt_not_in_inventory"):
@@ -326,7 +327,8 @@ def test_validate_grounding_rejects_impossible_selector():
     with pytest.raises(StrictGroundingError, match="selector_bounds"):
         validate_grounding_document(grounding)
 
-def test_qualify_rejects_mismatched_view_bytes(_tmp_path: Path):
+# pylint: disable-next=unused-argument  # pytest injects tmp_path by name; body uses no path
+def test_qualify_rejects_mismatched_view_bytes(tmp_path: Path):
     env = _envelope_root()
     grounding, _receipt, _ = _closed_grounding(env)
     # Corrupt stored view blob bytes while keeping digest label (contradiction).
@@ -920,7 +922,8 @@ def test_missing_parent_yields_incomplete_not_valid():
         provenance_context=ctx,
     )
     assert quals[_AID].commitments == "incomplete"
-def test_false_envelope_commitment_fallback_rejected(_tmp_path: Path):
+# pylint: disable-next=unused-argument  # pytest injects tmp_path by name; body uses no path
+def test_false_envelope_commitment_fallback_rejected(tmp_path: Path):
     """Recomputation failure must not adopt an envelope-supplied commitment claim."""
     env = _envelope_root()
     grounding, _receipt, _ = _closed_grounding(env)

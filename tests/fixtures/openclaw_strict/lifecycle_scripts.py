@@ -96,8 +96,12 @@ def gateway_argv_template(*, port: int = 51000) -> list[str]:
         "loopback",
         "--port",
         str(port),
-        *(("--auth", "token"), ("--tailscale", "off")),
-        *(("--ws-log", "compact"),),
+        "--auth",
+        "token",
+        "--tailscale",
+        "off",
+        "--ws-log",
+        "compact",
     ]
 
 
