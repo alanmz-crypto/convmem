@@ -4,7 +4,7 @@ Production ``start`` / ``main`` refuse before any OS effect (Architecture §6.5.
 Library cores are constructed with a test-owned FixturePlatform; this module never
 imports ``tests/fixtures/openclaw_strict``.
 """
-# pylint: disable=C0302  # preserved activation-controller peer/slot/manager/retirement component boundary
+# pylint: disable=C0302  # preserved activation-controller component boundary
 
 
 from __future__ import annotations
@@ -261,6 +261,12 @@ STATUS_KEYS = frozenset({"schema", "op", "request_id", "slot_id", "activation_id
 REVOKE_KEYS = frozenset({"schema", "op", "request_id", "slot_id", "activation_id", "reason"})
 
 
+
+def _port_map_get(mapping: object, key: str) -> Any:
+    """Read injected-port mapping field; Protocol ellipsis makes value look unsubscriptable."""
+    # pylint: disable=E1136  # runtime mapping from FixturePlatformPort; stub body is ellipsis
+    return cast(Mapping[str, Any], mapping)[key]
+
 class FixturePlatformPort(Protocol):
     """Duck-typed §6.5.8 port — supplied by the test caller."""
 
@@ -301,7 +307,8 @@ def start(*_args: Any, **_kwargs: Any) -> None:
     refuse_runtime_not_qualified()
 
 
-def main(argv: list[str] | None = None) -> int:  # pylint: disable=W0613  # public CLI argv retained for interface parity
+def main(argv: list[str] | None = None) -> int:
+    # pylint: disable=W0613  # public CLI argv retained for interface parity
     """Production main entry — always refuses; argv unused by design."""
 
     refuse_runtime_not_qualified()
@@ -341,7 +348,8 @@ def _sha_digest(value: Any) -> bool:
 def _require_int(value: Any, err: str) -> int:
     """Exact integer type identity — reject bool and all int subclasses."""
 
-    if type(value) is not int:  # pylint: disable=C0123  # exact type identity; isinstance/__class__ admit spoofing or subclasses
+    # pylint: disable=C0123  # exact type identity; not isinstance/__class__
+    if type(value) is not int:
         raise ValueError(err)
     return value
 
@@ -879,7 +887,8 @@ class FreshnessAnchor:
 
 
 @dataclass(frozen=True)
-class SealedActivationRecord:  # pylint: disable=R0902  # attributes mirror sealed activation record fields
+# pylint: disable=R0902  # attributes mirror sealed activation record fields
+class SealedActivationRecord:
     """Immutable sealed predecessor — SEALED has no outgoing transition."""
 
     activation_id: str
@@ -907,7 +916,8 @@ class SealedActivationRecord:  # pylint: disable=R0902  # attributes mirror seal
 
 
 @dataclass
-class SlotState:  # pylint: disable=R0902  # attributes mirror slot lifecycle state machine fields
+# pylint: disable=R0902  # attributes mirror slot lifecycle state machine fields
+class SlotState:
     slot_id: str
     lineage_id: str
     state: str = "NEW"
@@ -935,7 +945,8 @@ class SlotState:  # pylint: disable=R0902  # attributes mirror slot lifecycle st
 
 
 @dataclass
-class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller session/slot bookkeeping fields
+# pylint: disable=R0902  # attributes mirror controller session/slot bookkeeping fields
+class ControllerCore:
     """Stable-slot lifecycle, peer policy, lock order, retirement/quarantine."""
 
     platform: FixturePlatformPort
@@ -944,7 +955,8 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
     _slot_transition_held: bool = False
     _lineage_exclusive_held: bool = False
     _open_sessions: set[str] = field(default_factory=set)
-    MAX_CONTROL_CONNECTIONS: int = MAX_CONTROL_CONNECTIONS  # pylint: disable=C0103  # public capacity attribute name is part of controller interface
+    # pylint: disable=C0103  # public capacity attribute name is part of controller interface
+    MAX_CONTROL_CONNECTIONS: int = MAX_CONTROL_CONNECTIONS
     _inbound_bufs: dict[str, bytearray] = field(default_factory=dict)
     _conn_activity_ns: dict[str, int] = field(default_factory=dict)
     _conn_send_started_ns: dict[str, int] = field(default_factory=dict)
@@ -1001,7 +1013,9 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
     def _release_lineage_exclusive(self) -> None:
         self._lineage_exclusive_held = False
 
-    def validate_peer(self, connection_id: str, *, expected_role: str = "operator") -> dict[str, int]:
+    def validate_peer(
+        self, connection_id: str, *, expected_role: str = "operator"
+    ) -> dict[str, int]:
         # Protocol stub has ellipsis body; cast preserves injected-port return contract.
         creds = cast(dict[str, int], self.platform.peer(connection_id))
         expected_uid = LOGICAL_UID[expected_role]
@@ -1015,15 +1029,17 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             raise ValueError(f"access_denied:{role}:{path}:{operation}")
 
     def _sample_paired(self) -> dict[str, Any]:
-        # Protocol stub has ellipsis body; cast restores subscriptable sample dict.
-        return cast(dict[str, Any], self.platform.sample_clock())
+        # Injected FixturePlatformPort returns a real clock dict; Protocol stub is uninferable.
+        # pylint: disable=E1111
+        raw = self.platform.sample_clock()
+        return cast(dict[str, Any], raw)
 
     def _update_clock_anomaly(self, st: SlotState, sample: Mapping[str, Any]) -> None:
         """Paired interval: lower=wall-boottime_after, upper=wall-boottime_before."""
 
-        before = int(sample["boottime_before_ns"])
-        after = int(sample["boottime_after_ns"])
-        wall_s = _parse_wall(str(sample["wall_time"]))
+        before = int(_port_map_get(sample, "boottime_before_ns"))
+        after = int(_port_map_get(sample, "boottime_after_ns"))
+        wall_s = _parse_wall(str(_port_map_get(sample, "wall_time")))
         wall_ns = wall_s * 1_000_000_000
         lower = wall_ns - after
         upper = wall_ns - before
@@ -1063,11 +1079,11 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         remaining_snapshot_lifetime_ns: int | None = None,
         clock_review: Mapping[str, Any] | None = None,
     ) -> FreshnessAnchor:
-        sample = self._sample_paired()
-        boot_id = str(sample["boot_id"])
+        sample: dict[str, Any] = self._sample_paired()
+        boot_id = str(_port_map_get(sample, "boot_id"))
         # Remaining lifetime from fixed expires_at / current wall and retained
         # snapshot deadline — never caller authority that can renew it.
-        wall_now = _parse_wall(str(sample["wall_time"]))
+        wall_now = _parse_wall(str(_port_map_get(sample, "wall_time")))
         expires_s = _parse_wall(str(st.expires_at))
         remaining_wall_ns = (expires_s - wall_now) * 1_000_000_000
         if remaining_wall_ns <= 0:
@@ -1085,15 +1101,15 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         if st.freshness_anchor is not None and st.freshness_anchor.boot_id == boot_id:
             deadline = min(
                 st.freshness_anchor.snapshot_deadline_boottime_ns,
-                int(sample["boottime_after_ns"]) + remaining_snapshot_lifetime_ns,
+                int(_port_map_get(sample, "boottime_after_ns")) + remaining_snapshot_lifetime_ns,
             )
-            if deadline <= int(sample["boottime_after_ns"]):
+            if deadline <= int(_port_map_get(sample, "boottime_after_ns")):
                 raise ValueError("nonpositive_deadline")
             anchor = FreshnessAnchor(
                 boot_id=boot_id,
                 authority_snapshot_id=authority_snapshot_id,
-                sampled_wall_time=str(sample["wall_time"]),
-                sampled_boottime_ns=int(sample["boottime_after_ns"]),
+                sampled_wall_time=str(_port_map_get(sample, "wall_time")),
+                sampled_boottime_ns=int(_port_map_get(sample, "boottime_after_ns")),
                 snapshot_deadline_boottime_ns=deadline,
                 clock_review_ref=st.freshness_anchor.clock_review_ref,
             )
@@ -1114,14 +1130,15 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             raise ValueError("clock_review_lineage_mismatch")
         if clock_review.get("authority_snapshot_id") != authority_snapshot_id:
             raise ValueError("clock_review_snapshot_mismatch")
+        # pylint: disable=C0123  # exact type identity; not isinstance/__class__
         if int(clock_review.get("reviewer_uid", -1)) != LOGICAL_UID["operator"] or type(
             clock_review.get("reviewer_uid")
-        ) is not int:  # pylint: disable=C0123  # exact type identity; isinstance/__class__ admit spoofing or subclasses
+        ) is not int:
             raise ValueError("clock_review_reviewer_uid")
         if not isinstance(clock_review.get("reviewed_wall_time"), str):
             raise ValueError("clock_review_wall")
         # Reviewed wall must bind the new-boot wall sample — not an unrelated value.
-        if clock_review.get("reviewed_wall_time") != str(sample["wall_time"]):
+        if clock_review.get("reviewed_wall_time") != str(_port_map_get(sample, "wall_time")):
             raise ValueError("clock_review_wall_mismatch")
         _parse_wall(str(clock_review["reviewed_wall_time"]))
         content = _content_hash(clock_review, "review_payload_sha256")
@@ -1137,15 +1154,15 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         if inv_bytes not in inventory:
             # Copied reviewer UID / body-without-hash / wrong hash must fail.
             raise ValueError("clock_review_inventory_miss")
-        deadline = int(sample["boottime_after_ns"]) + remaining_snapshot_lifetime_ns
-        if deadline <= int(sample["boottime_after_ns"]):
+        deadline = int(_port_map_get(sample, "boottime_after_ns")) + remaining_snapshot_lifetime_ns
+        if deadline <= int(_port_map_get(sample, "boottime_after_ns")):
             raise ValueError("nonpositive_deadline")
         ref = content
         anchor = FreshnessAnchor(
             boot_id=boot_id,
             authority_snapshot_id=authority_snapshot_id,
-            sampled_wall_time=str(sample["wall_time"]),
-            sampled_boottime_ns=int(sample["boottime_after_ns"]),
+            sampled_wall_time=str(_port_map_get(sample, "wall_time")),
+            sampled_boottime_ns=int(_port_map_get(sample, "boottime_after_ns")),
             snapshot_deadline_boottime_ns=deadline,
             clock_review_ref=ref,
         )
@@ -1217,7 +1234,7 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
     ) -> int:
         """Establish/refresh freshness and compute the activation lease deadline."""
 
-        if st.freshness_anchor is not None and st.freshness_anchor.boot_id != sample["boot_id"]:
+        if st.freshness_anchor is not None and st.freshness_anchor.boot_id != _port_map_get(sample, "boot_id"):
             self.establish_freshness_anchor(
                 st,
                 authority_snapshot_id=snap_id,
@@ -1225,13 +1242,14 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
                 clock_review=clock_review,
             )
         elif st.freshness_anchor is None:
-            wall_now = _parse_wall(str(sample["wall_time"]))
+            wall_now = _parse_wall(str(_port_map_get(sample, "wall_time")))
             expires_s = _parse_wall(str(st.expires_at or activation_manifest["expires_at"]))
             rem_wall_ns = (expires_s - wall_now) * 1_000_000_000
             if rem_wall_ns <= 0:
                 raise ValueError("nonpositive_remaining_lifetime")
             if remaining_snapshot_lifetime_ns is not None:
-                if type(remaining_snapshot_lifetime_ns) is not int:  # pylint: disable=C0123  # exact type identity; isinstance/__class__ admit spoofing or subclasses
+                # pylint: disable=C0123  # exact type identity; not isinstance/__class__
+                if type(remaining_snapshot_lifetime_ns) is not int:
                     raise ValueError("bad_snapshot_lifetime")
                 if remaining_snapshot_lifetime_ns < 0:
                     raise ValueError("negative_snapshot_lifetime")
@@ -1242,14 +1260,14 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             )
             if rem <= 0:
                 raise ValueError("nonpositive_remaining_lifetime")
-            deadline = int(sample["boottime_after_ns"]) + rem
-            if deadline <= int(sample["boottime_after_ns"]):
+            deadline = int(_port_map_get(sample, "boottime_after_ns")) + rem
+            if deadline <= int(_port_map_get(sample, "boottime_after_ns")):
                 raise ValueError("nonpositive_deadline")
             st.freshness_anchor = FreshnessAnchor(
-                boot_id=str(sample["boot_id"]),
+                boot_id=str(_port_map_get(sample, "boot_id")),
                 authority_snapshot_id=snap_id,
-                sampled_wall_time=str(sample["wall_time"]),
-                sampled_boottime_ns=int(sample["boottime_after_ns"]),
+                sampled_wall_time=str(_port_map_get(sample, "wall_time")),
+                sampled_boottime_ns=int(_port_map_get(sample, "boottime_after_ns")),
                 snapshot_deadline_boottime_ns=deadline,
                 clock_review_ref=None,
             )
@@ -1275,13 +1293,13 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         if max_life < 1 or max_life > 86400:
             raise ValueError("bad_max_lifetime")
         expires_at = str(st.expires_at or activation_manifest["expires_at"])
-        wall_now = _parse_wall(str(sample["wall_time"]))
+        wall_now = _parse_wall(str(_port_map_get(sample, "wall_time")))
         expires_s = _parse_wall(expires_at)
         remaining_wall = expires_s - wall_now
         if remaining_wall <= 0:
             raise ValueError("nonpositive_remaining_lifetime")
         bound = min(remaining_wall, max_life)
-        lease_from_now = int(sample["boottime_after_ns"]) + 1_000_000_000 * bound
+        lease_from_now = int(_port_map_get(sample, "boottime_after_ns")) + 1_000_000_000 * bound
         return min(st.freshness_anchor.snapshot_deadline_boottime_ns, lease_from_now)
 
     def qualify_and_activate(
@@ -1347,7 +1365,7 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             pub = str(activation_manifest["publication_sha256"])
             act_id = str(activation_manifest["activation_id"])
             snap_id = str(activation_manifest["snapshot_id"])
-            sample = self._sample_paired()
+            sample: dict[str, Any] = self._sample_paired()
             lease = self._prepare_activation_freshness_and_lease(
                 st,
                 activation_manifest=activation_manifest,
@@ -1362,9 +1380,9 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             # Manager start — retain IDs even if spawn/ready fails.
             ids = cast(dict[str, Any], self.platform.manager_start(slot_id, act_id))
             st.activation_id = act_id
-            st.manager_boot_id = ids["manager_boot_id"]
-            st.unit_invocation_id = ids["unit_invocation_id"]
-            st.containment_id = ids["containment_id"]
+            st.manager_boot_id = _port_map_get(ids, "manager_boot_id")
+            st.unit_invocation_id = _port_map_get(ids, "unit_invocation_id")
+            st.containment_id = _port_map_get(ids, "containment_id")
             st.activation_manifest = dict(activation_manifest)
             st.verified_manifest_content_sha256 = content_hash
             st.publication_sha256 = pub
@@ -1386,11 +1404,12 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
                 from openclaw_activation_supervisor import validate_launch_tuple
 
                 validate_launch_tuple(launch_policy, "supervisor", argv, env, cwd, fd_roles)
-                handle = self.platform.spawn("supervisor", argv, env, cwd, fd_roles)
+                handle = cast(str, self.platform.spawn("supervisor", argv, env, cwd, fd_roles))
                 ready = cast(dict[str, Any], self.platform.next_event(handle))
                 if ready.get("kind") != "ready":
                     raise ValueError("supervisor_not_ready")
-            except Exception:  # pylint: disable=W0718  # spawn/ready path must revoke on any injected failure
+            # pylint: disable=W0718  # spawn/ready path must revoke on any injected failure
+            except Exception:
                 # Request stop; remain retire/quarantine capable — domain retained.
                 if st.unit_invocation_id:
                     self.platform.manager_stop(st.unit_invocation_id)
@@ -1441,8 +1460,8 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             raise ValueError("control_connection_capacity")
         self.validate_peer(connection_id, expected_role="operator")
         self._open_sessions.add(connection_id)
-        sample = self._sample_paired()
-        self._conn_activity_ns[connection_id] = int(sample["boottime_after_ns"])
+        sample: dict[str, Any] = self._sample_paired()
+        self._conn_activity_ns[connection_id] = int(_port_map_get(sample, "boottime_after_ns"))
         self._inbound_bufs[connection_id] = bytearray()
 
     def close_control_session(self, connection_id: str | None = None) -> None:
@@ -1458,6 +1477,7 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         self._pending_outbound.pop(connection_id, None)
         closer = getattr(self.platform, "close_control_connection", None)
         if callable(closer):
+            # pylint: disable=E1102  # optional injected close_control_connection after callable()
             cast(Callable[..., Any], closer)(connection_id)
 
     def _flush_pending_outbound(self, connection_id: str) -> bytes | None:
@@ -1472,12 +1492,14 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             self._conn_send_started_ns.pop(connection_id, None)
             return framed
         try:
+            # pylint: disable=E1102  # optional injected control_outbound after callable()
             q = cast(Callable[..., Any], outbound)(connection_id)
-        except Exception:  # pylint: disable=W0718  # platform outbound may raise any injected failure
+        # pylint: disable=W0718  # platform outbound may raise any injected failure
+        except Exception:
             self.close_control_session(connection_id)
             return None
-        sample = self._sample_paired()
-        now = int(sample["boottime_after_ns"])
+        sample: dict[str, Any] = self._sample_paired()
+        now = int(_port_map_get(sample, "boottime_after_ns"))
         started = self._conn_send_started_ns.get(connection_id, now)
         if getattr(q, "blocked", False):
             if now - started > CONTROL_IO_TIMEOUT_NS:
@@ -1486,7 +1508,8 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             return None
         try:
             q.write(framed)
-        except Exception:  # pylint: disable=W0718  # platform outbound write may raise any injected failure
+        # pylint: disable=W0718  # platform outbound write may raise any injected failure
+        except Exception:
             self.close_control_session(connection_id)
             return None
         self._pending_outbound.pop(connection_id, None)
@@ -1507,12 +1530,14 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         outbound = getattr(self.platform, "control_outbound", None)
         if callable(outbound):
             try:
+                # pylint: disable=E1102  # optional injected control_outbound after callable()
                 q = cast(Callable[..., Any], outbound)(connection_id)
-            except Exception:  # pylint: disable=W0718  # platform outbound may raise any injected failure
+            # pylint: disable=W0718  # platform outbound may raise any injected failure
+            except Exception:
                 self.close_control_session(connection_id)
                 return None
-            sample = self._sample_paired()
-            now = int(sample["boottime_after_ns"])
+            sample: dict[str, Any] = self._sample_paired()
+            now = int(_port_map_get(sample, "boottime_after_ns"))
             if getattr(q, "blocked", False):
                 self._pending_outbound[connection_id] = framed
                 if connection_id not in self._conn_send_started_ns:
@@ -1525,7 +1550,8 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
                 return None
             try:
                 q.write(framed)
-            except Exception:  # pylint: disable=W0718  # platform outbound write may raise any injected failure
+            # pylint: disable=W0718  # platform outbound write may raise any injected failure
+            except Exception:
                 self.close_control_session(connection_id)
                 return None
             self._pending_outbound.pop(connection_id, None)
@@ -1546,8 +1572,8 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         # Prefer completing a blocked SEND before receive-timeout accounting.
         if connection_id in self._pending_outbound:
             return self._flush_pending_outbound(connection_id)
-        sample = self._sample_paired()
-        now = int(sample["boottime_after_ns"])
+        sample: dict[str, Any] = self._sample_paired()
+        now = int(_port_map_get(sample, "boottime_after_ns"))
         last = self._conn_activity_ns.get(connection_id, now)
         if now - last > CONTROL_IO_TIMEOUT_NS:
             self.close_control_session(connection_id)
@@ -1563,9 +1589,11 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         inbound = getattr(self.platform, "control_inbound", None)
         if callable(inbound):
             try:
+                # pylint: disable=E1102  # optional injected control_inbound after callable()
                 q = cast(Callable[..., Any], inbound)(connection_id)
                 q.write(chunk)
-            except Exception:  # pylint: disable=W0718  # platform inbound may raise any injected failure
+            # pylint: disable=W0718  # platform inbound may raise any injected failure
+            except Exception:
                 self.close_control_session(connection_id)
                 return None
         obj, rem, err = decode_framed_request(bytes(buf))
@@ -1633,14 +1661,14 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
                     else st.retirement_receipt.get("receipt_payload_sha256"),
                 },
             )
-        sample = self._sample_paired()
+        sample: dict[str, Any] = self._sample_paired()
         self._update_clock_anomaly(st, sample)
         if st.state == "REVOKING":
             return self._response(request, "revoking", {"reason": st.terminal_reason or "operator"})
         if st.activation_id and request.get("activation_id") != st.activation_id:
             return self._response(request, "invalid_request", {"reason": "bad_arguments"})
         if st.lease_deadline_boottime_ns is not None:
-            now_bt = int(sample["boottime_after_ns"])
+            now_bt = int(_port_map_get(sample, "boottime_after_ns"))
             if now_bt > st.lease_deadline_boottime_ns:
                 self._enter_revoking(st, "expiry")
                 return self._response(request, "revoking", {"reason": "expiry"})
@@ -1702,7 +1730,9 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         )
 
     @staticmethod
-    def _response(request: Mapping[str, Any], outcome: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def _response(
+        request: Mapping[str, Any], outcome: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         return {
             "schema": CONTROL_SCHEMA,
             "request_id": request.get("request_id"),
@@ -1735,7 +1765,9 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         st.persisted["stop_requested"] = True
         return out
 
-    def attempt_retirement(self, slot_id: str, *, terminal_reason: str | None = None) -> dict[str, Any]:
+    def attempt_retirement(
+        self, slot_id: str, *, terminal_reason: str | None = None
+    ) -> dict[str, Any]:
         """Issue retirement only from REVOKING with stop + exact empty observation."""
 
         st = self.slots[slot_id]
@@ -1765,10 +1797,13 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
         if obs.get("terminal") is not True or obs.get("populated") is not False:
             self._quarantine(
                 st,
-                f"uncertain_emptiness:terminal={obs.get('terminal')}:populated={obs.get('populated')}",
+                (
+                    "uncertain_emptiness:"
+                    f"terminal={obs.get('terminal')}:populated={obs.get('populated')}"
+                ),
             )
             raise ValueError("quarantined:uncertain_emptiness")
-        sample = self._sample_paired()
+        sample: dict[str, Any] = self._sample_paired()
         # Verified manifest content hash — not a new hash including self-hash.
         manifest_sha = st.verified_manifest_content_sha256
         if manifest_sha is None and st.activation_manifest is not None:
@@ -1783,7 +1818,7 @@ class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller s
             "unit_invocation_id": st.unit_invocation_id,
             "containment_id": st.containment_id,
             "terminal_reason": reason,
-            "observed_empty_boottime_ns": int(sample["boottime_after_ns"]),
+            "observed_empty_boottime_ns": int(_port_map_get(sample, "boottime_after_ns")),
         }
         receipt = dict(body)
         receipt["receipt_payload_sha256"] = _sha256_labeled(_canonical(body))

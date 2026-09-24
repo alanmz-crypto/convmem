@@ -12,6 +12,7 @@ Production uses a fresh interpreter for cold qualification; fixture calls
 ``strict_projection.qualify_authority_generation`` in-process after durable
 authority writes.
 """
+
 # pylint: disable=C0302  # preserved projection publisher/serving component boundary
 
 
@@ -79,11 +80,11 @@ REQUIRED_MAX_PROJECTION_BYTES = 67108864
 REQUIRED_TELEMETRY = False
 
 
-
 def _publisher_field_set(*names: str) -> frozenset[str]:
     """Build publisher closed field sets from an explicit name tuple."""
 
     return frozenset(names)
+
 
 _STRICT_CONFIG_FIELDS = _publisher_field_set(
     "schema",
@@ -221,20 +222,12 @@ def _sha256hex(data: bytes) -> str:
 
 
 def _authority_snapshot_id(manifest: Mapping[str, Any]) -> str:
-    body = {
-        k: v
-        for k, v in manifest.items()
-        if k not in {"snapshot_id", "manifest_payload_sha256"}
-    }
+    body = {k: v for k, v in manifest.items() if k not in {"snapshot_id", "manifest_payload_sha256"}}
     return "snap2_" + _sha256hex(strict_canonical_bytes(body))
 
 
 def _projection_generation_id(manifest: Mapping[str, Any]) -> str:
-    body = {
-        k: v
-        for k, v in manifest.items()
-        if k not in {"generation_id", "manifest_payload_sha256"}
-    }
+    body = {k: v for k, v in manifest.items() if k not in {"generation_id", "manifest_payload_sha256"}}
     return "gen2_" + _sha256hex(strict_canonical_bytes(body))
 
 
@@ -385,8 +378,7 @@ _BUILDER_MEMBERS: tuple[str, ...] = tuple(
 )
 
 _ALLOWED_LOCAL_IMPORT_STEMS: frozenset[str] = frozenset(
-    {Path(p).stem for p in _CORE_MEMBERS if p.endswith(".py")}
-    | {"strict_projection_publisher"}
+    {Path(p).stem for p in _CORE_MEMBERS if p.endswith(".py")} | {"strict_projection_publisher"}
 )
 
 
@@ -490,18 +482,10 @@ def _validate_strict_config(config: Mapping[str, Any]) -> Path:
     if not root.is_absolute():
         raise StrictPublisherError("projection_root_not_absolute")
     rows = config["max_projection_rows"]
-    if (
-        not isinstance(rows, int)
-        or isinstance(rows, bool)
-        or rows != REQUIRED_MAX_PROJECTION_ROWS
-    ):
+    if not isinstance(rows, int) or isinstance(rows, bool) or rows != REQUIRED_MAX_PROJECTION_ROWS:
         raise StrictPublisherError("max_projection_rows")
     nbytes = config["max_projection_bytes"]
-    if (
-        not isinstance(nbytes, int)
-        or isinstance(nbytes, bool)
-        or nbytes != REQUIRED_MAX_PROJECTION_BYTES
-    ):
+    if not isinstance(nbytes, int) or isinstance(nbytes, bool) or nbytes != REQUIRED_MAX_PROJECTION_BYTES:
         raise StrictPublisherError("max_projection_bytes")
     telemetry = config["telemetry"]
     if not isinstance(telemetry, bool) or telemetry is not REQUIRED_TELEMETRY:
@@ -615,9 +599,7 @@ def _create_lock_files(root: Path, *, lineage_id: str, slot_id: str) -> None:
 
 
 @contextmanager
-def _held_publisher_locks(
-    root: Path, *, lineage_id: str, slot_id: str
-) -> Iterator[None]:
+def _held_publisher_locks(root: Path, *, lineage_id: str, slot_id: str) -> Iterator[None]:
     """Acquire and hold slot-transition then lineage locks (parent fixture order).
 
     Exclusive ``fcntl.flock`` on pre-created lock files — not mere file creation.
@@ -693,9 +675,7 @@ def _require_cas(current: Mapping[str, Any], expected: str) -> None:
         raise StrictPublisherError("publication_cas_mismatch")
 
 
-def _find_operation_outcome(
-    root: Path, *, operation_id: str, input_sha256: str
-) -> dict[str, Any] | None:
+def _find_operation_outcome(root: Path, *, operation_id: str, input_sha256: str) -> dict[str, Any] | None:
     """Return historic publication for exact operation+input if present in history."""
     history_dir = root / "active" / "history"
     if not history_dir.is_dir():
@@ -765,9 +745,7 @@ def enroll_fixture(
     if enrollment["schema"] != "convmem.strict-enrollment.v1":
         raise StrictPublisherError("enrollment_schema")
     _require_fixture_mode(enrollment)
-    if _self_hash(enrollment, "enrollment_payload_sha256") != enrollment[
-        "enrollment_payload_sha256"
-    ]:
+    if _self_hash(enrollment, "enrollment_payload_sha256") != enrollment["enrollment_payload_sha256"]:
         raise StrictPublisherError("enrollment_hash")
 
     semantic_contract = _read_json(Path(semantic_contract_path))
@@ -991,7 +969,7 @@ def publish_projection(  # pylint: disable=R0913  # frozen public publish signat
         )
 
 
-def _publish_projection_locked(  # pylint: disable=R0913  # locked publish arity mirrors closed publish inputs
+def _publish_projection_locked(
     *,
     root: Path,
     scope: Any,
@@ -1007,602 +985,582 @@ def _publish_projection_locked(  # pylint: disable=R0913  # locked publish arity
     rollback: bool,
 ) -> dict[str, Any]:
     """Publication body; caller must already hold slot→lineage exclusive locks."""
-    lineage_id = enrollment["lineage_id"]
-    slot = _load_slot(root)
-    _require_empty_slot(slot)
+    work = SimpleNamespace()
+    work.bundle = bundle
 
-    current = _current_publication(root, lineage_id)
-    _require_cas(current, expected_publication_sha256)
-    sc_hash = _self_hash(semantic_contract, "contract_payload_sha256")
-    owner = enrollment["owner_digest"]
-    binding_id = scope.allowed_project_bindings[0]
-    binding = registry.binding(binding_id)
+    def __publish_projection_locked_p0():
+        work.lineage_id = enrollment["lineage_id"]
+        work.slot = _load_slot(root)
+        _require_empty_slot(work.slot)
+        work.current = _current_publication(root, work.lineage_id)
+        _require_cas(work.current, expected_publication_sha256)
+        work.sc_hash = _self_hash(semantic_contract, "contract_payload_sha256")
+        work.owner = enrollment["owner_digest"]
+        work.binding_id = scope.allowed_project_bindings[0]
+        work.binding = registry.binding(work.binding_id)
+        if rollback:
+            return _rollback_serving(
+                root=root,
+                scope=scope,
+                registry=registry,
+                enrollment=enrollment,
+                semantic_contract=semantic_contract,
+                current=work.current,
+                target_generation_id=target_generation_id,
+                owner=work.owner,
+                sc_hash=work.sc_hash,
+            )
+        if rebuild or not admit_source:
+            return _rebuild_serving(
+                root=root,
+                scope=scope,
+                registry=registry,
+                enrollment=enrollment,
+                semantic_contract=semantic_contract,
+                current=work.current,
+                owner=work.owner,
+                sc_hash=work.sc_hash,
+                binding=work.binding,
+            )
+        if work.bundle is None:
+            if bundle_path is None:
+                raise StrictPublisherError("bundle_required")
+            work.bundle = _read_json(Path(bundle_path))
+        if not isinstance(work.bundle, Mapping):
+            raise StrictPublisherError("bundle_type")
+        if work.bundle.get("schema") != "convmem.strict-fixture-work.bundle.v2":
+            raise StrictPublisherError("bundle_schema")
+        if set(work.bundle) != {
+            "schema",
+            "lineage_id",
+            "operation_id",
+            "expected_parent_manifest_sha256",
+            "batches",
+            "dispositions",
+            "provenance_context",
+            "grounding",
+            "built_at",
+            "as_of",
+            "expires_at",
+            "fixture_payload_sha256",
+        }:
+            raise StrictPublisherError("bundle_keys")
+        if work.bundle["lineage_id"] != work.lineage_id:
+            raise StrictPublisherError("bundle_lineage")
+        work.input_sha256 = _self_hash(work.bundle, "fixture_payload_sha256")
+        if work.bundle["fixture_payload_sha256"] != work.input_sha256:
+            raise StrictPublisherError("bundle_hash")
+        work.operation_id = work.bundle["operation_id"]
+        if not isinstance(work.operation_id, str) or len(work.operation_id) != 32:
+            raise StrictPublisherError("operation_id")
+        work.historic = _find_operation_outcome(root, operation_id=work.operation_id, input_sha256=work.input_sha256)
+        if work.historic is not None:
+            for path in sorted((root / "active" / "history").glob("*.json")):
+                work.pub = _read_json(path)
+                work.snap = work.pub.get("authority_snapshot_id")
+                if not isinstance(work.snap, str):
+                    continue
+                work.input_path = root / "authority" / work.snap / "input.json"
+                if not work.input_path.is_file():
+                    continue
+                work.prior_input = _read_json(work.input_path)
+                if work.prior_input.get("operation_id") != work.operation_id:
+                    continue
+                work.prior_hash = work.prior_input.get("fixture_payload_sha256")
+                if work.prior_hash != work.input_sha256:
+                    raise StrictPublisherError("operation_bytes_conflict")
+            return {
+                "outcome": "exact_retry",
+                "historic_publication_payload_sha256": work.historic["publication_payload_sha256"],
+                "current_publication": work.current,
+                "current_publication_payload_sha256": work.current["publication_payload_sha256"],
+            }
+        return None
 
-    if rollback:
-        return _rollback_serving(
-            root=root,
-            scope=scope,
-            registry=registry,
-            enrollment=enrollment,
-            semantic_contract=semantic_contract,
-            current=current,
-            target_generation_id=target_generation_id,
-            owner=owner,
-            sc_hash=sc_hash,
+    def __publish_projection_locked_p1() -> None:
+
+        def __publish_projection_locked_p1_0() -> None:
+            work.expected_parent = work.bundle["expected_parent_manifest_sha256"]
+            work.parent_grounding: dict[str, Any] | None = None
+            work.parent_context: dict[str, Any] | None = None
+            work.candidate_batches = work.bundle["batches"]
+            if not isinstance(work.candidate_batches, list):
+                raise StrictPublisherError("batches_type")
+
+        def __publish_projection_locked_p1_1() -> None:
+            if work.current["authority_seq"] == 0:
+                if work.expected_parent is not None:
+                    raise StrictPublisherError("parent_head_mismatch")
+                work.parent_snapshot_id = None
+                work.parent_manifest_sha256 = None
+                work.parent_records: list[dict[str, Any]] = []
+                work.parent_dispositions: list[dict[str, Any]] = []
+                work.parent_cutoff = _empty_source_cutoff(lineage_id=work.lineage_id)
+                work.prior_batches: list[Any] = []
+                work.next_seq = 1
+            else:
+                if work.expected_parent != work.current["authority_manifest_sha256"]:
+                    raise StrictPublisherError("parent_head_mismatch")
+                work.parent_snapshot_id = work.current["authority_snapshot_id"]
+                work.parent_manifest_sha256 = work.current["authority_manifest_sha256"]
+                if not isinstance(work.parent_snapshot_id, str):
+                    raise StrictPublisherError("parent_snapshot_missing")
+                work.parent_dir = root / "authority" / work.parent_snapshot_id
+                work.parent_records = _read_jsonl(work.parent_dir / "records.jsonl")
+                work.parent_dispositions = _read_jsonl(work.parent_dir / "dispositions.jsonl")
+                work.parent_cutoff = _read_json(work.parent_dir / "source-cutoff.json")
+                work.parent_grounding = _read_json(work.parent_dir / "grounding.json")
+                work.parent_context = _read_json(work.parent_dir / "provenance-context.json")
+                work.parent_input = _read_json(work.parent_dir / "input.json")
+                work.prior_batches_raw = work.parent_input.get("batches")
+                if not isinstance(work.prior_batches_raw, list):
+                    raise StrictPublisherError("parent_batches")
+                work.prior_batches = list(work.prior_batches_raw)
+                work.next_seq = int(work.current["authority_seq"]) + 1
+            if len(work.candidate_batches) < len(work.prior_batches):
+                raise StrictPublisherError("batches_not_prefix")
+            if strict_canonical_bytes(
+                list(work.candidate_batches[: len(work.prior_batches)])
+            ) != strict_canonical_bytes(work.prior_batches):
+                raise StrictPublisherError("batches_not_prefix")
+            if work.current["authority_seq"] != 0:
+                try:
+                    qualify_authority_generation(
+                        root=root,
+                        scope=scope,
+                        registry=registry,
+                        expected_publication_sha256=work.current["publication_payload_sha256"],
+                        require_serving=False,
+                    )
+                except StrictProjectionError as exc:
+                    raise StrictPublisherError(f"parent_cold_qualify:{exc}") from exc
+            work.provenance_context = dict(work.bundle["provenance_context"])
+            work.grounding = dict(work.bundle["grounding"])
+
+        def __publish_projection_locked_p1_2() -> None:
+            if work.grounding.get("schema") != "convmem.strict-grounding.v1":
+                raise StrictPublisherError("grounding_schema")
+            work.g_hash = _self_hash(work.grounding, "grounding_payload_sha256")
+            if work.grounding["grounding_payload_sha256"] != work.g_hash:
+                raise StrictPublisherError("grounding_hash")
+            try:
+                work.provenance_context = validate_provenance_context(
+                    work.provenance_context, expected_grounding_sha256=work.g_hash
+                )
+                assert_cumulative_grounding(work.parent_grounding, work.grounding)
+                assert_cumulative_provenance_context(work.parent_context, work.provenance_context)
+            except StrictGroundingError as exc:
+                raise StrictPublisherError(f"provenance_context:{exc}") from exc
+            work.registered: dict[str, Any] = {}
+
+        def __publish_projection_locked_p1_3() -> None:
+            for entry in work.provenance_context["registered_assertions"]:
+                work.aid = entry["assertion_id"]
+                if work.aid in work.registered:
+                    raise StrictPublisherError("registered_assertion_duplicate")
+                work.registered[work.aid] = entry
+            work.issuer_inventory = None
+            if work.registered:
+                try:
+                    work.issuer_inventory = load_bound_issuer_inventories(work.binding.capture_issuers)
+                except StrictGroundingError as exc:
+                    raise StrictPublisherError(f"issuer_inventory:{exc}") from exc
+            work.originals: dict[str, dict[str, str]] = {}
+            for rec in work.parent_records:
+                work.env = rec.get("provenance_envelope")
+                work.pq = rec.get("provenance_qualification")
+                if isinstance(work.env, Mapping) and isinstance(work.pq, Mapping):
+                    work.pid = work.env.get("assertion_id")
+                    if isinstance(work.pid, str) and work.pid:
+                        work.originals[work.pid] = {
+                            "commitments": str(work.pq["commitments"]),
+                            "byte_grounding": str(work.pq["byte_grounding"]),
+                            "capture": str(work.pq["capture"]),
+                            "transformer_cap": str(work.pq["transformer_cap"]),
+                        }
+            try:
+                work.qual_map = qualify_assertions(
+                    grounding=work.grounding,
+                    provenance_context=work.provenance_context,
+                    issuer_inventory=work.issuer_inventory,
+                    capture_issuers=work.binding.capture_issuers,
+                    allowed_issuer_ids={i.issuer_id for i in work.binding.capture_issuers},
+                    allowed_source_registration_ids={r.id for r in work.binding.source_registrations},
+                    original_qualifications=work.originals or None,
+                )
+                for _aid, shared in work.qual_map.items():
+                    if not isinstance(shared, QualificationTuple):
+                        raise StrictPublisherError("qualification_type")
+            except StrictGroundingError as exc:
+                raise StrictPublisherError(f"grounding:{exc}") from exc
+
+        __publish_projection_locked_p1_0()
+        __publish_projection_locked_p1_1()
+        __publish_projection_locked_p1_2()
+        __publish_projection_locked_p1_3()
+
+    def __publish_projection_locked_p2() -> None:
+        work.added_records: list[dict[str, Any]] = []
+        work.delta_batches = list(work.candidate_batches[len(work.prior_batches) :])
+        for batch in work.delta_batches:
+            if not isinstance(batch, Mapping):
+                raise StrictPublisherError("batch_type")
+            try:
+                work.new_recs = materialize_authority_records(
+                    binding=work.binding,
+                    source_registration_id=batch["source_registration_id"],
+                    scan=batch["source"],
+                    registered_assertions=work.registered,
+                    qualification_by_provenance=work.qual_map,
+                    prior_records=work.parent_records + work.added_records,
+                )
+            except StrictEvidenceError as exc:
+                raise StrictPublisherError(f"materialize:{exc}") from exc
+            work.added_records.extend(work.new_recs)
+        work.parent_ids = {r["assertion_id"] for r in work.parent_records}
+        work.parent_disp_map = {disposition_id(d): d for d in work.parent_dispositions}
+        work.parent_heads = _parent_heads_by_logical(work.parent_records, work.parent_disp_map)
+        work.staging_records = list(work.parent_records) + [dict(r) for r in work.added_records]
+        try:
+            work.new_disp_map = validate_dispositions(
+                list(work.bundle["dispositions"]),
+                records=work.staging_records,
+                parent_snapshot_id=work.parent_snapshot_id,
+                parent_heads_by_logical=work.parent_heads if work.parent_heads else None,
+            )
+        except StrictEvidenceError as exc:
+            raise StrictPublisherError(f"dispositions:{exc}") from exc
+        from strict_evidence_state import payload_sha256, semantic_sha256
+
+        work.added_by_id = {r["assertion_id"]: dict(r) for r in work.added_records}
+        for disp_id, disp in work.new_disp_map.items():
+            work.subject = disp["subject_assertion_id"]
+            work.action = disp["action"]
+            if work.subject in work.parent_ids:
+                continue
+            if work.subject not in work.added_by_id:
+                raise StrictPublisherError("disposition_subject_unknown")
+            rec = work.added_by_id[work.subject]
+            if work.action in {"decision_approved", "decision_rejected"}:
+                rec["decision_disposition_ref"] = disp_id
+            elif work.action == "supersession_authorized":
+                rec["supersession_disposition_ref"] = disp_id
+                rec["supersedes_assertion_ids"] = sorted(set(disp["target_assertion_ids"]))
+            work.added_by_id[work.subject] = rec
+        for rec in work.added_by_id.values():
+            rec["semantic_sha256"] = semantic_sha256(rec)
+            rec["payload_sha256"] = payload_sha256(rec)
+        work.added_records = list(work.added_by_id.values())
+        work.all_records = sorted(list(work.parent_records) + work.added_records, key=lambda r: r["assertion_id"])
+        if len({r["assertion_id"] for r in work.all_records}) != len(work.all_records):
+            raise StrictPublisherError("record_id_collision")
+        work.all_dispositions = list(work.parent_dispositions) + [
+            work.new_disp_map[k] for k in sorted(work.new_disp_map)
+        ]
+        work.all_dispositions.sort(key=disposition_id)
+        work.disp_map = {disposition_id(d): d for d in work.all_dispositions}
+        work.operations = list(work.parent_cutoff.get("operations", []))
+        if work.operation_id in {op["operation_id"] for op in work.operations}:
+            raise StrictPublisherError("operation_id_duplicate")
+        work.source_prefix = sha256_digest(strict_canonical_bytes(work.candidate_batches))
+        work.operations.append(
+            {
+                "operation_id": work.operation_id,
+                "input_sha256": work.input_sha256,
+                "source_prefix_sha256": work.source_prefix,
+            }
         )
-
-    if rebuild or not admit_source:
-        return _rebuild_serving(
-            root=root,
-            scope=scope,
-            registry=registry,
-            enrollment=enrollment,
-            semantic_contract=semantic_contract,
-            current=current,
-            owner=owner,
-            sc_hash=sc_hash,
-            binding=binding,
-        )
-
-    if bundle is None:
-        if bundle_path is None:
-            raise StrictPublisherError("bundle_required")
-        bundle = _read_json(Path(bundle_path))
-    if not isinstance(bundle, Mapping):
-        raise StrictPublisherError("bundle_type")
-    if bundle.get("schema") != "convmem.strict-fixture-bundle.v2":
-        raise StrictPublisherError("bundle_schema")
-    if set(bundle) != {
-        "schema",
-        "lineage_id",
-        "operation_id",
-        "expected_parent_manifest_sha256",
-        "batches",
-        "dispositions",
-        "provenance_context",
-        "grounding",
-        "built_at",
-        "as_of",
-        "expires_at",
-        "fixture_payload_sha256",
-    }:
-        raise StrictPublisherError("bundle_keys")
-    if bundle["lineage_id"] != lineage_id:
-        raise StrictPublisherError("bundle_lineage")
-    input_sha256 = _self_hash(bundle, "fixture_payload_sha256")
-    if bundle["fixture_payload_sha256"] != input_sha256:
-        raise StrictPublisherError("bundle_hash")
-    operation_id = bundle["operation_id"]
-    if not isinstance(operation_id, str) or len(operation_id) != 32:
-        raise StrictPublisherError("operation_id")
-
-    # Exact operation retry: same bytes → historic outcome + current head.
-    historic = _find_operation_outcome(
-        root, operation_id=operation_id, input_sha256=input_sha256
-    )
-    if historic is not None:
-        # Detect conflicting bytes under same operation via input mismatch path:
-        # if history has this operation_id with different input, reject.
-        for path in sorted((root / "active" / "history").glob("*.json")):
-            pub = _read_json(path)
-            snap = pub.get("authority_snapshot_id")
-            if not isinstance(snap, str):
-                continue
-            input_path = root / "authority" / snap / "input.json"
-            if not input_path.is_file():
-                continue
-            prior_input = _read_json(input_path)
-            if prior_input.get("operation_id") != operation_id:
-                continue
-            prior_hash = prior_input.get("fixture_payload_sha256")
-            if prior_hash != input_sha256:
-                raise StrictPublisherError("operation_bytes_conflict")
-        # Idempotent: report historic meaning with unchanged current head.
-        return {
-            "outcome": "exact_retry",
-            "historic_publication_payload_sha256": historic["publication_payload_sha256"],
-            "current_publication": current,
-            "current_publication_payload_sha256": current["publication_payload_sha256"],
+        work.new_cutoff = {
+            "schema": "convmem.strict-source-cutoff.v1",
+            "lineage_id": work.lineage_id,
+            "mode": "fixture",
+            "operations": work.operations,
+            "cutoff_payload_sha256": "sha256:" + "0" * 64,
         }
 
-    # Parent-head rules: expected parent must match current authority head.
-    expected_parent = bundle["expected_parent_manifest_sha256"]
-    parent_grounding: dict[str, Any] | None = None
-    parent_context: dict[str, Any] | None = None
-    candidate_batches = bundle["batches"]
-    if not isinstance(candidate_batches, list):
-        raise StrictPublisherError("batches_type")
-    if current["authority_seq"] == 0:
-        if expected_parent is not None:
-            raise StrictPublisherError("parent_head_mismatch")
-        parent_snapshot_id = None
-        parent_manifest_sha256 = None
-        parent_records: list[dict[str, Any]] = []
-        parent_dispositions: list[dict[str, Any]] = []
-        parent_cutoff = _empty_source_cutoff(lineage_id=lineage_id)
-        prior_batches: list[Any] = []
-        next_seq = 1
-    else:
-        if expected_parent != current["authority_manifest_sha256"]:
-            raise StrictPublisherError("parent_head_mismatch")
-        parent_snapshot_id = current["authority_snapshot_id"]
-        parent_manifest_sha256 = current["authority_manifest_sha256"]
-        if not isinstance(parent_snapshot_id, str):
-            raise StrictPublisherError("parent_snapshot_missing")
-        parent_dir = root / "authority" / parent_snapshot_id
-        parent_records = _read_jsonl(parent_dir / "records.jsonl")
-        parent_dispositions = _read_jsonl(parent_dir / "dispositions.jsonl")
-        parent_cutoff = _read_json(parent_dir / "source-cutoff.json")
-        parent_grounding = _read_json(parent_dir / "grounding.json")
-        parent_context = _read_json(parent_dir / "provenance-context.json")
-        parent_input = _read_json(parent_dir / "input.json")
-        prior_batches_raw = parent_input.get("batches")
-        if not isinstance(prior_batches_raw, list):
-            raise StrictPublisherError("parent_batches")
-        prior_batches = list(prior_batches_raw)
-        next_seq = int(current["authority_seq"]) + 1
+    def __publish_projection_locked_p3() -> None:
+        _set_self_hash(work.new_cutoff, "cutoff_payload_sha256")
+        try:
+            work.citation_map = build_citation_map(work.all_records)
+            work.added_provenance_ids = compute_added_provenance_ids(work.parent_context, work.provenance_context)
+            work.added_grounding_refs = compute_added_grounding_refs(work.parent_grounding, work.grounding)
+        except (StrictEvidenceError, StrictGroundingError) as exc:
+            raise StrictPublisherError(f"citation_or_delta:{exc}") from exc
+        work.records_digest = _jsonl_sha256(work.all_records)
+        work.dispositions_digest = _jsonl_sha256(work.all_dispositions)
+        work.builder_tree = _builder_tree_sha256()
+        work.manifest = {
+            "schema": "convmem.bound-authority-manifest.v3",
+            "lineage_id": work.lineage_id,
+            "authority_seq": work.next_seq,
+            "owner_digest": work.owner,
+            "snapshot_id": "pending",
+            "parent_snapshot_id": work.parent_snapshot_id,
+            "parent_manifest_sha256": work.parent_manifest_sha256,
+            "scope_sha256": scope.scope_sha256,
+            "registry_sha256": registry.registry_sha256,
+            "input_sha256": work.input_sha256,
+            "source_cutoff_sha256": work.new_cutoff["cutoff_payload_sha256"],
+            "operation_id": work.operation_id,
+            "authority_records_sha256": work.records_digest,
+            "record_count": len(work.all_records),
+            "dispositions_sha256": work.dispositions_digest,
+            "disposition_count": len(work.all_dispositions),
+            "citation_map_sha256": work.citation_map["citation_map_payload_sha256"],
+            "provenance_context_sha256": work.provenance_context["context_payload_sha256"],
+            "grounding_sha256": work.g_hash,
+            "added_assertion_ids": sorted((r["assertion_id"] for r in work.added_records)),
+            "added_disposition_ids": sorted(work.new_disp_map),
+            "added_provenance_ids": work.added_provenance_ids,
+            "added_grounding_refs": work.added_grounding_refs,
+            "semantic_contract_sha256": work.sc_hash,
+            "reducer_version": semantic_contract["reducer_version"],
+            "canonicalization_version": semantic_contract["canonicalization_version"],
+            "builder_version": BUILDER_VERSION,
+            "builder_tree_sha256": work.builder_tree,
+            "built_at": work.bundle["built_at"],
+            "as_of": work.bundle["as_of"],
+            "expires_at": work.bundle["expires_at"],
+            "manifest_payload_sha256": "sha256:" + "0" * 64,
+        }
+        work.snapshot_id = _authority_snapshot_id(work.manifest)
+        work.manifest["snapshot_id"] = work.snapshot_id
+        _set_self_hash(work.manifest, "manifest_payload_sha256")
+        if _authority_snapshot_id(work.manifest) != work.snapshot_id:
+            raise StrictPublisherError("snapshot_id_unstable")
+        work.fenced = {
+            "schema": "convmem.strict-publication.v2",
+            "lineage_id": work.lineage_id,
+            "owner_digest": work.owner,
+            "epoch": int(work.current["epoch"]) + 1,
+            "authority_seq": work.current["authority_seq"],
+            "authority_snapshot_id": work.current["authority_snapshot_id"],
+            "authority_manifest_sha256": work.current["authority_manifest_sha256"],
+            "authority_source_cutoff_sha256": work.current["authority_source_cutoff_sha256"],
+            "serving_generation_id": None,
+            "projection_manifest_sha256": None,
+            "semantic_contract_sha256": work.sc_hash,
+            "pending_operation_id": work.operation_id,
+            "mode": "fenced",
+            "previous_publication_sha256": work.current["publication_payload_sha256"],
+            "freshness_anchor": work.current["freshness_anchor"],
+            "published_at": work.bundle["built_at"],
+            "publication_payload_sha256": "sha256:" + "0" * 64,
+        }
+        _fault("before_fence_fsync")
+        work.fence_digest = _commit_publication(root, work.fenced, rename_tag="fence")
+        _fault("after_fence")
+        work.fenced["publication_payload_sha256"] = work.fence_digest
+        work.auth_dir = root / "authority" / work.snapshot_id
+        if work.auth_dir.exists():
+            raise StrictPublisherError("authority_dir_exists")
+        work.auth_dir.mkdir(parents=True, exist_ok=True)
+        _fault("before_authority_fsync")
+        _write_json_atomic(work.auth_dir / "input.json", work.bundle)
+        _write_json_atomic(work.auth_dir / "source-cutoff.json", work.new_cutoff)
+        _write_jsonl_atomic(
+            work.auth_dir / "records.jsonl",
+            work.all_records,
+            before_file_fsync="before_authority_records_fsync",
+            after_file_fsync="after_authority_records_fsync",
+        )
 
-    # §6.5.5: admitted fixture batches are cumulative; later bundles must carry
-    # the prior committed batches as an exact canonical prefix.
-    if len(candidate_batches) < len(prior_batches):
-        raise StrictPublisherError("batches_not_prefix")
-    if strict_canonical_bytes(list(candidate_batches[: len(prior_batches)])) != (
-        strict_canonical_bytes(prior_batches)
-    ):
-        raise StrictPublisherError("batches_not_prefix")
-
-    if current["authority_seq"] != 0:
+    def __publish_projection_locked_p4() -> None:
+        _write_jsonl_atomic(work.auth_dir / "dispositions.jsonl", work.all_dispositions)
+        _write_json_atomic(work.auth_dir / "citation-map.json", work.citation_map)
+        _write_json_atomic(work.auth_dir / "provenance-context.json", work.provenance_context)
+        _write_json_atomic(work.auth_dir / "grounding.json", work.grounding)
+        _write_json_atomic(
+            work.auth_dir / "manifest.json",
+            work.manifest,
+            before_file_fsync="before_authority_manifest_fsync",
+            after_file_fsync="after_authority_manifest_fsync",
+        )
+        _fsync_dir(work.auth_dir)
+        _fault("after_authority_fsync")
+        work.unavailable: dict[str, Any] = {
+            "schema": "convmem.strict-publication.v2",
+            "lineage_id": work.lineage_id,
+            "owner_digest": work.owner,
+            "epoch": int(work.fenced["epoch"]) + 1,
+            "authority_seq": work.next_seq,
+            "authority_snapshot_id": work.snapshot_id,
+            "authority_manifest_sha256": work.manifest["manifest_payload_sha256"],
+            "authority_source_cutoff_sha256": work.new_cutoff["cutoff_payload_sha256"],
+            "serving_generation_id": None,
+            "projection_manifest_sha256": None,
+            "semantic_contract_sha256": work.sc_hash,
+            "pending_operation_id": None,
+            "mode": "unavailable",
+            "previous_publication_sha256": work.fence_digest,
+            "freshness_anchor": None,
+            "published_at": work.bundle["built_at"],
+            "publication_payload_sha256": "sha256:" + "0" * 64,
+        }
+        work.clock = {
+            "schema": "convmem.clock-review.v1",
+            "lineage_id": work.lineage_id,
+            "authority_snapshot_id": work.snapshot_id,
+            "boot_id": "fixture-boot",
+            "expires_at": work.bundle["expires_at"],
+            "reviewed_wall_time": work.bundle["built_at"],
+            "reviewer_uid": enrollment["operator_uid"],
+            "review_payload_sha256": "sha256:" + "0" * 64,
+        }
+        _set_self_hash(work.clock, "review_payload_sha256")
+        work.clock_ref = "clock:" + work.clock["review_payload_sha256"].removeprefix("sha256:")
+        _write_json_atomic(
+            root / "control" / "clock" / f"{work.clock['review_payload_sha256'].removeprefix('sha256:')}.json",
+            work.clock,
+        )
+        work.anchor = _freshness_anchor_for(
+            snapshot_id=work.snapshot_id,
+            boot_id="fixture-boot",
+            sampled_wall_time=work.bundle["built_at"],
+            sampled_boottime_ns=0,
+            snapshot_deadline_boottime_ns=10000000000,
+            clock_review_ref=work.clock_ref,
+        )
+        work.unavailable["freshness_anchor"] = work.anchor
+        work.unavail_digest = _commit_publication(root, work.unavailable, rename_tag="unavailable")
+        work.unavailable["publication_payload_sha256"] = work.unavail_digest
+        _fault("after_authority_unavailable")
         try:
             qualify_authority_generation(
                 root=root,
                 scope=scope,
                 registry=registry,
-                expected_publication_sha256=current["publication_payload_sha256"],
+                expected_publication_sha256=work.unavail_digest,
                 require_serving=False,
             )
         except StrictProjectionError as exc:
-            raise StrictPublisherError(f"parent_cold_qualify:{exc}") from exc
-
-    # Validate candidate vs parent before any fence/history mutation.
-    provenance_context = dict(bundle["provenance_context"])
-    grounding = dict(bundle["grounding"])
-    if grounding.get("schema") != "convmem.strict-grounding.v1":
-        raise StrictPublisherError("grounding_schema")
-    g_hash = _self_hash(grounding, "grounding_payload_sha256")
-    if grounding["grounding_payload_sha256"] != g_hash:
-        raise StrictPublisherError("grounding_hash")
-    try:
-        provenance_context = validate_provenance_context(
-            provenance_context, expected_grounding_sha256=g_hash
+            raise StrictPublisherError(f"cold_qualify:{exc}") from exc
+        work.reduced = reduce_complete_bound_state(work.all_records, work.disp_map)
+        work.selectors = EffectiveSelectors(
+            project=scope.project,
+            site=scope.site,
+            site_mode=scope.site_mode,
+            domain=scope.domain,
+            binding_id=work.binding_id,
         )
-        assert_cumulative_grounding(parent_grounding, grounding)
-        assert_cumulative_provenance_context(parent_context, provenance_context)
-    except StrictGroundingError as exc:
-        raise StrictPublisherError(f"provenance_context:{exc}") from exc
-
-    registered: dict[str, Any] = {}
-    for entry in provenance_context["registered_assertions"]:
-        aid = entry["assertion_id"]
-        if aid in registered:
-            raise StrictPublisherError("registered_assertion_duplicate")
-        registered[aid] = entry
-
-    issuer_inventory = None
-    if registered:
-        try:
-            issuer_inventory = load_bound_issuer_inventories(binding.capture_issuers)
-        except StrictGroundingError as exc:
-            raise StrictPublisherError(f"issuer_inventory:{exc}") from exc
-
-    originals: dict[str, dict[str, str]] = {}
-    for rec in parent_records:
-        env = rec.get("provenance_envelope")
-        pq = rec.get("provenance_qualification")
-        if isinstance(env, Mapping) and isinstance(pq, Mapping):
-            pid = env.get("assertion_id")
-            if isinstance(pid, str) and pid:
-                originals[pid] = {
-                    "commitments": str(pq["commitments"]),
-                    "byte_grounding": str(pq["byte_grounding"]),
-                    "capture": str(pq["capture"]),
-                    "transformer_cap": str(pq["transformer_cap"]),
-                }
-
-    try:
-        qual_map = qualify_assertions(
-            grounding=grounding,
-            provenance_context=provenance_context,
-            issuer_inventory=issuer_inventory,
-            capture_issuers=binding.capture_issuers,
-            allowed_issuer_ids={i.issuer_id for i in binding.capture_issuers},
-            allowed_source_registration_ids={
-                r.id for r in binding.source_registrations
-            },
-            original_qualifications=originals or None,
+        for rec in work.all_records:
+            try:
+                authorize_row(
+                    scope=scope,
+                    registry=registry,
+                    selectors=work.selectors,
+                    project_binding_id=rec["project_binding_id"],
+                    source_registration_id=rec["source_registration_id"],
+                    authority_site=rec["authority_site"],
+                    authority_domain=rec["authority_domain"],
+                )
+            except BoundScopeError as exc:
+                raise StrictPublisherError(f"authorization:{exc}") from exc
+        work.rows, work.graph = _build_rows_and_graph(
+            records=work.all_records,
+            reduced=work.reduced,
+            lineage_id=work.lineage_id,
+            authority_seq=work.next_seq,
+            authority_manifest_sha256=work.manifest["manifest_payload_sha256"],
+            semantic_contract_sha256=work.sc_hash,
+            binding_public_ref=work.binding.public_ref,
         )
-        for _aid, shared in qual_map.items():
-            if not isinstance(shared, QualificationTuple):
-                raise StrictPublisherError("qualification_type")
-    except StrictGroundingError as exc:
-        raise StrictPublisherError(f"grounding:{exc}") from exc
 
-    added_records: list[dict[str, Any]] = []
-    # Cumulative batches: only materialize the suffix beyond the prior prefix.
-    delta_batches = list(candidate_batches[len(prior_batches) :])
-    for batch in delta_batches:
-        if not isinstance(batch, Mapping):
-            raise StrictPublisherError("batch_type")
-        try:
-            new_recs = materialize_authority_records(
-                binding=binding,
-                source_registration_id=batch["source_registration_id"],
-                scan=batch["source"],
-                registered_assertions=registered,
-                qualification_by_provenance=qual_map,
-                prior_records=parent_records + added_records,
-            )
-        except StrictEvidenceError as exc:
-            raise StrictPublisherError(f"materialize:{exc}") from exc
-        added_records.extend(new_recs)
-
-    parent_ids = {r["assertion_id"] for r in parent_records}
-    parent_disp_map = {disposition_id(d): d for d in parent_dispositions}
-    parent_heads = _parent_heads_by_logical(parent_records, parent_disp_map)
-    staging_records = list(parent_records) + [dict(r) for r in added_records]
-    try:
-        new_disp_map = validate_dispositions(
-            list(bundle["dispositions"]),
-            records=staging_records,
-            parent_snapshot_id=parent_snapshot_id,
-            parent_heads_by_logical=parent_heads if parent_heads else None,
-        )
-    except StrictEvidenceError as exc:
-        raise StrictPublisherError(f"dispositions:{exc}") from exc
-
-    from strict_evidence_state import payload_sha256, semantic_sha256
-
-    added_by_id = {r["assertion_id"]: dict(r) for r in added_records}
-    for disp_id, disp in new_disp_map.items():
-        subject = disp["subject_assertion_id"]
-        action = disp["action"]
-        if subject in parent_ids:
-            continue  # dispositions affect parent only via reducer
-        if subject not in added_by_id:
-            raise StrictPublisherError("disposition_subject_unknown")
-        rec = added_by_id[subject]
-        if action in {"decision_approved", "decision_rejected"}:
-            rec["decision_disposition_ref"] = disp_id
-        elif action == "supersession_authorized":
-            rec["supersession_disposition_ref"] = disp_id
-            rec["supersedes_assertion_ids"] = sorted(set(disp["target_assertion_ids"]))
-        added_by_id[subject] = rec
-    for rec in added_by_id.values():
-        rec["semantic_sha256"] = semantic_sha256(rec)
-        rec["payload_sha256"] = payload_sha256(rec)
-    added_records = list(added_by_id.values())
-    all_records = sorted(
-        list(parent_records) + added_records, key=lambda r: r["assertion_id"]
-    )
-    if len({r["assertion_id"] for r in all_records}) != len(all_records):
-        raise StrictPublisherError("record_id_collision")
-
-    all_dispositions = list(parent_dispositions) + [
-        new_disp_map[k] for k in sorted(new_disp_map)
-    ]
-    all_dispositions.sort(key=disposition_id)
-    disp_map = {disposition_id(d): d for d in all_dispositions}
-
-    operations = list(parent_cutoff.get("operations", []))
-    if operation_id in {op["operation_id"] for op in operations}:
-        raise StrictPublisherError("operation_id_duplicate")
-    # §6.5.5: source_prefix_sha256 digests the current cumulative batches array.
-    source_prefix = sha256_digest(strict_canonical_bytes(candidate_batches))
-    operations.append(
-        {
-            "operation_id": operation_id,
-            "input_sha256": input_sha256,
-            "source_prefix_sha256": source_prefix,
+    def __publish_projection_locked_p5():
+        work.rows_digest = _jsonl_sha256(work.rows)
+        work.prev_gen = work.current.get("serving_generation_id")
+        work.proj_manifest: dict[str, Any] = {
+            "schema": "convmem.bound-projection-manifest.v3",
+            "lineage_id": work.lineage_id,
+            "authority_seq": work.next_seq,
+            "owner_digest": work.owner,
+            "generation_id": "pending",
+            "previous_generation_id": work.prev_gen,
+            "snapshot_id": work.snapshot_id,
+            "authority_manifest_sha256": work.manifest["manifest_payload_sha256"],
+            "scope_sha256": scope.scope_sha256,
+            "registry_sha256": registry.registry_sha256,
+            "semantic_contract_sha256": work.sc_hash,
+            "rows_sha256": work.rows_digest,
+            "row_count": len(work.rows),
+            "graph_sha256": work.graph["graph_payload_sha256"],
+            "graph_node_count": len(work.graph["nodes"]),
+            "search_kernel": semantic_contract["search_kernel"],
+            "search_kernel_version": semantic_contract["search_kernel_version"],
+            "tokenizer_unicode_version": semantic_contract["tokenizer_unicode_version"],
+            "builder_version": BUILDER_VERSION,
+            "builder_tree_sha256": work.builder_tree,
+            "built_at": work.bundle["built_at"],
+            "as_of": work.bundle["as_of"],
+            "expires_at": work.bundle["expires_at"],
+            "manifest_payload_sha256": "sha256:" + "0" * 64,
         }
-    )
-    new_cutoff = {
-        "schema": "convmem.strict-source-cutoff.v1",
-        "lineage_id": lineage_id,
-        "mode": "fixture",
-        "operations": operations,
-        "cutoff_payload_sha256": "sha256:" + ("0" * 64),
-    }
-    _set_self_hash(new_cutoff, "cutoff_payload_sha256")
-
-    try:
-        citation_map = build_citation_map(all_records)
-        added_provenance_ids = compute_added_provenance_ids(
-            parent_context, provenance_context
+        work.generation_id = _projection_generation_id(work.proj_manifest)
+        work.proj_manifest["generation_id"] = work.generation_id
+        _set_self_hash(work.proj_manifest, "manifest_payload_sha256")
+        if _projection_generation_id(work.proj_manifest) != work.generation_id:
+            raise StrictPublisherError("generation_id_unstable")
+        work.gen_dir = root / "projection" / work.generation_id
+        if work.gen_dir.exists():
+            raise StrictPublisherError("projection_dir_exists")
+        work.gen_dir.mkdir(parents=True, exist_ok=True)
+        _fault("before_projection_fsync")
+        _write_jsonl_atomic(work.gen_dir / "rows.jsonl", work.rows)
+        _write_json_atomic(work.gen_dir / "graph.json", work.graph)
+        _write_json_atomic(
+            work.gen_dir / "manifest.json",
+            work.proj_manifest,
+            before_file_fsync="before_projection_manifest_fsync",
+            after_file_fsync="after_projection_manifest_fsync",
         )
-        added_grounding_refs = compute_added_grounding_refs(parent_grounding, grounding)
-    except (StrictEvidenceError, StrictGroundingError) as exc:
-        raise StrictPublisherError(f"citation_or_delta:{exc}") from exc
-
-    records_digest = _jsonl_sha256(all_records)
-    dispositions_digest = _jsonl_sha256(all_dispositions)
-    builder_tree = _builder_tree_sha256()
-    manifest = {
-        "schema": "convmem.bound-authority-manifest.v3",
-        "lineage_id": lineage_id,
-        "authority_seq": next_seq,
-        "owner_digest": owner,
-        "snapshot_id": "pending",
-        "parent_snapshot_id": parent_snapshot_id,
-        "parent_manifest_sha256": parent_manifest_sha256,
-        "scope_sha256": scope.scope_sha256,
-        "registry_sha256": registry.registry_sha256,
-        "input_sha256": input_sha256,
-        "source_cutoff_sha256": new_cutoff["cutoff_payload_sha256"],
-        "operation_id": operation_id,
-        "authority_records_sha256": records_digest,
-        "record_count": len(all_records),
-        "dispositions_sha256": dispositions_digest,
-        "disposition_count": len(all_dispositions),
-        "citation_map_sha256": citation_map["citation_map_payload_sha256"],
-        "provenance_context_sha256": provenance_context["context_payload_sha256"],
-        "grounding_sha256": g_hash,
-        "added_assertion_ids": sorted(r["assertion_id"] for r in added_records),
-        "added_disposition_ids": sorted(new_disp_map),
-        "added_provenance_ids": added_provenance_ids,
-        "added_grounding_refs": added_grounding_refs,
-        "semantic_contract_sha256": sc_hash,
-        "reducer_version": semantic_contract["reducer_version"],
-        "canonicalization_version": semantic_contract["canonicalization_version"],
-        "builder_version": BUILDER_VERSION,
-        "builder_tree_sha256": builder_tree,
-        "built_at": bundle["built_at"],
-        "as_of": bundle["as_of"],
-        "expires_at": bundle["expires_at"],
-        "manifest_payload_sha256": "sha256:" + ("0" * 64),
-    }
-    snapshot_id = _authority_snapshot_id(manifest)
-    manifest["snapshot_id"] = snapshot_id
-    _set_self_hash(manifest, "manifest_payload_sha256")
-    if _authority_snapshot_id(manifest) != snapshot_id:
-        raise StrictPublisherError("snapshot_id_unstable")
-
-    # 1–2. Fence after parent cold-qualify + cumulative/delta proof.
-    fenced = {
-        "schema": "convmem.strict-publication.v2",
-        "lineage_id": lineage_id,
-        "owner_digest": owner,
-        "epoch": int(current["epoch"]) + 1,
-        "authority_seq": current["authority_seq"],
-        "authority_snapshot_id": current["authority_snapshot_id"],
-        "authority_manifest_sha256": current["authority_manifest_sha256"],
-        "authority_source_cutoff_sha256": current["authority_source_cutoff_sha256"],
-        "serving_generation_id": None,
-        "projection_manifest_sha256": None,
-        "semantic_contract_sha256": sc_hash,
-        "pending_operation_id": operation_id,
-        "mode": "fenced",
-        "previous_publication_sha256": current["publication_payload_sha256"],
-        "freshness_anchor": current["freshness_anchor"],
-        "published_at": bundle["built_at"],
-        "publication_payload_sha256": "sha256:" + ("0" * 64),
-    }
-    _fault("before_fence_fsync")
-    fence_digest = _commit_publication(root, fenced, rename_tag="fence")
-    _fault("after_fence")
-    fenced["publication_payload_sha256"] = fence_digest
-
-    # 3. Persist immutable authority files for the already-validated candidate.
-    auth_dir = root / "authority" / snapshot_id
-    if auth_dir.exists():
-        raise StrictPublisherError("authority_dir_exists")
-    auth_dir.mkdir(parents=True, exist_ok=True)
-
-    _fault("before_authority_fsync")
-    _write_json_atomic(auth_dir / "input.json", bundle)
-    _write_json_atomic(auth_dir / "source-cutoff.json", new_cutoff)
-    _write_jsonl_atomic(
-        auth_dir / "records.jsonl",
-        all_records,
-        before_file_fsync="before_authority_records_fsync",
-        after_file_fsync="after_authority_records_fsync",
-    )
-    _write_jsonl_atomic(auth_dir / "dispositions.jsonl", all_dispositions)
-    _write_json_atomic(auth_dir / "citation-map.json", citation_map)
-    _write_json_atomic(auth_dir / "provenance-context.json", provenance_context)
-    _write_json_atomic(auth_dir / "grounding.json", grounding)
-    _write_json_atomic(
-        auth_dir / "manifest.json",
-        manifest,
-        before_file_fsync="before_authority_manifest_fsync",
-        after_file_fsync="after_authority_manifest_fsync",
-    )
-    _fsync_dir(auth_dir)
-    _fault("after_authority_fsync")
-
-    # Cold qualify authority (fixture in-process; production: fresh interpreter).
-    # Publish unavailable head first so qualifier sees admitted authority.
-    unavailable: dict[str, Any] = {
-        "schema": "convmem.strict-publication.v2",
-        "lineage_id": lineage_id,
-        "owner_digest": owner,
-        "epoch": int(fenced["epoch"]) + 1,
-        "authority_seq": next_seq,
-        "authority_snapshot_id": snapshot_id,
-        "authority_manifest_sha256": manifest["manifest_payload_sha256"],
-        "authority_source_cutoff_sha256": new_cutoff["cutoff_payload_sha256"],
-        "serving_generation_id": None,
-        "projection_manifest_sha256": None,
-        "semantic_contract_sha256": sc_hash,
-        "pending_operation_id": None,
-        "mode": "unavailable",
-        "previous_publication_sha256": fence_digest,
-        "freshness_anchor": None,  # filled below
-        "published_at": bundle["built_at"],
-        "publication_payload_sha256": "sha256:" + ("0" * 64),
-    }
-    # Persist clock review + freshness for this head (unchanged on rollback).
-    clock = {
-        "schema": "convmem.clock-review.v1",
-        "lineage_id": lineage_id,
-        "authority_snapshot_id": snapshot_id,
-        "boot_id": "fixture-boot",
-        "expires_at": bundle["expires_at"],
-        "reviewed_wall_time": bundle["built_at"],
-        "reviewer_uid": enrollment["operator_uid"],
-        "review_payload_sha256": "sha256:" + ("0" * 64),
-    }
-    _set_self_hash(clock, "review_payload_sha256")
-    clock_ref = "clock:" + clock["review_payload_sha256"].removeprefix("sha256:")
-    _write_json_atomic(
-        root / "control" / "clock" / f"{clock['review_payload_sha256'].removeprefix('sha256:')}.json",
-        clock,
-    )
-    anchor = _freshness_anchor_for(
-        snapshot_id=snapshot_id,
-        boot_id="fixture-boot",
-        sampled_wall_time=bundle["built_at"],
-        sampled_boottime_ns=0,
-        snapshot_deadline_boottime_ns=10_000_000_000,
-        clock_review_ref=clock_ref,
-    )
-    unavailable["freshness_anchor"] = anchor
-    unavail_digest = _commit_publication(root, unavailable, rename_tag="unavailable")
-    unavailable["publication_payload_sha256"] = unavail_digest
-    _fault("after_authority_unavailable")
-
-    # Fresh cold qualification of unavailable head.
-    try:
-        qualify_authority_generation(
-            root=root,
-            scope=scope,
-            registry=registry,
-            expected_publication_sha256=unavail_digest,
-            require_serving=False,
-        )
-    except StrictProjectionError as exc:
-        raise StrictPublisherError(f"cold_qualify:{exc}") from exc
-
-    # 5. Cold build projection for SAME head.
-    reduced = reduce_complete_bound_state(all_records, disp_map)
-    selectors = EffectiveSelectors(
-        project=scope.project,
-        site=scope.site,
-        site_mode=scope.site_mode,
-        domain=scope.domain,
-        binding_id=binding_id,
-    )
-    for rec in all_records:
+        _fsync_dir(work.gen_dir)
+        _fault("after_projection_fsync")
+        work.recheck = _current_publication(root, work.lineage_id)
+        if work.recheck["publication_payload_sha256"] != work.unavail_digest:
+            raise StrictPublisherError("publication_changed_under_lock")
+        work.serving: dict[str, Any] = {
+            "schema": "convmem.strict-publication.v2",
+            "lineage_id": work.lineage_id,
+            "owner_digest": work.owner,
+            "epoch": int(work.unavailable["epoch"]) + 1,
+            "authority_seq": work.next_seq,
+            "authority_snapshot_id": work.snapshot_id,
+            "authority_manifest_sha256": work.manifest["manifest_payload_sha256"],
+            "authority_source_cutoff_sha256": work.new_cutoff["cutoff_payload_sha256"],
+            "serving_generation_id": work.generation_id,
+            "projection_manifest_sha256": work.proj_manifest["manifest_payload_sha256"],
+            "semantic_contract_sha256": work.sc_hash,
+            "pending_operation_id": None,
+            "mode": "serving",
+            "previous_publication_sha256": work.unavail_digest,
+            "freshness_anchor": work.anchor,
+            "published_at": work.bundle["built_at"],
+            "publication_payload_sha256": "sha256:" + "0" * 64,
+        }
+        work.serving_digest = _commit_publication(root, work.serving, rename_tag="serving")
+        work.serving["publication_payload_sha256"] = work.serving_digest
         try:
-            authorize_row(
+            qualify_authority_generation(
+                root=root,
                 scope=scope,
                 registry=registry,
-                selectors=selectors,
-                project_binding_id=rec["project_binding_id"],
-                source_registration_id=rec["source_registration_id"],
-                authority_site=rec["authority_site"],
-                authority_domain=rec["authority_domain"],
+                expected_publication_sha256=work.serving_digest,
+                require_serving=True,
             )
-        except BoundScopeError as exc:
-            raise StrictPublisherError(f"authorization:{exc}") from exc
+        except StrictProjectionError as exc:
+            raise StrictPublisherError(f"cold_qualify_serving:{exc}") from exc
+        return work.serving
 
-    rows, graph = _build_rows_and_graph(
-        records=all_records,
-        reduced=reduced,
-        lineage_id=lineage_id,
-        authority_seq=next_seq,
-        authority_manifest_sha256=manifest["manifest_payload_sha256"],
-        semantic_contract_sha256=sc_hash,
-        binding_public_ref=binding.public_ref,
-    )
-    rows_digest = _jsonl_sha256(rows)
-    prev_gen = current.get("serving_generation_id")
-    proj_manifest: dict[str, Any] = {
-        "schema": "convmem.bound-projection-manifest.v3",
-        "lineage_id": lineage_id,
-        "authority_seq": next_seq,
-        "owner_digest": owner,
-        "generation_id": "pending",
-        "previous_generation_id": prev_gen,
-        "snapshot_id": snapshot_id,
-        "authority_manifest_sha256": manifest["manifest_payload_sha256"],
-        "scope_sha256": scope.scope_sha256,
-        "registry_sha256": registry.registry_sha256,
-        "semantic_contract_sha256": sc_hash,
-        "rows_sha256": rows_digest,
-        "row_count": len(rows),
-        "graph_sha256": graph["graph_payload_sha256"],
-        "graph_node_count": len(graph["nodes"]),
-        "search_kernel": semantic_contract["search_kernel"],
-        "search_kernel_version": semantic_contract["search_kernel_version"],
-        "tokenizer_unicode_version": semantic_contract["tokenizer_unicode_version"],
-        "builder_version": BUILDER_VERSION,
-        "builder_tree_sha256": builder_tree,
-        "built_at": bundle["built_at"],
-        "as_of": bundle["as_of"],
-        "expires_at": bundle["expires_at"],
-        "manifest_payload_sha256": "sha256:" + ("0" * 64),
-    }
-    generation_id = _projection_generation_id(proj_manifest)
-    proj_manifest["generation_id"] = generation_id
-    _set_self_hash(proj_manifest, "manifest_payload_sha256")
-    if _projection_generation_id(proj_manifest) != generation_id:
-        raise StrictPublisherError("generation_id_unstable")
-
-    gen_dir = root / "projection" / generation_id
-    if gen_dir.exists():
-        raise StrictPublisherError("projection_dir_exists")
-    gen_dir.mkdir(parents=True, exist_ok=True)
-    _fault("before_projection_fsync")
-    _write_jsonl_atomic(gen_dir / "rows.jsonl", rows)
-    _write_json_atomic(gen_dir / "graph.json", graph)
-    _write_json_atomic(
-        gen_dir / "manifest.json",
-        proj_manifest,
-        before_file_fsync="before_projection_manifest_fsync",
-        after_file_fsync="after_projection_manifest_fsync",
-    )
-    _fsync_dir(gen_dir)
-    _fault("after_projection_fsync")
-
-    # 6. Recheck CAS under lock; publish serving for SAME head (retain anchor).
-    recheck = _current_publication(root, lineage_id)
-    if recheck["publication_payload_sha256"] != unavail_digest:
-        raise StrictPublisherError("publication_changed_under_lock")
-    serving: dict[str, Any] = {
-        "schema": "convmem.strict-publication.v2",
-        "lineage_id": lineage_id,
-        "owner_digest": owner,
-        "epoch": int(unavailable["epoch"]) + 1,
-        "authority_seq": next_seq,
-        "authority_snapshot_id": snapshot_id,
-        "authority_manifest_sha256": manifest["manifest_payload_sha256"],
-        "authority_source_cutoff_sha256": new_cutoff["cutoff_payload_sha256"],
-        "serving_generation_id": generation_id,
-        "projection_manifest_sha256": proj_manifest["manifest_payload_sha256"],
-        "semantic_contract_sha256": sc_hash,
-        "pending_operation_id": None,
-        "mode": "serving",
-        "previous_publication_sha256": unavail_digest,
-        "freshness_anchor": anchor,
-        "published_at": bundle["built_at"],
-        "publication_payload_sha256": "sha256:" + ("0" * 64),
-    }
-    serving_digest = _commit_publication(root, serving, rename_tag="serving")
-    serving["publication_payload_sha256"] = serving_digest
-
-    # Cold qualify serving.
-    try:
-        qualify_authority_generation(
-            root=root,
-            scope=scope,
-            registry=registry,
-            expected_publication_sha256=serving_digest,
-            require_serving=True,
-        )
-    except StrictProjectionError as exc:
-        raise StrictPublisherError(f"cold_qualify_serving:{exc}") from exc
-
-    return serving
-
+    _out = __publish_projection_locked_p0()
+    if _out is not None:
+        return _out
+    __publish_projection_locked_p1()
+    __publish_projection_locked_p2()
+    __publish_projection_locked_p3()
+    __publish_projection_locked_p4()
+    _out = __publish_projection_locked_p5()
+    if _out is not None:
+        return _out
 
 
 def _rebuild_serving(  # pylint: disable=R0913  # rebuild serving arity mirrors closed publisher inputs
@@ -1732,9 +1690,7 @@ def _rollback_serving(  # pylint: disable=R0913  # rollback serving arity mirror
     if proj_manifest["snapshot_id"] != current["authority_snapshot_id"]:
         raise StrictPublisherError("rollback_wrong_snapshot")
     # expires_at must equal current authority expiry (no renewal).
-    auth_manifest = _read_json(
-        root / "authority" / str(current["authority_snapshot_id"]) / "manifest.json"
-    )
+    auth_manifest = _read_json(root / "authority" / str(current["authority_snapshot_id"]) / "manifest.json")
     if proj_manifest["expires_at"] != auth_manifest["expires_at"]:
         raise StrictPublisherError("rollback_expiry_mismatch")
     if proj_manifest["as_of"] != auth_manifest["as_of"]:

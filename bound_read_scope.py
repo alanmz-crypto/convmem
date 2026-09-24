@@ -497,6 +497,71 @@ def _parse_verification_producer(raw: Mapping[str, Any]) -> VerificationProducer
 
 
 
+
+def _validate_binding_registrations(
+    registrations: tuple,
+    *,
+    domain_root: str,
+    site_mode: str,
+    site: str | None,
+) -> None:
+    """Enforce domain/site constraints for source registrations on one binding."""
+
+    for reg in registrations:
+        if not domain_matches(reg.authorization_domain, domain_root):
+            raise BoundScopeError("source_domain_outside_binding")
+        if site_mode == "exact":
+            if reg.site != site:
+                raise BoundScopeError("source_site_mismatch")
+        elif reg.site is not None:
+            if reg.site != normalize_authority_site(reg.site):
+                raise BoundScopeError("source_site_noncanonical")
+
+
+def _parse_binding_issuers(issuers_raw: Any, *, reg_ids: list[str]) -> tuple:
+    """Parse and validate capture_issuers for one binding."""
+
+    if not isinstance(issuers_raw, list):
+        raise BoundScopeError("capture_issuers")
+    issuers = tuple(_parse_capture_issuer(i) for i in issuers_raw)
+    issuer_ids = [i.issuer_id for i in issuers]
+    if issuer_ids != sorted(issuer_ids) or len(issuer_ids) != len(set(issuer_ids)):
+        raise BoundScopeError("capture_issuers_order")
+    for issuer in issuers:
+        if issuer.capture_class != "synthetic_fixture":
+            raise BoundScopeError("fixture_issuer_only")
+        for src_id in issuer.source_registration_ids:
+            if src_id not in reg_ids:
+                raise BoundScopeError("issuer_source_unknown")
+    return issuers
+
+
+def _parse_binding_producers(producers_raw: Any, *, reg_ids: list[str]) -> tuple:
+    """Parse and validate verification_producers for one binding."""
+
+    if not isinstance(producers_raw, list):
+        raise BoundScopeError("verification_producers")
+    producers = tuple(_parse_verification_producer(prod) for prod in producers_raw)
+    producer_keys = [
+        (
+            prod.source_registration_id,
+            prod.producer,
+            prod.transformer_identity,
+            prod.transformer_version,
+            prod.transformer_artifact_sha256,
+            prod.recipe_sha256,
+            prod.capture_class,
+        )
+        for prod in producers
+    ]
+    if producer_keys != sorted(set(producer_keys)):
+        raise BoundScopeError("verification_producers_order")
+    for producer in producers:
+        if producer.source_registration_id not in reg_ids:
+            raise BoundScopeError("verification_producer_source")
+    return producers
+
+
 def _parse_project_binding(
     raw: Any, *, seen_public_refs: set[str]
 ) -> ProjectBinding:
@@ -556,49 +621,11 @@ def _parse_project_binding(
     reg_ids = [r.id for r in registrations]
     if reg_ids != sorted(reg_ids) or len(reg_ids) != len(set(reg_ids)):
         raise BoundScopeError("source_registrations_order")
-    for reg in registrations:
-        if not domain_matches(reg.authorization_domain, domain_root):
-            raise BoundScopeError("source_domain_outside_binding")
-        if site_mode == "exact":
-            if reg.site != site:
-                raise BoundScopeError("source_site_mismatch")
-        elif reg.site is not None:
-            if reg.site != normalize_authority_site(reg.site):
-                raise BoundScopeError("source_site_noncanonical")
-    issuers_raw = raw["capture_issuers"]
-    if not isinstance(issuers_raw, list):
-        raise BoundScopeError("capture_issuers")
-    issuers = tuple(_parse_capture_issuer(i) for i in issuers_raw)
-    issuer_ids = [i.issuer_id for i in issuers]
-    if issuer_ids != sorted(issuer_ids) or len(issuer_ids) != len(set(issuer_ids)):
-        raise BoundScopeError("capture_issuers_order")
-    for issuer in issuers:
-        if issuer.capture_class != "synthetic_fixture":
-            raise BoundScopeError("fixture_issuer_only")
-        for src_id in issuer.source_registration_ids:
-            if src_id not in reg_ids:
-                raise BoundScopeError("issuer_source_unknown")
-    producers_raw = raw["verification_producers"]
-    if not isinstance(producers_raw, list):
-        raise BoundScopeError("verification_producers")
-    producers = tuple(_parse_verification_producer(prod) for prod in producers_raw)
-    producer_keys = [
-        (
-            prod.source_registration_id,
-            prod.producer,
-            prod.transformer_identity,
-            prod.transformer_version,
-            prod.transformer_artifact_sha256,
-            prod.recipe_sha256,
-            prod.capture_class,
-        )
-        for prod in producers
-    ]
-    if producer_keys != sorted(set(producer_keys)):
-        raise BoundScopeError("verification_producers_order")
-    for producer in producers:
-        if producer.source_registration_id not in reg_ids:
-            raise BoundScopeError("verification_producer_source")
+    _validate_binding_registrations(
+        registrations, domain_root=domain_root, site_mode=site_mode, site=site
+    )
+    issuers = _parse_binding_issuers(raw["capture_issuers"], reg_ids=reg_ids)
+    producers = _parse_binding_producers(raw["verification_producers"], reg_ids=reg_ids)
     return ProjectBinding(
         id=binding_id,
         public_ref=public_ref,

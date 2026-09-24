@@ -48,6 +48,12 @@ SPAWN_ROLES = frozenset(
 )
 
 
+
+def _port_map_get(mapping: object, key: str) -> Any:
+    """Read injected-port mapping field; Protocol ellipsis makes value look unsubscriptable."""
+    # pylint: disable=E1136  # runtime mapping from FixturePlatformPort; stub body is ellipsis
+    return cast(Mapping[str, Any], mapping)[key]
+
 class FixturePlatformPort(Protocol):
     def sample_clock(self) -> dict[str, Any]: ...
 
@@ -76,7 +82,8 @@ def run(*_args: Any, **_kwargs: Any) -> None:
     refuse_runtime_not_qualified()
 
 
-def main(argv: list[str] | None = None) -> int:  # pylint: disable=W0613  # public CLI argv retained for interface parity
+def main(argv: list[str] | None = None) -> int:
+    # pylint: disable=W0613  # public CLI argv retained for interface parity
     refuse_runtime_not_qualified()
     return EX_CONFIG
 
@@ -110,7 +117,8 @@ def _reject_nonfinite(value: str) -> None:
     raise ValueError(f"nonfinite:{value}")
 
 
-def validate_launch_tuple(  # pylint: disable=R0917  # frozen public launch-tuple arity (positional callers in tests)
+# pylint: disable=R0917  # frozen public launch-tuple arity (positional callers in tests)
+def validate_launch_tuple(
     launch_policy: Mapping[str, Any],
     role: str,
     argv: list[str],
@@ -218,7 +226,8 @@ def _parse_complete_stdout_object(raw: bytes) -> dict[str, Any]:
 
 
 @dataclass
-class AcceptedTurn:  # pylint: disable=R0902  # attributes mirror accepted-turn receipt fields
+# pylint: disable=R0902  # attributes mirror accepted-turn receipt fields
+class AcceptedTurn:
     turn_id: str
     request_id: str
     request_canonical: bytes
@@ -231,7 +240,8 @@ class AcceptedTurn:  # pylint: disable=R0902  # attributes mirror accepted-turn 
 
 
 @dataclass
-class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor activation/turn bookkeeping fields
+# pylint: disable=R0902  # attributes mirror supervisor activation/turn bookkeeping fields
+class SupervisorCore:
     """Turn state machine, watchdog/deadlines, release/revoke linearization."""
 
     platform: FixturePlatformPort
@@ -277,7 +287,7 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
         self.state = "ACTIVE_IDLE"
         self._watchdog_armed = True
         self._internal_terminal = None
-        sample = cast(dict[str, Any], self.platform.sample_clock())
+        sample: dict[str, Any] = cast(dict[str, Any], self.platform.sample_clock())
         self._watchdog_samples.append(dict(sample))
 
     def reset_for_new_activation(self) -> None:
@@ -397,7 +407,9 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
                     "integrity_failure", internal="watchdog_interval_skipped"
                 )
                 raise ValueError("watchdog_interval_skipped")
-        now = int(cast(dict[str, Any], self.platform.sample_clock())["boottime_after_ns"])
+        now = int(
+            _port_map_get(cast(dict[str, Any], self.platform.sample_clock()), "boottime_after_ns")
+        )
         if now - samples[-1] > WATCHDOG_INTERVAL_NS:
             self._enter_revoking_internal(
                 "integrity_failure", internal="watchdog_interval_skipped"
@@ -498,7 +510,7 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
         if existing.state == "committed":
             assert existing.result is not None
             if self.lease_deadline_boottime_ns is not None and int(
-                sample["boottime_after_ns"]
+                _port_map_get(sample, "boottime_after_ns")
             ) > self.lease_deadline_boottime_ns:
                 return self._out(request, "unavailable", {"reason": "expiry"})
             return self._out(request, "committed", existing.result)
@@ -536,7 +548,10 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
             return self._out(request, "cancelled", {"turn_id": turn_id})
         return self._out(request, "invalid_request", {"reason": "not_active"})
 
-    def _turn(self, request: dict[str, Any], sample: Mapping[str, Any]) -> dict[str, Any]:  # pylint: disable=R0911  # closed control-protocol outcome surface
+    def _turn(
+        self, request: dict[str, Any], sample: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        # pylint: disable=R0911  # closed control-protocol outcome surface
         turn_id = request.get("turn_id")
         text = request.get("text")
         pub = request.get("expected_publication_sha256")
@@ -550,7 +565,7 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
         if pub != self.publication_sha256:
             return self._out(request, "invalid_request", {"reason": "stale_publication"})
         if self.lease_deadline_boottime_ns is not None:
-            if int(sample["boottime_after_ns"]) > self.lease_deadline_boottime_ns:
+            if int(_port_map_get(sample, "boottime_after_ns")) > self.lease_deadline_boottime_ns:
                 self.revoke("expiry")
                 return self._out(request, "revoking", {"reason": "expiry"})
 
@@ -580,7 +595,7 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
                 if existing.state == "committed":
                     assert existing.result is not None
                     if self.lease_deadline_boottime_ns is not None and int(
-                        sample["boottime_after_ns"]
+                        _port_map_get(sample, "boottime_after_ns")
                     ) > self.lease_deadline_boottime_ns:
                         return self._out(request, "unavailable", {"reason": "expiry"})
                     return self._out(request, "committed", existing.result)
@@ -606,7 +621,7 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
             if existing.state == "committed":
                 assert existing.result is not None
                 if self.lease_deadline_boottime_ns is not None and int(
-                    sample["boottime_after_ns"]
+                    _port_map_get(sample, "boottime_after_ns")
                 ) > self.lease_deadline_boottime_ns:
                     return self._out(request, "unavailable", {"reason": "expiry"})
                 return self._out(request, "committed", existing.result)
@@ -625,7 +640,10 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
 
         if self.slot_id is None or self.activation_id is None:
             return self._out(request, "unavailable", {"reason": "not_active"})
-        if request.get("slot_id") != self.slot_id or request.get("activation_id") != self.activation_id:
+        if (
+            request.get("slot_id") != self.slot_id
+            or request.get("activation_id") != self.activation_id
+        ):
             return self._out(request, "invalid_request", {"reason": "bad_arguments"})
 
         self.accepted[str(turn_id)] = AcceptedTurn(
@@ -690,7 +708,10 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
                 chunk = base64.b64decode(b64.encode("ascii"), validate=True)
             except Exception as exc:
                 raise ValueError("bad_base64") from exc
-            if len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
+            if (
+                len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk)
+                > MAX_AGENT_OUTPUT_BYTES
+            ):
                 self.revoke("integrity_failure")
                 self._stdout_buffer.clear()
                 raise ValueError("agent_output_overflow")
@@ -703,12 +724,19 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
                 chunk = base64.b64decode(b64.encode("ascii"), validate=True)
             except Exception as exc:
                 raise ValueError("bad_base64") from exc
-            if len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
+            if (
+                len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk)
+                > MAX_AGENT_OUTPUT_BYTES
+            ):
                 self.revoke("integrity_failure")
                 raise ValueError("agent_output_overflow")
             self._stderr_buffer.extend(chunk)
         elif kind == "exit":
-            if event.get("bytes_b64") is not None or type(event.get("exit_code")) is not int:  # pylint: disable=C0123  # exact type identity; isinstance/__class__ admit spoofing or subclasses
+            # pylint: disable=C0123  # exact type identity; not isinstance/__class__
+            if (
+                event.get("bytes_b64") is not None
+                or type(event.get("exit_code")) is not int
+            ):
                 raise ValueError("bad_exit")
             code = int(event["exit_code"])
             self._observed_exit_code = code
@@ -737,11 +765,15 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
                 raise ValueError("revoked_before_commit")
             self._assert_watchdog_coverage()
             # Final paired sample under mutex — no await.
-            sample = cast(dict[str, Any], self.platform.sample_clock())
+            sample: dict[str, Any] = cast(dict[str, Any], self.platform.sample_clock())
             self._last_valid_clock = dict(sample)
             self._watchdog_samples.append(dict(sample))
             # Revalidate accepted slot/activation/publication against bound activation.
-            if self.activation_id is None or self.publication_sha256 is None or self.slot_id is None:
+            if (
+                self.activation_id is None
+                or self.publication_sha256 is None
+                or self.slot_id is None
+            ):
                 self._enter_revoking_internal("integrity_failure")
                 raise ValueError("activation_drift")
             if accepted.slot_id != self.slot_id or accepted.activation_id != self.activation_id:
@@ -755,7 +787,7 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
                 self._stderr_buffer.clear()
                 raise ValueError("publication_drift")
             if self.lease_deadline_boottime_ns is not None:
-                if int(sample["boottime_after_ns"]) > self.lease_deadline_boottime_ns:
+                if int(_port_map_get(sample, "boottime_after_ns")) > self.lease_deadline_boottime_ns:
                     self._enter_revoking_internal("expiry")
                     self._stdout_buffer.clear()
                     self._stderr_buffer.clear()
@@ -784,8 +816,8 @@ class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor a
             result = {
                 "turn_id": turn_id,
                 "publication_sha256": self.publication_sha256,
-                "committed_wall_time": sample["wall_time"],
-                "committed_boottime_ns": int(sample["boottime_after_ns"]),
+                "committed_wall_time": _port_map_get(sample, "wall_time"),
+                "committed_boottime_ns": int(_port_map_get(sample, "boottime_after_ns")),
                 "output_sha256": _sha256_labeled(out_bytes),
                 "model_output": model_output,
                 "evidence_basis": "model_output_unverified",

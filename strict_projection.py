@@ -14,6 +14,7 @@ T3 public opening: ``open_published_generation`` (parent) / ``open_public_projec
 (capability alias), ``StrictProjectionReader``, ``revoke_snapshot``, and the
 ``read`` CLI. Public opening does not import the publisher.
 """
+
 # pylint: disable=C0302  # preserved projection authority/reader component boundary
 
 
@@ -33,6 +34,7 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
@@ -84,6 +86,12 @@ class StrictProjectionError(ValueError):
 
 
 # Closed top-level field sets (parent §6.5.4 / schema_field_sets TOP_LEVEL).
+def _projection_field_set(*names: str) -> frozenset[str]:
+    """Build projection closed field sets from an explicit name tuple."""
+
+    return frozenset(names)
+
+
 _LAYOUT_FIELDS = _projection_field_set(
     "schema",
     "authority_dir",
@@ -189,10 +197,6 @@ _PROJECTION_MANIFEST_FIELDS = _projection_field_set(
     "manifest_payload_sha256",
 )
 
-def _projection_field_set(*names: str) -> frozenset[str]:
-    """Build projection closed field sets from an explicit name tuple."""
-
-    return frozenset(names)
 
 _SEMANTIC_CONTRACT_FIELDS = _projection_field_set(
     "schema",
@@ -464,20 +468,12 @@ def _sha256hex(data: bytes) -> str:
 
 
 def _authority_snapshot_id(manifest: Mapping[str, Any]) -> str:
-    body = {
-        k: v
-        for k, v in manifest.items()
-        if k not in {"snapshot_id", "manifest_payload_sha256"}
-    }
+    body = {k: v for k, v in manifest.items() if k not in {"snapshot_id", "manifest_payload_sha256"}}
     return "snap2_" + _sha256hex(strict_canonical_bytes(body))
 
 
 def _projection_generation_id(manifest: Mapping[str, Any]) -> str:
-    body = {
-        k: v
-        for k, v in manifest.items()
-        if k not in {"generation_id", "manifest_payload_sha256"}
-    }
+    body = {k: v for k, v in manifest.items() if k not in {"generation_id", "manifest_payload_sha256"}}
     return "gen2_" + _sha256hex(strict_canonical_bytes(body))
 
 
@@ -728,9 +724,7 @@ def _load_authority_head(  # pylint: disable=R0913  # authority-head loader arit
         schema="convmem.strict-citation-map.v1",
         label="citation_map",
     )
-    citation_digest = _require_self_hash(
-        citation_map, "citation_map_payload_sha256", label="citation_map"
-    )
+    citation_digest = _require_self_hash(citation_map, "citation_map_payload_sha256", label="citation_map")
     if manifest["citation_map_sha256"] != citation_digest:
         raise StrictProjectionError("citation_map_link")
 
@@ -742,15 +736,11 @@ def _load_authority_head(  # pylint: disable=R0913  # authority-head loader arit
         schema="convmem.strict-grounding.v1",
         label="grounding",
     )
-    grounding_digest = _require_self_hash(
-        grounding, "grounding_payload_sha256", label="grounding"
-    )
+    grounding_digest = _require_self_hash(grounding, "grounding_payload_sha256", label="grounding")
     if manifest["grounding_sha256"] != grounding_digest:
         raise StrictProjectionError("grounding_link")
     try:
-        provenance_context = validate_provenance_context(
-            provenance_context, expected_grounding_sha256=grounding_digest
-        )
+        provenance_context = validate_provenance_context(provenance_context, expected_grounding_sha256=grounding_digest)
     except StrictGroundingError as exc:
         raise StrictProjectionError(f"provenance_context:{exc}") from exc
     context_digest = provenance_context["context_payload_sha256"]
@@ -893,11 +883,7 @@ _BUILDER_SCHEMAS_BC: tuple[str, ...] = (
 )
 
 _BUILDER_TREE_MEMBERS: tuple[str, ...] = tuple(
-    sorted(
-        set(_BUILDER_CORE_MEMBERS)
-        | set(_BUILDER_SCHEMAS_BC)
-        | {"strict_projection_publisher.py"}
-    )
+    sorted(set(_BUILDER_CORE_MEMBERS) | set(_BUILDER_SCHEMAS_BC) | {"strict_projection_publisher.py"})
 )
 
 
@@ -1000,9 +986,7 @@ def _verify_fixture_source_cutoff_head(
             raise StrictProjectionError("fixture_parent_batches_type")
         if len(batches) < len(prior_batches):
             raise StrictProjectionError("fixture_batches_not_prefix")
-        if strict_canonical_bytes(list(batches[: len(prior_batches)])) != (
-            strict_canonical_bytes(prior_batches)
-        ):
+        if strict_canonical_bytes(list(batches[: len(prior_batches)])) != (strict_canonical_bytes(prior_batches)):
             raise StrictProjectionError("fixture_batches_not_prefix")
 
     ops = head.cutoff["operations"]
@@ -1112,9 +1096,7 @@ def _independently_replay_head_admission(
             issuer_inventory=issuer_inventory,
             capture_issuers=binding.capture_issuers,
             allowed_issuer_ids={i.issuer_id for i in binding.capture_issuers},
-            allowed_source_registration_ids={
-                r.id for r in binding.source_registrations
-            },
+            allowed_source_registration_ids={r.id for r in binding.source_registrations},
             original_qualifications=originals or None,
         )
     except StrictGroundingError as exc:
@@ -1139,11 +1121,7 @@ def _independently_replay_head_admission(
 
     parent_ids = {r["assertion_id"] for r in parent_records}
     parent_disp_map = {disposition_id(d): d for d in parent_dispositions}
-    parent_heads = (
-        _parent_heads_by_logical(parent_records, parent_disp_map)
-        if parent_records
-        else {}
-    )
+    parent_heads = _parent_heads_by_logical(parent_records, parent_disp_map) if parent_records else {}
     staging_records = list(parent_records) + [dict(r) for r in added_records]
     try:
         new_disp_map = validate_dispositions(
@@ -1175,17 +1153,11 @@ def _independently_replay_head_admission(
         rec["payload_sha256"] = payload_sha256(rec)
     added_records = list(added_by_id.values())
 
-    all_records = sorted(
-        list(parent_records) + added_records, key=lambda r: r["assertion_id"]
-    )
-    all_dispositions = list(parent_dispositions) + [
-        new_disp_map[k] for k in sorted(new_disp_map)
-    ]
+    all_records = sorted(list(parent_records) + added_records, key=lambda r: r["assertion_id"])
+    all_dispositions = list(parent_dispositions) + [new_disp_map[k] for k in sorted(new_disp_map)]
     all_dispositions.sort(key=disposition_id)
 
-    reconstructed_added = {
-        r["assertion_id"]: strict_canonical_bytes(r) for r in added_records
-    }
+    reconstructed_added = {r["assertion_id"]: strict_canonical_bytes(r) for r in added_records}
     committed_parent = _record_bytes_by_id(parent_records)
     committed_child = _record_bytes_by_id(head.records)
     committed_added_ids = sorted(set(committed_child) - set(committed_parent))
@@ -1205,9 +1177,7 @@ def _independently_replay_head_admission(
 
     if _canonical_jsonl_bytes(all_records) != _canonical_jsonl_bytes(head.records):
         raise StrictProjectionError("admission_cumulative_records_mismatch")
-    if _canonical_jsonl_bytes(all_dispositions) != _canonical_jsonl_bytes(
-        head.dispositions
-    ):
+    if _canonical_jsonl_bytes(all_dispositions) != _canonical_jsonl_bytes(head.dispositions):
         raise StrictProjectionError("admission_cumulative_dispositions_mismatch")
 
 
@@ -1291,12 +1261,8 @@ def _replay_cumulative_and_deltas(
         expected_assertions = sorted(set(child_records) - set(parent_records))
         expected_dispositions = sorted(set(child_disps) - set(parent_disps))
         try:
-            expected_provenance = compute_added_provenance_ids(
-                parent_context, head.provenance_context
-            )
-            expected_grounding = compute_added_grounding_refs(
-                parent_grounding, head.grounding
-            )
+            expected_provenance = compute_added_provenance_ids(parent_context, head.provenance_context)
+            expected_grounding = compute_added_grounding_refs(parent_grounding, head.grounding)
         except StrictGroundingError as exc:
             raise StrictProjectionError(f"delta_recompute:{exc}") from exc
 
@@ -1312,12 +1278,10 @@ def _replay_cumulative_and_deltas(
         # Envelope/commitment bytes for retained provenance must be unchanged.
         if prev is not None:
             parent_reg = {
-                e["assertion_id"]: strict_canonical_bytes(e)
-                for e in prev.provenance_context["registered_assertions"]
+                e["assertion_id"]: strict_canonical_bytes(e) for e in prev.provenance_context["registered_assertions"]
             }
             child_reg = {
-                e["assertion_id"]: strict_canonical_bytes(e)
-                for e in head.provenance_context["registered_assertions"]
+                e["assertion_id"]: strict_canonical_bytes(e) for e in head.provenance_context["registered_assertions"]
             }
             for aid, raw in parent_reg.items():
                 if child_reg.get(aid) != raw:
@@ -1376,9 +1340,7 @@ def _verify_original_admission_qualifications(
                 issuer_inventory=issuer_inventory,
                 capture_issuers=binding.capture_issuers,
                 allowed_issuer_ids={i.issuer_id for i in binding.capture_issuers},
-                allowed_source_registration_ids={
-                    r.id for r in binding.source_registrations
-                },
+                allowed_source_registration_ids={r.id for r in binding.source_registrations},
             )
         except StrictGroundingError as exc:
             raise StrictProjectionError(f"original_admission_qualify:{exc}") from exc
@@ -1405,9 +1367,7 @@ def _verify_original_admission_qualifications(
 
         # Envelope/commitment frozen at provenance admission.
         prov_entry = next(
-            e
-            for e in prov_head.provenance_context["registered_assertions"]
-            if e["assertion_id"] == prov_id
+            e for e in prov_head.provenance_context["registered_assertions"] if e["assertion_id"] == prov_id
         )
         if strict_canonical_bytes(prov_entry["envelope"]) != strict_canonical_bytes(env):
             raise StrictProjectionError("envelope_not_retained")
@@ -1461,394 +1421,389 @@ def qualify_authority_generation(
     citation/grounding/provenance files. Independently recomputes state, citation
     map, and serving rows/graph. Never opens a query-time reducer path.
     """
+    work = SimpleNamespace()
 
-    root_path = Path(root)
-    if root_path.is_symlink() or not root_path.is_dir():
-        raise StrictProjectionError("root_invalid")
+    def _qualify_authority_generation_p0() -> None:
+        work.root_path = Path(root)
+        if work.root_path.is_symlink() or not work.root_path.is_dir():
+            raise StrictProjectionError("root_invalid")
+        work.layout = _read_json(work.root_path / "layout.json")
+        _require_closed(work.layout, _LAYOUT_FIELDS, schema="convmem.strict-generation-layout.v2", label="layout")
+        for key, expected in _LAYOUT_DIR_VALUES.items():
+            if work.layout[key] != expected:
+                raise StrictProjectionError(f"layout_dir:{key}")
+        _require_self_hash(work.layout, "layout_payload_sha256", label="layout")
+        work.enrollment = _read_json(work.root_path / "control" / "enrollment.json")
 
-    layout = _read_json(root_path / "layout.json")
-    _require_closed(
-        layout,
-        _LAYOUT_FIELDS,
-        schema="convmem.strict-generation-layout.v2",
-        label="layout",
-    )
-    for key, expected in _LAYOUT_DIR_VALUES.items():
-        if layout[key] != expected:
-            raise StrictProjectionError(f"layout_dir:{key}")
-    _require_self_hash(layout, "layout_payload_sha256", label="layout")
-
-    enrollment = _read_json(root_path / "control" / "enrollment.json")
-    _require_closed(
-        enrollment,
-        _ENROLLMENT_FIELDS,
-        schema="convmem.strict-enrollment.v1",
-        label="enrollment",
-    )
-    _require_self_hash(enrollment, "enrollment_payload_sha256", label="enrollment")
-    lineage_id = enrollment["lineage_id"]
-    if not isinstance(lineage_id, str) or len(lineage_id) != 32:
-        raise StrictProjectionError("enrollment_lineage_id")
-
-    semantic_contract = _read_json(root_path / "control" / "semantic-contract.json")
-    _require_closed(
-        semantic_contract,
-        _SEMANTIC_CONTRACT_FIELDS,
-        schema="convmem.strict-semantic-contract.v1",
-        label="semantic_contract",
-    )
-    semantic_contract_sha256 = _require_self_hash(
-        semantic_contract, "contract_payload_sha256", label="semantic_contract"
-    )
-    _enforce_semantic_contract(semantic_contract)
-    if enrollment["semantic_contract_sha256"] != semantic_contract_sha256:
-        raise StrictProjectionError("enrollment_semantic_contract_link")
-
-    try:
-        binding_id = scope.allowed_project_bindings[0]
-        recomputed_owner = owner_digest(
-            scope_sha256=scope.scope_sha256,
-            registry_sha256=registry.registry_sha256,
-            project_binding_id=binding_id,
+    def _qualify_authority_generation_p1() -> None:
+        _require_closed(work.enrollment, _ENROLLMENT_FIELDS, schema="convmem.strict-enrollment.v1", label="enrollment")
+        _require_self_hash(work.enrollment, "enrollment_payload_sha256", label="enrollment")
+        work.lineage_id = work.enrollment["lineage_id"]
+        if not isinstance(work.lineage_id, str) or len(work.lineage_id) != 32:
+            raise StrictProjectionError("enrollment_lineage_id")
+        work.semantic_contract = _read_json(work.root_path / "control" / "semantic-contract.json")
+        _require_closed(
+            work.semantic_contract,
+            _SEMANTIC_CONTRACT_FIELDS,
+            schema="convmem.strict-semantic-contract.v1",
+            label="semantic_contract",
         )
-    except (BoundScopeError, IndexError, KeyError) as exc:
-        raise StrictProjectionError("scope_registry") from exc
-
-    if enrollment["owner_digest"] != recomputed_owner:
-        raise StrictProjectionError("enrollment_owner_digest")
-    if enrollment["scope_sha256"] != scope.scope_sha256:
-        raise StrictProjectionError("enrollment_scope_link")
-    if enrollment["registry_sha256"] != registry.registry_sha256:
-        raise StrictProjectionError("enrollment_registry_link")
-
-    pub_path = root_path / "active" / f"{lineage_id}.json"
-    publication = _read_json(pub_path)
-    _require_closed(
-        publication,
-        _PUBLICATION_FIELDS,
-        schema="convmem.strict-publication.v2",
-        label="publication",
-    )
-    if publication["lineage_id"] != lineage_id:
-        raise StrictProjectionError("publication_lineage")
-    pub_hash = _require_self_hash(
-        publication, "publication_payload_sha256", label="publication"
-    )
-    if expected_publication_sha256 is not None and pub_hash != expected_publication_sha256:
-        raise StrictProjectionError("publication_cas_mismatch")
-    if publication["owner_digest"] != recomputed_owner:
-        raise StrictProjectionError("publication_owner_digest")
-    if publication["semantic_contract_sha256"] != semantic_contract_sha256:
-        raise StrictProjectionError("publication_semantic_contract_link")
-
-    mode = publication["mode"]
-    if mode not in {"serving", "unavailable", "fenced"}:
-        raise StrictProjectionError("publication_mode")
-    if mode == "fenced":
-        raise StrictProjectionError("publication_fenced")
-    if require_serving and mode != "serving":
-        raise StrictProjectionError("publication_not_serving")
-
-    authority_seq = publication["authority_seq"]
-    if not isinstance(authority_seq, int) or isinstance(authority_seq, bool) or authority_seq < 0:
-        raise StrictProjectionError("authority_seq")
-
-    if authority_seq == 0:
-        if mode != "unavailable":
-            raise StrictProjectionError("genesis_mode")
-        if publication["authority_snapshot_id"] is not None:
-            raise StrictProjectionError("genesis_snapshot_id")
-        if publication["authority_manifest_sha256"] is not None:
-            raise StrictProjectionError("genesis_authority_manifest")
-        if publication["serving_generation_id"] is not None:
-            raise StrictProjectionError("genesis_generation_id")
-        if publication["projection_manifest_sha256"] is not None:
-            raise StrictProjectionError("genesis_projection_manifest")
-        if publication["freshness_anchor"] is not None:
-            raise StrictProjectionError("genesis_freshness_anchor")
-        if publication["pending_operation_id"] is not None:
-            raise StrictProjectionError("genesis_pending")
-        if (
-            publication["authority_source_cutoff_sha256"]
-            != enrollment["initial_source_cutoff_sha256"]
-        ):
-            raise StrictProjectionError("genesis_cutoff_link")
-        empty_cutoff = _empty_source_cutoff_digest(
-            lineage_id=lineage_id, mode=str(enrollment["mode"])
+        work.semantic_contract_sha256 = _require_self_hash(
+            work.semantic_contract, "contract_payload_sha256", label="semantic_contract"
         )
-        if enrollment["initial_source_cutoff_sha256"] != empty_cutoff:
-            raise StrictProjectionError("enrollment_cutoff_mismatch")
-        return QualifiedAuthorityGeneration(
-            lineage_id=lineage_id,
-            authority_seq=0,
-            snapshot_id=None,
-            authority_manifest_sha256=None,
-            generation_id=None,
-            projection_manifest_sha256=None,
-            rows_sha256=None,
-            graph_sha256=None,
-            state_by_assertion={},
-            publication_payload_sha256=pub_hash,
-            semantic_contract_sha256=semantic_contract_sha256,
-            expires_at=None,
-            as_of=None,
+        _enforce_semantic_contract(work.semantic_contract)
+
+    def _qualify_authority_generation_p2() -> None:
+        if work.enrollment["semantic_contract_sha256"] != work.semantic_contract_sha256:
+            raise StrictProjectionError("enrollment_semantic_contract_link")
+        try:
+            work.binding_id = scope.allowed_project_bindings[0]
+            work.recomputed_owner = owner_digest(
+                scope_sha256=scope.scope_sha256,
+                registry_sha256=registry.registry_sha256,
+                project_binding_id=work.binding_id,
+            )
+        except (BoundScopeError, IndexError, KeyError) as exc:
+            raise StrictProjectionError("scope_registry") from exc
+        if work.enrollment["owner_digest"] != work.recomputed_owner:
+            raise StrictProjectionError("enrollment_owner_digest")
+        if work.enrollment["scope_sha256"] != scope.scope_sha256:
+            raise StrictProjectionError("enrollment_scope_link")
+        if work.enrollment["registry_sha256"] != registry.registry_sha256:
+            raise StrictProjectionError("enrollment_registry_link")
+        work.pub_path = work.root_path / "active" / f"{work.lineage_id}.json"
+        work.publication = _read_json(work.pub_path)
+        _require_closed(
+            work.publication, _PUBLICATION_FIELDS, schema="convmem.strict-publication.v2", label="publication"
         )
 
-    snapshot_id = publication["authority_snapshot_id"]
-    authority_manifest_sha256 = publication["authority_manifest_sha256"]
-    if not isinstance(snapshot_id, str) or not snapshot_id.startswith("snap2_"):
-        raise StrictProjectionError("authority_snapshot_id")
-    if not isinstance(authority_manifest_sha256, str) or not authority_manifest_sha256.startswith(
-        "sha256:"
-    ):
-        raise StrictProjectionError("authority_manifest_sha256")
+    def _qualify_authority_generation_p3() -> None:
+        if work.publication["lineage_id"] != work.lineage_id:
+            raise StrictProjectionError("publication_lineage")
+        work.pub_hash = _require_self_hash(work.publication, "publication_payload_sha256", label="publication")
+        if expected_publication_sha256 is not None and work.pub_hash != expected_publication_sha256:
+            raise StrictProjectionError("publication_cas_mismatch")
+        if work.publication["owner_digest"] != work.recomputed_owner:
+            raise StrictProjectionError("publication_owner_digest")
+        if work.publication["semantic_contract_sha256"] != work.semantic_contract_sha256:
+            raise StrictProjectionError("publication_semantic_contract_link")
+        work.mode = work.publication["mode"]
+        if work.mode not in {"serving", "unavailable", "fenced"}:
+            raise StrictProjectionError("publication_mode")
+        if work.mode == "fenced":
+            raise StrictProjectionError("publication_fenced")
 
-    serving_generation_id = publication["serving_generation_id"]
-    projection_manifest_sha256 = publication["projection_manifest_sha256"]
-    if mode == "serving":
-        if not isinstance(serving_generation_id, str) or not serving_generation_id.startswith(
-            "gen2_"
-        ):
-            raise StrictProjectionError("serving_generation_id")
-        if not isinstance(projection_manifest_sha256, str) or not projection_manifest_sha256.startswith(
+    def _qualify_authority_generation_p4():
+        if require_serving and work.mode != "serving":
+            raise StrictProjectionError("publication_not_serving")
+        work.authority_seq = work.publication["authority_seq"]
+        if not isinstance(work.authority_seq, int) or isinstance(work.authority_seq, bool) or work.authority_seq < 0:
+            raise StrictProjectionError("authority_seq")
+        if work.authority_seq == 0:
+            if work.mode != "unavailable":
+                raise StrictProjectionError("genesis_mode")
+            if work.publication["authority_snapshot_id"] is not None:
+                raise StrictProjectionError("genesis_snapshot_id")
+            if work.publication["authority_manifest_sha256"] is not None:
+                raise StrictProjectionError("genesis_authority_manifest")
+            if work.publication["serving_generation_id"] is not None:
+                raise StrictProjectionError("genesis_generation_id")
+            if work.publication["projection_manifest_sha256"] is not None:
+                raise StrictProjectionError("genesis_projection_manifest")
+            if work.publication["freshness_anchor"] is not None:
+                raise StrictProjectionError("genesis_freshness_anchor")
+            if work.publication["pending_operation_id"] is not None:
+                raise StrictProjectionError("genesis_pending")
+            if work.publication["authority_source_cutoff_sha256"] != work.enrollment["initial_source_cutoff_sha256"]:
+                raise StrictProjectionError("genesis_cutoff_link")
+            work.empty_cutoff = _empty_source_cutoff_digest(
+                lineage_id=work.lineage_id, mode=str(work.enrollment["mode"])
+            )
+            if work.enrollment["initial_source_cutoff_sha256"] != work.empty_cutoff:
+                raise StrictProjectionError("enrollment_cutoff_mismatch")
+            return QualifiedAuthorityGeneration(
+                lineage_id=work.lineage_id,
+                authority_seq=0,
+                snapshot_id=None,
+                authority_manifest_sha256=None,
+                generation_id=None,
+                projection_manifest_sha256=None,
+                rows_sha256=None,
+                graph_sha256=None,
+                state_by_assertion={},
+                publication_payload_sha256=work.pub_hash,
+                semantic_contract_sha256=work.semantic_contract_sha256,
+                expires_at=None,
+                as_of=None,
+            )
+        work.snapshot_id = work.publication["authority_snapshot_id"]
+        work.authority_manifest_sha256 = work.publication["authority_manifest_sha256"]
+        if not isinstance(work.snapshot_id, str) or not work.snapshot_id.startswith("snap2_"):
+            raise StrictProjectionError("authority_snapshot_id")
+        if not isinstance(work.authority_manifest_sha256, str) or not work.authority_manifest_sha256.startswith(
             "sha256:"
         ):
-            raise StrictProjectionError("projection_manifest_sha256")
-        if publication["pending_operation_id"] is not None:
-            raise StrictProjectionError("serving_pending")
-        anchor = publication["freshness_anchor"]
-        if not isinstance(anchor, dict):
-            raise StrictProjectionError("freshness_anchor")
-        if set(anchor) != _FRESHNESS_ANCHOR_FIELDS:
-            raise StrictProjectionError("freshness_anchor_keys")
-        if anchor["authority_snapshot_id"] != snapshot_id:
-            raise StrictProjectionError("freshness_anchor_snapshot")
-    else:
-        if serving_generation_id is not None or projection_manifest_sha256 is not None:
-            raise StrictProjectionError("unavailable_projection_ids")
-        if publication["pending_operation_id"] is not None:
-            raise StrictProjectionError("unavailable_pending")
-        anchor = publication["freshness_anchor"]
-        if not isinstance(anchor, dict):
-            raise StrictProjectionError("freshness_anchor")
-        if set(anchor) != _FRESHNESS_ANCHOR_FIELDS:
-            raise StrictProjectionError("freshness_anchor_keys")
-        if anchor["authority_snapshot_id"] != snapshot_id:
-            raise StrictProjectionError("freshness_anchor_snapshot")
+            raise StrictProjectionError("authority_manifest_sha256")
+        return None
 
-    binding = registry.binding(binding_id)
-    try:
-        issuer_inventory: Mapping[str, bytes] | None = (
-            load_bound_issuer_inventories(binding.capture_issuers)
-            if binding.capture_issuers
-            else None
-        )
-    except StrictGroundingError as exc:
-        raise StrictProjectionError(f"issuer_inventory:{exc}") from exc
-
-    heads = _walk_lineage_forward(
-        root_path,
-        tip_snapshot_id=snapshot_id,
-        tip_manifest_sha256=authority_manifest_sha256,
-        tip_seq=authority_seq,
-        lineage_id=lineage_id,
-        owner_digest_value=recomputed_owner,
-        scope_sha256=scope.scope_sha256,
-        registry_sha256=registry.registry_sha256,
-        semantic_contract_sha256=semantic_contract_sha256,
-    )
-    _replay_cumulative_and_deltas(
-        heads,
-        enrollment=enrollment,
-        binding=binding,
-        issuer_inventory=issuer_inventory,
-    )
-    tip = heads[-1]
-    if publication["authority_source_cutoff_sha256"] != tip.cutoff["cutoff_payload_sha256"]:
-        raise StrictProjectionError("publication_cutoff_link")
-    if tip.manifest["reducer_version"] != semantic_contract["reducer_version"]:
-        raise StrictProjectionError("authority_reducer_version")
-    if tip.manifest["canonicalization_version"] != semantic_contract[
-        "canonicalization_version"
-    ]:
-        raise StrictProjectionError("authority_canonicalization_version")
-
-    _verify_original_admission_qualifications(
-        heads, binding=binding, issuer_inventory=issuer_inventory
-    )
-    _independent_record_digests(tip.records)
-    for head in heads:
-        _verify_citation_map(head)
-
-    # Never trust stored check_eligibility at reduce: rederive on copies only.
-    eligibility_records = [dict(rec) for rec in tip.records]
-    try:
-        apply_verification_eligibility(eligibility_records, binding=binding)
-        reduced = reduce_complete_bound_state(
-            eligibility_records, tip.dispositions
-        )
-    except (StrictGroundingError, BoundScopeError, StrictEvidenceError, ValueError) as exc:
-        raise StrictProjectionError(f"reduce:{exc}") from exc
-
-    selectors = EffectiveSelectors(
-        project=scope.project,
-        site=scope.site,
-        site_mode=scope.site_mode,
-        domain=scope.domain,
-        binding_id=binding_id,
-    )
-    for rec in tip.records:
+    def _qualify_authority_generation_p5() -> None:
+        work.serving_generation_id = work.publication["serving_generation_id"]
+        work.projection_manifest_sha256 = work.publication["projection_manifest_sha256"]
+        if work.mode == "serving":
+            if not isinstance(work.serving_generation_id, str) or not work.serving_generation_id.startswith("gen2_"):
+                raise StrictProjectionError("serving_generation_id")
+            if not isinstance(work.projection_manifest_sha256, str) or not work.projection_manifest_sha256.startswith(
+                "sha256:"
+            ):
+                raise StrictProjectionError("projection_manifest_sha256")
+            if work.publication["pending_operation_id"] is not None:
+                raise StrictProjectionError("serving_pending")
+            work.anchor = work.publication["freshness_anchor"]
+            if not isinstance(work.anchor, dict):
+                raise StrictProjectionError("freshness_anchor")
+            if set(work.anchor) != _FRESHNESS_ANCHOR_FIELDS:
+                raise StrictProjectionError("freshness_anchor_keys")
+            if work.anchor["authority_snapshot_id"] != work.snapshot_id:
+                raise StrictProjectionError("freshness_anchor_snapshot")
+        else:
+            if work.serving_generation_id is not None or work.projection_manifest_sha256 is not None:
+                raise StrictProjectionError("unavailable_projection_ids")
+            if work.publication["pending_operation_id"] is not None:
+                raise StrictProjectionError("unavailable_pending")
+            work.anchor = work.publication["freshness_anchor"]
+            if not isinstance(work.anchor, dict):
+                raise StrictProjectionError("freshness_anchor")
+            if set(work.anchor) != _FRESHNESS_ANCHOR_FIELDS:
+                raise StrictProjectionError("freshness_anchor_keys")
+            if work.anchor["authority_snapshot_id"] != work.snapshot_id:
+                raise StrictProjectionError("freshness_anchor_snapshot")
+        work.binding = registry.binding(work.binding_id)
         try:
-            authorize_row(
-                scope=scope,
-                registry=registry,
-                selectors=selectors,
-                project_binding_id=rec["project_binding_id"],
-                source_registration_id=rec["source_registration_id"],
-                authority_site=rec["authority_site"],
-                authority_domain=rec["authority_domain"],
+            work.issuer_inventory: Mapping[str, bytes] | None = (
+                load_bound_issuer_inventories(work.binding.capture_issuers) if work.binding.capture_issuers else None
             )
-        except BoundScopeError as exc:
-            raise StrictProjectionError(f"authorization:{exc}") from exc
-
-    generation_id: str | None = None
-    rows_sha256: str | None = None
-    graph_sha256: str | None = None
-    sealed_projection_manifest_sha256: str | None = None
-
-    if mode == "serving":
-        if not isinstance(serving_generation_id, str) or not isinstance(
-            projection_manifest_sha256, str
-        ):
-            raise StrictProjectionError("serving_projection_required")
-        generation_id = serving_generation_id
-        sealed_projection_manifest_sha256 = projection_manifest_sha256
-
-        gen_dir = root_path / "projection" / generation_id
-        if gen_dir.is_symlink() or not gen_dir.is_dir():
-            raise StrictProjectionError("projection_dir")
-
-        proj_manifest = _read_json(gen_dir / "manifest.json")
-        _require_closed(
-            proj_manifest,
-            _PROJECTION_MANIFEST_FIELDS,
-            schema="convmem.bound-projection-manifest.v3",
-            label="projection_manifest",
+        except StrictGroundingError as exc:
+            raise StrictProjectionError(f"issuer_inventory:{exc}") from exc
+        work.heads = _walk_lineage_forward(
+            work.root_path,
+            tip_snapshot_id=work.snapshot_id,
+            tip_manifest_sha256=work.authority_manifest_sha256,
+            tip_seq=work.authority_seq,
+            lineage_id=work.lineage_id,
+            owner_digest_value=work.recomputed_owner,
+            scope_sha256=scope.scope_sha256,
+            registry_sha256=registry.registry_sha256,
+            semantic_contract_sha256=work.semantic_contract_sha256,
         )
-        if proj_manifest["lineage_id"] != lineage_id:
-            raise StrictProjectionError("projection_manifest_lineage")
-        if proj_manifest["authority_seq"] != authority_seq:
-            raise StrictProjectionError("projection_manifest_seq")
-        if proj_manifest["owner_digest"] != recomputed_owner:
-            raise StrictProjectionError("projection_manifest_owner")
-        if proj_manifest["snapshot_id"] != snapshot_id:
-            raise StrictProjectionError("projection_snapshot_link")
-        if proj_manifest["authority_manifest_sha256"] != authority_manifest_sha256:
-            raise StrictProjectionError("projection_authority_manifest_link")
-        if proj_manifest["semantic_contract_sha256"] != semantic_contract_sha256:
-            raise StrictProjectionError("projection_semantic_contract_link")
-        if proj_manifest["scope_sha256"] != scope.scope_sha256:
-            raise StrictProjectionError("projection_scope_link")
-        if proj_manifest["registry_sha256"] != registry.registry_sha256:
-            raise StrictProjectionError("projection_registry_link")
-        if proj_manifest["as_of"] != tip.manifest["as_of"] or proj_manifest[
-            "expires_at"
-        ] != tip.manifest["expires_at"]:
-            raise StrictProjectionError("projection_time_copy")
-        if proj_manifest["search_kernel"] != semantic_contract["search_kernel"]:
-            raise StrictProjectionError("projection_search_kernel")
-        if proj_manifest["search_kernel_version"] != semantic_contract[
-            "search_kernel_version"
-        ]:
-            raise StrictProjectionError("projection_search_kernel_version")
-        if proj_manifest["tokenizer_unicode_version"] != semantic_contract[
-            "tokenizer_unicode_version"
-        ]:
-            raise StrictProjectionError("projection_tokenizer_unicode_version")
-
-        recomputed_generation_id = _projection_generation_id(proj_manifest)
-        if proj_manifest["generation_id"] != recomputed_generation_id:
-            raise StrictProjectionError("projection_generation_id_mismatch")
-        if generation_id != recomputed_generation_id:
-            raise StrictProjectionError("publication_generation_id_link")
-
-        recomputed_proj_payload = _labeled_self_hash(proj_manifest, "manifest_payload_sha256")
-        if proj_manifest["manifest_payload_sha256"] != recomputed_proj_payload:
-            raise StrictProjectionError("projection_manifest_hash")
-        if sealed_projection_manifest_sha256 != recomputed_proj_payload:
-            raise StrictProjectionError("projection_manifest_link")
-
-        stored_rows = _read_jsonl(gen_dir / "rows.jsonl")
-        for row in stored_rows:
-            _require_closed(
-                row,
-                _PROJECTION_ROW_FIELDS,
-                schema="convmem.bound-projection-row.v2",
-                label="projection_row",
-            )
-        stored_graph = _read_json(gen_dir / "graph.json")
-        _require_closed(
-            stored_graph, _GRAPH_FIELDS, schema="convmem.strict-graph.v1", label="graph"
+        _replay_cumulative_and_deltas(
+            work.heads, enrollment=work.enrollment, binding=work.binding, issuer_inventory=work.issuer_inventory
         )
+        work.tip = work.heads[-1]
 
+    def _qualify_authority_generation_p6() -> None:
+        if work.publication["authority_source_cutoff_sha256"] != work.tip.cutoff["cutoff_payload_sha256"]:
+            raise StrictProjectionError("publication_cutoff_link")
+        if work.tip.manifest["reducer_version"] != work.semantic_contract["reducer_version"]:
+            raise StrictProjectionError("authority_reducer_version")
+        if work.tip.manifest["canonicalization_version"] != work.semantic_contract["canonicalization_version"]:
+            raise StrictProjectionError("authority_canonicalization_version")
+        _verify_original_admission_qualifications(
+            work.heads, binding=work.binding, issuer_inventory=work.issuer_inventory
+        )
+        _independent_record_digests(work.tip.records)
+        for head in work.heads:
+            _verify_citation_map(head)
+        work.eligibility_records = [dict(rec) for rec in work.tip.records]
         try:
-            expected_rows, expected_graph = build_projection_rows_and_graph(
-                records=tip.records,
-                reduced=reduced,
-                lineage_id=lineage_id,
-                authority_seq=authority_seq,
-                authority_manifest_sha256=authority_manifest_sha256,
-                semantic_contract_sha256=semantic_contract_sha256,
-                binding_public_ref=binding.public_ref,
+            apply_verification_eligibility(work.eligibility_records, binding=work.binding)
+            work.reduced = reduce_complete_bound_state(work.eligibility_records, work.tip.dispositions)
+        except (StrictGroundingError, BoundScopeError, StrictEvidenceError, ValueError) as exc:
+            raise StrictProjectionError(f"reduce:{exc}") from exc
+
+    def _qualify_authority_generation_p7():
+
+        def _qualify_authority_generation_p7_0() -> None:
+            work.selectors = EffectiveSelectors(
+                project=scope.project,
+                site=scope.site,
+                site_mode=scope.site_mode,
+                domain=scope.domain,
+                binding_id=work.binding_id,
             )
-        except StrictEvidenceError as exc:
-            raise StrictProjectionError(f"projection_rebuild:{exc}") from exc
+            for rec in work.tip.records:
+                try:
+                    authorize_row(
+                        scope=scope,
+                        registry=registry,
+                        selectors=work.selectors,
+                        project_binding_id=rec["project_binding_id"],
+                        source_registration_id=rec["source_registration_id"],
+                        authority_site=rec["authority_site"],
+                        authority_domain=rec["authority_domain"],
+                    )
+                except BoundScopeError as exc:
+                    raise StrictProjectionError(f"authorization:{exc}") from exc
 
-        if _canonical_jsonl_bytes(stored_rows) != _canonical_jsonl_bytes(expected_rows):
-            raise StrictProjectionError("rows_byte_mismatch")
-        if strict_canonical_bytes(stored_graph) != strict_canonical_bytes(expected_graph):
-            raise StrictProjectionError("graph_byte_mismatch")
+        def _qualify_authority_generation_p7_1() -> None:
+            work.generation_id: str | None = None
+            work.rows_sha256: str | None = None
 
-        rows_sha256 = _jsonl_sha256(stored_rows)
-        if proj_manifest["rows_sha256"] != rows_sha256:
-            raise StrictProjectionError("rows_hash_mismatch")
-        if proj_manifest["row_count"] != len(stored_rows):
-            raise StrictProjectionError("row_count")
-        graph_sha256 = _require_self_hash(stored_graph, "graph_payload_sha256", label="graph")
-        if proj_manifest["graph_sha256"] != graph_sha256:
-            raise StrictProjectionError("graph_hash_mismatch")
-        if proj_manifest["graph_node_count"] != len(stored_graph["nodes"]):
-            raise StrictProjectionError("graph_node_count")
+        def _qualify_authority_generation_p7_2() -> None:
+            work.graph_sha256: str | None = None
+            work.sealed_projection_manifest_sha256: str | None = None
 
-        for row in stored_rows:
-            try:
-                authorize_row(
-                    scope=scope,
-                    registry=registry,
-                    selectors=selectors,
-                    project_binding_id=row["project_binding_id"],
-                    source_registration_id=row["source_registration_id"],
-                    authority_site=row["authority_site"],
-                    authority_domain=row["authority_domain"],
+        def _qualify_authority_generation_p7_3():
+
+            def __qualify_authority_generation_p7_3_c0() -> None:
+                if not isinstance(work.serving_generation_id, str) or not isinstance(
+                    work.projection_manifest_sha256, str
+                ):
+                    raise StrictProjectionError("serving_projection_required")
+                work.generation_id = work.serving_generation_id
+                work.sealed_projection_manifest_sha256 = work.projection_manifest_sha256
+                work.gen_dir = work.root_path / "projection" / work.generation_id
+                if work.gen_dir.is_symlink() or not work.gen_dir.is_dir():
+                    raise StrictProjectionError("projection_dir")
+                work.proj_manifest = _read_json(work.gen_dir / "manifest.json")
+                _require_closed(
+                    work.proj_manifest,
+                    _PROJECTION_MANIFEST_FIELDS,
+                    schema="convmem.bound-projection-manifest.v3",
+                    label="projection_manifest",
                 )
-            except BoundScopeError as exc:
-                raise StrictProjectionError(f"row_authorization:{exc}") from exc
+                if work.proj_manifest["lineage_id"] != work.lineage_id:
+                    raise StrictProjectionError("projection_manifest_lineage")
+                if work.proj_manifest["authority_seq"] != work.authority_seq:
+                    raise StrictProjectionError("projection_manifest_seq")
 
-    return QualifiedAuthorityGeneration(
-        lineage_id=lineage_id,
-        authority_seq=authority_seq,
-        snapshot_id=snapshot_id,
-        authority_manifest_sha256=authority_manifest_sha256,
-        generation_id=generation_id,
-        projection_manifest_sha256=sealed_projection_manifest_sha256,
-        rows_sha256=rows_sha256,
-        graph_sha256=graph_sha256,
-        state_by_assertion=reduced,
-        publication_payload_sha256=pub_hash,
-        semantic_contract_sha256=semantic_contract_sha256,
-        expires_at=tip.manifest["expires_at"],
-        as_of=tip.manifest["as_of"],
-    )
+            def __qualify_authority_generation_p7_3_c1() -> None:
+                if work.proj_manifest["owner_digest"] != work.recomputed_owner:
+                    raise StrictProjectionError("projection_manifest_owner")
+                if work.proj_manifest["snapshot_id"] != work.snapshot_id:
+                    raise StrictProjectionError("projection_snapshot_link")
+                if work.proj_manifest["authority_manifest_sha256"] != work.authority_manifest_sha256:
+                    raise StrictProjectionError("projection_authority_manifest_link")
+                if work.proj_manifest["semantic_contract_sha256"] != work.semantic_contract_sha256:
+                    raise StrictProjectionError("projection_semantic_contract_link")
+                if work.proj_manifest["scope_sha256"] != scope.scope_sha256:
+                    raise StrictProjectionError("projection_scope_link")
+                if work.proj_manifest["registry_sha256"] != registry.registry_sha256:
+                    raise StrictProjectionError("projection_registry_link")
+                if (
+                    work.proj_manifest["as_of"] != work.tip.manifest["as_of"]
+                    or work.proj_manifest["expires_at"] != work.tip.manifest["expires_at"]
+                ):
+                    raise StrictProjectionError("projection_time_copy")
+                if work.proj_manifest["search_kernel"] != work.semantic_contract["search_kernel"]:
+                    raise StrictProjectionError("projection_search_kernel")
+                if work.proj_manifest["search_kernel_version"] != work.semantic_contract["search_kernel_version"]:
+                    raise StrictProjectionError("projection_search_kernel_version")
+                if (
+                    work.proj_manifest["tokenizer_unicode_version"]
+                    != work.semantic_contract["tokenizer_unicode_version"]
+                ):
+                    raise StrictProjectionError("projection_tokenizer_unicode_version")
+
+            def __qualify_authority_generation_p7_3_c2() -> None:
+                work.recomputed_generation_id = _projection_generation_id(work.proj_manifest)
+                if work.proj_manifest["generation_id"] != work.recomputed_generation_id:
+                    raise StrictProjectionError("projection_generation_id_mismatch")
+                if work.generation_id != work.recomputed_generation_id:
+                    raise StrictProjectionError("publication_generation_id_link")
+                work.recomputed_proj_payload = _labeled_self_hash(work.proj_manifest, "manifest_payload_sha256")
+                if work.proj_manifest["manifest_payload_sha256"] != work.recomputed_proj_payload:
+                    raise StrictProjectionError("projection_manifest_hash")
+                if work.sealed_projection_manifest_sha256 != work.recomputed_proj_payload:
+                    raise StrictProjectionError("projection_manifest_link")
+                work.stored_rows = _read_jsonl(work.gen_dir / "rows.jsonl")
+                for row in work.stored_rows:
+                    _require_closed(
+                        row, _PROJECTION_ROW_FIELDS, schema="convmem.bound-projection-row.v2", label="projection_row"
+                    )
+                work.stored_graph = _read_json(work.gen_dir / "graph.json")
+                _require_closed(work.stored_graph, _GRAPH_FIELDS, schema="convmem.strict-graph.v1", label="graph")
+
+            def __qualify_authority_generation_p7_3_c3() -> None:
+                try:
+                    work.expected_rows, work.expected_graph = build_projection_rows_and_graph(
+                        records=work.tip.records,
+                        reduced=work.reduced,
+                        lineage_id=work.lineage_id,
+                        authority_seq=work.authority_seq,
+                        authority_manifest_sha256=work.authority_manifest_sha256,
+                        semantic_contract_sha256=work.semantic_contract_sha256,
+                        binding_public_ref=work.binding.public_ref,
+                    )
+                except StrictEvidenceError as exc:
+                    raise StrictProjectionError(f"projection_rebuild:{exc}") from exc
+                if _canonical_jsonl_bytes(work.stored_rows) != _canonical_jsonl_bytes(work.expected_rows):
+                    raise StrictProjectionError("rows_byte_mismatch")
+                if strict_canonical_bytes(work.stored_graph) != strict_canonical_bytes(work.expected_graph):
+                    raise StrictProjectionError("graph_byte_mismatch")
+                work.rows_sha256 = _jsonl_sha256(work.stored_rows)
+                if work.proj_manifest["rows_sha256"] != work.rows_sha256:
+                    raise StrictProjectionError("rows_hash_mismatch")
+                if work.proj_manifest["row_count"] != len(work.stored_rows):
+                    raise StrictProjectionError("row_count")
+                work.graph_sha256 = _require_self_hash(work.stored_graph, "graph_payload_sha256", label="graph")
+                if work.proj_manifest["graph_sha256"] != work.graph_sha256:
+                    raise StrictProjectionError("graph_hash_mismatch")
+                if work.proj_manifest["graph_node_count"] != len(work.stored_graph["nodes"]):
+                    raise StrictProjectionError("graph_node_count")
+                for row in work.stored_rows:
+                    try:
+                        authorize_row(
+                            scope=scope,
+                            registry=registry,
+                            selectors=work.selectors,
+                            project_binding_id=row["project_binding_id"],
+                            source_registration_id=row["source_registration_id"],
+                            authority_site=row["authority_site"],
+                            authority_domain=row["authority_domain"],
+                        )
+                    except BoundScopeError as exc:
+                        raise StrictProjectionError(f"row_authorization:{exc}") from exc
+
+            if work.mode == "serving":
+                __qualify_authority_generation_p7_3_c0()
+                __qualify_authority_generation_p7_3_c1()
+                __qualify_authority_generation_p7_3_c2()
+                __qualify_authority_generation_p7_3_c3()
+            return QualifiedAuthorityGeneration(
+                lineage_id=work.lineage_id,
+                authority_seq=work.authority_seq,
+                snapshot_id=work.snapshot_id,
+                authority_manifest_sha256=work.authority_manifest_sha256,
+                generation_id=work.generation_id,
+                projection_manifest_sha256=work.sealed_projection_manifest_sha256,
+                rows_sha256=work.rows_sha256,
+                graph_sha256=work.graph_sha256,
+                state_by_assertion=work.reduced,
+                publication_payload_sha256=work.pub_hash,
+                semantic_contract_sha256=work.semantic_contract_sha256,
+                expires_at=work.tip.manifest["expires_at"],
+                as_of=work.tip.manifest["as_of"],
+            )
+
+        _qualify_authority_generation_p7_0()
+        _qualify_authority_generation_p7_1()
+        _qualify_authority_generation_p7_2()
+        _out = _qualify_authority_generation_p7_3()
+        if _out is not None:
+            return _out
+
+    _qualify_authority_generation_p0()
+    _qualify_authority_generation_p1()
+    _qualify_authority_generation_p2()
+    _qualify_authority_generation_p3()
+    _out = _qualify_authority_generation_p4()
+    if _out is not None:
+        return _out
+    _qualify_authority_generation_p5()
+    _qualify_authority_generation_p6()
+    _out = _qualify_authority_generation_p7()
+    if _out is not None:
+        return _out
 
 
 # ---------------------------------------------------------------------------
@@ -1993,9 +1948,7 @@ class QualifiedStrictGeneration:
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        raise TypeError(
-            "QualifiedStrictGeneration is module-sealed; use open_published_generation"
-        )
+        raise TypeError("QualifiedStrictGeneration is module-sealed; use open_published_generation")
 
     def __setattr__(self, name: str, value: Any) -> None:
         if getattr(self, "_frozen", False):
@@ -2485,9 +2438,7 @@ def _validate_public_graph(
 ) -> None:
     """Closed graph schema, unique identities, edge kinds, row agreement."""
 
-    _require_closed(
-        graph, _GRAPH_FIELDS, schema="convmem.strict-graph.v1", label="graph"
-    )
+    _require_closed(graph, _GRAPH_FIELDS, schema="convmem.strict-graph.v1", label="graph")
     nodes = graph["nodes"]
     edges = graph["edges"]
     if not isinstance(nodes, list) or not isinstance(edges, list):
@@ -2563,9 +2514,7 @@ def load_strict_config(path: str | Path) -> StrictConfig:
 
 
 def _parse_ts(value: str) -> datetime:
-    if not isinstance(value, str) or not re.fullmatch(
-        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value
-    ):
+    if not isinstance(value, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value):
         raise StrictProjectionError("timestamp_invalid")
     return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
@@ -2607,353 +2556,370 @@ def open_published_generation(
     spans private qualification + public opening. On success the capability
     owns the fd; on failure a held lock is left for the caller to release.
     """
+    work = SimpleNamespace()
 
-    if operator_path_pins:
-        for path_s, expected in operator_path_pins.items():
-            recheck_operator_immutable_path(Path(path_s), expected)
+    def _open_published_generation_p0() -> None:
+        if operator_path_pins:
+            for path_s, expected in operator_path_pins.items():
+                recheck_operator_immutable_path(Path(path_s), expected)
 
-    root_path = Path(root)
-    if root_path.is_symlink() or not root_path.is_dir():
-        raise StrictProjectionError("root_invalid")
-    _require_public_dir(root_path)
+    def _open_published_generation_p1() -> None:
+        work.root_path = Path(root)
+        if work.root_path.is_symlink() or not work.root_path.is_dir():
+            raise StrictProjectionError("root_invalid")
 
-    try:
-        binding_id = scope.allowed_project_bindings[0]
-        recomputed_owner = owner_digest(
-            scope_sha256=scope.scope_sha256,
-            registry_sha256=registry.registry_sha256,
-            project_binding_id=binding_id,
-        )
-        binding = registry.binding(binding_id)
-    except (BoundScopeError, IndexError, KeyError) as exc:
-        raise StrictProjectionError("scope_registry") from exc
-
-    lineage_id = binding.lineage_id
-    if not isinstance(lineage_id, str) or len(lineage_id) != 32:
-        raise StrictProjectionError("binding_lineage_id")
-
-    locks_dir = root_path / "locks"
-    _require_public_dir(locks_dir)
-    lock_path = locks_dir / f"{lineage_id}.lock"
-    owns_lock = False
-    if held_lock is not None:
-        lock_fd, lock_inode = held_lock
-        if not isinstance(lock_fd, int) or lock_fd < 0:
-            raise StrictProjectionError("lock_released")
-        held_st = os.fstat(lock_fd)
-        if (held_st.st_dev, held_st.st_ino) != lock_inode:
-            raise StrictProjectionError("lock_inode_drift")
-        # Confirm the held fd still names the expected lineage lock path.
-        if lock_path.is_symlink() or not lock_path.is_file():
-            raise StrictProjectionError(f"lock_missing:{lock_path}")
-        path_st = lock_path.lstat()
-        if (path_st.st_dev, path_st.st_ino) != lock_inode:
-            raise StrictProjectionError("lock_path_mismatch")
-        if (path_st.st_mode & 0o7777) != _PUBLIC_FILE_MODE:
-            raise StrictProjectionError(f"lock_mode:{lock_path}")
-    else:
-        lock_fd, lock_inode = _acquire_shared_lineage_lock(lock_path)
-        owns_lock = True
-
-    pinned_public: dict[str, PublicPin] = {}
-    try:
-        active_dir = root_path / "active"
-        _require_public_dir(active_dir)
-        publication_path = active_dir / f"{lineage_id}.json"
-        _assert_not_private_relative(root_path, publication_path)
-        publication_raw, pub_pin = _open_public_regular(publication_path)
-        pinned_public[str(publication_path)] = pub_pin
+    def _open_published_generation_p2() -> None:
+        _require_public_dir(work.root_path)
         try:
-            publication = json.loads(
-                publication_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+            work.binding_id = scope.allowed_project_bindings[0]
+            work.recomputed_owner = owner_digest(
+                scope_sha256=scope.scope_sha256,
+                registry_sha256=registry.registry_sha256,
+                project_binding_id=work.binding_id,
             )
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise StrictProjectionError(f"json_invalid:{publication_path}") from exc
-        if not isinstance(publication, dict):
-            raise StrictProjectionError(f"json_object_required:{publication_path}")
-        _require_closed(
-            publication,
-            _PUBLICATION_FIELDS,
-            schema="convmem.strict-publication.v2",
-            label="publication",
-        )
-        if publication["lineage_id"] != lineage_id:
-            raise StrictProjectionError("publication_lineage")
-        pub_hash = _require_self_hash(
-            publication, "publication_payload_sha256", label="publication"
-        )
-        if (
-            expected_publication_sha256 is not None
-            and pub_hash != expected_publication_sha256
-        ):
-            raise StrictProjectionError("publication_cas_mismatch")
-        if publication["owner_digest"] != recomputed_owner:
-            raise StrictProjectionError("publication_owner_digest")
-        if publication["mode"] != "serving":
-            raise StrictProjectionError("publication_not_serving")
+            work.binding = registry.binding(work.binding_id)
+        except (BoundScopeError, IndexError, KeyError) as exc:
+            raise StrictProjectionError("scope_registry") from exc
 
-        serving_generation_id = publication["serving_generation_id"]
-        projection_manifest_sha256 = publication["projection_manifest_sha256"]
-        authority_seq = publication["authority_seq"]
-        snapshot_id = publication["authority_snapshot_id"]
-        authority_manifest_sha256 = publication["authority_manifest_sha256"]
-        semantic_contract_sha256 = publication["semantic_contract_sha256"]
-        if not isinstance(serving_generation_id, str) or not serving_generation_id:
-            raise StrictProjectionError("serving_generation_required")
-        if not isinstance(projection_manifest_sha256, str):
-            raise StrictProjectionError("projection_manifest_required")
-        if not isinstance(snapshot_id, str) or not isinstance(
-            authority_manifest_sha256, str
-        ):
-            raise StrictProjectionError("authority_identity_required")
+    def _open_published_generation_p3() -> None:
+        work.lineage_id = work.binding.lineage_id
+        if not isinstance(work.lineage_id, str) or len(work.lineage_id) != 32:
+            raise StrictProjectionError("binding_lineage_id")
 
-        anchor = publication["freshness_anchor"]
-        if not isinstance(anchor, Mapping):
-            raise StrictProjectionError("freshness_anchor")
-        if set(anchor) != _FRESHNESS_ANCHOR_FIELDS:
-            raise StrictProjectionError("freshness_anchor_keys")
-        if anchor["authority_snapshot_id"] != snapshot_id:
-            raise StrictProjectionError("freshness_anchor_snapshot")
-        deadline = anchor["snapshot_deadline_boottime_ns"]
-        if not isinstance(deadline, int) or isinstance(deadline, bool):
-            raise StrictProjectionError("freshness_anchor_deadline")
-        if boottime_ns() >= deadline:
-            raise StrictProjectionError("snapshot_expired")
+    def _open_published_generation_p4() -> None:
+        work.locks_dir = work.root_path / "locks"
 
-        auth_dir = root_path / "authority" / snapshot_id
-        _require_public_dir(root_path / "authority")
-        _require_public_dir(auth_dir)
-        auth_manifest_path = auth_dir / "manifest.json"
-        _assert_not_private_relative(root_path, auth_manifest_path)
-        auth_raw, auth_pin = _open_public_regular(auth_manifest_path)
-        pinned_public[str(auth_manifest_path)] = auth_pin
-        try:
-            auth_manifest = json.loads(
-                auth_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
-            )
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise StrictProjectionError(f"json_invalid:{auth_manifest_path}") from exc
-        if not isinstance(auth_manifest, dict):
-            raise StrictProjectionError(f"json_object_required:{auth_manifest_path}")
-        _require_closed(
-            auth_manifest,
-            _AUTHORITY_MANIFEST_FIELDS,
-            schema="convmem.bound-authority-manifest.v3",
-            label="authority_manifest",
-        )
-        if auth_manifest["lineage_id"] != lineage_id:
-            raise StrictProjectionError("authority_manifest_lineage")
-        if auth_manifest["owner_digest"] != recomputed_owner:
-            raise StrictProjectionError("authority_manifest_owner")
-        if auth_manifest["authority_seq"] != authority_seq:
-            raise StrictProjectionError("authority_manifest_seq")
-        if auth_manifest["snapshot_id"] != snapshot_id:
-            raise StrictProjectionError("authority_manifest_snapshot")
-        if auth_manifest["scope_sha256"] != scope.scope_sha256:
-            raise StrictProjectionError("authority_manifest_scope_link")
-        if auth_manifest["registry_sha256"] != registry.registry_sha256:
-            raise StrictProjectionError("authority_manifest_registry_link")
-        if auth_manifest["semantic_contract_sha256"] != semantic_contract_sha256:
-            raise StrictProjectionError("authority_manifest_semantic_contract_link")
-        recomputed_auth_payload = _labeled_self_hash(
-            auth_manifest, "manifest_payload_sha256"
-        )
-        if auth_manifest["manifest_payload_sha256"] != recomputed_auth_payload:
-            raise StrictProjectionError("authority_manifest_hash")
-        if authority_manifest_sha256 != recomputed_auth_payload:
-            raise StrictProjectionError("authority_manifest_link")
-        recomputed_snapshot_id = _authority_snapshot_id(auth_manifest)
-        if auth_manifest["snapshot_id"] != recomputed_snapshot_id:
-            raise StrictProjectionError("authority_snapshot_id_mismatch")
+    def _open_published_generation_p5() -> None:
+        _require_public_dir(work.locks_dir)
+        work.lock_path = work.locks_dir / f"{work.lineage_id}.lock"
 
-        as_of = auth_manifest["as_of"]
-        expires_at = auth_manifest["expires_at"]
-        wall = now if now is not None else wall_time_utc()
-        if wall >= _parse_ts(expires_at):
-            raise StrictProjectionError("snapshot_expired")
+    def _open_published_generation_p6() -> None:
+        work.owns_lock = False
+        if held_lock is not None:
+            work.lock_fd, work.lock_inode = held_lock
+            if not isinstance(work.lock_fd, int) or work.lock_fd < 0:
+                raise StrictProjectionError("lock_released")
+            work.held_st = os.fstat(work.lock_fd)
+            if (work.held_st.st_dev, work.held_st.st_ino) != work.lock_inode:
+                raise StrictProjectionError("lock_inode_drift")
+            if work.lock_path.is_symlink() or not work.lock_path.is_file():
+                raise StrictProjectionError(f"lock_missing:{work.lock_path}")
+            work.path_st = work.lock_path.lstat()
+            if (work.path_st.st_dev, work.path_st.st_ino) != work.lock_inode:
+                raise StrictProjectionError("lock_path_mismatch")
+            if work.path_st.st_mode & 4095 != _PUBLIC_FILE_MODE:
+                raise StrictProjectionError(f"lock_mode:{work.lock_path}")
+        else:
+            work.lock_fd, work.lock_inode = _acquire_shared_lineage_lock(work.lock_path)
+            work.owns_lock = True
 
-        gen_dir = root_path / "projection" / serving_generation_id
-        _require_public_dir(root_path / "projection")
-        _require_public_dir(gen_dir)
+    def _open_published_generation_p7():
 
-        proj_manifest_path = gen_dir / "manifest.json"
-        proj_raw, proj_pin = _open_public_regular(proj_manifest_path)
-        pinned_public[str(proj_manifest_path)] = proj_pin
-        try:
-            proj_manifest = json.loads(
-                proj_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
-            )
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise StrictProjectionError(f"json_invalid:{proj_manifest_path}") from exc
-        if not isinstance(proj_manifest, dict):
-            raise StrictProjectionError(f"json_object_required:{proj_manifest_path}")
-        _require_closed(
-            proj_manifest,
-            _PROJECTION_MANIFEST_FIELDS,
-            schema="convmem.bound-projection-manifest.v3",
-            label="projection_manifest",
-        )
-        if proj_manifest["lineage_id"] != lineage_id:
-            raise StrictProjectionError("projection_manifest_lineage")
-        if proj_manifest["authority_seq"] != authority_seq:
-            raise StrictProjectionError("projection_manifest_seq")
-        if proj_manifest["owner_digest"] != recomputed_owner:
-            raise StrictProjectionError("projection_manifest_owner")
-        if proj_manifest["snapshot_id"] != snapshot_id:
-            raise StrictProjectionError("projection_snapshot_link")
-        if proj_manifest["authority_manifest_sha256"] != authority_manifest_sha256:
-            raise StrictProjectionError("projection_authority_manifest_link")
-        if proj_manifest["semantic_contract_sha256"] != semantic_contract_sha256:
-            raise StrictProjectionError("projection_semantic_contract_link")
-        if proj_manifest["scope_sha256"] != scope.scope_sha256:
-            raise StrictProjectionError("projection_scope_link")
-        if proj_manifest["registry_sha256"] != registry.registry_sha256:
-            raise StrictProjectionError("projection_registry_link")
-        if proj_manifest["as_of"] != as_of or proj_manifest["expires_at"] != expires_at:
-            raise StrictProjectionError("projection_freshness_link")
+        def _open_published_generation_p7_0() -> None:
+            work.pinned_public: dict[str, PublicPin] = {}
 
-        recomputed_generation_id = _projection_generation_id(proj_manifest)
-        if proj_manifest["generation_id"] != recomputed_generation_id:
-            raise StrictProjectionError("projection_generation_id_mismatch")
-        if serving_generation_id != recomputed_generation_id:
-            raise StrictProjectionError("publication_generation_id_link")
-        recomputed_proj_payload = _labeled_self_hash(
-            proj_manifest, "manifest_payload_sha256"
-        )
-        if proj_manifest["manifest_payload_sha256"] != recomputed_proj_payload:
-            raise StrictProjectionError("projection_manifest_hash")
-        if projection_manifest_sha256 != recomputed_proj_payload:
-            raise StrictProjectionError("projection_manifest_link")
+        def _open_published_generation_p7_1():
 
-        rows_path = gen_dir / "rows.jsonl"
-        rows_raw, rows_pin = _open_public_regular(rows_path)
-        pinned_public[str(rows_path)] = rows_pin
-        try:
-            text = rows_raw.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise StrictProjectionError(f"jsonl_invalid:{rows_path}") from exc
-        stored_rows: list[dict[str, Any]] = []
-        for line_no, line in enumerate(text.splitlines(), start=1):
-            if not line:
-                raise StrictProjectionError(f"jsonl_empty_line:{rows_path}:{line_no}")
-            try:
-                obj = json.loads(line, object_pairs_hook=_reject_duplicate_keys)
-            except json.JSONDecodeError as exc:
-                raise StrictProjectionError(
-                    f"jsonl_invalid:{rows_path}:{line_no}"
-                ) from exc
-            if not isinstance(obj, dict):
-                raise StrictProjectionError(
-                    f"jsonl_object_required:{rows_path}:{line_no}"
+            def __open_published_generation_p7_1_c0() -> None:
+                work.active_dir = work.root_path / "active"
+                _require_public_dir(work.active_dir)
+                work.publication_path = work.active_dir / f"{work.lineage_id}.json"
+                _assert_not_private_relative(work.root_path, work.publication_path)
+                work.publication_raw, work.pub_pin = _open_public_regular(work.publication_path)
+                work.pinned_public[str(work.publication_path)] = work.pub_pin
+                try:
+                    work.publication = json.loads(
+                        work.publication_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise StrictProjectionError(f"json_invalid:{work.publication_path}") from exc
+                if not isinstance(work.publication, dict):
+                    raise StrictProjectionError(f"json_object_required:{work.publication_path}")
+                _require_closed(
+                    work.publication, _PUBLICATION_FIELDS, schema="convmem.strict-publication.v2", label="publication"
                 )
-            stored_rows.append(obj)
-        if len(stored_rows) > 10000:
-            raise StrictProjectionError("projection_row_cap")
-        row_bytes = _canonical_jsonl_bytes(stored_rows)
-        if len(row_bytes) > 67108864:
-            raise StrictProjectionError("projection_byte_cap")
-        for row in stored_rows:
-            _validate_public_projection_row(row)
+                if work.publication["lineage_id"] != work.lineage_id:
+                    raise StrictProjectionError("publication_lineage")
+                work.pub_hash = _require_self_hash(work.publication, "publication_payload_sha256", label="publication")
+                if expected_publication_sha256 is not None and work.pub_hash != expected_publication_sha256:
+                    raise StrictProjectionError("publication_cas_mismatch")
+                if work.publication["owner_digest"] != work.recomputed_owner:
+                    raise StrictProjectionError("publication_owner_digest")
+                if work.publication["mode"] != "serving":
+                    raise StrictProjectionError("publication_not_serving")
+                work.serving_generation_id = work.publication["serving_generation_id"]
+                work.projection_manifest_sha256 = work.publication["projection_manifest_sha256"]
+                work.authority_seq = work.publication["authority_seq"]
+                work.snapshot_id = work.publication["authority_snapshot_id"]
 
-        graph_path = gen_dir / "graph.json"
-        graph_raw, graph_pin = _open_public_regular(graph_path)
-        pinned_public[str(graph_path)] = graph_pin
-        try:
-            stored_graph = json.loads(
-                graph_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
-            )
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise StrictProjectionError(f"json_invalid:{graph_path}") from exc
-        if not isinstance(stored_graph, dict):
-            raise StrictProjectionError(f"json_object_required:{graph_path}")
-        _validate_public_graph(stored_graph, rows=stored_rows)
+            def __open_published_generation_p7_1_c1() -> None:
+                work.authority_manifest_sha256 = work.publication["authority_manifest_sha256"]
+                work.semantic_contract_sha256 = work.publication["semantic_contract_sha256"]
+                if not isinstance(work.serving_generation_id, str) or not work.serving_generation_id:
+                    raise StrictProjectionError("serving_generation_required")
+                if not isinstance(work.projection_manifest_sha256, str):
+                    raise StrictProjectionError("projection_manifest_required")
+                if not isinstance(work.snapshot_id, str) or not isinstance(work.authority_manifest_sha256, str):
+                    raise StrictProjectionError("authority_identity_required")
+                work.anchor = work.publication["freshness_anchor"]
+                if not isinstance(work.anchor, Mapping):
+                    raise StrictProjectionError("freshness_anchor")
+                if set(work.anchor) != _FRESHNESS_ANCHOR_FIELDS:
+                    raise StrictProjectionError("freshness_anchor_keys")
+                if work.anchor["authority_snapshot_id"] != work.snapshot_id:
+                    raise StrictProjectionError("freshness_anchor_snapshot")
+                work.deadline = work.anchor["snapshot_deadline_boottime_ns"]
+                if not isinstance(work.deadline, int) or isinstance(work.deadline, bool):
+                    raise StrictProjectionError("freshness_anchor_deadline")
+                if boottime_ns() >= work.deadline:
+                    raise StrictProjectionError("snapshot_expired")
+                work.auth_dir = work.root_path / "authority" / work.snapshot_id
+                _require_public_dir(work.root_path / "authority")
+                _require_public_dir(work.auth_dir)
+                work.auth_manifest_path = work.auth_dir / "manifest.json"
+                _assert_not_private_relative(work.root_path, work.auth_manifest_path)
+                work.auth_raw, work.auth_pin = _open_public_regular(work.auth_manifest_path)
+                work.pinned_public[str(work.auth_manifest_path)] = work.auth_pin
 
-        rows_digest = sha256_digest(row_bytes)
-        if proj_manifest["rows_sha256"] != rows_digest:
-            raise StrictProjectionError("rows_hash_mismatch")
-        if proj_manifest["row_count"] != len(stored_rows):
-            raise StrictProjectionError("row_count")
-        graph_digest = _require_self_hash(
-            stored_graph, "graph_payload_sha256", label="graph"
-        )
-        if proj_manifest["graph_sha256"] != graph_digest:
-            raise StrictProjectionError("graph_hash_mismatch")
-        if proj_manifest["graph_node_count"] != len(stored_graph["nodes"]):
-            raise StrictProjectionError("graph_node_count")
+            def __open_published_generation_p7_1_c2() -> None:
+                try:
+                    work.auth_manifest = json.loads(
+                        work.auth_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise StrictProjectionError(f"json_invalid:{work.auth_manifest_path}") from exc
+                if not isinstance(work.auth_manifest, dict):
+                    raise StrictProjectionError(f"json_object_required:{work.auth_manifest_path}")
+                _require_closed(
+                    work.auth_manifest,
+                    _AUTHORITY_MANIFEST_FIELDS,
+                    schema="convmem.bound-authority-manifest.v3",
+                    label="authority_manifest",
+                )
+                if work.auth_manifest["lineage_id"] != work.lineage_id:
+                    raise StrictProjectionError("authority_manifest_lineage")
+                if work.auth_manifest["owner_digest"] != work.recomputed_owner:
+                    raise StrictProjectionError("authority_manifest_owner")
+                if work.auth_manifest["authority_seq"] != work.authority_seq:
+                    raise StrictProjectionError("authority_manifest_seq")
+                if work.auth_manifest["snapshot_id"] != work.snapshot_id:
+                    raise StrictProjectionError("authority_manifest_snapshot")
+                if work.auth_manifest["scope_sha256"] != scope.scope_sha256:
+                    raise StrictProjectionError("authority_manifest_scope_link")
+                if work.auth_manifest["registry_sha256"] != registry.registry_sha256:
+                    raise StrictProjectionError("authority_manifest_registry_link")
+                if work.auth_manifest["semantic_contract_sha256"] != work.semantic_contract_sha256:
+                    raise StrictProjectionError("authority_manifest_semantic_contract_link")
+                work.recomputed_auth_payload = _labeled_self_hash(work.auth_manifest, "manifest_payload_sha256")
+                if work.auth_manifest["manifest_payload_sha256"] != work.recomputed_auth_payload:
+                    raise StrictProjectionError("authority_manifest_hash")
+                if work.authority_manifest_sha256 != work.recomputed_auth_payload:
+                    raise StrictProjectionError("authority_manifest_link")
+                work.recomputed_snapshot_id = _authority_snapshot_id(work.auth_manifest)
+                if work.auth_manifest["snapshot_id"] != work.recomputed_snapshot_id:
+                    raise StrictProjectionError("authority_snapshot_id_mismatch")
+                work.as_of = work.auth_manifest["as_of"]
+                work.expires_at = work.auth_manifest["expires_at"]
+                work.wall = now if now is not None else wall_time_utc()
+                if work.wall >= _parse_ts(work.expires_at):
+                    raise StrictProjectionError("snapshot_expired")
 
-        selectors = EffectiveSelectors(
-            project=scope.project,
-            site=scope.site,
-            site_mode=scope.site_mode,
-            domain=scope.domain,
-            binding_id=binding_id,
-        )
-        for row in stored_rows:
-            if row["public_binding_ref"] != binding.public_ref:
-                raise StrictProjectionError("row_public_ref")
-            try:
-                authorize_row(
+            def __open_published_generation_p7_1_c3() -> None:
+                work.gen_dir = work.root_path / "projection" / work.serving_generation_id
+                _require_public_dir(work.root_path / "projection")
+                _require_public_dir(work.gen_dir)
+                work.proj_manifest_path = work.gen_dir / "manifest.json"
+                work.proj_raw, work.proj_pin = _open_public_regular(work.proj_manifest_path)
+                work.pinned_public[str(work.proj_manifest_path)] = work.proj_pin
+                try:
+                    work.proj_manifest = json.loads(
+                        work.proj_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise StrictProjectionError(f"json_invalid:{work.proj_manifest_path}") from exc
+                if not isinstance(work.proj_manifest, dict):
+                    raise StrictProjectionError(f"json_object_required:{work.proj_manifest_path}")
+                _require_closed(
+                    work.proj_manifest,
+                    _PROJECTION_MANIFEST_FIELDS,
+                    schema="convmem.bound-projection-manifest.v3",
+                    label="projection_manifest",
+                )
+                if work.proj_manifest["lineage_id"] != work.lineage_id:
+                    raise StrictProjectionError("projection_manifest_lineage")
+                if work.proj_manifest["authority_seq"] != work.authority_seq:
+                    raise StrictProjectionError("projection_manifest_seq")
+                if work.proj_manifest["owner_digest"] != work.recomputed_owner:
+                    raise StrictProjectionError("projection_manifest_owner")
+                if work.proj_manifest["snapshot_id"] != work.snapshot_id:
+                    raise StrictProjectionError("projection_snapshot_link")
+                if work.proj_manifest["authority_manifest_sha256"] != work.authority_manifest_sha256:
+                    raise StrictProjectionError("projection_authority_manifest_link")
+                if work.proj_manifest["semantic_contract_sha256"] != work.semantic_contract_sha256:
+                    raise StrictProjectionError("projection_semantic_contract_link")
+                if work.proj_manifest["scope_sha256"] != scope.scope_sha256:
+                    raise StrictProjectionError("projection_scope_link")
+                if work.proj_manifest["registry_sha256"] != registry.registry_sha256:
+                    raise StrictProjectionError("projection_registry_link")
+                if work.proj_manifest["as_of"] != work.as_of or work.proj_manifest["expires_at"] != work.expires_at:
+                    raise StrictProjectionError("projection_freshness_link")
+
+            def __open_published_generation_p7_1_c4() -> None:
+                work.recomputed_generation_id = _projection_generation_id(work.proj_manifest)
+                if work.proj_manifest["generation_id"] != work.recomputed_generation_id:
+                    raise StrictProjectionError("projection_generation_id_mismatch")
+                if work.serving_generation_id != work.recomputed_generation_id:
+                    raise StrictProjectionError("publication_generation_id_link")
+                work.recomputed_proj_payload = _labeled_self_hash(work.proj_manifest, "manifest_payload_sha256")
+                if work.proj_manifest["manifest_payload_sha256"] != work.recomputed_proj_payload:
+                    raise StrictProjectionError("projection_manifest_hash")
+                if work.projection_manifest_sha256 != work.recomputed_proj_payload:
+                    raise StrictProjectionError("projection_manifest_link")
+                work.rows_path = work.gen_dir / "rows.jsonl"
+                work.rows_raw, work.rows_pin = _open_public_regular(work.rows_path)
+                work.pinned_public[str(work.rows_path)] = work.rows_pin
+                try:
+                    work.text = work.rows_raw.decode("utf-8")
+                except UnicodeDecodeError as exc:
+                    raise StrictProjectionError(f"jsonl_invalid:{work.rows_path}") from exc
+                work.stored_rows: list[dict[str, Any]] = []
+                for line_no, line in enumerate(work.text.splitlines(), start=1):
+                    if not line:
+                        raise StrictProjectionError(f"jsonl_empty_line:{work.rows_path}:{line_no}")
+                    try:
+                        work.obj = json.loads(line, object_pairs_hook=_reject_duplicate_keys)
+                    except json.JSONDecodeError as exc:
+                        raise StrictProjectionError(f"jsonl_invalid:{work.rows_path}:{line_no}") from exc
+                    if not isinstance(work.obj, dict):
+                        raise StrictProjectionError(f"jsonl_object_required:{work.rows_path}:{line_no}")
+                    work.stored_rows.append(work.obj)
+                if len(work.stored_rows) > 10000:
+                    raise StrictProjectionError("projection_row_cap")
+                work.row_bytes = _canonical_jsonl_bytes(work.stored_rows)
+                if len(work.row_bytes) > 67108864:
+                    raise StrictProjectionError("projection_byte_cap")
+                for row in work.stored_rows:
+                    _validate_public_projection_row(row)
+                work.graph_path = work.gen_dir / "graph.json"
+                work.graph_raw, work.graph_pin = _open_public_regular(work.graph_path)
+                work.pinned_public[str(work.graph_path)] = work.graph_pin
+
+            def __open_published_generation_p7_1_c5() -> None:
+                try:
+                    work.stored_graph = json.loads(
+                        work.graph_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+                    )
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise StrictProjectionError(f"json_invalid:{work.graph_path}") from exc
+                if not isinstance(work.stored_graph, dict):
+                    raise StrictProjectionError(f"json_object_required:{work.graph_path}")
+                _validate_public_graph(work.stored_graph, rows=work.stored_rows)
+                work.rows_digest = sha256_digest(work.row_bytes)
+                if work.proj_manifest["rows_sha256"] != work.rows_digest:
+                    raise StrictProjectionError("rows_hash_mismatch")
+                if work.proj_manifest["row_count"] != len(work.stored_rows):
+                    raise StrictProjectionError("row_count")
+                work.graph_digest = _require_self_hash(work.stored_graph, "graph_payload_sha256", label="graph")
+                if work.proj_manifest["graph_sha256"] != work.graph_digest:
+                    raise StrictProjectionError("graph_hash_mismatch")
+                if work.proj_manifest["graph_node_count"] != len(work.stored_graph["nodes"]):
+                    raise StrictProjectionError("graph_node_count")
+                work.selectors = EffectiveSelectors(
+                    project=scope.project,
+                    site=scope.site,
+                    site_mode=scope.site_mode,
+                    domain=scope.domain,
+                    binding_id=work.binding_id,
+                )
+                for row in work.stored_rows:
+                    if row["public_binding_ref"] != work.binding.public_ref:
+                        raise StrictProjectionError("row_public_ref")
+                    try:
+                        authorize_row(
+                            scope=scope,
+                            registry=registry,
+                            selectors=work.selectors,
+                            project_binding_id=row["project_binding_id"],
+                            source_registration_id=row["source_registration_id"],
+                            authority_site=row["authority_site"],
+                            authority_domain=row["authority_domain"],
+                        )
+                    except BoundScopeError as exc:
+                        raise StrictProjectionError(f"row_authorization:{exc}") from exc
+                _recheck_pinned_public(work.pinned_public)
+                work.lock_st = os.fstat(work.lock_fd)
+                if (work.lock_st.st_dev, work.lock_st.st_ino) != work.lock_inode:
+                    raise StrictProjectionError("lock_inode_drift")
+                _recheck_pinned_public({str(work.publication_path): work.pub_pin})
+                work.wall2 = now if now is not None else wall_time_utc()
+                if work.wall2 >= _parse_ts(work.expires_at):
+                    raise StrictProjectionError("snapshot_expired")
+                if boottime_ns() >= work.deadline:
+                    raise StrictProjectionError("snapshot_expired")
+                return _seal_qualified_generation(
+                    lineage_id=work.lineage_id,
+                    authority_seq=work.authority_seq,
+                    snapshot_id=work.snapshot_id,
+                    authority_manifest_sha256=work.authority_manifest_sha256,
+                    generation_id=work.serving_generation_id,
+                    projection_manifest_sha256=work.projection_manifest_sha256,
+                    rows_sha256=work.rows_digest,
+                    graph_sha256=work.graph_digest,
+                    publication_payload_sha256=work.pub_hash,
+                    semantic_contract_sha256=work.semantic_contract_sha256,
+                    as_of=work.as_of,
+                    expires_at=work.expires_at,
                     scope=scope,
                     registry=registry,
-                    selectors=selectors,
-                    project_binding_id=row["project_binding_id"],
-                    source_registration_id=row["source_registration_id"],
-                    authority_site=row["authority_site"],
-                    authority_domain=row["authority_domain"],
+                    rows=tuple(work.stored_rows),
+                    graph=MappingProxyType(dict(work.stored_graph)),
+                    _lock_fd=work.lock_fd,
+                    _lock_inode=work.lock_inode,
+                    _pinned_public=MappingProxyType(dict(work.pinned_public)),
+                    _operator_path_pins=MappingProxyType(dict(operator_path_pins) if operator_path_pins else {}),
+                    _root=work.root_path,
+                    _publication_path=work.publication_path,
                 )
-            except BoundScopeError as exc:
-                raise StrictProjectionError(f"row_authorization:{exc}") from exc
 
-        # Final pin recheck before minting a live capability.
-        _recheck_pinned_public(pinned_public)
-        lock_st = os.fstat(lock_fd)
-        if (lock_st.st_dev, lock_st.st_ino) != lock_inode:
-            raise StrictProjectionError("lock_inode_drift")
-        # Recheck serving publication identity after all reads.
-        _recheck_pinned_public({str(publication_path): pub_pin})
-        wall2 = now if now is not None else wall_time_utc()
-        if wall2 >= _parse_ts(expires_at):
-            raise StrictProjectionError("snapshot_expired")
-        if boottime_ns() >= deadline:
-            raise StrictProjectionError("snapshot_expired")
+            try:
+                __open_published_generation_p7_1_c0()
+                __open_published_generation_p7_1_c1()
+                __open_published_generation_p7_1_c2()
+                __open_published_generation_p7_1_c3()
+                __open_published_generation_p7_1_c4()
+                __open_published_generation_p7_1_c5()
+            except Exception:
+                if work.owns_lock:
+                    try:
+                        fcntl.flock(work.lock_fd, fcntl.LOCK_UN)
+                    except OSError:
+                        pass
+                    try:
+                        os.close(work.lock_fd)
+                    except OSError:
+                        pass
+                raise
+            return None
 
-        return _seal_qualified_generation(
-            lineage_id=lineage_id,
-            authority_seq=authority_seq,
-            snapshot_id=snapshot_id,
-            authority_manifest_sha256=authority_manifest_sha256,
-            generation_id=serving_generation_id,
-            projection_manifest_sha256=projection_manifest_sha256,
-            rows_sha256=rows_digest,
-            graph_sha256=graph_digest,
-            publication_payload_sha256=pub_hash,
-            semantic_contract_sha256=semantic_contract_sha256,
-            as_of=as_of,
-            expires_at=expires_at,
-            scope=scope,
-            registry=registry,
-            rows=tuple(stored_rows),
-            graph=MappingProxyType(dict(stored_graph)),
-            _lock_fd=lock_fd,
-            _lock_inode=lock_inode,
-            _pinned_public=MappingProxyType(dict(pinned_public)),
-            _operator_path_pins=MappingProxyType(
-                dict(operator_path_pins) if operator_path_pins else {}
-            ),
-            _root=root_path,
-            _publication_path=publication_path,
-        )
-    except Exception:
-        if owns_lock:
-            try:
-                fcntl.flock(lock_fd, fcntl.LOCK_UN)
-            except OSError:
-                pass
-            try:
-                os.close(lock_fd)
-            except OSError:
-                pass
-        raise
+        def _open_published_generation_p7_2() -> None:
+            return None
+
+        _open_published_generation_p7_0()
+        _out = _open_published_generation_p7_1()
+        if _out is not None:
+            return _out
+        _open_published_generation_p7_2()
+
+    _open_published_generation_p0()
+    _open_published_generation_p1()
+    _open_published_generation_p2()
+    _open_published_generation_p3()
+    _open_published_generation_p4()
+    _open_published_generation_p5()
+    _open_published_generation_p6()
+    _out = _open_published_generation_p7()
+    if _out is not None:
+        return _out
 
 
 # Capability-probe alias used by T0a/M3 red markers; same public opening as parent.
@@ -2985,13 +2951,9 @@ def recheck_live_public_capability(generation: QualifiedStrictGeneration) -> Non
         raise StrictProjectionError("snapshot_expired")
     publication_raw, _ = _open_public_regular(live._publication_path)
     try:
-        publication = json.loads(
-            publication_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
-        )
+        publication = json.loads(publication_raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise StrictProjectionError(
-            f"json_invalid:{live._publication_path}"
-        ) from exc
+        raise StrictProjectionError(f"json_invalid:{live._publication_path}") from exc
     if not isinstance(publication, dict):
         raise StrictProjectionError(f"json_object_required:{live._publication_path}")
     _require_closed(
@@ -3002,9 +2964,7 @@ def recheck_live_public_capability(generation: QualifiedStrictGeneration) -> Non
     )
     if publication.get("mode") != "serving":
         raise StrictProjectionError("publication_not_serving")
-    recomputed = _require_self_hash(
-        publication, "publication_payload_sha256", label="publication"
-    )
+    recomputed = _require_self_hash(publication, "publication_payload_sha256", label="publication")
     if recomputed != live.publication_payload_sha256:
         raise StrictProjectionError("publication_cas_mismatch")
     anchor = publication.get("freshness_anchor")
@@ -3137,9 +3097,7 @@ class StrictProjectionReader:
             if kind == "relates_to":
                 self._relates_parents.setdefault(src, []).append(dst)
         self._non_expanding = frozenset(
-            generation.registry.binding(
-                generation.scope.allowed_project_bindings[0]
-            ).non_expanding_roots
+            generation.registry.binding(generation.scope.allowed_project_bindings[0]).non_expanding_roots
         )
 
     def _ensure_active(self, correlation_id: str) -> None:
@@ -3235,9 +3193,7 @@ class StrictProjectionReader:
             "supersedes_ledger_ids": supersedes,
             "origin_assurance": row["origin_assurance"],
             "provenance_qualification": dict(row["provenance_qualification"]),
-            "provenance_basis": _provenance_basis_from_capture(
-                row.get("provenance_qualification")
-            ),
+            "provenance_basis": _provenance_basis_from_capture(row.get("provenance_qualification")),
             "check_eligibility": row["check_eligibility"],
             "state_sha256": row["state_sha256"],
             "confidence_bps": row["confidence_bps"],
@@ -3294,9 +3250,7 @@ class StrictProjectionReader:
         # remain ordinary search text.
         for ws_token in query.split():
             if looks_like_public_ledger_handle(ws_token):
-                raise StrictPublicError(
-                    "identifier_query_not_supported", correlation_id=cid
-                )
+                raise StrictPublicError("identifier_query_not_supported", correlation_id=cid)
         if top_k is None:
             raise StrictPublicError("invalid_request", correlation_id=cid)
         if not isinstance(top_k, int) or isinstance(top_k, bool):
@@ -3337,9 +3291,7 @@ class StrictProjectionReader:
                 document=document,
             )
             hist = 0 if row["authority_state"] in _CURRENT_RANK_STATES else 1
-            ranked.append(
-                (hist, score, str(row["observed_at"]), str(row["assertion_id"]), row)
-            )
+            ranked.append((hist, score, str(row["observed_at"]), str(row["assertion_id"]), row))
 
         ranked.sort(key=lambda t: (t[0], -t[1], tuple(-ord(c) for c in t[2]), t[3]))
         limited = ranked[:top_k]
@@ -3369,9 +3321,7 @@ class StrictProjectionReader:
             correlation_id=cid,
         )
 
-    def _row_authorized_or_false(
-        self, row: Mapping[str, Any], selectors: EffectiveSelectors
-    ) -> bool:
+    def _row_authorized_or_false(self, row: Mapping[str, Any], selectors: EffectiveSelectors) -> bool:
         try:
             authorize_row(
                 scope=self._generation.scope,
@@ -3419,8 +3369,7 @@ class StrictProjectionReader:
             if row["record_kind"] != "observation":
                 continue
             if row["authority_state"] == "conflict" or (
-                row["authority_state"] == "current"
-                and row["verification_state"] != "pass"
+                row["authority_state"] == "current" and row["verification_state"] != "pass"
             ):
                 pass
             else:
@@ -3545,9 +3494,7 @@ class StrictProjectionReader:
             if self._relates_parents.get(cursor["assertion_id"]):
                 raise StrictPublicError("scope_denied", correlation_id=cid)
 
-        def _collect_descendants(
-            root_id: str, depth: int, stack: frozenset[str] = frozenset()
-        ) -> None:
+        def _collect_descendants(root_id: str, depth: int, stack: frozenset[str] = frozenset()) -> None:
             if depth <= 0:
                 return
             if root_id in stack:
@@ -3582,8 +3529,7 @@ class StrictProjectionReader:
         head_rows = [
             row
             for row in self._generation.rows
-            if row["logical_id"] == logical_id
-            and row["authority_state"] in {"current", "conflict", "approved"}
+            if row["logical_id"] == logical_id and row["authority_state"] in {"current", "conflict", "approved"}
         ]
         for head in head_rows:
             _add(head)
@@ -3624,6 +3570,7 @@ def dispatch_tool(
 
     cid = correlation_id or _new_correlation_id()
     raw = dict(arguments)
+
     def _sel(name: str) -> Any:
         return raw[name] if name in raw else OMITTED
 
@@ -3694,9 +3641,7 @@ def _cli_read(argv: Sequence[str] | None = None) -> int:
         scope_path = Path(args.scope)
         registry_path = Path(args.registry)
         config_path = Path(args.strict_config)
-        operator_pins = collect_operator_path_pins(
-            scope_path, registry_path, config_path
-        )
+        operator_pins = collect_operator_path_pins(scope_path, registry_path, config_path)
         scope = load_bound_read_scope_for_strict(scope_path)
         registry = load_project_binding_registry_for_strict(registry_path)
         config = load_strict_config(config_path)
@@ -3735,9 +3680,7 @@ def _cli_read(argv: Sequence[str] | None = None) -> int:
         # Capability now owns the lock fd.
         lock_fd = -1
         reader = StrictProjectionReader(generation)
-        result = dispatch_tool(
-            reader, args.method, request_obj, correlation_id=correlation_id
-        )
+        result = dispatch_tool(reader, args.method, request_obj, correlation_id=correlation_id)
         # 10-second CLOCK_BOOTTIME bound: elapsed >= 10s is stale.
         # Final publication/time recheck before a single buffered stdout commit.
         if boottime_ns() - started_boottime_ns >= _CLI_BOOTTIME_BUDGET_NS:
