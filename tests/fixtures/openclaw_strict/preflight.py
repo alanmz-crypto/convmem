@@ -445,7 +445,8 @@ def _validate_runtime_mappings(
     return mapped_items, unlisted, source_only
 
 
-def record_resolutions(frozen_paths: set[str]) -> dict[str, Any]:  # pylint: disable=R0914  # resolution bookkeeping locals mirror closed preflight checks
+# pylint: disable-next=R0914  # resolution bookkeeping locals mirror closed preflight checks
+def record_resolutions(frozen_paths: set[str]) -> dict[str, Any]:
     """Record actual process mappings; validate /runtime and /usr against inventory."""
     import subprocess
 

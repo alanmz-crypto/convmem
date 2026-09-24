@@ -24,28 +24,26 @@ PUB_B = "sha256:" + ("b" * 64)
 STRICT_SECCOMP = "sha256:" + ("c" * 64)
 
 # Closed role environment key sets (Architecture §6.5.6 / §4).
-GATEWAY_AGENT_ENV_KEYS = tuple([
-    "OPENCLAW_GATEWAY_TOKEN",
-    "OPENCLAW_STATE_DIR",
-    "OPENCLAW_CONFIG_PATH",
+_FIXTURE_COMMON_ENV_TAIL = (
     "HOME",
     "PATH",
     "LANG",
     "LC_ALL",
     "TMPDIR",
+)
+GATEWAY_AGENT_ENV_KEYS = (
+    "OPENCLAW_GATEWAY_TOKEN",
+    "OPENCLAW_STATE_DIR",
+    "OPENCLAW_CONFIG_PATH",
+) + _FIXTURE_COMMON_ENV_TAIL + (
     "XDG_CACHE_HOME",
-])
-STRICT_SERVER_ENV_KEYS = tuple([
+)
+STRICT_SERVER_ENV_KEYS = (
     "CONVMEM_MCP_PROFILE",
     "CONVMEM_BOUND_READ_SCOPE_FILE",
     "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
     "CONVMEM_STRICT_CONFIG_FILE",
-    "HOME",
-    "PATH",
-    "LANG",
-    "LC_ALL",
-    "TMPDIR",
-])
+) + _FIXTURE_COMMON_ENV_TAIL
 SUPERVISOR_ENV_KEYS = ("NOTIFY_SOCKET", "WATCHDOG_USEC")
 MODEL_WORKER_ENV_KEYS = ("HOME", "PATH", "TMPDIR", "XDG_CACHE_HOME", "OMP_NUM_THREADS")
 
@@ -203,13 +201,9 @@ def base_launch_policy(**overrides: Any) -> dict[str, Any]:
                 "/fixture/bin/strict_server",
                 net="none",
                 argv=[
-                    "/fixture/bin/setpriv",
-                    "--no-new-privs",
-                    "--seccomp-filter",
-                    "/fixture/filter/strict.bpf",
-                    "/fixture/bin/python",
-                    "-B",
-                    "-s",
+                    *("/fixture/bin/setpriv", "--no-new-privs"),
+                    *("--seccomp-filter", "/fixture/filter/strict.bpf"),
+                    *("/fixture/bin/python", "-B", "-s"),
                     "/fixture/bin/strict_server",
                 ],
                 environment=_strict_server_env(),

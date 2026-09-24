@@ -1069,7 +1069,7 @@ def _closed_admission_bundle(
     source = _source_record(provenance_assertion_id=assertion_id, logical_key=logical_key)
     # Blob bytes must be the exact canonical source payload (excl. provenance_assertion_id).
     source_payload_body = {
-        k: v for k, v in source._items() if k != "provenance_assertion_id"
+        k: v for k, v in source.items() if k != "provenance_assertion_id"
     }
     blob = strict_canonical_bytes(source_payload_body)
     payload = strict_source_payload_sha256(source)
@@ -2291,7 +2291,6 @@ def test_m4_operator_path_wrappers_pin_without_bound_read_scope_mutation(
     """Scope repair: immutable path policy lives in M4 wrappers only."""
 
     from strict_projection import (
-        StrictProjectionError,
         load_bound_read_scope_for_strict,
         pin_operator_immutable_path,
     )
@@ -2536,7 +2535,6 @@ def test_m4_capability_immutable_and_forged_new_fails(
 
     from strict_projection import (
         QualifiedStrictGeneration,
-        StrictProjectionError,
         StrictProjectionReader,
         StrictPublicError,
         open_published_generation,
@@ -2593,7 +2591,6 @@ def test_m4_same_inode_content_mutation_fails_pin_recheck(
     """Same-inode in-place byte mutation restored to 0444 must fail content pin."""
 
     from strict_projection import (
-        StrictProjectionError,
         pin_operator_immutable_path,
         recheck_operator_immutable_path,
     )
@@ -2694,7 +2691,7 @@ def test_m4_public_open_corrupt_and_graph_failures(
 
     # Graph unknown node / duplicate / missing required edge / row mismatch.
     graph_path = root / "projection" / gen_id / "graph.json"
-    graph = json.loads(graph_path.read_text(encoding="utf-8"))
+    _graph = json.loads(graph_path.read_text(encoding="utf-8"))
     backup_graph = graph_path.read_bytes()
     cases = []
     # unknown edge node
@@ -3157,9 +3154,9 @@ def test_m4_lock_release_on_revoke(
         expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
         now=_M4_NOW,
     )
-    assert gen._lock_fd >= 0  # pylint: disable=W0212  # intentional white-box test access
+    assert gen._lock_fd >= 0  # pylint: disable=W0212,E1101  # white-box sealed capability lock fd
     revoke_snapshot(gen)
-    assert gen._lock_fd == -1  # pylint: disable=W0212  # intentional white-box test access
+    assert gen._lock_fd == -1  # pylint: disable=W0212,E1101  # white-box sealed capability lock fd
     assert gen.is_revoked is True
 
 def test_m4_site_and_domain_selector_equivalence(

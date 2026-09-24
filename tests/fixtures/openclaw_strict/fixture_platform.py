@@ -49,7 +49,7 @@ def _b64(data: bytes | None) -> str | None:
     return base64.b64encode(data).decode("ascii")
 
 
-def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+def _fixture_reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in pairs:
         if key in out:
@@ -58,7 +58,7 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def _reject_nonfinite(value: str) -> None:
+def _fixture_reject_nonfinite(value: str) -> None:
     raise ValueError(f"nonfinite:{value}")
 
 
@@ -72,8 +72,8 @@ def decode_json_object(raw: bytes | str) -> dict[str, Any]:
             raise ValueError("surrogate")
     obj = json.loads(
         text,
-        object_pairs_hook=_reject_duplicate_keys,
-        parse_constant=_reject_nonfinite,
+        object_pairs_hook=_fixture_reject_duplicate_keys,
+        parse_constant=_fixture_reject_nonfinite,
     )
     if not isinstance(obj, dict):
         raise ValueError("not_object")

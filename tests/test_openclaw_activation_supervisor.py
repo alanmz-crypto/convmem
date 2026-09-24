@@ -11,12 +11,14 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-_FIXTURE = REPO / "tests" / "fixtures" / "openclaw_strict"
-if str(_FIXTURE) not in sys.path:
-    sys.path.insert(0, str(_FIXTURE))
+_OPENCLAW_FIXTURE_ROOT = REPO.joinpath("tests", "fixtures", "openclaw_strict")
+if str(_OPENCLAW_FIXTURE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_OPENCLAW_FIXTURE_ROOT))
 
-from fixture_platform import AGENT_SUCCESS_BYTES, FixturePlatform  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
-from lifecycle_scripts import (  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from fixture_platform import AGENT_SUCCESS_BYTES, FixturePlatform  # noqa: E402
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from lifecycle_scripts import (  # noqa: E402
     HEX_B,
     HEX_C,
     HEX_D,
@@ -203,11 +205,13 @@ def test_release_linearization_uses_final_clock_and_actual_exit():
     core.ingest_agent_event(platform.next_event(handle))
     platform.advance_boottime(12345)
     result = core.release_commit()
-    assert result["committed_boottime_ns"] == core._last_valid_clock["boottime_after_ns"]  # pylint: disable=W0212  # intentional white-box test access
+# pylint: disable-next=W0212  # intentional white-box test access
+    assert result["committed_boottime_ns"] == core._last_valid_clock["boottime_after_ns"]
     assert result["model_output"]["text"] == "synthetic answer"
     assert len(AGENT_SUCCESS_BYTES) > 0
     with pytest.raises(TypeError):
-        core.release_commit(exit_code=0)  # type: ignore[call-arg]  # pylint: disable=E1123  # intentional invalid-kwarg TypeError probe
+# pylint: disable-next=E1123  # intentional invalid-kwarg TypeError probe
+        core.release_commit(exit_code=0)  # type: ignore[call-arg]
 
 
 def test_stderr_separation_and_malformed_nonfinite_duplicate_output():
@@ -279,7 +283,7 @@ def test_publication_activation_drift_at_release():
         supervisor_handle="1" * 32,
     )
     core.handle_request(turn_request())
-    _handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
     platform.schedule_agent_success(handle)
     core.ingest_agent_event(platform.next_event(handle))
     core.ingest_agent_event(platform.next_event(handle))
@@ -304,7 +308,8 @@ def test_watchdog_cadence_and_release_revoke_schedules():
     samples_at_start = len(core._watchdog_samples)  # pylint: disable=W0212  # intentional white-box test access
     assert samples_at_start >= 1
     core.script_work_intervals(3)
-    assert len(core._watchdog_samples) >= samples_at_start + 3  # pylint: disable=W0212  # intentional white-box test access
+# pylint: disable-next=W0212  # intentional white-box test access
+    assert len(core._watchdog_samples) >= samples_at_start + 3
     assert any(t["op"] == "harness_advance_boottime" for t in platform.trace)
 
     core.handle_request(turn_request())
@@ -459,7 +464,8 @@ def test_negative_skipped_watchdog_interval():
     with pytest.raises(ValueError, match="watchdog_interval_skipped"):
         core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
     assert core.state == "REVOKING"
-    assert core._internal_terminal == "watchdog_interval_skipped"  # pylint: disable=W0212  # intentional white-box test access
+# pylint: disable-next=W0212  # intentional white-box test access
+    assert core._internal_terminal == "watchdog_interval_skipped"
 
 
 def test_negative_policy_mutation_not_required_for_turn_text():
@@ -495,7 +501,7 @@ def test_malformed_base64_and_missing_exit_enter_revoking():
         supervisor_handle="1" * 32,
     )
     core.handle_request(turn_request())
-    handle = core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
+    core.spawn_agent_for_active_turn(base_launch_policy(), "fixture turn")
     with pytest.raises(ValueError, match="bad_base64"):
         core.ingest_agent_event(
             {"kind": "stdout", "bytes_b64": "***not-base64***", "exit_code": None}

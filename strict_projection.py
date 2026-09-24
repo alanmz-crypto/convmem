@@ -98,115 +98,127 @@ def _projection_inventory_lines(blob: str) -> tuple[str, ...]:
     return tuple(line for line in blob.splitlines() if line)
 
 
-_LAYOUT_FIELDS = frozenset(_projection_inventory_lines("""schema
-authority_dir
-projection_dir
-active_dir
-locks_dir
-control_dir
-layout_payload_sha256"""))
-_ENROLLMENT_FIELDS = frozenset(_projection_inventory_lines("""schema
-lineage_id
-slot_id
-mode
-owner_digest
-operator_uid
-controller_uid
-supervisor_uid
-runtime_uid
-scope_sha256
-registry_sha256
-semantic_contract_sha256
-initial_source_cutoff_sha256
-enrollment_payload_sha256"""))
-_PUBLICATION_FIELDS = frozenset(_projection_inventory_lines("""schema
-lineage_id
-owner_digest
-epoch
-authority_seq
-authority_snapshot_id
-authority_manifest_sha256
-authority_source_cutoff_sha256
-serving_generation_id
-projection_manifest_sha256
-semantic_contract_sha256
-pending_operation_id
-mode
-previous_publication_sha256
-freshness_anchor
-published_at
-publication_payload_sha256"""))
+_LAYOUT_FIELDS = _projection_field_set(
+    "schema",
+    "authority_dir",
+    "projection_dir",
+    "active_dir",
+    "locks_dir",
+    "control_dir",
+    "layout_payload_sha256",
+)
+_ENROLLMENT_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "slot_id",
+    "mode",
+    "owner_digest",
+    "operator_uid",
+    "controller_uid",
+    "supervisor_uid",
+    "runtime_uid",
+    "scope_sha256",
+    "registry_sha256",
+    "semantic_contract_sha256",
+    "initial_source_cutoff_sha256",
+    "enrollment_payload_sha256",
+)
+_PUBLICATION_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "owner_digest",
+    "epoch",
+    "authority_seq",
+    "authority_snapshot_id",
+    "authority_manifest_sha256",
+    "authority_source_cutoff_sha256",
+    "serving_generation_id",
+    "projection_manifest_sha256",
+    "semantic_contract_sha256",
+    "pending_operation_id",
+    "mode",
+    "previous_publication_sha256",
+    "freshness_anchor",
+    "published_at",
+    "publication_payload_sha256",
+)
 
 
 
-_AUTHORITY_MANIFEST_FIELDS = frozenset(_projection_inventory_lines("""schema
-lineage_id
-authority_seq
-owner_digest
-snapshot_id
-parent_snapshot_id
-parent_manifest_sha256
-scope_sha256
-registry_sha256
-input_sha256
-source_cutoff_sha256
-operation_id
-authority_records_sha256
-record_count
-dispositions_sha256
-disposition_count
-citation_map_sha256
-provenance_context_sha256
-grounding_sha256
-added_assertion_ids
-added_disposition_ids
-added_provenance_ids
-added_grounding_refs
-semantic_contract_sha256
-reducer_version
-canonicalization_version
-builder_version
-builder_tree_sha256
-built_at
-as_of
-expires_at
-manifest_payload_sha256"""))
-_PROJECTION_MANIFEST_FIELDS = frozenset(_projection_inventory_lines("""schema
-lineage_id
-authority_seq
-owner_digest
-generation_id
-previous_generation_id
-snapshot_id
-authority_manifest_sha256
-scope_sha256
-registry_sha256
-semantic_contract_sha256
-rows_sha256
-row_count
-graph_sha256
-graph_node_count
-search_kernel
-search_kernel_version
-tokenizer_unicode_version
-builder_version
-builder_tree_sha256
-built_at
-as_of
-expires_at
-manifest_payload_sha256"""))
+_AUTHORITY_MANIFEST_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "authority_seq",
+    "owner_digest",
+    "snapshot_id",
+    "parent_snapshot_id",
+    "parent_manifest_sha256",
+    "scope_sha256",
+    "registry_sha256",
+    "input_sha256",
+    "source_cutoff_sha256",
+    "operation_id",
+    "authority_records_sha256",
+    "record_count",
+    "dispositions_sha256",
+    "disposition_count",
+    "citation_map_sha256",
+    "provenance_context_sha256",
+    "grounding_sha256",
+    "added_assertion_ids",
+    "added_disposition_ids",
+    "added_provenance_ids",
+    "added_grounding_refs",
+    "semantic_contract_sha256",
+    "reducer_version",
+    "canonicalization_version",
+    "builder_version",
+    "builder_tree_sha256",
+    "built_at",
+    "as_of",
+    "expires_at",
+    "manifest_payload_sha256",
+)
+_PROJECTION_MANIFEST_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "authority_seq",
+    "owner_digest",
+    "generation_id",
+    "previous_generation_id",
+    "snapshot_id",
+    "authority_manifest_sha256",
+    "scope_sha256",
+    "registry_sha256",
+    "semantic_contract_sha256",
+    "rows_sha256",
+    "row_count",
+    "graph_sha256",
+    "graph_node_count",
+    "search_kernel",
+    "search_kernel_version",
+    "tokenizer_unicode_version",
+    "builder_version",
+    "builder_tree_sha256",
+    "built_at",
+    "as_of",
+    "expires_at",
+    "manifest_payload_sha256",
+)
 
 
-_SEMANTIC_CONTRACT_FIELDS = frozenset(_projection_inventory_lines("""schema
-reducer_version
-grounding_version
-canonicalization_version
-identity_version
-search_kernel
-search_kernel_version
-tokenizer_unicode_version
-schema_digests
-contract_payload_sha256"""))
+_SEMANTIC_CONTRACT_FIELDS = _projection_field_set(
+    "schema",
+    "reducer_version",
+    "grounding_version",
+    "canonicalization_version",
+    "identity_version",
+    "search_kernel",
+    "search_kernel_version",
+    "tokenizer_unicode_version",
+    "schema_digests",
+    "contract_payload_sha256",
+)
 # Frozen M3 semantic-contract constants — duplicated locally (never import publisher).
 _REQUIRED_REDUCER_VERSION = "v1"
 _REQUIRED_GROUNDING_VERSION = "v1"
@@ -224,134 +236,156 @@ _REQUIRED_SEMANTIC_CONTRACT = {
     "search_kernel_version": _REQUIRED_SEARCH_KERNEL_VERSION,
     "tokenizer_unicode_version": _REQUIRED_TOKENIZER_UNICODE_VERSION,
 }
-_SOURCE_CUTOFF_FIELDS = frozenset(_projection_inventory_lines("""schema
-lineage_id
-mode
-operations
-cutoff_payload_sha256"""))
-_CITATION_MAP_FIELDS = frozenset(_projection_inventory_lines("""schema
-citations
-citation_map_payload_sha256"""))
-_PROVENANCE_CONTEXT_FIELDS = frozenset(_projection_inventory_lines("""schema
-schema_semantics
-policies
-recipes
-verified_channels
-registered_assertions
-grounding_sha256
-context_payload_sha256"""))
-_GROUNDING_FIELDS = frozenset(_projection_inventory_lines("""schema
-blobs
-roots
-edges
-outputs
-receipts
-grounding_payload_sha256"""))
-_AUTHORITY_RECORD_FIELDS = frozenset(_projection_inventory_lines("""schema
-project_binding_id
-source_registration_id
-authority_site
-authority_domain
-record_kind
-logical_id
-assertion_id
-source_event_id
-producer
-logical_key
-semantic_sha256
-payload_sha256
-title
-document
-observed_at
-recorded_at
-confidence_bps
-relates_to_assertion_id
-target_assertion_id
-verification_result
-supersedes_assertion_ids
-decision_disposition_ref
-supersession_disposition_ref
-provenance_envelope
-provenance_commitment
-origin_assurance
-provenance_qualification
-check_eligibility"""))
-_DISPOSITION_FIELDS = frozenset(_projection_inventory_lines("""schema
-action
-project_binding_id
-subject_assertion_id
-subject_semantic_sha256
-target_assertion_ids
-basis_snapshot_id
-expected_head_assertion_ids
-replaces_disposition_ref
-review_actor
-review_role
-review_outcome
-reviewed_at
-ratifier_actor
-ratifier_role
-ratified_at
-rationale_sha256"""))
-_PROJECTION_ROW_FIELDS = frozenset(_projection_inventory_lines("""schema
-project_binding_id
-public_binding_ref
-source_registration_id
-authority_site
-authority_domain
-record_kind
-logical_id
-assertion_id
-public_ledger_id
-citation_ref
-title
-document
-observed_at
-recorded_at
-confidence_bps
-relates_to_assertion_id
-target_assertion_id
-verification_result
-supersedes_assertion_ids
-decision_disposition_ref
-supersession_disposition_ref
-origin_assurance
-provenance_qualification
-check_eligibility
-authority_state
-verification_state
-state_disposition_refs
-payload_sha256
-state_sha256"""))
-_GRAPH_FIELDS = frozenset(_projection_inventory_lines("""schema
-nodes
-edges
-graph_payload_sha256"""))
-_GRAPH_EDGE_FIELDS = frozenset(_projection_inventory_lines("""kind
-from_assertion_id
-to_assertion_id"""))
-_FRESHNESS_ANCHOR_FIELDS = frozenset(_projection_inventory_lines("""boot_id
-authority_snapshot_id
-sampled_wall_time
-sampled_boottime_ns
-snapshot_deadline_boottime_ns
-clock_review_ref"""))
+_SOURCE_CUTOFF_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "mode",
+    "operations",
+    "cutoff_payload_sha256",
+)
+_CITATION_MAP_FIELDS = _projection_field_set(
+    "schema",
+    "citations",
+    "citation_map_payload_sha256",
+)
+_PROVENANCE_CONTEXT_FIELDS = _projection_field_set(
+    "schema",
+    "schema_semantics",
+    "policies",
+    "recipes",
+    "verified_channels",
+    "registered_assertions",
+    "grounding_sha256",
+    "context_payload_sha256",
+)
+_GROUNDING_FIELDS = _projection_field_set(
+    "schema",
+    "blobs",
+    "roots",
+    "edges",
+    "outputs",
+    "receipts",
+    "grounding_payload_sha256",
+)
+_AUTHORITY_RECORD_FIELDS = _projection_field_set(
+    "schema",
+    "project_binding_id",
+    "source_registration_id",
+    "authority_site",
+    "authority_domain",
+    "record_kind",
+    "logical_id",
+    "assertion_id",
+    "source_event_id",
+    "producer",
+    "logical_key",
+    "semantic_sha256",
+    "payload_sha256",
+    "title",
+    "document",
+    "observed_at",
+    "recorded_at",
+    "confidence_bps",
+    "relates_to_assertion_id",
+    "target_assertion_id",
+    "verification_result",
+    "supersedes_assertion_ids",
+    "decision_disposition_ref",
+    "supersession_disposition_ref",
+    "provenance_envelope",
+    "provenance_commitment",
+    "origin_assurance",
+    "provenance_qualification",
+    "check_eligibility",
+)
+_DISPOSITION_FIELDS = _projection_field_set(
+    "schema",
+    "action",
+    "project_binding_id",
+    "subject_assertion_id",
+    "subject_semantic_sha256",
+    "target_assertion_ids",
+    "basis_snapshot_id",
+    "expected_head_assertion_ids",
+    "replaces_disposition_ref",
+    "review_actor",
+    "review_role",
+    "review_outcome",
+    "reviewed_at",
+    "ratifier_actor",
+    "ratifier_role",
+    "ratified_at",
+    "rationale_sha256",
+)
+_PROJECTION_ROW_FIELDS = _projection_field_set(
+    "schema",
+    "project_binding_id",
+    "public_binding_ref",
+    "source_registration_id",
+    "authority_site",
+    "authority_domain",
+    "record_kind",
+    "logical_id",
+    "assertion_id",
+    "public_ledger_id",
+    "citation_ref",
+    "title",
+    "document",
+    "observed_at",
+    "recorded_at",
+    "confidence_bps",
+    "relates_to_assertion_id",
+    "target_assertion_id",
+    "verification_result",
+    "supersedes_assertion_ids",
+    "decision_disposition_ref",
+    "supersession_disposition_ref",
+    "origin_assurance",
+    "provenance_qualification",
+    "check_eligibility",
+    "authority_state",
+    "verification_state",
+    "state_disposition_refs",
+    "payload_sha256",
+    "state_sha256",
+)
+_GRAPH_FIELDS = _projection_field_set(
+    "schema",
+    "nodes",
+    "edges",
+    "graph_payload_sha256",
+)
+_GRAPH_EDGE_FIELDS = _projection_field_set(
+    "kind",
+    "from_assertion_id",
+    "to_assertion_id",
+)
+_FRESHNESS_ANCHOR_FIELDS = _projection_field_set(
+    "boot_id",
+    "authority_snapshot_id",
+    "sampled_wall_time",
+    "sampled_boottime_ns",
+    "snapshot_deadline_boottime_ns",
+    "clock_review_ref",
+)
 _INPUT_PAYLOAD_FIELD = {
     "convmem.strict-fixture-bundle.v2": "fixture_payload_sha256",
     "convmem.approved-admission.v1": "artifact_payload_sha256",
 }
-_FIXTURE_BUNDLE_FIELDS = frozenset(_projection_inventory_lines("""schema
-lineage_id
-operation_id
-expected_parent_manifest_sha256
-batches
-dispositions
-provenance_context
-grounding
-built_at
-as_of
-expires_at
-fixture_payload_sha256"""))
+_FIXTURE_BUNDLE_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "operation_id",
+    "expected_parent_manifest_sha256",
+    "batches",
+    "dispositions",
+    "provenance_context",
+    "grounding",
+    "built_at",
+    "as_of",
+    "expires_at",
+    "fixture_payload_sha256",
+)
 _LAYOUT_DIR_VALUES = {
     "authority_dir": "authority",
     "projection_dir": "projection",
@@ -1051,47 +1085,57 @@ _FROZEN_BUILDER_VERSION = "strict-projection-publisher/v1"
 
 # Exact publisher component membership (Architecture §6.5.9 CORE + Gate B/C
 # schemas + publisher). Production-local literal — never imported from tests.
-_BUILDER_CORE_MEMBERS: tuple[str, ...] = _projection_inventory_lines("""canonical_json.py
-provenance.py
-provenance_binding.py
-domains.py
-bound_read_scope.py
-strict_grounding.py
-strict_evidence_state.py
-strict_projection.py
-requirements.txt""")
+_BUILDER_CORE_MEMBERS: tuple[str, ...] = tuple(
+    member
+    for member in (
+        "canonical_json.py",
+        "provenance.py",
+        "provenance_binding.py",
+        "domains.py",
+        "bound_read_scope.py",
+        "strict_grounding.py",
+        "strict_evidence_state.py",
+        "strict_projection.py",
+        "requirements.txt",
+    )
+)
 
-_BUILDER_SCHEMAS_BC: tuple[str, ...] = _projection_inventory_lines("""schemas/convmem-bound-read-scope-v2.schema.json
-schemas/convmem-project-binding-registry-v3.schema.json
-schemas/convmem-bound-authority-record-v3.schema.json
-schemas/convmem-authority-disposition-v1.schema.json
-schemas/convmem-strict-provenance-context-v2.schema.json
-schemas/convmem-strict-grounding-v1.schema.json
-schemas/convmem-capture-receipt-v1.schema.json
-schemas/convmem-strict-fixture-bundle-v2.schema.json
-schemas/convmem-strict-citation-map-v1.schema.json
-schemas/convmem-bound-authority-manifest-v3.schema.json
-schemas/convmem-bound-projection-row-v2.schema.json
-schemas/convmem-strict-graph-v1.schema.json
-schemas/convmem-bound-projection-manifest-v3.schema.json
-schemas/convmem-strict-generation-layout-v2.schema.json
-schemas/convmem-strict-publication-v2.schema.json
-schemas/convmem-strict-enrollment-v1.schema.json
-schemas/convmem-strict-slot-v1.schema.json
-schemas/convmem-strict-source-cutoff-v1.schema.json
-schemas/convmem-strict-semantic-contract-v1.schema.json
-schemas/convmem-strict-state-v2.schema.json
-schemas/convmem-clock-review-v1.schema.json
-schemas/convmem-raw-evidence-v3.schema.json
-schemas/convmem-error-v1.schema.json
-schemas/convmem-strict-config-v2.schema.json
-schemas/convmem-openclaw-connector-launch-v2.schema.json
-schemas/convmem-openclaw-activation-v2.schema.json
-schemas/convmem-activation-control-v1.schema.json
-schemas/convmem-activation-retirement-v1.schema.json
-schemas/convmem-activation-launch-policy-v1.schema.json
-schemas/convmem-activation-manager-policy-v1.schema.json
-schemas/convmem-controller-socket-policy-v1.schema.json""")
+_BUILDER_SCHEMAS_GATE_B: tuple[str, ...] = (
+    "schemas/convmem-bound-read-scope-v2.schema.json",
+    "schemas/convmem-project-binding-registry-v3.schema.json",
+    "schemas/convmem-bound-authority-record-v3.schema.json",
+    "schemas/convmem-authority-disposition-v1.schema.json",
+    "schemas/convmem-strict-provenance-context-v2.schema.json",
+    "schemas/convmem-strict-grounding-v1.schema.json",
+    "schemas/convmem-capture-receipt-v1.schema.json",
+    "schemas/convmem-strict-fixture-bundle-v2.schema.json",
+    "schemas/convmem-strict-citation-map-v1.schema.json",
+    "schemas/convmem-bound-authority-manifest-v3.schema.json",
+    "schemas/convmem-bound-projection-row-v2.schema.json",
+    "schemas/convmem-strict-graph-v1.schema.json",
+    "schemas/convmem-bound-projection-manifest-v3.schema.json",
+    "schemas/convmem-strict-generation-layout-v2.schema.json",
+    "schemas/convmem-strict-publication-v2.schema.json",
+    "schemas/convmem-strict-enrollment-v1.schema.json",
+    "schemas/convmem-strict-slot-v1.schema.json",
+    "schemas/convmem-strict-source-cutoff-v1.schema.json",
+    "schemas/convmem-strict-semantic-contract-v1.schema.json",
+    "schemas/convmem-strict-state-v2.schema.json",
+    "schemas/convmem-clock-review-v1.schema.json",
+    "schemas/convmem-raw-evidence-v3.schema.json",
+    "schemas/convmem-error-v1.schema.json",
+    "schemas/convmem-strict-config-v2.schema.json",
+)
+_BUILDER_SCHEMAS_GATE_C: tuple[str, ...] = (
+    "schemas/convmem-openclaw-connector-launch-v2.schema.json",
+    "schemas/convmem-openclaw-activation-v2.schema.json",
+    "schemas/convmem-activation-control-v1.schema.json",
+    "schemas/convmem-activation-retirement-v1.schema.json",
+    "schemas/convmem-activation-launch-policy-v1.schema.json",
+    "schemas/convmem-activation-manager-policy-v1.schema.json",
+    "schemas/convmem-controller-socket-policy-v1.schema.json",
+)
+_BUILDER_SCHEMAS_BC: tuple[str, ...] = _BUILDER_SCHEMAS_GATE_B + _BUILDER_SCHEMAS_GATE_C
 
 _BUILDER_TREE_MEMBERS: tuple[str, ...] = tuple(
     sorted(set(_BUILDER_CORE_MEMBERS) | set(_BUILDER_SCHEMAS_BC) | {"strict_projection_publisher.py"})
@@ -1803,14 +1847,18 @@ _UNRESOLVED_LIMIT_MAX = 50
 _RELATED_NEIGHBORHOOD_CAP = 200
 _RELATED_PARENT_HOPS = 8
 _RELATED_DESCENDANT_DEPTH = 2
-_CURRENT_RANK_STATES = frozenset(_projection_inventory_lines("""current
-approved
-conflict"""))
-_STRICT_CONFIG_FIELDS = frozenset(_projection_inventory_lines("""schema
-projection_root
-max_projection_rows
-max_projection_bytes
-telemetry"""))
+_CURRENT_RANK_STATES = _projection_field_set(
+    "current",
+    "approved",
+    "conflict",
+)
+_STRICT_CONFIG_FIELDS = _projection_field_set(
+    "schema",
+    "projection_root",
+    "max_projection_rows",
+    "max_projection_bytes",
+    "telemetry",
+)
 
 
 class StrictPublicError(Exception):
@@ -1836,19 +1884,27 @@ _LIVE_CAPABILITY_TOKENS: set[object] = set()
 
 _PUBLIC_FILE_MODE = 0o444
 _PUBLIC_DIR_MODE = 0o555
-_GRAPH_EDGE_KINDS = frozenset(_projection_inventory_lines("""relates_to
-targets
-supersedes"""))
-_RECORD_KINDS = frozenset(_projection_inventory_lines("""observation
-decision
-verification"""))
-_CAPTURE_VALUES = frozenset(_projection_inventory_lines("""synthetic_fixture
-controlled_capture
-unattested"""))
-_PROVENANCE_QUAL_FIELDS = frozenset(_projection_inventory_lines("""commitments
-byte_grounding
-capture
-transformer_cap"""))
+_GRAPH_EDGE_KINDS = _projection_field_set(
+    "relates_to",
+    "targets",
+    "supersedes",
+)
+_RECORD_KINDS = _projection_field_set(
+    "observation",
+    "decision",
+    "verification",
+)
+_CAPTURE_VALUES = _projection_field_set(
+    "synthetic_fixture",
+    "controlled_capture",
+    "unattested",
+)
+_PROVENANCE_QUAL_FIELDS = _projection_field_set(
+    "commitments",
+    "byte_grounding",
+    "capture",
+    "transformer_cap",
+)
 _CLI_BOOTTIME_BUDGET_NS = 10_000_000_000
 # Pin identity: (st_dev, st_ino, mode, content_sha256).
 OperatorPin = tuple[int, int, int, str]

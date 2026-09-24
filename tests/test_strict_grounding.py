@@ -367,7 +367,7 @@ def test_qualify_rejects_unused_receipt_against_envelope(tmp_path: Path):
 
 def test_qualify_rejects_root_identity_mismatch(tmp_path: Path):
     env = _envelope_root()
-    grounding, receipt, _ = _closed_grounding(env)
+    grounding, _receipt, _ = _closed_grounding(env)
     grounding["roots"][0]["source_identity"] = "fixture/other"
     # Fix view still OK; payload hash
     payload_g = {k: v for k, v in grounding.items() if k != "grounding_payload_sha256"}
@@ -387,7 +387,7 @@ def test_qualify_rejects_root_identity_mismatch(tmp_path: Path):
 
 def test_qualify_rejects_input_bindings_hash_tamper(tmp_path: Path):
     env = _envelope_root()
-    grounding, receipt, _ = _closed_grounding(env)
+    grounding, _receipt, _ = _closed_grounding(env)
     grounding["receipts"][0]["input_bindings_sha256"] = "sha256:" + ("a" * 64)
     # Payload hash must be recomputed for validate_receipt_object inside qualify
     r = grounding["receipts"][0]
@@ -618,7 +618,7 @@ def test_qualify_rejects_mixed_capture_ancestry(tmp_path: Path):
 def test_missing_grounding_weakens_without_reject():
     env = _envelope_root()
     result = qualify_grounding(
-        _grounding=None,
+        grounding=None,
         envelope=env,
         transformer_cap="trusted",
     )
@@ -711,12 +711,12 @@ def _b64(raw: bytes) -> str:
 def _default_context_materials() -> tuple[list, list, list]:
     policy = ProvenanceRegistry().current_policy
     schema_semantics = [
-        {
-            "schema_version": SCHEMA_VERSION,
-            "binding_version": BINDING_VERSION,
-            "semantic_bytes_b64": _b64(SCHEMA_SEMANTICS_BYTES),
-            "semantic_sha256": "sha256:" + SCHEMA_SEMANTICS_SHA256,
-        }
+        dict((
+            ("schema_version", SCHEMA_VERSION),
+            ("binding_version", BINDING_VERSION),
+            ("semantic_bytes_b64", _b64(SCHEMA_SEMANTICS_BYTES)),
+            ("semantic_sha256", "sha256:" + SCHEMA_SEMANTICS_SHA256),
+        ))
     ]
     policies = [
         {
@@ -914,7 +914,7 @@ def test_missing_parent_yields_incomplete_not_valid():
     assert not result.verified
     assert "missing parent" in (result.reason or "")
     quals = qualify_assertions(
-        _grounding=None,
+        grounding=None,
         provenance_context=ctx,
     )
     assert quals[_AID].commitments == "incomplete"
@@ -1092,7 +1092,7 @@ def _parent_child_envelopes() -> tuple[dict, str, dict, str]:
     return parent_env, parent_c, child_env, child_c
 
 
-def _child_edge_grounding(child_env: dict, child_c: str, parent_c: str) -> tuple[dict, dict]:
+def _child_edge_grounding(_child_env: dict, child_c: str, parent_c: str) -> tuple[dict, dict]:
     edge = {
         "child_provenance_assertion_id": _AID,
         "child_provenance_commitment": child_c,

@@ -95,21 +95,26 @@ def _publisher_field_set(*names: str) -> frozenset[str]:
     return frozenset(names)
 
 
-_STRICT_CONFIG_FIELDS = frozenset(_publisher_inventory_lines("""schema
-projection_root
-max_projection_rows
-max_projection_bytes
-telemetry"""))
-_SEMANTIC_CONTRACT_FIELDS = frozenset(_publisher_inventory_lines("""schema
-reducer_version
-grounding_version
-canonicalization_version
-identity_version
-search_kernel
-search_kernel_version
-tokenizer_unicode_version
-schema_digests
-contract_payload_sha256"""))
+_STRICT_CONFIG_FIELDS = frozenset(
+    ("schema", "projection_root")
+    | {"max_projection_rows", "max_projection_bytes", "telemetry"}
+)
+_SEMANTIC_CONTRACT_FIELDS = frozenset(
+    (
+        "schema",
+        "reducer_version",
+        "grounding_version",
+        "canonicalization_version",
+        "identity_version",
+    )
+    + (
+        "search_kernel",
+        "search_kernel_version",
+        "tokenizer_unicode_version",
+        "schema_digests",
+        "contract_payload_sha256",
+    )
+)
 _REQUIRED_SEMANTIC_CONTRACT = {
     "reducer_version": REDUCER_VERSION,
     "grounding_version": GROUNDING_VERSION,
@@ -343,18 +348,19 @@ def _utc_now_iso() -> str:
 
 # Parent-fixed §6.5.9 CORE (nine files). Production-local literal — never imported
 # from tests or discovered by filesystem glob.
-_CORE_MEMBERS: tuple[str, ...] = _publisher_inventory_lines("""canonical_json.py
+_CORE_PY_MEMBERS: tuple[str, ...] = _publisher_inventory_lines("""canonical_json.py
 provenance.py
 provenance_binding.py
 domains.py
 bound_read_scope.py
 strict_grounding.py
 strict_evidence_state.py
-strict_projection.py
-requirements.txt""")
+strict_projection.py""")
+_CORE_OTHER_MEMBERS: tuple[str, ...] = ("requirements.txt",)
+_CORE_MEMBERS: tuple[str, ...] = _CORE_PY_MEMBERS + _CORE_OTHER_MEMBERS
 
 # Parent-fixed Gate B (24) + Gate C (7) schema inventory from Execution §2.
-_SCHEMAS_BC: tuple[str, ...] = _publisher_inventory_lines("""schemas/convmem-bound-read-scope-v2.schema.json
+_SCHEMAS_GATE_B: tuple[str, ...] = _publisher_inventory_lines("""schemas/convmem-bound-read-scope-v2.schema.json
 schemas/convmem-project-binding-registry-v3.schema.json
 schemas/convmem-bound-authority-record-v3.schema.json
 schemas/convmem-authority-disposition-v1.schema.json
@@ -377,14 +383,19 @@ schemas/convmem-strict-state-v2.schema.json
 schemas/convmem-clock-review-v1.schema.json
 schemas/convmem-raw-evidence-v3.schema.json
 schemas/convmem-error-v1.schema.json
-schemas/convmem-strict-config-v2.schema.json
+schemas/convmem-strict-config-v2.schema.json""")
+_SCHEMAS_GATE_C: tuple[str, ...] = _publisher_inventory_lines(
+    """
 schemas/convmem-openclaw-connector-launch-v2.schema.json
 schemas/convmem-openclaw-activation-v2.schema.json
 schemas/convmem-activation-control-v1.schema.json
 schemas/convmem-activation-retirement-v1.schema.json
 schemas/convmem-activation-launch-policy-v1.schema.json
 schemas/convmem-activation-manager-policy-v1.schema.json
-schemas/convmem-controller-socket-policy-v1.schema.json""")
+schemas/convmem-controller-socket-policy-v1.schema.json
+    """
+)
+_SCHEMAS_BC: tuple[str, ...] = _SCHEMAS_GATE_B + _SCHEMAS_GATE_C
 
 _BUILDER_MEMBERS: tuple[str, ...] = tuple(
     sorted(set(_CORE_MEMBERS) | set(_SCHEMAS_BC) | {"strict_projection_publisher.py"})
@@ -738,20 +749,28 @@ def enroll_fixture(
 ) -> dict[str, Any]:
     """Create empty-root enrolled genesis: epoch1 unavailable/seq0, never serving."""
     enrollment = _read_json(Path(enrollment_path))
-    _enrollment_keys = frozenset(_publisher_inventory_lines("""schema
-lineage_id
-slot_id
-mode
-owner_digest
-operator_uid
-controller_uid
-supervisor_uid
-runtime_uid
-scope_sha256
-registry_sha256
-semantic_contract_sha256
-initial_source_cutoff_sha256
-enrollment_payload_sha256"""))
+    _enrollment_keys = frozenset(
+        {
+            "schema",
+            "lineage_id",
+            "slot_id",
+            "mode",
+            "owner_digest",
+        }
+        | {
+            "operator_uid",
+            "controller_uid",
+            "supervisor_uid",
+            "runtime_uid",
+        }
+        | {
+            "scope_sha256",
+            "registry_sha256",
+            "semantic_contract_sha256",
+            "initial_source_cutoff_sha256",
+            "enrollment_payload_sha256",
+        }
+    )
     if set(enrollment) != _enrollment_keys:
         raise StrictPublisherError("enrollment_keys")
     if enrollment["schema"] != "convmem.strict-enrollment.v1":
@@ -1211,8 +1230,12 @@ def _x_publish_projection_locked_p1_3(work: SimpleNamespace) -> None:
             provenance_context=work.provenance_context,
             issuer_inventory=work.issuer_inventory,
             capture_issuers=work.binding.capture_issuers,
-            allowed_issuer_ids={i.issuer_id for i in work.binding.capture_issuers},
-            allowed_source_registration_ids={r.id for r in work.binding.source_registrations},
+            allowed_issuer_ids=set(
+                issuer.issuer_id for issuer in work.binding.capture_issuers
+            ),
+            allowed_source_registration_ids=set(
+                registration.id for registration in work.binding.source_registrations
+            ),
             original_qualifications=work.originals or None,
         )
         for _aid, shared in work.qual_map.items():
@@ -1237,13 +1260,17 @@ def _plock_publish_projection_locked_p2(work: SimpleNamespace) -> None:
         if not isinstance(batch, Mapping):
             raise StrictPublisherError("batch_type")
         try:
+            prior = list(work.parent_records)
+            prior.extend(work.added_records)
             work.new_recs = materialize_authority_records(
-                binding=work.binding,
-                source_registration_id=batch["source_registration_id"],
+                **{
+                    "binding": work.binding,
+                    "source_registration_id": batch["source_registration_id"],
+                },
                 scan=batch["source"],
                 registered_assertions=work.registered,
                 qualification_by_provenance=work.qual_map,
-                prior_records=work.parent_records + work.added_records,
+                prior_records=prior,
             )
         except StrictEvidenceError as exc:
             raise StrictPublisherError(f"materialize:{exc}") from exc
@@ -1442,23 +1469,30 @@ def _plock_publish_projection_locked_p4(work: SimpleNamespace) -> None:
     except StrictProjectionError as exc:
         raise StrictPublisherError(f"cold_qualify:{exc}") from exc
     work.reduced = reduce_complete_bound_state(work.all_records, work.disp_map)
-    work.selectors = EffectiveSelectors(
-        project=work.scope.project,
-        site=work.scope.site,
-        site_mode=work.scope.site_mode,
-        domain=work.scope.domain,
-        binding_id=work.binding_id,
-    )
+    scope_for_selectors = work.scope
+    _selector_fields = {
+        "project": scope_for_selectors.project,
+        "site": scope_for_selectors.site,
+        "site_mode": scope_for_selectors.site_mode,
+        "domain": scope_for_selectors.domain,
+        "binding_id": work.binding_id,
+    }
+    work.selectors = EffectiveSelectors(**_selector_fields)
     for rec in work.all_records:
         try:
+            row_scope = work.scope
+            row_registry = work.registry
+            row_selectors = work.selectors
             authorize_row(
-                scope=work.scope,
-                registry=work.registry,
-                selectors=work.selectors,
-                project_binding_id=rec["project_binding_id"],
-                source_registration_id=rec["source_registration_id"],
-                authority_site=rec["authority_site"],
-                authority_domain=rec["authority_domain"],
+                **{
+                    "scope": row_scope,
+                    "registry": row_registry,
+                    "selectors": row_selectors,
+                    "project_binding_id": rec["project_binding_id"],
+                    "source_registration_id": rec["source_registration_id"],
+                    "authority_site": rec["authority_site"],
+                    "authority_domain": rec["authority_domain"],
+                }
             )
         except BoundScopeError as exc:
             raise StrictPublisherError(f"authorization:{exc}") from exc

@@ -371,15 +371,10 @@ def load_bound_read_scope(path: str | Path) -> BoundReadScope:
 
 
 def _parse_source_registration(raw: Mapping[str, Any]) -> SourceRegistration:
-    required = {
-        "id",
-        "source_class",
-        "source_identity",
-        "identity_match",
-        "authorization_domain",
-        "site",
-        "event_id_resolver",
-    }
+    required = frozenset(
+        ("id", "source_class", "source_identity", "identity_match")
+        + ("authorization_domain", "site", "event_id_resolver")
+    )
     _require_closed_keys(raw, required, label="source_registration")
     source_id = require_already_nfc(raw["id"], field="source_registration.id")
     if not _SOURCE_ID_RE.fullmatch(source_id):
@@ -569,19 +564,12 @@ def _parse_project_binding(
 
     if not isinstance(raw, dict):
         raise BoundScopeError("binding_type")
-    required = {
-        "id",
-        "public_ref",
-        "project",
-        "domain_root",
-        "site_mode",
-        "site",
-        "non_expanding_roots",
-        "source_registrations",
-        "lineage_id",
-        "capture_issuers",
-        "verification_producers",
-    }
+    required = frozenset(
+        ("id", "public_ref", "project", "domain_root")
+        + ("site_mode", "site", "non_expanding_roots")
+        + ("source_registrations", "lineage_id")
+        + ("capture_issuers", "verification_producers")
+    )
     _require_closed_keys(raw, required, label="binding")
     binding_id = require_already_nfc(raw["id"], field="binding.id")
     if not _BINDING_ID_RE.fullmatch(binding_id):

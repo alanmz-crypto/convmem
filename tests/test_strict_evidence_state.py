@@ -450,10 +450,12 @@ def _prov() -> tuple[str, dict[str, Any], str]:
         assertion_id=_AID,
         root_bindings=[
             root_binding(
-                source_identity="fixture/source-a",
-                record_locator="event-1",
-                raw_record_sha256=_BLOB_HEX,
-                input_view_sha256=_BLOB_HEX,
+                **{
+                    "source_identity": "fixture/source-a",
+                    "record_locator": "event-1",
+                    "raw_record_sha256": _BLOB_HEX,
+                    "input_view_sha256": _BLOB_HEX,
+                }
             )
         ],
         transformer_artifact_sha256=_BLOB_HEX,
@@ -467,19 +469,19 @@ def _prov() -> tuple[str, dict[str, Any], str]:
 
 
 def _source_record(*, provenance_assertion_id: str) -> dict[str, Any]:
-    return {
-        "record_kind": "observation",
-        "producer": "form-prod",
-        "logical_key": "subject-key-1",
-        "title": "fixture title",
-        "document": "fixture document",
-        "observed_at": _TS,
-        "confidence_bps": 7000,
-        "relates_to_assertion_id": None,
-        "target_assertion_id": None,
-        "verification_result": None,
-        "provenance_assertion_id": provenance_assertion_id,
-    }
+    return dict((
+        ("record_kind", "observation"),
+        ("producer", "form-prod"),
+        ("logical_key", "subject-key-1"),
+        ("title", "fixture title"),
+        ("document", "fixture document"),
+        ("observed_at", _TS),
+        ("confidence_bps", 7000),
+        ("relates_to_assertion_id", None),
+        ("target_assertion_id", None),
+        ("verification_result", None),
+        ("provenance_assertion_id", provenance_assertion_id),
+    ))
 
 
 def _obs_record(

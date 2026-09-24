@@ -21,8 +21,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from adversarial_matrix import build_adversarial_evidence_section  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
-from allowlist import path_allowed  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
+# pylint: disable-next=E0401  # fixture path-injection import; module resolved via sys.path
+from adversarial_matrix import build_adversarial_evidence_section
+# pylint: disable-next=E0401  # fixture path-injection import; module resolved via sys.path
+from allowlist import path_allowed
 from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     CODE_BASELINE_SHA,
     CONNECTOR_NODE_TEST,
@@ -47,7 +49,8 @@ from constants import (  # pylint: disable=E0401  # fixture path-injection impor
     STRICT_PYTEST_FILES,
     STRICT_TOOL_NAMES,
 )
-from suites import all_suite_commands  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
+# pylint: disable-next=E0401  # fixture path-injection import; module resolved via sys.path
+from suites import all_suite_commands
 
 SCHEMA_ID = "convmem.bounded-audit-evidence.v1"
 ARTIFACT_KIND = "bounded_audit_evidence"
@@ -473,7 +476,8 @@ def _passed_case(file_attr: str, classname: str, name: str) -> str:
     )
 
 
-def run_junit_parser_negative_controls() -> list[dict[str, str]]:  # pylint: disable=R0914  # negative-control locals mirror closed junit parser cases
+# pylint: disable-next=R0914  # negative-control locals mirror closed junit parser cases
+def run_junit_parser_negative_controls() -> list[dict[str, str]]:
     """Deterministic in-process parent JUnit/parser rejection evidence.
 
     Mutants are disposable in-memory XML only — no new process, plugin,

@@ -20,8 +20,10 @@ _FIXTURE_DIR = Path(__file__).resolve().parent
 if str(_FIXTURE_DIR) not in sys.path:
     sys.path.insert(0, str(_FIXTURE_DIR))
 
-from allowlist import assert_allowlist  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
-from audit_evidence import (  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from allowlist import assert_allowlist  # noqa: E402
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from audit_evidence import (  # noqa: E402
     JUnitNodeEvidenceError,
     build_audit_package,
     build_protected_byte_proof,
@@ -31,7 +33,8 @@ from audit_evidence import (  # noqa: E402  # pylint: disable=E0401,C0413  # fix
     emit_pytest_node_outcomes,
     run_junit_parser_negative_controls,
 )
-from constants import (  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from constants import (  # noqa: E402
     ALL_NEGATIVE_CONTROLS,
     CODE_BASELINE_SHA,
     CONTROL_ARBITRARY_SUITE,
@@ -53,7 +56,8 @@ from constants import (  # noqa: E402  # pylint: disable=E0401,C0413  # fixture 
     SEMANTIC_PARENT_SHA,
     SUITE_WALL_DEADLINE_SEC,
 )
-from containment import (  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from containment import (  # noqa: E402
     build_bwrap_argv,
     create_canary_root,
     create_fixture_root,
@@ -61,12 +65,18 @@ from containment import (  # noqa: E402  # pylint: disable=E0401,C0413  # fixtur
     launch_contained,
     require_bwrap,
 )
-from fixture_manifest import ManifestNotAvailable, emit_complete_manifest  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
-from limits import run_suite_with_limits  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
-from preflight import PreflightFailure, run_preflight  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
-from source_export import export_source_commit  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
-from suites import all_suite_commands, validate_frozen_selectors  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
-from inventory import verify_runtime_tree  # noqa: E402  # pylint: disable=E0401,E0611,C0413  # fixture path-injection; local inventory.py not site-packages
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from fixture_manifest import ManifestNotAvailable, emit_complete_manifest  # noqa: E402
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from limits import run_suite_with_limits  # noqa: E402
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from preflight import PreflightFailure, run_preflight  # noqa: E402
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from source_export import export_source_commit  # noqa: E402
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from suites import all_suite_commands, validate_frozen_selectors  # noqa: E402
+# pylint: disable-next=E0401,E0611,C0413  # fixture path-injection; local inventory.py not site-packages
+from inventory import verify_runtime_tree  # noqa: E402
 
 
 def _die(msg: str, code: int = 2) -> None:
@@ -357,8 +367,10 @@ def _run_negative_control(
 def _inner_main() -> int:
     validate_frozen_selectors()
     if Path("/fixture/force_arbitrary_suite").is_file():
-        from preflight import validate_suite_argv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
-        from suites import strict_pytest_argv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+        from preflight import validate_suite_argv
+# pylint: disable-next=E0401,C0413  # fixture path-injection after sys.path; order intentional
+        from suites import strict_pytest_argv
 
         try:
             validate_suite_argv(["pytest", "-q"], strict_pytest_argv())
@@ -417,7 +429,8 @@ def _inner_main() -> int:
     return overall_rc
 
 
-def outer_main(argv: list[str] | None = None) -> int:  # pylint: disable=R0914  # outer runner locals mirror closed isolation control flow
+# pylint: disable-next=R0914  # outer runner locals mirror closed isolation control flow
+def outer_main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     repo = _repo_root()
     changed = assert_allowlist(repo, args.source_commit)

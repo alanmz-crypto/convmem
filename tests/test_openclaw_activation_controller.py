@@ -128,7 +128,7 @@ def test_case55_runtime_denied_private_paths_pre_activation():
 
 
 def test_stable_slot_activation_and_ready():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     st = controller.enroll_slot(
         HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z"
     )
@@ -257,7 +257,7 @@ def test_cancel_to_revoking_then_independent_retirement():
 
 
 def test_sealed_immutability_and_fresh_activation_history():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -368,7 +368,7 @@ def test_case46_53_retirement_only_on_exact_empty_observation():
     with pytest.raises(ValueError, match="quarantined"):
         controller2.attempt_retirement(HEX_B)
 
-    platform4, controller4, supervisor4, _ = _pair()
+    platform4, controller4, _supervisor4, _ = _pair()
     controller4.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller4.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -383,7 +383,7 @@ def test_case46_53_retirement_only_on_exact_empty_observation():
 
 
 def test_case57_stale_receipts_and_supervisor_cannot_attest():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -399,7 +399,7 @@ def test_case57_stale_receipts_and_supervisor_cannot_attest():
 
 
 def test_case57_manager_membership_survives_and_restart_persists_quarantine():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -479,7 +479,7 @@ def test_case54_clock_interval_review_inventory():
 
 
 def test_case33_spawn_tuple_exact_trace():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     policy = base_launch_policy()
     import openclaw_activation_supervisor as sup
 
@@ -502,7 +502,7 @@ def test_case33_spawn_tuple_exact_trace():
 
 
 def test_case35_kill_child_partial_success_paths():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -537,7 +537,7 @@ def test_case45_lifecycle_config_disables_and_no_unsolicited_turn():
 
     core = ctl.lifecycle_config_core({})
     assert core["heartbeat"] is False
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config=core
@@ -802,7 +802,7 @@ def test_negative_empty_fd_roles_not_unconstrained():
 def test_capacity_drives_manager_stop_and_capacity_receipt():
     """cap → REVOKING+stop → uncertain/nonempty refuse → exact empty permits capacity."""
 
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}

@@ -56,11 +56,11 @@ def test_object_new_forged_instance_rejected_by_reader_and_revoke():
         revoke_snapshot,
     )
 
-    forged = object.__new__(QualifiedStrictGeneration)
+    forged_cap = object.__new__(QualifiedStrictGeneration)
     with pytest.raises(StrictProjectionError, match="forged_capability"):
-        StrictProjectionReader(forged)  # type: ignore[arg-type]
+        StrictProjectionReader(forged_cap)  # type: ignore[arg-type]
     with pytest.raises(StrictProjectionError, match="forged_capability"):
-        revoke_snapshot(forged)  # type: ignore[arg-type]
+        revoke_snapshot(forged_cap)  # type: ignore[arg-type]
 
 
 def test_revoke_snapshot_no_filesystem_mutation(tmp_path: Path):
@@ -71,9 +71,9 @@ def test_revoke_snapshot_no_filesystem_mutation(tmp_path: Path):
     before = marker.stat().st_mtime_ns
     from strict_projection import QualifiedStrictGeneration, StrictProjectionError, revoke_snapshot
 
-    forged = object.__new__(QualifiedStrictGeneration)
+    forged_cap = object.__new__(QualifiedStrictGeneration)
     with pytest.raises(StrictProjectionError, match="forged_capability"):
-        revoke_snapshot(forged)  # type: ignore[arg-type]
+        revoke_snapshot(forged_cap)  # type: ignore[arg-type]
     after = marker.stat().st_mtime_ns
     assert after == before
     assert marker.read_text(encoding="utf-8") == "x"

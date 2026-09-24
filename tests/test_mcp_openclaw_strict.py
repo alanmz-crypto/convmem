@@ -23,17 +23,19 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 
 _ALLOWLIST = frozenset(
-    {
+    (
         "CONVMEM_MCP_PROFILE",
         "CONVMEM_BOUND_READ_SCOPE_FILE",
         "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
         "CONVMEM_STRICT_CONFIG_FILE",
+    )
+    + (
         "HOME",
         "PATH",
         "LANG",
         "LC_ALL",
         "TMPDIR",
-    }
+    )
 )
 
 
@@ -232,15 +234,16 @@ def test_strict_server_mcp_protocol_inventory_enumeration():
 def _load_sibling_test_module(name: str):
     """Load a sibling tests/*.py by path — frozen pytest does not put tests/ on sys.path."""
 
-    if name in sys.modules:
-        return sys.modules[name]
-    path = Path(__file__).resolve().parent / f"{name}.py"
-    spec = importlib.util.spec_from_file_location(name, path)
+    cached = sys.modules.get(name)
+    if cached is not None:
+        return cached
+    module_path = Path(__file__).resolve().parent / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(name, module_path)
     assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
+    loaded = importlib.util.module_from_spec(spec)
+    sys.modules[name] = loaded
+    spec.loader.exec_module(loaded)
+    return loaded
 
 
 def test_strict_server_closed_argument_containers_via_protocol():

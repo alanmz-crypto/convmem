@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from bound_read_scope import sha256_digest
 from strict_grounding import strict_canonical_bytes
 
 
@@ -76,13 +77,15 @@ def _schema_digests_for_contract() -> list[dict[str, str]]:
 def _semantic_contract(tmp_path: Path) -> tuple[Path, str]:
     contract = {
         "schema": "convmem.strict-semantic-contract.v1",
-        "reducer_version": "v1",
-        "grounding_version": "v1",
-        "canonicalization_version": "v1",
-        "identity_version": "v2",
-        "search_kernel": "lexical_v1",
-        "search_kernel_version": "1",
-        "tokenizer_unicode_version": "15.1.0",
+        **dict((
+            ("reducer_version", "v1"),
+            ("grounding_version", "v1"),
+            ("canonicalization_version", "v1"),
+            ("identity_version", "v2"),
+            ("search_kernel", "lexical_v1"),
+            ("search_kernel_version", "1"),
+            ("tokenizer_unicode_version", "15.1.0"),
+        )),
         "schema_digests": _schema_digests_for_contract(),
         "contract_payload_sha256": "sha256:" + ("0" * 64),
     }
@@ -177,13 +180,15 @@ def _scope_registry_with_owner(tmp_path: Path) -> tuple[Path, Path]:
         "schema": "convmem.project-binding-registry.v3",
         "bindings": [
             {
-                "id": "project:convmem:v1",
-                "public_ref": "a" * 32,
-                "project": "convmem",
-                "domain_root": "coding",
-                "site_mode": "exact",
-                "site": "example.com",
-                "non_expanding_roots": [],
+                **{
+                    "id": "project:convmem:v1",
+                    "public_ref": "a" * 32,
+                    "project": "convmem",
+                    "domain_root": "coding",
+                    "site_mode": "exact",
+                    "site": "example.com",
+                    "non_expanding_roots": [],
+                },
                 "source_registrations": [
                     {
                         "id": "src-reg-1",
@@ -305,7 +310,7 @@ def test_enrolled_empty_genesis_unavailable_seq0_never_serving(tmp_path: Path):
 def test_enroll_refuses_nonempty_root_and_prior_enrollment(tmp_path: Path):
     from strict_projection_publisher import StrictPublisherError, enroll_fixture
 
-    root, _publication, enroll_path, sc_path, config_path = _enroll_root(tmp_path)
+    _root, _publication, enroll_path, sc_path, config_path = _enroll_root(tmp_path)
     with pytest.raises(StrictPublisherError, match="enrollment_root_not_empty"):
         enroll_fixture(
             enrollment_path=enroll_path,
@@ -360,11 +365,13 @@ def test_retire_first_refuses_nonempty_slot_without_external_proofs(tmp_path: Pa
                 "dispositions": [],
                 "provenance_context": {
                     "schema": "convmem.strict-provenance-context.v2",
-                    "schema_semantics": [],
-                    "policies": [],
-                    "recipes": [],
-                    "verified_channels": [],
-                    "registered_assertions": [],
+                    **{
+                        "schema_semantics": [],
+                        "policies": [],
+                        "recipes": [],
+                        "verified_channels": [],
+                        "registered_assertions": [],
+                    },
                     "grounding_sha256": "sha256:" + ("0" * 64),
                     "context_payload_sha256": "sha256:" + ("0" * 64),
                 },
@@ -440,11 +447,13 @@ def test_publisher_never_writes_slot_on_publish_path(tmp_path: Path):
                 "dispositions": [],
                 "provenance_context": {
                     "schema": "convmem.strict-provenance-context.v2",
-                    "schema_semantics": [],
-                    "policies": [],
-                    "recipes": [],
-                    "verified_channels": [],
-                    "registered_assertions": [],
+                    **{
+                        "schema_semantics": [],
+                        "policies": [],
+                        "recipes": [],
+                        "verified_channels": [],
+                        "registered_assertions": [],
+                    },
                     "grounding_sha256": "sha256:" + ("0" * 64),
                     "context_payload_sha256": "sha256:" + ("0" * 64),
                 },
@@ -564,8 +573,12 @@ def test_publisher_locks_are_held_exclusively_not_mere_files(tmp_path: Path):
     assert held.wait(timeout=5.0)
     lock_fd = os.open(str(slot_lock), os.O_RDWR)
     try:
-        with pytest.raises(BlockingIOError):
+        probe_blocked = False
+        try:
             fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            probe_blocked = True
+        assert probe_blocked is True
     finally:
         os.close(lock_fd)
     release.set()
@@ -613,8 +626,12 @@ def test_concurrent_publish_serializes_and_stale_cas_fails(tmp_path: Path):
         lock_path = root / "locks" / f"{_SLOT}.transition.lock"
         fd = os.open(str(lock_path), os.O_RDWR)
         try:
-            with pytest.raises(BlockingIOError):
+            blocked = False
+            try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                blocked = True
+            assert blocked is True
         finally:
             os.close(fd)
         release.set()
@@ -714,11 +731,13 @@ def test_full_publication_payload_cas_rejects_stale_expected(tmp_path: Path):
                 "dispositions": [],
                 "provenance_context": {
                     "schema": "convmem.strict-provenance-context.v2",
-                    "schema_semantics": [],
-                    "policies": [],
-                    "recipes": [],
-                    "verified_channels": [],
-                    "registered_assertions": [],
+                    **{
+                        "schema_semantics": [],
+                        "policies": [],
+                        "recipes": [],
+                        "verified_channels": [],
+                        "registered_assertions": [],
+                    },
                     "grounding_sha256": "sha256:" + ("0" * 64),
                     "context_payload_sha256": "sha256:" + ("0" * 64),
                 },
@@ -765,10 +784,12 @@ def test_cas_compares_entire_publication_payload_not_generation_name(_tmp_path: 
         "freshness_anchor": {
             "boot_id": "boot",
             "authority_snapshot_id": "snap2_" + "1" * 64,
-            "sampled_wall_time": _TS,
-            "sampled_boottime_ns": 0,
-            "snapshot_deadline_boottime_ns": 1,
-            "clock_review_ref": "clock:x",
+            **{
+                "sampled_wall_time": _TS,
+                "sampled_boottime_ns": 0,
+                "snapshot_deadline_boottime_ns": 1,
+                "clock_review_ref": "clock:x",
+            },
         },
         "published_at": _TS,
         "publication_payload_sha256": "sha256:" + ("0" * 64),
@@ -832,20 +853,24 @@ def test_fault_after_fence_leaves_fenced_without_authority_admission(tmp_path: P
     FAULT_HOOKS["after_fence"] = _boom
     grounding = {
         "schema": "convmem.strict-grounding.v1",
-        "blobs": [],
-        "roots": [],
-        "edges": [],
-        "outputs": [],
-        "receipts": [],
+        **{
+            "blobs": [],
+            "roots": [],
+            "edges": [],
+            "outputs": [],
+            "receipts": [],
+        },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
     grounding["grounding_payload_sha256"] = _self_hash(grounding, "grounding_payload_sha256")
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
-        "schema_semantics": [],
-        "policies": [],
-        "recipes": [],
-        "verified_channels": [],
+        **{
+            "schema_semantics": [],
+            "policies": [],
+            "recipes": [],
+            "verified_channels": [],
+        },
         "registered_assertions": [],
         "grounding_sha256": grounding["grounding_payload_sha256"],
         "context_payload_sha256": "sha256:" + ("0" * 64),
@@ -894,20 +919,24 @@ def test_recover_clears_abandoned_unratified_fence_without_durable_intent(tmp_pa
     FAULT_HOOKS["after_fence"] = lambda: (_ for _ in ()).throw(RuntimeError("crash"))
     grounding = {
         "schema": "convmem.strict-grounding.v1",
-        "blobs": [],
-        "roots": [],
-        "edges": [],
-        "outputs": [],
-        "receipts": [],
+        **{
+            "blobs": [],
+            "roots": [],
+            "edges": [],
+            "outputs": [],
+            "receipts": [],
+        },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
     grounding["grounding_payload_sha256"] = _self_hash(grounding, "grounding_payload_sha256")
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
-        "schema_semantics": [],
-        "policies": [],
-        "recipes": [],
-        "verified_channels": [],
+        **{
+            "schema_semantics": [],
+            "policies": [],
+            "recipes": [],
+            "verified_channels": [],
+        },
         "registered_assertions": [],
         "grounding_sha256": grounding["grounding_payload_sha256"],
         "context_payload_sha256": "sha256:" + ("0" * 64),
@@ -965,20 +994,24 @@ def test_parent_head_mismatch_rejects_before_history_mutation(tmp_path: Path):
     hist_before = {p.name for p in (root / "active" / "history").glob("*.json")}
     grounding = {
         "schema": "convmem.strict-grounding.v1",
-        "blobs": [],
-        "roots": [],
-        "edges": [],
-        "outputs": [],
-        "receipts": [],
+        **{
+            "blobs": [],
+            "roots": [],
+            "edges": [],
+            "outputs": [],
+            "receipts": [],
+        },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
     grounding["grounding_payload_sha256"] = _self_hash(grounding, "grounding_payload_sha256")
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
-        "schema_semantics": [],
-        "policies": [],
-        "recipes": [],
-        "verified_channels": [],
+        **{
+            "schema_semantics": [],
+            "policies": [],
+            "recipes": [],
+            "verified_channels": [],
+        },
         "registered_assertions": [],
         "grounding_sha256": grounding["grounding_payload_sha256"],
         "context_payload_sha256": "sha256:" + ("0" * 64),
@@ -1192,20 +1225,24 @@ def test_publisher_rejects_duplicate_registered_assertion_ids(tmp_path: Path):
     }
     grounding = {
         "schema": "convmem.strict-grounding.v1",
-        "blobs": [],
-        "roots": [],
-        "edges": [],
-        "outputs": [],
-        "receipts": [],
+        **{
+            "blobs": [],
+            "roots": [],
+            "edges": [],
+            "outputs": [],
+            "receipts": [],
+        },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
     grounding["grounding_payload_sha256"] = _self_hash(grounding, "grounding_payload_sha256")
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
-        "schema_semantics": [],
-        "policies": [],
-        "recipes": [],
-        "verified_channels": [],
+        **{
+            "schema_semantics": [],
+            "policies": [],
+            "recipes": [],
+            "verified_channels": [],
+        },
         "registered_assertions": [entry, dict(entry)],
         "grounding_sha256": grounding["grounding_payload_sha256"],
         "context_payload_sha256": "sha256:" + ("0" * 64),
@@ -1252,7 +1289,7 @@ def test_publisher_rejects_false_context_digest_and_requires_inventory_when_regi
     )
     from strict_projection_publisher import StrictPublisherError, publish_projection
 
-    root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
+    _root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
         tmp_path
     )
     blob = b"test"
@@ -1279,11 +1316,13 @@ def test_publisher_rejects_false_context_digest_and_requires_inventory_when_regi
     recipe_bytes = b"convmem:root-recipe-v1"
     grounding = {
         "schema": "convmem.strict-grounding.v1",
-        "blobs": [],
-        "roots": [],
-        "edges": [],
-        "outputs": [],
-        "receipts": [],
+        **{
+            "blobs": [],
+            "roots": [],
+            "edges": [],
+            "outputs": [],
+            "receipts": [],
+        },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
     grounding["grounding_payload_sha256"] = _self_hash(grounding, "grounding_payload_sha256")
@@ -1367,20 +1406,24 @@ def _minimal_bundle(
 ) -> dict[str, Any]:
     grounding = {
         "schema": "convmem.strict-grounding.v1",
-        "blobs": [],
-        "roots": [],
-        "edges": [],
-        "outputs": [],
-        "receipts": [],
+        **{
+            "blobs": [],
+            "roots": [],
+            "edges": [],
+            "outputs": [],
+            "receipts": [],
+        },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
     grounding["grounding_payload_sha256"] = _self_hash(grounding, "grounding_payload_sha256")
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
-        "schema_semantics": [],
-        "policies": [],
-        "recipes": [],
-        "verified_channels": [],
+        **{
+            "schema_semantics": [],
+            "policies": [],
+            "recipes": [],
+            "verified_channels": [],
+        },
         "registered_assertions": [],
         "grounding_sha256": grounding["grounding_payload_sha256"],
         "context_payload_sha256": "sha256:" + ("0" * 64),
@@ -1673,13 +1716,15 @@ def test_enroll_rejects_semantic_contract_missing_extra_wrong_digest_version(
     # Missing field.
     missing = {
         "schema": "convmem.strict-semantic-contract.v1",
-        "reducer_version": "v1",
-        "grounding_version": "v1",
-        "canonicalization_version": "v1",
-        "identity_version": "v2",
-        "search_kernel": "lexical_v1",
-        "search_kernel_version": "1",
-        "tokenizer_unicode_version": "15.1.0",
+        **dict((
+            ("reducer_version", "v1"),
+            ("grounding_version", "v1"),
+            ("canonicalization_version", "v1"),
+            ("identity_version", "v2"),
+            ("search_kernel", "lexical_v1"),
+            ("search_kernel_version", "1"),
+            ("tokenizer_unicode_version", "15.1.0"),
+        )),
         # schema_digests omitted
         "contract_payload_sha256": "sha256:" + ("0" * 64),
     }
@@ -1807,13 +1852,15 @@ def _materializable_publish_inputs(
         "record_kind": "observation",
         "producer": "form-prod",
         "logical_key": "subject-key-1",
-        "title": "fixture title",
-        "document": "fixture document",
-        "observed_at": _TS,
-        "confidence_bps": 7000,
-        "relates_to_assertion_id": None,
-        "target_assertion_id": None,
-        "verification_result": None,
+        **{
+            "title": "fixture title",
+            "document": "fixture document",
+            "observed_at": _TS,
+            "confidence_bps": 7000,
+            "relates_to_assertion_id": None,
+            "target_assertion_id": None,
+            "verification_result": None,
+        },
         "provenance_assertion_id": aid,
     }
     # Blob bytes = exact canonical source payload (excl. provenance_assertion_id).
@@ -1877,12 +1924,14 @@ def _materializable_publish_inputs(
         ("selector", {"kind": "identity"}),
         ("receipt_ref", "capture_" + ("0" * 64)),
     ))
-    receipt = _make_receipt([root_bind])
-    ref = receipt_ref_for(receipt)
-    root_bind["receipt_ref"] = ref
-    receipt = _make_receipt([root_bind])
-    ref = receipt_ref_for(receipt)
-    root_bind["receipt_ref"] = ref
+    sealed_receipt = _make_receipt([root_bind])
+    sealed_ref = receipt_ref_for(sealed_receipt)
+    root_bind["receipt_ref"] = sealed_ref
+    sealed_receipt = _make_receipt([root_bind])
+    sealed_ref = receipt_ref_for(sealed_receipt)
+    root_bind["receipt_ref"] = sealed_ref
+    receipt = sealed_receipt
+    ref = sealed_ref
 
     inv_root = shared / "issuer_inventory"
     inv_root.mkdir(exist_ok=True)
@@ -1992,13 +2041,15 @@ def _materializable_publish_inputs(
         "schema": "convmem.project-binding-registry.v3",
         "bindings": [
             {
-                "id": "project:convmem:v1",
-                "public_ref": "a" * 32,
-                "project": "convmem",
-                "domain_root": "coding",
-                "site_mode": "exact",
-                "site": "example.com",
-                "non_expanding_roots": [],
+                **{
+                    "id": "project:convmem:v1",
+                    "public_ref": "a" * 32,
+                    "project": "convmem",
+                    "domain_root": "coding",
+                    "site_mode": "exact",
+                    "site": "example.com",
+                    "non_expanding_roots": [],
+                },
                 "source_registrations": [
                     {
                         "id": src,
@@ -2108,7 +2159,7 @@ def _enroll_and_publish_materializable(
 def test_m3_true_positive_two_root_byte_identical_serving(tmp_path: Path):
     """Exact valid enroll→admit→unavailable/cold→projection→serving on two roots."""
     from bound_read_scope import resolve_scope
-    from strict_grounding import strict_canonical_bytes as canon
+    canon = strict_canonical_bytes
     from strict_projection import qualify_authority_generation
 
     shared = tmp_path / "shared"
