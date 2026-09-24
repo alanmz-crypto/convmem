@@ -290,33 +290,86 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
 
 
 
-def _m11_source_commit() -> str:
-    import subprocess
-
-    return subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        check=True,
-        capture_output=True,
-        text=True,
-        close_fds=True,
-    ).stdout.strip()
+# Fixed synthetic commits for M11 unit tests — never shell out to git.
+_M11_SYNTHETIC_SOURCE_COMMIT = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+_M11_SYNTHETIC_OVERLAY_COMMIT = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+_M11_SYNTHETIC_BLOB_OID = "cccccccccccccccccccccccccccccccccccccccc"
+_M11_SYNTHETIC_BLOB_OID_ALT = "dddddddddddddddddddddddddddddddddddddddd"
 
 
 def _m11_control_delta(*extra: str) -> list[str]:
     return sorted(oc_constants.M11_CONTROL_PLANE_INPUTS) + list(extra)
 
 
+def _m11_matching_tree_oracle(
+    source_commit: str, overlay_commit: str
+) -> dict[tuple[str, str], tuple[str, str, str]]:
+    """In-memory (commit, path) -> (mode, type, oid) for exact four control paths."""
+    entry = ("100644", "blob", _M11_SYNTHETIC_BLOB_OID)
+    oracle: dict[tuple[str, str], tuple[str, str, str]] = {}
+    for control_path in sorted(oc_constants.M11_CONTROL_PLANE_INPUTS):
+        oracle[(source_commit, control_path)] = entry
+        oracle[(overlay_commit, control_path)] = entry
+    return oracle
+
+
+def _m11_install_git_boundary_oracle(
+    monkeypatch,
+    oc_allowlist,
+    *,
+    source_commit: str = _M11_SYNTHETIC_SOURCE_COMMIT,
+    overlay_input: str | None = None,
+    overlay_resolved: str = _M11_SYNTHETIC_OVERLAY_COMMIT,
+    tree_oracle: dict[tuple[str, str], tuple[str, str, str]] | None = None,
+    unavailable: frozenset[str] | None = None,
+) -> dict[tuple[str, str], tuple[str, str, str]]:
+    """Monkeypatch _resolve_commit / _git_tree_entry; no git rev-parse or ls-tree."""
+    overlay_key = (
+        oc_allowlist.M11_REVIEWED_OVERLAY_SHA
+        if overlay_input is None
+        else overlay_input
+    )
+    unavailable_shas = unavailable or frozenset()
+    resolved_by_input = {
+        source_commit: source_commit,
+        overlay_key: overlay_resolved,
+        overlay_resolved: overlay_resolved,
+    }
+    oracle = (
+        tree_oracle
+        if tree_oracle is not None
+        else _m11_matching_tree_oracle(source_commit, overlay_resolved)
+    )
+
+    def _resolve(_repo, sha: str) -> str:
+        if sha in unavailable_shas or sha not in resolved_by_input:
+            raise SystemExit(f"control_plane_unavailable_commit:{sha}")
+        return resolved_by_input[sha]
+
+    def _tree_entry(_repo, commit: str, path: str) -> tuple[str, str, str]:
+        try:
+            return oracle[(commit, path)]
+        except KeyError as exc:
+            raise SystemExit(f"control_plane_missing:{path}") from exc
+
+    monkeypatch.setattr(oc_allowlist, "_resolve_commit", _resolve)
+    monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _tree_entry)
+    return oracle
+
+
 def test_m11_control_plane_exact_four_success(monkeypatch):
     """M11: exact four control-plane paths validate; product delta P is returned."""
     import allowlist as oc_allowlist
 
-    source_commit = _m11_source_commit()
+    _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
         oc_allowlist,
         "changed_paths",
         lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
     )
-    assert oc_allowlist.assert_allowlist(Path("."), source_commit) == ["mcp_server.py"]
+    assert oc_allowlist.assert_allowlist(
+        Path("."), _M11_SYNTHETIC_SOURCE_COMMIT
+    ) == ["mcp_server.py"]
 
 
 def test_m11_control_plane_rejects_missing_path(monkeypatch):
@@ -324,11 +377,12 @@ def test_m11_control_plane_rejects_missing_path(monkeypatch):
 
     control = sorted(oc_constants.M11_CONTROL_PLANE_INPUTS)
     incomplete = control[1:] + ["mcp_server.py"]
+    _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
         oc_allowlist, "changed_paths", lambda *_a, **_k: incomplete
     )
     try:
-        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
         raise AssertionError("missing_control_plane_accepted")
     except SystemExit as exc:
         assert str(exc).startswith("control_plane_missing:")
@@ -340,6 +394,7 @@ def test_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
     import constants as allowlist_constants
 
     extra = "docs/plans/README-openclaw-convmem-integration.md"
+    _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
         allowlist_constants,
         "M11_CONTROL_PLANE_INPUTS",
@@ -356,7 +411,7 @@ def test_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
         lambda *_a, **_k: _m11_control_delta(extra, "mcp_server.py"),
     )
     try:
-        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
         raise AssertionError("extra_classified_accepted")
     except SystemExit as exc:
         assert str(exc).startswith("control_plane_extra_classified:")
@@ -366,14 +421,21 @@ def test_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
 def test_m11_control_plane_rejects_unavailable_commit(monkeypatch):
     import allowlist as oc_allowlist
 
-    monkeypatch.setattr(oc_allowlist, "M11_REVIEWED_OVERLAY_SHA", "0" * 40)
+    unavailable = "0" * 40
+    monkeypatch.setattr(oc_allowlist, "M11_REVIEWED_OVERLAY_SHA", unavailable)
+    _m11_install_git_boundary_oracle(
+        monkeypatch,
+        oc_allowlist,
+        overlay_input=unavailable,
+        unavailable=frozenset({unavailable}),
+    )
     monkeypatch.setattr(
         oc_allowlist,
         "changed_paths",
         lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
     )
     try:
-        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
         raise AssertionError("unavailable_overlay_accepted")
     except SystemExit as exc:
         assert str(exc).startswith("control_plane_unavailable_commit:")
@@ -382,18 +444,29 @@ def test_m11_control_plane_rejects_unavailable_commit(monkeypatch):
 def test_m11_control_plane_rejects_malformed_unreadable_entry(monkeypatch):
     import allowlist as oc_allowlist
 
+    _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
         oc_allowlist,
         "changed_paths",
         lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
     )
 
+    def _missing(repo, commit, path):  # noqa: ARG001
+        raise SystemExit(f"control_plane_missing:{path}")
+
+    monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _missing)
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
+        raise AssertionError("missing_entry_accepted")
+    except SystemExit as exc:
+        assert str(exc).startswith("control_plane_missing:")
+
     def _malformed(repo, commit, path):  # noqa: ARG001
         raise SystemExit(f"control_plane_malformed:{path}")
 
     monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _malformed)
     try:
-        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
         raise AssertionError("malformed_entry_accepted")
     except SystemExit as exc:
         assert str(exc).startswith("control_plane_malformed:")
@@ -402,6 +475,7 @@ def test_m11_control_plane_rejects_malformed_unreadable_entry(monkeypatch):
 def test_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
     import allowlist as oc_allowlist
 
+    _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
         oc_allowlist,
         "changed_paths",
@@ -413,7 +487,7 @@ def test_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
 
     monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _bad_mode)
     try:
-        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
         raise AssertionError("bad_mode_accepted")
     except SystemExit as exc:
         assert str(exc).startswith("control_plane_bad_mode:")
@@ -423,7 +497,7 @@ def test_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
 
     monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _non_blob)
     try:
-        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
         raise AssertionError("non_blob_accepted")
     except SystemExit as exc:
         assert str(exc).startswith("control_plane_non_blob:")
@@ -434,23 +508,24 @@ def test_m11_control_plane_rejects_blob_or_mode_mismatch(monkeypatch):
 
     control = sorted(oc_constants.M11_CONTROL_PLANE_INPUTS)
     target = control[0]
+    source = _M11_SYNTHETIC_SOURCE_COMMIT
+    overlay = _M11_SYNTHETIC_OVERLAY_COMMIT
+    oracle = _m11_matching_tree_oracle(source, overlay)
+    oracle[(source, target)] = ("100644", "blob", _M11_SYNTHETIC_BLOB_OID_ALT)
+    _m11_install_git_boundary_oracle(
+        monkeypatch,
+        oc_allowlist,
+        source_commit=source,
+        overlay_resolved=overlay,
+        tree_oracle=oracle,
+    )
     monkeypatch.setattr(
         oc_allowlist,
         "changed_paths",
         lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
     )
-    real = oc_allowlist._git_tree_entry
-    overlay = oc_allowlist._resolve_commit(Path("."), oc_allowlist.M11_REVIEWED_OVERLAY_SHA)
-
-    def _mismatch(repo, commit, path):
-        mode, typ, oid = real(repo, commit, path)
-        if path == target and commit != overlay:
-            return mode, typ, "a" * 40
-        return mode, typ, oid
-
-    monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _mismatch)
     try:
-        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        oc_allowlist.assert_allowlist(Path("."), source)
         raise AssertionError("blob_mismatch_accepted")
     except SystemExit as exc:
         assert str(exc).startswith("control_plane_mismatch:")
@@ -464,13 +539,14 @@ def test_m11_fifth_documentation_path_fails_product_allowlist(monkeypatch):
     fifth = "docs/plans/README-openclaw-convmem-integration.md"
     assert fifth not in oc_constants.M11_CONTROL_PLANE_INPUTS
     assert oc_allowlist.path_allowed(fifth) is False
+    _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
         oc_allowlist,
         "changed_paths",
         lambda *_a, **_k: _m11_control_delta(fifth),
     )
     try:
-        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
         raise AssertionError("fifth_doc_accepted")
     except SystemExit as exc:
         assert str(exc) == f"allowlist_violation:{fifth}"
