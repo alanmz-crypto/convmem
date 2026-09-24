@@ -2857,11 +2857,13 @@ scope values, or credentials.
 ### Gate A — plan review
 
 BUILD asks whether the frozen T0–T5 implementation requires any architectural choice: this packet
-answers PASS after the B-FIXTURE/B-DIGEST corrections. TEST asks whether its disposable acceptance
-suite has passed: NOT YET RUN. LIVE-DATA and PROMOTION are BLOCKED. These four gates are independent;
-BUILD PASS is neither runtime qualification nor an Execute grant. Kiro reviews the exact corrected
-tip; Ryan separately grants B/C implementation. A substantive correction receives a focused fresh
-adversarial check of the changed contracts, not a reopened general design search.
+answers PASS after the B-FIXTURE/B-DIGEST corrections. Bounded TEST passed at accepted historical
+tip `8010fb060c2edc29e1b09d7a30b1a1da2689d489`; that result does not certify the proposed M11
+current-main reconstruction, whose fresh evidence has not run. LIVE-DATA and PROMOTION are
+BLOCKED. These gates are independent; BUILD/fixture TEST PASS is neither runtime qualification nor
+an Execute or merge grant. Kiro reviews the exact reconciled plan; Ryan separately decides M11.
+A substantive correction receives a focused fresh adversarial check of the changed contracts, not
+a reopened general design search.
 
 ### Gate B — strict ConvMem contract implementation
 
