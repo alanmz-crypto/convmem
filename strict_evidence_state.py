@@ -301,7 +301,8 @@ def public_ledger_id(*, public_binding_ref: str, assertion_id: str) -> str:
 # Architecture §8.3 — fullmatch grammars; max lengths are code-point counts.
 _STORED_LEDGER_ID_RE = re.compile(r"(?:(?:obs2|dec2|ver2)_[a-f0-9]{64}|(?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+)")
 _PUBLIC_LEDGER_HANDLE_RE = re.compile(
-    r"cm1\.([a-f0-9]{32})\." r"((?:(?:obs2|dec2|ver2)_[a-f0-9]{64}|(?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+))"
+    r"cm1\.([a-f0-9]{32})\."
+    + r"((?:(?:obs2|dec2|ver2)_[a-f0-9]{64}|(?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+))"
 )
 _STORED_LEDGER_ID_MAX = 160
 _PUBLIC_LEDGER_HANDLE_MAX = 200
@@ -382,7 +383,110 @@ def _collision_key(
     )
 
 
+def _materialize_phase_0(work: SimpleNamespace) -> None:
+    if not isinstance(work.raw, Mapping):
+        raise StrictEvidenceError('source_record_type')
+    reject_hostile_source_keys(work.raw)
+    if set(work.raw) != set(SOURCE_RECORD_FIELDS):
+        raise StrictEvidenceError('source_record_keys')
+    work.record_kind = work.raw['record_kind']
+    if work.record_kind not in _LOGICAL_PREFIX:
+        raise StrictEvidenceError('record_kind')
+    work.producer = _require_nfc(work.raw['producer'], field='producer')
+    if not _PRODUCER_RE.fullmatch(work.producer):
+        raise StrictEvidenceError('producer')
+    work.logical_key = _require_nfc(work.raw['logical_key'], field='logical_key')
+    if not 1 <= len(work.logical_key) <= 256:
+        raise StrictEvidenceError('logical_key')
+    work.title = _require_nfc(work.raw['title'], field='title')
+    work.document = _require_nfc(work.raw['document'], field='document')
+    if not 1 <= len(work.title) <= 512 or not 1 <= len(work.document) <= 65536:
+        raise StrictEvidenceError('title_or_document')
+    work.observed_at = _require_ts(work.raw['observed_at'], 'observed_at')
+    work.confidence = work.raw['confidence_bps']
+    if not isinstance(work.confidence, int) or isinstance(work.confidence, bool) or (not 0 <= work.confidence <= 10000):
+        raise StrictEvidenceError('confidence_bps')
+    work.relates = work.raw['relates_to_assertion_id']
+    if work.relates is not None:
+        work.relates = _require_nfc(work.relates, field='relates_to_assertion_id')
+        if not _ASSERTION_ID_RE.fullmatch(work.relates):
+            raise StrictEvidenceError('relates_to_assertion_id')
+    work.target = work.raw['target_assertion_id']
+    work.verification_result = work.raw['verification_result']
+
+def _materialize_phase_1(work: SimpleNamespace) -> None:
+    if work.record_kind == 'verification':
+        work.target = _require_nfc(work.target, field='target_assertion_id')
+        if not _ASSERTION_ID_RE.fullmatch(work.target):
+            raise StrictEvidenceError('verification_target')
+        if work.verification_result not in VERIFICATION_RESULTS:
+            raise StrictEvidenceError('verification_result')
+    else:
+        if work.target is not None:
+            raise StrictEvidenceError('target_must_be_null')
+        if work.verification_result is not None:
+            raise StrictEvidenceError('verification_result_must_be_null')
+        work.target = None
+    work.prov_id = _require_nfc(work.raw['provenance_assertion_id'], field='provenance_assertion_id')
+    if work.prov_id not in work.registered_assertions:
+        raise StrictEvidenceError('provenance_unregistered')
+    if work.prov_id not in work.qualification_by_provenance:
+        raise StrictEvidenceError('qualification_missing')
+    work.registered = work.registered_assertions[work.prov_id]
+    if set(work.registered) != {'assertion_id', 'provenance_commitment', 'envelope'}:
+        raise StrictEvidenceError('registered_assertion_keys')
+    if work.registered['assertion_id'] != work.prov_id:
+        raise StrictEvidenceError('provenance_assertion_mismatch')
+    work.envelope = work.registered['envelope']
+    work.commitment = _require_nfc(work.registered['provenance_commitment'], field='provenance_commitment')
+    if not isinstance(work.envelope, Mapping):
+        raise StrictEvidenceError('provenance_envelope')
+    if work.envelope.get('assertion_id') != work.prov_id:
+        raise StrictEvidenceError('provenance_assertion_mismatch')
+    work.logical_id = logical_id_v2(project_binding_id=work.binding.id, source_identity=work.reg.source_identity, authority_site=work.authority_site, producer=work.producer, logical_key=work.logical_key, record_kind=work.record_kind, target_assertion_id=work.target if work.record_kind == 'verification' else None)
+    work.assertion_id = assertion_id_v2(project_binding_id=work.binding.id, source_registration_id=work.source_registration_id, source_event_id=work.source_event_id, record_kind=work.record_kind, logical_id=work.logical_id)
+    if not work.logical_id.startswith(_LOGICAL_PREFIX[work.record_kind]):
+        raise StrictEvidenceError('logical_prefix')
+    if not work.assertion_id.startswith(_ASSERTION_PREFIX[work.record_kind]):
+        raise StrictEvidenceError('assertion_prefix')
+    work.source_payload = strict_source_payload_sha256(work.raw)
+    work.selection = work.envelope.get('selection_parameters') if isinstance(work.envelope, Mapping) else None
+    if not isinstance(work.selection, Mapping):
+        raise StrictEvidenceError('source_payload_binding')
+    work.output_sha = work.selection.get('output_sha256')
+
+def _materialize_phase_2(work: SimpleNamespace) -> dict[str, Any] | None:
+    if not isinstance(work.output_sha, str):
+        raise StrictEvidenceError('source_payload_binding')
+    work.labeled = work.source_payload
+    work.unlabeled = work.source_payload.removeprefix('sha256:')
+    if work.output_sha not in {work.labeled, work.unlabeled}:
+        raise StrictEvidenceError('source_payload_binding')
+    work.qualification = work.qualification_by_provenance[work.prov_id]
+    if not isinstance(work.qualification, QualificationTuple):
+        raise StrictEvidenceError('qualification_type')
+    work.frozen_qualification = QualificationTuple(work.qualification.commitments, work.qualification.byte_grounding, work.qualification.capture, work.qualification.transformer_cap)
+    work.origin = derive_origin_assurance(work.frozen_qualification)
+    work.check_eligibility = _eligibility_for_record(binding=work.binding, record_kind=work.record_kind, source_registration_id=work.source_registration_id, producer=work.producer, envelope=work.envelope, qualification=work.frozen_qualification)
+    work.record = {'schema': 'convmem.bound-authority-record.v3', 'project_binding_id': work.binding.id, 'source_registration_id': work.source_registration_id, 'authority_site': work.authority_site, 'authority_domain': work.authority_domain, 'record_kind': work.record_kind, 'logical_id': work.logical_id, 'assertion_id': work.assertion_id, 'source_event_id': work.source_event_id, 'producer': work.producer, 'logical_key': work.logical_key, 'semantic_sha256': None, 'payload_sha256': None, 'title': work.title, 'document': work.document, 'observed_at': work.observed_at, 'recorded_at': work.captured_at, 'confidence_bps': work.confidence, 'relates_to_assertion_id': work.relates, 'target_assertion_id': work.target, 'verification_result': work.verification_result, 'supersedes_assertion_ids': [], 'decision_disposition_ref': None, 'supersession_disposition_ref': None, 'provenance_envelope': dict(work.envelope), 'provenance_commitment': work.commitment, 'origin_assurance': work.origin, 'provenance_qualification': work.frozen_qualification.as_dict(), 'check_eligibility': work.check_eligibility}
+    if work.observed_at > work.captured_at:
+        raise StrictEvidenceError('observed_after_recorded')
+    work.record['semantic_sha256'] = semantic_sha256(work.record)
+    work.record['payload_sha256'] = payload_sha256(work.record)
+    work.key = _collision_key(project_binding_id=work.binding.id, source_registration_id=work.source_registration_id, source_event_id=work.source_event_id, record_kind=work.record_kind, logical_id=work.logical_id)
+    if work.key in work.seen_keys:
+        raise StrictEvidenceError('source_event_conflict')
+    work.seen_keys.add(work.key)
+    work.prior = work.prior_by_collision.get(work.key)
+    if work.prior is not None:
+        if work.prior['assertion_id'] != work.assertion_id or work.prior['semantic_sha256'] != work.record['semantic_sha256'] or work.prior['payload_sha256'] != work.record['payload_sha256'] or (strict_canonical_bytes(work.prior) != strict_canonical_bytes(work.record)):
+            raise StrictEvidenceError('source_event_conflict')
+        return None
+    return work.record
+
 def _materialize_one_source_record(raw: Any, ctx: SimpleNamespace) -> dict[str, Any] | None:
+    """Materialize one source record; None means idempotent prior match."""
+
     work = SimpleNamespace()
     binding = ctx.binding
     source_registration_id = ctx.source_registration_id
@@ -395,185 +499,23 @@ def _materialize_one_source_record(raw: Any, ctx: SimpleNamespace) -> dict[str, 
     qualification_by_provenance = ctx.qualification_by_provenance
     prior_by_collision = ctx.prior_by_collision
     seen_keys = ctx.seen_keys
-    "Materialize one source record; None means idempotent prior match."
+    work.raw = raw
+    work.binding = binding
+    work.source_registration_id = source_registration_id
+    work.source_event_id = source_event_id
+    work.authority_site = authority_site
+    work.authority_domain = authority_domain
+    work.captured_at = captured_at
+    work.reg = reg
+    work.registered_assertions = registered_assertions
+    work.qualification_by_provenance = qualification_by_provenance
+    work.prior_by_collision = prior_by_collision
+    work.seen_keys = seen_keys
 
-    def _phase_0() -> None:
-        if not isinstance(raw, Mapping):
-            raise StrictEvidenceError("source_record_type")
-        reject_hostile_source_keys(raw)
-        if set(raw) != set(SOURCE_RECORD_FIELDS):
-            raise StrictEvidenceError("source_record_keys")
-        work.record_kind = raw["record_kind"]
-        if work.record_kind not in _LOGICAL_PREFIX:
-            raise StrictEvidenceError("record_kind")
-        work.producer = _require_nfc(raw["producer"], field="producer")
-        if not _PRODUCER_RE.fullmatch(work.producer):
-            raise StrictEvidenceError("producer")
-        work.logical_key = _require_nfc(raw["logical_key"], field="logical_key")
-        if not 1 <= len(work.logical_key) <= 256:
-            raise StrictEvidenceError("logical_key")
-        work.title = _require_nfc(raw["title"], field="title")
-        work.document = _require_nfc(raw["document"], field="document")
-        if not 1 <= len(work.title) <= 512 or not 1 <= len(work.document) <= 65536:
-            raise StrictEvidenceError("title_or_document")
-        work.observed_at = _require_ts(raw["observed_at"], "observed_at")
-        work.confidence = raw["confidence_bps"]
-        if (
-            not isinstance(work.confidence, int)
-            or isinstance(work.confidence, bool)
-            or (not 0 <= work.confidence <= 10000)
-        ):
-            raise StrictEvidenceError("confidence_bps")
-        work.relates = raw["relates_to_assertion_id"]
-        if work.relates is not None:
-            work.relates = _require_nfc(work.relates, field="relates_to_assertion_id")
-            if not _ASSERTION_ID_RE.fullmatch(work.relates):
-                raise StrictEvidenceError("relates_to_assertion_id")
-        work.target = raw["target_assertion_id"]
-        work.verification_result = raw["verification_result"]
+    _materialize_phase_0(work)
+    _materialize_phase_1(work)
+    return _materialize_phase_2(work)
 
-    def _phase_1() -> None:
-        if work.record_kind == "verification":
-            work.target = _require_nfc(work.target, field="target_assertion_id")
-            if not _ASSERTION_ID_RE.fullmatch(work.target):
-                raise StrictEvidenceError("verification_target")
-            if work.verification_result not in VERIFICATION_RESULTS:
-                raise StrictEvidenceError("verification_result")
-        else:
-            if work.target is not None:
-                raise StrictEvidenceError("target_must_be_null")
-            if work.verification_result is not None:
-                raise StrictEvidenceError("verification_result_must_be_null")
-            work.target = None
-        work.prov_id = _require_nfc(raw["provenance_assertion_id"], field="provenance_assertion_id")
-        if work.prov_id not in registered_assertions:
-            raise StrictEvidenceError("provenance_unregistered")
-        if work.prov_id not in qualification_by_provenance:
-            raise StrictEvidenceError("qualification_missing")
-        work.registered = registered_assertions[work.prov_id]
-        if set(work.registered) != {"assertion_id", "provenance_commitment", "envelope"}:
-            raise StrictEvidenceError("registered_assertion_keys")
-        if work.registered["assertion_id"] != work.prov_id:
-            raise StrictEvidenceError("provenance_assertion_mismatch")
-        work.envelope = work.registered["envelope"]
-        work.commitment = _require_nfc(work.registered["provenance_commitment"], field="provenance_commitment")
-        if not isinstance(work.envelope, Mapping):
-            raise StrictEvidenceError("provenance_envelope")
-        if work.envelope.get("assertion_id") != work.prov_id:
-            raise StrictEvidenceError("provenance_assertion_mismatch")
-        work.logical_id = logical_id_v2(
-            project_binding_id=binding.id,
-            source_identity=reg.source_identity,
-            authority_site=authority_site,
-            producer=work.producer,
-            logical_key=work.logical_key,
-            record_kind=work.record_kind,
-            target_assertion_id=work.target if work.record_kind == "verification" else None,
-        )
-        work.assertion_id = assertion_id_v2(
-            project_binding_id=binding.id,
-            source_registration_id=source_registration_id,
-            source_event_id=source_event_id,
-            record_kind=work.record_kind,
-            logical_id=work.logical_id,
-        )
-        if not work.logical_id.startswith(_LOGICAL_PREFIX[work.record_kind]):
-            raise StrictEvidenceError("logical_prefix")
-        if not work.assertion_id.startswith(_ASSERTION_PREFIX[work.record_kind]):
-            raise StrictEvidenceError("assertion_prefix")
-        work.source_payload = strict_source_payload_sha256(raw)
-        work.selection = work.envelope.get("selection_parameters") if isinstance(work.envelope, Mapping) else None
-        if not isinstance(work.selection, Mapping):
-            raise StrictEvidenceError("source_payload_binding")
-        work.output_sha = work.selection.get("output_sha256")
-
-    def _phase_2():
-        if not isinstance(work.output_sha, str):
-            raise StrictEvidenceError("source_payload_binding")
-        work.labeled = work.source_payload
-        work.unlabeled = work.source_payload.removeprefix("sha256:")
-        if work.output_sha not in {work.labeled, work.unlabeled}:
-            raise StrictEvidenceError("source_payload_binding")
-        work.qualification = qualification_by_provenance[work.prov_id]
-        if not isinstance(work.qualification, QualificationTuple):
-            raise StrictEvidenceError("qualification_type")
-        work.frozen_qualification = QualificationTuple(
-            work.qualification.commitments,
-            work.qualification.byte_grounding,
-            work.qualification.capture,
-            work.qualification.transformer_cap,
-        )
-        work.origin = derive_origin_assurance(work.frozen_qualification)
-        work.check_eligibility = _eligibility_for_record(
-            binding=binding,
-            record_kind=work.record_kind,
-            source_registration_id=source_registration_id,
-            producer=work.producer,
-            envelope=work.envelope,
-            qualification=work.frozen_qualification,
-        )
-        work.record = {
-            "schema": "convmem.bound-authority-record.v3",
-            "project_binding_id": binding.id,
-            "source_registration_id": source_registration_id,
-            "authority_site": authority_site,
-            "authority_domain": authority_domain,
-            "record_kind": work.record_kind,
-            "logical_id": work.logical_id,
-            "assertion_id": work.assertion_id,
-            "source_event_id": source_event_id,
-            "producer": work.producer,
-            "logical_key": work.logical_key,
-            "semantic_sha256": None,
-            "payload_sha256": None,
-            "title": work.title,
-            "document": work.document,
-            "observed_at": work.observed_at,
-            "recorded_at": captured_at,
-            "confidence_bps": work.confidence,
-            "relates_to_assertion_id": work.relates,
-            "target_assertion_id": work.target,
-            "verification_result": work.verification_result,
-            "supersedes_assertion_ids": [],
-            "decision_disposition_ref": None,
-            "supersession_disposition_ref": None,
-            "provenance_envelope": dict(work.envelope),
-            "provenance_commitment": work.commitment,
-            "origin_assurance": work.origin,
-            "provenance_qualification": work.frozen_qualification.as_dict(),
-            "check_eligibility": work.check_eligibility,
-        }
-        if work.observed_at > captured_at:
-            raise StrictEvidenceError("observed_after_recorded")
-        work.record["semantic_sha256"] = semantic_sha256(work.record)
-        work.record["payload_sha256"] = payload_sha256(work.record)
-        work.key = _collision_key(
-            project_binding_id=binding.id,
-            source_registration_id=source_registration_id,
-            source_event_id=source_event_id,
-            record_kind=work.record_kind,
-            logical_id=work.logical_id,
-        )
-        if work.key in seen_keys:
-            raise StrictEvidenceError("source_event_conflict")
-        seen_keys.add(work.key)
-        work.prior = prior_by_collision.get(work.key)
-        if work.prior is not None:
-            if (
-                work.prior["assertion_id"] != work.assertion_id
-                or work.prior["semantic_sha256"] != work.record["semantic_sha256"]
-                or work.prior["payload_sha256"] != work.record["payload_sha256"]
-                or (strict_canonical_bytes(work.prior) != strict_canonical_bytes(work.record))
-            ):
-                raise StrictEvidenceError("source_event_conflict")
-            return None
-        return work.record
-
-    _phase_0()
-    _phase_1()
-    _out = _phase_2()
-    if _out is not None:
-        return _out
 
 
 def materialize_authority_records(
@@ -788,7 +730,175 @@ def apply_verification_eligibility(
         rec["check_eligibility"] = expected
 
 
+def _validate_phase_0(work: SimpleNamespace) -> None:
+    if not isinstance(work.raw, Mapping):
+        raise StrictEvidenceError('disposition_type')
+    if set(work.raw) != DISPOSITION_FIELDS:
+        raise StrictEvidenceError('disposition_keys')
+    if work.raw['schema'] != 'convmem.authority-disposition.v1':
+        raise StrictEvidenceError('disposition_schema')
+    if work.raw['review_role'] != 'kiro-design-reviewer':
+        raise StrictEvidenceError('review_role')
+    if work.raw['ratifier_role'] != 'ryan-authority-owner':
+        raise StrictEvidenceError('ratifier_role')
+    if work.raw['review_outcome'] not in {'pass', 'fail'}:
+        raise StrictEvidenceError('review_outcome')
+    _require_nfc(work.raw['review_actor'], field='review_actor')
+    _require_nfc(work.raw['ratifier_actor'], field='ratifier_actor')
+    _require_ts(work.raw['reviewed_at'], 'reviewed_at')
+
+def _validate_phase_1(work: SimpleNamespace) -> None:
+    _require_ts(work.raw['ratified_at'], 'ratified_at')
+    _require_sha(work.raw['rationale_sha256'], 'rationale_sha256')
+    work.action = work.raw['action']
+    if work.action not in DISPOSITION_ACTIONS:
+        raise StrictEvidenceError('disposition_action')
+    work.subject = _require_nfc(work.raw['subject_assertion_id'], field='subject_assertion_id')
+    if work.subject not in work.by_assertion:
+        raise StrictEvidenceError('disposition_subject_missing')
+    work.subject_rec = work.by_assertion[work.subject]
+    work.subject_semantic = _require_sha(work.raw['subject_semantic_sha256'], 'subject_semantic_sha256')
+    if work.subject_semantic != work.subject_rec['semantic_sha256']:
+        raise StrictEvidenceError('subject_semantic_mismatch')
+
+def _validate_phase_2(work: SimpleNamespace) -> None:
+    work.binding_id = _require_nfc(work.raw['project_binding_id'], field='project_binding_id')
+    if work.binding_id != work.subject_rec['project_binding_id']:
+        raise StrictEvidenceError('disposition_binding')
+    work.targets = work.raw['target_assertion_ids']
+    work.expected_heads = work.raw['expected_head_assertion_ids']
+    if not isinstance(work.targets, list) or not isinstance(work.expected_heads, list):
+        raise StrictEvidenceError('disposition_arrays')
+    work.parsed_targets = [_require_nfc(t, field='target_assertion_id') for t in work.targets]
+    work.parsed_heads = [_require_nfc(h, field='expected_head_assertion_id') for h in work.expected_heads]
+    if work.parsed_targets != sorted(set(work.parsed_targets)):
+        raise StrictEvidenceError('target_assertion_ids')
+    if work.parsed_heads != sorted(set(work.parsed_heads)):
+        raise StrictEvidenceError('expected_head_assertion_ids')
+
+def _x_ar_0(work: SimpleNamespace) -> None:
+    if work.subject_rec['record_kind'] != 'decision':
+        raise StrictEvidenceError('approval_kind')
+    if work.parsed_targets or work.parsed_heads:
+        raise StrictEvidenceError('approval_targets')
+    if work.basis is not None or work.replaces is not None:
+        raise StrictEvidenceError('approval_basis')
+    if work.action == 'decision_approved' and work.raw['review_outcome'] != 'pass':
+        raise StrictEvidenceError('approval_outcome')
+    if work.action == 'decision_rejected' and work.raw['review_outcome'] != 'fail':
+        raise StrictEvidenceError('rejection_outcome')
+    work.bucket = work.approval_by_subject if work.action == 'decision_approved' else work.rejection_by_subject
+    if work.subject in work.bucket or work.subject in work.approval_by_subject or work.subject in work.rejection_by_subject:
+        raise StrictEvidenceError('duplicate_decision_disposition')
+
+def _x_ar_1(work: SimpleNamespace) -> None:
+    if work.subject_rec['record_kind'] != 'decision':
+        raise StrictEvidenceError('revoke_kind')
+    if work.parsed_targets or work.parsed_heads:
+        raise StrictEvidenceError('revoke_targets')
+    if work.basis != work.parent_snapshot_id:
+        raise StrictEvidenceError('revoke_basis')
+    if work.raw['review_outcome'] != 'pass':
+        raise StrictEvidenceError('revoke_outcome')
+    work.replaces_nfc = _require_nfc(work.replaces, field='replaces_disposition_ref')
+    if not _DISP_ID_RE.fullmatch(work.replaces_nfc):
+        raise StrictEvidenceError('revoke_replaces')
+    if work.subject in work.revocation_by_subject:
+        raise StrictEvidenceError('duplicate_revocation')
+    if work.subject in work.rejection_by_subject:
+        raise StrictEvidenceError('revoke_of_rejection')
+
+def _x_ar_2(work: SimpleNamespace) -> None:
+    if work.subject_rec['record_kind'] not in {'observation', 'verification'}:
+        raise StrictEvidenceError('withdraw_kind')
+    if work.parsed_targets or work.parsed_heads:
+        raise StrictEvidenceError('withdraw_targets')
+    if work.basis != work.parent_snapshot_id:
+        raise StrictEvidenceError('withdraw_basis')
+    if work.replaces is not None:
+        raise StrictEvidenceError('withdraw_replaces')
+    if work.raw['review_outcome'] != 'pass':
+        raise StrictEvidenceError('withdraw_outcome')
+    if work.subject in work.withdrawal_by_subject:
+        raise StrictEvidenceError('duplicate_withdrawal')
+
+def _x_ar_3(work: SimpleNamespace) -> None:
+    if work.raw['review_outcome'] != 'pass':
+        raise StrictEvidenceError('supersession_outcome')
+    if work.basis != work.parent_snapshot_id:
+        raise StrictEvidenceError('supersession_basis')
+    if work.replaces is not None:
+        raise StrictEvidenceError('supersession_replaces')
+    if work.subject in work.supersession_by_subject:
+        raise StrictEvidenceError('duplicate_supersession')
+    if not work.parsed_targets:
+        raise StrictEvidenceError('supersession_targets_empty')
+    for target in work.parsed_targets:
+        if target not in work.by_assertion:
+            raise StrictEvidenceError('supersession_missing_target')
+        work.t_rec = work.by_assertion[target]
+        if work.t_rec['logical_id'] != work.subject_rec['logical_id']:
+            raise StrictEvidenceError('supersession_logical')
+        if work.t_rec['record_kind'] != work.subject_rec['record_kind']:
+            raise StrictEvidenceError('supersession_kind')
+        if work.t_rec['project_binding_id'] != work.subject_rec['project_binding_id']:
+            raise StrictEvidenceError('supersession_binding')
+    work.record_supersedes = work.subject_rec.get('supersedes_assertion_ids')
+    if not isinstance(work.record_supersedes, list):
+        raise StrictEvidenceError('supersession_array_mismatch')
+    if sorted(work.record_supersedes) != work.parsed_targets:
+        raise StrictEvidenceError('supersession_array_mismatch')
+    if work.parent_heads_by_logical is not None:
+        work.logical = work.subject_rec['logical_id']
+        work.expected = sorted(work.parent_heads_by_logical.get(work.logical, ()))
+        if work.expected != work.parsed_heads or work.expected != work.parsed_targets:
+            raise StrictEvidenceError('supersession_heads')
+    elif work.parsed_heads != work.parsed_targets:
+        raise StrictEvidenceError('supersession_heads')
+
+def _x_action_rules(work: SimpleNamespace) -> None:
+
+    if work.action in {'decision_approved', 'decision_rejected'}:
+        _x_ar_0(work)
+        return
+    if work.action == 'decision_revoked':
+        _x_ar_1(work)
+        return
+    if work.action == 'evidence_withdrawn':
+        _x_ar_2(work)
+        return
+    if work.action == 'supersession_authorized':
+        _x_ar_3(work)
+        return
+
+
+def _validate_phase_3(work: SimpleNamespace) -> None:
+    work.basis = work.raw['basis_snapshot_id']
+    work.replaces = work.raw['replaces_disposition_ref']
+
+    _x_action_rules(work)
+    work.disp_id = disposition_id(work.raw)
+    if work.disp_id in work.consumed:
+        raise StrictEvidenceError('disposition_duplicate')
+    work.stored = dict(work.raw)
+    work.stored['target_assertion_ids'] = work.parsed_targets
+    work.stored['expected_head_assertion_ids'] = work.parsed_heads
+    work.consumed[work.disp_id] = work.stored
+    if work.action == 'decision_approved':
+        work.approval_by_subject[work.subject] = work.disp_id
+    elif work.action == 'decision_rejected':
+        work.rejection_by_subject[work.subject] = work.disp_id
+    elif work.action == 'decision_revoked':
+        work.revocation_by_subject[work.subject] = work.disp_id
+    elif work.action == 'evidence_withdrawn':
+        work.withdrawal_by_subject[work.subject] = work.disp_id
+    elif work.action == 'supersession_authorized':
+        work.supersession_by_subject[work.subject] = work.disp_id
+
+
 def _validate_one_disposition(raw: Any, ctx: SimpleNamespace) -> None:
+    """Validate and index one disposition into subject maps."""
+
     work = SimpleNamespace()
     by_assertion = ctx.by_assertion
     parent_snapshot_id = ctx.parent_snapshot_id
@@ -799,180 +909,22 @@ def _validate_one_disposition(raw: Any, ctx: SimpleNamespace) -> None:
     revocation_by_subject = ctx.revocation_by_subject
     withdrawal_by_subject = ctx.withdrawal_by_subject
     supersession_by_subject = ctx.supersession_by_subject
-    "Validate and index one disposition into subject maps."
+    work.raw = raw
+    work.by_assertion = by_assertion
+    work.parent_snapshot_id = parent_snapshot_id
+    work.parent_heads_by_logical = parent_heads_by_logical
+    work.consumed = consumed
+    work.approval_by_subject = approval_by_subject
+    work.rejection_by_subject = rejection_by_subject
+    work.revocation_by_subject = revocation_by_subject
+    work.withdrawal_by_subject = withdrawal_by_subject
+    work.supersession_by_subject = supersession_by_subject
 
-    def _phase_0() -> None:
-        if not isinstance(raw, Mapping):
-            raise StrictEvidenceError("disposition_type")
-        if set(raw) != DISPOSITION_FIELDS:
-            raise StrictEvidenceError("disposition_keys")
-        if raw["schema"] != "convmem.authority-disposition.v1":
-            raise StrictEvidenceError("disposition_schema")
-        if raw["review_role"] != "kiro-design-reviewer":
-            raise StrictEvidenceError("review_role")
-        if raw["ratifier_role"] != "ryan-authority-owner":
-            raise StrictEvidenceError("ratifier_role")
-        if raw["review_outcome"] not in {"pass", "fail"}:
-            raise StrictEvidenceError("review_outcome")
-        _require_nfc(raw["review_actor"], field="review_actor")
-        _require_nfc(raw["ratifier_actor"], field="ratifier_actor")
-        _require_ts(raw["reviewed_at"], "reviewed_at")
+    _validate_phase_0(work)
+    _validate_phase_1(work)
+    _validate_phase_2(work)
+    _validate_phase_3(work)
 
-    def _phase_1() -> None:
-        _require_ts(raw["ratified_at"], "ratified_at")
-        _require_sha(raw["rationale_sha256"], "rationale_sha256")
-        work.action = raw["action"]
-        if work.action not in DISPOSITION_ACTIONS:
-            raise StrictEvidenceError("disposition_action")
-        work.subject = _require_nfc(raw["subject_assertion_id"], field="subject_assertion_id")
-        if work.subject not in by_assertion:
-            raise StrictEvidenceError("disposition_subject_missing")
-        work.subject_rec = by_assertion[work.subject]
-        work.subject_semantic = _require_sha(raw["subject_semantic_sha256"], "subject_semantic_sha256")
-        if work.subject_semantic != work.subject_rec["semantic_sha256"]:
-            raise StrictEvidenceError("subject_semantic_mismatch")
-
-    def _phase_2() -> None:
-        work.binding_id = _require_nfc(raw["project_binding_id"], field="project_binding_id")
-        if work.binding_id != work.subject_rec["project_binding_id"]:
-            raise StrictEvidenceError("disposition_binding")
-        work.targets = raw["target_assertion_ids"]
-        work.expected_heads = raw["expected_head_assertion_ids"]
-        if not isinstance(work.targets, list) or not isinstance(work.expected_heads, list):
-            raise StrictEvidenceError("disposition_arrays")
-        work.parsed_targets = [_require_nfc(t, field="target_assertion_id") for t in work.targets]
-        work.parsed_heads = [_require_nfc(h, field="expected_head_assertion_id") for h in work.expected_heads]
-        if work.parsed_targets != sorted(set(work.parsed_targets)):
-            raise StrictEvidenceError("target_assertion_ids")
-        if work.parsed_heads != sorted(set(work.parsed_heads)):
-            raise StrictEvidenceError("expected_head_assertion_ids")
-
-    def _phase_3() -> None:
-        work.basis = raw["basis_snapshot_id"]
-        work.replaces = raw["replaces_disposition_ref"]
-
-        def _action_rules() -> None:
-
-            def _ar_0() -> None:
-                if work.subject_rec["record_kind"] != "decision":
-                    raise StrictEvidenceError("approval_kind")
-                if work.parsed_targets or work.parsed_heads:
-                    raise StrictEvidenceError("approval_targets")
-                if work.basis is not None or work.replaces is not None:
-                    raise StrictEvidenceError("approval_basis")
-                if work.action == "decision_approved" and raw["review_outcome"] != "pass":
-                    raise StrictEvidenceError("approval_outcome")
-                if work.action == "decision_rejected" and raw["review_outcome"] != "fail":
-                    raise StrictEvidenceError("rejection_outcome")
-                work.bucket = approval_by_subject if work.action == "decision_approved" else rejection_by_subject
-                if (
-                    work.subject in work.bucket
-                    or work.subject in approval_by_subject
-                    or work.subject in rejection_by_subject
-                ):
-                    raise StrictEvidenceError("duplicate_decision_disposition")
-
-            def _ar_1() -> None:
-                if work.subject_rec["record_kind"] != "decision":
-                    raise StrictEvidenceError("revoke_kind")
-                if work.parsed_targets or work.parsed_heads:
-                    raise StrictEvidenceError("revoke_targets")
-                if work.basis != parent_snapshot_id:
-                    raise StrictEvidenceError("revoke_basis")
-                if raw["review_outcome"] != "pass":
-                    raise StrictEvidenceError("revoke_outcome")
-                work.replaces_nfc = _require_nfc(work.replaces, field="replaces_disposition_ref")
-                if not _DISP_ID_RE.fullmatch(work.replaces_nfc):
-                    raise StrictEvidenceError("revoke_replaces")
-                if work.subject in revocation_by_subject:
-                    raise StrictEvidenceError("duplicate_revocation")
-                if work.subject in rejection_by_subject:
-                    raise StrictEvidenceError("revoke_of_rejection")
-
-            def _ar_2() -> None:
-                if work.subject_rec["record_kind"] not in {"observation", "verification"}:
-                    raise StrictEvidenceError("withdraw_kind")
-                if work.parsed_targets or work.parsed_heads:
-                    raise StrictEvidenceError("withdraw_targets")
-                if work.basis != parent_snapshot_id:
-                    raise StrictEvidenceError("withdraw_basis")
-                if work.replaces is not None:
-                    raise StrictEvidenceError("withdraw_replaces")
-                if raw["review_outcome"] != "pass":
-                    raise StrictEvidenceError("withdraw_outcome")
-                if work.subject in withdrawal_by_subject:
-                    raise StrictEvidenceError("duplicate_withdrawal")
-
-            def _ar_3() -> None:
-                if raw["review_outcome"] != "pass":
-                    raise StrictEvidenceError("supersession_outcome")
-                if work.basis != parent_snapshot_id:
-                    raise StrictEvidenceError("supersession_basis")
-                if work.replaces is not None:
-                    raise StrictEvidenceError("supersession_replaces")
-                if work.subject in supersession_by_subject:
-                    raise StrictEvidenceError("duplicate_supersession")
-                if not work.parsed_targets:
-                    raise StrictEvidenceError("supersession_targets_empty")
-                for target in work.parsed_targets:
-                    if target not in by_assertion:
-                        raise StrictEvidenceError("supersession_missing_target")
-                    work.t_rec = by_assertion[target]
-                    if work.t_rec["logical_id"] != work.subject_rec["logical_id"]:
-                        raise StrictEvidenceError("supersession_logical")
-                    if work.t_rec["record_kind"] != work.subject_rec["record_kind"]:
-                        raise StrictEvidenceError("supersession_kind")
-                    if work.t_rec["project_binding_id"] != work.subject_rec["project_binding_id"]:
-                        raise StrictEvidenceError("supersession_binding")
-                work.record_supersedes = work.subject_rec.get("supersedes_assertion_ids")
-                if not isinstance(work.record_supersedes, list):
-                    raise StrictEvidenceError("supersession_array_mismatch")
-                if sorted(work.record_supersedes) != work.parsed_targets:
-                    raise StrictEvidenceError("supersession_array_mismatch")
-                if parent_heads_by_logical is not None:
-                    work.logical = work.subject_rec["logical_id"]
-                    work.expected = sorted(parent_heads_by_logical.get(work.logical, ()))
-                    if work.expected != work.parsed_heads or work.expected != work.parsed_targets:
-                        raise StrictEvidenceError("supersession_heads")
-                elif work.parsed_heads != work.parsed_targets:
-                    raise StrictEvidenceError("supersession_heads")
-
-            if work.action in {"decision_approved", "decision_rejected"}:
-                _ar_0()
-                return
-            if work.action == "decision_revoked":
-                _ar_1()
-                return
-            if work.action == "evidence_withdrawn":
-                _ar_2()
-                return
-            if work.action == "supersession_authorized":
-                _ar_3()
-                return
-
-        _action_rules()
-        work.disp_id = disposition_id(raw)
-        if work.disp_id in consumed:
-            raise StrictEvidenceError("disposition_duplicate")
-        work.stored = dict(raw)
-        work.stored["target_assertion_ids"] = work.parsed_targets
-        work.stored["expected_head_assertion_ids"] = work.parsed_heads
-        consumed[work.disp_id] = work.stored
-        if work.action == "decision_approved":
-            approval_by_subject[work.subject] = work.disp_id
-        elif work.action == "decision_rejected":
-            rejection_by_subject[work.subject] = work.disp_id
-        elif work.action == "decision_revoked":
-            revocation_by_subject[work.subject] = work.disp_id
-        elif work.action == "evidence_withdrawn":
-            withdrawal_by_subject[work.subject] = work.disp_id
-        elif work.action == "supersession_authorized":
-            supersession_by_subject[work.subject] = work.disp_id
-
-    _phase_0()
-    _phase_1()
-    _phase_2()
-    _phase_3()
 
 
 def validate_dispositions(
@@ -1082,269 +1034,265 @@ def _truth_table(effective_results: Sequence[str]) -> str:
     return "inconclusive"
 
 
-def reduce_complete_bound_state(
-    records: Sequence[Mapping[str, Any]], dispositions: Sequence[Mapping[str, Any]] | Mapping[str, Mapping[str, Any]]
-) -> dict[str, ReducedState]:
-    """Single complete-bound reducer. Never invoked at query time as a separate reducer."""
-    work = SimpleNamespace()
+def _reduce_consume(work: SimpleNamespace, aid: str, disp_id: str) -> None:
+    if disp_id in work.consumed_disps:
+        raise StrictEvidenceError("disposition_double_consume")
+    work.consumed_disps.add(disp_id)
+    work.state_disps[aid].append(disp_id)
 
-    def _phase_0() -> None:
-        work.by_id = {r["assertion_id"]: dict(r) for r in records}
-        if len(work.by_id) != len(records):
-            raise StrictEvidenceError("duplicate_assertion")
-        for rec in work.by_id.values():
-            if "check_eligibility" not in rec:
-                raise StrictEvidenceError("check_eligibility_required")
-            if rec["check_eligibility"] not in CHECK_ELIGIBILITY:
-                raise StrictEvidenceError("check_eligibility")
-            if "provenance_qualification" not in rec:
-                raise StrictEvidenceError("qualification_missing")
-        if isinstance(dispositions, Mapping):
-            work.disp_by_id = {k: dict(v) for k, v in dispositions.items()}
+def _reduce_phase_0(work: SimpleNamespace) -> None:
+    work.by_id = {r["assertion_id"]: dict(r) for r in work.records}
+    if len(work.by_id) != len(work.records):
+        raise StrictEvidenceError("duplicate_assertion")
+    for rec in work.by_id.values():
+        if "check_eligibility" not in rec:
+            raise StrictEvidenceError("check_eligibility_required")
+        if rec["check_eligibility"] not in CHECK_ELIGIBILITY:
+            raise StrictEvidenceError("check_eligibility")
+        if "provenance_qualification" not in rec:
+            raise StrictEvidenceError("qualification_missing")
+    if isinstance(work.dispositions, Mapping):
+        work.disp_by_id = {k: dict(v) for k, v in work.dispositions.items()}
+    else:
+        work.disp_by_id = {disposition_id(d): dict(d) for d in work.dispositions}
+    work.approvals: dict[str, str] = {}
+    work.rejections: dict[str, str] = {}
+    work.revocations: dict[str, str] = {}
+
+def _reduce_phase_1(work: SimpleNamespace) -> None:
+    work.withdrawals: dict[str, str] = {}
+    work.supersessions: dict[str, str] = {}
+    for disp_id, disp in work.disp_by_id.items():
+        work.action = disp["action"]
+        work.subject = disp["subject_assertion_id"]
+        if work.action == "decision_approved":
+            if work.subject in work.approvals:
+                raise StrictEvidenceError("duplicate_approval")
+            work.approvals[work.subject] = disp_id
+        elif work.action == "decision_rejected":
+            if work.subject in work.rejections:
+                raise StrictEvidenceError("duplicate_rejection")
+            work.rejections[work.subject] = disp_id
+        elif work.action == "decision_revoked":
+            if work.subject in work.revocations:
+                raise StrictEvidenceError("duplicate_revocation")
+            work.revocations[work.subject] = disp_id
+        elif work.action == "evidence_withdrawn":
+            if work.subject in work.withdrawals:
+                raise StrictEvidenceError("duplicate_withdrawal")
+            work.withdrawals[work.subject] = disp_id
+        elif work.action == "supersession_authorized":
+            if work.subject in work.supersessions:
+                raise StrictEvidenceError("duplicate_supersession")
+            work.supersessions[work.subject] = disp_id
         else:
-            work.disp_by_id = {disposition_id(d): dict(d) for d in dispositions}
-        work.approvals: dict[str, str] = {}
-        work.rejections: dict[str, str] = {}
-        work.revocations: dict[str, str] = {}
+            raise StrictEvidenceError("disposition_action")
+    work.superseded_by: dict[str, set[str]] = {}
+    work.succ_to_targets: dict[str, list[str]] = {}
+    for successor_id, disp_id in work.supersessions.items():
+        work.successor = work.by_id.get(successor_id)
+        if work.successor is None:
+            raise StrictEvidenceError("supersession_missing_successor")
+        if work.successor["record_kind"] == "decision" and successor_id in work.rejections:
+            raise StrictEvidenceError("supersession_rejected_successor")
+        disp = work.disp_by_id[disp_id]
+        work.targets = list(disp["target_assertion_ids"])
+        if sorted(work.successor.get("supersedes_assertion_ids") or []) != sorted(work.targets):
+            raise StrictEvidenceError("supersession_array_mismatch")
+        work.succ_to_targets[successor_id] = work.targets
+        for target in work.targets:
+            if target not in work.by_id:
+                raise StrictEvidenceError("supersession_missing_target")
+            if target == successor_id:
+                raise StrictEvidenceError("supersession_self")
+            work.t_rec = work.by_id[target]
+            if work.t_rec["logical_id"] != work.successor["logical_id"]:
+                raise StrictEvidenceError("supersession_logical")
+            if work.t_rec["record_kind"] != work.successor["record_kind"]:
+                raise StrictEvidenceError("supersession_kind")
+            if work.t_rec["project_binding_id"] != work.successor["project_binding_id"]:
+                raise StrictEvidenceError("supersession_binding")
+            work.superseded_by.setdefault(target, set()).add(successor_id)
+    work.visiting: set[str] = set()
 
-    def _phase_1() -> None:
-        work.withdrawals: dict[str, str] = {}
-        work.supersessions: dict[str, str] = {}
-        for disp_id, disp in work.disp_by_id.items():
-            work.action = disp["action"]
-            work.subject = disp["subject_assertion_id"]
-            if work.action == "decision_approved":
-                if work.subject in work.approvals:
-                    raise StrictEvidenceError("duplicate_approval")
-                work.approvals[work.subject] = disp_id
-            elif work.action == "decision_rejected":
-                if work.subject in work.rejections:
-                    raise StrictEvidenceError("duplicate_rejection")
-                work.rejections[work.subject] = disp_id
-            elif work.action == "decision_revoked":
-                if work.subject in work.revocations:
-                    raise StrictEvidenceError("duplicate_revocation")
-                work.revocations[work.subject] = disp_id
-            elif work.action == "evidence_withdrawn":
-                if work.subject in work.withdrawals:
-                    raise StrictEvidenceError("duplicate_withdrawal")
-                work.withdrawals[work.subject] = disp_id
-            elif work.action == "supersession_authorized":
-                if work.subject in work.supersessions:
-                    raise StrictEvidenceError("duplicate_supersession")
-                work.supersessions[work.subject] = disp_id
-            else:
-                raise StrictEvidenceError("disposition_action")
-        work.superseded_by: dict[str, set[str]] = {}
-        work.succ_to_targets: dict[str, list[str]] = {}
-        for successor_id, disp_id in work.supersessions.items():
-            work.successor = work.by_id.get(successor_id)
-            if work.successor is None:
-                raise StrictEvidenceError("supersession_missing_successor")
-            if work.successor["record_kind"] == "decision" and successor_id in work.rejections:
-                raise StrictEvidenceError("supersession_rejected_successor")
-            disp = work.disp_by_id[disp_id]
-            work.targets = list(disp["target_assertion_ids"])
-            if sorted(work.successor.get("supersedes_assertion_ids") or []) != sorted(work.targets):
-                raise StrictEvidenceError("supersession_array_mismatch")
-            work.succ_to_targets[successor_id] = work.targets
-            for target in work.targets:
-                if target not in work.by_id:
-                    raise StrictEvidenceError("supersession_missing_target")
-                if target == successor_id:
-                    raise StrictEvidenceError("supersession_self")
-                work.t_rec = work.by_id[target]
-                if work.t_rec["logical_id"] != work.successor["logical_id"]:
-                    raise StrictEvidenceError("supersession_logical")
-                if work.t_rec["record_kind"] != work.successor["record_kind"]:
-                    raise StrictEvidenceError("supersession_kind")
-                if work.t_rec["project_binding_id"] != work.successor["project_binding_id"]:
-                    raise StrictEvidenceError("supersession_binding")
-                work.superseded_by.setdefault(target, set()).add(successor_id)
-        work.visiting: set[str] = set()
+def _x_walk(work: SimpleNamespace, node: str) -> None:
+    if node in work.visiting:
+        raise StrictEvidenceError("supersession_cycle")
+    if node in work.visited:
+        return
+    work.visiting.add(node)
+    for target in work.succ_to_targets.get(node, ()):
+        _x_walk(work, target)
+    work.visiting.remove(node)
+    work.visited.add(node)
 
-    def _phase_2():
-        work.visited: set[str] = set()
+def _reduce_phase_2(work: SimpleNamespace) -> None:
+    work.visited: set[str] = set()
 
-        def _walk(node: str) -> None:
-            if node in work.visiting:
-                raise StrictEvidenceError("supersession_cycle")
-            if node in work.visited:
-                return
-            work.visiting.add(node)
-            for target in work.succ_to_targets.get(node, ()):
-                _walk(target)
-            work.visiting.remove(node)
-            work.visited.add(node)
+    for node in work.succ_to_targets:
+        _x_walk(work, node)
+    work.authority: dict[str, str] = {}
+    work.state_disps: dict[str, list[str]] = {aid: [] for aid in work.by_id}
+    work.consumed_disps: set[str] = set()
 
-        for node in work.succ_to_targets:
-            _walk(node)
-        work.authority: dict[str, str] = {}
-        work.state_disps: dict[str, list[str]] = {aid: [] for aid in work.by_id}
-        work.consumed_disps: set[str] = set()
 
-        def _consume(aid: str, disp_id: str) -> None:
-            if disp_id in work.consumed_disps:
-                raise StrictEvidenceError("disposition_double_consume")
-            work.consumed_disps.add(disp_id)
-            work.state_disps[aid].append(disp_id)
-
-        return None
-
-    def _phase_3() -> None:
-        for aid, rec in work.by_id.items():
-            work.kind = rec["record_kind"]
-            if aid in work.withdrawals:
-                work.authority[aid] = "withdrawn"
-                _consume(aid, work.withdrawals[aid])
-                continue
-            if work.kind == "decision" and aid in work.rejections:
-                work.authority[aid] = "rejected"
-                _consume(aid, work.rejections[aid])
-                continue
-            if work.kind == "decision" and aid in work.revocations:
-                work.authority[aid] = "revoked"
-                _consume(aid, work.revocations[aid])
-                work.replaces = work.disp_by_id[work.revocations[aid]]["replaces_disposition_ref"]
-                if work.replaces not in work.consumed_disps:
-                    _consume(aid, work.replaces)
-                continue
-            if aid in work.superseded_by:
-                if work.kind == "decision":
-                    if aid in work.approvals:
-                        _consume(aid, work.approvals[aid])
-                    elif aid not in work.rejections:
-                        raise StrictEvidenceError("decision_disposition_required")
-                work.authority[aid] = "superseded"
-                for succ in sorted(work.superseded_by[aid]):
-                    work.state_disps[aid].append(work.supersessions[succ])
-                continue
+def _reduce_phase_3(work: SimpleNamespace) -> None:
+    for aid, rec in work.by_id.items():
+        work.kind = rec["record_kind"]
+        if aid in work.withdrawals:
+            work.authority[aid] = "withdrawn"
+            _reduce_consume(work, aid, work.withdrawals[aid])
+            continue
+        if work.kind == "decision" and aid in work.rejections:
+            work.authority[aid] = "rejected"
+            _reduce_consume(work, aid, work.rejections[aid])
+            continue
+        if work.kind == "decision" and aid in work.revocations:
+            work.authority[aid] = "revoked"
+            _reduce_consume(work, aid, work.revocations[aid])
+            work.replaces = work.disp_by_id[work.revocations[aid]]["replaces_disposition_ref"]
+            if work.replaces not in work.consumed_disps:
+                _reduce_consume(work, aid, work.replaces)
+            continue
+        if aid in work.superseded_by:
             if work.kind == "decision":
-                if aid not in work.approvals:
+                if aid in work.approvals:
+                    _reduce_consume(work, aid, work.approvals[aid])
+                elif aid not in work.rejections:
                     raise StrictEvidenceError("decision_disposition_required")
-                work.authority[aid] = "approved"
-                _consume(aid, work.approvals[aid])
-            else:
-                work.authority[aid] = "current"
-        for successor_id, disp_id in work.supersessions.items():
-            if disp_id not in work.consumed_disps:
-                _consume(successor_id, disp_id)
-        work.heads_by_logical: dict[str, list[str]] = {}
-        for aid, rec in work.by_id.items():
-            if work.authority[aid] in {"current", "approved"}:
-                work.heads_by_logical.setdefault(rec["logical_id"], []).append(aid)
-        for heads in work.heads_by_logical.values():
-            if len(heads) > 1:
-                for aid in heads:
-                    work.authority[aid] = "conflict"
-        work.final_heads_by_logical: dict[str, list[str]] = {}
-        for aid, rec in work.by_id.items():
-            if work.authority[aid] in {"current", "approved", "conflict"}:
-                work.final_heads_by_logical.setdefault(rec["logical_id"], []).append(aid)
+            work.authority[aid] = "superseded"
+            for succ in sorted(work.superseded_by[aid]):
+                work.state_disps[aid].append(work.supersessions[succ])
+            continue
+        if work.kind == "decision":
+            if aid not in work.approvals:
+                raise StrictEvidenceError("decision_disposition_required")
+            work.authority[aid] = "approved"
+            _reduce_consume(work, aid, work.approvals[aid])
+        else:
+            work.authority[aid] = "current"
+    for successor_id, disp_id in work.supersessions.items():
+        if disp_id not in work.consumed_disps:
+            _reduce_consume(work, successor_id, disp_id)
+    work.heads_by_logical: dict[str, list[str]] = {}
+    for aid, rec in work.by_id.items():
+        if work.authority[aid] in {"current", "approved"}:
+            work.heads_by_logical.setdefault(rec["logical_id"], []).append(aid)
+    for heads in work.heads_by_logical.values():
+        if len(heads) > 1:
+            for aid in heads:
+                work.authority[aid] = "conflict"
+    work.final_heads_by_logical: dict[str, list[str]] = {}
+    for aid, rec in work.by_id.items():
+        if work.authority[aid] in {"current", "approved", "conflict"}:
+            work.final_heads_by_logical.setdefault(rec["logical_id"], []).append(aid)
 
-    def _phase_4():
-        for logical in work.final_heads_by_logical:
-            work.final_heads_by_logical[logical] = sorted(work.final_heads_by_logical[logical])
-        work.verifications_by_target: dict[str, list[str]] = {}
-        for aid, rec in work.by_id.items():
-            if rec["record_kind"] == "verification" and work.authority[aid] in {"current", "conflict"}:
-                target = rec["target_assertion_id"]
-                if not isinstance(target, str):
-                    raise StrictEvidenceError("verification_target")
-                work.t_rec = work.by_id.get(target)
-                if work.t_rec is None:
-                    raise StrictEvidenceError("verification_target_missing")
-                if work.t_rec["record_kind"] == "verification":
-                    raise StrictEvidenceError("verification_target_kind")
-                if work.t_rec["project_binding_id"] != rec["project_binding_id"]:
-                    raise StrictEvidenceError("verification_target_binding")
-                if work.t_rec["record_kind"] == "decision" and work.authority[target] not in {
-                    "approved",
-                    "conflict",
-                    "superseded",
-                    "revoked",
-                    "rejected",
-                }:
-                    raise StrictEvidenceError("verification_target_decision")
-                work.verifications_by_target.setdefault(target, []).append(aid)
-        if work.consumed_disps != set(work.disp_by_id):
-            raise StrictEvidenceError("disposition_incomplete_consumption")
-        work.result: dict[str, ReducedState] = {}
-        for aid, rec in work.by_id.items():
-            work.kind = rec["record_kind"]
-            work.auth_state = work.authority[aid]
-            logical = rec["logical_id"]
-            work.head_set = tuple(work.final_heads_by_logical.get(logical, ()))
-            work.eligibility = rec["check_eligibility"]
-            if work.kind == "verification":
-                work.result[aid] = ReducedState(
-                    assertion_id=aid,
-                    logical_id=logical,
-                    record_kind=work.kind,
-                    authority_state=work.auth_state,
-                    verification_state="not_applicable",
-                    subject_head_assertion_ids=work.head_set,
-                    verification_inputs=(),
-                    state_disposition_refs=tuple(sorted(set(work.state_disps[aid]))),
-                    check_eligibility=work.eligibility,
-                )
-                continue
-            work.inputs: list[dict[str, Any]] = []
-            work.live = work.verifications_by_target.get(aid, [])
-            work.by_vlogical: dict[str, list[str]] = {}
-            for vid in work.live:
-                work.by_vlogical.setdefault(work.by_id[vid]["logical_id"], []).append(vid)
-            work.effective_results: list[str] = []
-            work.competing = False
-            for vids in work.by_vlogical.values():
-                work.live_heads = [v for v in vids if work.authority[v] in {"current", "conflict"}]
-                if len(work.live_heads) > 1:
-                    work.competing = True
-                for vid in sorted(work.live_heads):
-                    work.vrec = work.by_id[vid]
-                    work.reported = work.vrec["verification_result"]
-                    work.velig = work.vrec["check_eligibility"]
-                    if work.velig == "qualified":
-                        work.effective = work.reported
-                    else:
-                        work.effective = "inconclusive"
-                    work.inputs.append(
-                        {
-                            "assertion_id": vid,
-                            "logical_id": work.vrec["logical_id"],
-                            "authority_state": work.authority[vid],
-                            "reported_result": work.reported,
-                            "effective_result": work.effective,
-                            "check_eligibility": work.velig,
-                        }
-                    )
-                    work.effective_results.append(work.effective)
-            if work.competing:
-                work.verification_state = "conflict"
-            else:
-                work.verification_state = _truth_table(work.effective_results)
+def _reduce_phase_4(work: SimpleNamespace) -> dict[str, ReducedState]:
+    for logical in work.final_heads_by_logical:
+        work.final_heads_by_logical[logical] = sorted(work.final_heads_by_logical[logical])
+    work.verifications_by_target: dict[str, list[str]] = {}
+    for aid, rec in work.by_id.items():
+        if rec["record_kind"] == "verification" and work.authority[aid] in {"current", "conflict"}:
+            target = rec["target_assertion_id"]
+            if not isinstance(target, str):
+                raise StrictEvidenceError("verification_target")
+            work.t_rec = work.by_id.get(target)
+            if work.t_rec is None:
+                raise StrictEvidenceError("verification_target_missing")
+            if work.t_rec["record_kind"] == "verification":
+                raise StrictEvidenceError("verification_target_kind")
+            if work.t_rec["project_binding_id"] != rec["project_binding_id"]:
+                raise StrictEvidenceError("verification_target_binding")
+            if work.t_rec["record_kind"] == "decision" and work.authority[target] not in {
+                "approved",
+                "conflict",
+                "superseded",
+                "revoked",
+                "rejected",
+            }:
+                raise StrictEvidenceError("verification_target_decision")
+            work.verifications_by_target.setdefault(target, []).append(aid)
+    if work.consumed_disps != set(work.disp_by_id):
+        raise StrictEvidenceError("disposition_incomplete_consumption")
+    work.result: dict[str, ReducedState] = {}
+    for aid, rec in work.by_id.items():
+        work.kind = rec["record_kind"]
+        work.auth_state = work.authority[aid]
+        logical = rec["logical_id"]
+        work.head_set = tuple(work.final_heads_by_logical.get(logical, ()))
+        work.eligibility = rec["check_eligibility"]
+        if work.kind == "verification":
             work.result[aid] = ReducedState(
                 assertion_id=aid,
                 logical_id=logical,
                 record_kind=work.kind,
                 authority_state=work.auth_state,
-                verification_state=work.verification_state,
+                verification_state="not_applicable",
                 subject_head_assertion_ids=work.head_set,
-                verification_inputs=tuple(sorted(work.inputs, key=lambda x: x["assertion_id"])),
+                verification_inputs=(),
                 state_disposition_refs=tuple(sorted(set(work.state_disps[aid]))),
                 check_eligibility=work.eligibility,
             )
-        return work.result
+            continue
+        work.inputs: list[dict[str, Any]] = []
+        work.live = work.verifications_by_target.get(aid, [])
+        work.by_vlogical: dict[str, list[str]] = {}
+        for vid in work.live:
+            work.by_vlogical.setdefault(work.by_id[vid]["logical_id"], []).append(vid)
+        work.effective_results: list[str] = []
+        work.competing = False
+        for vids in work.by_vlogical.values():
+            work.live_heads = [v for v in vids if work.authority[v] in {"current", "conflict"}]
+            if len(work.live_heads) > 1:
+                work.competing = True
+            for vid in sorted(work.live_heads):
+                work.vrec = work.by_id[vid]
+                work.reported = work.vrec["verification_result"]
+                work.velig = work.vrec["check_eligibility"]
+                if work.velig == "qualified":
+                    work.effective = work.reported
+                else:
+                    work.effective = "inconclusive"
+                work.inputs.append(
+                    {
+                        "assertion_id": vid,
+                        "logical_id": work.vrec["logical_id"],
+                        "authority_state": work.authority[vid],
+                        "reported_result": work.reported,
+                        "effective_result": work.effective,
+                        "check_eligibility": work.velig,
+                    }
+                )
+                work.effective_results.append(work.effective)
+        if work.competing:
+            work.verification_state = "conflict"
+        else:
+            work.verification_state = _truth_table(work.effective_results)
+        work.result[aid] = ReducedState(
+            assertion_id=aid,
+            logical_id=logical,
+            record_kind=work.kind,
+            authority_state=work.auth_state,
+            verification_state=work.verification_state,
+            subject_head_assertion_ids=work.head_set,
+            verification_inputs=tuple(sorted(work.inputs, key=lambda x: x["assertion_id"])),
+            state_disposition_refs=tuple(sorted(set(work.state_disps[aid]))),
+            check_eligibility=work.eligibility,
+        )
+    return work.result
 
-    _phase_0()
-    _phase_1()
-    _out = _phase_2()
-    if _out is not None:
-        return _out
-    _phase_3()
-    _out = _phase_4()
-    if _out is not None:
-        return _out
+def reduce_complete_bound_state(
+    records: Sequence[Mapping[str, Any]], dispositions: Sequence[Mapping[str, Any]] | Mapping[str, Mapping[str, Any]]
+) -> dict[str, ReducedState]:
+    """Single complete-bound reducer. Never invoked at query time as a separate reducer."""
+    work = SimpleNamespace(records=records, dispositions=dispositions)
+
+    _reduce_phase_0(work)
+    _reduce_phase_1(work)
+    _reduce_phase_2(work)
+    _reduce_phase_3(work)
+    return _reduce_phase_4(work)
+
 
 
 def unresolved_predicate(state: ReducedState) -> bool:
