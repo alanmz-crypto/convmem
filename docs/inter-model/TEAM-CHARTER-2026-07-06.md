@@ -398,7 +398,10 @@ convmem record --approve-last
 - [docs/AGENT-ROLES.md](../AGENT-ROLES.md)
 - [docs/MODEL-WORKFLOW.md](../MODEL-WORKFLOW.md)
 - [docs/WILLOWYHOLLOW-SESSION-LOOP.md](../WILLOWYHOLLOW-SESSION-LOOP.md)
-- [DECISION-REVIEW-GUARDRAILS.md](DECISION-REVIEW-GUARDRAILS.md) — opt-in lens for checking whether continued review/analysis is still earning its keep; **not auto-loaded**, invoke by request only
+
+**Optional lenses (not team policy):** tools an agent may reach for on explicit request; none of these are charter rules and none are auto-loaded.
+
+- [DECISION-REVIEW-GUARDRAILS.md](DECISION-REVIEW-GUARDRAILS.md) — a request-only check for whether continued review/analysis still has decision value. Invoke by name; do not apply by default.
 
 ---
 

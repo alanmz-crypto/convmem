@@ -10,6 +10,8 @@ Why opt-in rather than default: this framework is optimized against over-process
 
 ## Roles (context, not new authority)
 
+*Authoritative source for lane roles and must-nots is [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md) §4. The summary below exists only so this doc reads standalone — if the two ever disagree, the charter wins.*
+
 - **Ryan owns final decisions:** architecture, scope, priorities, approvals.
 - **Planning agents propose:** bounded plans, no silent scope/architecture expansion.
 - **Implementers execute:** stop when implementation requires a new design decision.
