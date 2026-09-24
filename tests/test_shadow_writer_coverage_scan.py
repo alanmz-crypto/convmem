@@ -21,6 +21,28 @@ def _inventory() -> dict:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
+_SCAN_SKIP_PREFIXES = ("tests/", ".worktrees/", "review-bundles/")
+
+
+def _should_skip_scan_path(rel: str) -> bool:
+    return rel.startswith(_SCAN_SKIP_PREFIXES) or "docs/" in rel
+
+
+def test_scan_skip_ignores_worktree_snapshots_but_not_tracked_files() -> None:
+    """A `.worktrees/` checkout is an old branch snapshot, not the working
+    tree, and must not be scanned; a tracked production file must still be."""
+    assert _should_skip_scan_path(".worktrees/docs-some-branch/module.py")
+    assert not _should_skip_scan_path("some_module.py")
+
+
+def test_scan_skip_ignores_review_bundle_snapshots() -> None:
+    """A gitignored `review-bundles/` extract is a bundled copy for external
+    review, not the working tree, and must not be scanned."""
+    assert _should_skip_scan_path(
+        "review-bundles/some-review/bundle/repo/module.py"
+    )
+
+
 def test_inventory_documents_gated_routing() -> None:
     data = _inventory()
     assert data["must_use_factory_count"] == 0
@@ -55,7 +77,7 @@ def test_static_scan_matches_inventory_routing() -> None:
     scanned_ctor: set[str] = set()
     for path in sorted(ROOT.rglob("*.py")):
         rel = str(path.relative_to(ROOT))
-        if rel.startswith("tests/") or "docs/" in rel:
+        if _should_skip_scan_path(rel):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for i, line in enumerate(text.splitlines(), 1):

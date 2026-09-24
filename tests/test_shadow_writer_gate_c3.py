@@ -44,13 +44,16 @@ def test_production_apis_accept_no_caller_cfg() -> None:
         assert "config_path" in params
 
 
-def test_static_scan_zero_legacy_production_factory_calls() -> None:
+_SCAN_SKIP_PREFIXES = ("tests/", ".worktrees/", "review-bundles/")
+
+
+def _scan_legacy_factory_hits(root: Path) -> list[str]:
     factory = re.compile(r"\bopen_chroma_for_write\s*\(")
     old_session = re.compile(r"(?<![a-zA-Z_])chroma_write_session\s*\(")
     hits: list[str] = []
-    for path in sorted(ROOT.rglob("*.py")):
-        rel = str(path.relative_to(ROOT))
-        if rel.startswith("tests/") or "docs/" in rel:
+    for path in sorted(root.rglob("*.py")):
+        rel = str(path.relative_to(root))
+        if rel.startswith(_SCAN_SKIP_PREFIXES) or "docs/" in rel:
             continue
         if rel == "chroma_write_store.py":
             continue
@@ -64,7 +67,42 @@ def test_static_scan_zero_legacy_production_factory_calls() -> None:
                 and "production_chroma_write_session" not in line
             ):
                 hits.append(f"{rel}:{i}:old_session")
+    return hits
+
+
+def test_static_scan_zero_legacy_production_factory_calls() -> None:
+    hits = _scan_legacy_factory_hits(ROOT)
     assert not hits, f"legacy production write opens remain: {hits}"
+
+
+def test_static_scan_ignores_worktree_snapshots(tmp_path: Path) -> None:
+    """A legacy call under `.worktrees/` (an old branch snapshot, not the
+    working tree) must not fail the gate."""
+    worktree_file = tmp_path / ".worktrees" / "docs-some-branch" / "module.py"
+    worktree_file.parent.mkdir(parents=True)
+    worktree_file.write_text("open_chroma_for_write(cfg)\n", encoding="utf-8")
+    assert not _scan_legacy_factory_hits(tmp_path)
+
+
+def test_static_scan_ignores_review_bundle_snapshots(tmp_path: Path) -> None:
+    """A legacy call inside a gitignored `review-bundles/` extract (a bundled
+    copy of the repo for external review, not the working tree) must not
+    fail the gate."""
+    bundle_file = (
+        tmp_path / "review-bundles" / "some-review" / "bundle" / "repo" / "module.py"
+    )
+    bundle_file.parent.mkdir(parents=True)
+    bundle_file.write_text("open_chroma_for_write(cfg)\n", encoding="utf-8")
+    assert not _scan_legacy_factory_hits(tmp_path)
+
+
+def test_static_scan_still_catches_tracked_legacy_calls(tmp_path: Path) -> None:
+    """The `.worktrees/` exclusion must not blind the gate to a real
+    legacy call in a tracked production file."""
+    tracked_file = tmp_path / "some_module.py"
+    tracked_file.write_text("open_chroma_for_write(cfg)\n", encoding="utf-8")
+    hits = _scan_legacy_factory_hits(tmp_path)
+    assert hits == ["some_module.py:1:factory"]
 
 
 def test_all_writer_session_sites_inventoried() -> None:
