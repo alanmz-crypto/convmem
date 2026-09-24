@@ -11,14 +11,13 @@ DECISION. Implementation, testing, merge and runtime work are paused.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=73c0914b3bd71e78ce6848f5ea4b5f31fc72d53f
+SEMANTIC_PARENT_SHA=9a7891fd580cbaee2e13a8683e84a307443a00e6
 ORIGINAL_CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
-CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
 ACCEPTED_IMPLEMENTATION_SHA=8010fb060c2edc29e1b09d7a30b1a1da2689d489
 INTEGRATION_BASELINE_SHA=9193f5ec744f059d07a20612489b210527b5660a
 PROPOSED_IMPLEMENTATION_BRANCH=feat/2026-09-23-openclaw-convmem-m11-integration
-PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/73c0914b3bd71e78ce6848f5ea4b5f31fc72d53f/9193f5ec744f059d07a20612489b210527b5660a
-PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/73c0914b3bd71e78ce6848f5ea4b5f31fc72d53f/9193f5ec744f059d07a20612489b210527b5660a
+PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/9a7891fd580cbaee2e13a8683e84a307443a00e6/9193f5ec744f059d07a20612489b210527b5660a
+PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/9a7891fd580cbaee2e13a8683e84a307443a00e6/9193f5ec744f059d07a20612489b210527b5660a
 ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
 ```
@@ -41,8 +40,10 @@ use, Gate F expansion, watch configuration, and promotion remain separately
 blocked.
 
 The runner's single `--plan-sha` is always `SEMANTIC_PARENT_SHA`. The overlay
-SHA is separately named in Ryan's grant and in supervision records; it is not
-substituted into the parent's runner contract.
+SHA is the exact final branch tip Kiro reviews and Ryan later names as
+`REVIEWED_OVERLAY_SHA`; it is not substituted into the parent's runner
+contract. The future implementation branch starts at that reviewed overlay
+tip, whose non-plan bytes must equal `INTEGRATION_BASELINE_SHA`.
 
 Ryan's R-PROFILE-REFUSAL ruling ratifies the baseline selector normalization
 `(value or "").strip().lower()`. When the semantic parent does not explicitly
@@ -146,18 +147,20 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
 ### M0 — Current-state audit and frozen baseline
 
 1. **Name and purpose:** Establish exact, reproducible starting bytes.
-2. **Architectural outcome:** Implementation is based on `CODE_BASELINE_SHA`
+2. **Architectural outcome:** The accepted implementation was based on
+   `ORIGINAL_CODE_BASELINE_SHA`
    and governed by `SEMANTIC_PARENT_SHA`; no silent rebase, ambient state, or
    branch helper that silently substitutes `origin/main`.
 3. **Affected surfaces:** Git worktree/branch, supplied runtime prefix, and
    read-only inventories only; no product file changes.
 4. **Preconditions/dependencies:** Kiro PASS on this exact overlay/parent;
-   Ryan's exact T0–T5 grant; a branch Codex created at `CODE_BASELINE_SHA`; clean
+   Ryan's exact T0–T5 grant; a branch Codex created at
+   `ORIGINAL_CODE_BASELINE_SHA`; clean
    dedicated worktree; and the exact parent-frozen runtime supplied by Ryan or
    the one provisioning operator explicitly named in Ryan's grant; and one
    durable evidence location designated by Ryan for reviews and M7/M8 output.
 5. **Implementation tasks:** Codex creates and pushes the implementation branch
-   from `CODE_BASELINE_SHA` without using
+   from `ORIGINAL_CODE_BASELINE_SHA` without using
    `convmem work start`, because that helper branches from current
    `origin/main`. Codex copies the cited parent-review reports to the designated
    durable location and verifies their recorded hashes. From the shared
@@ -633,29 +636,33 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
 1. **Name and purpose:** Reconstruct the accepted bounded implementation on the
    reviewed current-main baseline and decide merge readiness without promoting
    its synthetic verdict into real OpenClaw or production authority.
-2. **Architectural outcome:** A clean integration tree rooted at
-   `INTEGRATION_BASELINE_SHA` contains the exact accepted 45-commit product
+2. **Architectural outcome:** A clean integration tree starts at
+   `REVIEWED_OVERLAY_SHA`, whose product state is rooted at
+   `INTEGRATION_BASELINE_SHA` and whose only baseline delta is the four reviewed
+   plan/status documents. It then contains the exact accepted 45-commit product
    history plus only the parent-frozen pin/comment reconciliation. Fresh
    evidence, not historical inference, proves that tree. No T0–T5 contract or
-   current-main-owned byte changes.
+   current-main-owned product byte changes.
 3. **Affected surfaces:** `PROPOSED_IMPLEMENTATION_BRANCH` in a separate
    worktree; the exact path set introduced or modified by
    `ORIGINAL_CODE_BASELINE_SHA..ACCEPTED_IMPLEMENTATION_SHA`; only the two pin
    files and nine comment/docstring files enumerated in parent Architecture
    §18.7 may differ from that accepted delta. The four plan/status documents
-   remain from this reconciliation lineage. Runtime and evidence writes are
+   must remain byte-identical to `REVIEWED_OVERLAY_SHA`. Runtime and evidence writes are
    limited to `PROPOSED_RUNTIME_PREFIX` and
    `PROPOSED_DURABLE_EVIDENCE_ROOT`.
 4. **Preconditions/dependencies:** M0–M8 accepted; exact-tip Kiro PASS on parent
-   `SEMANTIC_PARENT_SHA` and this overlay; a new Ryan grant naming both plus
+   `SEMANTIC_PARENT_SHA` and final `REVIEWED_OVERLAY_SHA`; a new Ryan grant naming both plus
    `ORIGINAL_CODE_BASELINE_SHA`, `ACCEPTED_IMPLEMENTATION_SHA`,
    `INTEGRATION_BASELINE_SHA`, `PROPOSED_IMPLEMENTATION_BRANCH`,
    `PROPOSED_RUNTIME_PREFIX`, and `PROPOSED_DURABLE_EVIDENCE_ROOT`. Codex alone
    creates the branch/worktree and provisions/rebinds the runtime. None is
    inferred from earlier grants.
-5. **Implementation tasks:** Codex creates/pushes the fresh branch from
-   `INTEGRATION_BASELINE_SHA`. Grok cherry-picks, in order and without merge
-   commits, exactly
+5. **Implementation tasks:** Codex verifies `REVIEWED_OVERLAY_SHA` descends from
+   `INTEGRATION_BASELINE_SHA`, differs in exactly the four authorized plan/status
+   documents, and leaves every non-plan byte identical. Codex then creates and
+   pushes the fresh implementation branch/worktree at `REVIEWED_OVERLAY_SHA`.
+   Grok cherry-picks, in order and without merge commits, exactly
    `2f05a8540b9155346f313d7b2eea6300fec29350^..8010fb060c2edc29e1b09d7a30b1a1da2689d489`;
    any conflict is `PAUSE`, not a Grok resolution. Grok then makes one held
    correction containing only the exact SHA literals/assertions and nine
@@ -663,10 +670,12 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
    refspec, and stops. Codex performs tree equivalence, provisions the frozen
    runtime, runs evidence, and hands the exact tip to Kiro. Grok does not run
    real OpenClaw or choose integration behavior.
-6. **Tests/evidence:** Codex proves the replay commit count/order and exact path
-   set; proves every current-main-owned changed path byte-identical to
-   `INTEGRATION_BASELINE_SHA`; and proves the replayed product delta equal to
-   the accepted old-baseline delta except for the allowed pin/comments. At one
+6. **Tests/evidence:** Codex proves overlay ancestry and its exact four-document
+   delta; proves the replay commit count/order and exact path set; proves the
+   reviewed plan/status blobs unchanged; proves every other current-main-owned
+   path byte-identical to `INTEGRATION_BASELINE_SHA` unless in the accepted
+   product delta or allowed pin/comments; and proves the replayed product delta
+   equal to the accepted old-baseline delta except for those allowances. At one
    clean pushed source commit, run the unchanged isolated M8 suite twice from
    fresh roots with `--plan-sha SEMANTIC_PARENT_SHA`, preserving 238 strict
    passes, 29 Node passes, 115 legacy passes, one legacy skip and four exact
@@ -681,7 +690,8 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
    checks, source/component hashes and staging-to-durable hash mappings.
 7. **Invariants:** Agents propose; Ryan locks. T0–T5 semantics, three-tool
    surface, authority/provenance/state/publication rules, frozen runner and
-   original accepted evidence remain unchanged. Current-main work is preserved.
+   original accepted evidence remain unchanged. Current-main product work and
+   the exact reviewed reconciliation documents are preserved.
    Only Ryan merges, activates, configures, admits live data, or promotes.
 8. **Forbidden changes:** Silent rebase or ordinary merge; conflict resolution;
    commit selection/drop/squash/edit; new or omitted product paths; schema,
@@ -701,9 +711,10 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
     OpenClaw update/use, live data, deployment or promotion. Routine exact replay
     under the later grant needs no per-commit Ryan approval but remains held by
     Codex statuses.
-11. **Live inspection:** Codex inspects branch base, each replayed commit/order,
-    conflicts, complete changed-file/path sets, pin/comment correction, current-
-    main byte preservation, dependencies, schemas/data, permissions, runtime
+11. **Live inspection:** Codex inspects overlay ancestry/four-document delta,
+    branch base, each replayed commit/order, conflicts, complete changed-file/
+    path sets, plan blob preservation, pin/comment correction, current-main byte
+    preservation, dependencies, schemas/data, permissions, runtime
     inventory/mutation state, both M8 outputs, legacy MCP/Pylint output, evidence
     copies, commits/push and every unsupported claim. Grok stops after replay and
     reconciliation checkpoints. Kiro reviews the exact integrated tip and
@@ -730,7 +741,8 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
 - [ ] M9 Gate W and Gate D remain separately BLOCKED pending packets/grants.
 - [ ] M10 remains BLOCKED until exact 32-run Gate D-V, Gate W, and Gate E.
 - [ ] M11 parent/overlay exact-tip Kiro PASS; Ryan integration grant; exact
-      reconstruction at `9193f5e`; runtime/evidence rebinding; tree proof; two
+      reconstruction from the reviewed overlay tip over product baseline
+      `9193f5e`; runtime/evidence rebinding; tree proof; two
       fresh M8 runs; seven legacy MCP tests; Pylint; integrated-tip Kiro PASS;
       and Ryan merge decision.
 
@@ -902,7 +914,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `73c0914b3bd71e78ce6848f5ea4b5f31fc72d53f` architecture/execution
+- The exact `9a7891fd580cbaee2e13a8683e84a307443a00e6` architecture/execution
   pair is the current semantic source of truth; this overlay only sequences,
   supervises and gates it.
 - M0–M8 passed and were accepted at `8010fb0` on original baseline `7809f20`.

@@ -53,7 +53,7 @@ crash-loop fix, not ordinary wiring.
 
 | Surface | State |
 |---|---|
-| Architecture direction | **BOUNDED BUILD/TEST PASS** for synthetic T0–T5; the current plan-only parent is `73c0914b3bd71e78ce6848f5ea4b5f31fc72d53f` and now freezes M11 current-main reconstruction without changing T0–T5 semantics |
+| Architecture direction | **BOUNDED BUILD/TEST PASS** for synthetic T0–T5; the current plan-only parent is `9a7891fd580cbaee2e13a8683e84a307443a00e6` and now freezes M11 current-main reconstruction without changing T0–T5 semantics |
 | Bounded implementation | **ACCEPTED** at `8010fb060c2edc29e1b09d7a30b1a1da2689d489` over original baseline `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; two M8 runs and exact-tip Kiro conformance passed |
 | Current-main baseline | `9193f5ec744f059d07a20612489b210527b5660a`; accepted implementation and current main have no product-path overlap, but acceptance does not transfer without reconstruction and fresh evidence |
 | M11 reconciliation | **PLAN-ONLY, PAUSED BEFORE IMPLEMENTATION** on `plan/2026-09-23-openclaw-convmem-m11-baseline-reconciliation`; Kiro exact-tip review is next, followed by a new Ryan integration decision |
