@@ -22,6 +22,7 @@ PROPOSED_IMPLEMENTATION_BRANCH=feat/2026-09-23-openclaw-convmem-m11-integration
 PRESERVED_INTEGRATION_TIP=a11b7a2a793c68e4e6e83c2680b077389a817c5c
 RECONCILIATION_BASE_OVERLAY_SHA=581de2abf430786a36f2612f97c623a19b61353f
 PYLINT_PLAN_BASE_OVERLAY_SHA=c5513d50b656f9cc9e6423ea819438f975d16ee5
+PYTEST_PLAN_BASE_OVERLAY_SHA=67d4f5aa62415f3550fbc56a760374cf3c19ee23
 PRESERVED_M11_TIP=9c6421a6891fd8a861a51f4fed410f541b53148c
 PYTEST_DIFFERENTIAL_BASE_SHA=9c6421a6891fd8a861a51f4fed410f541b53148c
 PRESERVED_M11_CANDIDATE_SHA=3f8ef8312e3f3c98915320bd1b988bac5d8d96a9
@@ -53,9 +54,13 @@ SHA is the exact final branch tip Kiro reviews and Ryan later names as
 `REVIEWED_OVERLAY_SHA`; it is not substituted into the parent's runner
 contract. The final overlay descends from `SEMANTIC_PARENT_SHA`; the preserved
 implementation branch receives the complete reviewed linear first-parent range
-after `PYLINT_PLAN_BASE_OVERLAY_SHA` through the final `REVIEWED_OVERLAY_SHA`
+after `PYTEST_PLAN_BASE_OVERLAY_SHA` through the final `REVIEWED_OVERLAY_SHA`
 named in Ryan's grant, oldest to newest, after Kiro PASS and a new Ryan grant.
-It is not recreated from the overlay.
+The four reviewed plan/STATUS blobs at `PRESERVED_M11_CANDIDATE_SHA` must first
+equal their corresponding blobs at `PYTEST_PLAN_BASE_OVERLAY_SHA`; otherwise
+application is `PAUSE`. The historical `PYLINT_PLAN_BASE_OVERLAY_SHA` remains
+evidence of the already-applied lint-plan range and is never replayed. The
+branch is not recreated from the overlay.
 
 Ryan's R-PROFILE-REFUSAL ruling ratifies the baseline selector normalization
 `(value or "").strip().lower()`. When the semantic parent does not explicitly
@@ -685,11 +690,15 @@ is `PAUSE`, not inferred scope.
    Merge readiness additionally requires the parent's exact
    `PYTEST_DIFFERENTIAL_PASS`, unchanged M8/MCP evidence and integrated review.
 3. **Affected surfaces:** Every commit in the reviewed linear first-parent range
-   after `PYLINT_PLAN_BASE_OVERLAY_SHA` through `REVIEWED_OVERLAY_SHA` is applied
-   oldest to newest to `PRESERVED_M11_CANDIDATE_SHA`; the range has no merge,
-   gap, reorder or out-of-scope commit, and its combined delta is exactly the
-   four reviewed architecture/execution/milestone/STATUS documents. No product,
-   test, CI, baseline, dependency, runtime or configuration path may change.
+   after `PYTEST_PLAN_BASE_OVERLAY_SHA` through `REVIEWED_OVERLAY_SHA` is applied
+   oldest to newest to `PRESERVED_M11_CANDIDATE_SHA`, whose four starting
+   document blobs must equal their corresponding blobs at
+   `PYTEST_PLAN_BASE_OVERLAY_SHA`; the historical range after
+   `PYLINT_PLAN_BASE_OVERLAY_SHA` is already present and is not replayed. The
+   new range has no merge, gap, reorder or out-of-scope commit,
+   and its combined delta is exactly the four reviewed architecture/execution/
+   milestone/STATUS documents. No product, test, CI, baseline, dependency,
+   runtime or configuration path may change.
    Volatile and durable evidence writes remain limited to the parent-defined
    disposable paths and `PROPOSED_DURABLE_EVIDENCE_ROOT`.
 4. **Preconditions/dependencies:** M0–M8 accepted; exact 44-path correction and
