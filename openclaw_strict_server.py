@@ -29,15 +29,15 @@ def _strict_env_key_set(*names: str) -> frozenset[str]:
 
 ALLOWED_ENV_KEYS = frozenset(
     {
-        "CONVMEM_MCP_PROFILE",
-        "CONVMEM_BOUND_READ_SCOPE_FILE",
-        "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
-        "CONVMEM_STRICT_CONFIG_FILE",
-        "HOME",
         "PATH",
-        "LANG",
-        "LC_ALL",
+        "CONVMEM_MCP_PROFILE",
         "TMPDIR",
+        "CONVMEM_BOUND_READ_SCOPE_FILE",
+        "LANG",
+        "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
+        "HOME",
+        "CONVMEM_STRICT_CONFIG_FILE",
+        "LC_ALL",
     }
 )
 

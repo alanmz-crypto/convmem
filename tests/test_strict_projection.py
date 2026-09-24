@@ -2362,12 +2362,13 @@ def test_m4_ranking_tie_order_and_overlapping_occurrences(
     assert ids == sorted(ids)
 
 
-# pylint: disable-next=R0914,unused-argument  # CLI boottime locals; pytest capsys name kept
+# pylint: disable-next=R0914  # CLI boottime lock locals mirror closed case vectors
 def test_m4_direct_cli_boottime_bound_and_shared_lock(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ):
     """Items 12/18: private+public opening, shared lock, 10s BOOTTIME, recheck."""
 
+    _ = capsys
     import fcntl
     import io
     import strict_projection as sp
@@ -2591,12 +2592,12 @@ def _m4_unseal_for_mutation(root: Path, *rels: str) -> None:
             os.chmod(path, 0o644)
 
 
-# pylint: disable-next=unused-argument  # pytest injects monkeypatch by name; body uses no patch
 def test_m4_same_inode_content_mutation_fails_pin_recheck(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     """Same-inode in-place byte mutation restored to 0444 must fail content pin."""
 
+    _ = monkeypatch
     from strict_projection import (
         pin_operator_immutable_path,
         recheck_operator_immutable_path,
