@@ -592,28 +592,31 @@ def test_m4_edit_allowlist_permits_mcp_server_protects_gate_w(monkeypatch):
         assert path not in oc_constants.SCHEMA_ALLOWLIST
         assert oc_allowlist.path_allowed(path) is False
 
-    _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
-    monkeypatch.setattr(
-        oc_allowlist,
-        "changed_paths",
-        lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
-    )
-    assert oc_allowlist.assert_allowlist(
-        Path("."), _M11_SYNTHETIC_SOURCE_COMMIT
-    ) == ["mcp_server.py"]
+    with monkeypatch.context() as scoped:
+        _m11_install_git_boundary_oracle(scoped, oc_allowlist)
+        scoped.setattr(
+            oc_allowlist,
+            "changed_paths",
+            lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
+        )
+        assert oc_allowlist.assert_allowlist(
+            Path("."), _M11_SYNTHETIC_SOURCE_COMMIT
+        ) == ["mcp_server.py"]
 
     # Second layer must still reject Gate W even if path_allowed were bypassed.
-    monkeypatch.setattr(oc_allowlist, "path_allowed", lambda _p: True)
-    monkeypatch.setattr(
-        oc_allowlist,
-        "changed_paths",
-        lambda *_a, **_k: _m11_control_delta(gate_w[0]),
-    )
-    try:
-        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
-        raise AssertionError("gate_w_second_layer_bypassed")
-    except SystemExit as exc:
-        assert str(exc) == f"gate_w_forbidden_change:{gate_w[0]}"
+    with monkeypatch.context() as scoped:
+        _m11_install_git_boundary_oracle(scoped, oc_allowlist)
+        scoped.setattr(oc_allowlist, "path_allowed", lambda _p: True)
+        scoped.setattr(
+            oc_allowlist,
+            "changed_paths",
+            lambda *_a, **_k: _m11_control_delta(gate_w[0]),
+        )
+        try:
+            oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
+            raise AssertionError("gate_w_second_layer_bypassed")
+        except SystemExit as exc:
+            assert str(exc) == f"gate_w_forbidden_change:{gate_w[0]}"
 
     with monkeypatch.context() as scoped:
         _check_m11_control_plane_exact_four_success(scoped)
