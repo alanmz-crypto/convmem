@@ -604,10 +604,8 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
         ManifestPoller,
         is_reconcile_token,
         reconcile_all,
-        reconcile_manifest,
         reconcile_token,
         repository_roots_from_cfg,
-        token_manifest_path,
     )
 
     apply_config(cfg)
