@@ -2,10 +2,11 @@
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS PAUSED AT THE
-REVIEWED-PLAN ALLOWLIST GATE. LIVE-DATA BLOCKED; PROMOTION BLOCKED.** Replay and pinning are
-preserved at `a11b7a2a793c68e4e6e83c2680b077389a817c5c`; the first M8 attempt stopped before
-imports or tests. This plan-only correction does not authorize a product/test edit, M8 retry,
-merge or runtime action; exact-tip review and a new Ryan resume grant are required first.
+PYLINT REGRESSION GATE. LIVE-DATA BLOCKED; PROMOTION BLOCKED.** The reviewed-plan correction and
+fresh M8/MCP evidence are preserved at `9c6421a6891fd8a861a51f4fed410f541b53148c`; the actual
+current-main Pylint gate then failed on 699 new occurrences. This plan-only correction freezes an
+exact 44-path remediation and does not authorize a product/test edit, retry, merge or runtime
+action; exact-tip review and a new Ryan resume grant are required first.
 BUILD is not complete-integration readiness and does not pass any of those later gates.
 
 **Date:** 2026-09-24
@@ -14,14 +15,15 @@ BUILD is not complete-integration readiness and does not pass any of those later
 
 **Architecture:** [revised architecture](ARCHITECTURE-openclaw-convmem-integration.md), especially
 §§6.5, 14, 17–18. The preceding runner and node-evidence correction history remains in §§10.3–4.
-Section 10.5 retains the completed reconstruction sequence; §10.6 freezes the control-plane
-allowlist correction and preserved-branch resume sequence. Review the two parent files together.
+Section 10.5 retains the completed reconstruction sequence; §10.6 records the completed
+control-plane correction; §10.7 freezes the Pylint remediation and preserved-tip resume sequence.
+Review the two parent files together.
 The retained Astra report reviews the earlier `0f1216f` revision, not this correction:
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
 `d3d330b6195263e86f0c648f446ca9b4dbbf648983ee2ec2ad9aeacc7cc2026a`.
 It found B-FIXTURE and B-DIGEST, corrected by `2aa66a8`. Section 10.3 records the later runner
 closure/suite repairs; §10.4 records the completed M8 evidence correction. This edit addresses
-only the M11 reviewed-plan collision in §10.6; the fixture, manager and five component sets remain
+only the observed M11 Pylint hold in §10.7; the fixture, manager and five component sets remain
 frozen.
 
 **Baselines:** Original accepted code baseline
@@ -29,9 +31,10 @@ frozen.
 `8010fb060c2edc29e1b09d7a30b1a1da2689d489`; proposed M11 integration baseline
 `9193f5ec744f059d07a20612489b210527b5660a`; preserved integration tip
 `a11b7a2a793c68e4e6e83c2680b077389a817c5c`; reconciliation base overlay
-`581de2abf430786a36f2612f97c623a19b61353f`. This revision changes plans only. A new grant must
-name the new reviewed parent and overlay, the preserved tip, rebound runtime and durable evidence
-root. No branch recreation, silent rebase, merge or history rewrite.
+`581de2abf430786a36f2612f97c623a19b61353f`; preserved lint-remediation input tip
+`9c6421a6891fd8a861a51f4fed410f541b53148c`. This revision changes plans only. A new grant must
+name the new reviewed parent and overlay, the preserved lint-input tip, exact 44 paths, rebound
+runtime and durable evidence root. No branch recreation, silent rebase, merge or history rewrite.
 
 **Roles:** Cursor using Grok 4.5 High remains the sole implementation lane and is paused. Codex owns
 architectural editing, branch/worktree creation, runtime provisioning and independent verification.
@@ -51,8 +54,8 @@ supervisor entrypoints and ordinary plugin registration refuse `runtime_not_qual
 separately reviewed Gate D adapter packet; command-line refusal exits 78 before OS operations.
 
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
-review and a new Ryan grant naming every §10.6 input. Known deferred issues do not authorize Grok
-to redesign the architecture.
+review and a new Ryan grant naming every §10.7 input. Known deferred issues do not authorize Grok
+to redesign the architecture or choose a weaker lint disposition.
 
 Those statements concern architectural readiness, not an Execute grant. C-RUNTIME remains a
 real, later-runtime blocker: the inspected credential-free authentication path rejects the
@@ -954,8 +957,131 @@ any attempt to suppress the documents from source export/hash, or any M8 executi
 grant is `PAUSE`. This correction does not authorize real OpenClaw, Gate D/W/D-V/E/F, watch
 activation, live data, merge, deployment or promotion.
 
-**TL;DR:** [Arc ConvMem Switchboard] M0–M8 passed at `8010fb0`; the M11 replay/pin result is
-preserved at `a11b7a2`, and its first fresh run paused before tests on the four reviewed plan blobs.
-§10.6 freezes their exact M11-only control-plane validation, unchanged product allowlists and
-two-commit plan application. No correction, retry, real OpenClaw action, merge, live data or
-promotion is authorized by this plan edit.
+### 10.7 M11 Pylint regression-remediation obligations
+
+Architecture §18.9 is controlling. The §18.8 correction and its follow-up node/leakage repairs are
+clean and pushed at `9c6421a6891fd8a861a51f4fed410f541b53148c`. Both fresh M8 runs and the seven
+legacy MCP regressions passed there. The unchanged current-main Pylint gate did not: it reported
+the following exact non-`R0801` occurrence deltas, all derived from report SHA-256
+`2b724b4ff79405ffb286452be6c17ebef7de4eaeabd6522985c4baaee605848b` against base
+`9193f5ec744f059d07a20612489b210527b5660a`.
+
+| Path | New occurrences | Exact message-ID counts |
+|---|---:|---|
+| `bound_read_scope.py` | 6 | `C0325:2`, `R0902:2`, `R0912:1`, `R0914:1` |
+| `mcp_server.py` | 1 | `C0302:1` |
+| `openclaw_activation_controller.py` | 66 | `C0103:1`, `C0123:3`, `C0302:1`, `C0325:3`, `E1102:4`, `E1111:8`, `E1136:29`, `R0902:3`, `R0912:3`, `R0914:1`, `R0916:1`, `R1731:1`, `W0613:1`, `W0621:2`, `W0718:5` |
+| `openclaw_activation_supervisor.py` | 13 | `C0123:1`, `E1111:3`, `E1136:4`, `R0902:2`, `R0911:1`, `R0917:1`, `W0613:1` |
+| `openclaw_strict_server.py` | 3 | `C0103:1`, `W0706:1`, `W0718:1` |
+| `strict_evidence_state.py` | 19 | `C0302:1`, `C0325:5`, `R0902:1`, `R0912:3`, `R0914:3`, `R0915:3`, `R0916:1`, `R1714:2` |
+| `strict_grounding.py` | 24 | `C0302:1`, `C0325:1`, `R0912:4`, `R0913:2`, `R0914:3`, `R0915:1`, `W0212:9`, `W0612:1`, `W0718:2` |
+| `strict_projection.py` | 27 | `C0302:1`, `C0325:1`, `R0902:2`, `R0912:3`, `R0913:2`, `R0914:6`, `R0915:2`, `W0108:1`, `W0212:7`, `W0611:1`, `W0707:1` |
+| `strict_projection_publisher.py` | 15 | `C0302:1`, `R0912:1`, `R0913:4`, `R0914:1`, `R0915:1`, `W0108:1`, `W0611:3`, `W0613:2`, `W0706:1` |
+| `tests/fixtures/openclaw_strict/adversarial_matrix.py` | 6 | `C0301:5`, `E0401:1` |
+| `tests/fixtures/openclaw_strict/allowlist.py` | 1 | `E0401:1` |
+| `tests/fixtures/openclaw_strict/audit_evidence.py` | 8 | `C0302:1`, `E0401:5`, `R0913:1`, `R0914:1` |
+| `tests/fixtures/openclaw_strict/canonical_oracle.py` | 1 | `W0706:1` |
+| `tests/fixtures/openclaw_strict/canonical_oracle_b.py` | 1 | `W0706:1` |
+| `tests/fixtures/openclaw_strict/component_inventory.py` | 3 | `E0401:1`, `R1721:1`, `W0707:1` |
+| `tests/fixtures/openclaw_strict/containment.py` | 1 | `E0401:1` |
+| `tests/fixtures/openclaw_strict/digest_oracle.py` | 3 | `C0103:2`, `C0325:1` |
+| `tests/fixtures/openclaw_strict/digest_oracle_b.py` | 4 | `C0103:2`, `C0123:1`, `C0325:1` |
+| `tests/fixtures/openclaw_strict/fixture_manifest.py` | 12 | `E0401:4`, `W0611:8` |
+| `tests/fixtures/openclaw_strict/fixture_platform.py` | 5 | `R0902:4`, `R0904:1` |
+| `tests/fixtures/openclaw_strict/inventory.py` | 1 | `E0401:1` |
+| `tests/fixtures/openclaw_strict/lifecycle_scripts.py` | 3 | `E0401:1`, `W0212:2` |
+| `tests/fixtures/openclaw_strict/limits.py` | 2 | `E0401:1`, `R0902:1` |
+| `tests/fixtures/openclaw_strict/preflight.py` | 3 | `E0401:1`, `R0914:1`, `W0611:1` |
+| `tests/fixtures/openclaw_strict/protocol_fixture/schema_contract.py` | 9 | `E0401:4`, `R0912:1`, `R0914:1`, `R0915:1`, `W0612:2` |
+| `tests/fixtures/openclaw_strict/run_isolated.py` | 27 | `C0411:4`, `C0413:10`, `E0401:11`, `E0611:1`, `R0914:1` |
+| `tests/fixtures/openclaw_strict/suites.py` | 1 | `E0401:1` |
+| `tests/test_bound_read_scope.py` | 3 | `W0404:1`, `W0611:1`, `W0621:1` |
+| `tests/test_mcp_openclaw_strict.py` | 10 | `C0209:1`, `R1702:1`, `W0212:3`, `W0612:1`, `W0613:3`, `W0718:1` |
+| `tests/test_openclaw_activation_controller.py` | 48 | `C0302:1`, `C0413:2`, `E0401:3`, `W0212:20`, `W0611:2`, `W0612:20` |
+| `tests/test_openclaw_activation_supervisor.py` | 23 | `C0413:2`, `E0401:2`, `E1101:3`, `E1123:1`, `W0212:14`, `W0612:1` |
+| `tests/test_openclaw_strict_packet_contract.py` | 62 | `C0302:1`, `C0304:1`, `C0413:3`, `E0401:47`, `R0914:1`, `W0212:2`, `W0404:4`, `W0611:1`, `W0621:2` |
+| `tests/test_strict_evidence_state.py` | 4 | `C1803:1`, `W0611:2`, `W0612:1` |
+| `tests/test_strict_grounding.py` | 13 | `C0302:1`, `W0612:8`, `W0613:4` |
+| `tests/test_strict_projection.py` | 81 | `C0301:1`, `C0302:1`, `C0325:1`, `C1803:1`, `E1101:5`, `R0913:1`, `R0914:4`, `R1714:1`, `W0212:33`, `W0404:9`, `W0612:10`, `W0613:3`, `W0621:9`, `W0632:1`, `W0718:1` |
+| `tests/test_strict_projection_publisher.py` | 19 | `C0302:1`, `C1803:1`, `R0914:2`, `W0404:2`, `W0611:1`, `W0612:6`, `W0613:1`, `W0621:1`, `W0632:2`, `W0718:2` |
+| `tests/test_strict_projection_recovery.py` | 1 | `C0301:1` |
+| `tests/test_strict_snapshot_revocation.py` | 3 | `W0611:3` |
+
+The 167 new aggregate `R0801` occurrences are governed separately by Architecture §18.9. The six
+additional, `R0801`-only paths are exactly
+`tests/fixtures/openclaw_strict/case58_oracle.py`,
+`tests/fixtures/openclaw_strict/constants.py`,
+`tests/fixtures/openclaw_strict/protocol_fixture/pinned_vectors.py`,
+`tests/fixtures/openclaw_strict/protocol_fixture/schema_field_sets.py`,
+`tests/fixtures/openclaw_strict/protocol_fixture/schema_instances.py`, and
+`tests/fixtures/openclaw_strict/protocol_fixture/specimens.py`. Together with the 38 table rows,
+they are the closed 44-path edit set; the observed report and table are an input inventory, not a
+license to edit any other file named inside an `R0801` message.
+
+No implementation action is authorized until the new semantic parent and paired milestone overlay
+receive exact-tip Kiro PASS and Ryan issues a grant naming both commits, preserved source tip
+`9c6421a6891fd8a861a51f4fed410f541b53148c`, branch, exact 44 paths, integration baseline, new
+parent-bound runtime prefix and durable evidence root. After that grant, execution order is fixed:
+
+1. Codex proves the implementation branch/worktree is clean, pushed and exactly at `9c6421a`; the
+   Pylint failure, two M8 passes and seven MCP passes remain retained evidence, not inherited final
+   acceptance.
+2. Grok cherry-picks exactly the two new plan commits in order, without merge, squash, edit,
+   conflict resolution, branch recreation or history rewrite, pushes and stops. Codex proves the
+   resulting delta is exactly the four reviewed documents and each blob/mode equals the reviewed
+   overlay. A commit-specific `CONTINUE` is mandatory.
+3. **L1 production checkpoint.** Grok changes only the nine top-level production paths in the
+   §18.9 set, preserving every public interface, serialized byte contract, exception/refusal effect
+   and injected-port behavior. It may extract only private in-file helpers. It pushes and stops.
+   Codex inspects the complete diff, dependencies, signatures, schemas, permissions and a targeted
+   Pylint report for those nine paths before issuing `CONTINUE`, `CORRECT`, `PAUSE` or
+   `REQUIRE TEST`.
+4. **L2 fixture/test checkpoint.** Grok changes only the remaining 35 exact paths. It repins the
+   reviewed parent/overlay only in the already frozen constants/assertions/comments, preserves
+   every node ID and expected outcome, applies Architecture §18.9's suppression hierarchy, pushes
+   and stops. Codex inspects the full diff and an explicit suppression inventory. Any unlisted
+   path, changed selector/node/outcome, broad disable or shared production/oracle helper is
+   `PAUSE`.
+5. **L3 gate-correction checkpoint.** Codex runs the full unchanged Pylint command and regression
+   gate in a fresh disposable clone using the exact workflow versions. If it fails only on a
+   still-increased fingerprint inside the 44-path set, Codex issues `CORRECT` naming the exact
+   fingerprint and Grok may correct only that finding before pushing and stopping again. A
+   baseline/config/gate failure, 45th path or required contract change is `PAUSE`; no finding is
+   waived to finish the milestone.
+6. Once the unchanged gate passes at one clean pushed commit, Codex proves the three protected
+   Pylint blobs match their §18.9 IDs, `git diff --check` is clean, no dependency/config/permission/
+   schema/selector change occurred, all 44 paths and only those paths differ beyond the reviewed
+   plans, and all suppressions satisfy §18.9.
+7. At that same exact commit and without source edits between runs, Codex executes the repository's
+   complete pytest job in a separately reviewed disposable CI-compatible environment, then the
+   unchanged isolated M8 runner twice from fresh roots, then the seven exact legacy MCP files.
+   The M8 node/outcome counts and identities must equal the accepted `9c6421a` evidence. Any test
+   failure returns `CORRECT` or `REQUIRE TEST`; a contract/scope conflict is `PAUSE`.
+8. Codex inventories the final source/component hashes and runtime pre/post tree, copies all raw
+   Pylint/pytest/M8/MCP output and suppression evidence to the Ryan-designated durable root, and
+   verifies the staging-to-durable byte/hash mapping. Kiro then reviews the exact integrated tip
+   and evidence. Ryan alone decides PR/merge.
+
+The exact Pylint commands remain those in `.github/workflows/pylint.yml`: install current
+`requirements.txt` plus `pylint==4.0.6 pytest==9.1.1`; run
+`pylint $(git ls-files "*.py") --output-format=json`; and invoke
+`scripts/pylint_regression_gate.py ci` with base ref
+`9193f5ec744f059d07a20612489b210527b5660a`. The base, report command, fingerprint algorithm,
+workflow file, committed baseline, gate script, dependency set and file discovery are not editable.
+The final gate must exit zero; targeted or preserved-tip comparisons are diagnostic only.
+
+Forbidden changes include `pylintrc`/pyproject/setup configuration, ignore patterns, per-file
+exclusions, thresholds, plugin changes, generated baselines, `--exit-zero`, path filtering,
+`disable=all`, `skip-file`, category-wide or unexplained suppressions, new dependencies/modules,
+public signature changes, schema/interface changes, selector/deselection/node changes, authority or
+permission changes, and edits to `atomic_files.py`, `canonical_json.py`,
+`tests/test_writer_census.py` or any other current-main path merely paired by `R0801`.
+
+This correction changes no T0–T5 meaning and authorizes no merge, real OpenClaw operation or update,
+Gate D/W/D-V/E/F, watch activation, live data, deployment or promotion.
+
+**TL;DR:** [Arc ConvMem Switchboard] The reviewed-plan correction and fresh M8/MCP evidence pass at
+`9c6421a`, but M11 is paused because the unchanged current-main Pylint gate reports 699 new
+occurrences. §10.7 freezes a 44-path remediation that preserves the real gate/baseline and all T0–T5
+semantics. No correction, retry, real OpenClaw action, merge, live data or promotion is authorized
+by this plan edit.
