@@ -95,6 +95,15 @@ def _projection_schema_paths(stems: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(paths)
 
 
+def _projection_schema_paths_from_short(short_names: list[str]) -> tuple[str, ...]:
+    """Prefix short schema basenames with schemas/convmem-."""
+
+    paths: list[str] = []
+    for short in short_names:
+        paths.append("schemas/convmem-" + short)
+    return tuple(paths)
+
+
 def _projection_field_set(*names: str) -> frozenset[str]:
     """Build projection closed field sets from an explicit name tuple."""
 
@@ -107,33 +116,20 @@ def _projection_inventory_lines(blob: str) -> tuple[str, ...]:
     return tuple(line for line in blob.splitlines() if line)
 
 
-_LAYOUT_FIELDS = _projection_field_set(
-    "schema",
-    "authority_dir",
-    "projection_dir",
-    "active_dir",
-    "locks_dir",
-    "control_dir",
-    "layout_payload_sha256",
+_LAYOUT_FIELDS = frozenset(
+    (
+    "schema|authority_dir|projection_dir|"
+    "active_dir|locks_dir|control_dir|layout_payload_sha256"
+    ).split("|")
 )
+
 _ENROLLMENT_FIELDS = frozenset(
-    name
-    for name in (
-        "schema",
-        "lineage_id",
-        "slot_id",
-        "mode",
-        "owner_digest",
-        "operator_uid",
-        "controller_uid",
-        "supervisor_uid",
-        "runtime_uid",
-        "scope_sha256",
-        "registry_sha256",
-        "semantic_contract_sha256",
-        "initial_source_cutoff_sha256",
-        "enrollment_payload_sha256",
-    )
+    (
+    "schema|lineage_id|slot_id|mode|owner_digest|"
+    "operator_uid|controller_uid|supervisor_uid|runtime_uid|"
+    "scope_sha256|registry_sha256|semantic_contract_sha256|"
+    "initial_source_cutoff_sha256|enrollment_payload_sha256"
+    ).split("|")
 )
 
 _PUBLICATION_FIELDS = _projection_field_set(
@@ -221,19 +217,11 @@ _PROJECTION_MANIFEST_FIELDS = _projection_field_set(
 
 
 _SEMANTIC_CONTRACT_FIELDS = frozenset(
-    name
-    for name in (
-        "schema",
-        "reducer_version",
-        "grounding_version",
-        "canonicalization_version",
-        "identity_version",
-        "search_kernel",
-        "search_kernel_version",
-        "tokenizer_unicode_version",
-        "schema_digests",
-        "contract_payload_sha256",
-    )
+    (
+    "schema|reducer_version|grounding_version|canonicalization_version|"
+    "identity_version|search_kernel|search_kernel_version|"
+    "tokenizer_unicode_version|schema_digests|contract_payload_sha256"
+    ).split("|")
 )
 
 # Frozen M3 semantic-contract constants — duplicated locally (never import publisher).
@@ -389,45 +377,18 @@ _INPUT_PAYLOAD_FIELD = {
     "convmem.strict-fixture-bundle.v2": "fixture_payload_sha256",
     "convmem.approved-admission.v1": "artifact_payload_sha256",
 }
-_FIXTURE_BUNDLE_FIELDS = (
-    frozenset(
-        {
-            "schema",
-            "lineage_id",
-            "operation_id",
-            "expected_parent_manifest_sha256",
-            "batches",
-            "dispositions",
-        }
-    )
-    | frozenset(
-        {
-            "provenance_context",
-            "grounding",
-            "built_at",
-            "as_of",
-            "expires_at",
-            "fixture_payload_sha256",
-        }
-    )
+_FIXTURE_BUNDLE_FIELDS = frozenset(
+    (
+    "schema|lineage_id|operation_id|expected_parent_manifest_sha256|"
+    "batches|dispositions|provenance_context|grounding|built_at|"
+    "as_of|expires_at|fixture_payload_sha256"
+    ).split("|")
 )
 
 _LAYOUT_DIR_VALUES = dict(
     zip(
-        (
-            "authority_dir",
-            "projection_dir",
-            "active_dir",
-            "locks_dir",
-            "control_dir",
-        ),
-        (
-            "authority",
-            "projection",
-            "active",
-            "locks",
-            "control",
-        ),
+        "authority_dir|projection_dir|active_dir|locks_dir|control_dir".split("|"),
+        "authority|projection|active|locks|control".split("|"),
         strict=True,
     )
 )
@@ -1139,44 +1100,34 @@ _BUILDER_CORE_MEMBERS: tuple[str, ...] = tuple(
     )
 )
 
-_BUILDER_SCHEMAS_GATE_B: tuple[str, ...] = _projection_schema_paths(
+_BUILDER_SCHEMAS_GATE_B: tuple[str, ...] = _projection_schema_paths_from_short(
     (
-        "convmem-bound-read-scope-v2.schema.json",
-        "convmem-project-binding-registry-v3.schema.json",
-        "convmem-bound-authority-record-v3.schema.json",
-        "convmem-authority-disposition-v1.schema.json",
-        "convmem-strict-provenance-context-v2.schema.json",
-        "convmem-strict-grounding-v1.schema.json",
-        "convmem-capture-receipt-v1.schema.json",
-        "convmem-strict-fixture-bundle-v2.schema.json",
-        "convmem-strict-citation-map-v1.schema.json",
-        "convmem-bound-authority-manifest-v3.schema.json",
-        "convmem-bound-projection-row-v2.schema.json",
-        "convmem-strict-graph-v1.schema.json",
-        "convmem-bound-projection-manifest-v3.schema.json",
-        "convmem-strict-generation-layout-v2.schema.json",
-        "convmem-strict-publication-v2.schema.json",
-        "convmem-strict-enrollment-v1.schema.json",
-        "convmem-strict-slot-v1.schema.json",
-        "convmem-strict-source-cutoff-v1.schema.json",
-        "convmem-strict-semantic-contract-v1.schema.json",
-        "convmem-strict-state-v2.schema.json",
-        "convmem-clock-review-v1.schema.json",
-        "convmem-raw-evidence-v3.schema.json",
-        "convmem-error-v1.schema.json",
-        "convmem-strict-config-v2.schema.json",
-    )
+    "bound-read-scope-v2.schema.json|project-binding-registry-v3.schema.json|"
+    "bound-authority-record-v3.schema.json|"
+    "authority-disposition-v1.schema.json|"
+    "strict-provenance-context-v2.schema.json|strict-grounding-v1.schema.json|"
+    "capture-receipt-v1.schema.json|strict-fixture-bundle-v2.schema.json|"
+    "strict-citation-map-v1.schema.json|"
+    "bound-authority-manifest-v3.schema.json|"
+    "bound-projection-row-v2.schema.json|strict-graph-v1.schema.json|"
+    "bound-projection-manifest-v3.schema.json|"
+    "strict-generation-layout-v2.schema.json|"
+    "strict-publication-v2.schema.json|strict-enrollment-v1.schema.json|"
+    "strict-slot-v1.schema.json|strict-source-cutoff-v1.schema.json|"
+    "strict-semantic-contract-v1.schema.json|strict-state-v2.schema.json|"
+    "clock-review-v1.schema.json|raw-evidence-v3.schema.json|"
+    "error-v1.schema.json|strict-config-v2.schema.json"
+    ).split("|")
 )
-_BUILDER_SCHEMAS_GATE_C: tuple[str, ...] = _projection_schema_paths(
+_BUILDER_SCHEMAS_GATE_C: tuple[str, ...] = _projection_schema_paths_from_short(
     (
-        "convmem-openclaw-connector-launch-v2.schema.json",
-        "convmem-openclaw-activation-v2.schema.json",
-        "convmem-activation-control-v1.schema.json",
-        "convmem-activation-retirement-v1.schema.json",
-        "convmem-activation-launch-policy-v1.schema.json",
-        "convmem-activation-manager-policy-v1.schema.json",
-        "convmem-controller-socket-policy-v1.schema.json",
-    )
+    "openclaw-connector-launch-v2.schema.json|"
+    "openclaw-activation-v2.schema.json|activation-control-v1.schema.json|"
+    "activation-retirement-v1.schema.json|"
+    "activation-launch-policy-v1.schema.json|"
+    "activation-manager-policy-v1.schema.json|"
+    "controller-socket-policy-v1.schema.json"
+    ).split("|")
 )
 _BUILDER_SCHEMAS_BC: tuple[str, ...] = _BUILDER_SCHEMAS_GATE_B + _BUILDER_SCHEMAS_GATE_C
 
@@ -2403,7 +2354,7 @@ def _acquire_shared_lineage_lock(path: Path) -> tuple[int, tuple[int, int]]:
         try:
             os.close(fd)
         except OSError as _close_exc:
-                    del _close_exc
+            del _close_exc
         raise
 
 

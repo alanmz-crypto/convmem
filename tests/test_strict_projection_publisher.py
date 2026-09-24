@@ -1902,14 +1902,14 @@ def _materializable_publish_inputs(
         "producer": "form-prod",
         "logical_key": "subject-key-1",
         **{
-            **dict((
-            ("title", "fixture title"),
-            ("document", "fixture document"),
-            ("observed_at", _TS),
-            ("confidence_bps", 7000),
-            ("relates_to_assertion_id", None),
-            ("target_assertion_id", None),
-            )),
+            **{
+            "title": "fixture title",
+            "document": "fixture document",
+            "observed_at": _TS,
+            "confidence_bps": 7000,
+            "relates_to_assertion_id": None,
+            "target_assertion_id": None,
+            },
             "verification_result": None,
         },
         "provenance_assertion_id": aid,

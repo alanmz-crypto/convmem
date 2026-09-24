@@ -298,14 +298,14 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
             assert "schema" in data["required"]
     for forbidden in (
         *(
-        f"schemas/{stem}"
-        for stem in (
-            "convmem-approved-admission-v1.schema.json",
-            "convmem-admission-intent-v1.schema.json",
-            "convmem-admission-review-v1.schema.json",
-            "convmem-admission-ratification-v1.schema.json",
-            "convmem-admission-event-v1.schema.json",
-        )
+            _packet_schema_path("convmem-" + short)
+            for short in (
+                "approved-admission-v1.schema.json|"
+                "admission-intent-v1.schema.json|"
+                "admission-review-v1.schema.json|"
+                "admission-ratification-v1.schema.json|"
+                "admission-event-v1.schema.json"
+            ).split("|")
         ),
     ):
         assert not Path(forbidden).exists(), f"gate_w_schema_present:{forbidden}"

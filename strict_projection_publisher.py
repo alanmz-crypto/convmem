@@ -808,20 +808,8 @@ def enroll_fixture(
         (
             ("schema", "convmem.strict-generation-layout.v2"),
             *zip(
-                (
-                    "authority_dir",
-                    "projection_dir",
-                    "active_dir",
-                    "locks_dir",
-                    "control_dir",
-                ),
-                (
-                    "authority",
-                    "projection",
-                    "active",
-                    "locks",
-                    "control",
-                ),
+                "authority_dir|projection_dir|active_dir|locks_dir|control_dir".split("|"),
+                "authority|projection|active|locks|control".split("|"),
                 strict=True,
             ),
             ("layout_payload_sha256", "sha256:" + ("0" * 64)),
