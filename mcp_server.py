@@ -6,6 +6,8 @@ Run via stdio (for Cursor, Kiro, Crush, Continue):
 Register in your MCP client config pointing at this script.
 Read-only by default. Write tools (propose_decision) require human confirmation.
 """
+# pylint: disable=C0302  # preserved MCP server module/component boundary
+
 
 import asyncio
 import json

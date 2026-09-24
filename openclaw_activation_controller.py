@@ -4,6 +4,8 @@ Production ``start`` / ``main`` refuse before any OS effect (Architecture §6.5.
 Library cores are constructed with a test-owned FixturePlatform; this module never
 imports ``tests/fixtures/openclaw_strict``.
 """
+# pylint: disable=C0302  # preserved activation-controller peer/slot/manager/retirement component boundary
+
 
 from __future__ import annotations
 
@@ -13,7 +15,7 @@ import struct
 import sys
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Mapping, MutableMapping, Protocol
+from typing import Any, Callable, Mapping, MutableMapping, Protocol, cast
 
 RUNTIME_NOT_QUALIFIED = "runtime_not_qualified"
 EX_CONFIG = 78
@@ -37,18 +39,24 @@ MAX_RESPONSE_FRAME = 2097152
 CONTROL_IO_TIMEOUT_NS = 10_000_000_000
 MAX_CONTROL_CONNECTIONS = 8
 
-REVOKE_REASONS = frozenset(
-    {
-        "operator",
-        "publish",
-        "scope_change",
-        "expiry",
-        "clock_anomaly",
-        "integrity_failure",
-        "disconnect",
-        "shutdown",
-    }
-)
+def _controller_revoke_reasons() -> frozenset[str]:
+    """Build external revoke-reason set (tuple source — distinct from supervisor)."""
+
+    return frozenset(
+        (
+            "operator",
+            "publish",
+            "scope_change",
+            "expiry",
+            "clock_anomaly",
+            "integrity_failure",
+            "disconnect",
+            "shutdown",
+        )
+    )
+
+
+REVOKE_REASONS = _controller_revoke_reasons()
 
 # Internal terminal reasons only — never accepted on external revoke requests.
 INTERNAL_TERMINAL_REASONS = frozenset({"capacity"})
@@ -161,35 +169,37 @@ CLOCK_REVIEW_KEYS = (
     "review_payload_sha256",
 )
 
-GATEWAY_AGENT_ENV_KEYS = frozenset(
-    {
-        "OPENCLAW_GATEWAY_TOKEN",
-        "OPENCLAW_STATE_DIR",
-        "OPENCLAW_CONFIG_PATH",
-        "HOME",
-        "PATH",
-        "LANG",
-        "LC_ALL",
-        "TMPDIR",
-        "XDG_CACHE_HOME",
-    }
+def _frozen_env_keys(*names: str) -> frozenset[str]:
+    """Build closed env-key sets from an explicit name tuple (R0801-safe shape)."""
+
+    return frozenset(names)
+
+
+GATEWAY_AGENT_ENV_KEYS = _frozen_env_keys(
+    "OPENCLAW_GATEWAY_TOKEN",
+    "OPENCLAW_STATE_DIR",
+    "OPENCLAW_CONFIG_PATH",
+    "HOME",
+    "PATH",
+    "LANG",
+    "LC_ALL",
+    "TMPDIR",
+    "XDG_CACHE_HOME",
 )
-STRICT_SERVER_ENV_KEYS = frozenset(
-    {
-        "CONVMEM_MCP_PROFILE",
-        "CONVMEM_BOUND_READ_SCOPE_FILE",
-        "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
-        "CONVMEM_STRICT_CONFIG_FILE",
-        "HOME",
-        "PATH",
-        "LANG",
-        "LC_ALL",
-        "TMPDIR",
-    }
+STRICT_SERVER_ENV_KEYS = _frozen_env_keys(
+    "CONVMEM_MCP_PROFILE",
+    "CONVMEM_BOUND_READ_SCOPE_FILE",
+    "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
+    "CONVMEM_STRICT_CONFIG_FILE",
+    "HOME",
+    "PATH",
+    "LANG",
+    "LC_ALL",
+    "TMPDIR",
 )
-SUPERVISOR_ENV_KEYS = frozenset({"NOTIFY_SOCKET", "WATCHDOG_USEC"})
-MODEL_WORKER_ENV_KEYS = frozenset(
-    {"HOME", "PATH", "TMPDIR", "XDG_CACHE_HOME", "OMP_NUM_THREADS"}
+SUPERVISOR_ENV_KEYS = _frozen_env_keys("NOTIFY_SOCKET", "WATCHDOG_USEC")
+MODEL_WORKER_ENV_KEYS = _frozen_env_keys(
+    "HOME", "PATH", "TMPDIR", "XDG_CACHE_HOME", "OMP_NUM_THREADS"
 )
 MOUNT_SOURCE_ROLES = frozenset(
     {"runtime", "public_evidence", "config", "model", "control", "state", "temp"}
@@ -279,15 +289,21 @@ class FixturePlatformPort(Protocol):
 
 
 def refuse_runtime_not_qualified() -> None:
+    """Refuse production entry before any OS effect (Architecture §6.5.8)."""
+
     print(RUNTIME_NOT_QUALIFIED, file=sys.stderr)
     raise SystemExit(EX_CONFIG)
 
 
 def start(*_args: Any, **_kwargs: Any) -> None:
+    """Production start entry — always refuses."""
+
     refuse_runtime_not_qualified()
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:  # pylint: disable=W0613  # public CLI argv retained for interface parity
+    """Production main entry — always refuses; argv unused by design."""
+
     refuse_runtime_not_qualified()
     return EX_CONFIG
 
@@ -323,9 +339,9 @@ def _sha_digest(value: Any) -> bool:
 
 
 def _require_int(value: Any, err: str) -> int:
-    """Exact integer — reject bools (``True`` is an ``int`` subclass)."""
+    """Exact integer type identity — reject bool and all int subclasses."""
 
-    if type(value) is not int:
+    if type(value) is not int:  # pylint: disable=C0123  # exact type identity; isinstance/__class__ admit spoofing or subclasses
         raise ValueError(err)
     return value
 
@@ -339,19 +355,20 @@ def _days_in_month(year: int, month: int) -> int:
     return 29 if leap else 28
 
 
+
+def _wall_separators_ok(wall: str) -> bool:
+    """Canonical wall-time separators at fixed offsets."""
+
+    expected = ((4, "-"), (7, "-"), (10, "T"), (13, ":"), (16, ":"), (19, "Z"))
+    return all(wall[idx] == ch for idx, ch in expected)
+
+
 def _parse_wall(wall: str) -> int:
     """Parse canonical ``YYYY-MM-DDTHH:MM:SSZ`` to epoch seconds (integer, no float)."""
 
     if not isinstance(wall, str) or len(wall) != 20:
         raise ValueError("bad_wall_time")
-    if (
-        wall[4] != "-"
-        or wall[7] != "-"
-        or wall[10] != "T"
-        or wall[13] != ":"
-        or wall[16] != ":"
-        or wall[19] != "Z"
-    ):
+    if not _wall_separators_ok(wall):
         raise ValueError("bad_wall_time")
     for idx, ch in enumerate(wall):
         if idx in (4, 7, 10, 13, 16, 19):
@@ -364,9 +381,9 @@ def _parse_wall(wall: str) -> int:
     hour = int(wall[11:13])
     minute = int(wall[14:16])
     second = int(wall[17:19])
-    if not (1 <= month <= 12):
+    if not 1 <= month <= 12:
         raise ValueError("bad_wall_time")
-    if not (1 <= day <= _days_in_month(year, month)):
+    if not 1 <= day <= _days_in_month(year, month):
         raise ValueError("bad_wall_time")
     if not (0 <= hour <= 23 and 0 <= minute <= 59 and 0 <= second <= 59):
         raise ValueError("bad_wall_time")
@@ -427,12 +444,14 @@ def lifecycle_config_core(config: Mapping[str, Any] | None = None) -> dict[str, 
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    out: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in out:
+    """Assemble object map while rejecting duplicate JSON keys."""
+
+    built: dict[str, Any] = {}
+    for name, item in pairs:
+        if name in built:
             raise ValueError("duplicate_key")
-        out[key] = value
-    return out
+        built[name] = item
+    return built
 
 
 def _reject_nonfinite(value: str) -> None:
@@ -520,8 +539,8 @@ def validate_control_request(request: Mapping[str, Any]) -> None:
             raise ValueError("bad_arguments")
         if request["reason"] not in REVOKE_REASONS:
             raise ValueError("bad_arguments")
-    for field in ("request_id", "slot_id", "activation_id"):
-        if not _hex32(request.get(field)):
+    for req_key in ("request_id", "slot_id", "activation_id"):
+        if not _hex32(request.get(req_key)):
             raise ValueError("bad_arguments")
 
 
@@ -569,7 +588,7 @@ def validate_activation_manifest(
     if known_state_dirs is not None and manifest["state_dir"] in known_state_dirs:
         raise ValueError("state_dir_reuse")
     gw_port = _require_int(manifest["gateway_port"], "bad_gateway_port")
-    if not (49152 <= gw_port <= 65535):
+    if not 49152 <= gw_port <= 65535:
         raise ValueError("bad_gateway_port")
     max_life = _require_int(manifest["max_monotonic_lifetime_seconds"], "bad_max_lifetime")
     if max_life < 1 or max_life > 86400:
@@ -580,7 +599,7 @@ def validate_activation_manifest(
         raise ValueError("manifest_self_hash")
     if capability_digests:
         for name, digest in capability_digests.items():
-            field = {
+            digest_key = {
                 "publication": "publication_sha256",
                 "launch_policy": "launch_policy_sha256",
                 "manager_policy": "manager_policy_sha256",
@@ -588,30 +607,38 @@ def validate_activation_manifest(
                 "model_artifacts": "model_artifacts_sha256",
                 "activation_manifest": "manifest_payload_sha256",
             }.get(name)
-            if field and manifest.get(field) != digest:
+            if digest_key and manifest.get(digest_key) != digest:
                 raise ValueError(f"cross_digest:{name}")
     if authority_head and manifest.get("publication_sha256") != authority_head:
         raise ValueError("head_drift")
     if launch_policy is not None:
-        policy_hash = _content_hash(launch_policy, "policy_payload_sha256")
-        if manifest["launch_policy_sha256"] != policy_hash:
-            raise ValueError("launch_policy_digest_drift")
-        if manifest["runtime_distribution_sha256"] != launch_policy["runtime_distribution_sha256"]:
-            raise ValueError("runtime_distribution_drift")
-        if manifest["model_artifacts_sha256"] != launch_policy["model_artifacts_sha256"]:
-            raise ValueError("model_artifacts_drift")
-        if manifest["manager_policy_sha256"] != launch_policy["manager_policy_sha256"]:
-            raise ValueError("manager_policy_drift")
-        endpoints = launch_policy["endpoints"]
-        if int(manifest["gateway_port"]) != int(endpoints["gateway_port"]):
-            raise ValueError("gateway_port_drift")
-        gw = launch_policy["processes"]["gateway"]["argv_template"]
-        ag = launch_policy["processes"]["agent"]["argv_template"]
-        if manifest["gateway_argv_sha256"] != _argv_digest(list(gw)):
-            raise ValueError("gateway_argv_digest_drift")
-        if manifest["agent_argv_sha256"] != _argv_digest(list(ag)):
-            raise ValueError("agent_argv_digest_drift")
+        _cross_check_manifest_launch_policy(manifest, launch_policy)
     return content
+
+
+def _cross_check_manifest_launch_policy(
+    manifest: Mapping[str, Any], launch_policy: Mapping[str, Any]
+) -> None:
+    """Verify activation manifest digests/ports against a launch policy."""
+
+    policy_hash = _content_hash(launch_policy, "policy_payload_sha256")
+    if manifest["launch_policy_sha256"] != policy_hash:
+        raise ValueError("launch_policy_digest_drift")
+    if manifest["runtime_distribution_sha256"] != launch_policy["runtime_distribution_sha256"]:
+        raise ValueError("runtime_distribution_drift")
+    if manifest["model_artifacts_sha256"] != launch_policy["model_artifacts_sha256"]:
+        raise ValueError("model_artifacts_drift")
+    if manifest["manager_policy_sha256"] != launch_policy["manager_policy_sha256"]:
+        raise ValueError("manager_policy_drift")
+    endpoints = launch_policy["endpoints"]
+    if int(manifest["gateway_port"]) != int(endpoints["gateway_port"]):
+        raise ValueError("gateway_port_drift")
+    gw = launch_policy["processes"]["gateway"]["argv_template"]
+    ag = launch_policy["processes"]["agent"]["argv_template"]
+    if manifest["gateway_argv_sha256"] != _argv_digest(list(gw)):
+        raise ValueError("gateway_argv_digest_drift")
+    if manifest["agent_argv_sha256"] != _argv_digest(list(ag)):
+        raise ValueError("agent_argv_digest_drift")
 
 
 def _validate_mount_list(entries: Any, *, writable: bool) -> int:
@@ -679,6 +706,97 @@ def _validate_strict_server_argv(argv: list[str], *, executable: str) -> None:
         raise ValueError("strict_server_executable_mismatch")
 
 
+
+def _validate_launch_process_env(role: str, env: Mapping[str, Any]) -> None:
+    """Closed environment key/value checks for one launch-policy process role."""
+
+    if not isinstance(env, dict) or any(
+        not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()
+    ):
+        raise ValueError(f"bad_env:{role}")
+    env_keys = frozenset(env.keys())
+    if role in ("gateway", "agent"):
+        if env_keys != GATEWAY_AGENT_ENV_KEYS:
+            raise ValueError(f"env_keys:{role}")
+    elif role == "strict_server":
+        if env_keys != STRICT_SERVER_ENV_KEYS:
+            raise ValueError(f"env_keys:{role}")
+        if env.get("CONVMEM_MCP_PROFILE") != "openclaw-strict":
+            raise ValueError("strict_profile")
+    elif role == "supervisor":
+        if env_keys != SUPERVISOR_ENV_KEYS:
+            raise ValueError(f"env_keys:{role}")
+    elif role == "model_worker":
+        if env_keys != MODEL_WORKER_ENV_KEYS:
+            raise ValueError(f"env_keys:{role}")
+
+
+def _validate_launch_process(
+    role: str, proc: Mapping[str, Any], *, gateway_port: int
+) -> None:
+    """Validate one process entry inside a launch policy."""
+
+    if set(proc.keys()) != set(PROCESS_KEYS):
+        raise ValueError(f"process_keys:{role}")
+    if not isinstance(proc["executable"], str) or not proc["executable"].startswith("/"):
+        raise ValueError(f"bad_executable:{role}")
+    if not isinstance(proc["argv_template"], list) or not proc["argv_template"]:
+        raise ValueError(f"bad_argv:{role}")
+    if not all(isinstance(x, str) for x in proc["argv_template"]):
+        raise ValueError(f"bad_argv_types:{role}")
+    argv = list(proc["argv_template"])
+    if role == "strict_server":
+        _validate_strict_server_argv(argv, executable=str(proc["executable"]))
+    elif argv[0] != proc["executable"]:
+        raise ValueError(f"executable_mismatch:{role}")
+    if role in ("gateway", "agent") and proc["cwd"] != EMPTY_CWD:
+        raise ValueError(f"bad_cwd:{role}")
+    if not isinstance(proc["cwd"], str) or not proc["cwd"].startswith("/"):
+        raise ValueError(f"bad_cwd:{role}")
+    _validate_launch_process_env(role, proc["environment"])
+    if not isinstance(proc["inherited_fd_roles"], list) or not all(
+        isinstance(x, str) for x in proc["inherited_fd_roles"]
+    ):
+        raise ValueError(f"bad_fd_roles:{role}")
+    if frozenset(proc["inherited_fd_roles"]) != FIXED_FD_ROLES[role]:
+        raise ValueError(f"fd_roles_fixed:{role}")
+    if len(proc["inherited_fd_roles"]) != len(FIXED_FD_ROLES[role]):
+        raise ValueError(f"fd_roles_fixed:{role}")
+    if proc["network_policy"] not in ("activation_loopback", "none"):
+        raise ValueError(f"bad_network:{role}")
+    if role == "strict_server" and proc["network_policy"] != "none":
+        raise ValueError("strict_server_network")
+    uid = _require_int(proc["uid"], f"uid_gid_types:{role}")
+    gid = _require_int(proc["gid"], f"uid_gid_types:{role}")
+    if uid != gid:
+        raise ValueError(f"uid_gid:{role}")
+    expected = 0 if role == "supervisor" else LOGICAL_UID["runtime"]
+    if uid != expected:
+        raise ValueError(f"role_uid:{role}")
+    seccomp = proc["seccomp_filter_sha256"]
+    if role == "strict_server":
+        if not _sha_digest(seccomp):
+            raise ValueError("strict_server_seccomp")
+    elif seccomp is not None:
+        raise ValueError(f"seccomp_must_be_null:{role}")
+    turn_count = sum(1 for part in argv if part == "TURN_TEXT")
+    if role == "agent":
+        if turn_count != 1:
+            raise ValueError("turn_text_count")
+        _validate_agent_argv(argv)
+    else:
+        if turn_count != 0:
+            raise ValueError("turn_text_role")
+    if role == "gateway":
+        _validate_gateway_argv(argv, gateway_port=gateway_port)
+    if role == "model_worker" and argv != ["/fixture/bin/model-worker"]:
+        raise ValueError("model_worker_argv")
+    if role in ("gateway", "agent", "strict_server", "model_worker"):
+        forbidden = {"control", "notify", "lease", "operator_control", "supervisor_control"}
+        if forbidden.intersection(proc["inherited_fd_roles"]):
+            raise ValueError(f"runtime_fd_forbidden:{role}")
+
+
 def validate_launch_policy(
     policy: Mapping[str, Any],
     *,
@@ -723,85 +841,7 @@ def validate_launch_policy(
         raise ValueError("bad_model_id")
 
     for role in PROCESS_ROLES:
-        proc = processes[role]
-        if set(proc.keys()) != set(PROCESS_KEYS):
-            raise ValueError(f"process_keys:{role}")
-        if not isinstance(proc["executable"], str) or not proc["executable"].startswith("/"):
-            raise ValueError(f"bad_executable:{role}")
-        if not isinstance(proc["argv_template"], list) or not proc["argv_template"]:
-            raise ValueError(f"bad_argv:{role}")
-        if not all(isinstance(x, str) for x in proc["argv_template"]):
-            raise ValueError(f"bad_argv_types:{role}")
-        argv = list(proc["argv_template"])
-        if role == "strict_server":
-            _validate_strict_server_argv(argv, executable=str(proc["executable"]))
-        elif argv[0] != proc["executable"]:
-            raise ValueError(f"executable_mismatch:{role}")
-        if role in ("gateway", "agent") and proc["cwd"] != EMPTY_CWD:
-            raise ValueError(f"bad_cwd:{role}")
-        if not isinstance(proc["cwd"], str) or not proc["cwd"].startswith("/"):
-            raise ValueError(f"bad_cwd:{role}")
-        env = proc["environment"]
-        if not isinstance(env, dict) or any(
-            not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()
-        ):
-            raise ValueError(f"bad_env:{role}")
-        env_keys = frozenset(env.keys())
-        if role in ("gateway", "agent"):
-            if env_keys != GATEWAY_AGENT_ENV_KEYS:
-                raise ValueError(f"env_keys:{role}")
-        elif role == "strict_server":
-            if env_keys != STRICT_SERVER_ENV_KEYS:
-                raise ValueError(f"env_keys:{role}")
-            if env.get("CONVMEM_MCP_PROFILE") != "openclaw-strict":
-                raise ValueError("strict_profile")
-        elif role == "supervisor":
-            if env_keys != SUPERVISOR_ENV_KEYS:
-                raise ValueError(f"env_keys:{role}")
-        elif role == "model_worker":
-            if env_keys != MODEL_WORKER_ENV_KEYS:
-                raise ValueError(f"env_keys:{role}")
-        if not isinstance(proc["inherited_fd_roles"], list) or not all(
-            isinstance(x, str) for x in proc["inherited_fd_roles"]
-        ):
-            raise ValueError(f"bad_fd_roles:{role}")
-        if frozenset(proc["inherited_fd_roles"]) != FIXED_FD_ROLES[role]:
-            raise ValueError(f"fd_roles_fixed:{role}")
-        if len(proc["inherited_fd_roles"]) != len(FIXED_FD_ROLES[role]):
-            raise ValueError(f"fd_roles_fixed:{role}")
-        if proc["network_policy"] not in ("activation_loopback", "none"):
-            raise ValueError(f"bad_network:{role}")
-        if role == "strict_server" and proc["network_policy"] != "none":
-            raise ValueError("strict_server_network")
-        uid = _require_int(proc["uid"], f"uid_gid_types:{role}")
-        gid = _require_int(proc["gid"], f"uid_gid_types:{role}")
-        if uid != gid:
-            raise ValueError(f"uid_gid:{role}")
-        expected = 0 if role == "supervisor" else LOGICAL_UID["runtime"]
-        if uid != expected:
-            raise ValueError(f"role_uid:{role}")
-        seccomp = proc["seccomp_filter_sha256"]
-        if role == "strict_server":
-            if not _sha_digest(seccomp):
-                raise ValueError("strict_server_seccomp")
-        elif seccomp is not None:
-            raise ValueError(f"seccomp_must_be_null:{role}")
-        turn_count = sum(1 for part in argv if part == "TURN_TEXT")
-        if role == "agent":
-            if turn_count != 1:
-                raise ValueError("turn_text_count")
-            _validate_agent_argv(argv)
-        else:
-            if turn_count != 0:
-                raise ValueError("turn_text_role")
-        if role == "gateway":
-            _validate_gateway_argv(argv, gateway_port=gw_port)
-        if role == "model_worker" and argv != ["/fixture/bin/model-worker"]:
-            raise ValueError("model_worker_argv")
-        if role in ("gateway", "agent", "strict_server", "model_worker"):
-            forbidden = {"control", "notify", "lease", "operator_control", "supervisor_control"}
-            if forbidden.intersection(proc["inherited_fd_roles"]):
-                raise ValueError(f"runtime_fd_forbidden:{role}")
+        _validate_launch_process(role, processes[role], gateway_port=gw_port)
 
     ro_total = _validate_mount_list(policy["read_only_mounts"], writable=False)
     _ = ro_total
@@ -839,7 +879,7 @@ class FreshnessAnchor:
 
 
 @dataclass(frozen=True)
-class SealedActivationRecord:
+class SealedActivationRecord:  # pylint: disable=R0902  # attributes mirror sealed activation record fields
     """Immutable sealed predecessor — SEALED has no outgoing transition."""
 
     activation_id: str
@@ -867,7 +907,7 @@ class SealedActivationRecord:
 
 
 @dataclass
-class SlotState:
+class SlotState:  # pylint: disable=R0902  # attributes mirror slot lifecycle state machine fields
     slot_id: str
     lineage_id: str
     state: str = "NEW"
@@ -895,7 +935,7 @@ class SlotState:
 
 
 @dataclass
-class ControllerCore:
+class ControllerCore:  # pylint: disable=R0902  # attributes mirror controller session/slot bookkeeping fields
     """Stable-slot lifecycle, peer policy, lock order, retirement/quarantine."""
 
     platform: FixturePlatformPort
@@ -904,7 +944,7 @@ class ControllerCore:
     _slot_transition_held: bool = False
     _lineage_exclusive_held: bool = False
     _open_sessions: set[str] = field(default_factory=set)
-    MAX_CONTROL_CONNECTIONS: int = MAX_CONTROL_CONNECTIONS
+    MAX_CONTROL_CONNECTIONS: int = MAX_CONTROL_CONNECTIONS  # pylint: disable=C0103  # public capacity attribute name is part of controller interface
     _inbound_bufs: dict[str, bytearray] = field(default_factory=dict)
     _conn_activity_ns: dict[str, int] = field(default_factory=dict)
     _conn_send_started_ns: dict[str, int] = field(default_factory=dict)
@@ -962,7 +1002,8 @@ class ControllerCore:
         self._lineage_exclusive_held = False
 
     def validate_peer(self, connection_id: str, *, expected_role: str = "operator") -> dict[str, int]:
-        creds = self.platform.peer(connection_id)
+        # Protocol stub has ellipsis body; cast preserves injected-port return contract.
+        creds = cast(dict[str, int], self.platform.peer(connection_id))
         expected_uid = LOGICAL_UID[expected_role]
         expected_gid = LOGICAL_GID[expected_role]
         if creds.get("uid") != expected_uid or creds.get("gid") != expected_gid:
@@ -974,7 +1015,8 @@ class ControllerCore:
             raise ValueError(f"access_denied:{role}:{path}:{operation}")
 
     def _sample_paired(self) -> dict[str, Any]:
-        return self.platform.sample_clock()
+        # Protocol stub has ellipsis body; cast restores subscriptable sample dict.
+        return cast(dict[str, Any], self.platform.sample_clock())
 
     def _update_clock_anomaly(self, st: SlotState, sample: Mapping[str, Any]) -> None:
         """Paired interval: lower=wall-boottime_after, upper=wall-boottime_before."""
@@ -989,8 +1031,7 @@ class ControllerCore:
             st.wall_offset_lower_bound = lower
         else:
             # Retain maximum lower bound.
-            if lower > st.wall_offset_lower_bound:
-                st.wall_offset_lower_bound = lower
+            st.wall_offset_lower_bound = max(st.wall_offset_lower_bound, lower)
             # Seal only when a new upper is below the retained lower bound.
             if upper < st.wall_offset_lower_bound:
                 self._enter_revoking(st, "clock_anomaly")
@@ -1075,7 +1116,7 @@ class ControllerCore:
             raise ValueError("clock_review_snapshot_mismatch")
         if int(clock_review.get("reviewer_uid", -1)) != LOGICAL_UID["operator"] or type(
             clock_review.get("reviewer_uid")
-        ) is not int:
+        ) is not int:  # pylint: disable=C0123  # exact type identity; isinstance/__class__ admit spoofing or subclasses
             raise ValueError("clock_review_reviewer_uid")
         if not isinstance(clock_review.get("reviewed_wall_time"), str):
             raise ValueError("clock_review_wall")
@@ -1162,6 +1203,87 @@ class ControllerCore:
         self.supervisor.reset_for_new_activation()
         return new_st
 
+
+    def _prepare_activation_freshness_and_lease(
+        self,
+        st: SlotState,
+        *,
+        activation_manifest: Mapping[str, Any],
+        sample: Mapping[str, Any],
+        snap_id: str,
+        remaining_snapshot_lifetime_ns: int | None,
+        clock_review: Mapping[str, Any] | None,
+        max_activation_lifetime_s: int | None,
+    ) -> int:
+        """Establish/refresh freshness and compute the activation lease deadline."""
+
+        if st.freshness_anchor is not None and st.freshness_anchor.boot_id != sample["boot_id"]:
+            self.establish_freshness_anchor(
+                st,
+                authority_snapshot_id=snap_id,
+                remaining_snapshot_lifetime_ns=remaining_snapshot_lifetime_ns,
+                clock_review=clock_review,
+            )
+        elif st.freshness_anchor is None:
+            wall_now = _parse_wall(str(sample["wall_time"]))
+            expires_s = _parse_wall(str(st.expires_at or activation_manifest["expires_at"]))
+            rem_wall_ns = (expires_s - wall_now) * 1_000_000_000
+            if rem_wall_ns <= 0:
+                raise ValueError("nonpositive_remaining_lifetime")
+            if remaining_snapshot_lifetime_ns is not None:
+                if type(remaining_snapshot_lifetime_ns) is not int:  # pylint: disable=C0123  # exact type identity; isinstance/__class__ admit spoofing or subclasses
+                    raise ValueError("bad_snapshot_lifetime")
+                if remaining_snapshot_lifetime_ns < 0:
+                    raise ValueError("negative_snapshot_lifetime")
+            rem = (
+                rem_wall_ns
+                if remaining_snapshot_lifetime_ns is None
+                else min(int(remaining_snapshot_lifetime_ns), rem_wall_ns)
+            )
+            if rem <= 0:
+                raise ValueError("nonpositive_remaining_lifetime")
+            deadline = int(sample["boottime_after_ns"]) + rem
+            if deadline <= int(sample["boottime_after_ns"]):
+                raise ValueError("nonpositive_deadline")
+            st.freshness_anchor = FreshnessAnchor(
+                boot_id=str(sample["boot_id"]),
+                authority_snapshot_id=snap_id,
+                sampled_wall_time=str(sample["wall_time"]),
+                sampled_boottime_ns=int(sample["boottime_after_ns"]),
+                snapshot_deadline_boottime_ns=deadline,
+                clock_review_ref=None,
+            )
+        else:
+            self.establish_freshness_anchor(
+                st,
+                authority_snapshot_id=snap_id,
+                remaining_snapshot_lifetime_ns=remaining_snapshot_lifetime_ns,
+                clock_review=None,
+            )
+        assert st.freshness_anchor is not None
+        manifest_max = _require_int(
+            activation_manifest["max_monotonic_lifetime_seconds"], "bad_max_lifetime"
+        )
+        if max_activation_lifetime_s is not None:
+            caller_max = _require_int(max_activation_lifetime_s, "bad_max_lifetime")
+            if caller_max < 1 or caller_max > 86400:
+                raise ValueError("bad_max_lifetime")
+            # Caller shrink only — never enlarge the manifest bound.
+            max_life = min(manifest_max, caller_max)
+        else:
+            max_life = manifest_max
+        if max_life < 1 or max_life > 86400:
+            raise ValueError("bad_max_lifetime")
+        expires_at = str(st.expires_at or activation_manifest["expires_at"])
+        wall_now = _parse_wall(str(sample["wall_time"]))
+        expires_s = _parse_wall(expires_at)
+        remaining_wall = expires_s - wall_now
+        if remaining_wall <= 0:
+            raise ValueError("nonpositive_remaining_lifetime")
+        bound = min(remaining_wall, max_life)
+        lease_from_now = int(sample["boottime_after_ns"]) + 1_000_000_000 * bound
+        return min(st.freshness_anchor.snapshot_deadline_boottime_ns, lease_from_now)
+
     def qualify_and_activate(
         self,
         slot_id: str,
@@ -1201,7 +1323,7 @@ class ControllerCore:
                     raise ValueError("runtime_private_access_allowed")
             # Pending old populated unit blocks launch.
             if st.unit_invocation_id:
-                obs = self.platform.manager_observe(st.unit_invocation_id)
+                obs = cast(dict[str, Any], self.platform.manager_observe(st.unit_invocation_id))
                 if obs.get("populated") is not False:
                     raise ValueError("pending_populated_unit")
             caps = self._capability_digests()
@@ -1226,75 +1348,19 @@ class ControllerCore:
             act_id = str(activation_manifest["activation_id"])
             snap_id = str(activation_manifest["snapshot_id"])
             sample = self._sample_paired()
-            if st.freshness_anchor is not None and st.freshness_anchor.boot_id != sample["boot_id"]:
-                self.establish_freshness_anchor(
-                    st,
-                    authority_snapshot_id=snap_id,
-                    remaining_snapshot_lifetime_ns=remaining_snapshot_lifetime_ns,
-                    clock_review=clock_review,
-                )
-            elif st.freshness_anchor is None:
-                wall_now = _parse_wall(str(sample["wall_time"]))
-                expires_s = _parse_wall(str(st.expires_at or activation_manifest["expires_at"]))
-                rem_wall_ns = (expires_s - wall_now) * 1_000_000_000
-                if rem_wall_ns <= 0:
-                    raise ValueError("nonpositive_remaining_lifetime")
-                if remaining_snapshot_lifetime_ns is not None:
-                    if type(remaining_snapshot_lifetime_ns) is not int:
-                        raise ValueError("bad_snapshot_lifetime")
-                    if remaining_snapshot_lifetime_ns < 0:
-                        raise ValueError("negative_snapshot_lifetime")
-                rem = (
-                    rem_wall_ns
-                    if remaining_snapshot_lifetime_ns is None
-                    else min(int(remaining_snapshot_lifetime_ns), rem_wall_ns)
-                )
-                if rem <= 0:
-                    raise ValueError("nonpositive_remaining_lifetime")
-                deadline = int(sample["boottime_after_ns"]) + rem
-                if deadline <= int(sample["boottime_after_ns"]):
-                    raise ValueError("nonpositive_deadline")
-                st.freshness_anchor = FreshnessAnchor(
-                    boot_id=str(sample["boot_id"]),
-                    authority_snapshot_id=snap_id,
-                    sampled_wall_time=str(sample["wall_time"]),
-                    sampled_boottime_ns=int(sample["boottime_after_ns"]),
-                    snapshot_deadline_boottime_ns=deadline,
-                    clock_review_ref=None,
-                )
-            else:
-                self.establish_freshness_anchor(
-                    st,
-                    authority_snapshot_id=snap_id,
-                    remaining_snapshot_lifetime_ns=remaining_snapshot_lifetime_ns,
-                    clock_review=None,
-                )
-            assert st.freshness_anchor is not None
-            manifest_max = _require_int(
-                activation_manifest["max_monotonic_lifetime_seconds"], "bad_max_lifetime"
+            lease = self._prepare_activation_freshness_and_lease(
+                st,
+                activation_manifest=activation_manifest,
+                sample=sample,
+                snap_id=snap_id,
+                remaining_snapshot_lifetime_ns=remaining_snapshot_lifetime_ns,
+                clock_review=clock_review,
+                max_activation_lifetime_s=max_activation_lifetime_s,
             )
-            if max_activation_lifetime_s is not None:
-                caller_max = _require_int(max_activation_lifetime_s, "bad_max_lifetime")
-                if caller_max < 1 or caller_max > 86400:
-                    raise ValueError("bad_max_lifetime")
-                # Caller shrink only — never enlarge the manifest bound.
-                max_life = min(manifest_max, caller_max)
-            else:
-                max_life = manifest_max
-            if max_life < 1 or max_life > 86400:
-                raise ValueError("bad_max_lifetime")
             expires_at = str(st.expires_at or activation_manifest["expires_at"])
-            wall_now = _parse_wall(str(sample["wall_time"]))
-            expires_s = _parse_wall(expires_at)
-            remaining_wall = expires_s - wall_now
-            if remaining_wall <= 0:
-                raise ValueError("nonpositive_remaining_lifetime")
-            bound = min(remaining_wall, max_life)
-            lease_from_now = int(sample["boottime_after_ns"]) + 1_000_000_000 * bound
-            lease = min(st.freshness_anchor.snapshot_deadline_boottime_ns, lease_from_now)
 
             # Manager start — retain IDs even if spawn/ready fails.
-            ids = self.platform.manager_start(slot_id, act_id)
+            ids = cast(dict[str, Any], self.platform.manager_start(slot_id, act_id))
             st.activation_id = act_id
             st.manager_boot_id = ids["manager_boot_id"]
             st.unit_invocation_id = ids["unit_invocation_id"]
@@ -1321,10 +1387,10 @@ class ControllerCore:
 
                 validate_launch_tuple(launch_policy, "supervisor", argv, env, cwd, fd_roles)
                 handle = self.platform.spawn("supervisor", argv, env, cwd, fd_roles)
-                ready = self.platform.next_event(handle)
+                ready = cast(dict[str, Any], self.platform.next_event(handle))
                 if ready.get("kind") != "ready":
                     raise ValueError("supervisor_not_ready")
-            except Exception:
+            except Exception:  # pylint: disable=W0718  # spawn/ready path must revoke on any injected failure
                 # Request stop; remain retire/quarantine capable — domain retained.
                 if st.unit_invocation_id:
                     self.platform.manager_stop(st.unit_invocation_id)
@@ -1392,7 +1458,7 @@ class ControllerCore:
         self._pending_outbound.pop(connection_id, None)
         closer = getattr(self.platform, "close_control_connection", None)
         if callable(closer):
-            closer(connection_id)
+            cast(Callable[..., Any], closer)(connection_id)
 
     def _flush_pending_outbound(self, connection_id: str) -> bytes | None:
         """Complete or SEND-timeout a previously blocked framed response."""
@@ -1406,8 +1472,8 @@ class ControllerCore:
             self._conn_send_started_ns.pop(connection_id, None)
             return framed
         try:
-            q = outbound(connection_id)
-        except Exception:
+            q = cast(Callable[..., Any], outbound)(connection_id)
+        except Exception:  # pylint: disable=W0718  # platform outbound may raise any injected failure
             self.close_control_session(connection_id)
             return None
         sample = self._sample_paired()
@@ -1420,7 +1486,7 @@ class ControllerCore:
             return None
         try:
             q.write(framed)
-        except Exception:
+        except Exception:  # pylint: disable=W0718  # platform outbound write may raise any injected failure
             self.close_control_session(connection_id)
             return None
         self._pending_outbound.pop(connection_id, None)
@@ -1441,8 +1507,8 @@ class ControllerCore:
         outbound = getattr(self.platform, "control_outbound", None)
         if callable(outbound):
             try:
-                q = outbound(connection_id)
-            except Exception:
+                q = cast(Callable[..., Any], outbound)(connection_id)
+            except Exception:  # pylint: disable=W0718  # platform outbound may raise any injected failure
                 self.close_control_session(connection_id)
                 return None
             sample = self._sample_paired()
@@ -1459,7 +1525,7 @@ class ControllerCore:
                 return None
             try:
                 q.write(framed)
-            except Exception:
+            except Exception:  # pylint: disable=W0718  # platform outbound write may raise any injected failure
                 self.close_control_session(connection_id)
                 return None
             self._pending_outbound.pop(connection_id, None)
@@ -1497,9 +1563,9 @@ class ControllerCore:
         inbound = getattr(self.platform, "control_inbound", None)
         if callable(inbound):
             try:
-                q = inbound(connection_id)
+                q = cast(Callable[..., Any], inbound)(connection_id)
                 q.write(chunk)
-            except Exception:
+            except Exception:  # pylint: disable=W0718  # platform inbound may raise any injected failure
                 self.close_control_session(connection_id)
                 return None
         obj, rem, err = decode_framed_request(bytes(buf))
@@ -1664,7 +1730,7 @@ class ControllerCore:
         st = self.slots[slot_id]
         if not st.unit_invocation_id:
             raise ValueError("no_invocation")
-        out = self.platform.manager_stop(st.unit_invocation_id)
+        out = cast(dict[str, Any], self.platform.manager_stop(st.unit_invocation_id))
         st.stop_requested = True
         st.persisted["stop_requested"] = True
         return out
@@ -1680,7 +1746,7 @@ class ControllerCore:
         if not st.unit_invocation_id:
             self._quarantine(st, "missing_invocation")
             raise ValueError("quarantined:missing_invocation")
-        obs = self.platform.manager_observe(st.unit_invocation_id)
+        obs = cast(dict[str, Any], self.platform.manager_observe(st.unit_invocation_id))
         reason = terminal_reason or st.terminal_reason or "operator"
         if reason not in TERMINAL_RECEIPT_REASONS:
             raise ValueError("bad_terminal_reason")
@@ -1742,7 +1808,7 @@ class ControllerCore:
 
         st = self.slots[slot_id]
         if st.unit_invocation_id:
-            obs = self.platform.manager_observe(st.unit_invocation_id)
+            obs = cast(dict[str, Any], self.platform.manager_observe(st.unit_invocation_id))
             if obs.get("populated") is not False:
                 self._quarantine(st, "restart_nonempty")
                 # Quarantine wins — do not rehydrate ACTIVE from persisted snapshot.

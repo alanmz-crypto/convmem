@@ -1,4 +1,6 @@
 """Strict grounding, capture-receipt authentication, and qualification (T1)."""
+# pylint: disable=C0302  # preserved grounding/provenance qualification component boundary
+
 
 from __future__ import annotations
 
@@ -139,7 +141,8 @@ def _reject_floats(value: Any, *, path: str = "$") -> None:
     if isinstance(value, dict):
         for key, child in value.items():
             _reject_floats(child, path=f"{path}.{key}")
-    elif isinstance(value, list):
+        return None
+    if isinstance(value, list):
         for index, child in enumerate(value):
             _reject_floats(child, path=f"{path}[{index}]")
 
@@ -391,7 +394,7 @@ def _validate_selector(selector: Mapping[str, Any], *, input_length: int) -> Non
             raise StrictGroundingError("selector_start")
         if not isinstance(end, int) or isinstance(end, bool):
             raise StrictGroundingError("selector_end")
-        if not (0 <= start <= end <= input_length):
+        if not 0 <= start <= end <= input_length:
             raise StrictGroundingError("selector_bounds")
         return
     raise StrictGroundingError("selector_kind")
@@ -600,7 +603,7 @@ def verify_legacy_commitments(
         return "valid"
     except EnvelopeValidationError:
         return "incomplete"
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001  # pylint: disable=W0718  # fail-closed commitment/transformer boundary
         return "incomplete"
 
 
@@ -722,7 +725,7 @@ def _receipt_index(grounding: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _verify_assertion_grounding(
+def _verify_assertion_grounding(  # pylint: disable=R0913  # private verifier arity mirrors closed assertion grounding inputs
     *,
     grounding: Mapping[str, Any],
     envelope: Mapping[str, Any],
@@ -1233,7 +1236,7 @@ def validate_provenance_context(
     return closed
 
 
-def reconstruct_provenance_registry(
+def reconstruct_provenance_registry(  # pylint: disable=W0212  # intentional registry rehydrate via private store surface
     provenance_context: Mapping[str, Any],
 ) -> tuple[ProvenanceRegistry, Mapping[tuple[str, str], bytes]]:
     """Build ProvenanceRegistry from a validated provenance-context inventory.
@@ -1339,7 +1342,7 @@ def _derive_transformer_cap(
         if policy is None:
             return "untrusted"
         return policy.transformer_cap(envelope)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001  # pylint: disable=W0718  # fail-closed commitment/transformer boundary
         return "untrusted"
 
 
@@ -1500,7 +1503,7 @@ def qualify_assertions(
     return out
 
 
-def qualify_grounding(
+def qualify_grounding(  # pylint: disable=R0913  # frozen public grounding qualification signature
     *,
     grounding: Mapping[str, Any] | None,
     envelope: Mapping[str, Any] | None = None,
@@ -1661,7 +1664,7 @@ def qualify_grounding(
     capture_classes: set[str] = set()
     all_complete = True
 
-    for assertion_id, env in envelope_map.items():
+    for _assertion_id, env in envelope_map.items():
         complete, capture_class = _verify_assertion_grounding(
             grounding=validated,
             envelope=env,

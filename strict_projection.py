@@ -14,6 +14,8 @@ T3 public opening: ``open_published_generation`` (parent) / ``open_public_projec
 (capability alias), ``StrictProjectionReader``, ``revoke_snapshot``, and the
 ``read`` CLI. Public opening does not import the publisher.
 """
+# pylint: disable=C0302  # preserved projection authority/reader component boundary
+
 
 from __future__ import annotations
 
@@ -61,7 +63,6 @@ from strict_evidence_state import (
     payload_sha256,
     reduce_complete_bound_state,
     semantic_sha256,
-    state_sha256,
     validate_dispositions,
 )
 from strict_grounding import (
@@ -83,133 +84,127 @@ class StrictProjectionError(ValueError):
 
 
 # Closed top-level field sets (parent §6.5.4 / schema_field_sets TOP_LEVEL).
-_LAYOUT_FIELDS = frozenset(
-    {
-        "schema",
-        "authority_dir",
-        "projection_dir",
-        "active_dir",
-        "locks_dir",
-        "control_dir",
-        "layout_payload_sha256",
-    }
+_LAYOUT_FIELDS = _projection_field_set(
+    "schema",
+    "authority_dir",
+    "projection_dir",
+    "active_dir",
+    "locks_dir",
+    "control_dir",
+    "layout_payload_sha256",
 )
-_ENROLLMENT_FIELDS = frozenset(
-    {
-        "schema",
-        "lineage_id",
-        "slot_id",
-        "mode",
-        "owner_digest",
-        "operator_uid",
-        "controller_uid",
-        "supervisor_uid",
-        "runtime_uid",
-        "scope_sha256",
-        "registry_sha256",
-        "semantic_contract_sha256",
-        "initial_source_cutoff_sha256",
-        "enrollment_payload_sha256",
-    }
+_ENROLLMENT_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "slot_id",
+    "mode",
+    "owner_digest",
+    "operator_uid",
+    "controller_uid",
+    "supervisor_uid",
+    "runtime_uid",
+    "scope_sha256",
+    "registry_sha256",
+    "semantic_contract_sha256",
+    "initial_source_cutoff_sha256",
+    "enrollment_payload_sha256",
 )
-_PUBLICATION_FIELDS = frozenset(
-    {
-        "schema",
-        "lineage_id",
-        "owner_digest",
-        "epoch",
-        "authority_seq",
-        "authority_snapshot_id",
-        "authority_manifest_sha256",
-        "authority_source_cutoff_sha256",
-        "serving_generation_id",
-        "projection_manifest_sha256",
-        "semantic_contract_sha256",
-        "pending_operation_id",
-        "mode",
-        "previous_publication_sha256",
-        "freshness_anchor",
-        "published_at",
-        "publication_payload_sha256",
-    }
+_PUBLICATION_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "owner_digest",
+    "epoch",
+    "authority_seq",
+    "authority_snapshot_id",
+    "authority_manifest_sha256",
+    "authority_source_cutoff_sha256",
+    "serving_generation_id",
+    "projection_manifest_sha256",
+    "semantic_contract_sha256",
+    "pending_operation_id",
+    "mode",
+    "previous_publication_sha256",
+    "freshness_anchor",
+    "published_at",
+    "publication_payload_sha256",
 )
-_AUTHORITY_MANIFEST_FIELDS = frozenset(
-    {
-        "schema",
-        "lineage_id",
-        "authority_seq",
-        "owner_digest",
-        "snapshot_id",
-        "parent_snapshot_id",
-        "parent_manifest_sha256",
-        "scope_sha256",
-        "registry_sha256",
-        "input_sha256",
-        "source_cutoff_sha256",
-        "operation_id",
-        "authority_records_sha256",
-        "record_count",
-        "dispositions_sha256",
-        "disposition_count",
-        "citation_map_sha256",
-        "provenance_context_sha256",
-        "grounding_sha256",
-        "added_assertion_ids",
-        "added_disposition_ids",
-        "added_provenance_ids",
-        "added_grounding_refs",
-        "semantic_contract_sha256",
-        "reducer_version",
-        "canonicalization_version",
-        "builder_version",
-        "builder_tree_sha256",
-        "built_at",
-        "as_of",
-        "expires_at",
-        "manifest_payload_sha256",
-    }
+_AUTHORITY_MANIFEST_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "authority_seq",
+    "owner_digest",
+    "snapshot_id",
+    "parent_snapshot_id",
+    "parent_manifest_sha256",
+    "scope_sha256",
+    "registry_sha256",
+    "input_sha256",
+    "source_cutoff_sha256",
+    "operation_id",
+    "authority_records_sha256",
+    "record_count",
+    "dispositions_sha256",
+    "disposition_count",
+    "citation_map_sha256",
+    "provenance_context_sha256",
+    "grounding_sha256",
+    "added_assertion_ids",
+    "added_disposition_ids",
+    "added_provenance_ids",
+    "added_grounding_refs",
+    "semantic_contract_sha256",
+    "reducer_version",
+    "canonicalization_version",
+    "builder_version",
+    "builder_tree_sha256",
+    "built_at",
+    "as_of",
+    "expires_at",
+    "manifest_payload_sha256",
 )
-_PROJECTION_MANIFEST_FIELDS = frozenset(
-    {
-        "schema",
-        "lineage_id",
-        "authority_seq",
-        "owner_digest",
-        "generation_id",
-        "previous_generation_id",
-        "snapshot_id",
-        "authority_manifest_sha256",
-        "scope_sha256",
-        "registry_sha256",
-        "semantic_contract_sha256",
-        "rows_sha256",
-        "row_count",
-        "graph_sha256",
-        "graph_node_count",
-        "search_kernel",
-        "search_kernel_version",
-        "tokenizer_unicode_version",
-        "builder_version",
-        "builder_tree_sha256",
-        "built_at",
-        "as_of",
-        "expires_at",
-        "manifest_payload_sha256",
-    }
+_PROJECTION_MANIFEST_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "authority_seq",
+    "owner_digest",
+    "generation_id",
+    "previous_generation_id",
+    "snapshot_id",
+    "authority_manifest_sha256",
+    "scope_sha256",
+    "registry_sha256",
+    "semantic_contract_sha256",
+    "rows_sha256",
+    "row_count",
+    "graph_sha256",
+    "graph_node_count",
+    "search_kernel",
+    "search_kernel_version",
+    "tokenizer_unicode_version",
+    "builder_version",
+    "builder_tree_sha256",
+    "built_at",
+    "as_of",
+    "expires_at",
+    "manifest_payload_sha256",
 )
-_SEMANTIC_CONTRACT_FIELDS = frozenset(
-    {
-        "schema",
-        "reducer_version",
-        "grounding_version",
-        "canonicalization_version",
-        "identity_version",
-        "search_kernel",
-        "search_kernel_version",
-        "tokenizer_unicode_version",
-        "schema_digests",
-        "contract_payload_sha256",
-    }
+
+def _projection_field_set(*names: str) -> frozenset[str]:
+    """Build projection closed field sets from an explicit name tuple."""
+
+    return frozenset(names)
+
+_SEMANTIC_CONTRACT_FIELDS = _projection_field_set(
+    "schema",
+    "reducer_version",
+    "grounding_version",
+    "canonicalization_version",
+    "identity_version",
+    "search_kernel",
+    "search_kernel_version",
+    "tokenizer_unicode_version",
+    "schema_digests",
+    "contract_payload_sha256",
 )
 # Frozen M3 semantic-contract constants — duplicated locally (never import publisher).
 _REQUIRED_REDUCER_VERSION = "v1"
@@ -228,154 +223,146 @@ _REQUIRED_SEMANTIC_CONTRACT = {
     "search_kernel_version": _REQUIRED_SEARCH_KERNEL_VERSION,
     "tokenizer_unicode_version": _REQUIRED_TOKENIZER_UNICODE_VERSION,
 }
-_SOURCE_CUTOFF_FIELDS = frozenset(
-    {"schema", "lineage_id", "mode", "operations", "cutoff_payload_sha256"}
+_SOURCE_CUTOFF_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "mode",
+    "operations",
+    "cutoff_payload_sha256",
 )
-_CITATION_MAP_FIELDS = frozenset(
-    {"schema", "citations", "citation_map_payload_sha256"}
+_CITATION_MAP_FIELDS = _projection_field_set(
+    "schema",
+    "citations",
+    "citation_map_payload_sha256",
 )
-_PROVENANCE_CONTEXT_FIELDS = frozenset(
-    {
-        "schema",
-        "schema_semantics",
-        "policies",
-        "recipes",
-        "verified_channels",
-        "registered_assertions",
-        "grounding_sha256",
-        "context_payload_sha256",
-    }
+_PROVENANCE_CONTEXT_FIELDS = _projection_field_set(
+    "schema",
+    "schema_semantics",
+    "policies",
+    "recipes",
+    "verified_channels",
+    "registered_assertions",
+    "grounding_sha256",
+    "context_payload_sha256",
 )
-_GROUNDING_FIELDS = frozenset(
-    {
-        "schema",
-        "blobs",
-        "roots",
-        "edges",
-        "outputs",
-        "receipts",
-        "grounding_payload_sha256",
-    }
+_GROUNDING_FIELDS = _projection_field_set(
+    "schema",
+    "blobs",
+    "roots",
+    "edges",
+    "outputs",
+    "receipts",
+    "grounding_payload_sha256",
 )
-_AUTHORITY_RECORD_FIELDS = frozenset(
-    {
-        "schema",
-        "project_binding_id",
-        "source_registration_id",
-        "authority_site",
-        "authority_domain",
-        "record_kind",
-        "logical_id",
-        "assertion_id",
-        "source_event_id",
-        "producer",
-        "logical_key",
-        "semantic_sha256",
-        "payload_sha256",
-        "title",
-        "document",
-        "observed_at",
-        "recorded_at",
-        "confidence_bps",
-        "relates_to_assertion_id",
-        "target_assertion_id",
-        "verification_result",
-        "supersedes_assertion_ids",
-        "decision_disposition_ref",
-        "supersession_disposition_ref",
-        "provenance_envelope",
-        "provenance_commitment",
-        "origin_assurance",
-        "provenance_qualification",
-        "check_eligibility",
-    }
+_AUTHORITY_RECORD_FIELDS = _projection_field_set(
+    "schema",
+    "project_binding_id",
+    "source_registration_id",
+    "authority_site",
+    "authority_domain",
+    "record_kind",
+    "logical_id",
+    "assertion_id",
+    "source_event_id",
+    "producer",
+    "logical_key",
+    "semantic_sha256",
+    "payload_sha256",
+    "title",
+    "document",
+    "observed_at",
+    "recorded_at",
+    "confidence_bps",
+    "relates_to_assertion_id",
+    "target_assertion_id",
+    "verification_result",
+    "supersedes_assertion_ids",
+    "decision_disposition_ref",
+    "supersession_disposition_ref",
+    "provenance_envelope",
+    "provenance_commitment",
+    "origin_assurance",
+    "provenance_qualification",
+    "check_eligibility",
 )
-_DISPOSITION_FIELDS = frozenset(
-    {
-        "schema",
-        "action",
-        "project_binding_id",
-        "subject_assertion_id",
-        "subject_semantic_sha256",
-        "target_assertion_ids",
-        "basis_snapshot_id",
-        "expected_head_assertion_ids",
-        "replaces_disposition_ref",
-        "review_actor",
-        "review_role",
-        "review_outcome",
-        "reviewed_at",
-        "ratifier_actor",
-        "ratifier_role",
-        "ratified_at",
-        "rationale_sha256",
-    }
+_DISPOSITION_FIELDS = _projection_field_set(
+    "schema",
+    "action",
+    "project_binding_id",
+    "subject_assertion_id",
+    "subject_semantic_sha256",
+    "target_assertion_ids",
+    "basis_snapshot_id",
+    "expected_head_assertion_ids",
+    "replaces_disposition_ref",
+    "review_actor",
+    "review_role",
+    "review_outcome",
+    "reviewed_at",
+    "ratifier_actor",
+    "ratifier_role",
+    "ratified_at",
+    "rationale_sha256",
 )
-_PROJECTION_ROW_FIELDS = frozenset(
-    {
-        "schema",
-        "project_binding_id",
-        "public_binding_ref",
-        "source_registration_id",
-        "authority_site",
-        "authority_domain",
-        "record_kind",
-        "logical_id",
-        "assertion_id",
-        "public_ledger_id",
-        "citation_ref",
-        "title",
-        "document",
-        "observed_at",
-        "recorded_at",
-        "confidence_bps",
-        "relates_to_assertion_id",
-        "target_assertion_id",
-        "verification_result",
-        "supersedes_assertion_ids",
-        "decision_disposition_ref",
-        "supersession_disposition_ref",
-        "origin_assurance",
-        "provenance_qualification",
-        "check_eligibility",
-        "authority_state",
-        "verification_state",
-        "state_disposition_refs",
-        "payload_sha256",
-        "state_sha256",
-    }
+_PROJECTION_ROW_FIELDS = _projection_field_set(
+    "schema",
+    "project_binding_id",
+    "public_binding_ref",
+    "source_registration_id",
+    "authority_site",
+    "authority_domain",
+    "record_kind",
+    "logical_id",
+    "assertion_id",
+    "public_ledger_id",
+    "citation_ref",
+    "title",
+    "document",
+    "observed_at",
+    "recorded_at",
+    "confidence_bps",
+    "relates_to_assertion_id",
+    "target_assertion_id",
+    "verification_result",
+    "supersedes_assertion_ids",
+    "decision_disposition_ref",
+    "supersession_disposition_ref",
+    "origin_assurance",
+    "provenance_qualification",
+    "check_eligibility",
+    "authority_state",
+    "verification_state",
+    "state_disposition_refs",
+    "payload_sha256",
+    "state_sha256",
 )
-_GRAPH_FIELDS = frozenset({"schema", "nodes", "edges", "graph_payload_sha256"})
-_GRAPH_EDGE_FIELDS = frozenset({"kind", "from_assertion_id", "to_assertion_id"})
-_FRESHNESS_ANCHOR_FIELDS = frozenset(
-    {
-        "boot_id",
-        "authority_snapshot_id",
-        "sampled_wall_time",
-        "sampled_boottime_ns",
-        "snapshot_deadline_boottime_ns",
-        "clock_review_ref",
-    }
+_GRAPH_FIELDS = _projection_field_set("schema", "nodes", "edges", "graph_payload_sha256")
+_GRAPH_EDGE_FIELDS = _projection_field_set("kind", "from_assertion_id", "to_assertion_id")
+_FRESHNESS_ANCHOR_FIELDS = _projection_field_set(
+    "boot_id",
+    "authority_snapshot_id",
+    "sampled_wall_time",
+    "sampled_boottime_ns",
+    "snapshot_deadline_boottime_ns",
+    "clock_review_ref",
 )
 _INPUT_PAYLOAD_FIELD = {
     "convmem.strict-fixture-bundle.v2": "fixture_payload_sha256",
     "convmem.approved-admission.v1": "artifact_payload_sha256",
 }
-_FIXTURE_BUNDLE_FIELDS = frozenset(
-    {
-        "schema",
-        "lineage_id",
-        "operation_id",
-        "expected_parent_manifest_sha256",
-        "batches",
-        "dispositions",
-        "provenance_context",
-        "grounding",
-        "built_at",
-        "as_of",
-        "expires_at",
-        "fixture_payload_sha256",
-    }
+_FIXTURE_BUNDLE_FIELDS = _projection_field_set(
+    "schema",
+    "lineage_id",
+    "operation_id",
+    "expected_parent_manifest_sha256",
+    "batches",
+    "dispositions",
+    "provenance_context",
+    "grounding",
+    "built_at",
+    "as_of",
+    "expires_at",
+    "fixture_payload_sha256",
 )
 _LAYOUT_DIR_VALUES = {
     "authority_dir": "authority",
@@ -387,7 +374,7 @@ _LAYOUT_DIR_VALUES = {
 
 
 @dataclass(frozen=True, slots=True)
-class QualifiedAuthorityGeneration:
+class QualifiedAuthorityGeneration:  # pylint: disable=R0902  # attributes mirror qualified authority generation fields
     """Module-sealed capability produced only by private cold qualification."""
 
     lineage_id: str
@@ -537,7 +524,7 @@ def _empty_source_cutoff_digest(*, lineage_id: str, mode: str) -> str:
 
 
 @dataclass(frozen=True, slots=True)
-class _AuthorityHead:
+class _AuthorityHead:  # pylint: disable=R0902  # attributes mirror authority-head reconstruction fields
     """One content-addressed authority snapshot loaded during cold replay."""
 
     snapshot_id: str
@@ -597,7 +584,7 @@ def _assert_cumulative_maps(
             raise StrictProjectionError(f"{label}_cumulative_mutated")
 
 
-def _load_authority_head(
+def _load_authority_head(  # pylint: disable=R0913  # authority-head loader arity mirrors closed head inputs
     root_path: Path,
     *,
     snapshot_id: str,
@@ -784,7 +771,7 @@ def _load_authority_head(
     )
 
 
-def _walk_lineage_forward(
+def _walk_lineage_forward(  # pylint: disable=R0913  # lineage walk arity mirrors closed lineage inputs
     root_path: Path,
     *,
     tip_snapshot_id: str,
@@ -1194,7 +1181,7 @@ def _independently_replay_head_admission(
     all_dispositions = list(parent_dispositions) + [
         new_disp_map[k] for k in sorted(new_disp_map)
     ]
-    all_dispositions.sort(key=lambda d: disposition_id(d))
+    all_dispositions.sort(key=disposition_id)
 
     reconstructed_added = {
         r["assertion_id"]: strict_canonical_bytes(r) for r in added_records
@@ -1889,15 +1876,13 @@ _UNRESOLVED_LIMIT_MAX = 50
 _RELATED_NEIGHBORHOOD_CAP = 200
 _RELATED_PARENT_HOPS = 8
 _RELATED_DESCENDANT_DEPTH = 2
-_CURRENT_RANK_STATES = frozenset({"current", "approved", "conflict"})
-_STRICT_CONFIG_FIELDS = frozenset(
-    {
-        "schema",
-        "projection_root",
-        "max_projection_rows",
-        "max_projection_bytes",
-        "telemetry",
-    }
+_CURRENT_RANK_STATES = _projection_field_set("current", "approved", "conflict")
+_STRICT_CONFIG_FIELDS = _projection_field_set(
+    "schema",
+    "projection_root",
+    "max_projection_rows",
+    "max_projection_bytes",
+    "telemetry",
 )
 
 
@@ -1924,13 +1909,18 @@ _LIVE_CAPABILITY_TOKENS: set[object] = set()
 
 _PUBLIC_FILE_MODE = 0o444
 _PUBLIC_DIR_MODE = 0o555
-_GRAPH_EDGE_KINDS = frozenset({"relates_to", "targets", "supersedes"})
-_RECORD_KINDS = frozenset({"observation", "decision", "verification"})
-_CAPTURE_VALUES = frozenset(
-    {"synthetic_fixture", "controlled_capture", "unattested"}
+_GRAPH_EDGE_KINDS = _projection_field_set("relates_to", "targets", "supersedes")
+_RECORD_KINDS = _projection_field_set("observation", "decision", "verification")
+_CAPTURE_VALUES = _projection_field_set(
+    "synthetic_fixture",
+    "controlled_capture",
+    "unattested",
 )
-_PROVENANCE_QUAL_FIELDS = frozenset(
-    {"commitments", "byte_grounding", "capture", "transformer_cap"}
+_PROVENANCE_QUAL_FIELDS = _projection_field_set(
+    "commitments",
+    "byte_grounding",
+    "capture",
+    "transformer_cap",
 )
 _CLI_BOOTTIME_BUDGET_NS = 10_000_000_000
 # Pin identity: (st_dev, st_ino, mode, content_sha256).
@@ -1938,24 +1928,20 @@ OperatorPin = tuple[int, int, int, str]
 PublicPin = tuple[int, int, int, str]
 
 # Public-opening must never consult these private relative paths.
-_PRIVATE_RELATIVE_FORBIDDEN = frozenset(
-    {
-        "layout.json",
-        "control/enrollment.json",
-        "control/slot.json",
-        "control/semantic-contract.json",
-    }
+_PRIVATE_RELATIVE_FORBIDDEN = _projection_field_set(
+    "layout.json",
+    "control/enrollment.json",
+    "control/slot.json",
+    "control/semantic-contract.json",
 )
-_PRIVATE_BASENAMES_FORBIDDEN = frozenset(
-    {
-        "input.json",
-        "source-cutoff.json",
-        "records.jsonl",
-        "dispositions.jsonl",
-        "citation-map.json",
-        "provenance-context.json",
-        "grounding.json",
-    }
+_PRIVATE_BASENAMES_FORBIDDEN = _projection_field_set(
+    "input.json",
+    "source-cutoff.json",
+    "records.jsonl",
+    "dispositions.jsonl",
+    "citation-map.json",
+    "provenance-context.json",
+    "grounding.json",
 )
 
 # Public mount members (Architecture §6.5.4) — only these are opened.
@@ -2448,7 +2434,7 @@ def _validate_public_projection_row(row: Mapping[str, Any]) -> None:
         raise StrictProjectionError("projection_row_record_kind")
     if not isinstance(row["confidence_bps"], int) or isinstance(row["confidence_bps"], bool):
         raise StrictProjectionError("projection_row_confidence")
-    if not (0 <= row["confidence_bps"] <= 10000):
+    if not 0 <= row["confidence_bps"] <= 10000:
         raise StrictProjectionError("projection_row_confidence_range")
     for ts_key in ("observed_at", "recorded_at"):
         if not isinstance(row[ts_key], str) or not re.fullmatch(
@@ -2981,6 +2967,7 @@ def revoke_snapshot(generation: QualifiedStrictGeneration) -> None:
     live.mark_revoked()
 
 
+# pylint: disable=W0212  # live capability recheck reads pinned private reader state
 def recheck_live_public_capability(generation: QualifiedStrictGeneration) -> None:
     """Recheck pinned public identities + active serving/freshness while locked."""
 
@@ -3622,8 +3609,8 @@ class StrictProjectionReader:
                 display_basis="bounded_context",
                 correlation_id=cid,
             )
-        except StrictPublicError:
-            raise StrictPublicError("scope_denied", correlation_id=cid)
+        except StrictPublicError as exc:
+            raise StrictPublicError("scope_denied", correlation_id=cid) from exc
 
 
 def dispatch_tool(

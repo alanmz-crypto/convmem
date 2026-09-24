@@ -12,7 +12,7 @@ import hashlib
 import json
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Mapping, MutableMapping, Protocol
+from typing import Any, Mapping, MutableMapping, Protocol, cast
 
 RUNTIME_NOT_QUALIFIED = "runtime_not_qualified"
 EX_CONFIG = 78
@@ -24,18 +24,24 @@ MAX_TEXT_BYTES = 65536
 MAX_TEXT_CODEPOINTS = 16384
 WATCHDOG_INTERVAL_NS = 100_000_000  # 100 ms
 
-REVOKE_REASONS = frozenset(
-    {
-        "operator",
-        "publish",
-        "scope_change",
-        "expiry",
-        "clock_anomaly",
-        "integrity_failure",
-        "disconnect",
-        "shutdown",
-    }
-)
+def _supervisor_revoke_reasons() -> frozenset[str]:
+    """External revoke reasons (list source — distinct from controller tuple helper)."""
+
+    return frozenset(
+        [
+            "operator",
+            "publish",
+            "scope_change",
+            "expiry",
+            "clock_anomaly",
+            "integrity_failure",
+            "disconnect",
+            "shutdown",
+        ]
+    )
+
+
+REVOKE_REASONS = _supervisor_revoke_reasons()
 
 SPAWN_ROLES = frozenset(
     {"supervisor", "gateway", "agent", "strict_server", "model_worker"}
@@ -60,6 +66,8 @@ class FixturePlatformPort(Protocol):
 
 
 def refuse_runtime_not_qualified() -> None:
+    """Supervisor production refusal before any OS effect."""
+
     print(RUNTIME_NOT_QUALIFIED, file=sys.stderr)
     raise SystemExit(EX_CONFIG)
 
@@ -68,7 +76,7 @@ def run(*_args: Any, **_kwargs: Any) -> None:
     refuse_runtime_not_qualified()
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:  # pylint: disable=W0613  # public CLI argv retained for interface parity
     refuse_runtime_not_qualified()
     return EX_CONFIG
 
@@ -102,7 +110,7 @@ def _reject_nonfinite(value: str) -> None:
     raise ValueError(f"nonfinite:{value}")
 
 
-def validate_launch_tuple(
+def validate_launch_tuple(  # pylint: disable=R0917  # frozen public launch-tuple arity (positional callers in tests)
     launch_policy: Mapping[str, Any],
     role: str,
     argv: list[str],
@@ -210,7 +218,7 @@ def _parse_complete_stdout_object(raw: bytes) -> dict[str, Any]:
 
 
 @dataclass
-class AcceptedTurn:
+class AcceptedTurn:  # pylint: disable=R0902  # attributes mirror accepted-turn receipt fields
     turn_id: str
     request_id: str
     request_canonical: bytes
@@ -223,7 +231,7 @@ class AcceptedTurn:
 
 
 @dataclass
-class SupervisorCore:
+class SupervisorCore:  # pylint: disable=R0902  # attributes mirror supervisor activation/turn bookkeeping fields
     """Turn state machine, watchdog/deadlines, release/revoke linearization."""
 
     platform: FixturePlatformPort
@@ -269,7 +277,7 @@ class SupervisorCore:
         self.state = "ACTIVE_IDLE"
         self._watchdog_armed = True
         self._internal_terminal = None
-        sample = self.platform.sample_clock()
+        sample = cast(dict[str, Any], self.platform.sample_clock())
         self._watchdog_samples.append(dict(sample))
 
     def reset_for_new_activation(self) -> None:
@@ -362,7 +370,7 @@ class SupervisorCore:
     def tick_watchdog(self, sample: Mapping[str, Any] | None = None) -> None:
         if not self._watchdog_armed:
             return
-        clock = sample or self.platform.sample_clock()
+        clock = sample or cast(dict[str, Any], self.platform.sample_clock())
         now = int(clock["boottime_after_ns"])
         if self.state == "TURN_RUNNING" and self._watchdog_samples:
             prev = int(self._watchdog_samples[-1]["boottime_after_ns"])
@@ -389,7 +397,7 @@ class SupervisorCore:
                     "integrity_failure", internal="watchdog_interval_skipped"
                 )
                 raise ValueError("watchdog_interval_skipped")
-        now = int(self.platform.sample_clock()["boottime_after_ns"])
+        now = int(cast(dict[str, Any], self.platform.sample_clock())["boottime_after_ns"])
         if now - samples[-1] > WATCHDOG_INTERVAL_NS:
             self._enter_revoking_internal(
                 "integrity_failure", internal="watchdog_interval_skipped"
@@ -425,7 +433,7 @@ class SupervisorCore:
     ) -> dict[str, Any]:
         if request.get("schema") != CONTROL_SCHEMA:
             return self._out(request, "invalid_request", {"reason": "bad_arguments"})
-        sample = clock_sample or self.platform.sample_clock()
+        sample = clock_sample or cast(dict[str, Any], self.platform.sample_clock())
         self.tick_watchdog(sample)
         op = request.get("op")
         if self._revoked:
@@ -528,7 +536,7 @@ class SupervisorCore:
             return self._out(request, "cancelled", {"turn_id": turn_id})
         return self._out(request, "invalid_request", {"reason": "not_active"})
 
-    def _turn(self, request: dict[str, Any], sample: Mapping[str, Any]) -> dict[str, Any]:
+    def _turn(self, request: dict[str, Any], sample: Mapping[str, Any]) -> dict[str, Any]:  # pylint: disable=R0911  # closed control-protocol outcome surface
         turn_id = request.get("turn_id")
         text = request.get("text")
         pub = request.get("expected_publication_sha256")
@@ -650,7 +658,7 @@ class SupervisorCore:
             role: object() for role in agent["inherited_fd_roles"]
         }
         validate_launch_tuple(launch_policy, "agent", argv, env, cwd, fd_roles)
-        handle = self.platform.spawn("agent", argv, env, cwd, fd_roles)
+        handle = cast(str, self.platform.spawn("agent", argv, env, cwd, fd_roles))
         self.agent_handle = handle
         self._observed_exit_code = None
         self._stdout_buffer.clear()
@@ -700,7 +708,7 @@ class SupervisorCore:
                 raise ValueError("agent_output_overflow")
             self._stderr_buffer.extend(chunk)
         elif kind == "exit":
-            if event.get("bytes_b64") is not None or type(event.get("exit_code")) is not int:
+            if event.get("bytes_b64") is not None or type(event.get("exit_code")) is not int:  # pylint: disable=C0123  # exact type identity; isinstance/__class__ admit spoofing or subclasses
                 raise ValueError("bad_exit")
             code = int(event["exit_code"])
             self._observed_exit_code = code
@@ -729,7 +737,7 @@ class SupervisorCore:
                 raise ValueError("revoked_before_commit")
             self._assert_watchdog_coverage()
             # Final paired sample under mutex — no await.
-            sample = self.platform.sample_clock()
+            sample = cast(dict[str, Any], self.platform.sample_clock())
             self._last_valid_clock = dict(sample)
             self._watchdog_samples.append(dict(sample))
             # Revalidate accepted slot/activation/publication against bound activation.

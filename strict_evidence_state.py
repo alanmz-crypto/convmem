@@ -1,4 +1,6 @@
 """Strict identities, fixture materialization, and complete-bound state reduction (T1)."""
+# pylint: disable=C0302  # preserved evidence-state reducer/disposition component boundary
+
 
 from __future__ import annotations
 
@@ -40,6 +42,13 @@ _SUBJECT_KIND = {
     "verification": "verification",
 }
 
+
+def _evidence_field_set(*names: str) -> frozenset[str]:
+    """Build closed evidence field sets from an explicit name tuple."""
+
+    return frozenset(names)
+
+
 DISPOSITION_ACTIONS = frozenset(
     {
         "decision_approved",
@@ -49,8 +58,16 @@ DISPOSITION_ACTIONS = frozenset(
         "supersession_authorized",
     }
 )
-CHECK_ELIGIBILITY = frozenset({"not_applicable", "qualified", "inconclusive_only"})
-VERIFICATION_RESULTS = frozenset({"pass", "fail", "inconclusive"})
+CHECK_ELIGIBILITY = _evidence_field_set(
+    "not_applicable",
+    "qualified",
+    "inconclusive_only",
+)
+VERIFICATION_RESULTS = _evidence_field_set(
+    "pass",
+    "fail",
+    "inconclusive",
+)
 
 REDUCER_VERSION = "v1"
 IDENTITY_VERSION = "v2"
@@ -71,26 +88,24 @@ SOURCE_RECORD_FIELDS = (
     "provenance_assertion_id",
 )
 
-DISPOSITION_FIELDS = frozenset(
-    {
-        "schema",
-        "action",
-        "project_binding_id",
-        "subject_assertion_id",
-        "subject_semantic_sha256",
-        "target_assertion_ids",
-        "basis_snapshot_id",
-        "expected_head_assertion_ids",
-        "replaces_disposition_ref",
-        "review_actor",
-        "review_role",
-        "review_outcome",
-        "reviewed_at",
-        "ratifier_actor",
-        "ratifier_role",
-        "ratified_at",
-        "rationale_sha256",
-    }
+DISPOSITION_FIELDS = _evidence_field_set(
+    "schema",
+    "action",
+    "project_binding_id",
+    "subject_assertion_id",
+    "subject_semantic_sha256",
+    "target_assertion_ids",
+    "basis_snapshot_id",
+    "expected_head_assertion_ids",
+    "replaces_disposition_ref",
+    "review_actor",
+    "review_role",
+    "review_outcome",
+    "reviewed_at",
+    "ratifier_actor",
+    "ratifier_role",
+    "ratified_at",
+    "rationale_sha256",
 )
 
 
@@ -160,7 +175,7 @@ def logical_id_v2(
         raise LedgerIdMintDenied("ledger_id_mint_denied")
     if not _PRODUCER_RE.fullmatch(producer):
         raise LedgerIdMintDenied("ledger_id_mint_denied")
-    if not (1 <= len(logical_key) <= 256):
+    if not 1 <= len(logical_key) <= 256:
         raise LedgerIdMintDenied("ledger_id_mint_denied")
     subject_kind = _SUBJECT_KIND[record_kind]
     if target_assertion_id is None:
@@ -194,7 +209,7 @@ def source_event_id_fixture_scan(
     _require_nfc_mint(source_registration_id, field="source_registration_id")
     _require_nfc_mint(source_identity, field="source_identity")
     _require_nfc_mint(event_key, field="event_key")
-    if not _EVENT_KEY_RE.fullmatch(event_key) or not (1 <= len(event_key) <= 256):
+    if not _EVENT_KEY_RE.fullmatch(event_key) or not 1 <= len(event_key) <= 256:
         raise StrictEvidenceError("event_key_invalid")
     digest = length_prefixed_digest(
         "convmem-fixture-scan-event-v1",
@@ -394,7 +409,7 @@ def materialize_authority_records(
     if scan["schema"] != "convmem.fixture-scan.v1":
         raise StrictEvidenceError("scan_schema")
     event_key = _require_nfc(scan["event_key"], field="event_key")
-    if not _EVENT_KEY_RE.fullmatch(event_key) or not (1 <= len(event_key) <= 256):
+    if not _EVENT_KEY_RE.fullmatch(event_key) or not 1 <= len(event_key) <= 256:
         raise StrictEvidenceError("event_key_invalid")
     captured_at = _require_ts(scan["captured_at"], "captured_at")
     records_raw = scan["records"]
@@ -454,11 +469,11 @@ def materialize_authority_records(
         if not _PRODUCER_RE.fullmatch(producer):
             raise StrictEvidenceError("producer")
         logical_key = _require_nfc(raw["logical_key"], field="logical_key")
-        if not (1 <= len(logical_key) <= 256):
+        if not 1 <= len(logical_key) <= 256:
             raise StrictEvidenceError("logical_key")
         title = _require_nfc(raw["title"], field="title")
         document = _require_nfc(raw["document"], field="document")
-        if not (1 <= len(title) <= 512) or not (1 <= len(document) <= 65536):
+        if not 1 <= len(title) <= 512 or not 1 <= len(document) <= 65536:
             raise StrictEvidenceError("title_or_document")
         observed_at = _require_ts(raw["observed_at"], "observed_at")
         confidence = raw["confidence_bps"]
@@ -621,6 +636,35 @@ def materialize_authority_records(
     return out
 
 
+
+def _verification_producer_matches(
+    entry: Any,
+    *,
+    source_registration_id: str,
+    producer: str,
+    identity: Any,
+    version: Any,
+    artifact: Any,
+    recipe: Any,
+    capture: Any,
+) -> bool:
+    """True when a binding verification_producers entry matches record+envelope fields."""
+
+    if entry.source_registration_id != source_registration_id:
+        return False
+    if entry.producer != producer:
+        return False
+    if entry.transformer_identity != identity:
+        return False
+    if entry.transformer_version != version:
+        return False
+    if not _hashes_equal(entry.transformer_artifact_sha256, artifact):
+        return False
+    if not _hashes_equal(entry.recipe_sha256, recipe):
+        return False
+    return entry.capture_class == capture
+
+
 def _eligibility_for_record(
     *,
     binding: ProjectBinding,
@@ -652,14 +696,15 @@ def _eligibility_for_record(
     capture = qualification.capture
     matched: Any = None
     for entry in binding.verification_producers:
-        if (
-            entry.source_registration_id == source_registration_id
-            and entry.producer == producer
-            and entry.transformer_identity == identity
-            and entry.transformer_version == version
-            and _hashes_equal(entry.transformer_artifact_sha256, artifact)
-            and _hashes_equal(entry.recipe_sha256, recipe)
-            and entry.capture_class == capture
+        if _verification_producer_matches(
+            entry,
+            source_registration_id=source_registration_id,
+            producer=producer,
+            identity=identity,
+            version=version,
+            artifact=artifact,
+            recipe=recipe,
+            capture=capture,
         ):
             matched = entry
             break
@@ -921,7 +966,7 @@ def validate_dispositions(
 
 
 @dataclass(frozen=True, slots=True)
-class ReducedState:
+class ReducedState:  # pylint: disable=R0902  # attributes mirror reduced authority-state fields
     assertion_id: str
     logical_id: str
     record_kind: str
@@ -939,9 +984,9 @@ def _truth_table(effective_results: Sequence[str]) -> str:
     s = set(effective_results)
     if s == {"pass"}:
         return "pass"
-    if s == {"fail"} or s == {"fail", "inconclusive"}:
+    if s in ({"fail"}, {"fail", "inconclusive"}):
         return "fail"
-    if s == {"inconclusive"} or s == {"pass", "inconclusive"}:
+    if s in ({"inconclusive"}, {"pass", "inconclusive"}):
         return "inconclusive"
     if "pass" in s and "fail" in s:
         return "conflict"

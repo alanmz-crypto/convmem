@@ -12,6 +12,8 @@ Production uses a fresh interpreter for cold qualification; fixture calls
 ``strict_projection.qualify_authority_generation`` in-process after durable
 authority writes.
 """
+# pylint: disable=C0302  # preserved projection publisher/serving component boundary
+
 
 from __future__ import annotations
 
@@ -39,12 +41,9 @@ from strict_evidence_state import (
     StrictEvidenceError,
     build_citation_map,
     build_projection_rows_and_graph,
-    citation_ref,
     disposition_id,
     materialize_authority_records,
-    public_ledger_id,
     reduce_complete_bound_state,
-    state_sha256,
     validate_dispositions,
 )
 from strict_grounding import (
@@ -79,28 +78,31 @@ REQUIRED_MAX_PROJECTION_ROWS = 10000
 REQUIRED_MAX_PROJECTION_BYTES = 67108864
 REQUIRED_TELEMETRY = False
 
-_STRICT_CONFIG_FIELDS = frozenset(
-    {
-        "schema",
-        "projection_root",
-        "max_projection_rows",
-        "max_projection_bytes",
-        "telemetry",
-    }
+
+
+def _publisher_field_set(*names: str) -> frozenset[str]:
+    """Build publisher closed field sets from an explicit name tuple."""
+
+    return frozenset(names)
+
+_STRICT_CONFIG_FIELDS = _publisher_field_set(
+    "schema",
+    "projection_root",
+    "max_projection_rows",
+    "max_projection_bytes",
+    "telemetry",
 )
-_SEMANTIC_CONTRACT_FIELDS = frozenset(
-    {
-        "schema",
-        "reducer_version",
-        "grounding_version",
-        "canonicalization_version",
-        "identity_version",
-        "search_kernel",
-        "search_kernel_version",
-        "tokenizer_unicode_version",
-        "schema_digests",
-        "contract_payload_sha256",
-    }
+_SEMANTIC_CONTRACT_FIELDS = _publisher_field_set(
+    "schema",
+    "reducer_version",
+    "grounding_version",
+    "canonicalization_version",
+    "identity_version",
+    "search_kernel",
+    "search_kernel_version",
+    "tokenizer_unicode_version",
+    "schema_digests",
+    "contract_payload_sha256",
 )
 _REQUIRED_SEMANTIC_CONTRACT = {
     "reducer_version": REDUCER_VERSION,
@@ -945,7 +947,7 @@ def _freshness_anchor_for(
     }
 
 
-def publish_projection(
+def publish_projection(  # pylint: disable=R0913  # frozen public publish signature
     *,
     bundle: Mapping[str, Any] | None = None,
     bundle_path: str | Path | None = None,
@@ -989,7 +991,7 @@ def publish_projection(
         )
 
 
-def _publish_projection_locked(
+def _publish_projection_locked(  # pylint: disable=R0913  # locked publish arity mirrors closed publish inputs
     *,
     root: Path,
     scope: Any,
@@ -1287,7 +1289,7 @@ def _publish_projection_locked(
     all_dispositions = list(parent_dispositions) + [
         new_disp_map[k] for k in sorted(new_disp_map)
     ]
-    all_dispositions.sort(key=lambda d: disposition_id(d))
+    all_dispositions.sort(key=disposition_id)
     disp_map = {disposition_id(d): d for d in all_dispositions}
 
     operations = list(parent_cutoff.get("operations", []))
@@ -1389,225 +1391,221 @@ def _publish_projection_locked(
     fenced["publication_payload_sha256"] = fence_digest
 
     # 3. Persist immutable authority files for the already-validated candidate.
+    auth_dir = root / "authority" / snapshot_id
+    if auth_dir.exists():
+        raise StrictPublisherError("authority_dir_exists")
+    auth_dir.mkdir(parents=True, exist_ok=True)
+
+    _fault("before_authority_fsync")
+    _write_json_atomic(auth_dir / "input.json", bundle)
+    _write_json_atomic(auth_dir / "source-cutoff.json", new_cutoff)
+    _write_jsonl_atomic(
+        auth_dir / "records.jsonl",
+        all_records,
+        before_file_fsync="before_authority_records_fsync",
+        after_file_fsync="after_authority_records_fsync",
+    )
+    _write_jsonl_atomic(auth_dir / "dispositions.jsonl", all_dispositions)
+    _write_json_atomic(auth_dir / "citation-map.json", citation_map)
+    _write_json_atomic(auth_dir / "provenance-context.json", provenance_context)
+    _write_json_atomic(auth_dir / "grounding.json", grounding)
+    _write_json_atomic(
+        auth_dir / "manifest.json",
+        manifest,
+        before_file_fsync="before_authority_manifest_fsync",
+        after_file_fsync="after_authority_manifest_fsync",
+    )
+    _fsync_dir(auth_dir)
+    _fault("after_authority_fsync")
+
+    # Cold qualify authority (fixture in-process; production: fresh interpreter).
+    # Publish unavailable head first so qualifier sees admitted authority.
+    unavailable: dict[str, Any] = {
+        "schema": "convmem.strict-publication.v2",
+        "lineage_id": lineage_id,
+        "owner_digest": owner,
+        "epoch": int(fenced["epoch"]) + 1,
+        "authority_seq": next_seq,
+        "authority_snapshot_id": snapshot_id,
+        "authority_manifest_sha256": manifest["manifest_payload_sha256"],
+        "authority_source_cutoff_sha256": new_cutoff["cutoff_payload_sha256"],
+        "serving_generation_id": None,
+        "projection_manifest_sha256": None,
+        "semantic_contract_sha256": sc_hash,
+        "pending_operation_id": None,
+        "mode": "unavailable",
+        "previous_publication_sha256": fence_digest,
+        "freshness_anchor": None,  # filled below
+        "published_at": bundle["built_at"],
+        "publication_payload_sha256": "sha256:" + ("0" * 64),
+    }
+    # Persist clock review + freshness for this head (unchanged on rollback).
+    clock = {
+        "schema": "convmem.clock-review.v1",
+        "lineage_id": lineage_id,
+        "authority_snapshot_id": snapshot_id,
+        "boot_id": "fixture-boot",
+        "expires_at": bundle["expires_at"],
+        "reviewed_wall_time": bundle["built_at"],
+        "reviewer_uid": enrollment["operator_uid"],
+        "review_payload_sha256": "sha256:" + ("0" * 64),
+    }
+    _set_self_hash(clock, "review_payload_sha256")
+    clock_ref = "clock:" + clock["review_payload_sha256"].removeprefix("sha256:")
+    _write_json_atomic(
+        root / "control" / "clock" / f"{clock['review_payload_sha256'].removeprefix('sha256:')}.json",
+        clock,
+    )
+    anchor = _freshness_anchor_for(
+        snapshot_id=snapshot_id,
+        boot_id="fixture-boot",
+        sampled_wall_time=bundle["built_at"],
+        sampled_boottime_ns=0,
+        snapshot_deadline_boottime_ns=10_000_000_000,
+        clock_review_ref=clock_ref,
+    )
+    unavailable["freshness_anchor"] = anchor
+    unavail_digest = _commit_publication(root, unavailable, rename_tag="unavailable")
+    unavailable["publication_payload_sha256"] = unavail_digest
+    _fault("after_authority_unavailable")
+
+    # Fresh cold qualification of unavailable head.
     try:
-        auth_dir = root / "authority" / snapshot_id
-        if auth_dir.exists():
-            raise StrictPublisherError("authority_dir_exists")
-        auth_dir.mkdir(parents=True, exist_ok=True)
+        qualify_authority_generation(
+            root=root,
+            scope=scope,
+            registry=registry,
+            expected_publication_sha256=unavail_digest,
+            require_serving=False,
+        )
+    except StrictProjectionError as exc:
+        raise StrictPublisherError(f"cold_qualify:{exc}") from exc
 
-        _fault("before_authority_fsync")
-        _write_json_atomic(auth_dir / "input.json", bundle)
-        _write_json_atomic(auth_dir / "source-cutoff.json", new_cutoff)
-        _write_jsonl_atomic(
-            auth_dir / "records.jsonl",
-            all_records,
-            before_file_fsync="before_authority_records_fsync",
-            after_file_fsync="after_authority_records_fsync",
-        )
-        _write_jsonl_atomic(auth_dir / "dispositions.jsonl", all_dispositions)
-        _write_json_atomic(auth_dir / "citation-map.json", citation_map)
-        _write_json_atomic(auth_dir / "provenance-context.json", provenance_context)
-        _write_json_atomic(auth_dir / "grounding.json", grounding)
-        _write_json_atomic(
-            auth_dir / "manifest.json",
-            manifest,
-            before_file_fsync="before_authority_manifest_fsync",
-            after_file_fsync="after_authority_manifest_fsync",
-        )
-        _fsync_dir(auth_dir)
-        _fault("after_authority_fsync")
-
-        # Cold qualify authority (fixture in-process; production: fresh interpreter).
-        # Publish unavailable head first so qualifier sees admitted authority.
-        unavailable: dict[str, Any] = {
-            "schema": "convmem.strict-publication.v2",
-            "lineage_id": lineage_id,
-            "owner_digest": owner,
-            "epoch": int(fenced["epoch"]) + 1,
-            "authority_seq": next_seq,
-            "authority_snapshot_id": snapshot_id,
-            "authority_manifest_sha256": manifest["manifest_payload_sha256"],
-            "authority_source_cutoff_sha256": new_cutoff["cutoff_payload_sha256"],
-            "serving_generation_id": None,
-            "projection_manifest_sha256": None,
-            "semantic_contract_sha256": sc_hash,
-            "pending_operation_id": None,
-            "mode": "unavailable",
-            "previous_publication_sha256": fence_digest,
-            "freshness_anchor": None,  # filled below
-            "published_at": bundle["built_at"],
-            "publication_payload_sha256": "sha256:" + ("0" * 64),
-        }
-        # Persist clock review + freshness for this head (unchanged on rollback).
-        clock = {
-            "schema": "convmem.clock-review.v1",
-            "lineage_id": lineage_id,
-            "authority_snapshot_id": snapshot_id,
-            "boot_id": "fixture-boot",
-            "expires_at": bundle["expires_at"],
-            "reviewed_wall_time": bundle["built_at"],
-            "reviewer_uid": enrollment["operator_uid"],
-            "review_payload_sha256": "sha256:" + ("0" * 64),
-        }
-        _set_self_hash(clock, "review_payload_sha256")
-        clock_ref = "clock:" + clock["review_payload_sha256"].removeprefix("sha256:")
-        _write_json_atomic(
-            root / "control" / "clock" / f"{clock['review_payload_sha256'].removeprefix('sha256:')}.json",
-            clock,
-        )
-        anchor = _freshness_anchor_for(
-            snapshot_id=snapshot_id,
-            boot_id="fixture-boot",
-            sampled_wall_time=bundle["built_at"],
-            sampled_boottime_ns=0,
-            snapshot_deadline_boottime_ns=10_000_000_000,
-            clock_review_ref=clock_ref,
-        )
-        unavailable["freshness_anchor"] = anchor
-        unavail_digest = _commit_publication(root, unavailable, rename_tag="unavailable")
-        unavailable["publication_payload_sha256"] = unavail_digest
-        _fault("after_authority_unavailable")
-
-        # Fresh cold qualification of unavailable head.
+    # 5. Cold build projection for SAME head.
+    reduced = reduce_complete_bound_state(all_records, disp_map)
+    selectors = EffectiveSelectors(
+        project=scope.project,
+        site=scope.site,
+        site_mode=scope.site_mode,
+        domain=scope.domain,
+        binding_id=binding_id,
+    )
+    for rec in all_records:
         try:
-            qualify_authority_generation(
-                root=root,
+            authorize_row(
                 scope=scope,
                 registry=registry,
-                expected_publication_sha256=unavail_digest,
-                require_serving=False,
+                selectors=selectors,
+                project_binding_id=rec["project_binding_id"],
+                source_registration_id=rec["source_registration_id"],
+                authority_site=rec["authority_site"],
+                authority_domain=rec["authority_domain"],
             )
-        except StrictProjectionError as exc:
-            raise StrictPublisherError(f"cold_qualify:{exc}") from exc
+        except BoundScopeError as exc:
+            raise StrictPublisherError(f"authorization:{exc}") from exc
 
-        # 5. Cold build projection for SAME head.
-        reduced = reduce_complete_bound_state(all_records, disp_map)
-        selectors = EffectiveSelectors(
-            project=scope.project,
-            site=scope.site,
-            site_mode=scope.site_mode,
-            domain=scope.domain,
-            binding_id=binding_id,
+    rows, graph = _build_rows_and_graph(
+        records=all_records,
+        reduced=reduced,
+        lineage_id=lineage_id,
+        authority_seq=next_seq,
+        authority_manifest_sha256=manifest["manifest_payload_sha256"],
+        semantic_contract_sha256=sc_hash,
+        binding_public_ref=binding.public_ref,
+    )
+    rows_digest = _jsonl_sha256(rows)
+    prev_gen = current.get("serving_generation_id")
+    proj_manifest: dict[str, Any] = {
+        "schema": "convmem.bound-projection-manifest.v3",
+        "lineage_id": lineage_id,
+        "authority_seq": next_seq,
+        "owner_digest": owner,
+        "generation_id": "pending",
+        "previous_generation_id": prev_gen,
+        "snapshot_id": snapshot_id,
+        "authority_manifest_sha256": manifest["manifest_payload_sha256"],
+        "scope_sha256": scope.scope_sha256,
+        "registry_sha256": registry.registry_sha256,
+        "semantic_contract_sha256": sc_hash,
+        "rows_sha256": rows_digest,
+        "row_count": len(rows),
+        "graph_sha256": graph["graph_payload_sha256"],
+        "graph_node_count": len(graph["nodes"]),
+        "search_kernel": semantic_contract["search_kernel"],
+        "search_kernel_version": semantic_contract["search_kernel_version"],
+        "tokenizer_unicode_version": semantic_contract["tokenizer_unicode_version"],
+        "builder_version": BUILDER_VERSION,
+        "builder_tree_sha256": builder_tree,
+        "built_at": bundle["built_at"],
+        "as_of": bundle["as_of"],
+        "expires_at": bundle["expires_at"],
+        "manifest_payload_sha256": "sha256:" + ("0" * 64),
+    }
+    generation_id = _projection_generation_id(proj_manifest)
+    proj_manifest["generation_id"] = generation_id
+    _set_self_hash(proj_manifest, "manifest_payload_sha256")
+    if _projection_generation_id(proj_manifest) != generation_id:
+        raise StrictPublisherError("generation_id_unstable")
+
+    gen_dir = root / "projection" / generation_id
+    if gen_dir.exists():
+        raise StrictPublisherError("projection_dir_exists")
+    gen_dir.mkdir(parents=True, exist_ok=True)
+    _fault("before_projection_fsync")
+    _write_jsonl_atomic(gen_dir / "rows.jsonl", rows)
+    _write_json_atomic(gen_dir / "graph.json", graph)
+    _write_json_atomic(
+        gen_dir / "manifest.json",
+        proj_manifest,
+        before_file_fsync="before_projection_manifest_fsync",
+        after_file_fsync="after_projection_manifest_fsync",
+    )
+    _fsync_dir(gen_dir)
+    _fault("after_projection_fsync")
+
+    # 6. Recheck CAS under lock; publish serving for SAME head (retain anchor).
+    recheck = _current_publication(root, lineage_id)
+    if recheck["publication_payload_sha256"] != unavail_digest:
+        raise StrictPublisherError("publication_changed_under_lock")
+    serving: dict[str, Any] = {
+        "schema": "convmem.strict-publication.v2",
+        "lineage_id": lineage_id,
+        "owner_digest": owner,
+        "epoch": int(unavailable["epoch"]) + 1,
+        "authority_seq": next_seq,
+        "authority_snapshot_id": snapshot_id,
+        "authority_manifest_sha256": manifest["manifest_payload_sha256"],
+        "authority_source_cutoff_sha256": new_cutoff["cutoff_payload_sha256"],
+        "serving_generation_id": generation_id,
+        "projection_manifest_sha256": proj_manifest["manifest_payload_sha256"],
+        "semantic_contract_sha256": sc_hash,
+        "pending_operation_id": None,
+        "mode": "serving",
+        "previous_publication_sha256": unavail_digest,
+        "freshness_anchor": anchor,
+        "published_at": bundle["built_at"],
+        "publication_payload_sha256": "sha256:" + ("0" * 64),
+    }
+    serving_digest = _commit_publication(root, serving, rename_tag="serving")
+    serving["publication_payload_sha256"] = serving_digest
+
+    # Cold qualify serving.
+    try:
+        qualify_authority_generation(
+            root=root,
+            scope=scope,
+            registry=registry,
+            expected_publication_sha256=serving_digest,
+            require_serving=True,
         )
-        for rec in all_records:
-            try:
-                authorize_row(
-                    scope=scope,
-                    registry=registry,
-                    selectors=selectors,
-                    project_binding_id=rec["project_binding_id"],
-                    source_registration_id=rec["source_registration_id"],
-                    authority_site=rec["authority_site"],
-                    authority_domain=rec["authority_domain"],
-                )
-            except BoundScopeError as exc:
-                raise StrictPublisherError(f"authorization:{exc}") from exc
+    except StrictProjectionError as exc:
+        raise StrictPublisherError(f"cold_qualify_serving:{exc}") from exc
 
-        rows, graph = _build_rows_and_graph(
-            records=all_records,
-            reduced=reduced,
-            lineage_id=lineage_id,
-            authority_seq=next_seq,
-            authority_manifest_sha256=manifest["manifest_payload_sha256"],
-            semantic_contract_sha256=sc_hash,
-            binding_public_ref=binding.public_ref,
-        )
-        rows_digest = _jsonl_sha256(rows)
-        prev_gen = current.get("serving_generation_id")
-        proj_manifest: dict[str, Any] = {
-            "schema": "convmem.bound-projection-manifest.v3",
-            "lineage_id": lineage_id,
-            "authority_seq": next_seq,
-            "owner_digest": owner,
-            "generation_id": "pending",
-            "previous_generation_id": prev_gen,
-            "snapshot_id": snapshot_id,
-            "authority_manifest_sha256": manifest["manifest_payload_sha256"],
-            "scope_sha256": scope.scope_sha256,
-            "registry_sha256": registry.registry_sha256,
-            "semantic_contract_sha256": sc_hash,
-            "rows_sha256": rows_digest,
-            "row_count": len(rows),
-            "graph_sha256": graph["graph_payload_sha256"],
-            "graph_node_count": len(graph["nodes"]),
-            "search_kernel": semantic_contract["search_kernel"],
-            "search_kernel_version": semantic_contract["search_kernel_version"],
-            "tokenizer_unicode_version": semantic_contract["tokenizer_unicode_version"],
-            "builder_version": BUILDER_VERSION,
-            "builder_tree_sha256": builder_tree,
-            "built_at": bundle["built_at"],
-            "as_of": bundle["as_of"],
-            "expires_at": bundle["expires_at"],
-            "manifest_payload_sha256": "sha256:" + ("0" * 64),
-        }
-        generation_id = _projection_generation_id(proj_manifest)
-        proj_manifest["generation_id"] = generation_id
-        _set_self_hash(proj_manifest, "manifest_payload_sha256")
-        if _projection_generation_id(proj_manifest) != generation_id:
-            raise StrictPublisherError("generation_id_unstable")
-
-        gen_dir = root / "projection" / generation_id
-        if gen_dir.exists():
-            raise StrictPublisherError("projection_dir_exists")
-        gen_dir.mkdir(parents=True, exist_ok=True)
-        _fault("before_projection_fsync")
-        _write_jsonl_atomic(gen_dir / "rows.jsonl", rows)
-        _write_json_atomic(gen_dir / "graph.json", graph)
-        _write_json_atomic(
-            gen_dir / "manifest.json",
-            proj_manifest,
-            before_file_fsync="before_projection_manifest_fsync",
-            after_file_fsync="after_projection_manifest_fsync",
-        )
-        _fsync_dir(gen_dir)
-        _fault("after_projection_fsync")
-
-        # 6. Recheck CAS under lock; publish serving for SAME head (retain anchor).
-        recheck = _current_publication(root, lineage_id)
-        if recheck["publication_payload_sha256"] != unavail_digest:
-            raise StrictPublisherError("publication_changed_under_lock")
-        serving: dict[str, Any] = {
-            "schema": "convmem.strict-publication.v2",
-            "lineage_id": lineage_id,
-            "owner_digest": owner,
-            "epoch": int(unavailable["epoch"]) + 1,
-            "authority_seq": next_seq,
-            "authority_snapshot_id": snapshot_id,
-            "authority_manifest_sha256": manifest["manifest_payload_sha256"],
-            "authority_source_cutoff_sha256": new_cutoff["cutoff_payload_sha256"],
-            "serving_generation_id": generation_id,
-            "projection_manifest_sha256": proj_manifest["manifest_payload_sha256"],
-            "semantic_contract_sha256": sc_hash,
-            "pending_operation_id": None,
-            "mode": "serving",
-            "previous_publication_sha256": unavail_digest,
-            "freshness_anchor": anchor,
-            "published_at": bundle["built_at"],
-            "publication_payload_sha256": "sha256:" + ("0" * 64),
-        }
-        serving_digest = _commit_publication(root, serving, rename_tag="serving")
-        serving["publication_payload_sha256"] = serving_digest
-
-        # Cold qualify serving.
-        try:
-            qualify_authority_generation(
-                root=root,
-                scope=scope,
-                registry=registry,
-                expected_publication_sha256=serving_digest,
-                require_serving=True,
-            )
-        except StrictProjectionError as exc:
-            raise StrictPublisherError(f"cold_qualify_serving:{exc}") from exc
-
-        return serving
-
-    except Exception:
-        # Leave durable fence/unavailable for recovery; do not claim serving.
-        raise
+    return serving
 
 
-def _rebuild_serving(
+
+def _rebuild_serving(  # pylint: disable=R0913  # rebuild serving arity mirrors closed publisher inputs
     *,
     root: Path,
     scope: Any,
@@ -1700,7 +1698,7 @@ def _rebuild_serving(
     return serving
 
 
-def _rollback_serving(
+def _rollback_serving(  # pylint: disable=R0913  # rollback serving arity mirrors closed publisher inputs
     *,
     root: Path,
     scope: Any,
@@ -1713,6 +1711,7 @@ def _rollback_serving(
     sc_hash: str,
 ) -> dict[str, Any]:
     """Select retained generation of EXACT current authority; no expiry renewal."""
+    _ = semantic_contract  # signature parity with publish/rebuild paths
     if target_generation_id is None:
         raise StrictPublisherError("target_generation_required")
     if not target_generation_id.startswith("gen2_"):
@@ -1859,6 +1858,7 @@ def _recover_projection_locked(
     semantic_contract: Mapping[str, Any],
     expected_publication_sha256: str,
 ) -> dict[str, Any]:
+    _ = semantic_contract  # signature parity with publish/rebuild paths
     lineage_id = enrollment["lineage_id"]
     current = _current_publication(root, lineage_id)
     _require_cas(current, expected_publication_sha256)

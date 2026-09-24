@@ -95,7 +95,8 @@ def _reject_floats(value: Any, *, path: str = "$") -> None:
     if isinstance(value, dict):
         for key, child in value.items():
             _reject_floats(child, path=f"{path}.{key}")
-    elif isinstance(value, list):
+        return
+    if isinstance(value, list):
         for index, child in enumerate(value):
             _reject_floats(child, path=f"{path}[{index}]")
 
@@ -247,7 +248,7 @@ class VerificationProducer:
 
 
 @dataclass(frozen=True, slots=True)
-class ProjectBinding:
+class ProjectBinding:  # pylint: disable=R0902  # attributes mirror project-binding schema fields
     id: str
     public_ref: str
     project: str
@@ -262,7 +263,7 @@ class ProjectBinding:
 
 
 @dataclass(frozen=True, slots=True)
-class BoundReadScope:
+class BoundReadScope:  # pylint: disable=R0902  # attributes mirror bound-read-scope schema fields
     project: str
     allowed_project_bindings: tuple[str, ...]
     domain: str
@@ -353,7 +354,7 @@ def load_bound_read_scope(path: str | Path) -> BoundReadScope:
         if not value:
             raise BoundScopeError(f"scope_{field}")
     age = obj["max_snapshot_age_seconds"]
-    if not isinstance(age, int) or isinstance(age, bool) or not (60 <= age <= 86400):
+    if not isinstance(age, int) or isinstance(age, bool) or not 60 <= age <= 86400:
         raise BoundScopeError("scope_age")
     digest = sha256_digest(_strict_canonical_bytes(obj))
     return BoundReadScope(
@@ -387,7 +388,7 @@ def _parse_source_registration(raw: Mapping[str, Any]) -> SourceRegistration:
     if not _SOURCE_CLASS_RE.fullmatch(source_class):
         raise BoundScopeError("source_class")
     source_identity = require_already_nfc(raw["source_identity"], field="source_identity")
-    if not (1 <= len(source_identity) <= 512):
+    if not 1 <= len(source_identity) <= 512:
         raise BoundScopeError("source_identity")
     identity_match = raw["identity_match"]
     if identity_match != IDENTITY_MATCH_EXACT:
@@ -495,6 +496,124 @@ def _parse_verification_producer(raw: Mapping[str, Any]) -> VerificationProducer
     )
 
 
+
+def _parse_project_binding(
+    raw: Any, *, seen_public_refs: set[str]
+) -> ProjectBinding:
+    """Parse one registry binding object into a ProjectBinding."""
+
+    if not isinstance(raw, dict):
+        raise BoundScopeError("binding_type")
+    required = {
+        "id",
+        "public_ref",
+        "project",
+        "domain_root",
+        "site_mode",
+        "site",
+        "non_expanding_roots",
+        "source_registrations",
+        "lineage_id",
+        "capture_issuers",
+        "verification_producers",
+    }
+    _require_closed_keys(raw, required, label="binding")
+    binding_id = require_already_nfc(raw["id"], field="binding.id")
+    if not _BINDING_ID_RE.fullmatch(binding_id):
+        raise BoundScopeError("binding_id")
+    public_ref = require_already_nfc(raw["public_ref"], field="public_ref")
+    if not _PUBLIC_REF_RE.fullmatch(public_ref):
+        raise BoundScopeError("public_ref")
+    if public_ref in seen_public_refs:
+        raise BoundScopeError("public_ref_duplicate")
+    project = require_already_nfc(raw["project"], field="binding.project")
+    if not project:
+        raise BoundScopeError("binding_project")
+    domain_root = parse_strict_domain(raw["domain_root"])
+    site_mode = raw["site_mode"]
+    if site_mode not in SITE_MODES:
+        raise BoundScopeError("binding_site_mode")
+    site_raw = raw["site"]
+    if site_mode == "exact":
+        site = normalize_authority_site(site_raw)
+    else:
+        if site_raw is not None:
+            raise BoundScopeError("binding_site_must_be_null")
+        site = None
+    lineage_id = require_already_nfc(raw["lineage_id"], field="lineage_id")
+    if not _LINEAGE_RE.fullmatch(lineage_id):
+        raise BoundScopeError("binding_lineage")
+    roots = raw["non_expanding_roots"]
+    if not isinstance(roots, list):
+        raise BoundScopeError("non_expanding_roots")
+    parsed_roots = [require_already_nfc(x, field="non_expanding_root") for x in roots]
+    if parsed_roots != sorted(set(parsed_roots)):
+        raise BoundScopeError("non_expanding_roots_order")
+    regs_raw = raw["source_registrations"]
+    if not isinstance(regs_raw, list) or not regs_raw:
+        raise BoundScopeError("source_registrations")
+    registrations = tuple(_parse_source_registration(r) for r in regs_raw)
+    reg_ids = [r.id for r in registrations]
+    if reg_ids != sorted(reg_ids) or len(reg_ids) != len(set(reg_ids)):
+        raise BoundScopeError("source_registrations_order")
+    for reg in registrations:
+        if not domain_matches(reg.authorization_domain, domain_root):
+            raise BoundScopeError("source_domain_outside_binding")
+        if site_mode == "exact":
+            if reg.site != site:
+                raise BoundScopeError("source_site_mismatch")
+        elif reg.site is not None:
+            if reg.site != normalize_authority_site(reg.site):
+                raise BoundScopeError("source_site_noncanonical")
+    issuers_raw = raw["capture_issuers"]
+    if not isinstance(issuers_raw, list):
+        raise BoundScopeError("capture_issuers")
+    issuers = tuple(_parse_capture_issuer(i) for i in issuers_raw)
+    issuer_ids = [i.issuer_id for i in issuers]
+    if issuer_ids != sorted(issuer_ids) or len(issuer_ids) != len(set(issuer_ids)):
+        raise BoundScopeError("capture_issuers_order")
+    for issuer in issuers:
+        if issuer.capture_class != "synthetic_fixture":
+            raise BoundScopeError("fixture_issuer_only")
+        for src_id in issuer.source_registration_ids:
+            if src_id not in reg_ids:
+                raise BoundScopeError("issuer_source_unknown")
+    producers_raw = raw["verification_producers"]
+    if not isinstance(producers_raw, list):
+        raise BoundScopeError("verification_producers")
+    producers = tuple(_parse_verification_producer(prod) for prod in producers_raw)
+    producer_keys = [
+        (
+            prod.source_registration_id,
+            prod.producer,
+            prod.transformer_identity,
+            prod.transformer_version,
+            prod.transformer_artifact_sha256,
+            prod.recipe_sha256,
+            prod.capture_class,
+        )
+        for prod in producers
+    ]
+    if producer_keys != sorted(set(producer_keys)):
+        raise BoundScopeError("verification_producers_order")
+    for producer in producers:
+        if producer.source_registration_id not in reg_ids:
+            raise BoundScopeError("verification_producer_source")
+    return ProjectBinding(
+        id=binding_id,
+        public_ref=public_ref,
+        project=project,
+        domain_root=domain_root,
+        site_mode=site_mode,
+        site=site,
+        non_expanding_roots=tuple(parsed_roots),
+        source_registrations=registrations,
+        lineage_id=lineage_id,
+        capture_issuers=issuers,
+        verification_producers=producers,
+    )
+
+
 def load_project_binding_registry(path: str | Path) -> ProjectBindingRegistry:
     obj = _open_immutable_json(Path(path))
     _require_closed_keys(obj, {"schema", "revision", "bindings"}, label="registry")
@@ -507,120 +626,10 @@ def load_project_binding_registry(path: str | Path) -> ProjectBindingRegistry:
     public_refs: set[str] = set()
     binding_ids: list[str] = []
     for raw in bindings_raw:
-        if not isinstance(raw, dict):
-            raise BoundScopeError("binding_type")
-        required = {
-            "id",
-            "public_ref",
-            "project",
-            "domain_root",
-            "site_mode",
-            "site",
-            "non_expanding_roots",
-            "source_registrations",
-            "lineage_id",
-            "capture_issuers",
-            "verification_producers",
-        }
-        _require_closed_keys(raw, required, label="binding")
-        binding_id = require_already_nfc(raw["id"], field="binding.id")
-        if not _BINDING_ID_RE.fullmatch(binding_id):
-            raise BoundScopeError("binding_id")
-        binding_ids.append(binding_id)
-        public_ref = require_already_nfc(raw["public_ref"], field="public_ref")
-        if not _PUBLIC_REF_RE.fullmatch(public_ref):
-            raise BoundScopeError("public_ref")
-        if public_ref in public_refs:
-            raise BoundScopeError("public_ref_duplicate")
-        public_refs.add(public_ref)
-        project = require_already_nfc(raw["project"], field="binding.project")
-        if not project:
-            raise BoundScopeError("binding_project")
-        domain_root = parse_strict_domain(raw["domain_root"])
-        site_mode = raw["site_mode"]
-        if site_mode not in SITE_MODES:
-            raise BoundScopeError("binding_site_mode")
-        site_raw = raw["site"]
-        if site_mode == "exact":
-            site = normalize_authority_site(site_raw)
-        else:
-            if site_raw is not None:
-                raise BoundScopeError("binding_site_must_be_null")
-            site = None
-        lineage_id = require_already_nfc(raw["lineage_id"], field="lineage_id")
-        if not _LINEAGE_RE.fullmatch(lineage_id):
-            raise BoundScopeError("binding_lineage")
-        roots = raw["non_expanding_roots"]
-        if not isinstance(roots, list):
-            raise BoundScopeError("non_expanding_roots")
-        parsed_roots = [require_already_nfc(x, field="non_expanding_root") for x in roots]
-        if parsed_roots != sorted(set(parsed_roots)):
-            raise BoundScopeError("non_expanding_roots_order")
-        regs_raw = raw["source_registrations"]
-        if not isinstance(regs_raw, list) or not regs_raw:
-            raise BoundScopeError("source_registrations")
-        registrations = tuple(_parse_source_registration(r) for r in regs_raw)
-        reg_ids = [r.id for r in registrations]
-        if reg_ids != sorted(reg_ids) or len(reg_ids) != len(set(reg_ids)):
-            raise BoundScopeError("source_registrations_order")
-        for reg in registrations:
-            if not domain_matches(reg.authorization_domain, domain_root):
-                raise BoundScopeError("source_domain_outside_binding")
-            if site_mode == "exact":
-                if reg.site != site:
-                    raise BoundScopeError("source_site_mismatch")
-            elif reg.site is not None:
-                if reg.site != normalize_authority_site(reg.site):
-                    raise BoundScopeError("source_site_noncanonical")
-        issuers_raw = raw["capture_issuers"]
-        if not isinstance(issuers_raw, list):
-            raise BoundScopeError("capture_issuers")
-        issuers = tuple(_parse_capture_issuer(i) for i in issuers_raw)
-        issuer_ids = [i.issuer_id for i in issuers]
-        if issuer_ids != sorted(issuer_ids) or len(issuer_ids) != len(set(issuer_ids)):
-            raise BoundScopeError("capture_issuers_order")
-        for issuer in issuers:
-            if issuer.capture_class != "synthetic_fixture":
-                raise BoundScopeError("fixture_issuer_only")
-            for src_id in issuer.source_registration_ids:
-                if src_id not in reg_ids:
-                    raise BoundScopeError("issuer_source_unknown")
-        producers_raw = raw["verification_producers"]
-        if not isinstance(producers_raw, list):
-            raise BoundScopeError("verification_producers")
-        producers = tuple(_parse_verification_producer(p) for p in producers_raw)
-        producer_keys = [
-            (
-                p.source_registration_id,
-                p.producer,
-                p.transformer_identity,
-                p.transformer_version,
-                p.transformer_artifact_sha256,
-                p.recipe_sha256,
-                p.capture_class,
-            )
-            for p in producers
-        ]
-        if producer_keys != sorted(set(producer_keys)):
-            raise BoundScopeError("verification_producers_order")
-        for producer in producers:
-            if producer.source_registration_id not in reg_ids:
-                raise BoundScopeError("verification_producer_source")
-        parsed.append(
-            ProjectBinding(
-                id=binding_id,
-                public_ref=public_ref,
-                project=project,
-                domain_root=domain_root,
-                site_mode=site_mode,
-                site=site,
-                non_expanding_roots=tuple(parsed_roots),
-                source_registrations=registrations,
-                lineage_id=lineage_id,
-                capture_issuers=issuers,
-                verification_producers=producers,
-            )
-        )
+        binding = _parse_project_binding(raw, seen_public_refs=public_refs)
+        public_refs.add(binding.public_ref)
+        binding_ids.append(binding.id)
+        parsed.append(binding)
     if binding_ids != sorted(binding_ids):
         raise BoundScopeError("registry_bindings_order")
     if len(binding_ids) != len(set(binding_ids)):
