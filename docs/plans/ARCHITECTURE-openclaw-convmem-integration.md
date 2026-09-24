@@ -4479,10 +4479,13 @@ disagreement with the raw terminal summary is `PAUSE`.
    exception class, assertion/error message or failure/error phase is a mismatch.
 4. Every outcome or signature mismatch from the complete runs is rerun independently at both tips,
    one node at a time in fresh processes using the same environment. The complete-run evidence is
-   retained. The mismatch clears only if both independent reruns pass/skip or both reproduce the
-   same failure/error outcome and normalized signature. Any other result, collection difference,
-   non-reproduction or environmental asymmetry is `PAUSE`; a targeted rerun never substitutes for
-   either complete run.
+   retained. The mismatch clears only as one of three closed dispositions: both reruns are
+   non-failing (`passed` or `skipped`); the baseline rerun fails/errors while the candidate rerun is
+   non-failing, recorded as a confirmed improvement; or both reruns reproduce the same
+   failure/error outcome and normalized signature, recorded as a retained failure. A baseline
+   non-failure becoming a candidate failure/error, a changed candidate failure signature, any
+   other result, collection difference, non-reproduction or environmental asymmetry is `PAUSE`;
+   a targeted rerun never substitutes for either complete run.
 5. Every identical retained failure is listed by node identity and normalized signature, linked to
    both raw runs, and labeled repository debt outside this remediation's acceptance claim. It is
    never called a full-pytest PASS, never silently discarded and never used to waive the unchanged
