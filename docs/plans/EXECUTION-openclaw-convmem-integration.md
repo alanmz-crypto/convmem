@@ -1026,10 +1026,12 @@ parent-bound runtime prefix and durable evidence root. After that grant, executi
 1. Codex proves the implementation branch/worktree is clean, pushed and exactly at `9c6421a`; the
    Pylint failure, two M8 passes and seven MCP passes remain retained evidence, not inherited final
    acceptance.
-2. Grok cherry-picks exactly the three new plan commits in order, without merge, squash, edit,
-   conflict resolution, branch recreation or history rewrite, pushes and stops. Codex proves the
-   resulting delta is exactly the four reviewed documents and each blob/mode equals the reviewed
-   overlay. A commit-specific `CONTINUE` is mandatory.
+2. Grok cherry-picks every commit in the reviewed linear first-parent range after
+   `c5513d50b656f9cc9e6423ea819438f975d16ee5` through the final milestone-overlay commit named in
+   Ryan's grant, oldest to newest, without a merge, gap, reorder, squash, edit, conflict resolution,
+   branch recreation or history rewrite, then pushes and stops. Codex proves the range changes only
+   the four reviewed documents and that each final blob/mode equals the reviewed overlay. A
+   commit-specific `CONTINUE` is mandatory.
 3. **L1 production checkpoint.** Grok changes only the nine top-level production paths in the
    §18.9 set, preserving every public interface, serialized byte contract, exception/refusal effect
    and injected-port behavior. It may extract only private in-file helpers. It pushes and stops.

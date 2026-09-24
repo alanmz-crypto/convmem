@@ -80,7 +80,7 @@ crash-loop fix, not ordinary wiring.
 
 ## 5. Your Role
 
-**If Ryan sent you here:** review the exact three-commit M11 Pylint-remediation
+**If Ryan sent you here:** review the exact linear-range M11 Pylint-remediation
 plan. Confirm that the observed 699-occurrence failure is bound to its exact
 report/environment, the edit surface is exactly 44 Switchboard paths, the real
 current-main workflow/baseline/gate remain byte-identical, and the suppression
@@ -99,9 +99,11 @@ later gates.
 2. If Kiro passes, Ryan decides whether to grant resumption on preserved tip
    `9c6421a`, naming the exact parent/overlay, 44 paths, integration
    baseline/branch, rebound runtime prefix and durable evidence root.
-3. Under that grant, Grok applies the exact three reviewed plan commits and stops;
-   Codex proves all four reviewed document blobs match the overlay and every
-   other byte still equals `9c6421a`.
+3. Under that grant, Grok applies every commit after plan base `c5513d5` through
+   the grant-named final overlay in reviewed first-parent order and stops; Codex
+   proves the range contains no merge, gap, reorder or out-of-scope path, all
+   four reviewed document blobs match the overlay, and every other byte still
+   equals `9c6421a`.
 4. After commit-specific `CONTINUE`, Grok completes the held production and
    fixture/test lint checkpoints. Codex rejects a 45th path, broad suppression,
    baseline/gate/config change or semantic drift.
@@ -170,6 +172,7 @@ session narrative. Add one line below per milestone-level change.
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-09-24 | Codex | Replaced the self-invalidating fixed plan-commit count with the complete reviewed linear range from `c5513d5` through Ryan's grant-named final overlay. |
 | 2026-09-24 | Codex | M11 is preserved at `9c6421a` with M8/MCP PASS and Pylint PAUSE; the plan now freezes an exact 44-path remediation that keeps the current-main gate and baseline unchanged. |
 | 2026-09-24 | Codex | M11 replay/pinning is preserved at `a11b7a2`; first M8 attempt paused pre-import on the four reviewed control documents; a plan-only exact-blob/unchanged-product-allowlist correction now awaits Kiro and a new Ryan resume grant. |
 | 2026-09-23 | Codex | Bounded M0–M8 is accepted at `8010fb0`; M11 is paused before current-main reconstruction while the plan-only `9193f5e` reconciliation awaits exact-tip Kiro review and a new Ryan integration decision. |
