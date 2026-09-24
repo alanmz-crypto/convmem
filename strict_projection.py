@@ -92,6 +92,12 @@ def _projection_field_set(*names: str) -> frozenset[str]:
     return frozenset(names)
 
 
+def _projection_inventory_lines(blob: str) -> tuple[str, ...]:
+    """Projection-local inventory materializer (keeps byte-identical member strings)."""
+
+    return tuple(line for line in blob.splitlines() if line)
+
+
 _LAYOUT_FIELDS = frozenset(_projection_inventory_lines("""schema
 authority_dir
 projection_dir
@@ -131,11 +137,6 @@ freshness_anchor
 published_at
 publication_payload_sha256"""))
 
-
-def _projection_inventory_lines(blob: str) -> tuple[str, ...]:
-    """Projection-local inventory materializer (keeps byte-identical member strings)."""
-
-    return tuple(line for line in blob.splitlines() if line)
 
 
 _AUTHORITY_MANIFEST_FIELDS = frozenset(_projection_inventory_lines("""schema

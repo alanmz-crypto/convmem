@@ -45,7 +45,9 @@ from strict_evidence_state import (
     build_projection_rows_and_graph,
     disposition_id,
     materialize_authority_records,
+    payload_sha256,
     reduce_complete_bound_state,
+    semantic_sha256,
     validate_dispositions,
 )
 from strict_grounding import (
@@ -785,7 +787,7 @@ enrollment_payload_sha256"""))
     if enrollment["initial_source_cutoff_sha256"] != empty_cutoff["cutoff_payload_sha256"]:
         raise StrictPublisherError("enrollment_cutoff_mismatch")
 
-    dict(
+    layout = dict(
         (
             ("schema", "convmem.strict-generation-layout.v2"),
             ("authority_dir", "authority"),
@@ -1259,8 +1261,6 @@ def _plock_publish_projection_locked_p2(work: SimpleNamespace) -> None:
         )
     except StrictEvidenceError as exc:
         raise StrictPublisherError(f"dispositions:{exc}") from exc
-    from strict_evidence_state import payload_sha256, semantic_sha256
-
     _publisher_apply_new_dispositions(work)
     work.disp_map = {disposition_id(d): d for d in work.all_dispositions}
     work.operations = list(work.parent_cutoff.get("operations", []))

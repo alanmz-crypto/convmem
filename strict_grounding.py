@@ -11,14 +11,6 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-
-
-def _grounding_inventory_lines(blob: str) -> tuple[str, ...]:
-    """Grounding-local inventory materializer (keeps byte-identical member strings)."""
-
-    return tuple(line for line in blob.splitlines() if line)
-
-
 from typing import Any, Mapping, Sequence
 
 from canonical_json import canonical_json_bytes
@@ -31,6 +23,12 @@ from provenance import (
 )
 
 from bound_read_scope import CaptureIssuer, sha256_digest
+
+def _grounding_inventory_lines(blob: str) -> tuple[str, ...]:
+    """Grounding-local inventory materializer (keeps byte-identical member strings)."""
+
+    return tuple(line for line in blob.splitlines() if line)
+
 
 _SHA_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")

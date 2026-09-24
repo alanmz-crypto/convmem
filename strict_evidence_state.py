@@ -14,13 +14,6 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 from types import SimpleNamespace
 
-
-def _evidence_inventory_lines(blob: str) -> tuple[str, ...]:
-    """Evidence-local inventory materializer (keeps byte-identical member strings)."""
-
-    return tuple(line for line in blob.splitlines() if line)
-
-
 from bound_read_scope import (
     BoundScopeError,
     ProjectBinding,
@@ -34,6 +27,12 @@ from strict_grounding import (
     derive_origin_assurance,
     strict_canonical_bytes,
 )
+
+def _evidence_inventory_lines(blob: str) -> tuple[str, ...]:
+    """Evidence-local inventory materializer (keeps byte-identical member strings)."""
+
+    return tuple(line for line in blob.splitlines() if line)
+
 
 _PRODUCER_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,15}$")
 _EVENT_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
