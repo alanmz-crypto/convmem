@@ -566,7 +566,8 @@ def test_m11_control_plane_docs_remain_exported_inventoried_hashed():
     for rel in oc_constants.M11_CONTROL_PLANE_INPUTS:
         assert rel in paths
         match = next(e for e in entries if e["path"] == rel)
-        assert match["mode"] == "100644"
+        # independent_source_tree_digest records filesystem modes as four octal digits.
+        assert match["mode"] == "0644"
         assert match["sha256"].startswith("sha256:")
     assert digest == fm.hash_inventory_entries(entries)
     assert digest.startswith("sha256:")
