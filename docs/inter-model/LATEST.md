@@ -9,6 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Decision and Review Guardrails (opt-in doc) — Kiro review requested:** Ryan
+  authorized adding a request-only decision/review-discipline reference (not
+  auto-loaded, no always-loaded surface changed) and asked to route it to Kiro
+  for design/sign-off review before it's treated as adopted. Under review:
+  [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md) at tip
+  `15cc101` on `docs/2026-09-24-decision-review-guardrails-opt-in`. No PR
+  opened; no implementation involved. Resume from
+  [`CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md`](CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md).
 - **Arc OpenClaw Watch Coverage — W0–W6 AUTHORIZED / Cursor next:** Ryan
   explicitly authorized implementation and isolated acceptance on 2026-09-21
   against Kiro-reviewed plan `19dea97368408ee0b179c05c942306f6d8f1a2e8`.
