@@ -18,7 +18,7 @@ no hardware.
 | **Tip SHA** | see `git log -1 origin/fix/2026-09-24-chroma-upsert-containment` (implementation commit `bca3d12`) |
 | **Push status** | pushed to origin |
 | **PR** | not opened (Ryan opens and owns the merge) |
-| **Ryan GATE** | 1) choose a review lane (recommend Kiro design review and/or Copilot safety audit: this guards the shared writer path); 2) merge; 3) deploy = fast-forward `.worktrees/runtime-main`, then restart `convmem-watch` |
+| **Ryan GATE** | 1) choose a review lane (recommend Kiro design review and/or Copilot safety audit: this guards the shared writer path); 2) merge; 3) deploy = fast-forward `.worktrees/runtime-main`, then restart `convmem-watch`; 4) move the *other* writers onto merged code (see Deploying: refine, reconcile, monitor, the CLI and the MCP servers run `~/Projects/convmem`, not `runtime-main`) |
 | **Production impact today** | none. The watcher runs from `.worktrees/runtime-main` (`main`), and nothing here was deployed |
 
 ---
@@ -137,6 +137,19 @@ regenerated with `write_v2_inventory_file()` (hash fields only). The read-path i
   `~/.local/share/convmem/chroma.write-guard/`. After that, one copy follows each Chroma save, roughly every 1,000
   records, taking about a second. Whether restic should include that directory is left for you; backups were not changed.
 - Watch with `python scripts/chroma_guard.py status` and `convmem doctor` (`chroma_write_guard`).
+- **Which writers run the new code.** Only `convmem-watch` runs from `.worktrees/runtime-main`, which is itself behind
+  `origin/main` today. Several writers run `~/Projects/convmem`, the shared checkout (currently on another agent's
+  feature branch), with whatever code was checked out when each process started:
+  - `convmem-refine`, `convmem-reconcile`, `convmem-monitor` and `convmem-cg2-soak-check`;
+  - the `convmem` CLI wrapper (`~/.local/bin/convmem`);
+  - every editor MCP server (`mcp_server.py`: 12 processes on 2026-09-24, several 3–4 days old).
+
+  The guard protects only writers running it. Until those writers run merged code, an unguarded long-lived writer can
+  still save a stale index over a newer save (E4). Its saves also skip the lock, so a guarded writer that sees the files
+  change mid-copy raises instead of copying a moving target. That is loud, not lossy. Full protection means every writer
+  runs merged code. Either repoint those units, the CLI wrapper and the MCP config at `runtime-main` (your configuration
+  call), or keep `~/Projects/convmem` on `main` and restart refine, reconcile and monitor plus the editors' MCP servers
+  after merge. `python scripts/chroma_guard.py census` detects any E4-style loss after the fact (0 today).
 - If it misbehaves: set `[index] chroma_write_guard = false` in the live config (no code revert needed).
 
 ---
