@@ -515,6 +515,61 @@ def load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:
     return debounce, paths, lock_path
 
 
+def _process_ready_path(
+    path: str,
+    *,
+    cfg: dict,
+    breaker: CircuitBreakerState,
+    verbose: bool,
+) -> None:
+    """Run watch's per-path body once: reconcile token, quarantine skip, or index.
+
+    Extracted from run_watch's main loop to keep that loop's branch/nesting
+    count within the repo's complexity gate.
+    """
+    from repository_knowledge_sync import (
+        is_reconcile_token,
+        reconcile_manifest,
+        token_manifest_path,
+    )
+
+    try:
+        if is_reconcile_token(path):
+            reconcile_manifest(token_manifest_path(path), cfg)
+            return
+        if breaker.is_quarantined(path):
+            if verbose:
+                print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
+            return
+        flush_path(path, verbose=verbose, use_subprocess=True)
+        breaker.record_success(path)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _record_ready_path_failure(path, e, breaker=breaker, verbose=verbose)
+
+
+def _record_ready_path_failure(
+    path: str,
+    exc: Exception,
+    *,
+    breaker: CircuitBreakerState,
+    verbose: bool,
+) -> None:
+    from repository_knowledge_sync import is_reconcile_token
+
+    message = str(exc)
+    if not is_reconcile_token(path):
+        returncode = parse_native_fault_returncode(message)
+        native_fault = is_native_fault_returncode(returncode)
+        timeout = is_timeout_message(message)
+        if native_fault or timeout:
+            quarantined = breaker.record_failure(path, native_fault=native_fault, timeout=timeout)
+            if native_fault:
+                log_native_crash(path, message)
+            if quarantined and verbose:
+                print(f"[watch] quarantined after repeated failures: {path}", file=sys.stderr)
+    print(f"[watch] error processing {path}: {exc}", file=sys.stderr)
+
+
 def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
     *,
     debounce_seconds: float | None = None,
@@ -655,32 +710,7 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
                             file=sys.stderr,
                         )
                     break  # leave remaining ready paths pending; retry after the window ages out
-                try:
-                    if is_reconcile_token(path):
-                        reconcile_manifest(token_manifest_path(path), cfg)
-                    elif breaker.is_quarantined(path):
-                        if verbose:
-                            print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
-                        scheduler.forget(path)
-                        continue
-                    else:
-                        flush_path(path, verbose=verbose, use_subprocess=True)
-                        breaker.record_success(path)
-                except Exception as e:
-                    message = str(e)
-                    if not is_reconcile_token(path):
-                        returncode = parse_native_fault_returncode(message)
-                        native_fault = is_native_fault_returncode(returncode)
-                        timeout = is_timeout_message(message)
-                        if native_fault or timeout:
-                            quarantined = breaker.record_failure(
-                                path, native_fault=native_fault, timeout=timeout
-                            )
-                            if native_fault:
-                                log_native_crash(path, message)
-                            if quarantined and verbose:
-                                print(f"[watch] quarantined after repeated failures: {path}", file=sys.stderr)
-                    print(f"[watch] error processing {path}: {e}", file=sys.stderr)
+                _process_ready_path(path, cfg=cfg, breaker=breaker, verbose=verbose)
                 scheduler.forget(path)
             time.sleep(1)
     except KeyboardInterrupt:

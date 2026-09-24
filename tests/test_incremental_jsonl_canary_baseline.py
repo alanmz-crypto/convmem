@@ -9,7 +9,9 @@ from incremental_jsonl_canary import assemble_evidence
 
 
 BASELINE_HASHES = {
-    "watch.py": "4bcbfa823028fd49e03ed33f06d080ad1c3d1f399351b35da24ac4996ff62af7",
+    # Intentionally refreshed: Arc Poison Pill circuit breaker (2026-09-23),
+    # see docs/inter-model/CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md
+    "watch.py": "b8b1461000959e3485b52262563e598a136604116d7d95fd557e9589e836160a",
     "ingest.py": "a3c20269537735a096921bdfd25451c403a83305c1d7f729962b453bd6a7a4f3",
     "incremental_jsonl.py": "33cb607b306a406399af68c0b0c28dc3b1155c96ad466399249b69d11d4d9cb8",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
