@@ -399,6 +399,10 @@ convmem record --approve-last
 - [docs/MODEL-WORKFLOW.md](../MODEL-WORKFLOW.md)
 - [docs/WILLOWYHOLLOW-SESSION-LOOP.md](../WILLOWYHOLLOW-SESSION-LOOP.md)
 
+**Optional lenses (not team policy):** tools an agent may reach for on explicit request; none of these are charter rules and none are auto-loaded.
+
+- [DECISION-REVIEW-GUARDRAILS.md](DECISION-REVIEW-GUARDRAILS.md) — a request-only check for whether continued review/analysis still has decision value. Invoke by name; do not apply by default.
+
 ---
 
 ## Jargon TL;DR
