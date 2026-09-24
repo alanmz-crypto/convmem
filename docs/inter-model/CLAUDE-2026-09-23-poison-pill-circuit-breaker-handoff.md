@@ -15,17 +15,42 @@ Cursor"). Implemented and pushed. This is a deviation from the project's normal
 implementation-lane convention (Cursor), done at explicit user direction — noted here so a future
 reader isn't confused about why a "handoff to Cursor" doc has a finished implementation attached.
 
+## Update — CI green after three fix-forward commits
+
+The first push (`2ee4c12`) failed CI on two real, unrelated-looking gates that both trace to one
+cause: the `--clear-quarantine` CLI flags added ~25 lines above `convmem.py`'s existing production
+`ChromaStore` call site, shifting every line-number pin below it, plus pushing `watch.py`'s
+control-flow complexity over the pylint regression gate. Fixed across three commits:
+
+- `3a93271` — extracted `_process_ready_path`/`_record_ready_path_failure` to fix the
+  too-many-branches/too-many-nested-blocks regression; refreshed `watch.py`'s T0 canary SHA-256;
+  refreshed the convmem.py:655→680/671→696/1733→1758 line pins in
+  `eval_corpus/r2b_v2/coverage/inventory.py` and `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json`.
+- `604ff4c` — the full local suite (2691 passed) surfaced a fourth stale pin: the committed
+  `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` binds a `code_revision` that's a content hash
+  over R2b's governed-route dependency closure (`convmem.py` included), so it went stale too.
+  Regenerated via the module's own `write_v2_inventory_file()` rather than hand-editing — every
+  changed line was mechanically `code_revision`/`inventory_digest`, verified.
+- `1615928` — CI's pylint gate caught two `watch.py` imports (`reconcile_manifest`,
+  `token_manifest_path`) orphaned by the `3a93271` refactor; removed.
+- `554781a` — that two-line removal changed `watch.py`'s content again, re-invalidating the same
+  two content-identity pins a second time (same mechanism, not a new cause); refreshed both again.
+
+All fixes verified snippet-by-snippet or via the artifact's own sanctioned regeneration path before
+committing — none were blind edits to security/provenance-adjacent files. Final tip `554781a`
+passes all 6 CI checks (pylint, pytest, CodeQL ×2, Analyze ×2, secret-scan).
+
 ## Resume state
 
 | Field | Value |
 |-------|--------|
-| **State** | `PR_OPEN` — merge is Ryan's call |
+| **State** | `PR_OPEN`, CI GREEN — merge is Ryan's call |
 | **Branch** | `fix/2026-09-23-poison-pill-circuit-breaker` (created from `origin/main` @ `9193f5e`, not the stale poison-pill worktree — see rationale below) |
-| **Tip SHA** | `2ee4c12` |
+| **Tip SHA** | `554781a` |
 | **Push status** | pushed to origin |
-| **PR** | [#328](https://github.com/alanmz-crypto/convmem/pull/328) — opened via PR Steward grant, not merged |
-| **Ryan GATE** | Review + open PR when ready; squash-merge default applies |
-| **Worktree** | Use `~/.local/share/convmem/worktrees/fix-2026-09-20-chroma-upsert-poison-pill` if free, or `--worktree` a new one — do not touch any Switchboard worktree/branch |
+| **PR** | [#328](https://github.com/alanmz-crypto/convmem/pull/328) — opened via PR Steward grant, all checks pass, not merged |
+| **Ryan GATE** | Review + merge when ready; squash-merge default applies |
+| **Worktree** | `~/.local/share/convmem/worktrees/fix-2026-09-23-poison-pill-circuit-breaker` (fresh worktree off `origin/main`, not the stale poison-pill one — do not touch any Switchboard worktree/branch) |
 
 ---
 
@@ -304,7 +329,7 @@ open, per the "What NOT to build" section above.
 - [x] `LATEST.md` bullet updated with resume state
 - [ ] `STATUS-chroma-upsert-crash.md` Update Log line — not touched; that arc brief lives only in
       the old poison-pill worktree/branch, out of scope for this containment-only PR
-- [x] Branch pushed: `fix/2026-09-23-poison-pill-circuit-breaker` @ `2ee4c12`
+- [x] Branch pushed: `fix/2026-09-23-poison-pill-circuit-breaker` @ `554781a` (CI green)
 
 **Reviewer (Ryan, picking up):**
 
