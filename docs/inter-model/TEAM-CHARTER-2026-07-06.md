@@ -398,6 +398,7 @@ convmem record --approve-last
 - [docs/AGENT-ROLES.md](../AGENT-ROLES.md)
 - [docs/MODEL-WORKFLOW.md](../MODEL-WORKFLOW.md)
 - [docs/WILLOWYHOLLOW-SESSION-LOOP.md](../WILLOWYHOLLOW-SESSION-LOOP.md)
+- [DECISION-REVIEW-GUARDRAILS.md](DECISION-REVIEW-GUARDRAILS.md) — opt-in lens for checking whether continued review/analysis is still earning its keep; **not auto-loaded**, invoke by request only
 
 ---
 
