@@ -9,8 +9,10 @@ in a subprocess so Chroma/ML memory is not retained in the watch parent.
 
 from __future__ import annotations
 
+import json
 import math
 import os
+import re
 import shutil
 import signal
 import sys
@@ -27,6 +29,16 @@ _DEFAULT_INDEX_MEM_HIGH = "1500M"
 # per-child memory scope (_scoped_index_cmd). A tuned value awaits the watch-OOM
 # full-file-reindex design; do not treat 15*60 as endorsed.
 _DEFAULT_INDEX_TIMEOUT_SECONDS = 15 * 60
+
+# Native-fault signals from an index child (negative subprocess returncode):
+# SIGSEGV, SIGABRT, SIGBUS. Not -9 (SIGKILL, e.g. OOM killer) or -15 (SIGTERM,
+# e.g. our own timeout teardown) — those are not the poison-pill crash class.
+_NATIVE_FAULT_SIGNALS = frozenset({-11, -6, -7})
+_DEFAULT_CB_FILE_CRASH_THRESHOLD = 3  # N: consecutive native faults on one path
+_DEFAULT_CB_TIMEOUT_THRESHOLD = 3  # M: consecutive timeouts on one path
+_DEFAULT_CB_GLOBAL_THRESHOLD = 5  # global native faults within the window
+_DEFAULT_CB_GLOBAL_WINDOW_SECONDS = 30 * 60  # 30 minutes
+_NATIVE_FAULT_LOG = Path("~/.local/share/convmem/native_crash_failures.jsonl").expanduser()
 
 # Live databases that change constantly — watch re-index causes OOM + duplication.
 _LIVE_WATCH_SKIP_SUFFIXES = (
@@ -259,6 +271,148 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
     return {"subprocess": True, "path": path}
 
 
+def parse_native_fault_returncode(message: str) -> int | None:
+    """Extract the index-subprocess returncode from a flush_path RuntimeError message.
+
+    Returns the (possibly negative) returncode when the message matches
+    ``_flush_path_subprocess``'s "index subprocess exit <N>" shape, or ``None`` for
+    any other message (a timeout, or an ordinary parse/provider-drop error).
+    """
+    match = re.search(r"index subprocess exit (-?\d+)\s*$", message)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def is_native_fault_returncode(returncode: int | None) -> bool:
+    """True for a signal death this circuit breaker should count (not -9/-15/timeout)."""
+    return returncode is not None and returncode in _NATIVE_FAULT_SIGNALS
+
+
+def is_timeout_message(message: str) -> bool:
+    return "index subprocess timed out after" in message
+
+
+def _circuit_breaker_state_path_from_config(cfg: dict) -> Path:
+    watch_cfg = cfg.get("watch") or {}
+    if watch_cfg.get("circuit_breaker_state_file"):
+        return Path(watch_cfg["circuit_breaker_state_file"]).expanduser()
+    chroma = Path(cfg["index"]["chroma_dir"]).expanduser()
+    return chroma.parent / "watch_circuit_breaker.json"
+
+
+def log_native_crash(path: str, message: str, *, log_path: Path | None = None) -> None:
+    """Append a native-crash record for doctor's native_crash_count to read."""
+    from datetime import datetime, timezone
+
+    target = log_path or _NATIVE_FAULT_LOG
+    target.parent.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "path": path,
+        "message": message[:500],
+    }
+    with target.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+class CircuitBreakerState:
+    """Per-path native-fault/timeout quarantine plus a global breaker.
+
+    Persisted atomically (temp file + os.replace) so a process death mid-write
+    cannot leave the state file partially written — the exact failure class this
+    feature exists to survive.
+    """
+
+    def __init__(self, state_path: Path):
+        self.state_path = state_path
+        self._data = self._load()
+
+    def _load(self) -> dict:
+        try:
+            raw = self.state_path.read_text(encoding="utf-8")
+        except OSError:
+            return {"paths": {}, "global_events": []}
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            return {"paths": {}, "global_events": []}
+        if not isinstance(data, dict):
+            return {"paths": {}, "global_events": []}
+        data.setdefault("paths", {})
+        data.setdefault("global_events", [])
+        return data
+
+    def _save(self) -> None:
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.state_path.with_name(self.state_path.name + f".tmp{os.getpid()}")
+        tmp.write_text(json.dumps(self._data, indent=2) + "\n", encoding="utf-8")
+        os.replace(tmp, self.state_path)
+
+    def is_quarantined(self, path: str) -> bool:
+        entry = self._data["paths"].get(path)
+        return bool(entry and entry.get("quarantined"))
+
+    def record_success(self, path: str) -> None:
+        """Reset a path's counters after a clean index. Does not clear quarantine."""
+        entry = self._data["paths"].get(path)
+        if entry and not entry.get("quarantined"):
+            del self._data["paths"][path]
+            self._save()
+
+    def record_failure(
+        self,
+        path: str,
+        *,
+        native_fault: bool,
+        timeout: bool,
+        now: float | None = None,
+        crash_threshold: int = _DEFAULT_CB_FILE_CRASH_THRESHOLD,
+        timeout_threshold: int = _DEFAULT_CB_TIMEOUT_THRESHOLD,
+    ) -> bool:
+        """Record a failure for path. Returns True if path is now quarantined."""
+        if now is None:
+            now = time.time()
+        entry = self._data["paths"].setdefault(
+            path, {"native_crash_count": 0, "timeout_count": 0, "quarantined": False}
+        )
+        if native_fault:
+            entry["native_crash_count"] += 1
+            self._data["global_events"].append(now)
+            if entry["native_crash_count"] >= crash_threshold:
+                entry["quarantined"] = True
+        elif timeout:
+            entry["timeout_count"] += 1
+            if entry["timeout_count"] >= timeout_threshold:
+                entry["quarantined"] = True
+        self._save()
+        return bool(entry["quarantined"])
+
+    def global_breaker_tripped(
+        self,
+        *,
+        now: float | None = None,
+        global_threshold: int = _DEFAULT_CB_GLOBAL_THRESHOLD,
+        global_window_seconds: float = _DEFAULT_CB_GLOBAL_WINDOW_SECONDS,
+    ) -> bool:
+        """True when >= global_threshold native faults (any path) hit within the window."""
+        if now is None:
+            now = time.time()
+        cutoff = now - global_window_seconds
+        recent = [t for t in self._data["global_events"] if t >= cutoff]
+        if len(recent) != len(self._data["global_events"]):
+            self._data["global_events"] = recent
+            self._save()
+        return len(recent) >= global_threshold
+
+    def clear(self, path: str | None = None) -> None:
+        if path is None:
+            self._data = {"paths": {}, "global_events": []}
+        else:
+            self._data["paths"].pop(path, None)
+        self._save()
+
+
 def flush_path(
     path: str,
     *,
@@ -361,6 +515,61 @@ def load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:
     return debounce, paths, lock_path
 
 
+def _process_ready_path(
+    path: str,
+    *,
+    cfg: dict,
+    breaker: CircuitBreakerState,
+    verbose: bool,
+) -> None:
+    """Run watch's per-path body once: reconcile token, quarantine skip, or index.
+
+    Extracted from run_watch's main loop to keep that loop's branch/nesting
+    count within the repo's complexity gate.
+    """
+    from repository_knowledge_sync import (
+        is_reconcile_token,
+        reconcile_manifest,
+        token_manifest_path,
+    )
+
+    try:
+        if is_reconcile_token(path):
+            reconcile_manifest(token_manifest_path(path), cfg)
+            return
+        if breaker.is_quarantined(path):
+            if verbose:
+                print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
+            return
+        flush_path(path, verbose=verbose, use_subprocess=True)
+        breaker.record_success(path)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _record_ready_path_failure(path, e, breaker=breaker, verbose=verbose)
+
+
+def _record_ready_path_failure(
+    path: str,
+    exc: Exception,
+    *,
+    breaker: CircuitBreakerState,
+    verbose: bool,
+) -> None:
+    from repository_knowledge_sync import is_reconcile_token
+
+    message = str(exc)
+    if not is_reconcile_token(path):
+        returncode = parse_native_fault_returncode(message)
+        native_fault = is_native_fault_returncode(returncode)
+        timeout = is_timeout_message(message)
+        if native_fault or timeout:
+            quarantined = breaker.record_failure(path, native_fault=native_fault, timeout=timeout)
+            if native_fault:
+                log_native_crash(path, message)
+            if quarantined and verbose:
+                print(f"[watch] quarantined after repeated failures: {path}", file=sys.stderr)
+    print(f"[watch] error processing {path}: {exc}", file=sys.stderr)
+
+
 def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
     *,
     debounce_seconds: float | None = None,
@@ -395,10 +604,8 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
         ManifestPoller,
         is_reconcile_token,
         reconcile_all,
-        reconcile_manifest,
         reconcile_token,
         repository_roots_from_cfg,
-        token_manifest_path,
     )
 
     apply_config(cfg)
@@ -424,6 +631,7 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
         print(f"[watch] repository-knowledge startup sync failed: {exc}", file=sys.stderr)
 
     scheduler = DebounceScheduler(debounce_seconds=debounce)
+    breaker = CircuitBreakerState(_circuit_breaker_state_path_from_config(cfg))
     poller = ManifestPoller()
     manifest_abs = set()
     for raw in manifests_from_cfg(cfg):
@@ -492,13 +700,15 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
                     if poller.changed(manifest_path):
                         scheduler.note(reconcile_token(manifest_path))
             for path in scheduler.ready():
-                try:
-                    if is_reconcile_token(path):
-                        reconcile_manifest(token_manifest_path(path), cfg)
-                    else:
-                        flush_path(path, verbose=verbose, use_subprocess=True)
-                except Exception as e:
-                    print(f"[watch] error processing {path}: {e}", file=sys.stderr)
+                if not is_reconcile_token(path) and breaker.global_breaker_tripped():
+                    if verbose:
+                        print(
+                            "[watch] circuit breaker: too many native faults "
+                            "recently — pausing index spawns until the window clears",
+                            file=sys.stderr,
+                        )
+                    break  # leave remaining ready paths pending; retry after the window ages out
+                _process_ready_path(path, cfg=cfg, breaker=breaker, verbose=verbose)
                 scheduler.forget(path)
             time.sleep(1)
     except KeyboardInterrupt:
