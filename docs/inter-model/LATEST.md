@@ -9,6 +9,41 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Poison Pill — recurrence 2026-09-23, containment fix MERGED ([#328](https://github.com/alanmz-crypto/convmem/pull/328), squash-merged as `81efa35` on `main`):**
+  A native-fault crash (`convmem-watch` → `convmem index --file LATEST.md`, SIGSEGV/GP fault)
+  recurred 2026-09-23 08:58 CDT, the same signature the arc's 2026-09-21 acceptance was meant to
+  close. Hardware/BIOS telemetry for this recurrence is clean; root cause is **not** reopened by
+  this work. At Ryan's direction, Claude built (rather than handed to Cursor) the two already-scoped,
+  non-blocking hardening backlog items — per-file quarantine + global circuit breaker, and a
+  `native_crash_gate` doctor check distinct from `ingest_degraded`. CI initially failed pylint's
+  complexity gate and three content-identity pins (watch.py T0 canary hash; two R2b v2
+  governed-route line/revision registries) that the line-shift and content change legitimately
+  invalidated — all fixed as mechanical, verified refreshes (snippets checked before updating; R2b
+  inventory regenerated via its own `write_v2_inventory_file()`, not hand-edited). All 6 CI checks
+  passed before merge. No Switchboard file was touched (verified via `git diff --stat` before
+  merge). **Root-cause reopening (this recurrence vs. the 2026-09-21 platform-only acceptance) has
+  a bounded stop rule** (applied 2026-09-24 via
+  [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md), replacing an earlier open-ended
+  "wait for Switchboard" framing): whichever comes first — 7 days of `doctor`'s `native_crash_gate`
+  reporting 0 crashes, or a second native-fault recurrence within that window — triggers the
+  investigation, independent of Switchboard's state. Background:
+  [`CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md`](CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md)
+  (see "root-cause reopening: bounded stop rule" section for the full Pattern/Evidence/Level/
+  Decision-value writeup).
+  **Next:** nothing pending on this specific fix; check `native_crash_gate` against the stop rule
+  starting 2026-10-01 (7 days after merge) or immediately on any new native-fault crash.
+- **ConvMem Switchboard — Claude adversarial review of transition-prep readiness delivered
+  (2026-09-23):** Responding to Codex's handoff
+  ([`CODEX-2026-09-23-switchboard-claude-adversarial-review-handoff.md`](CODEX-2026-09-23-switchboard-claude-adversarial-review-handoff.md)),
+  Claude classified the eight proposed prep items — most SAFE_NOW as documents only; the
+  disposable staging workspace held at REVIEW_REQUIRED pending an isolation-contract doc; the
+  folder-watch merge kept on its own arc's track. No runtime/config/credential change made or
+  recommended. Verdict and full findings:
+  [`CLAUDE-2026-09-23-switchboard-transition-readiness-review.md`](CLAUDE-2026-09-23-switchboard-transition-readiness-review.md).
+  Kept for provenance: at the time this review was written, Kiro's architecture PASS/FAIL was
+  still pending; it has since **PASSED** at exact overlay tip `d1ca459` — see
+  [`STATUS-openclaw-convmem-integration.md`](../plans/STATUS-openclaw-convmem-integration.md) for
+  current state, which supersedes this bullet's framing.
 - **Decision and Review Guardrails (opt-in doc) — MERGED (2026-09-24):**
   Kiro design review PASS, no blockers, two non-blocking amendments applied
   (charter link demoted to an "Optional lenses (not team policy)" sub-bullet;
