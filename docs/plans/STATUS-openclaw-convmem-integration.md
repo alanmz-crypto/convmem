@@ -80,7 +80,7 @@ crash-loop fix, not ordinary wiring.
 
 ## 5. Your Role
 
-**If Ryan sent you here:** review the exact two-commit M11 Pylint-remediation
+**If Ryan sent you here:** review the exact three-commit M11 Pylint-remediation
 plan. Confirm that the observed 699-occurrence failure is bound to its exact
 report/environment, the edit surface is exactly 44 Switchboard paths, the real
 current-main workflow/baseline/gate remain byte-identical, and the suppression
@@ -99,7 +99,7 @@ later gates.
 2. If Kiro passes, Ryan decides whether to grant resumption on preserved tip
    `9c6421a`, naming the exact parent/overlay, 44 paths, integration
    baseline/branch, rebound runtime prefix and durable evidence root.
-3. Under that grant, Grok applies the exact two reviewed plan commits and stops;
+3. Under that grant, Grok applies the exact three reviewed plan commits and stops;
    Codex proves all four reviewed document blobs match the overlay and every
    other byte still equals `9c6421a`.
 4. After commit-specific `CONTINUE`, Grok completes the held production and

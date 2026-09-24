@@ -4375,8 +4375,18 @@ not widen any runtime edit allowlist, schema list, test selector or product inte
    an intentional white-box test access. It must name one exact message ID, cover the smallest
    statement or block Pylint supports, include an adjacent invariant rationale, and be listed in
    evidence. `disable=all`, `skip-file`, category-wide disables and file-wide suppressions are
-   forbidden.
-4. `R0801/duplicate-code` is special: production modules and `tests/test_*.py` must remove the new
+   forbidden except for the two closed, exact-message cases below.
+4. `C0302/too-many-lines` is inherently module-scoped. An exact-message module suppression is
+   allowed only in the twelve files where the frozen report already contains that finding:
+   `mcp_server.py`, `openclaw_activation_controller.py`, `strict_evidence_state.py`,
+   `strict_grounding.py`, `strict_projection.py`, `strict_projection_publisher.py`,
+   `tests/fixtures/openclaw_strict/audit_evidence.py`,
+   `tests/test_openclaw_activation_controller.py`,
+   `tests/test_openclaw_strict_packet_contract.py`, `tests/test_strict_grounding.py`,
+   `tests/test_strict_projection.py`, and `tests/test_strict_projection_publisher.py`. The adjacent
+   rationale must name the preserved module/component or collected-node boundary. No other message
+   ID is covered by this exception, and no thirteenth file may use it.
+5. `R0801/duplicate-code` is special: production modules and `tests/test_*.py` must remove the new
    duplicate structurally without sharing authority or oracle logic. Region-scoped suppression is
    allowed only in the exact reference-owned fixture modules
    `canonical_oracle.py`, `canonical_oracle_b.py`, `digest_oracle.py`, `digest_oracle_b.py`,
@@ -4385,7 +4395,7 @@ not widen any runtime edit allowlist, schema list, test selector or product inte
    would destroy the fixture's independent-oracle or frozen-specimen role. If Pylint cannot scope
    `R0801` below a module, an exact-message module suppression in one of those eleven files is the
    only permitted file-level exception. No production helper may become the fixture's oracle.
-5. The final full-tree report must contain no new or increased fingerprint relative to the exact
+6. The final full-tree report must contain no new or increased fingerprint relative to the exact
    current-main baseline. A merely lower total, a preserved-tip PASS, or a targeted-file PASS is
    insufficient.
 
@@ -4400,7 +4410,7 @@ real runtime action, durable-memory write or live-data access is part of this co
 **Acceptance and authority boundary.** After exact-tip Kiro PASS, a new Ryan grant must name this
 parent, the final milestone overlay, source tip `9c6421a6891fd8a861a51f4fed410f541b53148c`, the exact
 44 paths, implementation branch, current-main baseline, new parent-bound runtime prefix and durable
-evidence root. Grok applies the two reviewed plan commits and stops. Only after Codex proves the
+evidence root. Grok applies the three reviewed plan commits in order and stops. Only after Codex proves the
 four reviewed document blobs and issues a commit-specific `CONTINUE` may Grok perform the bounded
 remediation in the held checkpoints defined by Execution §10.7. Any 45th path, baseline/gate/config
 change, broad suppression, behavior change or unsupported finding classification is `PAUSE`.
