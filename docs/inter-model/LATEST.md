@@ -9,19 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Decision and Review Guardrails (opt-in doc) — Kiro PASS, amendments
-  applied, READY_FOR_PR:** Kiro reviewed
-  [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md) at tip
-  `6712c10` on `docs/2026-09-24-decision-review-guardrails-opt-in` — **PASS,
-  no blockers**. One non-blocking placement amendment recommended (charter
-  Related-section link read as too policy-adjacent for an opt-in tool) plus a
-  minor roles-drift note; Claude applied both: the charter now lists it under
-  a new "Optional lenses (not team policy)" sub-bullet, and the doc's Roles
-  section now points to the charter role table as authoritative. PR
-  [**#329**](https://github.com/alanmz-crypto/convmem/pull/329) opened
-  against `main` (PR Steward, exact tip `bfd4fc0`) — **Ryan decides
-  merge.** Resume from
-  [`CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md`](CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md).
+- **Decision and Review Guardrails (opt-in doc) — MERGED (2026-09-24):**
+  Kiro design review PASS, no blockers, two non-blocking amendments applied
+  (charter link demoted to an "Optional lenses (not team policy)" sub-bullet;
+  doc's Roles section defers to the charter role table). PR
+  [**#329**](https://github.com/alanmz-crypto/convmem/pull/329) merged to
+  `main` as `4418774`. No further action; nothing wired into any
+  always-loaded surface — see
+  [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md) to invoke
+  it going forward.
 - **Arc OpenClaw Watch Coverage — W0–W6 AUTHORIZED / Cursor next:** Ryan
   explicitly authorized implementation and isolated acceptance on 2026-09-21
   against Kiro-reviewed plan `19dea97368408ee0b179c05c942306f6d8f1a2e8`.
