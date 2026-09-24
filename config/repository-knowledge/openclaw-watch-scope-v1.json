@@ -3747,6 +3747,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "docs/plans/ARCHITECTURE-openclaw-watch-coverage.md",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -3957,6 +3962,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "docs/plans/EXECUTION-openclaw-watch-coverage.md",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -4052,6 +4067,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/README-openclaw-convmem-integration.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "docs/plans/RUNBOOK-cg2-production-activation.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4115,6 +4135,11 @@
       "path": "docs/plans/STATUS-naturalistic-product-value.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
@@ -7460,7 +7485,7 @@
   "entries": [
     {
       "path": "AGENTS.md",
-      "sha256": "5e07e1136766441282d81780ce2fd69c8894b559cd6ea2eb2affd1c1243d435b",
+      "sha256": "1706b028ded3298e4559f82e5cf0b6e83df6216fc4458e070927875821510e43",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7596,7 +7621,7 @@
     },
     {
       "path": "config/agent-protocol.md",
-      "sha256": "094f3113e06a6ffe9fabfe56d2e9956d3e60eedaff88523de84e82bf1e9a9bda",
+      "sha256": "ef22cd8aad85c4207a8295a4ac79a779240c27a52d35a42b5136094d5bc91061",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7833,6 +7858,23 @@
       "sensitivity": "documentation"
     },
     {
+      "path": "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+      "sha256": "11a22c8fe63e5669b197727b8ac6af11a294587bb6a8996fcaeb12c24aada9f4",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+        "ARCHITECTURE openclaw convmem integration"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "docs/plans/ARCHITECTURE-openclaw-watch-coverage.md",
       "sha256": "244ad13da88090c65f6e83db9fc722f11f851ea9a6065e1adcb2c1a845147341",
       "content_class": "markdown",
@@ -7901,6 +7943,40 @@
       "sensitivity": "documentation"
     },
     {
+      "path": "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+      "sha256": "03b2acc874c725198ec1f29e0b9fc4725a0fc71e2a06998103e3d205c8d404b3",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+        "EXECUTION openclaw convmem integration"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
+      "path": "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+      "sha256": "64596d872672142cc78904f01325f364fa1fafa8df38bf6ab69fd23bb0bd7409",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+        "EXECUTION openclaw convmem milestone plan"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "docs/plans/EXECUTION-openclaw-watch-coverage.md",
       "sha256": "cfe13584f6a84967b6ba2d1babfd2dd4d6649c9fb1e12a3faa138d93ca453157",
       "content_class": "markdown",
@@ -7952,8 +8028,42 @@
       "sensitivity": "documentation"
     },
     {
+      "path": "docs/plans/README-openclaw-convmem-integration.md",
+      "sha256": "659330a604d129c0760716137c870f50e6be174f6dd70bd2b6725f08fa6920b1",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/README-openclaw-convmem-integration.md",
+        "README openclaw convmem integration"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
+      "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
+      "sha256": "52969211dc4b01c324443c9d5cbfe69086567c391d7d0be1b6b07f2ab1497b16",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/STATUS-openclaw-convmem-integration.md",
+        "STATUS openclaw convmem integration"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "c465e6eeae9f62f6ce682d8c4b59a23f24abbd34fcf50d6a9d43ecc439423f20",
+      "sha256": "6000231bee1e2f0fc6ff3feedfb4e54052b97492969d175648f68cd25f53f96b",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7970,7 +8080,7 @@
     },
     {
       "path": "docs/plans/VERIFY-openclaw-watch-coverage.md",
-      "sha256": "a1750434807b254425b8adec9e8f4e690caf4b567c22d17048a358eea9ce5a24",
+      "sha256": "b43f6da1cf2418ba5ab55a37692d132d21e2cd0e97ea230b654d349b74a2dffc",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",

@@ -218,18 +218,66 @@ completed startup reconciliation without rollback.
 | Temporary disk | pytest tempdirs only; no live chroma/config |
 | Hermetic RSS utility | none applicable; used `resource.getrusage` |
 
+## Post-activation implications — 2026-09-24
+
+The live service and the repository branch intentionally move at different
+speeds. The service reads a dedicated clean worktree pinned at `dc79eeb`; normal
+development advanced `origin/main` to `9193f5e` through OpenClaw planning PR
+`#327`. Auditing that newer commit before promotion failed closed on exactly
+five unclassified planning files. A full entry-hash comparison also found stale
+hashes for `AGENTS.md` and `config/agent-protocol.md`. This closure classifies
+the five files, refreshes both hashes, and restores a zero-unclassified,
+byte-exact audit without changing the live checkout.
+
+Operational implications:
+
+- **The runtime worktree is a deployment fence.** A merge to repository `main`
+  does not by itself change the live watch corpus. This prevents partial or
+  unreviewed adoption, but every promotion needs an explicit clean commit,
+  matching manifest hashes, and a separate runtime authorization.
+- **Manifest and admitted bytes are one release unit.** Adding or changing a
+  watched file without updating its exact hash makes audit or indexing refuse
+  the tree. Later `main` changes demonstrated that this guard works; the process
+  gap was allowing admitted files to land without the companion manifest update.
+- **Repository knowledge is not OpenClaw activation.** The five newly admitted
+  files are documentary guidance only. They do not install or configure
+  OpenClaw, expose the ConvMem connector, enable transcript capture, or make
+  the separate partial implementation acceptable.
+- **Retrieved text remains non-authoritative.** Units retain claimed,
+  untrusted documentary provenance. Decision-shaped text is inert and cannot
+  propose, approve, publish, or mutate governance state.
+- **Capture is eventually consistent.** A file changing during indexing is
+  skipped and retried after debounce. That protects exact-source identity but
+  means an active transcript or rapidly changing file is not guaranteed to be
+  searchable immediately.
+- **Memory is bounded, not proven solved.** The systemd service has remained
+  active since 2026-09-21 with no post-start failure or restart. On 2026-09-24
+  its cgroup was about 1.8 GiB, below `MemoryHigh=3G` and `MemoryMax=4G`, with
+  swap disabled. This soak does not close the separate watcher/OOM work or
+  justify admitting live databases.
+- **Future T0–T5 landing is deliberately coupled to coverage maintenance.**
+  Sixty-six required-when-present implementation/Gate W paths remain absent.
+  Their accepted landing must include classifications and exact hashes in the
+  same reviewed commit, followed by a separately authorized runtime promotion
+  and repeated retrieval, exclusion, governance, and service-health checks.
+
+Ownership remains split: the OpenClaw arc owns implementation and acceptance;
+this watch arc owns the closed inventory and promotion evidence; Ryan owns
+merge and live-runtime authorization.
+
 ## Deferred required_when_present paths
 
-68 exact absent paths, including the Kiro-approved OpenClaw architecture and
-execution plans, T0–T5 modules/tests/fixtures/schemas, connector files, and
-prospective Gate W `governed_admission.py` plus admission schemas. Full list
-is in the manifest `required_when_present` array.
+The manifest retains 68 exact required-when-present paths. Two reviewed planning
+paths are now present and classified; 66 implementation/Gate W paths remain
+absent, including T0–T5 modules/tests/fixtures/schemas, connector files, and
+prospective Gate W `governed_admission.py` plus admission schemas. The full
+list is in the manifest `required_when_present` array.
 
 ## Verdict
 
 - `IMPLEMENTATION`: PASS (A1–A12 and focused regression suite)
 - `REVIEW`: PASS — targeted Bugbot re-review found no remaining findings at `324ab174b33916332563c90c285166d0a6b9fa03`
 - `LIVE_WATCH`: PASS
-- `WATCH_COVERAGE`: BLOCKED only on the 68 absent
-  `required_when_present` OpenClaw T0–T5/Gate W paths
-- `CURRENT_OPENCLAW_PLAN_BYTES`: REQUIRED_WHEN_PRESENT
+- `WATCH_COVERAGE`: BLOCKED on 66 absent `required_when_present` OpenClaw
+  T0–T5/Gate W paths and a later separately authorized runtime promotion
+- `CURRENT_OPENCLAW_PLAN_BYTES`: CLASSIFIED BY THIS CLOSURE; NOT YET PROMOTED
