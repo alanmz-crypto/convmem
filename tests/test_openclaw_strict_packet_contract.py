@@ -357,7 +357,7 @@ def _m11_install_git_boundary_oracle(
     return oracle
 
 
-def test_m11_control_plane_exact_four_success(monkeypatch):
+def _check_m11_control_plane_exact_four_success(monkeypatch):
     """M11: exact four control-plane paths validate; product delta P is returned."""
     import allowlist as oc_allowlist
 
@@ -372,7 +372,7 @@ def test_m11_control_plane_exact_four_success(monkeypatch):
     ) == ["mcp_server.py"]
 
 
-def test_m11_control_plane_rejects_missing_path(monkeypatch):
+def _check_m11_control_plane_rejects_missing_path(monkeypatch):
     import allowlist as oc_allowlist
 
     control = sorted(oc_constants.M11_CONTROL_PLANE_INPUTS)
@@ -389,7 +389,7 @@ def test_m11_control_plane_rejects_missing_path(monkeypatch):
         assert control[0] in str(exc)
 
 
-def test_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
+def _check_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
     import allowlist as oc_allowlist
     import constants as allowlist_constants
 
@@ -418,7 +418,7 @@ def test_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
         assert extra in str(exc)
 
 
-def test_m11_control_plane_rejects_unavailable_commit(monkeypatch):
+def _check_m11_control_plane_rejects_unavailable_commit(monkeypatch):
     import allowlist as oc_allowlist
 
     unavailable = "0" * 40
@@ -441,7 +441,7 @@ def test_m11_control_plane_rejects_unavailable_commit(monkeypatch):
         assert str(exc).startswith("control_plane_unavailable_commit:")
 
 
-def test_m11_control_plane_rejects_malformed_unreadable_entry(monkeypatch):
+def _check_m11_control_plane_rejects_malformed_unreadable_entry(monkeypatch):
     import allowlist as oc_allowlist
 
     _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
@@ -472,7 +472,7 @@ def test_m11_control_plane_rejects_malformed_unreadable_entry(monkeypatch):
         assert str(exc).startswith("control_plane_malformed:")
 
 
-def test_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
+def _check_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
     import allowlist as oc_allowlist
 
     _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
@@ -503,7 +503,7 @@ def test_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
         assert str(exc).startswith("control_plane_non_blob:")
 
 
-def test_m11_control_plane_rejects_blob_or_mode_mismatch(monkeypatch):
+def _check_m11_control_plane_rejects_blob_or_mode_mismatch(monkeypatch):
     import allowlist as oc_allowlist
 
     control = sorted(oc_constants.M11_CONTROL_PLANE_INPUTS)
@@ -532,7 +532,7 @@ def test_m11_control_plane_rejects_blob_or_mode_mismatch(monkeypatch):
         assert target in str(exc)
 
 
-def test_m11_fifth_documentation_path_fails_product_allowlist(monkeypatch):
+def _check_m11_fifth_documentation_path_fails_product_allowlist(monkeypatch):
     """A fifth docs path stays in P and fails the unchanged product allowlist."""
     import allowlist as oc_allowlist
 
@@ -552,7 +552,7 @@ def test_m11_fifth_documentation_path_fails_product_allowlist(monkeypatch):
         assert str(exc) == f"allowlist_violation:{fifth}"
 
 
-def test_m11_control_plane_docs_remain_exported_inventoried_hashed():
+def _check_m11_control_plane_docs_remain_exported_inventoried_hashed():
     """Reviewed control docs stay in source export inventory/hash; not excluded."""
     import fixture_manifest as fm
 
@@ -571,6 +571,67 @@ def test_m11_control_plane_docs_remain_exported_inventoried_hashed():
         assert match["sha256"].startswith("sha256:")
     assert digest == fm.hash_inventory_entries(entries)
     assert digest.startswith("sha256:")
+
+def test_m4_edit_allowlist_permits_mcp_server_protects_gate_w(monkeypatch):
+    """M4/T3: mcp_server.py is bounded-edit allowlisted; Gate W stays reject-only."""
+    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+    import allowlist as oc_allowlist
+
+    assert "mcp_server.py" in oc_constants.EDIT_ALLOWLIST_EXACT
+    assert oc_allowlist.path_allowed("mcp_server.py") is True
+
+    gate_w = (
+        "schemas/convmem-approved-admission-v1.schema.json",
+        "schemas/convmem-admission-intent-v1.schema.json",
+        "schemas/convmem-admission-review-v1.schema.json",
+        "schemas/convmem-admission-ratification-v1.schema.json",
+        "schemas/convmem-admission-event-v1.schema.json",
+    )
+    for path in gate_w:
+        assert path not in oc_constants.EDIT_ALLOWLIST_EXACT
+        assert path not in oc_constants.SCHEMA_ALLOWLIST
+        assert oc_allowlist.path_allowed(path) is False
+
+    _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
+    monkeypatch.setattr(
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
+    )
+    assert oc_allowlist.assert_allowlist(
+        Path("."), _M11_SYNTHETIC_SOURCE_COMMIT
+    ) == ["mcp_server.py"]
+
+    # Second layer must still reject Gate W even if path_allowed were bypassed.
+    monkeypatch.setattr(oc_allowlist, "path_allowed", lambda _p: True)
+    monkeypatch.setattr(
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta(gate_w[0]),
+    )
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _M11_SYNTHETIC_SOURCE_COMMIT)
+        raise AssertionError("gate_w_second_layer_bypassed")
+    except SystemExit as exc:
+        assert str(exc) == f"gate_w_forbidden_change:{gate_w[0]}"
+
+    with monkeypatch.context() as scoped:
+        _check_m11_control_plane_exact_four_success(scoped)
+    with monkeypatch.context() as scoped:
+        _check_m11_control_plane_rejects_missing_path(scoped)
+    with monkeypatch.context() as scoped:
+        _check_m11_control_plane_rejects_extra_classified_constant(scoped)
+    with monkeypatch.context() as scoped:
+        _check_m11_control_plane_rejects_unavailable_commit(scoped)
+    with monkeypatch.context() as scoped:
+        _check_m11_control_plane_rejects_malformed_unreadable_entry(scoped)
+    with monkeypatch.context() as scoped:
+        _check_m11_control_plane_rejects_non_regular_mode_or_type(scoped)
+    with monkeypatch.context() as scoped:
+        _check_m11_control_plane_rejects_blob_or_mode_mismatch(scoped)
+    with monkeypatch.context() as scoped:
+        _check_m11_fifth_documentation_path_fails_product_allowlist(scoped)
+    _check_m11_control_plane_docs_remain_exported_inventoried_hashed()
 
 
 def test_m2_future_production_modules_remain_absent():
