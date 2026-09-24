@@ -2,12 +2,14 @@
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS: PAUSED AT THE
-PYLINT REGRESSION GATE. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The reviewed-plan correction,
-two fresh M8 runs and seven legacy MCP regressions are preserved at
-`9c6421a6891fd8a861a51f4fed410f541b53148c`. The unchanged current-main Pylint gate then found
-699 new occurrences relative to baseline `9193f5ec744f059d07a20612489b210527b5660a`. Section
-18.9 freezes a plan-only, exact-path lint-remediation boundary that preserves the gate and baseline;
-it authorizes no implementation or retry.
+FULL-PYTEST APPLICABILITY GATE. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The reviewed-plan
+correction, two fresh M8 runs and seven legacy MCP regressions are preserved at
+`9c6421a6891fd8a861a51f4fed410f541b53148c`. The 44-path remediation is clean and pushed at
+`3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`, where the unchanged current-main Pylint gate passes.
+The first complete pytest attempt exposed repository-wide failures that predate the remediation,
+so an unconditional full-pytest PASS is not an applicable M11 claim. Sections 18.9–10 preserve the
+unchanged lint gate and replace only that impossible claim with a fail-closed differential rule;
+they authorize no implementation or retry.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
@@ -20,9 +22,11 @@ This planning edit authorizes no implementation, runtime start, configuration ch
 §§18.4–6. Ryan accepted bounded M0–M8, authorized the §18.7 current-main reconstruction and the
 §18.8 reviewed-plan correction, then directed Codex to choose and plan the least-haunting response
 to the observed Pylint hold: remediate the debt without raising a baseline or weakening the gate.
-Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9 defines the exact
-lint-remediation boundary and preserved-tip resume sequence. Kiro owns the required exact-tip
-design review; Ryan owns any later implementation, test, merge or promotion grant. No
+After that remediation passed the real Pylint gate, Ryan authorized this plan-only correction for
+the repository-wide pytest applicability failure. Sections 6.5.8–9 remain the frozen fixture and
+hash contracts. Section 18.9 defines the exact lint-remediation boundary; §18.10 defines the
+candidate-versus-pre-remediation pytest rule. Kiro owns the required exact-tip design review; Ryan
+owns any later implementation, test, merge or promotion grant. No
 complete-integration readiness is claimed.
 
 **Review inputs:** Final Astra report
@@ -59,8 +63,9 @@ only; it proves neither OpenClaw compatibility nor host containment.
 
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
 Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay,
-current-main baseline, preserved lint-input tip and branch, frozen runtime, durable evidence
-destination and exact 44-path correction. Known deferred issues do not authorize Grok to redesign
+current-main baseline, pre-remediation comparison tip, current corrected candidate and branch,
+frozen runtime, durable evidence destination, exact 44-path correction and differential pytest
+authority. Known deferred issues do not authorize Grok to redesign
 the architecture or reinterpret a Pylint finding. These are BUILD-readiness statements, not an
 Execute grant.
 
@@ -4420,10 +4425,82 @@ remediation in the held checkpoints defined by Execution §10.7. Any 45th path, 
 change, broad suppression, behavior change or unsupported finding classification is `PAUSE`.
 
 Final acceptance requires the unchanged current-main Pylint regression gate to pass on the exact
-clean pushed tip, two new fresh-root M8 passes, the seven legacy MCP regressions, the repository's
-full pytest job in the same separately reviewed CI-compatible environment, exact source/component
-inventories and a Kiro exact-tip conformance PASS. Ryan alone decides PR/merge. Gate D/W/D-V/E/F,
+clean pushed tip, §18.10's repository-wide pytest differential verdict, two new fresh-root M8
+passes, the seven legacy MCP regressions, exact source/component inventories and a Kiro exact-tip
+conformance PASS. Ryan alone decides PR/merge. Gate D/W/D-V/E/F,
 real OpenClaw, watch activation, live data, deployment and promotion remain independently blocked.
+
+### 18.10 M11 full-pytest applicability and differential boundary
+
+**Observed applicability failure.** The 44-path remediation and its bounded behavioral repairs are
+clean and pushed at candidate
+`3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`. At that exact candidate, the unchanged current-main
+Pylint gate passes with 461 findings and 240 fingerprints and no new/increased fingerprint. The
+first complete pytest attempt reported 118 failures, 2,783 passes, four skips, seven errors and 262
+subtests. Independent diagnostics showed at least three structural failures at both the candidate
+and the preserved pre-remediation tip: the strict packet test requires the isolated runner role,
+the CI Python provides Unicode 15.0 while the frozen strict projection requires Unicode 15.1, and
+the R2b inventory binds a different source revision. Those failures are not caused by the lint
+remediation, but they also are not a full-pytest PASS. The unconditional PASS claim is therefore
+inapplicable and is replaced, not waived, by the rule below.
+
+**Frozen comparison identities and environment.** The baseline is exactly
+`PYTEST_DIFFERENTIAL_BASE_SHA=9c6421a6891fd8a861a51f4fed410f541b53148c`. The candidate is the
+exact clean pushed source commit named in the later Ryan resume grant; the currently preserved
+candidate is `3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`. Codex checks out each commit into a separate
+fresh disposable root and runs both in the same separately reviewed CI-compatible environment,
+with one dependency/runtime inventory hash, Python and pytest versions, locale, timezone,
+environment-variable allowlist, resource limits and command. No host fallback, live ConvMem data,
+credentials, user configuration or OpenClaw process is allowed. The complete-suite command is the
+workflow's unchanged `python -m pytest -q` plus only pytest's built-in output-only
+`--junitxml=<volatile-path> -o junit_family=xunit1` reporter arguments. They change neither
+selection nor behavior. The two complete runs use fresh processes and no source edit between
+runs.
+
+**Closed comparison record.** Codex constructs one canonical record per JUnit `testcase` using the
+exact tuple `(file, classname, name)` as the node identity, the outcome vocabulary
+`passed|skipped|failure|error`, and, for `failure` or `error`, the exact element `type` and
+normalized `message` attributes as the failure signature. Normalization is limited to replacing
+the two absolute disposable checkout roots with `$SOURCE_ROOT`, pytest temporary-root paths with
+`$PYTEST_TMP`, and the exact baseline or candidate 40-hex Git object ID with `$SOURCE_COMMIT`.
+Nothing else is removed or rewritten: in particular, exception types, assertion text, error codes,
+line numbers, expected/actual semantic values and 64-hex content hashes remain significant. An
+absent/duplicate testcase, XML parse error, unknown outcome, collection interruption or reporter
+disagreement with the raw terminal summary is `PAUSE`.
+
+**Fail-closed verdict.** The candidate earns exactly `PYTEST_DIFFERENTIAL_PASS`, never
+`FULL_PYTEST_PASS`, only when all of the following hold:
+
+1. The complete candidate and baseline node-identity sets are equal. No candidate node may be
+   absent from the baseline, and no baseline node may disappear from the candidate.
+2. A baseline `passed` or `skipped` node may not become candidate `failure` or `error`. No
+   candidate-only failing/error node is permitted.
+3. A node failing/erroring at both tips must have the same normalized failure signature. A changed
+   exception class, assertion/error message or failure/error phase is a mismatch.
+4. Every outcome or signature mismatch from the complete runs is rerun independently at both tips,
+   one node at a time in fresh processes using the same environment. The complete-run evidence is
+   retained. The mismatch clears only if both independent reruns pass/skip or both reproduce the
+   same failure/error outcome and normalized signature. Any other result, collection difference,
+   non-reproduction or environmental asymmetry is `PAUSE`; a targeted rerun never substitutes for
+   either complete run.
+5. Every identical retained failure is listed by node identity and normalized signature, linked to
+   both raw runs, and labeled repository debt outside this remediation's acceptance claim. It is
+   never called a full-pytest PASS, never silently discarded and never used to waive the unchanged
+   Pylint gate, either fresh M8 run or any of the seven MCP regressions.
+
+The canonical base/candidate records, mismatch list, independent reruns, raw stdout/stderr/status,
+JUnit XML, environment inventory and hashes are copied to the Ryan-designated durable evidence
+root with a verified volatile-to-durable mapping. A passing differential verdict establishes only
+that the bounded M11 correction added no repository-wide pytest regression relative to its exact
+pre-remediation input. It does not certify the retained failures, change their ownership, authorize
+a test/CI/baseline edit or weaken any existing gate.
+
+**Authority boundary.** This correction changes plans only. Kiro must review the exact new parent
+and milestone overlay. Ryan must then issue a new resume grant naming both, the baseline and
+candidate identities, environment and evidence roots, the unchanged 44 paths, Pylint/M8/MCP
+requirements and this differential authority. No previous grant authorizes another test run or
+source edit. Gate D/W/D-V/E/F, real OpenClaw, watch activation, live data, merge, deployment and
+promotion remain independently blocked.
 
 ## Jargon TL;DR
 
@@ -4446,8 +4523,8 @@ real OpenClaw, watch activation, live data, deployment and promotion remain inde
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
 
-**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; M11 replay and pinning are
-preserved at `a11b7a2`, but the first new run correctly paused before tests because four reviewed
-control documents collided with the product allowlist. §18.8 freezes exact-blob validation,
-unchanged product allowlists and source-hash inclusion; implementation, retry, real OpenClaw, live
+**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; the M11 remediation at
+`3f8ef83` passes the unchanged Pylint gate, but repository-wide pytest cannot truthfully claim PASS
+because preserved failures predate the remediation. §18.10 replaces only that impossible claim
+with an exact `9c6421a`-versus-candidate no-regression comparison; test retry, real OpenClaw, live
 data, merge and promotion remain blocked pending exact-tip review and a new Ryan grant.
