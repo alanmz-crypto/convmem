@@ -9,6 +9,18 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Poison Pill — Part B write guard `READY_FOR_PR`, Part C says platform (Claude, 2026-09-24):**
+  branch `fix/2026-09-24-chroma-upsert-containment` (pushed; no PR yet). Every production Chroma
+  write now runs under a crash-containment guard: one native write at a time, stale in-process
+  index reloaded, validated copy of each segment's last save, restore only when the live files are
+  torn, quarantine when no safe restore exists. Scratch-store experiments showed a crash mid-save
+  tears the HNSW, and a stale second writer silently drops ~1,000 vectors while the validator still
+  passes. The live index is clean today (structural PASS, 0 lost vectors). The 2026-09-24
+  recurrence is attributed to the platform: crashes in non-Chroma processes and on a tiny scratch
+  store, concentrated on CPU 8 (a 5.4 GHz favoured core). chromadb 1.5.9 is the newest release, so
+  there is no bump to propose. **Ryan:** pick a review lane (Kiro design / Copilot safety), merge,
+  then fast-forward `.worktrees/runtime-main` and restart the watcher. See
+  [`CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md`](CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md).
 - **Arc Poison Pill — recurrence 2026-09-23, containment fix MERGED ([#328](https://github.com/alanmz-crypto/convmem/pull/328), squash-merged as `81efa35` on `main`):**
   A native-fault crash (`convmem-watch` → `convmem index --file LATEST.md`, SIGSEGV/GP fault)
   recurred 2026-09-23 08:58 CDT, the same signature the arc's 2026-09-21 acceptance was meant to
