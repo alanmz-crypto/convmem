@@ -4100,13 +4100,16 @@ forbidden.
 
 **Frozen reconstruction.** After this parent and its milestone overlay receive exact-tip Kiro
 PASS and Ryan names a new integration grant, Codex creates the granted implementation branch and
-worktree at exactly `9193f5ec744f059d07a20612489b210527b5660a`. Grok then cherry-picks, in existing
-order and without merge commits, exactly
+worktree at the exact reviewed overlay tip named in that grant. Before Grok starts, Codex proves
+that the overlay tip descends from `9193f5ec744f059d07a20612489b210527b5660a`, differs from it in
+exactly the four authorized architecture, execution, milestone-overlay and STATUS documents, and
+has byte-identical non-plan/product state. Grok then cherry-picks, in existing order and without
+merge commits, exactly
 `2f05a8540b9155346f313d7b2eea6300fec29350^..8010fb060c2edc29e1b09d7a30b1a1da2689d489`.
 Any conflict, skipped commit, extra commit, path outside the accepted implementation range, or
-change to a current-main-owned byte is `PAUSE`; Grok does not resolve it. The four planning/status
-documents on current main remain authoritative and are not taken from the historical
-implementation lineage.
+change to a current-main-owned product byte is `PAUSE`; Grok does not resolve it. The four
+planning/status documents from the reviewed reconciliation tip remain authoritative and are not
+taken from the older current-main versions or historical implementation lineage.
 
 **Exact pin-only reconciliation.** After the conflict-free replay, Grok makes one held correction
 limited to:
@@ -4141,9 +4144,10 @@ bound to the reviewed overlay; M8 output is copied under
 Grok may not provision, repair, download, substitute or select either location.
 
 **New acceptance evidence.** At one clean pushed integration commit, Codex independently verifies
-that current-main-owned paths remain byte-identical, the replayed product delta matches the
-accepted `7809f20..8010fb0` delta except for the exact pin/comment changes above, and no product
-path is omitted or added. Then the unchanged isolated runner passes twice from fresh roots using
+that the four reviewed plan/status blobs remain exact, all other current-main-owned paths remain
+byte-identical unless they are in the accepted product delta or exact pin/comment allowance, the
+replayed product delta matches the accepted `7809f20..8010fb0` delta except for those exact
+allowances, and no product path is omitted or added. Then the unchanged isolated runner passes twice from fresh roots using
 the newly reviewed parent SHA and baseline. The seven legacy MCP test files and the unchanged
 Pylint regression gate run in the separately reviewed disposable environment. Every raw command,
 node/outcome inventory, component/source hash, runtime inventory, mutation check and durable-copy

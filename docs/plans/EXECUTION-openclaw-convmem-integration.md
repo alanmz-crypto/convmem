@@ -839,9 +839,11 @@ Kiro PASS and Ryan issues a new grant naming the revisions, branch, runtime path
 
 Execution order is frozen:
 
-1. Codex creates and pushes the granted implementation branch and separate worktree from exact
-   current-main baseline `9193f5ec744f059d07a20612489b210527b5660a`, without switching the live
-   ConvMem checkout.
+1. Codex creates and pushes the granted implementation branch and separate worktree from the exact
+   reviewed milestone-overlay tip named in Ryan's grant, without switching the live ConvMem
+   checkout. Before Grok starts, Codex proves that tip descends from product baseline
+   `9193f5ec744f059d07a20612489b210527b5660a`, changes exactly the four authorized plan/status
+   documents, and leaves every non-plan byte identical to that baseline.
 2. Grok cherry-picks exactly the 45 non-merge commits in
    `2f05a8540b9155346f313d7b2eea6300fec29350^..8010fb060c2edc29e1b09d7a30b1a1da2689d489`
    in their existing order. It neither merges the old branch nor selects, drops, squashes, edits or
@@ -851,10 +853,11 @@ Execution order is frozen:
    §18.7. The parent SHA is the reviewed parent commit in Ryan's grant; the code baseline is
    `9193f5ec744f059d07a20612489b210527b5660a`. Observable behavior and selected test bytes remain
    unchanged. Grok pushes with an explicit refspec and stops.
-4. Codex compares complete trees and path sets before testing. Every path changed on current main
-   relative to the original baseline must remain byte-identical to current main. The replayed
-   product delta must equal the accepted old-baseline delta except for the explicitly authorized
-   pin/comment reconciliation. Missing, extra or modified paths are `PAUSE`.
+4. Codex compares complete trees and path sets before testing. The four reviewed plan/status blobs
+   must remain exact. Every other path changed on current main relative to the original baseline
+   must remain byte-identical to current main unless it is in the accepted product delta or exact
+   pin/comment allowance. The replayed product delta must equal the accepted old-baseline delta
+   except for that allowance. Missing, extra or modified paths are `PAUSE`.
 5. Codex, under the exact Ryan grant, provisions the complete frozen runtime at the newly bound
    parent/baseline path and confirms tree hash
    `sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`, full
