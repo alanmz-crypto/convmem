@@ -402,11 +402,6 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "claude_gate1_smoke.py",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "complete_data_restore.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -1887,6 +1882,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CLAUDE-SONNET-2026-06-25-global-planner-critique.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2303,6 +2303,11 @@
     },
     {
       "path": "docs/inter-model/CURSOR-2026-09-17-r2b-inventory-rebind-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/DECISION-REVIEW-GUARDRAILS.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -3747,6 +3752,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "docs/plans/ARCHITECTURE-openclaw-watch-coverage.md",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -3957,6 +3967,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "docs/plans/EXECUTION-openclaw-watch-coverage.md",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -4052,6 +4072,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/README-openclaw-convmem-integration.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "docs/plans/RUNBOOK-cg2-production-activation.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4115,6 +4140,11 @@
       "path": "docs/plans/STATUS-naturalistic-product-value.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
@@ -5962,11 +5992,6 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "tests/claude_gate1_smoke_worker.py",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "tests/export_compaction_memory_worker.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6358,11 +6383,6 @@
     },
     {
       "path": "tests/test_ci_contract.py",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "tests/test_claude_gate1_hermetic_smoke.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6857,6 +6877,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_native_crash_gate.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_naturalistic_adjudication.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7332,6 +7357,11 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "tests/test_watch_circuit_breaker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_watch_oom_bound_exposure_c0.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7460,7 +7490,7 @@
   "entries": [
     {
       "path": "AGENTS.md",
-      "sha256": "5e07e1136766441282d81780ce2fd69c8894b559cd6ea2eb2affd1c1243d435b",
+      "sha256": "1706b028ded3298e4559f82e5cf0b6e83df6216fc4458e070927875821510e43",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7562,7 +7592,7 @@
     },
     {
       "path": "config.example.toml",
-      "sha256": "872bb6f79d29f88160a949fb2da0027f060fbe3ea84ac34a19c0bae4dd48f834",
+      "sha256": "824aae92d737cc059887bd4783774ae4d60717db112734882298b5305be98a51",
       "content_class": "toml",
       "parser_mode": "toml_table_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7596,7 +7626,7 @@
     },
     {
       "path": "config/agent-protocol.md",
-      "sha256": "094f3113e06a6ffe9fabfe56d2e9956d3e60eedaff88523de84e82bf1e9a9bda",
+      "sha256": "ef22cd8aad85c4207a8295a4ac79a779240c27a52d35a42b5136094d5bc91061",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7647,7 +7677,7 @@
     },
     {
       "path": "convmem.py",
-      "sha256": "0c278be127ac0f3f29815a283bf59b58d6520fbb5d390ae123733260d1897ad3",
+      "sha256": "8af10ddaf10f76ca8e9c0daca87c3458b72ea30ab5b0bf43ed1dd322f41ba221",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7833,6 +7863,23 @@
       "sensitivity": "documentation"
     },
     {
+      "path": "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+      "sha256": "11a22c8fe63e5669b197727b8ac6af11a294587bb6a8996fcaeb12c24aada9f4",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+        "ARCHITECTURE openclaw convmem integration"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "docs/plans/ARCHITECTURE-openclaw-watch-coverage.md",
       "sha256": "244ad13da88090c65f6e83db9fc722f11f851ea9a6065e1adcb2c1a845147341",
       "content_class": "markdown",
@@ -7901,6 +7948,40 @@
       "sensitivity": "documentation"
     },
     {
+      "path": "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+      "sha256": "03b2acc874c725198ec1f29e0b9fc4725a0fc71e2a06998103e3d205c8d404b3",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+        "EXECUTION openclaw convmem integration"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
+      "path": "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+      "sha256": "64596d872672142cc78904f01325f364fa1fafa8df38bf6ab69fd23bb0bd7409",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+        "EXECUTION openclaw convmem milestone plan"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "docs/plans/EXECUTION-openclaw-watch-coverage.md",
       "sha256": "cfe13584f6a84967b6ba2d1babfd2dd4d6649c9fb1e12a3faa138d93ca453157",
       "content_class": "markdown",
@@ -7952,8 +8033,42 @@
       "sensitivity": "documentation"
     },
     {
+      "path": "docs/plans/README-openclaw-convmem-integration.md",
+      "sha256": "659330a604d129c0760716137c870f50e6be174f6dd70bd2b6725f08fa6920b1",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/README-openclaw-convmem-integration.md",
+        "README openclaw convmem integration"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
+      "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
+      "sha256": "52969211dc4b01c324443c9d5cbfe69086567c391d7d0be1b6b07f2ab1497b16",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/STATUS-openclaw-convmem-integration.md",
+        "STATUS openclaw convmem integration"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "c465e6eeae9f62f6ce682d8c4b59a23f24abbd34fcf50d6a9d43ecc439423f20",
+      "sha256": "60ba555a76592083e743f77488c6eec3a2d6b9ce8332af732ae7f420525ca6d6",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7970,7 +8085,7 @@
     },
     {
       "path": "docs/plans/VERIFY-openclaw-watch-coverage.md",
-      "sha256": "a1750434807b254425b8adec9e8f4e690caf4b567c22d17048a358eea9ce5a24",
+      "sha256": "7ac7905aee6ee27ab74621bd3eb236c54effbca7bfd69e678678859bb516e56a",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8633,7 +8748,7 @@
     },
     {
       "path": "watch.py",
-      "sha256": "4bcbfa823028fd49e03ed33f06d080ad1c3d1f399351b35da24ac4996ff62af7",
+      "sha256": "ce16bc9630a97be0f624377bbeb7538ce0f2160a9939da67700aa657e89eadda",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

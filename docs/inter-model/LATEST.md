@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-23
+**Updated:** 2026-09-24
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -18,15 +18,18 @@ cross-arc snapshot and the linked arc brief below.
   always-loaded surface — see
   [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md) to invoke
   it going forward.
-- **Arc OpenClaw Watch Coverage — W0–W6 AUTHORIZED / Cursor next:** Ryan
-  explicitly authorized implementation and isolated acceptance on 2026-09-21
-  against Kiro-reviewed plan `19dea97368408ee0b179c05c942306f6d8f1a2e8`.
-  Build only the closed repository-knowledge inventory, adapter, indexing,
-  reconciliation, retirement, and hermetic evidence path. No OpenClaw T0–T5
-  change, live config, watch-service restart, live corpus mutation, activation,
-  PR, or merge is authorized. Resume from
-  [`CODEX-2026-09-21-openclaw-watch-coverage-execute.md`](CODEX-2026-09-21-openclaw-watch-coverage-execute.md)
-  and [`STATUS-openclaw-watch-coverage.md`](../plans/STATUS-openclaw-watch-coverage.md).
+- **Arc OpenClaw Watch Coverage — W0–W6 MERGED / LIVE; full coverage still
+  blocked:** implementation PR `#322` merged at `dc79eeb` and the separately
+  authorized live activation passed retrieval, exclusion, governance, and
+  service-health checks. The service remains pinned to the clean runtime
+  worktree at that commit. OpenClaw planning PR `#327` later added five reviewed
+  planning files; watch-closure PR `#331` merged as `2e50ec3`, classifying them,
+  refreshing stale admitted-file hashes, and restoring a byte-exact manifest
+  audit without advancing production. **Next:** any runtime-worktree promotion
+  remains separately authorized. Full `WATCH_COVERAGE=PASS` still waits for accepted
+  T0–T5 bytes, matching hashes, and a later controlled promotion. See
+  [`STATUS-openclaw-watch-coverage.md`](../plans/STATUS-openclaw-watch-coverage.md)
+  and [`VERIFY-openclaw-watch-coverage.md`](../plans/VERIFY-openclaw-watch-coverage.md).
 - **Claude Gate 1 smoke retirement — READY_FOR_REVIEW:** issue [#317](https://github.com/alanmz-crypto/convmem/issues/317) found six blockers confined to the optional smoke harness. The bounded corrective removes that harness while preserving the supported on-demand Claude adapter. Review the pushed exact tip; no real transcript, live indexing, provider, watcher/source/service/configuration change, PR, merge, activation, issue #315 work, or Gate 2 revival is authorized.
 - **Claude Watch Parity — CLOSED (`NO_GATE2_ROUTE`):** Gate 1 on-demand Claude indexing remains supported. Ryan closed the automatic Gate 2 route after three Security Review FAIL tips (`10322a6`: six findings; `52bdc02`: ten; `95ef122`: three). Kiro is stood down. No live canary, production route, watcher/source/service change, or activation occurred. Experimental plans and tips are preserved under `milestone/claude-watch-parity-*` tags. Issue #317 retired the optional Gate 1 smoke harness after its own Security Review FAIL; any future real-source containment smoke requires a new design and Ryan grant. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md); do not resume Gate 2 from its tagged branches.
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
