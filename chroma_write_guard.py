@@ -446,6 +446,30 @@ def note_system_created(identifier: str) -> None:
         _SYSTEM_VIEWS[identifier] = store_signature(identifier)
 
 
+def note_unguarded_write(identifier: str, before: dict[str, Signature]) -> None:
+    """After a native write this process made without the guard.
+
+    If the write saved, this process's system produced the files on disk, so it is
+    not stale. If it did not save, leave the recorded view alone: any save another
+    process made earlier is still unseen.
+    """
+    after = store_signature(identifier)
+    if after != before:
+        _set_system_view(identifier, after)
+
+
+def _synced_only(view: dict[str, Signature] | None) -> dict[str, Signature] | None:
+    """The part of a view that can make a system stale.
+
+    Chroma purges its log only when a segment syncs, so a system that loaded before an
+    *unsynced* change still replays every record from the log. Only a changed synced
+    segment means records were saved and purged where this system cannot see them.
+    """
+    if view is None:
+        return None
+    return {seg: sig for seg, sig in view.items() if not (sig and sig[0] == ["unsynced"])}
+
+
 def _system_view(identifier: str) -> dict[str, Signature] | None:
     with _VIEWS_LOCK:
         return _SYSTEM_VIEWS.get(identifier)
@@ -612,7 +636,7 @@ class ChromaWriteGuard:
             self.require_not_quarantined()
             self.reconcile()
             before = store_signature(self.chroma_dir)
-            if _system_view(identifier) != before:
+            if _synced_only(_system_view(identifier)) != _synced_only(before):
                 reload_client()
                 _set_system_view(identifier, before)
             try:

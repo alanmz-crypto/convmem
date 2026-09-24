@@ -352,6 +352,40 @@ def test_write_is_refused_when_another_client_pins_a_stale_system(tmp_path: Path
     assert _assert_every_record_has_its_vector(chroma) == 251
 
 
+def test_own_unguarded_saves_do_not_make_this_process_look_stale(tmp_path: Path) -> None:
+    """A plain store and a guarded store in one process share one Chroma system; saves
+    made through the plain one are this system's own, not a stranger's."""
+    chroma = _make_store(tmp_path)
+    plain = ChromaStore(str(chroma))
+    try:
+        for i in range(150):  # creates the segment and syncs it at 100, all in this process
+            plain.add_summary(f"s{i}", "doc", embedding(f"s{i}"), {"source_path": "/fixture"})
+        guarded = ChromaStore(str(chroma), write_guard=ChromaWriteGuard(chroma))
+        try:
+            guarded.add_summary("s150", "doc", embedding("s150"), {"source_path": "/fixture"})
+        finally:
+            guarded.close()
+    finally:
+        plain.close()
+    assert _assert_every_record_has_its_vector(chroma) == 151
+
+
+def test_another_process_creating_an_unsynced_segment_is_not_staleness(tmp_path: Path) -> None:
+    """Nothing is purged before a segment's first sync, so a system that loaded earlier
+    replays those records; refusing the write here would be a false alarm."""
+    chroma = _make_store(tmp_path)
+    reader = ChromaStore(str(chroma))
+    reader.count_summaries()  # this process's system exists before any segment files do
+    writer = ChromaStore(str(chroma), write_guard=ChromaWriteGuard(chroma))  # shares it
+    try:
+        _worker("write", chroma, 0, 30, "--guard")  # another process creates it, unsynced
+        writer.add_summary("s30", "doc", embedding("s30"), {"source_path": "/fixture"})
+    finally:
+        writer.close()
+        reader.close()
+    assert _assert_every_record_has_its_vector(chroma) == 31
+
+
 # --------------------------------------------------------------------------------------
 # Wiring
 # --------------------------------------------------------------------------------------

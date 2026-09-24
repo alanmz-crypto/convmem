@@ -18,6 +18,8 @@ from chroma_write_guard import (
     ChromaStaleSystemError,
     chroma_system_cached,
     note_system_created,
+    note_unguarded_write,
+    store_signature,
 )
 
 SUMMARIES = "conversation_summaries"
@@ -174,7 +176,12 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         """Run one native Chroma mutation, under the write guard when one is attached."""
         guard = self._write_guard
         if guard is None:
-            return getattr(self._collection(collection), operation)(**kwargs)
+            # Keep the process-wide record of what this Chroma system has seen current,
+            # so a guarded store sharing it does not mistake this save for a stranger's.
+            before = store_signature(self.chroma_dir)
+            result = getattr(self._collection(collection), operation)(**kwargs)
+            note_unguarded_write(self.chroma_dir, before)
+            return result
         with guard.native_write(identifier=self.chroma_dir, reload_client=self._reload_client):
             # Fetch the collection inside the guard: a reload replaces the client.
             return getattr(self._collection(collection), operation)(**kwargs)
