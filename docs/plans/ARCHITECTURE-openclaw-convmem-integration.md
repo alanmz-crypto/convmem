@@ -4480,7 +4480,8 @@ independent empty-tree and no-symlink proof. It then exports the exact Git tree 
 `source/` pathname, verifies every tracked path/blob/mode against `git ls-tree`, fixes or proves
 equal every filesystem attribute not represented by Git, and creates byte-identical empty HOME,
 XDG cache/config/data, `CONVMEM_CONFIG` and pytest-temp state at the same pathnames. Any retained
-entry, shared mutable cache, path difference, source inventory difference, unlisted environment
+entry, shared mutable cache, path difference, source inventory mismatch against that tip's exact
+Git tree, source difference outside the frozen baseline-to-candidate delta, unlisted environment
 variable or reset asymmetry is `PAUSE`. Reusing path strings never means retaining contents.
 
 The environment has one dependency/runtime inventory hash, Python and pytest versions, locale,
