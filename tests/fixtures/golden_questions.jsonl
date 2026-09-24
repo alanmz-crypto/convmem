@@ -7,4 +7,4 @@
 {"id": 7, "type": "search", "query": "View Transition animation curve fade-forward cubic-bezier morph crossfade", "assert": "top_contains", "value": "dec_prop_20260625_024511_239e", "top_n": 3}
 {"id": 8, "type": "unresolved", "args": ["--site", "staging2.willowyhollow.com"], "assert": "stdout_contains", "value": "No unresolved observations"}
 {"id": 9, "type": "related", "args": ["dec_prop_20260625_021935_62d6"], "assert": "stdout_contains", "value": "Decision"}
-{"id": 10, "type": "brief", "args": ["--stdout-only"], "assert": "stdout_contains", "value": "willowyhollow-practice"}
+{"id": 10, "type": "brief", "args": ["--stdout-only"], "assert": "stdout_contains", "value": "**{repo_name}**"}

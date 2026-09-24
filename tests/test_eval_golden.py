@@ -20,6 +20,14 @@ FIXTURE = Path(__file__).resolve().parent / "fixtures" / "golden_questions.jsonl
 PASS_BAR = 8
 TIMEOUT = 60  # seconds per query
 SEARCH_DEFAULT_TOP = 5
+REPO_NAME = Path(__file__).resolve().parents[1].name
+
+
+def resolve_expected(value: str) -> str:
+    """Substitute placeholders that must track this checkout, not a fixed
+    snapshot (e.g. `{repo_name}` survives this repo's own project being
+    renamed, unlike a hardcoded name)."""
+    return value.replace("{repo_name}", REPO_NAME)
 
 
 def load_questions(path: Path = FIXTURE) -> list[dict]:
@@ -103,7 +111,7 @@ class GoldenEvalTests(unittest.TestCase):
             qid = q["id"]
             qtype = q["type"]
             desc = q.get("query") or " ".join(q.get("args", []))
-            expected = q["value"]
+            expected = resolve_expected(q["value"])
 
             with self.subTest(q=f"Q{qid:02d} {qtype}: {desc[:50]}"):
                 if qtype == "search":
