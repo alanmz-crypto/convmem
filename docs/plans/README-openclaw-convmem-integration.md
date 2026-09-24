@@ -7,12 +7,11 @@ vocabulary. This file exists so a person (Ryan, or anyone he loops in later)
 can understand *what this work is and why it exists* without needing an AI
 session open to translate it.
 
-**Working name for this whole effort:** **ConvMem Switchboard** — leading
-candidate, referenced this way in the top-level repo `README.md`. Not yet
-formally locked in; other candidates considered: Agent Memory Layer, Context
-Bridge, Party Line, Commons, plain "Switchboard" without the ConvMem prefix
-(rejected — reads as OpenClaw-owned rather than ConvMem-owned). Update this
-line if the name changes, and keep it in sync with `README.md`.
+**Name for this whole effort:** **ConvMem Switchboard** — locked in
+2026-09-23. Other candidates considered and rejected: Agent Memory Layer,
+Context Bridge, Party Line, Commons, plain "Switchboard" without the ConvMem
+prefix (reads as OpenClaw-owned rather than ConvMem-owned). Update this line
+if the name ever changes, and keep it in sync with `README.md`.
 
 ## The problem, in one paragraph
 
@@ -72,9 +71,9 @@ OpenClaw (orchestrator)
   │         to ConvMem, or do they start with no memory access?)
   │
   └─ has its own read-only MCP connection to ConvMem
-        (in progress — see ARCHITECTURE-openclaw-convmem-integration.md;
-        currently no durable-write capability, no `record`/`approve`,
-        scoped and authorization-gated retrieval only)
+        (bounded plan reviewed by Kiro — see ARCHITECTURE- and EXECUTION-
+        openclaw-convmem-integration.md; currently no durable-write capability,
+        no `record`/`approve`, scoped retrieval only, and no Execute grant)
 
 ConvMem (shared memory)
   │
@@ -96,10 +95,11 @@ Two separate arcs are doing different parts of this:
   OpenClaw's live runtime data (credentials, databases, memory, session
   transcripts) — that's explicitly excluded for safety reasons (constantly
   changing, potentially sensitive, format not yet pinned down).
-- **OpenClaw + ConvMem integration** (ad-hoc, no arc name yet) — designs the
-  actual connector that lets OpenClaw *query* ConvMem at runtime. As of this
-  writing it's read-only, scoped, and still missing pieces (OpenClaw's
-  installed version doesn't even expose an `openclaw mcp` command yet).
+- **OpenClaw + ConvMem integration** (the ConvMem Switchboard effort) — defines
+  the bounded connector that lets OpenClaw *query* ConvMem at runtime. The
+  fixture architecture and T0–T5 execution overlay have Kiro PASS, while the
+  existing implementation is partial and real OpenClaw qualification remains
+  blocked behind separate gates.
 
 Neither arc has yet answered the child-agent question above. That requires
 watching a real OpenClaw run happen — you can't design it from documentation
@@ -117,6 +117,9 @@ go stale. Instead:
 - [`ARCHITECTURE-openclaw-convmem-integration.md`](ARCHITECTURE-openclaw-convmem-integration.md) —
   current design of the runtime connector (scope, constraints, open
   questions).
+- [`EXECUTION-openclaw-convmem-integration.md`](EXECUTION-openclaw-convmem-integration.md) and
+  [`EXECUTION-openclaw-convmem-milestone-plan.md`](EXECUTION-openclaw-convmem-milestone-plan.md) —
+  bounded implementation ownership, checkpoints, evidence, and later gates.
 
 ## What "done" looks like for the child-agent question
 
@@ -136,4 +139,4 @@ go stale. Instead:
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-23 | Claude | Created this README after clarifying, in conversation with Ryan, that the open question is whether OpenClaw's dispatched child agents automatically get ConvMem memory access — not just which folders to watch. |
+| 2026-09-23 | Claude/Codex | Updated orientation after the exact-tip Kiro PASS: the bounded T0–T5 plan is ready for Ryan's Execute decision; implementation and live qualification remain gated. |

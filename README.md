@@ -55,7 +55,7 @@ These are current personal capabilities, not a promise that every path is equall
 - **Answers** questions with RAG citations through `convmem ask`; `--evidence` prioritizes unresolved observations and failed verifications.
 - **Traverses and triages** evidence with `convmem related`, `convmem unresolved`, and the ledger-backed decision/verification view.
 - **Orients and operates** agent sessions with `doctor`, `brief`, `tldr`, `scope`, and `agent-run`; the same core is exposed through the local MCP server and generated agent-protocol surfaces.
-- **Experiments under explicit gates** with shadow-ledger, writer-census, provenance, recovery, evaluation, and OpenClaw orchestrator-integration machinery (working name: **ConvMem Switchboard** — a read-only connector so agents OpenClaw dispatches can query ConvMem's memory). These are real repository subsystems, but several remain disabled, experimental, blocked, or separately authorized; read the relevant status brief before treating one as live.
+- **Experiments under explicit gates** with shadow-ledger, writer-census, provenance, recovery, evaluation, and OpenClaw orchestrator-integration machinery (**ConvMem Switchboard** — a read-only connector so agents OpenClaw dispatches can query ConvMem's memory). These are real repository subsystems, but several remain disabled, experimental, blocked, or separately authorized; read the relevant status brief before treating one as live.
 
 Past conversations and security findings become a **queryable evidence layer** — not live agent-to-agent chat. The repository also contains the controls used to test, govern, back up, recover, and evaluate that layer.
 
@@ -129,7 +129,7 @@ These labels are internal checkpoints for my own development, not a public relea
 | **B** | Graph navigability | `build_ledger_index()`, `convmem related` |
 | **C** | Scanner auto-ingest + upsert | `export_lighthouse.py`, `add --upsert`, `scripts/ingest-*.sh` |
 | **E** | Evidence-aware ask | `evidence.py`, `ask --evidence` |
-| **D** | OpenClaw orchestrator integration ("ConvMem Switchboard", working name) | Active design, not live — see [docs/plans/README-openclaw-convmem-integration.md](docs/plans/README-openclaw-convmem-integration.md) |
+| **D** | OpenClaw orchestrator integration ("ConvMem Switchboard") | Active design, not live — see [docs/plans/README-openclaw-convmem-integration.md](docs/plans/README-openclaw-convmem-integration.md) |
 | **F0/F1/F2b** | Always-on watch + refine + monitor | See [docs/MILESTONE-F.md](docs/MILESTONE-F.md), [docs/SYSTEMD-DEPLOY.md](docs/SYSTEMD-DEPLOY.md) |
 
 ---
