@@ -35,7 +35,8 @@ created by this arc.
 
 | Surface | Final state |
 |---|---|
-| Claude Gate 1 adapter and containment harness | Merged through PRs #310 and #311; supported on-demand path |
+| Claude Gate 1 adapter | Merged through PRs #310 and #311; supported on-demand path |
+| Optional Gate 1 smoke harness | Retired after issue #317 Security Review FAIL; it had no production caller |
 | Gate 2 prefix/spec/isolated route | Preserved only in tagged experimental history; never production-routed |
 | Namespace launcher | Preserved at `milestone/claude-watch-parity-final-experiment`; not accepted |
 | Live-source canary | Never executed |
@@ -69,23 +70,24 @@ maintenance cost.
 
 ## 5. Your Role
 
-This arc has no active implementation or review lane. Do not resume Gate 2 from
-its experimental branches. A future automatic-capture proposal requires a new
-arc, architecture, threat model, and Ryan grant.
+This arc has no active implementation lane. Do not resume Gate 2 from its
+experimental branches. A future automatic-capture proposal requires a new arc,
+architecture, threat model, and Ryan grant.
 
 For supported Gate 1 follow-ups, use the separately scoped issues:
 
 - [#316](https://github.com/alanmz-crypto/convmem/issues/316) — invalid UTF-8
   handling in metadata discovery and ordinary parsing.
-- [#317](https://github.com/alanmz-crypto/convmem/issues/317) — read-only audit
-  of merged Gate 1 containment and evidence boundaries.
+- [#317](https://github.com/alanmz-crypto/convmem/issues/317) — exact-tip review
+  of the bounded corrective that retires the optional Gate 1 smoke harness.
 
-Neither issue authorizes implementation or live transcript access.
+Neither issue authorizes live transcript access.
 
 ## 6. What Remains
 
-Nothing remains inside Claude Watch Parity. Issues #316 and #317 are separate
-Gate 1 maintenance work and do not reopen this arc.
+Nothing remains inside Claude Watch Parity. Issue #317's exact-tip corrective
+review is separate Gate 1 maintenance and does not reopen this arc. Any future
+real-source containment smoke requires a new design and Ryan grant.
 
 ## 7. Hard Stops
 
@@ -127,9 +129,10 @@ git show milestone/claude-watch-parity-execute-handoff:docs/inter-model/CODEX-20
 
 | Date | Who | Milestone-level change |
 |---|---|---|
+| 2026-09-21 | Ryan / Cursor | Retired the optional Gate 1 smoke harness after issue #317 Security Review FAIL; preserved the supported adapter and `NO_GATE2_ROUTE`. |
 | 2026-09-20 | Ryan / Codex | Closed Gate 2 as `NO_GATE2_ROUTE`; retained Gate 1 on-demand indexing and preserved experimental history by tag. |
 
 **TL;DR [Arc Claude Watch Parity]:** Gate 1 on-demand Claude indexing is the
-supported result. Gate 2 automatic capture is closed as `NO_GATE2_ROUTE`, Kiro
-is stood down, and the rejected experiment remains available through immutable
-tags only.
+supported result. The optional smoke harness is retired after issue #317's
+Security Review FAIL. Gate 2 remains closed as `NO_GATE2_ROUTE`, and any future
+real-source containment smoke needs a new design and Ryan grant.
