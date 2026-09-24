@@ -130,7 +130,7 @@ Review and authority order is mandatory:
 | **Implemented** | Bounded implementation is accepted at `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. Current-main reconstruction, reviewed-plan validation and follow-up evidence fixes are preserved, clean and pushed at `PRESERVED_M11_TIP`. No Pylint remediation is implemented. |
 | **Tested** | Historical M0–M8 Gate B/C passed and was accepted at `8010fb0`. At `PRESERVED_M11_TIP`, two fresh M8 runs passed with 238 strict, 29 Node and 115 legacy passes plus one skip/four deselections; seven MCP files passed 54 tests plus six subtests. The actual current-main Pylint gate failed on 699 new occurrences; no final full pytest or merge-readiness PASS exists. |
 | **Assumed** | No unavailable runtime or host capability is assumed. The historical runtime tree hash is `sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`, but reuse requires Codex to rebind and independently inventory it at the exact new parent/baseline path under a new Ryan grant. |
-| **Unresolved** | Kiro exact-tip review and a new Ryan resume grant block applying the three new plan commits, the exact 44-path lint correction and all final tests. That grant must confirm the exact parent/overlay, `PRESERVED_M11_TIP`/branch, runtime prefix and durable evidence root frozen in §0. Later blockers remain Gate D authentication/distribution/containment and current OpenClaw qualification; Gate W production admission; Gate D-V; Gate E; Gate F/capture; watch activation; live data, merge, deployment and promotion. None becomes Grok work. |
+| **Unresolved** | Kiro exact-tip review and a new Ryan resume grant block applying the complete reviewed linear plan range, the exact 44-path lint correction and all final tests. That grant must confirm the exact parent/overlay, `PRESERVED_M11_TIP`/branch, runtime prefix and durable evidence root frozen in §0. Later blockers remain Gate D authentication/distribution/containment and current OpenClaw qualification; Gate W production admission; Gate D-V; Gate E; Gate F/capture; watch activation; live data, merge, deployment and promotion. None becomes Grok work. |
 
 ## 2. Dependency order
 
@@ -164,8 +164,8 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 M0–M8 are accepted historical scope; they are neither reopened nor promoted to
 the integration baseline. M9, M10, watch coverage, and complete-system review
 remain decision gates, not Grok work. The only possible next implementation is
-M11f under a new grant after Kiro PASS on this exact plan. It applies the two
-new reviewed plan commits to `PRESERVED_M11_TIP`, performs the frozen 44-path
+M11f under a new grant after Kiro PASS on this exact plan. It applies every
+commit in the complete reviewed linear plan range to `PRESERVED_M11_TIP`, performs the frozen 44-path
 lint correction under three held checkpoints, and only then re-runs the full
 acceptance evidence; it does not recreate the branch, replay the 45 commits or
 redo the completed reviewed-plan correction. Any need to depart from the frozen
