@@ -23,20 +23,13 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 
 _ALLOWLIST = frozenset(
-    (
+    {
         "CONVMEM_MCP_PROFILE",
         "CONVMEM_BOUND_READ_SCOPE_FILE",
         "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
         "CONVMEM_STRICT_CONFIG_FILE",
-    )
-    + (
-        "HOME",
-        "PATH",
-        "LANG",
-        "LC_ALL",
-        "TMPDIR",
-    )
-)
+    }
+) | frozenset({"HOME", "PATH"}) | frozenset({"LANG", "LC_ALL", "TMPDIR"})
 
 
 def _exact_child_env(tmp_path: Path, **overrides: str) -> dict[str, str]:
@@ -138,10 +131,12 @@ def test_strict_server_env_gate_positive_exact_and_missing_key_negatives(
     exact = _exact_child_env(tmp_path)
     module.require_closed_strict_environment(exact)
 
-    for missing in (
-        *("CONVMEM_BOUND_READ_SCOPE_FILE", "CONVMEM_PROJECT_BINDING_REGISTRY_FILE", "CONVMEM_STRICT_CONFIG_FILE"),
-        *("HOME", "PATH", "LANG", "LC_ALL", "TMPDIR"),
-    ):
+    _missing_keys = (
+        "CONVMEM_BOUND_READ_SCOPE_FILE",
+        "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
+        "CONVMEM_STRICT_CONFIG_FILE",
+    ) + tuple(sorted({"HOME", "PATH", "LANG", "LC_ALL", "TMPDIR"}))
+    for missing in _missing_keys:
         env = dict(exact)
         env[missing] = ""
         with pytest.raises(SystemExit) as ei:

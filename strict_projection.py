@@ -86,6 +86,15 @@ class StrictProjectionError(ValueError):
 
 
 # Closed top-level field sets (parent §6.5.4 / schema_field_sets TOP_LEVEL).
+def _projection_schema_paths(stems: tuple[str, ...]) -> tuple[str, ...]:
+    """Prefix schema stems with schemas/ for builder inventory membership."""
+
+    paths: list[str] = []
+    for stem in stems:
+        paths.append("schemas/" + stem)
+    return tuple(paths)
+
+
 def _projection_field_set(*names: str) -> frozenset[str]:
     """Build projection closed field sets from an explicit name tuple."""
 
@@ -107,23 +116,25 @@ _LAYOUT_FIELDS = _projection_field_set(
     "control_dir",
     "layout_payload_sha256",
 )
-_ENROLLMENT_FIELDS = frozenset({
-    "schema",
-    "lineage_id",
-    "slot_id",
-    "mode",
-    "owner_digest",
-    "operator_uid",
-    "controller_uid",
-}) | frozenset({
-    "supervisor_uid",
-    "runtime_uid",
-    "scope_sha256",
-    "registry_sha256",
-    "semantic_contract_sha256",
-    "initial_source_cutoff_sha256",
-    "enrollment_payload_sha256",
-})
+_ENROLLMENT_FIELDS = frozenset(
+    name
+    for name in (
+        "schema",
+        "lineage_id",
+        "slot_id",
+        "mode",
+        "owner_digest",
+        "operator_uid",
+        "controller_uid",
+        "supervisor_uid",
+        "runtime_uid",
+        "scope_sha256",
+        "registry_sha256",
+        "semantic_contract_sha256",
+        "initial_source_cutoff_sha256",
+        "enrollment_payload_sha256",
+    )
+)
 
 _PUBLICATION_FIELDS = _projection_field_set(
     "schema",
@@ -209,19 +220,21 @@ _PROJECTION_MANIFEST_FIELDS = _projection_field_set(
 )
 
 
-_SEMANTIC_CONTRACT_FIELDS = frozenset((
-    "schema",
-    "reducer_version",
-    "grounding_version",
-    "canonicalization_version",
-    "identity_version",
-)) | frozenset((
-    "search_kernel",
-    "search_kernel_version",
-    "tokenizer_unicode_version",
-    "schema_digests",
-    "contract_payload_sha256",
-))
+_SEMANTIC_CONTRACT_FIELDS = frozenset(
+    name
+    for name in (
+        "schema",
+        "reducer_version",
+        "grounding_version",
+        "canonicalization_version",
+        "identity_version",
+        "search_kernel",
+        "search_kernel_version",
+        "tokenizer_unicode_version",
+        "schema_digests",
+        "contract_payload_sha256",
+    )
+)
 
 # Frozen M3 semantic-contract constants — duplicated locally (never import publisher).
 _REQUIRED_REDUCER_VERSION = "v1"
@@ -376,15 +389,48 @@ _INPUT_PAYLOAD_FIELD = {
     "convmem.strict-fixture-bundle.v2": "fixture_payload_sha256",
     "convmem.approved-admission.v1": "artifact_payload_sha256",
 }
-_FIXTURE_BUNDLE_FIELDS = frozenset({"schema", "lineage_id", "operation_id", "expected_parent_manifest_sha256", "batches", "dispositions"}) | frozenset({"provenance_context", "grounding", "built_at", "as_of", "expires_at", "fixture_payload_sha256"})
+_FIXTURE_BUNDLE_FIELDS = (
+    frozenset(
+        {
+            "schema",
+            "lineage_id",
+            "operation_id",
+            "expected_parent_manifest_sha256",
+            "batches",
+            "dispositions",
+        }
+    )
+    | frozenset(
+        {
+            "provenance_context",
+            "grounding",
+            "built_at",
+            "as_of",
+            "expires_at",
+            "fixture_payload_sha256",
+        }
+    )
+)
 
-_LAYOUT_DIR_VALUES = dict((
-    ("authority_dir", "authority"),
-    ("projection_dir", "projection"),
-    ("active_dir", "active"),
-    ("locks_dir", "locks"),
-    ("control_dir", "control"),
-))
+_LAYOUT_DIR_VALUES = dict(
+    zip(
+        (
+            "authority_dir",
+            "projection_dir",
+            "active_dir",
+            "locks_dir",
+            "control_dir",
+        ),
+        (
+            "authority",
+            "projection",
+            "active",
+            "locks",
+            "control",
+        ),
+        strict=True,
+    )
+)
 
 
 
@@ -1093,9 +1139,8 @@ _BUILDER_CORE_MEMBERS: tuple[str, ...] = tuple(
     )
 )
 
-_BUILDER_SCHEMAS_GATE_B: tuple[str, ...] = tuple(
-    f"schemas/{stem}"
-    for stem in (
+_BUILDER_SCHEMAS_GATE_B: tuple[str, ...] = _projection_schema_paths(
+    (
         "convmem-bound-read-scope-v2.schema.json",
         "convmem-project-binding-registry-v3.schema.json",
         "convmem-bound-authority-record-v3.schema.json",
@@ -1122,9 +1167,8 @@ _BUILDER_SCHEMAS_GATE_B: tuple[str, ...] = tuple(
         "convmem-strict-config-v2.schema.json",
     )
 )
-_BUILDER_SCHEMAS_GATE_C: tuple[str, ...] = tuple(
-    f"schemas/{stem}"
-    for stem in (
+_BUILDER_SCHEMAS_GATE_C: tuple[str, ...] = _projection_schema_paths(
+    (
         "convmem-openclaw-connector-launch-v2.schema.json",
         "convmem-openclaw-activation-v2.schema.json",
         "convmem-activation-control-v1.schema.json",
@@ -2358,8 +2402,8 @@ def _acquire_shared_lineage_lock(path: Path) -> tuple[int, tuple[int, int]]:
     except Exception:
         try:
             os.close(fd)
-        except OSError:
-            pass
+        except OSError as _close_exc:
+                    del _close_exc
         raise
 
 

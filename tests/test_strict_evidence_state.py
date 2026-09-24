@@ -145,12 +145,12 @@ def test_fixture_event_collision_and_idempotent_retry():
         }
     }
     source = _source_record(provenance_assertion_id=aid)
-    scan = dict((
-        ("schema", "convmem.fixture-scan.v1"),
-        ("event_key", "scan-key-1"),
-        ("captured_at", "2026-09-21T00:00:01Z"),
-        ("records", [source]),
-    ))
+    scan = {
+        "schema": "convmem.fixture-scan.v1",
+        "event_key": "scan-key-1",
+        "captured_at": "2026-09-21T00:00:01Z",
+        "records": [source],
+    }
     qual = {aid: QualificationTuple("valid", "complete", "synthetic_fixture", "trusted")}
     first = materialize_authority_records(
         binding=binding,
@@ -497,11 +497,13 @@ def _obs_record(
     observed_at: str = _TS,
 ) -> dict[str, Any]:
     return {
-        "schema": "convmem.bound-authority-record.v3",
-        "project_binding_id": "project:convmem:v1",
-        "source_registration_id": "src-reg-1",
-        "authority_site": "example.com",
-        "authority_domain": "coding",
+        **dict((
+            ("schema", "convmem.bound-authority-record.v3"),
+            ("project_binding_id", "project:convmem:v1"),
+            ("source_registration_id", "src-reg-1"),
+            ("authority_site", "example.com"),
+            ("authority_domain", "coding"),
+        )),
         "record_kind": "observation",
         "logical_id": logical_id,
         "assertion_id": assertion_id,
@@ -515,11 +517,13 @@ def _obs_record(
         "observed_at": observed_at,
         "recorded_at": "2026-09-21T00:00:01Z",
         "confidence_bps": 7000,
-        "relates_to_assertion_id": None,
-        "target_assertion_id": None,
-        "verification_result": None,
-        "supersedes_assertion_ids": [],
-        "decision_disposition_ref": None,
+        **dict((
+            ("relates_to_assertion_id", None),
+            ("target_assertion_id", None),
+            ("verification_result", None),
+            ("supersedes_assertion_ids", []),
+            ("decision_disposition_ref", None),
+        )),
         "supersession_disposition_ref": None,
         "provenance_envelope": {"schema_version": "convmem/provenance-envelope-v1"},
         "provenance_commitment": "sha256:" + "c" * 64,

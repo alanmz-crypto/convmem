@@ -99,21 +99,21 @@ _STRICT_CONFIG_FIELDS = frozenset(
     ("schema", "projection_root")
     | {"max_projection_rows", "max_projection_bytes", "telemetry"}
 )
-_SEMANTIC_CONTRACT_FIELDS = frozenset(
-    (
+_SEMANTIC_CONTRACT_FIELDS = _publisher_field_set(
+    *(
         "schema",
         "reducer_version",
         "grounding_version",
         "canonicalization_version",
         "identity_version",
-    )
-    + (
+    ),
+    *(
         "search_kernel",
         "search_kernel_version",
         "tokenizer_unicode_version",
         "schema_digests",
         "contract_payload_sha256",
-    )
+    ),
 )
 _REQUIRED_SEMANTIC_CONTRACT = {
     "reducer_version": REDUCER_VERSION,
@@ -361,7 +361,7 @@ _CORE_MEMBERS: tuple[str, ...] = _CORE_PY_MEMBERS + _CORE_OTHER_MEMBERS
 
 # Parent-fixed Gate B (24) + Gate C (7) schema inventory from Execution §2.
 _SCHEMAS_GATE_B: tuple[str, ...] = tuple(
-    ["schemas/" + stem for stem in [
+    ("schemas/" + stem for stem in (
         "convmem-bound-read-scope-v2.schema.json",
         "convmem-project-binding-registry-v3.schema.json",
         "convmem-bound-authority-record-v3.schema.json",
@@ -386,10 +386,10 @@ _SCHEMAS_GATE_B: tuple[str, ...] = tuple(
         "convmem-raw-evidence-v3.schema.json",
         "convmem-error-v1.schema.json",
         "convmem-strict-config-v2.schema.json",
-    ]]
+    ))
 )
 _SCHEMAS_GATE_C: tuple[str, ...] = tuple(
-    ["schemas/" + stem for stem in [
+    ("schemas/" + stem for stem in (
         "convmem-openclaw-connector-launch-v2.schema.json",
         "convmem-openclaw-activation-v2.schema.json",
         "convmem-activation-control-v1.schema.json",
@@ -397,7 +397,7 @@ _SCHEMAS_GATE_C: tuple[str, ...] = tuple(
         "convmem-activation-launch-policy-v1.schema.json",
         "convmem-activation-manager-policy-v1.schema.json",
         "convmem-controller-socket-policy-v1.schema.json",
-    ]]
+    ))
 )
 _SCHEMAS_BC: tuple[str, ...] = _SCHEMAS_GATE_B + _SCHEMAS_GATE_C
 
@@ -753,27 +753,21 @@ def enroll_fixture(
 ) -> dict[str, Any]:
     """Create empty-root enrolled genesis: epoch1 unavailable/seq0, never serving."""
     enrollment = _read_json(Path(enrollment_path))
-    _enrollment_keys = frozenset(
-        {
-            "schema",
-            "lineage_id",
-            "slot_id",
-            "mode",
-            "owner_digest",
-        }
-        | {
-            "operator_uid",
-            "controller_uid",
-            "supervisor_uid",
-            "runtime_uid",
-        }
-        | {
-            "scope_sha256",
-            "registry_sha256",
-            "semantic_contract_sha256",
-            "initial_source_cutoff_sha256",
-            "enrollment_payload_sha256",
-        }
+    _enrollment_keys = _publisher_field_set(
+        "schema",
+        "lineage_id",
+        "slot_id",
+        "mode",
+        "owner_digest",
+        "operator_uid",
+        "controller_uid",
+        "supervisor_uid",
+        "runtime_uid",
+        "scope_sha256",
+        "registry_sha256",
+        "semantic_contract_sha256",
+        "initial_source_cutoff_sha256",
+        "enrollment_payload_sha256",
     )
     if set(enrollment) != _enrollment_keys:
         raise StrictPublisherError("enrollment_keys")
@@ -813,11 +807,23 @@ def enroll_fixture(
     layout = dict(
         (
             ("schema", "convmem.strict-generation-layout.v2"),
-            ("authority_dir", "authority"),
-            ("projection_dir", "projection"),
-            ("active_dir", "active"),
-            ("locks_dir", "locks"),
-            ("control_dir", "control"),
+            *zip(
+                (
+                    "authority_dir",
+                    "projection_dir",
+                    "active_dir",
+                    "locks_dir",
+                    "control_dir",
+                ),
+                (
+                    "authority",
+                    "projection",
+                    "active",
+                    "locks",
+                    "control",
+                ),
+                strict=True,
+            ),
             ("layout_payload_sha256", "sha256:" + ("0" * 64)),
         )
     )

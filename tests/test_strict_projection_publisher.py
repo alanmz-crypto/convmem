@@ -180,22 +180,24 @@ def _scope_registry_with_owner(tmp_path: Path) -> tuple[Path, Path]:
         "schema": "convmem.project-binding-registry.v3",
         "bindings": [
             {
-                **{
-                    "id": "project:convmem:v1",
-                    "public_ref": "a" * 32,
-                    "project": "convmem",
-                    "domain_root": "coding",
-                    "site_mode": "exact",
-                    "site": "example.com",
-                    "non_expanding_roots": [],
-                },
+                **dict((
+                ("id", "project:convmem:v1"),
+                ("public_ref", "a" * 32),
+                ("project", "convmem"),
+                ("domain_root", "coding"),
+                ("site_mode", "exact"),
+                ("site", "example.com"),
+                ("non_expanding_roots", []),
+                )),
                 "source_registrations": [
                     {
                         "id": "src-reg-1",
-                        "source_class": "fixture_scan",
-                        "source_identity": "fixture/source-a",
-                        "identity_match": "exact",
-                        "authorization_domain": "coding",
+                        **dict((
+                        ("source_class", "fixture_scan"),
+                        ("source_identity", "fixture/source-a"),
+                        ("identity_match", "exact"),
+                        ("authorization_domain", "coding"),
+                        )),
                         "site": "example.com",
                         "event_id_resolver": "fixture_scan_event_v1",
                     }
@@ -1953,9 +1955,11 @@ def _materializable_publish_inputs(
             "input_bindings_sha256": compute_input_bindings_sha256(roots, []),
             "transformer_artifact_sha256": artifact_sha,
             "recipe_sha256": recipe_sha,
-            "submitted_views_sha256": compute_submitted_views_sha256(roots, []),
-            "returned_output_sha256": blob_sha,
-            "captured_at": _TS,
+            **dict((
+            ("submitted_views_sha256", compute_submitted_views_sha256(roots, [])),
+            ("returned_output_sha256", blob_sha),
+            ("captured_at", _TS),
+            )),
             "receipt_payload_sha256": "sha256:" + ("0" * 64),
         }
         receipt["receipt_payload_sha256"] = _self_hash(receipt, "receipt_payload_sha256")
@@ -1988,21 +1992,24 @@ def _materializable_publish_inputs(
     os.chmod(inv_path, 0o444)
     os.chmod(inv_root, 0o555)
 
-    grounding = {
-        "schema": "convmem.strict-grounding.v1",
-        "blobs": [{"sha256": blob_sha, "length": len(blob), "bytes_b64": blob_b64}],
-        "roots": [root_bind],
-        "edges": [],
-        "outputs": [
-            {
-                "provenance_assertion_id": aid,
-                "provenance_commitment": commitment,
-                "output_blob_sha256": blob_sha,
-            }
-        ],
-        "receipts": [receipt],
-        "grounding_payload_sha256": "sha256:" + ("0" * 64),
-    }
+    grounding = dict((
+        ("schema", "convmem.strict-grounding.v1"),
+        ("blobs", [{"sha256": blob_sha, "length": len(blob), "bytes_b64": blob_b64}]),
+        ("roots", [root_bind]),
+        ("edges", []),
+        (
+            "outputs",
+            [
+                dict((
+                    ("provenance_assertion_id", aid),
+                    ("provenance_commitment", commitment),
+                    ("output_blob_sha256", blob_sha),
+                ))
+            ],
+        ),
+        ("receipts", [receipt]),
+        ("grounding_payload_sha256", "sha256:" + ("0" * 64)),
+    ))
     grounding["grounding_payload_sha256"] = _self_hash(grounding, "grounding_payload_sha256")
 
     policy = ProvenanceRegistry().current_policy
@@ -2089,22 +2096,24 @@ def _materializable_publish_inputs(
         "schema": "convmem.project-binding-registry.v3",
         "bindings": [
             {
-                **{
-                    "id": "project:convmem:v1",
-                    "public_ref": "a" * 32,
-                    "project": "convmem",
-                    "domain_root": "coding",
-                    "site_mode": "exact",
-                    "site": "example.com",
-                    "non_expanding_roots": [],
-                },
+                **dict((
+                ("id", "project:convmem:v1"),
+                ("public_ref", "a" * 32),
+                ("project", "convmem"),
+                ("domain_root", "coding"),
+                ("site_mode", "exact"),
+                ("site", "example.com"),
+                ("non_expanding_roots", []),
+                )),
                 "source_registrations": [
                     {
                         "id": src,
-                        "source_class": "fixture_scan",
-                        "source_identity": "fixture/source-a",
-                        "identity_match": "exact",
-                        "authorization_domain": "coding",
+                        **dict((
+                        ("source_class", "fixture_scan"),
+                        ("source_identity", "fixture/source-a"),
+                        ("identity_match", "exact"),
+                        ("authorization_domain", "coding"),
+                        )),
                         "site": "example.com",
                         "event_id_resolver": "fixture_scan_event_v1",
                     }
@@ -2123,13 +2132,12 @@ def _materializable_publish_inputs(
             }
         ],
     }
-    revision = sha256_digest(
-        canonical_json_bytes(
-            without_revision,
-            validate=lambda _obj: None,
-            error_type=BoundScopeError,
-        )
+    _revision_body = canonical_json_bytes(
+        without_revision,
+        validate=lambda _obj: None,
+        error_type=BoundScopeError,
     )
+    revision = sha256_digest(_revision_body)
     registry = {**without_revision, "revision": revision}
     scope_path = (shared / "scope.json").resolve()
     registry_path = (shared / "registry.json").resolve()

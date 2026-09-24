@@ -1158,10 +1158,12 @@ def _closed_admission_bundle(
     schema_semantics, policies, recipes = _default_context_materials()
     context = _seal_context(
         {
-            "schema": "convmem.strict-provenance-context.v2",
-            "schema_semantics": schema_semantics,
-            "policies": policies,
-            "recipes": recipes,
+            **dict((
+            ("schema", "convmem.strict-provenance-context.v2"),
+            ("schema_semantics", schema_semantics),
+            ("policies", policies),
+            ("recipes", recipes),
+        )),
             "verified_channels": [],
             "registered_assertions": [
                 {

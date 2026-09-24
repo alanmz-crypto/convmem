@@ -21,6 +21,13 @@ import case58_oracle as oracle  # noqa: E402
 from fixture_manifest import emit_complete_manifest  # noqa: E402
 
 
+def _packet_schema_path(stem: str) -> str:
+    """Build schemas/<stem> inventory paths for packet-contract checks."""
+
+    return "schemas/" + stem
+
+
+
 def test_case57_preflight_sentinel_present_inside_runner():
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     assert Path("/fixture/preflight_ok").is_file()
@@ -169,14 +176,10 @@ def test_case57_pytest_plugin_inventory(pytestconfig):
 
 def test_runner_frozen_suite_selectors():
     strict = oc_suites.strict_pytest_argv()
-    assert strict[:6] == list((
-        "/runtime/bin/python",
-        "-m",
-        "pytest",
-        "-q",
-        "-p",
-        "no:cacheprovider",
-    ))
+    assert strict[:6] == [
+        *("/runtime/bin/python", "-m", "pytest"),
+        *("-q", "-p", "no:cacheprovider"),
+    ]
     assert len(oc_constants.STRICT_PYTEST_FILES) == 13
     for path in oc_constants.STRICT_PYTEST_FILES:
         assert path in strict
@@ -237,32 +240,35 @@ def test_plan_and_baseline_constants_frozen():
 def test_m2_gate_b_and_c_schema_inventory_exact():
     """Exact 24 Gate B + 7 Gate C schemas; no Gate W."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    gate_b = list((
-        "schemas/convmem-bound-read-scope-v2.schema.json",
-        "schemas/convmem-project-binding-registry-v3.schema.json",
-        "schemas/convmem-bound-authority-record-v3.schema.json",
-        "schemas/convmem-authority-disposition-v1.schema.json",
-        "schemas/convmem-strict-provenance-context-v2.schema.json",
-        "schemas/convmem-strict-grounding-v1.schema.json",
-        "schemas/convmem-capture-receipt-v1.schema.json",
-        "schemas/convmem-strict-fixture-bundle-v2.schema.json",
-        "schemas/convmem-strict-citation-map-v1.schema.json",
-        "schemas/convmem-bound-authority-manifest-v3.schema.json",
-        "schemas/convmem-bound-projection-row-v2.schema.json",
-        "schemas/convmem-strict-graph-v1.schema.json",
-        "schemas/convmem-bound-projection-manifest-v3.schema.json",
-        "schemas/convmem-strict-generation-layout-v2.schema.json",
-        "schemas/convmem-strict-publication-v2.schema.json",
-        "schemas/convmem-strict-enrollment-v1.schema.json",
-        "schemas/convmem-strict-slot-v1.schema.json",
-        "schemas/convmem-strict-source-cutoff-v1.schema.json",
-        "schemas/convmem-strict-semantic-contract-v1.schema.json",
-        "schemas/convmem-strict-state-v2.schema.json",
-        "schemas/convmem-clock-review-v1.schema.json",
-        "schemas/convmem-raw-evidence-v3.schema.json",
-        "schemas/convmem-error-v1.schema.json",
-        "schemas/convmem-strict-config-v2.schema.json",
-    ))
+    gate_b = list(
+    _packet_schema_path(stem)
+    for stem in (
+        "convmem-bound-read-scope-v2.schema.json",
+        "convmem-project-binding-registry-v3.schema.json",
+        "convmem-bound-authority-record-v3.schema.json",
+        "convmem-authority-disposition-v1.schema.json",
+        "convmem-strict-provenance-context-v2.schema.json",
+        "convmem-strict-grounding-v1.schema.json",
+        "convmem-capture-receipt-v1.schema.json",
+        "convmem-strict-fixture-bundle-v2.schema.json",
+        "convmem-strict-citation-map-v1.schema.json",
+        "convmem-bound-authority-manifest-v3.schema.json",
+        "convmem-bound-projection-row-v2.schema.json",
+        "convmem-strict-graph-v1.schema.json",
+        "convmem-bound-projection-manifest-v3.schema.json",
+        "convmem-strict-generation-layout-v2.schema.json",
+        "convmem-strict-publication-v2.schema.json",
+        "convmem-strict-enrollment-v1.schema.json",
+        "convmem-strict-slot-v1.schema.json",
+        "convmem-strict-source-cutoff-v1.schema.json",
+        "convmem-strict-semantic-contract-v1.schema.json",
+        "convmem-strict-state-v2.schema.json",
+        "convmem-clock-review-v1.schema.json",
+        "convmem-raw-evidence-v3.schema.json",
+        "convmem-error-v1.schema.json",
+        "convmem-strict-config-v2.schema.json",
+    )
+)
     gate_c = [
         f"schemas/{stem}"
         for stem in (

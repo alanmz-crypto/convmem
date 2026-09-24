@@ -779,13 +779,13 @@ def test_reject_changed_schema_semantics_digest():
     schema_semantics[0]["semantic_sha256"] = "sha256:" + ("f" * 64)
     ctx = _seal_context(
         {
-            **dict((
-            ("schema", "convmem.strict-provenance-context.v2"),
-            ("schema_semantics", schema_semantics),
-            ("policies", policies),
-            ("recipes", recipes),
-            ("verified_channels", []),
-        )),
+            **{
+            "schema": "convmem.strict-provenance-context.v2",
+            "schema_semantics": schema_semantics,
+            "policies": policies,
+            "recipes": recipes,
+            "verified_channels": [],
+        },
             "registered_assertions": [],
             "grounding_sha256": "sha256:" + ("0" * 64),
             "context_payload_sha256": "sha256:" + ("0" * 64),

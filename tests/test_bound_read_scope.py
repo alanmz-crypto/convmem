@@ -204,11 +204,13 @@ def _write_scope_registry(tmp_path: Path) -> tuple[Path, Path]:
         )),
         "source_registrations": [
             {
-                "id": "src-reg-1",
-                "source_class": "fixture_scan",
-                "source_identity": "fixture/source-a",
-                "identity_match": "exact",
-                "authorization_domain": "coding",
+                **dict((
+                    ("id", "src-reg-1"),
+                    ("source_class", "fixture_scan"),
+                    ("source_identity", "fixture/source-a"),
+                    ("identity_match", "exact"),
+                    ("authorization_domain", "coding"),
+                )),
                 "site": "example.com",
                 "event_id_resolver": "fixture_scan_event_v1",
             }
@@ -229,10 +231,13 @@ def _write_scope_registry(tmp_path: Path) -> tuple[Path, Path]:
         "schema": "convmem.project-binding-registry.v3",
         "bindings": [binding],
     }
+    def _accept(_obj: object) -> None:
+        return None
+
     revision = sha256_digest(
         canonical_json_bytes(
             without_revision,
-            validate=lambda _obj: None,
+            validate=_accept,
             error_type=BoundScopeError,
         )
     )

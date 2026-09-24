@@ -479,7 +479,7 @@ def test_case54_clock_interval_review_inventory():
 
 
 def test_case33_spawn_tuple_exact_trace():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     policy = base_launch_policy()
     import openclaw_activation_supervisor as sup
 
