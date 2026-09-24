@@ -1,6 +1,6 @@
 """Strict grounding, capture-receipt authentication, and qualification (T1)."""
 
-# pylint: disable=C0302  # preserved grounding/provenance qualification component boundary
+# pylint: disable=too-many-lines  # preserved grounding/provenance qualification component boundary
 
 
 from __future__ import annotations

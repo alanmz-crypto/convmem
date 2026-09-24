@@ -2,7 +2,7 @@
 
 Reviewed parent b810fcd / overlay 67d4f5a.
 """
-# pylint: disable=C0302  # preserved projection collected-node test boundary
+# pylint: disable=too-many-lines  # preserved projection collected-node test boundary
 
 from __future__ import annotations
 

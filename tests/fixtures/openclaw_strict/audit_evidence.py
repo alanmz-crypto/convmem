@@ -9,7 +9,7 @@ disposable ``/fixture/evidence`` only. Evidence is not approval, signing,
 admission, qualification, manager emptiness, or promotion. Never claims all
 58 cases passed.
 """
-# pylint: disable=C0302  # preserved fixture audit-evidence module/component boundary
+# pylint: disable=too-many-lines  # preserved fixture audit-evidence module/component boundary
 
 from __future__ import annotations
 

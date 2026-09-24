@@ -12,7 +12,7 @@ injection at every parent-fixed write/fsync/rename/pointer boundary.
 
 No publisher-owned manager. No T3–T5 reader/server claims.
 """
-# pylint: disable=C0302  # preserved publisher collected-node test boundary
+# pylint: disable=too-many-lines  # preserved publisher collected-node test boundary
 
 from __future__ import annotations
 

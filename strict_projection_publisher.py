@@ -13,7 +13,7 @@ Production uses a fresh interpreter for cold qualification; fixture calls
 authority writes.
 """
 
-# pylint: disable=C0302  # preserved projection publisher/serving component boundary
+# pylint: disable=too-many-lines  # preserved projection publisher/serving component boundary
 
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """Strict identities, fixture materialization, and complete-bound state reduction (T1)."""
 
-# pylint: disable=C0302  # preserved evidence-state reducer/disposition component boundary
+# pylint: disable=too-many-lines  # preserved evidence-state reducer/disposition component boundary
 
 
 from __future__ import annotations

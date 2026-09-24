@@ -15,7 +15,7 @@ T3 public opening: ``open_published_generation`` (parent) / ``open_public_projec
 ``read`` CLI. Public opening does not import the publisher.
 """
 
-# pylint: disable=C0302  # preserved projection authority/reader component boundary
+# pylint: disable=too-many-lines  # preserved projection authority/reader component boundary
 
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 """M3/T1 adversarial coverage for strict grounding and receipt authenticity."""
-# pylint: disable=C0302  # preserved grounding collected-node test boundary
+# pylint: disable=too-many-lines  # preserved grounding collected-node test boundary
 
 from __future__ import annotations
 

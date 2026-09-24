@@ -1,5 +1,5 @@
 """Case 57 T0a containment/refusal greens; later-T reds mapped."""
-# pylint: disable=C0302  # preserved packet-contract collected-node test boundary
+# pylint: disable=too-many-lines  # preserved packet-contract collected-node test boundary
 
 from __future__ import annotations
 

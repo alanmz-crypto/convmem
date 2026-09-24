@@ -4,7 +4,7 @@ Production ``start`` / ``main`` refuse before any OS effect (Architecture §6.5.
 Library cores are constructed with a test-owned FixturePlatform; this module never
 imports ``tests/fixtures/openclaw_strict``.
 """
-# pylint: disable=C0302  # preserved activation-controller component boundary
+# pylint: disable=too-many-lines  # preserved activation-controller component boundary
 
 
 from __future__ import annotations

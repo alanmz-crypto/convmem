@@ -1,5 +1,5 @@
 """Controller — production refusal + T5 Gate C lifecycle cores (M6)."""
-# pylint: disable=C0302  # preserved activation-controller collected-node test boundary
+# pylint: disable=too-many-lines  # preserved activation-controller collected-node test boundary
 
 from __future__ import annotations
 
