@@ -16,10 +16,9 @@ cross-arc snapshot and the linked arc brief below.
   worktree at that commit. OpenClaw planning PR `#327` later added five reviewed
   planning files; the watch-closure change classifies them, refreshes two stale
   admitted-file hashes, and restores a byte-exact manifest audit without
-  advancing production. **Next:** Ryan
-  reviews/merges the closure; any runtime-worktree promotion remains separately
-  authorized. Full `WATCH_COVERAGE=PASS` still waits for accepted T0–T5 bytes,
-  matching hashes, and a later controlled promotion. See
+  advancing production. **Next:** any runtime-worktree promotion remains
+  separately authorized. Full `WATCH_COVERAGE=PASS` still waits for accepted
+  T0–T5 bytes, matching hashes, and a later controlled promotion. See
   [`STATUS-openclaw-watch-coverage.md`](../plans/STATUS-openclaw-watch-coverage.md)
   and [`VERIFY-openclaw-watch-coverage.md`](../plans/VERIFY-openclaw-watch-coverage.md).
 - **Claude Gate 1 invalid UTF-8 maintenance — AUTHORIZED / Cursor next:** Ryan authorized issue [#316](https://github.com/alanmz-crypto/convmem/issues/316) using synthetic fixtures only. Cursor fixes both metadata discovery and ordinary parsing, preserves detection/content hygiene and neighboring adapters, pushes the exact tip, and stops for review. No real transcript, live indexing, watcher/provider/activation change, PR, or issue #315/#317 work. Resume from [`CODEX-2026-09-20-claude-gate1-invalid-utf8-handoff.md`](CODEX-2026-09-20-claude-gate1-invalid-utf8-handoff.md).

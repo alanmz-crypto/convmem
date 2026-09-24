@@ -51,7 +51,7 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 |---|---|
 | Existing `convmem watch` | Enabled and active as `convmem-watch.service`; runs from the dedicated clean `main` worktree at `dc79eeb` with effective limits `MemoryMax=4G`, `MemoryHigh=3G`, `MemorySwapMax=0` |
 | Repository-knowledge coverage (W0–W6 corrective) | Merged on `main` by GitHub PR `#322` at `dc79eeb`: root-bound IDs, exact JSON source spans, lossless bounded windows, identity-aware and retry-idempotent reconciliation/retirement, real watchdog/subprocess/public-query E2E |
-| Manifest inventory | This closure classifies the five reviewed OpenClaw planning files added by PR `#327` and refreshes stale hashes for `AGENTS.md` and `config/agent-protocol.md`; Git-clean audit PASS is restored at 75 include / 169 exclude / 1226 unrelated / 68 `required_when_present` (2 present, 66 absent) / 0 unclassified across 1470 tracked paths |
+| Manifest inventory | The current manifest classifies the five reviewed OpenClaw planning files added by PR `#327` and carries current hashes for `AGENTS.md` and `config/agent-protocol.md`; Git-clean audit PASS is restored at 75 include / 169 exclude / 1226 unrelated / 68 `required_when_present` (2 present, 66 absent) / 0 unclassified across 1470 tracked paths |
 | Live configuration | `watch.repository_knowledge_manifests` points to the manifest in `/home/lauer/Projects/convmem/.worktrees/runtime-main`; rollback backups were captured before activation |
 | OpenClaw planning bytes | Architecture, execution, milestone overlay, README, and STATUS are on `main` through PR `#327`; this closure admits them as documentary repository knowledge. The separate partial implementation branch remains unaccepted and is not admitted |
 | Writer-coverage inventory | Ryan-authorized correction complete; 18 routes inventoried and A12 passes |
@@ -71,7 +71,7 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 | A12 writer scan | PASS | Ryan authorized the inventory/count correction |
 | Final targeted Bugbot review | PASS at `324ab17` | no remaining findings |
 | GitHub PR | MERGED as `#322` | — |
-| Reviewed OpenClaw planning bytes | PRESENT on `main`; classified by this closure | Ryan-owned merge and later runtime promotion remain separate |
+| Reviewed OpenClaw planning bytes | PRESENT and classified in the current manifest | live runtime promotion remains separate |
 | OpenClaw T0–T5 implementation bytes | PARTIAL / UNACCEPTED on a separate branch | separate OpenClaw Execute and acceptance gates |
 | Live activation | PASS | — |
 | `WATCH_COVERAGE=PASS` | BLOCKED | 66 required-when-present implementation/Gate W paths remain absent; deployed runtime is intentionally still at `dc79eeb` |
@@ -87,15 +87,13 @@ belongs to the separate OpenClaw T0–T5 arc.
 
 ## 6. What Remains Before Live Coverage
 
-1. Ryan reviews and merges this closure so the five reviewed planning files and
-   their exact hashes are classified on `main`.
-2. Any promotion of the dedicated runtime worktree to that merge receives a
+1. Any promotion of the dedicated runtime worktree beyond `dc79eeb` receives a
    separate exact authorization and repeats manifest, retrieval, exclusion,
    service-health, and governance checks.
-3. Approved OpenClaw T0–T5 implementation bytes complete their separate
+2. Approved OpenClaw T0–T5 implementation bytes complete their separate
    Execute and acceptance gates and land with matching manifest entries/hashes
    in the same reviewed commit.
-4. The runtime worktree advances to that accepted merge and the live watcher
+3. The runtime worktree advances to that accepted merge and the live watcher
    reconciles it; only then may the remaining coverage verdict be reconsidered.
 
 ## 7. Hard Stops

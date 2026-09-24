@@ -8063,7 +8063,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "6000231bee1e2f0fc6ff3feedfb4e54052b97492969d175648f68cd25f53f96b",
+      "sha256": "00f7a3281aa771ca3a619fa38c4958fd81bc40bb73201f83d041573ad9ccb292",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
