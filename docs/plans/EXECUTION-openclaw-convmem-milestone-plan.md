@@ -22,8 +22,8 @@ PRESERVED_INTEGRATION_TIP=a11b7a2a793c68e4e6e83c2680b077389a817c5c
 RECONCILIATION_BASE_OVERLAY_SHA=581de2abf430786a36f2612f97c623a19b61353f
 PYLINT_PLAN_BASE_OVERLAY_SHA=c5513d50b656f9cc9e6423ea819438f975d16ee5
 PRESERVED_M11_TIP=9c6421a6891fd8a861a51f4fed410f541b53148c
-PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/81602d40cbabe94203d35e625304d71b7e6d2ab2/9193f5ec744f059d07a20612489b210527b5660a
-PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/81602d40cbabe94203d35e625304d71b7e6d2ab2/9193f5ec744f059d07a20612489b210527b5660a
+PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/b810fcd7ee545399a368afada2b0e7d9dd7821f6/9193f5ec744f059d07a20612489b210527b5660a
+PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/b810fcd7ee545399a368afada2b0e7d9dd7821f6/9193f5ec744f059d07a20612489b210527b5660a
 ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
 ```
@@ -969,7 +969,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `81602d40cbabe94203d35e625304d71b7e6d2ab2` architecture/execution
+- The exact `b810fcd7ee545399a368afada2b0e7d9dd7821f6` architecture/execution
   pair is the current semantic source of truth; this overlay only sequences,
   supervises and gates it.
 - M0–M8 passed and were accepted at `8010fb0` on original baseline `7809f20`.
