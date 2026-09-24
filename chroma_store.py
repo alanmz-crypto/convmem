@@ -14,6 +14,12 @@ from typing import Any
 
 import chromadb
 
+from chroma_write_guard import (
+    ChromaStaleSystemError,
+    chroma_system_cached,
+    note_system_created,
+)
+
 SUMMARIES = "conversation_summaries"
 UNITS = "knowledge_units"
 _METADATA_PAGE_SIZE = 500
@@ -120,7 +126,7 @@ def is_superseded(meta: dict) -> bool:
     return meta.get("superseded") is True
 
 
-class ChromaStore:  # pylint: disable=too-many-public-methods
+class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-attributes
     def __init__(
         self,
         chroma_dir: str,
@@ -129,6 +135,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
         mutation_sink: Any | None = None,
         on_close: Any | None = None,
         require_writer_boundary: bool = False,
+        write_guard: Any | None = None,
     ):
         self.chroma_dir = str(Path(chroma_dir).expanduser())
         # SegmentAPI + hnswlib compat shim can count() but fails upsert on
@@ -141,7 +148,36 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
         # Production factories set this. Direct/test stores remain projection-
         # only and do not acquire authority merely by being constructible.
         self._require_writer_boundary = require_writer_boundary
-        self.client = chromadb.PersistentClient(path=self.chroma_dir)
+        # Production factories attach a ChromaWriteGuard so a crash inside a native
+        # write cannot leave the shared HNSW torn (see chroma_write_guard).
+        self._write_guard = write_guard
+        self.client = self._new_client()
+
+    def _new_client(self):
+        if not chroma_system_cached(self.chroma_dir):
+            # Record what the new system will load before Chroma loads anything.
+            note_system_created(self.chroma_dir)
+        return chromadb.PersistentClient(path=self.chroma_dir)
+
+    def _reload_client(self) -> None:
+        """Drop this process's Chroma system so the next access loads the on-disk save."""
+        self._release_client()
+        stale_elsewhere = chroma_system_cached(self.chroma_dir)
+        self.client = self._new_client()
+        if stale_elsewhere:
+            raise ChromaStaleSystemError(
+                "another client in this process still holds a Chroma system that predates "
+                f"the latest save of {self.chroma_dir}; close it before writing"
+            )
+
+    def _native(self, collection: str, operation: str, **kwargs: Any) -> Any:
+        """Run one native Chroma mutation, under the write guard when one is attached."""
+        guard = self._write_guard
+        if guard is None:
+            return getattr(self._collection(collection), operation)(**kwargs)
+        with guard.native_write(identifier=self.chroma_dir, reload_client=self._reload_client):
+            # Fetch the collection inside the guard: a reload replaces the client.
+            return getattr(self._collection(collection), operation)(**kwargs)
 
     def _require_authorized_writer(self) -> None:
         if not self._require_writer_boundary:
@@ -183,8 +219,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
         except Exception as exc:  # pylint: disable=broad-exception-caught  # never affect Chroma success
             _log.error("mutation_sink.observe failed: %s", exc)
 
-    def close(self) -> None:
-        """Release the PersistentClient so readers can open the corpus."""
+    def _release_client(self) -> None:
         client = self.client
         self.client = None
         if client is not None:
@@ -192,6 +227,10 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
                 client.close()
             except Exception:
                 pass
+
+    def close(self) -> None:
+        """Release the PersistentClient so readers can open the corpus."""
+        self._release_client()
         callback = getattr(self, "_on_close", None)
         self._on_close = None
         if callable(callback):
@@ -224,7 +263,9 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
         metadata: dict,
     ) -> None:
         self._require_authorized_writer()
-        self._collection(SUMMARIES).upsert(
+        self._native(
+            SUMMARIES,
+            "upsert",
             ids=[doc_id],
             documents=[document],
             embeddings=[embedding],
@@ -279,7 +320,9 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
                 )
         event_id = self._prepare_shadow_event_id()
         operation = "replace" if existing is not None else "create"
-        self._collection(UNITS).upsert(
+        self._native(
+            UNITS,
+            "upsert",
             ids=[unit_id],
             documents=[document],
             embeddings=[embedding],
@@ -432,7 +475,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
         meta["id"] = unit_id
         event_id = self._prepare_shadow_event_id()
         operation = classify_metadata_operation(before_meta, meta)
-        self._collection(UNITS).update(ids=[unit_id], metadatas=[meta])
+        self._native(UNITS, "update", ids=[unit_id], metadatas=[meta])
         doc = (before or {}).get("document") if before else None
         self._emit_shadow(
             event_id=event_id,
@@ -473,7 +516,9 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
         meta = enforce_projection_metadata(meta)
         require_projection_identity_continuity(before_meta, meta)
         event_id = self._prepare_shadow_event_id()
-        self._collection(UNITS).update(
+        self._native(
+            UNITS,
+            "update",
             ids=[unit_id],
             documents=[document],
             embeddings=[embedding],
@@ -535,7 +580,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
             if unit_id in selected
         ]
         if selected:
-            col.delete(ids=list(selected))
+            self._native(UNITS, "delete", ids=list(selected))
             invalidate_superseded_cache(self.chroma_dir)
         for unit_id, event_id, meta, doc in prepared:
             self._emit_shadow(
@@ -616,7 +661,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
             row["superseded_by"] = superseded_by
             row["updated_at"] = now
             row["id"] = unit_id
-            col.update(ids=[unit_id], metadatas=[row])
+            self._native(UNITS, "update", ids=[unit_id], metadatas=[row])
             n += 1
             self._emit_shadow(
                 event_id=event_id,
@@ -650,7 +695,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods
             and (candidate_ids is None or doc_id in candidate_ids)
         }
         if selected:
-            col.delete(ids=list(selected))
+            self._native(SUMMARIES, "delete", ids=list(selected))
         return len(selected)
 
     def snapshot_source_rows(

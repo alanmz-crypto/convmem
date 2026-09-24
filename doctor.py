@@ -646,6 +646,53 @@ def _check_native_crash_gate() -> DoctorCheck:
     return DoctorCheck("native_crash_gate", True, "0 native crashes in 7d")
 
 
+def _check_chroma_write_guard(cfg: dict) -> DoctorCheck:
+    """Crash containment for the shared HNSW (chroma_write_guard); reads guard state only.
+
+    FAIL while writes are quarantined, WARN when a torn save was restored in the last
+    7 days or the guard is switched off, PASS otherwise.
+    """
+    from datetime import timedelta, timezone
+
+    from chroma_write_guard import ChromaWriteGuard, write_guard_enabled
+
+    name = "chroma_write_guard"
+    chroma_dir = (cfg.get("index") or {}).get("chroma_dir")
+    if not chroma_dir:
+        return DoctorCheck(name, True, "no index.chroma_dir configured", status="skip")
+    if not write_guard_enabled(cfg):
+        return DoctorCheck(name, True, "disabled by [index] chroma_write_guard = false", status="warn")
+    guard = ChromaWriteGuard(chroma_dir)
+    quarantine = guard.quarantine_state()
+    if quarantine is not None:
+        return DoctorCheck(
+            name,
+            False,
+            f"writes QUARANTINED: {quarantine.get('reason')} (segment {quarantine.get('segment')}); "
+            "repair, then: python scripts/chroma_guard.py clear-quarantine",
+        )
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    restored = 0
+    if guard.events_path.is_file():
+        for line in guard.events_path.read_text(encoding="utf-8").splitlines():
+            try:
+                entry = json.loads(line)
+                ts = datetime.strptime(entry["ts"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            if entry.get("event") == "segment_restored" and ts >= cutoff:
+                restored += 1
+    if restored:
+        return DoctorCheck(
+            name,
+            True,
+            f"{restored} torn HNSW save(s) restored in 7d; see {guard.events_path}",
+            status="warn",
+        )
+    points = len(list(guard.snapshots.glob("*/CURRENT"))) if guard.snapshots.is_dir() else 0
+    return DoctorCheck(name, True, f"no quarantine; {points} segment restore point(s)")
+
+
 def _standing_register_path() -> Path:
     return Path(__file__).resolve().parent / "docs" / "standing-checks-register.json"
 
@@ -1536,6 +1583,7 @@ def run_doctor(
         _check_synthesis_gate(),
         _check_index_gate(),
         _check_native_crash_gate(),
+        _check_chroma_write_guard(cfg),
         _check_standing_register(cfg),
         _check_arc_staleness(),
         _check_planning_guide_contract(),

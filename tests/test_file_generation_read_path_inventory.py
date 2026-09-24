@@ -21,9 +21,12 @@ EXPECTED = {
     ),
     ("chroma_store.py", "open_chroma_for_read", "ChromaStore"): (1, "core-storage"),
     ("chroma_store.py", "open_chroma_for_verify", "ChromaStore"): (1, "core-storage"),
-    ("chroma_store.py", "__init__", "PersistentClient"): (1, "core-storage"),
+    # Moved out of __init__ so the write guard can reload a stale in-process system.
+    ("chroma_store.py", "_new_client", "PersistentClient"): (1, "core-storage"),
     ("chroma_store.py", "query_summaries", "raw.query"): (1, "core-storage"),
     ("chroma_store.py", "query_units", "raw.query"): (2, "core-storage"),
+    # Write guard's read-only silent-loss census (metadata rows vs HNSW ids).
+    ("chroma_write_guard.py", "vector_census", "sqlite3.connect[chroma]"): (1, "core-storage"),
     ("chroma_write_store.py", "open_chroma_for_write", "ChromaStore"): (
         1,
         "stable-governed-infrastructure",
