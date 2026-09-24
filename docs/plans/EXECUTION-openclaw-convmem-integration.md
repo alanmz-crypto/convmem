@@ -1026,7 +1026,7 @@ parent-bound runtime prefix and durable evidence root. After that grant, executi
 1. Codex proves the implementation branch/worktree is clean, pushed and exactly at `9c6421a`; the
    Pylint failure, two M8 passes and seven MCP passes remain retained evidence, not inherited final
    acceptance.
-2. Grok cherry-picks exactly the two new plan commits in order, without merge, squash, edit,
+2. Grok cherry-picks exactly the three new plan commits in order, without merge, squash, edit,
    conflict resolution, branch recreation or history rewrite, pushes and stops. Codex proves the
    resulting delta is exactly the four reviewed documents and each blob/mode equals the reviewed
    overlay. A commit-specific `CONTINUE` is mandatory.
