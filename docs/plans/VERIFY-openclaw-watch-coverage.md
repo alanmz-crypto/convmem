@@ -222,14 +222,16 @@ completed startup reconciliation without rollback.
 
 The live service and the repository branch intentionally move at different
 speeds. The service reads a dedicated clean worktree pinned at `dc79eeb`; normal
-development advanced `origin/main` to `4418774` through OpenClaw planning PR
-`#327` and the later opt-in guardrails PR `#329`. Auditing the OpenClaw planning
-tip before promotion failed closed on exactly five unclassified planning files.
+development advanced `origin/main` to `e2148b2` through OpenClaw planning PR
+`#327`, the later opt-in guardrails PR `#329`, and Claude smoke-retirement PR
+`#330`. Auditing the OpenClaw planning tip before promotion failed closed on
+exactly five unclassified planning files.
 A full entry-hash comparison also found stale hashes for `AGENTS.md` and
-`config/agent-protocol.md`; rebasing this closure onto `4418774` added two
-new, out-of-W0 guardrail documents that are explicitly classified as unrelated.
-This closure classifies all seven paths, refreshes both hashes, and restores a
-zero-unclassified, byte-exact audit without changing the live checkout.
+`config/agent-protocol.md`; integrating `#329` added two new, out-of-W0 guardrail
+documents that are explicitly classified as unrelated, while integrating
+`#330` retired three unrelated smoke-harness paths. This closure reconciles all
+ten path changes, refreshes both hashes, and restores a zero-unclassified,
+byte-exact audit without changing the live checkout.
 
 Operational implications:
 

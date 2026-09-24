@@ -402,11 +402,6 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "claude_gate1_smoke.py",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "complete_data_restore.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5997,11 +5992,6 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "tests/claude_gate1_smoke_worker.py",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "tests/export_compaction_memory_worker.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6393,11 +6383,6 @@
     },
     {
       "path": "tests/test_ci_contract.py",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "tests/test_claude_gate1_hermetic_smoke.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -8073,7 +8058,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "99bd42df46e0e39921b431a0ef85609d0c30e339f2c5bebecdb1e06561dfe2b4",
+      "sha256": "52b26f67d6952c77c5f4410020d92ae208c8142d9631ff1e9a48a1dff3e80e41",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8090,7 +8075,7 @@
     },
     {
       "path": "docs/plans/VERIFY-openclaw-watch-coverage.md",
-      "sha256": "149f2344ef49d0f82679cb05993ece21863fe11619a9b275118ce9cc09497079",
+      "sha256": "5b1d71b452e1e9caa19b723ab39578374471f3879f2312619300a51929867f14",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",

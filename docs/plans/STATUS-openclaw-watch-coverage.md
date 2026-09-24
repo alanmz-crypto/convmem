@@ -51,7 +51,7 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 |---|---|
 | Existing `convmem watch` | Enabled and active as `convmem-watch.service`; runs from the dedicated clean `main` worktree at `dc79eeb` with effective limits `MemoryMax=4G`, `MemoryHigh=3G`, `MemorySwapMax=0` |
 | Repository-knowledge coverage (W0–W6 corrective) | Merged on `main` by GitHub PR `#322` at `dc79eeb`: root-bound IDs, exact JSON source spans, lossless bounded windows, identity-aware and retry-idempotent reconciliation/retirement, real watchdog/subprocess/public-query E2E |
-| Manifest inventory | The current manifest classifies the five reviewed OpenClaw planning files added by PR `#327`, classifies the two later opt-in guardrail documents outside W0 as unrelated, and carries current hashes for `AGENTS.md` and `config/agent-protocol.md`; Git-clean audit PASS is restored at 75 include / 169 exclude / 1228 unrelated / 68 `required_when_present` (2 present, 66 absent) / 0 unclassified across 1472 tracked paths |
+| Manifest inventory | The current manifest classifies the five reviewed OpenClaw planning files added by PR `#327`, classifies the two later opt-in guardrail documents outside W0 as unrelated, removes three unrelated classifications retired by PR `#330`, and carries current hashes for `AGENTS.md` and `config/agent-protocol.md`; Git-clean audit PASS is restored at 75 include / 169 exclude / 1225 unrelated / 68 `required_when_present` (2 present, 66 absent) / 0 unclassified across 1469 tracked paths |
 | Live configuration | `watch.repository_knowledge_manifests` points to the manifest in `/home/lauer/Projects/convmem/.worktrees/runtime-main`; rollback backups were captured before activation |
 | OpenClaw planning bytes | Architecture, execution, milestone overlay, README, and STATUS are on `main` through PR `#327`; this closure admits them as documentary repository knowledge. The separate partial implementation branch remains unaccepted and is not admitted |
 | Writer-coverage inventory | Ryan-authorized correction complete; 18 routes inventoried and A12 passes |
@@ -146,7 +146,7 @@ milestone-level line below. A fresh model should orient from this file alone.
 | 2026-09-21 | Codex | Targeted Bugbot follow-up found two residual defects; lossless aggregate windows and retry-idempotent retirement now have direct regressions. |
 | 2026-09-21 | Bugbot / Codex | Final targeted Bugbot review PASS at `324ab17`; GitHub PR `#322` opened for Ryan-owned merge. |
 | 2026-09-21 | Ryan / Codex | PR `#322` merged at `dc79eeb`; exact-grant live activation indexed all 70 admitted paths, passed retrieval/exclusion/non-bypass checks, and left only absent OpenClaw T0–T5 bytes blocking complete coverage. |
-| 2026-09-24 | Codex | Post-activation review corrected nine manifest coordinates (five reviewed OpenClaw planning files, two later unrelated guardrail docs, and two stale hashes), restored the cleanly stopped service after Switchboard verification finished, and documented the separate merge, runtime-promotion, and T0–T5 gates. |
+| 2026-09-24 | Codex | Post-activation review kept the manifest exact across PRs `#327`, `#329`, and `#330` (five new includes, two unrelated additions, three unrelated retirements, and two stale hashes), restored the cleanly stopped service after Switchboard verification finished, and documented the separate merge, runtime-promotion, and T0–T5 gates. |
 
 **TL;DR [Arc OpenClaw Watch Coverage]:** W0–W6 is merged and live at the
 deployed `dc79eeb` boundary. This closure classifies the five later reviewed
