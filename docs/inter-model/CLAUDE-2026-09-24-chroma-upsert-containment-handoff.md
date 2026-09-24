@@ -49,7 +49,7 @@ Also added:
 - `doctor`: a `chroma_write_guard` check. FAIL while quarantined, WARN when a torn save was restored in 7 days or
   the guard is switched off, PASS otherwise.
 - `scripts/chroma_guard.py status|validate|census|reconcile|clear-quarantine`. Read-only except `reconcile` (may restore a torn segment) and `clear-quarantine`. It also
-  closes hardening-backlog item §7.4: the §4.2 validator now lives in the repo, and a numpy port runs in 0.2 s
+  closes item 4 of the close-out hardening backlog (`KIRO-2026-09-21-poison-pill-closeout-handoff.md`): the §4.2 validator now lives in the repo, and a numpy port runs in 0.2 s
   on the live 97.5k-element segment.
 - Off switch: `[index] chroma_write_guard = false`.
 
