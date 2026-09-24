@@ -1887,6 +1887,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CLAUDE-SONNET-2026-06-25-global-planner-critique.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2303,6 +2308,11 @@
     },
     {
       "path": "docs/inter-model/CURSOR-2026-09-17-r2b-inventory-rebind-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/DECISION-REVIEW-GUARDRAILS.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -8063,7 +8073,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "00f7a3281aa771ca3a619fa38c4958fd81bc40bb73201f83d041573ad9ccb292",
+      "sha256": "99bd42df46e0e39921b431a0ef85609d0c30e339f2c5bebecdb1e06561dfe2b4",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8080,7 +8090,7 @@
     },
     {
       "path": "docs/plans/VERIFY-openclaw-watch-coverage.md",
-      "sha256": "b43f6da1cf2418ba5ab55a37692d132d21e2cd0e97ea230b654d349b74a2dffc",
+      "sha256": "149f2344ef49d0f82679cb05993ece21863fe11619a9b275118ce9cc09497079",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",

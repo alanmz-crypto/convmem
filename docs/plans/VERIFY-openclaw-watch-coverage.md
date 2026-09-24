@@ -222,12 +222,14 @@ completed startup reconciliation without rollback.
 
 The live service and the repository branch intentionally move at different
 speeds. The service reads a dedicated clean worktree pinned at `dc79eeb`; normal
-development advanced `origin/main` to `9193f5e` through OpenClaw planning PR
-`#327`. Auditing that newer commit before promotion failed closed on exactly
-five unclassified planning files. A full entry-hash comparison also found stale
-hashes for `AGENTS.md` and `config/agent-protocol.md`. This closure classifies
-the five files, refreshes both hashes, and restores a zero-unclassified,
-byte-exact audit without changing the live checkout.
+development advanced `origin/main` to `4418774` through OpenClaw planning PR
+`#327` and the later opt-in guardrails PR `#329`. Auditing the OpenClaw planning
+tip before promotion failed closed on exactly five unclassified planning files.
+A full entry-hash comparison also found stale hashes for `AGENTS.md` and
+`config/agent-protocol.md`; rebasing this closure onto `4418774` added two
+new, out-of-W0 guardrail documents that are explicitly classified as unrelated.
+This closure classifies all seven paths, refreshes both hashes, and restores a
+zero-unclassified, byte-exact audit without changing the live checkout.
 
 Operational implications:
 
@@ -250,11 +252,15 @@ Operational implications:
   skipped and retried after debounce. That protects exact-source identity but
   means an active transcript or rapidly changing file is not guaranteed to be
   searchable immediately.
-- **Memory is bounded, not proven solved.** The systemd service has remained
-  active since 2026-09-21 with no post-start failure or restart. On 2026-09-24
-  its cgroup was about 1.8 GiB, below `MemoryHigh=3G` and `MemoryMax=4G`, with
-  swap disabled. This soak does not close the separate watcher/OOM work or
-  justify admitting live databases.
+- **Memory is bounded, not proven solved.** The first systemd run lasted 2d 14h
+  49m with a 1.8 GiB peak and no service failure. A clean local `systemctl`
+  stop ended it at 04:34 CDT on 2026-09-24 while Switchboard verification was
+  active. After that lane finished, the already-authorized unit was enabled and
+  restarted at 05:14 CDT from the unchanged `dc79eeb` runtime. Its first
+  debounce/reconciliation cycle completed with no warning or restart and a
+  roughly 470 MiB peak. The effective limits remain `MemoryHigh=3G`,
+  `MemoryMax=4G`, and `MemorySwapMax=0`. This evidence does not close the
+  separate watcher/OOM work or justify admitting live databases.
 - **Future T0–T5 landing is deliberately coupled to coverage maintenance.**
   Sixty-six required-when-present implementation/Gate W paths remain absent.
   Their accepted landing must include classifications and exact hashes in the
