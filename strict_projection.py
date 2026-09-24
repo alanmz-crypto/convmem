@@ -1,6 +1,6 @@
 """Private cold qualification and public projection read surface (T1–T3).
 
-Parent recipes (9a7891fd §6.5.4) — one exclusion/link rule each, no alternates:
+Parent recipes (d5f986f0 §6.5.4) — one exclusion/link rule each, no alternates:
 - closed object self-hash excludes ONLY its named ``*_payload_sha256`` field
 - ``snapshot_id = "snap2_" + sha256hex(canonical(manifest \\ {snapshot_id,
   manifest_payload_sha256}))``; then ``manifest_payload_sha256`` excludes only itself

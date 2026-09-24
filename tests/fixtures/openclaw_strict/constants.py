@@ -3,7 +3,16 @@
 from __future__ import annotations
 
 CODE_BASELINE_SHA = "9193f5ec744f059d07a20612489b210527b5660a"
-SEMANTIC_PARENT_SHA = "9a7891fd580cbaee2e13a8683e84a307443a00e6"
+SEMANTIC_PARENT_SHA = "d5f986f02c9c463c1019dffed1c6de40d5f59c11"
+M11_REVIEWED_OVERLAY_SHA = "c5513d50b656f9cc9e6423ea819438f975d16ee5"
+M11_CONTROL_PLANE_INPUTS = frozenset(
+    {
+        "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+        "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+        "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+        "docs/plans/STATUS-openclaw-convmem-integration.md",
+    }
+)
 EXPECTED_TEST_RUNTIME_TREE_SHA256 = (
     "sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b"
 )

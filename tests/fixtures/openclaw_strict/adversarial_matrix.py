@@ -1,6 +1,6 @@
 """M8 adversarial matrix — gate ownership, overlay §5 threats, selected nodes.
 
-Reviewed parent 9a7891fd / overlay 581de2a. Fixture-owned evidence only. Never claims all 58 cases passed. Gate D/W/E rows
+Reviewed parent d5f986f0 / overlay c5513d5. Fixture-owned evidence only. Never claims all 58 cases passed. Gate D/W/E rows
 remain explicitly untested/blocked. Selected-node inventory is derived from the
 exact named suite files (AST / text), never full-repository discovery.
 """
@@ -19,7 +19,7 @@ from constants import (
     STRICT_PYTEST_FILES,
 )
 
-# Overlay 581de2a §5 threat rows — columns match the governing table exactly.
+# Overlay c5513d5 §5 threat rows — columns match the governing table exactly.
 THREAT_MATRIX: tuple[dict[str, Any], ...] = (
     {
         "threat": "Memory poisoning",

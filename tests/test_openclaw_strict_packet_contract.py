@@ -209,8 +209,19 @@ def test_fixture_manifest_schema_exists_and_complete_emit_deferred():
 
 
 def test_plan_and_baseline_constants_frozen():
-    assert oc_constants.SEMANTIC_PARENT_SHA == "9a7891fd580cbaee2e13a8683e84a307443a00e6"
+    assert oc_constants.SEMANTIC_PARENT_SHA == "d5f986f02c9c463c1019dffed1c6de40d5f59c11"
     assert oc_constants.CODE_BASELINE_SHA == "9193f5ec744f059d07a20612489b210527b5660a"
+    assert oc_constants.M11_REVIEWED_OVERLAY_SHA == (
+        "c5513d50b656f9cc9e6423ea819438f975d16ee5"
+    )
+    assert oc_constants.M11_CONTROL_PLANE_INPUTS == frozenset(
+        {
+            "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+            "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+            "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+            "docs/plans/STATUS-openclaw-convmem-integration.md",
+        }
+    )
     assert oc_constants.EXPECTED_TEST_RUNTIME_TREE_SHA256.startswith("sha256:74a12c72")
 
 
@@ -277,41 +288,212 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
         assert not Path(forbidden).exists(), f"gate_w_schema_present:{forbidden}"
 
 
-def test_m4_edit_allowlist_permits_mcp_server_protects_gate_w(monkeypatch):
-    """M4/T3: mcp_server.py is bounded-edit allowlisted; Gate W stays reject-only."""
-    assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
+
+
+def _m11_source_commit() -> str:
+    import subprocess
+
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+        close_fds=True,
+    ).stdout.strip()
+
+
+def _m11_control_delta(*extra: str) -> list[str]:
+    return sorted(oc_constants.M11_CONTROL_PLANE_INPUTS) + list(extra)
+
+
+def test_m11_control_plane_exact_four_success(monkeypatch):
+    """M11: exact four control-plane paths validate; product delta P is returned."""
     import allowlist as oc_allowlist
 
-    assert "mcp_server.py" in oc_constants.EDIT_ALLOWLIST_EXACT
-    assert oc_allowlist.path_allowed("mcp_server.py") is True
-
-    gate_w = (
-        "schemas/convmem-approved-admission-v1.schema.json",
-        "schemas/convmem-admission-intent-v1.schema.json",
-        "schemas/convmem-admission-review-v1.schema.json",
-        "schemas/convmem-admission-ratification-v1.schema.json",
-        "schemas/convmem-admission-event-v1.schema.json",
-    )
-    for path in gate_w:
-        assert path not in oc_constants.EDIT_ALLOWLIST_EXACT
-        assert path not in oc_constants.SCHEMA_ALLOWLIST
-        assert oc_allowlist.path_allowed(path) is False
-
+    source_commit = _m11_source_commit()
     monkeypatch.setattr(
-        oc_allowlist, "changed_paths", lambda *_a, **_k: ["mcp_server.py"]
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
     )
-    assert oc_allowlist.assert_allowlist(Path("."), "deadbeef") == ["mcp_server.py"]
+    assert oc_allowlist.assert_allowlist(Path("."), source_commit) == ["mcp_server.py"]
 
-    # Second layer must still reject Gate W even if path_allowed were bypassed.
-    monkeypatch.setattr(oc_allowlist, "path_allowed", lambda _p: True)
+
+def test_m11_control_plane_rejects_missing_path(monkeypatch):
+    import allowlist as oc_allowlist
+
+    control = sorted(oc_constants.M11_CONTROL_PLANE_INPUTS)
+    incomplete = control[1:] + ["mcp_server.py"]
     monkeypatch.setattr(
-        oc_allowlist, "changed_paths", lambda *_a, **_k: [gate_w[0]]
+        oc_allowlist, "changed_paths", lambda *_a, **_k: incomplete
     )
     try:
-        oc_allowlist.assert_allowlist(Path("."), "deadbeef")
-        raise AssertionError("gate_w_second_layer_bypassed")
+        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        raise AssertionError("missing_control_plane_accepted")
     except SystemExit as exc:
-        assert str(exc) == f"gate_w_forbidden_change:{gate_w[0]}"
+        assert str(exc).startswith("control_plane_missing:")
+        assert control[0] in str(exc)
+
+
+def test_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
+    import allowlist as oc_allowlist
+    import constants as allowlist_constants
+
+    extra = "docs/plans/README-openclaw-convmem-integration.md"
+    monkeypatch.setattr(
+        allowlist_constants,
+        "M11_CONTROL_PLANE_INPUTS",
+        frozenset(oc_constants.M11_CONTROL_PLANE_INPUTS | {extra}),
+    )
+    monkeypatch.setattr(
+        oc_allowlist,
+        "M11_CONTROL_PLANE_INPUTS",
+        frozenset(oc_constants.M11_CONTROL_PLANE_INPUTS | {extra}),
+    )
+    monkeypatch.setattr(
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta(extra, "mcp_server.py"),
+    )
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        raise AssertionError("extra_classified_accepted")
+    except SystemExit as exc:
+        assert str(exc).startswith("control_plane_extra_classified:")
+        assert extra in str(exc)
+
+
+def test_m11_control_plane_rejects_unavailable_commit(monkeypatch):
+    import allowlist as oc_allowlist
+
+    monkeypatch.setattr(oc_allowlist, "M11_REVIEWED_OVERLAY_SHA", "0" * 40)
+    monkeypatch.setattr(
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
+    )
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        raise AssertionError("unavailable_overlay_accepted")
+    except SystemExit as exc:
+        assert str(exc).startswith("control_plane_unavailable_commit:")
+
+
+def test_m11_control_plane_rejects_malformed_unreadable_entry(monkeypatch):
+    import allowlist as oc_allowlist
+
+    monkeypatch.setattr(
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
+    )
+
+    def _malformed(repo, commit, path):  # noqa: ARG001
+        raise SystemExit(f"control_plane_malformed:{path}")
+
+    monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _malformed)
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        raise AssertionError("malformed_entry_accepted")
+    except SystemExit as exc:
+        assert str(exc).startswith("control_plane_malformed:")
+
+
+def test_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
+    import allowlist as oc_allowlist
+
+    monkeypatch.setattr(
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
+    )
+
+    def _bad_mode(repo, commit, path):  # noqa: ARG001
+        raise SystemExit(f"control_plane_bad_mode:{path}")
+
+    monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _bad_mode)
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        raise AssertionError("bad_mode_accepted")
+    except SystemExit as exc:
+        assert str(exc).startswith("control_plane_bad_mode:")
+
+    def _non_blob(repo, commit, path):  # noqa: ARG001
+        raise SystemExit(f"control_plane_non_blob:{path}")
+
+    monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _non_blob)
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        raise AssertionError("non_blob_accepted")
+    except SystemExit as exc:
+        assert str(exc).startswith("control_plane_non_blob:")
+
+
+def test_m11_control_plane_rejects_blob_or_mode_mismatch(monkeypatch):
+    import allowlist as oc_allowlist
+
+    control = sorted(oc_constants.M11_CONTROL_PLANE_INPUTS)
+    target = control[0]
+    monkeypatch.setattr(
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta("mcp_server.py"),
+    )
+    real = oc_allowlist._git_tree_entry
+    overlay = oc_allowlist._resolve_commit(Path("."), oc_allowlist.M11_REVIEWED_OVERLAY_SHA)
+
+    def _mismatch(repo, commit, path):
+        mode, typ, oid = real(repo, commit, path)
+        if path == target and commit != overlay:
+            return mode, typ, "a" * 40
+        return mode, typ, oid
+
+    monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _mismatch)
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        raise AssertionError("blob_mismatch_accepted")
+    except SystemExit as exc:
+        assert str(exc).startswith("control_plane_mismatch:")
+        assert target in str(exc)
+
+
+def test_m11_fifth_documentation_path_fails_product_allowlist(monkeypatch):
+    """A fifth docs path stays in P and fails the unchanged product allowlist."""
+    import allowlist as oc_allowlist
+
+    fifth = "docs/plans/README-openclaw-convmem-integration.md"
+    assert fifth not in oc_constants.M11_CONTROL_PLANE_INPUTS
+    assert oc_allowlist.path_allowed(fifth) is False
+    monkeypatch.setattr(
+        oc_allowlist,
+        "changed_paths",
+        lambda *_a, **_k: _m11_control_delta(fifth),
+    )
+    try:
+        oc_allowlist.assert_allowlist(Path("."), _m11_source_commit())
+        raise AssertionError("fifth_doc_accepted")
+    except SystemExit as exc:
+        assert str(exc) == f"allowlist_violation:{fifth}"
+
+
+def test_m11_control_plane_docs_remain_exported_inventoried_hashed():
+    """Reviewed control docs stay in source export inventory/hash; not excluded."""
+    import fixture_manifest as fm
+
+    for rel in sorted(oc_constants.M11_CONTROL_PLANE_INPUTS):
+        assert rel not in oc_constants.GENERATED_EVIDENCE_SOURCE_RELS
+        assert rel not in oc_constants.GENERATED_EVIDENCE_FIXTURE_RELS
+        assert Path(rel).is_file(), f"missing_control_doc:{rel}"
+
+    entries, digest = fm.independent_source_tree_digest(Path("."))
+    paths = {e["path"] for e in entries}
+    for rel in oc_constants.M11_CONTROL_PLANE_INPUTS:
+        assert rel in paths
+        match = next(e for e in entries if e["path"] == rel)
+        assert match["mode"] == "100644"
+        assert match["sha256"].startswith("sha256:")
+    assert digest == fm.hash_inventory_entries(entries)
+    assert digest.startswith("sha256:")
 
 
 def test_m2_future_production_modules_remain_absent():
