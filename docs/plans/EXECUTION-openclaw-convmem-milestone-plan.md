@@ -13,7 +13,7 @@ correction, test retry, merge and runtime work are paused.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=81602d40cbabe94203d35e625304d71b7e6d2ab2
+SEMANTIC_PARENT_SHA=b810fcd7ee545399a368afada2b0e7d9dd7821f6
 ORIGINAL_CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
 ACCEPTED_IMPLEMENTATION_SHA=8010fb060c2edc29e1b09d7a30b1a1da2689d489
 INTEGRATION_BASELINE_SHA=9193f5ec744f059d07a20612489b210527b5660a
@@ -49,8 +49,10 @@ The runner's single `--plan-sha` is always `SEMANTIC_PARENT_SHA`. The overlay
 SHA is the exact final branch tip Kiro reviews and Ryan later names as
 `REVIEWED_OVERLAY_SHA`; it is not substituted into the parent's runner
 contract. The final overlay descends from `SEMANTIC_PARENT_SHA`; the preserved
-implementation branch receives the exact three plan commits after Kiro PASS and
-a new Ryan grant. It is not recreated from the overlay.
+implementation branch receives the complete reviewed linear first-parent range
+after `PYLINT_PLAN_BASE_OVERLAY_SHA` through the final `REVIEWED_OVERLAY_SHA`
+named in Ryan's grant, oldest to newest, after Kiro PASS and a new Ryan grant.
+It is not recreated from the overlay.
 
 Ryan's R-PROFILE-REFUSAL ruling ratifies the baseline selector normalization
 `(value or "").strip().lower()`. When the semantic parent does not explicitly
@@ -148,7 +150,7 @@ M0 baseline/runtime input
   → M11b exact replay and pin/comment reconciliation [preserved at a11b7a2]
   → M11c pre-test allowlist PAUSE [observed; no test ran]
   → M11d reviewed-plan correction, M8/MCP PASS, Pylint PAUSE [9c6421a]
-  → M11e three-commit Pylint plan correction and exact-tip Kiro hold
+  → M11e revision-safe Pylint plan correction and exact-tip Kiro hold
   → Ryan exact lint-remediation resume grant
   → M11f apply plans, L1 production lint, L2 fixture/test lint, L3 actual gate
   → full pytest, two fresh M8 runs, seven MCP files, integration review
@@ -669,10 +671,11 @@ correction is `PAUSE`, not inferred scope.
    `PRESERVED_M11_TIP`. The exact 44-path remediation removes every new/increased
    Pylint fingerprint without changing the workflow, committed baseline, gate
    algorithm, T0–T5 meaning, public interfaces or authority boundaries.
-3. **Affected surfaces:** First, exactly the three plan commits in
-   `PYLINT_PLAN_BASE_OVERLAY_SHA..REVIEWED_OVERLAY_SHA` are applied to
-   `PRESERVED_M11_TIP`; their combined delta is exactly the four reviewed
-   architecture/execution/milestone/STATUS documents. Second, L1 may change only
+3. **Affected surfaces:** First, every commit in the reviewed linear first-parent
+   range after `PYLINT_PLAN_BASE_OVERLAY_SHA` through `REVIEWED_OVERLAY_SHA` is
+   applied oldest to newest to `PRESERVED_M11_TIP`; the range has no merge, gap,
+   reorder or out-of-scope commit, and its combined delta is exactly the four
+   reviewed architecture/execution/milestone/STATUS documents. Second, L1 may change only
    the nine top-level production paths and L2 only the remaining 35 paths in
    parent Architecture §18.9. The three protected Pylint artifacts and every
    45th product/test path are excluded. Runtime/evidence writes remain limited
@@ -687,8 +690,9 @@ correction is `PAUSE`, not inferred scope.
    authority. Codex alone provisions/rebinds runtime/evidence. No older grant or
    `CONTINUE` applies.
 5. **Implementation tasks:** Codex verifies the preserved branch/worktree and
-   upstream. Grok applies the exact three plan commits, pushes and stops; Codex
-   proves the four-blob delta and issues commit-specific `CONTINUE`. Grok then
+   upstream. Grok applies the complete reviewed linear plan range, pushes and
+   stops; Codex proves the range and four-blob delta and issues commit-specific
+   `CONTINUE`. Grok then
    performs L1 production remediation under Architecture §18.9, pushes and stops.
    After inspection and `CONTINUE`, Grok performs L2 fixture/test remediation,
    exact parent/overlay repinning and suppression inventory, pushes and stops.
@@ -736,7 +740,7 @@ correction is `PAUSE`, not inferred scope.
     live data, deployment or promotion. Routine work inside each explicitly
     granted, held-and-cleared checkpoint needs no additional Ryan approval.
 11. **Live inspection:** Codex inspects `PRESERVED_M11_TIP` and upstream, exact
-    three plan commits, four document blobs/modes, every changed path and hunk,
+    complete reviewed plan range, four document blobs/modes, every changed path and hunk,
     signatures, schemas, permissions, dependencies, suppressions, independent
     oracle boundaries, protected Pylint blobs, targeted/full reports, full
     pytest, both M8 outputs, seven MCP outputs, source/component/runtime hashes,
@@ -771,7 +775,7 @@ correction is `PAUSE`, not inferred scope.
 - [x] M11 actual current-main Pylint failure retained with exact report,
       environment and durable-copy hashes; no baseline/gate weakening occurred.
 - [ ] M11 new parent/final-overlay exact-tip Kiro PASS; Ryan resume grant; exact
-      three-plan-commit application to `9c6421a`; four-blob proof; L1/L2/L3 exact
+      reviewed-plan-range application to `9c6421a`; four-blob proof; L1/L2/L3 exact
       44-path remediation; unchanged actual Pylint gate PASS; full pytest;
       runtime/evidence rebinding; two fresh M8 runs; seven legacy MCP tests;
       integrated-tip Kiro PASS; and Ryan merge decision.
@@ -803,8 +807,8 @@ correction is `PAUSE`, not inferred scope.
 remain historical evidence; the 45-commit replay and pin/comment holds are also
 complete. The reviewed-plan correction and fresh M8/MCP evidence are preserved
 at `PRESERVED_M11_TIP`; the actual Pylint failure is the current hold. In the
-new correction, Grok must commit/push/report and stop after applying the exact
-three plan commits, after L1 production remediation, after L2 fixture/test
+new correction, Grok must commit/push/report and stop after applying the complete
+reviewed linear plan range, after L1 production remediation, after L2 fixture/test
 remediation and after every L3 correction. Acceptance testing starts only after
 Codex proves the four control-plane blobs, exact 44-path/suppression boundary,
 protected Pylint blobs and unchanged contracts, then issues a written
@@ -842,7 +846,7 @@ grant condition additionally requires a new Ryan grant before Codex may issue
 
 Grok must predeclare and report every command it runs outside the runner.
 Outside-runner commands are limited to repository/worktree inspection, the
-exact three-commit plan cherry-pick, the held 44-path L1/L2/L3 edits, commit/push
+exact reviewed-plan-range cherry-pick, the held 44-path L1/L2/L3 edits, commit/push
 and `git diff --check`; Grok may not execute integration code, Pylint, pytest or
 provision the runtime. Codex owns blob/tree/diff/suppression comparisons,
 targeted and full Pylint execution, full pytest, source-inventory proof, runtime
@@ -862,8 +866,8 @@ reapproval.
 Ryan's explicit confirmation naming exact revisions is required before:
 
 - initial T0–T5 implementation;
-- M11 resumption on `PRESERVED_M11_TIP`, including applying the exact three
-  reviewed plan commits, the 44-path L1/L2/L3 correction, the exact parent and
+- M11 resumption on `PRESERVED_M11_TIP`, including applying the complete
+  reviewed linear plan range, the 44-path L1/L2/L3 correction, the exact parent and
   overlay, `INTEGRATION_BASELINE_SHA`, `PROPOSED_IMPLEMENTATION_BRANCH`,
   `PROPOSED_RUNTIME_PREFIX`, `PROPOSED_DURABLE_EVIDENCE_ROOT`, full Pylint/
   pytest/M8/MCP execution and any further correction cycle;
@@ -936,7 +940,7 @@ location, integration method, conflict resolution, commit selection/order,
 current-main byte handling, or promotion. In M11 Grok may not choose the
 control-plane paths, blob/mode rule, set subtraction, product allowlist,
 source-hash membership, plan application order, correction path set, fixture or
-presentation behavior: the task is exact three-plan-commit application followed
+presentation behavior: the task is exact reviewed-plan-range application followed
 by the frozen 44-path L1/L2/L3 correction. It must not raise/regenerate or fork
 the Pylint baseline, edit workflow/gate/config/flags, exclude files, choose a
 45th path, waive a finding, add a broad suppression, couple an independent
