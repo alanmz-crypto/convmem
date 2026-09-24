@@ -312,10 +312,9 @@ def serve_strict_mcp() -> None:
 
     try:
         server = construct_strict_mcp_after_gate()
-    except BaseException as exc:
-        # Fail-closed on Exception; let SystemExit/KeyboardInterrupt propagate.
-        if not isinstance(exc, Exception):
-            raise
+    except SystemExit:
+        raise
+    except Exception as exc:  # pylint: disable=W0718  # dedicated startup trust boundary: catch every ordinary Exception before registration; SystemExit/BaseException propagation unchanged
         _refuse_before_loaders(f"strict_startup_refused:{type(exc).__name__}")
 
     import asyncio
