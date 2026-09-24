@@ -4410,8 +4410,12 @@ real runtime action, durable-memory write or live-data access is part of this co
 **Acceptance and authority boundary.** After exact-tip Kiro PASS, a new Ryan grant must name this
 parent, the final milestone overlay, source tip `9c6421a6891fd8a861a51f4fed410f541b53148c`, the exact
 44 paths, implementation branch, current-main baseline, new parent-bound runtime prefix and durable
-evidence root. Grok applies the three reviewed plan commits in order and stops. Only after Codex proves the
-four reviewed document blobs and issues a commit-specific `CONTINUE` may Grok perform the bounded
+evidence root. The plan application is the complete linear first-parent range after
+`c5513d50b656f9cc9e6423ea819438f975d16ee5` through the final milestone-overlay commit named in
+Ryan's grant, oldest to newest. The range must contain no merge, gap, reordered commit, or commit
+outside the four reviewed planning/STATUS documents. Grok applies that reviewed range in order and
+stops. Only after Codex proves the four reviewed document blobs and issues a commit-specific
+`CONTINUE` may Grok perform the bounded
 remediation in the held checkpoints defined by Execution §10.7. Any 45th path, baseline/gate/config
 change, broad suppression, behavior change or unsupported finding classification is `PAUSE`.
 
