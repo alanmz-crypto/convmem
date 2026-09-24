@@ -98,9 +98,11 @@ def _hex32(value: Any) -> bool:
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
+    seen: set[str] = set()
     for key, value in pairs:
-        if key in out:
+        if key in seen:
             raise ValueError("duplicate_key")
+        seen.add(key)
         out[key] = value
     return out
 

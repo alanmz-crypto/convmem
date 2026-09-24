@@ -145,12 +145,12 @@ def test_fixture_event_collision_and_idempotent_retry():
         }
     }
     source = _source_record(provenance_assertion_id=aid)
-    scan = {
-        "schema": "convmem.fixture-scan.v1",
-        "event_key": "scan-key-1",
-        "captured_at": "2026-09-21T00:00:01Z",
-        "records": [source],
-    }
+    scan = dict((
+        ("schema", "convmem.fixture-scan.v1"),
+        ("event_key", "scan-key-1"),
+        ("captured_at", "2026-09-21T00:00:01Z"),
+        ("records", [source]),
+    ))
     qual = {aid: QualificationTuple("valid", "complete", "synthetic_fixture", "trusted")}
     first = materialize_authority_records(
         binding=binding,
@@ -399,19 +399,23 @@ def _binding() -> ProjectBinding:
     binding_id = "project:convmem:v1"
     return ProjectBinding(
         id=binding_id,
-        public_ref="a" * 32,
-        project="convmem",
-        domain_root="coding",
-        site_mode="exact",
-        site="example.com",
-        non_expanding_roots=(),
+        **{
+            "public_ref": "a" * 32,
+            "project": "convmem",
+            "domain_root": "coding",
+            "site_mode": "exact",
+            "site": "example.com",
+            "non_expanding_roots": (),
+        },
         source_registrations=(
             SourceRegistration(
                 id="src-reg-1",
-                source_class="fixture_scan",
-                source_identity="fixture/source-a",
-                identity_match="exact",
-                authorization_domain="coding",
+                **{
+                    "source_class": "fixture_scan",
+                    "source_identity": "fixture/source-a",
+                    "identity_match": "exact",
+                    "authorization_domain": "coding",
+                },
                 site="example.com",
                 event_id_resolver="fixture_scan_event_v1",
             ),
@@ -458,10 +462,12 @@ def _prov() -> tuple[str, dict[str, Any], str]:
                 }
             )
         ],
-        transformer_artifact_sha256=_BLOB_HEX,
-        transformer_recipe_sha256=_BLOB_HEX,
-        selection_parameters={"output_sha256": unlabeled},
-        producer_class="agent",
+        **{
+            "transformer_artifact_sha256": _BLOB_HEX,
+            "transformer_recipe_sha256": _BLOB_HEX,
+            "selection_parameters": {"output_sha256": unlabeled},
+            "producer_class": "agent",
+        },
         producer_assurance="claimed",
     )
     commitment = "sha256:" + provenance_commitment(envelope)

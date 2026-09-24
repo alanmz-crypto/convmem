@@ -360,40 +360,44 @@ _CORE_OTHER_MEMBERS: tuple[str, ...] = ("requirements.txt",)
 _CORE_MEMBERS: tuple[str, ...] = _CORE_PY_MEMBERS + _CORE_OTHER_MEMBERS
 
 # Parent-fixed Gate B (24) + Gate C (7) schema inventory from Execution §2.
-_SCHEMAS_GATE_B: tuple[str, ...] = _publisher_inventory_lines("""schemas/convmem-bound-read-scope-v2.schema.json
-schemas/convmem-project-binding-registry-v3.schema.json
-schemas/convmem-bound-authority-record-v3.schema.json
-schemas/convmem-authority-disposition-v1.schema.json
-schemas/convmem-strict-provenance-context-v2.schema.json
-schemas/convmem-strict-grounding-v1.schema.json
-schemas/convmem-capture-receipt-v1.schema.json
-schemas/convmem-strict-fixture-bundle-v2.schema.json
-schemas/convmem-strict-citation-map-v1.schema.json
-schemas/convmem-bound-authority-manifest-v3.schema.json
-schemas/convmem-bound-projection-row-v2.schema.json
-schemas/convmem-strict-graph-v1.schema.json
-schemas/convmem-bound-projection-manifest-v3.schema.json
-schemas/convmem-strict-generation-layout-v2.schema.json
-schemas/convmem-strict-publication-v2.schema.json
-schemas/convmem-strict-enrollment-v1.schema.json
-schemas/convmem-strict-slot-v1.schema.json
-schemas/convmem-strict-source-cutoff-v1.schema.json
-schemas/convmem-strict-semantic-contract-v1.schema.json
-schemas/convmem-strict-state-v2.schema.json
-schemas/convmem-clock-review-v1.schema.json
-schemas/convmem-raw-evidence-v3.schema.json
-schemas/convmem-error-v1.schema.json
-schemas/convmem-strict-config-v2.schema.json""")
-_SCHEMAS_GATE_C: tuple[str, ...] = _publisher_inventory_lines(
-    """
-schemas/convmem-openclaw-connector-launch-v2.schema.json
-schemas/convmem-openclaw-activation-v2.schema.json
-schemas/convmem-activation-control-v1.schema.json
-schemas/convmem-activation-retirement-v1.schema.json
-schemas/convmem-activation-launch-policy-v1.schema.json
-schemas/convmem-activation-manager-policy-v1.schema.json
-schemas/convmem-controller-socket-policy-v1.schema.json
-    """
+_SCHEMAS_GATE_B: tuple[str, ...] = tuple(
+    ["schemas/" + stem for stem in [
+        "convmem-bound-read-scope-v2.schema.json",
+        "convmem-project-binding-registry-v3.schema.json",
+        "convmem-bound-authority-record-v3.schema.json",
+        "convmem-authority-disposition-v1.schema.json",
+        "convmem-strict-provenance-context-v2.schema.json",
+        "convmem-strict-grounding-v1.schema.json",
+        "convmem-capture-receipt-v1.schema.json",
+        "convmem-strict-fixture-bundle-v2.schema.json",
+        "convmem-strict-citation-map-v1.schema.json",
+        "convmem-bound-authority-manifest-v3.schema.json",
+        "convmem-bound-projection-row-v2.schema.json",
+        "convmem-strict-graph-v1.schema.json",
+        "convmem-bound-projection-manifest-v3.schema.json",
+        "convmem-strict-generation-layout-v2.schema.json",
+        "convmem-strict-publication-v2.schema.json",
+        "convmem-strict-enrollment-v1.schema.json",
+        "convmem-strict-slot-v1.schema.json",
+        "convmem-strict-source-cutoff-v1.schema.json",
+        "convmem-strict-semantic-contract-v1.schema.json",
+        "convmem-strict-state-v2.schema.json",
+        "convmem-clock-review-v1.schema.json",
+        "convmem-raw-evidence-v3.schema.json",
+        "convmem-error-v1.schema.json",
+        "convmem-strict-config-v2.schema.json",
+    ]]
+)
+_SCHEMAS_GATE_C: tuple[str, ...] = tuple(
+    ["schemas/" + stem for stem in [
+        "convmem-openclaw-connector-launch-v2.schema.json",
+        "convmem-openclaw-activation-v2.schema.json",
+        "convmem-activation-control-v1.schema.json",
+        "convmem-activation-retirement-v1.schema.json",
+        "convmem-activation-launch-policy-v1.schema.json",
+        "convmem-activation-manager-policy-v1.schema.json",
+        "convmem-controller-socket-policy-v1.schema.json",
+    ]]
 )
 _SCHEMAS_BC: tuple[str, ...] = _SCHEMAS_GATE_B + _SCHEMAS_GATE_C
 
@@ -1074,20 +1078,24 @@ def _plock_publish_projection_locked_p0(work: SimpleNamespace) -> dict[str, Any]
         raise StrictPublisherError("bundle_type")
     if work.bundle.get("schema") != "convmem.strict-fixture-work.bundle.v2":
         raise StrictPublisherError("bundle_schema")
-    if set(work.bundle) != {
-        "schema",
-        "lineage_id",
-        "operation_id",
-        "expected_parent_manifest_sha256",
-        "batches",
-        "dispositions",
-        "provenance_context",
-        "grounding",
-        "built_at",
-        "as_of",
-        "expires_at",
-        "fixture_payload_sha256",
-    }:
+    if set(work.bundle) != (
+        {
+            "schema",
+            "lineage_id",
+            "operation_id",
+            "expected_parent_manifest_sha256",
+            "batches",
+            "dispositions",
+        }
+        | {
+            "provenance_context",
+            "grounding",
+            "built_at",
+            "as_of",
+            "expires_at",
+            "fixture_payload_sha256",
+        }
+    ):
         raise StrictPublisherError("bundle_keys")
     if work.bundle["lineage_id"] != work.lineage_id:
         raise StrictPublisherError("bundle_lineage")

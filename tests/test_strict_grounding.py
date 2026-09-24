@@ -367,7 +367,7 @@ def test_qualify_rejects_unused_receipt_against_envelope(tmp_path: Path):
 
 def test_qualify_rejects_root_identity_mismatch(tmp_path: Path):
     env = _envelope_root()
-    grounding, _receipt, _ = _closed_grounding(env)
+    grounding, receipt, _ = _closed_grounding(env)
     grounding["roots"][0]["source_identity"] = "fixture/other"
     # Fix view still OK; payload hash
     payload_g = {k: v for k, v in grounding.items() if k != "grounding_payload_sha256"}
@@ -719,20 +719,20 @@ def _default_context_materials() -> tuple[list, list, list]:
         ))
     ]
     policies = [
-        {
-            "policy_version": POLICY_VERSION,
-            "semantic_bytes_b64": _b64(policy.semantic_bytes),
-            "semantic_sha256": "sha256:" + policy.semantic_sha256,
-            "rules": [],
-        }
+        dict((
+            ("policy_version", POLICY_VERSION),
+            ("semantic_bytes_b64", _b64(policy.semantic_bytes)),
+            ("semantic_sha256", "sha256:" + policy.semantic_sha256),
+            ("rules", []),
+        ))
     ]
     recipe_bytes = b"convmem:root-recipe-v1"
     recipes = [
-        {
-            "recipe_id": "root-v1",
-            "recipe_bytes_b64": _b64(recipe_bytes),
-            "recipe_sha256": _ROOT_RECIPE_SHA256,
-        }
+        dict((
+            ("recipe_id", "root-v1"),
+            ("recipe_bytes_b64", _b64(recipe_bytes)),
+            ("recipe_sha256", _ROOT_RECIPE_SHA256),
+        ))
     ]
     return schema_semantics, policies, recipes
 
@@ -779,11 +779,13 @@ def test_reject_changed_schema_semantics_digest():
     schema_semantics[0]["semantic_sha256"] = "sha256:" + ("f" * 64)
     ctx = _seal_context(
         {
-            "schema": "convmem.strict-provenance-context.v2",
-            "schema_semantics": schema_semantics,
-            "policies": policies,
-            "recipes": recipes,
-            "verified_channels": [],
+            **dict((
+            ("schema", "convmem.strict-provenance-context.v2"),
+            ("schema_semantics", schema_semantics),
+            ("policies", policies),
+            ("recipes", recipes),
+            ("verified_channels", []),
+        )),
             "registered_assertions": [],
             "grounding_sha256": "sha256:" + ("0" * 64),
             "context_payload_sha256": "sha256:" + ("0" * 64),

@@ -482,10 +482,8 @@ def decode_framed_request(buf: bytes) -> tuple[dict[str, Any] | None, bytes, str
         return None, b"", "bad_frame"
     try:
         text = raw.decode("utf-8")
-        for ch in text:
-            o = ord(ch)
-            if 0xD800 <= o <= 0xDFFF:
-                raise ValueError("surrogate")
+        if any(0xD800 <= ord(ch) <= 0xDFFF for ch in text):
+            raise ValueError("surrogate")
         obj = json.loads(
             text,
             object_pairs_hook=_reject_duplicate_keys,

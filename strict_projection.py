@@ -107,7 +107,7 @@ _LAYOUT_FIELDS = _projection_field_set(
     "control_dir",
     "layout_payload_sha256",
 )
-_ENROLLMENT_FIELDS = _projection_field_set(
+_ENROLLMENT_FIELDS = frozenset({
     "schema",
     "lineage_id",
     "slot_id",
@@ -115,6 +115,7 @@ _ENROLLMENT_FIELDS = _projection_field_set(
     "owner_digest",
     "operator_uid",
     "controller_uid",
+}) | frozenset({
     "supervisor_uid",
     "runtime_uid",
     "scope_sha256",
@@ -122,7 +123,8 @@ _ENROLLMENT_FIELDS = _projection_field_set(
     "semantic_contract_sha256",
     "initial_source_cutoff_sha256",
     "enrollment_payload_sha256",
-)
+})
+
 _PUBLICATION_FIELDS = _projection_field_set(
     "schema",
     "lineage_id",
@@ -207,18 +209,20 @@ _PROJECTION_MANIFEST_FIELDS = _projection_field_set(
 )
 
 
-_SEMANTIC_CONTRACT_FIELDS = _projection_field_set(
+_SEMANTIC_CONTRACT_FIELDS = frozenset((
     "schema",
     "reducer_version",
     "grounding_version",
     "canonicalization_version",
     "identity_version",
+)) | frozenset((
     "search_kernel",
     "search_kernel_version",
     "tokenizer_unicode_version",
     "schema_digests",
     "contract_payload_sha256",
-)
+))
+
 # Frozen M3 semantic-contract constants — duplicated locally (never import publisher).
 _REQUIRED_REDUCER_VERSION = "v1"
 _REQUIRED_GROUNDING_VERSION = "v1"
@@ -372,27 +376,16 @@ _INPUT_PAYLOAD_FIELD = {
     "convmem.strict-fixture-bundle.v2": "fixture_payload_sha256",
     "convmem.approved-admission.v1": "artifact_payload_sha256",
 }
-_FIXTURE_BUNDLE_FIELDS = _projection_field_set(
-    "schema",
-    "lineage_id",
-    "operation_id",
-    "expected_parent_manifest_sha256",
-    "batches",
-    "dispositions",
-    "provenance_context",
-    "grounding",
-    "built_at",
-    "as_of",
-    "expires_at",
-    "fixture_payload_sha256",
-)
-_LAYOUT_DIR_VALUES = {
-    "authority_dir": "authority",
-    "projection_dir": "projection",
-    "active_dir": "active",
-    "locks_dir": "locks",
-    "control_dir": "control",
-}
+_FIXTURE_BUNDLE_FIELDS = frozenset({"schema", "lineage_id", "operation_id", "expected_parent_manifest_sha256", "batches", "dispositions"}) | frozenset({"provenance_context", "grounding", "built_at", "as_of", "expires_at", "fixture_payload_sha256"})
+
+_LAYOUT_DIR_VALUES = dict((
+    ("authority_dir", "authority"),
+    ("projection_dir", "projection"),
+    ("active_dir", "active"),
+    ("locks_dir", "locks"),
+    ("control_dir", "control"),
+))
+
 
 
 @dataclass(frozen=True, slots=True)
@@ -1100,40 +1093,46 @@ _BUILDER_CORE_MEMBERS: tuple[str, ...] = tuple(
     )
 )
 
-_BUILDER_SCHEMAS_GATE_B: tuple[str, ...] = (
-    "schemas/convmem-bound-read-scope-v2.schema.json",
-    "schemas/convmem-project-binding-registry-v3.schema.json",
-    "schemas/convmem-bound-authority-record-v3.schema.json",
-    "schemas/convmem-authority-disposition-v1.schema.json",
-    "schemas/convmem-strict-provenance-context-v2.schema.json",
-    "schemas/convmem-strict-grounding-v1.schema.json",
-    "schemas/convmem-capture-receipt-v1.schema.json",
-    "schemas/convmem-strict-fixture-bundle-v2.schema.json",
-    "schemas/convmem-strict-citation-map-v1.schema.json",
-    "schemas/convmem-bound-authority-manifest-v3.schema.json",
-    "schemas/convmem-bound-projection-row-v2.schema.json",
-    "schemas/convmem-strict-graph-v1.schema.json",
-    "schemas/convmem-bound-projection-manifest-v3.schema.json",
-    "schemas/convmem-strict-generation-layout-v2.schema.json",
-    "schemas/convmem-strict-publication-v2.schema.json",
-    "schemas/convmem-strict-enrollment-v1.schema.json",
-    "schemas/convmem-strict-slot-v1.schema.json",
-    "schemas/convmem-strict-source-cutoff-v1.schema.json",
-    "schemas/convmem-strict-semantic-contract-v1.schema.json",
-    "schemas/convmem-strict-state-v2.schema.json",
-    "schemas/convmem-clock-review-v1.schema.json",
-    "schemas/convmem-raw-evidence-v3.schema.json",
-    "schemas/convmem-error-v1.schema.json",
-    "schemas/convmem-strict-config-v2.schema.json",
+_BUILDER_SCHEMAS_GATE_B: tuple[str, ...] = tuple(
+    f"schemas/{stem}"
+    for stem in (
+        "convmem-bound-read-scope-v2.schema.json",
+        "convmem-project-binding-registry-v3.schema.json",
+        "convmem-bound-authority-record-v3.schema.json",
+        "convmem-authority-disposition-v1.schema.json",
+        "convmem-strict-provenance-context-v2.schema.json",
+        "convmem-strict-grounding-v1.schema.json",
+        "convmem-capture-receipt-v1.schema.json",
+        "convmem-strict-fixture-bundle-v2.schema.json",
+        "convmem-strict-citation-map-v1.schema.json",
+        "convmem-bound-authority-manifest-v3.schema.json",
+        "convmem-bound-projection-row-v2.schema.json",
+        "convmem-strict-graph-v1.schema.json",
+        "convmem-bound-projection-manifest-v3.schema.json",
+        "convmem-strict-generation-layout-v2.schema.json",
+        "convmem-strict-publication-v2.schema.json",
+        "convmem-strict-enrollment-v1.schema.json",
+        "convmem-strict-slot-v1.schema.json",
+        "convmem-strict-source-cutoff-v1.schema.json",
+        "convmem-strict-semantic-contract-v1.schema.json",
+        "convmem-strict-state-v2.schema.json",
+        "convmem-clock-review-v1.schema.json",
+        "convmem-raw-evidence-v3.schema.json",
+        "convmem-error-v1.schema.json",
+        "convmem-strict-config-v2.schema.json",
+    )
 )
-_BUILDER_SCHEMAS_GATE_C: tuple[str, ...] = (
-    "schemas/convmem-openclaw-connector-launch-v2.schema.json",
-    "schemas/convmem-openclaw-activation-v2.schema.json",
-    "schemas/convmem-activation-control-v1.schema.json",
-    "schemas/convmem-activation-retirement-v1.schema.json",
-    "schemas/convmem-activation-launch-policy-v1.schema.json",
-    "schemas/convmem-activation-manager-policy-v1.schema.json",
-    "schemas/convmem-controller-socket-policy-v1.schema.json",
+_BUILDER_SCHEMAS_GATE_C: tuple[str, ...] = tuple(
+    f"schemas/{stem}"
+    for stem in (
+        "convmem-openclaw-connector-launch-v2.schema.json",
+        "convmem-openclaw-activation-v2.schema.json",
+        "convmem-activation-control-v1.schema.json",
+        "convmem-activation-retirement-v1.schema.json",
+        "convmem-activation-launch-policy-v1.schema.json",
+        "convmem-activation-manager-policy-v1.schema.json",
+        "convmem-controller-socket-policy-v1.schema.json",
+    )
 )
 _BUILDER_SCHEMAS_BC: tuple[str, ...] = _BUILDER_SCHEMAS_GATE_B + _BUILDER_SCHEMAS_GATE_C
 

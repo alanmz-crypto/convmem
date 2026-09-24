@@ -24,13 +24,7 @@ PUB_B = "sha256:" + ("b" * 64)
 STRICT_SECCOMP = "sha256:" + ("c" * 64)
 
 # Closed role environment key sets (Architecture §6.5.6 / §4).
-_FIXTURE_COMMON_ENV_TAIL = (
-    "HOME",
-    "PATH",
-    "LANG",
-    "LC_ALL",
-    "TMPDIR",
-)
+_FIXTURE_COMMON_ENV_TAIL = ("HOME", "PATH") + ("LANG", "LC_ALL", "TMPDIR")
 GATEWAY_AGENT_ENV_KEYS = (
     "OPENCLAW_GATEWAY_TOKEN",
     "OPENCLAW_STATE_DIR",
@@ -102,12 +96,8 @@ def gateway_argv_template(*, port: int = 51000) -> list[str]:
         "loopback",
         "--port",
         str(port),
-        "--auth",
-        "token",
-        "--tailscale",
-        "off",
-        "--ws-log",
-        "compact",
+        *(("--auth", "token"), ("--tailscale", "off")),
+        *(("--ws-log", "compact"),),
     ]
 
 

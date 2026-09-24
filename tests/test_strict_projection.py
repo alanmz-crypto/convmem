@@ -80,14 +80,17 @@ def test_strict_projection_source_has_no_publisher_or_openclaw_runtime_imports()
         }
     )
     src_path = Path("strict_projection.py")
-    tree = ast.parse(src_path.read_text(encoding="utf-8"), filename=str(src_path))
+    tree = ast.parse(
+        src_path.read_text(encoding="utf-8"),
+        filename=str(src_path),
+    )
     for node in ast.walk(tree):
-        modules: list[str] = []
+        imported: list[str] = []
         if isinstance(node, ast.Import):
-            modules = [alias.name for alias in node.names]
+            imported = [alias.name for alias in node.names]
         elif isinstance(node, ast.ImportFrom) and node.module:
-            modules = [node.module]
-        for mod in modules:
+            imported = [node.module]
+        for mod in imported:
             top = mod.split(".", 1)[0]
             assert top not in forbidden, f"forbidden import: {mod}"
 

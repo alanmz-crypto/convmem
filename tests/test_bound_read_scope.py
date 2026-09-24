@@ -193,13 +193,15 @@ def _write_scope_registry(tmp_path: Path) -> tuple[Path, Path]:
         "max_snapshot_age_seconds": 3600,
     }
     binding = {
-        "id": "project:convmem:v1",
-        "public_ref": "a" * 32,
-        "project": "convmem",
-        "domain_root": "coding",
-        "site_mode": "exact",
-        "site": "example.com",
-        "non_expanding_roots": [],
+        **dict((
+            ("id", "project:convmem:v1"),
+            ("public_ref", "a" * 32),
+            ("project", "convmem"),
+            ("domain_root", "coding"),
+            ("site_mode", "exact"),
+            ("site", "example.com"),
+            ("non_expanding_roots", []),
+        )),
         "source_registrations": [
             {
                 "id": "src-reg-1",

@@ -263,15 +263,18 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
         "schemas/convmem-error-v1.schema.json",
         "schemas/convmem-strict-config-v2.schema.json",
     ))
-    gate_c = list((
-        "schemas/convmem-openclaw-connector-launch-v2.schema.json",
-        "schemas/convmem-openclaw-activation-v2.schema.json",
-        "schemas/convmem-activation-control-v1.schema.json",
-        "schemas/convmem-activation-retirement-v1.schema.json",
-        "schemas/convmem-activation-launch-policy-v1.schema.json",
-        "schemas/convmem-activation-manager-policy-v1.schema.json",
-        "schemas/convmem-controller-socket-policy-v1.schema.json",
-    ))
+    gate_c = [
+        f"schemas/{stem}"
+        for stem in (
+            "convmem-openclaw-connector-launch-v2.schema.json",
+            "convmem-openclaw-activation-v2.schema.json",
+            "convmem-activation-control-v1.schema.json",
+            "convmem-activation-retirement-v1.schema.json",
+            "convmem-activation-launch-policy-v1.schema.json",
+            "convmem-activation-manager-policy-v1.schema.json",
+            "convmem-controller-socket-policy-v1.schema.json",
+        )
+    ]
     assert len(gate_b) == 24
     assert len(gate_c) == 7
     assert set(gate_b) | set(gate_c) == set(oc_constants.SCHEMA_ALLOWLIST)
@@ -288,11 +291,16 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
             assert data.get("additionalProperties") is False
             assert "schema" in data["required"]
     for forbidden in (
-        "schemas/convmem-approved-admission-v1.schema.json",
-        "schemas/convmem-admission-intent-v1.schema.json",
-        "schemas/convmem-admission-review-v1.schema.json",
-        "schemas/convmem-admission-ratification-v1.schema.json",
-        "schemas/convmem-admission-event-v1.schema.json",
+        *(
+        f"schemas/{stem}"
+        for stem in (
+            "convmem-approved-admission-v1.schema.json",
+            "convmem-admission-intent-v1.schema.json",
+            "convmem-admission-review-v1.schema.json",
+            "convmem-admission-ratification-v1.schema.json",
+            "convmem-admission-event-v1.schema.json",
+        )
+        ),
     ):
         assert not Path(forbidden).exists(), f"gate_w_schema_present:{forbidden}"
 
@@ -315,11 +323,11 @@ def _m11_matching_tree_oracle(
 ) -> dict[tuple[str, str], tuple[str, str, str]]:
     """In-memory (commit, path) -> (mode, type, oid) for exact four control paths."""
     entry = ("100644", "blob", _M11_SYNTHETIC_BLOB_OID)
-    oracle: dict[tuple[str, str], tuple[str, str, str]] = {}
+    path_oracle: dict[tuple[str, str], tuple[str, str, str]] = {}
     for control_path in sorted(oc_constants.M11_CONTROL_PLANE_INPUTS):
-        oracle[(source_commit, control_path)] = entry
-        oracle[(overlay_commit, control_path)] = entry
-    return oracle
+        path_oracle[(source_commit, control_path)] = entry
+        path_oracle[(overlay_commit, control_path)] = entry
+    return path_oracle
 
 
 def _m11_install_git_boundary_oracle(
@@ -344,7 +352,7 @@ def _m11_install_git_boundary_oracle(
         overlay_key: overlay_resolved,
         overlay_resolved: overlay_resolved,
     }
-    oracle = (
+    path_oracle = (
         tree_oracle
         if tree_oracle is not None
         else _m11_matching_tree_oracle(source_commit, overlay_resolved)
@@ -357,13 +365,13 @@ def _m11_install_git_boundary_oracle(
 
     def _tree_entry(_repo, commit: str, path: str) -> tuple[str, str, str]:
         try:
-            return oracle[(commit, path)]
+            return path_oracle[(commit, path)]
         except KeyError as exc:
             raise SystemExit(f"control_plane_missing:{path}") from exc
 
     monkeypatch.setattr(oc_allowlist, "_resolve_commit", _resolve)
     monkeypatch.setattr(oc_allowlist, "_git_tree_entry", _tree_entry)
-    return oracle
+    return path_oracle
 
 
 def _check_m11_control_plane_exact_four_success(monkeypatch):
@@ -525,14 +533,14 @@ def _check_m11_control_plane_rejects_blob_or_mode_mismatch(monkeypatch):
     target = control[0]
     source = _M11_SYNTHETIC_SOURCE_COMMIT
     overlay = _M11_SYNTHETIC_OVERLAY_COMMIT
-    oracle = _m11_matching_tree_oracle(source, overlay)
-    oracle[(source, target)] = ("100644", "blob", _M11_SYNTHETIC_BLOB_OID_ALT)
+    path_oracle = _m11_matching_tree_oracle(source, overlay)
+    path_oracle[(source, target)] = ("100644", "blob", _M11_SYNTHETIC_BLOB_OID_ALT)
     _m11_install_git_boundary_oracle(
         monkeypatch,
         oc_allowlist,
         source_commit=source,
         overlay_resolved=overlay,
-        tree_oracle=oracle,
+        tree_oracle=path_oracle,
     )
     monkeypatch.setattr(
         oc_allowlist,
@@ -799,16 +807,16 @@ def test_m2_dual_independent_canonical_parsers_and_vectors():
         assert digest_a.startswith("sha256:")
         assert digest_a != "source-component"  # never treat as component hash
     for item in REJECT_PAYLOADS:
-        for oracle, err in (
+        for canon_oracle, err in (
             (oracle_a, oracle_a.CanonicalOracleError),
             (oracle_b, oracle_b.CanonicalOracleBError),
         ):
             try:
-                oracle.parse_strict_raw(item["payload"])
+                canon_oracle.parse_strict_raw(item["payload"])
             except err:
                 pass
             else:
-                raise AssertionError(f"oracle_should_reject:{item['name']}:{oracle.__name__}")
+                raise AssertionError(f"oracle_should_reject:{item['name']}:{canon_oracle.__name__}")
     # Explicit reordered raw-byte rejection (must not repair via sort-on-output).
     reordered = b'{"b":2,"a":1}'
     try:

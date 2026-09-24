@@ -139,14 +139,8 @@ def test_strict_server_env_gate_positive_exact_and_missing_key_negatives(
     module.require_closed_strict_environment(exact)
 
     for missing in (
-        "CONVMEM_BOUND_READ_SCOPE_FILE",
-        "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
-        "CONVMEM_STRICT_CONFIG_FILE",
-        "HOME",
-        "PATH",
-        "LANG",
-        "LC_ALL",
-        "TMPDIR",
+        *("CONVMEM_BOUND_READ_SCOPE_FILE", "CONVMEM_PROJECT_BINDING_REGISTRY_FILE", "CONVMEM_STRICT_CONFIG_FILE"),
+        *("HOME", "PATH", "LANG", "LC_ALL", "TMPDIR"),
     ):
         env = dict(exact)
         env[missing] = ""

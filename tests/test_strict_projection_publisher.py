@@ -214,13 +214,12 @@ def _scope_registry_with_owner(tmp_path: Path) -> tuple[Path, Path]:
             }
         ],
     }
-    revision = sha256_digest(
-        canonical_json_bytes(
-            without_revision,
-            validate=lambda _obj: None,
-            error_type=BoundScopeError,
-        )
+    _revision_body = canonical_json_bytes(
+        without_revision,
+        validate=lambda _obj: None,
+        error_type=BoundScopeError,
     )
+    revision = sha256_digest(_revision_body)
     registry = {**without_revision, "revision": revision}
     scope_path = (tmp_path / "scope.json").resolve()
     registry_path = (tmp_path / "registry.json").resolve()
@@ -366,22 +365,26 @@ def test_retire_first_refuses_nonempty_slot_without_external_proofs(tmp_path: Pa
                 "provenance_context": {
                     "schema": "convmem.strict-provenance-context.v2",
                     **{
-                        "schema_semantics": [],
-                        "policies": [],
-                        "recipes": [],
-                        "verified_channels": [],
+                        **dict((
+                        ("schema_semantics", []),
+                        ("policies", []),
+                        ("recipes", []),
+                        ("verified_channels", []),
+                        )),
                         "registered_assertions": [],
                     },
                     "grounding_sha256": "sha256:" + ("0" * 64),
                     "context_payload_sha256": "sha256:" + ("0" * 64),
                 },
                 "grounding": {
-                    "schema": "convmem.strict-grounding.v1",
-                    "blobs": [],
-                    "roots": [],
-                    "edges": [],
-                    "outputs": [],
-                    "receipts": [],
+                    **dict((
+                    ("schema", "convmem.strict-grounding.v1"),
+                    ("blobs", []),
+                    ("roots", []),
+                    ("edges", []),
+                    ("outputs", []),
+                    ("receipts", []),
+                    )),
                     "grounding_payload_sha256": "sha256:" + ("0" * 64),
                 },
                 "built_at": _TS,
@@ -448,22 +451,26 @@ def test_publisher_never_writes_slot_on_publish_path(tmp_path: Path):
                 "provenance_context": {
                     "schema": "convmem.strict-provenance-context.v2",
                     **{
-                        "schema_semantics": [],
-                        "policies": [],
-                        "recipes": [],
-                        "verified_channels": [],
+                        **dict((
+                        ("schema_semantics", []),
+                        ("policies", []),
+                        ("recipes", []),
+                        ("verified_channels", []),
+                        )),
                         "registered_assertions": [],
                     },
                     "grounding_sha256": "sha256:" + ("0" * 64),
                     "context_payload_sha256": "sha256:" + ("0" * 64),
                 },
                 "grounding": {
-                    "schema": "convmem.strict-grounding.v1",
-                    "blobs": [],
-                    "roots": [],
-                    "edges": [],
-                    "outputs": [],
-                    "receipts": [],
+                    **dict((
+                    ("schema", "convmem.strict-grounding.v1"),
+                    ("blobs", []),
+                    ("roots", []),
+                    ("edges", []),
+                    ("outputs", []),
+                    ("receipts", []),
+                    )),
                     "grounding_payload_sha256": "sha256:" + ("0" * 64),
                 },
                 "built_at": _TS,
@@ -588,8 +595,14 @@ def test_publisher_locks_are_held_exclusively_not_mere_files(tmp_path: Path):
     # After release, exclusive lock is available again.
     fd = os.open(str(slot_lock), os.O_RDWR)
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        acquired = False
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquired = True
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            if not acquired:
+                pass
     finally:
         os.close(fd)
 
@@ -646,21 +659,25 @@ def test_concurrent_publish_serializes_and_stale_cas_fails(tmp_path: Path):
                     "dispositions": [],
                     "provenance_context": {
                         "schema": "convmem.strict-provenance-context.v2",
-                        "schema_semantics": [],
-                        "policies": [],
-                        "recipes": [],
-                        "verified_channels": [],
+                        **dict((
+                        ("schema_semantics", []),
+                        ("policies", []),
+                        ("recipes", []),
+                        ("verified_channels", []),
+                        )),
                         "registered_assertions": [],
                         "grounding_sha256": "sha256:" + ("0" * 64),
                         "context_payload_sha256": "sha256:" + ("0" * 64),
                     },
                     "grounding": {
                         "schema": "convmem.strict-grounding.v1",
-                        "blobs": [],
-                        "roots": [],
-                        "edges": [],
-                        "outputs": [],
-                        "receipts": [],
+                        **dict((
+                        ("blobs", []),
+                        ("roots", []),
+                        ("edges", []),
+                        ("outputs", []),
+                        ("receipts", []),
+                        )),
                         "grounding_payload_sha256": "sha256:" + ("0" * 64),
                     },
                     "built_at": _TS,
@@ -732,22 +749,26 @@ def test_full_publication_payload_cas_rejects_stale_expected(tmp_path: Path):
                 "provenance_context": {
                     "schema": "convmem.strict-provenance-context.v2",
                     **{
-                        "schema_semantics": [],
-                        "policies": [],
-                        "recipes": [],
-                        "verified_channels": [],
+                        **dict((
+                        ("schema_semantics", []),
+                        ("policies", []),
+                        ("recipes", []),
+                        ("verified_channels", []),
+                        )),
                         "registered_assertions": [],
                     },
                     "grounding_sha256": "sha256:" + ("0" * 64),
                     "context_payload_sha256": "sha256:" + ("0" * 64),
                 },
                 "grounding": {
-                    "schema": "convmem.strict-grounding.v1",
-                    "blobs": [],
-                    "roots": [],
-                    "edges": [],
-                    "outputs": [],
-                    "receipts": [],
+                    **dict((
+                    ("schema", "convmem.strict-grounding.v1"),
+                    ("blobs", []),
+                    ("roots", []),
+                    ("edges", []),
+                    ("outputs", []),
+                    ("receipts", []),
+                    )),
                     "grounding_payload_sha256": "sha256:" + ("0" * 64),
                 },
                 "built_at": _TS,
@@ -854,11 +875,13 @@ def test_fault_after_fence_leaves_fenced_without_authority_admission(tmp_path: P
     grounding = {
         "schema": "convmem.strict-grounding.v1",
         **{
-            "blobs": [],
-            "roots": [],
-            "edges": [],
-            "outputs": [],
-            "receipts": [],
+            **dict((
+            ("blobs", []),
+            ("roots", []),
+            ("edges", []),
+            ("outputs", []),
+            ("receipts", []),
+            )),
         },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
@@ -866,10 +889,12 @@ def test_fault_after_fence_leaves_fenced_without_authority_admission(tmp_path: P
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
         **{
-            "schema_semantics": [],
-            "policies": [],
-            "recipes": [],
-            "verified_channels": [],
+            **dict((
+            ("schema_semantics", []),
+            ("policies", []),
+            ("recipes", []),
+            ("verified_channels", []),
+            )),
         },
         "registered_assertions": [],
         "grounding_sha256": grounding["grounding_payload_sha256"],
@@ -920,11 +945,13 @@ def test_recover_clears_abandoned_unratified_fence_without_durable_intent(tmp_pa
     grounding = {
         "schema": "convmem.strict-grounding.v1",
         **{
-            "blobs": [],
-            "roots": [],
-            "edges": [],
-            "outputs": [],
-            "receipts": [],
+            **dict((
+            ("blobs", []),
+            ("roots", []),
+            ("edges", []),
+            ("outputs", []),
+            ("receipts", []),
+            )),
         },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
@@ -932,10 +959,12 @@ def test_recover_clears_abandoned_unratified_fence_without_durable_intent(tmp_pa
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
         **{
-            "schema_semantics": [],
-            "policies": [],
-            "recipes": [],
-            "verified_channels": [],
+            **dict((
+            ("schema_semantics", []),
+            ("policies", []),
+            ("recipes", []),
+            ("verified_channels", []),
+            )),
         },
         "registered_assertions": [],
         "grounding_sha256": grounding["grounding_payload_sha256"],
@@ -995,11 +1024,13 @@ def test_parent_head_mismatch_rejects_before_history_mutation(tmp_path: Path):
     grounding = {
         "schema": "convmem.strict-grounding.v1",
         **{
-            "blobs": [],
-            "roots": [],
-            "edges": [],
-            "outputs": [],
-            "receipts": [],
+            **dict((
+            ("blobs", []),
+            ("roots", []),
+            ("edges", []),
+            ("outputs", []),
+            ("receipts", []),
+            )),
         },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
@@ -1007,10 +1038,12 @@ def test_parent_head_mismatch_rejects_before_history_mutation(tmp_path: Path):
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
         **{
-            "schema_semantics": [],
-            "policies": [],
-            "recipes": [],
-            "verified_channels": [],
+            **dict((
+            ("schema_semantics", []),
+            ("policies", []),
+            ("recipes", []),
+            ("verified_channels", []),
+            )),
         },
         "registered_assertions": [],
         "grounding_sha256": grounding["grounding_payload_sha256"],
@@ -1126,21 +1159,25 @@ def test_exact_operation_retry_returns_historic_outcome_with_current_head(tmp_pa
         "dispositions": [],
         "provenance_context": {
             "schema": "convmem.strict-provenance-context.v2",
-            "schema_semantics": [],
-            "policies": [],
-            "recipes": [],
-            "verified_channels": [],
+            **dict((
+            ("schema_semantics", []),
+            ("policies", []),
+            ("recipes", []),
+            ("verified_channels", []),
+            )),
             "registered_assertions": [],
             "grounding_sha256": "sha256:" + ("a" * 64),
             "context_payload_sha256": "sha256:" + ("b" * 64),
         },
         "grounding": {
-            "schema": "convmem.strict-grounding.v1",
-            "blobs": [],
-            "roots": [],
-            "edges": [],
-            "outputs": [],
-            "receipts": [],
+            **dict((
+            ("schema", "convmem.strict-grounding.v1"),
+            ("blobs", []),
+            ("roots", []),
+            ("edges", []),
+            ("outputs", []),
+            ("receipts", []),
+            )),
             "grounding_payload_sha256": "sha256:" + ("a" * 64),
         },
         "built_at": _TS,
@@ -1226,11 +1263,13 @@ def test_publisher_rejects_duplicate_registered_assertion_ids(tmp_path: Path):
     grounding = {
         "schema": "convmem.strict-grounding.v1",
         **{
-            "blobs": [],
-            "roots": [],
-            "edges": [],
-            "outputs": [],
-            "receipts": [],
+            **dict((
+            ("blobs", []),
+            ("roots", []),
+            ("edges", []),
+            ("outputs", []),
+            ("receipts", []),
+            )),
         },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
@@ -1238,10 +1277,12 @@ def test_publisher_rejects_duplicate_registered_assertion_ids(tmp_path: Path):
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
         **{
-            "schema_semantics": [],
-            "policies": [],
-            "recipes": [],
-            "verified_channels": [],
+            **dict((
+            ("schema_semantics", []),
+            ("policies", []),
+            ("recipes", []),
+            ("verified_channels", []),
+            )),
         },
         "registered_assertions": [entry, dict(entry)],
         "grounding_sha256": grounding["grounding_payload_sha256"],
@@ -1317,11 +1358,13 @@ def test_publisher_rejects_false_context_digest_and_requires_inventory_when_regi
     grounding = {
         "schema": "convmem.strict-grounding.v1",
         **{
-            "blobs": [],
-            "roots": [],
-            "edges": [],
-            "outputs": [],
-            "receipts": [],
+            **dict((
+            ("blobs", []),
+            ("roots", []),
+            ("edges", []),
+            ("outputs", []),
+            ("receipts", []),
+            )),
         },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
@@ -1407,11 +1450,13 @@ def _minimal_bundle(
     grounding = {
         "schema": "convmem.strict-grounding.v1",
         **{
-            "blobs": [],
-            "roots": [],
-            "edges": [],
-            "outputs": [],
-            "receipts": [],
+            **dict((
+            ("blobs", []),
+            ("roots", []),
+            ("edges", []),
+            ("outputs", []),
+            ("receipts", []),
+            )),
         },
         "grounding_payload_sha256": "sha256:" + ("0" * 64),
     }
@@ -1419,10 +1464,12 @@ def _minimal_bundle(
     provenance = {
         "schema": "convmem.strict-provenance-context.v2",
         **{
-            "schema_semantics": [],
-            "policies": [],
-            "recipes": [],
-            "verified_channels": [],
+            **dict((
+            ("schema_semantics", []),
+            ("policies", []),
+            ("recipes", []),
+            ("verified_channels", []),
+            )),
         },
         "registered_assertions": [],
         "grounding_sha256": grounding["grounding_payload_sha256"],
@@ -1853,20 +1900,22 @@ def _materializable_publish_inputs(
         "producer": "form-prod",
         "logical_key": "subject-key-1",
         **{
-            "title": "fixture title",
-            "document": "fixture document",
-            "observed_at": _TS,
-            "confidence_bps": 7000,
-            "relates_to_assertion_id": None,
-            "target_assertion_id": None,
+            **dict((
+            ("title", "fixture title"),
+            ("document", "fixture document"),
+            ("observed_at", _TS),
+            ("confidence_bps", 7000),
+            ("relates_to_assertion_id", None),
+            ("target_assertion_id", None),
+            )),
             "verification_result": None,
         },
         "provenance_assertion_id": aid,
     }
     # Blob bytes = exact canonical source payload (excl. provenance_assertion_id).
-    source_payload_body = {
-        k: v for k, v in source.items() if k != "provenance_assertion_id"
-    }
+    source_payload_body = dict(
+        (k, v) for k, v in source.items() if k != "provenance_assertion_id"
+    )
     blob = strict_canonical_bytes(source_payload_body)
     payload = strict_source_payload_sha256(source)
     blob_hex = payload.removeprefix("sha256:")
@@ -1931,7 +1980,6 @@ def _materializable_publish_inputs(
     sealed_ref = receipt_ref_for(sealed_receipt)
     root_bind["receipt_ref"] = sealed_ref
     receipt = sealed_receipt
-    ref = sealed_ref
 
     inv_root = shared / "issuer_inventory"
     inv_root.mkdir(exist_ok=True)
@@ -2000,12 +2048,12 @@ def _materializable_publish_inputs(
     }
     provenance["context_payload_sha256"] = _self_hash(provenance, "context_payload_sha256")
 
-    scan = {
-        "schema": "convmem.fixture-scan.v1",
-        "event_key": "scan-key-1",
-        "captured_at": "2026-09-21T00:00:01Z",
-        "records": [source],
-    }
+    scan = dict((
+        ("schema", "convmem.fixture-scan.v1"),
+        ("event_key", "scan-key-1"),
+        ("captured_at", "2026-09-21T00:00:01Z"),
+        ("records", [source]),
+    ))
     batch = {"source_registration_id": src, "source": scan}
     bundle = {
         "schema": "convmem.strict-fixture-bundle.v2",
@@ -2172,10 +2220,12 @@ def test_m3_true_positive_two_root_byte_identical_serving(tmp_path: Path):
         results.append(
             _enroll_and_publish_materializable(
                 tmp_path / name,
-                shared=shared,
-                scope_path=scope_path,
-                registry_path=registry_path,
-                bundle=bundle,
+                **{
+                    "shared": shared,
+                    "scope_path": scope_path,
+                    "registry_path": registry_path,
+                    "bundle": bundle,
+                },
             )
         )
 
