@@ -1,0 +1,587 @@
+{
+  "schema": "astra.historical-review-supersession.v1",
+  "assembled_at_utc": "2026-09-24T17:52:38.627210+00:00",
+  "arc": "ConvMem Switchboard",
+  "purpose": "Archive original Stage 1 and reconcile its findings with successor work; no fresh build/test/live/promotion authorization.",
+  "original_target": "9b106b908b944f8bd4c3f417b576dc13884f2503",
+  "original_report_sha256": "fc402286dbb720f3752613e3fe982c4542b168eda9609416b1dd4c51eff5c979",
+  "original_archive_sha256": "0c879aa9a8fc59a6290c099f2d1eff4d32bf81665adea8ae465093ca1bef3ea9",
+  "original_manifest_members_verified": 127,
+  "stage2_packet_opened": false,
+  "stage2_history_comparison_performed": false,
+  "source_revision_moved_during_check": true,
+  "initial_plan_revision": "b55de5b43475595c08a00a4b1b5d2ef2aebd9796",
+  "later_plan_revision": "67d4f5aa62415f3550fbc56a760374cf3c19ee23",
+  "retained_tested_revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+  "later_implementation_revision": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+  "test_acceptance_transferred_to_later_revision": false,
+  "tests_executed_by_this_closeout": [],
+  "source_snapshots": [
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "strict_evidence_state.py",
+      "sha256": "d0436f7093f52b335f8537683e831e6b1acb77bf2526979743afe2f446613ac2"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "strict_grounding.py",
+      "sha256": "32cf3f2a96d8e302cc0eebc7dfca1502dca92eb1a5bfafa763ada1cd353f34ef"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "strict_projection.py",
+      "sha256": "767f437ca17cbcf2e93400bc06de361783e24e5b4c1eb6bda9bf7198cad9190a"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "strict_projection_publisher.py",
+      "sha256": "0f680df42358ee32005a562817b9ab0de088fafad5b88881ee39b4096d6d54b9"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "openclaw_activation_controller.py",
+      "sha256": "6697f809464c3e5e556242b10ee199d0e3ee254fccf1d3e33812dd4ff2c8ab6e"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "openclaw_activation_supervisor.py",
+      "sha256": "35054b47e3ed746b25299ab8ba92abda2d1a0f59d480eef5ee9a673b5d3e13ad"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "openclaw_strict_server.py",
+      "sha256": "454235b1b91ca2221ae026110c1b135ae7fd9e9d4ee0055dcace9ecef120ef86"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_strict_evidence_state.py",
+      "sha256": "608be789f825f9409b9b0d00ce9b9d3c5d795a86442c3c33797df7d4f57251ed"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_strict_grounding.py",
+      "sha256": "ac4d826925f0d24ff9115482496eee17b837c3029b37df70267a79d0b4eea69a"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_strict_projection.py",
+      "sha256": "0bf58d1f54a507dde6a48c3f1927644bbd0ac2412ac3c616a6221da066bdd31c"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_strict_projection_publisher.py",
+      "sha256": "179f7452cd515e1ac0781a40b9021b795413460959c3f51aaf08a495bc60cbea"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_strict_projection_recovery.py",
+      "sha256": "2ad45d93f2238e4653df881e14c3f6c59e96658a125b395e42d9cb1d1cd4b6b7"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_strict_snapshot_revocation.py",
+      "sha256": "f925b2d072386716ab7edcbe2cd7c6f1c7d1fc61c73ac8d255d3dd21704a0da6"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_openclaw_activation_controller.py",
+      "sha256": "57601b89310f0d584fd49180d026ed6af32fb929e683661a1a8b093b4b987a61"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_openclaw_activation_supervisor.py",
+      "sha256": "af326d92b8d2b0fa0358655aaf7a04803d2d21e42a640a9fe3fcacb3f6cb5077"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/test_openclaw_lifecycle_config.py",
+      "sha256": "8287d2217ecd186013f5c5df39a40270700ca247fdc9fc9c0d782841ff320a7b"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/fixtures/openclaw_strict/adversarial_matrix.py",
+      "sha256": "6c40e45a0c54d16f302510b9dba3019f13811827d36d87a16c687043ae5edd9a"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/fixtures/openclaw_strict/suites.py",
+      "sha256": "83574f0f2fa042e8657a138721a2dcc5559d06d08ae1aa1192e9cfd5a7d0d1a3"
+    },
+    {
+      "revision": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+      "path": "tests/fixtures/openclaw_strict/constants.py",
+      "sha256": "8d8bcc7cf9993a4fa9eaef6b45d602334100058ee04aec72301b752a7e5da9d2"
+    },
+    {
+      "revision": "b55de5b43475595c08a00a4b1b5d2ef2aebd9796",
+      "path": "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+      "sha256": "07b37797421c68778927368be80d79d871785b057a005a03933e0b5a47061d24"
+    },
+    {
+      "revision": "b55de5b43475595c08a00a4b1b5d2ef2aebd9796",
+      "path": "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+      "sha256": "14d792d56948679974d1a7057e736b1ff5ecdac2cf039ced5042c945ede1864a"
+    },
+    {
+      "revision": "b55de5b43475595c08a00a4b1b5d2ef2aebd9796",
+      "path": "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+      "sha256": "e422f6cb6bb4c171654dacd64b0194ec6f391f1f27165bbafb34f6d6dd273c0e"
+    },
+    {
+      "revision": "b55de5b43475595c08a00a4b1b5d2ef2aebd9796",
+      "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
+      "sha256": "36c1f8b7c55566b3de87cf0340e967c4ee8b820541b43c50842965d9bcb60d00"
+    }
+  ],
+  "later_sources": [
+    {
+      "revision": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+      "path": "openclaw_activation_controller.py",
+      "sha256": "37de174baa695c090109252eedd614d53404842984e7f43307bd35c3206fad86"
+    },
+    {
+      "revision": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+      "path": "openclaw_activation_supervisor.py",
+      "sha256": "ad81d25c9b4d2fbabbe935d44603094cac8a41be49189dfc3e5f1e30aa61c353"
+    },
+    {
+      "revision": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+      "path": "strict_evidence_state.py",
+      "sha256": "07965c9727c53c2a1c80222717bc906c4d1b44e5ec31e959818d33b48776ba91"
+    },
+    {
+      "revision": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+      "path": "strict_grounding.py",
+      "sha256": "bbbd696153b76667edf7f4a15c5df864c52002088affdf0c5020f29ae043b924"
+    },
+    {
+      "revision": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+      "path": "strict_projection.py",
+      "sha256": "24f2b9c38e838f79b3f832cccce6daf177883f8fdc0042d97f057a3a7e96e819"
+    },
+    {
+      "revision": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+      "path": "strict_projection_publisher.py",
+      "sha256": "45a55cb2aec09bcdb58458dc290eb84573a8099d9e59cd92cee212b8b3d9ec4d"
+    },
+    {
+      "revision": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+      "path": "convmem.py",
+      "sha256": "0c278be127ac0f3f29815a283bf59b58d6520fbb5d390ae123733260d1897ad3"
+    }
+  ],
+  "later_plan_sources": [
+    {
+      "revision": "67d4f5aa62415f3550fbc56a760374cf3c19ee23",
+      "path": "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
+      "sha256": "07b37797421c68778927368be80d79d871785b057a005a03933e0b5a47061d24"
+    },
+    {
+      "revision": "67d4f5aa62415f3550fbc56a760374cf3c19ee23",
+      "path": "docs/plans/EXECUTION-openclaw-convmem-integration.md",
+      "sha256": "14d792d56948679974d1a7057e736b1ff5ecdac2cf039ced5042c945ede1864a"
+    },
+    {
+      "revision": "67d4f5aa62415f3550fbc56a760374cf3c19ee23",
+      "path": "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
+      "sha256": "0be78e41e08d2015c69b535e155602009e488a24536a0eb7779ec713ead4ded2"
+    },
+    {
+      "revision": "67d4f5aa62415f3550fbc56a760374cf3c19ee23",
+      "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
+      "sha256": "36c1f8b7c55566b3de87cf0340e967c4ee8b820541b43c50842965d9bcb60d00"
+    }
+  ],
+  "selected_function_comparison": {
+    "old": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+    "new": "54811dd1c4fd42d84b4800baf18551d9affc25f6",
+    "functions": [
+      {
+        "file": "strict_projection_publisher.py",
+        "function": "_require_cas",
+        "old_line": 688,
+        "new_line": 700,
+        "ast_equal": true
+      },
+      {
+        "file": "strict_projection_publisher.py",
+        "function": "_rollback_serving",
+        "old_line": 1703,
+        "new_line": 1732,
+        "ast_equal": false
+      },
+      {
+        "file": "strict_evidence_state.py",
+        "function": "reduce_complete_bound_state",
+        "old_line": 951,
+        "new_line": 1368,
+        "ast_equal": false
+      },
+      {
+        "file": "strict_evidence_state.py",
+        "function": "unresolved_predicate",
+        "old_line": 1220,
+        "new_line": 1381,
+        "ast_equal": true
+      },
+      {
+        "file": "strict_grounding.py",
+        "function": "authenticate_receipt",
+        "old_line": 341,
+        "new_line": 346,
+        "ast_equal": true
+      },
+      {
+        "file": "strict_grounding.py",
+        "function": "validate_grounding_document",
+        "old_line": 423,
+        "new_line": 588,
+        "ast_equal": false
+      },
+      {
+        "file": "strict_grounding.py",
+        "function": "derive_origin_assurance",
+        "old_line": 607,
+        "new_line": 630,
+        "ast_equal": true
+      },
+      {
+        "file": "strict_projection.py",
+        "function": "unresolved_rows",
+        "old_line": 3402,
+        "new_line": 3447,
+        "ast_equal": true
+      },
+      {
+        "file": "openclaw_activation_controller.py",
+        "function": "main",
+        "old_line": 290,
+        "new_line": 310,
+        "ast_equal": false
+      },
+      {
+        "file": "openclaw_activation_supervisor.py",
+        "function": "main",
+        "old_line": 71,
+        "new_line": 80,
+        "ast_equal": false
+      },
+      {
+        "file": "openclaw_activation_supervisor.py",
+        "function": "empty_domain_attestation",
+        "old_line": 417,
+        "new_line": 425,
+        "ast_equal": true
+      }
+    ]
+  },
+  "retained_evidence": [
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-run1-final/fixture-evidence/fixture-manifest.json",
+      "sha256": "7c5fff027e710853bc0285b22d5ca6c25fb73203e1862530a239bcb116840dfe",
+      "data": {
+        "schema": "convmem.strict-fixture-manifest.v1",
+        "source_tree_sha256": "sha256:9046cdbde584761650b887187ffe3a13e371e57a53f978f4325d9e7fec2d4d1f",
+        "test_runtime_tree_sha256": "sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b"
+      }
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-run1-final/fixture-evidence/pytest-strict-junit.xml",
+      "sha256": "154fe3e328d231733b9603ee3b702261af80b0642904cf3de2dab540beafc94c",
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "0",
+          "tests": "238",
+          "time": "4.209",
+          "timestamp": "2026-09-24T09:23:49.538880+00:00",
+          "hostname": "archlinux"
+        }
+      ],
+      "selected_cases": [
+        "test_missing_grounding_weakens_without_reject",
+        "test_original_admission_blocks_late_upgrade",
+        "test_original_admission_rejects_contradictory_cold_drift",
+        "test_registered_ancestor_missing_grounding_weakens_child",
+        "test_cas_compares_entire_publication_payload_not_generation_name",
+        "test_rollback_refuses_foreign_authority_and_does_not_renew_expiry",
+        "test_production_start_refuses_runtime_not_qualified",
+        "test_case53_peer_forgery_denied",
+        "test_case55_runtime_denied_private_paths_pre_activation"
+      ]
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-run1-final/fixture-evidence/pytest-legacy-junit.xml",
+      "sha256": "7c6d4ab71c4b45cd7064f6b5294eeace22f32bce931aeca2195b60cfee6a275f",
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "1",
+          "tests": "116",
+          "time": "24.185",
+          "timestamp": "2026-09-24T09:23:54.286507+00:00",
+          "hostname": "archlinux"
+        }
+      ],
+      "selected_cases": [
+        "test_retained_rollback_baseline_permits_canary_staging_without_deletion"
+      ]
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-run1-final/fixture-evidence/pytest-node-outcomes.json",
+      "sha256": "f1d01f0c0da0987c42186e8417f2ad0c3fdef807c9ee9696fa3cc7ecf93d7fcc",
+      "data": {
+        "schema": "convmem.pytest-node-outcomes.v1",
+        "full_repository_discovery": false,
+        "suites": [
+          {
+            "counts": {
+              "collected": 238,
+              "error": 0,
+              "failed": 0,
+              "passed": 238,
+              "skipped": 0
+            },
+            "deselections": [],
+            "junit_path": "/fixture/evidence/pytest-strict-junit.xml",
+            "selector_files": [
+              "tests/test_bound_read_scope.py",
+              "tests/test_strict_grounding.py",
+              "tests/test_strict_evidence_state.py",
+              "tests/test_strict_projection_publisher.py",
+              "tests/test_strict_projection.py",
+              "tests/test_strict_projection_recovery.py",
+              "tests/test_mcp_openclaw_strict.py",
+              "tests/test_strict_snapshot_revocation.py",
+              "tests/test_openclaw_lifecycle_config.py",
+              "tests/test_openclaw_connector_contract.py",
+              "tests/test_openclaw_activation_controller.py",
+              "tests/test_openclaw_activation_supervisor.py",
+              "tests/test_openclaw_strict_packet_contract.py"
+            ],
+            "suite": "strict_python"
+          },
+          {
+            "counts": {
+              "collected": 116,
+              "error": 0,
+              "failed": 0,
+              "passed": 115,
+              "skipped": 1
+            },
+            "deselections": [
+              "tests/test_agent_run_ledger.py::test_v8_kiro_hook_adapter_fail_open",
+              "tests/test_agent_run_ledger.py::test_v6_git_facts_non_git_cwd",
+              "tests/test_agent_run_ledger.py::test_q7_hook_failure_writes_stderr",
+              "tests/test_agent_run_ledger.py::test_q4_hook_two_missing_id_starts_same_cwd"
+            ],
+            "junit_path": "/fixture/evidence/pytest-legacy-junit.xml",
+            "selector_files": [
+              "tests/test_site_filter.py",
+              "tests/test_milestone_c.py",
+              "tests/test_agent_run_ledger.py",
+              "tests/test_query_ledger_lookup.py",
+              "tests/test_query_search_harden.py",
+              "tests/test_ledger_related.py",
+              "tests/test_unresolved_payload.py",
+              "tests/test_file_generation_store.py",
+              "tests/test_file_generation_validate.py",
+              "tests/test_governed_recovery_and_writers.py",
+              "tests/test_governed_writer_gate.py",
+              "tests/test_shadow_writer_coverage_scan.py",
+              "tests/test_provenance.py",
+              "tests/test_provenance_continuity.py"
+            ],
+            "suite": "legacy_python"
+          }
+        ]
+      }
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-run2-final/fixture-evidence/fixture-manifest.json",
+      "sha256": "7c5fff027e710853bc0285b22d5ca6c25fb73203e1862530a239bcb116840dfe",
+      "data": {
+        "schema": "convmem.strict-fixture-manifest.v1",
+        "source_tree_sha256": "sha256:9046cdbde584761650b887187ffe3a13e371e57a53f978f4325d9e7fec2d4d1f",
+        "test_runtime_tree_sha256": "sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b"
+      }
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-run2-final/fixture-evidence/pytest-strict-junit.xml",
+      "sha256": "21c473456655280af131b41421ce04afd7adc8f93ada2fce55fcc16f221ea83e",
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "0",
+          "tests": "238",
+          "time": "4.097",
+          "timestamp": "2026-09-24T09:25:52.822910+00:00",
+          "hostname": "archlinux"
+        }
+      ],
+      "selected_cases": [
+        "test_missing_grounding_weakens_without_reject",
+        "test_original_admission_blocks_late_upgrade",
+        "test_original_admission_rejects_contradictory_cold_drift",
+        "test_registered_ancestor_missing_grounding_weakens_child",
+        "test_cas_compares_entire_publication_payload_not_generation_name",
+        "test_rollback_refuses_foreign_authority_and_does_not_renew_expiry",
+        "test_production_start_refuses_runtime_not_qualified",
+        "test_case53_peer_forgery_denied",
+        "test_case55_runtime_denied_private_paths_pre_activation"
+      ]
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-run2-final/fixture-evidence/pytest-legacy-junit.xml",
+      "sha256": "1867cb99c02372f6f5d0efab268d58403e12826742b431b1deee98aadb65e792",
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "1",
+          "tests": "116",
+          "time": "23.813",
+          "timestamp": "2026-09-24T09:25:57.655147+00:00",
+          "hostname": "archlinux"
+        }
+      ],
+      "selected_cases": [
+        "test_retained_rollback_baseline_permits_canary_staging_without_deletion"
+      ]
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-run2-final/fixture-evidence/pytest-node-outcomes.json",
+      "sha256": "f1d01f0c0da0987c42186e8417f2ad0c3fdef807c9ee9696fa3cc7ecf93d7fcc",
+      "data": {
+        "schema": "convmem.pytest-node-outcomes.v1",
+        "full_repository_discovery": false,
+        "suites": [
+          {
+            "counts": {
+              "collected": 238,
+              "error": 0,
+              "failed": 0,
+              "passed": 238,
+              "skipped": 0
+            },
+            "deselections": [],
+            "junit_path": "/fixture/evidence/pytest-strict-junit.xml",
+            "selector_files": [
+              "tests/test_bound_read_scope.py",
+              "tests/test_strict_grounding.py",
+              "tests/test_strict_evidence_state.py",
+              "tests/test_strict_projection_publisher.py",
+              "tests/test_strict_projection.py",
+              "tests/test_strict_projection_recovery.py",
+              "tests/test_mcp_openclaw_strict.py",
+              "tests/test_strict_snapshot_revocation.py",
+              "tests/test_openclaw_lifecycle_config.py",
+              "tests/test_openclaw_connector_contract.py",
+              "tests/test_openclaw_activation_controller.py",
+              "tests/test_openclaw_activation_supervisor.py",
+              "tests/test_openclaw_strict_packet_contract.py"
+            ],
+            "suite": "strict_python"
+          },
+          {
+            "counts": {
+              "collected": 116,
+              "error": 0,
+              "failed": 0,
+              "passed": 115,
+              "skipped": 1
+            },
+            "deselections": [
+              "tests/test_agent_run_ledger.py::test_v8_kiro_hook_adapter_fail_open",
+              "tests/test_agent_run_ledger.py::test_v6_git_facts_non_git_cwd",
+              "tests/test_agent_run_ledger.py::test_q7_hook_failure_writes_stderr",
+              "tests/test_agent_run_ledger.py::test_q4_hook_two_missing_id_starts_same_cwd"
+            ],
+            "junit_path": "/fixture/evidence/pytest-legacy-junit.xml",
+            "selector_files": [
+              "tests/test_site_filter.py",
+              "tests/test_milestone_c.py",
+              "tests/test_agent_run_ledger.py",
+              "tests/test_query_ledger_lookup.py",
+              "tests/test_query_search_harden.py",
+              "tests/test_ledger_related.py",
+              "tests/test_unresolved_payload.py",
+              "tests/test_file_generation_store.py",
+              "tests/test_file_generation_validate.py",
+              "tests/test_governed_recovery_and_writers.py",
+              "tests/test_governed_writer_gate.py",
+              "tests/test_shadow_writer_coverage_scan.py",
+              "tests/test_provenance.py",
+              "tests/test_provenance_continuity.py"
+            ],
+            "suite": "legacy_python"
+          }
+        ]
+      }
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-m8-cross-run/cross-run-verification.json",
+      "sha256": "2db86ea80a8a035d1eb6cc403a47fe6843a25d70ed596b044ba06bc21e7a5847",
+      "data": {
+        "schema": "convmem.m11-m8-cross-run-verification.v1",
+        "status": "PASS",
+        "source_commit": "9c6421a6891fd8a861a51f4fed410f541b53148c",
+        "run_labels": [
+          "m11-m8-run1-final",
+          "m11-m8-run2-final"
+        ],
+        "exact_canonical_node_outcomes_equal": true,
+        "exact_fixture_manifests_equal": true,
+        "normalized_audit_contract_equal": true,
+        "canonical_node_outcomes_sha256": "sha256:f1d01f0c0da0987c42186e8417f2ad0c3fdef807c9ee9696fa3cc7ecf93d7fcc",
+        "fixture_manifest_sha256": "sha256:7c5fff027e710853bc0285b22d5ca6c25fb73203e1862530a239bcb116840dfe",
+        "normalized_audit_sha256": "sha256:4e46b6883871cff7739b4ed6010723eaca127f4787c14947ab8f4e5185f2235f",
+        "counts": {
+          "strict_passed": 238,
+          "node_passed": 29,
+          "legacy_passed": 115,
+          "legacy_skipped": 1,
+          "legacy_deselected": 4
+        },
+        "runtime_hash": "sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b",
+        "real_openclaw_executed": false
+      }
+    },
+    {
+      "path": "/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a/runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-legacy-mcp-regressions/m11-legacy-mcp-junit.xml",
+      "sha256": "d6726209aab1a93392eec068230fcef85849d98cf7aa856a7002ff5a31498542",
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "0",
+          "tests": "60",
+          "time": "6.600",
+          "timestamp": "2026-09-24T09:29:30.090380+00:00",
+          "hostname": "archlinux"
+        }
+      ]
+    }
+  ],
+  "remote_identity_checks": [
+    "gh api repos/alanmz-crypto/convmem/git/ref/heads/plan/2026-09-24-openclaw-convmem-m11-pylint-remediation",
+    "gh api repos/alanmz-crypto/convmem/git/ref/heads/feat/2026-09-23-openclaw-convmem-m11-integration",
+    "git ls-remote origin refs/heads/feat/2026-09-23-openclaw-convmem-m11-integration refs/heads/plan/2026-09-24-openclaw-convmem-m11-pylint-remediation"
+  ],
+  "archive_branch": "docs/2026-09-24-astra-stage1-supersession-closeout",
+  "limits": [
+    "Normative contracts and selected source were inspected; this is not a complete current-tip conformance audit.",
+    "Retained test records were parsed and hashed; no suites were rerun.",
+    "Only the successor source and normative plans were used for supersession; the original Stage 2 packet remains unopened.",
+    "F4/F5 actual runtime qualification and F6 production ingestion remain explicit existing gates.",
+    "Original Stage 1 seal is integrity evidence, not an authorization signature."
+  ]
+}

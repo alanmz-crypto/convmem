@@ -1,0 +1,27 @@
+{
+  "schema": "astra.stage1-review-seal.v1",
+  "arc": "none (ad-hoc integration)",
+  "target_commit": "9b106b908b944f8bd4c3f417b576dc13884f2503",
+  "source_bundle_sha256": "257e5df8bb166a9f02517f78e80e56504ce7c71d4d09acf381fe711570775d47",
+  "report": "STAGE-1-REVIEW.md",
+  "report_sha256": "fc402286dbb720f3752613e3fe982c4542b168eda9609416b1dd4c51eff5c979",
+  "sealed_at_utc": "2026-09-21T00:54:03.761394+00:00",
+  "independence": "partially contaminated by current-plan administrative history; Stage2 not read",
+  "stage2_semantically_inspected": false,
+  "initial_integrity_safety": "blocked",
+  "initial_incremental_value": "unproven",
+  "initial_build_gate": "blocked",
+  "initial_test_gate": "proceed only disposable offline fixtures/fakes; recommendation not authorization",
+  "initial_live_data_gate": "blocked",
+  "initial_promotion_gate": "blocked",
+  "validated_findings": [
+    "F1 authority continuity and rollback",
+    "F2 partial-graph false pass",
+    "F3 provenance grounding mismatch",
+    "F4 lifecycle/control incompleteness",
+    "F5 ambient activation inputs",
+    "F6 approved-ingestion invariant mismatch"
+  ],
+  "next_required_input": "Message 2",
+  "execution_authorized": false
+}
