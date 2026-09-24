@@ -1,8 +1,9 @@
 # Milestone Execution Plan — ConvMem–OpenClaw
 
-**Status:** M0–M8 BOUNDED GATE B/C ACCEPTED AT `8010fb0`. M11 CURRENT-MAIN
-RECONCILIATION READY FOR KIRO EXACT-TIP REVIEW, THEN RYAN'S INTEGRATION
-DECISION. Implementation, testing, merge and runtime work are paused.
+**Status:** M0–M8 BOUNDED GATE B/C ACCEPTED AT `8010fb0`. M11 REPLAY/PINNING
+PRESERVED AT `a11b7a2`; REVIEWED-PLAN ALLOWLIST CORRECTION READY FOR KIRO
+EXACT-TIP REVIEW, THEN A NEW RYAN RESUME DECISION. Product/test correction,
+M8 retry, merge and runtime work are paused.
 
 **Arc:** ConvMem Switchboard
 
@@ -11,13 +12,15 @@ DECISION. Implementation, testing, merge and runtime work are paused.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=9a7891fd580cbaee2e13a8683e84a307443a00e6
+SEMANTIC_PARENT_SHA=d5f986f02c9c463c1019dffed1c6de40d5f59c11
 ORIGINAL_CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
 ACCEPTED_IMPLEMENTATION_SHA=8010fb060c2edc29e1b09d7a30b1a1da2689d489
 INTEGRATION_BASELINE_SHA=9193f5ec744f059d07a20612489b210527b5660a
 PROPOSED_IMPLEMENTATION_BRANCH=feat/2026-09-23-openclaw-convmem-m11-integration
-PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/9a7891fd580cbaee2e13a8683e84a307443a00e6/9193f5ec744f059d07a20612489b210527b5660a
-PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/9a7891fd580cbaee2e13a8683e84a307443a00e6/9193f5ec744f059d07a20612489b210527b5660a
+PRESERVED_INTEGRATION_TIP=a11b7a2a793c68e4e6e83c2680b077389a817c5c
+RECONCILIATION_BASE_OVERLAY_SHA=581de2abf430786a36f2612f97c623a19b61353f
+PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a
+PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/d5f986f02c9c463c1019dffed1c6de40d5f59c11/9193f5ec744f059d07a20612489b210527b5660a
 ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
 ```
@@ -33,7 +36,7 @@ interface, error, limit, identity, test case, and allowed path. This overlay
 does not replace, loosen, or reinterpret them. A conflict stops work and goes
 to Codex/Kiro; Grok must not choose between readings. M0–M8 proved only the
 parent's synthetic T0–T5 Gate B/C fixture on the original baseline. M11 must
-reconstruct and re-prove that exact implementation on the integration baseline
+preserve and re-prove that exact implementation on the integration baseline
 before merge readiness. Gate D real
 runtime, Gate W governed writes, Gate D-V value evaluation, Gate E pilot/live
 use, Gate F expansion, watch configuration, and promotion remain separately
@@ -42,8 +45,9 @@ blocked.
 The runner's single `--plan-sha` is always `SEMANTIC_PARENT_SHA`. The overlay
 SHA is the exact final branch tip Kiro reviews and Ryan later names as
 `REVIEWED_OVERLAY_SHA`; it is not substituted into the parent's runner
-contract. The future implementation branch starts at that reviewed overlay
-tip, whose non-plan bytes must equal `INTEGRATION_BASELINE_SHA`.
+contract. The final overlay descends from `SEMANTIC_PARENT_SHA`; the preserved
+implementation branch receives the exact two plan commits after Kiro PASS and
+a new Ryan grant. It is not recreated from the overlay.
 
 Ryan's R-PROFILE-REFUSAL ruling ratifies the baseline selector normalization
 `(value or "").strip().lower()`. When the semantic parent does not explicitly
@@ -92,23 +96,29 @@ Review and authority order is mandatory:
    baseline audit found that current main `9193f5e` and the accepted
    implementation require explicit reconstruction and new evidence; Codex
    issued `PAUSE` rather than silently rebasing.
-6. Ryan authorized this plan-only reconciliation from current main. Kiro must
-   review this exact parent/overlay and report binary design/scope `PASS` or
-   `FAIL`.
-7. Ryan may then grant only the frozen M11 reconstruction by naming the parent,
-   overlay, original baseline, accepted implementation, integration baseline,
-   proposed branch, runtime prefix and durable evidence root frozen above.
-   Silence or any old grant is not authorization.
+6. Kiro reviewed the current-main reconciliation overlay `581de2a`; Ryan
+   authorized M11. The exact 45-commit replay and pin/comment reconciliation
+   were completed, held, inspected and preserved at `a11b7a2`.
+7. The first fresh M8 attempt stopped before source export, imports or tests:
+   the outer runner reported the four reviewed plan/STATUS paths as product
+   allowlist violations. Codex retained the evidence and issued `PAUSE`.
+8. Ryan authorized only this two-commit plan correction from `581de2a`.
+   `SEMANTIC_PARENT_SHA` is its architecture/execution/STATUS commit; Kiro must
+   review the final overlay tip and report binary design/scope `PASS` or `FAIL`.
+9. Ryan may then grant only the frozen preserved-branch correction and retry by
+   naming the parent, overlay, preserved tip/branch, integration baseline,
+   runtime prefix and durable evidence root frozen here. Silence, the earlier
+   M11 grant or any old `CONTINUE` is not authorization.
 
 ## 1. State ledger
 
 | State | Items |
 |---|---|
-| **Specified** | Parent Architecture §§4, 6–15, 17–18 and Execution §§2–10; strict reader and T0–T5 cases 1–58; Architecture §18.7 and Execution §10.5 exact current-main reconstruction, pin reconciliation, runtime/evidence rebinding and merge-readiness evidence. |
-| **Implemented** | Bounded implementation branch `feat/2026-09-21-openclaw-convmem-t0-t5` is accepted at `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. No current-main reconstruction has begun. This plan does not certify a future integrated tree. |
-| **Tested** | M0–M8 Gate B/C passed twice at the accepted tip with 238 strict passes, 29 Node passes, and 115 legacy passes plus one skip and four deselections; exact node/outcome and durable evidence were accepted, followed by Kiro exact-tip conformance PASS. Current-main reconstruction, new M8 runs, seven legacy MCP regressions and Pylint have not run. |
+| **Specified** | Parent Architecture §§4, 6–15, 17–18 and Execution §§2–10; strict reader and T0–T5 cases 1–58; Architecture §§18.7–8 and Execution §§10.5–6 exact reconstruction, reviewed-plan control-plane validation, preserved-branch correction, runtime/evidence rebinding and merge-readiness evidence. |
+| **Implemented** | Bounded implementation is accepted at `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. Current-main replay and pin/comment reconciliation are preserved, clean and pushed at `a11b7a2a793c68e4e6e83c2680b077389a817c5c`. The reviewed-plan allowlist correction is not implemented. |
+| **Tested** | M0–M8 Gate B/C passed twice at the accepted historical tip with 238 strict passes, 29 Node passes, and 115 legacy passes plus one skip and four deselections; exact node/outcome and durable evidence were accepted, followed by Kiro exact-tip conformance PASS. On the preserved M11 tip, the outer runner stopped before source export/import/tests on the four plan paths. No fresh M8 run, seven-file MCP regression or Pylint result exists. |
 | **Assumed** | No unavailable runtime or host capability is assumed. The historical runtime tree hash is `sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`, but reuse requires Codex to rebind and independently inventory it at the exact new parent/baseline path under a new Ryan grant. |
-| **Unresolved** | Kiro exact-tip review and a new Ryan integration grant block M11 reconstruction. That grant must confirm the exact proposed branch, runtime prefix and durable evidence root frozen in §0. Later blockers remain Gate D authentication/distribution/containment and current OpenClaw qualification; Gate W production admission; Gate D-V; Gate E; Gate F/capture; watch activation; live data, merge, deployment and promotion. None becomes Grok work. |
+| **Unresolved** | Kiro exact-tip review and a new Ryan resume grant block applying the two plan commits, the twelve-path correction and any M8 retry. That grant must confirm the exact parent/overlay, preserved tip/branch, runtime prefix and durable evidence root frozen in §0. Later blockers remain Gate D authentication/distribution/containment and current OpenClaw qualification; Gate W production admission; Gate D-V; Gate E; Gate F/capture; watch activation; live data, merge, deployment and promotion. None becomes Grok work. |
 
 ## 2. Dependency order
 
@@ -124,9 +134,12 @@ M0 baseline/runtime input
   → M6 T5 fake controller/manager/supervisor
   → M7 bounded evidence package
   → M8 final isolated adversarial runs and bounded TEST PASS [accepted]
-  → M11a current-main plan reconciliation and exact-tip Kiro hold
-  → Ryan exact integration grant
-  → M11b clean reconstruction, fresh evidence and integration review
+  → M11a current-main plan reconciliation, review and Ryan grant [complete]
+  → M11b exact replay and pin/comment reconciliation [preserved at a11b7a2]
+  → M11c pre-test allowlist PAUSE [observed; no test ran]
+  → M11d two-commit allowlist plan correction and exact-tip Kiro hold
+  → Ryan exact resume grant
+  → M11e apply plans, bounded correction, fresh evidence and integration review
   → Ryan merge decision
 
 M8 → M9 Gate W ─┐
@@ -137,10 +150,11 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 M0–M8 are accepted historical scope; they are neither reopened nor promoted to
 the integration baseline. M9, M10, watch coverage, and complete-system review
 remain decision gates, not Grok work. The only possible next implementation is
-M11b under a new grant after Kiro PASS on this exact plan. It replays the
-accepted commits and re-runs the accepted evidence; it does not redesign or
-reimplement M0–M8. Any need to depart from the frozen reconstruction is
-`PAUSE`, not inferred scope.
+M11e under a new grant after Kiro PASS on this exact plan. It applies the two
+reviewed plan commits to the preserved branch, performs the frozen twelve-path
+correction, and only then re-runs the accepted evidence; it does not recreate
+the branch, replay the 45 commits again, or redesign/reimplement M0–M8. Any need
+to depart from the frozen correction is `PAUSE`, not inferred scope.
 
 ## 3. Milestones
 
@@ -633,96 +647,102 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
 
 ### M11 — Final conformance review and documentation
 
-1. **Name and purpose:** Reconstruct the accepted bounded implementation on the
-   reviewed current-main baseline and decide merge readiness without promoting
-   its synthetic verdict into real OpenClaw or production authority.
-2. **Architectural outcome:** A clean integration tree starts at
-   `REVIEWED_OVERLAY_SHA`, whose product state is rooted at
-   `INTEGRATION_BASELINE_SHA` and whose only baseline delta is the four reviewed
-   plan/status documents. It then contains the exact accepted 45-commit product
-   history plus only the parent-frozen pin/comment reconciliation. Fresh
-   evidence, not historical inference, proves that tree. No T0–T5 contract or
-   current-main-owned product byte changes.
-3. **Affected surfaces:** `PROPOSED_IMPLEMENTATION_BRANCH` in a separate
-   worktree; the exact path set introduced or modified by
-   `ORIGINAL_CODE_BASELINE_SHA..ACCEPTED_IMPLEMENTATION_SHA`; only the two pin
-   files and nine comment/docstring files enumerated in parent Architecture
-   §18.7 may differ from that accepted delta. The four plan/status documents
-   must remain byte-identical to `REVIEWED_OVERLAY_SHA`. Runtime and evidence writes are
-   limited to `PROPOSED_RUNTIME_PREFIX` and
-   `PROPOSED_DURABLE_EVIDENCE_ROOT`.
-4. **Preconditions/dependencies:** M0–M8 accepted; exact-tip Kiro PASS on parent
-   `SEMANTIC_PARENT_SHA` and final `REVIEWED_OVERLAY_SHA`; a new Ryan grant naming both plus
-   `ORIGINAL_CODE_BASELINE_SHA`, `ACCEPTED_IMPLEMENTATION_SHA`,
-   `INTEGRATION_BASELINE_SHA`, `PROPOSED_IMPLEMENTATION_BRANCH`,
-   `PROPOSED_RUNTIME_PREFIX`, and `PROPOSED_DURABLE_EVIDENCE_ROOT`. Codex alone
-   creates the branch/worktree and provisions/rebinds the runtime. None is
-   inferred from earlier grants.
-5. **Implementation tasks:** Codex verifies `REVIEWED_OVERLAY_SHA` descends from
-   `INTEGRATION_BASELINE_SHA`, differs in exactly the four authorized plan/status
-   documents, and leaves every non-plan byte identical. Codex then creates and
-   pushes the fresh implementation branch/worktree at `REVIEWED_OVERLAY_SHA`.
-   Grok cherry-picks, in order and without merge commits, exactly
-   `2f05a8540b9155346f313d7b2eea6300fec29350^..8010fb060c2edc29e1b09d7a30b1a1da2689d489`;
-   any conflict is `PAUSE`, not a Grok resolution. Grok then makes one held
-   correction containing only the exact SHA literals/assertions and nine
-   comment/docstring paths in Architecture §18.7, pushes with an explicit
-   refspec, and stops. Codex performs tree equivalence, provisions the frozen
-   runtime, runs evidence, and hands the exact tip to Kiro. Grok does not run
-   real OpenClaw or choose integration behavior.
-6. **Tests/evidence:** Codex proves overlay ancestry and its exact four-document
-   delta; proves the replay commit count/order and exact path set; proves the
-   reviewed plan/status blobs unchanged; proves every other current-main-owned
-   path byte-identical to `INTEGRATION_BASELINE_SHA` unless in the accepted
-   product delta or allowed pin/comments; and proves the replayed product delta
-   equal to the accepted old-baseline delta except for those allowances. At one
-   clean pushed source commit, run the unchanged isolated M8 suite twice from
-   fresh roots with `--plan-sha SEMANTIC_PARENT_SHA`, preserving 238 strict
-   passes, 29 Node passes, 115 legacy passes, one legacy skip and four exact
-   deselections plus identical canonical nodes/outcomes and all case/component
-   evidence. Separately run in the reviewed disposable environment:
-   `tests/test_ask_trace.py`, `tests/test_mcp_after_tier_a.py`,
-   `tests/test_mcp_crush_stdio_sequence.py`,
-   `tests/test_mcp_rerank_scores.py`, `tests/test_mcp_roots_probe.py`,
-   `tests/test_mcp_shell_profile.py`, and `tests/test_mcp_site.py`; require the
-   unchanged `.github/workflows/pylint.yml` Pylint regression gate. Retain raw
-   commands/output, exact collection/outcomes, runtime inventory/mutation
-   checks, source/component hashes and staging-to-durable hash mappings.
-7. **Invariants:** Agents propose; Ryan locks. T0–T5 semantics, three-tool
-   surface, authority/provenance/state/publication rules, frozen runner and
-   original accepted evidence remain unchanged. Current-main product work and
-   the exact reviewed reconciliation documents are preserved.
-   Only Ryan merges, activates, configures, admits live data, or promotes.
-8. **Forbidden changes:** Silent rebase or ordinary merge; conflict resolution;
-   commit selection/drop/squash/edit; new or omitted product paths; schema,
-   dependency, permission, selector, deselection, test, behavior or runtime
-   changes; host-runtime evidence; self-approval; real OpenClaw action; merge,
-   activation, live config/data, evidence deletion, or broader PASS claims.
-9. **Done:** M11 plan-ready means Kiro PASS on this exact reconciliation.
-   Reconstruction-ready additionally requires the exact Ryan grant and runtime/
-   evidence destinations. Merge-ready means a clean pushed integration tip,
-   tree-equivalence proof, rebound runtime PASS, two fresh M8 PASSes, all seven
-   MCP regressions, Pylint PASS, durable evidence verification and Kiro exact-tip
-   conformance PASS. Complete-integration remains separately blocked on Gate
-   D/W/D-V/E and later promotion gates.
-10. **Ryan confirmation:** Mandatory before reconstruction, runtime provisioning
-    at `PROPOSED_RUNTIME_PREFIX`, confirmation of
-    `PROPOSED_DURABLE_EVIDENCE_ROOT`, PR/merge, activation, real
-    OpenClaw update/use, live data, deployment or promotion. Routine exact replay
-    under the later grant needs no per-commit Ryan approval but remains held by
-    Codex statuses.
-11. **Live inspection:** Codex inspects overlay ancestry/four-document delta,
-    branch base, each replayed commit/order, conflicts, complete changed-file/
-    path sets, plan blob preservation, pin/comment correction, current-main byte
-    preservation, dependencies, schemas/data, permissions, runtime
-    inventory/mutation state, both M8 outputs, legacy MCP/Pylint output, evidence
-    copies, commits/push and every unsupported claim. Grok stops after replay and
-    reconciliation checkpoints. Kiro reviews the exact integrated tip and
-    evidence before Ryan sees any merge recommendation.
+1. **Name and purpose:** Reconcile the reviewed-plan allowlist at the preserved
+   M11 checkpoint, then decide merge readiness without promoting a synthetic
+   verdict into real OpenClaw or production authority.
+2. **Architectural outcome:** `PROPOSED_IMPLEMENTATION_BRANCH` remains rooted at
+   `INTEGRATION_BASELINE_SHA` and preserves the exact accepted 45-commit replay
+   plus pin/comment reconciliation at `PRESERVED_INTEGRATION_TIP`. The exact four
+   reviewed plan/STATUS blobs are validated as M11 control-plane inputs, removed
+   only from the product-delta allowlist check, and remain inside the complete
+   source export, source inventory and `source_tree_sha256`. Every product
+   allowlist and T0–T5 semantic remains unchanged.
+3. **Affected surfaces:** First, exactly the two plan commits in
+   `RECONCILIATION_BASE_OVERLAY_SHA..REVIEWED_OVERLAY_SHA` are applied to the
+   preserved implementation branch; their combined delta is exactly the four
+   reviewed documents. Second, one correction commit may change only
+   `tests/fixtures/openclaw_strict/allowlist.py`,
+   `tests/fixtures/openclaw_strict/constants.py`,
+   `tests/test_openclaw_strict_packet_contract.py`, and the nine parent/overlay
+   comment/docstring paths named in parent Architecture §18.8. Runtime and
+   evidence writes remain limited to `PROPOSED_RUNTIME_PREFIX` and
+   `PROPOSED_DURABLE_EVIDENCE_ROOT` after a new grant.
+4. **Preconditions/dependencies:** M0–M8 accepted; replay/pin checkpoint clean,
+   pushed and exactly `PRESERVED_INTEGRATION_TIP`; Kiro PASS on
+   `SEMANTIC_PARENT_SHA` and final `REVIEWED_OVERLAY_SHA`; and a new Ryan resume
+   grant naming both, `INTEGRATION_BASELINE_SHA`, the preserved tip/branch,
+   `PROPOSED_RUNTIME_PREFIX`, `PROPOSED_DURABLE_EVIDENCE_ROOT`, the twelve-path
+   correction and M8 retry authority. Codex alone rebinds/provisions the runtime.
+   None is inferred from the earlier M11 or M8 grants.
+5. **Implementation tasks:** Codex verifies the preserved branch tip, worktree and
+   upstream. Grok cherry-picks, in order without merge/squash/edit, exactly the
+   semantic-parent commit and final overlay commit after
+   `RECONCILIATION_BASE_OVERLAY_SHA`, pushes and stops. Codex proves the exact
+   four-blob delta and issues a commit-specific `CONTINUE`. Grok then adds the
+   separate exact `M11_CONTROL_PLANE_INPUTS` and
+   `M11_REVIEWED_OVERLAY_SHA`, repins `SEMANTIC_PARENT_SHA`, implements exact
+   regular-blob/mode comparison and `P = D - C` before the unchanged product
+   allowlist, adds only the frozen packet tests, updates only the nine identifier
+   comments/docstrings, pushes and stops. Codex performs every comparison and
+   runtime/evidence action; Grok does not choose integration behavior.
+6. **Tests/evidence:** Before any retry, Codex proves: the plan range is exactly
+   two commits; the first is `SEMANTIC_PARENT_SHA`; its combined delta is the
+   exact four documents; each source blob/mode equals
+   `REVIEWED_OVERLAY_SHA:path`; every non-plan byte initially equals
+   `PRESERVED_INTEGRATION_TIP`; the correction touches exactly twelve paths;
+   every product allowlist/schema/selector/deselection/dependency/permission/
+   runtime literal is unchanged; negative packet cases reject missing,
+   extra-classified, unavailable, non-regular and mismatched blobs; a fifth plan
+   path fails the product allowlist; Gate W still fails; and all four documents
+   appear in source export/inventory/hash coverage. Under the new retry grant,
+   run M8 twice from fresh roots with `--plan-sha SEMANTIC_PARENT_SHA`, preserving
+   238 strict passes, 29 Node passes, 115 legacy passes, one legacy skip, four
+   exact deselections, identical canonical nodes/outcomes and complete source/
+   component evidence. Separately run the seven exact legacy MCP files and
+   unchanged Pylint gate from §10.5, retaining raw commands/output, runtime
+   inventory/mutation checks and staging-to-durable hash mappings.
+7. **Invariants:** Agents propose; Ryan locks. The four reviewed documents are
+   control-plane inputs only after exact blob/mode validation; they remain
+   hashed source inputs. `EDIT_ALLOWLIST_EXACT`, `EDIT_ALLOWLIST_PREFIXES`,
+   `SCHEMA_ALLOWLIST`, `path_allowed()`, Gate-W denial, T0–T5 semantics,
+   three-tool surface, authority/provenance/state/publication, runner CLI and
+   original accepted evidence remain unchanged. Only Ryan merges, activates,
+   configures, admits live data or promotes.
+8. **Forbidden changes:** Adding a plan/status path to a product allowlist;
+   wildcard/prefix/directory exclusion; removing a reviewed document from source
+   export/inventory/hash; worktree-byte or test-derived fallback; branch
+   recreation, re-replay, rebase, merge, conflict resolution, history rewrite,
+   commit selection/drop/squash/edit; a thirteenth correction path; schema,
+   dependency, permission, selector, deselection, selected-test logic, product
+   behavior or runtime change; M8 retry under an old grant; host-runtime evidence;
+   self-approval; real OpenClaw action; merge, activation, live config/data,
+   evidence deletion or broader PASS claim.
+9. **Done:** Plan-ready means Kiro PASS on this exact semantic parent and final
+   overlay. Correction-ready additionally requires the exact Ryan resume grant.
+   Retry-ready requires the two plan commits applied, exact four-blob proof, the
+   bounded correction pushed, twelve-path/product-constant/source-inventory
+   proof and Codex `CONTINUE`. Merge-ready requires rebound runtime PASS, two
+   fresh M8 PASSes, all seven MCP regressions, Pylint PASS, durable-evidence
+   verification and Kiro exact-tip conformance PASS. Complete integration remains
+   blocked on Gate D/W/D-V/E and later promotion gates.
+10. **Ryan confirmation:** Mandatory before applying the plan commits, making the
+    bounded product/test correction, runtime provisioning at
+    `PROPOSED_RUNTIME_PREFIX`, any M8 retry, using
+    `PROPOSED_DURABLE_EVIDENCE_ROOT`, PR/merge, activation, real OpenClaw
+    update/use, live data, deployment or promotion. Routine work inside each
+    held-and-cleared checkpoint needs no additional Ryan approval.
+11. **Live inspection:** Codex inspects the preserved branch tip/upstream, exact
+    two plan commits, four document blobs/modes, every non-plan byte, correction
+    path set/diff, product allowlist literals, negative contract tests,
+    source-export/inventory/hash membership, dependencies, schemas/data,
+    permissions, runtime inventory/mutation state, both M8 outputs, legacy
+    MCP/Pylint output, durable copies, commits/push and every unsupported claim.
+    Grok stops after plan application and after the correction. Kiro reviews the
+    exact integrated tip and evidence before Ryan sees a merge recommendation.
 12. **Verdict:** Separate verdicts remain mandatory: ConvMem; connector/protocol
-    fake (not real OpenClaw); reconstructed bounded integration; and later real
-    OpenClaw/pilot/production. A merge-readiness PASS changes none of the blocked
-    later verdicts.
+    fake (not real OpenClaw); corrected reconstructed bounded integration; and
+    later real OpenClaw/pilot/production. A merge-readiness PASS changes none of
+    the blocked later verdicts.
 
 ## 4. Milestone acceptance checklist
 
@@ -740,11 +760,13 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
 - [x] M8 exact runner passes twice; bounded TEST PASS accepted at `8010fb0`.
 - [ ] M9 Gate W and Gate D remain separately BLOCKED pending packets/grants.
 - [ ] M10 remains BLOCKED until exact 32-run Gate D-V, Gate W, and Gate E.
-- [ ] M11 parent/overlay exact-tip Kiro PASS; Ryan integration grant; exact
-      reconstruction from the reviewed overlay tip over product baseline
-      `9193f5e`; runtime/evidence rebinding; tree proof; two
-      fresh M8 runs; seven legacy MCP tests; Pylint; integrated-tip Kiro PASS;
-      and Ryan merge decision.
+- [x] M11 current-main replay and pin/comment reconciliation preserved at
+      `a11b7a2`; first fresh attempt retained as a pre-test allowlist PAUSE.
+- [ ] M11 new parent/final-overlay exact-tip Kiro PASS; Ryan resume grant; exact
+      two-plan-commit application to the preserved branch; four-blob and full
+      source-inventory proof; twelve-path correction with unchanged product
+      allowlists; runtime/evidence rebinding; two fresh M8 runs; seven legacy MCP
+      tests; Pylint; integrated-tip Kiro PASS; and Ryan merge decision.
 
 ## 5. Required adversarial input/expected/evidence matrix
 
@@ -764,15 +786,18 @@ reimplement M0–M8. Any need to depart from the frozen reconstruction is
 | Corrupt/incomplete state | 44, 49, 52, 58 / B | `STATIC`, fixture-only | Missing/extra/symlinked history member; bad canonical bytes/hash; torn tail; ambiguous rename; omitted protected component | Fail closed; never reconstruct success from incomplete proof or self-consistent wrong inventory | Independent scan/component oracle errors and no served publication |
 | OpenClaw outside authority | 2, 33, 35, 45–48, 53–55, 57 / C fake; 28–36, 38–39, 45–47, 53–55 / D blocked | `FAKE` now; `REAL` blocked | Connector/fake asks for real gateway/provider/model/network/credential/writer/registration/ACP/subagent/channel | Fake path returns fixed refusal before external effect; no statement about real runtime qualification | Injected-port/spawn/network/FD traces show zero forbidden action; D rows remain explicitly untested |
 | ConvMem guarantee weakened | 13, 18, 21–27, 41–44, 49–52, 57–58 / B/C | `STATIC`/`FAKE`, fixture-only | Remove scope ceiling, terminal precedence, approval separation, provenance binding, protected helper, private/public boundary, or manager emptiness check | Independent negative control fails; unmodified implementation remains green | Each enforcement-removal mutant is red against a reference-owned expected result |
+| Reviewed-plan substitution | Architecture §18.8 / M11 only | `STATIC`, pre-import control plane | Omit one of the four reviewed paths; change one blob or mode; classify a fifth plan path; use an unavailable overlay commit or non-regular entry | Fail before runtime verification, source export, integration import or tests; no fallback and no widening of the product allowlist | Packet negatives plus independent `git ls-tree`/blob-ID proof; exact four reviewed documents still appear in exported source inventory and source-tree hash |
 
 ## 6. Live-supervision protocol
 
 **Codex is the mandatory live supervisor.** The M0–M8 holds are complete and
-remain historical evidence. In M11 Grok must stop before replay if any cherry-
-pick conflicts, then commit/push/report and stop after the exact 45-commit
-replay, and commit/push/report and stop again after the pin/comment correction.
-Testing starts only after Codex issues a written `CONTINUE` citing the exact
-corrected pushed commit. The supervisor may issue only:
+remain historical evidence; the 45-commit replay and pin/comment holds are also
+complete at the preserved tip. In the correction, Grok must commit/push/report
+and stop after applying the exact two plan commits, then commit/push/report and
+stop again after the exact twelve-path change. Testing starts only after Codex
+proves control-plane blobs, unchanged product allowlists and source-inventory
+membership and issues a written `CONTINUE` citing the exact corrected pushed
+commit. The supervisor may issue only:
 
 - `CONTINUE` — exact plan conformance and required evidence are present.
 - `CORRECT` — an implementation defect can be fixed within the frozen contract.
@@ -780,12 +805,12 @@ corrected pushed commit. The supervisor may issue only:
   boundary is unclear or changed; no further work until resolved.
 - `REQUIRE TEST` — a required specified test/evidence item is missing.
 
-Current status is `PAUSE` before M11 reconstruction. Ryan's plan-only grant
-authorizes these document changes but no branch replay, runtime provisioning,
-test execution or merge. Exact-tip Kiro PASS plus a new Ryan integration grant
-clears only the plan/authority hold. Codex then creates the exact branch and
-worktree and issues a commit-specific start status. No earlier `CONTINUE`, M8
-grant or acceptance can be reused.
+Current status is `PAUSE` after the outer allowlist refusal and before applying
+the revised plans. Ryan's plan-only grant authorizes only these four document
+changes: no product/test correction, M8 retry, runtime action or merge. Exact-tip
+Kiro PASS plus a new Ryan resume grant clears only the named checkpoints. Codex
+verifies the already-preserved branch/worktree; it does not recreate or replay
+them. No earlier `CONTINUE`, M8 grant or M11 grant can be reused.
 
 Before every `CONTINUE`, Codex inspects current diff, complete changed-file
 list, commit and push state, raw runner output including declared future-T
@@ -804,11 +829,12 @@ grant condition additionally requires a new Ryan grant before Codex may issue
 
 Grok must predeclare and report every command it runs outside the runner.
 Outside-runner commands are limited to repository/worktree inspection, the
-single exact cherry-pick range in M11, commit/push, and `git diff --check`; Grok
-may not execute integration code or provision the runtime. Codex owns the tree
-comparisons, runtime rebinding, two M8 executions, durable evidence collection,
-and separate M11 legacy MCP/Pylint execution in the reviewed disposable
-environment; those checks do not alter bounded runner selection.
+exact two-commit plan cherry-pick, the bounded twelve-path edit, commit/push and
+`git diff --check`; Grok may not execute integration code or provision the
+runtime. Codex owns blob/tree comparisons, source-inventory proof, runtime
+rebinding, two M8 executions, durable evidence collection, and separate M11
+legacy MCP/Pylint execution in the reviewed disposable environment; those
+checks do not alter bounded runner selection.
 Codex issues `PAUSE` before Grok proceeds on architectural drift,
 invented/changed contract, trust-boundary change, persistent mutation,
 migration, new permission, autonomous behavior, weakened guarantee,
@@ -822,10 +848,10 @@ reapproval.
 Ryan's explicit confirmation naming exact revisions is required before:
 
 - initial T0–T5 implementation;
-- M11 reconstruction on `INTEGRATION_BASELINE_SHA`, including the exact parent,
-  overlay, original baseline, accepted implementation,
-  `PROPOSED_IMPLEMENTATION_BRANCH`, `PROPOSED_RUNTIME_PREFIX`, and
-  `PROPOSED_DURABLE_EVIDENCE_ROOT`;
+- M11 resumption on `PRESERVED_INTEGRATION_TIP`, including applying the exact
+  two reviewed plan commits, the twelve-path correction, the exact parent and
+  overlay, `INTEGRATION_BASELINE_SHA`, `PROPOSED_IMPLEMENTATION_BRANCH`,
+  `PROPOSED_RUNTIME_PREFIX`, `PROPOSED_DURABLE_EVIDENCE_ROOT`, and any M8 retry;
 - supplying/provisioning the exact test runtime or making any host write for it;
 - changing or contradicting Ryan's ratified refusal-contract ruling;
 - any ConvMem core data-model change **beyond the exact parent-specified and
@@ -848,29 +874,31 @@ Ryan's explicit confirmation naming exact revisions is required before:
 
 - **ConvMem alone — AMBER, bounded implementation accepted:** the parent
   preserves legacy semantics and the fixture passed independent M8 evidence at
-  the historical tip. Current-main reconstruction and regressions remain
-  untested. Gate W and live data remain BLOCKED.
+  the historical tip. Current-main replay/pinning is preserved, but the
+  reviewed-plan correction, fresh M8 and regressions remain untested. Gate W
+  and live data remain BLOCKED.
 - **OpenClaw alone — RED for real/runtime use; AMBER for connector/protocol
   fake:** the fake is deliberately non-authoritative and uninstalled, and no
   OpenClaw process runs in T0–T5. Real authentication, containment,
   distribution, credentials, manager proof, and tool permissions are
   unresolved, so no real OpenClaw verdict or use is authorized.
-- **Integration — AMBER for the accepted bounded fixture; PAUSED for M11
-  reconstruction pending Kiro review and an exact Ryan integration grant; RED
-  for pilot/production:** the overlay delegates no integration choice to Grok.
+- **Integration — AMBER for the accepted bounded fixture; PAUSED at the M11
+  reviewed-plan allowlist gate pending Kiro review and an exact Ryan resume
+  grant; RED for pilot/production:** the overlay delegates no integration
+  choice to Grok.
   The combined system is not operationally complete until Gate D/W, Gate
   D-V/E, live evidence, maintenance/watch, and promotion gates pass.
 
 ## 9. Unresolved decisions that must be resolved before Grok resumes
 
-No M0–M8 architectural decision remains. Before Grok starts M11, Kiro must
-PASS this exact parent and overlay. Ryan must then name every M11 field in §3:
-the new semantic parent and overlay, original baseline, accepted implementation,
-integration baseline, `PROPOSED_IMPLEMENTATION_BRANCH`,
-`PROPOSED_RUNTIME_PREFIX`, and `PROPOSED_DURABLE_EVIDENCE_ROOT`. Codex must
-create the worktree, provision and verify the runtime, and issue the first
-written status. Missing any prerequisite
-blocks work and is not a Grok choice.
+No M0–M8 or M11 allowlist architectural decision remains. Before Grok resumes,
+Kiro must PASS this exact parent and overlay. Ryan must then name every M11
+field in §3: the new semantic parent and overlay, integration baseline,
+`PRESERVED_INTEGRATION_TIP`, `PROPOSED_IMPLEMENTATION_BRANCH`,
+`PROPOSED_RUNTIME_PREFIX`, `PROPOSED_DURABLE_EVIDENCE_ROOT`, the exact
+twelve-path correction and M8 retry authority. Codex must verify the preserved
+worktree/tip and issue the first written status. Missing any prerequisite blocks
+work and is not a Grok choice.
 
 If “Grok starts” means any real runtime, writer, pilot, live use, or promotion,
 the following remain unresolved and block work: exact authentication route;
@@ -890,9 +918,11 @@ migrations, capture,
 indexing, pilot methodology, evaluation thresholds, gate ownership, allowed
 files, branch base/creation, checkpoint order, supervisor holds, evidence
 location, integration method, conflict resolution, commit selection/order,
-current-main byte handling, or promotion. In M11 Grok may choose no new helper,
-decomposition, fixture or presentation behavior: the task is exact commit
-replay plus literal/comment repinning only. It must not choose report paths,
+current-main byte handling, or promotion. In M11 Grok may not choose the
+control-plane paths, blob/mode rule, set subtraction, product allowlist,
+source-hash membership, plan application order, correction path set, fixture or
+presentation behavior: the task is exact two-plan-commit application followed
+by the frozen twelve-path correction. It must not choose report paths,
 JUnit family, node reconstruction, outcome vocabulary, canonical evidence
 fields, expected counts, failure rules, runtime/evidence paths, or which tests
 run. The parent and later Ryan grant freeze all of them.
@@ -902,9 +932,11 @@ run. The parent and later Ryan grant freeze all of them.
 **Bounded T0–T5 verdict: IMPLEMENTED, TESTED AND ACCEPTED AT THE HISTORICAL
 TIP. M11 MERGE-READINESS PLAN: IMPLEMENTATION-COMPLETE AND READY FOR KIRO
 EXACT-TIP REVIEW; GROK REMAINS PAUSED.** The parent and overlay freeze the exact
-current-main reconstruction, pins, paths, runtime/evidence ownership and tests.
-After Kiro PASS, Ryan must issue a new exact M11 integration grant. This
-document authorizes no reconstruction, test execution or merge.
+M11-only control-plane validation, unchanged product allowlists, source-hash
+membership, preserved-branch application order, correction paths,
+runtime/evidence ownership and tests. After Kiro PASS, Ryan must issue a new
+exact M11 resume grant. This document authorizes no product/test correction,
+M8 retry or merge.
 
 **Complete ConvMem–OpenClaw system verdict: NOT BUILD-READY.** Gate D real
 runtime, Gate W governed writes, Gate D-V evaluation, Gate E limited web pilot,
@@ -914,13 +946,15 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `9a7891fd580cbaee2e13a8683e84a307443a00e6` architecture/execution
+- The exact `d5f986f02c9c463c1019dffed1c6de40d5f59c11` architecture/execution
   pair is the current semantic source of truth; this overlay only sequences,
   supervises and gates it.
 - M0–M8 passed and were accepted at `8010fb0` on original baseline `7809f20`.
-  M11 is paused before a fresh reconstruction on current main `9193f5e`.
-- M11 freezes the exact 45-commit replay, pin/comment-only reconciliation,
-  runtime/evidence rebinding, tree comparison, two M8 runs, seven legacy MCP
-  regressions and Pylint. Kiro PASS and a new Ryan grant remain mandatory.
+  M11 replay/pinning is preserved at `a11b7a2`; the first fresh attempt stopped
+  before tests on the four reviewed plan paths.
+- M11 now freezes exact plan-blob validation, unchanged product allowlists,
+  source-hash inclusion, two-plan-commit application, one twelve-path correction,
+  then runtime/evidence rebinding, two M8 runs, seven legacy MCP regressions and
+  Pylint. Kiro PASS and a new Ryan resume grant remain mandatory.
 - Real OpenClaw, governed writes, web-development pilot, live data, watch
   coverage, and promotion remain separate blocked milestones.
