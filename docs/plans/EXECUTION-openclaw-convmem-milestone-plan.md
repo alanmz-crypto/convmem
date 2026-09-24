@@ -771,7 +771,7 @@ correction is `PAUSE`, not inferred scope.
 - [x] M11 actual current-main Pylint failure retained with exact report,
       environment and durable-copy hashes; no baseline/gate weakening occurred.
 - [ ] M11 new parent/final-overlay exact-tip Kiro PASS; Ryan resume grant; exact
-      two-plan-commit application to `9c6421a`; four-blob proof; L1/L2/L3 exact
+      three-plan-commit application to `9c6421a`; four-blob proof; L1/L2/L3 exact
       44-path remediation; unchanged actual Pylint gate PASS; full pytest;
       runtime/evidence rebinding; two fresh M8 runs; seven legacy MCP tests;
       integrated-tip Kiro PASS; and Ryan merge decision.
