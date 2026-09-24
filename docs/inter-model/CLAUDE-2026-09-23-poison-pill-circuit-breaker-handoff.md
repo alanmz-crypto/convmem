@@ -46,6 +46,40 @@ PR #328 was squash-merged by Ryan as `81efa35` on `main` (2026-09-24). This doc 
 provenance/history; no further action is pending on this fix. Root-cause reopening (see below)
 remains a separate, deliberately deferred decision.
 
+## Update — root-cause reopening: bounded stop rule (2026-09-24)
+
+The open question left after this merge is whether the 2026-09-21 acceptance ("root cause =
+platform, not software") still holds, given the 2026-09-23 recurrence had clean hardware telemetry.
+Applying [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md) at Ryan's direction:
+
+- **Pattern:** not recursive review — the risk was the opposite: an open-ended "defer until
+  Switchboard is done" gate with no size or date, which could quietly become permanent avoidance of
+  a possibly-wrong architectural conclusion rather than a deliberate schedule.
+- **Evidence:** identical crash signature recurred with the BIOS fix still in effect and zero
+  MCE/thermal events; the arc's own closeout doc states this recurrence condition revokes the
+  acceptance; the software-cause exclusion test (300k-upsert matrix) predates this recurrence.
+- **Level:** at least interface/contract (`convmem-watch` is shared infrastructure every arc
+  depends on, Switchboard included) — arguably architectural, since the accepted root-cause
+  diagnosis itself may be wrong, not just an implementation detail under it.
+- **Decision value:** real. Confirmed-still-platform → current containment (PR #328) is sufficient,
+  acceptance stands. Confirmed-still-software → the R2b/Chroma dependency needs a fix beyond
+  containment before Switchboard goes live on a read-heavy connector to this same corpus.
+- **Stop rule (accepted, replaces open-ended Switchboard-gating):** whichever comes first —
+  **7 days of clean `convmem-watch` operation** (`doctor`'s `native_crash_gate` reports 0 native
+  crashes in its rolling 7-day window with no active quarantine entries), **or a second native-fault
+  recurrence within that window** — triggers the root-cause investigation, independent of
+  Switchboard's state. No new automation was built for this: `native_crash_gate` (landed in this
+  same PR) already reports exactly the count and latest-crash data needed to evaluate it by hand;
+  adding a bespoke trigger would be the "one-off procedure becoming unnecessary infrastructure"
+  pattern the guardrails doc itself warns against.
+- **Recommendation applied:** narrow, not stop — investigation isn't reopened now, but the
+  deferral is bounded instead of indefinite.
+
+**For whoever checks this next:** run `convmem doctor` (or `doctor --v1`) and read the
+`native_crash_gate` line. If it reports 0 crashes and the merge date above is 7+ days past, or if
+it reports 2+ crashes in the window, the stop rule has fired — open the root-cause investigation
+regardless of what Switchboard's status is at that moment.
+
 ## Resume state
 
 | Field | Value |

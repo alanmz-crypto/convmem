@@ -21,10 +21,17 @@ cross-arc snapshot and the linked arc brief below.
   invalidated — all fixed as mechanical, verified refreshes (snippets checked before updating; R2b
   inventory regenerated via its own `write_v2_inventory_file()`, not hand-edited). All 6 CI checks
   passed before merge. No Switchboard file was touched (verified via `git diff --stat` before
-  merge). Root-cause reopening (this recurrence vs. the 2026-09-21 platform-only acceptance) stays
-  deferred until Switchboard is done — still open, not addressed by this merge. Background:
-  [`CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md`](CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md).
-  **Next:** nothing pending on this specific fix; root-cause reopening awaits Switchboard completion.
+  merge). **Root-cause reopening (this recurrence vs. the 2026-09-21 platform-only acceptance) has
+  a bounded stop rule** (applied 2026-09-24 via
+  [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md), replacing an earlier open-ended
+  "wait for Switchboard" framing): whichever comes first — 7 days of `doctor`'s `native_crash_gate`
+  reporting 0 crashes, or a second native-fault recurrence within that window — triggers the
+  investigation, independent of Switchboard's state. Background:
+  [`CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md`](CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md)
+  (see "root-cause reopening: bounded stop rule" section for the full Pattern/Evidence/Level/
+  Decision-value writeup).
+  **Next:** nothing pending on this specific fix; check `native_crash_gate` against the stop rule
+  starting 2026-10-01 (7 days after merge) or immediately on any new native-fault crash.
 - **ConvMem Switchboard — Claude adversarial review of transition-prep readiness delivered
   (2026-09-23):** Responding to Codex's handoff
   ([`CODEX-2026-09-23-switchboard-claude-adversarial-review-handoff.md`](CODEX-2026-09-23-switchboard-claude-adversarial-review-handoff.md)),
