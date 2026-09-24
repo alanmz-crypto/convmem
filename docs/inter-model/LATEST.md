@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-20
+**Updated:** 2026-09-23
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,19 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Decision and Review Guardrails (opt-in doc) — Kiro PASS, amendments
+  applied, READY_FOR_PR:** Kiro reviewed
+  [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md) at tip
+  `6712c10` on `docs/2026-09-24-decision-review-guardrails-opt-in` — **PASS,
+  no blockers**. One non-blocking placement amendment recommended (charter
+  Related-section link read as too policy-adjacent for an opt-in tool) plus a
+  minor roles-drift note; Claude applied both: the charter now lists it under
+  a new "Optional lenses (not team policy)" sub-bullet, and the doc's Roles
+  section now points to the charter role table as authoritative. PR
+  [**#329**](https://github.com/alanmz-crypto/convmem/pull/329) opened
+  against `main` (PR Steward, exact tip `bfd4fc0`) — **Ryan decides
+  merge.** Resume from
+  [`CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md`](CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md).
 - **Arc OpenClaw Watch Coverage — W0–W6 AUTHORIZED / Cursor next:** Ryan
   explicitly authorized implementation and isolated acceptance on 2026-09-21
   against Kiro-reviewed plan `19dea97368408ee0b179c05c942306f6d8f1a2e8`.
@@ -18,8 +31,8 @@ cross-arc snapshot and the linked arc brief below.
   PR, or merge is authorized. Resume from
   [`CODEX-2026-09-21-openclaw-watch-coverage-execute.md`](CODEX-2026-09-21-openclaw-watch-coverage-execute.md)
   and [`STATUS-openclaw-watch-coverage.md`](../plans/STATUS-openclaw-watch-coverage.md).
-- **Claude Gate 1 invalid UTF-8 maintenance — AUTHORIZED / Cursor next:** Ryan authorized issue [#316](https://github.com/alanmz-crypto/convmem/issues/316) using synthetic fixtures only. Cursor fixes both metadata discovery and ordinary parsing, preserves detection/content hygiene and neighboring adapters, pushes the exact tip, and stops for review. No real transcript, live indexing, watcher/provider/activation change, PR, or issue #315/#317 work. Resume from [`CODEX-2026-09-20-claude-gate1-invalid-utf8-handoff.md`](CODEX-2026-09-20-claude-gate1-invalid-utf8-handoff.md).
-- **Claude Watch Parity — CLOSED (`NO_GATE2_ROUTE`):** Gate 1 on-demand Claude indexing remains supported on `main`. Ryan closed the automatic Gate 2 route after three Security Review FAIL tips (`10322a6`: six findings; `52bdc02`: ten; `95ef122`: three). Kiro is stood down. No live canary, production route, watcher/source/service change, or activation occurred. Experimental plans and tips are preserved under `milestone/claude-watch-parity-*` tags. Separate follow-ups: invalid UTF-8 parsing [#316](https://github.com/alanmz-crypto/convmem/issues/316) and merged Gate 1 safety audit [#317](https://github.com/alanmz-crypto/convmem/issues/317). See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md); do not resume Gate 2 from its tagged branches.
+- **Claude Gate 1 smoke retirement — READY_FOR_REVIEW:** issue [#317](https://github.com/alanmz-crypto/convmem/issues/317) found six blockers confined to the optional smoke harness. The bounded corrective removes that harness while preserving the supported on-demand Claude adapter. Review the pushed exact tip; no real transcript, live indexing, provider, watcher/source/service/configuration change, PR, merge, activation, issue #315 work, or Gate 2 revival is authorized.
+- **Claude Watch Parity — CLOSED (`NO_GATE2_ROUTE`):** Gate 1 on-demand Claude indexing remains supported. Ryan closed the automatic Gate 2 route after three Security Review FAIL tips (`10322a6`: six findings; `52bdc02`: ten; `95ef122`: three). Kiro is stood down. No live canary, production route, watcher/source/service change, or activation occurred. Experimental plans and tips are preserved under `milestone/claude-watch-parity-*` tags. Issue #317 retired the optional Gate 1 smoke harness after its own Security Review FAIL; any future real-source containment smoke requires a new design and Ryan grant. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md); do not resume Gate 2 from its tagged branches.
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
