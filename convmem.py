@@ -564,8 +564,33 @@ def watch(
         help="Watch roots only (repeatable); replaces [sources]/[watch] paths when set",
     ),
     no_lock: bool = typer.Option(False, "--no-lock", help="Skip PID lock (debug only)"),
+    clear_quarantine: str | None = typer.Option(
+        None,
+        "--clear-quarantine",
+        help="Clear circuit-breaker quarantine for one path (does not start watch)",
+    ),
+    clear_quarantine_all: bool = typer.Option(
+        False,
+        "--clear-quarantine-all",
+        help="Clear all circuit-breaker quarantine state (does not start watch)",
+    ),
 ):
     """Watch transcript paths and run incremental index when files change."""
+    if clear_quarantine or clear_quarantine_all:
+        from config import load_config
+        from watch import CircuitBreakerState, _circuit_breaker_state_path_from_config
+
+        cfg = load_config()
+        breaker = CircuitBreakerState(_circuit_breaker_state_path_from_config(cfg))
+        if clear_quarantine_all:
+            breaker.clear()
+            typer.echo("Cleared all circuit-breaker quarantine state.")
+        else:
+            resolved = str(Path(clear_quarantine).expanduser().resolve())
+            breaker.clear(resolved)
+            typer.echo(f"Cleared circuit-breaker quarantine for {resolved}.")
+        return
+
     _guard_write()
     from watch import run_watch
 
