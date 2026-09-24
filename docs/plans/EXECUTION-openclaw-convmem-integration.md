@@ -1119,8 +1119,10 @@ PASS and a new Ryan grant:
    substitutions in §18.10.
 4. For every node with an outcome or signature mismatch, run that exact node independently at both
    tips in fresh processes in the same environment, again with xunit1 evidence. A mismatch clears
-   only under §18.10's two symmetric outcomes. Retain the original complete-run mismatch and both
-   diagnostic reruns. Any asymmetric or non-reproducing result is `PAUSE`, not a waiver.
+   only under §18.10's closed non-failing, confirmed-improvement or identical-retained-failure
+   dispositions. Retain the original complete-run mismatch and both diagnostic reruns. Any
+   candidate regression, changed failure signature, unclassified or non-reproducing result is
+   `PAUSE`, not a waiver.
 5. Emit a final signed-off evidence ledger containing the verdict token, both source commits and
    trees, environment inventory hash, complete-run record hashes, every mismatch disposition and
    every identical retained failure. The only passing token for this step is
