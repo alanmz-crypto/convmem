@@ -606,6 +606,46 @@ def _check_index_gate() -> DoctorCheck:
     return DoctorCheck("index_gate", True, "0 index failures in 7d")
 
 
+def _check_native_crash_gate() -> DoctorCheck:
+    """Count watch-spawned index children killed by a native fault in the last 7d.
+
+    Distinct from synthesis_gate's ingest_degraded (a provider drop, not a crash).
+    Reads the log watch.py's circuit breaker writes on each native fault.
+    """
+    from datetime import timedelta, timezone
+
+    log_path = Path("~/.local/share/convmem/native_crash_failures.jsonl").expanduser()
+    if not log_path.is_file():
+        return DoctorCheck("native_crash_gate", True, "0 native crashes in 7d")
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    count = 0
+    latest_path = ""
+    for line in log_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+            ts = datetime.strptime(entry["ts"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            if ts >= cutoff:
+                count += 1
+                latest_path = entry.get("path", "")
+        except (KeyError, ValueError, json.JSONDecodeError):
+            continue
+    if count >= 3:
+        return DoctorCheck(
+            "native_crash_gate",
+            False,
+            f"{count} native crashes in 7d — >=3; circuit breaker should have "
+            f"quarantined the offending path(s) (latest: {latest_path})",
+        )
+    if count > 0:
+        return DoctorCheck(
+            "native_crash_gate", True, f"{count} native crash(es) in 7d (latest: {latest_path})"
+        )
+    return DoctorCheck("native_crash_gate", True, "0 native crashes in 7d")
+
+
 def _standing_register_path() -> Path:
     return Path(__file__).resolve().parent / "docs" / "standing-checks-register.json"
 
@@ -1495,6 +1535,7 @@ def run_doctor(
         _check_restic_password_backup(),
         _check_synthesis_gate(),
         _check_index_gate(),
+        _check_native_crash_gate(),
         _check_standing_register(cfg),
         _check_arc_staleness(),
         _check_planning_guide_contract(),

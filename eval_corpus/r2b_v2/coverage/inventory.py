@@ -87,7 +87,10 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
-        "governed_mutation_sinks": ("convmem.py:655",),
+        # Line pin refreshed 2026-09-23: unchanged ChromaStore ctor call site,
+        # shifted by the Arc Poison Pill --clear-quarantine CLI flags added
+        # above it in convmem.py's watch() command.
+        "governed_mutation_sinks": ("convmem.py:680",),
     },
     {
         "route_id": "cg2_file_generation_pointer",

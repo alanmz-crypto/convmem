@@ -6,8 +6,8 @@
   "production_chroma_write_session_call_sites": [
     "convmem.py:402",
     "convmem.py:506",
-    "convmem.py:671",
-    "convmem.py:1733",
+    "convmem.py:696",
+    "convmem.py:1758",
     "incremental_jsonl.py:584",
     "ingest.py:637",
     "ingest.py:1174",
@@ -34,7 +34,7 @@
     "chroma_store.py:100",
     "chroma_store.py:75",
     "chroma_write_store.py:660",
-    "convmem.py:655",
+    "convmem.py:680",
     "file_generation_store.py:97",
     "incremental_jsonl_canary.py:1234",
     "mixed_mode_control.py:44",
@@ -71,7 +71,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 655,
+      "line": 680,
       "snippet": "store = ChromaStore(str(cfg[\"index\"][\"chroma_dir\"]), mutation_sink=None)",
       "class": "dry_run_no_sink",
       "required_routing": "allowlisted_direct",
@@ -141,7 +141,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 1733,
+      "line": 1758,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -168,7 +168,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 671,
+      "line": 696,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.monitor\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
