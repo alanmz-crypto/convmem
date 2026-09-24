@@ -1,10 +1,12 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
-implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS: PAUSED FOR
-CURRENT-MAIN RECONCILIATION. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The accepted fixture
-evidence remains valid for its original baseline and revisions; it is not evidence for a future
-current-main integration commit. This plan-only reconciliation authorizes no implementation.
+implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS: PAUSED AT THE
+REVIEWED-PLAN ALLOWLIST GATE. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The exact replay and
+pin/comment reconciliation are preserved at `a11b7a2a793c68e4e6e83c2680b077389a817c5c`;
+the first fresh M8 attempt stopped before integration imports or tests because the four reviewed
+plan/STATUS documents were incorrectly classified as product edits. This plan-only correction
+authorizes no implementation or retry.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
@@ -14,11 +16,12 @@ This planning edit authorizes no implementation, runtime start, configuration ch
 **Arc:** ConvMem Switchboard
 
 **Authority:** Codex architectural editing lane. The M8 node-evidence history remains in
-§§18.4–6. Ryan accepted bounded M0–M8 and authorized only a plan reconciliation from current
-`origin/main` at `9193f5ec744f059d07a20612489b210527b5660a`. Sections 6.5.8–9 remain the frozen fixture
-and hash contracts. Section 18.7 defines the current-main integration boundary. Kiro owns the
-required exact-tip design review; Ryan owns any later implementation, merge or promotion grant.
-No complete-integration readiness is claimed.
+§§18.4–6. Ryan accepted bounded M0–M8, authorized the §18.7 current-main reconstruction, and then
+authorized only this M11 plan correction from reviewed overlay
+`581de2abf430786a36f2612f97c623a19b61353f`. Sections 6.5.8–9 remain the frozen fixture and hash
+contracts. Section 18.8 defines the reviewed-plan control-plane boundary and preserved-branch
+resume sequence. Kiro owns the required exact-tip design review; Ryan owns any later implementation,
+test, merge or promotion grant. No complete-integration readiness is claimed.
 
 **Review inputs:** Final Astra report
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -52,10 +55,10 @@ credential selection, Gate W code, live sources, migration, capture, channels an
 non-goals. Production launch entrypoints fail closed in this slice. A fake tests protocol behavior
 only; it proves neither OpenClaw compatibility nor host containment.
 
-The bounded implementation remains architecture-complete. M11 integration may begin only after
-exact-tip Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay,
-current-main baseline, accepted implementation tip, new implementation branch, frozen runtime and
-durable evidence destination. Known deferred issues do not authorize Grok to redesign the
+The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
+Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay,
+current-main baseline, preserved implementation tip and branch, frozen runtime and durable
+evidence destination. Known deferred issues do not authorize Grok to redesign the
 architecture. These are BUILD-readiness statements, not an Execute grant.
 
 ## 1. Consequence for Ryan
@@ -2859,7 +2862,8 @@ scope values, or credentials.
 BUILD asks whether the frozen T0–T5 implementation requires any architectural choice: this packet
 answers PASS after the B-FIXTURE/B-DIGEST corrections. Bounded TEST passed at accepted historical
 tip `8010fb060c2edc29e1b09d7a30b1a1da2689d489`; that result does not certify the proposed M11
-current-main reconstruction, whose fresh evidence has not run. LIVE-DATA and PROMOTION are
+current-main integration, whose replay/pin state is preserved at `a11b7a2` but whose fresh evidence
+has not run. LIVE-DATA and PROMOTION are
 BLOCKED. These gates are independent; BUILD/fixture TEST PASS is neither runtime qualification nor
 an Execute or merge grant. Kiro reviews the exact reconciled plan; Ryan separately decides M11.
 A substantive correction receives a focused fresh adversarial check of the changed contracts, not
@@ -4160,6 +4164,101 @@ deployment or promotion. The installed OpenClaw version is irrelevant to this re
 before any separately granted Gate D testing, the runtime must be deliberately updated or pinned
 and subjected to a fresh capability probe and review.
 
+### 18.8 M11 reviewed-plan control-plane allowlist reconciliation
+
+**Observed held checkpoint.** The reviewed overlay at
+`581de2abf430786a36f2612f97c623a19b61353f` was applied as the base of
+`feat/2026-09-23-openclaw-convmem-m11-integration`; the exact 45-commit replay and the §18.7
+pin/comment reconciliation are clean and pushed at preserved tip
+`a11b7a2a793c68e4e6e83c2680b077389a817c5c`. The first M8 attempt stopped in the outer runner,
+before source export, integration import, runtime launch or any test, with `allowlist_violation`
+for exactly these four paths:
+
+1. `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md`
+2. `docs/plans/EXECUTION-openclaw-convmem-integration.md`
+3. `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md`
+4. `docs/plans/STATUS-openclaw-convmem-integration.md`
+
+The failure is expected from the §18.7 tree shape: those reviewed control documents differ from
+the current-main product baseline, while the original runner applies the product-edit allowlist to
+the entire baseline-to-source path delta. No product test failed, and no real OpenClaw or live-data
+action occurred. The retained paused evidence is comparison input only; it is not an M8 run.
+
+**M11-only classification rule.** Let `D` be the complete sorted tracked path delta from
+`CODE_BASELINE_SHA` to the exact source commit, and let `C` be the exact four-path set above. For
+M11 only, `C` is a closed set of reviewed control-plane inputs, not product implementation edits.
+The outer runner must, before runtime verification, source export, integration import or tests:
+
+1. require all and only the four named control-plane paths to be classified through this rule;
+2. resolve the exact Kiro-reviewed `REVIEWED_OVERLAY_SHA` named in Ryan's resume grant as a commit;
+3. require each `source_commit:path` and `REVIEWED_OVERLAY_SHA:path` entry to exist as the same
+   regular Git blob, with identical object ID and mode `100644`;
+4. fail closed on a missing path, extra classified path, invalid/unavailable commit, non-blob,
+   symlink or other mode, unreadable tree entry, or any object-ID/mode mismatch; and
+5. define the product delta as exactly `P = D - C`, then apply the existing
+   `EDIT_ALLOWLIST_EXACT`, `EDIT_ALLOWLIST_PREFIXES`, `SCHEMA_ALLOWLIST`, `path_allowed()` and
+   Gate-W second-layer denial to `P` without adding, removing or widening any product allowance.
+
+No path prefix, glob, directory-wide exception, current-worktree byte comparison, content copied
+from a test expectation, or best-effort fallback is permitted. A fifth plan, status or documentation
+path remains an ordinary product-delta path and therefore fails the unchanged product allowlist.
+The outer runner's existing `allowlist_changed_paths` value reports `P`; independent M11 evidence
+records `D`, `C`, the two commits, modes and blob IDs so the subtraction is auditable.
+
+**Source export and hash boundary.** The classification above changes only which paths are checked
+by the product-edit allowlist. All four reviewed documents remain tracked members of the exact
+source commit, are exported by the unchanged `git archive` source-export path, appear in the full
+source inventory, and contribute their exact bytes and modes to `source_tree_sha256`. They are not
+added to `GENERATED_EVIDENCE_SOURCE_RELS`, a component exclusion, the fixture-output exclusions or
+any other hash omission. The edit allowlist remains distinct from the source/component inventories.
+
+**Exact bounded implementation correction.** After exact-tip Kiro PASS and a new Ryan resume grant,
+the implementation correction may change only these twelve product/test paths:
+
+- `tests/fixtures/openclaw_strict/allowlist.py`;
+- `tests/fixtures/openclaw_strict/constants.py`;
+- `tests/test_openclaw_strict_packet_contract.py`; and
+- the nine parent/overlay comment or docstring paths already enumerated in §18.7:
+  `openclaw_strict_server.py`, `strict_projection.py`,
+  `tests/fixtures/openclaw_strict/adversarial_matrix.py`,
+  `tests/fixtures/openclaw_strict/audit_evidence.py`,
+  `tests/fixtures/openclaw_strict/fixture_manifest.py`,
+  `tests/fixtures/openclaw_strict/protocol_fixture/schema_field_sets.py`,
+  `tests/test_mcp_openclaw_strict.py`, `tests/test_strict_projection.py`, and
+  `tests/test_strict_projection_publisher.py`.
+
+`constants.py` adds a separate exact `M11_CONTROL_PLANE_INPUTS` set and
+`M11_REVIEWED_OVERLAY_SHA`; it repins `SEMANTIC_PARENT_SHA` to the new reviewed semantic-parent
+commit and leaves `CODE_BASELINE_SHA`, every product allowlist, schema list, selector, deselection,
+runtime hash and behavioral count unchanged. `allowlist.py` implements the closed validation and
+subtraction above without changing `path_allowed()`. The packet-contract tests must prove: exact
+four-path success; missing, extra-classified, unavailable-commit, non-regular-entry and blob/mode
+mismatch rejection; a fifth plan path reaching and failing the unchanged product allowlist; the
+unchanged Gate-W denial; and the four documents remaining in source export/inventory/hash coverage.
+The nine other paths may change only parent/overlay identifiers in comments or docstrings. No
+executable product behavior or selected-test logic changes.
+
+**Preserved-branch application order.** The reconciliation branch starts at
+`581de2abf430786a36f2612f97c623a19b61353f` and contains exactly two plan commits: first this
+architecture/execution/STATUS semantic-parent commit, then the milestone-overlay commit that pins
+that parent. Kiro reviews the second commit as `REVIEWED_OVERLAY_SHA`. After a new Ryan resume grant
+names both commits and the preserved tip, Codex first proves the implementation branch is clean,
+pushed and exactly at `a11b7a2a793c68e4e6e83c2680b077389a817c5c`. Grok then cherry-picks those
+two plan commits in order, without merge, squash, edit or conflict resolution, pushes and stops.
+Codex proves the resulting four source blobs equal `REVIEWED_OVERLAY_SHA:path` exactly and every
+other byte still equals the preserved tip. Only after a commit-specific `CONTINUE` may Grok make
+one correction commit limited to the twelve paths above, push and stop again. Any conflict,
+unexpected path, rewritten history, missing reviewed blob or stale branch tip is `PAUSE`.
+
+**Acceptance and authority boundary.** Codex independently repeats the exact four-blob comparison
+after the correction, proves the existing product allowlist literals and every frozen selector,
+deselection, dependency, permission, schema, runtime rule and T0–T5 semantic contract unchanged,
+and verifies the full source export/inventory contains the reviewed documents before any M8 retry.
+The prior failed attempt is never relabeled. Only a later Ryan resume grant may authorize runtime
+rebinding, two fresh-root M8 runs, legacy regressions or Pylint. This correction authorizes no
+product/test edit, M8 retry, merge, deployment, real OpenClaw action, Gate D/W/D-V/E/F, watch
+activation, live data or promotion.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -4181,7 +4280,8 @@ and subjected to a fresh capability probe and review.
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
 
-**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; M11 now freezes a
-current-main reconstruction from `9193f5e`, exact replay and pin-only reconciliation, fresh
-runtime/evidence binding, two M8 reruns and legacy regressions. Implementation, real OpenClaw,
-live data, merge and promotion remain blocked pending exact-tip review and a new Ryan grant.
+**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; M11 replay and pinning are
+preserved at `a11b7a2`, but the first new run correctly paused before tests because four reviewed
+control documents collided with the product allowlist. §18.8 freezes exact-blob validation,
+unchanged product allowlists and source-hash inclusion; implementation, retry, real OpenClaw, live
+data, merge and promotion remain blocked pending exact-tip review and a new Ryan grant.
