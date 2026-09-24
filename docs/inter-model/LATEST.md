@@ -23,10 +23,10 @@ cross-arc snapshot and the linked arc brief below.
   authorized live activation passed retrieval, exclusion, governance, and
   service-health checks. The service remains pinned to the clean runtime
   worktree at that commit. OpenClaw planning PR `#327` later added five reviewed
-  planning files; the watch-closure change classifies them, refreshes two stale
-  admitted-file hashes, and restores a byte-exact manifest audit without
-  advancing production. **Next:** any runtime-worktree promotion remains
-  separately authorized. Full `WATCH_COVERAGE=PASS` still waits for accepted
+  planning files; watch-closure PR `#331` merged as `2e50ec3`, classifying them,
+  refreshing stale admitted-file hashes, and restoring a byte-exact manifest
+  audit without advancing production. **Next:** any runtime-worktree promotion
+  remains separately authorized. Full `WATCH_COVERAGE=PASS` still waits for accepted
   T0–T5 bytes, matching hashes, and a later controlled promotion. See
   [`STATUS-openclaw-watch-coverage.md`](../plans/STATUS-openclaw-watch-coverage.md)
   and [`VERIFY-openclaw-watch-coverage.md`](../plans/VERIFY-openclaw-watch-coverage.md).

@@ -8,6 +8,9 @@
 
 **Merged main commit:** `dc79eeb328c98f34add4d51b73d23b114afcfc21`
 
+**Inventory-closure merge:** `2e50ec38e35bf806bf9edec662dc97344aa09ee7`
+(GitHub PR `#331`)
+
 **Reviewed plan:** `19dea97368408ee0b179c05c942306f6d8f1a2e8`
 
 **Code baseline:** `5ab03a37559a93f1b51932c57a2a2a783da3354b`
@@ -222,9 +225,10 @@ completed startup reconciliation without rollback.
 
 The live service and the repository branch intentionally move at different
 speeds. The service reads a dedicated clean worktree pinned at `dc79eeb`; normal
-development advanced `origin/main` to `81efa35` through OpenClaw planning PR
+development advanced through `81efa35` via OpenClaw planning PR
 `#327`, the later opt-in guardrails PR `#329`, and Claude smoke-retirement PR
-`#330`, followed by watch circuit-breaker PR `#328`. Auditing the OpenClaw
+`#330`, followed by watch circuit-breaker PR `#328`; routing PR `#332` then
+advanced `main` to `afedc54`. Auditing the OpenClaw
 planning tip before promotion failed closed on exactly five unclassified
 planning files.
 A full entry-hash comparison also found stale hashes for `AGENTS.md` and
@@ -232,9 +236,9 @@ A full entry-hash comparison also found stale hashes for `AGENTS.md` and
 documents that are explicitly classified as unrelated, while integrating
 `#330` retired three unrelated smoke-harness paths. PR `#328` added two
 out-of-W0 circuit-breaker tests and changed three already-admitted maintenance
-files. This closure reconciles those path changes and current admitted-file
-hashes, restoring a zero-unclassified, byte-exact audit without changing the
-live checkout.
+files. Closure PR `#331` reconciled those path changes and current admitted-file
+hashes and merged as `2e50ec3`, restoring a zero-unclassified, byte-exact audit
+on `main` without changing the live checkout.
 
 Operational implications:
 
@@ -291,4 +295,5 @@ list is in the manifest `required_when_present` array.
 - `LIVE_WATCH`: PASS
 - `WATCH_COVERAGE`: BLOCKED on 66 absent `required_when_present` OpenClaw
   T0–T5/Gate W paths and a later separately authorized runtime promotion
-- `CURRENT_OPENCLAW_PLAN_BYTES`: CLASSIFIED BY THIS CLOSURE; NOT YET PROMOTED
+- `CURRENT_OPENCLAW_PLAN_BYTES`: CLASSIFIED ON `main` BY PR `#331`; NOT YET
+  PROMOTED

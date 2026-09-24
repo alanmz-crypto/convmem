@@ -8068,7 +8068,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "eaf7a1dd2177cc8d573632dcc779c0790a31dd4010ac263da26f634af2df6f2c",
+      "sha256": "60ba555a76592083e743f77488c6eec3a2d6b9ce8332af732ae7f420525ca6d6",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8085,7 +8085,7 @@
     },
     {
       "path": "docs/plans/VERIFY-openclaw-watch-coverage.md",
-      "sha256": "8a532c08396d98d2c257f5c46a07d5e785f4d13bdca8e2f628f734a548dbbbec",
+      "sha256": "7ac7905aee6ee27ab74621bd3eb236c54effbca7bfd69e678678859bb516e56a",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
