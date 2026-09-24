@@ -1,4 +1,7 @@
-"""M3/T1–T2 cold lineage + independent replay; M4/T3 public reader surfaces."""
+"""M3/T1–T2 cold lineage + independent replay; M4/T3 public reader surfaces.
+
+Reviewed parent 9a7891fd / overlay 581de2a.
+"""
 
 from __future__ import annotations
 
@@ -1676,7 +1679,7 @@ def test_cold_rejects_wrong_schema_digest_and_wrong_contract_version(
 # ---------------------------------------------------------------------------
 # M4 / T3 — public opening, lexical reader, selectors, caps (Gate B)
 # Parent cases 1–27, 40–44, 49–52 portions owned by the reader; case55 private/
-# public boundary; overlay d1ca459. T4/T5 remain declared red elsewhere.
+# public boundary; overlay 581de2a. T4/T5 remain declared red elsewhere.
 # ---------------------------------------------------------------------------
 
 _M4_NOW = __import__("datetime").datetime(2026, 9, 21, tzinfo=__import__("datetime").timezone.utc)

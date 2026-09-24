@@ -1,6 +1,6 @@
 """M4/T3 Gate B — dedicated strict server, profile refusal, tool enumeration.
 
-Parent cases (overlay d1ca459 / parent cd9d2698 Gate B):
+Parent cases (overlay 581de2a / parent 9a7891fd Gate B):
 1–4 (strict-server portion of 47), legacy profile refusal effects.
 Exact three tools / zero resources / templates; closed env allowlist;
 canonical closed result/error serialization; closed request-arg dispatch.

@@ -1,6 +1,6 @@
 """M3/T2 named publisher tests — genesis, CAS, fence, retry, rollback, retire-first, faults.
 
-Parent cases owned in part by the publisher (overlay d1ca459 / parent cd9d2698):
+Parent cases owned in part by the publisher (overlay 581de2a / parent 9a7891fd):
 enrolled empty genesis; cumulative authority/source-cutoff/history; parent-head/
 join rules; exact operation retry/current-head; fence before intent; authority
 advance to unavailable; cold build then serving; full publication-payload CAS;

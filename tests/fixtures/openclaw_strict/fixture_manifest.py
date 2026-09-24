@@ -1,6 +1,6 @@
 """Test-only fixture-manifest schema and machinery.
 
-Architecture §6.5.8 (parent cd9d2698):
+Architecture §6.5.8 (parent 9a7891fd):
 - ``artifacts`` inventories every test helper/scenario/schema/specimen under
   ``tests/fixtures/openclaw_strict``, excluding only the fixture manifest and
   generated run outputs.

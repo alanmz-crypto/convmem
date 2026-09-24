@@ -1,6 +1,6 @@
 """M7/M8 bounded audit evidence — attributable fixture-only run package.
 
-Architecture / Execution parent (cd9d2698) + overlay M7/M8 (d1ca459):
+Architecture / Execution parent (9a7891fd) + overlay M7/M8 (581de2a):
 emit canonical inventories, evidence-class labels, suite selection/exclusions,
 timing/output/tmp, negative controls, changed-file/protected-byte proof,
 Gate B/C ownership, overlay §5 threat matrix, selected-node inventory,

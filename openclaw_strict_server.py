@@ -1,6 +1,6 @@
 """Dedicated openclaw-strict MCP entrypoint (Gate B / T3).
 
-Architecture §4/§5 (parent cd9d2698): construct the child environment from empty
+Architecture §4/§5 (parent 9a7891fd): construct the child environment from empty
 with the closed allowlist only; select strict mode before any general ConvMem
 loader import; expose exactly three tools and empty resource/template surfaces;
 serialize through the closed v3 result / error.v1 envelopes.
