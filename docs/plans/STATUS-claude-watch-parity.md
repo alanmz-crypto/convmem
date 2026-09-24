@@ -74,20 +74,22 @@ This arc has no active implementation lane. Do not resume Gate 2 from its
 experimental branches. A future automatic-capture proposal requires a new arc,
 architecture, threat model, and Ryan grant.
 
-For supported Gate 1 follow-ups, use the separately scoped issues:
+The separately scoped Gate 1 follow-ups are complete:
 
 - [#316](https://github.com/alanmz-crypto/convmem/issues/316) — invalid UTF-8
-  handling in metadata discovery and ordinary parsing.
-- [#317](https://github.com/alanmz-crypto/convmem/issues/317) — exact-tip review
-  of the bounded corrective that retires the optional Gate 1 smoke harness.
+  handling merged through PR #319 as `5ab03a3`; issue closed.
+- [#317](https://github.com/alanmz-crypto/convmem/issues/317) — optional Gate 1
+  smoke harness retirement merged through PR #330 as `e2148b2`; issue closed
+  after exact-tip and post-update carry-forward review.
 
-Neither issue authorizes live transcript access.
+These closed issues provide no authority for live transcript access or new
+implementation.
 
 ## 6. What Remains
 
-Nothing remains inside Claude Watch Parity. Issue #317's exact-tip corrective
-review is separate Gate 1 maintenance and does not reopen this arc. Any future
-real-source containment smoke requires a new design and Ryan grant.
+Nothing remains inside Claude Watch Parity. Gate 1 maintenance issues #316 and
+#317 are merged and closed. Any future real-source containment smoke requires a
+new design and Ryan grant.
 
 ## 7. Hard Stops
 
@@ -129,6 +131,7 @@ git show milestone/claude-watch-parity-execute-handoff:docs/inter-model/CODEX-20
 
 | Date | Who | Milestone-level change |
 |---|---|---|
+| 2026-09-24 | Ryan / Codex / Kiro | Squash-merged PR #330 as `e2148b2`, closed issue #317, and confirmed the updated tip and merged commit preserve the supported Claude adapter. |
 | 2026-09-21 | Ryan / Cursor | Retired the optional Gate 1 smoke harness after issue #317 Security Review FAIL; preserved the supported adapter and `NO_GATE2_ROUTE`. |
 | 2026-09-20 | Ryan / Codex | Closed Gate 2 as `NO_GATE2_ROUTE`; retained Gate 1 on-demand indexing and preserved experimental history by tag. |
 
