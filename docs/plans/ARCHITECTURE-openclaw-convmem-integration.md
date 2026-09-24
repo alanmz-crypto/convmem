@@ -2,11 +2,12 @@
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS: PAUSED AT THE
-REVIEWED-PLAN ALLOWLIST GATE. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The exact replay and
-pin/comment reconciliation are preserved at `a11b7a2a793c68e4e6e83c2680b077389a817c5c`;
-the first fresh M8 attempt stopped before integration imports or tests because the four reviewed
-plan/STATUS documents were incorrectly classified as product edits. This plan-only correction
-authorizes no implementation or retry.
+PYLINT REGRESSION GATE. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The reviewed-plan correction,
+two fresh M8 runs and seven legacy MCP regressions are preserved at
+`9c6421a6891fd8a861a51f4fed410f541b53148c`. The unchanged current-main Pylint gate then found
+699 new occurrences relative to baseline `9193f5ec744f059d07a20612489b210527b5660a`. Section
+18.9 freezes a plan-only, exact-path lint-remediation boundary that preserves the gate and baseline;
+it authorizes no implementation or retry.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
@@ -16,12 +17,13 @@ This planning edit authorizes no implementation, runtime start, configuration ch
 **Arc:** ConvMem Switchboard
 
 **Authority:** Codex architectural editing lane. The M8 node-evidence history remains in
-§§18.4–6. Ryan accepted bounded M0–M8, authorized the §18.7 current-main reconstruction, and then
-authorized only this M11 plan correction from reviewed overlay
-`581de2abf430786a36f2612f97c623a19b61353f`. Sections 6.5.8–9 remain the frozen fixture and hash
-contracts. Section 18.8 defines the reviewed-plan control-plane boundary and preserved-branch
-resume sequence. Kiro owns the required exact-tip design review; Ryan owns any later implementation,
-test, merge or promotion grant. No complete-integration readiness is claimed.
+§§18.4–6. Ryan accepted bounded M0–M8, authorized the §18.7 current-main reconstruction and the
+§18.8 reviewed-plan correction, then directed Codex to choose and plan the least-haunting response
+to the observed Pylint hold: remediate the debt without raising a baseline or weakening the gate.
+Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9 defines the exact
+lint-remediation boundary and preserved-tip resume sequence. Kiro owns the required exact-tip
+design review; Ryan owns any later implementation, test, merge or promotion grant. No
+complete-integration readiness is claimed.
 
 **Review inputs:** Final Astra report
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -57,9 +59,10 @@ only; it proves neither OpenClaw compatibility nor host containment.
 
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
 Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay,
-current-main baseline, preserved implementation tip and branch, frozen runtime and durable
-evidence destination. Known deferred issues do not authorize Grok to redesign the
-architecture. These are BUILD-readiness statements, not an Execute grant.
+current-main baseline, preserved lint-input tip and branch, frozen runtime, durable evidence
+destination and exact 44-path correction. Known deferred issues do not authorize Grok to redesign
+the architecture or reinterpret a Pylint finding. These are BUILD-readiness statements, not an
+Execute grant.
 
 ## 1. Consequence for Ryan
 
@@ -4258,6 +4261,155 @@ The prior failed attempt is never relabeled. Only a later Ryan resume grant may 
 rebinding, two fresh-root M8 runs, legacy regressions or Pylint. This correction authorizes no
 product/test edit, M8 retry, merge, deployment, real OpenClaw action, Gate D/W/D-V/E/F, watch
 activation, live data or promotion.
+
+### 18.9 M11 Pylint regression-remediation boundary
+
+**Observed held checkpoint.** Kiro passed the §18.8 parent/overlay and Ryan authorized its exact
+application. The two reviewed plan commits, twelve-path control-plane correction and subsequent
+node-count/leakage repairs are clean and pushed on
+`feat/2026-09-23-openclaw-convmem-m11-integration` at
+`9c6421a6891fd8a861a51f4fed410f541b53148c`. At that exact source commit:
+
+- two fresh-root M8 runs passed with 238 strict passes, 29 Node passes, 115 legacy passes, one
+  legacy skip and four exact deselections;
+- their canonical node/outcome artifact, fixture manifest and normalized audit output matched
+  byte-for-byte, with SHA-256 values `f1d01f0c0da0987c42186e8417f2ad0c3fdef807c9ee9696fa3cc7ecf93d7fcc`,
+  `7c5fff027e710853bc0285b22d5ca6c25fb73203e1862530a239bcb116840dfe` and
+  `4e46b6883871cff7739b4ed6010723eaca127f4787c14947ab8f4e5185f2235f` respectively;
+- the seven legacy MCP files passed with 54 tests and six subtests; and
+- the separately provisioned CI-compatible Pylint environment used CPython 3.12.13,
+  Pylint 4.0.6 and pytest 9.1.1, then ran the unchanged workflow command against base
+  `9193f5ec744f059d07a20612489b210527b5660a`.
+
+The actual current-main regression gate failed. Its report contains 1,159 live findings versus
+506 baseline occurrences and reports 344 increased fingerprints totaling 699 new occurrences:
+532 path-specific occurrences in 38 files plus 167 aggregate `R0801/duplicate-code` occurrences.
+The exact report SHA-256 is
+`2b724b4ff79405ffb286452be6c17ebef7de4eaeabd6522985c4baaee605848b`; raw gate output SHA-256 is
+`05d9a230689ba1addff6e1c35848567f71a3015d665d7b18236d110ffb0bbda3`. Both are retained under the
+Ryan-designated evidence root at
+`runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-pylint-failed-current-main-baseline/`, whose
+verified payload-manifest SHA-256 is
+`302c0f3503fd4370397f9bf63f7485ffa41198c910794902666fd9238832bd27`. A diagnostic comparison to
+preserved tip `a11b7a2a793c68e4e6e83c2680b077389a817c5c` found only twelve additional occurrences, all in
+`tests/test_openclaw_strict_packet_contract.py`; that comparison is diagnostic only and never
+substitutes for the actual current-main gate.
+
+**Decision and trade-off.** M11 will remove the new lint debt. It will not create a
+component-specific debt baseline, raise or regenerate `ci/pylint-baseline.json`, weaken the
+regression algorithm, exclude the Switchboard files, lower Pylint sensitivity, or substitute a
+preserved-tip comparison for the repository's real merge gate. This costs a larger bounded
+correction now but preserves one CI contract for the whole repository and prevents today's debt
+from becoming permanent ambient state. The following baseline artifacts must remain byte-identical
+to baseline `9193f5ec744f059d07a20612489b210527b5660a`:
+
+- `.github/workflows/pylint.yml` Git blob `fefcd313e21ccd9c924703f0c3e6ecaf0ca02a0f`;
+- `ci/pylint-baseline.json` Git blob `97284472f6e41f9d7087438dca1ad4c15359312a`; and
+- `scripts/pylint_regression_gate.py` Git blob `c337eb349dddfb861d56e8132c3cc3a55bd888e6`.
+
+**Exact correction surface.** The remediation may change only the following 44 product/test paths.
+The set is the union of the 38 files with path-specific regressions and six fixture modules that
+participate only in new aggregate `R0801` pairs. No paired current-main module is editable merely
+because Pylint named it in a duplicate-code message.
+
+```text
+bound_read_scope.py
+mcp_server.py
+openclaw_activation_controller.py
+openclaw_activation_supervisor.py
+openclaw_strict_server.py
+strict_evidence_state.py
+strict_grounding.py
+strict_projection.py
+strict_projection_publisher.py
+tests/fixtures/openclaw_strict/adversarial_matrix.py
+tests/fixtures/openclaw_strict/allowlist.py
+tests/fixtures/openclaw_strict/audit_evidence.py
+tests/fixtures/openclaw_strict/canonical_oracle.py
+tests/fixtures/openclaw_strict/canonical_oracle_b.py
+tests/fixtures/openclaw_strict/case58_oracle.py
+tests/fixtures/openclaw_strict/component_inventory.py
+tests/fixtures/openclaw_strict/constants.py
+tests/fixtures/openclaw_strict/containment.py
+tests/fixtures/openclaw_strict/digest_oracle.py
+tests/fixtures/openclaw_strict/digest_oracle_b.py
+tests/fixtures/openclaw_strict/fixture_manifest.py
+tests/fixtures/openclaw_strict/fixture_platform.py
+tests/fixtures/openclaw_strict/inventory.py
+tests/fixtures/openclaw_strict/lifecycle_scripts.py
+tests/fixtures/openclaw_strict/limits.py
+tests/fixtures/openclaw_strict/preflight.py
+tests/fixtures/openclaw_strict/protocol_fixture/pinned_vectors.py
+tests/fixtures/openclaw_strict/protocol_fixture/schema_contract.py
+tests/fixtures/openclaw_strict/protocol_fixture/schema_field_sets.py
+tests/fixtures/openclaw_strict/protocol_fixture/schema_instances.py
+tests/fixtures/openclaw_strict/protocol_fixture/specimens.py
+tests/fixtures/openclaw_strict/run_isolated.py
+tests/fixtures/openclaw_strict/suites.py
+tests/test_bound_read_scope.py
+tests/test_mcp_openclaw_strict.py
+tests/test_openclaw_activation_controller.py
+tests/test_openclaw_activation_supervisor.py
+tests/test_openclaw_strict_packet_contract.py
+tests/test_strict_evidence_state.py
+tests/test_strict_grounding.py
+tests/test_strict_projection.py
+tests/test_strict_projection_publisher.py
+tests/test_strict_projection_recovery.py
+tests/test_strict_snapshot_revocation.py
+```
+
+The new reviewed parent/overlay identifiers may be repinned only in the same fields and existing
+comments/docstrings already authorized by §18.8. The exact 44-path set subsumes those paths; it does
+not widen any runtime edit allowlist, schema list, test selector or product interface.
+
+**Resolution hierarchy.** Grok applies these rules in order; it does not choose a weaker route:
+
+1. Correct semantic/static defects and mechanical style findings without changing observable
+   behavior, public interfaces, serialized bytes, schema fields, refusal effects, permissions,
+   test selection or expected outcomes.
+2. Remove unused/reimported names and improve annotations or private decomposition. Complexity
+   findings are resolved through private helpers inside an already allowed module; no new module,
+   dependency or cross-boundary helper is permitted.
+3. A local Pylint suppression is allowed only for a demonstrated static-analysis false positive or
+   an intentional white-box test access. It must name one exact message ID, cover the smallest
+   statement or block Pylint supports, include an adjacent invariant rationale, and be listed in
+   evidence. `disable=all`, `skip-file`, category-wide disables and file-wide suppressions are
+   forbidden.
+4. `R0801/duplicate-code` is special: production modules and `tests/test_*.py` must remove the new
+   duplicate structurally without sharing authority or oracle logic. Region-scoped suppression is
+   allowed only in the exact reference-owned fixture modules
+   `canonical_oracle.py`, `canonical_oracle_b.py`, `digest_oracle.py`, `digest_oracle_b.py`,
+   `case58_oracle.py`, `component_inventory.py`, `fixture_manifest.py`, `pinned_vectors.py`,
+   `schema_field_sets.py`, `schema_instances.py`, or `specimens.py`, and only where sharing code
+   would destroy the fixture's independent-oracle or frozen-specimen role. If Pylint cannot scope
+   `R0801` below a module, an exact-message module suppression in one of those eleven files is the
+   only permitted file-level exception. No production helper may become the fixture's oracle.
+5. The final full-tree report must contain no new or increased fingerprint relative to the exact
+   current-main baseline. A merely lower total, a preserved-tip PASS, or a targeted-file PASS is
+   insufficient.
+
+**Identity and behavior boundary.** Source bytes and therefore component/source hashes may change
+only as the deterministic result of the 44-path remediation. Hash algorithms, member sets,
+canonicalization and inventory rules remain unchanged; final evidence binds the new exact hashes.
+Collected test node IDs, the four deselections, counts/outcomes and the three-tool surface remain
+identical to the accepted `9c6421a` evidence. Independent oracles must remain independent. No
+redistillation, schema migration, permission change, new dependency, OpenClaw installation/update,
+real runtime action, durable-memory write or live-data access is part of this correction.
+
+**Acceptance and authority boundary.** After exact-tip Kiro PASS, a new Ryan grant must name this
+parent, the final milestone overlay, source tip `9c6421a6891fd8a861a51f4fed410f541b53148c`, the exact
+44 paths, implementation branch, current-main baseline, new parent-bound runtime prefix and durable
+evidence root. Grok applies the two reviewed plan commits and stops. Only after Codex proves the
+four reviewed document blobs and issues a commit-specific `CONTINUE` may Grok perform the bounded
+remediation in the held checkpoints defined by Execution §10.7. Any 45th path, baseline/gate/config
+change, broad suppression, behavior change or unsupported finding classification is `PAUSE`.
+
+Final acceptance requires the unchanged current-main Pylint regression gate to pass on the exact
+clean pushed tip, two new fresh-root M8 passes, the seven legacy MCP regressions, the repository's
+full pytest job in the same separately reviewed CI-compatible environment, exact source/component
+inventories and a Kiro exact-tip conformance PASS. Ryan alone decides PR/merge. Gate D/W/D-V/E/F,
+real OpenClaw, watch activation, live data, deployment and promotion remain independently blocked.
 
 ## Jargon TL;DR
 
