@@ -11,6 +11,14 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
+
+
+def _grounding_inventory_lines(blob: str) -> tuple[str, ...]:
+    """Grounding-local inventory materializer (keeps byte-identical member strings)."""
+
+    return tuple(line for line in blob.splitlines() if line)
+
+
 from typing import Any, Mapping, Sequence
 
 from canonical_json import canonical_json_bytes
@@ -64,18 +72,14 @@ _OUTPUT_KEYS = frozenset(
     }
 )
 
-_PROVENANCE_CONTEXT_KEYS = frozenset(
-    {
-        "schema",
-        "schema_semantics",
-        "policies",
-        "recipes",
-        "verified_channels",
-        "registered_assertions",
-        "grounding_sha256",
-        "context_payload_sha256",
-    }
-)
+_PROVENANCE_CONTEXT_KEYS = frozenset(frozenset(_grounding_inventory_lines("""schema
+schema_semantics
+policies
+recipes
+verified_channels
+registered_assertions
+grounding_sha256
+context_payload_sha256""")))
 _SCHEMA_SEMANTICS_KEYS = frozenset(
     {
         "schema_version",
@@ -155,13 +159,12 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def _x_validate(work: SimpleNamespace, obj: Any) -> None:
+def _x_validate(obj: Any) -> None:
     _reject_floats(obj)
 
+
 def strict_canonical_bytes(value: Any) -> bytes:
-
-    return canonical_json_bytes(value, validate=_validate, error_type=StrictGroundingError)
-
+    return canonical_json_bytes(value, validate=_x_validate, error_type=StrictGroundingError)
 
 
 def _b64_decode(text: str) -> bytes:
@@ -433,105 +436,123 @@ def _grounding_sort_check(items: list[Any], key_fn) -> None:
 
 
 def _gdoc_validate_grounding_document_p0(work: SimpleNamespace) -> None:
-    work.required = {'schema', 'blobs', 'roots', 'edges', 'outputs', 'receipts', 'grounding_payload_sha256'}
+    work.required = {"schema", "blobs", "roots", "edges", "outputs", "receipts", "grounding_payload_sha256"}
     if set(work.grounding) != work.required:
-        raise StrictGroundingError('grounding_keys')
-    if work.grounding['schema'] != 'convmem.strict-grounding.v1':
-        raise StrictGroundingError('grounding_schema')
-    work.blobs = work.grounding['blobs']
-    work.roots = work.grounding['roots']
-    work.edges = work.grounding['edges']
-    work.outputs = work.grounding['outputs']
+        raise StrictGroundingError("grounding_keys")
+    if work.grounding["schema"] != "convmem.strict-grounding.v1":
+        raise StrictGroundingError("grounding_schema")
+    work.blobs = work.grounding["blobs"]
+    work.roots = work.grounding["roots"]
+    work.edges = work.grounding["edges"]
+    work.outputs = work.grounding["outputs"]
+
 
 def _gdoc_validate_grounding_document_p1(work: SimpleNamespace) -> None:
-    work.receipts = work.grounding['receipts']
+    work.receipts = work.grounding["receipts"]
     if not all((isinstance(x, list) for x in (work.blobs, work.roots, work.edges, work.outputs, work.receipts))):
-        raise StrictGroundingError('grounding_arrays')
+        raise StrictGroundingError("grounding_arrays")
     work.blob_map: dict[str, bytes] = {}
     work.decoded_total = 0
-    work.prev_hash = ''
+    work.prev_hash = ""
     for blob in work.blobs:
-        if not isinstance(blob, Mapping) or set(blob) != {'sha256', 'length', 'bytes_b64'}:
-            raise StrictGroundingError('blob_keys')
-        work.digest = blob['sha256']
+        if not isinstance(blob, Mapping) or set(blob) != {"sha256", "length", "bytes_b64"}:
+            raise StrictGroundingError("blob_keys")
+        work.digest = blob["sha256"]
         if not isinstance(work.digest, str) or not _SHA_RE.fullmatch(work.digest):
-            raise StrictGroundingError('blob_sha')
+            raise StrictGroundingError("blob_sha")
         if work.prev_hash and work.digest < work.prev_hash:
-            raise StrictGroundingError('blobs_unsorted')
+            raise StrictGroundingError("blobs_unsorted")
         if work.digest == work.prev_hash:
-            raise StrictGroundingError('blobs_duplicate')
+            raise StrictGroundingError("blobs_duplicate")
         work.prev_hash = work.digest
-        work.raw = _b64_decode(blob['bytes_b64'])
-        if blob['length'] != len(work.raw):
-            raise StrictGroundingError('blob_length')
+        work.raw = _b64_decode(blob["bytes_b64"])
+        if blob["length"] != len(work.raw):
+            raise StrictGroundingError("blob_length")
         if sha256_digest(work.raw) != work.digest:
-            raise StrictGroundingError('blob_digest_mismatch')
+            raise StrictGroundingError("blob_digest_mismatch")
         work.decoded_total += len(work.raw)
         if work.decoded_total > _MAX_BLOB_DECODED:
-            raise StrictGroundingError('blob_budget')
+            raise StrictGroundingError("blob_budget")
         work.blob_map[work.digest] = work.raw
     _grounding_sort_check(work.roots, _root_sort_key)
 
+
 def _gdoc_p2_s0(work: SimpleNamespace) -> None:
     _grounding_sort_check(work.edges, _edge_sort_key)
-    _grounding_sort_check(work.outputs, lambda o: o['provenance_assertion_id'])
-    _grounding_sort_check(work.receipts, lambda r: r['capture_id'])
+    _grounding_sort_check(work.outputs, lambda o: o["provenance_assertion_id"])
+    _grounding_sort_check(work.receipts, lambda r: r["capture_id"])
+
 
 def _gdoc_p2_s1_item0(work: SimpleNamespace, root) -> None:
     if not isinstance(root, Mapping) or set(root) != _ROOT_KEYS:
-        raise StrictGroundingError('root_keys')
-    for field in ('provenance_assertion_id', 'source_registration_id', 'source_event_id', 'source_identity', 'record_locator', 'receipt_ref'):
+        raise StrictGroundingError("root_keys")
+    for field in (
+        "provenance_assertion_id",
+        "source_registration_id",
+        "source_event_id",
+        "source_identity",
+        "record_locator",
+        "receipt_ref",
+    ):
         if not isinstance(root[field], str) or not root[field]:
-            raise StrictGroundingError(f'root_{field}')
-    for field in ('provenance_commitment', 'raw_blob_sha256', 'view_blob_sha256'):
+            raise StrictGroundingError(f"root_{field}")
+    for field in ("provenance_commitment", "raw_blob_sha256", "view_blob_sha256"):
         if not isinstance(root[field], str) or not _SHA_RE.fullmatch(root[field]):
-            raise StrictGroundingError(f'root_{field}')
-    work.raw_sha = root['raw_blob_sha256']
-    work.view_sha = root['view_blob_sha256']
+            raise StrictGroundingError(f"root_{field}")
+    work.raw_sha = root["raw_blob_sha256"]
+    work.view_sha = root["view_blob_sha256"]
     if work.raw_sha not in work.blob_map or work.view_sha not in work.blob_map:
-        raise StrictGroundingError('root_blob_missing')
+        raise StrictGroundingError("root_blob_missing")
     work.referenced_blobs.add(work.raw_sha)
     work.referenced_blobs.add(work.view_sha)
-    _validate_selector(root['selector'], input_length=len(work.blob_map[work.raw_sha]))
-    work.view = _apply_selector(work.blob_map[work.raw_sha], root['selector'])
+    _validate_selector(root["selector"], input_length=len(work.blob_map[work.raw_sha]))
+    work.view = _apply_selector(work.blob_map[work.raw_sha], root["selector"])
     if sha256_digest(work.view) != work.view_sha:
-        raise StrictGroundingError('root_view_mismatch')
+        raise StrictGroundingError("root_view_mismatch")
     if work.blob_map[work.view_sha] != work.view:
-        raise StrictGroundingError('root_view_bytes_mismatch')
+        raise StrictGroundingError("root_view_bytes_mismatch")
+
 
 def _gdoc_p2_s1_item1(work: SimpleNamespace, edge) -> None:
     if not isinstance(edge, Mapping) or set(edge) != _EDGE_KEYS:
-        raise StrictGroundingError('edge_keys')
-    for field in ('child_provenance_assertion_id', 'parent_provenance_assertion_id', 'receipt_ref'):
+        raise StrictGroundingError("edge_keys")
+    for field in ("child_provenance_assertion_id", "parent_provenance_assertion_id", "receipt_ref"):
         if not isinstance(edge[field], str) or not edge[field]:
-            raise StrictGroundingError(f'edge_{field}')
-    for field in ('child_provenance_commitment', 'parent_provenance_commitment', 'parent_output_blob_sha256', 'view_blob_sha256'):
+            raise StrictGroundingError(f"edge_{field}")
+    for field in (
+        "child_provenance_commitment",
+        "parent_provenance_commitment",
+        "parent_output_blob_sha256",
+        "view_blob_sha256",
+    ):
         if not isinstance(edge[field], str) or not _SHA_RE.fullmatch(edge[field]):
-            raise StrictGroundingError(f'edge_{field}')
-    work.parent_out = edge['parent_output_blob_sha256']
-    work.view_sha = edge['view_blob_sha256']
+            raise StrictGroundingError(f"edge_{field}")
+    work.parent_out = edge["parent_output_blob_sha256"]
+    work.view_sha = edge["view_blob_sha256"]
     if work.parent_out not in work.blob_map or work.view_sha not in work.blob_map:
-        raise StrictGroundingError('edge_blob_missing')
+        raise StrictGroundingError("edge_blob_missing")
     work.referenced_blobs.add(work.parent_out)
     work.referenced_blobs.add(work.view_sha)
-    _validate_selector(edge['selector'], input_length=len(work.blob_map[work.parent_out]))
-    work.view = _apply_selector(work.blob_map[work.parent_out], edge['selector'])
+    _validate_selector(edge["selector"], input_length=len(work.blob_map[work.parent_out]))
+    work.view = _apply_selector(work.blob_map[work.parent_out], edge["selector"])
     if sha256_digest(work.view) != work.view_sha:
-        raise StrictGroundingError('edge_view_mismatch')
+        raise StrictGroundingError("edge_view_mismatch")
     if work.blob_map[work.view_sha] != work.view:
-        raise StrictGroundingError('edge_view_bytes_mismatch')
+        raise StrictGroundingError("edge_view_bytes_mismatch")
+
 
 def _gdoc_p2_s1_item2(work: SimpleNamespace, output) -> None:
     if not isinstance(output, Mapping) or set(output) != _OUTPUT_KEYS:
-        raise StrictGroundingError('output_keys')
-    if not isinstance(output['provenance_assertion_id'], str) or not output['provenance_assertion_id']:
-        raise StrictGroundingError('output_assertion')
-    for field in ('provenance_commitment', 'output_blob_sha256'):
+        raise StrictGroundingError("output_keys")
+    if not isinstance(output["provenance_assertion_id"], str) or not output["provenance_assertion_id"]:
+        raise StrictGroundingError("output_assertion")
+    for field in ("provenance_commitment", "output_blob_sha256"):
         if not isinstance(output[field], str) or not _SHA_RE.fullmatch(output[field]):
-            raise StrictGroundingError(f'output_{field}')
-    if output['output_blob_sha256'] not in work.blob_map:
-        raise StrictGroundingError('output_blob_missing')
-    work.referenced_blobs.add(output['output_blob_sha256'])
+            raise StrictGroundingError(f"output_{field}")
+    if output["output_blob_sha256"] not in work.blob_map:
+        raise StrictGroundingError("output_blob_missing")
+    work.referenced_blobs.add(output["output_blob_sha256"])
+
 
 def _gdoc_p2_s1(work: SimpleNamespace) -> None:
     work.referenced_blobs: set[str] = set()
@@ -542,9 +563,11 @@ def _gdoc_p2_s1(work: SimpleNamespace) -> None:
     for output in work.outputs:
         _gdoc_p2_s1_item2(work, output)
 
+
 def _gdoc_validate_grounding_document_p2(work: SimpleNamespace) -> None:
     _gdoc_p2_s0(work)
     _gdoc_p2_s1(work)
+
 
 def _gdoc_validate_grounding_document_p3(work: SimpleNamespace) -> dict[str, Any]:
     work.receipt_refs: dict[str, dict[str, Any]] = {}
@@ -552,16 +575,17 @@ def _gdoc_validate_grounding_document_p3(work: SimpleNamespace) -> dict[str, Any
         work.validated = validate_receipt_object(receipt)
         work.ref = receipt_ref_for(work.validated)
         if work.ref in work.receipt_refs:
-            raise StrictGroundingError('receipt_ref_reused')
+            raise StrictGroundingError("receipt_ref_reused")
         work.receipt_refs[work.ref] = work.validated
     work.unused_blobs = set(work.blob_map) - work.referenced_blobs
     if work.unused_blobs:
-        raise StrictGroundingError('blob_unused')
-    work.payload = {k: v for k, v in work.grounding.items() if k != 'grounding_payload_sha256'}
+        raise StrictGroundingError("blob_unused")
+    work.payload = {k: v for k, v in work.grounding.items() if k != "grounding_payload_sha256"}
     work.digest = sha256_digest(strict_canonical_bytes(work.payload))
-    if work.grounding['grounding_payload_sha256'] != work.digest:
-        raise StrictGroundingError('grounding_payload_mismatch')
+    if work.grounding["grounding_payload_sha256"] != work.digest:
+        raise StrictGroundingError("grounding_payload_mismatch")
     return dict(work.grounding)
+
 
 def validate_grounding_document(grounding: Mapping[str, Any]) -> dict[str, Any]:
     work = SimpleNamespace()
@@ -571,7 +595,6 @@ def validate_grounding_document(grounding: Mapping[str, Any]) -> dict[str, Any]:
     _gdoc_validate_grounding_document_p1(work)
     _gdoc_validate_grounding_document_p2(work)
     return _gdoc_validate_grounding_document_p3(work)
-
 
 
 def verify_legacy_commitments(
@@ -717,66 +740,94 @@ def _receipt_index(grounding: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def _vassert_verify_assertion_grounding_p0(work: SimpleNamespace) -> None:
-    work.assertion_id = work.envelope.get('assertion_id')
+    work.assertion_id = work.envelope.get("assertion_id")
     if not isinstance(work.assertion_id, str) or not work.assertion_id:
-        raise StrictGroundingError('envelope_assertion_id')
+        raise StrictGroundingError("envelope_assertion_id")
     work.commitment = _envelope_commitment(work.envelope, schema_semantics=work.schema_semantics)
-    work.env_roots = list(work.envelope.get('root_bindings') or [])
-    work.env_inputs = list(work.envelope.get('input_bindings') or [])
+    work.env_roots = list(work.envelope.get("root_bindings") or [])
+    work.env_inputs = list(work.envelope.get("input_bindings") or [])
     if bool(work.env_roots) == bool(work.env_inputs):
-        raise StrictGroundingError('envelope_binding_family')
+        raise StrictGroundingError("envelope_binding_family")
     work.g_roots, work.g_edges = _bindings_for_assertion(work.grounding, work.assertion_id)
+
 
 def _vassert_p1_0_s0(work: SimpleNamespace) -> None:
     work.missing = False
+
 
 def _vassert_p1_0_s1_then(work: SimpleNamespace) -> None:
     if len(work.g_roots) != len(work.env_roots):
         if len(work.g_roots) == 0:
             work.missing = True
         else:
-            raise StrictGroundingError('root_binding_count')
+            raise StrictGroundingError("root_binding_count")
     if not work.missing:
         for root in work.g_roots:
             env_root = _match_root_to_envelope(root, envelope=work.envelope, commitment=work.commitment)
             if env_root is None:
-                raise StrictGroundingError('root_binding_mismatch')
+                raise StrictGroundingError("root_binding_mismatch")
             work.marked = False
-            for idx, candidate in enumerate(work.grounding['roots']):
-                if candidate['provenance_assertion_id'] == root['provenance_assertion_id'] and candidate['source_registration_id'] == root['source_registration_id'] and (candidate['source_event_id'] == root['source_event_id']) and (candidate['record_locator'] == root['record_locator']):
+            for idx, candidate in enumerate(work.grounding["roots"]):
+                if (
+                    candidate["provenance_assertion_id"] == root["provenance_assertion_id"]
+                    and candidate["source_registration_id"] == root["source_registration_id"]
+                    and (candidate["source_event_id"] == root["source_event_id"])
+                    and (candidate["record_locator"] == root["record_locator"])
+                ):
                     work.used_roots.add(idx)
                     work.marked = True
                     break
             if not work.marked:
-                raise StrictGroundingError('root_index')
+                raise StrictGroundingError("root_index")
         for env_root in work.env_roots:
-            if not any((env_root.get('source_identity') == r['source_identity'] and env_root.get('record_locator') == r['record_locator'] and _hashes_equal(env_root.get('raw_record_sha256'), r['raw_blob_sha256']) and _hashes_equal(env_root.get('input_view_sha256'), r['view_blob_sha256']) for r in work.g_roots)):
-                raise StrictGroundingError('envelope_root_unmatched')
+            if not any(
+                (
+                    env_root.get("source_identity") == r["source_identity"]
+                    and env_root.get("record_locator") == r["record_locator"]
+                    and _hashes_equal(env_root.get("raw_record_sha256"), r["raw_blob_sha256"])
+                    and _hashes_equal(env_root.get("input_view_sha256"), r["view_blob_sha256"])
+                    for r in work.g_roots
+                )
+            ):
+                raise StrictGroundingError("envelope_root_unmatched")
+
 
 def _vassert_p1_0_s1_else(work: SimpleNamespace) -> None:
     if work.g_roots:
-        raise StrictGroundingError('root_binding_unexpected')
+        raise StrictGroundingError("root_binding_unexpected")
     if len(work.g_edges) != len(work.env_inputs):
         if len(work.g_edges) == 0:
             work.missing = True
         else:
-            raise StrictGroundingError('edge_binding_count')
+            raise StrictGroundingError("edge_binding_count")
     if not work.missing:
         for edge in work.g_edges:
             env_in = _match_edge_to_envelope(edge, envelope=work.envelope, commitment=work.commitment)
             if env_in is None:
-                raise StrictGroundingError('edge_binding_mismatch')
+                raise StrictGroundingError("edge_binding_mismatch")
             work.marked = False
-            for idx, candidate in enumerate(work.grounding['edges']):
-                if candidate['child_provenance_assertion_id'] == edge['child_provenance_assertion_id'] and candidate['parent_provenance_assertion_id'] == edge['parent_provenance_assertion_id'] and (candidate['view_blob_sha256'] == edge['view_blob_sha256']):
+            for idx, candidate in enumerate(work.grounding["edges"]):
+                if (
+                    candidate["child_provenance_assertion_id"] == edge["child_provenance_assertion_id"]
+                    and candidate["parent_provenance_assertion_id"] == edge["parent_provenance_assertion_id"]
+                    and (candidate["view_blob_sha256"] == edge["view_blob_sha256"])
+                ):
                     work.used_edges.add(idx)
                     work.marked = True
                     break
             if not work.marked:
-                raise StrictGroundingError('edge_index')
+                raise StrictGroundingError("edge_index")
         for env_in in work.env_inputs:
-            if not any((env_in.get('parent_assertion_id') == e['parent_provenance_assertion_id'] and _hashes_equal(env_in.get('parent_provenance_commitment'), e['parent_provenance_commitment']) and _hashes_equal(env_in.get('exact_input_view_sha256'), e['view_blob_sha256']) for e in work.g_edges)):
-                raise StrictGroundingError('envelope_input_unmatched')
+            if not any(
+                (
+                    env_in.get("parent_assertion_id") == e["parent_provenance_assertion_id"]
+                    and _hashes_equal(env_in.get("parent_provenance_commitment"), e["parent_provenance_commitment"])
+                    and _hashes_equal(env_in.get("exact_input_view_sha256"), e["view_blob_sha256"])
+                    for e in work.g_edges
+                )
+            ):
+                raise StrictGroundingError("envelope_input_unmatched")
+
 
 def _vassert_p1_0_s1(work: SimpleNamespace) -> None:
     if work.env_roots:
@@ -784,23 +835,31 @@ def _vassert_p1_0_s1(work: SimpleNamespace) -> None:
     else:
         _vassert_p1_0_s1_else(work)
 
+
 def _x_verify_assertion_grounding_p1_0(work: SimpleNamespace) -> None:
     _vassert_p1_0_s0(work)
     _vassert_p1_0_s1(work)
 
+
 def _x_verify_assertion_grounding_p1_1(work: SimpleNamespace) -> None:
-    work.outputs = [(idx, dict(o)) for idx, o in enumerate(work.grounding['outputs']) if o['provenance_assertion_id'] == work.assertion_id]
-    work.selection = work.envelope.get('selection_parameters')
+    work.outputs = [
+        (idx, dict(o))
+        for idx, o in enumerate(work.grounding["outputs"])
+        if o["provenance_assertion_id"] == work.assertion_id
+    ]
+    work.selection = work.envelope.get("selection_parameters")
     work.output_sha = None
+
 
 def _x_verify_assertion_grounding_p1_2(work: SimpleNamespace) -> None:
     if isinstance(work.selection, Mapping):
-        work.output_sha = work.selection.get('output_sha256')
+        work.output_sha = work.selection.get("output_sha256")
     if work.expected_source_payload_sha256 is not None:
         if work.output_sha != work.expected_source_payload_sha256:
-            raise StrictGroundingError('source_payload_binding_mismatch')
+            raise StrictGroundingError("source_payload_binding_mismatch")
     if len(work.outputs) > 1:
-        raise StrictGroundingError('output_duplicate')
+        raise StrictGroundingError("output_duplicate")
+
 
 def _vassert_verify_assertion_grounding_p1(work: SimpleNamespace) -> None:
 
@@ -816,61 +875,72 @@ def _vassert_verify_assertion_grounding_p2(work: SimpleNamespace) -> tuple[bool,
     else:
         idx, work.output_binding = work.outputs[0]
         work.used_outputs.add(idx)
-        if not _hashes_equal(work.output_binding['provenance_commitment'], work.commitment):
-            raise StrictGroundingError('output_commitment_mismatch')
-        if work.output_sha is not None and (not _hashes_equal(work.output_binding['output_blob_sha256'], work.output_sha)):
-            raise StrictGroundingError('output_blob_mismatch')
+        if not _hashes_equal(work.output_binding["provenance_commitment"], work.commitment):
+            raise StrictGroundingError("output_commitment_mismatch")
+        if work.output_sha is not None and (
+            not _hashes_equal(work.output_binding["output_blob_sha256"], work.output_sha)
+        ):
+            raise StrictGroundingError("output_blob_mismatch")
     if work.missing:
         return (False, None)
-    work.binding_refs = [r['receipt_ref'] for r in work.g_roots] + [e['receipt_ref'] for e in work.g_edges]
+    work.binding_refs = [r["receipt_ref"] for r in work.g_roots] + [e["receipt_ref"] for e in work.g_edges]
     if not work.binding_refs:
         return (False, None)
     if len(set(work.binding_refs)) != 1:
-        raise StrictGroundingError('receipt_ref_inconsistent')
+        raise StrictGroundingError("receipt_ref_inconsistent")
     work.receipt_ref = work.binding_refs[0]
     work.receipt = work.receipt_by_ref.get(work.receipt_ref)
     if work.receipt is None:
-        raise StrictGroundingError('receipt_dangling')
+        raise StrictGroundingError("receipt_dangling")
     return None
+
 
 def _vassert_verify_assertion_grounding_p3(work: SimpleNamespace) -> None:
     work.used_receipts.add(work.receipt_ref)
-    if work.receipt['provenance_assertion_id'] != work.assertion_id:
-        raise StrictGroundingError('receipt_assertion_mismatch')
-    if not _hashes_equal(work.receipt['provenance_commitment'], work.commitment):
-        raise StrictGroundingError('receipt_commitment_mismatch')
+    if work.receipt["provenance_assertion_id"] != work.assertion_id:
+        raise StrictGroundingError("receipt_assertion_mismatch")
+    if not _hashes_equal(work.receipt["provenance_commitment"], work.commitment):
+        raise StrictGroundingError("receipt_commitment_mismatch")
     if work.g_roots:
         for root in work.g_roots:
-            if root['source_registration_id'] != work.receipt['source_registration_id']:
-                raise StrictGroundingError('receipt_source_registration_mismatch')
-            if root['source_event_id'] != work.receipt['source_event_id']:
-                raise StrictGroundingError('receipt_source_event_mismatch')
+            if root["source_registration_id"] != work.receipt["source_registration_id"]:
+                raise StrictGroundingError("receipt_source_registration_mismatch")
+            if root["source_event_id"] != work.receipt["source_event_id"]:
+                raise StrictGroundingError("receipt_source_event_mismatch")
     elif work.g_edges:
-        if not isinstance(work.receipt['source_registration_id'], str):
-            raise StrictGroundingError('receipt_source_registration')
+        if not isinstance(work.receipt["source_registration_id"], str):
+            raise StrictGroundingError("receipt_source_registration")
     work.expected_inputs = compute_input_bindings_sha256(work.g_roots, work.g_edges)
     work.expected_views = compute_submitted_views_sha256(work.g_roots, work.g_edges)
-    if work.receipt['input_bindings_sha256'] != work.expected_inputs:
-        raise StrictGroundingError('input_bindings_sha256_mismatch')
-    if work.receipt['submitted_views_sha256'] != work.expected_views:
-        raise StrictGroundingError('submitted_views_sha256_mismatch')
+    if work.receipt["input_bindings_sha256"] != work.expected_inputs:
+        raise StrictGroundingError("input_bindings_sha256_mismatch")
+    if work.receipt["submitted_views_sha256"] != work.expected_views:
+        raise StrictGroundingError("submitted_views_sha256_mismatch")
+
 
 def _vassert_verify_assertion_grounding_p4(work: SimpleNamespace) -> tuple[bool, str | None]:
     if work.output_binding is None:
-        raise StrictGroundingError('output_missing')
-    if not _hashes_equal(work.receipt['returned_output_sha256'], work.output_binding['output_blob_sha256']):
-        raise StrictGroundingError('returned_output_mismatch')
-    work.artifact = work.envelope.get('transformer_artifact_sha256')
-    work.recipe = work.envelope.get('transformer_recipe_sha256')
-    if work.artifact is not None and (not _hashes_equal(work.receipt['transformer_artifact_sha256'], work.artifact)):
-        raise StrictGroundingError('transformer_artifact_mismatch')
-    if work.recipe is not None and (not _hashes_equal(work.receipt['recipe_sha256'], work.recipe)):
-        raise StrictGroundingError('recipe_mismatch')
+        raise StrictGroundingError("output_missing")
+    if not _hashes_equal(work.receipt["returned_output_sha256"], work.output_binding["output_blob_sha256"]):
+        raise StrictGroundingError("returned_output_mismatch")
+    work.artifact = work.envelope.get("transformer_artifact_sha256")
+    work.recipe = work.envelope.get("transformer_recipe_sha256")
+    if work.artifact is not None and (not _hashes_equal(work.receipt["transformer_artifact_sha256"], work.artifact)):
+        raise StrictGroundingError("transformer_artifact_mismatch")
+    if work.recipe is not None and (not _hashes_equal(work.receipt["recipe_sha256"], work.recipe)):
+        raise StrictGroundingError("recipe_mismatch")
     if work.issuer_inventory is not None:
-        authenticate_receipt(work.receipt, inventory_bytes=work.issuer_inventory, allowed_issuer_ids=work.allowed_issuer_ids, allowed_source_registration_ids=work.allowed_source_registration_ids, capture_issuers=work.capture_issuers)
+        authenticate_receipt(
+            work.receipt,
+            inventory_bytes=work.issuer_inventory,
+            allowed_issuer_ids=work.allowed_issuer_ids,
+            allowed_source_registration_ids=work.allowed_source_registration_ids,
+            capture_issuers=work.capture_issuers,
+        )
     else:
         return (True, None)
-    return (True, work.receipt['capture_class'])
+    return (True, work.receipt["capture_class"])
+
 
 def _verify_assertion_grounding(ctx: SimpleNamespace) -> tuple[bool, str | None]:
     """Return (complete_for_assertion, capture_class_or_None).
@@ -901,7 +971,6 @@ def _verify_assertion_grounding(ctx: SimpleNamespace) -> tuple[bool, str | None]
         return _out
     _vassert_verify_assertion_grounding_p3(work)
     return _vassert_verify_assertion_grounding_p4(work)
-
 
 
 def merge_issuer_receipt_inventories(
@@ -970,145 +1039,164 @@ def load_bound_issuer_inventories(
 
 def _pctx_validate_provenance_context_p0(work: SimpleNamespace) -> None:
     if not isinstance(work.provenance_context, Mapping):
-        raise StrictGroundingError('provenance_context_type')
+        raise StrictGroundingError("provenance_context_type")
     if set(work.provenance_context) != _PROVENANCE_CONTEXT_KEYS:
-        raise StrictGroundingError('provenance_context_keys')
-    if work.provenance_context.get('schema') != 'convmem.strict-provenance-context.v2':
-        raise StrictGroundingError('provenance_context_schema')
-    work.grounding_sha = work.provenance_context['grounding_sha256']
+        raise StrictGroundingError("provenance_context_keys")
+    if work.provenance_context.get("schema") != "convmem.strict-provenance-context.v2":
+        raise StrictGroundingError("provenance_context_schema")
+    work.grounding_sha = work.provenance_context["grounding_sha256"]
     if not isinstance(work.grounding_sha, str) or not _SHA_RE.fullmatch(work.grounding_sha):
-        raise StrictGroundingError('grounding_sha256')
+        raise StrictGroundingError("grounding_sha256")
     if work.expected_grounding_sha256 is not None and work.grounding_sha != work.expected_grounding_sha256:
-        raise StrictGroundingError('provenance_grounding_link')
+        raise StrictGroundingError("provenance_grounding_link")
+
 
 def _pctx_validate_provenance_context_p1(work: SimpleNamespace) -> None:
     work.schema_semantics_out: list[dict[str, Any]] = []
     work.prev_sem_key: tuple[str, str] | None = None
     work.seen_sem: set[tuple[str, str]] = set()
-    for entry in work.provenance_context['schema_semantics']:
+    for entry in work.provenance_context["schema_semantics"]:
         if not isinstance(entry, Mapping) or set(entry) != _SCHEMA_SEMANTICS_KEYS:
-            raise StrictGroundingError('schema_semantics_keys')
-        work.schema_version = entry['schema_version']
-        work.binding_version = entry['binding_version']
+            raise StrictGroundingError("schema_semantics_keys")
+        work.schema_version = entry["schema_version"]
+        work.binding_version = entry["binding_version"]
         if not isinstance(work.schema_version, str) or not work.schema_version:
-            raise StrictGroundingError('schema_version')
+            raise StrictGroundingError("schema_version")
         if not isinstance(work.binding_version, str) or not work.binding_version:
-            raise StrictGroundingError('binding_version')
+            raise StrictGroundingError("binding_version")
         work.key = (work.schema_version, work.binding_version)
         if work.key in work.seen_sem:
-            raise StrictGroundingError('schema_semantics_duplicate')
+            raise StrictGroundingError("schema_semantics_duplicate")
         work.seen_sem.add(work.key)
         if work.prev_sem_key is not None and work.key < work.prev_sem_key:
-            raise StrictGroundingError('schema_semantics_unsorted')
+            raise StrictGroundingError("schema_semantics_unsorted")
         work.prev_sem_key = work.key
-        work.raw = _b64_decode(entry['semantic_bytes_b64'])
+        work.raw = _b64_decode(entry["semantic_bytes_b64"])
         work.digest = sha256_digest(work.raw)
-        if entry['semantic_sha256'] != work.digest:
-            raise StrictGroundingError('schema_semantics_digest_mismatch')
+        if entry["semantic_sha256"] != work.digest:
+            raise StrictGroundingError("schema_semantics_digest_mismatch")
         work.schema_semantics_out.append(dict(entry))
     work.policies_out: list[dict[str, Any]] = []
     work.prev_policy: str | None = None
 
+
 def _pctx_p2_s0_item0(work: SimpleNamespace, policy) -> None:
     if not isinstance(policy, Mapping) or set(policy) != _POLICY_KEYS:
-        raise StrictGroundingError('policy_keys')
-    work.version = policy['policy_version']
+        raise StrictGroundingError("policy_keys")
+    work.version = policy["policy_version"]
     if not isinstance(work.version, str) or not work.version:
-        raise StrictGroundingError('policy_version')
+        raise StrictGroundingError("policy_version")
     if work.version in work.seen_policies:
-        raise StrictGroundingError('policy_duplicate')
+        raise StrictGroundingError("policy_duplicate")
     work.seen_policies.add(work.version)
     if work.prev_policy is not None and work.version < work.prev_policy:
-        raise StrictGroundingError('policies_unsorted')
+        raise StrictGroundingError("policies_unsorted")
     work.prev_policy = work.version
-    work.policy_bytes = _b64_decode(policy['semantic_bytes_b64'])
-    if policy['semantic_sha256'] != sha256_digest(work.policy_bytes):
-        raise StrictGroundingError('policy_digest_mismatch')
-    work.rules = policy['rules']
+    work.policy_bytes = _b64_decode(policy["semantic_bytes_b64"])
+    if policy["semantic_sha256"] != sha256_digest(work.policy_bytes):
+        raise StrictGroundingError("policy_digest_mismatch")
+    work.rules = policy["rules"]
     if not isinstance(work.rules, list):
-        raise StrictGroundingError('policy_rules_type')
+        raise StrictGroundingError("policy_rules_type")
     work.prev_rule_key: tuple[str, str, str, str] | None = None
     work.seen_rules: set[tuple[str, str, str, str]] = set()
     work.rules_out: list[dict[str, Any]] = []
     for rule in work.rules:
         if not isinstance(rule, Mapping) or set(rule) != _RULE_KEYS:
-            raise StrictGroundingError('policy_rule_keys')
-        for field in ('transformer_class', 'transformer_identity', 'transformer_version', 'recipe_id', 'cap'):
+            raise StrictGroundingError("policy_rule_keys")
+        for field in ("transformer_class", "transformer_identity", "transformer_version", "recipe_id", "cap"):
             if not isinstance(rule[field], str) or not rule[field]:
-                raise StrictGroundingError(f'policy_rule_{field}')
-        if rule['cap'] not in {'trusted', 'agent', 'untrusted'}:
-            raise StrictGroundingError('policy_rule_cap')
-        work.preservation = rule['preservation_contract']
+                raise StrictGroundingError(f"policy_rule_{field}")
+        if rule["cap"] not in {"trusted", "agent", "untrusted"}:
+            raise StrictGroundingError("policy_rule_cap")
+        work.preservation = rule["preservation_contract"]
         if work.preservation is not None and (not isinstance(work.preservation, str) or not work.preservation):
-            raise StrictGroundingError('policy_rule_preservation_contract')
-        work.artifact = rule['artifact_sha256']
+            raise StrictGroundingError("policy_rule_preservation_contract")
+        work.artifact = rule["artifact_sha256"]
         if work.artifact is not None:
             if not isinstance(work.artifact, str) or not _SHA_RE.fullmatch(work.artifact):
-                raise StrictGroundingError('policy_rule_artifact_sha256')
-        work.rule_key = (rule['transformer_class'], rule['transformer_identity'], rule['transformer_version'], rule['recipe_id'])
+                raise StrictGroundingError("policy_rule_artifact_sha256")
+        work.rule_key = (
+            rule["transformer_class"],
+            rule["transformer_identity"],
+            rule["transformer_version"],
+            rule["recipe_id"],
+        )
         if work.rule_key in work.seen_rules:
-            raise StrictGroundingError('policy_rule_duplicate')
+            raise StrictGroundingError("policy_rule_duplicate")
         work.seen_rules.add(work.rule_key)
         if work.prev_rule_key is not None and work.rule_key < work.prev_rule_key:
-            raise StrictGroundingError('policy_rules_unsorted')
+            raise StrictGroundingError("policy_rules_unsorted")
         work.prev_rule_key = work.rule_key
         work.rules_out.append(dict(rule))
-    work.policies_out.append({'policy_version': work.version, 'semantic_bytes_b64': policy['semantic_bytes_b64'], 'semantic_sha256': policy['semantic_sha256'], 'rules': work.rules_out})
+    work.policies_out.append(
+        {
+            "policy_version": work.version,
+            "semantic_bytes_b64": policy["semantic_bytes_b64"],
+            "semantic_sha256": policy["semantic_sha256"],
+            "rules": work.rules_out,
+        }
+    )
+
 
 def _pctx_p2_s0(work: SimpleNamespace) -> None:
     work.seen_policies: set[str] = set()
-    for policy in work.provenance_context['policies']:
+    for policy in work.provenance_context["policies"]:
         _pctx_p2_s0_item0(work, policy)
     work.recipes_out: list[dict[str, Any]] = []
+
 
 def _pctx_p2_s1(work: SimpleNamespace) -> None:
     work.prev_recipe: str | None = None
     work.seen_recipes: set[str] = set()
-    for recipe in work.provenance_context['recipes']:
+    for recipe in work.provenance_context["recipes"]:
         if not isinstance(recipe, Mapping) or set(recipe) != _RECIPE_KEYS:
-            raise StrictGroundingError('recipe_keys')
-        work.recipe_id = recipe['recipe_id']
+            raise StrictGroundingError("recipe_keys")
+        work.recipe_id = recipe["recipe_id"]
         if not isinstance(work.recipe_id, str) or not work.recipe_id:
-            raise StrictGroundingError('recipe_id')
+            raise StrictGroundingError("recipe_id")
         if work.recipe_id in work.seen_recipes:
-            raise StrictGroundingError('recipe_duplicate')
+            raise StrictGroundingError("recipe_duplicate")
         work.seen_recipes.add(work.recipe_id)
         if work.prev_recipe is not None and work.recipe_id < work.prev_recipe:
-            raise StrictGroundingError('recipes_unsorted')
+            raise StrictGroundingError("recipes_unsorted")
         work.prev_recipe = work.recipe_id
-        work.recipe_bytes = _b64_decode(recipe['recipe_bytes_b64'])
-        if recipe['recipe_sha256'] != sha256_digest(work.recipe_bytes):
-            raise StrictGroundingError('recipe_digest_mismatch')
+        work.recipe_bytes = _b64_decode(recipe["recipe_bytes_b64"])
+        if recipe["recipe_sha256"] != sha256_digest(work.recipe_bytes):
+            raise StrictGroundingError("recipe_digest_mismatch")
         work.recipes_out.append(dict(recipe))
+
 
 def _pctx_validate_provenance_context_p2(work: SimpleNamespace) -> None:
     _pctx_p2_s0(work)
     _pctx_p2_s1(work)
 
+
 def _pctx_validate_provenance_context_p3(work: SimpleNamespace) -> None:
     work.channels_out: list[dict[str, Any]] = []
     work.prev_channel: tuple[str, str, str, str] | None = None
     work.seen_channels: set[tuple[str, str, str, str]] = set()
-    for channel in work.provenance_context['verified_channels']:
+    for channel in work.provenance_context["verified_channels"]:
         if not isinstance(channel, Mapping) or set(channel) != _CHANNEL_KEYS:
-            raise StrictGroundingError('channel_keys')
-        for field in ('origin_class', 'channel_class', 'channel_locator'):
+            raise StrictGroundingError("channel_keys")
+        for field in ("origin_class", "channel_class", "channel_locator"):
             if not isinstance(channel[field], str) or not channel[field]:
-                raise StrictGroundingError(f'channel_{field}')
-        work.evidence = channel['channel_evidence_sha256']
+                raise StrictGroundingError(f"channel_{field}")
+        work.evidence = channel["channel_evidence_sha256"]
         if not isinstance(work.evidence, str) or not _SHA_RE.fullmatch(work.evidence):
-            raise StrictGroundingError('channel_evidence_sha256')
-        work.key = (channel['origin_class'], channel['channel_class'], channel['channel_locator'], work.evidence)
+            raise StrictGroundingError("channel_evidence_sha256")
+        work.key = (channel["origin_class"], channel["channel_class"], channel["channel_locator"], work.evidence)
         if work.key in work.seen_channels:
-            raise StrictGroundingError('channel_duplicate')
+            raise StrictGroundingError("channel_duplicate")
         work.seen_channels.add(work.key)
         if work.prev_channel is not None and work.key < work.prev_channel:
-            raise StrictGroundingError('channels_unsorted')
+            raise StrictGroundingError("channels_unsorted")
         work.prev_channel = work.key
         work.channels_out.append(dict(channel))
-    work.registered_raw = work.provenance_context['registered_assertions']
+    work.registered_raw = work.provenance_context["registered_assertions"]
     if not isinstance(work.registered_raw, list):
-        raise StrictGroundingError('registered_assertions_type')
+        raise StrictGroundingError("registered_assertions_type")
+
 
 def _pctx_validate_provenance_context_p4(work: SimpleNamespace) -> None:
     work.seen_assertion_ids: set[str] = set()
@@ -1116,40 +1204,60 @@ def _pctx_validate_provenance_context_p4(work: SimpleNamespace) -> None:
     work.registered_out: list[dict[str, Any]] = []
     for entry in work.registered_raw:
         if not isinstance(entry, Mapping) or set(entry) != _REGISTERED_ASSERTION_KEYS:
-            raise StrictGroundingError('registered_assertion_keys')
-        work.assertion_id = entry['assertion_id']
+            raise StrictGroundingError("registered_assertion_keys")
+        work.assertion_id = entry["assertion_id"]
         if not isinstance(work.assertion_id, str) or not work.assertion_id:
-            raise StrictGroundingError('registered_assertion_id')
+            raise StrictGroundingError("registered_assertion_id")
         if work.assertion_id in work.seen_assertion_ids:
-            raise StrictGroundingError('registered_assertion_duplicate')
+            raise StrictGroundingError("registered_assertion_duplicate")
         work.seen_assertion_ids.add(work.assertion_id)
         if work.prev_aid is not None and work.assertion_id < work.prev_aid:
-            raise StrictGroundingError('registered_assertions_unsorted')
+            raise StrictGroundingError("registered_assertions_unsorted")
         work.prev_aid = work.assertion_id
-        work.envelope = entry['envelope']
+        work.envelope = entry["envelope"]
         if not isinstance(work.envelope, Mapping):
-            raise StrictGroundingError('registered_envelope_type')
-        work.env_id = work.envelope.get('assertion_id')
+            raise StrictGroundingError("registered_envelope_type")
+        work.env_id = work.envelope.get("assertion_id")
         if work.env_id != work.assertion_id:
-            raise StrictGroundingError('registered_assertion_id_mismatch')
-        work.registered_out.append({'assertion_id': work.assertion_id, 'provenance_commitment': entry['provenance_commitment'], 'envelope': dict(work.envelope)})
-    work.closed = {'schema': 'convmem.strict-provenance-context.v2', 'schema_semantics': work.schema_semantics_out, 'policies': work.policies_out, 'recipes': work.recipes_out, 'verified_channels': work.channels_out, 'registered_assertions': work.registered_out, 'grounding_sha256': work.grounding_sha, 'context_payload_sha256': work.provenance_context['context_payload_sha256']}
-    work.payload = {k: v for k, v in work.closed.items() if k != 'context_payload_sha256'}
+            raise StrictGroundingError("registered_assertion_id_mismatch")
+        work.registered_out.append(
+            {
+                "assertion_id": work.assertion_id,
+                "provenance_commitment": entry["provenance_commitment"],
+                "envelope": dict(work.envelope),
+            }
+        )
+    work.closed = {
+        "schema": "convmem.strict-provenance-context.v2",
+        "schema_semantics": work.schema_semantics_out,
+        "policies": work.policies_out,
+        "recipes": work.recipes_out,
+        "verified_channels": work.channels_out,
+        "registered_assertions": work.registered_out,
+        "grounding_sha256": work.grounding_sha,
+        "context_payload_sha256": work.provenance_context["context_payload_sha256"],
+    }
+    work.payload = {k: v for k, v in work.closed.items() if k != "context_payload_sha256"}
+
 
 def _pctx_validate_provenance_context_p5(work: SimpleNamespace) -> dict[str, Any]:
     work.digest = sha256_digest(strict_canonical_bytes(work.payload))
-    if work.provenance_context['context_payload_sha256'] != work.digest:
-        raise StrictGroundingError('context_payload_mismatch')
-    work.closed['context_payload_sha256'] = work.digest
-    work.schema_map = {(e['schema_version'], e['binding_version']): _b64_decode(e['semantic_bytes_b64']) for e in work.schema_semantics_out}
-    for entry in work.closed['registered_assertions']:
-        work.recomputed = _envelope_commitment(entry['envelope'], schema_semantics=work.schema_map)
-        work.claimed = entry['provenance_commitment']
+    if work.provenance_context["context_payload_sha256"] != work.digest:
+        raise StrictGroundingError("context_payload_mismatch")
+    work.closed["context_payload_sha256"] = work.digest
+    work.schema_map = {
+        (e["schema_version"], e["binding_version"]): _b64_decode(e["semantic_bytes_b64"])
+        for e in work.schema_semantics_out
+    }
+    for entry in work.closed["registered_assertions"]:
+        work.recomputed = _envelope_commitment(entry["envelope"], schema_semantics=work.schema_map)
+        work.claimed = entry["provenance_commitment"]
         if not isinstance(work.claimed, str) or not _SHA_RE.fullmatch(work.claimed):
-            raise StrictGroundingError('registered_provenance_commitment')
+            raise StrictGroundingError("registered_provenance_commitment")
         if work.claimed != work.recomputed:
-            raise StrictGroundingError('registered_commitment_mismatch')
+            raise StrictGroundingError("registered_commitment_mismatch")
     return work.closed
+
 
 def validate_provenance_context(
     provenance_context: Mapping[str, Any], *, expected_grounding_sha256: str | None = None
@@ -1167,8 +1275,7 @@ def validate_provenance_context(
     return _pctx_validate_provenance_context_p5(work)
 
 
-
-def reconstruct_provenance_registry(  # pylint: disable=W0212  # intentional registry rehydrate via private store surface
+def reconstruct_provenance_registry(  # pylint: disable=W0212  # private store rehydrate
     provenance_context: Mapping[str, Any],
 ) -> tuple[ProvenanceRegistry, Mapping[tuple[str, str], bytes]]:
     """Build ProvenanceRegistry from a validated provenance-context inventory.
@@ -1330,21 +1437,23 @@ def _assert_closed_document_coverage(
     used_receipts: set[str] = set()
 
     for env in envelopes.values():
-        _verify_assertion_grounding(SimpleNamespace(
-            grounding=validated,
-            envelope=env,
-            receipt_by_ref=receipt_by_ref,
-            issuer_inventory=issuer_inventory,
-            allowed_issuer_ids=allowed_issuer_ids,
-            allowed_source_registration_ids=allowed_source_registration_ids,
-            capture_issuers=capture_issuers,
-            expected_source_payload_sha256=None,
-            used_roots=used_roots,
-            used_edges=used_edges,
-            used_outputs=used_outputs,
-            used_receipts=used_receipts,
-            schema_semantics=schema_semantics,
-        ))
+        _verify_assertion_grounding(
+            SimpleNamespace(
+                grounding=validated,
+                envelope=env,
+                receipt_by_ref=receipt_by_ref,
+                issuer_inventory=issuer_inventory,
+                allowed_issuer_ids=allowed_issuer_ids,
+                allowed_source_registration_ids=allowed_source_registration_ids,
+                capture_issuers=capture_issuers,
+                expected_source_payload_sha256=None,
+                used_roots=used_roots,
+                used_edges=used_edges,
+                used_outputs=used_outputs,
+                used_receipts=used_receipts,
+                schema_semantics=schema_semantics,
+            )
+        )
 
     if len(used_roots) != len(validated["roots"]):
         raise StrictGroundingError("root_unused")
@@ -1421,48 +1530,78 @@ def qualify_assertions(
 
 def _qground_p0_s0(work: SimpleNamespace) -> QualificationTuple | None:
     if work.original_qualification is not None:
-        work.frozen = QualificationTuple(commitments=str(work.original_qualification['commitments']), byte_grounding=str(work.original_qualification['byte_grounding']), capture=str(work.original_qualification['capture']), transformer_cap=str(work.original_qualification['transformer_cap']))
-        work.recomputed = qualify_grounding(grounding=work.grounding, envelope=work.envelope, envelopes=work.envelopes, issuer_inventory=work.issuer_inventory, allowed_issuer_ids=work.allowed_issuer_ids, allowed_source_registration_ids=work.allowed_source_registration_ids, capture_issuers=work.capture_issuers, expected_source_payload_sha256=work.expected_source_payload_sha256, transformer_cap=work.transformer_cap, require_complete=False, original_qualification=None, registry=work.registry, schema_semantics=work.schema_semantics, orphan_check=work.orphan_check)
-        work.order_commitments = {'incomplete': 0, 'valid': 1}
-        work.order_bytes = {'missing': 0, 'complete': 1}
-        work.order_capture = {'unattested': 0, 'synthetic_fixture': 1, 'controlled_capture': 1}
-        work.order_cap = {'untrusted': 0, 'agent': 1, 'trusted': 2}
-        work.upgraded = work.order_commitments[work.recomputed.commitments] > work.order_commitments[work.frozen.commitments] or work.order_bytes[work.recomputed.byte_grounding] > work.order_bytes[work.frozen.byte_grounding] or work.order_capture[work.recomputed.capture] > work.order_capture[work.frozen.capture] or (work.order_cap[work.recomputed.transformer_cap] > work.order_cap[work.frozen.transformer_cap])
+        work.frozen = QualificationTuple(
+            commitments=str(work.original_qualification["commitments"]),
+            byte_grounding=str(work.original_qualification["byte_grounding"]),
+            capture=str(work.original_qualification["capture"]),
+            transformer_cap=str(work.original_qualification["transformer_cap"]),
+        )
+        work.recomputed = qualify_grounding(
+            grounding=work.grounding,
+            envelope=work.envelope,
+            envelopes=work.envelopes,
+            issuer_inventory=work.issuer_inventory,
+            allowed_issuer_ids=work.allowed_issuer_ids,
+            allowed_source_registration_ids=work.allowed_source_registration_ids,
+            capture_issuers=work.capture_issuers,
+            expected_source_payload_sha256=work.expected_source_payload_sha256,
+            transformer_cap=work.transformer_cap,
+            require_complete=False,
+            original_qualification=None,
+            registry=work.registry,
+            schema_semantics=work.schema_semantics,
+            orphan_check=work.orphan_check,
+        )
+        work.order_commitments = {"incomplete": 0, "valid": 1}
+        work.order_bytes = {"missing": 0, "complete": 1}
+        work.order_capture = {"unattested": 0, "synthetic_fixture": 1, "controlled_capture": 1}
+        work.order_cap = {"untrusted": 0, "agent": 1, "trusted": 2}
+        work.upgraded = (
+            work.order_commitments[work.recomputed.commitments] > work.order_commitments[work.frozen.commitments]
+            or work.order_bytes[work.recomputed.byte_grounding] > work.order_bytes[work.frozen.byte_grounding]
+            or work.order_capture[work.recomputed.capture] > work.order_capture[work.frozen.capture]
+            or (work.order_cap[work.recomputed.transformer_cap] > work.order_cap[work.frozen.transformer_cap])
+        )
         if work.upgraded:
             return work.frozen
         if work.recomputed != work.frozen:
-            raise StrictGroundingError('qualification_immutable')
+            raise StrictGroundingError("qualification_immutable")
         return work.frozen
     if work.registry is not None and work.envelope is not None:
         work.cap = _derive_transformer_cap(work.envelope, registry=work.registry)
     else:
-        work.cap = work.transformer_cap if work.transformer_cap in {'trusted', 'agent', 'untrusted'} else 'untrusted'
+        work.cap = work.transformer_cap if work.transformer_cap in {"trusted", "agent", "untrusted"} else "untrusted"
     work.envelope_map: dict[str, Mapping[str, Any]] = {}
     if work.envelopes:
         for key, value in work.envelopes.items():
             if not isinstance(key, str) or not isinstance(value, Mapping):
-                raise StrictGroundingError('envelopes_type')
+                raise StrictGroundingError("envelopes_type")
             if key in work.envelope_map:
-                raise StrictGroundingError('envelopes_duplicate')
+                raise StrictGroundingError("envelopes_duplicate")
             work.envelope_map[key] = value
+    return None
+
 
 def _qground_p0_s1(work: SimpleNamespace) -> None:
     if work.envelope is not None:
-        work.aid = work.envelope.get('assertion_id')
+        work.aid = work.envelope.get("assertion_id")
         if not isinstance(work.aid, str) or not work.aid:
-            raise StrictGroundingError('envelope_assertion_id')
+            raise StrictGroundingError("envelope_assertion_id")
         work.envelope_map[work.aid] = work.envelope
-    work.commitments = 'incomplete'
+    work.commitments = "incomplete"
     if work.envelope_map:
-        work.statuses = [verify_legacy_commitments(envelope=env, registry=work.registry, schema_semantics=work.schema_semantics) for env in work.envelope_map.values()]
-        work.commitments = 'valid' if work.statuses and all((s == 'valid' for s in work.statuses)) else 'incomplete'
+        work.statuses = [
+            verify_legacy_commitments(envelope=env, registry=work.registry, schema_semantics=work.schema_semantics)
+            for env in work.envelope_map.values()
+        ]
+        work.commitments = "valid" if work.statuses and all((s == "valid" for s in work.statuses)) else "incomplete"
         if work.expected_source_payload_sha256 is not None and work.envelope is not None:
-            work.selection = work.envelope.get('selection_parameters')
+            work.selection = work.envelope.get("selection_parameters")
             if not isinstance(work.selection, Mapping):
-                raise StrictGroundingError('envelope_selection_missing')
-            if not _hashes_equal(work.selection.get('output_sha256'), work.expected_source_payload_sha256):
-                raise StrictGroundingError('source_payload_binding_mismatch')
-    return None
+                raise StrictGroundingError("envelope_selection_missing")
+            if not _hashes_equal(work.selection.get("output_sha256"), work.expected_source_payload_sha256):
+                raise StrictGroundingError("source_payload_binding_mismatch")
+
 
 def _qground_qualify_grounding_p0(work: SimpleNamespace) -> QualificationTuple | None:
     _out = _qground_p0_s0(work)
@@ -1471,31 +1610,45 @@ def _qground_qualify_grounding_p0(work: SimpleNamespace) -> QualificationTuple |
     _qground_p0_s1(work)
     return None
 
+
 def _qground_qualify_grounding_p1(work: SimpleNamespace) -> QualificationTuple | None:
-    work.byte_grounding = 'missing'
-    work.capture = 'unattested'
+    work.byte_grounding = "missing"
+    work.capture = "unattested"
     if work.grounding is None:
         work.result = QualificationTuple(work.commitments, work.byte_grounding, work.capture, work.cap)
-        if work.require_complete and (work.result.commitments != 'valid' or work.result.byte_grounding != 'complete' or work.result.capture == 'unattested'):
-            raise StrictGroundingError('qualification_incomplete')
+        if work.require_complete and (
+            work.result.commitments != "valid"
+            or work.result.byte_grounding != "complete"
+            or work.result.capture == "unattested"
+        ):
+            raise StrictGroundingError("qualification_incomplete")
         return work.result
     work.validated = validate_grounding_document(work.grounding)
     work.allowed_issuers = work.allowed_issuer_ids or set()
     work.allowed_sources = work.allowed_source_registration_ids or set()
     if work.capture_issuers is not None:
         work.allowed_issuers = work.allowed_issuers | {i.issuer_id for i in work.capture_issuers}
-        work.allowed_sources = work.allowed_sources | {sid for i in work.capture_issuers for sid in i.source_registration_ids}
+        work.allowed_sources = work.allowed_sources | {
+            sid for i in work.capture_issuers for sid in i.source_registration_ids
+        }
     work.receipt_by_ref = _receipt_index(work.validated)
     return None
 
+
 def _qground_qualify_grounding_p2(work: SimpleNamespace) -> QualificationTuple | None:
     if work.issuer_inventory is not None:
-        for receipt in work.validated['receipts']:
-            authenticate_receipt(receipt, inventory_bytes=work.issuer_inventory, allowed_issuer_ids=work.allowed_issuers, allowed_source_registration_ids=work.allowed_sources, capture_issuers=work.capture_issuers)
+        for receipt in work.validated["receipts"]:
+            authenticate_receipt(
+                receipt,
+                inventory_bytes=work.issuer_inventory,
+                allowed_issuer_ids=work.allowed_issuers,
+                allowed_source_registration_ids=work.allowed_sources,
+                capture_issuers=work.capture_issuers,
+            )
     if not work.envelope_map:
-        work.result = QualificationTuple(work.commitments, 'missing', 'unattested', work.cap)
+        work.result = QualificationTuple(work.commitments, "missing", "unattested", work.cap)
         if work.require_complete:
-            raise StrictGroundingError('qualification_incomplete')
+            raise StrictGroundingError("qualification_incomplete")
         return work.result
     work.used_roots: set[int] = set()
     work.used_edges: set[int] = set()
@@ -1504,39 +1657,61 @@ def _qground_qualify_grounding_p2(work: SimpleNamespace) -> QualificationTuple |
     work.capture_classes: set[str] = set()
     return None
 
+
 def _qground_qualify_grounding_p3(work: SimpleNamespace) -> QualificationTuple:
     work.all_complete = True
     for _assertion_id, env in work.envelope_map.items():
-        work.complete, work.capture_class = _verify_assertion_grounding(SimpleNamespace(grounding=work.validated, envelope=env, receipt_by_ref=work.receipt_by_ref, issuer_inventory=work.issuer_inventory, allowed_issuer_ids=work.allowed_issuers, allowed_source_registration_ids=work.allowed_sources, capture_issuers=work.capture_issuers, expected_source_payload_sha256=work.expected_source_payload_sha256 if env is work.envelope else None, used_roots=work.used_roots, used_edges=work.used_edges, used_outputs=work.used_outputs, used_receipts=work.used_receipts, schema_semantics=work.schema_semantics))
+        work.complete, work.capture_class = _verify_assertion_grounding(
+            SimpleNamespace(
+                grounding=work.validated,
+                envelope=env,
+                receipt_by_ref=work.receipt_by_ref,
+                issuer_inventory=work.issuer_inventory,
+                allowed_issuer_ids=work.allowed_issuers,
+                allowed_source_registration_ids=work.allowed_sources,
+                capture_issuers=work.capture_issuers,
+                expected_source_payload_sha256=work.expected_source_payload_sha256 if env is work.envelope else None,
+                used_roots=work.used_roots,
+                used_edges=work.used_edges,
+                used_outputs=work.used_outputs,
+                used_receipts=work.used_receipts,
+                schema_semantics=work.schema_semantics,
+            )
+        )
         if not work.complete:
             work.all_complete = False
         if work.capture_class is not None:
             work.capture_classes.add(work.capture_class)
     if work.orphan_check:
-        if len(work.used_roots) != len(work.validated['roots']):
-            raise StrictGroundingError('root_unused')
-        if len(work.used_edges) != len(work.validated['edges']):
-            raise StrictGroundingError('edge_unused')
-        if len(work.used_outputs) != len(work.validated['outputs']):
-            raise StrictGroundingError('output_unused')
-        if len(work.used_receipts) != len(work.validated['receipts']):
-            raise StrictGroundingError('receipt_unused')
-    if work.all_complete and work.commitments == 'valid':
-        work.byte_grounding = 'complete'
+        if len(work.used_roots) != len(work.validated["roots"]):
+            raise StrictGroundingError("root_unused")
+        if len(work.used_edges) != len(work.validated["edges"]):
+            raise StrictGroundingError("edge_unused")
+        if len(work.used_outputs) != len(work.validated["outputs"]):
+            raise StrictGroundingError("output_unused")
+        if len(work.used_receipts) != len(work.validated["receipts"]):
+            raise StrictGroundingError("receipt_unused")
+    if work.all_complete and work.commitments == "valid":
+        work.byte_grounding = "complete"
     else:
-        work.byte_grounding = 'missing'
+        work.byte_grounding = "missing"
     if work.issuer_inventory is None:
-        work.capture = 'unattested'
-    elif work.all_complete and work.commitments == 'valid' and (len(work.capture_classes) == 1):
+        work.capture = "unattested"
+    elif work.all_complete and work.commitments == "valid" and (len(work.capture_classes) == 1):
         work.capture = next(iter(work.capture_classes))
     elif work.all_complete and work.capture_classes and (len(work.capture_classes) != 1):
-        raise StrictGroundingError('capture_ancestry_mixed')
+        raise StrictGroundingError("capture_ancestry_mixed")
     else:
-        work.capture = 'unattested'
+        work.capture = "unattested"
     work.result = QualificationTuple(work.commitments, work.byte_grounding, work.capture, work.cap)
-    if work.require_complete and (work.result.commitments != 'valid' or work.result.byte_grounding != 'complete' or work.result.capture == 'unattested'):
-        raise StrictGroundingError('qualification_incomplete')
+    if work.require_complete and (
+        work.result.commitments != "valid"
+        or work.result.byte_grounding != "complete"
+        or work.result.capture == "unattested"
+    ):
+        raise StrictGroundingError("qualification_incomplete")
     return work.result
+
 
 def qualify_grounding(  # pylint: disable=R0913  # frozen public grounding qualification signature
     *,
@@ -1589,7 +1764,6 @@ def qualify_grounding(  # pylint: disable=R0913  # frozen public grounding quali
     if _out is not None:
         return _out
     return _qground_qualify_grounding_p3(work)
-
 
 
 def grounding_entry_hash(kind: str, entry: Mapping[str, Any]) -> str:

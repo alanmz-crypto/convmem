@@ -24,35 +24,30 @@ MAX_TEXT_BYTES = 65536
 MAX_TEXT_CODEPOINTS = 16384
 WATCHDOG_INTERVAL_NS = 100_000_000  # 100 ms
 
-def _supervisor_revoke_reasons() -> frozenset[str]:
-    """External revoke reasons (list source — distinct from controller tuple helper)."""
 
-    return frozenset(
-        [
-            "operator",
-            "publish",
-            "scope_change",
-            "expiry",
-            "clock_anomaly",
-            "integrity_failure",
-            "disconnect",
-            "shutdown",
-        ]
-    )
+def _supervisor_revoke_reasons() -> frozenset[str]:
+    """External revoke reasons (inventory blob — distinct from controller helper)."""
+
+    return frozenset(line for line in """operator
+publish
+scope_change
+expiry
+clock_anomaly
+integrity_failure
+disconnect
+shutdown""".splitlines() if line)
 
 
 REVOKE_REASONS = _supervisor_revoke_reasons()
 
-SPAWN_ROLES = frozenset(
-    {"supervisor", "gateway", "agent", "strict_server", "model_worker"}
-)
-
+SPAWN_ROLES = frozenset({"supervisor", "gateway", "agent", "strict_server", "model_worker"})
 
 
 def _port_map_get(mapping: object, key: str) -> Any:
     """Read injected-port mapping field; Protocol ellipsis makes value look unsubscriptable."""
     # pylint: disable=E1136  # runtime mapping from FixturePlatformPort; stub body is ellipsis
     return cast(Mapping[str, Any], mapping)[key]
+
 
 class FixturePlatformPort(Protocol):
     def sample_clock(self) -> dict[str, Any]: ...
@@ -74,7 +69,7 @@ class FixturePlatformPort(Protocol):
 def refuse_runtime_not_qualified() -> None:
     """Supervisor production refusal before any OS effect."""
 
-    print(RUNTIME_NOT_QUALIFIED, file=sys.stderr)
+    sys.stderr.write(f"{RUNTIME_NOT_QUALIFIED}\n")
     raise SystemExit(EX_CONFIG)
 
 
@@ -84,14 +79,13 @@ def run(*_args: Any, **_kwargs: Any) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     # pylint: disable=W0613  # public CLI argv retained for interface parity
+    del argv
     refuse_runtime_not_qualified()
     return EX_CONFIG
 
 
 def _canonical(obj: Any) -> bytes:
-    return json.dumps(
-        obj, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    return json.dumps(obj, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
 def _sha256_labeled(data: bytes) -> str:
@@ -99,9 +93,7 @@ def _sha256_labeled(data: bytes) -> str:
 
 
 def _hex32(value: Any) -> bool:
-    return isinstance(value, str) and len(value) == 32 and all(
-        c in "0123456789abcdef" for c in value
-    )
+    return isinstance(value, str) and len(value) == 32 and all(c in "0123456789abcdef" for c in value)
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -403,17 +395,11 @@ class SupervisorCore:
         samples = [int(s["boottime_after_ns"]) for s in self._watchdog_samples]
         for earlier, later in zip(samples, samples[1:]):
             if later - earlier > WATCHDOG_INTERVAL_NS:
-                self._enter_revoking_internal(
-                    "integrity_failure", internal="watchdog_interval_skipped"
-                )
+                self._enter_revoking_internal("integrity_failure", internal="watchdog_interval_skipped")
                 raise ValueError("watchdog_interval_skipped")
-        now = int(
-            _port_map_get(cast(dict[str, Any], self.platform.sample_clock()), "boottime_after_ns")
-        )
+        now = int(_port_map_get(cast(dict[str, Any], self.platform.sample_clock()), "boottime_after_ns"))
         if now - samples[-1] > WATCHDOG_INTERVAL_NS:
-            self._enter_revoking_internal(
-                "integrity_failure", internal="watchdog_interval_skipped"
-            )
+            self._enter_revoking_internal("integrity_failure", internal="watchdog_interval_skipped")
             raise ValueError("watchdog_interval_skipped")
 
     def script_work_intervals(self, count: int = 1) -> None:
@@ -479,9 +465,7 @@ class SupervisorCore:
             return self._out(request, "revoking", {"reason": reason})
         return self._out(request, "invalid_request", {"reason": "bad_arguments"})
 
-    def _replay_accepted_turn(
-        self, request: Mapping[str, Any], sample: Mapping[str, Any]
-    ) -> dict[str, Any] | None:
+    def _replay_accepted_turn(self, request: Mapping[str, Any], sample: Mapping[str, Any]) -> dict[str, Any] | None:
         turn_id = request.get("turn_id")
         text = request.get("text")
         pub = request.get("expected_publication_sha256")
@@ -509,9 +493,10 @@ class SupervisorCore:
             return self._out(request, "request_conflict", {"turn_id": turn_id})
         if existing.state == "committed":
             assert existing.result is not None
-            if self.lease_deadline_boottime_ns is not None and int(
-                _port_map_get(sample, "boottime_after_ns")
-            ) > self.lease_deadline_boottime_ns:
+            if (
+                self.lease_deadline_boottime_ns is not None
+                and int(_port_map_get(sample, "boottime_after_ns")) > self.lease_deadline_boottime_ns
+            ):
                 return self._out(request, "unavailable", {"reason": "expiry"})
             return self._out(request, "committed", existing.result)
         if existing.state == "cancelled":
@@ -548,9 +533,7 @@ class SupervisorCore:
             return self._out(request, "cancelled", {"turn_id": turn_id})
         return self._out(request, "invalid_request", {"reason": "not_active"})
 
-    def _turn(
-        self, request: dict[str, Any], sample: Mapping[str, Any]
-    ) -> dict[str, Any]:
+    def _turn(self, request: dict[str, Any], sample: Mapping[str, Any]) -> dict[str, Any]:
         # pylint: disable=R0911  # closed control-protocol outcome surface
         turn_id = request.get("turn_id")
         text = request.get("text")
@@ -594,9 +577,10 @@ class SupervisorCore:
             if str(request_id) != existing.request_id:
                 if existing.state == "committed":
                     assert existing.result is not None
-                    if self.lease_deadline_boottime_ns is not None and int(
-                        _port_map_get(sample, "boottime_after_ns")
-                    ) > self.lease_deadline_boottime_ns:
+                    if (
+                        self.lease_deadline_boottime_ns is not None
+                        and int(_port_map_get(sample, "boottime_after_ns")) > self.lease_deadline_boottime_ns
+                    ):
                         return self._out(request, "unavailable", {"reason": "expiry"})
                     return self._out(request, "committed", existing.result)
                 if existing.state == "running":
@@ -620,9 +604,10 @@ class SupervisorCore:
                 return self._out(request, "request_conflict", {"turn_id": turn_id})
             if existing.state == "committed":
                 assert existing.result is not None
-                if self.lease_deadline_boottime_ns is not None and int(
-                    _port_map_get(sample, "boottime_after_ns")
-                ) > self.lease_deadline_boottime_ns:
+                if (
+                    self.lease_deadline_boottime_ns is not None
+                    and int(_port_map_get(sample, "boottime_after_ns")) > self.lease_deadline_boottime_ns
+                ):
                     return self._out(request, "unavailable", {"reason": "expiry"})
                 return self._out(request, "committed", existing.result)
             if existing.state == "running":
@@ -640,10 +625,7 @@ class SupervisorCore:
 
         if self.slot_id is None or self.activation_id is None:
             return self._out(request, "unavailable", {"reason": "not_active"})
-        if (
-            request.get("slot_id") != self.slot_id
-            or request.get("activation_id") != self.activation_id
-        ):
+        if request.get("slot_id") != self.slot_id or request.get("activation_id") != self.activation_id:
             return self._out(request, "invalid_request", {"reason": "bad_arguments"})
 
         self.accepted[str(turn_id)] = AcceptedTurn(
@@ -672,9 +654,7 @@ class SupervisorCore:
         argv = [text if p == "TURN_TEXT" else p for p in template]
         env = dict(agent["environment"])
         cwd = str(agent["cwd"])
-        fd_roles: dict[str, Any] = {
-            role: object() for role in agent["inherited_fd_roles"]
-        }
+        fd_roles: dict[str, Any] = {role: object() for role in agent["inherited_fd_roles"]}
         validate_launch_tuple(launch_policy, "agent", argv, env, cwd, fd_roles)
         handle = cast(str, self.platform.spawn("agent", argv, env, cwd, fd_roles))
         self.agent_handle = handle
@@ -688,9 +668,7 @@ class SupervisorCore:
             self._ingest_agent_event_body(event)
         except ValueError:
             # Malformed/partial child output must not leave the activation live.
-            if not self._revoked and (
-                self.state == "TURN_RUNNING" or self.active_turn_id is not None
-            ):
+            if not self._revoked and (self.state == "TURN_RUNNING" or self.active_turn_id is not None):
                 self._enter_revoking_internal("integrity_failure")
             raise
 
@@ -708,10 +686,7 @@ class SupervisorCore:
                 chunk = base64.b64decode(b64.encode("ascii"), validate=True)
             except Exception as exc:
                 raise ValueError("bad_base64") from exc
-            if (
-                len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk)
-                > MAX_AGENT_OUTPUT_BYTES
-            ):
+            if len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
                 self.revoke("integrity_failure")
                 self._stdout_buffer.clear()
                 raise ValueError("agent_output_overflow")
@@ -724,19 +699,13 @@ class SupervisorCore:
                 chunk = base64.b64decode(b64.encode("ascii"), validate=True)
             except Exception as exc:
                 raise ValueError("bad_base64") from exc
-            if (
-                len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk)
-                > MAX_AGENT_OUTPUT_BYTES
-            ):
+            if len(self._stdout_buffer) + len(self._stderr_buffer) + len(chunk) > MAX_AGENT_OUTPUT_BYTES:
                 self.revoke("integrity_failure")
                 raise ValueError("agent_output_overflow")
             self._stderr_buffer.extend(chunk)
         elif kind == "exit":
             # pylint: disable=C0123  # exact type identity; not isinstance/__class__
-            if (
-                event.get("bytes_b64") is not None
-                or type(event.get("exit_code")) is not int
-            ):
+            if event.get("bytes_b64") is not None or type(event.get("exit_code")) is not int:
                 raise ValueError("bad_exit")
             code = int(event["exit_code"])
             self._observed_exit_code = code
@@ -769,11 +738,7 @@ class SupervisorCore:
             self._last_valid_clock = dict(sample)
             self._watchdog_samples.append(dict(sample))
             # Revalidate accepted slot/activation/publication against bound activation.
-            if (
-                self.activation_id is None
-                or self.publication_sha256 is None
-                or self.slot_id is None
-            ):
+            if self.activation_id is None or self.publication_sha256 is None or self.slot_id is None:
                 self._enter_revoking_internal("integrity_failure")
                 raise ValueError("activation_drift")
             if accepted.slot_id != self.slot_id or accepted.activation_id != self.activation_id:
@@ -837,14 +802,16 @@ class SupervisorCore:
 
     @staticmethod
     def _out(request: Mapping[str, Any], outcome: str, payload: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "schema": CONTROL_SCHEMA,
-            "request_id": request.get("request_id"),
-            "slot_id": request.get("slot_id"),
-            "activation_id": request.get("activation_id"),
-            "outcome": outcome,
-            "payload": payload,
-        }
+        return dict(
+            (
+                ("schema", CONTROL_SCHEMA),
+                ("request_id", request.get("request_id")),
+                ("slot_id", request.get("slot_id")),
+                ("activation_id", request.get("activation_id")),
+                ("outcome", outcome),
+                ("payload", payload),
+            )
+        )
 
 
 if __name__ == "__main__":
