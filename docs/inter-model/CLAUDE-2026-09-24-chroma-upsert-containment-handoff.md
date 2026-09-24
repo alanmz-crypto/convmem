@@ -48,7 +48,7 @@ Also added:
   runs recovery right away. That narrows the window in which readers could load torn files. It never raises into the loop.
 - `doctor`: a `chroma_write_guard` check. FAIL while quarantined, WARN when a torn save was restored in 7 days or
   the guard is switched off, PASS otherwise.
-- `scripts/chroma_guard.py status|validate|census|clear-quarantine`. Read-only except `clear-quarantine`. It also
+- `scripts/chroma_guard.py status|validate|census|reconcile|clear-quarantine`. Read-only except `reconcile` (may restore a torn segment) and `clear-quarantine`. It also
   closes hardening-backlog item §7.4: the §4.2 validator now lives in the repo, and a numpy port runs in 0.2 s
   on the live 97.5k-element segment.
 - Off switch: `[index] chroma_write_guard = false`.
@@ -130,6 +130,9 @@ regenerated with `write_v2_inventory_file()` (hash fields only). The read-path i
 ## Deploying (Ryan)
 
 - It takes effect only after merge, a `.worktrees/runtime-main` fast-forward, and a `convmem-watch` restart.
+  Suggested order: stop `convmem-watch` → fast-forward `runtime-main` → from `runtime-main` run
+  `python scripts/chroma_guard.py reconcile` (creates the first restore points outside any memory-capped
+  index child) → `python scripts/chroma_guard.py status` → start `convmem-watch`.
 - The first guarded write copies a restore point of about **342 MB** (knowledge_units ≈ 327 MB, summaries ≈ 15 MB) into
   `~/.local/share/convmem/chroma.write-guard/`. After that, one copy follows each Chroma save, roughly every 1,000
   records, taking about a second. Whether restic should include that directory is left for you; backups were not changed.
