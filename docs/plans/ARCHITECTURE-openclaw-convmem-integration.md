@@ -2,14 +2,16 @@
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS: PAUSED AT THE
-FULL-PYTEST APPLICABILITY GATE. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The reviewed-plan
+FULL-PYTEST DIFFERENTIAL IDENTITY GATE. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The reviewed-plan
 correction, two fresh M8 runs and seven legacy MCP regressions are preserved at
 `9c6421a6891fd8a861a51f4fed410f541b53148c`. The 44-path remediation is clean and pushed at
 `3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`, where the unchanged current-main Pylint gate passes.
 The first complete pytest attempt exposed repository-wide failures that predate the remediation,
-so an unconditional full-pytest PASS is not an applicable M11 claim. Sections 18.9–10 preserve the
-unchanged lint gate and replace only that impossible claim with a fail-closed differential rule;
-they authorize no implementation or retry.
+so an unconditional full-pytest PASS is not an applicable M11 claim. The first governed
+differential attempt at `853ef98ede44f2d171e5354b065e11f83558e010` correctly paused on
+tip-specific disposable paths and five source-derived R2b identities. Sections 18.9–10 preserve
+the unchanged lint gate and replace only that impossible claim with a fail-closed differential
+rule plus a closed identity reconciliation; they authorize no implementation or retry.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
@@ -22,10 +24,11 @@ This planning edit authorizes no implementation, runtime start, configuration ch
 §§18.4–6. Ryan accepted bounded M0–M8, authorized the §18.7 current-main reconstruction and the
 §18.8 reviewed-plan correction, then directed Codex to choose and plan the least-haunting response
 to the observed Pylint hold: remediate the debt without raising a baseline or weakening the gate.
-After that remediation passed the real Pylint gate, Ryan authorized this plan-only correction for
-the repository-wide pytest applicability failure. Sections 6.5.8–9 remain the frozen fixture and
-hash contracts. Section 18.9 defines the exact lint-remediation boundary; §18.10 defines the
-candidate-versus-pre-remediation pytest rule. Kiro owns the required exact-tip design review; Ryan
+After that remediation passed the real Pylint gate, Ryan authorized the plan-only applicability
+correction and then this plan-only differential identity reconciliation after the first governed
+attempt paused. Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9
+defines the exact lint-remediation boundary; §18.10 defines the candidate-versus-pre-remediation
+pytest and identity rules. Kiro owns the required exact-tip design review; Ryan
 owns any later implementation, test, merge or promotion grant. No
 complete-integration readiness is claimed.
 
@@ -4444,29 +4447,101 @@ the R2b inventory binds a different source revision. Those failures are not caus
 remediation, but they also are not a full-pytest PASS. The unconditional PASS claim is therefore
 inapplicable and is replaced, not waived, by the rule below.
 
+**Observed first differential pause.** Under the reviewed rule, Codex applied the plan-only range
+to the preserved candidate and pushed exact candidate
+`853ef98ede44f2d171e5354b065e11f83558e010`. Complete baseline and candidate runs each collected
+the same 2,912 nodes and produced the same outcome totals: 2,763 passed, 64 skipped, 85 failed and
+zero errors. The comparator nevertheless found 28 signature mismatches and correctly emitted
+`PYTEST_DIFFERENTIAL_PASS=false`, `FULL_PYTEST_PASS=false` and `PAUSE`. Twenty-two strict-packet
+signatures contained different `HOME`/XDG path bytes and pytest representation truncation; one
+watch golden-oracle signature changed only because unequal source-root lengths moved the
+representation truncation boundary; and five exact R2b nodes exposed a real authority-content
+identity rotation across the frozen remediation. The durable PAUSE ledger is
+`PAUSE-ledger.json`, SHA-256
+`3c2a50d1a61578fa235524bc26493a2b1458ba60d729b039c0a66d27ddce0c1e`, under the candidate's
+Ryan-designated `m11-full-pytest-differential-pause/` evidence directory. It is an input to this
+correction, not a passing result. No symmetric mismatch rerun, Pylint rerun, M8 run or MCP
+regression ran after the PAUSE.
+
 **Frozen comparison identities and environment.** The baseline is exactly
 `PYTEST_DIFFERENTIAL_BASE_SHA=9c6421a6891fd8a861a51f4fed410f541b53148c`. The candidate is the
-exact clean pushed source commit named in the later Ryan resume grant; the currently preserved
-candidate is `3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`. Codex checks out each commit into a separate
-fresh disposable root and runs both in the same separately reviewed CI-compatible environment,
-with one dependency/runtime inventory hash, Python and pytest versions, locale, timezone,
-environment-variable allowlist, resource limits and command. No host fallback, live ConvMem data,
-credentials, user configuration or OpenClaw process is allowed. The complete-suite command is the
-workflow's unchanged `python -m pytest -q` plus only pytest's built-in output-only
-`--junitxml=<volatile-path> -o junit_family=xunit1` reporter arguments. They change neither
-selection nor behavior. The two complete runs use fresh processes and no source edit between
-runs.
+exact clean pushed source commit named in the later Ryan resume grant. The remediation input is
+`3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`; the first paused differential candidate is
+`853ef98ede44f2d171e5354b065e11f83558e010`. A later candidate is eligible only when its non-plan
+bytes equal `853ef98` and its plan delta is the exact Kiro-reviewed range named by Ryan.
+
+Codex runs both tips sequentially through one predeclared disposable execution slot in the same
+separately reviewed CI-compatible environment. The absolute `source/`, `state/`, `pytest-tmp/`
+and `report/junit.xml` path strings, working directory, argv and allowlisted environment bytes are
+identical for the baseline and candidate and for both sides of every mismatch rerun. Before each
+process Codex closes every prior process, durably preserves the preceding evidence, removes only
+the prevalidated execution-slot children, recreates them empty with the same modes, and records an
+independent empty-tree and no-symlink proof. It then exports the exact Git tree into the same
+`source/` pathname, verifies every tracked path/blob/mode against `git ls-tree`, fixes or proves
+equal every filesystem attribute not represented by Git, and creates byte-identical empty HOME,
+XDG cache/config/data, `CONVMEM_CONFIG` and pytest-temp state at the same pathnames. Any retained
+entry, shared mutable cache, path difference, source inventory difference, unlisted environment
+variable or reset asymmetry is `PAUSE`. Reusing path strings never means retaining contents.
+
+The environment has one dependency/runtime inventory hash, Python and pytest versions, locale,
+timezone, resource limits and command. No host fallback, live ConvMem data, credentials, user
+configuration or OpenClaw process is allowed. The complete-suite command is the workflow's
+unchanged `python -m pytest -q` plus only pytest's built-in output-only
+`--junitxml=<the-fixed-slot-report-path> -o junit_family=xunit1` reporter arguments. They change
+neither selection nor behavior. Every run uses a fresh process and a freshly reconstructed slot;
+no source edit occurs between runs.
 
 **Closed comparison record.** Codex constructs one canonical record per JUnit `testcase` using the
 exact tuple `(file, classname, name)` as the node identity, the outcome vocabulary
 `passed|skipped|failure|error`, and, for `failure` or `error`, the exact element `type` and
 normalized `message` attributes as the failure signature. Normalization is limited to replacing
-the two absolute disposable checkout roots with `$SOURCE_ROOT`, pytest temporary-root paths with
-`$PYTEST_TMP`, and the exact baseline or candidate 40-hex Git object ID with `$SOURCE_COMMIT`.
+the fixed absolute disposable checkout root with `$SOURCE_ROOT`, the fixed pytest temporary-root
+path with `$PYTEST_TMP`, and the exact baseline or candidate 40-hex Git object ID with
+`$SOURCE_COMMIT`.
 Nothing else is removed or rewritten: in particular, exception types, assertion text, error codes,
 line numbers, expected/actual semantic values and 64-hex content hashes remain significant. An
 absent/duplicate testcase, XML parse error, unknown outcome, collection interruption or reporter
 disagreement with the raw terminal summary is `PAUSE`.
+
+**Closed R2b authority-content identity disposition.** This is not another normalization. Raw
+messages and every 40-hex token remain in the canonical evidence. The primary comparator still
+reports the changed signatures. Only the following five exact node identities may enter the
+secondary disposition; no prefix, file-wide rule, glob or sixth node is permitted:
+
+1. `tests/test_r2b_v2_corrective_viii.py::R2bV2CorrectiveVIIIIdentityTests::test_committed_inventory_matches_authority_content_identity`
+2. `tests/test_r2b_v2_corrective_viii.py::R2bV2CorrectiveVIIIRegressionGuard::test_inventory_artifact_exists_on_disk`
+3. `tests/test_r2b_v2_implementation_revision.py::R2bV2ImplementationRevisionTests::test_committed_inventory_matches_resolved_implementation_identity`
+4. `tests/test_r2b_v2_implementation_revision.py::R2bV2ImplementationRevisionTests::test_production_coverage_uses_committed_inventory_without_dual_mock`
+5. `tests/test_r2b_v2_implementation_revision.py::R2bV2ImplementationRevisionTests::test_regenerated_inventory_matches_on_disk_artifact`
+
+For this exact comparison the committed inventory identity is
+`6ec645794d92a7d25eff94c97318256e851433f0`; the independently resolved baseline authority-content
+identity is `cb0e66b7aa3c3685439c564e7f888c6d714742bf`; and the independently resolved candidate
+identity is `0a8fe0b371744e9ad367f18979ef9367bb37fd34`. Codex must retain each raw assertion and parse it
+into `(node identity, failure outcome, type, operand orientation, committed identity, resolved
+identity)` using only the exact two-operand unittest equality-diff form observed here. The outcome,
+type, framing, operand orientation and committed identity must match at both tips; the only allowed
+difference is the resolved identity changing from the frozen baseline value to the frozen candidate
+value.
+
+The resolved values require independent content proof at each tip. Codex emits the complete
+authority-content manifest, proves its governed-path member set is equal between tips, verifies
+every member's bytes against the exact Git tree, proves every changed governed member is inside the
+already-reviewed 44-path remediation and that every other governed member is byte-identical, then
+independently recomputes
+`sha256("r2b-v2-authority-content:v1:" + canonical_manifest)[:40]`. That standard-library digest
+must equal both the fresh production resolver output and the exact token in every applicable raw
+failure. The reviewed inputs freeze 118 governed members with ordered-path-set SHA-256
+`7798b5d54cf3e1883c707ed73a80b7891e73f142933e71e05c89535314b2161b`. Exactly one governed
+member changes: `mcp_server.py`, from content SHA-256
+`1c94463de9f5035d4a19b2ad42939d9e8c70c59737f3a6fe6a6f9239e37fa2e1` to
+`7fcbdcb4cdcfc635d2787cea10d031dcd9aed40f6678ab80fc772194aaf55123`; it is inside the frozen
+44-path remediation. A plan document may not enter the authority manifest. A member-set change,
+second changed governed member, different
+committed identity, unexpected token, extra assertion text, different type/outcome/orientation,
+generic 40-hex or 64-hex substitution, product-byte change after `853ef98`, or disagreement between
+either oracle is `PAUSE`. Passing this disposition records five retained stale-inventory failures;
+it does not make the inventory current or make any node pass.
 
 **Fail-closed verdict.** The candidate earns exactly `PYTEST_DIFFERENTIAL_PASS`, never
 `FULL_PYTEST_PASS`, only when all of the following hold:
@@ -4475,14 +4550,18 @@ disagreement with the raw terminal summary is `PAUSE`.
    absent from the baseline, and no baseline node may disappear from the candidate.
 2. A baseline `passed` or `skipped` node may not become candidate `failure` or `error`. No
    candidate-only failing/error node is permitted.
-3. A node failing/erroring at both tips must have the same normalized failure signature. A changed
-   exception class, assertion/error message or failure/error phase is a mismatch.
+3. A node failing/erroring at both tips must have the same normalized failure signature, except
+   that one of the five exact R2b nodes may remain a mismatch pending the closed secondary
+   disposition above. A changed exception class, assertion/error message or failure/error phase is
+   otherwise a mismatch.
 4. Every outcome or signature mismatch from the complete runs is rerun independently at both tips,
    one node at a time in fresh processes using the same environment. The complete-run evidence is
    retained. The mismatch clears only as one of three closed dispositions: both reruns are
    non-failing (`passed` or `skipped`); the baseline rerun fails/errors while the candidate rerun is
-   non-failing, recorded as a confirmed improvement; or both reruns reproduce the same
-   failure/error outcome and normalized signature, recorded as a retained failure. A baseline
+   non-failing, recorded as a confirmed improvement; both reruns reproduce the same failure/error
+   outcome and normalized signature, recorded as a retained failure; or one of the five exact R2b
+   nodes reproduces and satisfies every closed identity proof above, recorded as a retained
+   source-identity-rotation failure. A baseline
    non-failure becoming a candidate failure/error, a changed candidate failure signature, any
    other result, collection difference, non-reproduction or environmental asymmetry is `PAUSE`;
    a targeted rerun never substitutes for either complete run.
@@ -4492,8 +4571,9 @@ disagreement with the raw terminal summary is `PAUSE`.
    Pylint gate, either fresh M8 run or any of the seven MCP regressions.
 
 The canonical base/candidate records, mismatch list, independent reruns, raw stdout/stderr/status,
-JUnit XML, environment inventory and hashes are copied to the Ryan-designated durable evidence
-root with a verified volatile-to-durable mapping. A passing differential verdict establishes only
+JUnit XML, environment/reset inventories, authority manifests and independent identity proofs are
+copied to the Ryan-designated durable evidence root with a verified volatile-to-durable mapping. A
+passing differential verdict establishes only
 that the bounded M11 correction added no repository-wide pytest regression relative to its exact
 pre-remediation input. It does not certify the retained failures, change their ownership, authorize
 a test/CI/baseline edit or weaken any existing gate.
@@ -4526,8 +4606,9 @@ promotion remain independently blocked.
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
 
-**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; the M11 remediation at
-`3f8ef83` passes the unchanged Pylint gate, but repository-wide pytest cannot truthfully claim PASS
-because preserved failures predate the remediation. §18.10 replaces only that impossible claim
-with an exact `9c6421a`-versus-candidate no-regression comparison; test retry, real OpenClaw, live
-data, merge and promotion remain blocked pending exact-tip review and a new Ryan grant.
+**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; the first governed M11
+differential at `853ef98` correctly paused despite equal node/outcome totals because 23 signatures
+contained unequal disposable path effects and five carried a real R2b authority-content identity
+rotation. §18.10 now requires one freshly reset fixed path layout and a closed five-node identity
+proof with raw hashes retained. Test retry, real OpenClaw, live data, merge and promotion remain
+blocked pending exact-tip review and a new Ryan grant.
