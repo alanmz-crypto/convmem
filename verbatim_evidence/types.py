@@ -46,6 +46,8 @@ class EvidenceExcerpt:
     excerpt: str
     truncated: bool
     content_digest_sha256: str
+    cut_leading: bool = False
+    cut_trailing: bool = False
     scope: EvidenceScope = EvidenceScope.SESSION
 
 

@@ -86,6 +86,8 @@ def format_labeled_context(
                         "timestamp": excerpt.timestamp,
                         "message_ordinal": excerpt.message_ordinal,
                         "truncated": excerpt.truncated,
+                        "cut_leading": excerpt.cut_leading,
+                        "cut_trailing": excerpt.cut_trailing,
                         "content_digest_sha256": excerpt.content_digest_sha256,
                         "evidence_status": evidence.status.value,
                         "scope": (evidence.scope or excerpt.scope).value,
@@ -153,6 +155,10 @@ def format_labeled_context(
             digest = escape_metadata(item_meta.get("content_digest_sha256") or "")
             scope = escape_metadata(item_meta.get("scope") or "")
             trunc = " truncated=true" if item_meta.get("truncated") else ""
+            if item_meta.get("cut_leading"):
+                trunc += " cut_leading=true"
+            if item_meta.get("cut_trailing"):
+                trunc += " cut_trailing=true"
             partial = ""
             if item_meta.get("partial"):
                 partial = f", partial=true, partial_reason={escape_metadata(item_meta.get('partial_reason') or '')}"

@@ -269,54 +269,62 @@ def _bound_excerpt(
     text: str,
     max_chars: int,
     *,
-    normalized_query: str = "",
-    match_span: tuple[int, int] | None = None,
-) -> tuple[str, bool]:
-    if max_chars <= 0:
-        return "", True
+    match_span: tuple[int, int],
+) -> tuple[str, bool, bool] | None:
+    """Return (excerpt, cut_leading, cut_trailing), or None if no candidate
+    window fits `max_chars` while preserving the full match span intact.
+
+    Candidates are tried in order (see the excerpt algorithm addendum on
+    issue #263): whole text; left-anchored prefix + trailing marker;
+    right-anchored leading marker + suffix; centered window with both
+    markers. Never returns a marker-only or partial-query excerpt.
+    """
+    match_start, match_end = match_span
+    if not 0 <= match_start < match_end <= len(text):
+        raise ValueError(f"invalid match_span {match_span!r} for text of length {len(text)}")
+
+    # Candidate 1: whole text, no markers.
     if len(text) <= max_chars:
-        return text, False
+        return text, False, False
+
+    query_len = match_end - match_start
+    if query_len > max_chars:
+        return None
 
     marker_len = len(TRUNCATION_MARKER)
 
-    if match_span is None and normalized_query.strip():
-        match_span = find_match_span(text, normalized_query)
+    # Candidate 2: left-anchored prefix, one trailing marker.
+    if marker_len <= max_chars and match_end <= max_chars - marker_len:
+        end = max_chars - marker_len
+        return text[:end] + TRUNCATION_MARKER, False, True
 
-    if match_span is not None:
-        idx, match_end = match_span
-        query_len = match_end - idx
-        marker_plans = (
-            (True, True),
-            (True, False),
-            (False, True),
-            (False, False),
-        )
-        for plan_leading, plan_trailing in marker_plans:
-            marker_budget = marker_len * (int(plan_leading) + int(plan_trailing))
-            if marker_budget > max_chars:
-                continue
-            content_budget = max_chars - marker_budget
-            if content_budget <= 0:
-                continue
-            start = max(0, idx - max(0, (content_budget - query_len) // 2))
-            end = min(len(text), start + content_budget)
-            start = max(0, end - content_budget)
-            content = text[start:end]
-            leading = plan_leading and start > 0
-            trailing = plan_trailing and end < len(text)
-            excerpt = content
-            if leading:
-                excerpt = TRUNCATION_MARKER + excerpt
-            if trailing:
-                excerpt = excerpt + TRUNCATION_MARKER
-            if len(excerpt) <= max_chars:
-                return excerpt, True
+    # Candidate 3: right-anchored suffix, one leading marker.
+    if marker_len <= max_chars and (len(text) - match_start) <= max_chars - marker_len:
+        start = len(text) - (max_chars - marker_len)
+        return TRUNCATION_MARKER + text[start:], True, False
 
-        return TRUNCATION_MARKER[:max_chars], True
+    # Candidate 4: centered window, both markers. Falling through here means
+    # neither a prefix-only nor a suffix-only window fit, so this candidate
+    # always cuts both sides.
+    if 2 * marker_len > max_chars:
+        return None
+    content_budget = max_chars - 2 * marker_len
+    if query_len > content_budget:
+        return None
 
-    if max_chars <= marker_len:
-        return TRUNCATION_MARKER[:max_chars], True
-    return text[: max_chars - marker_len] + TRUNCATION_MARKER, True
+    slack = content_budget - query_len
+    start = match_start - slack // 2
+    end = start + content_budget
+    if start < 0:
+        end -= start
+        start = 0
+    if end > len(text):
+        start -= end - len(text)
+        end = len(text)
+    start = max(start, 0)
+
+    assert start > 0 and end < len(text), "candidate 4 must cut both sides"
+    return TRUNCATION_MARKER + text[start:end] + TRUNCATION_MARKER, True, True
 
 
 def _prevalidate_locator(
@@ -602,6 +610,7 @@ def _scan_session(
     scan_capped = False
     result_capped = False
     at_result_limit = False
+    any_dropped_excerpt = False
 
     stage1_rows = conn.execute(_STAGE1_SQL, (session_key, max_scan_rows + 1)).fetchall()
     if len(stage1_rows) > max_scan_rows:
@@ -660,18 +669,25 @@ def _scan_session(
         if not message_matches(normalized_content, normalized_query):
             continue
 
+        match_span = find_match_span(normalized_content, normalized_query)
+        bound = _bound_excerpt(
+            normalized_content,
+            max_excerpt_chars,
+            match_span=match_span,
+        )
+        if bound is None:
+            # Dropped match: does not count as evidence, is not terminal,
+            # and does not consume a result slot. Scanning continues.
+            any_dropped_excerpt = True
+            continue
+
         if at_result_limit:
+            # A usable extra excerpt is the only condition that proves
+            # result_limit; it is not itself appended.
             result_capped = True
             break
 
-        match_span = find_match_span(normalized_content, normalized_query)
-        excerpt_text, truncated = _bound_excerpt(
-            normalized_content,
-            max_excerpt_chars,
-            normalized_query=normalized_query,
-            match_span=match_span,
-        )
-
+        excerpt_text, cut_leading, cut_trailing = bound
         matches.append(
             EvidenceExcerpt(
                 source_path=resolved_path,
@@ -682,8 +698,10 @@ def _scan_session(
                 timestamp=_crush_timestamp_to_iso(verified_created_at),
                 message_ordinal=current_ordinal,
                 excerpt=excerpt_text,
-                truncated=truncated,
+                truncated=cut_leading or cut_trailing,
                 content_digest_sha256=digest_excerpt(excerpt_text),
+                cut_leading=cut_leading,
+                cut_trailing=cut_trailing,
                 scope=EvidenceScope.SESSION,
             )
         )
@@ -707,6 +725,14 @@ def _scan_session(
                 reason="deadline",
                 scope=EvidenceScope.SESSION,
             )
+        if any_dropped_excerpt:
+            return EvidenceResult(
+                status=EvidenceStatus.UNAVAILABLE_MATCH,
+                source_path=resolved_path,
+                adapter_kind=ADAPTER_KIND_CRUSH,
+                reason="query_exceeds_excerpt_budget",
+                scope=EvidenceScope.SESSION,
+            )
         return EvidenceResult(
             status=EvidenceStatus.UNAVAILABLE_MATCH,
             source_path=resolved_path,
@@ -715,13 +741,13 @@ def _scan_session(
             scope=EvidenceScope.SESSION,
         )
 
-    partial = bool(partial_reason or scan_capped or result_capped)
+    partial = bool(partial_reason or scan_capped or result_capped or any_dropped_excerpt)
     if scan_capped:
         partial_reason = "scan_limit"
     elif result_capped:
         partial_reason = "result_limit"
     elif not partial_reason:
-        partial_reason = None
+        partial_reason = "excerpt_budget" if any_dropped_excerpt else None
 
     status = EvidenceStatus.AVAILABLE
     reason = "offsets_ignored_session_scope" if offsets_ignored else None

@@ -397,6 +397,65 @@ def _write_multi_match_fixture(path: Path, match_count: int = 5) -> None:
     con.close()
 
 
+EXCERPT_DROP_TOKEN = "EXCERPT_DROP_TOKEN"
+
+
+def _write_mixed_length_fixture(path: Path, *, texts: list[str]) -> None:
+    """Messages with the given texts, in order, each mentioning
+    EXCERPT_DROP_TOKEN somewhere. Used to exercise dropped-excerpt outcomes
+    (some/all matching messages too long for the excerpt budget)."""
+    con = sqlite3.connect(path)
+    con.executescript(
+        """
+        CREATE TABLE goose_db_version (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version_id INTEGER NOT NULL,
+            is_applied INTEGER NOT NULL,
+            tstamp TIMESTAMP DEFAULT (datetime('now'))
+        );
+        CREATE TABLE sessions (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            message_count INTEGER NOT NULL DEFAULT 0,
+            prompt_tokens INTEGER NOT NULL DEFAULT 0,
+            completion_tokens INTEGER NOT NULL DEFAULT 0,
+            cost REAL NOT NULL DEFAULT 0.0,
+            updated_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+        CREATE TABLE messages (
+            id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            parts TEXT NOT NULL DEFAULT '[]',
+            model TEXT,
+            provider TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            finished_at INTEGER
+        );
+        """
+    )
+    con.execute(
+        "INSERT INTO sessions VALUES (?, ?, ?, 0, 0, 0.0, ?, ?)",
+        (SESSION_ID, "mixed-length", len(texts), 1_700_000_000_000, 1_700_000_000_000),
+    )
+    for index, text in enumerate(texts):
+        con.execute(
+            "INSERT INTO messages VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, NULL)",
+            (
+                f"mixed-{index}",
+                SESSION_ID,
+                "assistant",
+                json.dumps([{"type": "text", "data": {"text": text}}]),
+                1_700_000_002_000 + index,
+                1_700_000_002_000 + index,
+            ),
+        )
+    con.commit()
+    con.close()
+
+
 def _write_unsupported_db(path: Path) -> None:
     con = sqlite3.connect(path)
     con.execute("CREATE TABLE chat_message (id INTEGER PRIMARY KEY, content TEXT)")
@@ -458,6 +517,19 @@ class TestVerbatimEvidenceAcceptance(unittest.TestCase):
         cls.exact_limit_db = root / "exact-limit" / ".crush" / "crush.db"
         cls.exact_limit_db.parent.mkdir(parents=True)
         _write_multi_match_fixture(cls.exact_limit_db, match_count=3)
+
+        long_msg = "a" * 200 + EXCERPT_DROP_TOKEN + "b" * 200
+        short_msg = EXCERPT_DROP_TOKEN
+
+        cls.all_dropped_db = root / "all-dropped" / ".crush" / "crush.db"
+        cls.all_dropped_db.parent.mkdir(parents=True)
+        _write_mixed_length_fixture(cls.all_dropped_db, texts=[long_msg, long_msg])
+
+        cls.mixed_dropped_db = root / "mixed-dropped" / ".crush" / "crush.db"
+        cls.mixed_dropped_db.parent.mkdir(parents=True)
+        _write_mixed_length_fixture(
+            cls.mixed_dropped_db, texts=[long_msg, short_msg, long_msg]
+        )
 
     @classmethod
     def tearDownClass(cls):
@@ -853,6 +925,42 @@ class TestVerbatimEvidenceAcceptance(unittest.TestCase):
         self.assertIn("partial=true", context)
         self.assertIn("partial_reason=result_limit", context)
 
+    def test_all_matches_dropped_by_excerpt_budget_reports_unavailable(self):
+        """Every matching message's excerpt is dropped (too long for the
+        budget): the addendum requires unavailable_match/
+        query_exceeds_excerpt_budget, not a bogus empty-evidence
+        no_message_match — the query DID match, its excerpt just didn't fit."""
+        result = retrieve_verbatim_evidence(
+            EvidenceLocator(
+                source_path=str(self.all_dropped_db.resolve()),
+                session_id=SESSION_ID,
+            ),
+            EXCERPT_DROP_TOKEN,
+            max_excerpt_chars=30,
+        )
+        self.assertEqual(result.status, EvidenceStatus.UNAVAILABLE_MATCH)
+        self.assertEqual(result.reason, "query_exceeds_excerpt_budget")
+        self.assertEqual(result.excerpts, ())
+
+    def test_some_matches_dropped_marks_partial_excerpt_budget(self):
+        """One matching message's excerpt fits, two are dropped: the
+        addendum requires AVAILABLE with partial=true,
+        partial_reason=excerpt_budget — the dropped matches must not count
+        as evidence, but the usable one must still be returned."""
+        result = retrieve_verbatim_evidence(
+            EvidenceLocator(
+                source_path=str(self.mixed_dropped_db.resolve()),
+                session_id=SESSION_ID,
+            ),
+            EXCERPT_DROP_TOKEN,
+            max_excerpt_chars=30,
+        )
+        self.assertEqual(result.status, EvidenceStatus.AVAILABLE)
+        self.assertEqual(len(result.excerpts), 1)
+        self.assertTrue(result.partial)
+        self.assertEqual(result.partial_reason, "excerpt_budget")
+        self.assertIn(EXCERPT_DROP_TOKEN, result.excerpts[0].excerpt)
+
     def test_conversation_only_locator_rejected(self):
         result = retrieve_verbatim_evidence(
             EvidenceLocator(
@@ -891,28 +999,26 @@ class TestVerbatimEvidenceAcceptance(unittest.TestCase):
         from verbatim_evidence.crush import _bound_excerpt
 
         text = ("A" * 40) + SID_HEADING + ("Z" * 40)
-        for max_chars in (40, 60, 80):
-            excerpt, truncated = _bound_excerpt(
-                text,
-                max_chars,
-                normalized_query=SID_HEADING,
-            )
-            self.assertTrue(truncated)
+        start = text.index(SID_HEADING)
+        span = (start, start + len(SID_HEADING))
+        for max_chars in (60, 80):
+            bound = _bound_excerpt(text, max_chars, match_span=span)
+            self.assertIsNotNone(bound)
+            excerpt, cut_leading, cut_trailing = bound
+            self.assertTrue(cut_leading or cut_trailing)
             self.assertLessEqual(len(excerpt), max_chars)
+            self.assertIn(SID_HEADING, excerpt)
 
     def test_bound_excerpt_truncates_marker_when_budget_smaller(self):
-        from verbatim_evidence.crush import TRUNCATION_MARKER, _bound_excerpt
+        from verbatim_evidence.crush import _bound_excerpt
 
         text = "hello world!!"
+        span = (text.index("world"), text.index("world") + len("world"))
         for max_chars in (1, 5, len(TRUNCATION_MARKER) - 1):
-            excerpt, truncated = _bound_excerpt(
-                text,
-                max_chars,
-                normalized_query="world",
-            )
-            self.assertTrue(truncated)
-            self.assertLessEqual(len(excerpt), max_chars)
-            self.assertNotEqual(excerpt, text)
+            bound = _bound_excerpt(text, max_chars, match_span=span)
+            # Too small to hold even one marker without clipping it: must
+            # drop the match rather than emit marker-only/partial-query text.
+            self.assertIsNone(bound)
 
     def test_bound_excerpt_nfc_nfd_query_with_tiny_budget(self):
         from verbatim_evidence.crush import _bound_excerpt
@@ -924,15 +1030,191 @@ class TestVerbatimEvidenceAcceptance(unittest.TestCase):
         query = normalize_evidence_text(nfd_cafe)
         span = find_match_span(text, query)
         self.assertIsNotNone(span)
-        excerpt, truncated = _bound_excerpt(
-            text,
-            12,
-            normalized_query=query,
-            match_span=span,
-        )
-        self.assertTrue(truncated)
-        self.assertLessEqual(len(excerpt), 12)
+        max_chars = 24
+        bound = _bound_excerpt(text, max_chars, match_span=span)
+        # The full text (18 chars) fits under this budget outright, so the
+        # NFD query must still resolve to the NFC match span it was found
+        # against, not that truncation occurred.
+        self.assertIsNotNone(bound)
+        excerpt, _, _ = bound
+        self.assertLessEqual(len(excerpt), max_chars)
         self.assertIn(nfc_cafe, excerpt)
+
+    def test_bound_excerpt_rejects_invalid_match_span(self):
+        from verbatim_evidence.crush import _bound_excerpt
+
+        text = "hello world"
+        with self.assertRaises(ValueError):
+            _bound_excerpt(text, 20, match_span=(5, 5))  # empty span
+        with self.assertRaises(ValueError):
+            _bound_excerpt(text, 20, match_span=(-1, 3))  # negative start
+        with self.assertRaises(ValueError):
+            _bound_excerpt(text, 20, match_span=(0, len(text) + 1))  # past end
+
+    def test_bound_excerpt_query_longer_than_budget_returns_none(self):
+        from verbatim_evidence.crush import _bound_excerpt
+
+        text = "x" * 50 + "NEEDLE" * 10 + "y" * 50
+        span = (50, 50 + 60)
+        self.assertIsNone(_bound_excerpt(text, 30, match_span=span))
+
+    def test_bound_excerpt_candidate_order(self):
+        """Whole text, then prefix+marker, then suffix+marker, then
+        centered+both markers, exactly as the algorithm addendum orders
+        them \u2014 each verified by its own cut_leading/cut_trailing signature."""
+        from verbatim_evidence.crush import _bound_excerpt
+
+        marker_len = len(TRUNCATION_MARKER)
+        query = "NEEDLE"
+
+        # Candidate 1: fits whole.
+        text = "a" * 5 + query + "b" * 5
+        span = (5, 5 + len(query))
+        bound = _bound_excerpt(text, len(text), match_span=span)
+        self.assertEqual(bound, (text, False, False))
+
+        # Candidate 2: match near the start, plenty of trailing text.
+        text = query + "b" * 200
+        span = (0, len(query))
+        bound = _bound_excerpt(text, 20, match_span=span)
+        self.assertIsNotNone(bound)
+        excerpt, cut_leading, cut_trailing = bound
+        self.assertFalse(cut_leading)
+        self.assertTrue(cut_trailing)
+        self.assertIn(query, excerpt)
+        self.assertEqual(excerpt, text[: 20 - marker_len] + TRUNCATION_MARKER)
+
+        # Candidate 3: match near the end, plenty of leading text.
+        text = "a" * 200 + query
+        span = (200, 200 + len(query))
+        bound = _bound_excerpt(text, 20, match_span=span)
+        self.assertIsNotNone(bound)
+        excerpt, cut_leading, cut_trailing = bound
+        self.assertTrue(cut_leading)
+        self.assertFalse(cut_trailing)
+        self.assertIn(query, excerpt)
+        self.assertEqual(excerpt, TRUNCATION_MARKER + text[-(20 - marker_len):])
+
+        # Candidate 4: match in the middle, plenty of text on both sides \u2014
+        # must cut both sides (assert the addendum's explicit invariant).
+        text = "a" * 200 + query + "b" * 200
+        span = (200, 200 + len(query))
+        bound = _bound_excerpt(text, 2 * marker_len + len(query), match_span=span)
+        self.assertIsNotNone(bound)
+        excerpt, cut_leading, cut_trailing = bound
+        self.assertTrue(cut_leading)
+        self.assertTrue(cut_trailing)
+        self.assertIn(query, excerpt)
+        self.assertTrue(excerpt.startswith(TRUNCATION_MARKER))
+        self.assertTrue(excerpt.endswith(TRUNCATION_MARKER))
+
+    def test_bound_excerpt_production_budget_query_length_cliff(self):
+        """The 1,976/1,977/1,978-char query cliff at the 2,000-char
+        production budget (two markers cost 24 chars, so the centered
+        candidate's content budget is exactly 1,976). The query must
+        always survive intact when a candidate fits, and be cleanly
+        dropped (None) \u2014 never truncated mid-query \u2014 when none does."""
+        from verbatim_evidence.crush import _bound_excerpt
+
+        max_chars = 2_000
+
+        # Symmetric placement: only the centered (both-marker) candidate can
+        # apply, so its exact content-budget boundary (1,976) governs.
+        for query_len, expect_fit in ((1_976, True), (1_977, False), (1_978, False)):
+            query = "Q" * query_len
+            text = "a" * 500 + query + "b" * 500
+            span = (500, 500 + query_len)
+            bound = _bound_excerpt(text, max_chars, match_span=span)
+            if expect_fit:
+                self.assertIsNotNone(bound, f"query_len={query_len} dropped unexpectedly")
+                excerpt, _, _ = bound
+                self.assertLessEqual(len(excerpt), max_chars)
+                self.assertIn(query, excerpt, f"query_len={query_len} truncated mid-query")
+            else:
+                self.assertIsNone(
+                    bound,
+                    f"query_len={query_len} must drop rather than truncate the query",
+                )
+
+        # Near-start placement: the single-marker prefix candidate governs
+        # instead, and its budget (max_chars - M = 1,988) covers all three
+        # lengths \u2014 proving position, not just length, determines fit.
+        for query_len in (1_976, 1_977, 1_978):
+            query = "Q" * query_len
+            text = query + "b" * 500
+            span = (0, query_len)
+            bound = _bound_excerpt(text, max_chars, match_span=span)
+            self.assertIsNotNone(bound, f"query_len={query_len} dropped unexpectedly")
+            excerpt, _, _ = bound
+            self.assertLessEqual(len(excerpt), max_chars)
+            self.assertIn(query, excerpt, f"query_len={query_len} truncated mid-query")
+
+    def test_bound_excerpt_oracle_grid(self):
+        """Brute-force oracle per the excerpt-loop addendum: for small
+        strings, exhaustively enumerate every window containing the match
+        span and assert the implementation returns a result exactly when a
+        feasible window exists, and that its content matches some feasible
+        window exactly."""
+        from verbatim_evidence.crush import _bound_excerpt
+
+        marker_len = len(TRUNCATION_MARKER)
+
+        def oracle(text: str, match_start: int, match_end: int, max_chars: int):
+            n = len(text)
+            feasible = []
+            for s in range(0, match_start + 1):
+                for e in range(match_end, n + 1):
+                    cost = (e - s) + marker_len * (s > 0) + marker_len * (e < n)
+                    if cost <= max_chars:
+                        feasible.append((s, e))
+            return feasible
+
+        def render(text: str, s: int, e: int) -> str:
+            out = text[s:e]
+            if s > 0:
+                out = TRUNCATION_MARKER + out
+            if e < len(text):
+                out = out + TRUNCATION_MARKER
+            return out
+
+        alphabet = "ab"
+        query = "Q"
+        for total_len in (1, 2, 3, 5, 8):
+            for match_start in range(total_len):
+                match_end = match_start + len(query)
+                if match_end > total_len:
+                    continue
+                text = "".join(
+                    alphabet[i % 2] for i in range(match_start)
+                ) + query + "".join(
+                    alphabet[i % 2] for i in range(total_len - match_end)
+                )
+                for max_chars in range(1, 61):
+                    span = (match_start, match_end)
+                    feasible = oracle(text, match_start, match_end, max_chars)
+                    bound = _bound_excerpt(text, max_chars, match_span=span)
+                    if not feasible:
+                        self.assertIsNone(
+                            bound,
+                            f"expected None: text={text!r} max_chars={max_chars}",
+                        )
+                        continue
+                    self.assertIsNotNone(
+                        bound,
+                        f"expected a result: text={text!r} max_chars={max_chars}",
+                    )
+                    excerpt, cut_leading, cut_trailing = bound
+                    self.assertEqual(cut_leading, len(text) > max_chars and excerpt.startswith(TRUNCATION_MARKER))
+                    self.assertEqual(cut_trailing, len(text) > max_chars and excerpt.endswith(TRUNCATION_MARKER))
+                    matched_some_window = any(
+                        excerpt == render(text, s, e) for s, e in feasible
+                    )
+                    self.assertTrue(
+                        matched_some_window,
+                        f"excerpt {excerpt!r} matches no feasible window "
+                        f"for text={text!r} max_chars={max_chars}",
+                    )
+                    self.assertIn(query, excerpt)
 
     def test_exact_result_limit_complete_without_partial(self):
         result = retrieve_verbatim_evidence(
