@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 CODE_BASELINE_SHA = "9193f5ec744f059d07a20612489b210527b5660a"
-SEMANTIC_PARENT_SHA = "d5f986f02c9c463c1019dffed1c6de40d5f59c11"
-M11_REVIEWED_OVERLAY_SHA = "c5513d50b656f9cc9e6423ea819438f975d16ee5"
+SEMANTIC_PARENT_SHA = "b810fcd7ee545399a368afada2b0e7d9dd7821f6"
+M11_REVIEWED_OVERLAY_SHA = "67d4f5aa62415f3550fbc56a760374cf3c19ee23"
 M11_CONTROL_PLANE_INPUTS = frozenset(
     {
         "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
@@ -108,41 +108,41 @@ EDIT_ALLOWLIST_EXACT = frozenset(
     }
 )
 EDIT_ALLOWLIST_PREFIXES = ("tests/fixtures/openclaw_strict/",)
-SCHEMA_ALLOWLIST = frozenset(
-    {
-        "schemas/convmem-bound-read-scope-v2.schema.json",
-        "schemas/convmem-project-binding-registry-v3.schema.json",
-        "schemas/convmem-bound-authority-record-v3.schema.json",
-        "schemas/convmem-authority-disposition-v1.schema.json",
-        "schemas/convmem-strict-provenance-context-v2.schema.json",
-        "schemas/convmem-strict-grounding-v1.schema.json",
-        "schemas/convmem-capture-receipt-v1.schema.json",
-        "schemas/convmem-strict-fixture-bundle-v2.schema.json",
-        "schemas/convmem-strict-citation-map-v1.schema.json",
-        "schemas/convmem-bound-authority-manifest-v3.schema.json",
-        "schemas/convmem-bound-projection-row-v2.schema.json",
-        "schemas/convmem-strict-graph-v1.schema.json",
-        "schemas/convmem-bound-projection-manifest-v3.schema.json",
-        "schemas/convmem-strict-generation-layout-v2.schema.json",
-        "schemas/convmem-strict-publication-v2.schema.json",
-        "schemas/convmem-strict-enrollment-v1.schema.json",
-        "schemas/convmem-strict-slot-v1.schema.json",
-        "schemas/convmem-strict-source-cutoff-v1.schema.json",
-        "schemas/convmem-strict-semantic-contract-v1.schema.json",
-        "schemas/convmem-strict-state-v2.schema.json",
-        "schemas/convmem-clock-review-v1.schema.json",
-        "schemas/convmem-raw-evidence-v3.schema.json",
-        "schemas/convmem-error-v1.schema.json",
-        "schemas/convmem-strict-config-v2.schema.json",
-        "schemas/convmem-openclaw-connector-launch-v2.schema.json",
-        "schemas/convmem-openclaw-activation-v2.schema.json",
-        "schemas/convmem-activation-control-v1.schema.json",
-        "schemas/convmem-activation-retirement-v1.schema.json",
-        "schemas/convmem-activation-launch-policy-v1.schema.json",
-        "schemas/convmem-activation-manager-policy-v1.schema.json",
-        "schemas/convmem-controller-socket-policy-v1.schema.json",
-    }
+_SCHEMA_ALLOWLIST_MEMBERS = (
+    "schemas/convmem-bound-read-scope-v2.schema.json",
+    "schemas/convmem-project-binding-registry-v3.schema.json",
+    "schemas/convmem-bound-authority-record-v3.schema.json",
+    "schemas/convmem-authority-disposition-v1.schema.json",
+    "schemas/convmem-strict-provenance-context-v2.schema.json",
+    "schemas/convmem-strict-grounding-v1.schema.json",
+    "schemas/convmem-capture-receipt-v1.schema.json",
+    "schemas/convmem-strict-fixture-bundle-v2.schema.json",
+    "schemas/convmem-strict-citation-map-v1.schema.json",
+    "schemas/convmem-bound-authority-manifest-v3.schema.json",
+    "schemas/convmem-bound-projection-row-v2.schema.json",
+    "schemas/convmem-strict-graph-v1.schema.json",
+    "schemas/convmem-bound-projection-manifest-v3.schema.json",
+    "schemas/convmem-strict-generation-layout-v2.schema.json",
+    "schemas/convmem-strict-publication-v2.schema.json",
+    "schemas/convmem-strict-enrollment-v1.schema.json",
+    "schemas/convmem-strict-slot-v1.schema.json",
+    "schemas/convmem-strict-source-cutoff-v1.schema.json",
+    "schemas/convmem-strict-semantic-contract-v1.schema.json",
+    "schemas/convmem-strict-state-v2.schema.json",
+    "schemas/convmem-clock-review-v1.schema.json",
+    "schemas/convmem-raw-evidence-v3.schema.json",
+    "schemas/convmem-error-v1.schema.json",
+    "schemas/convmem-strict-config-v2.schema.json",
+    "schemas/convmem-openclaw-connector-launch-v2.schema.json",
+    "schemas/convmem-openclaw-activation-v2.schema.json",
+    "schemas/convmem-activation-control-v1.schema.json",
+    "schemas/convmem-activation-retirement-v1.schema.json",
+    "schemas/convmem-activation-launch-policy-v1.schema.json",
+    "schemas/convmem-activation-manager-policy-v1.schema.json",
+    "schemas/convmem-controller-socket-policy-v1.schema.json",
 )
+SCHEMA_ALLOWLIST = frozenset(_SCHEMA_ALLOWLIST_MEMBERS)
+
 
 STRICT_PYTEST_FILES = (
     "tests/test_bound_read_scope.py",

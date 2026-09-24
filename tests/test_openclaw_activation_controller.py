@@ -1,4 +1,5 @@
 """Controller — production refusal + T5 Gate C lifecycle cores (M6)."""
+# pylint: disable=C0302  # preserved activation-controller collected-node test boundary
 
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ _FIXTURE = REPO / "tests" / "fixtures" / "openclaw_strict"
 if str(_FIXTURE) not in sys.path:
     sys.path.insert(0, str(_FIXTURE))
 
-from fixture_platform import (  # noqa: E402
+from fixture_platform import (  # noqa: E402  # pylint: disable=E0401,C0413  # path-injection after sys.path
     CONTROL_IO_TIMEOUT_NS,
     MAX_CONTROL_CONNECTIONS,
     MAX_REQUEST_FRAME,
@@ -26,13 +27,12 @@ from fixture_platform import (  # noqa: E402
     encode_control_frame,
     try_decode_control_frame,
 )
-from lifecycle_scripts import (  # noqa: E402
+from lifecycle_scripts import (  # noqa: E402  # pylint: disable=E0401,C0413  # path-injection after sys.path
     HEX_A,
     HEX_B,
     HEX_E,
     PUB,
     _enter_revoking_for_retirement,
-    agent_argv_template,
     base_activation_manifest,
     base_clock_review,
     base_launch_policy,
@@ -42,7 +42,6 @@ from lifecycle_scripts import (  # noqa: E402
     independent_content_hash,
     install_clock_review_inventory,
     open_operator_session,
-    revoke_request,
     script_partial_frame_discard,
     script_peer_policy_ok,
     status_request,
@@ -97,22 +96,22 @@ def test_logical_peer_policy_exact_uids():
     script_peer_policy_ok(platform)
     assert LOGICAL_PEERS["operator"] == (1000, 1000)
     assert LOGICAL_PEERS["controller"] == (0, 0)
-    assert LOGICAL_PEERS["supervisor"] == (0, 0)
+    assert LOGICAL_PEERS["_supervisor"] == (0, 0)
     assert LOGICAL_PEERS["runtime"] == (1001, 1001)
     assert platform.port_ops().count("peer") == 4
 
 
 def test_case53_peer_forgery_denied():
-    platform, controller, supervisor, _ = _pair()
+    _platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
-    platform.forge_peer("evil", uid=1001, gid=1001)
+    _platform.forge_peer("evil", uid=1001, gid=1001)
     resp = controller.handle_control("evil", status_request())
     assert resp["outcome"] == "invalid_request"
     assert resp["payload"]["reason"] == "bad_arguments"
 
 
 def test_case55_runtime_denied_private_paths_pre_activation():
-    platform, controller, supervisor, ctl = _pair()
+    platform, controller, _supervisor, ctl = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     for path in (
         "/fixture/private/qualification/x",
@@ -151,7 +150,7 @@ def test_stable_slot_activation_and_ready():
 
 
 def test_framed_control_partials_caps_timeout_eight_connections():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -188,11 +187,11 @@ def test_framed_control_partials_caps_timeout_eight_connections():
     controller.handle_framed_bytes(cid3, encode_control_frame(status_request())[:3])
     platform.advance_boottime(CONTROL_IO_TIMEOUT_NS + 1)
     assert controller.handle_framed_bytes(cid3, b"\x00") is None
-    assert cid3 not in controller._open_sessions
+    assert cid3 not in controller._open_sessions  # pylint: disable=W0212  # white-box test access
 
 
 def test_framed_closed_requests_and_request_id_conflict():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -231,7 +230,7 @@ def test_framed_closed_requests_and_request_id_conflict():
 
 
 def test_cancel_to_revoking_then_independent_retirement():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -334,21 +333,21 @@ def test_activation_failure_retains_domain_for_retire_quarantine():
 
 
 def test_exact_null_observation_quarantines():
-    platform, controller, supervisor, _ = _pair()
+    _platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
     )
     _enter_revoking_for_retirement(controller)
     inv = controller.slots[HEX_B].unit_invocation_id
-    platform.force_observe(inv, terminal=True, populated=None)
+    _platform.force_observe(inv, terminal=True, populated=None)
     with pytest.raises(ValueError, match="quarantined"):
         controller.attempt_retirement(HEX_B)
     assert controller.slots[HEX_B].state == "QUARANTINED"
 
 
 def test_case46_53_retirement_only_on_exact_empty_observation():
-    platform, controller, supervisor, _ = _pair()
+    _platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -358,7 +357,7 @@ def test_case46_53_retirement_only_on_exact_empty_observation():
         controller.attempt_retirement(HEX_B)
     assert controller.slots[HEX_B].state == "QUARANTINED"
 
-    platform2, controller2, supervisor2, _ = _pair()
+    platform2, controller2, _supervisor2, _ = _pair()
     controller2.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller2.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -419,7 +418,7 @@ def test_case57_manager_membership_survives_and_restart_persists_quarantine():
 
 
 def test_case54_clock_interval_review_inventory():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -550,7 +549,7 @@ def test_case45_lifecycle_config_disables_and_no_unsolicited_turn():
 
 
 def test_partial_frame_and_lock_order():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     script_partial_frame_discard(platform)
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
@@ -579,7 +578,7 @@ def test_case58_production_refusal_with_unwrapped_specimen_bytes():
 
 
 def test_all_platform_ops_traced_for_clock_peer_access_spawn_manager():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -622,7 +621,7 @@ def test_module_enroll_slot_wrapper():
 
 
 def test_duplicate_key_frame_rejected():
-    from fixture_platform import decode_json_object
+    from fixture_platform import decode_json_object  # pylint: disable=E0401,C0413  # path-injection after sys.path
 
     with pytest.raises(ValueError, match="duplicate_key"):
         decode_json_object(b'{"a":1,"a":2}')
@@ -703,7 +702,7 @@ def test_negative_nested_launch_shape_env_fd_mount_endpoint():
 
 
 def test_negative_noncanonical_frame_and_connection_accounting():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -715,32 +714,32 @@ def test_negative_noncanonical_frame_and_connection_accounting():
     controller.open_control_session("op1")
     with pytest.raises(ValueError, match="duplicate_control_open"):
         controller.open_control_session("op1")
-    assert controller._active_control_connections == 1
+    assert controller._active_control_connections == 1  # pylint: disable=W0212  # white-box test access
 
     # Non-canonical JSON (space after colon) rejected even if parseable; closes op1.
     obj = status_request()
     ugly = json.dumps(obj, separators=(", ", ": ")).encode("utf-8")
     frame = struct.pack(">I", len(ugly)) + ugly
     assert controller.handle_framed_bytes("op1", frame) is None
-    assert controller._active_control_connections == 0
+    assert controller._active_control_connections == 0  # pylint: disable=W0212  # white-box test access
 
     # Unknown close must not decrement — exercise on a newly opened live connection.
     platform.open_control_connection("op-live", "operator")
     controller.open_control_session("op-live")
-    before = controller._active_control_connections
+    before = controller._active_control_connections  # pylint: disable=W0212  # white-box test access
     assert before == 1
     controller.close_control_session("unknown-id")
-    assert controller._active_control_connections == before
+    assert controller._active_control_connections == before  # pylint: disable=W0212  # white-box test access
     controller.close_control_session("op-live")
-    assert controller._active_control_connections == before - 1
+    assert controller._active_control_connections == before - 1  # pylint: disable=W0212  # white-box test access
     controller.close_control_session("op-live")  # already closed
-    assert controller._active_control_connections == before - 1
+    assert controller._active_control_connections == before - 1  # pylint: disable=W0212  # white-box test access
     controller.close_control_session("op1")  # already closed by malformed frame
-    assert controller._active_control_connections == before - 1
+    assert controller._active_control_connections == before - 1  # pylint: disable=W0212  # white-box test access
 
 
 def test_negative_clock_review_wrong_hash_and_wall_binding():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -966,7 +965,7 @@ def test_launch_policy_fixed_fd_roles_and_executable_constraints():
 
 
 def test_lifetime_authority_negative_and_caller_max_cannot_enlarge():
-    platform, controller, supervisor, _ = _pair()
+    _platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     with pytest.raises(ValueError, match="negative_snapshot_lifetime"):
         controller.qualify_and_activate(
@@ -979,7 +978,7 @@ def test_lifetime_authority_negative_and_caller_max_cannot_enlarge():
     assert controller.slots[HEX_B].state in ("NEW", "REVOKING")
     assert controller.slots[HEX_B].freshness_anchor is None
 
-    platform2, controller2, supervisor2, _ = _pair()
+    platform2, controller2, _supervisor2, _ = _pair()
     controller2.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     manifest = base_activation_manifest()
     manifest_max = manifest["max_monotonic_lifetime_seconds"]
@@ -1004,16 +1003,16 @@ def test_closed_scalar_path_and_timestamp_validation():
     import openclaw_activation_controller as ctl
 
     with pytest.raises(ValueError, match="bad_wall_time"):
-        ctl._parse_wall("2026-09-21 00:00:00Z")
+        ctl._parse_wall("2026-09-21 00:00:00Z")  # pylint: disable=W0212  # white-box test access
     with pytest.raises(ValueError, match="bad_wall_time"):
-        ctl._parse_wall("2026/09/21T00:00:00Z")
+        ctl._parse_wall("2026/09/21T00:00:00Z")  # pylint: disable=W0212  # white-box test access
     with pytest.raises(ValueError, match="bad_wall_time"):
-        ctl._parse_wall("2026-02-30T00:00:00Z")
+        ctl._parse_wall("2026-02-30T00:00:00Z")  # pylint: disable=W0212  # white-box test access
     with pytest.raises(ValueError, match="bad_wall_time"):
-        ctl._parse_wall("2026-09-21T24:00:00Z")
+        ctl._parse_wall("2026-09-21T24:00:00Z")  # pylint: disable=W0212  # white-box test access
     with pytest.raises(ValueError, match="bad_wall_time"):
-        ctl._parse_wall("2026-09-21T00:60:00Z")
-    assert ctl._parse_wall("2026-09-21T00:00:00Z") > 0
+        ctl._parse_wall("2026-09-21T00:60:00Z")  # pylint: disable=W0212  # white-box test access
+    assert ctl._parse_wall("2026-09-21T00:00:00Z") > 0  # pylint: disable=W0212  # white-box test access
 
     for bad_dir in (
         "/fixture/state/",
@@ -1025,7 +1024,8 @@ def test_closed_scalar_path_and_timestamp_validation():
         "/other/state/act-1",
     ):
         with pytest.raises(ValueError, match="bad_state_dir"):
-            ctl._validate_state_dir(bad_dir)
+            ctl._validate_state_dir(bad_dir)  # pylint: disable=W0212  # white-box test access
+# pylint: disable-next=W0212  # white-box test access
     assert ctl._validate_state_dir("/fixture/state/act-1") == "/fixture/state/act-1"
 
     manifest = base_activation_manifest()
@@ -1054,7 +1054,7 @@ def test_closed_scalar_path_and_timestamp_validation():
 
 
 def test_framed_send_timeout_closes_without_partial_success():
-    platform, controller, supervisor, _ = _pair()
+    platform, controller, _supervisor, _ = _pair()
     controller.enroll_slot(HEX_B, HEX_A, authority_head=PUB, expires_at="2026-09-22T00:00:00Z")
     controller.qualify_and_activate(
         HEX_B, base_activation_manifest(), base_launch_policy(), lifecycle_config={}
@@ -1067,11 +1067,11 @@ def test_framed_send_timeout_closes_without_partial_success():
     # First attempt: blocked send — no partial success; pending SEND armed.
     assert controller.handle_framed_bytes("opsend", frame) is None
     assert len(outbound.write_trace) == 0
-    assert "opsend" in controller._open_sessions
-    assert "opsend" in controller._pending_outbound
+    assert "opsend" in controller._open_sessions  # pylint: disable=W0212  # white-box test access
+    assert "opsend" in controller._pending_outbound  # pylint: disable=W0212  # white-box test access
     # Scripted 10s SEND timeout via pending flush (fixture boottime — not host time).
     platform.advance_boottime(CONTROL_IO_TIMEOUT_NS + 1)
     assert controller.handle_framed_bytes("opsend", b"") is None
-    assert "opsend" not in controller._open_sessions
+    assert "opsend" not in controller._open_sessions  # pylint: disable=W0212  # white-box test access
     assert len(outbound.write_trace) == 0
-    assert "opsend" not in controller._pending_outbound
+    assert "opsend" not in controller._pending_outbound  # pylint: disable=W0212  # white-box test access

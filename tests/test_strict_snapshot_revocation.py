@@ -7,9 +7,7 @@ and revoked instances are unusable. Reader path never mutates files/mtimes/cache
 from __future__ import annotations
 
 import importlib.util
-import os
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -27,7 +25,7 @@ def test_strict_projection_capability_present():
 def test_qualified_strict_generation_constructor_forges_nothing():
     """Callers cannot mint a usable capability by constructing the class."""
 
-    from strict_projection import QualifiedStrictGeneration, StrictProjectionError
+    from strict_projection import QualifiedStrictGeneration
 
     with pytest.raises(TypeError):
         QualifiedStrictGeneration(  # type: ignore[call-arg]

@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from constants import (
+from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     BWRAP_MANDATORY_FLAGS,
     CHILD_ENV,
     FORBIDDEN_BWRAP_FLAGS,
@@ -76,18 +76,12 @@ def build_bwrap_argv(
     for flag in FORBIDDEN_BWRAP_FLAGS:
         if flag in argv:
             raise SystemExit(f"forbidden_bwrap_flag:{flag}")
-    # Every mandatory namespace flag always present — never omit --unshare-net.
-    for required in (
-        "--unshare-user",
-        "--unshare-pid",
-        "--unshare-ipc",
-        "--unshare-net",
-        "--unshare-uts",
-        "--disable-userns",
-        "--assert-userns-disabled",
-    ):
-        if required not in argv:
-            raise SystemExit(f"missing_mandatory_flag:{required}")
+    # Every mandatory flag from BWRAP_MANDATORY_FLAGS must remain present.
+    missing_mandatory = [
+        flag for flag in BWRAP_MANDATORY_FLAGS if flag != "ALL" and flag not in argv
+    ]
+    if missing_mandatory:
+        raise SystemExit(f"missing_mandatory_flag:{missing_mandatory[0]}")
     # Real runtime sysroot always at /usr — never mount live host /usr.
     usr = runtime_root / "sysroot" / "usr"
     argv += [

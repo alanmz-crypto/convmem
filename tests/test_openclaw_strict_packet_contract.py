@@ -1,4 +1,5 @@
 """Case 57 T0a containment/refusal greens; later-T reds mapped."""
+# pylint: disable=C0302  # preserved packet-contract collected-node test boundary
 
 from __future__ import annotations
 
@@ -10,9 +11,9 @@ from pathlib import Path
 
 # Import fixture helpers without tests/fixtures/__init__.py (not authorized at M1).
 sys.path.insert(0, str(Path("tests/fixtures/openclaw_strict").resolve()))
-import constants as oc_constants  # noqa: E402
-import suites as oc_suites  # noqa: E402
-from fixture_manifest import ManifestNotAvailable, emit_complete_manifest  # noqa: E402
+import constants as oc_constants  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+import suites as oc_suites  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+from fixture_manifest import ManifestNotAvailable, emit_complete_manifest  # noqa: E402  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
 
 def test_case57_preflight_sentinel_present_inside_runner():
@@ -35,7 +36,7 @@ def test_case57_preflight_fds_proc_self_fd_f_getfd():
 
 def test_case57_tmp_allocated_bytes_uses_st_blocks():
     """Allocated-byte helper uses st_blocks*512 and counts each inode once."""
-    import limits as oc_limits
+    import limits as oc_limits  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     root = Path("/fixture/tmp_alloc_probe")
@@ -44,11 +45,11 @@ def test_case57_tmp_allocated_bytes_uses_st_blocks():
     blob.write_bytes(b"x" * 100)
     st = os.lstat(blob)
     expected = st.st_blocks * 512
-    assert oc_limits._tmp_used_bytes(str(root)) == expected
+    assert oc_limits._tmp_used_bytes(str(root)) == expected  # pylint: disable=W0212  # intentional white-box test access
     link = root / "blob_hardlink"
     os.link(blob, link)
     # Hardlink shares inode — must not double-count allocated blocks.
-    assert oc_limits._tmp_used_bytes(str(root)) == expected
+    assert oc_limits._tmp_used_bytes(str(root)) == expected  # pylint: disable=W0212  # intentional white-box test access
     assert expected != st.st_size or expected == st.st_blocks * 512
 
 
@@ -209,10 +210,10 @@ def test_fixture_manifest_schema_exists_and_complete_emit_deferred():
 
 
 def test_plan_and_baseline_constants_frozen():
-    assert oc_constants.SEMANTIC_PARENT_SHA == "d5f986f02c9c463c1019dffed1c6de40d5f59c11"
+    assert oc_constants.SEMANTIC_PARENT_SHA == "b810fcd7ee545399a368afada2b0e7d9dd7821f6"
     assert oc_constants.CODE_BASELINE_SHA == "9193f5ec744f059d07a20612489b210527b5660a"
     assert oc_constants.M11_REVIEWED_OVERLAY_SHA == (
-        "c5513d50b656f9cc9e6423ea819438f975d16ee5"
+        "67d4f5aa62415f3550fbc56a760374cf3c19ee23"
     )
     assert oc_constants.M11_CONTROL_PLANE_INPUTS == frozenset(
         {
@@ -228,7 +229,7 @@ def test_plan_and_baseline_constants_frozen():
 def test_m2_gate_b_and_c_schema_inventory_exact():
     """Exact 24 Gate B + 7 Gate C schemas; no Gate W."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    gate_b = [
+    gate_b = list((
         "schemas/convmem-bound-read-scope-v2.schema.json",
         "schemas/convmem-project-binding-registry-v3.schema.json",
         "schemas/convmem-bound-authority-record-v3.schema.json",
@@ -253,8 +254,8 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
         "schemas/convmem-raw-evidence-v3.schema.json",
         "schemas/convmem-error-v1.schema.json",
         "schemas/convmem-strict-config-v2.schema.json",
-    ]
-    gate_c = [
+    ))
+    gate_c = list((
         "schemas/convmem-openclaw-connector-launch-v2.schema.json",
         "schemas/convmem-openclaw-activation-v2.schema.json",
         "schemas/convmem-activation-control-v1.schema.json",
@@ -262,7 +263,7 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
         "schemas/convmem-activation-launch-policy-v1.schema.json",
         "schemas/convmem-activation-manager-policy-v1.schema.json",
         "schemas/convmem-controller-socket-policy-v1.schema.json",
-    ]
+    ))
     assert len(gate_b) == 24
     assert len(gate_c) == 7
     assert set(gate_b) | set(gate_c) == set(oc_constants.SCHEMA_ALLOWLIST)
@@ -359,7 +360,7 @@ def _m11_install_git_boundary_oracle(
 
 def _check_m11_control_plane_exact_four_success(monkeypatch):
     """M11: exact four control-plane paths validate; product delta P is returned."""
-    import allowlist as oc_allowlist
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
@@ -373,7 +374,7 @@ def _check_m11_control_plane_exact_four_success(monkeypatch):
 
 
 def _check_m11_control_plane_rejects_missing_path(monkeypatch):
-    import allowlist as oc_allowlist
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     control = sorted(oc_constants.M11_CONTROL_PLANE_INPUTS)
     incomplete = control[1:] + ["mcp_server.py"]
@@ -390,8 +391,8 @@ def _check_m11_control_plane_rejects_missing_path(monkeypatch):
 
 
 def _check_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
-    import allowlist as oc_allowlist
-    import constants as allowlist_constants
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    import constants as allowlist_constants  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     extra = "docs/plans/README-openclaw-convmem-integration.md"
     _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
@@ -419,7 +420,7 @@ def _check_m11_control_plane_rejects_extra_classified_constant(monkeypatch):
 
 
 def _check_m11_control_plane_rejects_unavailable_commit(monkeypatch):
-    import allowlist as oc_allowlist
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     unavailable = "0" * 40
     monkeypatch.setattr(oc_allowlist, "M11_REVIEWED_OVERLAY_SHA", unavailable)
@@ -442,7 +443,7 @@ def _check_m11_control_plane_rejects_unavailable_commit(monkeypatch):
 
 
 def _check_m11_control_plane_rejects_malformed_unreadable_entry(monkeypatch):
-    import allowlist as oc_allowlist
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
@@ -473,7 +474,7 @@ def _check_m11_control_plane_rejects_malformed_unreadable_entry(monkeypatch):
 
 
 def _check_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
-    import allowlist as oc_allowlist
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     _m11_install_git_boundary_oracle(monkeypatch, oc_allowlist)
     monkeypatch.setattr(
@@ -504,7 +505,7 @@ def _check_m11_control_plane_rejects_non_regular_mode_or_type(monkeypatch):
 
 
 def _check_m11_control_plane_rejects_blob_or_mode_mismatch(monkeypatch):
-    import allowlist as oc_allowlist
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     control = sorted(oc_constants.M11_CONTROL_PLANE_INPUTS)
     target = control[0]
@@ -534,7 +535,7 @@ def _check_m11_control_plane_rejects_blob_or_mode_mismatch(monkeypatch):
 
 def _check_m11_fifth_documentation_path_fails_product_allowlist(monkeypatch):
     """A fifth docs path stays in P and fails the unchanged product allowlist."""
-    import allowlist as oc_allowlist
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     fifth = "docs/plans/README-openclaw-convmem-integration.md"
     assert fifth not in oc_constants.M11_CONTROL_PLANE_INPUTS
@@ -554,7 +555,7 @@ def _check_m11_fifth_documentation_path_fails_product_allowlist(monkeypatch):
 
 def _check_m11_control_plane_docs_remain_exported_inventoried_hashed():
     """Reviewed control docs stay in source export inventory/hash; not excluded."""
-    import fixture_manifest as fm
+    import fixture_manifest as fm  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     for rel in sorted(oc_constants.M11_CONTROL_PLANE_INPUTS):
         assert rel not in oc_constants.GENERATED_EVIDENCE_SOURCE_RELS
@@ -575,22 +576,26 @@ def _check_m11_control_plane_docs_remain_exported_inventoried_hashed():
 def test_m4_edit_allowlist_permits_mcp_server_protects_gate_w(monkeypatch):
     """M4/T3: mcp_server.py is bounded-edit allowlisted; Gate W stays reject-only."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    import allowlist as oc_allowlist
+    import allowlist as oc_allowlist  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     assert "mcp_server.py" in oc_constants.EDIT_ALLOWLIST_EXACT
     assert oc_allowlist.path_allowed("mcp_server.py") is True
 
-    gate_w = (
+    gate_w = [
         "schemas/convmem-approved-admission-v1.schema.json",
         "schemas/convmem-admission-intent-v1.schema.json",
         "schemas/convmem-admission-review-v1.schema.json",
         "schemas/convmem-admission-ratification-v1.schema.json",
         "schemas/convmem-admission-event-v1.schema.json",
-    )
-    for path in gate_w:
-        assert path not in oc_constants.EDIT_ALLOWLIST_EXACT
-        assert path not in oc_constants.SCHEMA_ALLOWLIST
-        assert oc_allowlist.path_allowed(path) is False
+    ]
+    denied = [
+        path
+        for path in gate_w
+        if path in oc_constants.EDIT_ALLOWLIST_EXACT
+        or path in oc_constants.SCHEMA_ALLOWLIST
+        or oc_allowlist.path_allowed(path)
+    ]
+    assert denied == []
 
     with monkeypatch.context() as scoped:
         _m11_install_git_boundary_oracle(scoped, oc_allowlist)
@@ -640,7 +645,7 @@ def test_m4_edit_allowlist_permits_mcp_server_protects_gate_w(monkeypatch):
 def test_m2_future_production_modules_remain_absent():
     """M4: T3 server present; future-production set is empty for Gate B."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    import component_inventory as inv
+    import component_inventory as inv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     m4_present = (
         "bound_read_scope.py",
@@ -660,9 +665,9 @@ def test_m2_future_production_modules_remain_absent():
 def test_m2_case58_literal_inventories_and_independent_walkers():
     """Five membership sets + two independent walkers; M4 includes strict_server."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    import component_inventory as inv
-    import case58_oracle as oracle
-    import fixture_manifest as fm
+    import component_inventory as inv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    import case58_oracle as oracle  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    import fixture_manifest as fm  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     assert hasattr(fm, "build_component_inventories")
     inventories = inv.build_component_inventories()
@@ -689,7 +694,7 @@ def test_m2_case58_literal_inventories_and_independent_walkers():
     art_b = fm.inventory_fixture_artifacts(Path("tests/fixtures/openclaw_strict"))
     assert art_a == art_b == manifest["artifacts"]
     assert dig_a == fm.hash_inventory_entries(manifest["artifacts"])
-    import case58_oracle as oracle2
+    import case58_oracle as oracle2  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     assert oracle2.reference_fixture_artifact_walk(
         Path("tests/fixtures/openclaw_strict")
@@ -707,7 +712,7 @@ def test_m2_case58_literal_inventories_and_independent_walkers():
 
 def test_m2_case58_plugin_mutation_and_symlink_controls():
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    import component_inventory as inv
+    import component_inventory as inv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     root = Path(".")
     # Independent byte-only and mode-only mutants (6 controls: 3+3); both walkers.
@@ -749,9 +754,9 @@ def test_m2_dual_independent_canonical_parsers_and_vectors():
     """Two independent strict raw parsers + production encode agreement."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import canonical_json
-    import canonical_oracle as oracle_a
-    import canonical_oracle_b as oracle_b
-    from protocol_fixture.vectors import KNOWN_ANSWER_OBJECTS, REJECT_PAYLOADS
+    import canonical_oracle as oracle_a  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    import canonical_oracle_b as oracle_b  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    from protocol_fixture.vectors import KNOWN_ANSWER_OBJECTS, REJECT_PAYLOADS  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     def prod_encode(value):
         return canonical_json.canonical_json_bytes(
@@ -801,7 +806,7 @@ def test_m2_dual_independent_canonical_parsers_and_vectors():
 def test_m2_schema_meta_and_31_positive_negative_instances():
     """Draft 2020-12 meta-schema + 31 positives + per-schema negatives inside runner."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    from protocol_fixture.schema_contract import run_all_schema_contract_checks
+    from protocol_fixture.schema_contract import run_all_schema_contract_checks  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     report = run_all_schema_contract_checks(Path("schemas"))
     assert report["schema_count"] == 31
@@ -813,18 +818,18 @@ def test_m2_schema_meta_and_31_positive_negative_instances():
     assert report["negative_ok"] == report["negative_total"]
     assert report["negative_total"] >= 31 * 4  # unknown/missing/wrong-type/null-discipline each
     # Every schema must include the four core negative names.
-    from protocol_fixture.schema_contract import (
+    from protocol_fixture.schema_contract import (  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
         FILENAME_TO_ID,
         build_negatives,
         load_schema,
     )
-    from protocol_fixture import schema_field_sets as field_sets
+    from protocol_fixture import schema_field_sets as field_sets  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     assert len(field_sets.TOP_LEVEL) == 30  # activation-control uses variant table
     assert len(field_sets.ACTIVATION_CONTROL_VARIANTS_FIELDS) == 4
     for filename in FILENAME_TO_ID:
         schema = load_schema(Path("schemas"), filename)
-        from protocol_fixture.schema_instances import POSITIVE_BY_FILENAME
+        from protocol_fixture.schema_instances import POSITIVE_BY_FILENAME  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
         names = {n["name"] for n in build_negatives(schema, POSITIVE_BY_FILENAME[filename])}
         missing = {
@@ -843,12 +848,13 @@ def test_m2_schema_meta_and_31_positive_negative_instances():
     assert report["deferred_cross_object_invariants"]
 
 
+# pylint: disable-next=R0914  # dual-oracle vector locals mirror closed known-answer cases
 def test_m2_pinned_known_answer_vectors_dual_oracles():
     """Parent-defined vectors; dual fixture oracles recompute pinned constants."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import digest_oracle as ora
     import digest_oracle_b as orb
-    from protocol_fixture import pinned_vectors as pv
+    from protocol_fixture import pinned_vectors as pv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     # Owner digest
     assert ora.owner_digest(**pv.OWNER_INPUT) == orb.owner_digest(**pv.OWNER_INPUT) == pv.OWNER_DIGEST
@@ -1207,7 +1213,7 @@ def test_m2_idna2008_vectors_and_legacy_v1_retention():
     """Parent IDNA2008 vectors via runtime idna; legacy-v1 vectors remain owned elsewhere."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import idna
-    from protocol_fixture import pinned_vectors as pv
+    from protocol_fixture import pinned_vectors as pv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     assert idna.__version__ == "3.18"
     for row in pv.IDNA2008_VECTORS:
@@ -1234,8 +1240,7 @@ def test_m2_legacy_envelope_bytes_preserved():
     """
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
     import provenance
-    from protocol_fixture import pinned_vectors as pv
-    import constants as oc_constants
+    from protocol_fixture import pinned_vectors as pv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     assert provenance.SCHEMA_VERSION == "convmem/provenance-envelope-v1"
     assert "test_canonicalization_literal_golden_vector" in pv.LEGACY_PROVENANCE_GOLDEN_TEST
@@ -1315,7 +1320,7 @@ def test_m2_registry_schema_exact_binding_fields():
 
 def test_m2_protocol_fixture_specimens_present():
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    from protocol_fixture.specimens import ROLES, specimen_catalog
+    from protocol_fixture.specimens import ROLES, specimen_catalog  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     catalog = specimen_catalog()
     assert set(catalog) == set(ROLES)
@@ -1337,8 +1342,8 @@ def test_m2_protocol_fixture_specimens_present():
 def test_case58_whole_case_not_passed_declared_future_reds():
     """Case 58 five-hash inventory is complete after M4; remaining reds are T4/T5 behavior."""
     assert os.environ.get("CONVMEM_OPENCLAW_INNER_ROLE") == "inner"
-    import component_inventory as inv
-    import fixture_manifest as fm
+    import component_inventory as inv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    import fixture_manifest as fm  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     root = Path(".")
     incomplete = [
@@ -1358,9 +1363,9 @@ def test_case58_whole_case_not_passed_declared_future_reds():
 def test_m4_fixture_manifest_independent_controls_and_exclusions(tmp_path: Path):
     """Missing/extra/duplicate/symlink/path-escape; regen identity; exclusion exactness."""
 
-    import fixture_manifest as fm
-    import component_inventory as inv
-    from fixture_manifest import ManifestNotAvailable
+    import fixture_manifest as fm  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    import component_inventory as inv  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    from fixture_manifest import ManifestNotAvailable  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     # Component supplied-array controls remain independent.
     inv.reject_supplied_duplicate_missing_extra_path_escape()
@@ -1427,7 +1432,7 @@ def test_m4_fixture_manifest_independent_controls_and_exclusions(tmp_path: Path)
 
 def test_m7_canonical_audit_arrays_and_inventories():
     """M7: dry-collect canonical arrays, exact tools/suites, no broad discovery."""
-    import audit_evidence as ae
+    import audit_evidence as ae  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     assert ae.exact_legacy_exclusions() == list(oc_constants.LEGACY_DESELECTS)
     assert len(ae.exact_legacy_exclusions()) == 4
@@ -1527,7 +1532,7 @@ def test_m7_canonical_audit_arrays_and_inventories():
 
 def test_m7_label_upgrade_and_closed_cli_forbidden():
     """M7: refuse fake→REAL upgrade; closed runner CLI has no run-label."""
-    import audit_evidence as ae
+    import audit_evidence as ae  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     try:
         ae.label_observation(
@@ -1561,8 +1566,8 @@ def test_m7_label_upgrade_and_closed_cli_forbidden():
 
 def test_m7_generated_path_hash_exclusion_and_read_nonmutation(tmp_path: Path):
     """M7: generated evidence paths excluded from hashes; reads do not mutate."""
-    import audit_evidence as ae
-    import fixture_manifest as fm
+    import audit_evidence as ae  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    import fixture_manifest as fm  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     tree = tmp_path / "fixture_tree"
     tree.mkdir()
@@ -1598,7 +1603,7 @@ def test_m7_generated_path_hash_exclusion_and_read_nonmutation(tmp_path: Path):
     assert before == after
 
     # Independent oracle walker agrees on exclusion.
-    import case58_oracle as oracle
+    import case58_oracle as oracle  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     ref = oracle.reference_fixture_artifact_walk(tree)
     ref_paths = {e["path"] for e in ref}
@@ -1690,8 +1695,8 @@ def test_m8_prompt_injection_bytes_remain_untrusted_tool_data():
 
 def test_m8_adversarial_matrix_gate_ownership_and_threat_rows():
     """M8: Gate B/C ownership, D/W/E blocked, §5 matrix, nodes, mutants, no all-58."""
-    import adversarial_matrix as am
-    import audit_evidence as ae
+    import adversarial_matrix as am  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
+    import audit_evidence as ae  # pylint: disable=E0401,C0413  # fixture path-injection after sys.path; order intentional
 
     ownership = am.gate_ownership_table()
     assert len(ownership) == 58

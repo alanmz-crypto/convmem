@@ -3,6 +3,7 @@
 Literal membership is duplicated here — does not call component_inventory's
 digest helpers. Agreement with the reference walker is asserted by tests.
 """
+# pylint: disable=R0801  # reference-owned case58 oracle; sharing would break oracle independence
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 """M7/M8 bounded audit evidence — attributable fixture-only run package.
 
-Architecture / Execution parent (d5f986f0) + overlay M7/M8 (c5513d5):
+Architecture / Execution parent (b810fcd) + overlay M7/M8 (67d4f5a):
 emit canonical inventories, evidence-class labels, suite selection/exclusions,
 timing/output/tmp, negative controls, changed-file/protected-byte proof,
 Gate B/C ownership, overlay §5 threat matrix, selected-node inventory,
@@ -9,6 +9,7 @@ disposable ``/fixture/evidence`` only. Evidence is not approval, signing,
 admission, qualification, manager emptiness, or promotion. Never claims all
 58 cases passed.
 """
+# pylint: disable=C0302  # preserved fixture audit-evidence module/component boundary
 
 from __future__ import annotations
 
@@ -20,9 +21,9 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from adversarial_matrix import build_adversarial_evidence_section
-from allowlist import path_allowed
-from constants import (
+from adversarial_matrix import build_adversarial_evidence_section  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
+from allowlist import path_allowed  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
+from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     CODE_BASELINE_SHA,
     CONNECTOR_NODE_TEST,
     EVIDENCE_AUDIT_REL,
@@ -46,7 +47,7 @@ from constants import (
     STRICT_PYTEST_FILES,
     STRICT_TOOL_NAMES,
 )
-from suites import all_suite_commands
+from suites import all_suite_commands  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
 
 SCHEMA_ID = "convmem.bounded-audit-evidence.v1"
 ARTIFACT_KIND = "bounded_audit_evidence"
@@ -472,7 +473,7 @@ def _passed_case(file_attr: str, classname: str, name: str) -> str:
     )
 
 
-def run_junit_parser_negative_controls() -> list[dict[str, str]]:
+def run_junit_parser_negative_controls() -> list[dict[str, str]]:  # pylint: disable=R0914  # negative-control locals mirror closed junit parser cases
     """Deterministic in-process parent JUnit/parser rejection evidence.
 
     Mutants are disposable in-memory XML only — no new process, plugin,
@@ -1209,7 +1210,7 @@ def collect_containment_evidence(
 ) -> dict[str, Any]:
     """Assemble capacity/process/import/mount/FD/network from disposable roots."""
 
-    from constants import (
+    from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
         FD_OBSERVATION_FILE,
         IMPORT_TRACE_PATH,
         NS_OBSERVATION_FILE,
@@ -1444,6 +1445,7 @@ def default_observations(
     return obs
 
 
+# pylint: disable-next=R0913,R0914  # audit package arity/locals mirror closed evidence envelope inputs
 def build_audit_package(
     *,
     plan_sha: str,

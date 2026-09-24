@@ -3,6 +3,7 @@
 Keyed by exact schema filename. Cross-object graph/history/receipt/file/OS
 invariants are intentionally not proven here — those belong to T1–T5 validators.
 """
+# pylint: disable=R0801  # frozen schema instance specimens; sharing would break specimen independence
 
 from __future__ import annotations
 

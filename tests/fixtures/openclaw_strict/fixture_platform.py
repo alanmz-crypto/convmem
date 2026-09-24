@@ -98,15 +98,16 @@ def encode_response_frame(obj: dict[str, Any]) -> bytes:
 def try_decode_control_frame(buf: bytes) -> tuple[dict[str, Any] | None, bytes, str | None]:
     """Return (object|None, remainder, error_reason|None). Partial → (None, buf, None)."""
 
-    if len(buf) < 4:
+    header_size = 4
+    if len(buf) < header_size:
         return None, buf, None
-    (length,) = struct.unpack(">I", buf[:4])
-    if length > MAX_REQUEST_FRAME:
+    frame_len = struct.unpack(">I", buf[:header_size])[0]
+    if frame_len > MAX_REQUEST_FRAME:
         return None, b"", "bad_frame"
-    if len(buf) < 4 + length:
+    if len(buf) < header_size + frame_len:
         return None, buf, None
-    raw = buf[4 : 4 + length]
-    rest = buf[4 + length :]
+    raw = buf[header_size : header_size + frame_len]
+    rest = buf[header_size + frame_len :]
     if rest:
         # No trailing frames — discard remainder as protocol desync.
         return None, b"", "bad_frame"
@@ -133,7 +134,7 @@ def _path_under_prefix(path: str, prefix: str) -> bool:
 
 
 @dataclass
-class _HandleState:
+class _HandleState:  # pylint: disable=R0902  # attributes mirror handle observation fields
     role: str
     argv: list[str]
     env: dict[str, str]
@@ -147,7 +148,7 @@ class _HandleState:
 
 
 @dataclass
-class _InvocationState:
+class _InvocationState:  # pylint: disable=R0902  # attributes mirror invocation observation fields
     slot_id: str
     activation_id: str
     manager_boot_id: str
@@ -165,7 +166,7 @@ class _InvocationState:
 
 
 @dataclass
-class _ControlConn:
+class _ControlConn:  # pylint: disable=R0902  # attributes mirror control-connection fields
     connection_id: str
     role: str
     inbound: "ByteQueue"
@@ -219,7 +220,7 @@ class ByteQueue:
         return len(self._buf)
 
 
-class FixturePlatform:
+class FixturePlatform:  # pylint: disable=R0902,R0904  # attributes/methods mirror injected FixturePlatformPort surface
     """Exact §6.5.8 injected port. All clock/peer/access/spawn/manager ops trace here."""
 
     def __init__(

@@ -6,7 +6,7 @@ import hashlib
 import json
 from typing import Any
 
-from fixture_platform import (
+from fixture_platform import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     AGENT_SUCCESS_BYTES,
     FixturePlatform,
     LOGICAL_PEERS,
@@ -24,7 +24,7 @@ PUB_B = "sha256:" + ("b" * 64)
 STRICT_SECCOMP = "sha256:" + ("c" * 64)
 
 # Closed role environment key sets (Architecture §6.5.6 / §4).
-GATEWAY_AGENT_ENV_KEYS = (
+GATEWAY_AGENT_ENV_KEYS = tuple([
     "OPENCLAW_GATEWAY_TOKEN",
     "OPENCLAW_STATE_DIR",
     "OPENCLAW_CONFIG_PATH",
@@ -34,8 +34,8 @@ GATEWAY_AGENT_ENV_KEYS = (
     "LC_ALL",
     "TMPDIR",
     "XDG_CACHE_HOME",
-)
-STRICT_SERVER_ENV_KEYS = (
+])
+STRICT_SERVER_ENV_KEYS = tuple([
     "CONVMEM_MCP_PROFILE",
     "CONVMEM_BOUND_READ_SCOPE_FILE",
     "CONVMEM_PROJECT_BINDING_REGISTRY_FILE",
@@ -45,7 +45,7 @@ STRICT_SERVER_ENV_KEYS = (
     "LANG",
     "LC_ALL",
     "TMPDIR",
-)
+])
 SUPERVISOR_ENV_KEYS = ("NOTIFY_SOCKET", "WATCHDOG_USEC")
 MODEL_WORKER_ENV_KEYS = ("HOME", "PATH", "TMPDIR", "XDG_CACHE_HOME", "OMP_NUM_THREADS")
 
@@ -427,9 +427,9 @@ def open_operator_session(
     """Authenticate a control connection through the same accounting path as framing."""
 
     platform.set_peer(connection_id, "operator")
-    if connection_id not in platform._control_conns:
+    if connection_id not in platform._control_conns:  # pylint: disable=W0212  # fixture white-box: same accounting path as framing
         platform.open_control_connection(connection_id, "operator")
-    if connection_id not in controller._open_sessions:
+    if connection_id not in controller._open_sessions:  # pylint: disable=W0212  # fixture white-box: session accounting path
         controller.open_control_session(connection_id)
     return connection_id
 

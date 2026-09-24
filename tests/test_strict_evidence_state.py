@@ -31,7 +31,6 @@ from strict_evidence_state import (
 )
 from strict_grounding import QualificationTuple
 from tests.fixtures.openclaw_strict.protocol_fixture.pinned_vectors import (
-    CHECK2_ID,
     EVT_ID,
     FIND2_ID,
     OBS2_ID,
@@ -171,7 +170,7 @@ def test_fixture_event_collision_and_idempotent_retry():
         qualification_by_provenance=qual,
         prior_records=first,
     )
-    assert second == []
+    assert not second
     # Changed content under same collision key fails.
     changed = dict(source)
     changed["document"] = "changed-document"
@@ -298,7 +297,6 @@ def test_reduce_permanent_supersession_terminal_precedence_and_unresolved():
     # Unresolved predicate exact.
     current_unverified = reduced[newer["assertion_id"]]
     assert unresolved_predicate(current_unverified) is True
-    passed = current_unverified
     # Build a pass verification head against newer.
     ver = _ver_record(
         "ver2_" + "f" * 64,
@@ -398,8 +396,9 @@ _TS = "2026-09-21T00:00:00Z"
 
 
 def _binding() -> ProjectBinding:
+    binding_id = "project:convmem:v1"
     return ProjectBinding(
-        id="project:convmem:v1",
+        id=binding_id,
         public_ref="a" * 32,
         project="convmem",
         domain_root="coding",
@@ -442,7 +441,6 @@ def _binding() -> ProjectBinding:
 
 
 def _prov() -> tuple[str, dict[str, Any], str]:
-    from bound_read_scope import sha256_digest
     from strict_evidence_state import strict_source_payload_sha256
 
     source = _source_record(provenance_assertion_id=_AID)

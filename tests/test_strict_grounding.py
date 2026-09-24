@@ -1,4 +1,5 @@
 """M3/T1 adversarial coverage for strict grounding and receipt authenticity."""
+# pylint: disable=C0302  # preserved grounding collected-node test boundary
 
 from __future__ import annotations
 
@@ -223,7 +224,7 @@ def test_input_bindings_sha256_matches_pinned_known_answer():
 
 def test_authenticate_receipt_requires_exact_inventory_bytes(tmp_path: Path):
     env = _envelope_root()
-    grounding, receipt, ref = _closed_grounding(env)
+    _grounding, receipt, ref = _closed_grounding(env)
     inv_root = _write_inventory(tmp_path, receipt)
     inventory = load_issuer_receipt_inventory(inv_root)
     assert authenticate_receipt(
@@ -252,7 +253,7 @@ def test_authenticate_receipt_rejects_trailing_newline_variant(tmp_path: Path):
         )
 
 
-def test_authenticate_receipt_rejects_object_not_in_inventory(tmp_path: Path):
+def test_authenticate_receipt_rejects_object_not_in_inventory(_tmp_path: Path):
     env = _envelope_root()
     _, receipt, _ref = _closed_grounding(env)
     with pytest.raises(StrictGroundingError, match="receipt_not_in_inventory"):
@@ -325,10 +326,9 @@ def test_validate_grounding_rejects_impossible_selector():
     with pytest.raises(StrictGroundingError, match="selector_bounds"):
         validate_grounding_document(grounding)
 
-
-def test_qualify_rejects_mismatched_view_bytes(tmp_path: Path):
+def test_qualify_rejects_mismatched_view_bytes(_tmp_path: Path):
     env = _envelope_root()
-    grounding, receipt, _ = _closed_grounding(env)
+    grounding, _receipt, _ = _closed_grounding(env)
     # Corrupt stored view blob bytes while keeping digest label (contradiction).
     grounding["blobs"][0]["bytes_b64"] = "dGVzVA=="  # "tesT" — noncanonical length path
     # Use wrong length to hit digest mismatch instead.
@@ -340,7 +340,7 @@ def test_qualify_rejects_mismatched_view_bytes(tmp_path: Path):
 
 def test_qualify_rejects_unused_receipt_against_envelope(tmp_path: Path):
     env = _envelope_root()
-    grounding, receipt, ref = _closed_grounding(env)
+    grounding, receipt, _ref = _closed_grounding(env)
     # Add a second unused receipt clone with different capture_id.
     extra = dict(receipt)
     extra["capture_id"] = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -618,7 +618,7 @@ def test_qualify_rejects_mixed_capture_ancestry(tmp_path: Path):
 def test_missing_grounding_weakens_without_reject():
     env = _envelope_root()
     result = qualify_grounding(
-        grounding=None,
+        _grounding=None,
         envelope=env,
         transformer_cap="trusted",
     )
@@ -704,7 +704,8 @@ def test_happy_path_complete_synthetic_qualification(tmp_path: Path):
 def _b64(raw: bytes) -> str:
     import base64
 
-    return base64.b64encode(raw).decode("ascii")
+    encoded = base64.b64encode(raw)
+    return encoded.decode("ascii")
 
 
 def _default_context_materials() -> tuple[list, list, list]:
@@ -913,16 +914,14 @@ def test_missing_parent_yields_incomplete_not_valid():
     assert not result.verified
     assert "missing parent" in (result.reason or "")
     quals = qualify_assertions(
-        grounding=None,
+        _grounding=None,
         provenance_context=ctx,
     )
     assert quals[_AID].commitments == "incomplete"
-
-
-def test_false_envelope_commitment_fallback_rejected(tmp_path: Path):
+def test_false_envelope_commitment_fallback_rejected(_tmp_path: Path):
     """Recomputation failure must not adopt an envelope-supplied commitment claim."""
     env = _envelope_root()
-    grounding, receipt, _ = _closed_grounding(env)
+    grounding, _receipt, _ = _closed_grounding(env)
     good = provenance_commitment(env)
     bad = dict(env)
     bad.pop("schema_version")
@@ -952,7 +951,7 @@ def test_false_envelope_commitment_fallback_rejected(tmp_path: Path):
 
 def test_wrong_issuer_enrollment_and_source_rejected(tmp_path: Path):
     env = _envelope_root()
-    grounding, receipt, _ = _closed_grounding(env)
+    _grounding, receipt, _ = _closed_grounding(env)
     inv_root = _write_inventory(tmp_path, receipt)
     wrong_issuer = CaptureIssuer(
         issuer_id="other-issuer",
@@ -977,7 +976,7 @@ def test_wrong_issuer_enrollment_and_source_rejected(tmp_path: Path):
 
 def test_missing_inventory_bytes_reject_and_merge_duplicates(tmp_path: Path):
     env = _envelope_root()
-    grounding, receipt, ref = _closed_grounding(env)
+    _grounding, receipt, _ref = _closed_grounding(env)
     inv = load_issuer_receipt_inventory(_write_inventory(tmp_path, receipt))
     # Drop the only inventory row → authenticate fails.
     empty = {}

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-from constants import (
+from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     SUITE_OUTPUT_LIMIT_BYTES,
     SUITE_WALL_DEADLINE_SEC,
     TMP_SAMPLE_INTERVAL_SEC,
@@ -21,7 +21,7 @@ from constants import (
 
 
 @dataclass
-class SuiteRunResult:
+class SuiteRunResult:  # pylint: disable=R0902  # attributes mirror suite run result fields
     name: str
     returncode: int
     elapsed_sec: float

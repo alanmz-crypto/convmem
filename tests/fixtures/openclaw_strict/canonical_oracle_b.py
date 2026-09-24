@@ -4,6 +4,7 @@ Genuinely independent of oracle A: hand-builds canonical UTF-8 without
 json.dumps(sort_keys=True). Strict raw parse still requires raw == canonical.
 Does not import production canonical_json or canonical_oracle.
 """
+# pylint: disable=R0801  # independent oracle specimen; sharing would couple oracle B to peers
 
 from __future__ import annotations
 
@@ -111,8 +112,6 @@ def parse_strict_raw(payload: bytes | str) -> Any:
         value = json.loads(
             text, object_pairs_hook=_object_pairs, parse_constant=_reject_constant
         )
-    except CanonicalOracleBError:
-        raise
     except json.JSONDecodeError as exc:
         raise CanonicalOracleBError(f"json:{exc}") from exc
     _reject_surrogates(value)

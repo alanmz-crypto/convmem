@@ -4,6 +4,7 @@ Builds length-prefix bytes without struct.pack. Same normative algorithm as
 digest_oracle; independent implementation. Prefixes are derived from kind —
 no caller-supplied kind/prefix minting.
 """
+# pylint: disable=R0801  # independent digest oracle; sharing would couple digest B to peers
 
 from __future__ import annotations
 
@@ -61,7 +62,7 @@ def _require_already_nfc(value: str, *, field: str) -> None:
 
 
 def _reject_float(value: Any, *, field: str) -> None:
-    if type(value) is float:  # noqa: E721 — reject float, allow bool/int
+    if isinstance(value, float):  # reject float; bool/int are not floats
         raise DigestOracleBError(f"float_forbidden:{field}")
 
 
@@ -80,7 +81,7 @@ def lp(value: str) -> bytes:
     return _lp(value)
 
 
-def H(tag: str, fields: Sequence[str]) -> str:
+def H(tag: str, fields: Sequence[str]) -> str:  # pylint: disable=C0103  # protocol hash primitive name; oracle parity
     if not isinstance(tag, str):
         raise DigestOracleBError("tag_not_string")
     try:
@@ -94,7 +95,7 @@ def H(tag: str, fields: Sequence[str]) -> str:
     return hashlib.sha256(bytes(buf)).hexdigest()
 
 
-def _H_fixed(tag: str, fields: Sequence[str]) -> str:
+def _H_fixed(tag: str, fields: Sequence[str]) -> str:  # pylint: disable=C0103  # protocol fixed-hash primitive name; oracle parity
     if tag not in {TAG_LOGICAL, TAG_ASSERTION, TAG_SCAN}:
         raise DigestOracleBError(f"unknown_tag:{tag}")
     buf = bytearray(tag.encode("ascii"))
@@ -166,7 +167,7 @@ def fixture_scan_event_id(
     _require_already_nfc(source_registration_id, field="source_registration_id")
     _require_already_nfc(source_identity, field="source_identity")
     _require_already_nfc(event_key, field="event_key")
-    if not (1 <= len(event_key) <= 256) or not EVENT_KEY_RE.fullmatch(event_key):
+    if not 1 <= len(event_key) <= 256 or not EVENT_KEY_RE.fullmatch(event_key):
         raise DigestOracleBError("event_key_grammar")
     return "evt_" + _H_fixed(
         TAG_SCAN, (source_registration_id, source_identity, event_key)
@@ -190,7 +191,7 @@ def logical_id(
     if not PRODUCER_RE.fullmatch(producer):
         raise DigestOracleBError("producer_grammar")
     _require_already_nfc(logical_key, field="logical_key")
-    if not (1 <= len(logical_key) <= 256):
+    if not 1 <= len(logical_key) <= 256:
         raise DigestOracleBError("logical_key_length")
     if subject_kind not in SUBJECT_PREFIX:
         raise DigestOracleBError(f"subject_kind:{subject_kind}")

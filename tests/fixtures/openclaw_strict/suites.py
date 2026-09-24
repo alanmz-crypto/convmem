@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from constants import (
+from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     CONNECTOR_NODE_TEST,
     LEGACY_DESELECTS,
     LEGACY_PYTEST_FILES,

@@ -10,6 +10,7 @@ the object with only that named payload-hash field removed. Activation-control
 and buffered-release SHAs are fixture-transport known-answers (parent defines
 no self-hash field on those request/result objects).
 """
+# pylint: disable=R0801  # frozen pinned vectors; sharing would break specimen independence
 
 from __future__ import annotations
 

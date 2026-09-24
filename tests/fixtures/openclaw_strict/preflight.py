@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import errno
 import fcntl
 import hashlib
 import json
@@ -13,7 +12,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from constants import (
+from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     CANARY_PATHS_FILE,
     CHILD_ENV,
     FD_OBSERVATION_FILE,
@@ -446,7 +445,7 @@ def _validate_runtime_mappings(
     return mapped_items, unlisted, source_only
 
 
-def record_resolutions(frozen_paths: set[str]) -> dict[str, Any]:
+def record_resolutions(frozen_paths: set[str]) -> dict[str, Any]:  # pylint: disable=R0914  # resolution bookkeeping locals mirror closed preflight checks
     """Record actual process mappings; validate /runtime and /usr against inventory."""
     import subprocess
 

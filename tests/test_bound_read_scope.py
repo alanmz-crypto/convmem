@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -180,7 +179,6 @@ def _write_immutable(path: Path, obj: dict) -> None:
 
 
 def _write_scope_registry(tmp_path: Path) -> tuple[Path, Path]:
-    from bound_read_scope import sha256_digest
     from canonical_json import canonical_json_bytes
 
     scope = {

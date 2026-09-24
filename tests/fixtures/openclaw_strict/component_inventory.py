@@ -5,6 +5,7 @@ reject. Positive source-component digests and the complete five-component source
 manifest remain future-step reds while those members are absent. No placeholder
 production bytes are invented under /src.
 """
+# pylint: disable=R0801  # reference-owned inventory oracle; sharing would break inventory independence
 
 from __future__ import annotations
 
@@ -100,7 +101,7 @@ class InventoryError(Exception):
 
 def build_component_inventories() -> dict[str, tuple[str, ...]]:
     """Return the literal five inventory membership sets (reference-owned)."""
-    return {name: paths for name, paths in COMPONENT_MEMBERSHIP.items()}
+    return dict(COMPONENT_MEMBERSHIP)
 
 
 def _mode_octal(path: Path) -> str:
@@ -338,7 +339,7 @@ def reject_supplied_omit_only_canonical_json_forged_digest() -> None:
         if "missing_supplied_member" not in str(exc):
             raise
         if "canonical_json.py" not in str(exc):
-            raise InventoryError(f"reject_not_canonical_json:{exc}")
+            raise InventoryError(f"reject_not_canonical_json:{exc}") from exc
         return
     raise InventoryError("omitted_canonical_json_supplied_accepted")
 
@@ -352,7 +353,7 @@ def assert_plugin_byte_and_mode_mutations(root: Path) -> dict[str, Any]:
     miss the mode-only control. Both walkers must agree; each mutant alone must
     change the tree digest. Reports 6 controls (3 byte-only + 3 mode-only).
     """
-    import case58_oracle as oracle
+    import case58_oracle as oracle  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
 
     members = list(COMPONENT_MEMBERSHIP["plugin"])
     assert len(members) == 3

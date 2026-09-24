@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from constants import EXPECTED_TEST_RUNTIME_TREE_SHA256
+from constants import EXPECTED_TEST_RUNTIME_TREE_SHA256  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
 
 
 def _mode_octal(st_mode: int) -> str:

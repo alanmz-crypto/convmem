@@ -15,10 +15,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-import canonical_oracle as oracle_a
-import canonical_oracle_b as oracle_b
-from protocol_fixture import schema_field_sets as field_sets
-from protocol_fixture.schema_instances import (
+import canonical_oracle as oracle_a  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
+import canonical_oracle_b as oracle_b  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
+from protocol_fixture import schema_field_sets as field_sets  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
+from protocol_fixture.schema_instances import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     ACTIVATION_CONTROL_VARIANTS,
     DEFERRED_CROSS_OBJECT_INVARIANTS,
     POSITIVE_BY_FILENAME,
@@ -139,7 +139,7 @@ def _nested_item_schema(parent: dict[str, Any], key: str) -> dict[str, Any] | No
     return None
 
 
-def assert_nested_field_families(schemas_root: Path) -> int:
+def assert_nested_field_families(schemas_root: Path) -> int:  # pylint: disable=R0914,R0915  # nested field-family checks mirror closed schema contract cases
     """Compare nested frozen families and apply unknown/missing negatives."""
     checked = 0
     registry = load_schema(schemas_root, "convmem-project-binding-registry-v3.schema.json")
@@ -405,7 +405,6 @@ def assert_canonical_raw_roundtrip_and_rejects(positive: dict[str, Any], schema:
     # Reordered top-level keys (if >=2 keys): must reject before schema validation.
     keys = list(positive.keys())
     if len(keys) >= 2:
-        reordered_obj = {keys[-1]: positive[keys[-1]], **{k: positive[k] for k in keys[:-1]}}
         # Force non-canonical key order in raw text.
         fragments = []
         for k in [keys[-1], *keys[:-1]]:
@@ -455,7 +454,7 @@ def assert_canonical_raw_roundtrip_and_rejects(positive: dict[str, Any], schema:
         raise AssertionError("duplicate_key_accepted_b")
 
 
-def build_negatives(schema: dict[str, Any], positive: dict[str, Any]) -> list[dict[str, Any]]:
+def build_negatives(schema: dict[str, Any], positive: dict[str, Any]) -> list[dict[str, Any]]:  # pylint: disable=R0912  # negative specimen matrix branches mirror closed reject cases
     """Unknown key, missing required, wrong type, omitted required-null, plus enum/bound."""
     shape = _top_level_object_schema(schema)
     required = list(shape.get("required") or [])
@@ -606,7 +605,7 @@ def run_all_schema_contract_checks(schemas_root: Path) -> dict[str, Any]:
             negative_ok += 1
 
     control_schema = load_schema(schemas_root, "convmem-activation-control-v1.schema.json")
-    for name, variant in ACTIVATION_CONTROL_VARIANTS.items():
+    for _name, variant in ACTIVATION_CONTROL_VARIANTS.items():
         instance_validate(control_schema, variant)
         assert_canonical_raw_roundtrip_and_rejects(variant, control_schema)
         activation_extra += 1

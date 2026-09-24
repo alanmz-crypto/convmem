@@ -5,6 +5,7 @@ Reordered keys or insignificant whitespace are rejected — not repaired by sort
 on output. Fixture-only algorithm digests are never source-component hashes.
 Does not import production canonical_json.
 """
+# pylint: disable=R0801  # independent oracle specimen; sharing would couple oracle A to peers
 
 from __future__ import annotations
 
@@ -92,8 +93,6 @@ def parse_strict_raw(payload: bytes | str) -> Any:
         value = json.loads(
             text, object_pairs_hook=_object_pairs, parse_constant=_reject_constant
         )
-    except CanonicalOracleError:
-        raise
     except json.JSONDecodeError as exc:
         raise CanonicalOracleError(f"json:{exc}") from exc
     _reject_surrogates(value)

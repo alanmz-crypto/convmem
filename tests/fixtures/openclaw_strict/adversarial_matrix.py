@@ -1,6 +1,7 @@
 """M8 adversarial matrix — gate ownership, overlay §5 threats, selected nodes.
 
-Reviewed parent d5f986f0 / overlay c5513d5. Fixture-owned evidence only. Never claims all 58 cases passed. Gate D/W/E rows
+Reviewed parent b810fcd / overlay 67d4f5a.
+Fixture-owned evidence only. Never claims all 58 cases passed. Gate D/W/E rows
 remain explicitly untested/blocked. Selected-node inventory is derived from the
 exact named suite files (AST / text), never full-repository discovery.
 """
@@ -12,14 +13,14 @@ import re
 from pathlib import Path
 from typing import Any
 
-from constants import (
+from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     CONNECTOR_NODE_TEST,
     LEGACY_DESELECTS,
     LEGACY_PYTEST_FILES,
     STRICT_PYTEST_FILES,
 )
 
-# Overlay c5513d5 §5 threat rows — columns match the governing table exactly.
+# Overlay 67d4f5a §5 threat rows — columns match the governing table exactly.
 THREAT_MATRIX: tuple[dict[str, Any], ...] = (
     {
         "threat": "Memory poisoning",
@@ -54,7 +55,8 @@ THREAT_MATRIX: tuple[dict[str, Any], ...] = (
             "selector/query cannot hide it; no predecessor resurrects"
         ),
         "independent_evidence": (
-            "tests/test_strict_evidence_state.py::test_verification_eligibility_inconclusive_never_omitted_and_conflict_fork;"
+            "tests/test_strict_evidence_state.py::test_verification_eligibility_inconclusive_never_omitted_"
+            "and_conflict_fork;"
             "tests/test_strict_evidence_state.py::test_multi_head_conflict_without_timestamp_choice;"
             "tests/test_strict_projection.py::test_m4_post_open_public_mutation_snapshot_stale"
         ),
@@ -118,7 +120,8 @@ THREAT_MATRIX: tuple[dict[str, Any], ...] = (
         "independent_evidence": (
             "tests/test_openclaw_strict_packet_contract.py::test_case57_kernel_denial_readonly_mount_writes;"
             "tests/test_openclaw_activation_controller.py::test_case55_runtime_denied_private_paths_pre_activation;"
-            "tests/test_strict_projection.py::test_m4_public_open_denies_private_files_and_does_not_read_layout_enrollment"
+            "tests/test_strict_projection.py::test_m4_public_open_denies_private_files_and_does_not_read_"
+            "layout_enrollment"
         ),
         "status": "ASSIGNED_B_C;D_38_39_BLOCKED",
     },
@@ -195,7 +198,8 @@ THREAT_MATRIX: tuple[dict[str, Any], ...] = (
         ),
         "independent_evidence": (
             "tests/test_strict_snapshot_revocation.py::test_object_new_forged_instance_rejected_by_reader_and_revoke;"
-            "tests/test_openclaw_activation_controller.py::test_case57_manager_membership_survives_and_restart_persists_quarantine;"
+            "tests/test_openclaw_activation_controller.py::"
+            "test_case57_manager_membership_survives_and_restart_persists_quarantine;"
             "tests/test_openclaw_activation_controller.py::test_case54_clock_interval_review_inventory"
         ),
         "status": "ASSIGNED_B_C",
@@ -274,7 +278,8 @@ THREAT_MATRIX: tuple[dict[str, Any], ...] = (
             "statement about real runtime qualification"
         ),
         "independent_evidence": (
-            "tests/test_openclaw_activation_controller.py::test_case58_production_refusal_with_unwrapped_specimen_bytes;"
+            "tests/test_openclaw_activation_controller.py::"
+            "test_case58_production_refusal_with_unwrapped_specimen_bytes;"
             "integrations/openclaw-convmem-reader/test/connector.test.mjs::"
             "production register refuses runtime_not_qualified before effects;"
             "Gate D rows: UNTESTED_BLOCKED"

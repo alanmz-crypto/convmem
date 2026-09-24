@@ -1,6 +1,6 @@
 """M4/T3 Gate B — dedicated strict server, profile refusal, tool enumeration.
 
-Parent cases (overlay c5513d5 / parent d5f986f0 Gate B):
+Parent cases (overlay 67d4f5a / parent b810fcd Gate B):
 1–4 (strict-server portion of 47), legacy profile refusal effects.
 Exact three tools / zero resources / templates; closed env allowlist;
 canonical closed result/error serialization; closed request-arg dispatch.
@@ -40,17 +40,17 @@ _ALLOWLIST = frozenset(
 def _exact_child_env(tmp_path: Path, **overrides: str) -> dict[str, str]:
     """Exact closed child environment — no PYTHONPATH or other extras."""
 
-    env = {
-        "CONVMEM_MCP_PROFILE": "openclaw-strict",
-        "CONVMEM_BOUND_READ_SCOPE_FILE": str(tmp_path / "scope.json"),
-        "CONVMEM_PROJECT_BINDING_REGISTRY_FILE": str(tmp_path / "registry.json"),
-        "CONVMEM_STRICT_CONFIG_FILE": str(tmp_path / "config.json"),
-        "HOME": str(tmp_path),
-        "PATH": "/usr/bin:/bin",
-        "LANG": "C.UTF-8",
-        "LC_ALL": "C.UTF-8",
-        "TMPDIR": str(tmp_path),
-    }
+    env = dict((
+        ("CONVMEM_MCP_PROFILE", "openclaw-strict"),
+        ("CONVMEM_BOUND_READ_SCOPE_FILE", str(tmp_path / "scope.json")),
+        ("CONVMEM_PROJECT_BINDING_REGISTRY_FILE", str(tmp_path / "registry.json")),
+        ("CONVMEM_STRICT_CONFIG_FILE", str(tmp_path / "config.json")),
+        ("HOME", str(tmp_path)),
+        ("PATH", "/usr/bin:/bin"),
+        ("LANG", "C.UTF-8"),
+        ("LC_ALL", "C.UTF-8"),
+        ("TMPDIR", str(tmp_path)),
+    ))
     env.update(overrides)
     return env
 
@@ -67,25 +67,32 @@ def test_openclaw_strict_server_capability_present():
     assert module.ALLOWED_ENV_KEYS == _ALLOWLIST
 
 
+
+def _assigned_allowed_env_keys(tree: ast.AST) -> set[str]:
+    assigned: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if not isinstance(target, ast.Name) or target.id != "ALLOWED_ENV_KEYS":
+                continue
+            if not isinstance(node.value, ast.Call):
+                continue
+            for arg in node.value.args:
+                if not isinstance(arg, (ast.Set, ast.Tuple, ast.List)):
+                    continue
+                for elt in arg.elts:
+                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                        assigned.add(elt.value)
+    return assigned
+
 def test_strict_server_allowlist_object_has_no_forbidden_publication_env():
     """Item 5: test the allowlist object/AST — not comment substring absence."""
 
     module = importlib.import_module("openclaw_strict_server")
     assert "CONVMEM_EXPECTED_PUBLICATION_SHA256" not in module.ALLOWED_ENV_KEYS
     tree = ast.parse((REPO / "openclaw_strict_server.py").read_text(encoding="utf-8"))
-    assigned: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "ALLOWED_ENV_KEYS":
-                    if isinstance(node.value, ast.Call):
-                        for arg in node.value.args:
-                            if isinstance(arg, (ast.Set, ast.Tuple, ast.List)):
-                                for elt in arg.elts:
-                                    if isinstance(elt, ast.Constant) and isinstance(
-                                        elt.value, str
-                                    ):
-                                        assigned.add(elt.value)
+    assigned = _assigned_allowed_env_keys(tree)
     assert assigned == set(_ALLOWLIST)
     assert "CONVMEM_EXPECTED_PUBLICATION_SHA256" not in assigned
 
@@ -171,7 +178,7 @@ def test_strict_server_mcp_protocol_inventory_enumeration():
     class FakeReader:
         pass
 
-    def fake_dispatch(reader, name, arguments):
+    def fake_dispatch(_reader, _name, _arguments):
         return {
             "schema": "convmem.raw-evidence.v3",
             "instruction_authority": "none",
@@ -205,7 +212,7 @@ def test_strict_server_mcp_protocol_inventory_enumeration():
             read_err: str | None = None
             try:
                 await session.read_resource("convmem://anything")  # type: ignore[arg-type]
-            except Exception as exc:  # noqa: BLE001 — protocol error surface
+            except Exception as exc:  # noqa: BLE001 — protocol error surface  # pylint: disable=W0718  # MCP protocol error surface is non-specific
                 read_err = type(exc).__name__ + ":" + str(exc)
             return {
                 "tool_names": [t.name for t in tools.tools],
@@ -277,7 +284,7 @@ def test_strict_server_closed_argument_containers_via_protocol():
     # Non-mapping: MCP 1.28.1 client Pydantic rejects lists before the server.
     # Exercise the server-side guard directly; do not claim protocol delivery.
     with pytest.raises(StrictPublicError) as exc_info:
-        module._closed_tool_arguments(
+        module._closed_tool_arguments(  # pylint: disable=W0212  # intentional white-box test access
             "search",
             ["not", "a", "mapping"],
             StrictPublicError=StrictPublicError,
@@ -292,9 +299,9 @@ def test_strict_server_startup_boundary_after_exact_env(
 
     m4 = _load_sibling_test_module("test_strict_projection")
 
-    items, resolved, scope_path, registry_path = m4._m4_two_serving_roots(tmp_path)
+    items, _resolved, scope_path, registry_path = m4._m4_two_serving_roots(tmp_path)  # pylint: disable=W0212  # intentional white-box test access
     item = items[0]
-    m4._m4_patch_clocks(monkeypatch)
+    m4._m4_patch_clocks(monkeypatch)  # pylint: disable=W0212  # intentional white-box test access
 
     # Point env at operator files + public-only configured root.
     env = _exact_child_env(tmp_path)
@@ -323,15 +330,16 @@ def _legacy_profile_subprocess(profile: str | None) -> subprocess.CompletedProce
     }
     if profile is not None:
         env["CONVMEM_MCP_PROFILE"] = profile
+    repo = str(REPO)
     code = (
         "import sys\n"
-        "sys.path.insert(0, %r)\n"
+        f"sys.path.insert(0, {repo!r})\n"
         "try:\n"
         "    import mcp_server  # noqa: F401\n"
         "except SystemExit as exc:\n"
         "    raise SystemExit(exc.code)\n"
         "print('REGISTERED')\n"
-    ) % str(REPO)
+    )
     return subprocess.run(
         [sys.executable, "-c", code],
         cwd=str(REPO),

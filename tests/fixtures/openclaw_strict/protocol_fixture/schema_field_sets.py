@@ -1,9 +1,10 @@
 """Independent parent-derived field-set table for Gate B/C schemas (M2/T0b).
 
-Source: Architecture-openclaw-convmem-integration.md at plan parent d5f986f0…
+Source: Architecture-openclaw-convmem-integration.md at plan parent b810fcd…
 (section 6.x closed field freezes). This table is authored from that parent text;
 it must not be generated from on-disk schemas or positive instances.
 """
+# pylint: disable=R0801  # frozen schema field-set specimens; sharing would break specimen independence
 
 from __future__ import annotations
 

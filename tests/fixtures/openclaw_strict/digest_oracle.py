@@ -12,6 +12,7 @@ Strict string fields require already-canonical NFC raw input (reject otherwise);
 LP still applies NFC as the normative encoding step. Legacy provenance envelope
 acceptance remains outside this oracle.
 """
+# pylint: disable=R0801  # independent digest oracle; sharing would couple digest A to peers
 
 from __future__ import annotations
 
@@ -85,7 +86,7 @@ def lp(value: str) -> bytes:
     return struct.pack(">I", len(raw)) + raw
 
 
-def H(tag: str, fields: Sequence[str]) -> str:
+def H(tag: str, fields: Sequence[str]) -> str:  # pylint: disable=C0103  # protocol hash primitive name; oracle parity
     """H with a caller-supplied tag — only for fixture self-check of LP NFC.
 
     Production ID minting uses the fixed-tag helpers below; do not use this to
@@ -105,7 +106,7 @@ def H(tag: str, fields: Sequence[str]) -> str:
     return hashlib.sha256(b"".join(parts)).hexdigest()
 
 
-def _H_fixed(tag: str, fields: Sequence[str]) -> str:
+def _H_fixed(tag: str, fields: Sequence[str]) -> str:  # pylint: disable=C0103  # protocol fixed-hash primitive name; oracle parity
     if tag not in {TAG_LOGICAL, TAG_ASSERTION, TAG_SCAN}:
         raise DigestOracleError(f"unknown_tag:{tag}")
     parts = [tag.encode("ascii"), b"\x00"]
@@ -177,7 +178,7 @@ def fixture_scan_event_id(
     _require_already_nfc(source_registration_id, field="source_registration_id")
     _require_already_nfc(source_identity, field="source_identity")
     _require_already_nfc(event_key, field="event_key")
-    if not (1 <= len(event_key) <= 256) or not EVENT_KEY_RE.fullmatch(event_key):
+    if not 1 <= len(event_key) <= 256 or not EVENT_KEY_RE.fullmatch(event_key):
         raise DigestOracleError("event_key_grammar")
     return "evt_" + _H_fixed(
         TAG_SCAN, (source_registration_id, source_identity, event_key)
@@ -202,7 +203,7 @@ def logical_id(
     if not PRODUCER_RE.fullmatch(producer):
         raise DigestOracleError("producer_grammar")
     _require_already_nfc(logical_key, field="logical_key")
-    if not (1 <= len(logical_key) <= 256):
+    if not 1 <= len(logical_key) <= 256:
         raise DigestOracleError("logical_key_length")
     if subject_kind not in SUBJECT_PREFIX:
         raise DigestOracleError(f"subject_kind:{subject_kind}")

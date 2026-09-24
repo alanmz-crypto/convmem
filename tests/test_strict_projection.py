@@ -1,7 +1,8 @@
 """M3/T1–T2 cold lineage + independent replay; M4/T3 public reader surfaces.
 
-Reviewed parent d5f986f0 / overlay c5513d5.
+Reviewed parent b810fcd / overlay 67d4f5a.
 """
+# pylint: disable=C0302  # preserved projection collected-node test boundary
 
 from __future__ import annotations
 
@@ -304,6 +305,7 @@ def _bundle(
     return b
 
 
+# pylint: disable-next=R0913  # head writer arity mirrors closed authority-head inputs
 def _write_head(
     root: Path,
     *,
@@ -591,6 +593,7 @@ def _two_head_root(
 def _bypass_builder_tree(monkeypatch: pytest.MonkeyPatch) -> None:
     """Hermetic cold tests pin builder_tree_sha256; bypass independent recompute."""
     monkeypatch.setattr(
+# pylint: disable-next=W0212  # intentional white-box test access
         "strict_projection._recompute_builder_tree_sha256",
         lambda root=None: _TREE,
     )
@@ -833,8 +836,9 @@ def test_cold_rejects_wrong_skipped_cyclic_parent_and_forged_deltas(
     import strict_projection as sp
 
     # Bind real builder-tree digest so earlier checks pass without bypassing validation.
+# pylint: disable-next=W0212  # intentional white-box test access
     monkeypatch.setattr(f"{__name__}._TREE", sp._recompute_builder_tree_sha256())
-    root, sid2, hash2, sid1 = _two_head_root(tmp_path)
+    root, sid2, _hash2, _sid1 = _two_head_root(tmp_path)
     auth2 = root / "authority" / sid2
     man = json.loads((auth2 / "manifest.json").read_text())
     # Wrong parent hash.
@@ -852,7 +856,7 @@ def test_cold_rejects_wrong_skipped_cyclic_parent_and_forged_deltas(
         )
 
     # Rebuild clean two-head and forge added arrays.
-    root2, sid2b, hash2b, _ = _two_head_root(tmp_path / "b")
+    root2, sid2b, _hash2b, _ = _two_head_root(tmp_path / "b")
     auth = root2 / "authority" / sid2b
     man = json.loads((auth / "manifest.json").read_text())
     man["added_assertion_ids"] = sorted(man["added_assertion_ids"] + ["obs2_" + ("9" * 64)])
@@ -880,6 +884,7 @@ def test_cold_rejects_forged_stored_hashes_and_citation_bindings(
     import strict_projection as sp
 
     # Preserve independent builder-tree validation: plant the real digest, do not bypass.
+# pylint: disable-next=W0212  # intentional white-box test access
     monkeypatch.setattr(f"{__name__}._TREE", sp._recompute_builder_tree_sha256())
     root, sid2, _, _ = _two_head_root(tmp_path, plant_hand_records=True)
     auth = root / "authority" / sid2
@@ -1045,6 +1050,7 @@ def _source_record(*, provenance_assertion_id: str, logical_key: str = "subject-
     }
 
 
+# pylint: disable-next=R0914  # admission bundle locals mirror closed publish inputs
 def _closed_admission_bundle(
     tmp_path: Path,
     *,
@@ -1063,7 +1069,7 @@ def _closed_admission_bundle(
     source = _source_record(provenance_assertion_id=assertion_id, logical_key=logical_key)
     # Blob bytes must be the exact canonical source payload (excl. provenance_assertion_id).
     source_payload_body = {
-        k: v for k, v in source.items() if k != "provenance_assertion_id"
+        k: v for k, v in source._items() if k != "provenance_assertion_id"
     }
     blob = strict_canonical_bytes(source_payload_body)
     payload = strict_source_payload_sha256(source)
@@ -1296,10 +1302,10 @@ class _MaterialRegistry:
     registry_sha256 = _REG
 
     def __init__(self, binding: ProjectBinding) -> None:
-        self._binding = binding
+        self._binding = binding  # pylint: disable=W0212  # intentional white-box test access
 
     def binding(self, _bid: str) -> ProjectBinding:
-        return self._binding
+        return self._binding  # pylint: disable=W0212  # intentional white-box test access
 
 
 def _reseal_head_records(root: Path, auth: Path, records: list[dict[str, Any]]) -> Path:
@@ -1679,7 +1685,7 @@ def test_cold_rejects_wrong_schema_digest_and_wrong_contract_version(
 # ---------------------------------------------------------------------------
 # M4 / T3 — public opening, lexical reader, selectors, caps (Gate B)
 # Parent cases 1–27, 40–44, 49–52 portions owned by the reader; case55 private/
-# public boundary; overlay c5513d5. T4/T5 remain declared red elsewhere.
+# public boundary; overlay 67d4f5a. T4/T5 remain declared red elsewhere.
 # ---------------------------------------------------------------------------
 
 _M4_NOW = __import__("datetime").datetime(2026, 9, 21, tzinfo=__import__("datetime").timezone.utc)
@@ -1735,11 +1741,13 @@ def _m4_two_serving_roots(tmp_path: Path):
 
     shared = tmp_path / "shared"
     shared.mkdir()
+# pylint: disable-next=W0212  # intentional white-box test access
     scope_path, registry_path, bundle, _bp, _inv = pub_tests._materializable_publish_inputs(
         shared
     )
     items = []
     for name in ("root-a", "root-b"):
+# pylint: disable-next=W0212  # intentional white-box test access
         item = pub_tests._enroll_and_publish_materializable(
             tmp_path / name,
             shared=shared,
@@ -1801,7 +1809,9 @@ def test_m4_public_open_two_fresh_roots_and_unforgeable_capability(
         assert isinstance(gen, QualifiedStrictGeneration)
         assert not gen.is_revoked
 
-    a, b = gens
+    assert len(gens) == 2
+    a, b = gens[0], gens[1]
+# pylint: disable-next=E1101  # capability runtime attrs sealed on instance
     assert a.snapshot_id == b.snapshot_id
     assert a.rows_sha256 == b.rows_sha256
     assert a.graph_sha256 == b.graph_sha256
@@ -1826,7 +1836,7 @@ def test_m4_public_open_denies_private_files_and_does_not_read_layout_enrollment
 ):
     """Case55 private/public boundary — public open never needs layout/enrollment."""
 
-    from strict_projection import StrictProjectionError, open_published_generation
+    from strict_projection import open_published_generation
 
     items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
     _m4_patch_clocks(monkeypatch)
@@ -1861,6 +1871,7 @@ def test_m4_public_open_denies_private_files_and_does_not_read_layout_enrollment
         expected_publication_sha256=item["serving"]["publication_payload_sha256"],
         now=_M4_NOW,
     )
+# pylint: disable-next=E1101  # capability runtime attrs sealed on instance
     assert gen.snapshot_id == snap
 
     # Symlink rejection on public publication path.
@@ -1898,7 +1909,6 @@ def test_m4_public_open_no_mtime_or_cache_mutation(
     _m4_patch_clocks(monkeypatch)
     item = items[0]
     root = item["root"]
-    pub_path = root / "active" / f"{resolved.registry.binding(resolved.scope.allowed_project_bindings[0]).lineage_id}.json"
     before = {
         p: p.stat().st_mtime_ns
         for p in root.rglob("*")
@@ -1914,7 +1924,7 @@ def test_m4_public_open_no_mtime_or_cache_mutation(
     reader = StrictProjectionReader(gen)
     try:
         reader.search_rows(query="fixture event")
-    except Exception:
+    except Exception:  # pylint: disable=W0718  # open path must tolerate any injected FS failure
         pass
     after = {
         p: p.stat().st_mtime_ns
@@ -1941,7 +1951,7 @@ def test_m4_lexical_tokenizer_ranking_identifier_rejection_and_caps(
     assert tokenize_lexical("straße") == ["strasse"]
     assert tokenize_lexical("STRASSE") == ["strasse"]
     assert tokenize_lexical("a  b\tc") == ["a", "b", "c"]
-    assert tokenize_lexical("!!!") == []
+    assert not tokenize_lexical("!!!")
 
     items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
     _m4_patch_clocks(monkeypatch)
@@ -2138,7 +2148,7 @@ def test_m4_unresolved_related_caps_and_closed_error_schema(
 def test_m4_provenance_basis_from_capture_not_origin_assurance():
     """Item 10: provenance_basis is exactly capture; invalid capture rejects."""
 
-    from strict_projection import StrictProjectionError, _provenance_basis_from_capture
+    from strict_projection import _provenance_basis_from_capture
 
     assert (
         _provenance_basis_from_capture({"capture": "synthetic_fixture"})
@@ -2186,7 +2196,7 @@ def test_m4_reader_import_graph_excludes_publisher_and_openclaw_runtime():
         "query",
         "chroma_store",
     }
-    assert not (imported & forbidden)
+    assert (imported & forbidden) == set()
 
 
 def test_m4_public_only_mount_and_exact_0444_0555(
@@ -2194,7 +2204,7 @@ def test_m4_public_only_mount_and_exact_0444_0555(
 ):
     """Items 6/11: public-only mount tree; exact file 0444 / dir 0555 / lock 0444."""
 
-    from strict_projection import StrictProjectionError, open_published_generation
+    from strict_projection import open_published_generation
 
     items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
     _m4_patch_clocks(monkeypatch)
@@ -2286,7 +2296,7 @@ def test_m4_operator_path_wrappers_pin_without_bound_read_scope_mutation(
         pin_operator_immutable_path,
     )
 
-    items, resolved, scope_path, registry_path = _m4_two_serving_roots(tmp_path)
+    _items, resolved, scope_path, _registry_path = _m4_two_serving_roots(tmp_path)
     pin = pin_operator_immutable_path(scope_path)
     assert isinstance(pin, tuple) and len(pin) == 4
     assert pin[3].startswith("sha256:") and len(pin[3]) == 71
@@ -2348,8 +2358,9 @@ def test_m4_ranking_tie_order_and_overlapping_occurrences(
     assert ids == sorted(ids)
 
 
+# pylint: disable-next=R0914  # CLI boottime lock locals mirror closed case vectors
 def test_m4_direct_cli_boottime_bound_and_shared_lock(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, _capsys
 ):
     """Items 12/18: private+public opening, shared lock, 10s BOOTTIME, recheck."""
 
@@ -2357,7 +2368,7 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
     import io
     import strict_projection as sp
 
-    items, resolved, scope_path, registry_path = _m4_two_serving_roots(tmp_path)
+    items, _resolved, scope_path, registry_path = _m4_two_serving_roots(tmp_path)
     item = items[0]
     req = tmp_path / "req.json"
     req.write_text('{"query":"fixture"}', encoding="utf-8")
@@ -2370,7 +2381,7 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
         "qualify": False,
         "open": False,
     }
-    orig_acquire = sp._acquire_shared_lineage_lock
+    orig_acquire = sp._acquire_shared_lineage_lock  # pylint: disable=W0212  # intentional white-box test access
     orig_qualify = sp.qualify_authority_generation
     orig_open = sp.open_published_generation
 
@@ -2442,11 +2453,11 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
     # Capture stdout via proxy — sys.stdout.buffer is readonly.
     class _StdoutBufferProxy:
         def __init__(self, real: Any, buffer: io.BytesIO) -> None:
-            self._real = real
+            self._real = real  # pylint: disable=W0212  # intentional white-box test access
             self.buffer = buffer
 
         def __getattr__(self, name: str) -> Any:
-            return getattr(self._real, name)
+            return getattr(self._real, name)  # pylint: disable=W0212  # intentional white-box test access
 
     real_stdout = sys.stdout
     buf = io.BytesIO()
@@ -2456,7 +2467,7 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
         for p in item["root"].rglob("*")
         if p.is_file() and not p.is_symlink()
     }
-    rc = sp._cli_read(argv)
+    rc = sp._cli_read(argv)  # pylint: disable=W0212  # intentional white-box test access
     out = buf.getvalue()
     assert rc == 0
     assert lock_state["qualify"] is True
@@ -2483,7 +2494,7 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
     monkeypatch.setattr(sp, "boottime_ns", fake_boot_over)
     buf2 = io.BytesIO()
     monkeypatch.setattr(sys, "stdout", _StdoutBufferProxy(real_stdout, buf2))
-    rc2 = sp._cli_read(argv)
+    rc2 = sp._cli_read(argv)  # pylint: disable=W0212  # intentional white-box test access
     out2 = buf2.getvalue()
     assert rc2 != 0
     lines2 = out2.splitlines()
@@ -2494,7 +2505,7 @@ def test_m4_direct_cli_boottime_bound_and_shared_lock(
     assert "results" not in err
 
 
-def test_m4_seven_error_codes_and_v3_field_sets(tmp_path: Path):
+def test_m4_seven_error_codes_and_v3_field_sets(_tmp_path: Path):
     """Item 17: seven exact error codes/messages; v3 top-level fields."""
 
     from strict_projection import StrictPublicError, _ERROR_MESSAGES
@@ -2569,7 +2580,7 @@ def _m4_unseal_for_mutation(root: Path, *rels: str) -> None:
     for rel in rels:
         path = root / rel
         parent = path.parent
-        while parent != root and parent != parent.parent:
+        while parent not in (root, parent.parent):
             os.chmod(parent, 0o755)
             parent = parent.parent
         if path.exists() and path.is_file():
@@ -2577,7 +2588,7 @@ def _m4_unseal_for_mutation(root: Path, *rels: str) -> None:
 
 
 def test_m4_same_inode_content_mutation_fails_pin_recheck(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, _monkeypatch: pytest.MonkeyPatch
 ):
     """Same-inode in-place byte mutation restored to 0444 must fail content pin."""
 
@@ -2587,7 +2598,7 @@ def test_m4_same_inode_content_mutation_fails_pin_recheck(
         recheck_operator_immutable_path,
     )
 
-    items, resolved, scope_path, _rp = _m4_two_serving_roots(tmp_path)
+    _items, _resolved, scope_path, _rp = _m4_two_serving_roots(tmp_path)
     pin = pin_operator_immutable_path(scope_path)
     os.chmod(scope_path, 0o644)
     original = scope_path.read_bytes()
@@ -2605,7 +2616,6 @@ def test_m4_same_inode_content_mutation_fails_pin_recheck(
 def test_m4_post_open_public_mutation_snapshot_stale(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    from strict_grounding import strict_canonical_bytes
     from strict_projection import (
         StrictProjectionReader,
         StrictPublicError,
@@ -2642,13 +2652,12 @@ def test_m4_post_open_public_mutation_snapshot_stale(
     revoke_snapshot(gen)
 
 
+# pylint: disable-next=R0914  # corrupt/graph failure locals mirror closed case vectors
 def test_m4_public_open_corrupt_and_graph_failures(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     """Corrupt/swapped public artifacts + graph validation negatives."""
-
-    from strict_grounding import strict_canonical_bytes
-    from strict_projection import StrictProjectionError, open_published_generation
+    from strict_projection import open_published_generation
 
     items, resolved, _sp, _rp = _m4_two_serving_roots(tmp_path)
     _m4_patch_clocks(monkeypatch)
@@ -2780,6 +2789,7 @@ def test_m4_public_open_corrupt_and_graph_failures(
     _seal_public_mount_modes(root)
 
 
+# pylint: disable-next=R0914  # neighborhood vector locals mirror closed case vectors
 def test_m4_related_neighborhood_vectors(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
@@ -2801,6 +2811,7 @@ def test_m4_related_neighborhood_vectors(
         now=_M4_NOW,
     )
     reader = StrictProjectionReader(gen)
+# pylint: disable-next=E1101  # capability runtime attrs sealed on instance
     base = dict(gen.rows[0])
     pref = base["public_binding_ref"]
 
@@ -2832,24 +2843,24 @@ def test_m4_related_neighborhood_vectors(
         relates_to_assertion_id=obs["assertion_id"],
         logical_id="logical-sib-1",
     )
-    reader._rows_by_assertion = {
+    reader._rows_by_assertion = {  # pylint: disable=W0212  # intentional white-box test access
         obs["assertion_id"]: [obs],
         dec["assertion_id"]: [dec],
         ver["assertion_id"]: [ver],
         sib["assertion_id"]: [sib],
     }
-    reader._relates_parents = {
+    reader._relates_parents = {  # pylint: disable=W0212  # intentional white-box test access
         dec["assertion_id"]: [obs["assertion_id"]],
         sib["assertion_id"]: [obs["assertion_id"]],
     }
-    reader._children = {
+    reader._children = {  # pylint: disable=W0212  # intentional white-box test access
         obs["assertion_id"]: [
             ("relates_to", dec["assertion_id"]),
             ("relates_to", sib["assertion_id"]),
         ],
         dec["assertion_id"]: [("targets", ver["assertion_id"])],
     }
-    reader._non_expanding = frozenset()
+    reader._non_expanding = frozenset()  # pylint: disable=W0212  # intentional white-box test access
     handle = f"cm1.{pref}.{dec['assertion_id']}"
     got = reader.related_neighborhood(ledger_id=handle)
     got_ids = [r["ledger_id"] for r in got["results"]]
@@ -2866,7 +2877,7 @@ def test_m4_related_neighborhood_vectors(
     assert got["selection_complete"] is True
 
     # Ambiguous parent (>1) denies.
-    reader._relates_parents[dec["assertion_id"]] = [
+    reader._relates_parents[dec["assertion_id"]] = [  # pylint: disable=W0212  # intentional white-box test access
         obs["assertion_id"],
         sib["assertion_id"],
     ]
@@ -2875,22 +2886,22 @@ def test_m4_related_neighborhood_vectors(
     assert ei.value.code == "scope_denied"
 
     # Cycle in ancestor path.
-    reader._relates_parents = {
+    reader._relates_parents = {  # pylint: disable=W0212  # intentional white-box test access
         dec["assertion_id"]: [obs["assertion_id"]],
         obs["assertion_id"]: [dec["assertion_id"]],
     }
-    reader._children = {}
+    reader._children = {}  # pylint: disable=W0212  # intentional white-box test access
     with pytest.raises(StrictPublicError) as ei:
         reader.related_neighborhood(ledger_id=handle)
     assert ei.value.code == "scope_denied"
 
     # Cycle in descendant union.
-    reader._relates_parents = {}
-    reader._children = {
+    reader._relates_parents = {}  # pylint: disable=W0212  # intentional white-box test access
+    reader._children = {  # pylint: disable=W0212  # intentional white-box test access
         dec["assertion_id"]: [("relates_to", ver["assertion_id"])],
         ver["assertion_id"]: [("relates_to", dec["assertion_id"])],
     }
-    reader._rows_by_assertion = {
+    reader._rows_by_assertion = {  # pylint: disable=W0212  # intentional white-box test access
         dec["assertion_id"]: [dec],
         ver["assertion_id"]: [ver],
     }
@@ -2918,9 +2929,9 @@ def test_m4_related_neighborhood_vectors(
             )
         ]
         parents[chain[i - 1]] = [chain[i]]
-    reader._rows_by_assertion = rows
-    reader._relates_parents = parents
-    reader._children = {}
+    reader._rows_by_assertion = rows  # pylint: disable=W0212  # intentional white-box test access
+    reader._relates_parents = parents  # pylint: disable=W0212  # intentional white-box test access
+    reader._children = {}  # pylint: disable=W0212  # intentional white-box test access
     handle9 = f"cm1.{pref}.{chain[0]}"
     with pytest.raises(StrictPublicError) as ei:
         reader.related_neighborhood(ledger_id=handle9)
@@ -2939,28 +2950,29 @@ def test_m4_related_neighborhood_vectors(
             )
         ]
         children.append(("relates_to", cid))
-    reader._rows_by_assertion = mmap
-    reader._relates_parents = {}
-    reader._children = {hub: children}
+    reader._rows_by_assertion = mmap  # pylint: disable=W0212  # intentional white-box test access
+    reader._relates_parents = {}  # pylint: disable=W0212  # intentional white-box test access
+    reader._children = {hub: children}  # pylint: disable=W0212  # intentional white-box test access
     with pytest.raises(StrictPublicError) as ei:
         reader.related_neighborhood(ledger_id=f"cm1.{pref}.{hub}")
     assert ei.value.code == "scope_denied"
 
     # Non-expanding high-degree fallback: include root only.
-    reader._non_expanding = frozenset({hub})
+    reader._non_expanding = frozenset({hub})  # pylint: disable=W0212  # intentional white-box test access
     # Parent path hits non-expanding immediately when querying a child.
     child0 = children[0][1]
-    reader._relates_parents = {child0: [hub]}
-    reader._children = {hub: children}
+    reader._relates_parents = {child0: [hub]}  # pylint: disable=W0212  # intentional white-box test access
+    reader._children = {hub: children}  # pylint: disable=W0212  # intentional white-box test access
     got = reader.related_neighborhood(ledger_id=f"cm1.{pref}.{child0}")
     got_ids = [r["ledger_id"] for r in got["results"]]
     assert got_ids == sorted([f"cm1.{pref}.{child0}", f"cm1.{pref}.{hub}"])
 
     # Duplicate stored identity denies.
-    reader._non_expanding = frozenset()
+    reader._non_expanding = frozenset()  # pylint: disable=W0212  # intentional white-box test access
+# pylint: disable-next=W0212  # intentional white-box test access
     reader._rows_by_assertion = {hub: [hub_row, dict(hub_row)]}
-    reader._relates_parents = {}
-    reader._children = {}
+    reader._relates_parents = {}  # pylint: disable=W0212  # intentional white-box test access
+    reader._children = {}  # pylint: disable=W0212  # intentional white-box test access
     with pytest.raises(StrictPublicError) as ei:
         reader.related_neighborhood(ledger_id=f"cm1.{pref}.{hub}")
     assert ei.value.code == "scope_denied"
@@ -3052,9 +3064,10 @@ def test_m4_v3_snapshot_result_key_sets_and_caps(
 
     # 4096-codepoint truncation flag via format helper.
     long_doc = "x" * (_DOC_CODEPOINT_CAP + 10)
+# pylint: disable-next=E1101  # capability runtime attrs sealed on instance
     row = dict(gen.rows[0])
     row["document"] = long_doc
-    formatted = reader._format_result(row)
+    formatted = reader._format_result(row)  # pylint: disable=W0212  # intentional white-box test access
     assert formatted["truncated"] is True
     assert len(formatted["document"]) == _DOC_CODEPOINT_CAP
 
@@ -3144,9 +3157,9 @@ def test_m4_lock_release_on_revoke(
         expected_publication_sha256=items[0]["serving"]["publication_payload_sha256"],
         now=_M4_NOW,
     )
-    assert gen._lock_fd >= 0
+    assert gen._lock_fd >= 0  # pylint: disable=W0212  # intentional white-box test access
     revoke_snapshot(gen)
-    assert gen._lock_fd == -1
+    assert gen._lock_fd == -1  # pylint: disable=W0212  # intentional white-box test access
     assert gen.is_revoked is True
 
 def test_m4_site_and_domain_selector_equivalence(

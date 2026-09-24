@@ -1,6 +1,6 @@
 """Test-only fixture-manifest schema and machinery.
 
-Architecture §6.5.8 (parent d5f986f0):
+Architecture §6.5.8 (parent b810fcd):
 - ``artifacts`` inventories every test helper/scenario/schema/specimen under
   ``tests/fixtures/openclaw_strict``, excluding only the fixture manifest and
   generated run outputs.
@@ -11,6 +11,7 @@ Architecture §6.5.8 (parent d5f986f0):
 - Generated ``fixture-manifest.json`` is test-owned output only and must not
   mutate the repository.
 """
+# pylint: disable=R0801  # reference-owned manifest specimen; sharing would break manifest independence
 
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from component_inventory import (  # noqa: F401 — re-export for packet contract
+from component_inventory import (  # noqa: F401 — re-export for packet contract  # pylint: disable=E0401,W0611  # path-injection; intentional re-export for packet contract
     FUTURE_PRODUCTION_MEMBERS,
     InventoryError,
     assert_omitted_canonical_json_mutant_fails,
@@ -33,7 +34,7 @@ from component_inventory import (  # noqa: F401 — re-export for packet contrac
     source_component_digest_available,
     unrelated_on_disk_file_leaves_digest_unchanged,
 )
-from constants import (
+from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     CODE_BASELINE_SHA,
     EXPECTED_TEST_RUNTIME_TREE_SHA256,
     GENERATED_EVIDENCE_FIXTURE_RELS,
@@ -173,7 +174,7 @@ def hash_inventory_entries(entries: list[dict[str, str]]) -> str:
 def independent_fixture_artifact_digest(fixture_tree: Path) -> tuple[list[dict[str, str]], str]:
     """Second verification path — does not call ``inventory_fixture_artifacts``."""
 
-    import case58_oracle as oracle
+    import case58_oracle as oracle  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
 
     entries = oracle.reference_fixture_artifact_walk(fixture_tree)
     return entries, oracle.independent_tree_digest(entries)
@@ -182,7 +183,7 @@ def independent_fixture_artifact_digest(fixture_tree: Path) -> tuple[list[dict[s
 def independent_source_tree_digest(source_root: Path) -> tuple[list[dict[str, str]], str]:
     """Second verification path — does not call ``inventory_source_export``."""
 
-    import case58_oracle as oracle
+    import case58_oracle as oracle  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
 
     entries = oracle.reference_source_export_walk(source_root)
     return entries, oracle.independent_tree_digest(entries)

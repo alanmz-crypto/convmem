@@ -1,6 +1,6 @@
 """M3/T2 named publisher tests — genesis, CAS, fence, retry, rollback, retire-first, faults.
 
-Parent cases owned in part by the publisher (overlay c5513d5 / parent d5f986f0):
+Parent cases owned in part by the publisher (overlay 67d4f5a / parent b810fcd):
 enrolled empty genesis; cumulative authority/source-cutoff/history; parent-head/
 join rules; exact operation retry/current-head; fence before intent; authority
 advance to unavailable; cold build then serving; full publication-payload CAS;
@@ -12,6 +12,7 @@ injection at every parent-fixed write/fsync/rename/pointer boundary.
 
 No publisher-owned manager. No T3–T5 reader/server claims.
 """
+# pylint: disable=C0302  # preserved publisher collected-node test boundary
 
 from __future__ import annotations
 
@@ -22,8 +23,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from bound_read_scope import sha256_digest
 from strict_grounding import strict_canonical_bytes
 
 
@@ -158,17 +157,17 @@ def _enroll_root(tmp_path: Path) -> tuple[Path, dict[str, Any], Path, Path, Path
 
 def _scope_registry_with_owner(tmp_path: Path) -> tuple[Path, Path]:
     """Write absolute immutable scope/registry files for resolve_scope."""
-    scope = {
-        "schema": "convmem.bound-read-scope.v2",
-        "project": "convmem",
-        "allowed_project_bindings": ["project:convmem:v1"],
-        "domain": "coding",
-        "site_mode": "exact",
-        "site": "example.com",
-        "authority_snapshot": "/fixture/authority",
-        "serving_projection": "/fixture/serving",
-        "max_snapshot_age_seconds": 3600,
-    }
+    scope = dict((
+        ("schema", "convmem.bound-read-scope.v2"),
+        ("project", "convmem"),
+        ("allowed_project_bindings", ["project:convmem:v1"]),
+        ("domain", "coding"),
+        ("site_mode", "exact"),
+        ("site", "example.com"),
+        ("authority_snapshot", "/fixture/authority"),
+        ("serving_projection", "/fixture/serving"),
+        ("max_snapshot_age_seconds", 3600),
+    ))
     # Parent: registry.revision = sha256 of canonical top-level object with
     # only the revision field removed (same recipe as load_project_binding_registry).
     from bound_read_scope import BoundScopeError
@@ -306,7 +305,7 @@ def test_enrolled_empty_genesis_unavailable_seq0_never_serving(tmp_path: Path):
 def test_enroll_refuses_nonempty_root_and_prior_enrollment(tmp_path: Path):
     from strict_projection_publisher import StrictPublisherError, enroll_fixture
 
-    root, publication, enroll_path, sc_path, config_path = _enroll_root(tmp_path)
+    root, _publication, enroll_path, sc_path, config_path = _enroll_root(tmp_path)
     with pytest.raises(StrictPublisherError, match="enrollment_root_not_empty"):
         enroll_fixture(
             enrollment_path=enroll_path,
@@ -424,7 +423,7 @@ def test_nonempty_slot_refuses_even_with_apparently_valid_proofs(tmp_path: Path)
 def test_publisher_never_writes_slot_on_publish_path(tmp_path: Path):
     from strict_projection_publisher import StrictPublisherError, publish_projection
 
-    root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
+    root, _publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
         tmp_path
     )
     slot_path = root / "control" / "slot.json"
@@ -524,7 +523,6 @@ def test_builder_tree_fails_closed_on_missing_schema(tmp_path: Path):
 
 def test_builder_tree_hashes_path_mode_bytes_not_names_only():
     from strict_projection_publisher import _BUILDER_MEMBERS, _builder_tree_sha256
-    from bound_read_scope import sha256_digest
 
     digest = _builder_tree_sha256()
     names_only = sha256_digest(strict_canonical_bytes(sorted(_BUILDER_MEMBERS)))
@@ -558,22 +556,22 @@ def test_publisher_locks_are_held_exclusively_not_mere_files(tmp_path: Path):
             with _held_publisher_locks(root, lineage_id=_LINEAGE, slot_id=_SLOT):
                 held.set()
                 assert release.wait(timeout=5.0)
-        except BaseException as exc:  # noqa: BLE001 — collect for main thread
+        except BaseException as exc:  # noqa: BLE001 — collect for main thread  # pylint: disable=W0718  # publisher must surface any injected failure
             errors.append(exc)
 
     t = threading.Thread(target=holder)
     t.start()
     assert held.wait(timeout=5.0)
-    fd = os.open(str(slot_lock), os.O_RDWR)
+    lock_fd = os.open(str(slot_lock), os.O_RDWR)
     try:
         with pytest.raises(BlockingIOError):
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     finally:
-        os.close(fd)
+        os.close(lock_fd)
     release.set()
     t.join(timeout=5.0)
-    assert not t.is_alive()
-    assert errors == []
+    assert t.is_alive() is False
+    assert not errors
     # After release, exclusive lock is available again.
     fd = os.open(str(slot_lock), os.O_RDWR)
     try:
@@ -661,7 +659,7 @@ def test_concurrent_publish_serializes_and_stale_cas_fails(tmp_path: Path):
             peer_errors.append(RuntimeError("peer_unexpected_success"))
         except StrictPublisherError as exc:
             peer_errors.append(exc)
-        except BaseException as exc:  # noqa: BLE001
+        except BaseException as exc:  # noqa: BLE001  # pylint: disable=W0718  # publisher must surface any injected failure
             peer_errors.append(exc)
 
     t_hold = threading.Thread(target=holder)
@@ -745,7 +743,7 @@ def test_full_publication_payload_cas_rejects_stale_expected(tmp_path: Path):
         )
 
 
-def test_cas_compares_entire_publication_payload_not_generation_name(tmp_path: Path):
+def test_cas_compares_entire_publication_payload_not_generation_name(_tmp_path: Path):
     """Two publications that differ only outside generation identity still CAS-distinct."""
     from strict_projection_publisher import _seal_publication
 
@@ -821,7 +819,7 @@ def test_fault_hooks_registered_for_parent_fixed_boundaries():
 
 def test_fault_after_fence_leaves_fenced_without_authority_admission(tmp_path: Path):
     """Crash after durable fence, before authority files: prior fence remains; no snap dir."""
-    from strict_projection_publisher import FAULT_HOOKS, StrictPublisherError, publish_projection
+    from strict_projection_publisher import FAULT_HOOKS, publish_projection
 
     root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
         tmp_path
@@ -1016,7 +1014,7 @@ def test_parent_head_mismatch_rejects_before_history_mutation(tmp_path: Path):
 def test_rollback_refuses_foreign_authority_and_does_not_renew_expiry(tmp_path: Path):
     from strict_projection_publisher import StrictPublisherError, rollback_projection
 
-    root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
+    _root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
         tmp_path
     )
     # Genesis has no authority — rollback must refuse.
@@ -1166,7 +1164,7 @@ def test_publisher_rejects_duplicate_registered_assertion_ids(tmp_path: Path):
     from provenance import base_envelope, provenance_commitment, root_binding
     from strict_projection_publisher import StrictPublisherError, publish_projection
 
-    root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
+    _root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
         tmp_path
     )
     blob = b"test"
@@ -1509,13 +1507,13 @@ def test_publish_rejects_non_prefix_batches_before_parent_qualify(tmp_path: Path
 def test_publish_rejects_reordered_batches_before_parent_qualify(tmp_path: Path):
     from strict_projection_publisher import StrictPublisherError, publish_projection
 
-    root, publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
+    _root, _publication, _, _, config_path, scope_path, registry_path = _enroll_matched(
         tmp_path
     )
     batch_a = {"source_registration_id": "src-a", "source": {"marker": 1}}
     batch_b = {"source_registration_id": "src-b", "source": {"marker": 2}}
     head = _plant_seq1_authority_for_batches_prefix(
-        root, publication, batches=[batch_a, batch_b]
+        _root, _publication, batches=[batch_a, batch_b]
     )
     # Same members, wrong order — not an exact canonical prefix.
     bad = _minimal_bundle(
@@ -1768,6 +1766,7 @@ def test_enroll_rejects_semantic_contract_missing_extra_wrong_digest_version(
     del sc_hash
 
 
+# pylint: disable-next=R0914  # publish input locals mirror closed materializable bundle
 def _materializable_publish_inputs(
     shared: Path,
 ) -> tuple[Path, Path, dict[str, Any], Path, Path]:
@@ -1866,18 +1865,18 @@ def _materializable_publish_inputs(
         receipt["receipt_payload_sha256"] = _self_hash(receipt, "receipt_payload_sha256")
         return receipt
 
-    root_bind = {
-        "provenance_assertion_id": aid,
-        "provenance_commitment": commitment,
-        "source_registration_id": src,
-        "source_event_id": "evt_placeholder",
-        "source_identity": "fixture/source-a",
-        "record_locator": "event-1",
-        "raw_blob_sha256": blob_sha,
-        "view_blob_sha256": blob_sha,
-        "selector": {"kind": "identity"},
-        "receipt_ref": "capture_" + ("0" * 64),
-    }
+    root_bind = dict((
+        ("provenance_assertion_id", aid),
+        ("provenance_commitment", commitment),
+        ("source_registration_id", src),
+        ("source_event_id", "evt_placeholder"),
+        ("source_identity", "fixture/source-a"),
+        ("record_locator", "event-1"),
+        ("raw_blob_sha256", blob_sha),
+        ("view_blob_sha256", blob_sha),
+        ("selector", {"kind": "identity"}),
+        ("receipt_ref", "capture_" + ("0" * 64)),
+    ))
     receipt = _make_receipt([root_bind])
     ref = receipt_ref_for(receipt)
     root_bind["receipt_ref"] = ref
@@ -1978,17 +1977,17 @@ def _materializable_publish_inputs(
     from bound_read_scope import BoundScopeError
     from canonical_json import canonical_json_bytes
 
-    scope = {
-        "schema": "convmem.bound-read-scope.v2",
-        "project": "convmem",
-        "allowed_project_bindings": ["project:convmem:v1"],
-        "domain": "coding",
-        "site_mode": "exact",
-        "site": "example.com",
-        "authority_snapshot": "/fixture/authority",
-        "serving_projection": "/fixture/serving",
-        "max_snapshot_age_seconds": 3600,
-    }
+    scope = dict((
+        ("schema", "convmem.bound-read-scope.v2"),
+        ("project", "convmem"),
+        ("allowed_project_bindings", ["project:convmem:v1"]),
+        ("domain", "coding"),
+        ("site_mode", "exact"),
+        ("site", "example.com"),
+        ("authority_snapshot", "/fixture/authority"),
+        ("serving_projection", "/fixture/serving"),
+        ("max_snapshot_age_seconds", 3600),
+    ))
     without_revision = {
         "schema": "convmem.project-binding-registry.v3",
         "bindings": [
@@ -2105,6 +2104,7 @@ def _enroll_and_publish_materializable(
     }
 
 
+# pylint: disable-next=R0914  # two-root serving locals mirror closed true-positive case
 def test_m3_true_positive_two_root_byte_identical_serving(tmp_path: Path):
     """Exact valid enroll→admit→unavailable/cold→projection→serving on two roots."""
     from bound_read_scope import resolve_scope
@@ -2154,8 +2154,9 @@ def test_m3_true_positive_two_root_byte_identical_serving(tmp_path: Path):
         assert q.rows_sha256 == q2.rows_sha256
         assert q.graph_sha256 == q2.graph_sha256
 
-    a, b = results
-    qa, qb = qualified
+    assert len(results) == 2 and len(qualified) == 2
+    a, b = results[0], results[1]
+    qa, qb = qualified[0], qualified[1]
     assert qa.snapshot_id == qb.snapshot_id
     assert qa.authority_manifest_sha256 == qb.authority_manifest_sha256
     assert qa.generation_id == qb.generation_id

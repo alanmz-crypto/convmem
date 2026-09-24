@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from constants import (
+from constants import (  # pylint: disable=E0401  # fixture path-injection import; module resolved via sys.path
     CODE_BASELINE_SHA,
     EDIT_ALLOWLIST_EXACT,
     EDIT_ALLOWLIST_PREFIXES,

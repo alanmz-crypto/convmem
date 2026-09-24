@@ -4,6 +4,7 @@ Roles: activation, launch, manager, socket, connector, filter, runtime_image, mo
 Filter/image/model payloads are inert; others carry closed schema-shaped payloads.
 Not executable and not source-component digests.
 """
+# pylint: disable=R0801  # frozen protocol specimens; sharing would break specimen independence
 
 from __future__ import annotations
 
