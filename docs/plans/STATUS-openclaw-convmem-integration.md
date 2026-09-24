@@ -2,6 +2,23 @@
 
 > **Every model working on this arc must read this file at session start.**
 
+**Routing snapshot: 2026-09-24. Owner: the active Codex Switchboard supervisor.**
+This snapshot carries forward the supervisor-owned [published STATUS](https://github.com/alanmz-crypto/convmem/blob/b55de5b43475595c08a00a4b1b5d2ef2aebd9796/docs/plans/STATUS-openclaw-convmem-integration.md)
+and [M11 overlay](https://github.com/alanmz-crypto/convmem/blob/b55de5b43475595c08a00a4b1b5d2ef2aebd9796/docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md) on
+`plan/2026-09-24-openclaw-convmem-m11-pylint-remediation`, exact tip
+`b55de5b43475595c08a00a4b1b5d2ef2aebd9796`. The paired semantic parent is
+`b810fcd7ee545399a368afada2b0e7d9dd7821f6`; these are **not** this documentation branch's SHA.
+The closeout verified pushed Git identities, not the test results anew. The
+outcomes below are the existing supervisor packet's record, not a new verdict.
+
+Before choosing work, the active supervisor checks that branch and the latest
+exact-tip review, Ryan grant and checkpoint receipt. If they have advanced,
+follow the newer applicable evidence; do not repeat a completed review from this
+snapshot. This cleanup neither creates a hold nor lifts the existing one. Do not
+apply its commits to the M11 source branch or include them in its reviewed plan
+range. Main's relative architecture/execution copies are older: use the exact
+packet links in §9, not this routing branch as a governing plan.
+
 ## 1. What This Is For
 
 OpenClaw is the user-facing orchestrator; ConvMem is the shared, read-only
@@ -53,56 +70,78 @@ crash-loop fix, not ordinary wiring.
 
 | Surface | State |
 |---|---|
-| Architecture direction | **BOUNDED BUILD PASS** at semantic parent `cd9d2698b7423f907b552bc9118a0af523018ca9`; chooses the strict, version-adapted read-only connector and preserves separate live-runtime gates |
-| Kiro review | **PASS** on exact overlay tip `d1ca459960e42458b352dfd0e76a7f55db67416b` |
-| Ryan approval | **Execute grant pending** — no implementation or production authorization is implied by the review |
-| Execution plan | **Present and reviewed** — `EXECUTION-openclaw-convmem-integration.md` plus the bounded `EXECUTION-openclaw-convmem-milestone-plan.md` overlay |
-| Implementation | **Partial, separate branch** — another agent reached M3/T1–T2 at `1edc54b`; no bounded TEST PASS or Execute acceptance yet |
-| Installed OpenClaw capability | Probed at `2026.3.2`: no `openclaw mcp` command exposed yet, no `~/.openclaw/openclaw.json`; capability discovery must precede any configuration |
+| Architecture direction | **BOUNDED BUILD/TEST PASS** for synthetic T0–T5; the current plan-only correction freezes an M11 lint-remediation boundary without changing T0–T5 semantics or weakening CI |
+| Bounded implementation | **ACCEPTED** at `8010fb060c2edc29e1b09d7a30b1a1da2689d489` over original baseline `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; two M8 runs and exact-tip Kiro conformance passed |
+| Frozen M11 integration baseline | `9193f5ec744f059d07a20612489b210527b5660a`; accepted implementation and current main have no product-path overlap, but acceptance does not transfer without reconstruction and fresh evidence |
+| M11 integration branch | Reconstruction, reviewed-plan correction and follow-up evidence repairs are **PRESERVED, CLEAN AND PUSHED** at `9c6421a6891fd8a861a51f4fed410f541b53148c` on `feat/2026-09-23-openclaw-convmem-m11-integration` |
+| M11 verification | Two fresh M8 runs and all seven legacy MCP regressions pass at `9c6421a`; merge readiness is **PAUSED** because the unchanged current-main Pylint gate reports 699 new occurrences |
+| M11 lint correction | **PLAN-ONLY / NOT AUTHORIZED.** Architecture §18.9 and Execution §10.7 freeze an exact 44-path remediation that leaves the workflow, committed baseline and gate algorithm unchanged; Kiro exact-tip review and a new Ryan grant are next |
+| Runtime/evidence | Runtime hash `sha256:74a12c…` remained unchanged; successful M8/MCP evidence and the failed Pylint evidence are durable. Another run requires new parent-bound paths in a Ryan grant |
+| Installed OpenClaw capability | Last probed at `2026.3.2`, while a newer release was identified. M11 does not run or change OpenClaw; before any Gate D test, the installed distribution must be deliberately updated or pinned and freshly capability-probed/reviewed |
 | Related arc | [`STATUS-openclaw-watch-coverage.md`](STATUS-openclaw-watch-coverage.md) — separate arc, covers ConvMem watching OpenClaw's *committed repo files*, not this runtime connector |
 
 ## 4. Completion State
 
 | Milestone | Status | Blocking on |
 |---|---|---|
-| Architecture direction and bounded fixture contract | **DONE — BUILD PASS** | TEST, live-data, and promotion remain separate gates |
-| Kiro design/scope review | **DONE — PASS** at exact overlay tip `d1ca459` | review authorizes no implementation |
-| Ryan bounded T0–T5 Execute grant | **PENDING** | must name overlay SHA, semantic parent SHA, scope, runtime, and durable evidence location |
-| Execution plan and supervision overlay | **DONE** | Codex must still establish the exact implementation worktree after the grant |
-| T0–T2 implementation | **IN PROGRESS / UNACCEPTED** | existing separate branch is at `1edc54b`; no TEST PASS claim |
-| T3–T5 implementation and Gate B/C evidence | **NOT STARTED / NOT VERIFIED** | M4–M8 remain |
+| Architecture direction and bounded fixture contract | **DONE — BUILD PASS** | Current-main reconstruction does not reopen semantics |
+| M0–M8 implementation and Gate B/C evidence | **DONE — TEST PASS / ACCEPTED** at `8010fb0` | Applies only to the exact historical baseline/revisions/runtime/evidence |
+| M11 replay and pin reconciliation | **DONE / PRESERVED at `a11b7a2`** | no acceptance transfer; branch remains unmerged |
+| M11 reviewed-plan allowlist correction | **DONE / PRESERVED at `9c6421a`** | exact-blob/product-allowlist/source-inventory checks passed |
+| M11 fresh M8 and MCP evidence | **PASS at `9c6421a`** | two M8 runs and seven legacy MCP regressions pass; exact-tip acceptance withheld because Pylint failed |
+| M11 Pylint remediation | **PLAN-ONLY / PAUSED** | exact-tip Kiro review and new Ryan grant for the 44-path correction |
+| Merge readiness | **NOT YET PROVEN** | requires unchanged actual Pylint gate PASS, full pytest, repeated M8/MCP evidence at the final source, durable verification and Kiro integrated-tip PASS |
 | Phase 1A/1B real OpenClaw operation | **BLOCKED** | Gate D runtime qualification and later production gates |
 | Child-agent inheritance question | **UNANSWERED** | requires observing a real OpenClaw dispatch run after Phase 1B lands |
 | Transcript capture | **BLOCKED** | independent poison-transcript/Chroma upsert crash-loop fix; explicitly out of scope for this phase |
 
 ## 5. Your Role
 
-**If Ryan sent you here:** the bounded fixture plan has passed exact-tip Kiro
-review, but Ryan has not issued the two-SHA Execute grant. Do not advance the
-existing partial implementation until that grant and the Codex worktree/runtime/
-evidence prerequisites are satisfied. Real OpenClaw operation remains separately
-blocked by Gate D/W and later gates.
+**If Ryan sent you here:** review the exact linear-range M11 Pylint-remediation
+plan. Confirm that the observed 699-occurrence failure is bound to its exact
+report/environment, the edit surface is exactly 44 Switchboard paths, the real
+current-main workflow/baseline/gate remain byte-identical, and the suppression
+rules cannot become a blanket waiver. Confirm full pytest, two fresh M8 runs,
+seven MCP regressions and exact-tip Kiro conformance remain mandatory after
+remediation. Do not edit product/test code, run another acceptance suite,
+provision/rebind a runtime, merge, update/run OpenClaw, or touch live data.
+Only a later Ryan grant may authorize applying the plans and bounded correction
+to preserved source tip `9c6421a`. Real OpenClaw remains blocked by Gate D/W and
+later gates.
 
 ## 6. What Remains Before This Arc Is Live
 
-1. Ryan issues the bounded two-SHA T0–T5 Execute grant and names the frozen
-   runtime plus durable evidence location.
-2. Codex creates or verifies the exact-baseline implementation worktree and
-   supervises T0–T5 checkpoint by checkpoint.
-3. T0–T5 implementation completes through M8, with bounded TEST PASS claimed
-   only after the exact isolated runner passes twice.
-4. Gate D/W, then Gate D-V and Gate E, remain separate later decisions.
-5. A real OpenClaw run is observed to settle whether dispatched child agents
+1. Kiro performs exact-tip binary design/scope review of the new semantic parent,
+   milestone overlay and STATUS in that exact packet, not this routing mirror.
+2. If Kiro passes, Ryan decides whether to grant resumption on preserved tip
+   `9c6421a`, naming the exact parent/overlay, 44 paths, integration
+   baseline/branch, rebound runtime prefix and durable evidence root.
+3. Under that grant, Grok applies every commit after plan base `c5513d5` through
+   the grant-named final overlay in reviewed first-parent order and stops; Codex
+   proves the range contains no merge, gap, reorder or out-of-scope path, all
+   four reviewed document blobs match the overlay, and every other byte still
+   equals `9c6421a`.
+4. After commit-specific `CONTINUE`, Grok completes the held production and
+   fixture/test lint checkpoints. Codex rejects a 45th path, broad suppression,
+   baseline/gate/config change or semantic drift.
+5. At one clean pushed tip, the unchanged current-main Pylint gate passes;
+   Codex then runs full pytest, M8 twice and the seven MCP regressions, preserves
+   durable evidence, and obtains Kiro exact-tip conformance review. Ryan alone
+   decides merge.
+6. Gate D/W, then Gate D-V and Gate E, remain separate later decisions. Before
+   Gate D, deliberately update or pin OpenClaw and perform a fresh capability
+   probe/review; no earlier version observation is qualification.
+7. A real OpenClaw run is observed to settle whether dispatched child agents
    inherit ConvMem access by default; that observation becomes its own
    Kiro-reviewed design decision, not an assumption.
-6. Transcript capture stays out of scope until the independent
+8. Transcript capture stays out of scope until the independent
    poison-transcript/Chroma crash-loop data-integrity issue is separately
    resolved and verified.
 
 ## 7. Hard Stops
 
 - No implementation from the architecture or review alone — the execution plan,
-  exact-tip Kiro PASS, and Ryan's bounded Execute grant are all required.
+  exact-tip Kiro PASS, and exact applicable Ryan grant are all required.
 - No durable ConvMem write/approve capability exposed to OpenClaw.
 - No unscoped retrieval; a bound project/site/domain scope is a hard ceiling.
 - No `ask()` exposure to OpenClaw until synthesized-result handling is
@@ -111,6 +150,15 @@ blocked by Gate D/W and later gates.
 - No OpenClaw plugin-tools/native-memory bridge into ACP workers without
   separate review.
 - No OpenClaw upgrade without separate authorization.
+- No product/test correction or M8 retry until Kiro passes the exact plan tip
+  and Ryan issues a new resume grant.
+- Never add the four reviewed documents to a product allowlist or remove them
+  from source export, source inventory or `source_tree_sha256`.
+- Never raise or regenerate the Pylint baseline, change the workflow/gate,
+  exclude Switchboard paths, or replace the actual current-main gate with a
+  preserved-tip comparison.
+- No lint-remediation edit outside the exact 44 paths in Architecture §18.9;
+  no broad suppression or shared helper that weakens independent oracles.
 
 ## 8. Relationship to ConvMem and OpenClaw
 
@@ -127,8 +175,8 @@ actually reaches for it.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` and the T0–T5 milestone overlay |
+| Architecture | [Exact semantic parent](https://github.com/alanmz-crypto/convmem/blob/b810fcd7ee545399a368afada2b0e7d9dd7821f6/docs/plans/ARCHITECTURE-openclaw-convmem-integration.md) — do not substitute an older local/main copy |
+| Execution | [Exact parent execution contract](https://github.com/alanmz-crypto/convmem/blob/b810fcd7ee545399a368afada2b0e7d9dd7821f6/docs/plans/EXECUTION-openclaw-convmem-integration.md) and [paired M11 overlay](https://github.com/alanmz-crypto/convmem/blob/b55de5b43475595c08a00a4b1b5d2ef2aebd9796/docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md) |
 | Arc status | `docs/plans/STATUS-openclaw-convmem-integration.md` (this file) |
 | Human-language orientation | `docs/plans/README-openclaw-convmem-integration.md` |
 | Sibling arc | `docs/plans/STATUS-openclaw-watch-coverage.md` |
@@ -141,4 +189,9 @@ session narrative. Add one line below per milestone-level change.
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-09-24 | Codex documentation closeout | Routed the retired final-review bookmark and shared indexes to the existing supervisor-owned `b55de5b` snapshot; no new grant, verdict, code, plan-contract or runtime change. |
+| 2026-09-24 | Codex | Replaced the self-invalidating fixed plan-commit count with the complete reviewed linear range from `c5513d5` through Ryan's grant-named final overlay. |
+| 2026-09-24 | Codex | M11 is preserved at `9c6421a` with M8/MCP PASS and Pylint PAUSE; the plan now freezes an exact 44-path remediation that keeps the current-main gate and baseline unchanged. |
+| 2026-09-24 | Codex | M11 replay/pinning is preserved at `a11b7a2`; first M8 attempt paused pre-import on the four reviewed control documents; a plan-only exact-blob/unchanged-product-allowlist correction now awaits Kiro and a new Ryan resume grant. |
+| 2026-09-23 | Codex | Bounded M0–M8 is accepted at `8010fb0`; M11 is paused before current-main reconstruction while the plan-only `9193f5e` reconciliation awaits exact-tip Kiro review and a new Ryan integration decision. |
 | 2026-09-23 | Codex | Exact-tip Kiro PASS at `d1ca459`; bounded execution overlay and PR #327 are ready for Ryan's two-SHA Execute decision. Separate implementation branch is partial through M3/T1–T2; no TEST PASS or live authorization. |

@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-23
+**Updated:** 2026-09-24
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
+  held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
+  preserves integration tip `9c6421a` and routes its 44-path remediation to
+  exact-tip Kiro review, then a new Ryan resume decision. Start with
+  [`STATUS-openclaw-convmem-integration.md`](../plans/STATUS-openclaw-convmem-integration.md)
+  for the exact published packet and owner. The active Codex supervisor must
+  reconcile any newer review/grant/checkpoint before choosing work; this is not
+  a new hold, acceptance verdict or authorization. The old final-review prompt
+  is retired: do not restart Astra/Kiro on `cd9d269`, M3, or runtime setup.
+  This documentation cleanup is not a prerequisite for Switchboard's existing
+  workflow and does not authorize code, tests, runtime changes, merge or live use.
 - **Decision and Review Guardrails (opt-in doc) — Kiro PASS, amendments
   applied, READY_FOR_PR:** Kiro reviewed
   [`DECISION-REVIEW-GUARDRAILS.md`](DECISION-REVIEW-GUARDRAILS.md) at tip
