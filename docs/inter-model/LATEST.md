@@ -9,6 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **PR #334 (worktree/review-bundle scan pollution fix) — BLOCKED_ON_RYAN,
+  routed to Copilot audit lane (2026-09-24):** Mechanically ready (CI green,
+  no conflicts, 0 reviews) but edits the exclusion lists of three safety
+  scans, so Ryan asked to route it to formal review before merge rather than
+  merge on green CI alone. See
+  [`CLAUDE-2026-09-24-worktree-scan-pollution-copilot-audit-handoff.md`](CLAUDE-2026-09-24-worktree-scan-pollution-copilot-audit-handoff.md)
+  for what to check. PR: [**#334**](https://github.com/alanmz-crypto/convmem/pull/334).
 - **Arc Poison Pill — recurrence 2026-09-23, containment fix MERGED ([#328](https://github.com/alanmz-crypto/convmem/pull/328), squash-merged as `81efa35` on `main`):**
   A native-fault crash (`convmem-watch` → `convmem index --file LATEST.md`, SIGSEGV/GP fault)
   recurred 2026-09-23 08:58 CDT, the same signature the arc's 2026-09-21 acceptance was meant to
