@@ -752,20 +752,20 @@ The following execution mapping uses the same exact classifications; no item gra
 
 ### 10.2 Independent gate decisions
 
-- **BUILD PASS:** only the frozen T0–T5 fixture implementation is fully specified. Exact-tip review
-  and Ryan's Execute grant remain required; neither is inferred from this author's readiness claim.
-- **TEST PAUSED AT M8; no TEST PASS:** one isolated reproduction is behaviorally green, but its
-  legacy AST definition inventory is not exact collected-node evidence. Implement the reviewed
-  JUnit-only correction, then repeat two fresh-root runs with identical canonical node/outcome
-  arrays and all other assigned B/C evidence. Document checks and the prior run are not a PASS.
+These are the current decisions. The earlier M8 pause is retained in §§10.3–4 only as repair
+history and cannot be mistaken for current state.
+
+- **BUILD PASS / BOUNDED TEST PASS:** the frozen T0–T5 fixture implementation is accepted at
+  `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. That verdict is bound to the original baseline,
+  parent, overlay, runtime and evidence; it is not current-main merge readiness.
 - **LIVE-DATA BLOCKED:** actual Gate D authentication/containment/distribution and applicable Gate W
   production enrollment, plus an explicit data/config grant, are still required.
 - **PROMOTION BLOCKED:** LIVE-DATA and the later applicable Gate E/D-V/production authorization
   requirements must be independently satisfied. No channel/gateway/consequential-data effect now.
 
 **WHAT DID THIS EDIT BREAK THAT WAS PREVIOUSLY SOUND?** No documentary regression found in the
-attempted attacks in Architecture §18.5. One M8 reproduction is behaviorally green but lacks exact
-legacy collected-node evidence, so no TEST PASS exists. The matrix covers
+attempted attacks in Architecture §18.5. The earlier missing-node-evidence issue was repaired and
+accepted at `8010fb0`; M11 requires fresh evidence rather than inheriting that PASS. The matrix covers
 authority rollback, canonical state/forks, grounding/receipts/original admission, retirement/
 freshness/release, explicit writes, private qualification, physical fixture/credential isolation,
 legacy bytes, recovery, Gate W separation and hash membership. The prior full-repository test
@@ -808,8 +808,9 @@ authentication, provider compatibility, sealed production distribution, live dat
 
 ### 10.4 M8 node-inventory correction obligations
 
-Architecture §18.6 records the authorized correction and observed blocker. When a new exact grant
-names this revised parent and overlay, Grok may change only the fixture runner/evidence helpers
+Architecture §18.6 records the authorized correction and observed blocker. This obligation was
+completed and accepted at `8010fb060c2edc29e1b09d7a30b1a1da2689d489`; it is retained to define
+the unchanged M11 evidence contract. Its implementation allowance was limited to the fixture runner/evidence helpers
 needed to add the two §5.1 JUnit arguments, parse/validate their reports, emit the fixed canonical
 node/outcome artifact, update generated-output exclusions if required by the exact walker, and
 mechanically repin the semantic-parent constant and its existing assertion. The selected test
@@ -823,9 +824,9 @@ or weakened failure rule receives `PAUSE` or `REQUIRE TEST`. The first corrected
 not inherit the old run's status; M8 requires two fresh-root runs at one clean pushed commit and
 the exact raw/canonical evidence in §5.1/§9. TEST PASS may be issued only after both are inspected.
 
-The bounded implementation remains architecture-complete, but Grok may resume only after exact-tip
-review and a new Ryan grant naming the revised semantic parent and milestone overlay. Known
-deferred issues do not authorize Grok to redesign the architecture.
+The bounded implementation remains architecture-complete. M11 does not reopen this correction;
+it only repins the exact reviewed parent/baseline literals and then re-runs the unchanged contract
+under §10.5. Known deferred issues do not authorize Grok to redesign the architecture.
 
 ### 10.5 M11 current-main reconstruction and merge-readiness obligations
 

@@ -3554,8 +3554,9 @@ suite selection, repair records and unchanged manager/core semantics against `2a
 Section18.5 records the focused regression review; §18.3 retains the preceding correction's matrix. The bundle carries
 the checker, its output and parent-to-target diff so these assertions are reproducible.
 
-No integration acceptance is claimed: one M8 reproduction is behaviorally green but TEST remains
-PAUSED because its legacy collected-node evidence is incomplete. Prior static routing/auth probes
+At that corrective revision, no integration acceptance was claimed: one M8 reproduction was
+behaviorally green but TEST remained PAUSED because its legacy collected-node evidence was
+incomplete. Section 18.7 records the later accepted M8 result. Prior static routing/auth probes
 were not rerun for this correction. No implementation, OpenClaw configuration, package install,
 credential read or gateway/service start is part of this edit. The final exact-commit bundle must
 bind the committed plan bytes, correctly labeled historical review, unchanged code evidence and historical probe
@@ -4072,8 +4073,9 @@ counts, yield identical canonical Python node/outcome arrays, exclude the exact 
 and keep the Node command/result unchanged. Raw JUnit and derived evidence remain disposable,
 hash-excluded test output. Missing, malformed, ambiguous, lossy, duplicate, inconsistent or
 out-of-selection evidence fails M8. All authority, provenance, publication, recovery, component
-hash, containment and later-gate invariants remain unchanged. BUILD remains PASS for bounded T0–T5;
-TEST is PAUSED pending implementation of this reviewed correction and two accepted reruns.
+hash, containment and later-gate invariants remain unchanged. At that correction point BUILD
+remained PASS for bounded T0–T5 and TEST was PAUSED pending implementation and two accepted reruns;
+§18.7 records their later completion.
 
 ### 18.7 M11 current-main integration boundary
 
