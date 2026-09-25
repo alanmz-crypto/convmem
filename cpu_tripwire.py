@@ -1,10 +1,11 @@
 """Per-CPU crash tripwire: this boot's native faults, attributed to CPUs (read-only).
 
 Background (Arc Poison Pill, 2026-09-24): the "Chroma upsert heap corruption" crashes
-were a defective CPU core, not Chroma. They concentrated on CPU 8 of an i7-13700K
-(Raptor Lake Vmin shift), which is now kept offline together with its sibling CPU 9.
-A degrading part rarely fails on one core forever, so this check alerts on *any*
-native fault this boot, and on a known-bad CPU coming back online.
+were defective CPU cores, not Chroma: an i7-13700K with Raptor Lake Vmin shift.
+CPU 8 failed first; CPU 4 failed the next morning once CPU 8 was offline. Both
+favoured cores are now kept offline with their sibling threads (CPUs 4, 5, 8, 9).
+Degradation spreads, so this check alerts on *any* native fault this boot, and on
+a known-bad CPU coming back online.
 
 Signals, all readable without root:
 
