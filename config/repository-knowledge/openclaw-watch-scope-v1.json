@@ -8101,7 +8101,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
-      "sha256": "52969211dc4b01c324443c9d5cbfe69086567c391d7d0be1b6b07f2ab1497b16",
+      "sha256": "634937c93719b0e3bf223c714210d1f52d4cfe9a65fd02463510d454ee34de0d",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
