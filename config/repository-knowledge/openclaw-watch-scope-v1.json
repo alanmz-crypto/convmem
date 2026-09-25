@@ -1642,6 +1642,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/archive/inter-model/OPENCLAW-CONVMEM-FINAL-PROMPT-SUITE-2026-09-21.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/archive/inter-model/README.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2553,6 +2558,11 @@
     },
     {
       "path": "docs/inter-model/MERGED-GAP-ANALYSIS-2026-06-25.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/OPENCLAW-CONVMEM-FINAL-PROMPT-SUITE-DRAFT.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
