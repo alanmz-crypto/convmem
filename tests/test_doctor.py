@@ -84,13 +84,16 @@ class DoctorTests(unittest.TestCase):
         # These live gates read real telemetry/files (synthesis_failures.jsonl,
         # index history) and are not part of the decorator mock set above. Mock
         # them so `all(c.ok)` is hermetic and does not depend on the machine's
-        # rolling 7-day telemetry window (which can legitimately be non-zero).
+        # rolling 7-day telemetry window (which can legitimately be non-zero)
+        # or on native faults the kernel logged this boot.
         with (
             patch("doctor._check_synthesis_gate", return_value=ok),
             patch("doctor._check_index_gate", return_value=ok),
             patch("doctor._check_arc_staleness", return_value=ok),
             patch("doctor._check_logical_projection", return_value=ok),
             patch("doctor._check_source_reconciliation_freshness", return_value=ok),
+            patch("doctor._check_cpu_tripwire", return_value=ok),  # this boot's kernel log
+            patch("doctor._check_chroma_audit", return_value=ok),
         ):
             checks = run_doctor(run_verify=False)
         self.assertTrue(all(c.ok for c in checks))
