@@ -7598,7 +7598,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "9b1c07c5b523e5e343f293dbeaeb696f2470b67ceba9553da7006a43be17a0a3",
+      "sha256": "9623badb59c7994c910ee500375cf2d3e8955e8287b8ea6dc825dc3ea8ebb554",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7615,7 +7615,7 @@
     },
     {
       "path": "chroma_write_store.py",
-      "sha256": "1a2119469bc3e298eb31161cc274396bd7406bc5d3f663e84fe78c96f9afcbf8",
+      "sha256": "c864d43ce887a211b6c0a6cfec3731309509f472762599d0ca389ac1859afcf0",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8703,7 +8703,7 @@
     },
     {
       "path": "tests/test_shadow_writer_coverage_scan.py",
-      "sha256": "d6960f363abc150ee014c7f8930f00ec8ef3bef8f02bda678b15fb1209e8572a",
+      "sha256": "665e2895c22883e0f048138c22f6afa108c91f4ce2e8ded39262d06031ebf6b9",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8720,7 +8720,7 @@
     },
     {
       "path": "tests/test_shadow_writer_gate_c3.py",
-      "sha256": "c346d81633c686f46f85078862e179e46fe0a750a24bfa4aa67e3cc01f57e30d",
+      "sha256": "0089b522d951e4d9c7e9d5229c9ad06418df8ae8ef775912f5547dc9cb9e1420",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8788,7 +8788,7 @@
     },
     {
       "path": "watch.py",
-      "sha256": "ce16bc9630a97be0f624377bbeb7538ce0f2160a9939da67700aa657e89eadda",
+      "sha256": "ff226b0890017175af2664a8d5da49a9a31eca9a9ee750084b6535995a94cb7c",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
