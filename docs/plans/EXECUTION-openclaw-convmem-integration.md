@@ -2,15 +2,14 @@
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS PAUSED AT THE
-FULL-PYTEST DIFFERENTIAL IDENTITY GATE. LIVE-DATA BLOCKED; PROMOTION BLOCKED.** The reviewed-plan
+M8 AUTHORITY-PACKET IDENTITY GATE. LIVE-DATA BLOCKED; PROMOTION BLOCKED.** The reviewed-plan
 correction and fresh M8/MCP evidence are preserved at `9c6421a6891fd8a861a51f4fed410f541b53148c`.
-The remediated candidate `3f8ef8312e3f3c98915320bd1b988bac5d8d96a9` passes the unchanged
-current-main Pylint gate, but repository-wide failures make an unconditional full-pytest PASS
-inapplicable. The first governed differential attempt at `853ef98` correctly paused on unequal
-disposable path bytes and five source-derived R2b identities. This plan-only correction freezes
-identical reset paths and a closed five-node identity disposition; it does not authorize a
-product/test edit, retry, merge or runtime action. Exact-tip review and a new Ryan resume grant are
-required first.
+At candidate `7f2a2e22c74cf9fd87c00982d1ea0ce18fc978af`, the governed full-pytest differential and
+unchanged current-main Pylint gate pass. The first final M8 run correctly refused before fixture
+creation because the frozen packet still names the preceding parent and overlay. This plan-only
+correction freezes exactly two files and four literal replacements, followed by fresh final-source
+evidence; it does not authorize a product/test edit, retry, merge or runtime action. Exact-tip
+review and a new Ryan resume grant are required first.
 BUILD is not complete-integration readiness and does not pass any of those later gates.
 
 **Date:** 2026-09-24
@@ -21,7 +20,8 @@ BUILD is not complete-integration readiness and does not pass any of those later
 §§6.5, 14, 17–18. The preceding runner and node-evidence correction history remains in §§10.3–4.
 Section 10.5 retains the completed reconstruction sequence; §10.6 records the completed
 control-plane correction; §10.7 freezes the Pylint remediation and preserved-tip resume sequence;
-§10.8 freezes the full-pytest differential, identity reconciliation and evidence sequence.
+§10.8 freezes the full-pytest differential, identity reconciliation and evidence sequence; §10.9
+freezes the final M8 authority-packet rebind and final-source evidence sequence.
 Review the two parent files together.
 The retained Astra report reviews the earlier `0f1216f` revision, not this correction:
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -1167,8 +1167,63 @@ baseline, dependency, permission, runtime behavior or T0–T5 semantic contract.
 This plan edit authorizes none of the sequence above. Gate D/W/D-V/E/F, real OpenClaw, watch
 activation, live data, merge, deployment and promotion remain separately blocked.
 
-**TL;DR:** [Arc ConvMem Switchboard] The first governed `9c6421a`-versus-`853ef98` M11
-differential paused on 28 signature mismatches. §10.8 now reruns through one freshly reset fixed
-path layout and permits only a five-node R2b identity-rotation disposition backed by exact
-manifest, Git-byte and digest proof. No retry, product/test edit, real OpenClaw action, merge, live
-data or promotion is authorized by this plan edit.
+### 10.9 M11 final M8 authority-packet reconciliation obligations
+
+The governed §10.8 sequence is complete at clean pushed candidate
+`7f2a2e22c74cf9fd87c00982d1ea0ce18fc978af`. Its differential verdict is
+`PYTEST_DIFFERENTIAL_PASS=true` and `FULL_PYTEST_PASS=false`; both complete runs contain the same
+2,912 nodes and outcomes, and all 238 retained failures/errors have a closed disposition. The
+unchanged current-main Pylint gate also passes. Final M8 run 1 then stopped before fixture creation
+with status 2 because the runner embedded preceding parent `b810fcd7` instead of authorized parent
+`9c5c2bf7`. The runner never reached the runtime. The PAUSE classification is durable and hashes to
+`e217e5607640b5f1985ad57256f7911fc8b409364ecc25c5f98e22c25082105c`; its unchanged runtime
+revalidation retained tree SHA-256
+`74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+
+After Kiro PASS and a new Ryan grant, execute only this held sequence:
+
+1. Prove the implementation branch is clean, pushed and exactly at `7f2a2e2`. Apply every commit
+   in the complete reviewed linear plan range after
+   `b1b2341a4f98701f5784631f866c5405174c7414` through the final overlay named in the grant, oldest
+   to newest. Do not merge, rebase, squash, edit, skip, reorder, resolve a conflict, create an empty
+   commit or recreate the branch. Push and stop.
+2. Codex verifies that the four final planning-document blobs and modes equal the reviewed overlay,
+   every non-plan byte equals `7f2a2e2`, the prior PAUSE artifact/hash exists, and the runtime
+   inventory is unchanged. Only a commit-specific `CONTINUE` may release the source correction.
+3. Change only four 40-hex literals in exactly two files:
+   - in `tests/fixtures/openclaw_strict/constants.py`, set `SEMANTIC_PARENT_SHA` to the grant-named
+     semantic parent and `M11_REVIEWED_OVERLAY_SHA` to the grant-named final overlay;
+   - in `tests/test_openclaw_strict_packet_contract.py`, set only the corresponding two expected
+     literals in `test_plan_and_baseline_constants_frozen` to those same values.
+   Do not change formatting, names, logic or any other byte. Commit, push and stop.
+4. Codex independently proves the correction diff has exactly those two paths and four literal
+   substitutions; the four reviewed document blobs remain exact; all other non-plan bytes equal
+   `7f2a2e2`; `CODE_BASELINE_SHA`, `M11_CONTROL_PLANE_INPUTS`, runtime hash, allowlists, selectors,
+   four deselections, dependencies, permissions, node IDs and outcomes are unchanged. Any extra
+   byte or path is `PAUSE`.
+5. Rebind, but do not alter, the same qualified runtime under the grant-named parent path. Recreate
+   the same fixed disposable execution slot and durable evidence destination. Independently verify
+   the complete runtime inventory and tree hash before execution.
+6. Because the source tree changed, repeat §10.8's complete
+   `9c6421a6891fd8a861a51f4fed410f541b53148c`-versus-final-candidate differential in the identical
+   environment and fixed paths, including every symmetric mismatch rerun and the exact five-node
+   R2b proof. Historical `7f2a2e2` evidence is retained but does not substitute for this run.
+7. If and only if `PYTEST_DIFFERENTIAL_PASS` is re-established, rerun the unchanged current-main
+   Pylint gate. Then run M8 twice from separate fresh roots with `--plan-sha` equal to the new
+   semantic parent and the unchanged selectors/counts, followed by the same seven legacy MCP
+   regression files. No OpenClaw process may run.
+8. Preserve raw output, JUnit, canonical comparison, mismatch reruns, R2b proof, Pylint result,
+   both M8 runs, MCP outputs, source/component/runtime inventories and staging-to-durable hash
+   mappings. Stop for Kiro exact-tip conformance review. Ryan alone decides merge readiness.
+
+The prior M8 refusal stays `PAUSE`; it is never rewritten as a failed test or passing run. A new
+differential mismatch, changed R2b manifest, Pylint regression, M8 node/count/outcome deviation,
+MCP failure, runtime mutation, required source edit or evidence asymmetry is `PAUSE`. This section
+changes no schema, algorithm, tool surface, authority, permission, dependency, selector or T0–T5
+behavior. It authorizes no implementation or evidence execution by itself.
+
+**TL;DR:** [Arc ConvMem Switchboard] At `7f2a2e2` the governed differential and unchanged Pylint
+gate pass, but M8 correctly refused before fixture creation on stale embedded parent/overlay
+identities. §10.9 permits only a Kiro-reviewed, Ryan-granted two-file/four-literal rebind followed
+by fresh differential, Pylint, two-run M8 and seven-file MCP evidence. No implementation, retry,
+real OpenClaw action, merge, live data or promotion is authorized by this plan edit.
