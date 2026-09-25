@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Iterator, Literal, Mapping
 
 from chroma_store import ChromaStore
+from chroma_write_guard import ChromaWriteGuard, write_guard_enabled
 import config as config_mod
 from shadow_ledger import (
     SinkInjectionDecision,
@@ -657,12 +658,18 @@ def open_chroma_for_write(
                 health_path=settings.health_path,
             )
 
+    # Production writes run under the native-write guard (crash containment for the
+    # shared HNSW); ``[index] chroma_write_guard = false`` is the operator off-switch.
+    write_guard = None
+    if purpose == "production" and write_guard_enabled(cfg):
+        write_guard = ChromaWriteGuard(chroma_dir)
     store = ChromaStore(
         str(chroma_dir),
         create_collections=create_collections,
         mutation_sink=sink,
         on_close=on_close,
         require_writer_boundary=purpose == "production",
+        write_guard=write_guard,
     )
     return store, decision
 

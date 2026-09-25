@@ -316,6 +316,31 @@ def log_native_crash(path: str, message: str, *, log_path: Path | None = None) -
         f.write(json.dumps(entry) + "\n")
 
 
+def recover_chroma_after_abrupt_exit(cfg: dict | None = None) -> list[dict]:
+    """Restore any HNSW save an abruptly killed index child left torn.
+
+    The next guarded writer would do this anyway; doing it now shortens the window
+    in which readers could load the torn files. Never raises into the watch loop.
+    """
+    try:
+        from chroma_write_guard import recover, write_guard_enabled
+        from config import load_config
+
+        live_cfg = cfg if cfg is not None else load_config()
+        if not write_guard_enabled(live_cfg):
+            return []
+        events = recover(live_cfg["index"]["chroma_dir"], lock_timeout_seconds=30.0)
+    except Exception as exc:  # noqa: BLE001  pylint: disable=broad-exception-caught  # never stop the watch loop
+        print(f"[watch] chroma write-guard recovery failed: {exc}", file=sys.stderr)
+        return []
+    for event in events:
+        print(
+            f"[watch] chroma write-guard: {event.get('event')} (segment {event.get('segment')})",
+            file=sys.stderr,
+        )
+    return events
+
+
 class CircuitBreakerState:
     """Per-path native-fault/timeout quarantine plus a global breaker.
 
@@ -557,10 +582,14 @@ def _record_ready_path_failure(
     from repository_knowledge_sync import is_reconcile_token
 
     message = str(exc)
+    returncode = parse_native_fault_returncode(message)
+    timeout = is_timeout_message(message)
+    if timeout or (returncode is not None and returncode < 0):
+        # Any abrupt death -- native fault, OOM kill, our own timeout teardown -- can
+        # land inside an HNSW save.
+        recover_chroma_after_abrupt_exit()
     if not is_reconcile_token(path):
-        returncode = parse_native_fault_returncode(message)
         native_fault = is_native_fault_returncode(returncode)
-        timeout = is_timeout_message(message)
         if native_fault or timeout:
             quarantined = breaker.record_failure(path, native_fault=native_fault, timeout=timeout)
             if native_fault:
