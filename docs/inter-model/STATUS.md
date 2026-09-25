@@ -47,6 +47,7 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
+| ConvMem Switchboard (routing snapshot 2026-09-24) | Historical M0–M8 accepted at `8010fb0`; M11 integration preserved at `9c6421a`, with merge readiness held at the current-main Pylint gate in the existing supervisor packet. | Resume through the active Codex supervisor and [Switchboard STATUS](../plans/STATUS-openclaw-convmem-integration.md), which links the exact `b55de5b` remediation packet: Kiro review, then Ryan's exact resume decision if not already superseded by newer applicable evidence. Do not rerun the retired planning cycle or reset to M3. This routing update does not grant, pause or expand implementation; live-data and promotion stay separate. |
 | Codex — Kiro JSONL incremental production integration | The default-off coordinator and live-safe canary runtime are on `main` through PR #301 (`8983a6fc…`), whose final tree received a post-merge Kiro PASS. A fresh 68-message source-freeze packet at `27518aa…` received Kiro PASS but issued no executable grant or digest. | P2 grant progression is paused on issue #268's shared watch-child OOM. PRs #302/#303/#305 removed three demonstrated allocators; the §9.7 end-to-end memory comparison is pending. No Claude re-review, live Gate 0/P2, replacement grant/digest, indexing, providers, config change, watcher action, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
@@ -94,6 +95,7 @@ gated.
 
 ## Canonical pointers
 
+- [ConvMem Switchboard STATUS](../plans/STATUS-openclaw-convmem-integration.md)
 - [Cross-arc rollup](STATUS.md) (this file)
 - [Latest session handoff](LATEST.md)
 - [JudgeBench STATUS](../plans/STATUS-judgebench.md)

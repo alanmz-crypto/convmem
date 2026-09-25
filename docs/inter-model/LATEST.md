@@ -9,6 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
+  held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
+  preserves integration tip `9c6421a` and routes its 44-path remediation to
+  exact-tip Kiro review, then a new Ryan resume decision. Start with
+  [`STATUS-openclaw-convmem-integration.md`](../plans/STATUS-openclaw-convmem-integration.md)
+  for the exact published packet and owner. The active Codex supervisor must
+  reconcile any newer review/grant/checkpoint before choosing work; this is not
+  a new hold, acceptance verdict or authorization. The old final-review prompt
+  is retired: do not restart Astra/Kiro on `cd9d269`, M3, or runtime setup.
+  This documentation cleanup is not a prerequisite for Switchboard's existing
+  workflow and does not authorize code, tests, runtime changes, merge or live use.
 - **Arc Poison Pill — Part B write guard `READY_FOR_PR`, Part C says platform (Claude, 2026-09-24):**
   branch `fix/2026-09-24-chroma-upsert-containment` (pushed; no PR yet). Every production Chroma
   write now runs under a crash-containment guard: one native write at a time, stale in-process
