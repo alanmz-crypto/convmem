@@ -1249,7 +1249,9 @@ After Kiro PASS and a new Ryan grant, execute only this held sequence:
    an empty commit or recreate the branch. Push and stop.
 2. Codex verifies that the four final planning-document blobs and modes equal the reviewed overlay,
    every non-plan byte equals `d7b1592`, the PAUSE classification/evidence exists, and the runtime
-   inventory is unchanged. Only a commit-specific `CONTINUE` may release the source correction.
+   inventory is unchanged. It also proves the old invented literal occurs exactly once in the
+   candidate, at the permitted publisher check, and nowhere in schemas or tests. Only a commit-
+   specific `CONTINUE` may release the source correction.
 3. In exactly `strict_projection_publisher.py`, replace only
    `convmem.strict-fixture-work.bundle.v2` with `convmem.strict-fixture-bundle.v2`. Do not change
    formatting, control flow, errors, tests or any other byte. Commit, push and stop.
