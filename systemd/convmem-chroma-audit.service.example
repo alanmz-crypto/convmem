@@ -1,0 +1,20 @@
+# User systemd oneshot — copy to ~/.config/systemd/user/convmem-chroma-audit.service
+#
+# Triggered daily by convmem-chroma-audit.timer. Read-only on the Chroma store: it
+# validates every HNSW segment and counts vectors lost from the index, holding the
+# write-guard lock for well under a second so no save is read half-written. The
+# result lands in ~/.local/share/convmem/chroma.write-guard/audit.json, which
+# `convmem doctor` reports as chroma_audit. Exit 1 (unit failed) on a finding.
+#
+# Paths assume the production runtime checkout (.worktrees/runtime-main).
+#   systemctl --user start convmem-chroma-audit
+#   journalctl --user -u convmem-chroma-audit -n 20
+
+[Unit]
+Description=convmem daily Chroma silent-loss audit (read-only)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Projects/convmem/.worktrees/runtime-main
+ExecStart=%h/miniforge3/envs/convmem/bin/python3.11 %h/Projects/convmem/.worktrees/runtime-main/scripts/chroma_guard.py audit
+Nice=10
