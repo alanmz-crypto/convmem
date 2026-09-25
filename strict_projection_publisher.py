@@ -1073,7 +1073,7 @@ def _plock_publish_projection_locked_p0(work: SimpleNamespace) -> dict[str, Any]
         work.bundle = _read_json(Path(work.bundle_path))
     if not isinstance(work.bundle, Mapping):
         raise StrictPublisherError("bundle_type")
-    if work.bundle.get("schema") != "convmem.strict-fixture-work.bundle.v2":
+    if work.bundle.get("schema") != "convmem.strict-fixture-bundle.v2":
         raise StrictPublisherError("bundle_schema")
     if set(work.bundle) != (
         {
