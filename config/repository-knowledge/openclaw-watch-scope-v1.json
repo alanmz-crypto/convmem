@@ -392,6 +392,11 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "chroma_write_guard.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "chroma_write_store.py",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -1882,6 +1887,21 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CLAUDE-2026-09-23-switchboard-transition-readiness-review.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2030,6 +2050,11 @@
       "path": "docs/inter-model/CODEX-2026-09-21-openclaw-watch-coverage-execute.md",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/inter-model/CODEX-2026-09-23-switchboard-claude-adversarial-review-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "docs/inter-model/CODEX-REVIEW-FINDINGS-2026-07-07.md",
@@ -5447,6 +5472,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "scripts/chroma_guard.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "scripts/chroma_orphan_inventory.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5987,6 +6017,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/_chroma_write_guard_worker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/ci-critical-invariants.txt",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6378,6 +6413,11 @@
     },
     {
       "path": "tests/test_chroma_superseded.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_chroma_write_guard.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
