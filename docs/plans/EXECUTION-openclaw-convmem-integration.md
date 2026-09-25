@@ -30,8 +30,8 @@ The retained Astra report reviews the earlier `0f1216f` revision, not this corre
 `d3d330b6195263e86f0c648f446ca9b4dbbf648983ee2ec2ad9aeacc7cc2026a`.
 It found B-FIXTURE and B-DIGEST, corrected by `2aa66a8`. Section 10.3 records the later runner
 closure/suite repairs; §10.4 records the completed M8 evidence correction. This edit addresses
-only the observed M11 full-pytest applicability hold in §10.8; the fixture, manager and five
-component sets remain frozen.
+only the observed single-literal M11 bundle-schema hold in §10.10; the fixture schema, tests,
+manager and five component sets remain frozen.
 
 **Baselines:** Original accepted code baseline
 `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; accepted bounded implementation
