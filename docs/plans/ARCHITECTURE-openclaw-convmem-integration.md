@@ -1,17 +1,18 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
-implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS: PAUSED AT THE
-M8 AUTHORITY-PACKET IDENTITY GATE. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The reviewed-plan
-correction, two fresh M8 runs and seven legacy MCP regressions are preserved at
+implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS: PAUSED AT A
+SINGLE PRODUCTION BUNDLE-SCHEMA LITERAL. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The
+reviewed-plan correction, two fresh M8 runs and seven legacy MCP regressions are preserved at
 `9c6421a6891fd8a861a51f4fed410f541b53148c`. The 44-path remediation is clean and pushed at
 `3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`. At current candidate
-`7f2a2e22c74cf9fd87c00982d1ea0ce18fc978af`, the fail-closed full-pytest differential and the
-unchanged current-main Pylint gate pass. The first final M8 run then correctly refused before
-fixture creation because its frozen packet still named the preceding semantic parent and reviewed
-overlay. Sections 18.9–10 remain authoritative for lint and pytest evidence; §18.11 freezes only
-the exact two-file authority-identity rebind required before final evidence can resume. It
-authorizes no implementation or retry.
+`d7b15926ab7e4e41b8a80edba5edbe4bfed4c165`, the fail-closed full-pytest differential and the
+unchanged current-main Pylint gate pass. Final M8 run 1 reached the strict suite and exposed one
+production check for the invented schema identifier `convmem.strict-fixture-work.bundle.v2`;
+the frozen schema and all fixture/test producers use `convmem.strict-fixture-bundle.v2`. Sections
+18.9–11 remain authoritative for prior lint, pytest and authority-packet evidence; §18.12 freezes
+only the exact one-file/one-literal production correction required before final evidence can
+resume. It authorizes no implementation or retry.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
@@ -25,12 +26,14 @@ This planning edit authorizes no implementation, runtime start, configuration ch
 §18.8 reviewed-plan correction, then directed Codex to choose and plan the least-haunting response
 to the observed Pylint hold: remediate the debt without raising a baseline or weakening the gate.
 After that remediation passed the real Pylint gate, Ryan authorized the plan-only applicability
-correction and the differential identity reconciliation. Codex completed that evidence and then
-paused on the final M8 packet mismatch; Ryan authorized this plan-only authority-identity
-reconciliation. Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9
-defines the exact lint-remediation boundary; §18.10 defines the candidate-versus-pre-remediation
-pytest and identity rules; §18.11 defines the exact M8 packet rebind and fresh final-evidence
-sequence. Kiro owns the required exact-tip design review; Ryan
+correction and the differential identity reconciliation. Codex completed that evidence, corrected
+the final M8 packet under a separately reviewed grant, and then paused when the first governed M8
+run exposed the single bundle-schema literal drift. Ryan authorized this plan-only reconciliation.
+Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9 defines the exact
+lint-remediation boundary; §18.10 defines the candidate-versus-pre-remediation pytest and identity
+rules; §18.11 records the completed M8 packet rebind; §18.12 freezes the exact one-literal
+production correction and fresh final-evidence sequence. Kiro owns the required exact-tip design
+review; Ryan
 owns any later implementation, test, merge or promotion grant. No
 complete-integration readiness is claimed.
 
@@ -69,8 +72,8 @@ only; it proves neither OpenClaw compatibility nor host containment.
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
 Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay,
 current-main baseline, pre-remediation comparison tip, current M8-paused candidate and branch,
-frozen runtime, durable evidence destination, exact two-file/four-literal packet rebind and final
-differential/Pylint/M8/MCP authority. Known deferred issues do not authorize Grok to redesign
+frozen runtime, durable evidence destination, exact one-file/one-literal bundle-schema correction
+and final differential/Pylint/M8/MCP authority. Known deferred issues do not authorize Grok to redesign
 the architecture or reinterpret a Pylint finding. These are BUILD-readiness statements, not an
 Execute grant.
 
@@ -4663,6 +4666,82 @@ and its hash, exact two-file/four-literal correction, and complete final-evidenc
 previous grant may be reused. Merge, deployment, real OpenClaw, Gate D/W/D-V/E/F, watch
 activation, live data and promotion remain independently blocked.
 
+### 18.12 M11 bundle-schema literal drift reconciliation
+
+**Observed held checkpoint.** Kiro passed the §18.11 plan and Ryan granted its exact application,
+two-file/four-literal authority-packet correction and Codex-owned evidence sequence. The resulting
+clean pushed candidate is `d7b15926ab7e4e41b8a80edba5edbe4bfed4c165`; its four reviewed
+planning-document blobs equal overlay `57285608b2ee9ec5950201968bc533b8830a6ea8`. The fresh
+`9c6421a`-versus-candidate comparison again collected identical 2,912-node sets and outcomes at
+both tips: 2,612 passed, 173 failed, 62 skipped and 65 errors. All 238 retained failure/error nodes
+remain closed as 233 identical repository-debt nodes plus the five §18.10 R2b identity rotations.
+The verdict remains `PYTEST_DIFFERENTIAL_PASS=true` and `FULL_PYTEST_PASS=false`; its canonical
+verdict SHA-256 is `0e70c867e89d9b2bafb72e21749b2f3a6f460b28f4328162e9e29d3a8d79058a`.
+The unchanged current-main Pylint regression gate also passes with 458 findings and no new or
+increased fingerprint; its result SHA-256 is
+`fae5e508e7db97c36e98d8a8b1d7652b1ff17c32c1a20cfa157ddb422afc9853`.
+
+Final M8 run 1 then entered the unchanged isolated runner and completed all three frozen command
+groups with process status 2: 210 strict tests passed and 28 strict tests failed, while all 29 Node
+tests passed and the legacy group produced 115 passes, one skip and four deselections. Every strict
+failure collapsed at the same production boundary to `StrictPublisherError("bundle_schema")`.
+The canonical fixture schema, its JSON Schema, every fixture producer and the publisher's earlier
+input classifier use `convmem.strict-fixture-bundle.v2`; only
+`strict_projection_publisher.py`'s later validation check uses the invented
+`convmem.strict-fixture-work.bundle.v2`. The durable PAUSE classification SHA-256 is
+`c25ece6380d0b1cf4989a010419307dfdc29c2ecc31b9c4dd47faaee23b89148`; the independent
+schema-drift proof SHA-256 is
+`50a82638e4265c910dcdf7422d193bb6178ff29c51e175dd05fa1949cc4713d5`. Runtime post-run
+revalidation remained byte/mode-identical at tree SHA-256
+`74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`; its record hashes to
+`d457b6150543310cec6a63dedb4699f21269a666af7ba17623bbf0bc321ed5e5`. M8 run 2 and the seven
+legacy MCP regressions did not run.
+
+**Cause and bounded correction.** This is a production validation typo, not a schema ambiguity or
+test expectation problem. After exact-tip Kiro PASS and a new Ryan grant, the only product
+correction permitted is this exact replacement in `strict_projection_publisher.py`:
+
+```text
+convmem.strict-fixture-work.bundle.v2
+→ convmem.strict-fixture-bundle.v2
+```
+
+No other byte or path may change. No test edit is authorized: the existing M8 tests are the
+regression harness and must turn green without adjustment. Schema files, fixture producers,
+publisher control flow, exceptions, CLI behavior, selectors, four deselections, dependencies,
+permissions, T0–T5 semantics, test node IDs and expected outcomes remain unchanged. Source and
+component hashes may change only as the deterministic consequence of this literal replacement;
+their algorithms and member sets remain unchanged.
+
+**Preserved-branch application order.** This plan branch starts at reviewed overlay
+`57285608b2ee9ec5950201968bc533b8830a6ea8`. Kiro reviews the final milestone overlay and Ryan's
+later grant names that exact overlay plus its semantic parent. Grok applies every commit in the
+complete reviewed linear range after `57285608` through the grant-named final overlay, oldest to
+newest, onto preserved clean pushed candidate `d7b15926ab7e4e41b8a80edba5edbe4bfed4c165`, then
+pushes and stops. A merge, gap, reorder, squash, edit, conflict resolution, empty commit, branch
+recreation, history rewrite or non-plan change is `PAUSE`. Codex must prove the four final planning
+document blobs equal the reviewed overlay and every non-plan byte equals `d7b1592` before a
+commit-specific `CONTINUE` may authorize the literal correction. Grok then makes only the exact
+replacement above, commits, pushes and stops; Codex proves the diff is one path and one literal.
+
+**Fresh final-source evidence.** Evidence at `d7b1592` remains valid historical evidence for those
+exact bytes but is not transferred to the corrected source tree. Codex therefore repeats §18.10's
+complete `9c6421a`-versus-final-candidate differential in the identical fixed slot and
+CI-compatible environment, including symmetric mismatch reruns and the closed five-node R2b
+proof. It then reruns the unchanged current-main Pylint gate, executes M8 twice from separate
+fresh roots using `--plan-sha` equal to the new semantic parent, runs the same seven legacy MCP
+regression files, verifies the runtime remained unchanged and copies all evidence to the
+grant-named durable root. Any new node/outcome/signature mismatch, authority-manifest drift,
+Pylint regression, M8 count/identity deviation, MCP failure, runtime mutation or required source
+change is `PAUSE`. The failed M8 run remains recorded and is never relabeled as a PASS.
+
+**Authority boundary.** This section authorizes planning only. Kiro must PASS the exact parent and
+overlay, and Ryan must issue a new resume grant naming them, `d7b1592`, the implementation branch,
+baseline `9c6421a`, fixed execution slot, runtime prefix, durable evidence root, PAUSE evidence and
+classification hash, exact one-file/one-literal correction, and complete final-evidence sequence.
+No previous grant may be reused. Merge, deployment, real OpenClaw, Gate D/W/D-V/E/F, watch
+activation, live data and promotion remain independently blocked.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -4684,8 +4763,9 @@ activation, live data and promotion remain independently blocked.
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
 
-**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; at `7f2a2e2` the governed
-full-pytest differential and unchanged Pylint gate pass, but M8 correctly refused before fixture
-creation because its frozen parent/overlay literals are stale. §18.11 permits only a reviewed,
-Ryan-granted two-file/four-literal authority-packet rebind followed by fresh differential, Pylint,
-two-run M8 and seven-file MCP evidence. Real OpenClaw, live data, merge and promotion remain blocked.
+**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; at `d7b1592` the governed
+full-pytest differential and unchanged Pylint gate pass, but final M8 run 1 found one production
+check using an invented bundle-schema identifier and stopped with 28 strict failures. §18.12
+permits only a reviewed, Ryan-granted one-file/one-literal correction followed by fresh
+differential, Pylint, two-run M8 and seven-file MCP evidence. Real OpenClaw, live data, merge and
+promotion remain blocked.
