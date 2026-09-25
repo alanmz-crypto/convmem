@@ -13,13 +13,13 @@ no hardware.
 
 | Field | Value |
 |-------|--------|
-| **State** | `READY_FOR_PR` |
+| **State** | `MERGED` — PR #338 squash-merged as `d521281`; watcher deployed 2026-09-24 (runtime-main fast-forwarded, restore points created) |
 | **Branch** | `fix/2026-09-24-chroma-upsert-containment` (worktree `~/.local/share/convmem/worktrees/fix-2026-09-24-chroma-upsert-containment`) |
 | **Tip SHA** | see `git log -1 origin/fix/2026-09-24-chroma-upsert-containment` (implementation commit `bca3d12`) |
 | **Push status** | pushed to origin |
-| **PR** | not opened (Ryan opens and owns the merge) |
+| **PR** | [#338](https://github.com/alanmz-crypto/convmem/pull/338), merged |
 | **Ryan GATE** | 1) choose a review lane (recommend Kiro design review and/or Copilot safety audit: this guards the shared writer path); 2) merge; 3) deploy = fast-forward `.worktrees/runtime-main`, then restart `convmem-watch`; 4) move the *other* writers onto merged code (see Deploying: refine, reconcile, monitor, the CLI and the MCP servers run `~/Projects/convmem`, not `runtime-main`) |
-| **Production impact today** | none. The watcher runs from `.worktrees/runtime-main` (`main`), and nothing here was deployed |
+| **Production impact** | the watcher runs the guard. Refine, reconcile, monitor, the CLI and the MCP servers do not yet (they run `~/Projects/convmem`) |
 
 ---
 
@@ -32,9 +32,12 @@ now runs each native mutation (`upsert`/`update`/`delete`) inside `ChromaWriteGu
 1. **One native write at a time across processes.** An exclusive `flock` on
    `<chroma_dir>.write-guard/native-write.lock`, held per call rather than per session, so long refine jobs don't
    block the watcher. It sits inside the existing shared writer lease, so backup captures behave as before.
-2. **No saves from a stale in-process index.** If another process saved since this process's Chroma
-   system loaded, the client is reloaded before writing. If another client in the same process pins the stale
-   system, the write is refused (`ChromaStaleSystemError`) rather than silently losing data.
+2. **No saves from a stale in-process index.** If another process *synced* a segment since this process's
+   Chroma system loaded, the client is reloaded before writing. If another client in the same process pins the
+   stale system, the write is refused (`ChromaStaleSystemError`) rather than silently losing data. Only synced
+   segments count. Chroma purges its log only at a sync, so a system that loaded before an unsynced change still
+   replays every record. This process's own saves, including those made through unguarded stores that share its
+   system, are recorded as seen.
 3. **A validated copy of each segment's last save** (`<chroma_dir>.write-guard/snapshots/<segment>/`). It is refreshed
    after every save through an atomic generation plus a `CURRENT` pointer.
 4. **Restore only when torn.** Before any write, a live segment whose files changed since the restore point is
@@ -95,6 +98,13 @@ hypothesis was refuted. I did not re-run those experiments. The cheap decisive e
 - **No newer Chroma exists.** 1.5.9 (2026-05-05) is the latest release on PyPI, so there is no version bump to propose.
   The two software hazards found (E2, E4) are Chroma local-mode design assumptions, not a crash bug, and the guard handles them.
 
+**Per-core probe (2026-09-24 20:28–20:52, Ryan's go, convmem-watch stopped).** Verified compute (decompression,
+hashing, pure-Python arithmetic, matmul) pinned to one CPU in alternating 4-minute blocks, 12 minutes per core at
+matched clocks (average 5.22 GHz on CPU 8, 5.21 GHz on CPU 2). **CPU 8: 2 SIGSEGV crashes and 1 silent wrong result.
+CPU 2: none.** The crash signatures (`ip 0`, `ip 9`, "likely on CPU 8") match the production crashes. CPU 4 also has
+4 recorded faults, 1 of them on the fixed-BIOS boot, and has not been probed yet. The probe script lives in
+`~/.cache/arc-poison-pill/cpu-probe-2026-09-24/`.
+
 **Recommendation.** Treat the recurrence as platform, pointing at the CPU (a favoured core) more than the DIMMs.
 The arc's own tripwire routes that to Ryan's platform path: two-DIMM test, then an Intel RMA under the extended warranty.
 The CPU concentration suggests going straight to the CPU question. **Stop rule met:** the #337 bounded stop
@@ -113,10 +123,10 @@ deterministic writer loop pinned with `taskset -c 8` and then `taskset -c 2`, an
 | Simulated native crash mid-write (`test_native_crash_mid_write_leaves_the_shared_index_clean`, SIGKILL: same on-disk effect as a segfault, no core dump) | recovery → structural PASS, census 0 lost, writes resume |
 | Deterministic torn save → next guarded write restores (`test_torn_save_is_restored_…`) | restored, 251/251 vectors present |
 | Stale writer regression (`test_stale_writer_and_a_newer_save_…`) | guarded: 0 lost. Unguarded control: loss reproduced |
-| New guard suite (17 tests) | 20 consecutive full-file runs: 19 green. The one failure was the 16:44 platform segfault of the test worker process, not a guard defect |
+| New guard suite (19 tests) | 20 consecutive full-file runs: 19 green. The one failure was the 16:44 platform segfault of the test worker process, not a guard defect |
 | Gate suites (R2b coverage/authority, shadow-writer scans, read-path inventory, canary pins, watch, doctor, circuit breaker) | 387 passed, 2 skipped |
 | Normal small transcript, end to end, local models only, isolated `HOME` (no live paths, no provider calls) | `files_processed=1 chunks_indexed=1 units_indexed=1` in 23 s. Restore points created, validator PASS, census 0 lost |
-| Full hermetic suite (`GITHUB_ACTIONS=true`, CI-style config) | see the PR description and the Track A transcript for the final count |
+| Full hermetic suite (`GITHUB_ACTIONS=true`, CI-style config) | tip `0504d0f`: 3 guard false positives (a process's own unguarded save; a child touching only never-synced segments), fixed in `db045dd` with two regression tests. Tip `db045dd`: 2,681 passed, 0 failed. GitHub CI green |
 | Ruff | clean on new files; no new findings in modified files versus `main` |
 | Pylint regression gate (`scripts/pylint_regression_gate.py compare`) | PASS: no new or increased findings |
 

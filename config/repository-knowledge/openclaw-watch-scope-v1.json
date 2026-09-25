@@ -392,6 +392,11 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "chroma_write_guard.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "chroma_write_store.py",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -1637,6 +1642,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/archive/inter-model/OPENCLAW-CONVMEM-FINAL-PROMPT-SUITE-2026-09-21.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/archive/inter-model/README.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -1882,6 +1892,21 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-09-23-poison-pill-circuit-breaker-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CLAUDE-2026-09-23-switchboard-transition-readiness-review.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CLAUDE-2026-09-24-decision-review-guardrails-kiro-review-handoff.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2030,6 +2055,11 @@
       "path": "docs/inter-model/CODEX-2026-09-21-openclaw-watch-coverage-execute.md",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/inter-model/CODEX-2026-09-23-switchboard-claude-adversarial-review-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "docs/inter-model/CODEX-REVIEW-FINDINGS-2026-07-07.md",
@@ -2528,6 +2558,11 @@
     },
     {
       "path": "docs/inter-model/MERGED-GAP-ANALYSIS-2026-06-25.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/OPENCLAW-CONVMEM-FINAL-PROMPT-SUITE-DRAFT.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -5447,6 +5482,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "scripts/chroma_guard.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "scripts/chroma_orphan_inventory.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5987,6 +6027,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/_chroma_write_guard_worker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/ci-critical-invariants.txt",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6378,6 +6423,11 @@
     },
     {
       "path": "tests/test_chroma_superseded.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_chroma_write_guard.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -7558,7 +7608,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "9b1c07c5b523e5e343f293dbeaeb696f2470b67ceba9553da7006a43be17a0a3",
+      "sha256": "9623badb59c7994c910ee500375cf2d3e8955e8287b8ea6dc825dc3ea8ebb554",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7575,7 +7625,7 @@
     },
     {
       "path": "chroma_write_store.py",
-      "sha256": "1a2119469bc3e298eb31161cc274396bd7406bc5d3f663e84fe78c96f9afcbf8",
+      "sha256": "c864d43ce887a211b6c0a6cfec3731309509f472762599d0ca389ac1859afcf0",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8051,7 +8101,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
-      "sha256": "52969211dc4b01c324443c9d5cbfe69086567c391d7d0be1b6b07f2ab1497b16",
+      "sha256": "634937c93719b0e3bf223c714210d1f52d4cfe9a65fd02463510d454ee34de0d",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8663,7 +8713,7 @@
     },
     {
       "path": "tests/test_shadow_writer_coverage_scan.py",
-      "sha256": "d6960f363abc150ee014c7f8930f00ec8ef3bef8f02bda678b15fb1209e8572a",
+      "sha256": "665e2895c22883e0f048138c22f6afa108c91f4ce2e8ded39262d06031ebf6b9",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8680,7 +8730,7 @@
     },
     {
       "path": "tests/test_shadow_writer_gate_c3.py",
-      "sha256": "c346d81633c686f46f85078862e179e46fe0a750a24bfa4aa67e3cc01f57e30d",
+      "sha256": "0089b522d951e4d9c7e9d5229c9ad06418df8ae8ef775912f5547dc9cb9e1420",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8748,7 +8798,7 @@
     },
     {
       "path": "watch.py",
-      "sha256": "ce16bc9630a97be0f624377bbeb7538ce0f2160a9939da67700aa657e89eadda",
+      "sha256": "ff226b0890017175af2664a8d5da49a9a31eca9a9ee750084b6535995a94cb7c",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
