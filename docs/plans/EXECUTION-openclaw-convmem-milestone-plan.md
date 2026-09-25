@@ -15,7 +15,7 @@ Product/test/CI/runtime edits, test retry, merge and real OpenClaw work are paus
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=2356db126c71dcf133e2fcedf532187856458948
+SEMANTIC_PARENT_SHA=b46a16a3cdc928e98fba83cd64b17439d1734695
 ORIGINAL_CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
 ACCEPTED_IMPLEMENTATION_SHA=8010fb060c2edc29e1b09d7a30b1a1da2689d489
 INTEGRATION_BASELINE_SHA=9193f5ec744f059d07a20612489b210527b5660a
@@ -40,9 +40,9 @@ M8_PAUSE_EVIDENCE=/home/lauer/.local/share/convmem-openclaw-evidence/9c5c2bf7d3c
 BUNDLE_SCHEMA_PAUSE_CLASSIFICATION_SHA256=c25ece6380d0b1cf4989a010419307dfdc29c2ecc31b9c4dd47faaee23b89148
 BUNDLE_SCHEMA_DRIFT_SHA256=50a82638e4265c910dcdf7422d193bb6178ff29c51e175dd05fa1949cc4713d5
 BUNDLE_SCHEMA_PAUSE_EVIDENCE=/home/lauer/.local/share/convmem-openclaw-evidence/48c9ce01bf557ff95fd82b84c3b0ab2e7e9f18cb/9193f5ec744f059d07a20612489b210527b5660a/runs/d7b15926ab7e4e41b8a80edba5edbe4bfed4c165/m11-m8-run1-final
-PROPOSED_FIXED_EXECUTION_SLOT=/home/lauer/.cache/convmem-m11-bundle-schema/2356db126c71dcf133e2fcedf532187856458948/slot
-PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/2356db126c71dcf133e2fcedf532187856458948/9193f5ec744f059d07a20612489b210527b5660a
-PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/2356db126c71dcf133e2fcedf532187856458948/9193f5ec744f059d07a20612489b210527b5660a
+PROPOSED_FIXED_EXECUTION_SLOT=/home/lauer/.cache/convmem-m11-bundle-schema/b46a16a3cdc928e98fba83cd64b17439d1734695/slot
+PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/b46a16a3cdc928e98fba83cd64b17439d1734695/9193f5ec744f059d07a20612489b210527b5660a
+PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/b46a16a3cdc928e98fba83cd64b17439d1734695/9193f5ec744f059d07a20612489b210527b5660a
 ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
 ```
@@ -1083,7 +1083,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `2356db126c71dcf133e2fcedf532187856458948` architecture/execution
+- The exact `b46a16a3cdc928e98fba83cd64b17439d1734695` architecture/execution
   pair is the current semantic source of truth; this overlay only sequences,
   supervises and gates it.
 - M0–M8 passed and were accepted at `8010fb0` on original baseline `7809f20`.
