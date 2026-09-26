@@ -272,14 +272,14 @@ def test_m2_gate_b_and_c_schema_inventory_exact():
     gate_c = [
         _packet_schema_path("convmem-" + short)
         for short in (
-            "openclaw-connector-launch-v2.schema.json|"
-            "openclaw-activation-v2.schema.json|"
-            "activation-control-v1.schema.json|"
-            "activation-retirement-v1.schema.json|"
-            "activation-launch-policy-v1.schema.json|"
-            "activation-manager-policy-v1.schema.json|"
-            "controller-socket-policy-v1.schema.json"
-        ).split("|")
+            "openclaw-connector-launch-v2.schema.json",
+            "openclaw-activation-v2.schema.json",
+            "activation-control-v1.schema.json",
+            "activation-retirement-v1.schema.json",
+            "activation-launch-policy-v1.schema.json",
+            "activation-manager-policy-v1.schema.json",
+            "controller-socket-policy-v1.schema.json",
+        )
     ]
     assert len(gate_b) == 24
     assert len(gate_c) == 7
