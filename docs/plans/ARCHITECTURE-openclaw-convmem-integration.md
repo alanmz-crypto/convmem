@@ -2,16 +2,18 @@
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
-`cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; MERGE PAUSED ON CURRENT-MAIN DRIFT. LIVE-DATA:
-BLOCKED. PROMOTION: BLOCKED.** The final authority-packet correction, repository-wide differential,
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; CURRENT-MAIN RECONSTRUCTION PRESERVED AT
+`30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca`; MERGE PAUSED ON DIFFERENTIAL APPLICABILITY.
+LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The final authority-packet correction, repository-wide differential,
 unchanged Pylint gate, two fresh M8 runs, seven legacy MCP regressions, durable evidence and Kiro
 exact-tip conformance review passed at `cd60cf19`. That result is bound to integration baseline
 `9193f5ec744f059d07a20612489b210527b5660a`. Before a PR existed, `origin/main` advanced by twelve
 commits to `a92a74eb326b3eaa59087b707de10153c7cc0c63`; Git now reports a real conflict in the governed
 Switchboard STATUS document, and the full tracked source identity no longer matches the tested
-tree. Sections 18.9–18.13 remain the historical evidence contract. Section 18.14 freezes only the
-current-main reconstruction, exact six-literal authority rebind and fresh evidence required before
-merge can be reconsidered. It authorizes no implementation, test, PR or merge.
+tree. Sections 18.9–18.13 remain the historical evidence contract. Section 18.14 freezes the
+completed current-main reconstruction and its first exact-main differential. Section 18.15 records
+that differential's governed PAUSE and replaces only its inapplicable candidate-only-node rule with
+a closed three-tip authority partition. It authorizes no implementation, test, PR or merge.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
@@ -25,12 +27,17 @@ This planning edit authorizes no implementation, runtime start, configuration ch
 the final authority-packet rebind. Candidate `cd60cf19` then satisfied the complete bounded
 merge-readiness evidence sequence and received Kiro exact-tip PASS. Ryan delegated the merge
 decision to Codex; Codex issued `PAUSE` after fetching current main and reproducing the governed
-STATUS conflict. Ryan directed Codex to continue, authorizing this plan-only reconciliation.
+STATUS conflict. Ryan authorized the exact reconstruction and evidence sequence. The reconstruction
+was completed, clean and pushed at `30bc134d`; its complete pytest comparison then issued a second
+governed `PAUSE` because §18.14 treated all 238 Switchboard nodes absent from current main as newly
+required passes even though the preserved reviewed candidate already records their outcomes. Ryan
+authorized this plan-only applicability correction.
 Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9 defines the exact
 lint-remediation boundary; §18.10 defines the candidate-versus-pre-remediation pytest and identity
 rules; §18.11 records the completed earlier M8 packet rebind; §18.12 records the completed
 one-literal production correction; §18.13 records the completed final authority-packet rebind and
-evidence sequence; §18.14 freezes the new current-main reconciliation. Kiro owns the required
+evidence sequence; §18.14 records the completed current-main reconstruction; §18.15 freezes the
+three-tip differential applicability correction. Kiro owns the required
 exact-tip design review; Ryan owns any later implementation, test, PR, merge or promotion grant.
 No complete-integration readiness is claimed.
 
@@ -69,9 +76,9 @@ only; it proves neither OpenClaw compatibility nor host containment.
 
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
 Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay, exact
-current-main baseline, prior reviewed candidate, new implementation branch, frozen runtime,
-durable evidence destination, exact 120-path product transplant, four control-plane blobs, six
-identity substitutions and final differential/Pylint/M8/MCP authority. Known deferred issues do
+current-main baseline, preserved reviewed candidate, reconstructed pause tip, frozen runtime,
+durable evidence destination, reviewed plan-range application, exact four-literal authority rebind
+and final three-tip differential/Pylint/M8/MCP authority. Known deferred issues do
 not authorize Grok to redesign the architecture or reinterpret any test result. These are
 BUILD-readiness statements, not an Execute grant.
 
@@ -4916,6 +4923,114 @@ implementation branch, fixed slot, parent/baseline-bound runtime and durable evi
 counts/digests, exact three-commit reconstruction, six substitutions and full evidence sequence.
 No previous grant, Kiro verdict or `CONTINUE` may be reused.
 
+### 18.15 M11 current-main differential applicability reconciliation
+
+**Observed governed PAUSE.** Ryan authorized §18.14's deterministic reconstruction and evidence
+sequence. The three held commits are clean, pushed and preserved on
+`feat/2026-09-26-openclaw-convmem-m11-main-reconciliation` at
+`30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca` (`H0`). Independent Git-tree checks re-proved exact
+`M/D/C/P` membership, the 120-path product transplant, four reviewed control-plane blobs, six
+identity substitutions and unchanged `origin/main` at
+`a92a74eb326b3eaa59087b707de10153c7cc0c63` (`N`). The qualified runtime remained byte-identical.
+Complete pytest collection and execution then finished at both `N` and `H0`; this was not a crash,
+partial collection or environment asymmetry.
+
+The exact results were:
+
+- `N`: 2,686 nodes — 2,469 passed, 62 skipped, 90 failed and 65 errored;
+- preserved reviewed Switchboard candidate
+  `cd60cf19dca6706e4175e9f82c9ba55e41bca10b` (`R`): 2,912 nodes — 2,612 passed,
+  62 skipped, 173 failed and 65 errored; and
+- `H0`: 2,924 nodes — 2,624 passed, 62 skipped, 173 failed and 65 errored.
+
+Every `N` node exists in `H0`. Exactly 238 `H0` nodes are absent from `N`; all 238 already exist
+in `R`, and their outcomes match `R` exactly: 160 passed and 78 failed, with no skip or error.
+The five common `N`/`H0` outcome rotations are exactly the closed §18.10 R2b nodes. Across the
+2,871 identities common to `R` and `H0`, there is no outcome mismatch. The historical `R` and
+current `H0` runs used different fixed-slot path bytes, so their failure-signature strings are not
+accepted as a cross-run oracle; the comparison must be repeated with all applicable tips in one
+identical slot.
+
+The sealed PAUSE evidence is under
+`/home/lauer/.local/share/convmem-openclaw-evidence/33767acaf563c25e8fbd9984f08316f1ba4b1b27/a92a74eb326b3eaa59087b707de10153c7cc0c63/runs/30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca/m11-current-main-pytest-differential/`.
+Its canonical comparison has SHA-256
+`03873a4d4e368e5b5fd3de86140e3fd9b74525c3e83b966275d556fd9728693b`; its PAUSE ledger has
+SHA-256 `3bd89ebf3dd016d5fc709215862ae491688cb878c3477fbd9f21f3619b2d256e`.
+`CURRENT_MAIN_DIFFERENTIAL_PASS=false` and `FULL_PYTEST_PASS=false`; Pylint, M8 and MCP evidence
+correctly did not run.
+
+**Why §18.14's candidate-only rule is inapplicable.** `N` predates the entire Switchboard test
+surface. Requiring every node absent from `N` to pass or skip makes the ordinary full-repository
+pytest environment, which intentionally lacks the isolated runner's Unicode 15.1 and inner-role
+conditions, retroactively authoritative for 238 already-reviewed Switchboard nodes. That neither
+detects a reconstruction regression nor preserves the earlier honest debt classification. It
+instead guarantees a false PAUSE on 78 known outcomes. The correction does not exclude those
+nodes, change their tests, supply their isolated-runner environment to full pytest or relabel a
+failure. It adds the only source tree that can be their pre-reconstruction oracle: `R`.
+
+**Closed node identity.** For a record with identity `(file, classname, name)`, encode each UTF-8
+field followed by one NUL byte, sort records lexicographically by the three raw UTF-8 fields, and
+hash the concatenation. Let `S = nodes(F) - nodes(N)`, where `F` is the final candidate after the
+reviewed plan application and authority-packet rebind below. `S` must contain exactly 238 identities
+and hash to `fe50be2f51456d85efdf80305af83a7d0fa224110cd4980a27da74ed46e291b8`.
+Appending the UTF-8 outcome plus one NUL after each identity must hash to
+`2c03a11c8c5d66b822b406e35deb6874be0dd4301fe78d51780da96977b4c607`.
+The 160 passed identities hash to
+`b98f02f3f6d8b1c14b9d0e90e4dbb0f8e67e12698842ab37b381f5f4b2c35ae1`; the 78 failed identities
+hash to `e3fdc26e69739af0ff33282378d02d6d930416daa8b89fc6964825ecd6e08423`.
+These are predeclared observations from sealed evidence, not values the implementation may update.
+
+**Three-tip authority partition.** Fresh evidence uses `N`, `R` and `F`; no one tip is allowed to
+silently govern a node it never contained.
+
+1. `N` remains the sole oracle for every identity it contains. `nodes(N)` must be a subset of
+   `nodes(F)`. Common-node outcomes, normalized signatures, symmetric fresh-process reruns and the
+   exact five-node R2b disposition remain §18.14 rules without change.
+2. `R` is an oracle only for `S`, the identities present in `F` but absent from `N`. Every member
+   of `S` must exist in `R` and match `R`'s outcome. A failed/error member must also match `R`'s
+   exact §18.10-normalized failure signature after a symmetric rerun at both `R` and `F`.
+3. Any `F` identity absent from both `N` and `R` must pass or skip and is separately listed. Under
+   the sealed node set above there are zero such identities; a nonzero count is `PAUSE`.
+4. Identities present only in `R` are listed as historical removals but do not override `N`'s
+   current-main source ownership and are not injected into `F`.
+5. All retained failures/errors remain explicit debt. Any retained failure keeps
+   `FULL_PYTEST_PASS=false`. The only positive token is
+   `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`.
+
+The existing §18.10 normalization is closed and unchanged: exact source root, exact pytest temp
+root and the exact tip's Git object ID only. Generic path, 40/64-hex, message or representation
+rewriting is forbidden. All three complete runs use the same CI-compatible dependency closure,
+allowlisted environment, argv, built-in xunit1 reporter, resource limits and fixed disposable path,
+with a verified empty reset between tips. `R` must be executed freshly in that same slot; its old
+evidence is diagnostic only. Every mismatch is rerun in fresh processes at both applicable tips.
+Collection difference, reset/path asymmetry, incomplete JUnit, duplicate identity, unknown outcome,
+unresolved signature difference or a sixth R2b exception is `PAUSE`.
+
+**Plan application and final-source identity.** `H0` remains the preserved PAUSE input. After
+exact-tip Kiro PASS and a new Ryan grant, Grok applies every commit in the complete reviewed linear
+plan range from this correction's grant-named base overlay through its final overlay, oldest to
+newest, onto `H0`, then pushes and stops. Codex proves the four planning-document blobs and modes
+equal the final overlay and every non-plan byte still equals `H0`. Only after a commit-specific
+`CONTINUE`, Grok changes exactly four 40-hex values across exactly two files: the
+`SEMANTIC_PARENT_SHA` and `M11_REVIEWED_OVERLAY_SHA` declarations in
+`tests/fixtures/openclaw_strict/constants.py` and their two frozen assertions in
+`tests/test_openclaw_strict_packet_contract.py`. `CODE_BASELINE_SHA` remains `N`. No other byte,
+test logic, product path or runtime content changes. The resulting pushed commit is `F`.
+
+Only after the exact tree and four substitutions are independently verified may Codex run the
+fresh `N`/`R`/`F` sequence. If `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` is established, the
+unchanged §18.9 Pylint gate, two fresh-root M8 runs, seven legacy MCP regressions, durable-evidence
+verification and exact-tip Kiro conformance review remain mandatory. The prior M8 counts,
+deselections, selectors, dependencies, permissions, runtime hash, T0–T5 semantics and later-gate
+blocks do not change.
+
+**Authority boundary.** This section authorizes planning only. It authorizes no plan application,
+identity edit, source/test/runtime/CI/configuration correction, suite, PR, merge, deployment or
+real OpenClaw action. Kiro must PASS the exact new semantic parent and overlay. A new Ryan grant
+must name them, `N`, `R`, `H0`, the fixed slot, runtime prefix, durable evidence root, complete
+reviewed plan range, exact four substitutions and complete three-tip/Pylint/M8/MCP sequence.
+Gate D/W/D-V/E/F, watch activation, live data and promotion remain independently blocked.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -4939,7 +5054,7 @@ No previous grant, Kiro verdict or `CONTINUE` may be reused.
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. Merge is paused because
-current main advanced to `a92a74e` and has a real conflict in the governed STATUS document.
-§18.14 freezes only a new exact-current-main branch, three held reconstruction commits and fresh
-differential/Pylint/M8/MCP evidence, all pending exact-tip Kiro PASS and a new Ryan grant. Real
-OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
+the exact-current-main reconstruction at `30bc134d` exposed an inapplicable candidate-only-node
+rule. §18.15 replaces only that rule with a closed `N`/`R`/final-candidate authority partition,
+fresh same-slot execution and no failure waiver. Exact-tip Kiro PASS and a new Ryan grant remain
+mandatory. Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
