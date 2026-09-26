@@ -1,19 +1,18 @@
 # Execution Plan — OpenClaw bounded ConvMem reader
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
-implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS PAUSED AT A
-PRE-FIXTURE AUTHORITY-PACKET MISMATCH. LIVE-DATA BLOCKED; PROMOTION BLOCKED.** The
-reviewed-plan correction and fresh M8/MCP evidence are preserved at `9c6421a6891fd8a861a51f4fed410f541b53148c`.
-At candidate `851edbe49b820bd4081809022b10f67c30fef47a`, the exact one-literal publisher fix,
-governed full-pytest differential and unchanged current-main Pylint gate pass. Final M8 run 1
-then refused before fixture creation because the unchanged fixture packet still binds preceding
-parent `48c9ce01…` while the reviewed command correctly supplied `b46a16a3…`. This plan-only
-correction freezes exactly two files and four 40-hex substitutions, followed by fresh final-source
-evidence; it does not authorize a product/test edit, retry, merge or runtime action. Exact-tip
-review and a new Ryan resume grant are required first.
+implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; MERGE PAUSED ON CURRENT-MAIN DRIFT. LIVE-DATA
+BLOCKED; PROMOTION BLOCKED.** The final authority-packet correction, repository-wide differential,
+unchanged Pylint gate, two M8 runs, seven MCP regressions and durable verification pass at
+`cd60cf19`, with Kiro exact-tip PASS. That source is bound to baseline `9193f5ec…`. Current main is
+now `a92a74eb326b3eaa59087b707de10153c7cc0c63` and conflicts in the governed STATUS document.
+This plan-only correction freezes a fresh deterministic reconstruction from exact current main,
+six identity substitutions and new evidence; it authorizes no product/test edit, suite, PR, merge
+or runtime action. Exact-tip review and a new Ryan resume grant are required first.
 BUILD is not complete-integration readiness and does not pass any of those later gates.
 
-**Date:** 2026-09-24
+**Date:** 2026-09-26
 
 **Arc:** ConvMem Switchboard
 
@@ -21,33 +20,35 @@ BUILD is not complete-integration readiness and does not pass any of those later
 §§6.5, 14, 17–18. The preceding runner and node-evidence correction history remains in §§10.3–4.
 Section 10.5 retains the completed reconstruction sequence; §10.6 records the completed
 control-plane correction; §10.7 freezes the Pylint remediation and preserved-tip resume sequence;
-§10.8 freezes the full-pytest differential and identity reconciliation; §10.9 records the
+§10.8 freezes the historical full-pytest differential and identity reconciliation; §10.9 records the
 completed earlier M8 authority-packet rebind; §10.10 records the completed one-literal
-bundle-schema correction; §10.11 freezes the subsequent four-literal authority-packet correction
-and fresh final-source evidence sequence.
+bundle-schema correction; §10.11 records the completed final authority-packet correction and
+evidence sequence; §10.12 freezes the current-main reconstruction and fresh merge evidence.
 Review the two parent files together.
 The retained Astra report reviews the earlier `0f1216f` revision, not this correction:
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
 `d3d330b6195263e86f0c648f446ca9b4dbbf648983ee2ec2ad9aeacc7cc2026a`.
 It found B-FIXTURE and B-DIGEST, corrected by `2aa66a8`. Section 10.3 records the later runner
 closure/suite repairs; §10.4 records the completed M8 evidence correction. This edit addresses
-only the observed post-bundle authority-packet hold in §10.11; the fixture schema, test logic,
-manager and five component sets remain frozen.
+only the observed current-main drift after the bounded M11 evidence PASS; the fixture schema,
+test logic, manager and five component sets remain frozen.
 
 **Baselines:** Original accepted code baseline
 `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; accepted bounded implementation
-`8010fb060c2edc29e1b09d7a30b1a1da2689d489`; proposed M11 integration baseline
-`9193f5ec744f059d07a20612489b210527b5660a`; preserved integration tip
+`8010fb060c2edc29e1b09d7a30b1a1da2689d489`; historical M11 integration baseline
+`9193f5ec744f059d07a20612489b210527b5660a`; exact current-main baseline
+`a92a74eb326b3eaa59087b707de10153c7cc0c63`; preserved integration tip
 `a11b7a2a793c68e4e6e83c2680b077389a817c5c`; reconciliation base overlay
 `581de2abf430786a36f2612f97c623a19b61353f`; preserved lint-remediation input tip
 and pytest differential base `9c6421a6891fd8a861a51f4fed410f541b53148c`; currently preserved
 corrected candidate `3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`; first paused differential
 candidate `853ef98ede44f2d171e5354b065e11f83558e010`; bundle-schema-paused candidate
-`d7b15926ab7e4e41b8a80edba5edbe4bfed4c165`; current pre-fixture M8-paused candidate
-`851edbe49b820bd4081809022b10f67c30fef47a`. This revision changes plans only.
-A new grant must name the new reviewed parent and overlay, both comparison tips, exact 44 paths,
-rebound runtime and durable evidence root. No branch recreation, silent rebase, merge or history
-rewrite.
+`d7b15926ab7e4e41b8a80edba5edbe4bfed4c165`; completed post-bundle candidate
+`851edbe49b820bd4081809022b10f67c30fef47a`; final reviewed M11 evidence candidate
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b`. This revision changes plans only. A new grant must
+name the new reviewed parent and overlay, both baseline tips, exact 120-path product delta, new
+branch, rebound runtime and durable evidence root. No rebase, merge, history rewrite or reuse of
+the old implementation branch.
 
 **Roles:** Cursor using Grok 4.5 High remains the sole implementation lane and is paused. Codex owns
 architectural editing, branch/worktree creation, runtime provisioning and independent verification.
@@ -1343,9 +1344,68 @@ evidence asymmetry is `PAUSE`. This section changes no schema, algorithm, tool s
 permission, dependency, selector or T0–T5 behavior. It authorizes no implementation or evidence
 execution by itself.
 
-**TL;DR:** [Arc ConvMem Switchboard] At `851edbe4` the bundle-schema fix, governed differential
-and unchanged Pylint gate pass, but final M8 run 1 refused before fixture creation because the
-fixture packet still names the preceding parent/overlay. §10.11 permits only a Kiro-reviewed,
-Ryan-granted two-file/four-literal rebind followed by fresh differential, Pylint, two-run M8 and
-seven-file MCP evidence. No implementation, retry, real OpenClaw action, merge, live data or
-promotion is authorized by this plan edit.
+### 10.12 M11 current-main reconstruction obligations
+
+Architecture §18.14 controls. The final reviewed M11 evidence candidate is
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b` (`R`), historical integration baseline is
+`9193f5ec744f059d07a20612489b210527b5660a` (`B`), and exact current main is
+`a92a74eb326b3eaa59087b707de10153c7cc0c63` (`N`). No action below is authorized until Kiro PASS
+and a new Ryan grant name the exact semantic parent, final overlay, three commits, new branch,
+runtime/evidence paths and all frozen identities.
+
+Execute only this held sequence:
+
+1. Fetch origin. Require `origin/main == N`, `origin/feat/2026-09-23-openclaw-convmem-m11-integration == R`,
+   both source trees readable, and the old branch clean and preserved. If main moved or either ref
+   differs, `PAUSE`. Codex creates and pushes the grant-named new branch from exact `N` in a
+   dedicated worktree; it never switches the live checkout.
+2. Independently recompute Architecture §18.14's path algebra from Git trees. Require `M` = 40
+   paths/hash `596a484c…`, `D` = 124 paths/hash `da366dcc…`, `P` = 120 paths/hash `d331b92c…`,
+   `M ∩ D` = only the Switchboard STATUS path, `M ∩ P` empty and no deletion in `P`.
+3. Grok sets exactly the 120 `P` paths to `R`'s blobs and modes, commits, pushes with an explicit
+   refspec and stops. Codex proves the 120-path digest, exact blob/mode equality and that every
+   other path still equals `N`. Only a commit-specific `CONTINUE` releases step 4.
+4. Grok sets exactly the four §18.8 control-plane paths to the final reviewed overlay's blobs and
+   mode `100644`, commits, pushes and stops. Codex proves four-blob equality and that every other
+   byte equals the prior checkpoint. Only a new commit-specific `CONTINUE` releases step 5.
+5. Grok changes exactly six 40-hex literals across exactly two paths: the values and matching
+   frozen assertions for `CODE_BASELINE_SHA=N`, the grant-named `SEMANTIC_PARENT_SHA`, and the
+   grant-named `M11_REVIEWED_OVERLAY_SHA`. It commits, pushes and stops. No formatting, logic,
+   name, test selection or other byte may change.
+6. Codex proves the final composition: outside `P ∪ C` equals `N`; `P` except the two identity
+   files equals `R`; those two files differ from `R` only by six substitutions; and `C` equals the
+   reviewed overlay. It also proves no deletion, extra path, symlink or mode drift. Any mismatch is
+   `PAUSE`, not a correction opportunity.
+7. Rebind without altering the qualified runtime at the grant-named parent/current-main path;
+   verify all 30,421 inventoried files, modes and hashes, zero symlinks/unlisted/writable entries,
+   resolved dependency paths and tree SHA-256
+   `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`. Recreate the exact fixed
+   slot and durable evidence root. Grok performs no runtime/evidence operation.
+8. Codex runs complete `python -m pytest -q` at `N` and the final candidate sequentially in the
+   identical fixed slot with only the built-in xunit1 reporter. Apply Architecture §18.14's
+   current-main node-set and outcome rules, symmetric reruns and exact five-node R2b disposition.
+   The 119-member path-set hash is `cd13b301…`; main identity is `644552c…`, reconstructed identity
+   `3a74d3d…`, and only `mcp_server.py` changes from `f9ac448c…` to `7fcbdcb4…`. Any additional
+   identity/member/signature exception is `PAUSE`.
+9. Only after `CURRENT_MAIN_DIFFERENTIAL_PASS`, run the unchanged full-tree Pylint regression gate.
+   Then run M8 twice from fresh roots with `--plan-sha` equal to the new semantic parent and
+   `CODE_BASELINE_SHA=N`, followed by the same seven legacy MCP files. Require 238 strict passes,
+   29 Node passes, 115 legacy passes, one skip and four deselections in each M8 run; preserve exact
+   node/outcome and cross-run identity. No OpenClaw process may run.
+10. Verify raw output, JUnit, canonical records, mismatch reruns, R2b manifests, Pylint output,
+    both M8 runs, MCP outputs, source/component/runtime inventories and staging-to-durable hashes.
+    Kiro reviews the exact final tip and evidence. Before PR creation and before Ryan's merge
+    decision, fetch again and require `origin/main == N`; otherwise `PAUSE`.
+
+The new branch is a deterministic source-tree composition, not a replay, rebase or merge of the
+105-commit branch. A fourth implementation commit, conflict resolution, force-push, product
+rewrite, omitted path, test/CI/baseline/config/runtime-content edit or required source correction is
+`PAUSE`. A squash PR is eligible only when its predicted tree over exact `N` equals the reviewed
+candidate tree. Agents do not merge; Ryan alone decides PR creation and merge. This plan edit
+authorizes none of the execution above.
+
+**TL;DR:** [Arc ConvMem Switchboard] Bounded M11 evidence passed at `cd60cf19`, but current main
+advanced to `a92a74e` and conflicts in the governed STATUS document. §10.12 freezes a new branch
+from exact current main, a 120-path exact product transplant, four reviewed control-plane blobs,
+six identity substitutions and fresh differential/Pylint/M8/MCP evidence. No implementation,
+test, PR, merge, real OpenClaw action, live data or promotion is authorized by this plan edit.

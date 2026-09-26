@@ -1,46 +1,38 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
-implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. M11 MERGE READINESS: PAUSED AT A
-PRE-FIXTURE AUTHORITY-PACKET MISMATCH. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The
-reviewed-plan correction, two fresh M8 runs and seven legacy MCP regressions are preserved at
-`9c6421a6891fd8a861a51f4fed410f541b53148c`. The 44-path remediation is clean and pushed at
-`3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`. At current candidate
-`851edbe49b820bd4081809022b10f67c30fef47a`, the exact one-file/one-literal bundle-schema
-correction is preserved and the fail-closed full-pytest differential plus unchanged current-main
-Pylint gate pass. Final M8 run 1 then refused during argument validation: the reviewed semantic
-parent is `b46a16a3cdc928e98fba83cd64b17439d1734695`, while the unchanged fixture packet still binds
-`48c9ce01bf557ff95fd82b84c3b0ab2e7e9f18cb`. Sections 18.9–12 remain authoritative for prior
-lint, pytest, authority-packet and bundle-schema evidence; §18.13 freezes only the exact
-two-file/four-literal packet rebind required before final evidence can resume. It authorizes no
-implementation or retry.
+implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; MERGE PAUSED ON CURRENT-MAIN DRIFT. LIVE-DATA:
+BLOCKED. PROMOTION: BLOCKED.** The final authority-packet correction, repository-wide differential,
+unchanged Pylint gate, two fresh M8 runs, seven legacy MCP regressions, durable evidence and Kiro
+exact-tip conformance review passed at `cd60cf19`. That result is bound to integration baseline
+`9193f5ec744f059d07a20612489b210527b5660a`. Before a PR existed, `origin/main` advanced by twelve
+commits to `a92a74eb326b3eaa59087b707de10153c7cc0c63`; Git now reports a real conflict in the governed
+Switchboard STATUS document, and the full tracked source identity no longer matches the tested
+tree. Sections 18.9–13 remain the historical evidence contract. Section 18.14 freezes only the
+current-main reconstruction, exact six-literal authority rebind and fresh evidence required before
+merge can be reconsidered. It authorizes no implementation, test, PR or merge.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
 
-**Date:** 2026-09-23
+**Date:** 2026-09-26
 
 **Arc:** ConvMem Switchboard
 
 **Authority:** Codex architectural editing lane. The M8 node-evidence history remains in
-§§18.4–6. Ryan accepted bounded M0–M8, authorized the §18.7 current-main reconstruction and the
-§18.8 reviewed-plan correction, then directed Codex to choose and plan the least-haunting response
-to the observed Pylint hold: remediate the debt without raising a baseline or weakening the gate.
-After that remediation passed the real Pylint gate, Ryan authorized the plan-only applicability
-correction and the differential identity reconciliation. Codex completed that evidence, corrected
-the final M8 packet under a separately reviewed grant, and then paused when the first governed M8
-run exposed the single bundle-schema literal drift. Ryan authorized that plan-only reconciliation,
-then authorized the one-literal source correction after Kiro PASS. The corrected candidate passed
-the fresh differential and unchanged Pylint gate but the next M8 run failed closed on the now-stale
-parent/overlay packet. Ryan authorized this plan-only authority-packet reconciliation.
+§§18.4–6. Ryan accepted bounded M0–M8 and separately authorized each held M11 correction through
+the final authority-packet rebind. Candidate `cd60cf19` then satisfied the complete bounded
+merge-readiness evidence sequence and received Kiro exact-tip PASS. Ryan delegated the merge
+decision to Codex; Codex issued `PAUSE` after fetching current main and reproducing the governed
+STATUS conflict. Ryan directed Codex to continue, authorizing this plan-only reconciliation.
 Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9 defines the exact
 lint-remediation boundary; §18.10 defines the candidate-versus-pre-remediation pytest and identity
 rules; §18.11 records the completed earlier M8 packet rebind; §18.12 records the completed
-one-literal production correction; §18.13 freezes the subsequent exact authority-packet rebind
-and fresh final-evidence sequence. Kiro owns the required exact-tip design
-review; Ryan
-owns any later implementation, test, merge or promotion grant. No
-complete-integration readiness is claimed.
+one-literal production correction; §18.13 records the completed final authority-packet rebind and
+evidence sequence; §18.14 freezes the new current-main reconciliation. Kiro owns the required
+exact-tip design review; Ryan owns any later implementation, test, PR, merge or promotion grant.
+No complete-integration readiness is claimed.
 
 **Review inputs:** Final Astra report
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -49,9 +41,10 @@ complete-integration readiness is claimed.
 Earlier Stage 1 report SHA-256
 `fc402286dbb720f3752613e3fe982c4542b168eda9609416b1dd4c51eff5c979`; reconstruction report SHA-256
 `73ebe0f606551eb9ece035722d5af05468c9168b6b279abbcd444ec35b03b827`. The original code evidence
-baseline remains `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; the proposed M11 integration baseline is
-`9193f5ec744f059d07a20612489b210527b5660a`. No implementation changes are made here. This
-reconciliation supersedes only stale plan state, not the frozen invariants below.
+baseline remains `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; the historical M11 integration baseline is
+`9193f5ec744f059d07a20612489b210527b5660a`, and the exact newly observed current-main baseline is
+`a92a74eb326b3eaa59087b707de10153c7cc0c63`. No implementation changes are made here. This
+reconciliation supersedes only stale merge sequencing, not the frozen invariants below.
 
 **Frozen invariants:** ConvMem files/CLI retain governance and durable-memory ownership; OpenClaw is
 only a bounded, disposable reader/orchestrator. Exactly three read-only tools, one immutable
@@ -75,13 +68,12 @@ non-goals. Production launch entrypoints fail closed in this slice. A fake tests
 only; it proves neither OpenClaw compatibility nor host containment.
 
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
-Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay,
-current-main baseline, pre-remediation comparison tip, current M8-paused candidate and branch,
-frozen runtime, durable evidence destination, the already-preserved one-file/one-literal
-bundle-schema correction, the exact subsequent two-file/four-literal authority-packet rebind,
-and final differential/Pylint/M8/MCP authority. Known deferred issues do not authorize Grok to redesign
-the architecture or reinterpret a Pylint finding. These are BUILD-readiness statements, not an
-Execute grant.
+Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay, exact
+current-main baseline, prior reviewed candidate, new implementation branch, frozen runtime,
+durable evidence destination, exact 120-path product transplant, four control-plane blobs, six
+identity substitutions and final differential/Pylint/M8/MCP authority. Known deferred issues do
+not authorize Grok to redesign the architecture or reinterpret any test result. These are
+BUILD-readiness statements, not an Execute grant.
 
 ## 1. Consequence for Ryan
 
@@ -4819,6 +4811,110 @@ branch, baseline `9c6421a`, fixed execution slot, runtime prefix, durable eviden
 evidence and classification hash, exact two-file/four-literal correction, and complete
 final-evidence sequence. No previous grant may be reused. Merge, deployment, real OpenClaw,
 Gate D/W/D-V/E/F, watch activation, live data and promotion remain independently blocked.
+
+### 18.14 M11 current-main drift reconciliation
+
+**Observed merge hold.** Candidate
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b` is clean and pushed on
+`feat/2026-09-23-openclaw-convmem-m11-integration`. Its final authority-packet correction,
+repository-wide differential, unchanged Pylint gate, two fresh M8 runs, seven legacy MCP
+regressions and durable-evidence verification passed, and Kiro returned exact-tip PASS. No PR or
+merge followed. After a fresh fetch, `origin/main` was
+`a92a74eb326b3eaa59087b707de10153c7cc0c63`, twelve commits beyond the evidence baseline
+`9193f5ec744f059d07a20612489b210527b5660a`; the candidate is 105 commits ahead of current main.
+The current-main range changes 40 tracked paths, including Chroma write-guard and watch safety
+work. A three-way merge reproduces conflict markers in
+`docs/plans/STATUS-openclaw-convmem-integration.md`. Resolving that conflict or merging the old
+candidate directly would change a reviewed control-plane blob and the full tracked source hash.
+The prior PASS remains valid historical evidence for `cd60cf19`; it is not merge authorization for
+the new tree.
+
+**Closed path algebra.** Let `B` be historical integration baseline `9193f5ec…`, `N` be exact
+current main `a92a74e…`, `R` be reviewed candidate `cd60cf1…`, and `C` be the exact four paths in
+§18.8. Let `M = paths(B..N)`, `D = paths(B..R)`, and `P = D - C`, with paths sorted as raw UTF-8
+bytes and hashed as their NUL-terminated sequence. The independently observed identities are:
+
+- `M`: 40 paths, SHA-256
+  `596a484cbf550a63bf77ac559733455aceadef75aaa5d3d8a6fee417b6695e6b`;
+- `D`: 124 paths, SHA-256
+  `da366dcc7be58fd6446633f76d3b8a0e565797528f871bdadb4c0d79bdd812e2`;
+- `P`: 120 paths, SHA-256
+  `d331b92c3e2627c0e848f65748c1e101f9b2857769be2bf1e87e80635c61e7ad`; and
+- `M ∩ D` is exactly `docs/plans/STATUS-openclaw-convmem-integration.md`, while
+  `M ∩ P` is empty. `P` contains no deletion.
+
+These values are preconditions, not implementation-derived expectations. A different base, tip,
+count, path digest, intersection or deletion is `PAUSE`; Grok does not update the plan to fit it.
+
+**Deterministic reconstruction.** After Kiro PASS and a new Ryan grant, Codex creates a new branch
+and dedicated worktree at exact `N`; the reviewed 105-commit branch is preserved and never rebased,
+merged, force-pushed or rewritten. Grok then performs three held commits:
+
+1. Set exactly the 120 `P` paths to the regular-file/blob modes and bytes at `R`, using the pinned
+   Git trees as the source. No path outside `P` changes. Push and stop.
+2. Set exactly the four `C` paths to the regular mode `100644` and blob bytes at the final
+   Kiro-reviewed milestone overlay named by Ryan. Push and stop.
+3. In only `tests/fixtures/openclaw_strict/constants.py` and
+   `tests/test_openclaw_strict_packet_contract.py`, make exactly six 40-hex substitutions: bind
+   `CODE_BASELINE_SHA` and its assertion to `N`, bind `SEMANTIC_PARENT_SHA` and its assertion to
+   the new reviewed semantic parent, and bind `M11_REVIEWED_OVERLAY_SHA` and its assertion to the
+   new reviewed overlay. Push and stop.
+
+Codex issues a commit-specific `CONTINUE` after each held commit. It proves every path outside
+`P ∪ C` equals `N`; every `P` path except the two identity files equals `R` by blob ID and mode;
+the two identity files differ from `R` only by the six substitutions; and every `C` path equals the
+reviewed overlay by blob ID and mode. No merge, cherry-pick, rebase, conflict resolution, path
+deletion, product reimplementation or test-logic edit is permitted. This exact tree composition,
+not commit-message similarity or worktree byte sampling, is the reconstruction contract.
+
+**Current-main differential.** Historical §18.10 evidence is retained, but final merge-readiness
+uses a fresh complete-pytest comparison between exact `N` and the reconstructed candidate in the
+same fixed disposable slot, runtime, argv and allowlisted environment. The baseline node set must
+be a subset of the candidate node set. A candidate-only node is permitted only when its source
+path is a test path in exact `P`, and it must finish `passed` or `skipped`; a baseline-only node,
+candidate-only failure/error, collection interruption, duplicate identity or unknown outcome is
+`PAUSE`. Every common baseline `passed` or `skipped` node must remain non-failing. Every common
+failure/error must retain its exact §18.10 normalized signature or clear through the same symmetric
+fresh-process rerun rules. Retained failures remain explicit debt, and any retained failure keeps
+`FULL_PYTEST_PASS=false`; the only positive token is `CURRENT_MAIN_DIFFERENTIAL_PASS`.
+
+The sole closed signature exception remains the five exact R2b nodes enumerated in §18.10. At
+`N`, the committed and independently resolved authority-content identity is
+`644552c552d655810d6834ef00c54fd8e3512950`. In the deterministic reconstructed product tree it is
+`3a74d3db553308e40c00c60ec16d9bd1489133c2`. Both manifests contain exactly 119 ordered members
+with path-set SHA-256
+`cd13b301320ebbfe15d13843160e8d93c5cdbf707fa357c3e56c226f87967cfb`; exactly one member changes:
+`mcp_server.py`, from SHA-256
+`f9ac448cf8ecbb9c8822f327a79a7af753685458ea1cd71e0dbed9c0fae85cb3` to
+`7fcbdcb4cdcfc635d2787cea10d031dcd9aed40f6678ab80fc772194aaf55123`.
+The candidate committed inventory remains `644552c…`; only those five nodes may retain the exact
+committed-versus-resolved identity rotation after both standard-library manifest recomputation and
+production-resolver agreement. Generic 40/64-hex normalization, a member-set change, a second
+changed member, a sixth node or a different operand/outcome/type is `PAUSE`.
+
+**Fresh acceptance and merge boundary.** After the differential passes, Codex runs the unchanged
+full-tree Pylint gate with the protected workflow, baseline and gate-script blobs from §18.9; two
+fresh-root M8 runs using the new semantic parent and `N` as `CODE_BASELINE_SHA`; and the same seven
+legacy MCP regressions. M8 must preserve 238 strict passes, 29 Node passes, 115 legacy passes, one
+skip, four deselections, exact node/outcome identity and all source/component/runtime invariants.
+The runtime tree must remain
+`sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+All evidence is copied to the grant-named durable root with verified hashes, then Kiro reviews the
+exact integrated tip and evidence.
+
+Immediately before PR creation and again before Ryan's merge decision, Codex fetches origin and
+requires `origin/main == N`; any movement is `PAUSE`, not an inferred rebase. A squash merge is
+eligible only if GitHub's predicted result tree is byte-for-byte the reviewed candidate tree over
+exact base `N`; history preservation is not required. Agents do not merge. Ryan alone decides PR
+creation and merge. Real OpenClaw, deployment, Gate D/W/D-V/E/F, watch activation, live data and
+promotion remain independently blocked.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test,
+runtime, CI, baseline, configuration or evidence byte. Kiro must PASS the exact new semantic
+parent and milestone overlay. A new Ryan grant must then name them, `B`, `N`, `R`, the new
+implementation branch, fixed slot, parent/baseline-bound runtime and durable evidence roots, path
+counts/digests, exact three-commit reconstruction, six substitutions and full evidence sequence.
+No previous grant, Kiro verdict or `CONTINUE` may be reused.
 
 ## Jargon TL;DR
 
