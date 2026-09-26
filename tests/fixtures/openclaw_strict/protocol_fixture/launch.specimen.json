@@ -1,0 +1,119 @@
+{
+  "artifact_kind": "protocol_fixture",
+  "payload": {
+    "controller_uid": 0,
+    "endpoints": {
+      "gateway_port": 51000,
+      "model_api": "openai-completions",
+      "model_id": "fixture-model",
+      "model_port": 51001
+    },
+    "manager_policy_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "model_artifacts_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "operator_uid": 1000,
+    "policy_payload_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "processes": {
+      "agent": {
+        "argv_template": [
+          "/runtime/bin/agent"
+        ],
+        "cwd": "/fixture/empty",
+        "environment": {
+          "HOME": "/fixture/home",
+          "PATH": "/runtime/bin"
+        },
+        "executable": "/runtime/bin/agent",
+        "gid": 1001,
+        "inherited_fd_roles": [],
+        "network_policy": "activation_loopback",
+        "seccomp_filter_sha256": null,
+        "uid": 1001
+      },
+      "gateway": {
+        "argv_template": [
+          "/runtime/bin/gateway"
+        ],
+        "cwd": "/fixture/empty",
+        "environment": {
+          "HOME": "/fixture/home",
+          "PATH": "/runtime/bin"
+        },
+        "executable": "/runtime/bin/gateway",
+        "gid": 1001,
+        "inherited_fd_roles": [],
+        "network_policy": "activation_loopback",
+        "seccomp_filter_sha256": null,
+        "uid": 1001
+      },
+      "model_worker": {
+        "argv_template": [
+          "/runtime/bin/model_worker"
+        ],
+        "cwd": "/fixture/empty",
+        "environment": {
+          "HOME": "/fixture/home",
+          "PATH": "/runtime/bin"
+        },
+        "executable": "/runtime/bin/model_worker",
+        "gid": 1001,
+        "inherited_fd_roles": [],
+        "network_policy": "activation_loopback",
+        "seccomp_filter_sha256": null,
+        "uid": 1001
+      },
+      "strict_server": {
+        "argv_template": [
+          "/runtime/bin/strict_server"
+        ],
+        "cwd": "/fixture/empty",
+        "environment": {
+          "HOME": "/fixture/home",
+          "PATH": "/runtime/bin"
+        },
+        "executable": "/runtime/bin/strict_server",
+        "gid": 1001,
+        "inherited_fd_roles": [],
+        "network_policy": "none",
+        "seccomp_filter_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "uid": 1001
+      },
+      "supervisor": {
+        "argv_template": [
+          "/runtime/bin/supervisor"
+        ],
+        "cwd": "/fixture/empty",
+        "environment": {
+          "HOME": "/fixture/home",
+          "PATH": "/runtime/bin"
+        },
+        "executable": "/runtime/bin/supervisor",
+        "gid": 0,
+        "inherited_fd_roles": [],
+        "network_policy": "activation_loopback",
+        "seccomp_filter_sha256": null,
+        "uid": 0
+      }
+    },
+    "read_only_mounts": [
+      {
+        "destination": "/runtime",
+        "max_bytes": null,
+        "mode": "ro",
+        "source_role": "runtime"
+      }
+    ],
+    "runtime_distribution_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runtime_uid": 1001,
+    "schema": "convmem.activation-launch-policy.v1",
+    "supervisor_uid": 0,
+    "writable_mounts": [
+      {
+        "destination": "/fixture/state",
+        "max_bytes": 1048576,
+        "mode": "rw",
+        "source_role": "state"
+      }
+    ]
+  },
+  "role": "launch"
+}

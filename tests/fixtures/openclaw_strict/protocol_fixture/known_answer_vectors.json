@@ -1,0 +1,38 @@
+[
+  {
+    "canonical_utf8_hex": "7b7d",
+    "name": "empty_object",
+    "note": "fixture-only algorithm vector; not a source component hash; not authority",
+    "value": {}
+  },
+  {
+    "canonical_utf8_hex": "7b2261223a312c2262223a327d",
+    "name": "sorted_keys",
+    "note": "fixture-only algorithm vector; not a source component hash; not authority",
+    "value": {
+      "a": 1,
+      "b": 2
+    }
+  },
+  {
+    "canonical_utf8_hex": "7b22736368656d61223a22636f6e766d656d2e6572726f722e7631222c2278223a6e756c6c7d",
+    "name": "nested_null",
+    "note": "fixture-only algorithm vector; not a source component hash; not authority",
+    "value": {
+      "schema": "convmem.error.v1",
+      "x": null
+    }
+  },
+  {
+    "canonical_utf8_hex": "7b226974656d73223a5b312c2274776f222c66616c73655d7d",
+    "name": "array_stable",
+    "note": "fixture-only algorithm vector; not a source component hash; not authority",
+    "value": {
+      "items": [
+        1,
+        "two",
+        false
+      ]
+    }
+  }
+]
