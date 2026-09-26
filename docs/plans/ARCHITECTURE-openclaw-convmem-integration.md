@@ -4,7 +4,9 @@
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
 `cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; CURRENT-MAIN RECONSTRUCTION PRESERVED AT
 `30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca`; THREE-TIP CANDIDATE PRESERVED AT
-`d276cb4ab0a0613b965e772d49d378e761df337e`; EVIDENCE PREFLIGHT PAUSED ON CURRENT-MAIN ADVANCE.
+`d276cb4ab0a0613b965e772d49d378e761df337e`; ADVANCED-MAIN CANDIDATE PRESERVED AT
+`776a4ca3d4215490fb26b882dca2df9a41e0e03a`; THREE-TIP EVIDENCE PAUSED ON A CLOSED INNER-ROLE
+SIGNATURE FAMILY.
 LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The final authority-packet correction, repository-wide differential,
 unchanged Pylint gate, two fresh M8 runs, seven legacy MCP regressions, durable evidence and Kiro
 exact-tip conformance review passed at `cd60cf19`. That result is bound to integration baseline
@@ -15,8 +17,12 @@ tree. Sections 18.9–18.13 remain the historical evidence contract. Section 18.
 completed first current-main reconstruction and its first exact-main differential. Section 18.15
 records that differential's governed PAUSE and the reviewed three-tip correction completed through
 `d276cb4`. Before any authorized suite started, `origin/main` advanced again to
-`5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`; §18.16 freezes a second deterministic reconstruction
-from that exact base. It authorizes no implementation, test, PR or merge.
+`5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`; §18.16 freezes the completed second deterministic
+reconstruction from that exact base. Its three complete pytest runs and 166 isolated reruns then
+paused because pytest rendered the same `CONVMEM_OPENCLAW_INNER_ROLE` assertion through unstable
+`os.environ` representations for exactly 22 packet-contract nodes. Section 18.17 freezes a closed
+semantic signature projection for only that family. It authorizes no implementation, test, PR or
+merge.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
@@ -37,12 +43,15 @@ required passes even though the preserved reviewed candidate already records the
 authorized that plan-only applicability correction, Kiro passed it, and the held plan and identity
 commits were completed at `d276cb4`. Its test preflight stopped before creating a slot or running a
 suite when `origin/main` advanced to `5c6a4a8`. Ryan authorized this plan-only current-main advance.
-Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9 defines the exact
+The advanced reconstruction was then completed, clean and pushed at `776a4ca3`; complete `N1`,
+`R` and final-candidate runs and all 166 isolated reruns completed before the signature-family
+PAUSE. Ryan authorized only the resulting plan correction. Sections 6.5.8–9 remain the frozen fixture and hash contracts. Section 18.9 defines the exact
 lint-remediation boundary; §18.10 defines the candidate-versus-pre-remediation pytest and identity
 rules; §18.11 records the completed earlier M8 packet rebind; §18.12 records the completed
 one-literal production correction; §18.13 records the completed final authority-packet rebind and
 evidence sequence; §18.14 records the completed current-main reconstruction; §18.15 records the
-three-tip differential correction and preflight PAUSE; §18.16 freezes the current-main advance.
+three-tip differential correction and preflight PAUSE; §18.16 records the completed current-main
+advance; §18.17 freezes the exact inner-role semantic-signature rule.
 Kiro owns the required
 exact-tip design review; Ryan owns any later implementation, test, PR, merge or promotion grant.
 No complete-integration readiness is claimed.
@@ -83,9 +92,9 @@ only; it proves neither OpenClaw compatibility nor host containment.
 
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
 Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay, exact new
-current-main baseline, preserved reviewed candidate, preserved `d276cb4` preflight input, new
-implementation branch, frozen runtime, durable evidence destination, exact three-commit
-reconstruction and final three-tip differential/Pylint/M8/MCP authority. Known deferred issues do
+current-main baseline, preserved reviewed candidate, preserved `776a4ca3` PAUSE input, frozen
+runtime, durable evidence destination, exact reviewed plan range, four-literal identity rebind and
+final three-tip differential/Pylint/M8/MCP authority. Known deferred issues do
 not authorize Grok to redesign the architecture or reinterpret any test result. These are
 BUILD-readiness statements, not an Execute grant.
 
@@ -5148,6 +5157,124 @@ implementation branch, fixed slot, parent/current-main-bound runtime and durable
 path counts/digests, exact three-commit reconstruction, six substitutions and complete three-tip/
 Pylint/M8/MCP sequence. No previous grant, Kiro verdict or `CONTINUE` may be reused. Gate
 D/W/D-V/E/F, watch activation, live data, deployment and promotion remain independently blocked.
+
+### 18.17 M11 inner-role failure-signature reconciliation
+
+**Observed governed PAUSE.** The §18.16 reconstruction completed in three held commits and is
+preserved, clean and pushed at `776a4ca3d4215490fb26b882dca2df9a41e0e03a` (`H1`). Complete
+same-slot pytest runs then collected 2,702 nodes at advanced current main `N1`, 2,912 nodes at the
+preserved reviewed candidate `R`, and 2,940 nodes at `H1`: respectively 2,485/62/90/65,
+2,612/62/173/65 and 2,640/62/173/65 passed/skipped/failed/errored. The frozen 238-node
+candidate-only partition remained exact: 160 passed and 78 failed with the identities, outcomes
+and hashes already fixed by §§18.15–18.16. The exact five R2b mismatches also remained the closed
+set. All 83 mismatch pairs were rerun symmetrically in 166 fresh processes.
+
+The finalizer stopped with `rerun_complete_record_mismatch:7:preserved`. Exactly 22 nodes in
+`tests/test_openclaw_strict_packet_contract.py` produced 44 raw complete-versus-rerun signature
+mismatches because pytest's assertion introspection rendered `os.environ` with a different key
+order or environment content. One of those nodes also differed between its preserved and final
+isolated reruns because a random pytest temporary suffix appeared inside the rendered
+`CONVMEM_CONFIG` value. The assertion meaning and result did not change. Codex sealed the PAUSE
+ledger at:
+
+```text
+/home/lauer/.local/share/convmem-openclaw-evidence/538d37eb498e2d3bd497db33daa006520ad56d06/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/776a4ca3d4215490fb26b882dca2df9a41e0e03a/m11-three-tip-pytest-differential/comparison/PAUSE-ledger.json
+```
+
+Its SHA-256 is `a6a2d95b6f294ad3893ea39fa8c739b15a7ea172d2067757492c49abf49399a6`.
+The diagnostic SHA-256 is
+`115492f91adeaf71aa09afd81b66e863191d0e7306efdd2a51a1168633c0376d`; the PAUSE-manifest
+SHA-256 is `78ac1cef55142892cdf75d2cad71a22a536519a4d27359fedba04881020e1c80`; the rerun-plan
+SHA-256 is `15d082c9805943a11c4c6236c5f23e48bf64440aa8b60cda29b25c2ad55eddcd`; and the preliminary
+comparison SHA-256 is `674f79845a763293128e5e2d95230c0ded1c296a42fa0365061e9f4a089f1f91`.
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS=false` and `FULL_PYTEST_PASS=false`; Pylint, M8 and
+MCP did not run.
+
+**Closed node set.** The only nodes eligible for the semantic projection below are exactly:
+
+```text
+tests/test_openclaw_strict_packet_contract.py::test_case57_fixture_legacy_identity_config_only
+tests/test_openclaw_strict_packet_contract.py::test_case57_kernel_denial_readonly_mount_writes
+tests/test_openclaw_strict_packet_contract.py::test_case57_outside_root_canary_kernel_denials
+tests/test_openclaw_strict_packet_contract.py::test_case57_preflight_fds_proc_self_fd_f_getfd
+tests/test_openclaw_strict_packet_contract.py::test_case57_preflight_sentinel_present_inside_runner
+tests/test_openclaw_strict_packet_contract.py::test_case57_pytest_plugin_inventory
+tests/test_openclaw_strict_packet_contract.py::test_case57_runtime_not_host_usr
+tests/test_openclaw_strict_packet_contract.py::test_case57_tmp_allocated_bytes_uses_st_blocks
+tests/test_openclaw_strict_packet_contract.py::test_case58_whole_case_not_passed_declared_future_reds
+tests/test_openclaw_strict_packet_contract.py::test_m2_case58_literal_inventories_and_independent_walkers
+tests/test_openclaw_strict_packet_contract.py::test_m2_case58_plugin_mutation_and_symlink_controls
+tests/test_openclaw_strict_packet_contract.py::test_m2_dual_independent_canonical_parsers_and_vectors
+tests/test_openclaw_strict_packet_contract.py::test_m2_future_production_modules_remain_absent
+tests/test_openclaw_strict_packet_contract.py::test_m2_gate_b_and_c_schema_inventory_exact
+tests/test_openclaw_strict_packet_contract.py::test_m2_idna2008_vectors_and_legacy_v1_retention
+tests/test_openclaw_strict_packet_contract.py::test_m2_legacy_envelope_bytes_preserved
+tests/test_openclaw_strict_packet_contract.py::test_m2_pinned_known_answer_vectors_dual_oracles
+tests/test_openclaw_strict_packet_contract.py::test_m2_protocol_fixture_specimens_present
+tests/test_openclaw_strict_packet_contract.py::test_m2_registry_schema_exact_binding_fields
+tests/test_openclaw_strict_packet_contract.py::test_m2_schema_meta_and_31_positive_negative_instances
+tests/test_openclaw_strict_packet_contract.py::test_m4_edit_allowlist_permits_mcp_server_protects_gate_w
+tests/test_openclaw_strict_packet_contract.py::test_m8_selected_nodes_strict_live_inventory
+```
+
+The sorted-NUL identity-set SHA-256 is
+`9fa64e04c15b96cbb935cb5b40d4e47a9cdd5869099d728a5213174c7244cbf6`. A missing member,
+additional member or changed identity is `PAUSE`.
+
+**Closed semantic signature.** For only a member of that exact set, a raw record is eligible only
+when its outcome is `failure`, its type is empty, and its message is exactly four newline-separated
+lines with all of these properties:
+
+1. line 1 is exactly `AssertionError: assert None == 'inner'`;
+2. line 2 is exactly ` +  where None = get('CONVMEM_OPENCLAW_INNER_ROLE')`;
+3. line 3 begins exactly ` +    where get = environ(` and ends exactly `).get`;
+4. line 4 begins exactly ` +      where environ(` and ends exactly `) = os.environ`; and
+5. the bytes between the fixed line-3 prefix/suffix and the bytes between the fixed line-4
+   prefix/suffix are identical within that record.
+
+For an eligible record, the canonical semantic signature is the two exact core lines plus the two
+fixed tail prefix/suffix pairs; the inner `environ(...)` representation is not part of that
+semantic signature. The raw message, complete JUnit, canonical raw record and their hashes remain
+stored unchanged. Nothing is deleted, rewritten or called passing. Each eligible node must have
+all four failure records—`R` complete, final-candidate complete, `R` isolated rerun and
+final-candidate isolated rerun—and all four must map independently to this one closed signature.
+
+This is not a generic normalization. Section 18.10's normalization allowlist remains exactly the
+source root, pytest temporary root and exact tip SHA. It gains no environment, ordering,
+representation, path, suffix, hash or arbitrary-text substitution. A 23rd node; nonempty type;
+different outcome; missing or extra line; changed core line; tail prefix/suffix mismatch; unequal
+duplicated environment payload inside one record; absent one of the four records; new R2b node; or
+any attempt to apply this rule outside the exact set is `PAUSE`. The exact five-node R2b rule is
+independent and unchanged. Retained failures remain explicit debt and keep
+`FULL_PYTEST_PASS=false`.
+
+**Resume and evidence boundary.** After exact-tip Kiro PASS and a new Ryan grant, Grok applies the
+complete reviewed linear plan range from this correction's grant-named base overlay through its
+final overlay, oldest to newest, onto preserved `H1`, then pushes and stops. Codex proves the four
+planning-document blobs and modes equal the reviewed overlay and every non-plan byte still equals
+`H1`. Only after a commit-specific `CONTINUE`, Grok changes exactly four 40-hex values across
+exactly two files: the `SEMANTIC_PARENT_SHA` and `M11_REVIEWED_OVERLAY_SHA` declarations in
+`tests/fixtures/openclaw_strict/constants.py` and their two frozen assertions in
+`tests/test_openclaw_strict_packet_contract.py`. `CODE_BASELINE_SHA` remains `N1`. No fifth
+substitution, third path, formatting, test logic or other byte may change.
+
+Codex then runs a fresh complete same-slot `N1`/`R`/final-candidate sequence and every symmetric
+mismatch rerun; prior output is diagnostic only. Section 18.15's 238-node partition, §18.16's
+advanced identities, §18.10's normalization allowlist, the five-node R2b proof and this 22-node
+semantic-signature rule must all pass independently. This projection alone cannot produce a PASS:
+every other differential gate still applies. Only a newly established
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases the unchanged §18.9 Pylint gate, two fresh M8
+runs, seven legacy MCP regressions, durable-evidence verification and exact-tip Kiro conformance
+review. Immediately before PR creation and Ryan's merge decision, `origin/main` must still equal
+`N1`.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test, CI,
+baseline, runtime, configuration or evidence byte and waives no failure. A new Ryan grant must name
+the semantic parent, final overlay, preserved `H1`, `N1`, `R`, complete reviewed plan range, exact
+four substitutions, fixed slot, runtime prefix, durable evidence root, the closed 22-node set/hash
+and complete three-tip/Pylint/M8/MCP sequence. Any conflict, extra change, signature mismatch,
+runtime mutation or required correction is `PAUSE`. PR, merge, deployment, real OpenClaw, Gate
+D/W/D-V/E/F, watch activation, live data and promotion remain independently blocked.
 
 ## Jargon TL;DR
 
