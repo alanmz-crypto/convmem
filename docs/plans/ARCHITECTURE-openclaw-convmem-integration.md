@@ -9,7 +9,7 @@ exact-tip conformance review passed at `cd60cf19`. That result is bound to integ
 `9193f5ec744f059d07a20612489b210527b5660a`. Before a PR existed, `origin/main` advanced by twelve
 commits to `a92a74eb326b3eaa59087b707de10153c7cc0c63`; Git now reports a real conflict in the governed
 Switchboard STATUS document, and the full tracked source identity no longer matches the tested
-tree. Sections 18.9–13 remain the historical evidence contract. Section 18.14 freezes only the
+tree. Sections 18.9–18.13 remain the historical evidence contract. Section 18.14 freezes only the
 current-main reconstruction, exact six-literal authority rebind and fresh evidence required before
 merge can be reconsidered. It authorizes no implementation, test, PR or merge.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and

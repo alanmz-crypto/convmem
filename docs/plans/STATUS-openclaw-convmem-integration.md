@@ -58,7 +58,7 @@ crash-loop fix, not ordinary wiring.
 | Current-main baseline | Historical M11 evidence is bound to `9193f5ec744f059d07a20612489b210527b5660a`; exact fetched current main is now `a92a74eb326b3eaa59087b707de10153c7cc0c63` and must remain fixed through PR/merge consideration |
 | M11 reviewed candidate | **BOUNDED MERGE-READINESS EVIDENCE PASS / PRESERVED, CLEAN AND PUSHED** at `cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; Kiro exact-tip PASS, but no PR or merge followed |
 | Merge applicability | **PAUSED.** Current main advanced 12 commits; a three-way merge conflicts in the governed Switchboard STATUS document and changes full source identity. The candidate PASS does not transfer |
-| Current-main reconciliation | **PLAN-ONLY / NOT AUTHORIZED.** New plan freezes a branch from `a92a74e`, exact 120-path candidate product transplant, four reviewed plan blobs, six identity substitutions, current-main differential, Pylint, two M8 runs, seven MCP regressions and final Kiro review |
+| Current-main reconciliation | **PLAN-ONLY / NOT AUTHORIZED.** New plan freezes a branch from `a92a74e`, exact 120-path candidate product transplant, four reviewed control-plane blobs, six identity substitutions, current-main differential, Pylint, two M8 runs, seven MCP regressions and final Kiro review |
 | Runtime/evidence | Prior runtime tree SHA-256 `74a12c…` and evidence tree SHA-256 `881d1f…` remain preserved historical inputs. New parent/current-main-bound paths and fresh evidence require Kiro PASS and a new Ryan grant |
 | Installed OpenClaw capability | Last probed at `2026.3.2`, while a newer release was identified. M11 does not run or change OpenClaw; before any Gate D test, the installed distribution must be deliberately updated or pinned and freshly capability-probed/reviewed |
 | Related arc | [`STATUS-openclaw-watch-coverage.md`](STATUS-openclaw-watch-coverage.md) — separate arc, covers ConvMem watching OpenClaw's *committed repo files*, not this runtime connector |
@@ -99,7 +99,7 @@ OpenClaw or touch live data. Only a later Ryan grant may start the new branch.
 1. Kiro performs exact-tip binary design/scope review of the revised semantic
    parent, milestone overlay and this STATUS.
 2. If Kiro passes, Ryan decides whether to grant a new branch from exact
-   `a92a74e`, naming the three reconstruction commits, fixed slot and new
+   `a92a74e`, naming the three held-commit boundaries, fixed slot and new
    parent/current-main-bound runtime and evidence roots.
 3. Under that grant, Grok performs only the held 120-path product transplant,
    four-blob control-plane transplant and two-file/six-literal identity rebind,
