@@ -1,0 +1,528 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.activation-launch-policy.v1",
+  "title": "convmem.activation-launch-policy.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "runtime_distribution_sha256",
+    "model_artifacts_sha256",
+    "processes",
+    "read_only_mounts",
+    "writable_mounts",
+    "endpoints",
+    "operator_uid",
+    "controller_uid",
+    "supervisor_uid",
+    "runtime_uid",
+    "manager_policy_sha256",
+    "policy_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.activation-launch-policy.v1"
+    },
+    "runtime_distribution_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "model_artifacts_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "processes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supervisor",
+        "gateway",
+        "agent",
+        "strict_server",
+        "model_worker"
+      ],
+      "properties": {
+        "supervisor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "executable",
+            "argv_template",
+            "cwd",
+            "environment",
+            "inherited_fd_roles",
+            "network_policy",
+            "uid",
+            "gid",
+            "seccomp_filter_sha256"
+          ],
+          "properties": {
+            "executable": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "argv_template": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "environment": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "inherited_fd_roles": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "network_policy": {
+              "enum": [
+                "activation_loopback",
+                "none"
+              ]
+            },
+            "uid": {
+              "type": "integer"
+            },
+            "gid": {
+              "type": "integer"
+            },
+            "seccomp_filter_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "gateway": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "executable",
+            "argv_template",
+            "cwd",
+            "environment",
+            "inherited_fd_roles",
+            "network_policy",
+            "uid",
+            "gid",
+            "seccomp_filter_sha256"
+          ],
+          "properties": {
+            "executable": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "argv_template": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "environment": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "inherited_fd_roles": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "network_policy": {
+              "enum": [
+                "activation_loopback",
+                "none"
+              ]
+            },
+            "uid": {
+              "type": "integer"
+            },
+            "gid": {
+              "type": "integer"
+            },
+            "seccomp_filter_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "agent": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "executable",
+            "argv_template",
+            "cwd",
+            "environment",
+            "inherited_fd_roles",
+            "network_policy",
+            "uid",
+            "gid",
+            "seccomp_filter_sha256"
+          ],
+          "properties": {
+            "executable": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "argv_template": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "environment": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "inherited_fd_roles": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "network_policy": {
+              "enum": [
+                "activation_loopback",
+                "none"
+              ]
+            },
+            "uid": {
+              "type": "integer"
+            },
+            "gid": {
+              "type": "integer"
+            },
+            "seccomp_filter_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "strict_server": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "executable",
+            "argv_template",
+            "cwd",
+            "environment",
+            "inherited_fd_roles",
+            "network_policy",
+            "uid",
+            "gid",
+            "seccomp_filter_sha256"
+          ],
+          "properties": {
+            "executable": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "argv_template": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "environment": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "inherited_fd_roles": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "network_policy": {
+              "enum": [
+                "activation_loopback",
+                "none"
+              ]
+            },
+            "uid": {
+              "type": "integer"
+            },
+            "gid": {
+              "type": "integer"
+            },
+            "seccomp_filter_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "model_worker": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "executable",
+            "argv_template",
+            "cwd",
+            "environment",
+            "inherited_fd_roles",
+            "network_policy",
+            "uid",
+            "gid",
+            "seccomp_filter_sha256"
+          ],
+          "properties": {
+            "executable": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "argv_template": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^/"
+            },
+            "environment": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "inherited_fd_roles": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "network_policy": {
+              "enum": [
+                "activation_loopback",
+                "none"
+              ]
+            },
+            "uid": {
+              "type": "integer"
+            },
+            "gid": {
+              "type": "integer"
+            },
+            "seccomp_filter_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "read_only_mounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_role",
+          "destination",
+          "mode",
+          "max_bytes"
+        ],
+        "properties": {
+          "source_role": {
+            "enum": [
+              "runtime",
+              "public_evidence",
+              "config",
+              "model",
+              "control",
+              "state"
+            ]
+          },
+          "destination": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^/"
+          },
+          "mode": {
+            "enum": [
+              "ro",
+              "rw"
+            ]
+          },
+          "max_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "writable_mounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_role",
+          "destination",
+          "mode",
+          "max_bytes"
+        ],
+        "properties": {
+          "source_role": {
+            "enum": [
+              "runtime",
+              "public_evidence",
+              "config",
+              "model",
+              "control",
+              "state"
+            ]
+          },
+          "destination": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^/"
+          },
+          "mode": {
+            "enum": [
+              "ro",
+              "rw"
+            ]
+          },
+          "max_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "endpoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gateway_port",
+        "model_port",
+        "model_api",
+        "model_id"
+      ],
+      "properties": {
+        "gateway_port": {
+          "type": "integer",
+          "minimum": 49152,
+          "maximum": 65535
+        },
+        "model_port": {
+          "type": "integer",
+          "minimum": 49152,
+          "maximum": 65535
+        },
+        "model_api": {
+          "const": "openai-completions"
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "operator_uid": {
+      "type": "integer"
+    },
+    "controller_uid": {
+      "type": "integer"
+    },
+    "supervisor_uid": {
+      "type": "integer"
+    },
+    "runtime_uid": {
+      "type": "integer"
+    },
+    "manager_policy_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "policy_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

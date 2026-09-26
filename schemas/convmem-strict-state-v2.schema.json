@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-state.v2",
+  "title": "convmem.strict-state.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "lineage_id",
+    "authority_seq",
+    "authority_manifest_sha256",
+    "semantic_contract_sha256",
+    "assertion_id",
+    "authority_state",
+    "verification_state",
+    "subject_head_assertion_ids",
+    "verification_inputs",
+    "state_disposition_refs"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-state.v2"
+    },
+    "lineage_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "authority_seq": {
+      "type": "integer"
+    },
+    "authority_manifest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "semantic_contract_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "assertion_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verification_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subject_head_assertion_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "verification_inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assertion_id",
+          "logical_id",
+          "authority_state",
+          "reported_result",
+          "effective_result",
+          "check_eligibility"
+        ],
+        "properties": {
+          "assertion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "logical_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "authority_state": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reported_result": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effective_result": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "check_eligibility": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "state_disposition_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

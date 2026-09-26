@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-citation-map.v1",
+  "title": "convmem.strict-citation-map.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "citations",
+    "citation_map_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-citation-map.v1"
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "citation_ref",
+          "assertion_id",
+          "provenance_assertion_id",
+          "provenance_commitment",
+          "root_bindings",
+          "input_bindings"
+        ],
+        "properties": {
+          "citation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "assertion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "provenance_assertion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "provenance_commitment": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "root_bindings": {
+            "type": "array"
+          },
+          "input_bindings": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "citation_map_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

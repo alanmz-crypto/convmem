@@ -1,0 +1,8 @@
+{
+  "artifact_kind": "protocol_fixture",
+  "payload": {
+    "role": "runtime_image",
+    "schema": "convmem.inert-fixture.v1"
+  },
+  "role": "runtime_image"
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.clock-review.v1",
+  "title": "convmem.clock-review.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "lineage_id",
+    "authority_snapshot_id",
+    "boot_id",
+    "expires_at",
+    "reviewed_wall_time",
+    "reviewer_uid",
+    "review_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.clock-review.v1"
+    },
+    "lineage_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "authority_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "boot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "reviewed_wall_time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "reviewer_uid": {
+      "type": "integer"
+    },
+    "review_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

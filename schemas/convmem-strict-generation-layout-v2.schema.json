@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-generation-layout.v2",
+  "title": "convmem.strict-generation-layout.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_dir",
+    "projection_dir",
+    "active_dir",
+    "locks_dir",
+    "control_dir",
+    "layout_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-generation-layout.v2"
+    },
+    "authority_dir": {
+      "const": "authority"
+    },
+    "projection_dir": {
+      "const": "projection"
+    },
+    "active_dir": {
+      "const": "active"
+    },
+    "locks_dir": {
+      "const": "locks"
+    },
+    "control_dir": {
+      "const": "control"
+    },
+    "layout_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

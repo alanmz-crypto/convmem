@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.activation-control.v1",
+  "title": "convmem.activation-control.v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "op",
+        "request_id",
+        "slot_id",
+        "activation_id",
+        "turn_id",
+        "text",
+        "expected_publication_sha256"
+      ],
+      "properties": {
+        "schema": {
+          "const": "convmem.activation-control.v1"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "slot_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "activation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "op": {
+          "const": "turn"
+        },
+        "turn_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_publication_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "op",
+        "request_id",
+        "slot_id",
+        "activation_id",
+        "turn_id"
+      ],
+      "properties": {
+        "schema": {
+          "const": "convmem.activation-control.v1"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "slot_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "activation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "op": {
+          "const": "cancel"
+        },
+        "turn_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "op",
+        "request_id",
+        "slot_id",
+        "activation_id"
+      ],
+      "properties": {
+        "schema": {
+          "const": "convmem.activation-control.v1"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "slot_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "activation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "op": {
+          "const": "status"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "op",
+        "request_id",
+        "slot_id",
+        "activation_id",
+        "reason"
+      ],
+      "properties": {
+        "schema": {
+          "const": "convmem.activation-control.v1"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "slot_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "activation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "op": {
+          "const": "revoke"
+        },
+        "reason": {
+          "enum": [
+            "operator",
+            "publish",
+            "scope_change",
+            "expiry",
+            "clock_anomaly",
+            "integrity_failure",
+            "disconnect",
+            "shutdown"
+          ]
+        }
+      }
+    }
+  ]
+}
