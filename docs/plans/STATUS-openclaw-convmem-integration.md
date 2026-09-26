@@ -53,15 +53,16 @@ crash-loop fix, not ordinary wiring.
 
 | Surface | State |
 |---|---|
-| Architecture direction | **BOUNDED BUILD/TEST PASS** for synthetic T0–T5; Architecture §18.17 and Execution §10.15 now freeze a plan-only, closed 22-node inner-role semantic-signature reconciliation without changing T0–T5 semantics |
+| Architecture direction | **BOUNDED BUILD/TEST PASS** for synthetic T0–T5; Architecture §18.18 and Execution §10.16 now freeze a plan-only, exact two-test-file correction for three candidate-introduced Pylint pairs without changing T0–T5 semantics |
 | Bounded implementation | **ACCEPTED** at `8010fb060c2edc29e1b09d7a30b1a1da2689d489` over original baseline `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; two M8 runs and exact-tip Kiro conformance passed |
 | Current-main baseline | Historical M11 evidence is bound to `9193f5ec744f059d07a20612489b210527b5660a`; prior current main was `a92a74e`; exact fetched current main is now `5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d` and must remain fixed through PR/merge consideration |
 | M11 reviewed candidate | **BOUNDED MERGE-READINESS EVIDENCE PASS / PRESERVED, CLEAN AND PUSHED** at `cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; Kiro exact-tip PASS, but no PR or merge followed |
-| Merge applicability | **PAUSED.** The advanced-main candidate is preserved at `776a4ca3`; complete pytest and all symmetric reruns ran, but the finalizer rejected 22 unchanged inner-role failures whose pytest-rendered environment tails varied. No verdict transfers |
+| Merge applicability | **PAUSED.** The reviewed inner-role correction and three-tip differential passed at `65bbfd6f`; the unchanged Pylint gate then failed on three candidate-introduced `R0801` pairs. M8/MCP did not run; no verdict transfers |
 | First current-main reconciliation | **PRESERVED.** The first reconstruction is at `30bc134d`; its applicability correction and four-literal rebind are clean/pushed at `d276cb4`. The authorized evidence preflight then paused before slot/run creation because main moved |
 | Advanced-main reconciliation | **DONE / PRESERVED at `776a4ca3`.** The exact 120-path product, four reviewed control blobs and six identity substitutions were applied as three held commits from `5c6a4a8`; source composition and runtime inventory passed |
-| Differential applicability | **PAUSED / PLAN CORRECTION ONLY.** Fresh same-slot `5c6a4a8`/`cd60cf19`/`776a4ca3` execution and 166 reruns completed. Exactly 22 packet-contract failures retained one assertion but varied only in pytest's rendered `os.environ` tail; §18.17 closes the admissible semantic projection |
-| Runtime/evidence | Runtime tree SHA-256 `74a12c…` remained unchanged. The sealed PAUSE ledger SHA-256 is `a6a2d95b…`; the exact 22-node sorted-NUL identity-set SHA-256 is `9fa64e04…`. Fresh parent/`5c6a4a8`-bound paths and evidence require Kiro PASS and a new Ryan grant |
+| Differential applicability | **PASS / PRESERVED at `65bbfd6f`.** Fresh same-slot `5c6a4a8`/`cd60cf19`/final execution, 166 reruns, the 238-node partition, five-node R2b proof and exact 22-node semantic projection passed; `FULL_PYTEST_PASS=false` remains explicit |
+| Pylint applicability | **PAUSED / PLAN CORRECTION ONLY.** Current main passes the unchanged gate with 455 findings/69 `R0801`; candidate `65bbfd6f` fails with 458/72. Triage proves exactly three candidate-introduced pairs; §18.18 freezes two local test rewrites |
+| Runtime/evidence | Runtime tree SHA-256 `74a12c…` remained unchanged. The Pylint PAUSE ledger SHA-256 is `28c3db4d…`; triage ledger SHA-256 is `53eb6004…`; introduced-pair file SHA-256 is `ab41f009…`. Fresh parent/`5c6a4a8`-bound paths and evidence require Kiro PASS and a new Ryan grant |
 | Installed OpenClaw capability | Last probed at `2026.3.2`, while a newer release was identified. M11 does not run or change OpenClaw; before any Gate D test, the installed distribution must be deliberately updated or pinned and freshly capability-probed/reviewed |
 | Related arc | [`STATUS-openclaw-watch-coverage.md`](STATUS-openclaw-watch-coverage.md) — separate arc, covers ConvMem watching OpenClaw's *committed repo files*, not this runtime connector |
 
@@ -83,40 +84,44 @@ crash-loop fix, not ordinary wiring.
 | M11 first current-main differential | **PAUSED / HISTORICAL** | complete `a92a74e`/`30bc134d` runs exposed the inapplicable candidate-only rule; sealed ledger SHA-256 `3bd89ebf…` |
 | M11 three-tip correction | **DONE / PRESERVED at `d276cb4`** | plan/rebind verified and runtime qualified; preflight stopped before testing when main advanced |
 | M11 advanced-main reconstruction | **DONE / PRESERVED at `776a4ca3`** | three held reconstruction commits, source composition and runtime inventory passed |
-| M11 advanced-main differential | **PAUSED AFTER COMPLETE RUNS/RERUNS** | 22 exact packet-contract nodes require the reviewed §18.17 semantic-signature rule; `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS=false`, and Pylint/M8/MCP did not run |
-| Merge readiness | **PAUSED FOR REVIEWED EVIDENCE** | requires exact-tip Kiro PASS, new Ryan grant, reviewed plan application and four-literal rebind, fresh three-tip differential, unchanged Pylint, two M8 runs, seven MCP regressions, durable verification, Kiro integrated-tip PASS and unchanged `origin/main` |
+| M11 advanced-main differential | **PASS / PRESERVED at `65bbfd6f`** | the reviewed 22-node rule and all other fresh differential gates passed; retained failures remain explicit and `FULL_PYTEST_PASS=false` |
+| M11 reconstruction Pylint gate | **PAUSED / PLAN-ONLY CORRECTION** | exactly three candidate-introduced `R0801` pairs remain; M8/MCP are blocked pending §18.18/§10.16 Kiro review and a new Ryan grant |
+| Merge readiness | **PAUSED FOR REVIEWED CORRECTION AND FRESH EVIDENCE** | requires exact-tip Kiro PASS, new Ryan grant, reviewed plan application, four-literal rebind, exact two-file correction, fresh three-tip differential, unchanged Pylint, two M8 runs, seven MCP regressions, durable verification, Kiro integrated-tip PASS and unchanged `origin/main` |
 | Phase 1A/1B real OpenClaw operation | **BLOCKED** | Gate D runtime qualification and later production gates |
 | Child-agent inheritance question | **UNANSWERED** | requires observing a real OpenClaw dispatch run after Phase 1B lands |
 | Transcript capture | **BLOCKED** | independent poison-transcript/Chroma upsert crash-loop fix; explicitly out of scope for this phase |
 
 ## 5. Your Role
 
-**If Ryan sent you here:** review only the plan-only inner-role signature
-reconciliation. Confirm `N1=5c6a4a8`, preserved reviewed candidate
-`R=cd60cf1`, preserved evidence PAUSE input `H1=776a4ca3`, the sealed PAUSE
-hashes and exact 22-node set/hash. Confirm §18.17 accepts only the four-line
-inner-role assertion grammar, preserves raw records, adds no generic
-normalization, keeps the five-node R2b rule independent, and requires fresh
-same-slot evidence plus unchanged Pylint/M8/MCP gates. Do not apply plans, edit
-identity literals, run a suite, create a PR, merge, update/run OpenClaw or touch
-live data.
+**If Ryan sent you here:** review only the plan-only reconstruction Pylint
+correction. Confirm `N1=5c6a4a8`, preserved reviewed candidate `R=cd60cf1`,
+preserved differential-PASS/Pylint-PAUSE candidate `65bbfd6f`, triage-ledger
+SHA-256 `53eb6004…` and exact three-pair file SHA-256 `ab41f009…`. Confirm
+§18.18 permits only the explicit Gate-C tuple and two local construction-style
+rewrites across exactly two test files; adds no suppression/helper/import;
+keeps the other three pair-side modules unchanged; and requires the complete
+fresh three-tip/Pylint/M8/MCP sequence. Do not apply plans, edit source/tests,
+run a suite, create a PR, merge, update/run OpenClaw or touch live data.
 
 ## 6. What Remains Before This Arc Is Live
 
 1. Kiro performs exact-tip binary design/scope review of the revised semantic
    parent, milestone overlay and this STATUS.
 2. If Kiro passes, Ryan decides whether to grant the exact reviewed plan range
-   onto preserved `776a4ca3`, four frozen parent/overlay identity substitutions,
-   fixed slot and new parent/current-main-bound runtime and evidence roots.
+   onto preserved `65bbfd6f`, four frozen parent/overlay identity substitutions,
+   the exact two-file/three-transformation correction, fixed slot and new
+   parent/current-main-bound runtime and evidence roots.
 3. Under that grant, Grok applies only the reviewed plan range, pushes and
-   stops; after Codex verification and a commit-specific `CONTINUE`, Grok makes
-   only the exact two-file/four-literal rebind, then pushes and stops again.
+   stops; after Codex verification and commit-specific `CONTINUE`s, Grok makes
+   first the exact four-literal rebind and then the separate exact Pylint
+   correction, pushing and stopping after each.
 4. Codex proves final tree composition, then runs fresh complete pytest at
    `N1`, `R` and the final candidate in one reset slot. The exact 22-node closed
    signature proof supplements, but does not replace, the 238-node partition,
    five-node R2b proof and all other differential gates. Only a three-tip PASS
-   releases the unchanged Pylint gate, two fresh M8 runs and seven MCP
-   regressions. Kiro reviews the exact resulting tip and durable evidence.
+   releases the unchanged Pylint gate; its exact 455/69 result then releases two
+   fresh M8 runs and seven MCP regressions. Kiro reviews the exact resulting tip
+   and durable evidence.
 5. `origin/main` must still equal `5c6a4a8` before PR creation and merge
    consideration. Ryan alone decides PR and merge; any main movement restarts
    reconciliation rather than permitting an inferred rebase.
@@ -142,8 +147,8 @@ live data.
 - No OpenClaw plugin-tools/native-memory bridge into ACP workers without
   separate review.
 - No OpenClaw upgrade without separate authorization.
-- No plan application, four-literal rebind or suite until Kiro passes the exact
-  inner-role signature plan and Ryan issues a new resume grant.
+- No plan application, four-literal rebind, Pylint correction or suite until
+  Kiro passes the exact §18.18 plan and Ryan issues a new resume grant.
 - No rebase, merge, force-push or conflict resolution of the reviewed
   `cd60cf1` or `d276cb4` branch; preserve both as inputs.
 - No PR or merge if `origin/main` differs from `5c6a4a8`.
@@ -154,6 +159,9 @@ live data.
   preserved-tip comparison.
 - No lint-remediation edit outside the exact 44 paths in Architecture §18.9;
   no broad suppression or shared helper that weakens independent oracles.
+- For the §18.18 correction, no byte outside the two named test files; no
+  production/reference-side edit; no suppression, helper, import, expected-
+  value change or transformation beyond the exact three named constructions.
 - Never describe identical retained repository failures as a full-pytest PASS;
   never compare through different path strings, retain state between reset-slot
   uses, widen signature/hash normalization, extend the five-node R2b set, skip
@@ -195,6 +203,7 @@ session narrative. Add one line below per milestone-level change.
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-09-26 | Codex | Fresh inner-role evidence passed at `65bbfd6f`; unchanged Pylint then paused on three candidate-introduced duplicate-code pairs, so an exact two-test-file plan now awaits Kiro and a new Ryan grant. |
 | 2026-09-26 | Codex | Advanced-main reconstruction is preserved at `776a4ca3`; three complete pytest runs and 166 reruns paused on unstable pytest environment rendering for an exact 22-node inner-role failure family, so a closed semantic-signature plan now awaits Kiro and a new Ryan grant. |
 | 2026-09-26 | Codex | Three-tip candidate `d276cb4` passed held source/runtime checks, but its evidence preflight stopped before execution when main advanced to `5c6a4a8`; a new deterministic reconstruction plan now awaits Kiro and a new Ryan grant. |
 | 2026-09-26 | Codex | Exact-current-main reconstruction is preserved at `30bc134d`; complete pytest paused on 238 pre-existing Switchboard nodes absent from current main, so a closed three-tip applicability correction now awaits Kiro and a new Ryan grant. |
