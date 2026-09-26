@@ -7,7 +7,8 @@ implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE 
 `d276cb4ab0a0613b965e772d49d378e761df337e`; ADVANCED-MAIN CANDIDATE PRESERVED AT
 `776a4ca3d4215490fb26b882dca2df9a41e0e03a`; INNER-ROLE RECONCILIATION AND THREE-TIP
 DIFFERENTIAL PASS PRESERVED AT `65bbfd6f47515accfefa110b667afe1613f0dbed`; PYLINT PAUSED ON
-THREE CANDIDATE-INTRODUCED `R0801` PAIRS.
+THREE CANDIDATE-INTRODUCED `R0801` PAIRS; FIRST PYLINT CORRECTION PRESERVED AT
+`c71d37a42de0937aff57a2af47770a89902f132a`; EXACT ACCEPTANCE PAUSED AT 456/71.
 LIVE-DATA BLOCKED; PROMOTION BLOCKED.** The final authority-packet correction, repository-wide differential,
 unchanged Pylint gate, two M8 runs, seven MCP regressions and durable verification pass at
 `cd60cf19`, with Kiro exact-tip PASS. That source is bound to baseline `9193f5ec…`. The first
@@ -21,8 +22,11 @@ for exactly 22 packet-contract nodes. Section 10.15 froze the closed semantic-si
 reconciliation. Its reviewed execution reached `65bbfd6f` and established the complete three-tip
 differential, after which the unchanged Pylint gate paused on three candidate-introduced `R0801`
 pairs. Section 10.16 freezes an exact two-test-file structural correction and fresh evidence
-sequence; it authorizes no product/test edit, suite, PR, merge or runtime action. Exact-tip review
-and a new Ryan resume grant are required first.
+sequence. That correction reached `c71d37a` and passed the complete fresh three-tip differential,
+but exact Pylint acceptance paused at 456/71 with two excess pairs. Section 10.17 freezes the
+corrected one-test-file/two-transformation sequence and exact 454/69/240 acceptance; it authorizes
+no product/test edit, suite, PR, merge or runtime action. Exact-tip review and a new Ryan resume
+grant are required first.
 BUILD is not complete-integration readiness and does not pass any of those later gates.
 
 **Date:** 2026-09-26
@@ -41,7 +45,8 @@ Section 10.13 records the resulting PAUSE and freezes the three-tip applicabilit
 Section 10.14 records that correction's fail-closed preflight and completed advanced-main
 reconstruction. Section 10.15 records its governed evidence PAUSE and freezes the closed inner-role
 signature rule. Section 10.16 records the resulting differential PASS and Pylint PAUSE and freezes
-the exact post-reconstruction correction.
+the first post-reconstruction correction. Section 10.17 records that correction's governed
+acceptance PAUSE and freezes its exact successor.
 Review the two parent files together.
 The retained Astra report reviews the earlier `0f1216f` revision, not this correction:
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -67,10 +72,11 @@ candidate `853ef98ede44f2d171e5354b065e11f83558e010`; bundle-schema-paused candi
 `cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; preserved first reconstruction PAUSE tip
 `30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca`; preserved three-tip preflight input
 `d276cb4ab0a0613b965e772d49d378e761df337e`; advanced reconstruction and signature PAUSE tip
-`776a4ca3d4215490fb26b882dca2df9a41e0e03a`; and preserved differential-PASS/Pylint-PAUSE tip
-`65bbfd6f47515accfefa110b667afe1613f0dbed`. This revision changes plans only. A new grant must
-name the new reviewed parent and overlay, advanced `N`, `R`, preserved `65bbfd6f`, the exact
-reviewed plan range, four-literal authority rebind, two-file Pylint correction, rebound runtime and durable evidence root. No
+`776a4ca3d4215490fb26b882dca2df9a41e0e03a`; preserved differential-PASS/Pylint-PAUSE tip
+`65bbfd6f47515accfefa110b667afe1613f0dbed`; and preserved Pylint-acceptance-PAUSE tip
+`c71d37a42de0937aff57a2af47770a89902f132a`. This revision changes plans only. A new grant must
+name the new reviewed parent and overlay, advanced `N`, `R`, preserved `c71d37a`, the exact
+reviewed plan range, four-literal authority rebind, one-file Pylint correction, rebound runtime and durable evidence root. No
 rebase, merge, history rewrite or reuse of an earlier plan range.
 
 **Roles:** Cursor using Grok 4.5 High remains the sole implementation lane and is paused. Codex owns
@@ -1675,10 +1681,73 @@ identity edit, product/test/CI/runtime/configuration correction, suite, PR, merg
 real OpenClaw action may begin without Kiro PASS and a new Ryan grant. Gate D/W/D-V/E/F, watch
 activation, live data and promotion remain blocked.
 
+### 10.17 M11 Pylint acceptance-drift correction obligations
+
+Architecture §18.19 controls. Preserve final source
+`c71d37a42de0937aff57a2af47770a89902f132a`, its fresh
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`, and its sealed Pylint acceptance PAUSE. The unchanged
+command completed with 456 findings / 71 `R0801` / 240 fingerprints and protected-gate status zero,
+but the exact pair proof found two additions relative to `N1`. The PAUSE-ledger SHA-256 is
+`fe268988c98e944b679446f3551987eaeccf9dce9a2b3b0963896069148a3e62`; the evidence-manifest
+SHA-256 is `6f631cb97c8ae3531f70dc38a4fd5c865b3965ae207bac7b06ccd072cb15c01f`; the raw report SHA-256 is
+`e114236db43b888184a3847631a1025031e31385c55664e2304d024618cd7a2b`; and the pair-comparison
+SHA-256 is `a61465a3f448dcf98a6a583cc5d8f334e7831783443b2e6568044b72fa616301`. M8 and MCP remain
+unstarted.
+
+Execute only this held sequence after exact-tip Kiro PASS and a new Ryan grant:
+
+1. Require the implementation branch clean, pushed and exactly `c71d37a`; require
+   `origin/main == 5c6a4a8`; require `R=cd60cf19` unchanged; verify the §18.19 PAUSE ledger,
+   manifest, raw report and pair comparison; and revalidate the unchanged runtime inventory.
+   Any moved ref, missing byte or mutation is `PAUSE`.
+2. Grok applies every commit in the complete reviewed linear plan range beginning after the
+   §18.18 reviewed overlay, oldest to newest, onto `c71d37a`, with no conflict resolution, empty
+   commit, edit, squash, merge, rebase or non-plan change. Grok pushes and stops. Codex proves
+   exactly four planning-document blobs/modes equal the reviewed overlay and every non-plan byte
+   equals `c71d37a`.
+3. Only after a commit-specific `CONTINUE`, Grok changes exactly four 40-hex values across exactly
+   two files: `SEMANTIC_PARENT_SHA` and `M11_REVIEWED_OVERLAY_SHA` in
+   `tests/fixtures/openclaw_strict/constants.py`, plus their two frozen assertions in
+   `tests/test_openclaw_strict_packet_contract.py`. `CODE_BASELINE_SHA` remains `5c6a4a8`. Grok
+   commits, pushes and stops. Codex proves the exact two-path/four-substitution diff.
+4. Only after a second commit-specific `CONTINUE`, Grok changes exactly
+   `tests/test_strict_evidence_state.py`: reorder `_binding`'s six existing direct arguments to
+   Architecture §18.19's exact order, and split `_source_record` into the exact six-key assignment,
+   five-key `update()` and return. No other path or construction changes. Grok commits, pushes and
+   stops.
+5. Codex proves the correction is exactly one path/two transformations; preserves all values and
+   the eleven-key output order; adds no helper/import/suppression/branch; and leaves the §18.18
+   Gate-C tuple and all reference/production paths byte-identical to `c71d37a`. A second correction
+   path, third transformation or changed observable is `PAUSE`.
+6. Codex rebinds but does not alter the qualified runtime and freshly runs complete pytest at
+   `N1=5c6a4a8`, `R=cd60cf19` and final candidate `F` in one reset slot with identical environment,
+   argv, paths, reporter and limits. Apply §§18.10 and 18.15–18.17 unchanged, including every
+   symmetric rerun, the exact 238-node partition, five-node R2b proof and 22-node inner-role proof.
+   Prior differential and design-probe output is diagnostic only.
+7. Only a fresh `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases the unchanged full-tree Pylint
+   command. Require exactly 454 findings, 69 `R0801` messages, 240 fingerprints, raw status with no
+   fatal/usage bit, empty stderr, gate status zero, and exact equality of the complete normalized
+   69-pair multiset to `N1`. A different or merely lower count is `PAUSE`; do not substitute the
+   old 455-total expectation.
+8. Only that exact acceptance releases two fresh-root M8 runs and seven legacy MCP regression
+   files. Preserve all raw/JUnit/canonical records, hashes, reruns, Pylint/M8/MCP output,
+   inventories and staging mappings. Kiro reviews exact final source and evidence. Fetch and
+   require `origin/main == 5c6a4a8` before PR creation and again before Ryan's merge decision.
+
+The correction changes token structure only; it does not share authority/oracle logic, suppress a
+finding, widen the 44-path rule, change the protected baseline or treat the successful baseline
+gate as sufficient. The disposable 454/69/240 design probe in Architecture §18.19 is falsifiable
+planning support, never acceptance evidence. Grok does not choose the target file, syntax, key or
+argument order, counts, pair identity, runtime, evidence paths or verdict. This section authorizes
+planning only: no plan application, identity edit, source/test/CI/runtime/configuration correction,
+suite, PR, merge, deployment or real OpenClaw action may begin without Kiro PASS and a new Ryan
+grant. Gate D/W/D-V/E/F, watch activation, live data and promotion remain blocked.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
-differential passed at `65bbfd6f`; Pylint triage then proved three candidate-introduced duplicate-
-code pairs. Section 10.16 freezes exactly two test-local structural rewrites before the complete
-fresh evidence sequence. No implementation, test, PR, merge, real OpenClaw action, live data or
-promotion is authorized by this plan edit.
+differential passed at `65bbfd6f`; §10.16's first Pylint correction then reached `c71d37a` but
+paused exact acceptance at 456/71. Section 10.17 freezes one exact test-local correction and the
+truthful 454/69/240 plus pair-multiset gate before the complete fresh evidence sequence. No
+implementation, test, PR, merge, real OpenClaw action, live data or promotion is authorized by
+this plan edit.
