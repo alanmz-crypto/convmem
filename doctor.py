@@ -693,6 +693,69 @@ def _check_chroma_write_guard(cfg: dict) -> DoctorCheck:
     return DoctorCheck(name, True, f"no quarantine; {points} segment restore point(s)")
 
 
+CHROMA_AUDIT_MAX_AGE_HOURS = 36
+
+
+def _check_chroma_audit(cfg: dict) -> DoctorCheck:
+    """Latest daily silent-loss audit (scripts/chroma_guard.py audit); reads its result file only.
+
+    FAIL when the audit found lost vectors or an invalid HNSW segment, WARN when it
+    never ran, is older than 36 hours, was skipped or errored, PASS otherwise.
+    """
+    from datetime import timezone
+
+    from chroma_write_guard import ChromaWriteGuard
+
+    name = "chroma_audit"
+    chroma_dir = (cfg.get("index") or {}).get("chroma_dir")
+    if not chroma_dir:
+        return DoctorCheck(name, True, "no index.chroma_dir configured", status="skip")
+    guard = ChromaWriteGuard(chroma_dir)
+    audit = guard.last_audit()
+    if audit is None:
+        return DoctorCheck(
+            name,
+            True,
+            "no audit has run yet; install systemd/convmem-chroma-audit.timer.example "
+            "or run: python scripts/chroma_guard.py audit",
+            status="warn",
+        )
+    status = audit.get("status")
+    if status == "fail":
+        invalid = ", ".join(audit.get("invalid_segments") or {}) or "none"
+        return DoctorCheck(
+            name,
+            False,
+            f"audit at {audit.get('ts')}: {audit.get('lost')} lost vector(s), invalid segment(s): {invalid}; "
+            f"details in {guard.audit_path}",
+        )
+    if status != "pass":
+        return DoctorCheck(name, True, f"last audit {status}: {audit.get('reason')}", status="warn")
+    try:
+        ts = datetime.strptime(str(audit.get("ts")), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return DoctorCheck(name, True, f"audit record has no valid timestamp: {guard.audit_path}", status="warn")
+    age_hours = (datetime.now(timezone.utc) - ts).total_seconds() / 3600
+    summary = f"{audit.get('vectors')} vectors, 0 lost, {audit.get('segments')} segment(s) valid"
+    if age_hours > CHROMA_AUDIT_MAX_AGE_HOURS:
+        return DoctorCheck(
+            name,
+            True,
+            f"last audit is {age_hours:.0f}h old (>{CHROMA_AUDIT_MAX_AGE_HOURS}h; is convmem-chroma-audit.timer "
+            f"enabled?): {summary}",
+            status="warn",
+        )
+    return DoctorCheck(name, True, f"{summary} ({age_hours:.0f}h ago)")
+
+
+def _check_cpu_tripwire(cfg: dict) -> DoctorCheck:
+    """Native faults this boot, attributed to CPUs (cpu_tripwire); kernel log and sysfs only."""
+    from cpu_tripwire import check
+
+    verdict = check(cfg)
+    return DoctorCheck("cpu_tripwire", verdict.status != "fail", verdict.detail, status=verdict.status)
+
+
 def _standing_register_path() -> Path:
     return Path(__file__).resolve().parent / "docs" / "standing-checks-register.json"
 
@@ -1584,6 +1647,8 @@ def run_doctor(
         _check_index_gate(),
         _check_native_crash_gate(),
         _check_chroma_write_guard(cfg),
+        _check_chroma_audit(cfg),
+        _check_cpu_tripwire(cfg),
         _check_standing_register(cfg),
         _check_arc_staleness(),
         _check_planning_guide_contract(),

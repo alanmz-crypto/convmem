@@ -10,7 +10,9 @@ leaves no core dump behind.
 
 from __future__ import annotations
 
+import fcntl
 import json
+import os
 import pickle
 import struct
 import subprocess
@@ -461,3 +463,93 @@ def test_doctor_reports_quarantine_restores_and_off_switch(tmp_path: Path) -> No
     assert guard.clear_quarantine() and not guard.clear_quarantine()
     off = {"index": {"chroma_dir": str(chroma), "chroma_write_guard": False}}
     assert _check_chroma_write_guard(off).effective_status() == "warn"
+
+
+# --------------------------------------------------------------------------------------
+# Scheduled silent-loss audit
+# --------------------------------------------------------------------------------------
+
+
+def _audit_cli(chroma: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "chroma_guard.py"), "audit", "--chroma-dir", str(chroma)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+
+def test_audit_passes_a_clean_store_and_saves_its_result(tmp_path: Path) -> None:
+    chroma = _make_store(tmp_path)
+    _worker("write", chroma, 0, 250, "--guard")
+    before = segment_signature(_segment(chroma)[1])
+    done = _audit_cli(chroma)
+    assert done.returncode == 0, done.stdout + done.stderr
+    audit = ChromaWriteGuard(chroma).last_audit()
+    assert audit["status"] == "pass" and audit["lost"] == 0 and audit["vectors"] == 200
+    assert segment_signature(_segment(chroma)[1]) == before  # read-only
+    assert _events(chroma)[-1]["event"] == "audit"
+
+
+def test_audit_catches_silent_loss_that_structural_validation_passes(tmp_path: Path) -> None:
+    """Restoring an older save (module case 3) is valid HNSW but drops records."""
+    chroma = _make_store(tmp_path)
+    _worker("write", chroma, 0, 200)
+    _, seg = _segment(chroma)
+    old = {name: (seg / name).read_bytes() for name in os.listdir(seg)}
+    _worker("write", chroma, 200, 200)
+    for name, data in old.items():
+        (seg / name).write_bytes(data)
+    assert validate_segment(seg).ok
+    done = _audit_cli(chroma)
+    assert done.returncode == 1, done.stdout + done.stderr
+    audit = ChromaWriteGuard(chroma).last_audit()
+    assert audit["status"] == "fail" and audit["lost"] > 0 and not audit["invalid_segments"]
+
+
+def test_audit_fails_a_torn_segment(tmp_path: Path) -> None:
+    chroma = _make_store(tmp_path)
+    _worker("write", chroma, 0, 250)
+    seg_id, seg = _segment(chroma)
+    _set_header_count(seg / "header.bin", 1)
+    audit = ChromaWriteGuard(chroma).audit()
+    assert audit["status"] == "fail" and list(audit["invalid_segments"]) == [seg_id]
+
+
+def test_audit_waits_for_the_write_lock_and_skips_when_it_stays_busy(tmp_path: Path) -> None:
+    chroma = _make_store(tmp_path)
+    guard = ChromaWriteGuard(chroma)
+    guard.root.mkdir(parents=True)
+    fd = os.open(guard.lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)  # a writer mid-save in another process
+        audit = guard.audit(lock_timeout_seconds=0.2)
+    finally:
+        os.close(fd)
+    assert audit["status"] == "skipped" and "lock" in audit["reason"]
+    assert guard.audit()["status"] == "pass"
+
+
+def test_doctor_reports_the_latest_audit(tmp_path: Path) -> None:
+    from doctor import _check_chroma_audit
+
+    chroma = tmp_path / "chroma"
+    cfg = {"index": {"chroma_dir": str(chroma)}}
+    guard = ChromaWriteGuard(chroma)
+    assert _check_chroma_audit(cfg).effective_status() == "warn"  # never ran
+
+    def record(**fields: object) -> str:
+        guard.root.mkdir(parents=True, exist_ok=True)
+        guard.audit_path.write_text(json.dumps(fields), encoding="utf-8")
+        return _check_chroma_audit(cfg).effective_status()
+
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    old = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 40 * 3600))
+    assert record(status="pass", ts=now, vectors=5, lost=0, segments=1) == "pass"
+    assert record(status="pass", ts=old, vectors=5, lost=0, segments=1) == "warn"
+    assert record(status="skipped", ts=now, reason="lock busy") == "warn"
+    assert record(status="fail", ts=now, lost=3, invalid_segments={}) == "fail"
+    guard.audit_path.write_text("{not json", encoding="utf-8")
+    assert _check_chroma_audit(cfg).effective_status() == "warn"

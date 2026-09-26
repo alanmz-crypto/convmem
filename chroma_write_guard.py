@@ -55,6 +55,7 @@ SEGMENT_FILES = (
 )
 HEADER_BYTES = 100
 DEFAULT_LOCK_TIMEOUT_SECONDS = 120.0
+AUDIT_LOCK_TIMEOUT_SECONDS = 60.0
 GUARD_DIR_SUFFIX = ".write-guard"
 _DELETE_MARK = 0x10000
 _MAX_LEVELS = 64
@@ -576,6 +577,10 @@ class ChromaWriteGuard:
         self.quarantine_path = self.root / "QUARANTINE.json"
         self.lock_timeout_seconds = lock_timeout_seconds
 
+    @property
+    def audit_path(self) -> Path:
+        return self.root / "audit.json"
+
     # -- quarantine -------------------------------------------------------------------
 
     def quarantine_state(self) -> dict[str, Any] | None:
@@ -785,6 +790,51 @@ class ChromaWriteGuard:
         except (sqlite3.Error, OSError, pickle.UnpicklingError, EOFError) as exc:
             return {"unavailable": str(exc)}
         return {"unavailable": "segment not listed in chroma.sqlite3"}
+
+    # -- scheduled silent-loss audit ----------------------------------------------------
+
+    def audit(self, *, lock_timeout_seconds: float = AUDIT_LOCK_TIMEOUT_SECONDS) -> dict[str, Any]:
+        """Validate every live segment and count lost vectors; never modifies the store.
+
+        Holds the native-write lock so no save is read half-written: writers wait for
+        the audit (well under a second on the live store) instead of the audit
+        reporting a torn read as corruption.  A busy lock records ``skipped``.  The
+        result goes to ``audit.json`` for ``convmem doctor``.
+        """
+        result: dict[str, Any] = {"started": _utc_now(), "pid": os.getpid()}
+        try:
+            with _exclusive_flock(self.lock_path, lock_timeout_seconds):
+                reports = [validate_segment(seg) for seg in segment_dirs(self.chroma_dir).values()]
+                census = vector_census(self.chroma_dir)
+        except TimeoutError as exc:
+            result.update(status="skipped", reason=str(exc))
+        except (sqlite3.Error, OSError, pickle.UnpicklingError, EOFError) as exc:
+            result.update(status="error", reason=f"{type(exc).__name__}: {exc}")
+        else:
+            invalid = [r for r in reports if not r.ok]
+            lost = sum(int(row["lost"]) for row in census.values())
+            result.update(
+                status="fail" if invalid or lost else "pass",
+                segments=len(reports),
+                invalid_segments={r.segment: list(r.failures)[:5] for r in invalid},
+                lost=lost,
+                vectors=sum(int(row["hnsw_ids"]) for row in census.values()),
+                census=census,
+            )
+        result["ts"] = _utc_now()
+        self.root.mkdir(parents=True, exist_ok=True)
+        _write_json_durable(self.audit_path, result)
+        self._event("audit", status=result["status"], lost=result.get("lost"))
+        return result
+
+    def last_audit(self) -> dict[str, Any] | None:
+        try:
+            data = json.loads(self.audit_path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return None
+        except (OSError, json.JSONDecodeError) as exc:
+            return {"status": "error", "reason": f"unreadable audit record: {exc}"}
+        return data if isinstance(data, dict) else {"status": "error", "reason": "audit record is not an object"}
 
 
 def recover(

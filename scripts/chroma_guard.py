@@ -4,10 +4,12 @@
   status            quarantine state, restore point per segment, recent guard events
   validate          structural check of every live HNSW segment      (exit 1 on failure)
   census            records Chroma lists but can no longer return by vector (exit 1 if any)
+  audit             validate + census under the write lock; saves the result for doctor
+                    (exit 1 on a finding; run daily by convmem-chroma-audit.timer)
   reconcile         create or refresh restore points now; restores a torn segment if found
   clear-quarantine  remove QUARANTINE.json once the index has been repaired
 
-status, validate and census are read-only: no Chroma client is opened and SQLite is
+status, validate, census and audit never modify the store: no Chroma client is opened and SQLite is
 opened read-only. Run reconcile at deploy time with the watcher stopped, so the first
 restore-point copy (a few hundred MB on the live store) does not happen inside a
 memory-capped index child.
@@ -83,10 +85,25 @@ def _census(chroma_dir: Path) -> int:
     return 1 if lost else 0
 
 
+def _audit(guard: ChromaWriteGuard) -> int:
+    result = guard.audit()
+    status = result["status"]
+    if status in ("pass", "fail"):
+        print(f"segments: {result['segments']}  vectors: {result['vectors']}  lost: {result['lost']}")
+        for seg_id, failures in result["invalid_segments"].items():
+            print(f"segment {seg_id}: FAIL  {'; '.join(failures)}")
+    else:
+        print(f"audit {status}: {result.get('reason')}", file=sys.stderr)
+    print(f"OVERALL: {status.upper()}  (saved to {guard.audit_path})")
+    return {"pass": 0, "skipped": 0, "fail": 1}.get(status, 2)
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run one subcommand; exit 0 on success, 1 on a finding, 2 when the store is missing."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=("status", "validate", "census", "reconcile", "clear-quarantine"))
+    parser.add_argument(
+        "command", choices=("status", "validate", "census", "audit", "reconcile", "clear-quarantine")
+    )
     parser.add_argument("--chroma-dir", help="defaults to [index] chroma_dir from the convmem config")
     args = parser.parse_args(argv)
     chroma_dir = _chroma_dir(args.chroma_dir)
@@ -104,6 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, sqlite3.Error) as exc:
             print(f"census unavailable: {exc}", file=sys.stderr)
             return 2
+    if args.command == "audit":
+        return _audit(guard)
     if args.command == "reconcile":
         events = recover(chroma_dir)
         for event in events:

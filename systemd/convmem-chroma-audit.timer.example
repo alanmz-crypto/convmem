@@ -1,0 +1,18 @@
+# User systemd timer — copy to ~/.config/systemd/user/convmem-chroma-audit.timer
+#
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-chroma-audit.timer
+#   systemctl --user list-timers convmem-chroma-audit.timer
+#
+# Daily; `convmem doctor` warns when the last audit is more than 36 hours old.
+
+[Unit]
+Description=Daily convmem Chroma silent-loss audit
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1800
+
+[Install]
+WantedBy=timers.target

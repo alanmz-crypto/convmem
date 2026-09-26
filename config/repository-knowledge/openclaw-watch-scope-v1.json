@@ -642,6 +642,11 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "cpu_tripwire.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "cross_project_digest.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5962,6 +5967,16 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "systemd/convmem-chroma-audit.service.example",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "systemd/convmem-chroma-audit.timer.example",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "systemd/convmem-cross-project-digest.service.example",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6483,6 +6498,11 @@
     },
     {
       "path": "tests/test_copilot_session_jsonl.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_cpu_tripwire.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
