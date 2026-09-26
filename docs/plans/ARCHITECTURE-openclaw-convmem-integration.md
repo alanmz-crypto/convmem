@@ -5301,7 +5301,8 @@ D/W/D-V/E/F, watch activation, live data and promotion remain independently bloc
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. Merge is paused because
 the first current-main reconstruction at `30bc134d` exposed an inapplicable candidate-only-node
 rule; the corrected candidate reached `d276cb4`, then preflight paused before testing when main
-advanced to `5c6a4a8`. §18.16 freezes a new deterministic reconstruction from that exact main and
-the unchanged closed `N`/`R`/final-candidate evidence gates. Exact-tip Kiro PASS and a new Ryan
-grant remain mandatory. Real OpenClaw, live data, PR, merge, deployment and promotion remain
-blocked.
+advanced to `5c6a4a8`. The advanced reconstruction and complete pytest/rerun evidence reached
+`776a4ca3`, then paused on an exact 22-node inner-role failure family whose pytest-rendered
+environment tails varied. Section 18.17 freezes one closed semantic signature without widening
+normalization or waiving failures. Exact-tip Kiro PASS and a new Ryan grant remain mandatory.
+Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
