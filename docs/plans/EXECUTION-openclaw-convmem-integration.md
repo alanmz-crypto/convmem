@@ -1360,7 +1360,7 @@ Execute only this held sequence:
    differs, `PAUSE`. Codex creates and pushes the grant-named new branch from exact `N` in a
    dedicated worktree; it never switches the live checkout.
 2. Independently recompute Architecture §18.14's path algebra from Git trees. Require `M` = 40
-   paths/hash `596a484c…`, `D` = 124 paths/hash `da366dcc…`, `P` = 120 paths/hash `d331b92c…`,
+   paths/hash `596a484c…`, `D` = 124 paths/hash `af1b9fd8…`, `P` = 120 paths/hash `60903bc1…`,
    `M ∩ D` = only the Switchboard STATUS path, `M ∩ P` empty and no deletion in `P`.
 3. Grok sets exactly the 120 `P` paths to `R`'s blobs and modes, commits, pushes with an explicit
    refspec and stops. Codex proves the 120-path digest, exact blob/mode equality and that every

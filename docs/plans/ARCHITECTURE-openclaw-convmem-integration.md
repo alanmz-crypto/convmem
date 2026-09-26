@@ -4837,9 +4837,9 @@ bytes and hashed as their NUL-terminated sequence. The independently observed id
 - `M`: 40 paths, SHA-256
   `596a484cbf550a63bf77ac559733455aceadef75aaa5d3d8a6fee417b6695e6b`;
 - `D`: 124 paths, SHA-256
-  `da366dcc7be58fd6446633f76d3b8a0e565797528f871bdadb4c0d79bdd812e2`;
+  `af1b9fd8a991fe689cf8819f03bb1e6417ff159c91677d70417f289cea53b314`;
 - `P`: 120 paths, SHA-256
-  `d331b92c3e2627c0e848f65748c1e101f9b2857769be2bf1e87e80635c61e7ad`; and
+  `60903bc194bd6e471f6c7009df30ab0832cad7a5505e9fd14b2c64450d27c659`; and
 - `M ∩ D` is exactly `docs/plans/STATUS-openclaw-convmem-integration.md`, while
   `M ∩ P` is empty. `P` contains no deletion.
 
