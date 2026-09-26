@@ -221,10 +221,10 @@ def test_fixture_manifest_schema_exists_and_complete_emit_deferred():
 
 
 def test_plan_and_baseline_constants_frozen():
-    assert oc_constants.SEMANTIC_PARENT_SHA == "3656104081a790676b02f1057bbc552631ce96d0"
+    assert oc_constants.SEMANTIC_PARENT_SHA == "c92bc708d1fc23e8d37584890e876c151682a48d"
     assert oc_constants.CODE_BASELINE_SHA == "5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d"
     assert oc_constants.M11_REVIEWED_OVERLAY_SHA == (
-        "35e1fc34691ad6f0a662d9a0175a9f1ae1f4d9a8"
+        "6106f61e5a8661302ed4b83ac48215c08352a255"
     )
     assert oc_constants.M11_CONTROL_PLANE_INPUTS == frozenset(
         {
