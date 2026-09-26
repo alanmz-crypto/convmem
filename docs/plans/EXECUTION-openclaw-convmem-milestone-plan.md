@@ -2,9 +2,11 @@
 
 **Status:** M0–M8 BOUNDED GATE B/C ACCEPTED AT `8010fb0`. COMPLETE BOUNDED M11
 MERGE-READINESS EVIDENCE AND KIRO EXACT-TIP REVIEW PASS AT `cd60cf19`. MERGE IS
-PAUSED AFTER THE THREE-TIP CANDIDATE AT `d276cb4` STOPPED BEFORE TEST EXECUTION
-BECAUSE CURRENT MAIN ADVANCED TO `5c6a4a8`. THE PLAN-ONLY ADVANCED-CURRENT-MAIN
-RECONSTRUCTION IS READY FOR KIRO REVIEW, THEN A NEW RYAN RESUME DECISION.
+PAUSED AFTER THE ADVANCED-MAIN CANDIDATE AT `776a4ca3` COMPLETED THREE PYTEST
+RUNS AND 166 RERUNS, THEN STOPPED ON UNSTABLE PYTEST ENVIRONMENT RENDERING FOR
+AN EXACT 22-NODE INNER-ROLE FAILURE FAMILY. THE PLAN-ONLY CLOSED SEMANTIC-
+SIGNATURE RECONCILIATION IS READY FOR KIRO REVIEW, THEN A NEW RYAN RESUME
+DECISION.
 Product/test/CI/runtime edits, test execution, PR, merge and real OpenClaw work
 are paused.
 
@@ -15,7 +17,7 @@ are paused.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=538d37eb498e2d3bd497db33daa006520ad56d06
+SEMANTIC_PARENT_SHA=9faac8ea87532bc73f74b788b38234de0c614a4e
 ORIGINAL_CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
 ACCEPTED_IMPLEMENTATION_SHA=8010fb060c2edc29e1b09d7a30b1a1da2689d489
 INTEGRATION_BASELINE_SHA=9193f5ec744f059d07a20612489b210527b5660a
@@ -23,7 +25,7 @@ PRIOR_CURRENT_MAIN_BASELINE_SHA=a92a74eb326b3eaa59087b707de10153c7cc0c63
 CURRENT_MAIN_BASELINE_SHA=5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
 PRESERVED_M11_EVIDENCE_BRANCH=feat/2026-09-23-openclaw-convmem-m11-integration
 PRESERVED_THREE_TIP_PREFLIGHT_BRANCH=feat/2026-09-26-openclaw-convmem-m11-main-reconciliation
-PROPOSED_IMPLEMENTATION_BRANCH=feat/2026-09-26-openclaw-convmem-m11-main-advance
+PRESERVED_ADVANCED_MAIN_BRANCH=feat/2026-09-26-openclaw-convmem-m11-main-advance
 PRESERVED_INTEGRATION_TIP=a11b7a2a793c68e4e6e83c2680b077389a817c5c
 RECONCILIATION_BASE_OVERLAY_SHA=581de2abf430786a36f2612f97c623a19b61353f
 PYLINT_PLAN_BASE_OVERLAY_SHA=c5513d50b656f9cc9e6423ea819438f975d16ee5
@@ -35,6 +37,7 @@ AUTHORITY_PACKET_PLAN_BASE_OVERLAY_SHA=6b1b90b4865dc0b92e0ead470136eeebc3bd8447
 CURRENT_MAIN_PLAN_BASE_OVERLAY_SHA=fc5289a18db4a8ea0a8f215e2148b2b6aba3b41d
 THREE_TIP_PLAN_BASE_OVERLAY_SHA=b5d0c96dc0837ae515db0787ac136c308b25aaad
 CURRENT_MAIN_ADVANCE_PLAN_BASE_OVERLAY_SHA=05e0d79712fdb7c9d2e5640b8c4a744d3f84e56b
+INNER_ROLE_SIGNATURE_PLAN_BASE_OVERLAY_SHA=5b14010302021dcd7dc579f5714517a0f26570e1
 PRESERVED_M11_TIP=9c6421a6891fd8a861a51f4fed410f541b53148c
 PYTEST_DIFFERENTIAL_BASE_SHA=9c6421a6891fd8a861a51f4fed410f541b53148c
 PRESERVED_M11_CANDIDATE_SHA=3f8ef8312e3f3c98915320bd1b988bac5d8d96a9
@@ -45,6 +48,7 @@ PRESERVED_M11_AUTHORITY_PACKET_PAUSE_SHA=851edbe49b820bd4081809022b10f67c30fef47
 PRESERVED_M11_MERGE_READY_SHA=cd60cf19dca6706e4175e9f82c9ba55e41bca10b
 PRESERVED_M11_CURRENT_MAIN_PAUSE_SHA=30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca
 PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA=d276cb4ab0a0613b965e772d49d378e761df337e
+PRESERVED_M11_INNER_ROLE_PAUSE_SHA=776a4ca3d4215490fb26b882dca2df9a41e0e03a
 PRIOR_CURRENT_MAIN_DELTA_PATH_COUNT=40
 PRIOR_CURRENT_MAIN_DELTA_PATH_SET_SHA256=596a484cbf550a63bf77ac559733455aceadef75aaa5d3d8a6fee417b6695e6b
 CURRENT_MAIN_ADVANCE_PATH_COUNT=11
@@ -80,11 +84,19 @@ SWITCHBOARD_CANDIDATE_ONLY_PASSED_COUNT=160
 SWITCHBOARD_CANDIDATE_ONLY_PASSED_IDENTITY_SHA256=b98f02f3f6d8b1c14b9d0e90e4dbb0f8e67e12698842ab37b381f5f4b2c35ae1
 SWITCHBOARD_CANDIDATE_ONLY_FAILED_COUNT=78
 SWITCHBOARD_CANDIDATE_ONLY_FAILED_IDENTITY_SHA256=e3fdc26e69739af0ff33282378d02d6d930416daa8b89fc6964825ecd6e08423
+INNER_ROLE_SIGNATURE_NODE_COUNT=22
+INNER_ROLE_SIGNATURE_NODE_SET_SHA256=9fa64e04c15b96cbb935cb5b40d4e47a9cdd5869099d728a5213174c7244cbf6
+INNER_ROLE_PAUSE_LEDGER_SHA256=a6a2d95b6f294ad3893ea39fa8c739b15a7ea172d2067757492c49abf49399a6
+INNER_ROLE_DIAGNOSTIC_SHA256=115492f91adeaf71aa09afd81b66e863191d0e7306efdd2a51a1168633c0376d
+INNER_ROLE_PAUSE_MANIFEST_SHA256=78ac1cef55142892cdf75d2cad71a22a536519a4d27359fedba04881020e1c80
+INNER_ROLE_RERUN_PLAN_SHA256=15d082c9805943a11c4c6236c5f23e48bf64440aa8b60cda29b25c2ad55eddcd
+INNER_ROLE_PRELIMINARY_COMPARISON_SHA256=674f79845a763293128e5e2d95230c0ded1c296a42fa0365061e9f4a089f1f91
+INNER_ROLE_PAUSE_EVIDENCE=/home/lauer/.local/share/convmem-openclaw-evidence/538d37eb498e2d3bd497db33daa006520ad56d06/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/776a4ca3d4215490fb26b882dca2df9a41e0e03a/m11-three-tip-pytest-differential/comparison
 PRESERVED_THREE_TIP_UNUSED_SLOT=/home/lauer/.cache/convmem-m11-three-tip-differential/300180f7c0a382b6e7d85b2858a338c271ce695e/slot
 PRESERVED_THREE_TIP_UNUSED_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/300180f7c0a382b6e7d85b2858a338c271ce695e/a92a74eb326b3eaa59087b707de10153c7cc0c63/runs/d276cb4ab0a0613b965e772d49d378e761df337e/m11-three-tip-pytest-differential
-PROPOSED_FIXED_EXECUTION_SLOT=/home/lauer/.cache/convmem-m11-three-tip-differential/538d37eb498e2d3bd497db33daa006520ad56d06/slot
-PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/538d37eb498e2d3bd497db33daa006520ad56d06/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
-PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/538d37eb498e2d3bd497db33daa006520ad56d06/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
+PROPOSED_FIXED_EXECUTION_SLOT=/home/lauer/.cache/convmem-m11-inner-role-signature/9faac8ea87532bc73f74b788b38234de0c614a4e/slot
+PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/9faac8ea87532bc73f74b788b38234de0c614a4e/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
+PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/9faac8ea87532bc73f74b788b38234de0c614a4e/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
 ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
 ```
@@ -110,16 +122,17 @@ The runner's single `--plan-sha` is always `SEMANTIC_PARENT_SHA`. The overlay
 SHA is the exact final branch tip Kiro reviews and Ryan later names as
 `REVIEWED_OVERLAY_SHA`; it is not substituted into the parent's runner
 contract. The final overlay descends from `SEMANTIC_PARENT_SHA`; its planning
-branch starts at `CURRENT_MAIN_ADVANCE_PLAN_BASE_OVERLAY_SHA`. The preserved evidence
+branch starts at `INNER_ROLE_SIGNATURE_PLAN_BASE_OVERLAY_SHA`. The preserved evidence
 branch remains immutable at `PRESERVED_M11_MERGE_READY_SHA` and is never
 rebased, merged, force-pushed, replayed, or used as a branch base. The first
 current-main and three-tip branches are preserved at
 `PRESERVED_M11_CURRENT_MAIN_PAUSE_SHA` and `PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`.
-After Kiro PASS and a new Ryan grant, Codex creates the new implementation
-branch from exact `CURRENT_MAIN_BASELINE_SHA`; Grok makes the held 120-product-
-path commit, four-control-blob commit and six-literal identity commit, pushing
-and stopping after each. Codex alone then executes the fresh three-tip evidence
-defined in M11. The
+The completed advanced-main branch is preserved at
+`PRESERVED_M11_INNER_ROLE_PAUSE_SHA`. After Kiro PASS and a new Ryan grant,
+Grok applies the exact complete reviewed plan range onto that preserved tip,
+pushes and stops. After Codex's commit-specific `CONTINUE`, Grok makes the held
+two-file/four-literal parent/overlay rebind, pushes and stops. Codex alone then
+executes the fresh three-tip evidence defined in M11. The
 historical `AUTHORITY_PACKET_PLAN_BASE_OVERLAY_SHA`, `PYLINT_PLAN_BASE_OVERLAY_SHA` and
 `PYTEST_PLAN_BASE_OVERLAY_SHA` and `PYTEST_IDENTITY_PLAN_BASE_OVERLAY_SHA`
 and `M8_AUTHORITY_PLAN_BASE_OVERLAY_SHA` and `BUNDLE_SCHEMA_PLAN_BASE_OVERLAY_SHA`
@@ -270,19 +283,25 @@ Review and authority order is mandatory:
     Before a suite or evidence slot existed, the mandatory check found
     `origin/main=5c6a4a8` rather than the grant-frozen `a92a74e`. Codex issued
     `PAUSE`; no pytest, Pylint, M8 or MCP process ran.
-24. Ryan authorized only this plan-only advanced-current-main correction. Kiro
-    exact-tip review and a new resume grant remain mandatory before a new
-    branch, source reconstruction, identity edit or evidence operation.
+24. Kiro passed the advanced-current-main plan and Ryan granted it. The new
+    branch was reconstructed in three held commits, independently verified,
+    pushed and preserved at `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`. Three complete
+    pytest runs and all 166 isolated reruns completed; the finalizer then issued
+    `PAUSE` on unstable pytest `os.environ` rendering for exactly 22 unchanged
+    inner-role assertion failures. Pylint, M8 and MCP did not run.
+25. Ryan authorized only this plan-only inner-role signature correction. Kiro
+    exact-tip review and a new resume grant remain mandatory before plan
+    application, the four-literal rebind or any fresh evidence operation.
 
 ## 1. State ledger
 
 | State | Items |
 |---|---|
-| **Specified** | Parent Architecture §§4, 6–15, 17–18.16 and Execution §§2–10.14; strict reader and T0–T5 cases 1–58; all completed M11 controls; exact advanced-current-main reconstruction; and the closed three-tip differential, static, M8, MCP and merge-decision gates. |
-| **Implemented** | Bounded implementation is accepted at `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. The reviewed M11 candidate is preserved at `PRESERVED_M11_MERGE_READY_SHA`; the first current-main reconstruction is preserved at `PRESERVED_M11_CURRENT_MAIN_PAUSE_SHA`; the reviewed three-tip preflight input is preserved at `PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`. No branch or source reconstruction exists for advanced current main. |
-| **Tested** | Historical M0–M8 Gate B/C and preserved M11 evidence passed. Complete prior-current-main/candidate pytest sealed the governed applicability PAUSE. The corrected three-tip source/runtime preflight passed through the upstream check, which stopped before suite/slot/run creation because main advanced. No evidence verdict exists for `CURRENT_MAIN_BASELINE_SHA`; Pylint/M8/MCP did not run under the stopped grant. |
+| **Specified** | Parent Architecture §§4, 6–15, 17–18.17 and Execution §§2–10.15; strict reader and T0–T5 cases 1–58; all completed M11 controls; exact advanced-current-main reconstruction; closed 22-node inner-role semantic signature; and unchanged three-tip, static, M8, MCP and merge-decision gates. |
+| **Implemented** | Bounded implementation is accepted at `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. The reviewed M11 candidate is preserved at `PRESERVED_M11_MERGE_READY_SHA`; prior reconciliation tips remain immutable; the advanced-main candidate is preserved, clean and pushed at `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`. No inner-role reconciliation plan or identity edit has been applied to it. |
+| **Tested** | Historical M0–M8 Gate B/C and preserved M11 evidence passed. Fresh advanced-main `N1`/`R`/candidate pytest collected 2,702/2,912/2,940 nodes and all 166 symmetric rerun processes completed. The exact 238-node partition and five-node R2b proof held; the finalizer paused on 44 raw signature mismatches across the exact 22-node inner-role family. `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS=false`; Pylint/M8/MCP did not run. |
 | **Assumed** | No unavailable runtime or host capability is assumed. The historical runtime tree hash is `sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`; reuse requires Codex to rebind and independently inventory it at `PROPOSED_RUNTIME_PREFIX` under a new Ryan grant. |
-| **Unresolved** | Kiro exact-tip review and a new Ryan resume grant block the new branch at `CURRENT_MAIN_BASELINE_SHA`, exact three-commit reconstruction, six-literal rebind and fresh `N`/`R`/final-candidate evidence. Ryan must separately decide whether to create a PR and merge only after that evidence and a final Kiro PASS, with `origin/main` still exact. Later blockers remain Gate D authentication/distribution/containment and current OpenClaw qualification; Gate W production admission; Gate D-V; Gate E; Gate F/capture; watch activation; live data, deployment and promotion. None becomes Grok work. |
+| **Unresolved** | Kiro exact-tip review and a new Ryan resume grant block the reviewed-plan application onto `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`, exact four-literal rebind and fresh `N1`/`R`/final-candidate evidence under the closed 22-node rule. Ryan must separately decide whether to create a PR and merge only after that evidence and a final Kiro PASS, with `origin/main` still exact. Later blockers remain Gate D authentication/distribution/containment and current OpenClaw qualification; Gate W production admission; Gate D-V; Gate E; Gate F/capture; watch activation; live data, deployment and promotion. None becomes Grok work. |
 
 ## 2. Dependency order
 
@@ -317,10 +336,13 @@ M0 baseline/runtime input
   → M11q complete current-main differential applicability PAUSE [30bc134d]
   → M11r three-tip correction and held plan/rebind [d276cb4]
   → M11s three-tip evidence preflight PAUSE on main advance [5c6a4a8]
-  → M11t plan-only advanced-current-main reconstruction and Kiro hold
-  → Ryan exact advanced-current-main resume grant
-  → new branch at 5c6a4a8; held 120-path, four-blob and six-literal commits
-  → fresh N1/R/final-candidate differential; unchanged Pylint
+  → M11t advanced-current-main reconstruction [776a4ca3]
+  → M11u complete three-tip runs/reruns; inner-role signature PAUSE [776a4ca3]
+  → M11v plan-only closed signature correction and Kiro hold
+  → Ryan exact inner-role resume grant
+  → reviewed plan range onto 776a4ca3; held four-literal rebind
+  → fresh N1/R/final-candidate differential with closed 22-node proof
+  → unchanged Pylint
   → two fresh M8 runs; seven MCP files; integration review
   → Ryan PR/merge decision only while origin/main == 5c6a4a8
 
@@ -332,11 +354,11 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 M0–M8 are accepted historical scope; they are neither reopened nor promoted to
 the integration baseline. M9, M10, watch coverage, and complete-system review
 remain decision gates, not Grok work. The only possible next implementation is
-M11t under a new grant after Kiro PASS on this exact plan. Codex creates the
-new branch from exact `CURRENT_MAIN_BASELINE_SHA`; Grok makes only the held
-120-path product, four-blob control-plane and six-literal identity commits.
-Codex independently proves each boundary before a commit-specific `CONTINUE`
-and owns the fresh `N1`/`R`/final-candidate
+M11v under a new grant after Kiro PASS on this exact plan. Grok applies only the
+grant-named reviewed plan range onto `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`, then
+makes only the held two-file/four-literal parent/overlay rebind after Codex's
+commit-specific `CONTINUE`. Codex independently proves each boundary and owns
+the fresh `N1`/`R`/final-candidate
 differential, Pylint, two M8 runs, seven MCP regressions and
 durable evidence. Ryan alone decides PR creation and merge, and only while a
 fresh `origin/main` still equals `CURRENT_MAIN_BASELINE_SHA`. No earlier grant,
@@ -833,45 +855,41 @@ evidence result, branch, plan range, or `CONTINUE` can be reused.
 
 ### M11 — Final conformance review and documentation
 
-1. **Name and purpose:** Reconstruct the reviewed Switchboard source on the
-   exact advanced current main without rebasing preserved evidence, hiding
-   retained failures or assigning authority to a baseline that lacks a node.
-2. **Architectural outcome:** `PRESERVED_M11_EVIDENCE_BRANCH` remains immutable
-   at `PRESERVED_M11_MERGE_READY_SHA`; the first current-main and three-tip
-   branches remain preserved at `PRESERVED_M11_CURRENT_MAIN_PAUSE_SHA` and
-   `PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`. The new implementation branch starts
-   at exact `CURRENT_MAIN_BASELINE_SHA`. Its final candidate is that tree plus
-   the 120 reviewed product paths, four reviewed control-plane blobs and exact
-   six-literal authority rebind. Fresh evidence partitions node authority across
-   advanced current main `N1`, preserved candidate `R`, and final candidate `F`.
-3. **Affected surfaces:** The first held commit changes exactly the 120 paths in
-   `P`; the second changes exactly the four `M11_CONTROL_PLANE_INPUTS`; the third
-   changes exactly six 40-hex values across
+1. **Name and purpose:** Reconcile one exact 22-node inner-role failure-signature
+   family without rewriting raw evidence, widening normalization, hiding
+   retained failures or changing any product/test behavior.
+2. **Architectural outcome:** All earlier evidence branches remain immutable.
+   The completed advanced-main candidate stays preserved at
+   `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`. Fresh evidence partitions node
+   authority across advanced current main `N1`, preserved candidate `R`, and
+   final candidate `F`, while Architecture §18.17 supplies a closed semantic
+   signature only for the exact 22-node family. Every raw failure remains debt.
+3. **Affected surfaces:** The plan-application commit changes exactly the four
+   `M11_CONTROL_PLANE_INPUTS` to final `REVIEWED_OVERLAY_SHA`. The held identity
+   commit changes exactly four 40-hex values across
    `tests/fixtures/openclaw_strict/constants.py` and
-   `tests/test_openclaw_strict_packet_contract.py`: `CODE_BASELINE_SHA`,
-   `SEMANTIC_PARENT_SHA`, `M11_REVIEWED_OVERLAY_SHA` and their three matching
-   frozen assertions. Evidence writes remain limited to
-   `PROPOSED_FIXED_EXECUTION_SLOT` and `PROPOSED_DURABLE_EVIDENCE_ROOT`.
-4. **Preconditions/dependencies:** The reviewed and preflight branches are clean,
-   pushed and exactly `PRESERVED_M11_MERGE_READY_SHA` and
-   `PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`; `origin/main` is exactly
-   `CURRENT_MAIN_BASELINE_SHA`; Architecture §18.16's `A/Q/M/D/P/C` counts,
-   hashes, intersections and no-deletion rules reproduce;
-   `PRESERVED_THREE_TIP_UNUSED_EVIDENCE_ROOT` and
-   `PRESERVED_THREE_TIP_UNUSED_SLOT` remain absent; Kiro PASSes
-   `SEMANTIC_PARENT_SHA` and final
-   `REVIEWED_OVERLAY_SHA`; Ryan names the new branch, exact three commits, six
-   substitutions, three tips, runtime/evidence paths and evidence sequence; and
-   Codex re-inventories the unchanged runtime. No prior grant, verdict or
-   `CONTINUE` applies.
-5. **Implementation tasks:** Codex creates and pushes
-   `PROPOSED_IMPLEMENTATION_BRANCH` from exact `CURRENT_MAIN_BASELINE_SHA` in a
-   dedicated worktree. Grok sets the exact 120 `P` paths to `R`, commits, pushes
-   and stops. After commit-specific `CONTINUE`, Grok sets the exact four control
-   blobs to final `REVIEWED_OVERLAY_SHA`, commits, pushes and stops. After a new
-   `CONTINUE`, Grok makes only the field-3 substitutions, commits, pushes and
-   stops. Codex proves each checkpoint and final source composition before any
-   evidence.
+   `tests/test_openclaw_strict_packet_contract.py`: `SEMANTIC_PARENT_SHA`,
+   `M11_REVIEWED_OVERLAY_SHA` and their two matching frozen assertions.
+   `CODE_BASELINE_SHA` remains `CURRENT_MAIN_BASELINE_SHA`. Evidence writes
+   remain limited to `PROPOSED_FIXED_EXECUTION_SLOT` and
+   `PROPOSED_DURABLE_EVIDENCE_ROOT`.
+4. **Preconditions/dependencies:** The advanced-main branch is clean, pushed
+   and exactly `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`; `origin/main` is exactly
+   `CURRENT_MAIN_BASELINE_SHA`; `PRESERVED_M11_MERGE_READY_SHA` is unchanged;
+   all §18.17 PAUSE artifacts match their frozen hashes; the exact 22-node set
+   hashes to `INNER_ROLE_SIGNATURE_NODE_SET_SHA256`; Kiro PASSes
+   `SEMANTIC_PARENT_SHA` and final `REVIEWED_OVERLAY_SHA`; Ryan names the exact
+   complete reviewed plan range, four substitutions, three tips,
+   runtime/evidence paths and evidence sequence; and Codex re-inventories the
+   unchanged runtime. No prior grant, verdict or `CONTINUE` applies.
+5. **Implementation tasks:** Grok applies every commit in the grant-named
+   reviewed linear plan range from `INNER_ROLE_SIGNATURE_PLAN_BASE_OVERLAY_SHA`
+   through final `REVIEWED_OVERLAY_SHA`, oldest to newest, onto
+   `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`, pushes and stops. Codex proves exact
+   four-blob equality and unchanged non-plan bytes. After commit-specific
+   `CONTINUE`, Grok makes only the field-3 four-literal rebind, commits, pushes
+   and stops. Codex proves both held boundaries and final source composition
+   before any evidence.
 6. **Tests/evidence:** Codex runs complete `python -m pytest -q` freshly on
    exact `CURRENT_MAIN_BASELINE_SHA` (`N1`),
    `PRESERVED_M11_MERGE_READY_SHA` (`R`) and final candidate `F`, sequentially
@@ -879,9 +897,12 @@ evidence result, branch, plan range, or `CONTINUE` can be reused.
    `nodes(N1)` must be a subset of `nodes(F)` and common nodes retain §18.15's
    rules and exact five-node advanced R2b proof. `S = nodes(F) - nodes(N1)` must have the
    exact 238-node identity/outcome hashes in §0, every member must exist in `R`,
-   and outcomes and normalized failure signatures must match `R`, including
-   symmetric reruns. A node absent from both baselines must PASS or SKIP; the
-   frozen expected count is zero. Only
+   and outcomes and failure signatures must match `R`, including symmetric
+   reruns. For only the exact 22 nodes/hash in §18.17, each `R`/`F`
+   complete/rerun failure must independently match the exact four-line
+   inner-role grammar and closed semantic signature while raw messages remain
+   unchanged. A node absent from both baselines must PASS or SKIP; the frozen
+   expected count is zero. Only
    `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases the unchanged full-tree
    Pylint gate, two M8 runs preserving 238 strict passes, 29 Node passes, 115
    legacy passes, one skip and four deselections, and all seven legacy MCP
@@ -896,46 +917,51 @@ evidence result, branch, plan range, or `CONTINUE` can be reused.
    blobs, runtime content, dependencies, permissions, selectors, four
    deselections, T0–T5 semantics, three-tool surface, provenance, approval,
    state/publication behavior and independent oracles remain unchanged.
-   Retained failures remain visible debt and keep `FULL_PYTEST_PASS=false`.
-8. **Forbidden changes:** Reusing `PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA` as a
-   branch base; rebase, merge, cherry-pick, force-push, branch recreation,
-   conflict resolution, fourth implementation commit, 121st product path, fifth
-   plan path, seventh substitution, third identity file, product or test-logic
-   change, CI/baseline/runtime-content/config/dependency change, node exclusion,
-   supplied isolated-runner environment for full pytest, new normalization,
-   sixth R2b exception, letting `R` govern an `N` node, omitted or one-sided
-   rerun, evidence deletion, self-approval, real OpenClaw action, PR/merge,
-   live data/config, deployment or broader PASS claim.
+   The §18.10 normalization allowlist remains exactly source root, pytest
+   temporary root and exact tip SHA. The §18.17 projection never changes raw
+   evidence and never applies outside its exact node set/grammar. Retained
+   failures remain visible debt and keep `FULL_PYTEST_PASS=false`.
+8. **Forbidden changes:** Rebase, merge, force-push, branch recreation,
+   conflict resolution, empty/edit/squash of the reviewed plan range, fifth
+   plan path, fifth substitution, third identity file, `CODE_BASELINE_SHA`
+   change, product or test-logic change, CI/baseline/runtime-content/config/
+   dependency change, node exclusion, supplied isolated-runner environment for
+   full pytest, generic environment/order/representation/path/hash/text
+   normalization, 23rd projected node, changed four-line grammar, sixth R2b
+   exception, letting `R` govern an `N` node, omitted or one-sided rerun,
+   evidence deletion or rewriting, self-approval, real OpenClaw action,
+   PR/merge, live data/config, deployment or broader PASS claim.
 9. **Done:** Plan-ready means Kiro PASS on this exact parent/final overlay.
    Evidence-ready additionally requires the exact Ryan grant, upstream/tree/
-   evidence preflight, three commit-specific Codex holds and runtime/reset proof.
+   evidence preflight, two commit-specific Codex holds and runtime/reset proof.
    Merge-ready requires exact final composition,
    `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`, unchanged Pylint PASS, two fresh
    M8 PASSes, seven MCP regression PASSes, durable verification, Kiro exact-tip
    conformance PASS and a final fetch proving `origin/main` still equals
    `CURRENT_MAIN_BASELINE_SHA`. Complete integration remains blocked on Gate
    D/W/D-V/E/F and promotion.
-10. **Ryan confirmation:** Mandatory before creating the new branch, making any
-    of the three reconstruction commits, rebinding runtime/evidence paths, running
-    any suite, creating a PR, merge, activation, real OpenClaw update/use, live
-    data, deployment or promotion. Routine evidence inside the exact granted
-    and held-and-cleared sequence needs no additional approval. PR creation and
-    merge remain separate Ryan decisions.
-11. **Live inspection:** Codex inspects all four source tips and upstream refs;
-    prior PAUSE hashes; §18.16 path algebra; every product/control blob and mode;
-    the exact 120-path, four-blob and two-path/six-substitution diffs; commits and explicit pushes;
+10. **Ryan confirmation:** Mandatory before applying the reviewed plan range,
+    making the four-literal rebind, rebinding runtime/evidence paths, running any
+    suite, creating a PR, merge, activation, real OpenClaw update/use, live data,
+    deployment or promotion. Routine evidence inside the exact granted and
+    held-and-cleared sequence needs no additional approval. PR creation and merge
+    remain separate Ryan decisions.
+11. **Live inspection:** Codex inspects all three source tips and upstream refs;
+    prior PAUSE hashes; §18.17 node-set and grammar proof; every control blob and mode;
+    the exact reviewed plan range and two-path/four-substitution diff; commits and explicit pushes;
     runtime inventory/reset proof; three complete argv/status/raw/JUnit/
-    canonical records; node-set hashes; every mismatch and symmetric rerun;
+    canonical/raw/semantic-projection records; node-set hashes; every mismatch and symmetric rerun;
     120-member R2b manifests, Git bytes and digests; full-tree Pylint; both M8
     runs; seven MCP outputs; source/component/runtime hashes; durable mappings;
-    final `origin/main`; and every unsupported claim. Grok stops after each of
-    the three reconstruction commits. Kiro reviews the exact final tip/evidence
+    final `origin/main`; and every unsupported claim. Grok stops after plan
+    application and after the identity commit. Kiro reviews the exact final tip/evidence
     before Ryan sees a PR recommendation.
 12. **Verdict:** Separate verdicts remain mandatory: ConvMem;
     connector/protocol fake (not real OpenClaw); three-tip pytest differential;
     Pylint; M8/MCP; current-main bounded integration; merge-readiness; and later
     real OpenClaw/pilot/production. The historical PASS and current governed
-    PAUSE remain recorded; none of the blocked later verdicts changes.
+    22-node signature PAUSE remain recorded; none of the blocked later verdicts
+    changes.
 
 ## 4. Milestone acceptance checklist
 
@@ -998,10 +1024,14 @@ evidence result, branch, plan range, or `CONTINUE` can be reused.
 - [x] M11 three-tip plan and four-literal rebind preserved at `d276cb4`; source
       and runtime checks passed. Evidence preflight then found main at
       `5c6a4a8` and stopped before slot/run creation or any suite process.
-- [ ] M11 advanced-main parent/final-overlay exact-tip Kiro PASS; Ryan resume
-      grant; new branch at `5c6a4a8`; held 120-path product, four-blob control
-      and two-file/six-literal identity commits; fresh same-slot
-      `N1`/`R`/final-candidate differential;
+- [x] M11 advanced-main reconstruction preserved at `776a4ca3`; three held
+      commits, source composition and runtime inventory passed. Three complete
+      pytest runs and all 166 reruns completed; the finalizer retained the exact
+      22-node inner-role signature PAUSE and blocked Pylint/M8/MCP.
+- [ ] M11 inner-role parent/final-overlay exact-tip Kiro PASS; Ryan resume
+      grant; reviewed plan range applied to `776a4ca3`; held two-file/four-
+      literal parent/overlay rebind; fresh same-slot `N1`/`R`/final-candidate
+      differential with exact 22-node semantic-signature proof;
       unchanged Pylint PASS; two fresh M8 PASSes; seven legacy MCP PASSes;
       durable verification; integrated-tip Kiro PASS; final fetch still equal
       to `5c6a4a8`; and separate Ryan PR/merge decisions.
@@ -1033,6 +1063,7 @@ evidence result, branch, plan range, or `CONTINUE` can be reused.
 | Current-main reconstruction drift | Architecture §18.14 / M11 only | `STATIC`, merge-readiness control | Rebase/merge the preserved branch; resolve the STATUS conflict; omit/add a product path; copy a fifth control-plane path; make a seventh identity substitution; transfer the historical evidence verdict; let `origin/main` move | `PAUSE` before evidence, PR or merge. The new branch must equal exact current main plus the closed 120-path product set, four reviewed blobs and six identity substitutions | Independent `M/D/C/P` counts and hashes, three held commit diffs, Git blob/mode proof, 119-member R2b proof and final upstream-ref check; completed reconstruction preserved at `30bc134d` |
 | Three-tip differential laundering | Architecture §18.15 / M11 only | `STATIC`, merge-readiness control | Require current main to govern nodes it never contained; omit `R`; reuse its different-slot historical signatures; exclude one of the 238 nodes; change a frozen node/outcome digest; let `R` govern an `N` node; accept a new `F`-only failure; add normalization or a sixth R2b exception | `PAUSE`; no differential verdict and no later evidence. Fresh `N`/`R`/`F` runs share one reset slot. `N` governs its nodes; `R` governs only `S = F - N`; retained failures stay debt and keep `FULL_PYTEST_PASS=false` | Exact three source tips, environment/reset hashes, three complete raw/JUnit/canonical sets, 238-node identity/outcome digests, symmetric `R`/`F` reruns, exact five-node R2b proof and positive token only `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` |
 | Advanced-current-main drift | Architecture §18.16 / M11 only | `STATIC`, merge-readiness control | Continue after `origin/main` moves; branch from `d276cb4`; replay/cherry-pick old commits; alter the 11-path advance; omit/add a product path; use stale R2b identities; make a seventh substitution; transfer the unexecuted grant | `PAUSE` before reconstruction or evidence. The new branch starts at exact `5c6a4a8` and reaches exactly three held commits; preserved branches remain immutable | Independent `A/Q/M/D/P/C` hashes and intersections, three held diffs, four overlay blob proofs, exact six substitutions, 120-member R2b proof, absent prior slot/run root and final upstream-ref check |
+| Inner-role signature laundering | Architecture §18.17 / M11 only | `STATIC`, merge-readiness control | Project a 23rd node; accept a different outcome/type/core/line count/tail; normalize the full environment, ordering, temporary suffix, hash or arbitrary text; omit one of the four `R`/`F` complete/rerun records; delete or rewrite raw evidence; infer PASS from the projection alone | `PAUSE`; only the exact 22-node set/hash and four-line grammar may map to the closed signature. Raw failure/JUnit bytes remain retained, every other differential gate still applies, and `FULL_PYTEST_PASS=false` | Exact node inventory/hash, independent four-line parser negatives, four-record proof per node, raw-to-projection hash mapping, unchanged §18.10 allowlist, closed five-node R2b proof and positive token only after the full fresh three-tip comparison |
 
 ## 6. Live-supervision protocol
 
@@ -1042,12 +1073,12 @@ are complete on the preserved evidence branch. Its clean merge-ready tip is
 `PRESERVED_M11_MERGE_READY_SHA`, but its evidence is bound to the historical
 integration baseline. Exact-current-main reconstruction is separately preserved
 at `PRESERVED_M11_CURRENT_MAIN_PAUSE_SHA`; the stopped three-tip input is
-preserved at `PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`. Under a new grant, Codex
-creates the new branch from exact current main. Grok must push/report and stop
-after the 120-path product commit, after the four-blob control-plane commit and
-after the two-file/six-substitution identity commit. Evidence starts only after
-Codex proves all three held boundaries and issues a written `CONTINUE` citing
-the exact final pushed commit. The supervisor
+preserved at `PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`; and the completed
+advanced-main candidate plus governed signature PAUSE are preserved at
+`PRESERVED_M11_INNER_ROLE_PAUSE_SHA`. Under a new grant, Grok must push/report
+and stop after exact reviewed-plan application and after the two-file/four-
+substitution identity commit. Evidence starts only after Codex proves both held
+boundaries and issues a written `CONTINUE` citing the exact final pushed commit. The supervisor
 may issue only:
 
 - `CONTINUE` — exact plan conformance and required evidence are present.
@@ -1056,12 +1087,13 @@ may issue only:
   boundary is unclear or changed; no further work until resolved.
 - `REQUIRE TEST` — a required specified test/evidence item is missing.
 
-Current status is `PAUSE` because the §18.15 evidence preflight found current
-main at `5c6a4a8` before creating its slot/run or starting a suite. Ryan's plan-only direction
+Current status is `PAUSE` because the §18.16 candidate's complete pytest and
+rerun evidence stopped on the exact §18.17 22-node inner-role signature family.
+Ryan's plan-only direction
 authorizes only the four planning-document changes on this branch: no plan
 application, identity edit, product/test/CI/runtime edit, test execution, PR or
 merge. Exact-tip Kiro PASS plus a new Ryan resume grant clears only the reviewed
-three-commit reconstruction, six-literal rebind and evidence sequence. All
+plan range, four-literal rebind and evidence sequence. All
 preserved source branches stay unchanged until that grant. No earlier `CONTINUE`, M8
 grant, M11 grant or evidence verdict can be reused.
 
@@ -1081,15 +1113,15 @@ grant condition additionally requires a new Ryan grant before Codex may issue
 `CONTINUE`.
 
 Grok must predeclare and report every command it runs outside the runner.
-Outside-runner commands are limited to repository/worktree inspection, the
-exact grant-named 120-path product copy, four-blob control copy, held six-literal
-edit, commit/push and `git diff --check`; Grok may not merge, rebase, cherry-pick, resolve a
-conflict, edit any other product/test/CI/runtime byte, execute integration code,
+Outside-runner commands are limited to repository/worktree inspection, exact
+grant-named reviewed plan-range application, the held four-literal edit,
+commit/push and `git diff --check`; Grok may not merge, rebase, resolve a
+conflict, edit/squash an applied plan commit, edit any other product/test/CI/runtime byte, execute integration code,
 Pylint or pytest, or provision the runtime.
 Codex owns blob/tree/diff/suppression
 comparisons, reset-slot proof, Pylint execution, all three complete pytest runs,
-canonical comparison, symmetric mismatch reruns, R2b manifest/Git-byte/digest
-proof, three-tip partition, source-inventory
+canonical comparison, symmetric mismatch reruns, exact 22-node semantic-
+signature proof, R2b manifest/Git-byte/digest proof, three-tip partition, source-inventory
 proof, runtime rebinding, two M8
 executions, seven MCP regressions and durable evidence
 collection in reviewed disposable environments; those checks do not alter
@@ -1107,15 +1139,16 @@ reapproval.
 Ryan's explicit confirmation naming exact revisions is required before:
 
 - initial T0–T5 implementation;
-- M11 advanced-current-main reconstruction, including exact `SEMANTIC_PARENT_SHA`,
-  final `REVIEWED_OVERLAY_SHA`, `CURRENT_MAIN_ADVANCE_PLAN_BASE_OVERLAY_SHA`,
-  `PRESERVED_M11_MERGE_READY_SHA`, `PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`,
-  `CURRENT_MAIN_BASELINE_SHA`, `PROPOSED_IMPLEMENTATION_BRANCH`, the exact
-  120-path/four-blob/two-file-six-literal three-commit reconstruction,
+- M11 inner-role signature reconciliation, including exact `SEMANTIC_PARENT_SHA`,
+  final `REVIEWED_OVERLAY_SHA`, `INNER_ROLE_SIGNATURE_PLAN_BASE_OVERLAY_SHA`,
+  `PRESERVED_M11_MERGE_READY_SHA`, `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`,
+  `CURRENT_MAIN_BASELINE_SHA`, `PRESERVED_ADVANCED_MAIN_BRANCH`, the exact
+  reviewed plan range and two-file/four-literal rebind,
   `PROPOSED_FIXED_EXECUTION_SLOT`, `PROPOSED_RUNTIME_PREFIX`,
   `PROPOSED_DURABLE_EVIDENCE_ROOT`, exact 238-node authority partition,
-  120-member five-node R2b proof, Pylint, complete `N1`/`R`/final-candidate
-  differential, M8/MCP execution and any later correction cycle;
+  120-member five-node R2b proof, exact 22-node set/grammar/projection, Pylint,
+  complete `N1`/`R`/final-candidate differential, M8/MCP execution and any
+  later correction cycle;
 - supplying/provisioning the exact test runtime or making any host write for it;
 - changing or contradicting Ryan's ratified refusal-contract ruling;
 - any ConvMem core data-model change **beyond the exact parent-specified and
@@ -1139,9 +1172,9 @@ Ryan's explicit confirmation naming exact revisions is required before:
 - **ConvMem alone — AMBER, bounded implementation accepted:** the parent
   preserves legacy semantics; historical M8 was accepted, and all bounded M11
   evidence plus Kiro conformance PASS at `PRESERVED_M11_MERGE_READY_SHA`.
-  The prior three-tip source is preserved but stale against advanced current
-  main; merge readiness remains paused until a new exact reconstruction,
-  three-tip differential and fresh Pylint/M8/MCP evidence pass. Gate W and
+  The advanced-main source is preserved and its complete evidence is paused on
+  the closed 22-node signature family; merge readiness remains paused until a
+  fresh three-tip differential and Pylint/M8/MCP evidence pass. Gate W and
   live data remain BLOCKED.
 - **OpenClaw alone — RED for real/runtime use; AMBER for connector/protocol
   fake:** the fake is deliberately non-authoritative and uninstalled, and no
@@ -1149,7 +1182,7 @@ Ryan's explicit confirmation naming exact revisions is required before:
   distribution, credentials, manager proof, and tool permissions are
   unresolved, so no real OpenClaw verdict or use is authorized.
 - **Integration — AMBER for the accepted bounded fixture; PAUSED at the M11
-  advanced-current-main reconstruction gate pending Kiro review and an exact
+  inner-role signature gate pending Kiro review and an exact
   Ryan resume grant; RED for pilot/production:** the overlay delegates no
   source tip, path set, identity value, reset path, node-authority partition,
   failure-signature or retained-debt choice to Grok.
@@ -1161,10 +1194,11 @@ Ryan's explicit confirmation naming exact revisions is required before:
 No M0–M8, reviewed-plan, lint-policy, pytest-differential identity,
 bundle-schema or packet architectural decision remains. Before Grok resumes,
 Kiro must PASS this exact parent and overlay. Ryan must then name every M11
-field in §3: new parent and overlay; `N1`, `R` and preserved preflight tip;
-new branch; exact 120-path/four-blob/two-file-six-literal reconstruction; fixed
-slot; runtime and durable-evidence roots; 238-node identity/outcome hashes; 120-member five-node
-R2b proof; and exact Pylint/three-tip-differential/M8/MCP authority. Codex must
+field in §3: new parent and overlay; `N1`, `R` and preserved signature-PAUSE tip;
+preserved branch; exact reviewed plan range and two-file/four-literal rebind;
+fixed slot; runtime and durable-evidence roots; 238-node identity/outcome hashes;
+120-member five-node R2b proof; exact 22-node set/hash and four-line grammar;
+and exact Pylint/three-tip-differential/M8/MCP authority. Codex must
 freshly verify upstream refs, sealed PAUSE hashes, source blobs, runtime
 inventory and clean worktrees before issuing the first written status. Missing
 any prerequisite blocks work and is not a Grok choice.
@@ -1190,13 +1224,17 @@ location, integration method, conflict resolution, commit selection/order,
 current-main byte handling, or promotion. In M11 Grok may not choose the
 control-plane paths, blob/mode rule, node-authority partition, source-hash
 membership, commit order, correction path set, fixture or presentation
-behavior: the task is exact application of the grant-named 120 product paths,
-four control blobs and the three grant-named identity declarations plus their
-three frozen assertions behind held `CONTINUE` statuses, followed by Codex-owned evidence execution.
+behavior. The grant-named 120 product paths, four control blobs and six identity
+substitutions were completed and preserved at
+`PRESERVED_M11_INNER_ROLE_PAUSE_SHA`. The only possible next task is exact
+application of the grant-named reviewed plan range followed, behind a held
+`CONTINUE`, by the two parent/overlay declarations and their two frozen
+assertions, then Codex-owned evidence execution.
 The earlier reconstructions, publisher, authority-packet and 44-path corrections
 are already preserved. Grok may not choose `N1`, `R`, `F`, the parent or overlay
-value, edit test logic, add a fifth plan path, 121st product path, third identity file or seventh
-literal, change formatting/logic, resolve a conflict, or infer authority from
+value, edit test logic, add a fifth plan path, third identity file or fifth
+literal, change `CODE_BASELINE_SHA`, change formatting/logic, resolve a conflict,
+edit/squash/reorder the reviewed plan range, or infer authority from
 the historical PASS.
 It must not raise/regenerate or fork the Pylint baseline, edit
 workflow/gate/config/flags, exclude files, choose a 45th path, waive a finding,
@@ -1205,6 +1243,8 @@ substitute a preserved-tip/targeted comparison for the actual current-main
 Pylint gate. It must not choose the three pytest tips, which tip governs a
 node, environment, reset paths, normalizations, identity parser/oracle,
 mismatch disposition, rerun set, retained-failure classification or verdict token. It
+must not choose the 22-node set, semantic-signature line grammar, raw-to-projection
+mapping, or apply that projection to any other record. It
 must not choose report paths,
 JUnit family, node reconstruction, outcome vocabulary, canonical evidence
 fields, expected counts, failure rules, runtime/evidence paths, or which tests
@@ -1216,12 +1256,14 @@ run. The parent and later Ryan grant freeze all of them.
 TIP. HISTORICAL M11 EVIDENCE: PASS AT `PRESERVED_M11_MERGE_READY_SHA`.
 CURRENT-MAIN RECONSTRUCTION: PRESERVED AT
 `PRESERVED_M11_CURRENT_MAIN_PAUSE_SHA`; PRIOR THREE-TIP SOURCE: PRESERVED AT
-`PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`. ADVANCED-CURRENT-MAIN PLAN:
-IMPLEMENTATION-COMPLETE AND READY FOR KIRO EXACT-TIP REVIEW; GROK REMAINS
+`PRESERVED_M11_THREE_TIP_PREFLIGHT_SHA`; ADVANCED-MAIN SOURCE AND SIGNATURE
+PAUSE: PRESERVED AT `PRESERVED_M11_INNER_ROLE_PAUSE_SHA`. INNER-ROLE SIGNATURE
+PLAN: IMPLEMENTATION-COMPLETE AND READY FOR KIRO EXACT-TIP REVIEW; GROK REMAINS
 PAUSED.** The parent and overlay freeze exact `N1`/`R`/final-candidate authority,
-238-node identities/outcomes, three held reconstruction commits, six-literal rebind,
-exact 120-member five-node R2b proof, protected CI blobs, unchanged remediation,
-Pylint/M8/MCP gates and runtime/evidence ownership. After Kiro PASS, Ryan must
+238-node identities/outcomes, exact 22-node signature set/grammar, exact
+120-member five-node R2b proof, reviewed plan application, four-literal rebind,
+protected CI blobs, unchanged remediation, Pylint/M8/MCP gates and runtime/
+evidence ownership. After Kiro PASS, Ryan must
 issue a new exact M11 resume grant. This document authorizes no product/test/CI/
 runtime edit, test execution, PR or merge.
 
@@ -1233,16 +1275,17 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `538d37eb498e2d3bd497db33daa006520ad56d06` architecture/execution
+- The exact `9faac8ea87532bc73f74b788b38234de0c614a4e` architecture/execution
   parent is the current semantic source of truth; this overlay only sequences,
   supervises and gates it.
 - M0–M8 and the complete historical M11 evidence passed; the preserved source
   is `cd60cf19`; exact-current-main reconstruction is preserved at `30bc134d`.
-  Its three-tip correction reached `d276cb4`, then preflight paused before
-  testing when main advanced to `5c6a4a8`.
-- M11 now freezes a new branch from exact `5c6a4a8`, three held reconstruction
-  commits, and a fresh same-slot `N1`/`R`/final-candidate comparison before
-  unchanged Pylint/M8/MCP evidence. Kiro PASS and a new Ryan grant remain
+  Its three-tip correction reached `d276cb4`; the advanced-main reconstruction
+  and complete pytest/rerun evidence then reached `776a4ca3` and paused on the
+  exact 22-node inner-role signature family.
+- M11 now freezes the closed four-line semantic projection, reviewed plan
+  application, four-literal rebind and fresh same-slot `N1`/`R`/final-candidate
+  comparison before unchanged Pylint/M8/MCP evidence. Kiro PASS and a new Ryan grant remain
   mandatory; PR and merge remain separate Ryan decisions.
 - Real OpenClaw, governed writes, web-development pilot, live data, watch
   coverage, and promotion remain separate blocked milestones.
