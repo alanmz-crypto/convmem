@@ -54,7 +54,10 @@ CONTENT_CLASS_SUFFIXES = {
     "javascript": (".js", ".mjs"),
     "json": (".json",),
     "toml": (".toml",),
-    "text": (".txt", ".sh"),
+    # Natural-language documents use the bounded text chunker. Keep code and
+    # structured formats on their dedicated parsers; these extensions are
+    # prose-oriented and do not need syntax-aware handling to be searchable.
+    "text": (".txt", ".text", ".rst", ".adoc", ".asciidoc", ".org", ".tex", ".sh"),
 }
 
 PARSER_MODE_FOR_CLASS = {
