@@ -4937,9 +4937,9 @@ No previous grant, Kiro verdict or `CONTINUE` may be reused.
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
 
-**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`; at `851edbe4` the exact
-bundle-schema correction, governed full-pytest differential and unchanged Pylint gate pass, but
-final M8 run 1 failed closed before fixture creation because its authority packet still names the
-preceding parent/overlay. §18.13 permits only a reviewed, Ryan-granted two-file/four-literal rebind
-followed by fresh differential, Pylint, two-run M8 and seven-file MCP evidence. Real OpenClaw,
-live data, merge and promotion remain blocked.
+**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
+evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. Merge is paused because
+current main advanced to `a92a74e` and has a real conflict in the governed STATUS document.
+§18.14 freezes only a new exact-current-main branch, three held reconstruction commits and fresh
+differential/Pylint/M8/MCP evidence, all pending exact-tip Kiro PASS and a new Ryan grant. Real
+OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
