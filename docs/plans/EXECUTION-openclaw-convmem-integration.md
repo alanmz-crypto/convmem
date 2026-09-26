@@ -1350,8 +1350,8 @@ Architecture §18.14 controls. The final reviewed M11 evidence candidate is
 `cd60cf19dca6706e4175e9f82c9ba55e41bca10b` (`R`), historical integration baseline is
 `9193f5ec744f059d07a20612489b210527b5660a` (`B`), and exact current main is
 `a92a74eb326b3eaa59087b707de10153c7cc0c63` (`N`). No action below is authorized until Kiro PASS
-and a new Ryan grant name the exact semantic parent, final overlay, three commits, new branch,
-runtime/evidence paths and all frozen identities.
+and a new Ryan grant name the exact semantic parent, final overlay, three held-commit boundaries,
+new branch, runtime/evidence paths and all frozen identities.
 
 Execute only this held sequence:
 
