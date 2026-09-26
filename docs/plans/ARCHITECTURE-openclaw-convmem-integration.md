@@ -5558,8 +5558,8 @@ resource limits, adding only `PYTHONHASHSEED=0`: `N1` twice and exact final sour
 All four probes produced 458 findings, 29 `R0401`, 69 `R0801`, 429 non-`R0401` and 240
 fingerprints. Each tip was internally reproducible, and the two tips had identical message-ID
 counts, canonical `R0401` records and canonical `R0801` pairs. Raw JSON report hashes differed
-between repetitions because record serialization order remained unstable; raw byte equality is
-therefore evidence, never an authority condition. The diagnostic root is:
+between repetitions because raw `R0801` message bodies and report ordering remained unstable;
+raw byte equality is therefore evidence, never an authority condition. The diagnostic root is:
 
 ```text
 /home/lauer/.local/share/convmem-openclaw-evidence/c92bc708d1fc23e8d37584890e876c151682a48d/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/caec5c6868f600e897b29a39f555365e5f818ac1/m11-pylint-r0401-determinism-probe
