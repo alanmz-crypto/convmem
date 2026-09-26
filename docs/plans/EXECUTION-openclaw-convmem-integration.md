@@ -68,7 +68,7 @@ supervisor entrypoints and ordinary plugin registration refuse `runtime_not_qual
 separately reviewed Gate D adapter packet; command-line refusal exits 78 before OS operations.
 
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
-review and a new Ryan grant naming every §§10.7–8 input. Known deferred issues do not authorize
+review and a new Ryan grant naming every §10.12 input. Known deferred issues do not authorize
 Grok to redesign the architecture, choose a weaker lint disposition or reinterpret a retained
 repository failure as PASS.
 
