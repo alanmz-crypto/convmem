@@ -14,7 +14,7 @@ test execution, PR, merge and real OpenClaw work are paused.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=98d6aaa938ad42a0e8a0a60916b731b38d48323a
+SEMANTIC_PARENT_SHA=33767acaf563c25e8fbd9984f08316f1ba4b1b27
 ORIGINAL_CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
 ACCEPTED_IMPLEMENTATION_SHA=8010fb060c2edc29e1b09d7a30b1a1da2689d489
 INTEGRATION_BASELINE_SHA=9193f5ec744f059d07a20612489b210527b5660a
@@ -57,9 +57,9 @@ BUNDLE_SCHEMA_DRIFT_SHA256=50a82638e4265c910dcdf7422d193bb6178ff29c51e175dd05fa1
 BUNDLE_SCHEMA_PAUSE_EVIDENCE=/home/lauer/.local/share/convmem-openclaw-evidence/48c9ce01bf557ff95fd82b84c3b0ab2e7e9f18cb/9193f5ec744f059d07a20612489b210527b5660a/runs/d7b15926ab7e4e41b8a80edba5edbe4bfed4c165/m11-m8-run1-final
 AUTHORITY_PACKET_PAUSE_CLASSIFICATION_SHA256=3fbfab4bac23c30325961d21a974ec4ed03229759c1b974686d323c061982c77
 AUTHORITY_PACKET_PAUSE_EVIDENCE=/home/lauer/.local/share/convmem-openclaw-evidence/b46a16a3cdc928e98fba83cd64b17439d1734695/9193f5ec744f059d07a20612489b210527b5660a/runs/851edbe49b820bd4081809022b10f67c30fef47a/m11-m8-run1-final
-PROPOSED_FIXED_EXECUTION_SLOT=/home/lauer/.cache/convmem-m11-main-reconciliation/98d6aaa938ad42a0e8a0a60916b731b38d48323a/slot
-PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/98d6aaa938ad42a0e8a0a60916b731b38d48323a/a92a74eb326b3eaa59087b707de10153c7cc0c63
-PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/98d6aaa938ad42a0e8a0a60916b731b38d48323a/a92a74eb326b3eaa59087b707de10153c7cc0c63
+PROPOSED_FIXED_EXECUTION_SLOT=/home/lauer/.cache/convmem-m11-main-reconciliation/33767acaf563c25e8fbd9984f08316f1ba4b1b27/slot
+PROPOSED_RUNTIME_PREFIX=/home/lauer/.local/share/convmem-openclaw-runtimes/33767acaf563c25e8fbd9984f08316f1ba4b1b27/a92a74eb326b3eaa59087b707de10153c7cc0c63
+PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/33767acaf563c25e8fbd9984f08316f1ba4b1b27/a92a74eb326b3eaa59087b707de10153c7cc0c63
 ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
 ```
@@ -1156,7 +1156,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `98d6aaa938ad42a0e8a0a60916b731b38d48323a` architecture/execution
+- The exact `33767acaf563c25e8fbd9984f08316f1ba4b1b27` architecture/execution
   parent is the current semantic source of truth; this overlay only sequences,
   supervises and gates it.
 - M0–M8 and the complete historical M11 evidence passed; the preserved source
