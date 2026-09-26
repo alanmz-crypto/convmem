@@ -399,11 +399,11 @@ def _binding() -> ProjectBinding:
     binding_id = "project:convmem:v1"
     return ProjectBinding(
         id=binding_id,
-        public_ref="a" * 32,
         project="convmem",
-        domain_root="coding",
-        site_mode="exact",
         site="example.com",
+        site_mode="exact",
+        domain_root="coding",
+        public_ref="a" * 32,
         non_expanding_roots=(),
         source_registrations=(
             SourceRegistration(
@@ -473,19 +473,22 @@ def _prov() -> tuple[str, dict[str, Any], str]:
 
 
 def _source_record(*, provenance_assertion_id: str) -> dict[str, Any]:
-    return {
+    source = {
         "record_kind": "observation",
         "producer": "form-prod",
         "logical_key": "subject-key-1",
         "title": "fixture title",
         "document": "fixture document",
         "observed_at": _TS,
+    }
+    source.update({
         "confidence_bps": 7000,
         "relates_to_assertion_id": None,
         "target_assertion_id": None,
         "verification_result": None,
         "provenance_assertion_id": provenance_assertion_id,
-    }
+    })
+    return source
 
 
 def _obs_record(
