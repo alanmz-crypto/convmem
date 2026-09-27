@@ -48,6 +48,23 @@ TIP = "a" * 40
 BASE = "b" * 40
 
 
+def _independent_locked_envelope(system_text: str, user_text: str) -> dict:
+    """Test-owned locked wire envelope oracle (structurally distinct from production)."""
+    messages = []
+    for role, content in (("system", system_text), ("user", user_text)):
+        messages.append({"role": role, "content": content})
+    envelope: dict = {"model": MODEL_ID, "messages": messages}
+    for key, value in (
+        ("thinking", {"type": "enabled"}),
+        ("reasoning_effort", "high"),
+        ("response_format", {"type": "json_object"}),
+        ("max_tokens", 8192),
+        ("stream", False),
+    ):
+        envelope[key] = value
+    return envelope
+
+
 def _valid_spec_dict(**overrides) -> dict:
     base = {
         "audit_spec_version": AUDIT_SPEC_VERSION,
@@ -318,15 +335,7 @@ def test_marker_authorized_only_exact():
 
 
 def test_valid_max_tokens_envelope_passes_structure_validation():
-    payload = {
-        "model": MODEL_ID,
-        "messages": [{"role": "system", "content": "x"}, {"role": "user", "content": "y"}],
-        "thinking": {"type": "enabled"},
-        "reasoning_effort": "high",
-        "response_format": {"type": "json_object"},
-        "max_tokens": 8192,
-        "stream": False,
-    }
+    payload = _independent_locked_envelope("x", "y")
     assert not validate_locked_envelope_structure(payload)
     body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     assert not egress_scan_outbound_body(body)
@@ -338,18 +347,7 @@ def test_egress_flags_credential_without_exposing_value():
     assert hits
     assert secret not in hits[0]
     body = json.dumps(
-        {
-            "model": MODEL_ID,
-            "messages": [
-                {"role": "system", "content": "safe"},
-                {"role": "user", "content": f"token={secret}"},
-            ],
-            "thinking": {"type": "enabled"},
-            "reasoning_effort": "high",
-            "response_format": {"type": "json_object"},
-            "max_tokens": 8192,
-            "stream": False,
-        },
+        _independent_locked_envelope("safe", f"token={secret}"),
         sort_keys=True,
         separators=(",", ":"),
     ).encode()
@@ -360,18 +358,7 @@ def test_egress_flags_credential_without_exposing_value():
 
 def test_bare_token_word_does_not_trigger_egress():
     body = json.dumps(
-        {
-            "model": MODEL_ID,
-            "messages": [
-                {"role": "system", "content": "safe"},
-                {"role": "user", "content": "discuss oauth token field semantics only"},
-            ],
-            "thinking": {"type": "enabled"},
-            "reasoning_effort": "high",
-            "response_format": {"type": "json_object"},
-            "max_tokens": 8192,
-            "stream": False,
-        },
+        _independent_locked_envelope("safe", "discuss oauth token field semantics only"),
         sort_keys=True,
         separators=(",", ":"),
     ).encode()
