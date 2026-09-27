@@ -1,14 +1,19 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Current status (2026-09-27): PLAN-ONLY PR #342 SAFETY/CI CORRECTIVE; MERGE
-BLOCKED.** The bounded implementation and durable M11 evidence remain preserved at
+**Current status (2026-09-27): QUALIFIED-RUNTIME DELIVERY PACKET LOCALLY
+VALIDATED; EXTERNAL PUBLICATION BLOCKED.** The bounded implementation and durable
+M11 evidence remain preserved at
 `94f29ebabee31112cccb223fd1445cb782aac6eb`, but pull request `#342` cannot merge.
 Its required GitHub `pytest (3.12)` context failed with 83 failures, and a focused
 Claude ultrareview found two independent safety defects: an invalid MCP profile can
 terminate all of `convmem doctor` during import, and a fenced publication can be
 misclassified as an exact retry without independently proved input identity. Section
-18.22 is the sole current correction. Everything below through §18.21 is retained as
-historical design and evidence provenance. This edit authorizes planning only.
+18.22 is the current PR correction; §18.23 freezes its separate qualified-runtime
+delivery packet. The disposable archive passed local byte/mode/extraction validation,
+but public redistribution remains fail-closed on incomplete component provenance and
+licensing evidence. Everything below through §18.21 is retained as historical design
+and evidence provenance. This edit authorizes planning and local non-publishing
+validation only.
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
@@ -5937,6 +5942,153 @@ publication, evidence execution, PR update, merge, deployment, real OpenClaw, li
 data, watch activation, promotion, or Gates D/W/D-V/E/F. PR `#342` is amended rather
 than split only after the separately reviewed and granted correction completes.
 
+### 18.23 Qualified-runtime delivery packet
+
+Section 18.22.4 remains the authority boundary. Ryan authorized Codex to derive one
+disposable local archive from the frozen runtime and to encode the result in the four
+Switchboard plans. This section does not authorize an external release or make the
+archive acceptance evidence.
+
+#### 18.23.1 Exact source, coordinate and local artifact
+
+The source is the read-only directory
+`/home/lauer/.local/share/convmem-openclaw-runtimes/7dccb771b2f43288c52b7cb1dd18dedb18cb7e57/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`.
+Its canonical regular-file inventory is a sorted compact-JSON array of exact
+`mode,path,sha256` objects. The inventory contains 30,421 regular files and hashes to
+`sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+The tree has 2,840 directories including its root, zero symlinks, zero special files
+and zero writable paths. Recomputing every content hash and mode before and after
+archive construction matched that inventory.
+
+The only proposed external coordinate remains:
+
+```text
+repository=alanmz-crypto/convmem
+tag=switchboard-fixture-runtime-74a12c725ac3bad4f
+asset=switchboard-fixture-runtime.tar.gz
+archive_size=557628743
+archive_sha256=6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e
+runtime_tree_sha256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+complete_extracted_regular_file_tree_sha256=52d3f70a9eb64b5c5348abc8c487994acba7fe7de0b77c358175ff42cfd23d37
+```
+
+The disposable archive has 33,271 members: 30,429 regular files and 2,842
+directories. `runtime/` contributes the exact frozen runtime. `delivery/` contains
+one packet description and seven unmodified provisioning/rebind evidence files. All
+delivery files are mode `0444`, both delivery directories are mode `0555`, and their
+SHA-256 values are:
+
+| Archive member | SHA-256 |
+|---|---|
+| `delivery/PACKET.md` | `24073ab433c503c1d5721984b97fe957ccada0ce634f8bdeae4e8ed1f9907a7d` |
+| `delivery/provisioning/python-packages.json` | `8d95f92e57afa70111ad7304ce82cc7ed4fec4786643c66bf3e4a3dc0618c2f6` |
+| `delivery/provisioning/loaded-resolution.json` | `dcf4e9e762dac5bd56aaac45d622391be11b1959ab557d6bed691a26849c3707` |
+| `delivery/provisioning/runtime-checks.json` | `b0b51fb4d8dadb7e1c3d747728d01664c9d668a4963da5a0c2f8ec6dc25fc5e3` |
+| `delivery/provisioning/runtime-inventory.json` | `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b` |
+| `delivery/provisioning/runtime-provisioning-summary.json` | `82fefc9caef737c1691ae0ce354e71946ac1363da005c3e4e6015a8b16d4ffea` |
+| `delivery/provisioning/rebound-runtime-inventory.json` | `73750e4825dae93c1a77a8d7e63c9616fe83a00b080eff16c34073191e56b2b4` |
+| `delivery/provisioning/runtime-rebind-summary.json` | `051b2e4541931acac3e02451191e227a40450efae3bd50827ed91aaca3ce7a79` |
+
+#### 18.23.2 Deterministic construction and closed extraction
+
+Construction is frozen to GNU tar 1.35 and GNU gzip 1.15 under `LC_ALL=C`. Tar reads
+the source directly, sorts names, uses POSIX format, deletes `atime`/`ctime` PAX
+fields, sets every header `mtime=0`, `uid=gid=0`, preserves modes, and transforms
+only the source-root name to `runtime/`. It then adds the prebuilt `delivery/` tree.
+Gzip uses `-n -9`. A tool/version, ordering, metadata, source-root, transform or
+delivery-member change creates a different packet; it is never accepted as an
+equivalent rebuild.
+
+Before extraction, verify the exact archive hash and inspect every tar header. Each
+normalized UTF-8 POSIX name must be uniquely and strictly below `runtime/` or
+`delivery/`, with no absolute, empty, dot or dot-dot segment. Members must be only
+regular files or directories with zero uid/gid/mtime and no setuid, setgid, sticky or
+sparse metadata. Links, devices, FIFOs, sockets, duplicate names and path escapes
+reject the archive.
+
+Extraction occurs only into a newly created empty directory with Python 3.12+.
+For each prevalidated member, call `tarfile.data_filter`; then restore only the
+prevalidated archived mode with `filtered.replace(mode=member.mode)`. Do not restore
+ownership/time, and never use `fully_trusted` or a permissive fallback. This closed
+filter is required because the standard data filter intentionally adds owner-write
+permission and would otherwise invalidate the read-only inventory. Before any test
+import, recompute the embedded runtime inventory byte-for-byte, its tree hash, all
+directory/file modes and all counts. The locally extracted archive produced the exact
+runtime hash above, zero writable/link/special members, and complete regular-file tree
+hash `52d3f70a…`.
+
+#### 18.23.3 Contents, compatibility and bubblewrap
+
+Path and content controls found zero OpenClaw packages, user-state paths, live ConvMem
+data, external model/cache/checkpoint data or private-key markers. The two `.pem`
+members are package-owned public CA bundles, not credentials. Installed dependency
+code and package-owned test/license assets remain part of the inventoried runtime.
+
+The target is a GitHub-hosted x86_64 `ubuntu-24.04` runner. The historical failing job
+reported runner `2.337.0`, image `20260920.314.1` and kernel
+`6.17.0-1022-azure`; this observation is not a future compatibility grant. Every run
+must prove Linux/x86_64, unprivileged user namespaces, the mandatory bubblewrap flags,
+read-only runtime/sysroot, private `/tmp`, cleared environment, capability drop and
+network isolation before qualified test import. The local exact-shape probe passed
+with bubblewrap 0.13.0 on Linux 7.2.6, but it is diagnostic only.
+
+Hosted provisioning is pinned to Ubuntu Noble security package
+`bubblewrap_0.9.0-1ubuntu0.3_amd64.deb` from
+`https://security.ubuntu.com/ubuntu/pool/main/b/bubblewrap/`: size 50,436 bytes,
+SHA-256 `2461f1beee9cb04c8942739fe1a2b37e7b7c2a3d518f0779dc75f9245baa3094`,
+SHA-512
+`16cad315aa5a302ee8573c8ccb7e6adcdf5bd10dd29adeed0f7f061f39f7b52159d4020b2db1b1dde88fa7f7a3f54522d83037266c956a346882e234247c790b`,
+reported version `bubblewrap 0.9.0`. Download to a fresh path, verify size and both
+hashes, then install that exact package. APT substitution, an unverified cache, another
+version, setuid fallback, a `--*-try` flag, failed namespace probe or host dependency
+resolution is `PAUSE`.
+
+#### 18.23.4 Provenance, licensing and replacement disposition
+
+The packet retains the 110-package Python name/version inventory, 248 loaded-path/hash
+resolutions, 509-ELF checks, original provisioning summary, rebound summary and both
+complete inventories. The runtime contains its CPython license and installed Python
+package license/notice files. Those facts prove the frozen bytes; they do not complete
+public redistribution provenance.
+
+The historical evidence does not bind every Python wheel/conda artifact, Node 26.9.0
+distribution artifact, system-library package/source coordinate, license expression,
+notice or reciprocal-source obligation. Therefore the frozen result is:
+
+```text
+PUBLICATION_ELIGIBLE=false
+LICENSING_DISPOSITION=PAUSE
+```
+
+Before any external release grant, an independent licensing review must bind every
+shipped component to exact binary/source provenance, license and notice bytes, and any
+required corresponding-source delivery. It may not mutate this archive. If closure
+requires added or changed bytes, the archive hash, packet, Kiro review and Ryan grant
+must all be replaced. This is a material publication blocker, not a nit or an implied
+authorization for Codex, Cursor or CI to acquire substitute bytes.
+
+The proposed tag and asset are single-assignment. Creation is allowed only while both
+are absent and only with the exact reviewed hash. Never overwrite, delete/recreate,
+retag, resolve `latest`, follow a substituted asset, repair bytes or fall back to host
+dependencies. A different archive, tree, toolchain, license result or compatibility
+requirement uses a new tree-derived tag and a new reviewed packet.
+
+Negative controls cover the already frozen changed-byte
+`ddb476d3ccb8a11d3c379cfb53925bbd8e81024f753678d7fcdecad479ae19fe`,
+changed-mode `0318dbf5410aef57b9f03b2cc9a2f7a994caea673e7feffc90609971bae7be19`,
+removed-entry `73586a3f3ea59c3899a24425cd648ed53506920ae236c211f9d04bf3dab02838`
+and unlisted-entry `467a35f2b30e7e2056c871c307f0955ec856afd42a68697e86bf366536c6010f`
+mutant tree hashes, plus link/special/path-escape/duplicate member, changed archive,
+changed bubblewrap package, failed namespace, host-resolution and mutable-coordinate
+controls. Every control fails before qualified test import.
+
+**Authority boundary.** This packet authorizes no tag, release, asset upload,
+implementation, runtime-content change, evidence run, PR update, merge, deployment,
+real OpenClaw or later gate. Exact-tip Kiro PASS is required on this parent/overlay.
+Because licensing is `PAUSE`, even Kiro PASS does not make the asset externally
+publishable; licensing closure and a separate exact Ryan external-action grant remain
+mandatory.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -5962,6 +6114,8 @@ than split only after the separately reviewed and granted correction completes.
 | Ordinary/qualified partition | The proof that every collected repository pytest node runs exactly once in its applicable ordinary (`O`) or qualified (`Q`) environment, with no gaps or overlap. |
 | Fenced publication | A lineage state that deliberately makes authority unavailable while a publication operation is unresolved. |
 | Authority-content identity | The content-derived R2b identifier computed from the canonical governed-member manifest; it attests bytes and does not authorize capture. |
+| Qualified-runtime delivery packet | The exact archive, inventory, extraction, compatibility, provenance and replacement contract for making the frozen strict-test runtime available to CI; it is not runtime qualification of real OpenClaw. |
+| Licensing disposition | The fail-closed public-redistribution result. `PAUSE` means byte integrity may pass while publication remains forbidden. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main

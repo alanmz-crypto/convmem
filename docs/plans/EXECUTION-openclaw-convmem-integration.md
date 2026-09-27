@@ -1,11 +1,15 @@
 # Execution Plan — OpenClaw bounded ConvMem reader
 
-**Current status (2026-09-27): PLAN-ONLY PR #342 SAFETY/CI CORRECTIVE; MERGE
-BLOCKED.** The exact integration tip `94f29ebabee31112cccb223fd1445cb782aac6eb`
-and its durable evidence remain preserved. Required GitHub `pytest (3.12)` is red,
-and focused ultrareview identified doctor-import containment and fenced-retry safety
-defects. Section 10.20 is the sole current execution overlay. Earlier §§10.1–10.19
-remain historical evidence. This edit authorizes no implementation or test run.
+**Current status (2026-09-27): QUALIFIED-RUNTIME DELIVERY PACKET LOCALLY
+VALIDATED; EXTERNAL PUBLICATION BLOCKED.** The exact integration tip
+`94f29ebabee31112cccb223fd1445cb782aac6eb` and its durable evidence remain
+preserved. Required GitHub `pytest (3.12)` is red, and focused ultrareview identified
+doctor-import containment and fenced-retry safety defects. Section 10.20 controls that
+PR correction; §10.21 controls its separate runtime-delivery packet. The local archive
+passed byte/mode/extraction validation, but incomplete component provenance and
+licensing evidence keeps publication at `PAUSE`. Earlier §§10.1–10.19 remain
+historical evidence. This edit authorizes no implementation, test run or external
+action.
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
@@ -2002,6 +2006,65 @@ no plan application, code/test/CI/inventory edit, runtime publication, evidence
 execution, PR update, merge, deployment, real OpenClaw, live data, watch activation,
 promotion or Gate D/W/D-V/E/F action.
 
+### 10.21 Qualified-runtime delivery obligations
+
+Architecture §18.23 controls. The local packet was derived only from the frozen
+runtime at the authorized `7dccb771…/5c6a4a8…` source path. Its archive SHA-256 is
+`6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e`,
+its size is 557,628,743 bytes, its exact runtime subtree hash is
+`74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`,
+and its complete extracted regular-file tree hash is
+`52d3f70a9eb64b5c5348abc8c487994acba7fe7de0b77c358175ff42cfd23d37`.
+The disposable local file is derivation evidence only and may disappear; no test or
+publication may resolve it by path.
+
+The required sequence is:
+
+1. **Source proof.** Recompute all 30,421 source file hashes and modes against the
+   canonical inventory; prove 2,840 directories including root, zero links, special
+   files or writable paths. Record the exact source, parent, overlay and PR-head SHAs.
+   Any mismatch stops without construction.
+2. **Construction proof.** Use only the §18.23.2 GNU tar 1.35/GNU gzip 1.15 recipe.
+   Verify the source inventory again after the read. The construction creates no
+   second runtime, installs nothing and never writes the source.
+3. **Header and extraction proof.** Verify the archive hash before parsing; reject
+   every name/type/owner/time/mode violation; extract only through the closed
+   `data_filter` plus prevalidated-mode restoration into a fresh empty directory.
+   Recompute both tree hashes, every count and every mode. Prove the embedded
+   inventory is byte-identical to the source inventory.
+4. **Content-negative proof.** Prove no OpenClaw path/package, user-state path, live
+   ConvMem data, external model/cache/checkpoint data or private-key marker; classify
+   the two package public-CA bundles explicitly. Run the changed-byte/mode,
+   removed/unlisted-entry, link/special/path-escape/duplicate, archive substitution,
+   bwrap substitution, namespace-failure, host-resolution and mutable-coordinate
+   negatives. All stop before import.
+5. **Compatibility proof.** Pin Ubuntu Noble security bubblewrap 0.9.0-1ubuntu0.3
+   by the exact size, SHA-256 and SHA-512 in §18.23.3. Future CI verifies Linux,
+   x86_64, user namespaces and the exact frozen containment argv on the actual hosted
+   runner. The local bubblewrap 0.13.0 probe is diagnostic, never transferable PASS.
+6. **Provenance/licensing hold.** Preserve all component evidence and the exact
+   `PUBLICATION_ELIGIBLE=false`, `LICENSING_DISPOSITION=PAUSE` result. An independent
+   review must bind every shipped binary/source artifact, license/notice and reciprocal
+   source obligation. It may not edit the archive. Added/changed bytes require a new
+   archive hash, plan, Kiro review and Ryan grant.
+7. **Review and external decision.** Kiro reviews the exact semantic parent and
+   milestone overlay. Kiro PASS approves design/scope only. Ryan may consider an
+   external publication grant only after the licensing hold is closed without changing
+   the reviewed bytes and after confirming the repository/tag/asset are absent. The
+   authorized external operation, if any, must name the exact repository, tag, asset,
+   archive hash and size. Creation is single-assignment; no overwrite, delete/recreate,
+   retag, `latest`, redirect substitution or mutable replacement.
+8. **Post-publication admission remains separate.** Only a separately authorized CI
+   run may download the asset, verify every frozen identity, provision exact bubblewrap,
+   pass containment preflight and then import qualified tests. Runtime publication does
+   not authorize the §10.20 implementation, evidence, PR update or merge.
+
+**Current result:** local deterministic construction and extraction verification
+`PASS`; public provenance/licensing `PAUSE`; external publication `NOT AUTHORIZED`.
+No tag, release or asset exists by authority of this section. PR `#342`, source code,
+tests, CI, runtime bytes, configuration, R2b inventory and durable M11 evidence remain
+unchanged.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2013,4 +2076,6 @@ final M8 run 1 paused because two passing current-main safety nodes raised the u
 legacy suite from 116/115 to 118/117. Section 10.19 freezes only the exact one-path/two-integer
 successor correction and requires the complete fresh differential/Pylint/M8/MCP sequence. No
 implementation, test, PR, merge, real OpenClaw action, live data or promotion is authorized by
-this plan edit.
+this plan edit. Section 10.21 additionally freezes the locally verified qualified-runtime
+archive, but public redistribution remains `PAUSE` until exact component provenance and licensing
+obligations are independently closed; no tag, release or asset is authorized.
