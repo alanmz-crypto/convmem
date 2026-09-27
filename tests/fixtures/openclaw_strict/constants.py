@@ -215,8 +215,8 @@ EXPECTED_STRICT_JUNIT_COUNTS = {
     "skipped": 0,
 }
 EXPECTED_LEGACY_JUNIT_COUNTS = {
-    "collected": 116,
-    "passed": 115,
+    "collected": 118,
+    "passed": 117,
     "failed": 0,
     "error": 0,
     "skipped": 1,
