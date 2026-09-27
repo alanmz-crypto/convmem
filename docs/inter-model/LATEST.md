@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-24
+**Updated:** 2026-09-27
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Practice writer lock and agent guidance — READY_FOR_REVIEW (review only; no Execute grant):** Codex's solo design is ready for an independent adversarial pass at practice repo target `0a71373434631a60f0d8d4734d5f4772996a2fae`. The current destructive-operation freeze remains in force; do not implement or run sync/restore/install operations. Read [`CODEX-2026-09-27-practice-flock-writer-lock-review-handoff.md`](CODEX-2026-09-27-practice-flock-writer-lock-review-handoff.md) for the pinned-tree inspection commands, design, guardrail-bounded prompt, and review output contract. Ryan assigns the reviewer and decides any later implementation gate.
 - **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
   held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
   preserves integration tip `9c6421a` and routes its 44-path remediation to
