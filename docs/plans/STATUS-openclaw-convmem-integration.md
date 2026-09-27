@@ -125,7 +125,7 @@ the absent publishable qualified runtime.
 | Provenance-lock schema v2 | **KIRO PASS / P0 PAUSE** at `2956f701` — the one granted run proved the raw `base64` component omits `version`; it stopped before result/ledger/manifest/durable packet creation, and its partial staging remains rejected evidence |
 | Provenance-lock schema v3 | **KIRO PASS / OFFLINE P0 PAUSE** — one exact run completed with five cumulative passes and 11,643,965,233 bytes; durable packet tree `491ae60b…` contains 98,608 open rows and is not build-eligible |
 | P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
-| Pre-acquisition and host-path plan | **KIRO PASS at `a10a84d` / MAIN RECONCILIATION PENDING** — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#344` exposed one STATUS conflict and one inherited fifth-file scope defect, so the same four-document plan is being reconstructed from exact current main for re-review; no acquisition or build is authorized |
+| Pre-acquisition and host-path plan | **KIRO PASS at `a10a84d` / MAIN RECONCILIATION RE-REVIEW PENDING** — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; draft PR `#345` replaces conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -152,7 +152,7 @@ the absent publishable qualified runtime.
 | Provenance-lock schema v3 P0 | **KIRO PASS / OFFLINE P0 PAUSE** | Durable packet exists and verifies; 98,608 unresolved rows block build eligibility |
 | P0 result binding | **KIRO PASS / INDEPENDENT REVIEW PAUSE** | Exact disposition preserves structural PASS while provenance/licensing and build eligibility remain blocked |
 | Pre-acquisition and host-path planning | **KIRO PASS at `a10a84d` / RECONCILIATION RE-REVIEW PENDING** | Conflict-free current-main semantic parent and milestone overlay; later origin planning and every operation remain separately gated |
-| Plan PR `#344` | **OPEN / CONFLICTING / TO BE SUPERSEDED** | Its merge base predates current main, producing a STATUS conflict and inherited `STATUS-r2b-capture-auth.md` scope; do not resolve by merge commit or force-push |
+| Plan PR | **DRAFT / RE-REVIEW PENDING** — `#345` replaces conflicting `#344` | Exact current-main base, four Switchboard planning documents only, conflict-free merge tree; do not transfer the prior exact-tip PASS to its new Git identities |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -279,7 +279,8 @@ a separate repository-knowledge arc.
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
 | Implementation pull request | `https://github.com/alanmz-crypto/convmem/pull/342` |
-| Conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` — supersession pending after current-main reconstruction |
+| Replacement plan pull request | `https://github.com/alanmz-crypto/convmem/pull/345` — draft pending exact-tip re-review |
+| Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
 
@@ -289,7 +290,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-27 | Codex | Kiro passed the pre-acquisition design at `a10a84d`; PR `#344` exposed a stale-base STATUS conflict and inherited fifth-file scope, so an exact current-main four-document reconstruction now awaits re-review. |
+| 2026-09-27 | Codex | Kiro passed the design at `a10a84d`; draft PR `#345` now replaces conflicting/out-of-scope `#344` with an exact current-main four-document reconstruction awaiting re-review. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -301,9 +302,9 @@ absent and stopped before result or durable packet creation. Schema v3 then pass
 review and its one granted offline P0 produced immutable packet tree `491ae60b…` at
 the exact read ceiling. Independent disposition `45442e93…` confirms the packet is
 technically exact but retains provenance/licensing `PAUSE`, human-counsel requirement
-and all 98,608 blockers. Kiro passed §§18.29/10.27 at `a10a84d`; conflicting plan PR
-`#344` is being superseded by an exact current-main four-document reconstruction that
-requires fresh exact-tip review. The plan defines lossless pre-acquisition coverage and
+and all 98,608 blockers. Kiro passed §§18.29/10.27 at `a10a84d`; draft plan PR `#345`
+replaces conflicting `#344` with an exact current-main four-document reconstruction
+that requires fresh exact-tip review. The plan defines lossless pre-acquisition coverage and
 clean replacement for three host-path-bearing ELFs without naming an authoritative
 origin. Acquisition, binary repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
