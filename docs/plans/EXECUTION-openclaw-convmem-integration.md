@@ -10,7 +10,8 @@ DIFFERENTIAL PASS PRESERVED AT `65bbfd6f47515accfefa110b667afe1613f0dbed`; PYLIN
 THREE CANDIDATE-INTRODUCED `R0801` PAIRS; FIRST PYLINT CORRECTION PRESERVED AT
 `c71d37a42de0937aff57a2af47770a89902f132a`; SUCCESSOR CORRECTION AND FRESH THREE-TIP
 DIFFERENTIAL PASS PRESERVED AT `caec5c6868f600e897b29a39f555365e5f818ac1`; EXACT PYLINT
-ACCEPTANCE PAUSED AT 458 TOTAL BECAUSE `R0401` ENUMERATION WAS NOT FROZEN.
+ACCEPTANCE PASSED AT `9da6dd98d276b250470de4e53ac786f7547d92d5`; FINAL M8 RUN 1
+PAUSED ON TWO ADDITIONAL PASSING CURRENT-MAIN LEGACY NODES AND THE STALE 116/115 EXPECTATION.
 LIVE-DATA BLOCKED; PROMOTION BLOCKED.** The final authority-packet correction, repository-wide differential,
 unchanged Pylint gate, two M8 runs, seven MCP regressions and durable verification pass at
 `cd60cf19`, with Kiro exact-tip PASS. That source is bound to baseline `9193f5ec…`. The first
@@ -29,9 +30,12 @@ but exact Pylint acceptance paused at 456/71 with two excess pairs. Section 10.1
 corrected one-test-file/two-transformation sequence and then-observed 454/69/240 acceptance. That
 correction and a fresh differential passed at `caec5c6`; exact Pylint then paused at 458/69/29
 `R0401` despite protected-gate zero and exact pair equality. Section 10.18 freezes a paired
-`N1`/final-candidate semantic-identity rule under `PYTHONHASHSEED=0`; it authorizes no product/test
-edit, suite, PR, merge or runtime action. Exact-tip review and a new Ryan resume grant are required
-first.
+`N1`/final-candidate semantic-identity rule under `PYTHONHASHSEED=0`. That rule, the fresh
+differential and paired Pylint passed at `9da6dd98`; final M8 run 1 then stopped on exact legacy-
+count drift after two current-main safety tests were selected and passed. Section 10.19 freezes
+the exact 118/117 successor count and one-path/two-integer correction; it authorizes no product/
+test edit, suite, PR, merge or runtime action. Exact-tip review and a new Ryan resume grant are
+required first.
 BUILD is not complete-integration readiness and does not pass any of those later gates.
 
 **Date:** 2026-09-26
@@ -52,7 +56,9 @@ reconstruction. Section 10.15 records its governed evidence PAUSE and freezes th
 signature rule. Section 10.16 records the resulting differential PASS and Pylint PAUSE and freezes
 the first post-reconstruction correction. Section 10.17 records that correction's governed
 acceptance PAUSE and freezes its exact successor. Section 10.18 records that successor's fresh
-differential/Pylint PAUSE and freezes deterministic paired Pylint acceptance.
+differential/Pylint PAUSE and freezes deterministic paired Pylint acceptance. Section 10.19
+records the resulting differential/Pylint PASS and final-M8 legacy-count PAUSE and freezes its
+exact successor correction.
 Review the two parent files together.
 The retained Astra report reviews the earlier `0f1216f` revision, not this correction:
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -82,9 +88,11 @@ candidate `853ef98ede44f2d171e5354b065e11f83558e010`; bundle-schema-paused candi
 `65bbfd6f47515accfefa110b667afe1613f0dbed`; and preserved Pylint-acceptance-PAUSE tip
 `c71d37a42de0937aff57a2af47770a89902f132a`; and the implemented successor plus fresh
 differential/Pylint-acceptance PAUSE tip
-`caec5c6868f600e897b29a39f555365e5f818ac1`. This revision changes plans only. A new grant must
-name the new reviewed parent and overlay, advanced `N`, `R`, preserved `caec5c6`, the exact
-reviewed plan range, four-literal authority rebind, rebound runtime and durable evidence root. No
+`caec5c6868f600e897b29a39f555365e5f818ac1`; and the fresh differential/Pylint-PASS/final-M8-
+count-PAUSE tip `9da6dd98d276b250470de4e53ac786f7547d92d5`. This revision changes plans only. A new grant must
+name the new reviewed parent and overlay, advanced `N`, `R`, preserved `9da6dd98`, the exact
+reviewed plan range, four-literal authority rebind, one-path/two-integer count correction, rebound
+runtime and durable evidence root. No
 rebase, merge, history rewrite or reuse of an earlier plan range.
 
 **Roles:** Cursor using Grok 4.5 High remains the sole implementation lane and is paused. Codex owns
@@ -105,7 +113,7 @@ supervisor entrypoints and ordinary plugin registration refuse `runtime_not_qual
 separately reviewed Gate D adapter packet; command-line refusal exits 78 before OS operations.
 
 The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
-review and a new Ryan grant naming every §10.15 input. Known deferred issues do not authorize
+review and a new Ryan grant naming every §10.19 input. Known deferred issues do not authorize
 Grok to redesign the architecture, choose a weaker lint disposition or reinterpret a retained
 repository failure as PASS.
 
@@ -1820,13 +1828,79 @@ runtime/configuration correction, acceptance suite, PR, merge, deployment or rea
 may begin without Kiro PASS and a new Ryan grant. Gate D/W/D-V/E/F, watch activation, live data and
 promotion remain blocked.
 
+### 10.19 M11 final-M8 legacy-count drift correction obligations
+
+Architecture §18.21 controls. Preserve exact final source
+`9da6dd98d276b250470de4e53ac786f7547d92d5`, its fresh
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`, its exact paired seeded-Pylint PASS and its final-M8
+run-1 PAUSE. M8 completed 238 strict passes, 29 Node passes and a successful legacy process with
+118 collected / 117 passed / one skipped / four unchanged deselections. The outer evidence parser
+returned status 2 only because the inherited expectation remained 116/115. Runtime before/after
+inventories are byte-identical; run 2 and MCP did not start. The PAUSE-ledger SHA-256 is
+`73005d7a3b65d5de6652696c92a6801789b0051a90b399755c8e4c3854ce8aa8`; evidence-manifest
+SHA-256 is `51bf7fef728223106a1da8f7dfeb3de42bce8a7e15d2e3830c0919eeabe7152d`; and exact node-delta
+diagnostic SHA-256 is `a025ada8c43533577ed8a204f16317865b0e2beb7edd80687aa28a1184f48264`.
+
+Execute only this held sequence after exact-tip Kiro PASS and a new Ryan grant:
+
+1. Require the implementation branch clean, pushed and exactly `9da6dd98`; require
+   `origin/main == 5c6a4a8`; require `R=cd60cf19` unchanged; verify the §18.21 PAUSE packet,
+   prior accepted M8 legacy node/outcome evidence and unchanged runtime inventory. Independently
+   confirm that current main and final source use the same selected-file blob `d1ed10f1…`, and
+   that the new legacy array is the accepted 116-node array plus exactly the two named passing
+   safety nodes, with no removal or outcome change. Any moved ref, missing byte or mutation is
+   `PAUSE`.
+2. Grok applies every commit in the complete reviewed linear plan range beginning after the
+   §18.20 reviewed overlay, oldest to newest, onto `9da6dd98`, with no conflict resolution, empty
+   commit, edit, squash, merge, rebase or non-plan change. Grok pushes and stops. Codex proves
+   exactly four planning-document blobs/modes equal the reviewed overlay and every non-plan byte
+   equals `9da6dd98`.
+3. Only after a commit-specific `CONTINUE`, Grok changes exactly four 40-hex values across exactly
+   two files: `SEMANTIC_PARENT_SHA` and `M11_REVIEWED_OVERLAY_SHA` in
+   `tests/fixtures/openclaw_strict/constants.py`, plus their two frozen assertions in
+   `tests/test_openclaw_strict_packet_contract.py`. `CODE_BASELINE_SHA` remains `5c6a4a8`.
+   Grok commits, pushes and stops. Codex proves the exact two-path/four-substitution diff.
+4. Only after a second commit-specific `CONTINUE`, Grok changes exactly
+   `tests/fixtures/openclaw_strict/constants.py`: inside `EXPECTED_LEGACY_JUNIT_COUNTS`, change
+   only collected `116` to `118` and passed `115` to `117`. Grok commits, pushes and stops. Codex
+   proves the exact one-path/two-integer diff. A third number, second path, selector, deselection,
+   test-function, parser, failure-rule or Node-command change is `PAUSE`.
+5. Codex rebinds but does not alter the qualified runtime and freshly runs complete pytest at
+   `N1=5c6a4a8`, `R=cd60cf19` and final candidate `F` in one reset slot with identical environment,
+   argv, paths, reporter and limits. Apply §§18.10 and 18.15–18.17 unchanged, including every
+   symmetric rerun, the exact 238-node partition, five-node R2b proof and 22-node inner-role proof.
+   Prior differential output remains historical.
+6. Only a fresh `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases paired Pylint. Run the exact
+   §18.20 `N1`/final command pair with sole environment addition `PYTHONHASHSEED=0`, preserving raw
+   reports and requiring exact 458/29/69/240 counts, 429 non-`R0401`, gate zero and all three
+   canonical semantic hashes.
+7. Only that exact semantic acceptance releases two fresh-root M8 runs. Both must produce 238
+   strict passes, 29 Node passes and legacy 118 collected / 117 passed / zero failed / zero errored /
+   one skipped / four unchanged deselections. Each canonical legacy array must equal the historical
+   accepted array plus exactly the two §18.21 passing nodes, with no removal or outcome change, and
+   the two fresh arrays must equal each other. Then run the seven legacy MCP regression files.
+8. Preserve all raw/JUnit/canonical records, hashes, reruns, paired Pylint/M8/MCP output,
+   inventories and staging mappings. Kiro reviews exact final source and evidence. Fetch and
+   require `origin/main == 5c6a4a8` before PR creation and again before Ryan's merge decision.
+
+The successor expectation follows the pre-existing selected-file rule; it does not broaden
+selection or convert arbitrary count drift into acceptance. A future added, removed, renamed,
+skipped or outcome-changed node is another `PAUSE`, not an automatic count update. Grok does not
+choose the node delta, counts, selectors, identity values, runtime, evidence paths or verdict.
+This section authorizes planning only: no plan application, identity edit, fixture/source/test/CI/
+runtime/configuration correction, acceptance suite, PR, merge, deployment or real OpenClaw action
+may begin without Kiro PASS and a new Ryan grant. Gate D/W/D-V/E/F, watch activation, live data and
+promotion remain blocked.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
 differential passed at `65bbfd6f`; §10.16's first Pylint correction then reached `c71d37a` but
 paused exact acceptance at 456/71. Section 10.17's exact test-local correction and fresh
 differential then passed at `caec5c6`; exact Pylint paused because the old 454-total rule did not
-freeze `R0401` enumeration. Section 10.18 freezes paired `N1`/final Pylint under
-`PYTHONHASHSEED=0`, exact semantic hashes and raw evidence retention before M8/MCP. No
+freeze `R0401` enumeration. Section 10.18's paired seeded Pylint rule then passed at `9da6dd98`;
+final M8 run 1 paused because two passing current-main safety nodes raised the unchanged selected
+legacy suite from 116/115 to 118/117. Section 10.19 freezes only the exact one-path/two-integer
+successor correction and requires the complete fresh differential/Pylint/M8/MCP sequence. No
 implementation, test, PR, merge, real OpenClaw action, live data or promotion is authorized by
 this plan edit.
