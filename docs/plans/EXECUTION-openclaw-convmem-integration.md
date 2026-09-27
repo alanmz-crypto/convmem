@@ -2308,6 +2308,63 @@ runtime/evidence read, rejected-staging deletion, packet/review creation, networ
 product/test/CI/runtime/configuration change, build, publication, PR update, merge,
 real OpenClaw or later gate is authorized.
 
+### 10.26 Schema-v3 P0 result binding and independent-review sequence
+
+Architecture §18.28 controls. The separately granted schema-v3 collector completed
+once, used the entire authorized read budget, published one immutable durable packet
+and stopped with `status="PAUSE"`, `build_eligible=false`. This successor records that
+result without turning structural completion into provenance or licensing closure.
+
+The only permitted sequence is:
+
+1. **Bind the exact collector and result.** Verify the frozen collector hash/size,
+   collector-freeze receipt, v2-to-v3 diff, mode-`0400` result, manifest identity,
+   packet-tree identity and the exact parent/overlay/runtime bindings in §18.28.1.
+   Preserve the rejected v1/v2 staging trees without reading, copying, repairing or
+   deleting them.
+2. **Reverify the immutable packet.** Independently prove the staging and durable
+   packet path/mode/size/hash maps are equal; all 651 objects match `objects.jsonl`;
+   all JSON/JSONL bytes are canonical; the 12 packet files and content-addressed
+   object tree match the manifest; the review root is absent; and the ownership ledger
+   reconstructs the exact input-runtime tree without another runtime-content read.
+3. **Bind the honest PAUSE.** Recompute the nine §18.28.2 unresolved groups and exact
+   total 98,608. Confirm five cumulative content passes and 11,643,965,233 bytes, one
+   exact absent-version projection, 65 negative controls, and zero network/external/
+   retained-source reads. No lower count, structural PASS or exact runtime hash can
+   replace an empty unresolved ledger.
+4. **Kiro exact-tip review.** Kiro returns binary PASS or FAIL on the exact semantic
+   parent and milestone overlay. PASS verifies only result identity, sequencing and
+   authority boundaries; it does not review legal sufficiency or authorize a reviewer
+   write.
+5. **Separate independent-review grant.** Only a new Ryan grant may name an independent
+   provenance/licensing reviewer and authorize creation of the exact absent review
+   leaf. The reviewer reads only the immutable packet/result and creates only one
+   canonical `review-disposition.json` by same-filesystem partial write, validation,
+   atomic rename and read-only freeze. The disposition binds the exact manifest and
+   every packet-file hash, retains every open unresolved ID, and cannot claim build
+   eligibility while any row remains open.
+6. **Stop after disposition.** The reviewer returns its exact technical, provenance
+   and licensing verdicts and stops. Any packet mismatch, credential/private-data
+   concern, schema ambiguity, required packet change or attempted in-place repair is
+   `PAUSE`. Codex does not acquire missing evidence under this plan.
+7. **Plan any acquisition separately.** A successor may propose exact read-only
+   authority acquisition only after the disposition. It must enumerate each permitted
+   HTTPS/VCS origin or retained-local root, operation, redirect rule, tool/parser,
+   byte/request ceiling and checkpoint. Unknown origins remain unresolved. That plan
+   requires its own Kiro review and Ryan grant before a request or retained-source read.
+
+The mode-`0400` P0 result remains staging evidence; the durable packet leaf is the
+immutable review subject. Neither is a replacement runtime, compliance archive,
+publication asset or implementation input. The existing runtime, rejected archive,
+PR `#342`, held corrective files and all acceptance evidence remain unchanged.
+
+**Current result:** offline P0 execution is complete and independently byte-verified;
+the exact durable packet exists, the review root does not, and 98,608 open rows keep
+provenance closure `UNRESOLVED`, licensing `PAUSE` and publication eligibility false.
+This section authorizes no review-root write, network/retained-source access,
+acquisition, build, runtime change, publication, CI admission, product/test/CI/R2b
+edit, PR update, merge, real OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip

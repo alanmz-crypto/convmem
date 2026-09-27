@@ -6805,6 +6805,117 @@ live data, watch activation, promotion or Gates D/W/D-V/E/F. Kiro exact-tip PASS
 new Ryan P0 grant naming the schema-v3 roots, collector identity, cumulative/additional
 read ceilings and exact operations remain mandatory.
 
+### 18.28 Schema-v3 offline P0 result and independent-review hold
+
+The separately granted schema-v3 offline P0 execution completed exactly once. The
+frozen collector exited zero after publishing one immutable packet leaf, but the packet
+honestly reports `status="PAUSE"` and `build_eligible=false`. Structural completion is
+not provenance closure. The durable packet is eligible only for exact-byte review; it
+is not eligible for build, publication, CI admission or implementation use.
+
+#### 18.28.1 Exact result and immutable packet identity
+
+The following facts are frozen together and may not be recomputed into a replacement
+identity, edited in place or combined with schema-v1/v2 staging:
+
+```text
+PROVENANCE_V3_COLLECTOR_SHA256=26352b39f3ff53bf8a41c579c4c9aec8a8f8734235fe99db0a8480fa9964adad
+PROVENANCE_V3_COLLECTOR_SIZE=67575
+PROVENANCE_V3_COLLECTOR_FREEZE_SHA256=c8f457b589b6554a33921965339a74db086806d9243bb5fa4565df39b5e74ada
+PROVENANCE_V3_COLLECTOR_DIFF_SHA256=be6b82f89aaac51cc8ae1cbaace78d111dc0f00de92ee7a45009d57d182f59a5
+PROVENANCE_V3_RESULT_SHA256=db755121a38ffa43587662337bf896196a944bdaaf0019e899c13bc0afb43045
+PROVENANCE_V3_RESULT_SIZE=20155
+PROVENANCE_V3_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+PROVENANCE_V3_MANIFEST_SIZE=2957
+PROVENANCE_V3_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+PROVENANCE_V3_PACKET_BYTES=654147403
+PROVENANCE_V3_OBJECT_COUNT=651
+PROVENANCE_V3_OBJECT_BYTES=600094627
+PROVENANCE_V3_COMPONENT_COUNT=1221
+PROVENANCE_V3_NESTED_COMPONENT_EDGE_COUNT=1384
+PROVENANCE_V3_OWNED_FILE_COUNT=30402
+PROVENANCE_V3_UNOWNED_OR_AMBIGUOUS_FILE_COUNT=19
+PROVENANCE_V3_UNRESOLVED_COUNT=98608
+PROVENANCE_V3_RUNTIME_CONTENT_PASS_COUNT=5
+PROVENANCE_V3_RUNTIME_READ_BYTES=11643965233
+PROVENANCE_V3_NEGATIVE_CONTROL_COUNT=65
+PROVENANCE_V3_PACKET_STATUS=PAUSE
+PROVENANCE_V3_BUILD_ELIGIBLE=false
+PROVENANCE_V3_REVIEW_ROOT_PRESENT=false
+```
+
+`p0-result.json` is mode `0400` staging evidence outside the packet. The staging
+`packet.work` and durable `packet` trees are mode-for-mode and byte-for-byte equal at
+`PROVENANCE_V3_PACKET_TREE_SHA256`; every packet file is mode `0444`, every directory
+is mode `0555`, and there is no symlink, special file or writable member. The manifest
+is now bound by its exact size and SHA-256 as §18.25 required. Its self-exclusion remains
+unchanged: the manifest does not hash itself, and the later independent disposition
+must bind the manifest and each packet-file hash without entering or mutating the
+packet leaf.
+
+The execution consumed exactly the authorized two additional complete content passes
+and bounded evidence selection: `7,106,471,781 + 4,537,493,452 = 11,643,965,233`
+runtime bytes and five cumulative passes. It retained exactly one §18.27 projection,
+the hash-bound `base64` component at `components/0` with
+`raw_version_state="absent"`; all 65 closed negative controls passed. Network requests,
+external bytes and retained-source reads were all zero. The unchanged ownership ledger
+independently reconstructs runtime tree SHA-256
+`74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+
+#### 18.28.2 Exact unresolved classification
+
+The packet contains exactly 98,608 blocking `OPEN` rows:
+
+| Subject and field family | Reason | Count |
+|---|---|---:|
+| Every one of 30,421 runtime files: `origin_kind`, `origin_id`, `origin_member_path` | `missing-origin` | 91,263 |
+| Every one of 1,221 components: `binary_artifact_ids` | `missing-binary` | 1,221 |
+| Every one of 1,221 components: `source_artifact_ids` | `missing-source` | 1,221 |
+| Every one of 1,221 components: `transformation_ids` | `missing-recipe` | 1,221 |
+| Every one of 1,221 components: `selected_license_expression` | `license-choice` | 1,221 |
+| Every one of 1,221 components: `license_notice_ids` | `missing-license` | 1,221 |
+| Every one of 1,221 components: `source_delivery_id` | `source-obligation` | 1,221 |
+| Eighteen runtime files: `component_id` | `multiple-owners` | 18 |
+| One runtime file: `component_id` | `missing-owner` | 1 |
+
+These rows are not failures to hide or a checklist that an implementer may clear by
+inference. They prove that offline installed-byte inspection alone cannot establish
+source authority, artifact lineage, build recipes or redistribution obligations. A
+reviewer may confirm structural correctness while retaining provenance and licensing
+`PAUSE`; no disposition may call this packet complete, build-eligible or publishable.
+
+#### 18.28.3 Independent review and successor boundary
+
+Kiro first reviews this exact result-binding plan for design/scope and verifies that it
+names the immutable packet rather than blessing its contents. Only a later Ryan grant
+may authorize an independent provenance/licensing reviewer, separate from the
+collector, to inspect the exact durable packet and atomically create only
+`PROVENANCE_DURABLE_REVIEW_ROOT/review-disposition.json`. The reviewer must recompute
+the manifest and every packet-file hash, retain all open unresolved IDs, test the
+§18.25/§18.27 negative controls independently, inspect the captured objects for
+credential/private-data and licensing concerns, and return only the schema's exact
+technical/provenance/licensing `PASS` or `PAUSE` values. The reviewer cannot edit,
+repair, supplement or reinterpret the packet.
+
+Because the unresolved ledger is nonempty, this packet cannot satisfy build
+eligibility regardless of a structural technical finding. After the disposition, any
+attempt to resolve provenance requires another plan-only packet that names exact HTTPS
+or immutable-VCS origins, retained-local roots, methods, redirects, parsers, byte
+ceilings, credentials prohibition and checkpoints component by component. Search
+results, ambient caches, rolling-host ownership, guessed URLs and `latest` remain
+non-authoritative. No acquisition permission is implied here.
+
+#### 18.28.4 Authority boundary
+
+This correction authorizes only four planning-document edits and exact-tip review. It
+does not authorize creation of the review root or disposition, any network or retained-
+source access, provenance acquisition, packet repair/replacement, another collector
+execution, runtime read or mutation, build, install, test execution, tag/release/asset,
+CI admission, product/test/CI/configuration/R2b change, PR `#342` update, merge,
+deployment, real OpenClaw, live data, watch activation, promotion or Gates
+D/W/D-V/E/F. Kiro PASS is not reviewer-write, acquisition, build, publication or
+implementation authority.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
