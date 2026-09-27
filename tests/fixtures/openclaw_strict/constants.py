@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 CODE_BASELINE_SHA = "5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d"
-SEMANTIC_PARENT_SHA = "45863c87f1ae70b89dd063da8f09f6cd16fdb3a3"
-M11_REVIEWED_OVERLAY_SHA = "60731421eaf76aa6e69ff39ab5030b8d8a4f0a24"
+SEMANTIC_PARENT_SHA = "7dccb771b2f43288c52b7cb1dd18dedb18cb7e57"
+M11_REVIEWED_OVERLAY_SHA = "dc060312469551d4b9b18f1233588e6780689cad"
 M11_CONTROL_PLANE_INPUTS = frozenset(
     {
         "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
