@@ -1,19 +1,21 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Current status (2026-09-27): QUALIFIED-RUNTIME DELIVERY PACKET LOCALLY
-VALIDATED; EXTERNAL PUBLICATION BLOCKED.** The bounded implementation and durable
+**Current status (2026-09-27): REPLACEMENT DELIVERY-SET PLAN KIRO PASS;
+PROVENANCE-LOCK SCHEMA REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The bounded implementation and durable
 M11 evidence remain preserved at
 `94f29ebabee31112cccb223fd1445cb782aac6eb`, but pull request `#342` cannot merge.
 Its required GitHub `pytest (3.12)` context failed with 83 failures, and a focused
 Claude ultrareview found two independent safety defects: an invalid MCP profile can
 terminate all of `convmem doctor` during import, and a fenced publication can be
 misclassified as an exact retry without independently proved input identity. Section
-18.22 is the current PR correction; §18.23 freezes its separate qualified-runtime
-delivery packet. The disposable archive passed local byte/mode/extraction validation,
-but public redistribution remains fail-closed on incomplete component provenance and
-licensing evidence. Everything below through §18.21 is retained as historical design
-and evidence provenance. This edit authorizes planning and local non-publishing
-validation only.
+18.22 is the held PR correction; §18.23 freezes its rejected qualified-runtime delivery
+packet; and §18.24's replacement delivery-set plan received exact-tip Kiro PASS at
+`3402e62a8479011814bfa76ce9e1c3269dc34350`. Section 18.25 now freezes the
+canonical provenance-lock schema, roots and future acquisition boundary. The first
+archive passed local byte/mode/extraction validation, but public redistribution remains
+fail-closed on incomplete component provenance and licensing evidence. Everything
+below through §18.21 is retained as historical design and evidence provenance. This
+edit authorizes planning only.
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
@@ -100,7 +102,9 @@ three-tip differential correction and preflight PAUSE; §18.16 records the compl
 advance; §18.17 freezes the exact inner-role semantic-signature rule; §18.18 freezes the exact
 post-reconstruction Pylint correction; §18.19 freezes the correction to its observed acceptance
 drift; §18.20 records deterministic paired Pylint authority; §18.21 freezes the exact final-M8
-legacy-count drift correction.
+legacy-count drift correction; §18.22 freezes the held PR correction; §18.23 records
+the rejected first runtime packet; §18.24 defines the Kiro-passed replacement delivery
+set; and §18.25 defines the schema-only provenance-lock packet.
 Kiro owns the required
 exact-tip design review; Ryan owns any later implementation, test, PR, merge or promotion grant.
 No complete-integration readiness is claimed.
@@ -6269,6 +6273,284 @@ watch activation, promotion or Gates D/W/D-V/E/F. The rejected archive remains
 immutable and unpublished. Each later step requires its own exact reviewed packet and
 Ryan grant.
 
+### 18.25 Provenance-lock schema packet
+
+Section 18.24 requires the provenance outputs, their schemas and their locations to be
+reviewed before any provenance execution. This section freezes that contract. It does
+not create the packet, inspect or fetch an artifact, or close any unresolved row.
+
+The schema packet is bound to the reviewed replacement-plan overlay and the rejected
+runtime tree, not to a mutable branch or current host:
+
+```text
+PROVENANCE_SCHEMA_VERSION=convmem.switchboard.provenance-lock.v1
+PROVENANCE_PLAN_BASE_OVERLAY_SHA=3402e62a8479011814bfa76ce9e1c3269dc34350
+PROVENANCE_INPUT_RUNTIME_ROOT=/home/lauer/.local/share/convmem-openclaw-runtimes/7dccb771b2f43288c52b7cb1dd18dedb18cb7e57/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
+PROVENANCE_INPUT_RUNTIME_TREE_SHA256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+PROVENANCE_INPUT_RUNTIME_REGULAR_FILE_COUNT=30421
+PROVENANCE_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v1
+PROVENANCE_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v1
+PROVENANCE_DURABLE_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v1/packet
+PROVENANCE_DURABLE_REVIEW_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v1/review
+PROVENANCE_PACKET_STATUS=SCHEMA_ONLY
+PROVENANCE_EXECUTION_AUTHORIZED=false
+```
+
+None of these paths exists by authority of this plan. A later exact grant may permit
+Codex to create only those roots. Staging is disposable and never evidence. The packet
+is written first to a same-filesystem sibling of `PROVENANCE_DURABLE_PACKET_ROOT`
+ending `.partial`, verified, atomically renamed, made read-only and thereafter
+immutable. The reviewer later creates `PROVENANCE_DURABLE_REVIEW_ROOT` by the same
+closed partial-to-final process without touching the packet root. An existing target,
+cross-filesystem rename, symlink in any ancestor, writable final member or second
+packet/review at the same coordinate is `PAUSE`.
+
+#### 18.25.1 Canonical encoding and identifiers
+
+Every `.jsonl` is UTF-8 without BOM, one compact JSON object plus LF per record, with
+records sorted by the declared primary key's UTF-8 bytes. Every `.json` is one compact
+JSON value plus LF. Objects use lexicographically sorted keys, separators `,` and `:`,
+`ensure_ascii=false`, no duplicate keys, no floats, no surrogate code points and no
+Unicode normalization. Strings preserve the observed Unicode scalar sequence. Hashes
+are lowercase 64-character SHA-256 hex; sizes/counts are nonnegative decimal integers;
+modes are four-character octal strings. Arrays declared as sets are unique and sorted
+by UTF-8 bytes. Unknown keys, omitted required keys, CRLF, noncanonical escapes,
+unordered records or a second textual encoding reject the packet.
+
+Field types are closed. Names, versions, IDs, hashes, URLs, paths, media types,
+expressions, rationales and enum values are strings; `_sha256` strings use the hash
+rule above. Fields ending `_ids`, `_paths` or `_sha256s` are arrays of strings.
+Counts, sizes and `http_status` are integers (`http_status` is 100–599 when non-null).
+`human_counsel_required`, `reciprocal_review_required` and `blocks` are booleans.
+`argv` is an ordered string array; `environment` is an object from string keys to
+string values. Timestamps are UTC RFC 3339 strings with whole seconds and trailing
+`Z`. `redirect_chain` is an ordered URL array; every other scalar array is a set and
+therefore sorted. `packet_files`, `license_texts`, `notice_texts` and
+`copyright_texts` are arrays of the exact row objects specified below and sorted by
+`path` or `delivery_path`; `reviewed_packet_file_sha256s` is an array of exact
+`{path,sha256}` objects sorted by `path`; `review_scope` is a sorted string set; and
+`reviewer` is exactly `{actor,lane,tool,tool_version}` with string values. No implicit
+string-to-number/boolean coercion is allowed.
+
+Required keys are always present, but reconstruction must represent unknowns without
+inventing authority. `null` is allowed only for `objects.source_url` on an
+`existing-runtime` object; `authority-observations.http_status` on a `vcs-https`
+`FETCH_OBJECT`; the nullable component identity fields `build`, `purl` and
+`origin_namespace`; `source-artifacts.revision` for a release/source-package archive;
+and `transformations.builder_image_digest` for a non-build copy/member/link operation.
+In addition, `component-lock.selected_license_expression` and `source_delivery_id`,
+`file-ownership.component_id`, `origin_kind`, `origin_id` and `origin_member_path`, and
+artifact `authority_observation_id` may be `null` only when one matching `unresolved`
+row names that exact subject and field. Build eligibility permits none of those
+unresolved null cases.
+
+Empty arrays are closed by field: `objects.authority_observation_ids` is empty only for
+`existing-runtime`; an observation's `redirect_chain` is empty only when no redirect
+occurred and `proof_object_ids` is empty only when `response_object_id` is itself the
+complete authority proof; artifact `signature_object_ids` is empty only for
+`not-published`, `not-applicable` or an exact unresolved signature row; transformation
+`patch_object_ids` may be empty for an unpatched input; license `notice_texts`,
+`copyright_texts` and `human_questions` may be empty when the reviewed license basis
+does not require them; and source-delivery `patch_object_ids` may be empty for an
+unpatched source. `review-disposition.open_unresolved_ids` is empty only when every
+verdict is `PASS`. Every other required reference array is nonempty unless one matching
+`unresolved` row names that exact subject and field; transformation inputs additionally
+require at least one of `input_artifact_ids` or `input_object_ids`. Build eligibility
+permits no unresolved empty case.
+
+Runtime-relative paths use `/`, are nonempty UTF-8 strings and preserve exact bytes
+under the runtime's proven UTF-8 path inventory. Absolute paths, backslashes, NUL,
+empty/dot/dot-dot segments and normalized aliases reject. URLs are retained exactly as
+observed, including redirect order, but must contain no userinfo, credential, secret or
+tracking token.
+
+Content objects use `obj_sha256:<hex>`. Binary/source artifacts use respectively
+`bin_sha256:<object-hex>` and `src_sha256:<object-hex>`. A component ID is
+`cmp_sha256:<hex>`, where `<hex>` hashes the canonical JSON object containing exactly
+`ecosystem,name,version,build,purl,origin_namespace`; nullable fields are present as
+`null`. A transformation ID is `xform_sha256:<hex>` over its complete canonical row
+with `transformation_id` omitted. Notice, source-delivery, observation and unresolved
+IDs use the same prefix-plus-hash rule over their complete row with the ID omitted.
+IDs are recomputed independently; caller-selected labels are descriptive only.
+
+For each packet file, the manifest records raw-byte SHA-256, size, record count and
+`primary_key_sha256`, computed over each sorted primary-key UTF-8 byte sequence followed
+by one NUL. Empty JSONL has SHA-256 of empty bytes, zero records and the SHA-256 of empty
+bytes as its primary-key hash. The manifest never self-hashes. A later overlay binds
+the manifest's size and SHA-256; the independent review disposition separately binds
+that manifest hash, avoiding circular identity.
+
+#### 18.25.2 Closed packet files and schemas
+
+`PROVENANCE_DURABLE_PACKET_ROOT` contains exactly an `objects/` content-addressed tree
+and the first twelve regular mode-`0444` files below; directories are mode `0555`.
+`PROVENANCE_DURABLE_REVIEW_ROOT` later contains only the thirteenth file,
+`review-disposition.json`, at mode `0444`. No other member, link or special file is
+allowed in either leaf root.
+
+| File | Format and primary key | Required fields |
+|---|---|---|
+| `provenance-lock-manifest.json` | one object; no self-hash | `schema`, `plan_base_overlay_sha`, `input_runtime_tree_sha256`, `runtime_regular_file_count`, `packet_files`, `object_count`, `object_bytes`, `object_tree_sha256`, `unresolved_count`, `created_at_utc`; each `packet_files` row has exactly `path,size,sha256,record_count,primary_key_sha256` |
+| `objects.jsonl` | JSONL; `object_id` | `schema`, `object_id`, `sha256`, `size`, `media_type`, `acquisition_kind`, `source_url`, `authority_observation_ids`, `observed_at_utc`, `relative_path`; `relative_path` is exactly `objects/sha256/<first-two-hex>/<64-hex>` |
+| `authority-observations.jsonl` | JSONL; `observation_id` | `schema`, `observation_id`, `ecosystem`, `authority_class`, `transport`, `operation`, `request_url`, `final_url`, `redirect_chain`, `http_status`, `response_object_id`, `proof_kind`, `proof_object_ids`, `observed_at_utc` |
+| `component-lock.jsonl` | JSONL; `component_id` | `schema`, `component_id`, identity tuple fields, `runtime_scope`, `selected_license_expression`, `binary_artifact_ids`, `source_artifact_ids`, `transformation_ids`, `license_notice_ids`, `source_delivery_id`, `evidence_object_ids` |
+| `file-ownership.jsonl` | JSONL; `path` | `schema`, `path`, `mode`, `size`, `sha256`, `component_id`, `origin_kind`, `origin_id`, `origin_member_path`; `origin_kind` is only `binary-artifact`, `source-artifact` or `generated` |
+| `nested-components.jsonl` | JSONL; tuple `container_component_id,nested_component_id,relationship` joined with NUL | `schema`, the primary-key fields, `evidence_object_id`, `evidence_path`; relationship is only `vendored`, `embedded`, `statically-linked`, `dynamically-linked` or `generated-from` |
+| `binary-artifacts.jsonl` | JSONL; `binary_artifact_id` | `schema`, `binary_artifact_id`, `component_id`, `object_id`, `filename`, `artifact_type`, `authority_observation_id`, `signature_status`, `signature_object_ids`, `member_count`, `selected_member_set_sha256` |
+| `source-artifacts.jsonl` | JSONL; `source_artifact_id` | `schema`, `source_artifact_id`, `component_id`, `object_id`, `filename`, `source_kind`, `revision`, `authority_observation_id`, `signature_status`, `signature_object_ids` |
+| `transformations.jsonl` | JSONL; `transformation_id` | `schema`, `transformation_id`, `component_id`, `kind`, `input_artifact_ids`, `input_object_ids`, `patch_object_ids`, `toolchain_component_ids`, `builder_image_digest`, `argv`, `environment`, `working_directory`, `output_paths`, `output_set_sha256`; no shell string is accepted for `argv` |
+| `license-notices.jsonl` | JSONL; `license_notice_id` | `schema`, `license_notice_id`, `component_id`, `selected_spdx_expression`, `selection_basis_object_ids`, `license_texts`, `notice_texts`, `copyright_texts`, `reciprocal_review_required`, `human_questions`; each delivered text row binds `object_id,source_member,delivery_path,sha256` |
+| `source-delivery.jsonl` | JSONL; `source_delivery_id` | `schema`, `source_delivery_id`, `component_id`, `obligation_class`, `trigger`, `source_artifact_ids`, `patch_object_ids`, `recipe_transformation_ids`, `instruction_object_ids`, `delivery_paths`, `availability_owner`, `availability_period`, `review_status`, `review_rationale_object_id` |
+| `unresolved.jsonl` | JSONL; `unresolved_id` | `schema`, `unresolved_id`, `subject_type`, `subject_id`, `field`, `reason_code`, `required_evidence`, `status`, `blocks`; `status` is always `OPEN`, `blocks` is always `true` |
+| `review-disposition.json` | one object; separately created by the independent reviewer | `schema`, `manifest_sha256`, `reviewed_packet_file_sha256s`, `reviewer`, `review_scope`, `technical_verdict`, `provenance_verdict`, `licensing_verdict`, `human_counsel_required`, `open_unresolved_ids`, `reviewed_at_utc`; verdict values are only `PASS` or `PAUSE` |
+
+`packet_files` covers the other eleven packet ledgers but not
+`review-disposition.json`; the review disposition instead binds the immutable manifest
+and every reviewed packet-file hash. `objects.jsonl` is the only object inventory:
+every row has one matching regular object file, every object file has one row, and its
+path, filename, size and hash must agree. `object_tree_sha256` hashes the canonical
+sorted compact-JSON array of `relative_path,size,sha256` rows. No object is executed,
+imported or installed during provenance work.
+
+The exact enumerations are:
+
+- component/observation `ecosystem`: `python`, `node`, `rust`, `system`,
+  `toolchain`, `generated`, `other-reviewed`;
+- `runtime_scope`: `runtime`, `runtime-vendored`, `build-only`, `source-only`;
+- `acquisition_kind`: `existing-runtime`, `existing-cache`, `registry-metadata`,
+  `authority-response`, `binary-artifact`, `source-artifact`, `license-text`,
+  `notice-text`, `signature`, `build-recipe`, `review-rationale`;
+- `authority_class`: `original-distributor`, `original-project`, `signed-index`,
+  `signed-checksum`, `immutable-vcs`, `retained-package-record`,
+  `retained-build-record`;
+- observation `transport`: `https`, `vcs-https`; observation `operation`: `GET`,
+  `HEAD`, `FETCH_OBJECT`; `GET` and `HEAD` require `https`, while `FETCH_OBJECT`
+  requires `vcs-https`;
+- `proof_kind`: `original-release-metadata`, `artifact-checksum`,
+  `detached-signature`, `signed-index`, `immutable-vcs-object`,
+  `retained-package-record`, `retained-build-record`;
+- `signature_status`: `verified`, `not-published`, `not-applicable`, `unresolved`;
+- binary `artifact_type`: `python-wheel`, `conda-package`, `npm-package`,
+  `system-package`, `node-binary`, `native-library`, `executable`, `archive`,
+  `other-reviewed`;
+- `source_kind`: `release-archive`, `vcs-commit`, `source-package`, `generated-source`;
+- transformation `kind`: `install-copy`, `archive-member`,
+  `conda-prefix-relocation`, `build`, `generated`, `statically-linked`,
+  `dynamically-linked`;
+- `obligation_class`: `permissive-notice`, `apache-notice`, `python-license`,
+  `mpl-covered-source`, `lgpl-library`, `gpl-corresponding-source`,
+  `gcc-runtime-exception`, `other-reviewed`, `none-reviewed`;
+- `review_status`: `PASS`, `PAUSE`; and
+- `reason_code`: `missing-origin`, `missing-binary`, `missing-source`,
+  `missing-signature`, `missing-recipe`, `missing-owner`, `multiple-owners`,
+  `missing-license`, `missing-notice`, `license-choice`, `source-obligation`,
+  `human-disposition`, `hash-mismatch`, `unsupported-format`, `other-reviewed`.
+
+Every enum expansion is a semantic change requiring a new reviewed schema version.
+
+#### 18.25.3 Cross-file closure and eligibility
+
+The packet is structurally valid when every byte is canonical, every present reference
+resolves, all inventories/hashes agree and every missing authority value has one exact
+`unresolved` row. Structural validity permits an honest `PAUSE` packet. Build
+eligibility requires all of these independently recomputed equalities:
+
+1. the exact rejected-runtime regular-file inventory equals `file-ownership.jsonl` by
+   path, mode, size and SHA-256;
+2. every file has one non-null owner and one existing non-null origin reference; every component,
+   artifact, transformation, notice, delivery and evidence reference resolves exactly
+   once with no orphan row;
+3. every component reachable through a nested relation exists in `component-lock`, and
+   every nested/bundled/SBOM-declared component is represented; observed counts such as
+   110 top-level distributions, twelve setuptools-vendored distributions, the embedded
+   ensurepip wheel and Tokenizers' 127 SBOM components are positive controls, not
+   ceilings;
+4. every binary/source artifact and authority response has one matching immutable
+   object; every generated file is in one transformation's exact output set; and every
+   transformation input, patch and toolchain reference resolves;
+5. every runtime or runtime-vendored component has a non-null selected license expression, a
+   license/notice row and one source-delivery row; every `OR` choice has evidence and
+   every reciprocal row has the required source, patch, recipe, instruction and human
+   disposition references;
+6. `objects/` and `objects.jsonl` are equal sets, all packet hashes/counts agree, no
+   credential/private data is present, and all paths/modes/types satisfy this section;
+7. `unresolved.jsonl` may contain open rows during reconstruction, but build eligibility
+   requires the canonical empty file, `unresolved_count=0`, and independent technical,
+   provenance and licensing `PASS` in `review-disposition.json`.
+
+A lower count, a successful runtime test, a package-manager claim, a copied license
+directory or a reviewer statement without exact manifest/hash bindings cannot satisfy
+closure.
+
+#### 18.25.4 Source-authority and network boundary
+
+Future provenance execution is read-only acquisition. The grant must name the exact
+allowed HTTPS origins and operations before any request. Eligible evidence is limited
+to an original package distributor or project, its authenticated release metadata,
+signed checksum/index/package records, an immutable VCS commit/release, or a retained
+exact package/build record whose bytes are also captured. Search results, mirrors not
+named by the authoritative metadata, the current host package database by itself,
+mutable branch heads, `latest`, unauthenticated HTTP, ambient caches and inferred URLs
+are never authority.
+
+`response_object_id` always resolves to the retained canonical response envelope: for
+HTTP it contains status and selected identity-bearing headers plus any response body;
+for immutable VCS acquisition it contains the exact remote, requested object ID,
+resolved object ID and fetch transcript. A `HEAD` or VCS observation therefore still
+has a response object even when no artifact body exists. That envelope is evidence,
+not a substitute for the separately hashed artifact/source object.
+
+Every request and redirect is recorded in `authority-observations.jsonl`; a redirect to
+an ungranted origin, credentialed URL, HTML interstitial in place of an artifact,
+changed ETag/content bytes, signature/checksum disagreement or unavailable proof is
+`PAUSE`. TLS alone establishes transport, not artifact identity. Downloaded bytes land
+under staging `incoming/`, are hashed before parsing, move to their content-addressed
+staging object path only after the expected identity matches, and are copied to durable
+evidence only in the final atomic packet. Parsers may list or safely extract data into
+disposable directories but may not execute setup hooks, imports, binaries, package
+installers, shell fragments, build scripts or downloaded code.
+
+The later execution grant may allow only HTTP `GET`/`HEAD` and immutable VCS object
+fetches from its named origins. It may not authenticate, upload, comment, publish,
+create a repository/ref/release/asset, accept a license on Ryan's behalf or incur a
+paid service. An origin discovered during execution but absent from the grant becomes
+one `unresolved` row and stops acquisition for that component.
+
+#### 18.25.5 Negative controls and supervision
+
+Before a packet can be reviewed, independent mutants must prove rejection for:
+
+- BOM/CRLF/noncanonical JSON, reordered/duplicate records or keys, unknown/missing key,
+  invalid enum, changed mode/path/hash/count or manifest self-reference;
+- one missing/extra object, ledger or runtime row; unowned, multiply owned or dangling
+  component/artifact/transformation/notice/source reference;
+- omitted setuptools/ensurepip/SBOM/native/sysroot member, nested-cycle or a positive-
+  control count treated as a completeness ceiling;
+- binary/source/signature/checksum/recipe/toolchain mismatch, current-host or ambient-
+  cache substitution, ungranted redirect/origin, mutable ref or executed downloaded
+  content;
+- absent license/notice, unreviewed `OR` choice, missing reciprocal source/patch/build/
+  instruction, self-authored legal conclusion or `PASS` with one unresolved row;
+- staging cited as evidence, partial/cross-filesystem publication, existing destination,
+  writable/symlink/special final member, manifest/disposition mismatch or review over a
+  different packet hash.
+
+Codex is the only authorized future provenance executor and packet collector. The
+independent provenance/licensing reviewer creates only
+`PROVENANCE_DURABLE_REVIEW_ROOT/review-disposition.json` after verifying the immutable
+packet root; that reviewer does not repair evidence. Kiro reviews
+design/scope and exact bindings, not legal sufficiency. Any correction creates a new
+staging root and reviewed packet identity; no in-place durable repair is allowed.
+
+**Authority boundary.** This section authorizes only the four planning-document edits.
+It creates no evidence root and authorizes no provenance HTTP/VCS request, artifact
+download, upstream VCS fetch, archive parsing, runtime inspection, provenance execution,
+license acceptance, build, install, runtime/compliance/manifest creation, external
+coordinate, product/test/CI/configuration change, PR update, evidence run, merge,
+deployment, real OpenClaw, live data, watch activation, promotion or Gates
+D/W/D-V/E/F. Kiro exact-tip PASS and a new Ryan provenance-execution grant naming the
+exact roots, origins and operations remain mandatory.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -6297,6 +6579,8 @@ Ryan grant.
 | Qualified-runtime delivery packet | The exact archive, inventory, extraction, compatibility, provenance and replacement contract for making the frozen strict-test runtime available to CI; it is not runtime qualification of real OpenClaw. |
 | Replacement delivery set | The inseparable runtime archive, compliance/corresponding-source archive and canonical manifest built from a complete reviewed component lock after the first archive failed publication provenance/licensing review. |
 | Component lock | The canonical file-to-component, binary/source artifact, recipe, license/notice and source-delivery mapping; installed metadata or an SBOM alone is only an input. |
+| Provenance-lock packet | The canonical immutable ledgers, content-addressed evidence objects, manifest and independent disposition that prove the component lock is complete before any replacement build. |
+| Source authority | An exact original distributor/project, signed index/checksum, immutable source revision or retained package/build record permitted by the grant; a search result, ambient cache or current-host inference is not authority. |
 | Licensing disposition | The fail-closed public-redistribution result. `PAUSE` means byte integrity may pass while publication remains forbidden. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
@@ -6313,5 +6597,8 @@ The first qualified-runtime archive later passed local byte validation and Kiro 
 failed independent publication provenance/licensing review. Section 18.24 keeps that archive
 immutable and rejected, and defines a new three-role replacement delivery set whose component
 lock, build, final packet and publication require separate reviews and Ryan grants. Exact-tip Kiro
-PASS on this plan is next and authorizes none of those stages.
+PASSed that replacement plan at `3402e62a`. Section 18.25 now freezes the provenance-lock
+packet's canonical schema, exact packet/review roots, source-authority boundary and negative
+controls without creating evidence; exact-tip Kiro review of this schema is next and authorizes no
+provenance execution.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.

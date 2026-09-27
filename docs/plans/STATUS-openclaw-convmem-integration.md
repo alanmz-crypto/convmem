@@ -37,8 +37,13 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │
         ├─ §18.24 / §10.22 replacement delivery-set plan
         │       └─ three roles: runtime + compliance/source + manifest
+        │       └─ Kiro exact-tip PASS at 3402e62a
         │
-        │ Kiro plan review → separately granted lock/build/review/publication stages
+        ├─ §18.25 / §10.23 provenance-lock schema packet
+        │       └─ plan-only; no roots, packet, downloads or evidence exist
+        │
+        │ Kiro schema review → separately granted provenance execution
+        │ → lock review → separately granted build/review/publication stages
         ▼
 held doctor → publisher/recovery → CI → R2b inventory corrections
         │ fresh CI/M8/MCP/Pylint/safety evidence
@@ -53,8 +58,11 @@ runtime-delivery packet at `c63e52be138d0c101e8898dee929e33c33267672`, but Codex
 independent provenance/licensing review and Kiro's independent concurrence both
 returned `PUBLICATION_ELIGIBLE=false`, `LICENSING_DISPOSITION=PAUSE`. The first
 archive stays immutable, local and rejected for publication. Sections 18.24/10.22 now
-define only the replacement delivery-set plan; no lock derivation, build, corrective
-implementation, evidence rerun or external publication is authorized. PR `#342`
+define only the replacement delivery-set plan, which Kiro passed at
+`3402e62a8479011814bfa76ce9e1c3269dc34350`. Sections 18.25/10.23 now freeze
+the exact future provenance packet schema and paths. No root or packet exists; no lock
+derivation, network acquisition, build, corrective implementation, evidence rerun or
+external publication is authorized. PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
 
@@ -69,7 +77,8 @@ the absent publishable qualified runtime.
 | Publisher safety | **REVIEWED PLAN / NOT IMPLEMENTED** — historic fenced record can match operation ID without independently proved input digest |
 | CI applicability | **REVIEWED PLAN / NOT IMPLEMENTED** — §18.22/§10.20 freeze complete `U=O∪Q` ordinary/qualified execution without skip/selector weakening |
 | Rejected runtime archive | **LOCAL BYTE PASS / PUBLICATION FAIL** — exact 30,421-file tree SHA-256 `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`; archive SHA-256 `6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e`; immutable local diagnostic evidence only |
-| Replacement delivery set | **PLAN-ONLY / KIRO REVIEW PENDING** — §18.24/§10.22 require a rebuilt runtime archive, compliance/corresponding-source archive and canonical manifest from a complete reviewed component lock |
+| Replacement delivery set | **PLAN-ONLY / KIRO PASS** at `3402e62a` — §18.24/§10.22 require a rebuilt runtime archive, compliance/corresponding-source archive and canonical manifest from a complete reviewed component lock |
+| Provenance-lock schema | **AUTHORED / KIRO REVIEW PENDING** — §18.25/§10.23 freeze canonical packet files, IDs, roots, authority boundaries and negative controls; no packet exists |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -90,7 +99,8 @@ the absent publishable qualified runtime.
 | Fenced publication recovery | **REVIEWED PLAN / NOT AUTHORIZED** | Ryan implementation grant after runtime gate |
 | CI ordinary/qualified partition | **REVIEWED PLAN / NOT AUTHORIZED** | Runtime delivery + Ryan implementation grant |
 | First runtime packet | **KIRO PASS / PUBLICATION FAIL** at `c63e52b` | Archive stays immutable and rejected for publication |
-| Replacement delivery-set plan | **AUTHORED / REVIEW PENDING** | Kiro exact-tip review; no provenance run or build follows automatically |
+| Replacement delivery-set plan | **KIRO PASS / preserved** at `3402e62a` | Does not authorize provenance execution or build |
+| Provenance-lock schema packet | **AUTHORED / REVIEW PENDING** | Kiro exact-tip review; no root, network request or evidence creation follows automatically |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -100,22 +110,23 @@ the absent publishable qualified runtime.
 ## 5. Your role
 
 **If Ryan sent you here now:** perform Kiro's exact-tip design/scope review of the
-replacement delivery-set semantic parent and milestone overlay. Verify §18.24/§10.22
-preserve the rejected archive unchanged; require complete recursive file-to-component,
-binary/source artifact, build/transformation, license/notice and corresponding-source
-closure; bind one indivisible three-role delivery set; and keep provenance acquisition,
-build, final packet, publication and CI admission behind separate review and Ryan gates.
+provenance-lock schema semantic parent and milestone overlay. Verify §18.25/§10.23
+freeze one nonrecursive canonical encoding, exactly thirteen file roles across separate
+immutable packet/review roots, complete file/component/artifact/license/source joins,
+exact authority/network limits and fail-closed mutants. Confirm no path or evidence
+exists and Kiro PASS cannot authorize provenance execution.
 
-Do not derive the component lock, download artifacts, build or modify a runtime, create
-compliance/source bytes, apply §18.22, edit product/tests/CI/inventory, create a tag/
+Do not create either provenance root, inspect or derive the component lock, make a
+provenance HTTP/VCS request, download/parse artifacts, build or modify a runtime, create compliance/
+source bytes, apply §18.22, edit product/tests/CI/inventory, create a tag/
 release/asset, rerun acceptance evidence, update PR `#342`, merge, deploy or run real
 OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro returns binary exact-tip PASS or FAIL on the §18.24/§10.22 replacement-plan
+1. Kiro returns binary exact-tip PASS or FAIL on the §18.25/§10.23 provenance-schema
    semantic parent and milestone overlay.
-2. Ryan separately decides whether to authorize read-only derivation of the complete
+2. Ryan separately decides whether to authorize schema-bound read-only derivation of the complete
    component lock, ownership map, artifact/source/build ledger and licensing/source-
    delivery matrix.
 3. Kiro and an independent provenance/licensing reviewer inspect that exact lock; no
@@ -150,10 +161,14 @@ OpenClaw.
 - No fence clearing when durable intent is present or uninspectable.
 - No runtime `latest`, mutable replacement, host fallback, repair or substitution.
 - No publication or CI use of the rejected §18.23 archive.
+- No provenance root, packet member, provenance HTTP/VCS request or artifact parsing before Kiro
+  schema PASS and an exact Ryan provenance-execution grant.
+- No packet repair: packet and review leaf roots are separately atomic and immutable.
 - No replacement build from copied rejected-runtime or rolling-host bytes; every input
   must be in the independently reviewed component lock.
 - No partial delivery set: runtime, compliance/source and manifest roles are jointly
-  required and must agree byte-for-byte on their shared manifest/notice corpus.
+  required; the two archives must agree byte-for-byte on their shared component-lock/
+  notice corpus, while the external manifest binds both without self-reference.
 - No runtime release publication without exact external-action authorization.
 - No external publication while `PUBLICATION_ELIGIBLE=false` or
   `LICENSING_DISPOSITION=PAUSE`; Kiro PASS does not clear licensing.
@@ -175,8 +190,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.24 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.22 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.25 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.23 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -190,12 +205,13 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-27 | Codex | Independent provenance/licensing review rejected the first archive for publication; replacement delivery-set plan authored with lock, build, final-packet and publication stages separately gated. |
+| 2026-09-27 | Codex | Kiro passed the replacement delivery-set plan at `3402e62a`; provenance-lock schema packet authored with exact canonical files, roots, authority boundaries and execution still gated. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
 and Kiro packet review but failed independent publication provenance/licensing review;
-it remains immutable and unpublished. Sections 18.24/10.22 now define a separately
-gated three-role replacement delivery set. Kiro review is next; provenance acquisition,
+it remains immutable and unpublished. Kiro passed the separately gated three-role
+replacement plan at `3402e62a`. Sections 18.25/10.23 now freeze the future provenance
+packet schema and exact roots; Kiro schema review is next. Provenance acquisition,
 build, implementation, publication, evidence reruns, merge, real OpenClaw and later
 gates remain unauthorized.

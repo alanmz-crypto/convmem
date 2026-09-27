@@ -1,15 +1,17 @@
 # Execution Plan — OpenClaw bounded ConvMem reader
 
-**Current status (2026-09-27): QUALIFIED-RUNTIME DELIVERY PACKET LOCALLY
-VALIDATED; EXTERNAL PUBLICATION BLOCKED.** The exact integration tip
+**Current status (2026-09-27): REPLACEMENT DELIVERY-SET PLAN KIRO PASS;
+PROVENANCE-LOCK SCHEMA REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The exact integration tip
 `94f29ebabee31112cccb223fd1445cb782aac6eb` and its durable evidence remain
 preserved. Required GitHub `pytest (3.12)` is red, and focused ultrareview identified
 doctor-import containment and fenced-retry safety defects. Section 10.20 controls that
-PR correction; §10.21 controls its separate runtime-delivery packet. The local archive
+held PR correction; §10.21 records its rejected runtime-delivery packet; §10.22's
+replacement delivery-set plan received exact-tip Kiro PASS at `3402e62a`; and §10.23
+freezes the provenance-lock schema and future evidence sequence. The first archive
 passed byte/mode/extraction validation, but incomplete component provenance and
 licensing evidence keeps publication at `PAUSE`. Earlier §§10.1–10.19 remain
-historical evidence. This edit authorizes no implementation, test run or external
-action.
+historical evidence. This edit authorizes no implementation, provenance execution,
+test run or external action.
 
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
@@ -69,7 +71,9 @@ the first post-reconstruction correction. Section 10.17 records that correction'
 acceptance PAUSE and freezes its exact successor. Section 10.18 records that successor's fresh
 differential/Pylint PAUSE and freezes deterministic paired Pylint acceptance. Section 10.19
 records the resulting differential/Pylint PASS and final-M8 legacy-count PAUSE and freezes its
-exact successor correction.
+exact successor correction. Sections 10.20–10.23 respectively freeze the held PR
+correction, rejected first runtime packet, Kiro-passed replacement delivery-set plan
+and schema-only provenance-lock packet.
 Review the two parent files together.
 The retained Astra report reviews the earlier `0f1216f` revision, not this correction:
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -2140,6 +2144,74 @@ the replacement is `PLAN_ONLY`; provenance closure is `UNRESOLVED`; licensing is
 build, runtime/content change, external coordinate, implementation, evidence execution,
 PR update, merge, deployment, real OpenClaw or later gate.
 
+### 10.23 Provenance-lock schema and future evidence obligations
+
+Architecture §18.25 controls. This correction freezes the future provenance packet's
+encoding, thirteen file roles, content-addressed object tree, cross-file references,
+exact roots, authority boundary and negative controls. It does not authorize creation
+of any member.
+
+The only current sequence is:
+
+1. **Plan-only application.** Review the exact semantic parent and milestone overlay.
+   The complete range changes only the four Switchboard planning documents. The overlay
+   changes only the milestone plan and pins its direct semantic parent.
+2. **Static schema review.** Independently prove all thirteen file roles have one
+   closed canonical encoding, primary key and required field set; every ID/hash rule is
+   nonrecursive; manifest and review disposition cannot self-bind; packet and review
+   leaf roots can become independently immutable; and enum or schema expansion fails
+   closed.
+3. **Reference-closure review.** Prove the declared equality joins can detect every
+   unowned/multiply owned runtime file, orphan/dangling component, omitted nested
+   component, absent artifact/object/transformation, missing license/notice/source row,
+   open unresolved item and review over different bytes.
+4. **Authority-boundary review.** Prove the future grant must name exact HTTPS origins
+   and operations, redirects remain recorded and bounded, TLS is not treated as
+   artifact identity, downloaded content is never executed/imported/installed, and a
+   newly discovered origin becomes `unresolved` rather than ambient authority.
+5. **Negative-control review.** Map every §18.25.5 mutant to a pre-build rejection and
+   ensure no runtime/test PASS, package metadata, SBOM, current-host record or reviewer
+   prose can replace exact packet closure.
+6. **Kiro verdict.** Kiro returns PASS or FAIL on this exact parent/overlay. PASS
+   approves the schema and sequence only. It creates no directory, authorizes no
+   provenance network operation and does not grant provenance execution.
+
+After Kiro PASS, a later Ryan provenance-execution grant must name at least:
+
+- `PROVENANCE_SCHEMA_VERSION`, the exact parent/overlay and rejected runtime source/
+  tree identities;
+- `PROVENANCE_STAGING_ROOT`, `PROVENANCE_DURABLE_PACKET_ROOT` and
+  `PROVENANCE_DURABLE_REVIEW_ROOT` exactly as §18.25 freezes them;
+- the exact allowed HTTPS/VCS origins, methods, redirect policy and maximum acquisition
+  scope;
+- whether Codex may inspect retained caches, make `GET`/`HEAD` requests, fetch immutable
+  VCS objects, parse archives as data and copy verified content-addressed objects;
+- runtime/source read boundaries, disposable extraction roots, maximum bytes and
+  command/tool versions;
+- the packet checkpoint at which Codex pushes/stops, followed by the separate
+  independent-review checkpoint; and
+- the explicit prohibition on builds, installers, imports, executable downloads,
+  license acceptance, artifact repair, runtime mutation and external writes.
+
+Under that future grant, Codex first verifies the rejected runtime inventory/tree and
+that both durable leaf roots are absent. It creates only staging, records every
+operation, builds the packet in a same-filesystem `.partial` leaf and runs the complete
+canonical/closure/negative suite. Any open `unresolved` row is retained honestly and
+forces packet `PAUSE`; it does not prevent preserving the packet for review. Codex
+atomically publishes the verified packet leaf read-only and stops. The independent
+reviewer later inspects those exact hashes, creates only the review leaf atomically and
+returns PASS or PAUSE. Neither lane repairs the other's output.
+
+Build eligibility requires canonical empty `unresolved.jsonl`, zero unresolved count,
+and technical/provenance/licensing PASS bound to the exact manifest. Even then, no
+replacement build begins without the separate §18.24 Ryan build grant and reviewed
+lock. Provenance PASS is not build, publication, CI-admission or M11 implementation
+authority.
+
+**Current result:** schema packet authored; evidence packet absent; review disposition
+absent; provenance execution unauthorized; replacement build/publication/CI admission
+unauthorized. No product, test, CI, runtime, configuration, PR or external byte changed.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2154,5 +2226,7 @@ implementation, test, PR, merge, real OpenClaw action, live data or promotion is
 this plan edit. Section 10.21 additionally freezes the locally verified but publication-rejected
 first archive. Section 10.22 defines a new three-role replacement delivery set whose provenance
 lock, construction, final packet and publication each require separate review and Ryan grants.
-The replacement remains `PLAN_ONLY`, provenance closure `UNRESOLVED`, licensing `PAUSE` and
-publication `false`; no tag, release or asset is authorized.
+Section 10.23 freezes the future provenance packet's canonical schema and exact roots without
+creating evidence or making a provenance acquisition request. The replacement remains `PLAN_ONLY`, provenance
+closure `UNRESOLVED`, licensing `PAUSE` and publication `false`; no tag, release or asset is
+authorized.
