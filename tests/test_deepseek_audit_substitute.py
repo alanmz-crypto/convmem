@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from eval_corpus.deepseek_audit_substitute import (
-    AUDIT_PROTOCOL_VERSION,
     AUDIT_SPEC_VERSION,
     AUTHORIZED_PRODUCER_PATHS,
     MODEL_ID,
@@ -329,9 +327,9 @@ def test_valid_max_tokens_envelope_passes_structure_validation():
         "max_tokens": 8192,
         "stream": False,
     }
-    assert validate_locked_envelope_structure(payload) == []
+    assert not validate_locked_envelope_structure(payload)
     body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    assert egress_scan_outbound_body(body) == []
+    assert not egress_scan_outbound_body(body)
 
 
 def test_egress_flags_credential_without_exposing_value():
@@ -377,7 +375,7 @@ def test_bare_token_word_does_not_trigger_egress():
         sort_keys=True,
         separators=(",", ":"),
     ).encode()
-    assert egress_scan_outbound_body(body) == []
+    assert not egress_scan_outbound_body(body)
 
 
 def test_malformed_spec_rejected(tmp_path: Path):
@@ -463,7 +461,7 @@ def test_producer_identity_from_producer_checkout(tmp_path: Path):
     identity = resolve_producer_identity(repo)
     assert identity.head_sha == head
     assert set(identity.path_blobs) == set(AUTHORIZED_PRODUCER_PATHS)
-    assert identity.dirty_paths == ()
+    assert not identity.dirty_paths
 
 
 def test_each_dirty_producer_path_blocks(tmp_path: Path):
@@ -491,7 +489,7 @@ def test_unrelated_dirt_does_not_block_producer(tmp_path: Path):
     (repo / "unrelated.txt").write_text("noise\n", encoding="utf-8")
 
     identity = resolve_producer_identity(repo)
-    assert identity.dirty_paths == ()
+    assert not identity.dirty_paths
 
 
 def test_identity_changes_affect_digests_and_run_key():

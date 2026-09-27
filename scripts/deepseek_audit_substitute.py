@@ -118,7 +118,7 @@ def build_packet_from_git(
     )
 
 
-def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-locals
+def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-locals,too-many-return-statements
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--repo", type=Path, default=ROOT, help="Audited repository checkout")
     p.add_argument("--audit-spec", type=Path, required=True, help="Slice 3A audit spec JSON")
