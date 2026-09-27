@@ -41,6 +41,7 @@ from eval_corpus.deepseek_audit_substitute import (
     validate_locked_envelope_structure,
     validate_model_response,
 )
+from eval_corpus.deepseek_audit_substitute import ProducerIdentity
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "deepseek_audit_substitute.py"
@@ -106,6 +107,90 @@ def _disposable_repo(tmp_path: Path) -> Path:
     repo.mkdir(parents=True, exist_ok=True)
     _init_repo(repo)
     return repo
+
+def _disposable_producer_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "producer"
+    repo.mkdir(parents=True, exist_ok=True)
+    _init_repo(repo)
+    for rel in AUTHORIZED_PRODUCER_PATHS:
+        p = repo / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(f"producer {rel}\n", encoding="utf-8")
+    _commit_all(repo, "producer baseline")
+    return repo
+
+
+def _disposable_audited_repo(tmp_path: Path) -> tuple[Path, str, str]:
+    audited = _disposable_repo(tmp_path / "audited")
+    for dep in [
+        "docker-compose.yml",
+        ".gitignore",
+        "scripts/practice-theme-preflight.sh",
+        "tests/practice-theme-preflight.sh",
+    ]:
+        dep_path = audited / dep
+        dep_path.parent.mkdir(parents=True, exist_ok=True)
+        dep_path.write_text("*.pyc\n" if dep == ".gitignore" else f"{dep}\n", encoding="utf-8")
+    (audited / "changed.txt").write_text("v1\n", encoding="utf-8")
+    base = _commit_all(audited)
+    (audited / "changed.txt").write_text("v2\n", encoding="utf-8")
+    tip = _commit_all(audited, "tip")
+    return audited, base, tip
+
+
+def _block_external_calls(monkeypatch) -> None:
+    def _fail_if_called(*_a, **_k):
+        raise AssertionError("live external call attempted")
+
+    monkeypatch.setattr("requests.post", _fail_if_called)
+
+    real_check_call = subprocess.check_call
+
+    def _guarded_check_call(cmd, *args, **kwargs):
+        if isinstance(cmd, (list, tuple)) and cmd and cmd[0] == "gh":
+            raise AssertionError("gh posting attempted")
+        return real_check_call(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "check_call", _guarded_check_call)
+
+
+def _parse_main_json(stdout: str) -> dict:
+    for line in stdout.splitlines():
+        line = line.strip()
+        if line.startswith("{") and "terminal" in line:
+            return json.loads(line)
+    raise AssertionError(f"no JSON terminal payload in stdout: {stdout!r}")
+
+
+def _run_main(
+    *,
+    audited: Path,
+    producer: Path,
+    spec_path: Path,
+    tip: str,
+    base: str,
+    out_dir: Path,
+    monkeypatch,
+) -> tuple[int, str, str]:
+    from scripts import deepseek_audit_substitute as cli
+
+    monkeypatch.setattr(cli, "ROOT", producer)
+    _block_external_calls(monkeypatch)
+    rc = cli.main(
+        [
+            "--repo",
+            str(audited),
+            "--audit-spec",
+            str(spec_path),
+            "--tip",
+            tip,
+            "--base",
+            base,
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
+    return rc, "", ""  # caller uses capsys
 
 
 def test_length_prefixed_order_matters():
@@ -452,59 +537,139 @@ def test_identity_changes_affect_digests_and_run_key():
     assert k1 != k2
 
 
-def test_unrelated_audited_head_movement_leaves_pinned_identity_unchanged():
-    spec_d = "s" * 64
-    prod_d = "p" * 64
-    evidence = build_evidence_packet_text(
-        tip=TIP,
-        base=BASE,
-        spec_digest=spec_d,
-        name_status_lines=["M\tx"],
-        file_sections=[("x", "oid", "body")],
-    )
-    digest = evidence_packet_sha256(evidence)
-    system = compose_system_prompt_with_example(
-        TIP,
-        BASE,
-        digest,
-        parse_audit_spec(_valid_spec_dict()).criteria,
-    )
-    sys_d = system_prompt_sha256(system)
+def test_unrelated_audited_head_movement_leaves_pinned_identity_unchanged(
+    tmp_path: Path, monkeypatch, capsys
+):
+    producer = _disposable_producer_repo(tmp_path / "producer")
+    audited, base, tip = _disposable_audited_repo(tmp_path)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_valid_spec_dict()), encoding="utf-8")
 
-    key_before = audit_run_key(
-        tip=TIP,
-        base=BASE,
-        evidence_digest=digest,
-        system_digest=sys_d,
-        spec_digest=spec_d,
-        producer_identity_digest_value=prod_d,
+    from scripts import deepseek_audit_substitute as cli
+
+    monkeypatch.setattr(cli, "ROOT", producer)
+    _block_external_calls(monkeypatch)
+
+    out1 = tmp_path / "out1"
+    rc1 = cli.main(
+        [
+            "--repo",
+            str(audited),
+            "--audit-spec",
+            str(spec_path),
+            "--tip",
+            tip,
+            "--base",
+            base,
+            "--out-dir",
+            str(out1),
+        ]
     )
-    key_after = audit_run_key(
-        tip=TIP,
-        base=BASE,
-        evidence_digest=digest,
-        system_digest=sys_d,
-        spec_digest=spec_d,
-        producer_identity_digest_value=prod_d,
+    captured1 = capsys.readouterr()
+    assert rc1 == 0, captured1.err + captured1.out
+    digests1 = json.loads((out1 / "digests.json").read_text(encoding="utf-8"))
+
+    (audited / "unrelated-after-tip.txt").write_text("noise\n", encoding="utf-8")
+    advanced_head = _commit_all(audited, "after tip")
+    assert advanced_head != tip
+
+    out2 = tmp_path / "out2"
+    rc2 = cli.main(
+        [
+            "--repo",
+            str(audited),
+            "--audit-spec",
+            str(spec_path),
+            "--tip",
+            tip,
+            "--base",
+            base,
+            "--out-dir",
+            str(out2),
+        ]
     )
-    assert key_before == key_after
+    captured2 = capsys.readouterr()
+    assert rc2 == 0, captured2.err + captured2.out
+    digests2 = json.loads((out2 / "digests.json").read_text(encoding="utf-8"))
+
+    stable_keys = (
+        "evidence_packet_sha256",
+        "spec_digest",
+        "producer_identity_digest",
+        "AUDIT_RUN_KEY",
+        "tip",
+        "base",
+        "producer_head_sha",
+    )
+    for key in stable_keys:
+        assert digests1[key] == digests2[key]
+
+    assert digests1["request_envelope_sha256"]
+    assert digests2["request_envelope_sha256"]
 
     v1_a = audit_run_key_v1(
         tip=TIP,
         base=BASE,
-        evidence_digest=digest,
-        system_digest=sys_d,
+        evidence_digest=digests1["evidence_packet_sha256"],
+        system_digest=digests1["system_prompt_sha256"],
         runner_git_sha="old_head",
     )
     v1_b = audit_run_key_v1(
         tip=TIP,
         base=BASE,
-        evidence_digest=digest,
-        system_digest=sys_d,
+        evidence_digest=digests1["evidence_packet_sha256"],
+        system_digest=digests1["system_prompt_sha256"],
         runner_git_sha="new_head",
     )
     assert v1_a != v1_b
 
+
+
+
+@pytest.mark.parametrize("dirty_mode", ["unstaged", "staged"])
+def test_dirty_producer_blocks_main_preparation(
+    tmp_path: Path, monkeypatch, capsys, dirty_mode: str
+):
+    producer = _disposable_producer_repo(tmp_path / "producer")
+    audited, base, tip = _disposable_audited_repo(tmp_path)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(_valid_spec_dict()), encoding="utf-8")
+    out_dir = tmp_path / "out"
+
+    from scripts import deepseek_audit_substitute as cli
+
+    monkeypatch.setattr(cli, "ROOT", producer)
+    _block_external_calls(monkeypatch)
+
+    target = AUTHORIZED_PRODUCER_PATHS[0]
+    (producer / target).write_text("dirty producer content\n", encoding="utf-8")
+    if dirty_mode == "staged":
+        subprocess.check_call(["git", "add", "--", target], cwd=producer)
+
+    rc = cli.main(
+        [
+            "--repo",
+            str(audited),
+            "--audit-spec",
+            str(spec_path),
+            "--tip",
+            tip,
+            "--base",
+            base,
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 2, captured.err + captured.out
+    payload = _parse_main_json(captured.out)
+    assert payload["terminal"] == Terminal.INVALID_EXECUTION.value
+    assert payload["reason"] == "producer_dirty"
+    assert target in payload["paths"]
+    assert not (out_dir / "digests.json").exists()
+    assert not (out_dir / "evidence_packet.bin").exists()
+    assert not (out_dir / "user_message.bin").exists()
+    assert not (out_dir / "system_prompt.txt").exists()
 
 def test_static_review_framing_in_system_prompt_and_comment():
     spec = parse_audit_spec(_valid_spec_dict())
@@ -590,41 +755,16 @@ def test_execution_claims_rejected():
 
 
 def test_disposable_dry_run_succeeds_without_api_or_gh(tmp_path: Path, monkeypatch, capsys):
-    audited = _disposable_repo(tmp_path / "audited")
-    for dep in [
-        "docker-compose.yml",
-        ".gitignore",
-        "scripts/practice-theme-preflight.sh",
-        "tests/practice-theme-preflight.sh",
-    ]:
-        dep_path = audited / dep
-        dep_path.parent.mkdir(parents=True, exist_ok=True)
-        dep_path.write_text("*.pyc\n" if dep == ".gitignore" else f"{dep}\n", encoding="utf-8")
-    (audited / "changed.txt").write_text("v1\n", encoding="utf-8")
-    base = _commit_all(audited)
-    (audited / "changed.txt").write_text("v2\n", encoding="utf-8")
-    tip = _commit_all(audited, "tip")
-
+    producer = _disposable_producer_repo(tmp_path / "producer")
+    audited, base, tip = _disposable_audited_repo(tmp_path)
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(json.dumps(_valid_spec_dict()), encoding="utf-8")
-
     out_dir = tmp_path / "out"
 
     from scripts import deepseek_audit_substitute as cli
 
-    def _clean_producer(_repo):
-        return ProducerIdentity(
-            head_sha="c" * 40,
-            path_blobs={p: "o" * 40 for p in AUTHORIZED_PRODUCER_PATHS},
-            dirty_paths=(),
-        )
-
-    monkeypatch.setattr(cli, "resolve_producer_identity", _clean_producer)
-
-    def _fail_if_called(*_a, **_k):
-        raise AssertionError("live external call attempted")
-
-    monkeypatch.setattr("requests.post", _fail_if_called)
+    monkeypatch.setattr(cli, "ROOT", producer)
+    _block_external_calls(monkeypatch)
 
     rc = cli.main(
         [
@@ -644,7 +784,3 @@ def test_disposable_dry_run_succeeds_without_api_or_gh(tmp_path: Path, monkeypat
     assert rc == 0, captured.err + captured.out
     assert (out_dir / "digests.json").exists()
     assert "dry-run complete" in captured.out
-
-
-# Import ProducerIdentity for identity digest test
-from eval_corpus.deepseek_audit_substitute import ProducerIdentity
