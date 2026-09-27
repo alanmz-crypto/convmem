@@ -2461,4 +2461,8 @@ single v2 run proved the raw `version` member is absent and stopped before resul
 Section 10.25 preserves both attempts and defines only a fresh-root schema-v3 exact-object absent-member
 projection; no collector freeze, retry or read is authorized. The replacement remains `PLAN_ONLY`, provenance
 closure `UNRESOLVED`, licensing `PAUSE` and publication `false`; no tag, release or asset is
-authorized.
+authorized. Section 10.26 binds the resulting immutable `PAUSE` packet and preserves its
+independent technical-`PASS`/provenance-and-licensing-`PAUSE` disposition. Section 10.27
+freezes lossless pre-acquisition coverage and clean replacement for the three exact
+host-path-bearing ELF objects; it authorizes no origin resolution, request, retained-source
+read, acquisition, binary repair, build, publication or implementation.
