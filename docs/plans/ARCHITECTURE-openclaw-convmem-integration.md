@@ -6685,7 +6685,9 @@ resumed or accepted by a successor.
 The stopped attempt is bound to these exact facts. Runtime-read counters are derived
 from the frozen collector's completed first inventory pass plus its completed bounded
 780-file evidence copy; the absence of `p0-result.json` is preserved rather than
-papered over:
+papered over. The v2 delta is exactly `1,968,515,123 + 600,463,206 =
+2,568,978,329` bytes, and the cumulative ledger is exactly `4,537,493,452 +
+2,568,978,329 = 7,106,471,781` bytes:
 
 ```text
 PROVENANCE_SCHEMA_V3_PLAN_BASE_OVERLAY_SHA=2956f70127544111d5d32e2f51a3e044fe878fb4
