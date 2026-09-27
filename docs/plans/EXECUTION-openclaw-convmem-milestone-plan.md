@@ -1,24 +1,21 @@
 # Milestone Execution Plan — ConvMem–OpenClaw
 
-**Current status (2026-09-27): PR #342 MERGE BLOCKED; PLAN-ONLY SAFETY/CI
-CORRECTIVE READY FOR EXACT-TIP KIRO REVIEW.** The accepted bounded implementation
-and final M11 evidence remain preserved at
+**Current status (2026-09-27): QUALIFIED-RUNTIME DELIVERY PACKET LOCALLY
+VALIDATED; EXTERNAL PUBLICATION BLOCKED.** The accepted bounded implementation and
+final M11 evidence remain preserved at
 `PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb`.
-Required GitHub `pytest (3.12)` is red with 83 failures, and focused ultrareview
-confirmed doctor-import containment and fenced-publication retry/recovery defects.
-M11 below supersedes the earlier legacy-count merge-readiness sequence for the
-current decision. No implementation, runtime publication, evidence rerun, PR update
-or merge is authorized by this overlay.
+Kiro passed the PR-corrective overlay `a23d843`; required GitHub `pytest (3.12)`
+remains red with 83 failures, and the doctor/publisher corrections remain
+unimplemented. The separate §18.23/§10.21 packet now freezes a locally verified
+qualified-runtime archive, but its exact licensing disposition is `PAUSE` and no
+external asset is authorized. No implementation, runtime publication, evidence
+rerun, PR update or merge is authorized by this overlay.
 
-**Status:** M0–M8 BOUNDED GATE B/C ACCEPTED AT `8010fb0`. COMPLETE BOUNDED M11
-MERGE-READINESS EVIDENCE AND KIRO EXACT-TIP REVIEW PASS AT `cd60cf19`. MERGE IS
-PAUSED AFTER FRESH THREE-TIP AND PAIRED SEEDED-PYLINT EVIDENCE PASSED AT
-`9da6dd98`, BUT FINAL M8 RUN 1 SELECTED AND PASSED TWO CURRENT-MAIN SAFETY NODES
-BEYOND THE HISTORICAL 116/115 LEGACY EXPECTATION. THE PLAN-ONLY 118/117
-SUCCESSOR-COUNT CORRECTION IS READY FOR KIRO REVIEW, THEN A NEW RYAN RESUME
-DECISION.
-Product/test/CI/runtime edits, test execution, PR, merge and real OpenClaw work
-are paused.
+**Status:** M0–M8 BOUNDED GATE B/C ACCEPTED AT `8010fb0`; COMPLETE BOUNDED M11
+EVIDENCE AND KIRO CONFORMANCE PASS PRESERVED AT `94f29eb`; PR `#342` MERGE
+BLOCKED. RUNTIME BYTE/MODE/EXTRACTION VALIDATION PASS; PUBLIC REDISTRIBUTION
+PROVENANCE/LICENSING PAUSE. PRODUCT/TEST/CI/RUNTIME EDITS, TEST EXECUTION, PR
+UPDATE, MERGE AND REAL OPENCLAW WORK REMAIN PAUSED.
 
 **Arc:** ConvMem Switchboard
 
@@ -27,7 +24,8 @@ are paused.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=0936a55460b4103b87546e3ddc5ad274db5c0352
+SEMANTIC_PARENT_SHA=7099302e5256d28405eb091da03de0e6db8977a9
+RUNTIME_DELIVERY_PLAN_BASE_OVERLAY_SHA=a23d84390daa6b784d61b86b112361023363aae8
 PR342_PLAN_BASE_OVERLAY_SHA=dc060312469551d4b9b18f1233588e6780689cad
 PR342_BASE_SHA=5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
 PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb
@@ -40,6 +38,14 @@ R2B_FINAL_MEMBER_COUNT=120
 PROPOSED_CI_RUNTIME_TAG=switchboard-fixture-runtime-74a12c725ac3bad4f
 PROPOSED_CI_RUNTIME_ASSET=switchboard-fixture-runtime.tar.gz
 PROPOSED_CI_RUNTIME_TREE_SHA256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+QUALIFIED_RUNTIME_ARCHIVE_SIZE=557628743
+QUALIFIED_RUNTIME_ARCHIVE_SHA256=6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e
+QUALIFIED_RUNTIME_COMPLETE_EXTRACTED_TREE_SHA256=52d3f70a9eb64b5c5348abc8c487994acba7fe7de0b77c358175ff42cfd23d37
+QUALIFIED_RUNTIME_PACKET_SHA256=24073ab433c503c1d5721984b97fe957ccada0ce634f8bdeae4e8ed1f9907a7d
+QUALIFIED_RUNTIME_PUBLICATION_ELIGIBLE=false
+QUALIFIED_RUNTIME_LICENSING_DISPOSITION=PAUSE
+QUALIFIED_RUNTIME_BWRAP_PACKAGE=bubblewrap_0.9.0-1ubuntu0.3_amd64.deb
+QUALIFIED_RUNTIME_BWRAP_SHA256=2461f1beee9cb04c8942739fe1a2b37e7b7c2a3d518f0779dc75f9245baa3094
 ORIGINAL_CODE_BASELINE_SHA=7809f20dc53d9dd19f765c3ec3214a3df54ca5bf
 ACCEPTED_IMPLEMENTATION_SHA=8010fb060c2edc29e1b09d7a30b1a1da2689d489
 INTEGRATION_BASELINE_SHA=9193f5ec744f059d07a20612489b210527b5660a
@@ -179,8 +185,10 @@ blocked.
 The runner's single `--plan-sha` is always `SEMANTIC_PARENT_SHA`. The overlay
 SHA is the exact final branch tip Kiro reviews and Ryan later names as
 `REVIEWED_OVERLAY_SHA`; it is not substituted into the parent's runner
-contract. The final overlay descends from `SEMANTIC_PARENT_SHA`; its planning
-branch starts at `PR342_PLAN_BASE_OVERLAY_SHA`. Every earlier evidence branch and
+contract. The final overlay descends from `SEMANTIC_PARENT_SHA`; this runtime-
+delivery planning branch starts at `RUNTIME_DELIVERY_PLAN_BASE_OVERLAY_SHA`.
+The preceding PR-corrective branch started at `PR342_PLAN_BASE_OVERLAY_SHA`.
+Every earlier evidence branch and
 correction tip remains immutable historical provenance. The current preserved
 implementation input is `PRESERVED_PR342_HEAD_SHA`; it is not rebased, merged,
 force-pushed or rewritten by this plan. After Kiro PASS and new Ryan grants,
@@ -192,8 +200,10 @@ historical `AUTHORITY_PACKET_PLAN_BASE_OVERLAY_SHA`, `PYLINT_PLAN_BASE_OVERLAY_S
 `PYTEST_PLAN_BASE_OVERLAY_SHA` and `PYTEST_IDENTITY_PLAN_BASE_OVERLAY_SHA`
 and `M8_AUTHORITY_PLAN_BASE_OVERLAY_SHA` and `BUNDLE_SCHEMA_PLAN_BASE_OVERLAY_SHA`
 remain evidence of already-applied ranges and are never replayed. The current
-reviewed range begins after `PR342_PLAN_BASE_OVERLAY_SHA` and may be applied to a
-grant-named branch preserving `PRESERVED_PR342_HEAD_SHA` only after Kiro PASS.
+runtime-delivery range begins after `RUNTIME_DELIVERY_PLAN_BASE_OVERLAY_SHA` and
+is not an implementation range. The earlier §18.22 corrective may be applied to a
+grant-named branch preserving `PRESERVED_PR342_HEAD_SHA` only after its separately
+required runtime and Ryan gates pass.
 
 Ryan's R-PROFILE-REFUSAL ruling ratifies the baseline selector normalization
 `(value or "").strip().lower()`. When the semantic parent does not explicitly
@@ -416,18 +426,26 @@ Review and authority order is mandatory:
     confirmed the doctor-import containment and fenced-retry/recovery defects.
 40. Ryan authorized Astra to design and Codex to encode only the bounded
     cross-arc plan correction. Astra returned DESIGN READY / MERGE BLOCKED.
-    This semantic parent and overlay authorize no implementation, runtime
-    publication, evidence retry, PR update or merge. Kiro exact-tip review is next.
+    Kiro then passed exact overlay `a23d843`. That PASS authorizes no implementation,
+    runtime publication, evidence retry, PR update or merge.
+41. Ryan authorized only the qualified-runtime delivery packet and one disposable
+    local deterministic archive from the frozen source. Codex verified every source
+    content hash/mode before and after the read, built and safely extracted the exact
+    archive, and froze its hashes/counts and pinned bubblewrap recipe in §18.23/§10.21.
+42. The local byte/mode/extraction verdict is PASS. Historical provisioning does not
+    bind complete redistributable component provenance/licensing, so the packet
+    freezes `PUBLICATION_ELIGIBLE=false`, `LICENSING_DISPOSITION=PAUSE`. Exact-tip
+    Kiro review is next; no external release or implementation is authorized.
 
 ## 1. State ledger
 
 | State | Items |
 |---|---|
-| **Specified** | Semantic parent Architecture §18.22 and Execution §10.20; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; immutable runtime delivery gate; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
+| **Specified** | Semantic parent Architecture §§18.22–18.23 and Execution §§10.20–10.21; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; immutable runtime delivery packet; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
-| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; the required GitHub `pytest (3.12)` context fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview independently confirmed the doctor and publisher safety defects. No corrective test or runtime-delivery evidence exists. |
-| **Assumed** | Nothing unavailable is accepted as working. The local qualified runtime tree hash is frozen, but GitHub delivery remains only a proposal until a separate packet, Kiro review and exact Ryan external-action grant. |
-| **Unresolved** | Kiro exact-tip review of this parent/overlay; Ryan's later implementation grant; separately reviewed/authorized immutable runtime publication; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The disposable runtime archive independently passed exact source/content/mode, header, closed extraction and post-read mutation checks; this is packet validation, not CI or acceptance evidence. |
+| **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
+| **Unresolved** | Kiro exact-tip review of this parent/overlay; independent complete component provenance/licensing closure; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -485,8 +503,11 @@ M0 baseline/runtime input
   → PR #342 created at exact head 94f29eb; required pytest (3.12) FAIL
   → focused ultrareview: doctor containment and fenced-retry blockers confirmed
   → plan-only §18.22/§10.20 safety, CI and R2b convergence corrective
-  → Kiro exact-tip plan review
-  → separate Ryan implementation grant and runtime-delivery decision
+  → Kiro exact-tip plan PASS at a23d843
+  → plan-only §18.23/§10.21 qualified-runtime delivery packet and local validation
+  → Kiro exact-tip packet review
+  → independent provenance/licensing closure without archive mutation
+  → separate Ryan external-publication and implementation decisions
   → held five-document plan application and authority/scope rebind
   → held doctor containment correction
   → held publisher/recovery correction
@@ -503,12 +524,13 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 M0–M8 and the preceding M11 evidence are accepted historical scope; they are neither
 reopened nor promoted into a green GitHub required check. M9, M10, watch coverage and
 complete-system review remain decision gates, not implementation work. The only
-possible next activity is exact-tip Kiro review of this plan-only correction. After a
-new Ryan grant, Cursor may perform only M11's held file sets in order and must push and
-stop at every checkpoint. Codex independently proves every diff and owns all fresh
-evidence. Runtime publication is a separate external-action decision, and Ryan alone
-decides merge. No earlier grant, evidence result, branch, plan range or `CONTINUE` can
-be reused.
+possible next activity is exact-tip Kiro review of this runtime-delivery packet.
+Because the packet freezes `LICENSING_DISPOSITION=PAUSE`, Kiro PASS cannot authorize
+publication: exact component provenance/licensing closure and a separate Ryan external-
+action grant remain mandatory. A separate later Ryan grant may let Cursor perform only
+M11's held file sets in order, pushing and stopping at every checkpoint. Codex
+independently proves every diff and owns all fresh evidence. Ryan alone decides merge.
+No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reused.
 
 ## 3. Milestones
 
@@ -1007,7 +1029,8 @@ be reused.
 2. **Architectural outcome:** Doctor contains fail-closed MCP import refusal;
    fenced publication/recovery cannot manufacture an exact retry; every pytest
    node belongs to exactly one ordinary/qualified authority partition; the
-   qualified runtime is immutable and separately delivered; and final R2b
+   qualified runtime has an exact immutable delivery packet with public
+   redistribution blocked until provenance/licensing closure; and final R2b
    authority-content identity converges over the unchanged 120-member set.
 3. **Affected surfaces:** Five reviewed control documents; three closed
    authority/scope files defining a separate exact ten-path M11 corrective set;
@@ -1021,17 +1044,20 @@ be reused.
    may change. Evidence uses grant-named disposable/durable roots only.
 4. **Preconditions/dependencies:** PR base/head and tree equal §0; required pytest
    failure and ultrareview findings are preserved; Kiro PASSes this exact parent
-   and overlay; Ryan grants the exact held file sets; a separately reviewed and
-   authorized runtime-delivery packet makes the frozen runtime available; branch,
-   runtime and evidence inputs are clean/inventoried; and no prior grant or
-   `CONTINUE` is reused.
+   and overlay; independent component provenance/licensing closes the frozen
+   `PAUSE` without changing archive bytes; Ryan separately grants the exact external
+   publication operation and held implementation files; the published asset then
+   passes exact hash/extraction/hosted-runner preflight; branch, runtime and evidence
+   inputs are clean/inventoried; and no prior grant or `CONTINUE` is reused.
 5. **Implementation tasks:** Cursor applies the reviewed five-document plan and
    authority/scope rebind, then implements doctor containment, fenced publisher/
    recovery, CI partition/adapter, and independent R2b inventory rotation as
    separate pushed held commits in §10.20 order. Codex proves each exact diff and
    issues a commit-specific status before the next begins. The duplicate hashing
    helper cleanup is excluded.
-6. **Tests/evidence:** Fresh-process doctor continuation/non-disclosure; complete
+6. **Tests/evidence:** Exact runtime source/inventory/modes, deterministic archive,
+   closed extraction, archive/runtime/full-tree hashes, content negatives, pinned
+   bubblewrap and replacement-policy controls; then fresh-process doctor continuation/non-disclosure; complete
    fenced crash/recovery/write-set matrix; exact complete pytest `U=O∪Q` with
    empty intersection on the actual GitHub PR merge commit; CI mutation controls;
    unchanged Pylint; independent 120-member R2b convergence and its existing
@@ -1043,33 +1069,40 @@ be reused.
    grammar, T0–T5 semantics, three-tool surface, Pylint job/baseline/gate, M8
    runner/commands/selectors/four deselections/counts, runtime tree hash, R2b
    member set/seed/closure/routes, permissions and blocked later gates remain
-   unchanged. The historical T0–T5 product/schema allowlists are not widened.
-   Retained failures are never called full pytest PASS.
+   unchanged. The runtime archive is single-assignment at its exact repository/tag/
+   asset/hash and is never repaired, substituted or resolved through `latest`. The
+   historical T0–T5 product/schema allowlists are not widened. Retained failures
+   are never called full pytest PASS.
 8. **Forbidden changes:** Skip/xfail/marker/wildcard/failure-derived selector;
    Python-version-only evasion; import-refusal weakening; ordinary publish while
    fenced; fence clearing with durable or uninspectable intent; schema/data-model/
    hash changes; copied containment implementation; mutable/latest/host-fallback
-   runtime; Pylint edit; M8 runner edit; sixth control doc; product allowlist
+   runtime; publication while licensing is `PAUSE`; treating Kiro PASS as legal or
+   external-action clearance; Pylint edit; M8 runner edit; sixth control doc; product allowlist
    widening or an eleventh M11 corrective path; R2b live operation; hash-helper
    refactor; unlisted path/byte; merge,
    deployment, real OpenClaw, live data or later-gate action.
-9. **Done:** Plan-ready means exact-tip Kiro PASS on this semantic parent/overlay.
-   Correction-ready additionally requires Ryan's exact implementation grant and
-   the separately reviewed/authorized runtime distribution. Merge-ready requires
+9. **Done:** Packet-plan-ready means exact-tip Kiro PASS on this semantic parent/
+   overlay. Publication-ready additionally requires independent complete provenance/
+   licensing closure and Ryan's exact external-action grant; current state is not
+   publication-ready. Correction-ready additionally requires Ryan's exact
+   implementation grant and the separately published/verified runtime. Merge-ready requires
    every held diff/evidence item in field 6, all required GitHub checks green,
    focused safety PASS, Kiro integrated-tip PASS and Ryan's final merge decision.
-10. **Ryan confirmation:** Mandatory for implementation, runtime artifact creation/
-    publication, any changed scope or governing SHA, PR amendment, merge, real
+10. **Ryan confirmation:** Mandatory for implementation, runtime tag/release/asset
+    creation or publication after licensing closure, any changed scope or governing SHA, PR amendment, merge, real
     OpenClaw, live data, deployment, promotion and Gates D/W/D-V/E/F. Planning
     review alone authorizes none of them.
 11. **Live inspection:** Codex checks exact refs/tree, five plan blobs/modes,
     authority/scope negative controls, every held diff, runtime inventory and
-    delivery proof, doctor processes, publisher pre/post bytes, complete collected
+    delivery archive/header/extraction/provenance/licensing proof, hosted bwrap
+    preflight, doctor processes, publisher pre/post bytes, complete collected
     node identities/outcomes, merge-tree identity, CI dependencies/receipts, R2b
     manifests/identity convergence, Pylint/M8/MCP output, durable mappings and all
     GitHub contexts. Cursor pushes and stops after every hold.
-12. **Verdict:** Separate verdicts remain mandatory for doctor safety; publisher/
-    recovery safety; ordinary/qualified CI completeness; R2b convergence; M8/MCP/
+12. **Verdict:** Separate verdicts remain mandatory for runtime byte qualification;
+    public redistribution/provenance/licensing; external publication; doctor safety;
+    publisher/recovery safety; ordinary/qualified CI completeness; R2b convergence; M8/MCP/
     Pylint; bounded ConvMem integration; PR merge readiness; real OpenClaw; and
     pilot/production. Historical PASSes remain evidence, not acceptance transfer.
 
@@ -1168,9 +1201,15 @@ be reused.
 - [x] PR `#342` required-check failure and focused ultrareview preserved: 83
       pytest failures partition into exact 22/56/5 families; doctor import
       containment and fenced retry/recovery are confirmed merge blockers.
-- [ ] Kiro exact-tip PASS on §18.22/§10.20 and this M11 overlay.
-- [ ] Separate reviewed runtime-delivery packet, Kiro PASS and exact Ryan
-      external authorization for the immutable qualified-runtime asset.
+- [x] Kiro exact-tip PASS on §18.22/§10.20 at overlay `a23d843`.
+- [x] Runtime-delivery archive locally validates exact source, modes, members,
+      extraction and frozen hashes without changing the runtime or publishing.
+- [ ] Kiro exact-tip PASS on §18.23/§10.21 and this runtime-delivery overlay.
+- [ ] Independent complete component provenance/licensing closure; current
+      `PUBLICATION_ELIGIBLE=false`, `LICENSING_DISPOSITION=PAUSE` must not be
+      relabeled by plan review.
+- [ ] Exact Ryan external authorization for the immutable qualified-runtime
+      tag/release/asset after licensing closure.
 - [ ] New Ryan implementation grant; held five-plan/authority-scope, doctor,
       publisher/recovery, CI and independent R2b inventory commits; every
       commit-specific Codex `CONTINUE`.
@@ -1213,14 +1252,16 @@ be reused.
 | Doctor import refusal escapes health check | Architecture §18.22.1 / M11 | `STATIC`, process-level safety control | Fresh doctor process with `openclaw-strict`, fixed unknown sentinel, or injected sensitive `SystemExit` payload | `mcp_import` is a failed sanitized check; later doctor checks still run; normal doctor exits nonzero; raw profile/payload/environment never appears | Fresh-process stdout/stderr/status plus later-check sentinel; recognized shell/unset/full controls remain green |
 | Fenced operation-ID replay | Architecture §18.22.2 / M11 | `STATIC`, crash/recovery safety control | Crash after fence before input; retry same ID/same or different bytes; durable-input ambiguity; malformed/symlinked/conflicting evidence | Ordinary publish refuses write-free while fenced. Pre-input recovery may restore predecessor only with no durable intent and consumes the ID. Durable intent remains fenced/recovery-required. Exact retry requires independently proved admitted input | Fault-point pre/post trees, operation/digest records, retained fence history, write-set proof, negative control preventing predecessor rebuild after durable intent |
 | CI partition laundering | Architecture §18.22.3 / M11 | `STATIC`, required-check control | Omit/duplicate a node; select by failure; inject host inner-role env; change selector/deselection; fake PASS/JUnit; skip dependency; mutate runtime/containment flag | Required context fails. Exact `O∩Q=∅`, `O∪Q=U`, real process/JUnit/node evidence and every dependency success are mandatory | Exact GitHub merge-tree identity, complete sorted node hashes/outcomes, mutation-test matrix, qualified runtime inventory and CI-regression receipt |
-| Mutable or substituted qualified runtime | Architecture §18.22.4 / external gate | `STATIC`, delivery/provenance control | Missing/mutable release, `latest`, wrong archive/tree hash, symlink/special/path escape, host repair/fallback or incompatible kernel/bwrap | Fail before qualified test import; never download a substitute, repair bytes or fall back to host | Reviewed delivery packet, immutable release coordinates, archive/extraction/tree inventories, provenance/licensing and negative controls |
+| Mutable, unlicensed or substituted qualified runtime | Architecture §§18.22.4, 18.23 / external gate | `STATIC`, delivery/provenance control | Missing/mutable release, `latest`, wrong archive/tree hash, symlink/special/path escape, host repair/fallback, incompatible kernel/bwrap, incomplete artifact provenance/license/notice/source obligation, or treating Kiro PASS as publication clearance | Fail before publication or qualified test import; `LICENSING_DISPOSITION=PAUSE` remains blocking; never download a substitute, repair bytes or fall back to host | Exact archive/member/extraction/tree hashes, immutable coordinate proof, source pre/post inventory, pinned bwrap, closed negative controls and independently complete provenance/licensing review |
 | R2b content-attestation drift | Architecture §18.22.5 / M11 | `STATIC`, cross-arc merge control | 121st/missing member; changed seed/closure/route; third changed governed member; self-derived identity only; live gate/capture attempt | `PAUSE`; only inventory JSON may rotate after final edits; exact 120-member manifest and independent resolver/inventory/artifact identity must converge; no live effect | Before/after manifests, exact two-member change proof, independent identity recomputation, resolver/digest/artifact equality and existing R2b negative tests |
 
 ## 6. Live-supervision protocol
 
 **Current controlling state:** `PAUSE`. PR `#342` is merge-blocked. No plan
 application, corrective edit, runtime publication, evidence execution or PR update
-may begin from this document. After exact-tip Kiro PASS and new Ryan grants, Cursor
+may begin from this document. Local packet derivation is complete; exact-tip Kiro
+review is next. Kiro PASS cannot clear the frozen provenance/licensing `PAUSE` or
+authorize an external action. Only after independent licensing closure and new Ryan grants may Cursor
 must push, report and stop after: (1) five-document plan application, (2) authority/
 scope rebind, (3) doctor correction, (4) publisher/recovery correction, (5) CI
 correction, and (6) independent R2b inventory rotation. Codex issues a new
@@ -1258,9 +1299,10 @@ may issue only:
 
 The historical legacy-count PAUSE is closed by the evidence at
 `PRESERVED_PR342_HEAD_SHA`; it is not the current stop. Ryan's present direction
-authorizes only the five planning-document changes on this branch. Exact-tip Kiro
-PASS is required before Ryan may grant the closed corrective sequence in current
-M11. All preserved source branches and PR `#342` stay unchanged until then. No
+authorizes only this four-document runtime-delivery plan and local non-publishing
+validation. Exact-tip Kiro PASS is required before any further packet decision, and
+complete licensing closure plus a new exact Ryan external-action grant are required
+before an asset may exist. All preserved source branches and PR `#342` stay unchanged until then. No
 earlier `CONTINUE`, M8 grant, M11 grant or evidence verdict can be reused.
 
 Before every `CONTINUE`, Codex inspects current diff, complete changed-file
@@ -1308,7 +1350,9 @@ Ryan's explicit confirmation naming exact revisions is required before:
   evidence sequence;
 - creating or publishing the proposed GitHub Release runtime asset, including exact
   repository/tag/asset, archive hash, extracted tree hash, provenance/licensing,
-  extraction rules, hosted-runner compatibility and replacement policy;
+  extraction rules, hosted-runner compatibility and replacement policy; no such
+  grant is eligible while `QUALIFIED_RUNTIME_PUBLICATION_ELIGIBLE=false` or
+  `QUALIFIED_RUNTIME_LICENSING_DISPOSITION=PAUSE`;
 - supplying/provisioning the exact test runtime or making any host write for it;
 - changing or contradicting Ryan's ratified refusal-contract ruling;
 - any ConvMem core data-model change **beyond the exact parent-specified and
@@ -1359,7 +1403,8 @@ No earlier T0–T5 or completed M11 architectural decision is reopened. Before
 Cursor resumes, Kiro must PASS this exact parent/overlay. Ryan must then name
 the PR/base/head/tree, implementation branch, five reviewed control documents,
 exact held file sets/order, runtime/evidence roots and full evidence authority.
-Runtime publication additionally requires its own reviewed delivery packet and
+Runtime publication additionally requires exact-tip review of this packet,
+independent complete provenance/licensing closure without archive mutation, and an
 exact external-action grant. Codex must freshly verify refs, plan blobs, source
 tree, runtime inventory/distribution, evidence roots and clean worktrees before
 the first written `CONTINUE`. A missing prerequisite blocks work.
@@ -1378,7 +1423,9 @@ contained, when a fence may clear, whether an operation ID can be reused, how CI
 partitions nodes, which runtime artifact is trusted, which documents/files are
 allowed, which R2b members changed, or which evidence grants PASS. Those choices
 are frozen by §18.22/§10.20 and the later Ryan grants. Cursor may not publish the
-runtime or run acceptance evidence; Codex owns evidence, and an independent lane
+runtime or run acceptance evidence; §18.23/§10.21 also forbid Cursor/Grok from
+choosing archive tools/bytes, extraction, bwrap, provenance/licensing disposition,
+coordinates or replacement policy. Codex owns evidence, and an independent lane
 owns final R2b manifest derivation.
 
 Grok must not decide or change schemas, fields, enums, hashes,
@@ -1432,12 +1479,13 @@ run. The parent and later Ryan grant freeze all of them.
 
 **Bounded T0–T5 verdict: IMPLEMENTED, TESTED AND ACCEPTED AT THE HISTORICAL
 TIP. BOUNDED M11 EVIDENCE: PRESERVED AT `PRESERVED_PR342_HEAD_SHA`. PR MERGE
-READINESS: FAIL / BLOCKED. PLAN-CORRECTION READINESS: READY FOR KIRO EXACT-TIP
+READINESS: FAIL / BLOCKED. RUNTIME-PACKET PLAN READINESS: READY FOR KIRO EXACT-TIP
 REVIEW; CURSOR REMAINS PAUSED.** Required GitHub pytest is red, doctor and
 publisher safety corrections are unimplemented, GitHub runtime distribution is
-unreviewed/unpublished, and R2b authority-content identity is not converged for
-the final corrective tree. After Kiro PASS, Ryan must issue exact grants before
-any implementation or external runtime publication. This overlay authorizes no
+unpublished and currently ineligible because provenance/licensing remains `PAUSE`,
+and R2b authority-content identity is not converged for the final corrective tree.
+After Kiro PASS, independent licensing closure and exact Ryan grants are still
+required before any external runtime publication or implementation. This overlay authorizes no
 product/test/CI/inventory/runtime edit, evidence execution, PR update or merge.
 
 **Complete ConvMem–OpenClaw system verdict: NOT BUILD-READY.** Gate D real
@@ -1448,7 +1496,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `0936a55460b4103b87546e3ddc5ad274db5c0352` semantic parent is the
+- The exact `7099302e5256d28405eb091da03de0e6db8977a9` semantic parent is the
   current source of truth; this overlay only sequences, supervises and gates it.
 - M0–M8 and the complete historical M11 evidence passed; the preserved source
   is `cd60cf19`; exact-current-main reconstruction is preserved at `30bc134d`.
@@ -1462,7 +1510,9 @@ successful fixture build.
   118/117 against the historical 116/115 expectation.
 - PR `#342` exists at `94f29eb` but is merge-blocked by required pytest and two
   safety defects. M11 now freezes held doctor, publisher/recovery, complete
-  ordinary/qualified CI, immutable runtime delivery and R2b convergence work.
-  Kiro PASS and new Ryan grants remain mandatory; merge is a later Ryan decision.
+  ordinary/qualified CI, immutable runtime delivery and R2b convergence work. The
+  557,628,743-byte local archive passes exact byte/mode/extraction validation, but
+  public provenance/licensing remains `PAUSE`. Kiro PASS, licensing closure and new
+  Ryan grants remain mandatory; merge is a later Ryan decision.
 - Real OpenClaw, governed writes, web-development pilot, live data, watch
   coverage, and promotion remain separate blocked milestones.
