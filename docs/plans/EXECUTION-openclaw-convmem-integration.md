@@ -2210,9 +2210,50 @@ replacement build begins without the separate §18.24 Ryan build grant and revie
 lock. Provenance PASS is not build, publication, CI-admission or M11 implementation
 authority.
 
-**Current result:** schema packet authored; evidence packet absent; review disposition
-absent; provenance execution unauthorized; replacement build/publication/CI admission
-unauthorized. No product, test, CI, runtime, configuration, PR or external byte changed.
+**Current result:** schema v1 passed exact-tip design review. Its first offline P0
+execution created only disposable staging, corrected one inventory-hash encoding bug,
+then stopped on one unrepresentable CycloneDX component with a JSON-null version. No
+durable packet or review disposition exists. The v1 staging output remains rejected
+PAUSE evidence and provenance execution is stopped.
+
+### 10.24 Schema-v2 SBOM version-projection correction
+
+Architecture §18.26 controls. This is a plan-only successor to the stopped §10.23 P0
+execution. It may advance only through these held phases:
+
+1. **Preserve the v1 stop.** Verify and retain the exact v1 collector identities,
+   runtime/evidence read counters, sole unrepresentable SBOM row and absence of both v1
+   durable leaf roots. Do not repair, resume, cite or copy `schema-v1/packet.work`.
+2. **Review the one semantic change.** Prove schema v2 changes only component-version
+   projection: an exact nonempty version stays exact; a JSON-null version can become
+   only the exact 40-lowercase-hex revision from a byte-identical `bom-ref`/`purl`
+   matching the closed GitHub PURL grammar in §18.26.1.
+3. **Review fail-closed cases.** Prove every absent/empty/non-string field, mismatch,
+   mutable or non-40-hex reference, qualifier, subpath, encoding/normalization attempt,
+   alias, lookup and second derivation path remains `PAUSE`; prove the raw SBOM object
+   and projection inputs remain hash-bound evidence.
+4. **Review new coordinates.** Prove all four `schema-v2` roots are distinct from v1,
+   absent before execution and single-assignment; every other §18.25 packet rule is
+   unchanged.
+5. **Kiro verdict.** Kiro returns PASS or FAIL on the exact semantic parent and
+   milestone overlay. PASS approves only the schema-v2 design and boundaries.
+6. **Separate future P0 grant.** Only a new Ryan grant may authorize one fresh v2
+   execution. That grant must name the exact collector bytes, schema-v2 roots, runtime
+   and evidence read ceilings, allowed commands and stop checkpoint. It must account
+   for the already consumed v1 reads rather than resetting their ledger.
+
+If later granted, Codex must begin with absent v2 roots, a verified unchanged runtime
+and no access to v1 staged objects. It repeats the complete runtime inventory and
+bounded evidence capture, exercises every §18.26 negative control, and stops at the
+first unresolved component or after constructing the still-disposable v2 packet. Any
+additional semantic correction, second projection route, v1 reuse, changed runtime,
+read-ceiling breach or required source/runtime modification is `PAUSE` and requires a
+new schema version and review.
+
+**Current result:** schema v1 P0 is stopped and preserved as rejected PAUSE evidence;
+schema v2 is plan-only; no v2 root exists; no packet retry, runtime/evidence read,
+network request, packet/review creation, product/test/CI/runtime/configuration change,
+build, publication, PR update, merge, real OpenClaw or later gate is authorized.
 
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
@@ -2229,6 +2270,9 @@ this plan edit. Section 10.21 additionally freezes the locally verified but publ
 first archive. Section 10.22 defines a new three-role replacement delivery set whose provenance
 lock, construction, final packet and publication each require separate review and Ryan grants.
 Section 10.23 freezes the future provenance packet's canonical schema and exact roots without
-creating evidence or making a provenance acquisition request. The replacement remains `PLAN_ONLY`, provenance
+creating evidence or making a provenance acquisition request. Its first offline P0 execution later stopped on
+one JSON-null CycloneDX component version after proving the runtime tree. Section 10.24 preserves that v1 stop
+and defines only a fresh-root schema-v2 projection for an exact immutable GitHub revision; no retry or read is
+authorized. The replacement remains `PLAN_ONLY`, provenance
 closure `UNRESOLVED`, licensing `PAUSE` and publication `false`; no tag, release or asset is
 authorized.

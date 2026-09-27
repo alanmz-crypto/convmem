@@ -6565,6 +6565,111 @@ deployment, real OpenClaw, live data, watch activation, promotion or Gates
 D/W/D-V/E/F. Kiro exact-tip PASS and a new Ryan provenance-execution grant naming the
 exact roots, origins and operations remain mandatory.
 
+### 18.26 Provenance-lock v2 CycloneDX revision projection
+
+The first offline P0 execution of §18.25 stopped while projecting retained CycloneDX
+evidence into `component-lock.jsonl`. The stopped schema-v1 staging tree is rejected
+diagnostic evidence: it is never a packet, never authority, never repaired in place and
+never copied into a successor packet. No schema-v1 durable packet or review root was
+created.
+
+The stop is bound to these exact facts:
+
+```text
+PROVENANCE_SCHEMA_V2_PLAN_BASE_OVERLAY_SHA=5f3978525c8685f59329ccae78d184d4a1822b4b
+PROVENANCE_V1_FIRST_COLLECTOR_SHA256=e84cf1e633541b9a7343bbaf78457573cf041e7f59f0cc71d6c7be8d491de59e
+PROVENANCE_V1_FIRST_INCORRECT_PROJECTION_SHA256=22da33da243b6fa7a7e75abe1e290fae22f2bf1d7ae87bb78ea4fd981b2e4bc4
+PROVENANCE_V1_RETRY_COLLECTOR_SHA256=c9ef70f2a728cac680a1227b5bafc5533a3211f244e1abbf2f89906749eae028
+PROVENANCE_V1_RUNTIME_CONTENT_PASS_COUNT=2
+PROVENANCE_V1_RUNTIME_READ_BYTES=4537493452
+PROVENANCE_V1_EVIDENCE_FILE_COUNT=780
+PROVENANCE_V1_EVIDENCE_BYTES=600463206
+PROVENANCE_V1_CYCLONEDX_DOCUMENT_COUNT=13
+PROVENANCE_V1_CYCLONEDX_COMPONENT_COUNT=1371
+PROVENANCE_V1_UNREPRESENTABLE_COMPONENT_COUNT=1
+PROVENANCE_V1_SBOM_OBJECT_SHA256=d3c068f4be653f38b8f6fca1dd1a9d1b41dc712dc9c3daa01b0e0f84882324d6
+PROVENANCE_V1_SBOM_COMPONENT_INDEX=0
+PROVENANCE_V1_SBOM_NAME=base64
+PROVENANCE_V1_SBOM_PURL=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
+PROVENANCE_V1_SBOM_BOM_REF=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
+PROVENANCE_V1_SBOM_VERSION=null
+```
+
+The retry had already corrected `tree_inventory_hash()` so every inventory-row hash is
+encoded as `sha256:<64-lowercase-hex>`, matching the governed runtime inventory. It then
+proved the exact 30,421-file runtime tree before stopping at the sole missing component
+version. That collector correction and the amended read ceiling do not authorize a
+third schema-v1 pass. The consumed reads above remain part of the rejected v1 ledger.
+
+Schema v2 keeps every §18.25 encoding, file-role, ownership, closure, source-authority
+and review rule except the one closed component-version projection below. It binds new
+single-assignment roots:
+
+```text
+PROVENANCE_SCHEMA_VERSION=convmem.switchboard.provenance-lock.v2
+PROVENANCE_INPUT_RUNTIME_ROOT=/home/lauer/.local/share/convmem-openclaw-runtimes/7dccb771b2f43288c52b7cb1dd18dedb18cb7e57/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
+PROVENANCE_INPUT_RUNTIME_TREE_SHA256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+PROVENANCE_INPUT_RUNTIME_REGULAR_FILE_COUNT=30421
+PROVENANCE_PACKET_FILE_ROLE_COUNT=13
+PROVENANCE_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2
+PROVENANCE_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2
+PROVENANCE_DURABLE_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2/packet
+PROVENANCE_DURABLE_REVIEW_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2/review
+PROVENANCE_PACKET_STATUS=PLAN_ONLY
+PROVENANCE_EXECUTION_AUTHORIZED=false
+```
+
+#### 18.26.1 Closed version projection
+
+For a CycloneDX component, an existing nonempty string `version` remains the exact
+observed version string. It is not normalized. A JSON `null` version may be projected
+only when all of these conditions hold simultaneously:
+
+1. `name` is a nonempty string;
+2. `bom-ref` and `purl` are both strings and are byte-for-byte identical; and
+3. that shared string matches exactly
+   `^pkg:github/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*@([0-9a-f]{40})$`.
+
+The projected component `version` is the captured 40-lowercase-hex group exactly. The
+original `name`, JSON-null `version`, `purl`, `bom-ref`, component index and complete
+SBOM object remain retained evidence and bind the projection. The projected version is
+an immutable source revision identifier for component identity; it is not a release
+tag, license conclusion, artifact identity or authority to fetch/build anything.
+
+There is no second derivation route. Empty or non-string names; an absent, empty or
+non-string version; a non-null empty version; missing or unequal `bom-ref`/`purl`;
+uppercase or non-40-hex revisions; qualifiers (`?`), subpaths (`#`), userinfo,
+percent-encoding or any mutable/non-GitHub form remain `PAUSE`. The collector may not
+case-fold, percent-decode, Unicode-normalize, URL/PURL-normalize, follow aliases, infer
+a tag/version, consult the network or substitute package metadata. Any component not
+representable by the original v1 rule or this one projection creates an exact open
+`unresolved` row and blocks build eligibility.
+
+#### 18.26.2 Freshness, negative controls and authority boundary
+
+A future v2 execution must start from absent `schema-v2` staging/durable roots and
+repeat the complete governed runtime inventory and bounded evidence selection. It may
+use only a freshly frozen collector whose sole semantic difference from the corrected
+v1 retry collector is §18.26.1. It may not read, copy, hard-link or cite any object,
+ledger, manifest, counter or partial output from `schema-v1/packet.work`. The v1
+collector identities, read counters and stop record remain evidence of the rejected
+attempt, not inputs to v2 acceptance.
+
+Negative controls must independently reject at least: null/empty/missing/non-string
+`name`; missing/empty/non-string `purl` or `bom-ref`; unequal `purl` and `bom-ref`;
+uppercase, short, long or nonhex revisions; tags or branch names; qualifiers, subpaths,
+userinfo or percent-encoded aliases; any non-GitHub PURL; any normalization or network
+lookup; reuse of a v1 object; a second projected component not satisfying the closed
+grammar; and a packet that omits the raw SBOM-to-projection evidence binding.
+
+**Authority boundary.** This section authorizes only planning-document edits. It does
+not authorize a schema-v2 directory, packet retry, runtime/evidence read, collector
+execution, network request, artifact parsing, retained-source inspection, packet or
+review creation, product/test/CI/runtime/configuration change, build, publication, PR
+update, merge, deployment, real OpenClaw, live data, watch activation, promotion or
+Gates D/W/D-V/E/F. Kiro exact-tip PASS and a new Ryan P0 execution grant naming the
+schema-v2 roots, collector identity, read ceilings and operations remain mandatory.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -6594,6 +6699,7 @@ exact roots, origins and operations remain mandatory.
 | Replacement delivery set | The inseparable runtime archive, compliance/corresponding-source archive and canonical manifest built from a complete reviewed component lock after the first archive failed publication provenance/licensing review. |
 | Component lock | The canonical file-to-component, binary/source artifact, recipe, license/notice and source-delivery mapping; installed metadata or an SBOM alone is only an input. |
 | Provenance-lock packet | The canonical immutable ledgers, content-addressed evidence objects, manifest and independent disposition that prove the component lock is complete before any replacement build. |
+| CycloneDX revision projection | The schema-v2-only rule that can use one exact immutable 40-lowercase-hex GitHub PURL revision as a missing component version when `bom-ref` and `purl` are byte-identical; every other missing version stays `PAUSE`. |
 | Source authority | An exact original distributor/project, signed index/checksum, immutable source revision or retained package/build record permitted by the grant; a search result, ambient cache or current-host inference is not authority. |
 | Licensing disposition | The fail-closed public-redistribution result. `PAUSE` means byte integrity may pass while publication remains forbidden. |
 
@@ -6614,5 +6720,7 @@ lock, build, final packet and publication require separate reviews and Ryan gran
 PASSed that replacement plan at `3402e62a`. Section 18.25 now freezes the provenance-lock
 packet's canonical schema, exact packet/review roots, source-authority boundary and negative
 controls without creating evidence; exact-tip Kiro review of this schema is next and authorizes no
-provenance execution.
+provenance execution. The first offline P0 attempt later stopped at one CycloneDX component whose
+version was null. Section 18.26 preserves schema v1 as rejected evidence and defines a schema-v2-only,
+single-route immutable GitHub revision projection under fresh roots; it authorizes no retry or read.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
