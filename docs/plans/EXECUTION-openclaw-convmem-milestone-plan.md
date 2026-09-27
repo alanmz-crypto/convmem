@@ -38,7 +38,7 @@ WORK REMAIN PAUSED.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=24795c24b9ce6615165e32259c6ddbb8d425fb6b
+SEMANTIC_PARENT_SHA=f25174a70a0665ebadd82a9747a0bb8870dd4760
 PROVENANCE_ACQUISITION_PLAN_BASE_OVERLAY_SHA=3b3550c85f8c0482353dac55998d7b6f0fcbbbb0
 P0_RESULT_BINDING_SEMANTIC_PARENT_SHA=9ecb10c3bb1b17b6190951037338f46d1f8e076b
 PROVENANCE_SCHEMA_V3_RESULT_PLAN_BASE_OVERLAY_SHA=d03aa5538e0b82f1165a725394ef8df4bf805dbd
@@ -1905,7 +1905,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `24795c24b9ce6615165e32259c6ddbb8d425fb6b` semantic parent is the
+- The exact `f25174a70a0665ebadd82a9747a0bb8870dd4760` semantic parent is the
   current source of truth; this overlay only sequences, supervises and gates it.
 - M0–M8 and the complete historical M11 evidence passed; the preserved source
   is `cd60cf19`; exact-current-main reconstruction is preserved at `30bc134d`.
