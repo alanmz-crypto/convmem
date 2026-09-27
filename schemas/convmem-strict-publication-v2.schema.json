@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-publication.v2",
+  "title": "convmem.strict-publication.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "lineage_id",
+    "owner_digest",
+    "epoch",
+    "authority_seq",
+    "authority_snapshot_id",
+    "authority_manifest_sha256",
+    "authority_source_cutoff_sha256",
+    "serving_generation_id",
+    "projection_manifest_sha256",
+    "semantic_contract_sha256",
+    "pending_operation_id",
+    "mode",
+    "previous_publication_sha256",
+    "freshness_anchor",
+    "published_at",
+    "publication_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-publication.v2"
+    },
+    "lineage_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "owner_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "epoch": {
+      "type": "integer"
+    },
+    "authority_seq": {
+      "type": "integer"
+    },
+    "authority_snapshot_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "authority_manifest_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_source_cutoff_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "serving_generation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "projection_manifest_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "semantic_contract_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "pending_operation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "serving",
+        "unavailable",
+        "fenced"
+      ]
+    },
+    "previous_publication_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "freshness_anchor": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "boot_id",
+        "authority_snapshot_id",
+        "sampled_wall_time",
+        "sampled_boottime_ns",
+        "snapshot_deadline_boottime_ns",
+        "clock_review_ref"
+      ],
+      "properties": {
+        "boot_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authority_snapshot_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sampled_wall_time": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "sampled_boottime_ns": {
+          "type": "integer"
+        },
+        "snapshot_deadline_boottime_ns": {
+          "type": "integer"
+        },
+        "clock_review_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "published_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "publication_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

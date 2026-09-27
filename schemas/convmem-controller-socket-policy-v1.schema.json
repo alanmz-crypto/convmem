@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.controller-socket-policy.v1",
+  "title": "convmem.controller-socket-policy.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "socket_path",
+    "socket_mode",
+    "owner_uid",
+    "permitted_peer_uid",
+    "max_request_bytes",
+    "max_response_bytes",
+    "policy_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.controller-socket-policy.v1"
+    },
+    "socket_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "socket_mode": {
+      "const": "0600"
+    },
+    "owner_uid": {
+      "type": "integer"
+    },
+    "permitted_peer_uid": {
+      "type": "integer"
+    },
+    "max_request_bytes": {
+      "const": 131072
+    },
+    "max_response_bytes": {
+      "const": 2097152
+    },
+    "policy_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

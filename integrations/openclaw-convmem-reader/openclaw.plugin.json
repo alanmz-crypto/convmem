@@ -1,0 +1,7 @@
+{
+  "id": "openclaw-convmem-reader",
+  "name": "ConvMem bounded reader",
+  "version": "0.0.0-t0a",
+  "entry": "index.js",
+  "description": "T4 uninstalled connector; production registration refuses with runtime_not_qualified until Gate D."
+}

@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.openclaw-activation.v2",
+  "title": "convmem.openclaw-activation.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "activation_id",
+    "slot_id",
+    "lineage_id",
+    "owner_digest",
+    "publication_sha256",
+    "scope_sha256",
+    "registry_sha256",
+    "strict_config_sha256",
+    "authority_manifest_sha256",
+    "projection_manifest_sha256",
+    "snapshot_id",
+    "as_of",
+    "expires_at",
+    "openclaw_version",
+    "openclaw_config_sha256",
+    "plugin_tree_sha256",
+    "connector_launch_sha256",
+    "strict_server_tree_sha256",
+    "supervisor_tree_sha256",
+    "controller_tree_sha256",
+    "runtime_distribution_sha256",
+    "model_artifacts_sha256",
+    "launch_policy_sha256",
+    "manager_policy_sha256",
+    "control_protocol_version",
+    "release_protocol_version",
+    "state_dir",
+    "gateway_port",
+    "gateway_argv_sha256",
+    "agent_argv_sha256",
+    "created_at",
+    "max_monotonic_lifetime_seconds",
+    "manifest_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.openclaw-activation.v2"
+    },
+    "activation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "slot_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "lineage_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "owner_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "publication_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "registry_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "strict_config_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "authority_manifest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "projection_manifest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "as_of": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "openclaw_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "openclaw_config_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "plugin_tree_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "connector_launch_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "strict_server_tree_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "supervisor_tree_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "controller_tree_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "runtime_distribution_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "model_artifacts_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "launch_policy_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "manager_policy_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "control_protocol_version": {
+      "const": "convmem.activation-control.v1"
+    },
+    "release_protocol_version": {
+      "const": "convmem.buffered-release.v1"
+    },
+    "state_dir": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "gateway_port": {
+      "type": "integer",
+      "minimum": 49152,
+      "maximum": 65535
+    },
+    "gateway_argv_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "agent_argv_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "max_monotonic_lifetime_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400
+    },
+    "manifest_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

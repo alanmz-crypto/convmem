@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-graph.v1",
+  "title": "convmem.strict-graph.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "nodes",
+    "edges",
+    "graph_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-graph.v1"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "from_assertion_id",
+          "to_assertion_id"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "relates_to",
+              "targets",
+              "supersedes"
+            ]
+          },
+          "from_assertion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to_assertion_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "graph_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

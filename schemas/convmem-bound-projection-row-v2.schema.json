@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.bound-projection-row.v2",
+  "title": "convmem.bound-projection-row.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "project_binding_id",
+    "public_binding_ref",
+    "source_registration_id",
+    "authority_site",
+    "authority_domain",
+    "record_kind",
+    "logical_id",
+    "assertion_id",
+    "public_ledger_id",
+    "citation_ref",
+    "title",
+    "document",
+    "observed_at",
+    "recorded_at",
+    "confidence_bps",
+    "relates_to_assertion_id",
+    "target_assertion_id",
+    "verification_result",
+    "supersedes_assertion_ids",
+    "decision_disposition_ref",
+    "supersession_disposition_ref",
+    "origin_assurance",
+    "provenance_qualification",
+    "check_eligibility",
+    "authority_state",
+    "verification_state",
+    "state_disposition_refs",
+    "payload_sha256",
+    "state_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.bound-projection-row.v2"
+    },
+    "project_binding_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "public_binding_ref": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "source_registration_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_site": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_domain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "record_kind": {
+      "enum": [
+        "observation",
+        "decision",
+        "verification"
+      ]
+    },
+    "logical_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "assertion_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "public_ledger_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "citation_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "document": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "recorded_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "confidence_bps": {
+      "type": "integer"
+    },
+    "relates_to_assertion_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "target_assertion_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "verification_result": {
+      "enum": [
+        "pass",
+        "fail",
+        "inconclusive",
+        null
+      ]
+    },
+    "supersedes_assertion_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "decision_disposition_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "supersession_disposition_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "origin_assurance": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provenance_qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commitments",
+        "byte_grounding",
+        "capture",
+        "transformer_cap"
+      ],
+      "properties": {
+        "commitments": {
+          "enum": [
+            "valid",
+            "incomplete"
+          ]
+        },
+        "byte_grounding": {
+          "enum": [
+            "complete",
+            "missing"
+          ]
+        },
+        "capture": {
+          "enum": [
+            "synthetic_fixture",
+            "controlled_capture",
+            "unattested"
+          ]
+        },
+        "transformer_cap": {
+          "enum": [
+            "trusted",
+            "agent",
+            "untrusted"
+          ]
+        }
+      }
+    },
+    "check_eligibility": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verification_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "state_disposition_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "state_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

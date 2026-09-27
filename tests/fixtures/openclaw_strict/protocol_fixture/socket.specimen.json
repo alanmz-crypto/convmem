@@ -1,0 +1,14 @@
+{
+  "artifact_kind": "protocol_fixture",
+  "payload": {
+    "max_request_bytes": 131072,
+    "max_response_bytes": 2097152,
+    "owner_uid": 0,
+    "permitted_peer_uid": 1000,
+    "policy_payload_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "schema": "convmem.controller-socket-policy.v1",
+    "socket_mode": "0600",
+    "socket_path": "/fixture/control.sock"
+  },
+  "role": "socket"
+}

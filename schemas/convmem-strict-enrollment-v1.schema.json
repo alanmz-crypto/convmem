@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-enrollment.v1",
+  "title": "convmem.strict-enrollment.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "lineage_id",
+    "slot_id",
+    "mode",
+    "owner_digest",
+    "operator_uid",
+    "controller_uid",
+    "supervisor_uid",
+    "runtime_uid",
+    "scope_sha256",
+    "registry_sha256",
+    "semantic_contract_sha256",
+    "initial_source_cutoff_sha256",
+    "enrollment_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-enrollment.v1"
+    },
+    "lineage_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "slot_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "mode": {
+      "enum": [
+        "fixture",
+        "production"
+      ]
+    },
+    "owner_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "operator_uid": {
+      "type": "integer"
+    },
+    "controller_uid": {
+      "type": "integer"
+    },
+    "supervisor_uid": {
+      "type": "integer"
+    },
+    "runtime_uid": {
+      "type": "integer"
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "registry_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "semantic_contract_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "initial_source_cutoff_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "enrollment_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

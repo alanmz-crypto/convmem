@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.bound-projection-manifest.v3",
+  "title": "convmem.bound-projection-manifest.v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "lineage_id",
+    "authority_seq",
+    "owner_digest",
+    "generation_id",
+    "previous_generation_id",
+    "snapshot_id",
+    "authority_manifest_sha256",
+    "scope_sha256",
+    "registry_sha256",
+    "semantic_contract_sha256",
+    "rows_sha256",
+    "row_count",
+    "graph_sha256",
+    "graph_node_count",
+    "search_kernel",
+    "search_kernel_version",
+    "tokenizer_unicode_version",
+    "builder_version",
+    "builder_tree_sha256",
+    "built_at",
+    "as_of",
+    "expires_at",
+    "manifest_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.bound-projection-manifest.v3"
+    },
+    "lineage_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "authority_seq": {
+      "type": "integer"
+    },
+    "owner_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "generation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "previous_generation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_manifest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "registry_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "semantic_contract_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "rows_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "row_count": {
+      "type": "integer"
+    },
+    "graph_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "graph_node_count": {
+      "type": "integer"
+    },
+    "search_kernel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "search_kernel_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tokenizer_unicode_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "builder_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "builder_tree_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "built_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "as_of": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "manifest_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.strict-slot.v1",
+  "title": "convmem.strict-slot.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "slot_id",
+    "lineage_id",
+    "activation_id",
+    "activation_manifest_sha256",
+    "unit_invocation_id",
+    "state",
+    "retirement_ref",
+    "slot_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.strict-slot.v1"
+    },
+    "slot_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "lineage_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "activation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "activation_manifest_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "unit_invocation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "state": {
+      "enum": [
+        "empty",
+        "starting",
+        "active",
+        "retiring",
+        "quarantined"
+      ]
+    },
+    "retirement_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "slot_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

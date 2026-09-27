@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.openclaw-connector-launch.v2",
+  "title": "convmem.openclaw-connector-launch.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "python_executable",
+    "python_executable_sha256",
+    "strict_server_path",
+    "strict_server_tree_sha256",
+    "working_directory",
+    "scope_file",
+    "registry_file",
+    "strict_config_file",
+    "scope_sha256",
+    "registry_sha256",
+    "strict_config_sha256",
+    "service_home",
+    "path_value",
+    "lang",
+    "lc_all",
+    "temp_directory",
+    "setpriv_executable",
+    "setpriv_sha256",
+    "seccomp_filter_file",
+    "seccomp_filter_sha256",
+    "runtime_distribution_sha256",
+    "launch_policy_sha256",
+    "manager_policy_sha256",
+    "launch_payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.openclaw-connector-launch.v2"
+    },
+    "python_executable": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "python_executable_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "strict_server_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "strict_server_tree_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "working_directory": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "scope_file": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "registry_file": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "strict_config_file": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "registry_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "strict_config_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "service_home": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "path_value": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lang": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lc_all": {
+      "type": "string",
+      "minLength": 1
+    },
+    "temp_directory": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "setpriv_executable": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "setpriv_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "seccomp_filter_file": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/"
+    },
+    "seccomp_filter_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "runtime_distribution_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "launch_policy_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "manager_policy_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "launch_payload_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

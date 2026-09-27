@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convmem.error.v1",
+  "title": "convmem.error.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "error",
+    "correlation_id"
+  ],
+  "properties": {
+    "schema": {
+      "const": "convmem.error.v1"
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "invalid_request",
+            "identifier_query_not_supported",
+            "scope_denied",
+            "snapshot_stale",
+            "response_too_large",
+            "temporarily_unavailable",
+            "internal_failure"
+          ]
+        },
+        "message": {
+          "enum": [
+            "The request is invalid.",
+            "Ledger handles are not supported in search.",
+            "The requested evidence chain is unavailable in this scope.",
+            "The evidence snapshot is unavailable.",
+            "The evidence response exceeds the allowed size.",
+            "The evidence service is temporarily unavailable.",
+            "The evidence service failed."
+          ]
+        }
+      }
+    },
+    "correlation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    }
+  }
+}

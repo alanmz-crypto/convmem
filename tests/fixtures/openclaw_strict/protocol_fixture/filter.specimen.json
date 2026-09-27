@@ -1,0 +1,8 @@
+{
+  "artifact_kind": "protocol_fixture",
+  "payload": {
+    "role": "filter",
+    "schema": "convmem.inert-fixture.v1"
+  },
+  "role": "filter"
+}

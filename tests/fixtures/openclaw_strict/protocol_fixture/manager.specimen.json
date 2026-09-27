@@ -1,0 +1,19 @@
+{
+  "artifact_kind": "protocol_fixture",
+  "payload": {
+    "capability_evidence_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "controller_socket_policy_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "controller_uid": 0,
+    "kernel_release": "fixture",
+    "operator_uid": 1000,
+    "policy_payload_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runtime_distribution_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runtime_uid": 1001,
+    "schema": "convmem.activation-manager-policy.v1",
+    "supervisor_uid": 0,
+    "systemd_version": "fixture",
+    "unit_bytes_b64": "W1VuaXRdCg==",
+    "unit_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "role": "manager"
+}
