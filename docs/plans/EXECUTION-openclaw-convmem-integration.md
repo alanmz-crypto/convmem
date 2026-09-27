@@ -2180,8 +2180,9 @@ After Kiro PASS, a later Ryan provenance-execution grant must name at least:
 
 - `PROVENANCE_SCHEMA_VERSION`, the exact parent/overlay and rejected runtime source/
   tree identities;
-- `PROVENANCE_STAGING_ROOT`, `PROVENANCE_DURABLE_PACKET_ROOT` and
-  `PROVENANCE_DURABLE_REVIEW_ROOT` exactly as §18.25 freezes them;
+- `PROVENANCE_STAGING_ROOT`, `PROVENANCE_DURABLE_ROOT`,
+  `PROVENANCE_DURABLE_PACKET_ROOT` and `PROVENANCE_DURABLE_REVIEW_ROOT` exactly as
+  §18.25 freezes them;
 - the exact allowed HTTPS/VCS origins, retained-source read roots, methods, redirect
   policy and maximum acquisition scope;
 - whether Codex may perform `READ_RETAINED` under those exact roots, make `GET`/`HEAD`
