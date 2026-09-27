@@ -2165,8 +2165,8 @@ The only current sequence is:
    unowned/multiply owned runtime file, orphan/dangling component, omitted nested
    component, absent artifact/object/transformation, missing license/notice/source row,
    open unresolved item and review over different bytes.
-4. **Authority-boundary review.** Prove the future grant must name exact HTTPS origins
-   and operations, redirects remain recorded and bounded, TLS is not treated as
+4. **Authority-boundary review.** Prove the future grant must name exact HTTPS/VCS
+   origins, retained-source read roots and operations; redirects remain recorded and bounded, TLS is not treated as
    artifact identity, downloaded content is never executed/imported/installed, and a
    newly discovered origin becomes `unresolved` rather than ambient authority.
 5. **Negative-control review.** Map every §18.25.5 mutant to a pre-build rejection and
@@ -2182,10 +2182,11 @@ After Kiro PASS, a later Ryan provenance-execution grant must name at least:
   tree identities;
 - `PROVENANCE_STAGING_ROOT`, `PROVENANCE_DURABLE_PACKET_ROOT` and
   `PROVENANCE_DURABLE_REVIEW_ROOT` exactly as §18.25 freezes them;
-- the exact allowed HTTPS/VCS origins, methods, redirect policy and maximum acquisition
-  scope;
-- whether Codex may inspect retained caches, make `GET`/`HEAD` requests, fetch immutable
-  VCS objects, parse archives as data and copy verified content-addressed objects;
+- the exact allowed HTTPS/VCS origins, retained-source read roots, methods, redirect
+  policy and maximum acquisition scope;
+- whether Codex may perform `READ_RETAINED` under those exact roots, make `GET`/`HEAD`
+  requests, fetch immutable VCS objects, parse archives as data and copy verified
+  content-addressed objects;
 - runtime/source read boundaries, disposable extraction roots, maximum bytes and
   command/tool versions;
 - the packet checkpoint at which Codex pushes/stops, followed by the separate

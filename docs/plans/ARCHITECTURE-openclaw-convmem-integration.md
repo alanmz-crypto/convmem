@@ -6304,6 +6304,11 @@ immutable. The reviewer later creates `PROVENANCE_DURABLE_REVIEW_ROOT` by the sa
 closed partial-to-final process without touching the packet root. An existing target,
 cross-filesystem rename, symlink in any ancestor, writable final member or second
 packet/review at the same coordinate is `PAUSE`.
+`PROVENANCE_SCHEMA_VERSION` and its roots are single-assignment: any semantic field,
+type, enum, nullability, identity, closure, authority or negative-control change must
+advance the version and bind a new reviewed staging/durable coordinate. Editorial
+changes that do not alter this contract still require exact-tip review but cannot
+reinterpret an existing packet.
 
 #### 18.25.1 Canonical encoding and identifiers
 
@@ -6334,8 +6339,10 @@ string-to-number/boolean coercion is allowed.
 
 Required keys are always present, but reconstruction must represent unknowns without
 inventing authority. `null` is allowed only for `objects.source_url` on an
-`existing-runtime` object; `authority-observations.http_status` on a `vcs-https`
-`FETCH_OBJECT`; the nullable component identity fields `build`, `purl` and
+`existing-runtime` object; observation `request_url` and `final_url` on a
+`retained-local` `READ_RETAINED`; observation `source_path` on `https` or `vcs-https`;
+observation `http_status` on a `vcs-https` `FETCH_OBJECT` or `retained-local`
+`READ_RETAINED`; the nullable component identity fields `build`, `purl` and
 `origin_namespace`; `source-artifacts.revision` for a release/source-package archive;
 and `transformations.builder_image_digest` for a non-build copy/member/link operation.
 In addition, `component-lock.selected_license_expression` and `source_delivery_id`,
@@ -6360,9 +6367,11 @@ permits no unresolved empty case.
 
 Runtime-relative paths use `/`, are nonempty UTF-8 strings and preserve exact bytes
 under the runtime's proven UTF-8 path inventory. Absolute paths, backslashes, NUL,
-empty/dot/dot-dot segments and normalized aliases reject. URLs are retained exactly as
-observed, including redirect order, but must contain no userinfo, credential, secret or
-tracking token.
+empty/dot/dot-dot segments and normalized aliases reject. The sole exception is an
+observation `source_path`, which is an exact absolute path under one future grant-named
+read-only retained-source root and never enters a replacement artifact. URLs are
+retained exactly as observed, including redirect order, but must contain no userinfo,
+credential, secret or tracking token.
 
 Content objects use `obj_sha256:<hex>`. Binary/source artifacts use respectively
 `bin_sha256:<object-hex>` and `src_sha256:<object-hex>`. A component ID is
@@ -6392,7 +6401,7 @@ allowed in either leaf root.
 |---|---|---|
 | `provenance-lock-manifest.json` | one object; no self-hash | `schema`, `plan_base_overlay_sha`, `input_runtime_tree_sha256`, `runtime_regular_file_count`, `packet_files`, `object_count`, `object_bytes`, `object_tree_sha256`, `unresolved_count`, `created_at_utc`; each `packet_files` row has exactly `path,size,sha256,record_count,primary_key_sha256` |
 | `objects.jsonl` | JSONL; `object_id` | `schema`, `object_id`, `sha256`, `size`, `media_type`, `acquisition_kind`, `source_url`, `authority_observation_ids`, `observed_at_utc`, `relative_path`; `relative_path` is exactly `objects/sha256/<first-two-hex>/<64-hex>` |
-| `authority-observations.jsonl` | JSONL; `observation_id` | `schema`, `observation_id`, `ecosystem`, `authority_class`, `transport`, `operation`, `request_url`, `final_url`, `redirect_chain`, `http_status`, `response_object_id`, `proof_kind`, `proof_object_ids`, `observed_at_utc` |
+| `authority-observations.jsonl` | JSONL; `observation_id` | `schema`, `observation_id`, `ecosystem`, `authority_class`, `transport`, `operation`, `request_url`, `final_url`, `source_path`, `redirect_chain`, `http_status`, `response_object_id`, `proof_kind`, `proof_object_ids`, `observed_at_utc` |
 | `component-lock.jsonl` | JSONL; `component_id` | `schema`, `component_id`, identity tuple fields, `runtime_scope`, `selected_license_expression`, `binary_artifact_ids`, `source_artifact_ids`, `transformation_ids`, `license_notice_ids`, `source_delivery_id`, `evidence_object_ids` |
 | `file-ownership.jsonl` | JSONL; `path` | `schema`, `path`, `mode`, `size`, `sha256`, `component_id`, `origin_kind`, `origin_id`, `origin_member_path`; `origin_kind` is only `binary-artifact`, `source-artifact` or `generated` |
 | `nested-components.jsonl` | JSONL; tuple `container_component_id,nested_component_id,relationship` joined with NUL | `schema`, the primary-key fields, `evidence_object_id`, `evidence_path`; relationship is only `vendored`, `embedded`, `statically-linked`, `dynamically-linked` or `generated-from` |
@@ -6423,9 +6432,10 @@ The exact enumerations are:
 - `authority_class`: `original-distributor`, `original-project`, `signed-index`,
   `signed-checksum`, `immutable-vcs`, `retained-package-record`,
   `retained-build-record`;
-- observation `transport`: `https`, `vcs-https`; observation `operation`: `GET`,
-  `HEAD`, `FETCH_OBJECT`; `GET` and `HEAD` require `https`, while `FETCH_OBJECT`
-  requires `vcs-https`;
+- observation `transport`: `https`, `vcs-https`, `retained-local`; observation
+  `operation`: `GET`, `HEAD`, `FETCH_OBJECT`, `READ_RETAINED`; `GET` and `HEAD`
+  require `https`, `FETCH_OBJECT` requires `vcs-https`, and `READ_RETAINED` requires
+  `retained-local`;
 - `proof_kind`: `original-release-metadata`, `artifact-checksum`,
   `detached-signature`, `signed-index`, `immutable-vcs-object`,
   `retained-package-record`, `retained-build-record`;
@@ -6496,8 +6506,10 @@ are never authority.
 `response_object_id` always resolves to the retained canonical response envelope: for
 HTTP it contains status and selected identity-bearing headers plus any response body;
 for immutable VCS acquisition it contains the exact remote, requested object ID,
-resolved object ID and fetch transcript. A `HEAD` or VCS observation therefore still
-has a response object even when no artifact body exists. That envelope is evidence,
+resolved object ID and fetch transcript; for a retained-local read it contains the
+grant-named root, exact source path, pre/post identity and mutation check. A `HEAD`, VCS
+or retained-local observation therefore still has a response object even when no
+artifact body exists. That envelope is evidence,
 not a substitute for the separately hashed artifact/source object.
 
 Every request and redirect is recorded in `authority-observations.jsonl`; a redirect to
@@ -6510,8 +6522,9 @@ evidence only in the final atomic packet. Parsers may list or safely extract dat
 disposable directories but may not execute setup hooks, imports, binaries, package
 installers, shell fragments, build scripts or downloaded code.
 
-The later execution grant may allow only HTTP `GET`/`HEAD` and immutable VCS object
-fetches from its named origins. It may not authenticate, upload, comment, publish,
+The later execution grant may allow only HTTP `GET`/`HEAD`, immutable VCS object
+fetches from its named origins and `READ_RETAINED` under exact named read-only roots.
+It may not authenticate, upload, comment, publish,
 create a repository/ref/release/asset, accept a license on Ryan's behalf or incur a
 paid service. An origin discovered during execution but absent from the grant becomes
 one `unresolved` row and stops acquisition for that component.
@@ -6527,8 +6540,8 @@ Before a packet can be reviewed, independent mutants must prove rejection for:
 - omitted setuptools/ensurepip/SBOM/native/sysroot member, nested-cycle or a positive-
   control count treated as a completeness ceiling;
 - binary/source/signature/checksum/recipe/toolchain mismatch, current-host or ambient-
-  cache substitution, ungranted redirect/origin, mutable ref or executed downloaded
-  content;
+  cache substitution, retained-source root/path escape or mutation, ungranted
+  redirect/origin, mutable ref or executed downloaded content;
 - absent license/notice, unreviewed `OR` choice, missing reciprocal source/patch/build/
   instruction, self-authored legal conclusion or `PASS` with one unresolved row;
 - staging cited as evidence, partial/cross-filesystem publication, existing destination,
