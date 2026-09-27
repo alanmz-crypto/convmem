@@ -1,8 +1,7 @@
 # Milestone Execution Plan — ConvMem–OpenClaw
 
-**Current status (2026-09-27): REPLACEMENT DELIVERY-SET PLAN KIRO PASS;
-PROVENANCE-LOCK SCHEMAS V1/V2 P0 PAUSE; SCHEMA V3 P0 COMPLETE/PAUSE;
-RESULT-BINDING PLAN-ONLY.** The accepted bounded implementation and
+**Current status (2026-09-27): SCHEMA-V3 PACKET TECHNICAL PASS;
+PROVENANCE/LICENSING PAUSE; PRE-ACQUISITION AND CLEAN-REPLACEMENT PLAN-ONLY.** The accepted bounded implementation and
 final M11 evidence remain preserved at
 `PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb`.
 Kiro passed the PR-corrective overlay `a23d843`; required GitHub `pytest (3.12)`
@@ -17,15 +16,18 @@ run proved the raw `version` member is absent and correctly stopped before a res
 durable packet. Kiro passed schema v3 at `d03aa553`; Ryan then granted one collector
 freeze and one offline P0 run. That run published the exact immutable packet at the
 authorized read ceiling and honestly returned `PAUSE`/not build-eligible with 98,608
-unresolved rows. Sections 18.28/10.26 bind the result for review. They authorize no
-reviewer write, acquisition, build, runtime publication, evidence rerun, PR update or
-merge.
+unresolved rows. Kiro passed §§18.28/10.26; Claude independently wrote disposition
+`45442e93…`, and Codex verified technical `PASS`, provenance/licensing `PAUSE`, human
+counsel required and all 98,608 IDs retained. Sections 18.29/10.27 now freeze lossless
+pre-acquisition coverage and clean replacement for three host-path-bearing ELF objects.
+They authorize no request, retained-source read, acquisition, binary repair, build,
+runtime publication, evidence rerun, PR update or merge.
 
 **Status:** M0–M8 BOUNDED GATE B/C ACCEPTED AT `8010fb0`; COMPLETE BOUNDED M11
 EVIDENCE AND KIRO CONFORMANCE PASS PRESERVED AT `94f29eb`; PR `#342` MERGE
 BLOCKED. RUNTIME BYTE/MODE/EXTRACTION VALIDATION PASS; PUBLIC REDISTRIBUTION
 PROVENANCE/LICENSING FAIL/PAUSE. REPLACEMENT DELIVERY-SET PLAN KIRO PASS;
-PROVENANCE-LOCK SCHEMA V3 P0 RESULT AWAITS EXACT-TIP KIRO REVIEW.
+PRE-ACQUISITION AND CLEAN-REPLACEMENT PLAN AWAITS EXACT-TIP KIRO REVIEW.
 PRODUCT/TEST/CI/RUNTIME EDITS, TEST EXECUTION, PR UPDATE, MERGE AND REAL OPENCLAW
 WORK REMAIN PAUSED.
 
@@ -36,7 +38,9 @@ WORK REMAIN PAUSED.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=9ecb10c3bb1b17b6190951037338f46d1f8e076b
+SEMANTIC_PARENT_SHA=24795c24b9ce6615165e32259c6ddbb8d425fb6b
+PROVENANCE_ACQUISITION_PLAN_BASE_OVERLAY_SHA=3b3550c85f8c0482353dac55998d7b6f0fcbbbb0
+P0_RESULT_BINDING_SEMANTIC_PARENT_SHA=9ecb10c3bb1b17b6190951037338f46d1f8e076b
 PROVENANCE_SCHEMA_V3_RESULT_PLAN_BASE_OVERLAY_SHA=d03aa5538e0b82f1165a725394ef8df4bf805dbd
 PROVENANCE_SCHEMA_V3_PLAN_BASE_OVERLAY_SHA=2956f70127544111d5d32e2f51a3e044fe878fb4
 PROVENANCE_SCHEMA_V2_PLAN_BASE_OVERLAY_SHA=5f3978525c8685f59329ccae78d184d4a1822b4b
@@ -101,7 +105,39 @@ PROVENANCE_V3_RUNTIME_CONTENT_PASS_COUNT=5
 PROVENANCE_V3_RUNTIME_READ_BYTES=11643965233
 PROVENANCE_V3_NEGATIVE_CONTROL_COUNT=65
 PROVENANCE_V3_BUILD_ELIGIBLE=false
-PROVENANCE_V3_REVIEW_ROOT_PRESENT=false
+PROVENANCE_V3_REVIEW_ROOT_PRESENT=true
+PROVENANCE_V3_REVIEW_DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+PROVENANCE_V3_REVIEW_DISPOSITION_SIZE=8383806
+PROVENANCE_V3_REVIEWED_AT_UTC=2026-09-27T21:34:24Z
+PROVENANCE_V3_TECHNICAL_VERDICT=PASS
+PROVENANCE_V3_PROVENANCE_VERDICT=PAUSE
+PROVENANCE_V3_LICENSING_VERDICT=PAUSE
+PROVENANCE_V3_HUMAN_COUNSEL_REQUIRED=true
+PROVENANCE_V3_OPEN_UNRESOLVED_COUNT=98608
+PROVENANCE_V3_PUBLICATION_ELIGIBLE=false
+PROVENANCE_COMPONENT_PRIMARY_KEY_SHA256=b6b73ee112f898acf91c37ac0ad4e704ddd0fe131d3bcc5599c62d81bcf12146
+PROVENANCE_FILE_PRIMARY_KEY_SHA256=432a960cd59db58b5c0345ff5179f71fb3aa7bb7a8780b3b5d2a072f390fb7aa
+PROVENANCE_NESTED_EDGE_PRIMARY_KEY_SHA256=2c144bbd5a6d5e0a477a841847c5d9700de60c8a9488c546d09b13c138a3b580
+PROVENANCE_UNRESOLVED_PRIMARY_KEY_SHA256=2f207467c9e9308eda47a0dd762e361d687c7f6d614a46a810b8a43fc4554838
+PROVENANCE_COMPONENT_BATCH_COUNT=20
+PROVENANCE_COMPONENT_BATCH_SIZE=64
+PROVENANCE_FINAL_COMPONENT_BATCH_SIZE=5
+PROVENANCE_UNRESOLVED_PAGE_COUNT=49
+PROVENANCE_UNRESOLVED_PAGE_SIZE=2048
+PROVENANCE_FINAL_UNRESOLVED_PAGE_SIZE=304
+PROVENANCE_OWNERSHIP_DISPUTE_FILE_COUNT=19
+PROVENANCE_ACQUISITION_STATUS=PLAN_ONLY
+HOST_PATH_REMEDIATION_STATUS=PLAN_ONLY
+PROVENANCE_ACQUISITION_EXECUTION_AUTHORIZED=false
+HOST_PATH_TCL_RUNTIME_PATH=lib/libtcl8.6.so
+HOST_PATH_TCL_OBJECT_ID=obj_sha256:a69a8d60eb3240f152a22f42f99e3bbd15ba60dc9d232615709406511d057d9b
+HOST_PATH_TCL_OCCURRENCE_COUNT=8
+HOST_PATH_TK_RUNTIME_PATH=lib/libtk8.6.so
+HOST_PATH_TK_OBJECT_ID=obj_sha256:3aef1cd676469b0e6d0402d3db3d74b9a64d25b3988adf069f8eae112a3dde0c
+HOST_PATH_TK_OCCURRENCE_COUNT=1
+HOST_PATH_TINFO_RUNTIME_PATH=lib/libtinfow.so.6
+HOST_PATH_TINFO_OBJECT_ID=obj_sha256:60ecdf843974955b99a8b0e63d2167915ca046c88e01a7c0245a1fa3a380c8d8
+HOST_PATH_TINFO_OCCURRENCE_COUNT=1
 PROVENANCE_V1_FIRST_COLLECTOR_SHA256=e84cf1e633541b9a7343bbaf78457573cf041e7f59f0cc71d6c7be8d491de59e
 PROVENANCE_V1_FIRST_INCORRECT_PROJECTION_SHA256=22da33da243b6fa7a7e75abe1e290fae22f2bf1d7ae87bb78ea4fd981b2e4bc4
 PROVENANCE_V1_RETRY_COLLECTOR_SHA256=c9ef70f2a728cac680a1227b5bafc5533a3211f244e1abbf2f89906749eae028
@@ -270,7 +306,11 @@ The runner's single `--plan-sha` is always `SEMANTIC_PARENT_SHA`. The overlay
 SHA is the exact final branch tip Kiro reviews and Ryan later names as
 `REVIEWED_OVERLAY_SHA`; it is not substituted into the parent's runner
 contract. The final overlay descends from `SEMANTIC_PARENT_SHA`; this provenance-
-schema-v3 planning branch starts at `PROVENANCE_SCHEMA_V3_PLAN_BASE_OVERLAY_SHA`.
+acquisition/clean-replacement planning branch starts at
+`PROVENANCE_ACQUISITION_PLAN_BASE_OVERLAY_SHA`. The preceding schema-v3 result-binding
+branch started at `PROVENANCE_SCHEMA_V3_RESULT_PLAN_BASE_OVERLAY_SHA`; its semantic
+parent is retained as `P0_RESULT_BINDING_SEMANTIC_PARENT_SHA`. The preceding schema-v3
+design branch started at `PROVENANCE_SCHEMA_V3_PLAN_BASE_OVERLAY_SHA`.
 The preceding schema-v2 branch started at
 `PROVENANCE_SCHEMA_V2_PLAN_BASE_OVERLAY_SHA`. The preceding schema-v1 branch started at
 `PROVENANCE_SCHEMA_V1_PLAN_BASE_OVERLAY_SHA`.
@@ -291,8 +331,9 @@ historical `AUTHORITY_PACKET_PLAN_BASE_OVERLAY_SHA`, `PYLINT_PLAN_BASE_OVERLAY_S
 `PYTEST_PLAN_BASE_OVERLAY_SHA` and `PYTEST_IDENTITY_PLAN_BASE_OVERLAY_SHA`
 and `M8_AUTHORITY_PLAN_BASE_OVERLAY_SHA` and `BUNDLE_SCHEMA_PLAN_BASE_OVERLAY_SHA`
 remain evidence of already-applied ranges and are never replayed. The current
-provenance-schema-v3 range begins after `PROVENANCE_SCHEMA_V3_PLAN_BASE_OVERLAY_SHA`
-and is not an evidence or implementation range. The earlier replacement-plan and
+pre-acquisition range begins after `PROVENANCE_ACQUISITION_PLAN_BASE_OVERLAY_SHA`
+and is not an evidence, acquisition or implementation range. The result-binding,
+schema-v3, replacement-plan and
 runtime-delivery ranges remain reviewed history and are never replayed. The earlier §18.22 corrective may be applied to a
 grant-named branch preserving `PRESERVED_PR342_HEAD_SHA` only after its separately
 required runtime and Ryan gates pass.
@@ -565,19 +606,32 @@ Review and authority order is mandatory:
     Ryan then separately authorized the frozen collector and one offline P0 execution.
     Codex completed it once at the exact cumulative read ceiling, published immutable
     packet tree `PROVENANCE_V3_PACKET_TREE_SHA256`, and independently verified every
-    object and staging-to-durable byte/mode mapping. The packet is `PAUSE`, not build-
-    eligible, with 98,608 open rows and no review root. Architecture §18.28 and
-    Execution §10.26 bind only that result and the next independent-review hold.
+    object and staging-to-durable byte/mode mapping. At that checkpoint the packet was
+    `PAUSE`, not build-eligible, with 98,608 open rows and no review root. Architecture
+    §18.28 and Execution §10.26 bind only that result and the next independent-review
+    hold.
+52. Kiro passed the result-binding overlay at
+    `PROVENANCE_ACQUISITION_PLAN_BASE_OVERLAY_SHA`. Ryan separately authorized Claude
+    as independent reviewer; Claude atomically wrote the sole disposition, and Codex
+    independently verified `PROVENANCE_V3_REVIEW_DISPOSITION_SHA256`, all twelve
+    packet-file hashes, all 98,608 open IDs and the unchanged packet tree. Technical
+    verdict is `PASS`; provenance/licensing remain `PAUSE`; human counsel is required.
+53. Ryan authorized only this pre-acquisition and host-path remediation design. Astra
+    ruled that one contract may cover both while granting neither. Architecture §18.29
+    and Execution §10.27 freeze lossless component/file/edge/unresolved coverage,
+    candidate-versus-authority separation, exact later-operation requirements and
+    clean replacement for three packet-owned path-bearing ELF objects. No request,
+    retained-source read, acquisition, repair, build or implementation is authorized.
 
 ## 1. State ledger
 
 | State | Items |
 |---|---|
-| **Specified** | Semantic parent Architecture §§18.22–18.28 and Execution §§10.20–10.26; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result; independent-review hold; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
+| **Specified** | Semantic parent Architecture §§18.22–18.29 and Execution §§10.20–10.27; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
-| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, schema v1 at `5f397852`, schema v2 at `2956f701` and schema v3 at `d03aa553`. The v1/v2 P0 stops remain rejected. The single v3 P0 completed with five cumulative passes and 11,643,965,233 bytes, one exact projection, 65 negative controls and zero network/external/retained-source reads; its durable packet verifies but retains 98,608 unresolved rows. |
+| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, schema v1 at `5f397852`, schema v2 at `2956f701`, schema v3 at `d03aa553` and result binding at `3b3550c`. The v1/v2 P0 stops remain rejected. The single v3 P0 completed with five cumulative passes and 11,643,965,233 bytes, one exact projection, 65 negative controls and zero network/external/retained-source reads; its durable packet verifies but retains 98,608 unresolved rows. Claude's disposition and Codex verification confirm technical PASS/provenance-and-licensing PAUSE and the three captured host-path findings without reading the runtime. |
 | **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
-| **Unresolved** | Kiro exact-tip review of this P0 result-binding parent/overlay; a separate Ryan grant to the independent packet reviewer; plan-only origin-by-origin provenance acquisition and its later review/grant; zero-unresolved lock closure; replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Unresolved** | Kiro exact-tip review of this pre-acquisition/clean-replacement parent and overlay; complete cited origin work items; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -652,11 +706,17 @@ M0 baseline/runtime input
   → separate Ryan collector-freeze and single offline P0 grants
   → immutable schema-v3 packet PAUSE at exact read ceiling; 98,608 open rows
   → plan-only §18.28/§10.26 exact result/manifest/packet binding
-  → Kiro exact-tip result-binding review
-  → separate Ryan independent-reviewer grant; exact review disposition only
-  → plan-only exact-origin acquisition packet and separate review/grant
+  → Kiro exact-tip result-binding PASS at 3b3550c
+  → separate Ryan independent-reviewer grant; exact disposition 45442e93…
+  → technical PASS; provenance/licensing PAUSE; human counsel required
+  → plan-only §18.29/§10.27 lossless pre-acquisition and clean-replacement contract
+  → Kiro exact-tip pre-acquisition design review
+  → complete cited component/ownership work-item planning; unknown origins unresolved
+  → separate exact metadata/acquisition operation packet, review and Ryan grant
+  → bounded Codex acquisition at fresh coordinates
   → zero-unresolved lock closure plus Kiro and independent provenance/licensing review
-  → separate Ryan build grant; deterministic three-role replacement build
+  → separate reviewed clean-build recipe and Ryan build grant; deterministic
+    three-role replacement build across two disposable prefixes
   → independent qualification and plan-only final packet
   → Kiro final-packet review plus independent actual-byte licensing review
   → separate Ryan external-publication and CI-admission decisions
@@ -677,12 +737,12 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 M0–M8 and the preceding M11 evidence are accepted historical scope; they are neither
 reopened nor promoted into a green GitHub required check. M9, M10, watch coverage and
 complete-system review remain decision gates, not implementation work. The only
-possible next activity is exact-tip Kiro review of this provenance-lock schema-v3 P0
-result-binding plan.
+possible next activity is exact-tip Kiro review of this pre-acquisition and clean-
+replacement plan.
 Because the replacement freezes `REPLACEMENT_PROVENANCE_CLOSURE=UNRESOLVED`,
 `REPLACEMENT_LICENSING_DISPOSITION=PAUSE` and
 `REPLACEMENT_PUBLICATION_ELIGIBLE=false`, Kiro PASS cannot
-authorize a reviewer write, provenance acquisition, lock repair, build or publication.
+authorize origin resolution, provenance acquisition, binary repair, build or publication.
 Each requires its own reviewed packet and Ryan grant. A separate later Ryan grant may let Cursor perform only
 M11's held file sets in order, pushing and stopping at every checkpoint. Codex
 independently proves every diff and owns all fresh evidence. Ryan alone decides merge.
@@ -1191,8 +1251,11 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    the canonical thirteen-role provenance packet at the exact separate immutable
    packet/review roots; schema v1 and v2 remain stopped evidence while schema v3
    permits only the exact raw-object-bound absent-member revision projection, binds
-   the resulting immutable PAUSE packet for independent review, and prevents an open
-   unresolved row from becoming build eligibility; and
+   the resulting immutable PAUSE packet and independent disposition, and prevents an
+   open unresolved row from becoming build eligibility; the successor partitions all
+   baseline obligations losslessly, refuses invented origin authority, and permits
+   host-path remediation only through clean replacement from independently locked
+   inputs; and
    final R2b authority-content identity converges over the
    unchanged 120-member set.
 3. **Affected surfaces:** Five reviewed control documents; three closed
@@ -1205,9 +1268,10 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    `tests/test_switchboard_ci_contract.py`, new
    `ci/switchboard-runtime.json`; and the sole R2b inventory JSON. Replacement
    delivery-set and provenance-schema-v1/v2/v3 planning changes only the four Switchboard
-   plans. The schema-v3 staging and durable packet roots exist only because of the
-   separate completed P0 grant; the exact review root remains absent, and this plan
-   neither creates nor changes them. Future build/packet paths and three
+   plans. The schema-v3 staging, packet and review roots exist only because of the
+   separate completed P0 and review grants; the exact packet and disposition are
+   immutable, and this plan neither creates nor changes them. Future acquisition,
+   build/packet paths and three
    asset names must be frozen by reviewed successors before creation. No other path
    may change. Evidence uses grant-named disposable/durable roots only.
 4. **Preconditions/dependencies:** PR base/head and tree equal §0; required pytest
@@ -1218,9 +1282,12 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    its one P0 stopped on the exact absent member. Kiro passed schema v3 at
    `PROVENANCE_SCHEMA_V3_RESULT_PLAN_BASE_OVERLAY_SHA`; Ryan separately granted its
    collector freeze and one P0 execution, which completed with the exact §0 PAUSE
-   packet. Kiro PASSes this result-binding parent and overlay; Ryan separately grants
-   only the independent reviewer write, then later reviewed schema-bound acquisition
-   and Kiro/licensing review of a zero-unresolved component lock
+   packet. Kiro passed the result-binding overlay at
+   `PROVENANCE_ACQUISITION_PLAN_BASE_OVERLAY_SHA`; Ryan separately granted Claude's
+   independent disposition, which Codex verified at the exact §0 hash and verdicts.
+   Kiro PASSes this pre-acquisition parent and overlay; complete cited work-item
+   planning, a later exact operation packet and Ryan acquisition grant, and Kiro/
+   licensing review of a zero-unresolved component lock remain mandatory
    before any build; Ryan separately grants a deterministic build and
    final packet; Kiro and the independent licensing reviewer PASS the actual final
    bytes; Ryan separately grants the exact three-asset publication and held
@@ -1234,7 +1301,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    issues a commit-specific status before the next begins. Provenance execution,
    packet/review-root creation, runtime provenance locking, replacement construction
    and publication are separately held work and never implied implementation tasks.
-   The duplicate hashing helper cleanup is excluded.
+   This overlay creates no component work-item file or operation packet and performs no
+   host-path repair; it freezes only the coverage/authority/build contract. The
+   duplicate hashing helper cleanup is excluded.
 6. **Tests/evidence:** Static schema proof for all thirteen file roles, canonical
    encoding/types/enums/nullability, nonrecursive IDs/hashes, separate immutable
    packet/review roots, cross-file joins, source-authority limits, every §18.25.5
@@ -1243,8 +1312,12 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    packet hashes; 651 independently rehashed objects; staging-to-durable byte/mode
    equality; ownership-ledger reconstruction of the runtime tree; exact five-pass/
    11,643,965,233-byte ledger; one projection; 65 negative controls; nine unresolved
-   groups totaling 98,608; and absent review root. Then, only under future grants,
-   independent disposition and rejected-archive preservation; exact
+   groups totaling 98,608; exact disposition SHA/size/mode/schema, twelve reviewed
+   packet hashes, complete sorted open-ID equality and unchanged packet tree; the four
+   manifest primary-key hashes; exact twenty-batch/49-page arithmetic; the 19-file
+   ownership-dispute queue; and the three host-path objects, occurrence offsets and
+   loader findings. Then, only under future grants, rejected-archive preservation;
+   complete cited origin work items and exact granted operations; exact
    replacement component lock/file ownership, artifacts/sources/recipes,
    licenses/notices and corresponding-source delivery; deterministic three-role
    construction; manifest/archive/runtime/
@@ -1267,7 +1340,11 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    validity may preserve an honest unresolved `PAUSE`, while build eligibility requires
    zero unresolved rows and exact technical/provenance/licensing PASS. The schema-v3
    packet tree is single-assignment at `PROVENANCE_V3_PACKET_TREE_SHA256`; its exhausted
-   read budget cannot be reset and no reviewer may modify it. The replacement set's three roles
+   read budget cannot be reset and no reviewer may modify it. The disposition remains
+   technical `PASS`, provenance/licensing `PAUSE`, counsel-required and immutable with
+   all 98,608 IDs. The component/file/edge/unresolved baseline sets remain exact and
+   every unsupported origin remains unresolved. The three host-path objects are
+   rejected-build evidence, never repair inputs. The replacement set's three roles
    are jointly single-assignment at later reviewed exact coordinates and are never
    repaired, partially published, substituted or resolved through `latest`. The
    historical T0–T5 product/schema allowlists are not widened. Retained failures are
@@ -1278,13 +1355,17 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    hash changes; copied containment implementation; reuse/upload/repair of the rejected
    archive; reuse, deletion or repair of schema-v1/v2 staging; a generic missing/null
    equivalence or second SBOM version inference; schema-v3 collector rerun, read-ledger
-   reset, packet mutation/replacement or ungranted review-root creation;
+   reset, packet/disposition mutation or replacement; omitted/duplicated/reassigned
+   component, file, nested-edge or unresolved coverage; ownership guessing; promotion
+   of a name/PURL/metadata/SBOM/search/registry/cache/host hint to authority;
    mutable/latest/host-fallback replacement; copied rolling-host input;
    incomplete component ownership; schema/enum widening; manifest self-hash; reviewer
    mutation of the packet leaf; ambient/ungranted origin, redirect, cache or executable
    download; treating structural validity as build eligibility; missing compliance role; publication while
    licensing is `PAUSE`; treating Kiro PASS as legal or
-   external-action clearance; Pylint edit; M8 runner edit; sixth control doc; product allowlist
+   external-action clearance; copied or post-build-rewritten host-path binaries;
+   `patchelf`, `chrpath`, prefix replacement, blanket absolute-path/debug exception;
+   Pylint edit; M8 runner edit; sixth control doc; product allowlist
    widening or an eleventh M11 corrective path; R2b live operation; hash-helper
    refactor; unlisted path/byte; merge,
    deployment, real OpenClaw, live data or later-gate action.
@@ -1295,19 +1376,23 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    `PROVENANCE_SCHEMA_V3_PLAN_BASE_OVERLAY_SHA`, while its one P0 execution stopped
    before a result or durable packet. Schema v3 design passed at
    `PROVENANCE_SCHEMA_V3_RESULT_PLAN_BASE_OVERLAY_SHA`; its one P0 execution completed
-   and published the exact immutable PAUSE packet. Result-binding-ready means exact-tip
-   Kiro PASS on this semantic parent/overlay. Independent-review-complete,
+   and published the exact immutable PAUSE packet. Result-binding-ready was reached by
+   Kiro PASS at `PROVENANCE_ACQUISITION_PLAN_BASE_OVERLAY_SHA`; independent review is
+   complete at `PROVENANCE_V3_REVIEW_DISPOSITION_SHA256` but returned provenance and
+   licensing `PAUSE`. Pre-acquisition-design-ready means exact-tip Kiro PASS on this
+   semantic parent/overlay. Complete-origin-planning, operation-packet-ready,
    acquisition-ready, provenance-closed, lock-ready,
    build-ready, packet-ready, publication-ready and CI-admission-ready are separate
-   later states defined by §§18.24–18.28/§§10.22–10.26; none is reached here.
+   later states defined by §§18.24–18.29/§§10.22–10.27; none is reached here.
    Publication-ready additionally requires actual-byte technical/provenance/licensing
    PASS and Ryan's exact external-action grant. Correction-ready additionally requires
    Ryan's exact implementation grant and the separately published/verified set. Merge-ready requires
    every held diff/evidence item in field 6, all required GitHub checks green,
    focused safety PASS, Kiro integrated-tip PASS and Ryan's final merge decision.
 10. **Ryan confirmation:** The one schema-v3 P0 execution is complete and not reusable.
-    Confirmation remains mandatory separately for the independent reviewer write and
-    for later schema-bound provenance acquisition, including exact roots, origins,
+    The independent reviewer write is complete and not reusable. Confirmation remains
+    mandatory separately for complete cited origin planning and each later schema-
+    bound metadata/acquisition operation, including exact roots, origins,
     operations, redirects, byte ceilings, parser/tool versions and checkpoints;
     component-lock acceptance,
     replacement build, final packet, runtime tag/release/three-asset creation, CI
@@ -1318,7 +1403,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
     authority/scope negative controls, every held diff, runtime inventory and
     rejected-archive preservation, schema role/count/type/enum/nullability, exact P0
     result/manifest/packet identities, staging-to-durable equality, object hashes,
-    unresolved-group arithmetic, exhausted read ledger, absent review root,
+    unresolved-group arithmetic, exhausted read ledger, disposition identity/schema/
+    packet bindings and complete open-ID equality, manifest primary-key set identities,
+    batch/page/ownership-dispute coverage, host-path objects/offsets/loader findings,
     nonrecursive hashes, component-lock/file-ownership closure, binary/
     source/build/license/notice/source-delivery proof, three-role manifest/archive/
     extraction identities, hosted bwrap
@@ -1327,8 +1414,10 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
     manifests/identity convergence, Pylint/M8/MCP output, durable mappings and all
     GitHub contexts. Cursor pushes and stops after every hold.
 12. **Verdict:** Schema-v3 design and P0 execution are preserved results. Separate
-    verdicts remain mandatory for this result-binding plan; provenance packet
-    structural validity and independent disposition; component-lock completeness;
+    result-binding and independent disposition verdicts are preserved results.
+    Separate verdicts remain mandatory for this pre-acquisition/clean-replacement
+    plan; complete cited origin planning; every exact acquisition operation;
+    successor component-lock completeness;
     replacement construction; runtime byte qualification; public redistribution/
     provenance/licensing; final packet; external publication and CI admission; doctor safety;
     publisher/recovery safety; ordinary/qualified CI completeness; R2b convergence; M8/MCP/
@@ -1449,9 +1538,13 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 - [x] Separately granted schema-v3 collector freeze and one offline P0 execution
       completed at the exact 11,643,965,233-byte cumulative ceiling. Immutable packet
       tree `491ae60b…` verifies and honestly retains 98,608 open rows.
-- [ ] Kiro exact-tip PASS on §18.28/§10.26 and this result-binding overlay.
-- [ ] Separately granted independent review disposition bound to the exact manifest and
+- [x] Kiro exact-tip PASS on §18.28/§10.26 result-binding overlay `3b3550c`.
+- [x] Separately granted independent review disposition bound to the exact manifest and
       packet hashes; no packet repair and no build-eligibility claim.
+- [ ] Kiro exact-tip PASS on §18.29/§10.27 pre-acquisition coverage and clean-
+      replacement semantic parent/overlay.
+- [ ] Complete cited component and ownership work-item planning with exact disjoint/
+      union proof; unknown origins remain unresolved and no request is authorized.
 - [ ] Separately reviewed and granted exact-origin provenance acquisition; successor
       packet has zero unresolved rows; Kiro lock review and independent provenance/
       licensing PASS.
@@ -1505,7 +1598,8 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 | Mutable, unlicensed, incomplete or substituted qualified runtime | Architecture §§18.22.4, 18.23–18.24 / external gate | `STATIC`, delivery/provenance control | Reuse the rejected archive; omit one delivery-set role, nested component, file owner, source, recipe, license or notice; use a mutable release/`latest`, wrong manifest/archive/tree hash, symlink/special/path escape, rolling-host/cache repair/fallback, incompatible kernel/bwrap, or treat test/Kiro PASS as publication clearance | Fail before build, publication or qualified test import; unresolved provenance or `LICENSING_DISPOSITION=PAUSE` remains blocking; never partially publish, download a substitute, repair bytes or fall back to host | Exact component lock and file-ownership equality; binary/source/recipe/license/notice/source-delivery ledgers; three-role manifest/archive/extraction/tree hashes; immutable coordinate proof; pinned bwrap; closed negative controls; Kiro plus independent actual-byte provenance/licensing PASS |
 | Provenance-lock packet laundering | Architecture §18.25 / external gate | `STATIC`, schema and future evidence control | Self-hash the manifest; place reviewer output in the sealed packet; add/omit a 14th/13th role; use noncanonical JSON, duplicate/unknown keys, dangling/multiple owners, incomplete nested closure, open unresolved row with PASS, ambient cache/search/current-host inference, ungranted redirect/origin, execute downloaded bytes, mutate/repair a final leaf or relabel a structurally valid PAUSE packet as build-eligible | Static review or future negative control rejects before build. Packet and review leaves remain separate/atomic/immutable; every reference and runtime-file ownership closes; build eligibility requires canonical empty unresolved ledger and three exact PASS verdicts | Exact schema/version/base/runtime/root bindings; 13-role inventory; independent ID/hash recomputation; packet/object/file equality joins; authority observation transcript; §18.25.5 mutants; disposition bound to manifest and every packet file hash |
 | SBOM absent-version projection laundering | Architecture §18.27 / external gate | `STATIC`, schema-v3 identity control | Reuse/delete v1 or v2 staging; treat null and absence as equivalent; change the raw object, component path/hash/key set/name/identity; project another absent component; use a tag, branch, uppercase/non-40-hex revision, qualifier, subpath, percent alias, normalization, lookup or second route; omit the raw binding | `PAUSE` before any durable packet. Only the exact hash-bound `base64` object at `components/0` with the exact absent `version` member may project; explicit null and every other missing version reject; all other §18.25 rules remain unchanged | Exact v1/v2 stop identities and cumulative read counters, absent fresh v3 roots, raw SBOM/object/component/key-set proofs, exact `raw_version_state="absent"` projection, complete §18.27 positive/negative matrix and proof no v1/v2 object entered v3 |
-| Schema-v3 P0 result laundering | Architecture §18.28 / external gate | `STATIC`, immutable-packet review control | Relabel structural completion as provenance closure; omit an unresolved row; reset the exhausted read ledger; rerun the collector; mutate/replace the packet; create the review disposition inside the packet; let the collector review itself; infer origin/license/source from installed metadata; acquire from an unreviewed origin | `PAUSE`; only the exact result/manifest/packet identities are reviewable. All 98,608 open rows remain blocking, the review root stays separate and absent until a new grant, and no acquisition/build/publication follows from Kiro PASS | Exact collector/result/manifest/packet hashes, staging/durable byte-mode equality, 651 object hashes, nine unresolved-group counts, five-pass/11,643,965,233-byte ledger, absent review root and later disposition bound to every reviewed hash |
+| Schema-v3 P0 result laundering | Architecture §18.28 / external gate | `STATIC`, immutable-packet review control | Relabel structural completion as provenance closure; omit an unresolved row; reset the exhausted read ledger; rerun the collector; mutate/replace the packet; create the review disposition inside the packet; let the collector review itself; infer origin/license/source from installed metadata; acquire from an unreviewed origin | `PAUSE`; only the exact result/manifest/packet identities are reviewable. All 98,608 open rows remain blocking; the review root stayed separate and absent until its distinct grant, and no acquisition/build/publication follows from either Kiro PASS or the later disposition | Exact collector/result/manifest/packet hashes, staging/durable byte-mode equality, 651 object hashes, nine unresolved-group counts, five-pass/11,643,965,233-byte ledger, historical absent review root and later disposition bound to every reviewed hash |
+| Pre-acquisition or host-path laundering | Architecture §18.29 / external gate | `STATIC`, planning and clean-build control | Omit/duplicate/reassign a component, file, edge or unresolved ID; guess an owner; treat package/PURL/metadata/SBOM/search/registry/cache/host hints as authority; multiply ceilings by batch; mutate the disposition; copy or rewrite a rejected ELF; use `patchelf`/`chrpath`, prefix replacement, host fallback, traversing `$ORIGIN`, inherited loader/Tcl/terminfo state, synthetic external libraries/data or a blanket absolute-path/debug exception | `PAUSE`; coverage must be disjoint and equal to the four manifest sets, unsupported origins stay unresolved, every operation is separately reviewed/granted, and the three path-bearing components are rebuilt only from independently locked inputs. Runtime PASS cannot override provenance/privacy/compliance failure | Exact disposition and manifest primary-key hashes; twenty-batch/49-page/19-file queue proof; packet citations; three object/path/offset/RPATH bindings; exact operation packet; two distinct-prefix build comparison; complete delivery-set host/build-prefix and loader-semantic scans |
 | R2b content-attestation drift | Architecture §18.22.5 / M11 | `STATIC`, cross-arc merge control | 121st/missing member; changed seed/closure/route; third changed governed member; self-derived identity only; live gate/capture attempt | `PAUSE`; only inventory JSON may rotate after final edits; exact 120-member manifest and independent resolver/inventory/artifact identity must converge; no live effect | Before/after manifests, exact two-member change proof, independent identity recomputation, resolver/digest/artifact equality and existing R2b negative tests |
 
 ## 6. Live-supervision protocol
@@ -1513,12 +1607,14 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 **Current controlling state:** `PAUSE`. PR `#342` is merge-blocked. No plan
 application, corrective edit, runtime publication, evidence execution or PR update
 may begin from this document. The first archive is rejected for publication; exact-tip
-Kiro review of the schema-v3 P0 result-binding plan is next. The replacement-plan and
-schema-v1/v2/v3 reviews already PASSed at `3402e62a`, `5f397852`, `2956f701` and
-`d03aa553`; the v1/v2 stops and v3 immutable PAUSE packet authorize nothing further.
-No PASS can authorize a collector rerun, runtime/evidence read, reviewer write,
-component-lock derivation, downloads, build, publication or an external action. Those
-stages require separate reviewed packets and Ryan grants. Only after all applicable
+Kiro review of the pre-acquisition and clean-replacement plan is next. The replacement,
+schema-v1/v2/v3 and result-binding reviews already PASSed at `3402e62a`, `5f397852`,
+`2956f701`, `d03aa553` and `3b3550c`; the v1/v2 stops, v3 immutable PAUSE packet and
+independent technical-PASS/provenance-and-licensing-PAUSE disposition authorize
+nothing further. No PASS can authorize a collector rerun, runtime/evidence read,
+origin resolution, acquisition, binary repair, component-lock derivation, download,
+build, publication or external action. Those stages require separate reviewed packets
+and Ryan grants. Only after all applicable
 prerequisites and a later implementation grant may Cursor push, report and stop after:
 (1) five-document plan application, (2) authority/
 scope rebind, (3) doctor correction, (4) publisher/recovery correction, (5) CI
@@ -1557,11 +1653,13 @@ may issue only:
 
 The historical legacy-count PAUSE is closed by the evidence at
 `PRESERVED_PR342_HEAD_SHA`; it is not the current stop. Ryan's present direction
-authorizes only this four-document schema-v3 P0 result-binding plan. Exact-tip Kiro
-PASS is required before Ryan may consider the independent-reviewer write. Separate
-reviewed plans and Ryan grants are required for provenance acquisition, zero-unresolved
-lock closure, build, final packet, external publication, CI admission and corrective
-implementation. All preserved source branches and PR `#342` stay
+authorizes only this four-document pre-acquisition and clean-replacement plan. Exact-
+tip Kiro PASS is required before complete cited origin planning may be proposed. A
+separate exact operation packet, review and Ryan grant are required before any
+metadata resolution, provenance acquisition or retained-source read. Separate reviewed
+plans and Ryan grants remain required for zero-unresolved lock closure, clean build,
+final packet, external publication, CI admission and corrective implementation. All
+preserved source branches and PR `#342` stay
 unchanged until then. No
 earlier `CONTINUE`, M8 grant, M11 grant or evidence verdict can be reused.
 
@@ -1608,16 +1706,15 @@ Ryan's explicit confirmation naming exact revisions is required before:
   doctor, publisher/recovery, CI and R2b inventory file sets, checkpoint order,
   runtime/evidence roots and the complete doctor/crash/CI/R2b/Pylint/M8/MCP
   evidence sequence;
-- creating a schema-v3 provenance root, freezing/executing its collector or making any
-  runtime/evidence read or provenance acquisition request; the fresh P0 grant must name the exact schema-v3
-  parent/overlay, collector identity, input runtime/tree, staging/
-  durable/packet/review roots, HTTPS/VCS origins, retained-source read roots, methods
-  (including any `READ_RETAINED`), redirect policy, byte ceilings, parser/tool
-  versions, checkpoints, cumulative v1/v2 read ledger and prohibited v1/v2 reuse/execution/
-  external writes;
-- deriving the replacement component lock, ownership map, artifact/source/build
+- preparing or accepting complete cited origin work items beyond this contract, or
+  creating an operation packet; the packet must preserve the exact baseline sets and
+  name every HTTPS/VCS origin or retained-local root, method, redirect, request/retry/
+  time/content/expanded ceiling, parser/tool identity, fresh coordinate, checkpoint,
+  credential prohibition and failure disposition;
+- making any metadata-resolution, provenance-acquisition, VCS or retained-source
+  request, or deriving the replacement component lock, ownership map, artifact/source/build
   ledger, license/notice ledger or corresponding-source delivery matrix, or accepting
-  a provenance packet/review disposition;
+  a successor provenance packet;
 - building the replacement runtime, compliance/corresponding-source archive or
   `delivery-set.json`, including every exact input, output root and toolchain;
 - authoring or accepting the final packet that pins the three-role set;
@@ -1670,19 +1767,21 @@ Ryan's explicit confirmation naming exact revisions is required before:
   merge and pilot/production:** PR `#342` has a red required pytest context and
   two confirmed safety defects. The replacement delivery-set plan has Kiro PASS; its
   schema-v1 and schema-v2 P0 attempts are stopped, while schema-v3 P0 produced an
-  immutable but unresolved PAUSE packet. Its result-binding plan awaits exact-tip Kiro
-  review, followed by separately reviewed/granted disposition, provenance acquisition,
-  zero-unresolved lock, build, packet, publication and
+  immutable but unresolved PAUSE packet. Result binding and independent disposition
+  are complete; technical PASS remains provenance/licensing PAUSE. This
+  pre-acquisition/clean-replacement plan awaits exact-tip Kiro review, followed by
+  complete cited origin planning, separately reviewed/granted operations, acquisition,
+  zero-unresolved lock, clean build, packet, publication and
   CI-admission stages. The combined system is not operationally complete until
   Gate D/W, Gate D-V/E, live evidence, maintenance/watch and promotion pass.
 
 ## 9. Unresolved decisions that must be resolved before Grok resumes
 
 No earlier T0–T5 or completed M11 architectural decision is reopened. The schema-v3
-collector and P0 are complete and cannot run again. Kiro must PASS this exact result-
-binding parent/overlay before Ryan may separately authorize the independent reviewer
-to create only the exact disposition. Any origin access then requires a new plan-only
-packet and grant naming exact origins, methods, redirects, tools and ceilings. Kiro
+collector, P0 and disposition are complete and cannot run again. Kiro must PASS this
+exact pre-acquisition/clean-replacement parent and overlay. Complete cited origin work
+items and any access require a new exact operation packet, review and Ryan grant naming
+origins, methods, redirects, tools, ceilings, roots and checkpoints. Kiro
 and the independent licensing reviewer must PASS a later zero-unresolved lock before a
 separately granted build; and a new exact final
 packet plus actual-byte reviews must PASS before publication is eligible. Before
@@ -1778,7 +1877,8 @@ run. The parent and later Ryan grant freeze all of them.
 TIP. BOUNDED M11 EVIDENCE: PRESERVED AT `PRESERVED_PR342_HEAD_SHA`. PR MERGE
 READINESS: FAIL / BLOCKED. REPLACEMENT-DELIVERY PLAN: KIRO PASS.
 PROVENANCE-LOCK SCHEMAS V1/V2: P0 PAUSE. SCHEMA V3: IMMUTABLE P0 PAUSE PACKET;
-RESULT BINDING READY FOR KIRO EXACT-TIP REVIEW;
+RESULT BINDING AND INDEPENDENT DISPOSITION COMPLETE; PRE-ACQUISITION/CLEAN-
+REPLACEMENT PLAN READY FOR KIRO EXACT-TIP REVIEW;
 CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
 independent publication provenance/licensing review. The replacement delivery-set
 plan passed at `3402e62a`; schema v1 passed at `5f397852`, then its offline P0 stopped
@@ -1786,13 +1886,14 @@ on a component initially classified as null-version. Schema v2 passed at `2956f7
 then its one P0 proved the raw `version` member is absent and stopped without a result
 or durable packet. Schema v3 passed at `d03aa553`, then its one P0 published immutable
 packet tree `491ae60b…` and honestly retained 98,608 open rows. This overlay freezes
-the exact result and independent-review hold. No collector rerun, runtime/evidence
-read, reviewer write, acquisition, lock closure, build, final packet, publication or
+the exact disposition, lossless coverage and host-path clean-replacement boundary. No
+collector rerun, runtime/evidence read, origin resolution, acquisition, binary repair,
+lock closure, build, final packet, publication or
 CI-admission stage is authorized. Required GitHub pytest is red, doctor and
 publisher safety corrections are unimplemented, GitHub runtime distribution is
 unpublished and currently ineligible because provenance/licensing remains `PAUSE`,
 and R2b authority-content identity is not converged for the final corrective tree.
-After Kiro result-binding PASS, every later §§18.24–18.28/§§10.22–10.26 stage and the M11
+After Kiro pre-acquisition-plan PASS, every later §§18.24–18.29/§§10.22–10.27 stage and the M11
 implementation still require separate exact Ryan grants and reviews. This overlay authorizes no
 product/test/CI/inventory/runtime edit, evidence execution, PR update or merge.
 
@@ -1804,7 +1905,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `9ecb10c3bb1b17b6190951037338f46d1f8e076b` semantic parent is the
+- The exact `24795c24b9ce6615165e32259c6ddbb8d425fb6b` semantic parent is the
   current source of truth; this overlay only sequences, supervises and gates it.
 - M0–M8 and the complete historical M11 evidence passed; the preserved source
   is `cd60cf19`; exact-current-main reconstruction is preserved at `30bc134d`.
@@ -1827,10 +1928,13 @@ successful fixture build.
   Schema v2 passed Kiro at `2956f701`; its one run proved the raw member is absent and
   stopped before result or durable packet creation. Schema v3 passed Kiro at
   `d03aa553`; its one granted P0 produced immutable packet tree `491ae60b…` at the
-  exact read ceiling and honestly retained 98,608 open rows. Sections 18.28/10.26
-  bind that `PAUSE` result for exact-tip Kiro review. Independent disposition,
-  provenance acquisition, zero-unresolved lock closure, build, final packet,
-  publication and CI admission remain separately gated; merge is a later Ryan
-  decision.
+  exact read ceiling and honestly retained 98,608 open rows. Kiro passed the
+  §§18.28/10.26 result binding at `3b3550c`; Claude then wrote disposition
+  `45442e93…`, which Codex verified as technical `PASS`, provenance/licensing
+  `PAUSE`, with all open IDs retained. Sections 18.29/10.27 now freeze lossless
+  pre-acquisition coverage and clean replacement for the three host-path-bearing ELF
+  objects; exact-tip Kiro review is next. Acquisition, zero-unresolved lock closure,
+  build, final packet, publication and CI admission remain separately gated; merge is
+  a later Ryan decision.
 - Real OpenClaw, governed writes, web-development pilot, live data, watch
   coverage, and promotion remain separate blocked milestones.
