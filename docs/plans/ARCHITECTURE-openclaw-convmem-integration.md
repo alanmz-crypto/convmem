@@ -6089,6 +6089,186 @@ Because licensing is `PAUSE`, even Kiro PASS does not make the asset externally
 publishable; licensing closure and a separate exact Ryan external-action grant remain
 mandatory.
 
+### 18.24 Replacement qualified-runtime delivery set after licensing PAUSE
+
+Section 18.23 remains the immutable record of the first delivery archive. Kiro passed
+that packet's byte/mode/extraction design, and two independent provenance/licensing
+reviews confirmed its own fail-closed disposition. The archive at SHA-256
+`6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e` is therefore
+**rejected for publication**, not repaired or retroactively cleared. It remains local
+diagnostic evidence and may never be uploaded under the proposed §18.23 coordinate.
+
+The reviews established the following concrete gaps without alleging that ConvMem or
+the aggregate is governed by any one component's license:
+
+- the 110 top-level Python distribution records are not a complete component
+  inventory: twelve setuptools-vendored distributions, the embedded
+  `lib/python3.13/ensurepip/_bundled/pip-25.3-py3-none-any.whl`, native dependencies
+  and SBOM-described Rust/C/C++ components require independent ownership rows;
+- the positive control found packaged license material for 106 of 110 top-level
+  distribution directories, while Apache-2.0 FlatBuffers and Tokenizers shipped no
+  `LICENSE`, `NOTICE` or declared `License-File` in their installed artifacts;
+- the copied sysroot includes Readline, glibc, GCC runtime libraries and other system
+  components while containing no component-bound license, notice or corresponding-
+  source material;
+- the frozen Node 26.9.0 executable is not bound to an authenticated binary artifact,
+  patches or build recipe, and its SHA-256 differs from the official Linux x64 binary;
+  CPython's conda-forge origin is substantially recoverable but its installed
+  relocation must be proved; and the locally built hnswlib extension has no retained
+  source-to-binary recipe.
+
+These findings freeze the successor starting state:
+
+```text
+REJECTED_RUNTIME_ARCHIVE_SHA256=6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e
+REJECTED_RUNTIME_PUBLICATION_ELIGIBLE=false
+REPLACEMENT_DELIVERY_SET_STATUS=PLAN_ONLY
+REPLACEMENT_PROVENANCE_CLOSURE=UNRESOLVED
+REPLACEMENT_LICENSING_DISPOSITION=PAUSE
+REPLACEMENT_PUBLICATION_ELIGIBLE=false
+```
+
+#### 18.24.1 One delivery set, three immutable assets
+
+The replacement is one logical delivery set with exactly three roles:
+
+1. a deterministic qualified-runtime archive containing only the rebuilt runtime,
+   its exact inventory, an embedded copy of the component lock and the exact
+   license/notice corpus needed by recipients;
+2. a deterministic compliance archive containing every source artifact, patch,
+   recipe, build/install script and offer/instruction material required by the
+   reviewed license dispositions, plus an identical component lock and notice
+   corpus; and
+3. a canonical `delivery-set.json` manifest that binds the two archives by exact names,
+   sizes, SHA-256 values, extracted-tree hashes and schema version. The
+   later reviewed packet binds the manifest's own size and SHA-256; the manifest never
+   attempts a recursive self-hash.
+
+The final names, tag, counts and hashes do not exist yet and may not be invented by an
+implementer. A later plan-only packet must pin them after an authorized deterministic
+build. The tag and all three assets are single-assignment. Qualified admission requires
+all three roles at the same immutable release coordinate; a missing, redirected,
+substituted, re-uploaded, differently hashed or differently versioned role rejects the
+entire set before extraction or test import. A standalone runtime archive is never an
+admissible substitute.
+
+This split is the least-worst boundary: executable/runtime bytes remain narrow, while
+source and compliance material can be inspected independently. The duplicated component
+lock and notice corpus must be byte-identical across the two archives, eliminating
+ambiguity rather than creating two authorities. `delivery-set.json` is the only
+set-level index; package metadata and SBOMs are evidence inputs, not competing
+manifests.
+
+#### 18.24.2 Exhaustive component and transformation lock
+
+Before any replacement build grant, a read-only provenance reconstruction must produce
+one canonical component lock and one complete file-ownership map. Every runtime regular
+file maps to exactly one component artifact or to one explicitly named generated output
+whose inputs and deterministic transformation are recorded. Overlapping ownership,
+unowned bytes, ambiguous host origin, a missing nested archive/component or a fallback
+row is `PAUSE`.
+
+Each component row freezes at least: stable component ID and package URL where
+available; exact name/version/build; selected SPDX license expression; original binary
+artifact name, authenticated origin, size and SHA-256; corresponding source artifact or
+commit, origin and SHA-256; patch hashes; build recipe, toolchain and flags; installed
+file-set hash; license/notice member hashes; required source-delivery disposition; and
+the runtime/compliance delivery paths satisfying that disposition. An `OR` license
+expression requires an explicit reviewed choice and supporting bytes. METADATA, RECORD,
+an installed filename, current-host package ownership or an SBOM label alone never
+proves artifact provenance.
+
+Recursive closure includes top-level packages, setuptools vendor trees, ensurepip
+archives, wheel/conda/native contents, every embedded SBOM component, copied shared
+libraries/data, Node, CPython, locally compiled extensions and generated launchers.
+Observed counts such as 110 top-level distributions, twelve setuptools-vendored
+distributions and Tokenizers' 127 SBOM components are audit controls, not completeness
+ceilings. The final proof is set equality between every shipped regular file and the
+canonical ownership map, plus a separate exact inventory of directories, links and
+special files.
+
+#### 18.24.3 Rebuild and minimization boundary
+
+The replacement runtime is constructed into a new empty root from the locked artifacts;
+it is not a copy, repair or overlay of the rejected tree. No live rolling-host file,
+ambient package cache, mutable index response, `latest`, dependency resolver choice or
+network-fetched unpinned byte may enter the build. Locally compiled output requires a
+fresh build from its pinned source, patches, container/toolchain digest, environment and
+command record; otherwise that component remains unresolved.
+
+Before the lock is frozen, the designer may propose removing components that the strict
+test workload and transitive loader/import closure do not require. Removal is not an
+in-place cleanup and is never inferred from one successful run. It changes the runtime
+tree and requires a new complete qualification. The final runtime must still provide
+the parent-required CPython, Unicode, Node, MCP, IDNA, baseline/test dependency and
+loader/library behavior without host fallback. A component stays if necessity or
+license-safe replacement is uncertain.
+
+The replacement uses a new versioned schema, archive/tree identities and tree-derived
+release tag. It may reuse the §18.23 closed extraction and containment mechanisms only
+after proving they apply to the new member layout. No §18.23 count, hash, compatibility
+PASS or mutation negative transfers to the replacement.
+
+#### 18.24.4 License, notice and corresponding-source closure
+
+The compliance archive must contain the exact reviewed license and notice corpus and
+all corresponding-source material required for the shipped bytes. Reciprocal-license
+rows must state whether the distributed file is a library, executable, linked work,
+aggregate or covered source, identify the precise obligation relied upon, and bind the
+source, patches, build/install scripts and recipient instructions that fulfill it.
+Permissive rows must retain their exact copyright/license/NOTICE material. MPL rows
+must bind covered files to the delivered source. No implementer, package manager or CI
+job may make a legal classification by inference.
+
+An independent provenance/licensing reviewer, separate from the builder, verifies every
+row and returns `PASS` or `PAUSE`. The reviewer may require human counsel for aggregate,
+linking, exception, offer-duration or jurisdiction questions; absence of that
+disposition is `PAUSE`. Kiro verifies design/scope and evidence bindings but does not
+substitute for licensing disposition. Exact runtime qualification does not substitute
+for either review.
+
+#### 18.24.5 Gated actualization sequence
+
+The successor sequence is closed:
+
+1. Kiro reviews this plan-only correction. No build follows from PASS.
+2. Under a separate Ryan provenance grant, Codex may derive the read-only component
+   lock, ownership map, proposed source-delivery matrix and build recipe. No runtime or
+   external coordinate is created.
+3. Kiro and the independent provenance/licensing reviewer inspect that exact lock. Any
+   unresolved row remains `PAUSE`.
+4. Under a separate Ryan build grant naming the reviewed lock and disposable roots,
+   the authorized builder creates the replacement set once, without mutating the old
+   archive or source runtime, then stops.
+5. Codex independently verifies construction, inventories, recursive ownership,
+   license/notice/source closure, extraction, containment, host independence and the
+   complete qualified test suite. A new plan-only packet then pins every final
+   coordinate, size and hash.
+6. Kiro reviews the exact final packet; an independent licensing reviewer rechecks the
+   actual bytes. Only simultaneous technical, provenance and licensing PASS can make a
+   later publication grant eligible.
+7. Ryan alone may authorize the exact single-assignment external tag and three assets.
+   Publication still does not authorize CI admission, PR modification or merge.
+8. A separately authorized CI run downloads all three roles, verifies the set manifest
+   and every frozen hash, then performs hosted-runner containment preflight before any
+   qualified test import.
+
+Negative controls must cover at least: missing/extra/duplicate component or file;
+unowned and multiply owned file; nested archive/SBOM omission; changed selected license;
+missing notice/source/patch/recipe; changed source or binary artifact; host/cache/index
+fallback; nonreproducible local build; manifest disagreement; missing/substituted asset;
+changed member/mode/hash; path escape/link/special file; mutable coordinate; and a
+runtime that passes tests while compliance closure fails. Every control rejects before
+publication or qualified import.
+
+**Authority boundary.** This section authorizes planning-document edits only. It does
+not authorize provenance acquisition, downloads, runtime construction, archive or
+compliance-byte creation, tag/release/asset creation, product/test/CI/configuration
+changes, evidence execution, PR update, merge, deployment, real OpenClaw, live data,
+watch activation, promotion or Gates D/W/D-V/E/F. The rejected archive remains
+immutable and unpublished. Each later step requires its own exact reviewed packet and
+Ryan grant.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -6115,6 +6295,8 @@ mandatory.
 | Fenced publication | A lineage state that deliberately makes authority unavailable while a publication operation is unresolved. |
 | Authority-content identity | The content-derived R2b identifier computed from the canonical governed-member manifest; it attests bytes and does not authorize capture. |
 | Qualified-runtime delivery packet | The exact archive, inventory, extraction, compatibility, provenance and replacement contract for making the frozen strict-test runtime available to CI; it is not runtime qualification of real OpenClaw. |
+| Replacement delivery set | The inseparable runtime archive, compliance/corresponding-source archive and canonical manifest built from a complete reviewed component lock after the first archive failed publication provenance/licensing review. |
+| Component lock | The canonical file-to-component, binary/source artifact, recipe, license/notice and source-delivery mapping; installed metadata or an SBOM alone is only an input. |
 | Licensing disposition | The fail-closed public-redistribution result. `PAUSE` means byte integrity may pass while publication remains forbidden. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
@@ -6127,5 +6309,9 @@ reconstruction and inner-role correction established the fresh three-tip differe
 run 1 paused because two passing current-main safety nodes raised the unchanged selected legacy
 suite from 116/115 to 118/117. Section 18.21 preserves that PAUSE and freezes only the exact
 one-path/two-integer successor correction, with selectors, deselections and test logic unchanged.
-Exact-tip Kiro PASS and a new Ryan grant remain mandatory.
+The first qualified-runtime archive later passed local byte validation and Kiro packet review but
+failed independent publication provenance/licensing review. Section 18.24 keeps that archive
+immutable and rejected, and defines a new three-role replacement delivery set whose component
+lock, build, final packet and publication require separate reviews and Ryan grants. Exact-tip Kiro
+PASS on this plan is next and authorizes none of those stages.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.

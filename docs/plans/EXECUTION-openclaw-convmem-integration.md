@@ -2065,6 +2065,81 @@ No tag, release or asset exists by authority of this section. PR `#342`, source 
 tests, CI, runtime bytes, configuration, R2b inventory and durable M11 evidence remain
 unchanged.
 
+### 10.22 Replacement qualified-runtime delivery-set obligations
+
+Architecture §18.24 controls. The §18.23 archive is immutable rejected diagnostic
+evidence: it passed byte/mode/extraction validation and failed publication provenance/
+licensing closure. No later evidence may relabel, amend, upload or use it for qualified
+CI. The replacement is a new delivery set, not a repair.
+
+The required sequence is:
+
+1. **Plan review.** Kiro reviews the exact semantic parent and milestone overlay for
+   §18.24/§10.22. PASS approves design/scope only. Current state remains
+   `REPLACEMENT_PUBLICATION_ELIGIBLE=false` and
+   `REPLACEMENT_LICENSING_DISPOSITION=PAUSE`.
+2. **Read-only provenance reconstruction.** Only after an exact Ryan grant, Codex
+   inventories every rejected-runtime file and recursively maps it to an original
+   binary/source artifact, deterministic transformation, license/notice and source-
+   delivery row. The work may inspect retained caches and authoritative upstream
+   metadata but may not download, install, build, edit the runtime or create a release
+   asset unless that exact operation is separately granted. Unknown origin is recorded
+   as unresolved, never filled from the current host.
+3. **Completeness proof.** Prove exact set equality between the runtime regular-file
+   inventory and the ownership map; separately account for every directory, link and
+   special file. Recursively expand vendor directories, ensurepip archives, native
+   libraries and SBOM contents. Verify binary/source hashes, patches, recipes,
+   toolchain/container digests, license choices, notices and source-delivery paths.
+   Zero unowned, multiply owned, fallback or unresolved rows are eligible for build.
+4. **Lock review.** Kiro reviews scope and structure; the independent provenance/
+   licensing reviewer verifies the exact component/source/obligation matrix. Human
+   disposition is required for unresolved linking, aggregate, exception, offer or
+   jurisdiction questions. Both reviews remain distinct from runtime qualification.
+5. **Replacement build.** Only after a new Ryan build grant may the named builder use
+   the exact reviewed lock to build once into a fresh disposable root. Build inputs are
+   hash-pinned artifacts; locally compiled output uses the frozen source, patches,
+   toolchain, environment and commands. No rejected-runtime copy, rolling-host byte,
+   mutable resolver/index result, ambient cache or host fallback is allowed.
+6. **Three-role construction.** Deterministically create the runtime archive,
+   compliance/corresponding-source archive and canonical `delivery-set.json`. Embed
+   byte-identical component-lock and notice corpora as Architecture §18.24.1 requires;
+   the later plan packet, not the manifest itself, pins the manifest hash. Stop after
+   construction; no tag, release or upload exists.
+7. **Independent qualification.** Codex verifies source/input hashes, build records,
+   recursive ownership, all license/notice/source rows, archive headers, closed
+   extraction, set-manifest agreement, runtime/library resolution, containment and the
+   complete strict qualified suite. Run every §18.24 negative control. No §18.23 hash,
+   count, PASS or compatibility result transfers.
+8. **Final packet.** A new plan-only packet pins the final tag, all three asset names,
+   sizes and SHA-256 values, runtime and compliance extracted-tree hashes, manifest
+   schema/hash, toolchain, hosted-runner result and replacement policy. Kiro then
+   reviews the exact packet and the independent licensing reviewer checks the actual
+   final bytes. Any changed byte after either review invalidates both.
+9. **External decision.** Ryan may consider one exact publication grant only if every
+   technical/provenance/licensing result is PASS and the tag/assets are absent. The
+   operation is single-assignment. Never overwrite, delete/recreate, retag, follow
+   redirects to substituted bytes or publish only part of the set.
+10. **CI admission remains separate.** A later grant may let CI retrieve all three
+    roles, verify the manifest and exact hashes, install only the separately pinned
+    bubblewrap package and pass hosted containment before import. Publication does not
+    authorize §10.20 implementation, PR modification, acceptance evidence or merge.
+
+Required durable outputs for the later provenance phase are: canonical component lock;
+complete file-ownership map; recursive nested-component inventory; binary-artifact and
+source-artifact ledgers; transformation/build-recipe ledger; license-selection and
+notice ledger; corresponding-source delivery matrix; unresolved-row report; and
+independent reviewer disposition. Required outputs for the later build phase add exact
+input/download receipts, clean-root proof, build command/environment record, output
+inventories, the three assets, all negative-control results and final qualification.
+Their schemas and exact locations must be frozen by a reviewed successor plan and named
+by the grant before creation; this plan does not invent them during execution.
+
+**Current result:** the first archive remains unpublished and rejected for publication;
+the replacement is `PLAN_ONLY`; provenance closure is `UNRESOLVED`; licensing is
+`PAUSE`; publication is `false`. This section authorizes no provenance run, download,
+build, runtime/content change, external coordinate, implementation, evidence execution,
+PR update, merge, deployment, real OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2076,6 +2151,8 @@ final M8 run 1 paused because two passing current-main safety nodes raised the u
 legacy suite from 116/115 to 118/117. Section 10.19 freezes only the exact one-path/two-integer
 successor correction and requires the complete fresh differential/Pylint/M8/MCP sequence. No
 implementation, test, PR, merge, real OpenClaw action, live data or promotion is authorized by
-this plan edit. Section 10.21 additionally freezes the locally verified qualified-runtime
-archive, but public redistribution remains `PAUSE` until exact component provenance and licensing
-obligations are independently closed; no tag, release or asset is authorized.
+this plan edit. Section 10.21 additionally freezes the locally verified but publication-rejected
+first archive. Section 10.22 defines a new three-role replacement delivery set whose provenance
+lock, construction, final packet and publication each require separate review and Ryan grants.
+The replacement remains `PLAN_ONLY`, provenance closure `UNRESOLVED`, licensing `PAUSE` and
+publication `false`; no tag, release or asset is authorized.
