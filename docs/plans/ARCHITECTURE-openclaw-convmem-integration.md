@@ -1,7 +1,7 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Current status (2026-09-27): REPLACEMENT DELIVERY-SET PLAN KIRO PASS;
-PROVENANCE-LOCK SCHEMA REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The bounded implementation and durable
+**Current status (2026-09-27): PROVENANCE PACKET TECHNICAL PASS;
+PROVENANCE/LICENSING PAUSE; PRE-ACQUISITION DESIGN REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The bounded implementation and durable
 M11 evidence remain preserved at
 `94f29ebabee31112cccb223fd1445cb782aac6eb`, but pull request `#342` cannot merge.
 Its required GitHub `pytest (3.12)` context failed with 83 failures, and a focused
@@ -10,10 +10,11 @@ terminate all of `convmem doctor` during import, and a fenced publication can be
 misclassified as an exact retry without independently proved input identity. Section
 18.22 is the held PR correction; §18.23 freezes its rejected qualified-runtime delivery
 packet; and §18.24's replacement delivery-set plan received exact-tip Kiro PASS at
-`3402e62a8479011814bfa76ce9e1c3269dc34350`. Section 18.25 now freezes the
-canonical provenance-lock schema, roots and future acquisition boundary. The first
-archive passed local byte/mode/extraction validation, but public redistribution remains
-fail-closed on incomplete component provenance and licensing evidence. Everything
+`3402e62a8479011814bfa76ce9e1c3269dc34350`. Sections 18.25–18.28 freeze the
+canonical schema-v3 packet and independent disposition; §18.29 defines the lossless
+pre-acquisition and clean-replacement contract. The first archive passed local byte/
+mode/extraction validation, but public redistribution remains fail-closed on incomplete
+component provenance, licensing evidence and embedded host paths. Everything
 below through §18.21 is retained as historical design and evidence provenance. This
 edit authorizes planning only.
 
@@ -6916,6 +6917,194 @@ deployment, real OpenClaw, live data, watch activation, promotion or Gates
 D/W/D-V/E/F. Kiro PASS is not reviewer-write, acquisition, build, publication or
 implementation authority.
 
+### 18.29 Independent disposition and pre-acquisition replacement contract
+
+Section 18.28 records the historical state before independent review: at that
+checkpoint the review root was absent and reviewer creation was unauthorized. Kiro
+passed that exact result binding, Ryan separately authorized Claude as the independent
+provenance/licensing reviewer, and Codex independently verified the sole disposition
+write. The immutable packet itself did not change. This successor freezes the review
+result and defines only the closed planning contract required before any provenance
+request or clean replacement build may be proposed.
+
+#### 18.29.1 Frozen review result and continuing PAUSE
+
+The following identities and verdicts are one indivisible current-state binding:
+
+```text
+P0_RESULT_BINDING_SEMANTIC_PARENT_SHA=9ecb10c3bb1b17b6190951037338f46d1f8e076b
+P0_RESULT_BINDING_REVIEWED_OVERLAY_SHA=3b3550c85f8c0482353dac55998d7b6f0fcbbbb0
+PROVENANCE_V3_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+PROVENANCE_V3_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+PROVENANCE_V3_REVIEW_DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+PROVENANCE_V3_REVIEW_DISPOSITION_SIZE=8383806
+PROVENANCE_V3_REVIEWED_AT_UTC=2026-09-27T21:34:24Z
+PROVENANCE_V3_TECHNICAL_VERDICT=PASS
+PROVENANCE_V3_PROVENANCE_VERDICT=PAUSE
+PROVENANCE_V3_LICENSING_VERDICT=PAUSE
+PROVENANCE_V3_HUMAN_COUNSEL_REQUIRED=true
+PROVENANCE_V3_OPEN_UNRESOLVED_COUNT=98608
+PROVENANCE_V3_BUILD_ELIGIBLE=false
+PROVENANCE_V3_PUBLICATION_ELIGIBLE=false
+```
+
+The review directory is mode `0555` and contains only canonical mode-`0444`
+`review-disposition.json`. Its 98,608 sorted unique `open_unresolved_ids` equal the
+packet's complete ordered unresolved-ID set, and its twelve reviewed file bindings
+equal the manifest plus every manifest-listed packet file. Technical `PASS` means the
+packet is structurally exact; it is not runtime-relocation, provenance, licensing,
+build, publication or CI-admission PASS. Provenance and licensing remain `PAUSE`, and
+legal selections or reciprocal-source obligations remain human-counsel decisions.
+The original packet, disposition and exhausted read ledger are immutable inputs; none
+of their rows closes in place.
+
+#### 18.29.2 Deterministic lossless planning coverage
+
+The packet contains no authority observations, binary-artifact rows, source-artifact
+rows, transformation rows, license-notice rows or source-delivery rows. This section
+therefore cannot name 1,221 authoritative origins honestly. It defines the coverage
+algorithm and information required to prepare later exact operation packets while
+leaving unsupported authority fields unresolved.
+
+The baseline sets are fixed by the packet manifest:
+
+| Set | Count | Manifest primary-key SHA-256 |
+|---|---:|---|
+| Components | 1,221 | `b6b73ee112f898acf91c37ac0ad4e704ddd0fe131d3bcc5599c62d81bcf12146` |
+| Runtime file paths | 30,421 | `432a960cd59db58b5c0345ff5179f71fb3aa7bb7a8780b3b5d2a072f390fb7aa` |
+| Nested-component edges | 1,384 | `2c144bbd5a6d5e0a477a841847c5d9700de60c8a9488c546d09b13c138a3b580` |
+| Open unresolved IDs | 98,608 | `2f207467c9e9308eda47a0dd762e361d687c7f6d614a46a810b8a43fc4554838` |
+
+Planning sorts the exact component IDs by raw UTF-8 bytes and partitions consecutive
+groups of 64: exactly twenty component batches, with five components in the final
+batch. It independently sorts the exact unresolved IDs by raw UTF-8 bytes and creates
+consecutive 2,048-ID verification pages: exactly 49 pages, with 304 IDs in the final
+page. Pages prove coverage; they do not create authority or define operation budgets.
+The observed ecosystem totals—1,031 Rust, 124 Python, 58 system, seven
+`other-reviewed`, and one Node component—are cross-checks only, never authority
+classes or completeness substitutes.
+
+Each component unresolved row belongs to its exact component. Each file unresolved
+row may be assigned through only the frozen non-null `file-ownership.jsonl`
+`component_id`. The 18 multiply-owned files and one unowned file form one explicit
+19-file ownership-dispute queue containing all four unresolved fields for each file;
+planning never selects an owner to simplify batching. All 1,384 nested-component
+edges remain dependencies. Reusing one upstream acquisition across components neither
+merges component identities nor removes nested licensing or source-delivery duties.
+
+Every future planning artifact must prove pairwise-disjoint primary assignments and
+exact union equality to all four baseline sets and independently recompute the
+manifest counts and primary-key hashes. An omission, duplicate, reassignment, new
+subject, changed parent identity, altered nested edge or ownership guess is `PAUSE`.
+Batching cannot multiply an operation packet's aggregate request, retry, content,
+decoded or expanded-byte ceiling.
+
+#### 18.29.3 Candidate records are not acquisition authority
+
+Each component or ownership work item must state at least:
+
+- `baseline_component_id`, exact covered unresolved IDs or an independently enumerable
+  set plus count/hash, affected runtime paths and nested dependencies;
+- exact evidence object IDs and member, JSON-pointer or byte-range citations;
+- candidate origin, candidate state, remaining authority gap and required proof; and
+- proposed operation, checkpoint and failure disposition.
+
+The planning-only candidate states are `UNRESOLVED`, `CANDIDATE_ONLY` and
+`READY_FOR_REVIEW`; they do not extend schema-v3 enums and never close a packet row.
+A package name, PURL, familiar registry convention, installed metadata URL, SBOM URL,
+search result, guessed path, ambient cache, current-host ownership or `latest` may
+support a cited candidate but cannot establish artifact authority. Ryan may nominate
+an exact candidate for later review, but nomination authorizes neither access nor a
+provenance conclusion. If immutable source or binary identity is absent from currently
+authorized evidence, the item stays unresolved. A metadata-resolution request is
+itself acquisition; a newly discovered origin or redirect stops the operation and
+requires a successor plan.
+
+A later operation may reach `READY_FOR_REVIEW` only when it names an exact HTTPS URL,
+immutable VCS remote and object, or exact authorized retained-local root and paths,
+plus all of:
+
+- allowed method and ordered permitted redirects;
+- request, retry and wall-clock ceilings;
+- compressed, decoded and expanded-byte ceilings plus archive member/depth limits;
+- pinned parser/tool identity and data-only behavior with no acquired-byte execution;
+- checksum, signature, VCS-object or equivalent identity verification;
+- expected packet roles and fresh staging/durable coordinates;
+- credential prohibition, responsible actor, checkpoints and fail-closed disposition.
+
+No such origin or operation is granted by this correction. A complete cited planning
+artifact, Kiro exact-tip review and a new Ryan operation-specific grant are required
+before one network request, VCS fetch or retained-source read.
+
+#### 18.29.4 Host-path evidence and clean-replacement rule
+
+The independent reviewer found three packet-owned ELF objects containing rejected-host
+paths. Codex reproduced the evidence without reading the original runtime:
+
+| Runtime path | Packet object / component | Exact evidence |
+|---|---|---|
+| `lib/libtcl8.6.so` | `obj_sha256:a69a8d60eb3240f152a22f42f99e3bbd15ba60dc9d232615709406511d057d9b` / `cmp_sha256:01ade610ab72de8c23aa63afe15e12d6cdbd00aeb76d5c326e61557af9e43367` | eight `/home/lauer/miniforge3` occurrences at byte offsets 61547, 1564224, 1564488, 1564752, 1565024, 1565288, 1835457 and 1835936; ELF `DT_RPATH=/home/lauer/miniforge3/lib:/home/conda/feedstock_root/build_artifacts/tk_1769459871528/_build_env/lib` |
+| `lib/libtk8.6.so` | `obj_sha256:3aef1cd676469b0e6d0402d3db3d74b9a64d25b3988adf069f8eae112a3dde0c` / `cmp_sha256:0aadfc99d8d94d11d49bbfb88d3752461e320a35f7f369bdf656baff3b795b7a` | one occurrence at byte offset 39637 and the same absolute ELF `DT_RPATH` |
+| `lib/libtinfow.so.6` | `obj_sha256:60ecdf843974955b99a8b0e63d2167915ca046c88e01a7c0245a1fa3a380c8d8` / `cmp_sha256:bc9d05dedaedcfa6a8db1a50a1138dc51f269e74c45242e68b765d20ff489768` | `/home/lauer/miniforge3/share/terminfo` at byte offset 225640; ELF `DT_RPATH=$ORIGIN/.` |
+
+These bytes disclose a local account path and prove ambient-host relocation. The Tcl
+and Tk loader paths are also loader-search hazards. They do not prove that a host
+escape occurred, and the packet's technical schema PASS must never be relabeled as
+runtime-relocation PASS.
+
+The only admissible remediation is a fresh replacement from independently locked
+source, artifacts, configuration, patches, recipes and toolchains. The reviewed
+recipe must prevent host/build-prefix embedding before construction. Copying the
+rejected binaries, rolling-host substitution, post-build ELF or string rewriting,
+`patchelf`, `chrpath`, binary prefix replacement, or any edit to the rejected runtime,
+packet or disposition is forbidden. The existing `conda-prefix-relocation` enum is
+not blanket repair authority. Removing Tcl, Tk or another component is a separate
+reviewed minimization decision requiring complete loader/import/data closure; the
+path finding alone grants no removal. Parent-governed CPython, Unicode, Node and
+qualified-workload behavior remains unchanged.
+
+Future qualification must scan the complete delivery set for host/build prefixes in
+ELF loader paths, debug and printable strings, generated configuration, Tcl package or
+data paths and terminfo lookup. It must inspect loader semantics and run with the
+rejected host paths unavailable. Two builds from distinct disposable prefixes must
+show that host-dependent paths do not influence distributable bytes. It must also
+reject out-of-tree or traversing `$ORIGIN`, inherited loader/Tcl/terminfo fallback,
+synthetic external libraries or data that make tests pass, omitted transitive
+dependencies, and runtime PASS with failed provenance, privacy or compliance closure.
+Any allowed absolute path requires one exact reviewed purpose and containment; there
+is no blanket `/usr`, environment or “debug-only” exception.
+
+#### 18.29.5 Closed sequence and authority boundary
+
+The only admissible successor sequence is:
+
+1. Kiro reviews this exact pre-acquisition planning contract.
+2. A separately reviewed planning artifact supplies complete cited candidate coverage
+   and preserves every unsupported item as unresolved.
+3. A separate exact metadata/acquisition operation packet and Ryan grant name the
+   precise origins, operations, ceilings, parsers, fresh roots and stop conditions.
+4. Codex performs only that bounded collection; an independent reviewer and human
+   counsel evaluate the resulting immutable bytes.
+5. Only a fresh successor lock with zero unresolved rows and independent technical,
+   provenance and licensing PASS may become build-eligible.
+6. A separately reviewed recipe/build packet and Ryan grant may then authorize one
+   clean construction, full host-path negative controls and qualification.
+7. The actual three-role delivery set receives independent technical and licensing
+   review before any separately authorized publication, CI admission or corrective
+   implementation.
+
+New evidence roles, closure rules or semantic schema fields require a new schema
+version and fresh coordinates. Counsel questions cannot be discharged by model-
+generated legal rationale. The rejected runtime, schema-v1/v2 staging, schema-v3
+packet, disposition and PR `#342` remain immutable and unchanged.
+
+**Authority boundary.** This correction authorizes only the four named planning-
+document edits and exact-tip design review. It authorizes no network request,
+retained-source inspection, acquisition, collector or evidence execution, packet/
+disposition mutation, binary repair, runtime construction, publication, CI admission,
+implementation, PR update, merge, live OpenClaw use or later gate. Planning PASS is
+not execution authority.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -6948,6 +7137,8 @@ implementation authority.
 | CycloneDX revision projection | The schema-v3 exact-object rule that projects the immutable 40-lowercase-hex GitHub revision only for the one hash-bound `base64` component whose raw `version` member is absent; null or any other missing version stays `PAUSE`. |
 | Source authority | An exact original distributor/project, signed index/checksum, immutable source revision or retained package/build record permitted by the grant; a search result, ambient cache or current-host inference is not authority. |
 | Licensing disposition | The fail-closed public-redistribution result. `PAUSE` means byte integrity may pass while publication remains forbidden. |
+| Pre-acquisition planning contract | The lossless component/obligation partition and exact operation requirements used to prepare later grant-ready acquisition packets; it authorizes no read or request. |
+| Clean replacement | Fresh bytes built from independently locked inputs and recipes; never a repaired or prefix-rewritten rejected binary. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main

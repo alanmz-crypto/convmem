@@ -1,15 +1,16 @@
 # Execution Plan — OpenClaw bounded ConvMem reader
 
-**Current status (2026-09-27): REPLACEMENT DELIVERY-SET PLAN KIRO PASS;
-PROVENANCE-LOCK SCHEMA REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The exact integration tip
+**Current status (2026-09-27): PROVENANCE PACKET TECHNICAL PASS;
+PROVENANCE/LICENSING PAUSE; PRE-ACQUISITION DESIGN REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The exact integration tip
 `94f29ebabee31112cccb223fd1445cb782aac6eb` and its durable evidence remain
 preserved. Required GitHub `pytest (3.12)` is red, and focused ultrareview identified
 doctor-import containment and fenced-retry safety defects. Section 10.20 controls that
 held PR correction; §10.21 records its rejected runtime-delivery packet; §10.22's
-replacement delivery-set plan received exact-tip Kiro PASS at `3402e62a`; and §10.23
-freezes the provenance-lock schema and future evidence sequence. The first archive
-passed byte/mode/extraction validation, but incomplete component provenance and
-licensing evidence keeps publication at `PAUSE`. Earlier §§10.1–10.19 remain
+replacement delivery-set plan received exact-tip Kiro PASS at `3402e62a`;
+§§10.23–10.26 freeze the schema-v3 packet and disposition sequence; and §10.27 defines
+pre-acquisition coverage and clean replacement. The first archive passed byte/mode/
+extraction validation, but incomplete provenance, licensing evidence and embedded host
+paths keep publication at `PAUSE`. Earlier §§10.1–10.19 remain
 historical evidence. This edit authorizes no implementation, provenance execution,
 test run or external action.
 
@@ -2364,6 +2365,80 @@ provenance closure `UNRESOLVED`, licensing `PAUSE` and publication eligibility f
 This section authorizes no review-root write, network/retained-source access,
 acquisition, build, runtime change, publication, CI admission, product/test/CI/R2b
 edit, PR update, merge, real OpenClaw or later gate.
+
+### 10.27 Pre-acquisition coverage and clean-replacement obligations
+
+Architecture §18.29 controls. Section 10.26's absent-review-root statement is the
+historical pre-disposition checkpoint. The separately authorized Claude review now
+exists at exact disposition SHA-256
+`45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669`:
+technical `PASS`, provenance `PAUSE`, licensing `PAUSE`, counsel required, and all
+98,608 blocking unresolved IDs retained. Codex independently verified the canonical
+disposition, its twelve packet-file bindings and the unchanged packet tree. This
+successor defines planning obligations only; it supplies no origin or acquisition
+authority.
+
+The permitted planning sequence is:
+
+1. **Freeze the immutable inputs.** Bind the §18.29.1 result, manifest, packet and
+   disposition identities. Preserve the rejected runtime, all schema-v1/v2 staging,
+   the schema-v3 packet, disposition, exhausted read ledger and PR `#342` without
+   modification.
+2. **Prove lossless coverage.** Recompute the manifest counts and primary-key hashes
+   for 1,221 components, 30,421 file paths, 1,384 nested edges and 98,608 open IDs.
+   Create no new evidence file. Define twenty sorted consecutive 64-component planning
+   batches (five in the last), 49 sorted consecutive 2,048-ID verification pages (304
+   in the last), and the explicit 19-file ownership-dispute queue. Require disjoint
+   assignment and exact union equality; never guess an owner.
+3. **Prepare candidate records.** For every work item, bind the baseline component,
+   covered unresolved IDs, runtime paths, nested dependencies and exact packet
+   citations. State only `UNRESOLVED`, `CANDIDATE_ONLY` or `READY_FOR_REVIEW`, the
+   authority gap, required proof, proposed operation, checkpoint and failure
+   disposition. These planning states do not modify schema-v3 or close an unresolved
+   row.
+4. **Reject invented authority.** Package names, PURLs, installed metadata, SBOM URLs,
+   common registry conventions, search results, ambient caches, current-host ownership,
+   guessed paths and `latest` cannot become artifact authority. An unsupported origin
+   stays unresolved. Discovery of an unreviewed origin or redirect stops later work and
+   requires a successor plan.
+5. **Require a grant-ready operation packet.** Before any read, a separately reviewed
+   packet must name the exact HTTPS/VCS object or retained-local root, methods, ordered
+   redirects, request/retry/time/content/decoded/expanded limits, archive member/depth
+   limits, pinned data-only parser, identity verification, expected output roles, fresh
+   roots, actor, credential prohibition, checkpoints and fail-closed disposition.
+   Batches cannot multiply the aggregate ceilings.
+6. **Preserve the host-path finding.** Bind the three §18.29.4 packet objects, their
+   exact runtime paths, offsets and loader findings. Treat them as privacy and
+   ambient-host provenance evidence plus a Tcl/Tk loader-search hazard, not as proof
+   of an actual escape and not as a reason to weaken technical packet PASS.
+7. **Specify clean replacement only.** A later reviewed recipe must produce fresh
+   bytes from independently locked inputs and prevent prefix embedding before build.
+   Never copy or repair rejected binaries, use rolling-host substitutions, rewrite
+   ELF/string bytes, invoke `patchelf`/`chrpath`, or mutate the packet/runtime. Removal
+   of a component requires a separately reviewed minimization proof.
+8. **Freeze future negative controls.** Complete-set scanning, loader inspection,
+   unavailable-host-path isolation, inherited-environment refusal, transitive closure
+   and two distinct disposable build prefixes are mandatory. A runtime test PASS
+   cannot override provenance, privacy or compliance failure.
+9. **Kiro exact-tip review and stop.** Kiro returns binary PASS or FAIL on the exact
+   semantic parent and milestone overlay. PASS approves only the pre-acquisition
+   contract. No operation packet, request, retained-source read, build or correction
+   follows without its own review and Ryan grant.
+
+Later gates remain serial and independent: complete cited origin planning; exact
+operation review and grant; bounded Codex acquisition at fresh coordinates;
+independent provenance/licensing review plus human counsel; zero-unresolved successor
+lock; separately reviewed clean-build recipe and grant; full replacement qualification;
+actual-byte review; then separately authorized publication, CI admission and held
+product correction. A semantic evidence-role or closure-rule change advances the
+schema version and coordinates rather than repairing schema v3.
+
+**Current result:** the disposition is present and exact, but the packet remains
+`PAUSE`, not build-eligible and not publishable. This section authorizes only four
+planning-document edits and exact-tip design review. It authorizes no network or
+retained-source access, acquisition, evidence execution, packet/disposition mutation,
+binary repair, runtime construction, publication, CI admission, product/test/CI/R2b
+change, PR update, merge, real OpenClaw or later gate.
 
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
