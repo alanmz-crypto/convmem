@@ -5829,7 +5829,9 @@ partition it using the exact existing 13 `STRICT_PYTEST_FILES`:
 The qualified invocation also runs the unchanged 29-node connector suite and the
 unchanged legacy selector with its four exact deselections. Those four legacy nodes
 remain ordinary-coverage members in `O`; the qualified legacy repetition does not
-remove them from the complete ordinary partition. Broad skip/xfail/markers, wildcards,
+remove them from the complete ordinary partition. The Node and legacy executions are
+supplemental M8 regressions, not second memberships in `U` and not substitutes for an
+`O` outcome. Broad skip/xfail/markers, wildcards,
 failure-derived selectors, changing the four deselections, or a Python-version bump
 alone are forbidden.
 
@@ -5898,7 +5900,16 @@ and modes must equal the reviewed overlay exactly and remain in source export,
 inventory and `source_tree_sha256`. `constants.py`, `allowlist.py` and the packet
 contract test may receive only the closed additions needed to name this fifth control
 document and the exact corrective product/test/CI/R2b paths. An unlisted sixth
-document, prefix/glob exception or product-allowlist widening fails closed.
+document, prefix/glob exception or product-allowlist widening fails closed. The
+original `EDIT_ALLOWLIST_EXACT`, `EDIT_ALLOWLIST_PREFIXES` and `SCHEMA_ALLOWLIST`
+remain unchanged. Instead, the packet freezes a separate M11-only exact corrective
+set containing only: `doctor.py`, `tests/test_doctor.py`,
+`strict_projection_publisher.py`, `tests/test_strict_projection_publisher.py`,
+`.github/workflows/pylint.yml`, `tests/test_ci_contract.py`,
+`scripts/run_switchboard_ci.py`, `tests/test_switchboard_ci_contract.py`,
+`ci/switchboard-runtime.json`, and
+`docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`. That set is valid only for this
+reviewed PR correction and is never a T0–T5 product allowance.
 
 #### 18.22.6 Ordered correction and final evidence
 

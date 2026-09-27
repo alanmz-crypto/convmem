@@ -1922,8 +1922,10 @@ precondition is satisfied, and Codex verifies clean/pushed inputs:
    `tests/fixtures/openclaw_strict/constants.py`,
    `tests/fixtures/openclaw_strict/allowlist.py` and
    `tests/test_openclaw_strict_packet_contract.py`, make only the reviewed
-   parent/overlay rebind and exact closed additions needed for the fifth control
-   document and the corrective paths below. Preserve `run_isolated.py`,
+   parent/overlay rebind, fifth control document and a separate M11-only exact
+   corrective-path set containing only the ten paths frozen in Architecture
+   §18.22.5. Do not modify `EDIT_ALLOWLIST_EXACT`, `EDIT_ALLOWLIST_PREFIXES` or
+   `SCHEMA_ALLOWLIST`. Preserve `run_isolated.py`,
    containment, preflight, suite commands, 13 strict selectors, legacy selectors,
    four deselections, runtime hash, schemas and behavioral counts. Prove that a
    sixth control document and every unlisted path fail closed; push and stop.
@@ -1946,7 +1948,8 @@ precondition is satisfied, and Codex verifies clean/pushed inputs:
    byte-identical. Prove exact `U=O∪Q`, empty intersection, no duplicate or
    missing collected node, actual GitHub merge-tree identity, qualified execution
    for the exact 13-file `Q`, ordinary Python 3.12 execution for `O`, and the
-   unchanged supplemental Node/legacy runs. The adapter must delegate to the
+   unchanged supplemental Node/legacy runs. Those supplemental runs are not
+   second `U` memberships and never replace `O` outcomes. The adapter must delegate to the
    existing containment/runtime/source-export/result-validation primitives and
    emit only a CI-regression receipt. Push and stop.
 6. **R2b inventory hold.** After all governed edits, an independent lane changes
