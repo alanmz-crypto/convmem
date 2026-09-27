@@ -2212,7 +2212,8 @@ authority.
 
 **Current result:** schema v1 passed exact-tip design review. Its first offline P0
 execution created only disposable staging, corrected one inventory-hash encoding bug,
-then stopped on one unrepresentable CycloneDX component with a JSON-null version. No
+then stopped on one unrepresentable CycloneDX component whose version state was
+initially interpreted as JSON null. No
 durable packet or review disposition exists. The v1 staging output remains rejected
 PAUSE evidence and provenance execution is stopped.
 
@@ -2250,10 +2251,62 @@ additional semantic correction, second projection route, v1 reuse, changed runti
 read-ceiling breach or required source/runtime modification is `PAUSE` and requires a
 new schema version and review.
 
-**Current result:** schema v1 P0 is stopped and preserved as rejected PAUSE evidence;
-schema v2 is plan-only; no v2 root exists; no packet retry, runtime/evidence read,
-network request, packet/review creation, product/test/CI/runtime/configuration change,
-build, publication, PR update, merge, real OpenClaw or later gate is authorized.
+**Result at the §10.24 review checkpoint:** schema v1 P0 was stopped and preserved as
+rejected PAUSE evidence; schema v2 was plan-only. The later single v2 execution and
+its absent-member refusal are controlled by §10.25. No earlier verdict authorizes a
+retry, runtime/evidence read, network request, packet/review creation, product/test/CI/
+runtime/configuration change, build, publication, PR update, merge, real OpenClaw or
+later gate.
+
+### 10.25 Schema-v3 exact absent-version correction
+
+Architecture §18.27 controls. The single authorized schema-v2 P0 execution stopped
+after one complete runtime inventory and the bounded evidence copy because the raw
+`base64` component omits `version`; it does not encode JSON null. No result, ledger,
+manifest, durable packet or review root was created. Schema v2 is therefore rejected
+PAUSE evidence, and this plan-only successor may advance only through these held
+phases:
+
+1. **Preserve the v2 stop.** Bind the frozen collector/diff/receipt hashes, exit status,
+   one completed runtime pass, exact read counters, 780 selected evidence paths, 651
+   partial content objects, raw SBOM/component/key-set hashes and absent durable/result/
+   review state. Do not delete, resume, repair, read from, copy, hard-link or cite the
+   v1/v2 partial trees as successor authority.
+2. **Review the sole semantic change.** Prove schema v3 changes only the version-state
+   predicate for the one exact §18.27.1 object/component tuple. An existing nonempty
+   string stays exact. Only the exact absent `version` member on that hash-bound tuple
+   may project to the exact captured 40-lowercase-hex revision. The projection records
+   `raw_version_state="absent"` and never manufactures null or a raw member.
+3. **Review fail-closed cases.** Prove explicit null, empty/non-string values, a
+   manufactured member, another absent component, changed object/component/key-set/
+   path/name/identity/revision, normalization, lookup, aliasing and a second route all
+   remain `PAUSE`. Prove zero or two projections fails and the complete raw binding is
+   retained.
+4. **Review fresh coordinates and accounting.** Prove all four schema-v3 roots are
+   absent, distinct and single-assignment. Freeze the cumulative pre-v3 ledger at three
+   complete runtime passes and `7,106,471,781` bytes. Any later grant must cap the
+   additional work at two complete passes plus the unchanged evidence selection
+   (`4,537,493,452` bytes; `11,643,965,233` cumulative) and preserve every other
+   §18.25 rule.
+5. **Kiro verdict.** Kiro returns PASS or FAIL on the exact semantic parent and
+   milestone overlay. PASS approves only schema-v3 design/scope and exact bindings.
+6. **Separate future P0 grant.** Only a new Ryan grant may authorize collector freeze
+   and one fresh schema-v3 execution. It must name the exact collector bytes, fresh
+   roots, cumulative/additional read ceilings, allowed commands and stop checkpoint.
+
+If later granted, Codex must first prove the v3 roots absent and the rejected v1/v2
+trees unchanged, freeze and self-test a collector without reading the runtime, then
+execute it once. The complete runtime inventory/evidence copy, exact one-projection
+positive control, closed negative matrix, second-pass mutation check, packet validation
+and staging-to-durable mapping remain mandatory. A failure, a second semantic change,
+an unbound/missing counter, v1/v2 reuse, changed runtime or required source/runtime
+modification is `PAUSE`; no retry or repair follows automatically.
+
+**Current result:** schema v1 and schema v2 P0 attempts are preserved as rejected PAUSE
+evidence. Schema v3 is plan-only at fresh absent roots. No collector freeze/execution,
+runtime/evidence read, rejected-staging deletion, packet/review creation, network,
+product/test/CI/runtime/configuration change, build, publication, PR update, merge,
+real OpenClaw or later gate is authorized.
 
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
@@ -2271,8 +2324,9 @@ first archive. Section 10.22 defines a new three-role replacement delivery set w
 lock, construction, final packet and publication each require separate review and Ryan grants.
 Section 10.23 freezes the future provenance packet's canonical schema and exact roots without
 creating evidence or making a provenance acquisition request. Its first offline P0 execution later stopped on
-one JSON-null CycloneDX component version after proving the runtime tree. Section 10.24 preserves that v1 stop
-and defines only a fresh-root schema-v2 projection for an exact immutable GitHub revision; no retry or read is
-authorized. The replacement remains `PLAN_ONLY`, provenance
+one component believed to carry JSON null. Section 10.24 preserved that v1 stop and defined schema v2, but the
+single v2 run proved the raw `version` member is absent and stopped before result or durable packet creation.
+Section 10.25 preserves both attempts and defines only a fresh-root schema-v3 exact-object absent-member
+projection; no collector freeze, retry or read is authorized. The replacement remains `PLAN_ONLY`, provenance
 closure `UNRESOLVED`, licensing `PAUSE` and publication `false`; no tag, release or asset is
 authorized.

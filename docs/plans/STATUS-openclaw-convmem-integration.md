@@ -41,13 +41,17 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │
         ├─ §18.25 / §10.23 provenance-lock schema v1
         │       └─ Kiro PASS; offline P0 stopped in disposable staging
-        │       └─ one CycloneDX component had a null version
+        │       └─ one component was initially classified as null-version
         │
         ├─ §18.26 / §10.24 provenance-lock schema v2 plan
-        │       └─ one closed immutable-GitHub-revision projection
-        │       └─ fresh schema-v2 roots; no retry/read authorized
+        │       └─ Kiro PASS; one granted P0 stopped fail-closed
+        │       └─ raw component omits version; no result/durable packet
         │
-        │ Kiro v2 review → separately granted fresh P0 execution
+        ├─ §18.27 / §10.25 provenance-lock schema v3 plan
+        │       └─ exact-object absent-member projection only
+        │       └─ fresh schema-v3 roots; no retry/read authorized
+        │
+        │ Kiro v3 review → separately granted fresh P0 execution
         │ → lock review → separately granted build/review/publication stages
         ▼
 held doctor → publisher/recovery → CI → R2b inventory corrections
@@ -67,14 +71,19 @@ define only the replacement delivery-set plan, which Kiro passed at
 `3402e62a8479011814bfa76ce9e1c3269dc34350`. Sections 18.25/10.23 froze
 schema v1; Kiro passed it at `5f3978525c8685f59329ccae78d184d4a1822b4b`.
 Ryan then granted an offline P0 attempt. It proved the exact 30,421-file runtime tree
-after a bounded collector retry, but stopped before packet publication because exactly
-one of 1,371 CycloneDX components had `version=null`. No durable v1 packet or review
-root exists; its disposable `packet.work` remains rejected PAUSE evidence. Sections
-18.26/10.24 now define a plan-only schema-v2 successor at fresh roots, with one closed
-projection from a byte-identical GitHub `purl`/`bom-ref` carrying an exact immutable
-40-lowercase-hex revision. Kiro review and a new P0 execution grant are required; no
-retry, runtime/evidence read, lock derivation, network acquisition, build, corrective
-implementation or external publication is authorized. PR `#342`
+after a bounded collector retry, but stopped before packet publication on a component
+initially classified as `version=null`. No durable v1 packet or review root exists;
+its disposable `packet.work` remains rejected PAUSE evidence. Sections 18.26/10.24
+defined schema v2 around that explicit-null premise. Kiro passed it, but the single
+granted v2 run proved the raw component omits `version` and correctly stopped before a
+result or durable packet. Its one completed runtime pass and evidence copy bring the
+cumulative consumed ledger to three passes and 7,106,471,781 bytes. Sections
+18.27/10.25 now define a plan-only schema-v3 successor at fresh roots. It permits only
+the exact hash-bound `base64` absent-member tuple to project the immutable GitHub
+revision and rejects null or any other missing version. Kiro review and a new P0
+execution grant are required; no collector freeze, retry, runtime/evidence read, lock
+derivation, network acquisition, build, corrective implementation or external
+publication is authorized. PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
 
@@ -90,8 +99,9 @@ the absent publishable qualified runtime.
 | CI applicability | **REVIEWED PLAN / NOT IMPLEMENTED** — §18.22/§10.20 freeze complete `U=O∪Q` ordinary/qualified execution without skip/selector weakening |
 | Rejected runtime archive | **LOCAL BYTE PASS / PUBLICATION FAIL** — exact 30,421-file tree SHA-256 `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`; archive SHA-256 `6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e`; immutable local diagnostic evidence only |
 | Replacement delivery set | **PLAN-ONLY / KIRO PASS** at `3402e62a` — §18.24/§10.22 require a rebuilt runtime archive, compliance/corresponding-source archive and canonical manifest from a complete reviewed component lock |
-| Provenance-lock schema v1 | **KIRO PASS / P0 PAUSE** at `5f397852` — exact runtime tree proved; collection stopped on one null-version CycloneDX component; no durable packet/review root exists and disposable staging is rejected evidence |
-| Provenance-lock schema v2 | **PLAN-ONLY / KIRO REVIEW PENDING** — §18.26/§10.24 add only the closed immutable-GitHub-revision version projection under fresh `schema-v2` roots; no execution is authorized |
+| Provenance-lock schema v1 | **KIRO PASS / P0 PAUSE** at `5f397852` — exact runtime tree proved; collection stopped on a component initially classified as null-version; no durable packet/review root exists and disposable staging is rejected evidence |
+| Provenance-lock schema v2 | **KIRO PASS / P0 PAUSE** at `2956f701` — the one granted run proved the raw `base64` component omits `version`; it stopped before result/ledger/manifest/durable packet creation, and its partial staging remains rejected evidence |
+| Provenance-lock schema v3 | **PLAN-ONLY / KIRO REVIEW PENDING** — §18.27/§10.25 admit only the exact-object absent-member projection under fresh `schema-v3` roots; no collector freeze or execution is authorized |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -114,7 +124,8 @@ the absent publishable qualified runtime.
 | First runtime packet | **KIRO PASS / PUBLICATION FAIL** at `c63e52b` | Archive stays immutable and rejected for publication |
 | Replacement delivery-set plan | **KIRO PASS / preserved** at `3402e62a` | Does not authorize provenance execution or build |
 | Provenance-lock schema v1 | **KIRO PASS / OFFLINE P0 PAUSE** | Disposable v1 staging is rejected; no in-place repair, resume or acceptance transfer |
-| Provenance-lock schema v2 | **PLAN-ONLY / REVIEW PENDING** | Kiro exact-tip review, then a new schema-v2 P0 grant; no root/read/retry follows automatically |
+| Provenance-lock schema v2 | **KIRO PASS / OFFLINE P0 PAUSE** | Exact absent-member refusal preserved; no result/durable packet and no in-place retry, repair, deletion or reuse |
+| Provenance-lock schema v3 | **PLAN-ONLY / REVIEW PENDING** | Kiro exact-tip review, then a new schema-v3 P0 grant; no collector freeze/root/read/retry follows automatically |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -124,15 +135,15 @@ the absent publishable qualified runtime.
 ## 5. Your role
 
 **If Ryan sent you here now:** perform Kiro's exact-tip design/scope review of the
-schema-v2 semantic parent and milestone overlay. Verify §18.26/§10.24 preserve the
-schema-v1 P0 stop and consumed-read ledger; use new single-assignment `schema-v2`
-roots; add exactly one version projection for JSON-null CycloneDX versions whose
-byte-identical `purl`/`bom-ref` matches the closed immutable GitHub revision grammar;
-and leave every other §18.25 encoding, role, ownership, closure, authority and review
-rule unchanged. Confirm Kiro PASS cannot authorize a retry or any runtime/evidence
-read.
+schema-v3 semantic parent and milestone overlay. Verify §18.27/§10.25 preserve both
+rejected P0 attempts and the cumulative three-pass/7,106,471,781-byte read ledger; use
+new single-assignment `schema-v3` roots; admit only the exact hash-bound `base64`
+component whose raw `version` member is absent; reject JSON null and every other
+missing-version component; and leave every other §18.25 encoding, role, ownership,
+closure, authority and review rule unchanged. Confirm Kiro PASS cannot authorize a
+collector freeze, retry or runtime/evidence read.
 
-Do not create a schema-v2 provenance root, reuse schema-v1 staging, inspect or derive the component lock, make a
+Do not create a schema-v3 provenance root, reuse schema-v1/v2 staging, inspect or derive the component lock, make a
 provenance HTTP/VCS request, download/parse artifacts, build or modify a runtime, create compliance/
 source bytes, apply §18.22, edit product/tests/CI/inventory, create a tag/
 release/asset, rerun acceptance evidence, update PR `#342`, merge, deploy or run real
@@ -140,9 +151,9 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro returns binary exact-tip PASS or FAIL on the §18.26/§10.24 schema-v2
+1. Kiro returns binary exact-tip PASS or FAIL on the §18.27/§10.25 schema-v3
    semantic parent and milestone overlay.
-2. Ryan separately decides whether to authorize one fresh schema-v2 offline P0 run
+2. Ryan separately decides whether to authorize one fresh schema-v3 offline P0 run
    under exact new roots, collector identity, read ceilings and commands.
 3. If P0 closes without an unresolved row, Ryan separately decides whether to authorize
    schema-bound read-only derivation of the complete
@@ -180,12 +191,14 @@ OpenClaw.
 - No fence clearing when durable intent is present or uninspectable.
 - No runtime `latest`, mutable replacement, host fallback, repair or substitution.
 - No publication or CI use of the rejected §18.23 archive.
-- No schema-v2 root, packet member, runtime/evidence read, provenance HTTP/VCS request
-  or artifact parsing before Kiro v2 PASS and an exact Ryan P0 execution grant.
-- No repair, resume, copy, hard-link or authority citation from schema-v1 staging; its
-  partial output and consumed reads remain rejected PAUSE evidence.
-- No CycloneDX version inference except the exact §18.26 byte-identical GitHub PURL/
-  `bom-ref` 40-lowercase-hex rule; every other missing version remains `PAUSE`.
+- No schema-v3 root, packet member, collector freeze, runtime/evidence read,
+  provenance HTTP/VCS request or artifact parsing before Kiro v3 PASS and an exact
+  Ryan P0 execution grant.
+- No repair, resume, deletion, copy, hard-link or authority citation from schema-v1/v2
+  staging; their partial output and consumed reads remain rejected PAUSE evidence.
+- No CycloneDX version inference except the exact §18.27 raw-object/component/key-set/
+  path-bound absent-member rule; explicit null and every other missing version remain
+  `PAUSE`.
 - No packet repair: packet and review leaf roots are separately atomic and immutable.
 - No replacement build from copied rejected-runtime or rolling-host bytes; every input
   must be in the independently reviewed component lock.
@@ -213,8 +226,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.26 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.24 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.27 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.25 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -228,15 +241,16 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-27 | Codex | Schema-v1 offline P0 stopped on one null-version CycloneDX component; schema v2 now freezes one exact GitHub-revision projection under fresh roots, pending Kiro review and a new grant. |
+| 2026-09-27 | Codex | Schema-v2 P0 proved the raw `base64` component omits `version` and stopped fail-closed; schema v3 now freezes one exact-object absent-member projection under fresh roots. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
 and Kiro packet review but failed independent publication provenance/licensing review;
 it remains immutable and unpublished. Kiro passed the separately gated three-role
-replacement plan at `3402e62a`. Schema v1 passed Kiro but offline P0 stopped on one
-null-version SBOM component without creating a durable packet. Sections 18.26/10.24
-preserve that stop and freeze a fresh-root schema-v2 immutable-GitHub-revision
-projection; Kiro v2 review is next. Retry, runtime/evidence reads, provenance
+replacement plan at `3402e62a`. Schema v1 stopped on a component initially classified
+as null-version. Schema v2 passed review, but its one run proved the raw member is
+absent and stopped before result or durable packet creation. Sections 18.27/10.25
+preserve both attempts and freeze a fresh-root schema-v3 exact-object absent-member
+projection; Kiro v3 review is next. Collector freeze/retry, runtime/evidence reads, provenance
 acquisition, build, implementation, publication, evidence reruns, merge, real
 OpenClaw and later gates remain unauthorized.

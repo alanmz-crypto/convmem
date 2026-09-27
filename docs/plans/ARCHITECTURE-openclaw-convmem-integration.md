@@ -6592,7 +6592,7 @@ PROVENANCE_V1_SBOM_COMPONENT_INDEX=0
 PROVENANCE_V1_SBOM_NAME=base64
 PROVENANCE_V1_SBOM_PURL=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
 PROVENANCE_V1_SBOM_BOM_REF=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
-PROVENANCE_V1_SBOM_VERSION=null
+PROVENANCE_V1_SBOM_VERSION_ASSUMPTION=null
 ```
 
 The retry had already corrected `tree_inventory_hash()` so every inventory-row hash is
@@ -6631,8 +6631,9 @@ only when all of these conditions hold simultaneously:
    `^pkg:github/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*@([0-9a-f]{40})$`.
 
 The projected component `version` is the captured 40-lowercase-hex group exactly. The
-original `name`, JSON-null `version`, `purl`, `bom-ref`, component index and complete
-SBOM object remain retained evidence and bind the projection. The projected version is
+original `name`, then-assumed JSON-null `version` state, `purl`, `bom-ref`, component
+index and complete SBOM object were intended to bind the projection; §18.27 later
+proves the raw member is absent and supersedes that premise. The projected version is
 an immutable source revision identifier for component identity; it is not a release
 tag, license conclusion, artifact identity or authority to fetch/build anything.
 
@@ -6670,6 +6671,138 @@ update, merge, deployment, real OpenClaw, live data, watch activation, promotion
 Gates D/W/D-V/E/F. Kiro exact-tip PASS and a new Ryan P0 execution grant naming the
 schema-v2 roots, collector identity, read ceilings and operations remain mandatory.
 
+### 18.27 Provenance-lock v3 exact absent-version projection
+
+The single granted schema-v2 P0 execution disproved one premise of §18.26 without
+weakening its fail-closed boundary. The retained `base64` component does not encode
+`"version": null`; its `version` member is absent. The frozen v2 collector therefore
+exited at `missing SBOM component version` before writing any ledger, manifest, result,
+durable packet or review disposition. That refusal is correct under schema v2. The
+schema-v2 staging tree is rejected diagnostic evidence: it remains untouched, is never
+a packet or authority, and no byte, object or conclusion may be copied, hard-linked,
+resumed or accepted by a successor.
+
+The stopped attempt is bound to these exact facts. Runtime-read counters are derived
+from the frozen collector's completed first inventory pass plus its completed bounded
+780-file evidence copy; the absence of `p0-result.json` is preserved rather than
+papered over:
+
+```text
+PROVENANCE_SCHEMA_V3_PLAN_BASE_OVERLAY_SHA=2956f70127544111d5d32e2f51a3e044fe878fb4
+PROVENANCE_V2_COLLECTOR_SHA256=737aa48f1b6d99111e98ac0bd5b75445b1896ed937d5676e404b8630ad0c220f
+PROVENANCE_V2_COLLECTOR_DIFF_SHA256=3065e94c18525191ebed2759001ec399b042131f8ad1214cccdc6a102dfb7c78
+PROVENANCE_V2_COLLECTOR_RECEIPT_SHA256=c5d63d15468eb2270ebf9c1002aa7640b784159d33499c2737623f24a5047a1b
+PROVENANCE_V2_EXIT_STATUS=1
+PROVENANCE_V2_FAILURE=missing SBOM component version
+PROVENANCE_V2_RUNTIME_CONTENT_PASS_COUNT=1
+PROVENANCE_V2_RUNTIME_READ_BYTES=2568978329
+PROVENANCE_CUMULATIVE_RUNTIME_CONTENT_PASS_COUNT=3
+PROVENANCE_CUMULATIVE_RUNTIME_READ_BYTES=7106471781
+PROVENANCE_V2_EVIDENCE_FILE_COUNT=780
+PROVENANCE_V2_EVIDENCE_BYTES=600463206
+PROVENANCE_V2_PARTIAL_OBJECT_COUNT=651
+PROVENANCE_V2_PARTIAL_OBJECT_BYTES=600094627
+PROVENANCE_V2_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2
+PROVENANCE_V2_RESULT_PRESENT=false
+PROVENANCE_V2_DURABLE_ROOT_PRESENT=false
+PROVENANCE_V2_REVIEW_ROOT_PRESENT=false
+PROVENANCE_V2_SBOM_OBJECT_SHA256=d3c068f4be653f38b8f6fca1dd1a9d1b41dc712dc9c3daa01b0e0f84882324d6
+PROVENANCE_V2_SBOM_COMPONENT_PATH=components/0
+PROVENANCE_V2_SBOM_COMPONENT_CANONICAL_SHA256=820f3546548cdbcda11395dbeeb274485b71582c0316bf0518d78fe7d209994b
+PROVENANCE_V2_SBOM_COMPONENT_KEY_SET_SHA256=1516b75285ffd5cd81f18728ba54daa50a5991ea5e63c0b00a4d71bb26bda2ee
+PROVENANCE_V2_SBOM_COMPONENT_KEYS=bom-ref,externalReferences,licenses,name,purl,type
+PROVENANCE_V2_SBOM_VERSION_KEY_PRESENT=false
+PROVENANCE_V2_SBOM_NAME=base64
+PROVENANCE_V2_SBOM_PURL=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
+PROVENANCE_V2_SBOM_BOM_REF=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
+PROVENANCE_V2_PROJECTED_VERSION=bf058e571ac5002b75b03fed38e33ed4e8d45eff
+```
+
+Schema v3 keeps every §18.25 encoding, file-role, ownership, closure,
+source-authority and review rule. It supersedes only §18.26.1's raw input-state
+predicate and binds new, absent, single-assignment roots:
+
+```text
+PROVENANCE_SCHEMA_VERSION=convmem.switchboard.provenance-lock.v3
+PROVENANCE_INPUT_RUNTIME_ROOT=/home/lauer/.local/share/convmem-openclaw-runtimes/7dccb771b2f43288c52b7cb1dd18dedb18cb7e57/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
+PROVENANCE_INPUT_RUNTIME_TREE_SHA256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+PROVENANCE_INPUT_RUNTIME_REGULAR_FILE_COUNT=30421
+PROVENANCE_PACKET_FILE_ROLE_COUNT=13
+PROVENANCE_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3
+PROVENANCE_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3
+PROVENANCE_DURABLE_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet
+PROVENANCE_DURABLE_REVIEW_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review
+PROVENANCE_PACKET_STATUS=PLAN_ONLY
+PROVENANCE_EXECUTION_AUTHORIZED=false
+```
+
+#### 18.27.1 Sole exact absent-member projection
+
+An existing nonempty string `version` remains its exact observed string. Schema v3
+admits exactly one absent-member projection, and only when all of these predicates hold
+simultaneously:
+
+1. the complete retained SBOM object is exactly
+   `obj_sha256:d3c068f4be653f38b8f6fca1dd1a9d1b41dc712dc9c3daa01b0e0f84882324d6`;
+2. the component path is exactly `components/0`;
+3. the component's canonical compact sorted-key JSON SHA-256 is exactly
+   `820f3546548cdbcda11395dbeeb274485b71582c0316bf0518d78fe7d209994b`, its
+   sorted NUL-terminated key-set SHA-256 is exactly
+   `1516b75285ffd5cd81f18728ba54daa50a5991ea5e63c0b00a4d71bb26bda2ee`,
+   and its exact key set is `bom-ref,externalReferences,licenses,name,purl,type`;
+4. `version` is absent as an object member, not present as null, empty or another type;
+5. `name` is exactly `base64`, while `bom-ref` and `purl` are byte-identical and
+   exactly
+   `pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff`; and
+6. that shared string independently matches §18.26's closed GitHub grammar and its
+   captured group is exactly `bf058e571ac5002b75b03fed38e33ed4e8d45eff`.
+
+The projected component version is that exact captured revision. The projection record
+uses `raw_version_state="absent"`; it must not manufacture `raw_version=null` or a raw
+`version` member. The complete raw SBOM object, component path, canonical component
+hash, key-set hash, exact fields and projected value remain jointly bound evidence.
+This rule is an exact-object exception, not a declaration that missing and null are
+equivalent. An explicit JSON null, an absent `version` on any other component, or a
+reconstructed component with the same visible identity but different object/component
+hash remains `PAUSE`.
+
+There is no second derivation route. Case folding, percent decoding, Unicode/URL/PURL
+normalization, alias following, metadata substitution, tag/branch inference, network
+lookup, qualifier/subpath removal or object reconstruction is forbidden. The projected
+revision is component identity only; it grants no source authority, artifact identity,
+license conclusion, acquisition, build or publication authority.
+
+#### 18.27.2 Freshness, read ledger, controls and authority boundary
+
+A future schema-v3 P0 must start from absent `schema-v3` staging and durable roots.
+It may use only a freshly frozen collector whose sole semantic difference from the
+frozen v2 collector is §18.27.1. The collector must begin with the cumulative consumed
+ledger of three complete runtime-content passes and `7,106,471,781` runtime bytes. A
+future grant may allow at most two additional complete runtime passes plus the same
+bounded evidence selection (`4,537,493,452` additional bytes;
+`11,643,965,233` cumulative bytes). It may not reset, reinterpret or omit the v1/v2
+reads and may not read, copy, hard-link, cite or delete any v1/v2 partial object,
+ledger, result or manifest.
+
+Negative controls must independently reject at least: the same component with explicit
+JSON null, empty/non-string `version`, a manufactured `version` member, any different
+object/component/key-set hash or component path, another absent-version component,
+missing/changed/non-string name/PURL/`bom-ref`, unequal identities, uppercase/short/
+long/nonhex revision, tag/branch, qualifier, subpath, userinfo, percent alias,
+non-GitHub PURL, normalization/lookup/second route, raw-binding omission, v1/v2 object
+reuse, preexisting v3 output and a second projected component. The positive control is
+exactly one projection with `raw_version_state="absent"`; zero or two projections is
+`PAUSE`.
+
+**Authority boundary.** This section authorizes only the four planning-document edits.
+It does not authorize a schema-v3 directory, collector freeze or execution, runtime or
+evidence read, deletion of rejected staging, network request, artifact parsing,
+retained-source inspection, packet/review creation, product/test/CI/runtime/
+configuration change, build, publication, PR update, merge, deployment, real OpenClaw,
+live data, watch activation, promotion or Gates D/W/D-V/E/F. Kiro exact-tip PASS and a
+new Ryan P0 grant naming the schema-v3 roots, collector identity, cumulative/additional
+read ceilings and exact operations remain mandatory.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -6699,7 +6832,7 @@ schema-v2 roots, collector identity, read ceilings and operations remain mandato
 | Replacement delivery set | The inseparable runtime archive, compliance/corresponding-source archive and canonical manifest built from a complete reviewed component lock after the first archive failed publication provenance/licensing review. |
 | Component lock | The canonical file-to-component, binary/source artifact, recipe, license/notice and source-delivery mapping; installed metadata or an SBOM alone is only an input. |
 | Provenance-lock packet | The canonical immutable ledgers, content-addressed evidence objects, manifest and independent disposition that prove the component lock is complete before any replacement build. |
-| CycloneDX revision projection | The schema-v2-only rule that can use one exact immutable 40-lowercase-hex GitHub PURL revision as a missing component version when `bom-ref` and `purl` are byte-identical; every other missing version stays `PAUSE`. |
+| CycloneDX revision projection | The schema-v3 exact-object rule that projects the immutable 40-lowercase-hex GitHub revision only for the one hash-bound `base64` component whose raw `version` member is absent; null or any other missing version stays `PAUSE`. |
 | Source authority | An exact original distributor/project, signed index/checksum, immutable source revision or retained package/build record permitted by the grant; a search result, ambient cache or current-host inference is not authority. |
 | Licensing disposition | The fail-closed public-redistribution result. `PAUSE` means byte integrity may pass while publication remains forbidden. |
 
@@ -6720,7 +6853,9 @@ lock, build, final packet and publication require separate reviews and Ryan gran
 PASSed that replacement plan at `3402e62a`. Section 18.25 now freezes the provenance-lock
 packet's canonical schema, exact packet/review roots, source-authority boundary and negative
 controls without creating evidence; exact-tip Kiro review of this schema is next and authorizes no
-provenance execution. The first offline P0 attempt later stopped at one CycloneDX component whose
-version was null. Section 18.26 preserves schema v1 as rejected evidence and defines a schema-v2-only,
-single-route immutable GitHub revision projection under fresh roots; it authorizes no retry or read.
+provenance execution. The first offline P0 attempt later stopped at one CycloneDX component believed
+to have a null version. Section 18.26 preserved schema v1 and defined schema v2, but the single
+granted v2 run proved the raw `version` member is absent and correctly stopped without a result or
+durable packet. Section 18.27 preserves both rejected attempts and defines only a fresh-root
+schema-v3 exact-object absent-member projection; it authorizes no collector freeze, retry or read.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
