@@ -1,5 +1,12 @@
 # Execution Plan — OpenClaw bounded ConvMem reader
 
+**Current status (2026-09-27): PLAN-ONLY PR #342 SAFETY/CI CORRECTIVE; MERGE
+BLOCKED.** The exact integration tip `94f29ebabee31112cccb223fd1445cb782aac6eb`
+and its durable evidence remain preserved. Required GitHub `pytest (3.12)` is red,
+and focused ultrareview identified doctor-import containment and fenced-retry safety
+defects. Section 10.20 is the sole current execution overlay. Earlier §§10.1–10.19
+remain historical evidence. This edit authorizes no implementation or test run.
+
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
 `cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; CURRENT-MAIN RECONSTRUCTION PRESERVED AT
@@ -38,7 +45,7 @@ test edit, suite, PR, merge or runtime action. Exact-tip review and a new Ryan r
 required first.
 BUILD is not complete-integration readiness and does not pass any of those later gates.
 
-**Date:** 2026-09-26
+**Date:** 2026-09-27
 
 **Arc:** ConvMem Switchboard
 
@@ -1891,6 +1898,106 @@ This section authorizes planning only: no plan application, identity edit, fixtu
 runtime/configuration correction, acceptance suite, PR, merge, deployment or real OpenClaw action
 may begin without Kiro PASS and a new Ryan grant. Gate D/W/D-V/E/F, watch activation, live data and
 promotion remain blocked.
+
+### 10.20 M11 PR #342 safety, CI applicability and R2b convergence obligations
+
+Architecture §18.22 controls. Preserve pull request `#342` at exact base
+`5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d` and exact pre-correction head
+`94f29ebabee31112cccb223fd1445cb782aac6eb`; do not merge, rebase, recreate or
+split it. Preserve the passing CodeQL, secret-scan and Pylint evidence and the
+failing required `pytest (3.12)` job as historical evidence. No historical
+M11 or local isolated PASS satisfies the GitHub required context.
+
+Execute only after Kiro PASSes the exact corrected semantic parent and overlay,
+Ryan separately grants the closed file sets below, the qualified runtime-delivery
+precondition is satisfied, and Codex verifies clean/pushed inputs:
+
+1. **Plan application hold.** Apply the reviewed five-document plan range to a
+   branch preserving `94f29eb`. The reviewed documents are exactly the four
+   Switchboard plans plus `docs/plans/STATUS-r2b-capture-auth.md`. Prove their
+   modes/blobs equal the reviewed overlay and every non-plan byte still equals
+   `94f29eb`; push and stop. An unlisted document, conflict, empty commit or
+   non-plan byte is `PAUSE`.
+2. **Authority/scope hold.** In
+   `tests/fixtures/openclaw_strict/constants.py`,
+   `tests/fixtures/openclaw_strict/allowlist.py` and
+   `tests/test_openclaw_strict_packet_contract.py`, make only the reviewed
+   parent/overlay rebind and exact closed additions needed for the fifth control
+   document and the corrective paths below. Preserve `run_isolated.py`,
+   containment, preflight, suite commands, 13 strict selectors, legacy selectors,
+   four deselections, runtime hash, schemas and behavioral counts. Prove that a
+   sixth control document and every unlisted path fail closed; push and stop.
+3. **Doctor hold.** Change only `doctor.py` and `tests/test_doctor.py` as
+   §18.22.1 specifies. Run fresh-process targeted tests proving failure is
+   contained to a failed sanitized `mcp_import` check, later checks continue,
+   recognized profiles work, and neither raw profile nor injected exit payload
+   is disclosed. Do not change `mcp_server.py`; push and stop.
+4. **Publisher/recovery hold.** Change only
+   `strict_projection_publisher.py` and
+   `tests/test_strict_projection_publisher.py`. Implement §18.22.2's fenced
+   refusal and recovery state machine without schema/data-model/hash changes.
+   Run the complete crash matrix, including the mandatory negative control that
+   durable intent can never be cleared and followed by predecessor rebuild;
+   prove refused paths write nothing; push and stop.
+5. **CI hold.** Change only `.github/workflows/pylint.yml`'s existing pytest
+   job, `tests/test_ci_contract.py`, new `scripts/run_switchboard_ci.py`, new
+   `tests/test_switchboard_ci_contract.py`, and new
+   `ci/switchboard-runtime.json`. The Pylint job, baseline and gate stay
+   byte-identical. Prove exact `U=O∪Q`, empty intersection, no duplicate or
+   missing collected node, actual GitHub merge-tree identity, qualified execution
+   for the exact 13-file `Q`, ordinary Python 3.12 execution for `O`, and the
+   unchanged supplemental Node/legacy runs. The adapter must delegate to the
+   existing containment/runtime/source-export/result-validation primitives and
+   emit only a CI-regression receipt. Push and stop.
+6. **R2b inventory hold.** After all governed edits, an independent lane changes
+   only `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`. Require exactly 120
+   unchanged members and path-set/seed/closure/routes, with only `mcp_server.py`
+   and `doctor.py` differing from fixed main. Retain before/after manifests and
+   independently recompute the `r2b-v2-authority-content:v1` identity. Prove exact
+   convergence with resolver, inventory digest/bindings and artifact; push and
+   stop. No R2b live operation is permitted.
+
+Codex issues a commit-specific `CONTINUE`, `CORRECT`, `PAUSE` or `REQUIRE TEST`
+after every hold. `CORRECT` and `REQUIRE TEST` return to the same checkpoint and
+require complete reinspection; `PAUSE` requires Kiro/Codex resolution and a new
+Ryan grant if a governing SHA, file set, runtime coordinate or scope changes.
+
+Before CI execution, a separately reviewed runtime-delivery packet and exact Ryan
+external-action authorization must make the immutable qualified runtime available
+to GitHub. The provisional coordinate is release tag
+`switchboard-fixture-runtime-74a12c725ac3bad4f`, asset
+`switchboard-fixture-runtime.tar.gz`, extracted tree
+`sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+The implementation grant may not create or publish that asset implicitly. No
+mutable release, `latest`, host fallback, repair or dependency substitution is
+accepted.
+
+After the held commits, Codex owns evidence execution. Required evidence is:
+
+- fresh doctor continuation/non-disclosure regressions;
+- the complete publisher crash/recovery matrix and write-set proof;
+- the unchanged Pylint regression gate;
+- complete ordinary/qualified pytest reconciliation on the exact GitHub PR merge
+  commit, with mutation controls for missing/duplicate nodes, selector drift,
+  injected host environment, stale/fake output, skipped dependency, runtime drift
+  and missing containment;
+- all five R2b failure proofs plus existing R2b revision, coverage,
+  authority-boundary, negative and shadow-writer tests, followed by independent
+  inventory convergence;
+- two fresh unchanged M8 runs with 238 strict passes, 29 Node passes, and legacy
+  118 collected / 117 passed / zero failed / zero errored / one skipped / four
+  deselected, plus all seven MCP regression files;
+- verified durable evidence, all required GitHub contexts green, a focused
+  safety/isolation audit of publisher recovery and CI containment, and Kiro
+  exact-tip integrated conformance PASS.
+
+Any unresolved mismatch, missing runtime distribution proof, new failure,
+environment asymmetry, extra source byte/path, changed schema/selector/deselection,
+R2b member-set drift or required unplanned correction is `PAUSE`. The duplicate
+hash-helper cleanup is excluded. This section authorizes planning only. It grants
+no plan application, code/test/CI/inventory edit, runtime publication, evidence
+execution, PR update, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action.
 
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main

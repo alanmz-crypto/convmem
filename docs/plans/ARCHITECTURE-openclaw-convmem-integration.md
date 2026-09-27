@@ -1,5 +1,15 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
+**Current status (2026-09-27): PLAN-ONLY PR #342 SAFETY/CI CORRECTIVE; MERGE
+BLOCKED.** The bounded implementation and durable M11 evidence remain preserved at
+`94f29ebabee31112cccb223fd1445cb782aac6eb`, but pull request `#342` cannot merge.
+Its required GitHub `pytest (3.12)` context failed with 83 failures, and a focused
+Claude ultrareview found two independent safety defects: an invalid MCP profile can
+terminate all of `convmem doctor` during import, and a fenced publication can be
+misclassified as an exact retry without independently proved input identity. Section
+18.22 is the sole current correction. Everything below through §18.21 is retained as
+historical design and evidence provenance. This edit authorizes planning only.
+
 **Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
 implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
 `cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; CURRENT-MAIN RECONSTRUCTION PRESERVED AT
@@ -47,7 +57,7 @@ Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMEN
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
 
-**Date:** 2026-09-26
+**Date:** 2026-09-27
 
 **Arc:** ConvMem Switchboard
 
@@ -5719,6 +5729,203 @@ prior grant, review, test, diagnostic or `CONTINUE` may be reused. PR, merge, de
 OpenClaw, Gate D/W/D-V/E/F, watch activation, live data and promotion remain independently
 blocked.
 
+### 18.22 M11 PR #342 safety, CI applicability and R2b convergence corrective
+
+**Observed merge-blocking state.** Pull request `#342`, “Add the bounded read-only
+OpenClaw connector to ConvMem,” compares exact base
+`5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d` with exact head
+`94f29ebabee31112cccb223fd1445cb782aac6eb`. CodeQL, secret scan and the unchanged
+Pylint regression gate passed. The live ruleset-required `pytest (3.12)` job failed
+with 83 failures: 22 packet-contract nodes require a fixture-only
+`CONVMEM_OPENCLAW_INNER_ROLE`, 56 nodes depend on the qualified CPython 3.13.12 /
+Unicode 15.1 runtime rather than GitHub CPython 3.12.14, and five nodes expose the
+already-recorded R2b committed-versus-resolved authority-content identity difference.
+The base commit passes the same workflow. This is a CI applicability failure, not
+permission to skip or weaken any test.
+
+A focused ultrareview of the effective four-file product delta also established two
+independent blockers:
+
+1. `mcp_server.py` correctly fails closed at import for an unknown or
+   `openclaw-strict` profile, but `doctor.py::_check_mcp_import()` catches only
+   `ImportError`. A stray invalid environment value can therefore abort the whole
+   doctor process before later health checks run.
+2. `strict_projection_publisher.py::_find_operation_outcome()` treats a historic
+   fenced record with the same `pending_operation_id` as a retry without independently
+   proving the canonical input digest. A crash between fence persistence and durable
+   input persistence makes same-operation/different-content replay indistinguishable
+   under that branch.
+
+The duplicated reader/publisher hashing helpers are a maintainability observation,
+not part of this correction. Moving them is forbidden here.
+
+#### 18.22.1 Doctor containment contract
+
+The MCP startup refusal remains import-time and fail-closed; this correction must not
+move, weaken or special-case it in `mcp_server.py`. Instead, only `doctor.py` and
+`tests/test_doctor.py` may change. `_check_mcp_import()` catches `SystemExit` from the
+import and returns a failed `DoctorCheck("mcp_import", False, <fixed sanitized
+message>)`. The overall doctor command continues every later check and exits through
+its normal nonzero health-check result. It must not stringify the `SystemExit`
+payload, raw profile value, environment, credentials or paths. Existing `ImportError`
+handling remains; `BaseException`, `KeyboardInterrupt` and unrelated failures are not
+caught.
+
+Fresh-process regression tests cover `openclaw-strict`, one fixed unknown sentinel,
+recognized `shell` and unset/full profiles, an injected sensitive `SystemExit`
+payload, empty disclosure surfaces, and proof that checks scheduled after
+`mcp_import` still execute. Tests bind the semantic failure and non-disclosure, not
+parent-unspecified presentation bytes.
+
+#### 18.22.2 Fenced publication and recovery contract
+
+Only `strict_projection_publisher.py` and
+`tests/test_strict_projection_publisher.py` may change for this defect. The existing
+CAS and lock checks run first. While the current publication is fenced, every ordinary
+publish/admission attempt refuses without writes, regardless of operation identifier
+or input bytes. Recovery is a distinct explicit path:
+
+- A crash after the fence but before durable authority input may clear the active
+  fence only after proving there is no durable intent or admission. Recovery restores
+  the predecessor authority under a new epoch with unchanged expiry, retains the
+  fenced history, and permanently consumes every operation identifier present in that
+  abandoned durable fence. Because the missing bytes cannot be proved, even apparent
+  “same bytes” reuse is forbidden; a new operation identifier is required.
+- A crash after durable input but before admission remains recovery-required and
+  ambiguous. Recovery does not clear the fence, serve predecessor authority, admit
+  the input, or manufacture `exact_retry`. Completing or abandoning that durable
+  intent is a later reconciliation surface and is not added here.
+- After durable admission but before projection, authority remains unavailable. A
+  verified exact retry may report the historic admitted outcome/current head without
+  mutation, and the existing rebuild path may project that admitted head.
+- A historic exact retry requires the same operation identifier, an independently
+  recomputed canonical input digest, and matching retained admitted-authority
+  bindings. Same identifier with different bytes always rejects before writes.
+- Missing, malformed, symlinked, inconsistent, multiply conflicting or uninspectable
+  required evidence is an error, never “not found.” Recovery must never clear a fence
+  and then rebuild the predecessor into service when durable intent exists.
+
+No schema, publication layout, hash algorithm, operation-ID syntax, data model or
+reader behavior changes. The crash matrix must prove write-free refusals and exact
+post-state bytes for every boundary above.
+
+#### 18.22.3 Required GitHub pytest partition
+
+The live ruleset context remains exactly `pytest (3.12)` and its existing workflow
+producer remains `.github/workflows/pylint.yml`; branch protection is not edited.
+Pylint, its baseline and the Pylint job remain byte-for-byte unchanged. On the actual
+GitHub pull-request merge commit, collect the complete pytest node universe `U`, then
+partition it using the exact existing 13 `STRICT_PYTEST_FILES`:
+
+- `Q` is every collected node whose file is one of those 13 exact paths. `Q` runs in
+  the qualified closed runtime and containment adapter.
+- `O` is every other collected repository node. `O` runs under the ordinary GitHub
+  Python 3.12 environment.
+- Evidence must prove `O ∩ Q = ∅` and `O ∪ Q = U`, with exact sorted node identities,
+  outcomes and hashes. The current reference collection is `|U|=2940`, `|Q|=238`;
+  successor ordinary counts must include newly added doctor and CI regression nodes
+  rather than freezing those reference totals.
+
+The qualified invocation also runs the unchanged 29-node connector suite and the
+unchanged legacy selector with its four exact deselections. Those four legacy nodes
+remain ordinary-coverage members in `O`; the qualified legacy repetition does not
+remove them from the complete ordinary partition. Broad skip/xfail/markers, wildcards,
+failure-derived selectors, changing the four deselections, or a Python-version bump
+alone are forbidden.
+
+Add one bounded CI orchestration adapter, `scripts/run_switchboard_ci.py`, with its
+contract in `tests/test_switchboard_ci_contract.py` and immutable runtime coordinates
+in `ci/switchboard-runtime.json`. It must reuse—not copy or weaken—the existing M8
+containment, runtime inventory, negative controls, source export, preflight, suite
+commands, resource limits and result validation. It runs the exact checked-out
+commit/tree, validates real JUnit/node/process output, and emits a separate
+CI-regression receipt that can never be called M8 PASS, conformance PASS or runtime
+qualification. It accepts ordinary repository deltas without importing the historical
+M8 product allowlist as a general PR allowlist. The existing M8 runner remains
+unchanged and still runs separately twice.
+
+If the workflow uses dependent jobs, the required aggregate context runs under
+`always()` and explicitly requires every dependency to conclude `success`; a skipped,
+cancelled, missing or neutral dependency fails. Contract tests must make missing
+branches/nodes, duplicates, fake PASS output, skipped dependencies, selector drift,
+host `CONVMEM_OPENCLAW_INNER_ROLE`, stale evidence, any runtime byte drift, or a
+missing containment flag fail closed. Evidence records PR head, PR base, GitHub merge
+commit and merge-tree identity.
+
+#### 18.22.4 Immutable runtime delivery is a separate external gate
+
+The qualified local runtime is not yet a GitHub-accessible artifact. The proposed
+delivery coordinate is repository `alanmz-crypto/convmem`, tag
+`switchboard-fixture-runtime-74a12c725ac3bad4f`, asset
+`switchboard-fixture-runtime.tar.gz`, whose extracted tree must equal
+`sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+Those coordinates are a proposal, not authorization to publish.
+
+Before any asset exists, a separate runtime-delivery packet and Kiro review must bind
+the source runtime directory and full inventory, archive hash and deterministic
+extraction rules, extracted tree hash, release coordinates, provenance/licensing,
+hosted-runner/kernel compatibility, pinned `bwrap` provisioning recipe and hashes,
+negative controls, and replacement policy. The archive contains no credentials,
+configuration, live data, OpenClaw installation/model packages, symlinks, special
+files or path escapes. Ryan must then authorize the exact external release operation.
+CI never resolves `latest`, accepts a mutable replacement, repairs the runtime, uses
+host dependencies as fallback, or substitutes another source. Missing or incompatible
+bytes fail closed.
+
+#### 18.22.5 R2b authority-content convergence
+
+This planning correction crosses into Arc R2b Capture Authorization only for static
+content attestation; it authorizes no lease, writer quiescence, capture, packet, live
+mutation or I4–I8 action. At PR head `94f29eb`, the governed 120-member path set has
+committed identity `b716152fbf725633a55371f6acf7ed5580a704bd` and independently
+resolved identity `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b`. `mcp_server.py` is
+already the sole changed governed member; the doctor correction makes `doctor.py` the
+second. The publisher is not a governed R2b member.
+
+After every final governed edit, an independent lane regenerates only
+`docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`. The member count, exact path set,
+seed, closure and routes remain unchanged; all members other than `mcp_server.py` and
+`doctor.py` stay byte-identical to fixed main. The lane retains before/after canonical
+manifests and change proof, recomputes
+`SHA256("r2b-v2-authority-content:v1:" + canonical_manifest)[:40]`, and proves
+convergence with the runtime resolver, inventory binding/digest and artifact. No R2b
+algorithm, coordinate, writer gate, lease, capture or coverage expectation changes.
+
+Because `STATUS-r2b-capture-auth.md` is part of this reviewed cross-arc correction, the
+reviewed control-plane set becomes exactly five documents: the existing four
+Switchboard planning documents plus that R2b STATUS document. The five source blobs
+and modes must equal the reviewed overlay exactly and remain in source export,
+inventory and `source_tree_sha256`. `constants.py`, `allowlist.py` and the packet
+contract test may receive only the closed additions needed to name this fifth control
+document and the exact corrective product/test/CI/R2b paths. An unlisted sixth
+document, prefix/glob exception or product-allowlist widening fails closed.
+
+#### 18.22.6 Ordered correction and final evidence
+
+The required order is: plan correction → Kiro exact-tip binary review → new Ryan
+implementation grant → held doctor commit → held publisher/recovery commit → held CI
+commit → independently held R2b inventory rotation → fresh evidence → Kiro exact-tip
+integrated review → Ryan merge decision. Codex verifies and issues a commit-specific
+`CONTINUE`, `CORRECT`, `PAUSE` or `REQUIRE TEST` after every pushed hold. Any conflict,
+extra path/byte, runtime-distribution uncertainty, authority ambiguity or required
+unplanned correction is `PAUSE`.
+
+Final evidence includes doctor continuation/non-disclosure; the complete fenced-crash
+matrix; complete `O`/`Q` union/intersection and actual GitHub merge-tree reconciliation;
+CI mutation controls; all five R2b failures plus existing R2b revision/coverage/
+authority-boundary/negative/shadow-writer tests; independent R2b convergence; the
+unchanged Pylint gate; two fresh M8 runs at 238 strict, 29 Node, and 118 collected /
+117 passed / one skipped / four deselected legacy outcomes; seven MCP regressions;
+durable verification; required GitHub checks green; focused safety/isolation review;
+and Kiro review of the exact integrated tip. Historical evidence is not replayed as a
+new PASS.
+
+**Authority boundary.** This section authorizes planning only. It does not authorize
+the plan application, doctor/publisher/CI/test/inventory edits, runtime provisioning or
+publication, evidence execution, PR update, merge, deployment, real OpenClaw, live
+data, watch activation, promotion, or Gates D/W/D-V/E/F. PR `#342` is amended rather
+than split only after the separately reviewed and granted correction completes.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -5741,6 +5948,9 @@ blocked.
 | Strict generation | A derivative of one exact cumulative authority head; atomic publication may instead select no serving generation. |
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
+| Ordinary/qualified partition | The proof that every collected repository pytest node runs exactly once in its applicable ordinary (`O`) or qualified (`Q`) environment, with no gaps or overlap. |
+| Fenced publication | A lineage state that deliberately makes authority unavailable while a publication operation is unresolved. |
+| Authority-content identity | The content-derived R2b identifier computed from the canonical governed-member manifest; it attests bytes and does not authorize capture. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main

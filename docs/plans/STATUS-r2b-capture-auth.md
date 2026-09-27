@@ -1,140 +1,142 @@
 # Arc Brief — R2b Capture Authorization
 
-> **Arc: R2b Capture Authorization.** This is a current-state snapshot, not a
-> session log. Historical v1 facts remain in the linked v1 documents.
+> **Arc: R2b Capture Authorization.** Current-state snapshot. The Switchboard
+> dependency below is static content attestation only and does not reopen live capture.
 
 ## 1. Product goal
 
-ConvMem capture must produce a package whose export, processed state, and bound
-Chroma state are proven to be one trusted source state and whose one capture is
-authorized by Ryan. Because those sources can mutate continuously, R2b v2
-establishes source authority only while one exclusive writer-gate lease is held
-continuously across the authoritative transaction.
+ConvMem capture must prove that exported source, processed state and bound Chroma
+state are one trusted source state while one Ryan-authorized exclusive writer-gate
+lease is held continuously. The v2 implementation supplies the mechanism; live use
+still requires separate coverage, duration, packet, grant and verification gates.
 
-Done means: the v2 I1–I3 implementation is independently reviewed and landed;
-zero-bypass writer coverage and concrete duration values are separately accepted;
-Ryan accepts a fresh packet and then issues **ACCEPT AND GRANT**; one capture
-completes or fails closed; and independent VERIFY plus Ryan's GATE closes it.
+The current cross-arc goal is narrower: PR `#342` must carry an R2b writer-coverage
+inventory whose authority-content identity matches its exact final governed bytes.
+That is static merge evidence, not capture authority.
 
 ## 2. System state
 
 ```text
-exact-tip route inventory + runtime census
-        │ zero unknown/bypass writers
-        ▼
-Ryan ACQUIRE WRITER QUIESCENCE AND PREPARE
-        │ one live exclusive writer-gate lease
-        ▼
-trusted source snapshot + draft packet
-        │ Ryan ACCEPT
-        ▼
-materialization (no capture output) → remaining-budget proof → Ryan ACCEPT AND GRANT
-        │ one capture begins → create target → final trusted source recomputation
-        ▼
-quiescence-close evidence → release gate → release evidence → independent VERIFY / Ryan GATE
+R2b v2 I1–I3 implementation on main
+        │ no live lease / packet / capture authorized
+        └─ static 120-member writer-coverage inventory
+                    │
+                    └─ Switchboard PR #342 changes governed mcp_server.py
+                       and plans a governed doctor.py correction
+                              │
+                              ▼
+                    independent final inventory rotation
+                    + resolver/content-identity convergence
 ```
 
-R2b v1 is historical policy and code provenance. The v2 architecture, execution
-plan, and I1–I3 implementation are on `main`. Corrective IX integration landed
-via PR #264 (merge commit `58375ad`, reviewed integration commit `39eab77`).
-Authority-content identity and committed inventory convergence are closed at
-implementation identity `4a3f3a17…` and inventory digest `760a4396…`.
-
-**Landing the implementation does not authorize live operation.** No v2 lease,
-packet, sidecar, grant, capture directory, live source mutation, or
-service/process mutation is authorized without separate explicit Ryan authority.
+R2b v1 remains historical policy/provenance. V2 I1–I3 implementation and corrective
+integration landed via PR `#264`; later I4–I8 operational steps remain blocked.
 
 ## 3. Repository facts and document map
 
 | Artifact | Current state |
 |---|---|
-| `origin/main` | `58375ad4585af6097988e86f1c4ef2dc7e4aeaa6`; v2 normative plan **and** I1–I3 implementation landed |
-| PR #264 | **MERGED** — Corrective IX integration; reviewed tip `39eab771c5acba5b312b8b3c4704ce3676f7acbf`; Luna + Kiro PASS before merge |
-| PR #260 | **MERGED** — Corrective VI/VII vault closure and authority boundary |
-| PR #252 | **MERGED** — initial I1–I3 authority-boundary corrective chain |
-| Draft PRs #246/#248/#249/#251 | **SUPERSEDED BUT PRESERVED** candidate chain; not actionable merge candidates |
-| `docs/plans/ARCHITECTURE-r2b-capture-auth.md` | Historical v1 architecture; preserved |
-| `docs/plans/EXECUTION-2026-07-20-r2b-capture.md` | Historical v1 execution plan; not valid for v2 live execution |
-| `docs/plans/VERIFY-r2b-capture.md` | Historical v1 verification matrix; v2 supplement is required |
-| `docs/plans/ARCHITECTURE-r2b-mutable-source-quiescence-v2.md` | Normative v2 amendment on `main`; live operation unauthorized |
-| `docs/plans/EXECUTION-2026-08-27-r2b-v2-quiescence.md` | Bounded v2 implementation and later operational sequence; I1–I3 landed; I4–I8 not started |
-| `docs/plans/VERIFY-r2b-v2-quiescence.md` | v2 verification matrix; no operational VERIFY PASS |
-| `chroma_write_store.py` | Writer gate substrate with v2 attestation (protocol 1) |
-| `writer_census.py` | Writer-session census substrate; v2 evidence extended |
-| D4 CG-2 surfaces | Landed on `main`; included in v2 writer-coverage analysis only |
-| Recovery Authority | Separate governed route; included in v2 writer-coverage analysis only |
+| V2 implementation | **LANDED** via PR `#264`; no live operation follows automatically |
+| Normative v2 architecture | `docs/plans/ARCHITECTURE-r2b-mutable-source-quiescence-v2.md` |
+| Normative v2 execution | `docs/plans/EXECUTION-2026-08-27-r2b-v2-quiescence.md` |
+| V2 verification | `docs/plans/VERIFY-r2b-v2-quiescence.md`; no operational VERIFY PASS |
+| Writer-coverage inventory | `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` |
+| Switchboard PR | `#342`, base `5c6a4a8`, pre-correction head `94f29eb`; merge blocked |
+| Governed member set | Exactly 120 paths; seed, closure and routes unchanged |
+| Pre-correction identities | committed `b716152fbf725633a55371f6acf7ed5580a704bd`; resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` |
+| Expected final changed governed members | Exactly `mcp_server.py` and `doctor.py` versus fixed main; publisher is not governed |
+| Cross-arc control document | This STATUS is the fifth exact reviewed plan blob for the Switchboard corrective |
 
-The existing complete-data-v2/v3 Restic artifacts remain backup evidence and a
-doctor precondition. They are not R2b source authority.
+Existing complete-data Restic artifacts remain backup evidence, not R2b source
+authority. The Switchboard qualified runtime and its GitHub delivery are not R2b
+capture inputs.
 
 ## 4. Completion state
 
 | Milestone | Status | Blocking condition |
 |---|---|---|
-| v1 architecture/implementation | Historical/landed | Does not solve continuous mutation |
-| v2 architecture amendment and execution plan | **LANDED on `main`** at `c6e8b2b0293edf8b0faf29e9e393e69eca6ca494` | — |
-| v2 I1–I3 implementation | **LANDED on `main`** via PR #264 at merge `58375ad` | — |
-| I1–I3 independent review | **COMPLETE** — Luna + Kiro PASS on integration commit `39eab77` | — |
-| authority-content / inventory identity | **CLOSED** — `4a3f3a17…` / `760a4396…` | — |
-| earlier I1–I3 candidates | **SUPERSEDED BUT PRESERVED** in draft PRs #246/#248/#249/#251 | Provenance only |
-| exact-tip zero-bypass coverage proof | **NOT ACCEPTED** | Separate operational gate; not implied by implementation landing |
-| duration policy values | **Policy-pending** | Scratch benchmark evidence and separate Ryan acceptance; no 900-second default |
-| v2 packet / lease / capture | **Not started and prohibited** | All operational gates plus fresh authority chain |
-| implementation review / merge | **COMPLETE** | PR #264 merged by regular merge 2026-08-31 |
-| operational VERIFY and Ryan GATE | **Not started** | Later separately authorized attempt |
+| V2 architecture and I1–I3 implementation | **LANDED / reviewed** | — |
+| Historical authority-content convergence | **CLOSED** for its reviewed implementation | Does not transfer to changed PR bytes |
+| Switchboard PR static content attestation | **PLAN ONLY / NOT CONVERGED** | Final governed edits, independent rotation and exact review |
+| Exact-tip zero-bypass operational proof | **NOT ACCEPTED** | Separate future operational gate |
+| Duration policy | **PENDING** | Separate benchmark and Ryan ratification |
+| Live packet/lease/capture | **NOT STARTED / PROHIBITED** | All operational gates and fresh authority chain |
+| Operational VERIFY and Ryan GATE | **NOT STARTED** | Later separately authorized attempt |
 
 ## 5. Current role and next action
 
-I1–I3 implementation and merge are complete. The arc is waiting on **separate
-operational authority** — not further implementation work. No operator may create
-a v2 packet, acquire the production gate, activate shadow/capture, or advance
-I4–I8 from this brief. Next actions require explicit Ryan grants for: zero-bypass
-coverage acceptance, duration policy ratification, writer-gate acquisition, packet
-drafting, or capture attempt.
+For the Switchboard dependency, review only the static content-attestation plan:
+
+- exact 120-member set, path-set/seed/closure/routes unchanged;
+- only `mcp_server.py` and `doctor.py` differ from fixed main after all edits;
+- only `R2B-V2-WRITER-COVERAGE-INVENTORY.json` changes in the held rotation;
+- an independent lane derives the canonical manifest and computes
+  `SHA256("r2b-v2-authority-content:v1:" + canonical_manifest)[:40]`;
+- resolver identity, inventory binding/digest and artifact converge exactly; and
+- before/after manifests and member-change proof remain durable.
+
+Do not acquire a writer gate, create a packet, run capture, stop/start services,
+mutate live state or advance I4–I8. Kiro next reviews the exact five-document
+Switchboard plan correction; implementation needs a later Ryan grant.
 
 ## 6. Required future sequence
 
-1. Scratch-only benchmark evidence proposes phase bounds. Ryan separately
-   accepts concrete production values; 900 seconds is not ratified.
-2. Zero-bypass writer coverage is proven and independently accepted at an
-   operational tip (separate from implementation landing).
-3. A fresh run obtains **ACQUIRE WRITER QUIESCENCE AND PREPARE**, proves zero
-   bypass, holds the exclusive gate, and drafts the packet.
-4. Ryan **ACCEPTs** the packet; materialization/binder validation occurs while
-   the same lease remains live.
-5. Ryan **ACCEPT AND GRANTs**; exactly one capture runs, followed by final source
-   recomputation, durable close evidence, gate release, release evidence, and VERIFY.
+1. Kiro reviews the Switchboard semantic parent/overlay including this exact STATUS
+   blob as the fifth reviewed control-plane input.
+2. Ryan may separately grant the bounded Switchboard implementation file sets.
+3. After all governed product edits, an independent lane derives the final canonical
+   120-member manifest and updates only the inventory JSON.
+4. Codex proves the member set, seed, closure and routes are unchanged; exactly
+   `mcp_server.py` and `doctor.py` changed; every other member is byte-identical to
+   fixed main; and all identity/digest/binding surfaces converge.
+5. Existing R2b revision, coverage, authority-boundary, negative and shadow-writer
+   tests plus the five Switchboard R2b failure nodes pass before PR merge review.
+6. Any later live R2b attempt still starts from scratch with coverage acceptance,
+   duration ratification, writer-quiescence authority, a fresh packet, Ryan ACCEPT,
+   Ryan ACCEPT AND GRANT, one capture, independent VERIFY and Ryan GATE.
 
-Every failure consumes the run and authority chain. Retry means a new run ID,
-new lease authority, new packet, new ACCEPT, and new grant. No partial output is
-cleaned or reused by R2b.
+## 7. Hard stops
 
-## 7. Hard stops and migration
+- No live lease, packet, capture directory, service/process or source mutation.
+- No member-set, seed, closure, route, algorithm or coordinate change.
+- No treating content identity as capture authority or operational VERIFY.
+- No inventory rotation before all final governed edits are fixed.
+- No self-derived identity accepted without independent recomputation and resolver
+  convergence.
+- Missing, duplicate, symlinked, uninspectable or unexpected governed members fail.
+- No sixth reviewed control document, glob/prefix exception, or source-hash exclusion.
+- Historical quarantined capture attempts remain unusable.
+- Duration value `900` seconds is not ratified by this correction.
 
-- Services and processes remain running. R2b never starts, stops, restarts,
-  signals, kills, reloads, or reconfigures them.
-- Unknown, stale-revision, unattested, uninspectable, PID-reused,
-  alternate-gate, or bypass-capable writers are a hard HOLD.
-- R2b never selects, advances, rolls back, activates, reconciles, restores, or
-  publishes CG-2/Recovery Authority state.
-- `2026-07-21-r2b-capture-01` and `2026-08-27-r2b-capture-02` remain quarantined
-  and permanently unusable. No old packet is upgraded or reinterpreted.
-- Historical v1 manifests remain evidence. New live tooling emits only v2 after
-  separate implementation/activation authority. New v1 live execution is
-  refused only after the v2 amendment is properly activated; implementation
-  landing does not activate that refusal or any live gate.
+## 8. Relationship to ConvMem Switchboard
 
-## 8. Update Log
+Arc ConvMem Switchboard changes a read-only MCP profile and now requires a contained
+doctor response; both `mcp_server.py` and `doctor.py` are governed R2b writer-coverage
+members. Its publisher correction is outside the R2b member set. This status update
+records that static dependency only. It neither imports Switchboard runtime semantics
+into R2b nor gives Switchboard authority to operate R2b.
+
+## 9. Key files
+
+| Purpose | Path |
+|---|---|
+| V2 architecture | `docs/plans/ARCHITECTURE-r2b-mutable-source-quiescence-v2.md` |
+| V2 execution | `docs/plans/EXECUTION-2026-08-27-r2b-v2-quiescence.md` |
+| V2 verification | `docs/plans/VERIFY-r2b-v2-quiescence.md` |
+| Static inventory | `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` |
+| Switchboard architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §18.22.5 |
+
+## 10. Update protocol
+
+Keep this file a current-state snapshot. Update it when the cross-arc inventory
+converges, the Switchboard PR merges/closes, or an R2b operational milestone changes.
+Do not append session narrative. Keep one current milestone-level line.
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-08-31 | Cursor | Reconciled post–Corrective IX landing: I1–I3 implementation and merge gate complete on `main` via PR #264; operational gates remain separately blocked. |
-| 2026-08-30 | Codex Sol | Reconciled live GitHub state: PR #252 now carries unreviewed Corrective V `20d7f567` with required Pylint failing; #246/#248/#249/#251 are superseded but preserved; no live or merge authority was added. |
-| 2026-08-27 | Luna High | Recast the arc as v2 writer-gate planning; v1 remains historical, live operation remains prohibited, and duration/coverage policy remains pending. |
-| 2026-08-28 | Cursor | Clean-base recovery onto `872a0e4`; reviewed-base SHA pointers reconciled; normative content preserved from accepted `b7f4764`. |
+| 2026-09-27 | Codex + Astra | Recorded the plan-only PR `#342` static authority-content convergence dependency; live R2b operation remains prohibited. |
 
-**TL;DR:** R2b v2 I1–I3 implementation is **landed on `main`** via PR #264
-(merge `58375ad`, reviewed integration `39eab77`; Luna + Kiro PASS). Authority-content
-identity convergence is closed. Implementation merge gate is complete. **No live
-writer gate, duration acceptance, packet, grant, capture, or I4–I8 advancement
-is authorized** — operational gates require separate explicit Ryan authority.
+**TL;DR:** [Arc R2b Capture Authorization] V2 I1–I3 remain landed and live capture
+remains prohibited. Switchboard PR `#342` adds only a static 120-member
+authority-content convergence dependency, with exactly `mcp_server.py` and `doctor.py`
+expected to differ after the separately reviewed correction.
