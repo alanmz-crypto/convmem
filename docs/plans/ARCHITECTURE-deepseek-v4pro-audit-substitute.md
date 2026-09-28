@@ -1,9 +1,9 @@
 # Architecture — DeepSeek V4-Pro Copilot audit-lane substitute
 
-**Status:** Implemented v2 baseline; consolidated v3 derived-evidence contract
-awaiting exact-tip Kiro recheck and separate Ryan implementation authorization.
+**Status:** Implemented v2 baseline and v3 derived-evidence core in producer modules;
+awaiting exact-tip Kiro recheck and separate Ryan activation authorization.
 **audit_protocol_version:** `deepseek-v4pro-audit.v2` (implemented);
-`deepseek-v4pro-audit.v3` (specified below, not implemented or activated)
+`deepseek-v4pro-audit.v3` (implemented in producer modules; not activated for live runs)
 **response_schema_version:** `deepseek-v4pro-checklist.v1`  
 **Runner:** `scripts/deepseek_audit_substitute.py`  
 **Supersedes:** obsolete Cursor plan packet for merged PR #66 (do not execute that packet).

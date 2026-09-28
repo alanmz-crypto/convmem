@@ -22,11 +22,15 @@ if str(ROOT) not in sys.path:
 
 from eval_corpus.deepseek_audit_substitute import (  # pylint: disable=wrong-import-position
     AUDIT_PROTOCOL_VERSION,
+    AUDIT_PROTOCOL_VERSION_V3,
+    AUDIT_SPEC_VERSION_V0_2,
     LOCKED_REQUEST_CONFIG,
     MODEL_ID,
     STATIC_REVIEW_FRAMING,
     Terminal,
+    V3EvidenceError,
     audit_run_key,
+    audit_run_key_v3,
     audit_spec_digest,
     build_evidence_packet_text,
     build_user_message,
@@ -36,6 +40,7 @@ from eval_corpus.deepseek_audit_substitute import (  # pylint: disable=wrong-imp
     load_audit_spec,
     make_boundary_nonce,
     marker_html,
+    prepare_v3_disclosed_evidence,
     producer_identity_digest,
     request_envelope_sha256,
     resolve_producer_identity,
@@ -53,6 +58,99 @@ def _git_show(repo: Path, rev_path: str) -> tuple[str, str]:
     body = _run(["git", "show", rev_path], cwd=repo)
     return oid, body
 
+
+
+
+def _load_json_file(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _git_name_status(repo: Path, base: str, tip: str) -> list[str]:
+    return _run(["git", "diff", "--name-status", f"{base}..{tip}"], cwd=repo).splitlines()
+
+
+def _collect_source_bytes(
+    repo: Path,
+    tip: str,
+    base: str,
+    source_manifest: dict,
+) -> dict[tuple[str, str], bytes]:
+    out: dict[tuple[str, str], bytes] = {}
+    for item in source_manifest.get("sources", []):
+        rev = item["source_revision"]
+        path = item["source_path"]
+        _, body = _git_show(repo, f"{rev}:{path}")
+        out[(rev, path)] = body.encode("utf-8")
+    return out
+
+
+def build_v3_packet_from_git(
+    repo: Path,
+    tip: str,
+    base: str,
+    *,
+    spec,
+    producer,
+    source_manifest: dict,
+    transformation_policy: dict,
+    frozen_inventory: dict,
+    transformation_manifest: dict,
+) -> tuple[bytes, dict]:
+    name_status = _git_name_status(repo, base, tip)
+    source_bytes = _collect_source_bytes(repo, tip, base, source_manifest)
+    system_placeholder = compose_system_prompt_with_example(
+        tip,
+        base,
+        "0" * 64,
+        spec.criteria,
+    )
+    sys_digest = system_prompt_sha256(system_placeholder)
+    prepared = prepare_v3_disclosed_evidence(
+        tip=tip,
+        base=base,
+        spec=spec,
+        producer_identity=producer,
+        source_manifest=source_manifest,
+        transformation_policy=transformation_policy,
+        frozen_inventory=frozen_inventory,
+        transformation_manifest=transformation_manifest,
+        source_bytes_by_coord=source_bytes,
+        name_status_lines=name_status,
+        system_digest=sys_digest,
+    )
+    system = compose_system_prompt_with_example(
+        tip, base, prepared.evidence_packet_sha256, spec.criteria
+    )
+    sys_digest = system_prompt_sha256(system)
+    run_key = audit_run_key_v3(
+        tip=tip,
+        base=base,
+        evidence_digest=prepared.evidence_packet_sha256,
+        system_digest=sys_digest,
+        spec_digest=prepared.spec_digest,
+        producer_identity_digest_value=producer_identity_digest(producer),
+        source_manifest_digest=prepared.source_manifest_digest,
+        transformation_policy_digest=prepared.transformation_policy_digest,
+        transformation_manifest_digest=prepared.transformation_manifest_digest,
+    )
+    meta = {
+        "audit_protocol_version": AUDIT_PROTOCOL_VERSION_V3,
+        "tip": tip,
+        "base": base,
+        "spec_digest": prepared.spec_digest,
+        "producer_identity_digest": producer_identity_digest(producer),
+        "producer_head_sha": producer.head_sha,
+        **({"inventory_digest": inventory_digest} if inventory_digest else {}),
+        "evidence_packet_sha256": prepared.evidence_packet_sha256,
+        "system_prompt_sha256": sys_digest,
+        "source_manifest_digest": prepared.source_manifest_digest,
+        "transformation_policy_digest": prepared.transformation_policy_digest,
+        "inventory_digest": prepared.inventory_digest,
+        "transformation_manifest_digest": prepared.transformation_manifest_digest,
+        "AUDIT_RUN_KEY": run_key,
+        "system_prompt": system,
+    }
+    return prepared.evidence_bytes, meta
 
 def build_packet_from_git(
     repo: Path,
@@ -126,6 +224,10 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     p.add_argument("--base", required=True, help="40-char base SHA")
     p.add_argument("--pr", type=int, help="PR number (required for --live post)")
     p.add_argument("--out-dir", type=Path, default=Path("/tmp/deepseek-audit-out"))
+    p.add_argument("--source-manifest", type=Path, help="v3 source manifest JSON")
+    p.add_argument("--transformation-policy", type=Path, help="v3 transformation policy JSON")
+    p.add_argument("--frozen-inventory", type=Path, help="v3 frozen inventory JSON")
+    p.add_argument("--transformation-manifest", type=Path, help="v3 transformation manifest JSON")
     p.add_argument(
         "--live",
         action="store_true",
@@ -175,46 +277,96 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     spec_digest = audit_spec_digest(spec)
     prod_digest = producer_identity_digest(producer)
 
-    try:
-        evidence = build_packet_from_git(
-            audited_repo,
-            tip,
-            base,
-            required_dependencies=list(spec.required_dependencies),
-            spec_digest=spec_digest,
+    v3_paths = (
+        args.source_manifest,
+        args.transformation_policy,
+        args.frozen_inventory,
+        args.transformation_manifest,
+    )
+    use_v3 = all(p is not None for p in v3_paths)
+    if any(p is not None for p in v3_paths) and not use_v3:
+        print(
+            json.dumps(
+                {
+                    "terminal": Terminal.INVALID_EXECUTION.value,
+                    "reason": "v3_artifacts_incomplete",
+                }
+            )
         )
-    except FileNotFoundError as exc:
+        return 2
+    if use_v3 and spec.audit_spec_version != AUDIT_SPEC_VERSION_V0_2:
+        print(
+            json.dumps(
+                {
+                    "terminal": Terminal.INVALID_EXECUTION.value,
+                    "reason": "v3_requires_spec_v0_2",
+                }
+            )
+        )
+        return 2
+
+    protocol_version = AUDIT_PROTOCOL_VERSION
+    inventory_digest = None
+    try:
+        if use_v3:
+            evidence, v3_meta = build_v3_packet_from_git(
+                audited_repo,
+                tip,
+                base,
+                spec=spec,
+                producer=producer,
+                source_manifest=_load_json_file(args.source_manifest),
+                transformation_policy=_load_json_file(args.transformation_policy),
+                frozen_inventory=_load_json_file(args.frozen_inventory),
+                transformation_manifest=_load_json_file(args.transformation_manifest),
+            )
+            evidence_digest = v3_meta["evidence_packet_sha256"]
+            system = v3_meta["system_prompt"]
+            sys_digest = v3_meta["system_prompt_sha256"]
+            run_key = v3_meta["AUDIT_RUN_KEY"]
+            protocol_version = AUDIT_PROTOCOL_VERSION_V3
+            inventory_digest = v3_meta.get("inventory_digest")
+        else:
+            evidence = build_packet_from_git(
+                audited_repo,
+                tip,
+                base,
+                required_dependencies=list(spec.required_dependencies),
+                spec_digest=spec_digest,
+            )
+            evidence_digest = evidence_packet_sha256(evidence)
+            system = compose_system_prompt_with_example(
+                tip, base, evidence_digest, spec.criteria
+            )
+            sys_digest = system_prompt_sha256(system)
+            run_key = audit_run_key(
+                tip=tip,
+                base=base,
+                evidence_digest=evidence_digest,
+                system_digest=sys_digest,
+                spec_digest=spec_digest,
+                producer_identity_digest_value=prod_digest,
+            )
+    except (FileNotFoundError, V3EvidenceError) as exc:
         print(json.dumps({"terminal": Terminal.INVALID_EXECUTION.value, "reason": str(exc)}))
         return 2
 
-    evidence_digest = evidence_packet_sha256(evidence)
     nonce = make_boundary_nonce()
-    system = compose_system_prompt_with_example(
-        tip, base, evidence_digest, spec.criteria
-    )
-    sys_digest = system_prompt_sha256(system)
     user_msg = build_user_message(
         evidence_bytes=evidence, evidence_digest=evidence_digest, boundary_nonce=nonce
     )
     envelope = request_envelope_sha256(system_prompt=system, user_message=user_msg)
-    run_key = audit_run_key(
-        tip=tip,
-        base=base,
-        evidence_digest=evidence_digest,
-        system_digest=sys_digest,
-        spec_digest=spec_digest,
-        producer_identity_digest_value=prod_digest,
-    )
 
     outbound = canonical_request_body(system, user_msg.decode("utf-8", errors="replace"))
     hits = egress_scan_outbound_body(outbound)
     digests = {
-        "audit_protocol_version": AUDIT_PROTOCOL_VERSION,
+        "audit_protocol_version": protocol_version,
         "tip": tip,
         "base": base,
         "spec_digest": spec_digest,
         "producer_identity_digest": prod_digest,
         "producer_head_sha": producer.head_sha,
+        **({"inventory_digest": inventory_digest} if inventory_digest else {}),
         "evidence_packet_sha256": evidence_digest,
         "system_prompt_sha256": sys_digest,
         "request_envelope_sha256": envelope,
