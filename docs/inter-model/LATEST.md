@@ -9,6 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **pr-steward-reminder — BLOCKED_ON_RYAN, decision request (2026-09-27):**
+  `doctor`'s standing check is 67 days overdue (limit 30) asking whether to
+  start assigning PR Steward (default: Codex) for bounded PR-lifecycle work.
+  Asked directly 4x in a session and never answered — see
+  [`CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md`](CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md)
+  for the two options. No agent should self-resolve this.
 - **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
   held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
   preserves integration tip `9c6421a` and routes its 44-path remediation to
