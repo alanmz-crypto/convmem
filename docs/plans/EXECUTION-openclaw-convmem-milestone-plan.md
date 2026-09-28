@@ -1,7 +1,8 @@
 # Milestone Execution Plan — ConvMem–OpenClaw
 
-**Current status (2026-09-27): SCHEMA-V3 PACKET TECHNICAL PASS;
-PROVENANCE/LICENSING PAUSE; COMPONENT/OWNERSHIP WORK-ITEM PLAN-ONLY.** The accepted bounded implementation and
+**Current status (2026-09-28): SCHEMA-V3 PACKET TECHNICAL PASS;
+PROVENANCE/LICENSING PAUSE; COMPONENT/OWNERSHIP WORK-ITEM PLAN MERGED / KIRO
+EXACT-MAIN PASS.** The accepted bounded implementation and
 final M11 evidence remain preserved at
 `PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb`.
 Kiro passed the PR-corrective overlay `a23d843`; required GitHub `pytest (3.12)`
@@ -24,7 +25,9 @@ Kiro passed that design at `a10a84d`; PR `#345` reconciled it with current main 
 merged at `5bcc6c7`, Kiro passed exact main, and PR `#346` merged the descriptive
 snapshot at `a986fce`. Sections 18.30/10.28 now freeze the complete seven-role offline
 work-item design, exact 1,221-component/19-dispute/1,384-edge/98,608-ID assignments,
-and non-authoritative twenty-batch/49-page views. No work-item packet exists. These
+and non-authoritative twenty-batch/49-page views. PR `#348` merged that plan at
+`d79f03c27976ce3460a79f168641d00f2ff291b6`, and Kiro returned exact-main PASS.
+No work-item packet exists. These
 plans authorize no packet/runtime read, request, retained-source access, acquisition,
 owner or license selection, binary repair, build, runtime publication, evidence rerun,
 PR update or merge.
@@ -33,7 +36,7 @@ PR update or merge.
 EVIDENCE AND KIRO CONFORMANCE PASS PRESERVED AT `94f29eb`; PR `#342` MERGE
 BLOCKED. RUNTIME BYTE/MODE/EXTRACTION VALIDATION PASS; PUBLIC REDISTRIBUTION
 PROVENANCE/LICENSING FAIL/PAUSE. REPLACEMENT DELIVERY-SET PLAN KIRO PASS;
-COMPONENT/OWNERSHIP WORK-ITEM PLAN AWAITS EXACT-TIP KIRO REVIEW.
+COMPONENT/OWNERSHIP WORK-ITEM PLAN MERGED AT `d79f03c`; KIRO EXACT-MAIN PASS.
 PRODUCT/TEST/CI/RUNTIME EDITS, TEST EXECUTION, PR UPDATE, MERGE AND REAL OPENCLAW
 WORK REMAIN PAUSED.
 
@@ -653,7 +656,9 @@ Review and authority order is mandatory:
     98,608-ID/1,384-edge assignments, non-authoritative twenty-batch/49-page views,
     candidate-citation boundary and held authoring/review sequence. No work-item root,
     packet read, acquisition, owner/license decision, build or implementation is
-    authorized.
+    authorized. Kiro passed the exact work-item parent and overlay; PR `#348` merged
+    the four reviewed plan blobs at `d79f03c`, and Kiro returned exact-main PASS.
+    Planning merge and review grant no packet read or authoring authority.
 
 ## 1. State ledger
 
@@ -661,9 +666,9 @@ Review and authority order is mandatory:
 |---|---|
 | **Specified** | Semantic parent Architecture §§18.22–18.30 and Execution §§10.20–10.28; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; complete component/ownership work-item design; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
-| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, schema v1 at `5f397852`, schema v2 at `2956f701`, schema v3 at `d03aa553` and result binding at `3b3550c`. The v1/v2 P0 stops remain rejected. The single v3 P0 completed with five cumulative passes and 11,643,965,233 bytes, one exact projection, 65 negative controls and zero network/external/retained-source reads; its durable packet verifies but retains 98,608 unresolved rows. Claude's disposition and Codex verification confirm technical PASS/provenance-and-licensing PAUSE and the three captured host-path findings without reading the runtime. |
+| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, schema v1 at `5f397852`, schema v2 at `2956f701`, schema v3 at `d03aa553` and result binding at `3b3550c`. The v1/v2 P0 stops remain rejected. The single v3 P0 completed with five cumulative passes and 11,643,965,233 bytes, one exact projection, 65 negative controls and zero network/external/retained-source reads; its durable packet verifies but retains 98,608 unresolved rows. Claude's disposition and Codex verification confirm technical PASS/provenance-and-licensing PAUSE and the three captured host-path findings without reading the runtime. Kiro passed the exact work-item overlay and merged main `d79f03c`; this is planning review only. |
 | **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
-| **Unresolved** | Kiro exact-tip review of this component/ownership work-item parent and overlay; separately granted offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Unresolved** | Separately granted offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -745,7 +750,7 @@ M0 baseline/runtime input
   → Kiro exact-tip PASS; PR #345 merged at 5bcc6c7; exact-main PASS
   → PR #346 descriptive snapshot merged at a986fce
   → plan-only §18.30/§10.28 complete component/ownership work-item contract
-  → Kiro exact-tip work-item design review
+  → Kiro exact-tip PASS; PR #348 merged at d79f03c; exact-main PASS
   → separate offline work-item authoring packet grant and independent review
   → separate exact metadata/acquisition operation packet, review and Ryan grant
   → bounded Codex acquisition at fresh coordinates
@@ -771,9 +776,9 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 
 M0–M8 and the preceding M11 evidence are accepted historical scope; they are neither
 reopened nor promoted into a green GitHub required check. M9, M10, watch coverage and
-complete-system review remain decision gates, not implementation work. The only
-possible next activity is exact-tip Kiro review of this component/ownership work-item
-plan.
+complete-system review remain decision gates, not implementation work. The next
+possible activity is separately Ryan-granted offline authoring of the exact
+component/ownership work-item packet followed by independent review.
 Because the replacement freezes `REPLACEMENT_PROVENANCE_CLOSURE=UNRESOLVED`,
 `REPLACEMENT_LICENSING_DISPOSITION=PAUSE` and
 `REPLACEMENT_PUBLICATION_ELIGIBLE=false`, Kiro PASS cannot
@@ -1326,8 +1331,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    independent disposition, which Codex verified at the exact §0 hash and verdicts.
    The pre-acquisition plan merged at `5bcc6c7` and received Kiro exact-main PASS;
    descriptive snapshot PR `#346` merged at
-   `COMPONENT_OWNERSHIP_WORK_ITEM_PLAN_BASE_SHA`. Kiro PASSes this work-item semantic
-   parent and overlay; a separately granted offline author, independent work-item
+   `COMPONENT_OWNERSHIP_WORK_ITEM_PLAN_BASE_SHA`. Kiro passed this work-item semantic
+   parent and overlay; PR `#348` merged the reviewed plan at `d79f03c`, and Kiro
+   returned exact-main PASS. A separately granted offline author, independent work-item
    packet review, a later exact operation packet and Ryan acquisition grant, and Kiro/
    licensing review of a zero-unresolved component lock remain mandatory
    before any build; Ryan separately grants a deterministic build and
@@ -1438,7 +1444,8 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    complete at `PROVENANCE_V3_REVIEW_DISPOSITION_SHA256` but returned provenance and
    licensing `PAUSE`. Pre-acquisition-design-ready was reached by the merged
    §§18.29/10.27 plan and Kiro exact-main PASS at `5bcc6c7`. Work-item-design-ready
-   means exact-tip Kiro PASS on this semantic parent/overlay. Work-item-packet-ready,
+   was reached by PR `#348` merged at `d79f03c` and Kiro exact-main PASS.
+   Work-item-packet-ready,
    complete-origin-planning, operation-packet-ready,
    acquisition-ready, provenance-closed, lock-ready,
    build-ready, packet-ready, publication-ready and CI-admission-ready are separate
@@ -1478,8 +1485,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 12. **Verdict:** Schema-v3 design and P0 execution are preserved results. Separate
     result-binding and independent disposition verdicts are preserved results.
     The merged pre-acquisition/clean-replacement plan and exact-main verdict are
-    preserved results. Separate verdicts remain mandatory for this work-item plan;
-    offline work-item packet and review; complete cited origin planning; every exact acquisition operation;
+    preserved results. The merged component/ownership work-item plan and exact-main
+    verdict are preserved results. Separate verdicts remain mandatory for the offline
+    work-item packet and review; complete cited origin planning; every exact acquisition operation;
     successor component-lock completeness;
     replacement construction; runtime byte qualification; public redistribution/
     provenance/licensing; final packet; external publication and CI admission; doctor safety;
@@ -1610,8 +1618,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
       merged plan blobs equal carrier `6429d27` and preserve §§18.29/10.27.
 - [x] PR `#346` merged the descriptive current-state snapshot at
       `COMPONENT_OWNERSHIP_WORK_ITEM_PLAN_BASE_SHA`; no authority boundary moved.
-- [ ] Kiro exact-tip PASS on §§18.30/10.28 and this milestone overlay; planning
-      review creates no packet or operation authority.
+- [x] Kiro exact-tip PASS on §§18.30/10.28; PR `#348` merged the four reviewed
+      planning blobs at `d79f03c`, and Kiro exact-main PASS confirmed their equality.
+      Planning merge and review create no packet or operation authority.
 - [ ] Separately granted offline authoring and independent review of the exact
       seven-file work-item packet with 1,240-item/98,608-ID/1,384-edge disjoint-union
       proof; unknown origins and all 19 ownership disputes remain unresolved unless
@@ -1843,8 +1852,8 @@ Ryan's explicit confirmation naming exact revisions is required before:
   schema-v1 and schema-v2 P0 attempts are stopped, while schema-v3 P0 produced an
   immutable but unresolved PAUSE packet. Result binding and independent disposition
   are complete; technical PASS remains provenance/licensing PAUSE. The
-  pre-acquisition/clean-replacement plan is merged and Kiro-PASSed. This exact
-  component/ownership work-item design awaits Kiro review, followed by separately
+  pre-acquisition/clean-replacement plan is merged and Kiro-PASSed. The exact
+  component/ownership work-item design is merged and Kiro-PASSed at `d79f03c`, followed by separately
   granted offline authoring and independent review, complete cited origin planning,
   separately reviewed/granted operations, acquisition, zero-unresolved lock, clean build, packet, publication and
   CI-admission stages. The combined system is not operationally complete until
@@ -1853,8 +1862,8 @@ Ryan's explicit confirmation naming exact revisions is required before:
 ## 9. Unresolved decisions that must be resolved before Grok resumes
 
 No earlier T0–T5 or completed M11 architectural decision is reopened. The schema-v3
-collector, P0 and disposition are complete and cannot run again. Kiro must PASS this
-exact component/ownership work-item parent and overlay. Offline work-item authoring
+collector, P0 and disposition are complete and cannot run again. The merged
+component/ownership work-item plan has Kiro exact-main PASS. Offline work-item authoring
 and independent review require separate exact grants before any packet root exists.
 Complete cited origin operations and any access require a new exact operation packet,
 review and Ryan grant naming
@@ -1955,8 +1964,8 @@ TIP. BOUNDED M11 EVIDENCE: PRESERVED AT `PRESERVED_PR342_HEAD_SHA`. PR MERGE
 READINESS: FAIL / BLOCKED. REPLACEMENT-DELIVERY PLAN: KIRO PASS.
 PROVENANCE-LOCK SCHEMAS V1/V2: P0 PAUSE. SCHEMA V3: IMMUTABLE P0 PAUSE PACKET;
 RESULT BINDING AND INDEPENDENT DISPOSITION COMPLETE; PRE-ACQUISITION/CLEAN-
-REPLACEMENT PLAN MERGED AND KIRO-PASS; COMPONENT/OWNERSHIP WORK-ITEM PLAN READY
-FOR KIRO EXACT-TIP REVIEW;
+REPLACEMENT PLAN MERGED AND KIRO-PASS; COMPONENT/OWNERSHIP WORK-ITEM PLAN MERGED
+AT `d79f03c` AND KIRO EXACT-MAIN PASS;
 CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
 independent publication provenance/licensing review. The replacement delivery-set
 plan passed at `3402e62a`; schema v1 passed at `5f397852`, then its offline P0 stopped
@@ -1972,7 +1981,7 @@ CI-admission stage is authorized. Required GitHub pytest is red, doctor and
 publisher safety corrections are unimplemented, GitHub runtime distribution is
 unpublished and currently ineligible because provenance/licensing remains `PAUSE`,
 and R2b authority-content identity is not converged for the final corrective tree.
-After Kiro work-item-plan PASS, every later §§18.24–18.30/§§10.22–10.28 stage and the M11
+After the merged work-item-plan exact-main PASS, every later §§18.24–18.30/§§10.22–10.28 stage and the M11
 implementation still require separate exact Ryan grants and reviews. This overlay authorizes no
 product/test/CI/inventory/runtime edit, evidence execution, PR update or merge.
 
@@ -2015,7 +2024,8 @@ successful fixture build.
   objects and were merged at `5bcc6c7` with Kiro exact-main PASS. Sections
   18.30/10.28 now freeze the seven-role offline work-item design, 1,221 component
   items, 19 unresolved ownership disputes, all 98,608 ID assignments and all 1,384
-  primary edge assignments; exact-tip Kiro review is next and no packet exists.
+  primary edge assignments; PR `#348` merged at `d79f03c`, Kiro returned exact-main
+  PASS, and no packet exists.
   Offline authoring, acquisition, zero-unresolved lock closure,
   build, final packet, publication and CI admission remain separately gated; merge is
   a later Ryan decision.

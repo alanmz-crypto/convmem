@@ -66,7 +66,7 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         ├─ §18.30 / §10.28 component + ownership work-item plan
         │       └─ 1,221 component items + 19 unresolved ownership disputes
         │       └─ 98,608 IDs assigned once; twenty batches / 49 audit pages
-        │       └─ plan-only; Kiro exact-tip review pending
+        │       └─ PR #348 merged at d79f03c; Kiro exact-main PASS
         │
         │ → separately granted offline work-item packet + independent review
         │ → separately planned exact origins
@@ -115,7 +115,9 @@ implementation or external publication. Sections 18.30/10.28 now freeze the comp
 planning-only work-item model: 1,221 component items, 19 ownership-dispute items,
 all 98,608 open IDs assigned once, all 1,384 nested edges assigned to their container,
 and deterministic twenty-batch/49-page derived views. No work-item packet exists and
-Kiro exact-tip review remains pending.
+PR `#348` merged the plan at `d79f03c27976ce3460a79f168641d00f2ff291b6`;
+Kiro returned exact-main PASS. That merge and review authorize no packet creation,
+read or acquisition.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -137,7 +139,7 @@ the absent publishable qualified runtime.
 | Provenance-lock schema v3 | **KIRO PASS / OFFLINE P0 PAUSE** — one exact run completed with five cumulative passes and 11,643,965,233 bytes; durable packet tree `491ae60b…` contains 98,608 open rows and is not build-eligible |
 | P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
-| Component/ownership work-item plan | **PLAN-ONLY / KIRO REVIEW PENDING** — §§18.30/10.28 define one future seven-file offline packet with 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
+| Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -165,7 +167,7 @@ the absent publishable qualified runtime.
 | P0 result binding | **KIRO PASS / INDEPENDENT REVIEW PAUSE** | Exact disposition preserves structural PASS while provenance/licensing and build eligibility remain blocked |
 | Pre-acquisition and host-path planning | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` | Later origin planning and every operation remain separately gated |
 | Plan PR | **MERGED / REVIEWED** — `#345` at `5bcc6c7` replaced conflicting `#344` | Exact current-main parent, four Switchboard planning documents only and byte-equality to carrier `6429d27`; planning merge grants no acquisition or build authority |
-| Component/ownership work-item design | **PLAN-ONLY / KIRO REVIEW PENDING** | Exact-tip PASS is required before a separately granted offline author may read the immutable packet or create the seven-file bundle |
+| Component/ownership work-item design | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` | Planning PASS grants no read or packet authority; a separate Ryan grant is required before an offline author may read the immutable packet or create the seven-file bundle |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -174,13 +176,12 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** perform the focused Kiro exact-tip design/scope review
-of §§18.30/10.28 and the milestone overlay. Confirm the plan changes only the four
-Switchboard planning documents; preserves packet `491ae60b…`, disposition
-`45442e93…`, all 98,608 blocking IDs and every §18.29 hard stop; closes the
-1,221-component/19-dispute/1,384-edge assignments; and treats batches, pages and cited
-candidates as non-authoritative projections. Return binary PASS or FAIL on the exact
-overlay tip. Review authorizes no packet creation or acquisition.
+**If Ryan sent you here now:** preserve the merged §§18.30/10.28 work-item contract and
+its Kiro exact-main PASS at `d79f03c`. The next substantive decision belongs to Ryan:
+whether to grant one frozen offline author permission to read only packet
+`491ae60b…` and disposition `45442e93…` and create the exact seven-file work-item
+packet at the absent single-assignment roots. Do not infer that grant from the merged
+plan or review PASS.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -191,42 +192,40 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro reviews the exact component/ownership work-item design and milestone overlay.
-   PASS approves planning only.
-2. Under a separate Ryan grant, one frozen offline author may read only the immutable
+1. Under a separate Ryan grant, one frozen offline author may read only the immutable
    packet/disposition and create the exact seven-file work-item packet at fresh roots.
    An independent reviewer then proves the 1,240-item, 98,608-ID, 1,384-edge,
    twenty-batch, 49-page and 19-dispute unions. No network or retained-source read is
    part of that grant.
-3. A separate exact metadata/acquisition operation packet must name every allowed
+2. A separate exact metadata/acquisition operation packet must name every allowed
    origin/root, method, redirect, parser, byte/request ceiling, checkpoint and fresh
    coordinate. Kiro review and another Ryan grant are required before any request,
    VCS fetch or retained-source read.
-4. Codex may then perform only the granted bounded acquisition. An independent
+3. Codex may then perform only the granted bounded acquisition. An independent
    provenance/licensing reviewer and human counsel inspect the resulting immutable
    evidence. Only a later packet with zero unresolved rows plus independent technical,
    provenance and licensing PASS can become build-eligible.
-5. A separately reviewed recipe/build packet must rebuild the host-path-bearing
+4. A separately reviewed recipe/build packet must rebuild the host-path-bearing
    components and complete runtime from independently locked inputs, without copying or
    rewriting rejected binaries. Under a separate Ryan grant, a named builder creates
    the three-role replacement set once in fresh disposable roots; Codex independently
    qualifies it across two distinct build prefixes and host-path-negative controls.
-6. A plan-only final packet pins every name, size, hash and coordinate. Kiro and the
+5. A plan-only final packet pins every name, size, hash and coordinate. Kiro and the
    independent licensing reviewer inspect the actual final bytes. Only
    after both PASS may Ryan consider a single-assignment publication grant. CI
    admission remains a later separate grant.
-7. Ryan separately decides whether to grant the exact held product/test/CI/R2b
+6. Ryan separately decides whether to grant the exact held product/test/CI/R2b
    correction.
-8. Under those grants, Cursor applies the reviewed plan and stops at each held doctor,
+7. Under those grants, Cursor applies the reviewed plan and stops at each held doctor,
    publisher/recovery, CI and R2b inventory commit; Codex independently inspects and
    issues commit-specific supervision.
-9. Codex runs fresh doctor, crash-matrix, ordinary/qualified CI, R2b convergence,
+8. Codex runs fresh doctor, crash-matrix, ordinary/qualified CI, R2b convergence,
    unchanged Pylint, two M8, seven MCP and durable-evidence verification on the exact
    integration tip and actual GitHub PR merge commit.
-10. A focused independent safety/isolation audit reviews publisher recovery and CI
+9. A focused independent safety/isolation audit reviews publisher recovery and CI
    containment. Kiro reviews the exact integrated tip and evidence.
-11. Ryan alone decides whether PR `#342` may merge.
-12. Real OpenClaw still requires deliberate update/pin, fresh capability probe, Gate D
+10. Ryan alone decides whether PR `#342` may merge.
+11. Real OpenClaw still requires deliberate update/pin, fresh capability probe, Gate D
    runtime/containment/distribution review, then Gates W/D-V/E and later promotion.
 
 ## 7. Hard stops
@@ -294,13 +293,14 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.29 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.27 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.30 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.28 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
 | Implementation pull request | `https://github.com/alanmz-crypto/convmem/pull/342` |
 | Replacement plan pull request | `https://github.com/alanmz-crypto/convmem/pull/345` — merged as `5bcc6c7`; Kiro exact-main PASS |
+| Work-item plan pull request | `https://github.com/alanmz-crypto/convmem/pull/348` — merged as `d79f03c`; Kiro exact-main PASS |
 | Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
@@ -311,7 +311,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-27 | Codex | Froze the plan-only component/ownership work-item contract with exact 1,240-item/98,608-ID coverage; Kiro exact-tip review is next. |
+| 2026-09-28 | Codex | Recorded PR `#348` merged at `d79f03c` and Kiro exact-main PASS; offline packet authoring remains separately Ryan-gated. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -330,5 +330,5 @@ clean replacement for three host-path-bearing ELFs without naming an authoritati
 origin. Sections 18.30/10.28 now freeze the seven-role offline work-item design,
 1,221 component items, 19 unresolved ownership disputes, exact 98,608-ID/1,384-edge
 assignment and non-authoritative twenty-batch/49-page projections; Kiro review is
-pending and no packet exists. Acquisition, binary repair, build, implementation, publication, evidence
+complete on merged main `d79f03c`, and no packet exists. Acquisition, binary repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
