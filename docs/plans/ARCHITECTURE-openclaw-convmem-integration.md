@@ -1,7 +1,8 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
 **Current status (2026-09-27): PROVENANCE PACKET TECHNICAL PASS;
-PROVENANCE/LICENSING PAUSE; PRE-ACQUISITION DESIGN REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The bounded implementation and durable
+PROVENANCE/LICENSING PAUSE; COMPONENT/OWNERSHIP WORK-ITEM DESIGN REVIEW PENDING;
+EXTERNAL PUBLICATION BLOCKED.** The bounded implementation and durable
 M11 evidence remain preserved at
 `94f29ebabee31112cccb223fd1445cb782aac6eb`, but pull request `#342` cannot merge.
 Its required GitHub `pytest (3.12)` context failed with 83 failures, and a focused
@@ -12,7 +13,8 @@ misclassified as an exact retry without independently proved input identity. Sec
 packet; and §18.24's replacement delivery-set plan received exact-tip Kiro PASS at
 `3402e62a8479011814bfa76ce9e1c3269dc34350`. Sections 18.25–18.28 freeze the
 canonical schema-v3 packet and independent disposition; §18.29 defines the lossless
-pre-acquisition and clean-replacement contract. The first archive passed local byte/
+pre-acquisition and clean-replacement contract; and §18.30 defines the closed,
+planning-only component/ownership work-item contract. The first archive passed local byte/
 mode/extraction validation, but public redistribution remains fail-closed on incomplete
 component provenance, licensing evidence and embedded host paths. Everything
 below through §18.21 is retained as historical design and evidence provenance. This
@@ -7105,6 +7107,256 @@ disposition mutation, binary repair, runtime construction, publication, CI admis
 implementation, PR update, merge, live OpenClaw use or later gate. Planning PASS is
 not execution authority.
 
+### 18.30 Complete component and ownership work-item contract
+
+Section 18.29 proves that the schema-v3 packet can be covered losslessly without
+inventing an origin or owner. This successor freezes the one canonical planning model
+that a later, separately granted offline authoring step must instantiate. It does not
+read the packet, create a work-item bundle, resolve an ownership dispute, select a
+license, or authorize an origin operation.
+
+#### 18.30.1 Frozen inputs, proposed coordinates and status
+
+The work-item design is bound to current main after the descriptive merge snapshot and
+to the immutable packet/disposition pair:
+
+```text
+COMPONENT_OWNERSHIP_WORK_ITEM_PLAN_BASE_SHA=a986fce7e7c59ebbbe81a079a7e90c6bdaa816fb
+PROVENANCE_V3_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+PROVENANCE_V3_REVIEW_DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+PROVENANCE_WORK_ITEM_SCHEMA=convmem.switchboard.provenance-work-items.v1
+PROVENANCE_COMPONENT_WORK_ITEM_COUNT=1221
+PROVENANCE_OWNERSHIP_DISPUTE_WORK_ITEM_COUNT=19
+PROVENANCE_TOTAL_WORK_ITEM_COUNT=1240
+PROVENANCE_COMPONENT_UNRESOLVED_COUNT=7326
+PROVENANCE_OWNED_FILE_ORIGIN_UNRESOLVED_COUNT=91206
+PROVENANCE_DISPUTED_FILE_UNRESOLVED_COUNT=76
+PROVENANCE_WORK_ITEM_UNRESOLVED_COUNT=98608
+PROVENANCE_WORK_ITEM_PACKET_FILE_COUNT=7
+PROVENANCE_WORK_ITEM_NEGATIVE_CONTROL_COUNT=40
+PROVENANCE_WORK_ITEM_PACKET_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+PROVENANCE_ACQUISITION_EXECUTION_AUTHORIZED=false
+PROPOSED_WORK_ITEM_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/a986fce7e7c59ebbbe81a079a7e90c6bdaa816fb/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v1
+PROPOSED_WORK_ITEM_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/a986fce7e7c59ebbbe81a079a7e90c6bdaa816fb/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v1
+```
+
+The proposed roots are single-assignment coordinates for a future grant; this plan
+does not create them. If either root exists before that grant, authoring is `PAUSE`.
+The schema-v3 packet and review roots remain immutable inputs and are never nested
+under, copied into, hard-linked into, or modified by the work-item roots.
+
+#### 18.30.2 One canonical work-item packet, not three authorities
+
+A future offline authoring run may create exactly seven canonical files under one
+immutable packet leaf:
+
+| File | Primary key / purpose |
+|---|---|
+| `component-work-items.jsonl` | `work_item_id`; exactly 1,221 component records |
+| `ownership-dispute-work-items.jsonl` | `work_item_id`; exactly 19 path records |
+| `component-batches.jsonl` | `batch_id`; the exact twenty scheduling projections |
+| `unresolved-pages.jsonl` | `page_id`; the exact 49 verification projections |
+| `coverage.json` | one closed arithmetic and set-identity summary |
+| `negative-controls.jsonl` | `control_id`; the closed fail-closed mutant corpus |
+| `manifest.json` | hashes, sizes, modes, record counts and primary-key hashes for the preceding six files; never self-hashes |
+
+All JSON uses the canonical §18.25 UTF-8/LF/sorted-key/no-float/no-duplicate-key
+rules. JSONL records are sorted by raw UTF-8 primary-key bytes. Files are mode `0444`,
+directories mode `0555`, and no symlink, special file, writable file, path escape,
+hard link, credential or acquired byte is eligible. The staging leaf is written under
+a same-filesystem partial name, verified, made read-only, and atomically renamed; the
+durable leaf is a byte-and-mode-identical single assignment. A mode-`0400` authoring
+result outside the packet binds the manifest and complete packet-tree identity.
+
+Planning batches and verification pages are derived views only:
+
+- `batch-00` through `batch-19` partition the 1,221 component work-item IDs in
+  raw-component-ID order, 64 per batch except five in `batch-19`;
+- `page-00` through `page-48` partition the 98,608 unresolved IDs in raw-ID order,
+  2,048 per page except 304 in `page-48`; and
+- the 19 ownership-dispute work items are ordered independently by raw path bytes.
+
+A batch never owns a component, a page never owns an unresolved row, and neither view
+may change work-item state, supply an origin, multiply a later operation budget, or
+serve as a completeness substitute. `component-work-items.jsonl` and
+`ownership-dispute-work-items.jsonl` are the sole primary-assignment surfaces;
+`coverage.json` must prove their disjoint union and the two derived projections.
+
+#### 18.30.3 Component work-item identity and exact assignments
+
+Each component record is closed-schema and binds at least:
+
+- the packet-tree identity, schema, `work_item_kind="component"`, exact
+  `baseline_component_id`, and a content-addressed `work_item_id` derived from those
+  identity fields only;
+- the exact `components.jsonl` primary row citation and its canonical record hash;
+- exactly the six component-level unresolved IDs for `binary_artifact_ids`,
+  `source_artifact_ids`, `transformation_ids`, `selected_license_expression`,
+  `license_notice_ids`, and `source_delivery_id`;
+- every uniquely owned runtime path whose frozen non-null
+  `file-ownership.jsonl.component_id` equals the component, plus exactly the three
+  `missing-origin` unresolved IDs for each such path;
+- every `nested-components.jsonl` edge for which the component is
+  `container_component_id`, assigned exactly once by the edge's frozen
+  `container_component_id,nested_component_id,relationship` primary key, and a
+  derived inbound-reference list for edges where it is `nested_component_id` that
+  never counts as primary edge coverage;
+- all exact evidence-object/member/JSON-pointer or byte-range citations supporting
+  any candidate, with each citation bound to its packet file, primary key, canonical
+  record hash and evidence-object identity;
+- zero or more cited candidate records, the remaining authority gaps, required
+  proofs, proposed operation or explicit null, fail-closed checkpoint, and planning
+  state; and
+- the exact §18.29.4 host-path finding when the work item covers
+  `lib/libtcl8.6.so`, `lib/libtk8.6.so`, or `lib/libtinfow.so.6`, with
+  `clean_replacement_required=true` and no repair route.
+
+The component arithmetic is exact: `1,221 * 6 = 7,326` component-level rows and
+`30,402 * 3 = 91,206` uniquely owned-file origin rows. A uniquely owned path and all
+three of its origin rows stay together in its component work item. Moving one field to
+another component, splitting one path across items, or using a nested edge to merge two
+component identities is `PAUSE`.
+
+Work-item identity is exact. Let `subject_id` be the raw baseline component ID for a
+component record and the raw runtime path for a dispute record. Canonically encode the
+closed object
+`{"packet_tree_sha256":PROVENANCE_V3_PACKET_TREE_SHA256,"schema":PROVENANCE_WORK_ITEM_SCHEMA,"subject_id":subject_id,"work_item_kind":kind}`
+under §18.25 and set `work_item_id` to `work_item:sha256:` plus the lowercase SHA-256
+of those bytes. No path, Unicode, case, URL or PURL normalization occurs. The manifest
+separately hashes each complete record, so the stable subject identity is never
+misrepresented as a full-record content hash.
+
+#### 18.30.4 Ownership-dispute work items remain unowned
+
+Each of the eighteen `multiple-owners` paths and the one `missing-owner` path has one
+closed-schema dispute record. It binds the exact path, file row/evidence citations,
+the three `missing-origin` unresolved IDs, the one owner unresolved ID, and every
+packet-supported candidate component without selecting among them. Thus the queue
+covers `19 * 4 = 76` unresolved IDs. Candidate-owner sets are evidence leads only;
+an empty set remains honest for the unowned path, and a multi-member set remains
+ambiguous for a multiply-owned path.
+
+No disputed path or any of its four unresolved rows may appear in a component work
+item until a later immutable acquisition proves one exact artifact-member ownership
+and an independently reviewed successor lock records it. Filename similarity, package
+layout, import behavior, current-host package ownership, nearest directory, SBOM
+membership, common packaging practice or model judgment cannot choose an owner.
+
+The complete unresolved arithmetic must remain:
+
+```text
+7,326 component rows
++ 91,206 uniquely owned-file origin rows
++ 76 disputed-file rows
+= 98,608 open unresolved rows
+```
+
+Every unresolved ID appears in exactly one primary work item and exactly one
+verification page. The work-item bundle never edits or closes the immutable packet's
+row; it only binds a planning assignment back to that open row.
+
+#### 18.30.5 Candidate citations and states do not create authority
+
+The only planning states remain `UNRESOLVED`, `CANDIDATE_ONLY`, and
+`READY_FOR_REVIEW`. They are local work-item schema values, not schema-v3 verdicts.
+State is derived fail-closed:
+
+- `UNRESOLVED`: no packet-cited candidate satisfies the record's minimum structural
+  fields;
+- `CANDIDATE_ONLY`: one or more packet-cited leads exist, but origin authority,
+  immutable identity, operation details, or required proof remains incomplete; and
+- `READY_FOR_REVIEW`: the record names a proposed exact HTTPS URL, immutable VCS
+  remote/object, or exact retained-local root/path plus every §18.29.3 method,
+  redirect, parser, identity, ceiling, checkpoint, output-role and credential-
+  prohibition field. It is ready to review, not ready to access.
+
+Candidate records are byte-preserving projections of already authorized packet
+evidence. Each has a content-addressed candidate ID, exact citation set, candidate
+kind/value bytes, stated gaps and no inferred normalization. Names, PURLs, installed
+metadata, SBOM external references, familiar registries, search results, guessed
+paths, ambient caches, current-host state, redirects and `latest` are never authority.
+No network lookup, retained-source inspection, URL probing, DNS resolution, package-
+manager query or metadata refresh may be used to improve a state under this plan.
+
+License-choice, notice and source-delivery rows remain open even when packet metadata
+contains a license string. Work items may preserve exact candidate expressions and
+questions for counsel, but may not choose an `OR` branch, interpret an exception,
+declare compatibility, or discharge reciprocal-source obligations. Human counsel is
+still required.
+
+Citation and candidate identities are also exact. A citation ID is `citation:sha256:`
+plus the SHA-256 of the canonical closed object containing packet-tree SHA-256, packet
+file role, raw primary-key value, canonical record SHA-256, evidence-object ID and raw
+internal locator. A candidate ID is `candidate:sha256:` plus the SHA-256 of the
+canonical closed object containing `candidate_kind`, the exact candidate value bytes
+represented as a JSON string, and the sorted raw citation-ID array. Any different
+byte, citation order after canonical sorting, locator or candidate kind produces a
+different ID; aliases never converge by normalization.
+
+#### 18.30.6 Successor operation packets and grouping boundary
+
+After an independently reviewed work-item packet exists, a later plan may propose
+operations only by exact `work_item_id` and unresolved-ID set. An operation may group
+items only when they name byte-identical origin coordinates, methods, ordered
+redirects, parser/tool identity, verification rule, output roles and stop conditions.
+Grouping retains every per-item citation and obligation; it never merges components,
+licenses or ownership decisions. Aggregate request, retry, time, compressed, decoded
+and expanded-byte ceilings apply to the whole operation, not once per batch, page,
+component or redirect.
+
+Discovery of a new origin, redirect, mirror, VCS object, archive member, credential
+need, executable parser path or larger ceiling stops the operation. A successor plan,
+Kiro exact-tip review and Ryan's operation-specific grant are mandatory before any
+HTTP request, VCS fetch or retained-source read. Acquired bytes remain evidence, not
+build inputs, until a zero-unresolved successor lock and independent technical,
+provenance and licensing PASS.
+
+#### 18.30.7 Negative controls, review sequence and authority boundary
+
+The future authoring verifier must run exactly forty single-mutant controls, each of
+which must return `PAUSE` without a final packet:
+
+| IDs | Mutations |
+|---|---|
+| `W001`–`W004` | packet-tree mismatch; disposition mismatch; preexisting staging root; preexisting durable root |
+| `W005`–`W010` | missing role; extra role; manifest self-hash; noncanonical JSON; noncanonical JSONL order; wrong file type/mode or forbidden symlink/hard-link/path escape |
+| `W011`–`W013` | wrong work-item ID; wrong citation/candidate ID; wrong count or primary-key hash |
+| `W014`–`W017` | missing component item; duplicate component item; missing dispute item; duplicate dispute item |
+| `W018`–`W024` | missing unresolved ID; duplicate unresolved ID; missing runtime path; duplicate runtime path; split uniquely owned path; disputed path in a component item; guessed dispute owner |
+| `W025`–`W028` | missing nested edge; duplicate nested edge; non-container primary assignment; inbound reference counted as primary coverage |
+| `W029`–`W031` | component-batch partition drift; unresolved-page partition drift; projection membership used to own/promote a record |
+| `W032`–`W036` | candidate without exact citation; normalized/looked-up candidate; `READY_FOR_REVIEW` with a missing operation field; immutable packet row marked closed; owner or license choice asserted |
+| `W037`–`W040` | host-path repair/removal route; per-batch/page/component ceiling multiplication; acquired/external byte in the packet; credential/private-data byte in the packet |
+
+The unmutated baseline must return zero violations. A control that does not reject, a
+41st semantic exception, a combined mutant that obscures which invariant fired, or an
+authoring implementation that rewrites output after a failure is `PAUSE` and requires
+a successor plan.
+
+The only admissible next sequence is:
+
+1. Kiro reviews this exact architecture/execution parent and milestone overlay.
+2. Ryan may separately authorize one offline authoring run from the immutable packet
+   and disposition into the exact absent roots, with a frozen author identity and
+   bounded packet reads; no network or retained-source access is part of that grant.
+3. An independent reviewer verifies all seven files, the packet/result identities,
+   the `1,240`-item and `98,608`-ID unions, all 1,384 edge assignments, candidate
+   citations and negative controls without repairing the bundle.
+4. Only after that review may a successor origin-by-origin operation plan be authored.
+5. Every actual acquisition, counsel disposition, successor lock, clean build,
+   qualification, publication, CI admission and product correction remains a later
+   separately reviewed and Ryan-granted stage.
+
+**Authority boundary.** This section authorizes only edits to the four Switchboard
+planning documents and exact-tip design review. It creates no work-item root, packet,
+result, candidate record or evidence. It authorizes no packet/runtime read or
+mutation, network request, retained-source inspection, metadata resolution,
+acquisition, owner or license selection, binary repair, build, publication, CI
+admission, implementation, PR `#342` update, merge, deployment, real OpenClaw, live
+data, watch activation, promotion or Gate D/W/D-V/E/F action. Planning PASS is not
+offline-authoring or operation authority.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -7123,6 +7375,11 @@ not execution authority.
 | Project binding | An opaque, service-owned membership assertion assigned only by trusted ingestion and resolved through an operator-owned registry; ordinary corpus metadata and paths cannot supply it. |
 | Scope oracle | A response difference that lets a caller infer whether an otherwise inaccessible record exists. |
 | Pylint pair identity | The sorted two-module identity extracted from one raw `R0801` message; line spans are evidence, not selectors. |
+| Component work item | The sole primary planning record for one frozen component, its six component gaps, uniquely owned files, origin gaps, nested-edge assignments and packet citations. |
+| Ownership-dispute work item | The sole primary planning record for one unowned or multiply-owned path; it preserves all four gaps without choosing an owner. |
+| Planning batch | One of twenty deterministic component scheduling views; it owns nothing and cannot multiply an operation budget. |
+| Verification page | One of 49 deterministic unresolved-ID audit views; it proves coverage but cannot close or assign a row. |
+| Candidate record | A byte-preserving, packet-cited lead whose planning state never establishes origin, ownership, licensing or access authority. |
 | Pylint semantic identity | The canonical message fields compared across raw Pylint reports; raw report order and bytes remain evidence but are not the verdict oracle. |
 | Strict generation | A derivative of one exact cumulative authority head; atomic publication may instead select no serving generation. |
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
