@@ -7190,7 +7190,9 @@ Each component record is closed-schema and binds at least:
 - the packet-tree identity, schema, `work_item_kind="component"`, exact
   `baseline_component_id`, and a content-addressed `work_item_id` derived from those
   identity fields only;
-- the exact `components.jsonl` primary row citation and its canonical record hash;
+- the component primary-row citation and its canonical record hash; this v1 wording
+  historically used `components.jsonl`, but §18.31 corrects the executable successor
+  to the governed §18.25.2 role `component-lock.jsonl` with no alias or fallback;
 - exactly the six component-level unresolved IDs for `binary_artifact_ids`,
   `source_artifact_ids`, `transformation_ids`, `selected_license_expression`,
   `license_notice_ids`, and `source_delivery_id`;
@@ -7356,6 +7358,251 @@ acquisition, owner or license selection, binary repair, build, publication, CI
 admission, implementation, PR `#342` update, merge, deployment, real OpenClaw, live
 data, watch activation, promotion or Gate D/W/D-V/E/F action. Planning PASS is not
 offline-authoring or operation authority.
+
+### 18.31 Closed work-item schema-v2 correction
+
+Section 18.30 remains the reviewed, uninstantiated v1 planning contract. The first
+offline-author-freeze preflight stopped before any packet or disposition read because
+v1 said records bound "at least" a set of fields and did not close the seven file
+schemas, nested citation/candidate grammars, result identity, packet-tree algorithm or
+negative-control receipts. No v1 root exists and no v1 byte may be created, repaired,
+reused or reinterpreted. This successor changes only that work-item planning schema;
+it does not change provenance schema v3, packet tree `491ae60b...`, its manifest,
+review disposition or exhausted read ledger.
+
+#### 18.31.1 Version, roots and canonical primitives
+
+```text
+PROVENANCE_WORK_ITEM_SCHEMA=convmem.switchboard.provenance-work-items.v2
+PROVENANCE_WORK_ITEM_SCHEMA_PLAN_BASE_SHA=49130975a776864f9ba4bdf7347146fc07a2f95c
+PROVENANCE_WORK_ITEM_PACKET_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+PROVENANCE_ACQUISITION_EXECUTION_AUTHORIZED=false
+PROPOSED_WORK_ITEM_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/49130975a776864f9ba4bdf7347146fc07a2f95c/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v2
+PROPOSED_WORK_ITEM_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/49130975a776864f9ba4bdf7347146fc07a2f95c/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v2
+```
+
+Both roots and their `.partial` siblings are single-assignment. Successful roots are
+mode `0555` and contain exactly `packet/` mode `0555` plus external
+`authoring-result.json` mode `0400`; `packet/` contains exactly the seven mode-`0444`
+roles in §18.31.4. No review leaf exists at this phase. Pre-existence, a symlinked
+ancestor, interruption, mismatch or unrepresentable field is `PAUSE`; preserve any
+partial root and do not retry, patch, delete or publish a result.
+
+Let `J(x)` be §18.25 canonical compact JSON encoded as UTF-8 with sorted keys and no
+line feed; a JSON file is `J(x)||LF`, and each JSONL row is `J(x)||LF`. `H(b)` is the
+lowercase SHA-256 of bytes `b`; a row hash is `H(J(row))`. A primary-key set hash is
+`H(concat(UTF8(key)||NUL))` over unique raw-UTF-8 keys sorted bytewise; the empty set
+hashes the empty byte string. All set-valued string arrays are unique and sorted by
+raw UTF-8 bytes. Unknown or omitted keys, floats, duplicate keys, arbitrary extension
+objects, free-form rationale, and `null` outside the cases explicitly named below are
+rejected.
+
+`work_item_id` is `work_item:sha256:` plus `H(J({"packet_tree_sha256":
+PROVENANCE_V3_PACKET_TREE_SHA256,"schema":PROVENANCE_WORK_ITEM_SCHEMA,
+"subject_id":subject_id,"work_item_kind":kind}))`; `subject_id` is the raw baseline
+component ID or raw disputed runtime path. A citation ID is `citation:sha256:` plus
+the hash of the canonical object containing `packet_tree_sha256`, `packet_file_role`,
+raw `primary_key`, canonical `record_sha256`, `evidence_object_id` and `locator`. A
+candidate ID is `candidate:sha256:` plus the hash of the canonical object containing
+`candidate_kind`, exact `candidate_value` and the sorted unique `citation_ids`.
+There is no case, path, Unicode, URL, PURL, percent or alias normalization.
+
+The governed component role is exclusively `component-lock.jsonl`, as §18.25.2
+defines. Section 18.30.3's `components.jsonl` spelling was an inconsistent planning
+reference, not a rename or alias. No autodetection or fallback is permitted; absence
+of `component-lock.jsonl` in a later separately authorized read is `PAUSE`.
+
+#### 18.31.2 Closed supporting objects
+
+A **citation** has exactly `citation_id`, `packet_tree_sha256`, `packet_file_role`,
+`primary_key`, `record_sha256`, `evidence_object_id` (string or explicit `null`) and
+`locator`. Admitted packet roles are only `component-lock.jsonl`,
+`file-ownership.jsonl`, `nested-components.jsonl`, `unresolved.jsonl` and
+`objects.jsonl`. Locator is exactly one of:
+
+- `{"kind":"record-json-pointer","pointer":string}`;
+- `{"kind":"object-json-pointer","pointer":string}`;
+- `{"kind":"object-byte-range","offset":nonnegative-integer,"length":positive-integer}`; or
+- `{"kind":"object-member-json-pointer","member_path":string,"pointer":string}`.
+
+The initial author may emit only `record-json-pointer` and, for the three frozen
+host-path findings, `object-byte-range`. A **gap** has exactly `unresolved_id`,
+`citation_id`, `field`, `reason_code`, `required_evidence`, `status="OPEN"` and
+`blocks=true`. A **candidate** has exactly `candidate_id`, `candidate_kind`,
+`candidate_value`, `citation_ids`, `gap_unresolved_ids` and
+`authority_status="CANDIDATE_ONLY"`. Initial candidate kinds are only
+`component-name`, `component-version`, `component-build`, `component-purl`,
+`component-origin-namespace` and `owner-component-id`; build/PURL candidates are
+omitted when their source fields are null. There is no URL, registry, source or
+license inference.
+
+A candidate owner has exactly `component_id`, `candidate_id` and `citation_ids`.
+Owner candidates are extracted only from exact `cmp_sha256:[0-9a-f]{64}` tokens,
+with token boundaries, in that disputed path's own owner-unresolved
+`required_evidence`; every token must resolve to the frozen component set. An owned
+path has exactly `path`, `mode`, `size`, `sha256`, `owner_component_id`,
+`file_citation_id` and `origin_gaps`; `origin_gaps` contains exactly the
+`origin_kind`, `origin_id` and `origin_member_path` gaps for that path. A nested edge
+has exactly `edge_key`, `container_component_id`, `nested_component_id`,
+`relationship`, `evidence_object_id`, `evidence_path` and `citation_id`; `edge_key`
+is the NUL-joined frozen primary key. A host finding has exactly `runtime_path`,
+`evidence_object_id`, `needle`, sorted unique `offsets`,
+`reported_dynamic_tag="DT_RPATH"`, `reported_dynamic_value`, `citation_ids`,
+`finding_source="ARCHITECTURE_18_29_4"`, `clean_replacement_required=true` and
+`remediation="CLEAN_REPLACEMENT_ONLY"`. Exactly the three §18.29.4 findings exist.
+
+Initial `proposed_operation` is always explicit `null`. `READY_FOR_REVIEW` remains
+reserved vocabulary but is rejected in this initial packet; state is `UNRESOLVED`
+when `candidates` is empty and `CANDIDATE_ONLY` otherwise.
+
+#### 18.31.3 Exact primary records
+
+Each of the 1,221 rows in `component-work-items.jsonl` has exactly these keys:
+
+```text
+schema, packet_tree_sha256, disposition_sha256, work_item_id,
+work_item_kind, baseline_component_id, component_citation_id,
+component_gaps, owned_paths, primary_nested_edges, inbound_edge_keys, citations,
+candidates, unresolved_ids, planning_state, proposed_operation, checkpoint,
+failure_disposition, host_path_findings, clean_replacement_required
+```
+
+`work_item_kind` is `component`; `checkpoint` is
+`SEPARATE_ORIGIN_OPERATION_PLAN_REVIEW_AND_RYAN_GRANT`; `failure_disposition` is
+`PAUSE`. Each row has exactly six component gaps, every uniquely owned path and its
+three origin gaps, every primary edge whose frozen container is the component, and
+only derived inbound edge keys. Arrays are raw-key sorted and unique. The three
+affected component rows carry the exact host finding; all others carry an empty list.
+
+Each of the 19 rows in `ownership-dispute-work-items.jsonl` has exactly:
+
+```text
+schema, packet_tree_sha256, disposition_sha256, work_item_id,
+work_item_kind, runtime_path, mode, size, sha256, file_citation_id,
+ownership_reason, owner_gap, origin_gaps, candidate_owners, citations,
+candidates, unresolved_ids, selected_owner_component_id, planning_state,
+proposed_operation, checkpoint, failure_disposition
+```
+
+`work_item_kind` is `ownership-dispute`; `ownership_reason` is `multiple-owners`
+for exactly eighteen rows and `missing-owner` for one; `selected_owner_component_id`
+and `proposed_operation` are explicit `null`; each row has one owner gap, exactly
+three origin gaps and the same checkpoint/failure values as a component row. No
+disputed path occurs in a component item.
+
+#### 18.31.4 Seven files, projections and coverage
+
+The other five roles are closed as follows:
+
+- `component-batches.jsonl`: twenty rows with exactly `schema`, `batch_id`,
+  `ordinal`, `component_ids`, `work_item_ids`, `component_count`,
+  `component_primary_key_sha256`, `membership_sha256`, `authority="NONE"`.
+  IDs are `batch-00` through `batch-19`; counts are 64 except final 5; component and
+  work-item arrays are parallel and membership hash covers their canonical pair array.
+- `unresolved-pages.jsonl`: 49 rows with exactly `schema`, `page_id`, `ordinal`,
+  `unresolved_ids`, `work_item_ids`, `unresolved_count`,
+  `unresolved_primary_key_sha256`, `authority="NONE"`. IDs are `page-00` through
+  `page-48`; counts are 2,048 except final 304; work IDs are sorted unique.
+- `coverage.json`: exactly `schema`, `packet_tree_sha256`, `disposition_sha256`,
+  `component_items`, `dispute_items`, `all_items`, `components`, `runtime_paths`,
+  `owned_paths`, `disputed_paths`, `component_gap_ids`, `owned_origin_gap_ids`,
+  `disputed_gap_ids`, `unresolved_ids`, `primary_nested_edges`,
+  `component_batches`, `unresolved_pages`, `open_unresolved_count`,
+  `closed_unresolved_count`, `acquisition_authorized`, `build_eligible` and
+  `publication_eligible`. Each summary is exactly `{count,primary_key_sha256}`.
+  Counts are respectively 1,221; 19; 1,240; 1,221; 30,421; 30,402; 19; 7,326;
+  91,206; 76; 98,608; 1,384; 20; 49. The component/path/edge/unresolved set hashes
+  remain `b6b73ee112f898acf91c37ac0ad4e704ddd0fe131d3bcc5599c62d81bcf12146`,
+  `432a960cd59db58b5c0345ff5179f71fb3aa7bb7a8780b3b5d2a072f390fb7aa`,
+  `2c144bbd5a6d5e0a477a841847c5d9700de60c8a9488c546d09b13c138a3b580` and
+  `2f207467c9e9308eda47a0dd762e361d687c7f6d614a46a810b8a43fc4554838`.
+  Closed count is zero and all three booleans are false.
+- `negative-controls.jsonl`: exactly forty rows with keys `schema`, `control_id`,
+  `fixture_schema`, `fixture_sha256`, `mutation_id`, `mutation_sha256`,
+  `expected_verdict`, `observed_verdict`, `expected_rejection_code`,
+  `observed_rejection_code`, `final_packet_created`, `result_created`, `passed`.
+  Fixture schema is `convmem.switchboard.work-item-synthetic-fixture.v1`; verdicts
+  are `PAUSE`; rejection codes equal `W001` through `W040`; both created flags are
+  false and `passed=true`. Receipts contain no clock, PID, temp path or randomness.
+- `manifest.json`: exactly `schema`, `plan_base_sha`, `input_packet_tree_sha256`,
+  `input_disposition_sha256`, `files`. `files` contains the preceding six roles in
+  raw filename order. Each descriptor is exactly `path`, `mode="0444"`, `size`,
+  `sha256`, `record_count`, `primary_key_sha256`, `records`; each record entry is
+  exactly `primary_key`, `record_sha256`. Coverage uses synthetic key `coverage`.
+  The manifest never lists itself, the result, receipts or directories.
+
+For all seven files, form sorted rows `{path,mode:"0444",size,sha256}` and set
+`output_packet_tree_sha256=H(J(rows))`. Payload `packet_tree_sha256` always means the
+immutable input schema-v3 tree, avoiding recursion; the manifest contains no output
+tree field.
+
+#### 18.31.5 External result and controls
+
+`authoring-result.json` has exactly:
+
+```text
+schema, work_item_schema, plan_base_sha, author,
+author_freeze_receipt_sha256, self_test_receipt_sha256,
+input_packet_tree_sha256, input_disposition_sha256, input_manifest_sha256,
+input_packet_bytes_read, input_disposition_bytes_read,
+input_packet_read_passes, input_disposition_read_passes,
+staging_root, durable_root, packet_relative_path, packet_file_count, packet_bytes,
+output_manifest_sha256, output_manifest_size, output_packet_tree_sha256,
+coverage_sha256, negative_controls_sha256, control_count, controls_passed,
+structural_verdict, provenance_verdict, licensing_verdict,
+open_unresolved_count, network_requests, retained_source_reads, runtime_reads,
+acquired_bytes, acquisition_authorized, build_eligible, publication_eligible
+```
+
+Its schema is `convmem.switchboard.work-item-authoring-result.v2`; packet path is
+`packet`; file/control counts are 7/40; structural verdict is `PASS`, provenance and
+licensing are `PAUSE`; open count is 98,608; all access counters other than the later
+grant-bounded packet/disposition reads are zero; all eligibility/authorization flags
+are false. `author` is exactly `{path,sha256,size,interpreter,argv}` and interpreter is
+exactly `{path,sha256,size,version,dependency_manifest_sha256}`. The result does not
+self-hash; its external hash and size are returned for later review.
+
+Controls `W001`–`W040` retain §18.30.7 order but are now single, deterministic
+mutations: input packet digest; disposition digest; staging preexistence; durable
+preexistence; missing coverage; extra role; manifest self-list; noncanonical coverage;
+swapped component rows; symlink; work-item ID; citation ID; manifest PK hash; missing
+component; duplicate component; missing dispute; duplicate dispute; missing unresolved
+assignment; duplicate unresolved assignment; missing owned path; duplicate path;
+moved origin gap; disputed path in component item; selected owner; missing edge;
+duplicate edge; edge moved from container; inbound-only edge counted primary; batch
+exchange; page exchange; state added to projection; candidate without sole citation;
+case-normalized candidate; ready state with null operation; row closed; license choice;
+`PATCHELF` remediation; per-component multiplier; external/unbound locator; and a
+credential-bearing sentinel URL. Except for the targeted semantic defect, dependent
+transport hashes are recomputed. The expected and observed rejection code is the
+control ID. The unmutated baseline yields zero violations; combined mutants, a 41st
+exception, output rewriting or any final packet/result on rejection is `PAUSE`.
+
+#### 18.31.6 Held freeze, authoring and review sequence
+
+After Kiro exact-tip PASS, a new Ryan grant may authorize only a disposable synthetic
+author freeze. It names the script/interpreter/dependency/fixture identities and runs
+one zero-violation baseline plus exactly forty same-cardinality synthetic mutants:
+1,221 components, 19 disputes, 30,421 paths, 98,608 unresolved IDs, 1,384 edges,
+twenty batches and 49 pages. Synthetic IDs use a separate fixture domain, cannot
+publish real roots and do not read real evidence. Freeze receipts bind the command and
+self-test; execution stops before packet/disposition reads or root creation.
+
+Only another Ryan grant may name the frozen author, exact input paths, bounded read
+passes/bytes, absent v2 roots and one run. That run builds `S.partial`, validates it,
+computes the packet tree and result, copies to and verifies `D.partial`, freezes modes,
+then atomically renames both partial roots locally to `S` and `D`. Failure preserves
+partials without retry or repair. A separately granted independent reviewer later
+recomputes every identity, assignment and control without modifying either root.
+
+**Authority boundary.** This section authorizes only the four Switchboard planning-
+document edits and exact-tip review. It authorizes no freeze, packet/disposition read,
+root creation, authoring, network or retained-source access, acquisition, owner or
+license selection, runtime access, binary repair, build, publication, CI admission,
+implementation, PR `#342` update, merge, deployment, real OpenClaw, live data, watch
+activation, promotion or Gate D/W/D-V/E/F action.
 
 ## Jargon TL;DR
 

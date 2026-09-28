@@ -2517,6 +2517,55 @@ source read, metadata resolution, acquisition, owner/license selection, binary r
 build, publication, CI admission, product/test/config/R2b change, PR `#342` update,
 merge, deployment, real OpenClaw or later gate is authorized.
 
+### 10.29 Schema-v2 closure and held author freeze
+
+Architecture §18.31 controls. The merged v1 work-item design remains an
+uninstantiated historical contract: its roots do not exist, its stopped preflight read
+no immutable packet or disposition byte, and it cannot be repaired or reused. The
+successor is `convmem.switchboard.provenance-work-items.v2`, bound to plan base
+`49130975a776864f9ba4bdf7347146fc07a2f95c`, input packet tree
+`491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5` and
+disposition `45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669`.
+Its fresh v2 staging/durable coordinates in §18.31.1 remain absent and
+single-assignment. Freeze and authoring authorization are false.
+
+The held sequence is exact:
+
+1. Kiro reviews the exact semantic parent and milestone overlay, including every
+   closed field, enum, null case, identity and control in §18.31. PASS is design
+   approval only.
+2. A later Ryan grant may freeze one offline author against a same-cardinality
+   synthetic fixture. It runs one clean baseline and exactly `W001`–`W040`, freezes
+   script/interpreter/dependency/fixture/command/self-test identities and stops before
+   any real packet/disposition read or root creation.
+3. A still-later run grant must name that frozen author, exact immutable input paths,
+   bounded read passes and byte ceilings, the two absent v2 roots and the one-run stop.
+   Network, runtime and retained-source reads remain zero.
+4. The author consumes `component-lock.jsonl` only; `components.jsonl` is not an alias
+   or fallback. It emits exactly 1,221 component items, 19 dispute items, 98,608 open
+   ID assignments, 30,421 path assignments and 1,384 primary edge assignments under
+   the exact §18.31 schemas.
+5. It emits exactly twenty non-authoritative component batches, 49 non-authoritative
+   unresolved pages, closed coverage, forty deterministic rejection receipts and one
+   non-self-hashing manifest. The packet has exactly seven files and no review leaf.
+6. It builds and verifies whole-root partials, freezes modes and atomically renames
+   once. Any mismatch, pre-existence, interruption, schema ambiguity or failed control
+   preserves partial evidence and stops without retry, repair or result publication.
+7. A separately granted reviewer recomputes packet/result identities, all unions,
+   citations, candidates and controls. No origin-operation planning may use the bundle
+   before independent PASS.
+
+Static plan acceptance requires the exact v2 schemas, canonical primitives, fresh
+coordinates, nonrecursive output-tree algorithm, result schema, 1,240/98,608/1,384
+coverage, twenty/49 projections and `W001`–`W040` mapping. No produced byte is
+acceptance evidence for this planning phase because no execution is authorized.
+
+**Current result:** schema closure is plan-only. No author freeze, packet/disposition
+read, work-item root, packet, result, network request, retained-source inspection,
+runtime read, acquisition, owner/license decision, binary repair, build, publication,
+CI admission, product/test/config/R2b change, PR `#342` update, merge, deployment,
+real OpenClaw or later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
