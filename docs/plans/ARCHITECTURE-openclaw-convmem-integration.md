@@ -7673,6 +7673,223 @@ license selection, runtime access, binary repair, build, publication, CI admissi
 implementation, PR `#342` update, merge, deployment, real OpenClaw, live data, watch
 activation, promotion or Gate D/W/D-V/E/F action.
 
+### 18.32 Candidate-gap, locator and author-freeze closure
+
+The Kiro-reviewed §18.31 schema v2 remains absent and uninstantiated. Its first
+synthetic-author-freeze preflight stopped before creating a freeze root or reading any
+immutable packet/disposition byte because two executable mappings remained implicit:
+which gaps each candidate cites, and which JSON pointer denotes a complete primary
+row. A synthetic-freeze grant also requires an exact coordinate and ceilings. This
+successor closes only those surfaces, advances the work-item schema to v3 and fresh
+coordinates, and preserves every other §18.31 rule. No v2 or v3 packet/root exists.
+
+#### 18.32.1 Version, coordinates and authority state
+
+```text
+WORK_ITEM_CANDIDATE_GAP_PLAN_BASE_SHA=dea026ce561e480ba3436d3c1cbea9bbcae6a14b
+PROVENANCE_WORK_ITEM_V2_SCHEMA=convmem.switchboard.provenance-work-items.v2
+PROVENANCE_WORK_ITEM_V2_PACKET_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_SCHEMA=convmem.switchboard.provenance-work-items.v3
+PROVENANCE_WORK_ITEM_PACKET_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+PROVENANCE_ACQUISITION_EXECUTION_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_NEGATIVE_CONTROL_COUNT=42
+PROPOSED_WORK_ITEM_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+PROPOSED_WORK_ITEM_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/v3
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/v3.partial
+PROPOSED_WORK_ITEM_AUTHOR_INTERPRETER=/home/lauer/miniforge3/bin/python3
+PROPOSED_WORK_ITEM_AUTHOR_INTERPRETER_VERSION=3.13.12
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_MAX_TOTAL_WRITTEN_BYTES=67108864
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_MAX_PROCESS_COUNT=1
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_REAL_INPUT_READ_BYTES=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_NETWORK_REQUESTS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_RUNTIME_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_RETAINED_SOURCE_READS=0
+```
+
+The v2 roots remain absent historical coordinates and cannot be created, deleted,
+reused or reinterpreted. The three v3 final/partial coordinates are single-assignment;
+pre-existence is `PAUSE`. The proposed interpreter path/version is a design binding;
+the future freeze must independently bind its exact executable hash/size and loaded
+standard-library dependency manifest. Third-party packages, subprocesses, shell
+evaluation, network and real evidence are forbidden.
+
+#### 18.32.2 Canonical row and field locators
+
+All initial citations use only the two locator forms already admitted by §18.31:
+`record-json-pointer` and the host finding's `object-byte-range`. JSON pointers use
+RFC 6901 syntax without URI-fragment encoding. The empty string `""` is the sole
+complete-record pointer. Because the admitted field names contain neither `~` nor `/`,
+their field pointers are the literal slash plus field name; no alternative escaping,
+dot notation, array index, normalized alias or parent pointer is accepted.
+
+The mapping is exact:
+
+| Output reference | Packet role and primary key | Locator | Evidence object |
+|---|---|---|---|
+| `component_citation_id` | `component-lock.jsonl`; component ID | `record-json-pointer`, `pointer=""` | null |
+| `file_citation_id` | `file-ownership.jsonl`; raw runtime path | `record-json-pointer`, `pointer=""` | null |
+| any component/file `gap.citation_id` | `unresolved.jsonl`; unresolved ID | `record-json-pointer`, `pointer=""` | null |
+| primary nested edge `citation_id` | `nested-components.jsonl`; frozen NUL-joined edge key | `record-json-pointer`, `pointer=""` | the row's exact `evidence_object_id` |
+| component identity candidate | `component-lock.jsonl`; component ID | exactly `/name`, `/version`, `/build`, `/purl` or `/origin_namespace` | null |
+| owner-component candidate | `unresolved.jsonl`; the dispute's owner-gap unresolved ID | exactly `/required_evidence` | null |
+| each host-path occurrence | `objects.jsonl`; exact object ID | `object-byte-range` with the frozen occurrence offset and UTF-8 byte length of `needle` | the same object ID |
+
+Every citation's `record_sha256` hashes the complete canonical packet row with no
+projection. `primary_key` is the raw governed primary key. The work-item `citations`
+array is exactly the set union of citations referenced by its primary citation fields,
+gaps, edges, candidates and host findings; it contains neither an unreferenced citation
+nor a missing referenced citation. The host finding has exactly one citation per
+§18.29.4 occurrence. Those byte ranges attest the embedded needle; the exact
+`reported_dynamic_tag` and `reported_dynamic_value` remain plan-bound §18.29.4 facts,
+and no unrecorded synthetic ELF-analysis citation is manufactured.
+
+#### 18.32.3 Exact candidate emission and gap assignment
+
+For a component work item, the author considers the five source fields in this exact
+order only to define the closed set; output remains sorted by candidate ID:
+
+| Source field | Candidate kind | Emission rule |
+|---|---|---|
+| `name` | `component-name` | exactly one candidate for the present string |
+| `version` | `component-version` | exactly one candidate for the present string |
+| `build` | `component-build` | one candidate iff the field is non-null |
+| `purl` | `component-purl` | one candidate iff the field is non-null |
+| `origin_namespace` | `component-origin-namespace` | one candidate iff the field is non-null |
+
+The candidate value is the exact JSON string value, including an empty string if the
+governed nullable field is non-null and empty; the author does not judge usefulness.
+Each candidate has exactly the singleton field citation from §18.32.2 and
+`gap_unresolved_ids` equal to the component work item's complete sorted
+`unresolved_ids` array: its six component gaps plus every owned path's three origin
+gaps. This deliberately records each identity value as a non-authoritative search lead
+for the whole component obligation without claiming that it proves any gap.
+
+For a dispute item, only `owner-component-id` candidates may exist. Each exact bounded
+token from the owner gap's `required_evidence` creates one candidate whose value is the
+token, whose citation set is the singleton `/required_evidence` citation, and whose
+`gap_unresolved_ids` is the singleton owner-gap unresolved ID. `candidate_owners`
+contains the corresponding `{component_id,candidate_id,citation_ids}` row. No owner
+candidate is assigned to the three origin gaps; no component identity candidate is
+copied into a dispute item. A missing-owner row with no exact token has empty
+`candidate_owners` and `candidates` and state `UNRESOLVED`; otherwise a dispute item is
+`CANDIDATE_ONLY`.
+
+For both work-item kinds, every candidate gap ID must belong to the same item; the
+union need not equal the item's unresolved set because an owner candidate intentionally
+does not cover origin gaps. No candidate gap array may be empty. Candidate identity
+still excludes `gap_unresolved_ids` as §18.31 specifies; the complete record hash and
+manifest bind the assignment. A candidate never changes gap `OPEN`, never selects an
+owner, and never supplies origin, license or operation authority.
+
+#### 18.32.4 Two new closed controls
+
+Controls `W001`–`W040` retain their exact §18.31 meanings. Schema v3 adds exactly two
+single-mutant receipts:
+
+- `W041`: recompute transport hashes after deleting one required gap ID from a
+  component identity candidate, adding a foreign-item gap, or assigning an owner
+  candidate to an origin gap; the validator must return rejection code `W041`.
+- `W042`: recompute the citation ID and transport hashes after replacing one required
+  root pointer with a field pointer, one required field pointer with `""`, or one
+  host byte range with a record pointer; the validator must return `W042`.
+
+The fixture selects one deterministic representative mutation for each control run;
+alternatives above define the rejected family, not combined mutants. The unmutated
+same-cardinality baseline returns zero violations, exactly 42 individual runs return
+their matching code, and no rejected run creates a final packet or result. A 43rd
+semantic exception, combined mutant or nondeterministic receipt is `PAUSE` and requires
+another versioned plan.
+
+#### 18.32.5 Exact synthetic freeze packet and ceilings
+
+A future two-SHA Ryan grant may create only the proposed freeze partial/final root. It
+contains exactly six mode-`0444` regular files under a mode-`0555` final directory:
+
+1. `work-item-author-v3.py` — standard-library-only author and validator;
+2. `fixture-spec.json` — exact synthetic identity domain, seedless construction and
+   the 1,221/19/30,421/98,608/1,384/20/49 cardinalities;
+3. `dependency-manifest.json` — interpreter path/version/hash/size and every imported
+   standard-library source path/hash/size;
+4. `command-contract.json` — exact argv, environment allowlist, cwd, zero-access
+   counters, ceilings and expected files;
+5. `self-test-receipt.json` — baseline result and sorted `W001`–`W042` receipts with
+   no time, PID, random value or temporary-path identity; and
+6. `freeze-manifest.json` — path/mode/size/hash descriptors for the preceding five
+   files only; it never self-hashes.
+
+The five JSON objects are canonical and closed:
+
+- `fixture-spec.json` has exactly `schema`, `fixture_id`, `work_item_schema`,
+  `counts`, `construction`. Schema is
+  `convmem.switchboard.work-item-synthetic-fixture.v3`; `construction` is
+  `COUNTER_DERIVED_CONTENT_ADDRESSED_NO_RANDOMNESS`; `counts` has exactly integer
+  `components=1221`, `disputes=19`, `runtime_paths=30421`, `owned_paths=30402`,
+  `disputed_paths=19`, `unresolved_ids=98608`, `nested_edges=1384`, `batches=20`,
+  `pages=49`, `controls=42`. `fixture_id` is `fixture:sha256:` plus the hash of the
+  complete canonical object with `fixture_id` omitted.
+- `dependency-manifest.json` has exactly `schema`, `interpreter`, `modules`.
+  Interpreter is exactly `{path,version,size,sha256}`. Each module row is exactly
+  `{name,kind,path,size,sha256}`, sorted uniquely by `name`; `kind` is `file`,
+  `built-in` or `frozen`. File rows have canonical absolute path, nonnegative size and
+  SHA-256; built-in/frozen rows have explicit null for path/size/hash. `modules` is the
+  complete `sys.modules` closure at receipt generation, excluding only the running
+  author as it is independently hashed by the receipt.
+- `command-contract.json` has exactly `schema`, `interpreter_path`, `argv`, `cwd`,
+  `environment`, `ceilings`, `expected_final_members`. `cwd` is the exact partial
+  root. Environment is exactly `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`,
+  `PYTHONHASHSEED=0`, `PYTHONDONTWRITEBYTECODE=1`, `PYTHONNOUSERSITE=1`; no inherited
+  key is authoritative. Ceilings has exactly integer `max_process_count=1`,
+  `max_total_written_bytes=67108864`, `real_input_read_bytes=0`,
+  `network_requests=0`, `runtime_reads=0`, `retained_source_reads=0`,
+  `subprocesses=0`. Expected members are the sorted six names above.
+- `self-test-receipt.json` has exactly `schema`, `fixture_sha256`, `author_sha256`,
+  `dependency_manifest_sha256`, `command_contract_sha256`, `baseline`, `controls`,
+  `access_counters`. Baseline is exactly `{violations:[],verdict:"PASS",
+  final_packet_created:false,result_created:false}`. Controls are exactly 42 rows
+  sorted by control ID, each with the §18.31.5 fields and v3 fixture schema; access
+  counters equal the seven command-contract ceiling names with observed zero except
+  `max_process_count=1` and an observed nonnegative `total_written_bytes` no greater
+  than the ceiling.
+- `freeze-manifest.json` has exactly `schema`, `plan_base_sha`,
+  `work_item_schema`, `fixture_id`, `files`; files are five exact
+  `{path,mode:"0444",size,sha256}` rows in raw path order and exclude the manifest.
+
+The command contract's exact argv is the proposed interpreter, absolute author path,
+literal subcommand `synthetic-freeze`, then pairs `--fixture-spec`,
+`--command-contract`, `--dependency-manifest`, `--receipt`, `--freeze-manifest` with
+their absolute partial-root paths in that order. No optional argument or positional
+tail is accepted. The six-file tree hash is the hash of the canonical sorted
+`{path,mode,size,sha256}` array, including `freeze-manifest.json`.
+
+An external returned result reports the six-file tree hash, manifest hash/size, total
+persisted bytes and final modes; it is not stored beneath the freeze root. The fixture
+is generated in memory from counters and content-addressed synthetic IDs, never copied
+from real packet bytes. The single Python self-test process may read only its own
+partial-root files plus the bound interpreter and imported standard library. Final
+plus transient writes must not exceed 67,108,864 bytes. It performs zero packet,
+disposition, runtime, retained-source or repository-content reads, zero network
+requests and zero subprocesses. On success it removes no evidence, verifies the six
+members, freezes modes and atomically renames `.partial` to the final root once. On
+any mismatch it preserves the partial root, creates no final root and stops without
+retry or repair.
+
+After Kiro PASS, that future grant authorizes only this synthetic freeze. A later
+separate run grant must name the resulting author/freeze identities, exact immutable
+input paths, real read ceilings and fresh v3 output roots. Independent packet review
+remains another separately granted stage.
+
+**Authority boundary.** This section authorizes only four Switchboard planning-
+document edits and exact-tip review. It authorizes no freeze-root creation, script
+creation/execution, packet/disposition/repository/runtime read, work-item root,
+network request, retained-source inspection, acquisition, owner/license selection,
+binary repair, build, publication, CI admission, implementation, PR `#342` update,
+merge, deployment, real OpenClaw, live data, watch activation, promotion or Gate
+D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |

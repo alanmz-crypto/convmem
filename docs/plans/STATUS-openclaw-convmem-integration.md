@@ -140,7 +140,7 @@ the absent publishable qualified runtime.
 | P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
-| Work-item schema closure | **PLAN-ONLY / KIRO REVIEW REQUIRED** — the first author-freeze preflight stopped before any packet/disposition read because v1 was not closed enough to implement; §§18.31/10.29 define fresh v2 roots, exact seven-file/nested/result schemas and deterministic `W001`–`W040` receipts; freeze and authoring remain unauthorized |
+| Work-item schema closure | **SCHEMA V2 KIRO PASS / FREEZE PREFLIGHT PAUSE / V3 PLAN-ONLY** — v2 closed seven-file/result structure but its synthetic-freeze preflight stopped before any read/root because candidate-gap and locator mappings remained implicit; §§18.32/10.30 preserve v2 absent and define fresh v3 roots, exact mappings, `W041`/`W042`, and a bounded six-file synthetic freeze; execution remains unauthorized |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -169,7 +169,8 @@ the absent publishable qualified runtime.
 | Pre-acquisition and host-path planning | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` | Later origin planning and every operation remain separately gated |
 | Plan PR | **MERGED / REVIEWED** — `#345` at `5bcc6c7` replaced conflicting `#344` | Exact current-main parent, four Switchboard planning documents only and byte-equality to carrier `6429d27`; planning merge grants no acquisition or build authority |
 | Component/ownership work-item design | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` | Planning PASS grants no read or packet authority; a separate Ryan grant is required before an offline author may read the immutable packet or create the seven-file bundle |
-| Work-item schema-v2 correction | **PLAN-ONLY / REVIEW PENDING** | Exact-tip Kiro PASS and a new Ryan author-freeze grant are required; v1 remains uninstantiated and its absent roots cannot be reused |
+| Work-item schema-v2 correction | **KIRO PASS / FREEZE PREFLIGHT PAUSE** at `dea026c` | No freeze/evidence root was created; v2 remains absent and cannot be reused or reinterpreted |
+| Work-item schema-v3 mapping correction | **PLAN-ONLY / REVIEW PENDING** | Exact-tip Kiro PASS and a new two-SHA synthetic-freeze grant are required; no script or root exists |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -178,12 +179,12 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** review the exact §§18.31/10.29 work-item schema-v2
-correction. Confirm that it preserves the merged §§18.30/10.28 coverage model while
-closing every seven-file field/type/null/identity rule, binding exclusively to
-`component-lock.jsonl`, defining a nonrecursive output tree and deterministic
-`W001`–`W040` receipts at fresh v2 roots. A PASS authorizes planning only. Ryan must
-separately grant a synthetic author freeze and, later, one bounded real authoring run.
+**If Ryan sent you here now:** review the exact §§18.32/10.30 work-item schema-v3
+mapping correction. Confirm that it preserves v2 absent, binds complete-row pointer
+`""`, exact field pointers and host byte ranges, assigns component candidates to the
+complete component gap set and owner candidates only to the owner gap, adds only
+`W041`/`W042`, and freezes exact six-file synthetic coordinates/ceilings. A PASS
+authorizes planning only; Ryan must separately grant the synthetic freeze.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -194,9 +195,9 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro must review the exact schema-v2 semantic parent and milestone overlay. A
-   later Ryan grant may freeze one author only against a same-cardinality synthetic
-   fixture and exactly forty mutants, stopping before real reads or root creation.
+1. Kiro must review the exact schema-v3 semantic parent and milestone overlay. A
+   later two-SHA Ryan grant may create only the exact six-file freeze root using one
+   same-cardinality baseline and exactly 42 mutants, with zero real-input reads.
 2. Under another exact Ryan grant, that frozen offline author may read only the
    immutable packet/disposition within named ceilings and create the exact seven-file
    v2 packet at fresh roots. An independent reviewer then proves the 1,240-item,
@@ -298,8 +299,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.31 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.29 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.32 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.30 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -316,7 +317,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-28 | Codex | Closed the plan-only work-item schema v2 after the first freeze preflight found v1 under-specified; no packet/disposition read or root creation occurred. |
+| 2026-09-28 | Codex | Preserved the second freeze-preflight PAUSE and defined schema-v3 candidate-gap, locator and exact synthetic-freeze closure; no root or evidence read occurred. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -335,5 +336,9 @@ clean replacement for three host-path-bearing ELFs without naming an authoritati
 origin. Sections 18.30/10.28 now freeze the seven-role offline work-item design,
 1,221 component items, 19 unresolved ownership disputes, exact 98,608-ID/1,384-edge
 assignment and non-authoritative twenty-batch/49-page projections; Kiro review is
-complete on merged main `d79f03c`, and no packet exists. Acquisition, binary repair, build, implementation, publication, evidence
+complete on merged main `d79f03c`. Work-item schema v2 passed at `dea026c`, but its
+freeze preflight stopped before any read/root because candidate-gap and locator
+mappings remained implicit. Sections 18.32/10.30 preserve v2 absent and define fresh
+schema-v3 mappings, `W001`–`W042` and a six-file synthetic freeze; Kiro review is next
+and no author or packet exists. Acquisition, binary repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
