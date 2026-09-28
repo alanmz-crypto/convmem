@@ -9,12 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **pr-steward-reminder — BLOCKED_ON_RYAN, decision request (2026-09-27):**
-  `doctor`'s standing check is 67 days overdue (limit 30) asking whether to
-  start assigning PR Steward (default: Codex) for bounded PR-lifecycle work.
-  Asked directly 4x in a session and never answered — see
+- **pr-steward-reminder — DECIDED (2026-09-28): Option B.** Ryan chose to
+  start assigning PR Steward (default: Codex) for bounded PR-lifecycle work
+  going forward, activating the already-reviewed role from
+  `CODEX-2026-07-21-pr-steward-role.md` (Copilot audit + Kiro sign-off,
+  landed `main` 2026-07-22 as `0e2b396`) — no new design involved.
+  Bounded-brief criteria are the existing `TEAM-CHARTER-2026-07-06.md` PR
+  Steward clause, not redefined. `standing-checks-register.json`'s
+  `last_verified` bumped to 2026-09-28. See
   [`CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md`](CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md)
-  for the two options. No agent should self-resolve this.
+  for the full record.
 - **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
   held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
   preserves integration tip `9c6421a` and routes its 44-path remediation to

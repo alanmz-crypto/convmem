@@ -236,8 +236,8 @@
         "max_age_days": 30
       },
       "status": "open",
-      "last_verified": "2026-07-22",
-      "notes": "Manual reminder: when describing a bounded, well-defined task that needs full PR lifecycle (branch, commits, push, PR open, CI monitoring, review-finding resolution), consider assigning PR Steward (default: Codex). Activation: explicit Ryan assignment with bounded brief. Full role: TEAM-CHARTER-2026-07-06.md § PR Steward."
+      "last_verified": "2026-09-28",
+      "notes": "Manual reminder: when describing a bounded, well-defined task that needs full PR lifecycle (branch, commits, push, PR open, CI monitoring, review-finding resolution), consider assigning PR Steward (default: Codex). Activation: explicit Ryan assignment with bounded brief. Full role: TEAM-CHARTER-2026-07-06.md § PR Steward. DECIDED 2026-09-28: Ryan chose Option B (start assigning PR Steward going forward, not deferring) — see docs/inter-model/CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md. Bounded-brief criteria are the existing charter clause, not redefined by that doc."
     }
   ]
 }

@@ -1,9 +1,34 @@
 # Decision Request: pr-steward-reminder (overdue, Ryan-only)
 
-**Date:** 2026-09-27
+**Date:** 2026-09-27 (decided 2026-09-28)
 **Author:** Claude (Sonnet 5)
 **For:** Ryan (no other lane can resolve this)
 **Authorization:** N/A — this is a request for a decision, not implementation
+
+---
+
+## DECIDED — Option B (2026-09-28)
+
+Ryan chose **Option B: start assigning PR Steward for future bounded
+PR-lifecycle work.** This activates an already-built, already-reviewed role
+(design doc `CODEX-2026-07-21-pr-steward-role.md`, Copilot audit + Kiro
+sign-off, landed `main` 2026-07-22 as `0e2b396` via PR #92) — nothing new is
+being designed or built here, just actually used going forward.
+
+**What changes going forward:** when a task is bounded and well-defined
+enough to need the full PR lifecycle (branch → commits → push → PR open →
+CI monitoring → review-finding resolution), Ryan will explicitly assign PR
+Steward (default: Codex) with a bounded brief, per the existing charter
+activation rule — rather than leaving it to whichever lane is already
+in-session doing the work directly. The bounded-brief criteria themselves
+are not new: they already live in `TEAM-CHARTER-2026-07-06.md`'s PR Steward
+section (brief-bound; no merge/grant/ledger authority; Ryan grant only,
+never inferred or self-assigned). This doc doesn't redefine them.
+
+`docs/standing-checks-register.json`'s `pr-steward-reminder` row has been
+updated: `last_verified` bumped to 2026-09-28, and its notes field records
+the decision so the next 30-day cycle starts from a real answer, not a
+default.
 
 ---
 
@@ -79,11 +104,12 @@ whichever lane is already in-session doing the work directly.
 
 ## Acceptance criteria
 
-- [ ] Ryan states Option A or Option B (or a third option not listed here)
+- [x] Ryan states Option A or Option B (or a third option not listed here) — **B, 2026-09-28**
 - [ ] If A: `docs/standing-checks-register.json`'s `pr-steward-reminder` row
       gets `last_verified` bumped to the date of the decision
-- [ ] If B: a follow-up note describes what "bounded brief" criteria trigger
-      Steward assignment going forward
+- [x] If B: a follow-up note describes what "bounded brief" criteria trigger
+      Steward assignment going forward — see "DECIDED" section above; criteria
+      are the existing charter clause, not newly defined here
 
 ---
 
