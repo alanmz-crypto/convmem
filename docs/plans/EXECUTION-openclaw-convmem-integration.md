@@ -2486,9 +2486,10 @@ The held sequence is:
    tinfow bind the three exact §18.29.4 object/path/offset/loader findings and set
    `clean_replacement_required=true`. They contain no copy, removal, prefix rewrite,
    `patchelf`, `chrpath`, host fallback or other repair path.
-8. **Run the closed structural controls.** Reject identity, encoding, mode, count,
+8. **Run the forty closed structural controls.** Reject identity, encoding, mode, count,
    union, assignment, citation, state, authority, ownership, edge, license,
-   host-path, budget, root-freshness and acquired-byte mutants named by §18.30.7. Any
+   host-path, budget, root-freshness and acquired-byte mutants `W001`–`W040` named by
+   §18.30.7. Any
    non-rejection or additional semantic rule is `PAUSE`; do not patch output.
 9. **Publish once and stop.** Only under that future grant, freeze the seven-file
    packet and external mode-`0400` authoring result by same-filesystem atomic rename,
@@ -2504,7 +2505,8 @@ Acceptance for this planning phase is static only: exact §18.30 schema/role/sta
 closure; arithmetic `1,221 + 19 = 1,240` and
 `7,326 + 91,206 + 76 = 98,608`; file partition `30,402 + 19 = 30,421`;
 1,384 primary edge assignments; twenty/49 projection boundaries; immutable input
-identities; host-path clean-build flags; negative-control completeness; and explicit
+identities; host-path clean-build flags; exact `W001`–`W040` negative-control
+completeness; and explicit
 absence of authoring/acquisition authority. No work-item bytes are acceptance evidence
 for this phase because none may be created.
 

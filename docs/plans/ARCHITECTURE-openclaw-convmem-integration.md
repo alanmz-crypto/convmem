@@ -7133,6 +7133,7 @@ PROVENANCE_OWNED_FILE_ORIGIN_UNRESOLVED_COUNT=91206
 PROVENANCE_DISPUTED_FILE_UNRESOLVED_COUNT=76
 PROVENANCE_WORK_ITEM_UNRESOLVED_COUNT=98608
 PROVENANCE_WORK_ITEM_PACKET_FILE_COUNT=7
+PROVENANCE_WORK_ITEM_NEGATIVE_CONTROL_COUNT=40
 PROVENANCE_WORK_ITEM_PACKET_STATUS=ABSENT
 PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
 PROVENANCE_ACQUISITION_EXECUTION_AUTHORIZED=false
@@ -7217,6 +7218,15 @@ three of its origin rows stay together in its component work item. Moving one fi
 another component, splitting one path across items, or using a nested edge to merge two
 component identities is `PAUSE`.
 
+Work-item identity is exact. Let `subject_id` be the raw baseline component ID for a
+component record and the raw runtime path for a dispute record. Canonically encode the
+closed object
+`{"packet_tree_sha256":PROVENANCE_V3_PACKET_TREE_SHA256,"schema":PROVENANCE_WORK_ITEM_SCHEMA,"subject_id":subject_id,"work_item_kind":kind}`
+under §18.25 and set `work_item_id` to `work_item:sha256:` plus the lowercase SHA-256
+of those bytes. No path, Unicode, case, URL or PURL normalization occurs. The manifest
+separately hashes each complete record, so the stable subject identity is never
+misrepresented as a full-record content hash.
+
 #### 18.30.4 Ownership-dispute work items remain unowned
 
 Each of the eighteen `multiple-owners` paths and the one `missing-owner` path has one
@@ -7275,6 +7285,15 @@ questions for counsel, but may not choose an `OR` branch, interpret an exception
 declare compatibility, or discharge reciprocal-source obligations. Human counsel is
 still required.
 
+Citation and candidate identities are also exact. A citation ID is `citation:sha256:`
+plus the SHA-256 of the canonical closed object containing packet-tree SHA-256, packet
+file role, raw primary-key value, canonical record SHA-256, evidence-object ID and raw
+internal locator. A candidate ID is `candidate:sha256:` plus the SHA-256 of the
+canonical closed object containing `candidate_kind`, the exact candidate value bytes
+represented as a JSON string, and the sorted raw citation-ID array. Any different
+byte, citation order after canonical sorting, locator or candidate kind produces a
+different ID; aliases never converge by normalization.
+
 #### 18.30.6 Successor operation packets and grouping boundary
 
 After an independently reviewed work-item packet exists, a later plan may propose
@@ -7295,16 +7314,25 @@ provenance and licensing PASS.
 
 #### 18.30.7 Negative controls, review sequence and authority boundary
 
-The future authoring verifier must reject at least: any changed packet/disposition
-identity; preexisting output root; noncanonical encoding or mode; missing, duplicate,
-unknown or reordered record; wrong content-addressed ID; count/hash drift; one
-component/file/edge/unresolved ID omitted or multiply assigned; any disputed path in a
-component item; a guessed owner; a uniquely owned path split across items; primary
-edge assignment other than its container; batch/page membership used as authority;
-candidate bytes without exact packet citations; state promotion with a missing field;
-normalization or lookup; a closed unresolved row; a license selection; a host-path
-repair route; a batch-multiplied budget; or any work-item packet containing acquired
-bytes.
+The future authoring verifier must run exactly forty single-mutant controls, each of
+which must return `PAUSE` without a final packet:
+
+| IDs | Mutations |
+|---|---|
+| `W001`–`W004` | packet-tree mismatch; disposition mismatch; preexisting staging root; preexisting durable root |
+| `W005`–`W010` | missing role; extra role; manifest self-hash; noncanonical JSON; noncanonical JSONL order; wrong file type/mode or forbidden symlink/hard-link/path escape |
+| `W011`–`W013` | wrong work-item ID; wrong citation/candidate ID; wrong count or primary-key hash |
+| `W014`–`W017` | missing component item; duplicate component item; missing dispute item; duplicate dispute item |
+| `W018`–`W024` | missing unresolved ID; duplicate unresolved ID; missing runtime path; duplicate runtime path; split uniquely owned path; disputed path in a component item; guessed dispute owner |
+| `W025`–`W028` | missing nested edge; duplicate nested edge; non-container primary assignment; inbound reference counted as primary coverage |
+| `W029`–`W031` | component-batch partition drift; unresolved-page partition drift; projection membership used to own/promote a record |
+| `W032`–`W036` | candidate without exact citation; normalized/looked-up candidate; `READY_FOR_REVIEW` with a missing operation field; immutable packet row marked closed; owner or license choice asserted |
+| `W037`–`W040` | host-path repair/removal route; per-batch/page/component ceiling multiplication; acquired/external byte in the packet; credential/private-data byte in the packet |
+
+The unmutated baseline must return zero violations. A control that does not reject, a
+41st semantic exception, a combined mutant that obscures which invariant fired, or an
+authoring implementation that rewrites output after a failure is `PAUSE` and requires
+a successor plan.
 
 The only admissible next sequence is:
 
