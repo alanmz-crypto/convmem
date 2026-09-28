@@ -1,22 +1,114 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Status:** **BUILD PASS for the frozen T0–T5 fixture contract**, subject to exact-tip review and
-Ryan's separate Execute grant. **TEST: NOT YET RUN. LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.**
+**Current status (2026-09-27): PROVENANCE PACKET TECHNICAL PASS;
+PROVENANCE/LICENSING PAUSE; PRE-ACQUISITION DESIGN REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The bounded implementation and durable
+M11 evidence remain preserved at
+`94f29ebabee31112cccb223fd1445cb782aac6eb`, but pull request `#342` cannot merge.
+Its required GitHub `pytest (3.12)` context failed with 83 failures, and a focused
+Claude ultrareview found two independent safety defects: an invalid MCP profile can
+terminate all of `convmem doctor` during import, and a fenced publication can be
+misclassified as an exact retry without independently proved input identity. Section
+18.22 is the held PR correction; §18.23 freezes its rejected qualified-runtime delivery
+packet; and §18.24's replacement delivery-set plan received exact-tip Kiro PASS at
+`3402e62a8479011814bfa76ce9e1c3269dc34350`. Sections 18.25–18.28 freeze the
+canonical schema-v3 packet and independent disposition; §18.29 defines the lossless
+pre-acquisition and clean-replacement contract. The first archive passed local byte/
+mode/extraction validation, but public redistribution remains fail-closed on incomplete
+component provenance, licensing evidence and embedded host paths. Everything
+below through §18.21 is retained as historical design and evidence provenance. This
+edit authorizes planning only.
+
+**Status:** **BUILD PASS and TEST PASS for the frozen T0–T5 fixture contract at accepted
+implementation `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. BOUNDED M11 EVIDENCE PASS AT
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b`; CURRENT-MAIN RECONSTRUCTION PRESERVED AT
+`30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca`; THREE-TIP CANDIDATE PRESERVED AT
+`d276cb4ab0a0613b965e772d49d378e761df337e`; ADVANCED-MAIN CANDIDATE PRESERVED AT
+`776a4ca3d4215490fb26b882dca2df9a41e0e03a`; INNER-ROLE RECONCILIATION AND THREE-TIP
+DIFFERENTIAL PASS PRESERVED AT `65bbfd6f47515accfefa110b667afe1613f0dbed`; PYLINT PAUSED ON
+THREE CANDIDATE-INTRODUCED `R0801` PAIRS; FIRST PYLINT CORRECTION PRESERVED AT
+`c71d37a42de0937aff57a2af47770a89902f132a`; SUCCESSOR CORRECTION AND FRESH THREE-TIP
+DIFFERENTIAL PASS PRESERVED AT `caec5c6868f600e897b29a39f555365e5f818ac1`; EXACT PYLINT
+ACCEPTANCE PASSED AT `9da6dd98d276b250470de4e53ac786f7547d92d5`; FINAL M8 RUN 1
+PAUSED BECAUSE THE CURRENT-MAIN SELECTED LEGACY FILE ADDED TWO PASSING SAFETY NODES WHILE THE
+FROZEN EXPECTATION REMAINED 116 COLLECTED / 115 PASSED.
+LIVE-DATA: BLOCKED. PROMOTION: BLOCKED.** The final authority-packet correction, repository-wide differential,
+unchanged Pylint gate, two fresh M8 runs, seven legacy MCP regressions, durable evidence and Kiro
+exact-tip conformance review passed at `cd60cf19`. That result is bound to integration baseline
+`9193f5ec744f059d07a20612489b210527b5660a`. Before a PR existed, `origin/main` advanced by twelve
+commits to `a92a74eb326b3eaa59087b707de10153c7cc0c63`; Git now reports a real conflict in the governed
+Switchboard STATUS document, and the full tracked source identity no longer matches the tested
+tree. Sections 18.9–18.13 remain the historical evidence contract. Section 18.14 freezes the
+completed first current-main reconstruction and its first exact-main differential. Section 18.15
+records that differential's governed PAUSE and the reviewed three-tip correction completed through
+`d276cb4`. Before any authorized suite started, `origin/main` advanced again to
+`5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`; §18.16 freezes the completed second deterministic
+reconstruction from that exact base. Its first three complete pytest runs and 166 isolated reruns
+paused because pytest rendered the same `CONVMEM_OPENCLAW_INNER_ROLE` assertion through unstable
+`os.environ` representations for exactly 22 packet-contract nodes. Section 18.17 froze the closed
+semantic projection. The reviewed correction was then applied and freshly proved the three-tip
+differential at `65bbfd6f`, but the unchanged Pylint gate paused on three new `R0801` pairs.
+Section 18.18 freezes the exact two-test-file structural correction and complete fresh evidence
+sequence. That correction was applied at `c71d37a`; its fresh three-tip differential passed, but
+the exact reviewed Pylint acceptance paused at 456 findings / 71 `R0801` messages even though the
+protected regression gate exited zero. Section 18.19 preserves that governed PAUSE and freezes a
+one-test-file/two-transformation correction plus the then-observed 454/69 acceptance target. That
+correction and a fresh three-tip differential passed at `caec5c6`; the unchanged Pylint gate then
+exited zero with exact `R0801` pair equality but 458 total findings because `R0401` rose from the
+unfrozen 25-record observation to 29. Section 18.20 preserves that PAUSE and freezes a paired
+`N1`/final-candidate Pylint semantic-identity rule under `PYTHONHASHSEED=0`. That reviewed rule,
+fresh three-tip differential and paired Pylint evidence passed at `9da6dd98`. Final M8 run 1 then
+stopped on exact legacy-count drift: two current-main safety tests were selected and passed, with
+no removed or changed node, while the inherited fixture still required the historical 116/115
+count. Section 18.21 preserves the PAUSE and freezes the exact 118/117 successor expectation and
+one-path/two-integer correction. It authorizes no implementation, test, PR or merge.
 Actual OpenClaw runtime qualification remains blocked by C-RUNTIME, D-CONTAINMENT and
 D-DISTRIBUTION; production admission additionally requires Gate W. BUILD does not pass those gates.
 This planning edit authorizes no implementation, runtime start, configuration change or live use.
 
-**Date:** 2026-09-21
+**Date:** 2026-09-27
 
-**Arc:** none (ad-hoc integration)
+**Arc:** ConvMem Switchboard
 
-**Authority:** Codex architectural editing lane. This final corrective edit starts from planning
-commit `2aa66a8753db3be6adce7cb17533eae96aee609d` on
-`plan/2026-09-20-openclaw-convmem-final-readiness`. Astra reviewed its parent `0f1216f`, not
-`2aa66a8` or this correction. The preceding correction resolved B-FIXTURE and B-DIGEST;
-§18.4 records two concrete runner-contract repairs without reopening those sound semantics.
-Sections 6.5.8–9 freeze the fixture and hash contracts. Kiro owns design review; Ryan
-owns policy approval and any later Execute grant. No complete-integration readiness is claimed.
+**Authority:** Codex architectural editing lane. The M8 node-evidence history remains in
+§§18.4–6. Ryan accepted bounded M0–M8 and separately authorized each held M11 correction through
+the final authority-packet rebind. Candidate `cd60cf19` then satisfied the complete bounded
+merge-readiness evidence sequence and received Kiro exact-tip PASS. Ryan delegated the merge
+decision to Codex; Codex issued `PAUSE` after fetching current main and reproducing the governed
+STATUS conflict. Ryan authorized the exact reconstruction and evidence sequence. The reconstruction
+was completed, clean and pushed at `30bc134d`; its complete pytest comparison then issued a second
+governed `PAUSE` because §18.14 treated all 238 Switchboard nodes absent from current main as newly
+required passes even though the preserved reviewed candidate already records their outcomes. Ryan
+authorized that plan-only applicability correction, Kiro passed it, and the held plan and identity
+commits were completed at `d276cb4`. Its test preflight stopped before creating a slot or running a
+suite when `origin/main` advanced to `5c6a4a8`. Ryan authorized this plan-only current-main advance.
+The advanced reconstruction was then completed, clean and pushed at `776a4ca3`; complete `N1`,
+`R` and final-candidate runs and all 166 isolated reruns completed before the signature-family
+PAUSE. Ryan authorized the plan correction, Kiro passed it, and the fresh corrected evidence at
+`65bbfd6f` established `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`. The unchanged Pylint gate then
+paused on three candidate-introduced duplicate-code pairs. Ryan authorized that correction; its
+fresh differential passed at `c71d37a`, but exact Pylint acceptance paused on two remaining excess
+pairs. Ryan then authorized only the resulting plan correction. That correction was implemented at
+`caec5c6`; its fresh three-tip differential passed, while exact Pylint acceptance paused at
+458/69/29 `R0401` despite protected-gate zero and exact pair equality. Ryan authorized four
+disposable determinism probes and this plan-only correction; the paired probes reproduced the same
+semantic records at `N1` and `caec5c6`. The reviewed correction was then applied at `9da6dd98`;
+fresh three-tip and paired Pylint acceptance passed, and M8 run 1 issued the governed legacy-count
+PAUSE recorded in §18.21. Ryan authorized only this plan correction. Sections 6.5.8–9 remain the
+frozen fixture and hash contracts. Section 18.9 defines the exact
+lint-remediation boundary; §18.10 defines the candidate-versus-pre-remediation pytest and identity
+rules; §18.11 records the completed earlier M8 packet rebind; §18.12 records the completed
+one-literal production correction; §18.13 records the completed final authority-packet rebind and
+evidence sequence; §18.14 records the completed current-main reconstruction; §18.15 records the
+three-tip differential correction and preflight PAUSE; §18.16 records the completed current-main
+advance; §18.17 freezes the exact inner-role semantic-signature rule; §18.18 freezes the exact
+post-reconstruction Pylint correction; §18.19 freezes the correction to its observed acceptance
+drift; §18.20 records deterministic paired Pylint authority; §18.21 freezes the exact final-M8
+legacy-count drift correction; §18.22 freezes the held PR correction; §18.23 records
+the rejected first runtime packet; §18.24 defines the Kiro-passed replacement delivery
+set; and §18.25 defines the schema-only provenance-lock packet.
+Kiro owns the required
+exact-tip design review; Ryan owns any later implementation, test, PR, merge or promotion grant.
+No complete-integration readiness is claimed.
 
 **Review inputs:** Final Astra report
 `/tmp/astra-final-0f1216f7249c0066dafb6fc9ef2aafa9845a7264/STAGE-1-REVIEW.md`, SHA-256
@@ -24,9 +116,12 @@ owns policy approval and any later Execute grant. No complete-integration readin
 `REVIEWED_PLAN_SHA: 0f1216f7249c0066dafb6fc9ef2aafa9845a7264`.
 Earlier Stage 1 report SHA-256
 `fc402286dbb720f3752613e3fe982c4542b168eda9609416b1dd4c51eff5c979`; reconstruction report SHA-256
-`73ebe0f606551eb9ece035722d5af05468c9168b6b279abbcd444ec35b03b827`. The code evidence baseline
-remains `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; no implementation changes are made here.
-Supersedes the two plan files at `2aa66a8`, not the frozen invariants below.
+`73ebe0f606551eb9ece035722d5af05468c9168b6b279abbcd444ec35b03b827`. The original code evidence
+baseline remains `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; the historical M11 integration baseline is
+`9193f5ec744f059d07a20612489b210527b5660a`, the prior current-main baseline is
+`a92a74eb326b3eaa59087b707de10153c7cc0c63`, and the exact newly observed current-main baseline is
+`5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`. No implementation changes are made here. This
+reconciliation supersedes only stale merge sequencing, not the frozen invariants below.
 
 **Frozen invariants:** ConvMem files/CLI retain governance and durable-memory ownership; OpenClaw is
 only a bounded, disposable reader/orchestrator. Exactly three read-only tools, one immutable
@@ -49,9 +144,14 @@ credential selection, Gate W code, live sources, migration, capture, channels an
 non-goals. Production launch entrypoints fail closed in this slice. A fake tests protocol behavior
 only; it proves neither OpenClaw compatibility nor host containment.
 
-Grok can begin implementation without making an architectural decision.
-Known deferred issues do not authorize Grok to redesign the architecture.
-These are BUILD-readiness statements, not a substitute for Kiro review or Ryan's Execute grant.
+The bounded implementation remains architecture-complete. M11 may resume only after exact-tip
+Kiro review and a new Ryan grant naming the revised semantic parent, milestone overlay, exact
+current-main baseline, preserved reviewed candidate, preserved `9da6dd98` M8-count PAUSE input,
+frozen runtime, durable evidence destination, exact reviewed plan range, four-literal identity
+rebind, one-path/two-integer legacy-count correction and final three-tip/Pylint/M8/MCP authority.
+Known deferred issues do
+not authorize Grok to redesign the architecture or reinterpret any test result. These are
+BUILD-readiness statements, not an Execute grant.
 
 ## 1. Consequence for Ryan
 
@@ -2063,7 +2163,12 @@ allows only the exact execution §5.1 pytest/Node suites and fresh Python invoca
 reader and strict-server entrypoints; it has no general command runner. T4/T5 spawn remains virtual.
 Run from read-only `/src`, disable pytest's cache provider, and place its explicit base-temp roots
 under `/fixture`. Explicitly load only baseline-required test plugins and record their inventory;
-never enable plugin autoload. Per-suite wall deadline is 600 seconds; captured stdout/stderr has a
+never enable plugin autoload. The two frozen Python commands additionally activate pytest's
+already-loaded built-in JUnit reporter and write only
+`/fixture/evidence/pytest-strict-junit.xml` and
+`/fixture/evidence/pytest-legacy-junit.xml`. This adds no plugin, dependency, environment input,
+process, selector, deselection, test, permission or runtime capability. The Node command is
+unchanged. Per-suite wall deadline is 600 seconds; captured stdout/stderr has a
 combined 16 MiB limit. Exceeding either fails without budget expansion. Execution §5.1 fixes the
 test-only runner's closed CLI, pre-import setup operations and exact inner commands.
 These are unmeasured limits, not demonstrated capacity. TEST records monotonic elapsed time,
@@ -2106,6 +2211,20 @@ process, the same physical containment and no subprocess allowance. Only that pr
 unchanged legacy config/writers for its synthetic stores; strict components retain their original
 import restrictions. This preserves legacy behavior without granting strict readers write access.
 
+Exact live Python node/outcome evidence comes only from the two built-in JUnit reports, never from
+AST enumeration, a test-side session dump, `--collect-only`, another pytest process, `conftest.py`,
+`PYTEST_PLUGINS`, `PYTEST_ADDOPTS` or a new plugin. After both existing Python processes finish, the
+outer runner parses the xunit1 reports as data and reconstructs each node ID losslessly from
+pytest's `file`, `classname` and `name` attributes against the exact selected-file map. It rejects missing or
+multiple file-prefix matches, duplicate reconstructed node IDs, lossy `#xNN`/`#xNNNN` escape
+markers, malformed XML, unexpected testcase children, a node outside the exact selected files, or
+any of the four deselected nodes appearing. Outcome is exactly `passed`, `failed`, `error` or
+`skipped`, derived from the testcase's zero-or-one outcome child; failures/errors, conflicting
+children, report/process-count disagreement or a nonzero Python suite status fail TEST. Each
+selected file must contribute at least one testcase. The canonical sorted node/outcome arrays from
+both fresh-root runs must be identical. Static AST inventories may remain diagnostic only and must
+not be labeled or accepted as collected-node evidence.
+
 Case57 must observe actual kernel denials for outside-root canary opens/writes and read-only
 mount writes, not merely a fake `access()` denial. A separate synthetic-only inner exposure of
 a canary must make the independent preflight fail while the outer boundary stays intact. Fake
@@ -2127,6 +2246,9 @@ manifest_payload_sha256. `source_tree_sha256` hashes the exact tracked source ex
 fixture manifest and generated run outputs excluded, preventing a self-reference; the exported
 input inventory is returned alongside the manifest. Generation uses canonical JSON, fixed clock/event/identity scenario data
 and exact source bytes; it never discovers a runtime/model/provider from the host.
+The two raw JUnit reports and the derived canonical node/outcome report are generated only under
+disposable `/fixture/evidence`; they are returned evidence, never fixture/source/component hash
+inputs or authority artifacts.
 
 Launch/activation/filter/image/model specimens are wrapped as closed
 `{artifact_kind:"protocol_fixture", role, payload}` test data. Role is one of `activation`,
@@ -2830,11 +2952,14 @@ scope values, or credentials.
 ### Gate A — plan review
 
 BUILD asks whether the frozen T0–T5 implementation requires any architectural choice: this packet
-answers PASS after the B-FIXTURE/B-DIGEST corrections. TEST asks whether its disposable acceptance
-suite has passed: NOT YET RUN. LIVE-DATA and PROMOTION are BLOCKED. These four gates are independent;
-BUILD PASS is neither runtime qualification nor an Execute grant. Kiro reviews the exact corrected
-tip; Ryan separately grants B/C implementation. A substantive correction receives a focused fresh
-adversarial check of the changed contracts, not a reopened general design search.
+answers PASS after the B-FIXTURE/B-DIGEST corrections. Bounded TEST passed at accepted historical
+tip `8010fb060c2edc29e1b09d7a30b1a1da2689d489`; that result does not certify the proposed M11
+current-main integration, whose replay/pin state is preserved at `a11b7a2` but whose fresh evidence
+has not run. LIVE-DATA and PROMOTION are
+BLOCKED. These gates are independent; BUILD/fixture TEST PASS is neither runtime qualification nor
+an Execute or merge grant. Kiro reviews the exact reconciled plan; Ryan separately decides M11.
+A substantive correction receives a focused fresh adversarial check of the changed contracts, not
+a reopened general design search.
 
 ### Gate B — strict ConvMem contract implementation
 
@@ -3294,8 +3419,12 @@ cases, and every later case remains a blocking future gate.
     inventory, remove/mutate one copied loader/library or add an unlisted file; preflight rejects
     before an implementation-import sentinel runs. Record real canary/read-only denial results;
     an inner synthetic canary exposure must be detected, not hidden by mocked denial results.
-    Verify the exact three suite commands, the four declared legacy exclusions and every selected
-    node. A full-discovery command, extra deselection, hook/Git spawn or strict writer import fails.
+    Verify the exact three suite commands, the two exact built-in JUnit output arguments, the four
+    declared legacy exclusions and every selected node/outcome. A full-discovery command, extra
+    deselection, AST data labeled as collected evidence, hook/Git spawn or strict writer import
+    fails. The pre-correction behavioral baseline remains 238 strict passes, 29 Node passes, and
+    115 legacy passes plus one legacy skip and four deselections; any changed count/outcome is a
+    regression, not evidence collection.
     Measure the existing capacity bounds; inject counter overflow/deadline and fill only private
     `/tmp` past its cap as negative controls. Failure never raises budgets or changes protocol time.
 58. Build independently the five exact §6.5.9 component entry arrays and hashes plus the separate
@@ -3523,7 +3652,9 @@ suite selection, repair records and unchanged manager/core semantics against `2a
 Section18.5 records the focused regression review; §18.3 retains the preceding correction's matrix. The bundle carries
 the checker, its output and parent-to-target diff so these assertions are reproducible.
 
-No integration acceptance is claimed: TEST remains NOT YET RUN. Prior static routing/auth probes
+At that corrective revision, no integration acceptance was claimed: one M8 reproduction was
+behaviorally green but TEST remained PAUSED because its legacy collected-node evidence was
+incomplete. Section 18.7 records the later accepted M8 result. Prior static routing/auth probes
 were not rerun for this correction. No implementation, OpenClaw configuration, package install,
 credential read or gateway/service start is part of this edit. The final exact-commit bundle must
 bind the committed plan bytes, correctly labeled historical review, unchanged code evidence and historical probe
@@ -4008,9 +4139,2971 @@ documentary comparisons and required future tests, never claims of executed conf
 | Fixture/live-data/promotion separation | Fake remains unselectable and unauthenticating; four gate statuses retained. | Case57 disabled launch/registration; no Gate D/W/E PASS from fixture success. |
 | Capacity versus protocol | 600 seconds, 16 MiB output, 256 MiB private `/tmp` unchanged and unmeasured. | Record measurements and failing over-limit controls; protocol deadlines/authority/freshness unchanged. |
 
-BUILD remains PASS after these specification repairs. TEST remains NOT YET RUN; LIVE-DATA and
-PROMOTION remain BLOCKED. Fresh Astra must review this exact tip's runner/fixture/hash contracts
-before Kiro; the `0f1216f` report does not certify either later revision.
+At the close of the preceding correction, BUILD remained PASS and TEST had not yet run. The current
+state is superseded by §18.6: one behaviorally green M8 run exists, TEST is PAUSED without a PASS,
+and LIVE-DATA/PROMOTION remain BLOCKED. The earlier reports do not certify this revision.
+
+### 18.6 M8 exact node/outcome evidence correction
+
+**Authorized correction.** On 2026-09-23 Ryan authorized only a plan correction allowing the two
+frozen Python test commands to emit built-in pytest JUnit XML under disposable
+`/fixture/evidence`, solely to obtain exact collected node IDs and outcomes. Selectors, the four
+deselections, test behavior, dependencies, permissions, isolation and runtime semantics remain
+unchanged. Gate D, real OpenClaw, merge, deployment and later gates remain unauthorized.
+
+**Observed blocker.** M8 implementation tip
+`8b8339e53565cad2f1a5fafda6212a7c800ffbdf` completed one behaviorally green isolated run: 238
+strict passes, 29 Node passes, and 115 legacy passes plus one skip and four deselections. Its strict
+suite supplied live pytest items, but its legacy report supplied only a named-file AST definition
+inventory. Parameterization made that diagnostic smaller than the live legacy collection, so it
+cannot satisfy §6.5.8's collected-node evidence requirement. No TEST PASS was issued.
+
+**Minimum repair.** Execution §5.1 adds one built-in JUnit output argument to each existing Python
+command and freezes both output paths. The runner derives canonical node/outcome arrays after the
+unchanged processes finish, using the fail-closed reconstruction and validation rules in §6.5.8.
+No new command, collection pass, plugin, environment mechanism or protected-test edit is allowed.
+The only selected-test-file change permitted when implementation resumes is the mechanical update
+of the existing semantic-parent SHA assertion required by the newly reviewed parent; it may not
+change test logic, selection or outcome.
+
+**Acceptance and regression boundary.** Both fresh-root runs must preserve the observed behavioral
+counts, yield identical canonical Python node/outcome arrays, exclude the exact four legacy nodes,
+and keep the Node command/result unchanged. Raw JUnit and derived evidence remain disposable,
+hash-excluded test output. Missing, malformed, ambiguous, lossy, duplicate, inconsistent or
+out-of-selection evidence fails M8. All authority, provenance, publication, recovery, component
+hash, containment and later-gate invariants remain unchanged. At that correction point BUILD
+remained PASS for bounded T0–T5 and TEST was PAUSED pending implementation and two accepted reruns;
+§18.7 records their later completion.
+
+### 18.7 M11 current-main integration boundary
+
+**Accepted historical result.** The M8 correction was implemented and independently accepted at
+`8010fb060c2edc29e1b09d7a30b1a1da2689d489`. Bounded Gate B/C TEST PASS applies only to that exact
+implementation, its original code baseline
+`7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`, semantic parent
+`34338133186010a26ed746bbfea4c9abb958e9ca`, reviewed overlay
+`b16763ffefa90023800f05f78ab8a71e765f5022`, frozen runtime inventory, and accepted durable
+evidence. It does not certify a rebased, merged, replayed or otherwise reconstructed tree.
+
+**Observed integration condition.** Current `origin/main` is
+`9193f5ec744f059d07a20612489b210527b5660a`. It and the accepted implementation diverge from
+common ancestor `7607fbb4430619566974274ad7e0c6690c785278`. The accepted implementation's exact
+45-commit range begins at `2f05a8540b9155346f313d7b2eea6300fec29350`, whose parent is the original
+code baseline, and ends at `8010fb060c2edc29e1b09d7a30b1a1da2689d489`. The current-main product
+paths and that implementation range have no path overlap. The planning documents do overlap and
+carry different revisions, so a silent rebase, ordinary merge, or plan selection by Grok is
+forbidden.
+
+**Frozen reconstruction.** After this parent and its milestone overlay receive exact-tip Kiro
+PASS and Ryan names a new integration grant, Codex creates the granted implementation branch and
+worktree at the exact reviewed overlay tip named in that grant. Before Grok starts, Codex proves
+that the overlay tip descends from `9193f5ec744f059d07a20612489b210527b5660a`, differs from it in
+exactly the four authorized architecture, execution, milestone-overlay and STATUS documents, and
+has byte-identical non-plan/product state. Grok then cherry-picks, in existing order and without
+merge commits, exactly
+`2f05a8540b9155346f313d7b2eea6300fec29350^..8010fb060c2edc29e1b09d7a30b1a1da2689d489`.
+Any conflict, skipped commit, extra commit, path outside the accepted implementation range, or
+change to a current-main-owned product byte is `PAUSE`; Grok does not resolve it. The four
+planning/status documents from the reviewed reconciliation tip remain authoritative and are not
+taken from the older current-main versions or historical implementation lineage.
+
+**Exact pin-only reconciliation.** After the conflict-free replay, Grok makes one held correction
+limited to:
+
+- `tests/fixtures/openclaw_strict/constants.py`: set `CODE_BASELINE_SHA` to
+  `9193f5ec744f059d07a20612489b210527b5660a` and `SEMANTIC_PARENT_SHA` to the exact reviewed
+  semantic-parent commit named in Ryan's grant;
+- `tests/test_openclaw_strict_packet_contract.py`: update only the two corresponding literal
+  assertions; and
+- the parent/overlay references in comments or docstrings in exactly
+  `openclaw_strict_server.py`, `strict_projection.py`,
+  `tests/fixtures/openclaw_strict/adversarial_matrix.py`,
+  `tests/fixtures/openclaw_strict/audit_evidence.py`,
+  `tests/fixtures/openclaw_strict/fixture_manifest.py`,
+  `tests/fixtures/openclaw_strict/protocol_fixture/schema_field_sets.py`,
+  `tests/test_mcp_openclaw_strict.py`, `tests/test_strict_projection.py`, and
+  `tests/test_strict_projection_publisher.py` so they name the reviewed parent/overlay without
+  altering executable behavior, test selection, expected outcomes, or component membership.
+
+No schema, interface, dependency, permission, selector, deselection, test behavior, authority
+rule, hash algorithm, component set or runtime behavior changes. The future overlay commit SHA is
+not inserted into executable fixture state unless an already-frozen parent field requires it.
+
+**Runtime and evidence rebinding.** The historical runtime tree is reusable only after Codex, as
+the named provisioning operator, copies or reconstructs it at the newly Ryan-authorized exact
+parent/baseline path and proves a complete file/mode/hash inventory, resolved dependency paths,
+version checks, mutation check, no symlinks/unlisted bytes and the unchanged expected tree hash
+`sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`. The historical
+path is not acceptance input for the new baseline. Ryan must also name a new durable evidence root
+bound to the reviewed overlay; M8 output is copied under
+`runs/<integration-source-commit>/<run-label>/` with Codex-verified staging-to-durable hashes.
+Grok may not provision, repair, download, substitute or select either location.
+
+**New acceptance evidence.** At one clean pushed integration commit, Codex independently verifies
+that the four reviewed plan/status blobs remain exact, all other current-main-owned paths remain
+byte-identical unless they are in the accepted product delta or exact pin/comment allowance, the
+replayed product delta matches the accepted `7809f20..8010fb0` delta except for those exact
+allowances, and no product path is omitted or added. Then the unchanged isolated runner passes twice from fresh roots using
+the newly reviewed parent SHA and baseline. The seven legacy MCP test files and the unchanged
+Pylint regression gate run in the separately reviewed disposable environment. Every raw command,
+node/outcome inventory, component/source hash, runtime inventory, mutation check and durable-copy
+mapping is retained. Historical M8 evidence is comparison input, never substituted for these runs.
+
+**Authority boundary.** This section changes integration sequencing and evidence binding only. It
+does not change T0–T5 semantics or authorize implementation, merge, OpenClaw installation/update,
+real OpenClaw execution, Gate D, Gate W, Gate D-V, Gate E, Gate F, watch activation, live data,
+deployment or promotion. The installed OpenClaw version is irrelevant to this reconstruction;
+before any separately granted Gate D testing, the runtime must be deliberately updated or pinned
+and subjected to a fresh capability probe and review.
+
+### 18.8 M11 reviewed-plan control-plane allowlist reconciliation
+
+**Observed held checkpoint.** The reviewed overlay at
+`581de2abf430786a36f2612f97c623a19b61353f` was applied as the base of
+`feat/2026-09-23-openclaw-convmem-m11-integration`; the exact 45-commit replay and the §18.7
+pin/comment reconciliation are clean and pushed at preserved tip
+`a11b7a2a793c68e4e6e83c2680b077389a817c5c`. The first M8 attempt stopped in the outer runner,
+before source export, integration import, runtime launch or any test, with `allowlist_violation`
+for exactly these four paths:
+
+1. `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md`
+2. `docs/plans/EXECUTION-openclaw-convmem-integration.md`
+3. `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md`
+4. `docs/plans/STATUS-openclaw-convmem-integration.md`
+
+The failure is expected from the §18.7 tree shape: those reviewed control documents differ from
+the current-main product baseline, while the original runner applies the product-edit allowlist to
+the entire baseline-to-source path delta. No product test failed, and no real OpenClaw or live-data
+action occurred. The retained paused evidence is comparison input only; it is not an M8 run.
+
+**M11-only classification rule.** Let `D` be the complete sorted tracked path delta from
+`CODE_BASELINE_SHA` to the exact source commit, and let `C` be the exact four-path set above. For
+M11 only, `C` is a closed set of reviewed control-plane inputs, not product implementation edits.
+The outer runner must, before runtime verification, source export, integration import or tests:
+
+1. require all and only the four named control-plane paths to be classified through this rule;
+2. resolve the exact Kiro-reviewed `REVIEWED_OVERLAY_SHA` named in Ryan's resume grant as a commit;
+3. require each `source_commit:path` and `REVIEWED_OVERLAY_SHA:path` entry to exist as the same
+   regular Git blob, with identical object ID and mode `100644`;
+4. fail closed on a missing path, extra classified path, invalid/unavailable commit, non-blob,
+   symlink or other mode, unreadable tree entry, or any object-ID/mode mismatch; and
+5. define the product delta as exactly `P = D - C`, then apply the existing
+   `EDIT_ALLOWLIST_EXACT`, `EDIT_ALLOWLIST_PREFIXES`, `SCHEMA_ALLOWLIST`, `path_allowed()` and
+   Gate-W second-layer denial to `P` without adding, removing or widening any product allowance.
+
+No path prefix, glob, directory-wide exception, current-worktree byte comparison, content copied
+from a test expectation, or best-effort fallback is permitted. A fifth plan, status or documentation
+path remains an ordinary product-delta path and therefore fails the unchanged product allowlist.
+The outer runner's existing `allowlist_changed_paths` value reports `P`; independent M11 evidence
+records `D`, `C`, the two commits, modes and blob IDs so the subtraction is auditable.
+
+**Source export and hash boundary.** The classification above changes only which paths are checked
+by the product-edit allowlist. All four reviewed documents remain tracked members of the exact
+source commit, are exported by the unchanged `git archive` source-export path, appear in the full
+source inventory, and contribute their exact bytes and modes to `source_tree_sha256`. They are not
+added to `GENERATED_EVIDENCE_SOURCE_RELS`, a component exclusion, the fixture-output exclusions or
+any other hash omission. The edit allowlist remains distinct from the source/component inventories.
+
+**Exact bounded implementation correction.** After exact-tip Kiro PASS and a new Ryan resume grant,
+the implementation correction may change only these twelve product/test paths:
+
+- `tests/fixtures/openclaw_strict/allowlist.py`;
+- `tests/fixtures/openclaw_strict/constants.py`;
+- `tests/test_openclaw_strict_packet_contract.py`; and
+- the nine parent/overlay comment or docstring paths already enumerated in §18.7:
+  `openclaw_strict_server.py`, `strict_projection.py`,
+  `tests/fixtures/openclaw_strict/adversarial_matrix.py`,
+  `tests/fixtures/openclaw_strict/audit_evidence.py`,
+  `tests/fixtures/openclaw_strict/fixture_manifest.py`,
+  `tests/fixtures/openclaw_strict/protocol_fixture/schema_field_sets.py`,
+  `tests/test_mcp_openclaw_strict.py`, `tests/test_strict_projection.py`, and
+  `tests/test_strict_projection_publisher.py`.
+
+`constants.py` adds a separate exact `M11_CONTROL_PLANE_INPUTS` set and
+`M11_REVIEWED_OVERLAY_SHA`; it repins `SEMANTIC_PARENT_SHA` to the new reviewed semantic-parent
+commit and leaves `CODE_BASELINE_SHA`, every product allowlist, schema list, selector, deselection,
+runtime hash and behavioral count unchanged. `allowlist.py` implements the closed validation and
+subtraction above without changing `path_allowed()`. The packet-contract tests must prove: exact
+four-path success; missing, extra-classified, unavailable-commit, non-regular-entry and blob/mode
+mismatch rejection; a fifth plan path reaching and failing the unchanged product allowlist; the
+unchanged Gate-W denial; and the four documents remaining in source export/inventory/hash coverage.
+The nine other paths may change only parent/overlay identifiers in comments or docstrings. No
+executable product behavior or selected-test logic changes.
+
+**Preserved-branch application order.** The reconciliation branch starts at
+`581de2abf430786a36f2612f97c623a19b61353f` and contains exactly two plan commits: first this
+architecture/execution/STATUS semantic-parent commit, then the milestone-overlay commit that pins
+that parent. Kiro reviews the second commit as `REVIEWED_OVERLAY_SHA`. After a new Ryan resume grant
+names both commits and the preserved tip, Codex first proves the implementation branch is clean,
+pushed and exactly at `a11b7a2a793c68e4e6e83c2680b077389a817c5c`. Grok then cherry-picks those
+two plan commits in order, without merge, squash, edit or conflict resolution, pushes and stops.
+Codex proves the resulting four source blobs equal `REVIEWED_OVERLAY_SHA:path` exactly and every
+other byte still equals the preserved tip. Only after a commit-specific `CONTINUE` may Grok make
+one correction commit limited to the twelve paths above, push and stop again. Any conflict,
+unexpected path, rewritten history, missing reviewed blob or stale branch tip is `PAUSE`.
+
+**Acceptance and authority boundary.** Codex independently repeats the exact four-blob comparison
+after the correction, proves the existing product allowlist literals and every frozen selector,
+deselection, dependency, permission, schema, runtime rule and T0–T5 semantic contract unchanged,
+and verifies the full source export/inventory contains the reviewed documents before any M8 retry.
+The prior failed attempt is never relabeled. Only a later Ryan resume grant may authorize runtime
+rebinding, two fresh-root M8 runs, legacy regressions or Pylint. This correction authorizes no
+product/test edit, M8 retry, merge, deployment, real OpenClaw action, Gate D/W/D-V/E/F, watch
+activation, live data or promotion.
+
+### 18.9 M11 Pylint regression-remediation boundary
+
+**Observed held checkpoint.** Kiro passed the §18.8 parent/overlay and Ryan authorized its exact
+application. The two reviewed plan commits, twelve-path control-plane correction and subsequent
+node-count/leakage repairs are clean and pushed on
+`feat/2026-09-23-openclaw-convmem-m11-integration` at
+`9c6421a6891fd8a861a51f4fed410f541b53148c`. At that exact source commit:
+
+- two fresh-root M8 runs passed with 238 strict passes, 29 Node passes, 115 legacy passes, one
+  legacy skip and four exact deselections;
+- their canonical node/outcome artifact, fixture manifest and normalized audit output matched
+  byte-for-byte, with SHA-256 values `f1d01f0c0da0987c42186e8417f2ad0c3fdef807c9ee9696fa3cc7ecf93d7fcc`,
+  `7c5fff027e710853bc0285b22d5ca6c25fb73203e1862530a239bcb116840dfe` and
+  `4e46b6883871cff7739b4ed6010723eaca127f4787c14947ab8f4e5185f2235f` respectively;
+- the seven legacy MCP files passed with 54 tests and six subtests; and
+- the separately provisioned CI-compatible Pylint environment used CPython 3.12.13,
+  Pylint 4.0.6 and pytest 9.1.1, then ran the unchanged workflow command against base
+  `9193f5ec744f059d07a20612489b210527b5660a`.
+
+The actual current-main regression gate failed. Its report contains 1,159 live findings versus
+506 baseline occurrences and reports 344 increased fingerprints totaling 699 new occurrences:
+532 path-specific occurrences in 38 files plus 167 aggregate `R0801/duplicate-code` occurrences.
+The exact report SHA-256 is
+`2b724b4ff79405ffb286452be6c17ebef7de4eaeabd6522985c4baaee605848b`; raw gate output SHA-256 is
+`05d9a230689ba1addff6e1c35848567f71a3015d665d7b18236d110ffb0bbda3`. Both are retained under the
+Ryan-designated evidence root at
+`runs/9c6421a6891fd8a861a51f4fed410f541b53148c/m11-pylint-failed-current-main-baseline/`, whose
+verified payload-manifest SHA-256 is
+`302c0f3503fd4370397f9bf63f7485ffa41198c910794902666fd9238832bd27`. A diagnostic comparison to
+preserved tip `a11b7a2a793c68e4e6e83c2680b077389a817c5c` found only twelve additional occurrences, all in
+`tests/test_openclaw_strict_packet_contract.py`; that comparison is diagnostic only and never
+substitutes for the actual current-main gate.
+
+**Decision and trade-off.** M11 will remove the new lint debt. It will not create a
+component-specific debt baseline, raise or regenerate `ci/pylint-baseline.json`, weaken the
+regression algorithm, exclude the Switchboard files, lower Pylint sensitivity, or substitute a
+preserved-tip comparison for the repository's real merge gate. This costs a larger bounded
+correction now but preserves one CI contract for the whole repository and prevents today's debt
+from becoming permanent ambient state. The following baseline artifacts must remain byte-identical
+to baseline `9193f5ec744f059d07a20612489b210527b5660a`:
+
+- `.github/workflows/pylint.yml` Git blob `fefcd313e21ccd9c924703f0c3e6ecaf0ca02a0f`;
+- `ci/pylint-baseline.json` Git blob `97284472f6e41f9d7087438dca1ad4c15359312a`; and
+- `scripts/pylint_regression_gate.py` Git blob `c337eb349dddfb861d56e8132c3cc3a55bd888e6`.
+
+**Exact correction surface.** The remediation may change only the following 44 product/test paths.
+The set is the union of the 38 files with path-specific regressions and six fixture modules that
+participate only in new aggregate `R0801` pairs. No paired current-main module is editable merely
+because Pylint named it in a duplicate-code message.
+
+```text
+bound_read_scope.py
+mcp_server.py
+openclaw_activation_controller.py
+openclaw_activation_supervisor.py
+openclaw_strict_server.py
+strict_evidence_state.py
+strict_grounding.py
+strict_projection.py
+strict_projection_publisher.py
+tests/fixtures/openclaw_strict/adversarial_matrix.py
+tests/fixtures/openclaw_strict/allowlist.py
+tests/fixtures/openclaw_strict/audit_evidence.py
+tests/fixtures/openclaw_strict/canonical_oracle.py
+tests/fixtures/openclaw_strict/canonical_oracle_b.py
+tests/fixtures/openclaw_strict/case58_oracle.py
+tests/fixtures/openclaw_strict/component_inventory.py
+tests/fixtures/openclaw_strict/constants.py
+tests/fixtures/openclaw_strict/containment.py
+tests/fixtures/openclaw_strict/digest_oracle.py
+tests/fixtures/openclaw_strict/digest_oracle_b.py
+tests/fixtures/openclaw_strict/fixture_manifest.py
+tests/fixtures/openclaw_strict/fixture_platform.py
+tests/fixtures/openclaw_strict/inventory.py
+tests/fixtures/openclaw_strict/lifecycle_scripts.py
+tests/fixtures/openclaw_strict/limits.py
+tests/fixtures/openclaw_strict/preflight.py
+tests/fixtures/openclaw_strict/protocol_fixture/pinned_vectors.py
+tests/fixtures/openclaw_strict/protocol_fixture/schema_contract.py
+tests/fixtures/openclaw_strict/protocol_fixture/schema_field_sets.py
+tests/fixtures/openclaw_strict/protocol_fixture/schema_instances.py
+tests/fixtures/openclaw_strict/protocol_fixture/specimens.py
+tests/fixtures/openclaw_strict/run_isolated.py
+tests/fixtures/openclaw_strict/suites.py
+tests/test_bound_read_scope.py
+tests/test_mcp_openclaw_strict.py
+tests/test_openclaw_activation_controller.py
+tests/test_openclaw_activation_supervisor.py
+tests/test_openclaw_strict_packet_contract.py
+tests/test_strict_evidence_state.py
+tests/test_strict_grounding.py
+tests/test_strict_projection.py
+tests/test_strict_projection_publisher.py
+tests/test_strict_projection_recovery.py
+tests/test_strict_snapshot_revocation.py
+```
+
+The new reviewed parent/overlay identifiers may be repinned only in the same fields and existing
+comments/docstrings already authorized by §18.8. The exact 44-path set subsumes those paths; it does
+not widen any runtime edit allowlist, schema list, test selector or product interface.
+
+**Resolution hierarchy.** Grok applies these rules in order; it does not choose a weaker route:
+
+1. Correct semantic/static defects and mechanical style findings without changing observable
+   behavior, public interfaces, serialized bytes, schema fields, refusal effects, permissions,
+   test selection or expected outcomes.
+2. Remove unused/reimported names and improve annotations or private decomposition. Complexity
+   findings are resolved through private helpers inside an already allowed module; no new module,
+   dependency or cross-boundary helper is permitted.
+3. A local Pylint suppression is allowed only for a demonstrated static-analysis false positive or
+   an intentional white-box test access. It must name one exact message ID, cover the smallest
+   statement or block Pylint supports, include an adjacent invariant rationale, and be listed in
+   evidence. `disable=all`, `skip-file`, category-wide disables and file-wide suppressions are
+   forbidden except for the two closed, exact-message cases below.
+4. `C0302/too-many-lines` is inherently module-scoped. An exact-message module suppression is
+   allowed only in the twelve files where the frozen report already contains that finding:
+   `mcp_server.py`, `openclaw_activation_controller.py`, `strict_evidence_state.py`,
+   `strict_grounding.py`, `strict_projection.py`, `strict_projection_publisher.py`,
+   `tests/fixtures/openclaw_strict/audit_evidence.py`,
+   `tests/test_openclaw_activation_controller.py`,
+   `tests/test_openclaw_strict_packet_contract.py`, `tests/test_strict_grounding.py`,
+   `tests/test_strict_projection.py`, and `tests/test_strict_projection_publisher.py`. The adjacent
+   rationale must name the preserved module/component or collected-node boundary. No other message
+   ID is covered by this exception, and no thirteenth file may use it.
+5. `R0801/duplicate-code` is special: production modules and `tests/test_*.py` must remove the new
+   duplicate structurally without sharing authority or oracle logic. Region-scoped suppression is
+   allowed only in the exact reference-owned fixture modules
+   `canonical_oracle.py`, `canonical_oracle_b.py`, `digest_oracle.py`, `digest_oracle_b.py`,
+   `case58_oracle.py`, `component_inventory.py`, `fixture_manifest.py`, `pinned_vectors.py`,
+   `schema_field_sets.py`, `schema_instances.py`, or `specimens.py`, and only where sharing code
+   would destroy the fixture's independent-oracle or frozen-specimen role. If Pylint cannot scope
+   `R0801` below a module, an exact-message module suppression in one of those eleven files is the
+   only permitted file-level exception. No production helper may become the fixture's oracle.
+6. The final full-tree report must contain no new or increased fingerprint relative to the exact
+   current-main baseline. A merely lower total, a preserved-tip PASS, or a targeted-file PASS is
+   insufficient.
+
+**Identity and behavior boundary.** Source bytes and therefore component/source hashes may change
+only as the deterministic result of the 44-path remediation. Hash algorithms, member sets,
+canonicalization and inventory rules remain unchanged; final evidence binds the new exact hashes.
+Collected test node IDs, the four deselections, counts/outcomes and the three-tool surface remain
+identical to the accepted `9c6421a` evidence. Independent oracles must remain independent. No
+redistillation, schema migration, permission change, new dependency, OpenClaw installation/update,
+real runtime action, durable-memory write or live-data access is part of this correction.
+
+**Acceptance and authority boundary.** After exact-tip Kiro PASS, a new Ryan grant must name this
+parent, the final milestone overlay, source tip `9c6421a6891fd8a861a51f4fed410f541b53148c`, the exact
+44 paths, implementation branch, current-main baseline, new parent-bound runtime prefix and durable
+evidence root. The plan application is the complete linear first-parent range after
+`c5513d50b656f9cc9e6423ea819438f975d16ee5` through the final milestone-overlay commit named in
+Ryan's grant, oldest to newest. The range must contain no merge, gap, reordered commit, or commit
+outside the four reviewed planning/STATUS documents. Grok applies that reviewed range in order and
+stops. Only after Codex proves the four reviewed document blobs and issues a commit-specific
+`CONTINUE` may Grok perform the bounded
+remediation in the held checkpoints defined by Execution §10.7. Any 45th path, baseline/gate/config
+change, broad suppression, behavior change or unsupported finding classification is `PAUSE`.
+
+Final acceptance requires the unchanged current-main Pylint regression gate to pass on the exact
+clean pushed tip, §18.10's repository-wide pytest differential verdict, two new fresh-root M8
+passes, the seven legacy MCP regressions, exact source/component inventories and a Kiro exact-tip
+conformance PASS. Ryan alone decides PR/merge. Gate D/W/D-V/E/F,
+real OpenClaw, watch activation, live data, deployment and promotion remain independently blocked.
+
+### 18.10 M11 full-pytest applicability and differential boundary
+
+**Observed applicability failure.** The 44-path remediation and its bounded behavioral repairs are
+clean and pushed at candidate
+`3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`. At that exact candidate, the unchanged current-main
+Pylint gate passes with 461 findings and 240 fingerprints and no new/increased fingerprint. The
+first complete pytest attempt reported 118 failures, 2,783 passes, four skips, seven errors and 262
+subtests. Independent diagnostics showed at least three structural failures at both the candidate
+and the preserved pre-remediation tip: the strict packet test requires the isolated runner role,
+the CI Python provides Unicode 15.0 while the frozen strict projection requires Unicode 15.1, and
+the R2b inventory binds a different source revision. Those failures are not caused by the lint
+remediation, but they also are not a full-pytest PASS. The unconditional PASS claim is therefore
+inapplicable and is replaced, not waived, by the rule below.
+
+**Observed first differential pause.** Under the reviewed rule, Codex applied the plan-only range
+to the preserved candidate and pushed exact candidate
+`853ef98ede44f2d171e5354b065e11f83558e010`. Complete baseline and candidate runs each collected
+the same 2,912 nodes and produced the same outcome totals: 2,763 passed, 64 skipped, 85 failed and
+zero errors. The comparator nevertheless found 28 signature mismatches and correctly emitted
+`PYTEST_DIFFERENTIAL_PASS=false`, `FULL_PYTEST_PASS=false` and `PAUSE`. Twenty-two strict-packet
+signatures contained different `HOME`/XDG path bytes and pytest representation truncation; one
+watch golden-oracle signature changed only because unequal source-root lengths moved the
+representation truncation boundary; and five exact R2b nodes exposed a real authority-content
+identity rotation across the frozen remediation. The durable PAUSE ledger is
+`PAUSE-ledger.json`, SHA-256
+`3c2a50d1a61578fa235524bc26493a2b1458ba60d729b039c0a66d27ddce0c1e`, under the candidate's
+Ryan-designated `m11-full-pytest-differential-pause/` evidence directory. It is an input to this
+correction, not a passing result. No symmetric mismatch rerun, Pylint rerun, M8 run or MCP
+regression ran after the PAUSE.
+
+**Frozen comparison identities and environment.** The baseline is exactly
+`PYTEST_DIFFERENTIAL_BASE_SHA=9c6421a6891fd8a861a51f4fed410f541b53148c`. The candidate is the
+exact clean pushed source commit named in the later Ryan resume grant. The remediation input is
+`3f8ef8312e3f3c98915320bd1b988bac5d8d96a9`; the first paused differential candidate is
+`853ef98ede44f2d171e5354b065e11f83558e010`. A later candidate is eligible only when its non-plan
+bytes equal `853ef98` and its plan delta is the exact Kiro-reviewed range named by Ryan.
+
+Codex runs both tips sequentially through one predeclared disposable execution slot in the same
+separately reviewed CI-compatible environment. The absolute `source/`, `state/`, `pytest-tmp/`
+and `report/junit.xml` path strings, working directory, argv and allowlisted environment bytes are
+identical for the baseline and candidate and for both sides of every mismatch rerun. Before each
+process Codex closes every prior process, durably preserves the preceding evidence, removes only
+the prevalidated execution-slot children, recreates them empty with the same modes, and records an
+independent empty-tree and no-symlink proof. It then exports the exact Git tree into the same
+`source/` pathname, verifies every tracked path/blob/mode against `git ls-tree`, fixes or proves
+equal every filesystem attribute not represented by Git, and creates byte-identical empty HOME,
+XDG cache/config/data, `CONVMEM_CONFIG` and pytest-temp state at the same pathnames. Any retained
+entry, shared mutable cache, path difference, source inventory mismatch against that tip's exact
+Git tree, source difference outside the frozen baseline-to-candidate delta, unlisted environment
+variable or reset asymmetry is `PAUSE`. Reusing path strings never means retaining contents.
+
+The environment has one dependency/runtime inventory hash, Python and pytest versions, locale,
+timezone, resource limits and command. No host fallback, live ConvMem data, credentials, user
+configuration or OpenClaw process is allowed. The complete-suite command is the workflow's
+unchanged `python -m pytest -q` plus only pytest's built-in output-only
+`--junitxml=<the-fixed-slot-report-path> -o junit_family=xunit1` reporter arguments. They change
+neither selection nor behavior. Every run uses a fresh process and a freshly reconstructed slot;
+no source edit occurs between runs.
+
+**Closed comparison record.** Codex constructs one canonical record per JUnit `testcase` using the
+exact tuple `(file, classname, name)` as the node identity, the outcome vocabulary
+`passed|skipped|failure|error`, and, for `failure` or `error`, the exact element `type` and
+normalized `message` attributes as the failure signature. Normalization is limited to replacing
+the fixed absolute disposable checkout root with `$SOURCE_ROOT`, the fixed pytest temporary-root
+path with `$PYTEST_TMP`, and the exact baseline or candidate 40-hex Git object ID with
+`$SOURCE_COMMIT`.
+Nothing else is removed or rewritten: in particular, exception types, assertion text, error codes,
+line numbers, expected/actual semantic values and 64-hex content hashes remain significant. An
+absent/duplicate testcase, XML parse error, unknown outcome, collection interruption or reporter
+disagreement with the raw terminal summary is `PAUSE`.
+
+**Closed R2b authority-content identity disposition.** This is not another normalization. Raw
+messages and every 40-hex token remain in the canonical evidence. The primary comparator still
+reports the changed signatures. Only the following five exact node identities may enter the
+secondary disposition; no prefix, file-wide rule, glob or sixth node is permitted:
+
+1. `tests/test_r2b_v2_corrective_viii.py::R2bV2CorrectiveVIIIIdentityTests::test_committed_inventory_matches_authority_content_identity`
+2. `tests/test_r2b_v2_corrective_viii.py::R2bV2CorrectiveVIIIRegressionGuard::test_inventory_artifact_exists_on_disk`
+3. `tests/test_r2b_v2_implementation_revision.py::R2bV2ImplementationRevisionTests::test_committed_inventory_matches_resolved_implementation_identity`
+4. `tests/test_r2b_v2_implementation_revision.py::R2bV2ImplementationRevisionTests::test_production_coverage_uses_committed_inventory_without_dual_mock`
+5. `tests/test_r2b_v2_implementation_revision.py::R2bV2ImplementationRevisionTests::test_regenerated_inventory_matches_on_disk_artifact`
+
+For this exact comparison the committed inventory identity is
+`6ec645794d92a7d25eff94c97318256e851433f0`; the independently resolved baseline authority-content
+identity is `cb0e66b7aa3c3685439c564e7f888c6d714742bf`; and the independently resolved candidate
+identity is `0a8fe0b371744e9ad367f18979ef9367bb37fd34`. Codex must retain each raw assertion and parse it
+into `(node identity, failure outcome, type, operand orientation, committed identity, resolved
+identity)` using only the exact two-operand unittest equality-diff form observed here. The outcome,
+type, framing, operand orientation and committed identity must match at both tips; the only allowed
+difference is the resolved identity changing from the frozen baseline value to the frozen candidate
+value.
+
+The resolved values require independent content proof at each tip. Codex emits the complete
+authority-content manifest, proves its governed-path member set is equal between tips, verifies
+every member's bytes against the exact Git tree, proves every changed governed member is inside the
+already-reviewed 44-path remediation and that every other governed member is byte-identical, then
+independently recomputes
+`sha256("r2b-v2-authority-content:v1:" + canonical_manifest)[:40]`. That standard-library digest
+must equal both the fresh production resolver output and the exact token in every applicable raw
+failure. The reviewed inputs freeze 118 governed members with ordered-path-set SHA-256
+`7798b5d54cf3e1883c707ed73a80b7891e73f142933e71e05c89535314b2161b`. Exactly one governed
+member changes: `mcp_server.py`, from content SHA-256
+`1c94463de9f5035d4a19b2ad42939d9e8c70c59737f3a6fe6a6f9239e37fa2e1` to
+`7fcbdcb4cdcfc635d2787cea10d031dcd9aed40f6678ab80fc772194aaf55123`; it is inside the frozen
+44-path remediation. A plan document may not enter the authority manifest. A member-set change,
+second changed governed member, different
+committed identity, unexpected token, extra assertion text, different type/outcome/orientation,
+generic 40-hex or 64-hex substitution, product-byte change after `853ef98`, or disagreement between
+either oracle is `PAUSE`. Passing this disposition records five retained stale-inventory failures;
+it does not make the inventory current or make any node pass.
+
+**Fail-closed verdict.** The candidate earns exactly `PYTEST_DIFFERENTIAL_PASS`, never
+`FULL_PYTEST_PASS`, only when all of the following hold:
+
+1. The complete candidate and baseline node-identity sets are equal. No candidate node may be
+   absent from the baseline, and no baseline node may disappear from the candidate.
+2. A baseline `passed` or `skipped` node may not become candidate `failure` or `error`. No
+   candidate-only failing/error node is permitted.
+3. A node failing/erroring at both tips must have the same normalized failure signature, except
+   that one of the five exact R2b nodes may remain a mismatch pending the closed secondary
+   disposition above. A changed exception class, assertion/error message or failure/error phase is
+   otherwise a mismatch.
+4. Every outcome or signature mismatch from the complete runs is rerun independently at both tips,
+   one node at a time in fresh processes using the same environment. The complete-run evidence is
+   retained. The mismatch clears only as one of three closed dispositions: both reruns are
+   non-failing (`passed` or `skipped`); the baseline rerun fails/errors while the candidate rerun is
+   non-failing, recorded as a confirmed improvement; both reruns reproduce the same failure/error
+   outcome and normalized signature, recorded as a retained failure; or one of the five exact R2b
+   nodes reproduces and satisfies every closed identity proof above, recorded as a retained
+   source-identity-rotation failure. A baseline
+   non-failure becoming a candidate failure/error, a changed candidate failure signature, any
+   other result, collection difference, non-reproduction or environmental asymmetry is `PAUSE`;
+   a targeted rerun never substitutes for either complete run.
+5. Every identical retained failure is listed by node identity and normalized signature, linked to
+   both raw runs, and labeled repository debt outside this remediation's acceptance claim. It is
+   never called a full-pytest PASS, never silently discarded and never used to waive the unchanged
+   Pylint gate, either fresh M8 run or any of the seven MCP regressions.
+
+The canonical base/candidate records, mismatch list, independent reruns, raw stdout/stderr/status,
+JUnit XML, environment/reset inventories, authority manifests and independent identity proofs are
+copied to the Ryan-designated durable evidence root with a verified volatile-to-durable mapping. A
+passing differential verdict establishes only
+that the bounded M11 correction added no repository-wide pytest regression relative to its exact
+pre-remediation input. It does not certify the retained failures, change their ownership, authorize
+a test/CI/baseline edit or weaken any existing gate.
+
+**Authority boundary.** This correction changes plans only. Kiro must review the exact new parent
+and milestone overlay. Ryan must then issue a new resume grant naming both, the baseline and
+candidate identities, environment and evidence roots, the unchanged 44 paths, Pylint/M8/MCP
+requirements and this differential authority. No previous grant authorizes another test run or
+source edit. Gate D/W/D-V/E/F, real OpenClaw, watch activation, live data, merge, deployment and
+promotion remain independently blocked.
+
+### 18.11 M11 final M8 authority-packet identity reconciliation
+
+**Observed held checkpoint.** Under Ryan's reviewed differential grant, the plan range was applied
+to the preserved candidate and the clean pushed integration tip became
+`7f2a2e22c74cf9fd87c00982d1ea0ce18fc978af`. Its four planning-document blobs equal reviewed
+overlay `b1b2341a4f98701f5784631f866c5405174c7414`, and its non-plan bytes equal the preceding
+candidate. The complete baseline/candidate comparison collected identical 2,912-node sets and
+outcomes at both tips: 2,612 passed, 173 failed, 62 skipped and 65 errors. All 238 retained
+failure/error nodes were closed as 233 identical repository-debt nodes plus the five §18.10 R2b
+identity rotations. The resulting verdict is `PYTEST_DIFFERENTIAL_PASS=true` and
+`FULL_PYTEST_PASS=false`; its canonical verdict SHA-256 is
+`fd256daa5220882080c7f0c20f8d61bf74c124a1d893131c9044c2113ed6146d`. The unchanged
+current-main Pylint gate also passes with 456 findings and no new or increased fingerprint; its
+result SHA-256 is `ce5dffc895a5bd039b725fb76541ef232342508b4d67c5fa36ce915b98127559`.
+
+The first final M8 execution then refused during argument validation with process status 2 and
+`plan_sha_mismatch`. It created no fixture, imported no integration code and did not reach the
+runtime. The runner correctly reported embedded parent
+`b810fcd7ee545399a368afada2b0e7d9dd7821f6` while the authorized parent was
+`9c5c2bf7d3c5b6d9f13d68329b6f7112c25cabe1`. The post-refusal runtime inventory remained
+byte/mode-identical with tree SHA-256
+`74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`. The durable PAUSE
+classification SHA-256 is
+`e217e5607640b5f1985ad57256f7911fc8b409364ecc25c5f98e22c25082105c`. M8 run 2 and the seven
+legacy MCP regressions did not run.
+
+**Cause and bounded correction.** The later reviewed planning revisions changed the exact
+semantic-parent and control-plane overlay identities, while the accepted fixture deliberately
+kept its previous authority packet. Only four executable test literals are stale: two declarations
+and their two frozen assertions. After exact-tip Kiro PASS and a new Ryan grant, the implementation
+correction may change only:
+
+- `tests/fixtures/openclaw_strict/constants.py`: replace only the value of
+  `SEMANTIC_PARENT_SHA` with the exact semantic-parent commit named in the grant and only the value
+  of `M11_REVIEWED_OVERLAY_SHA` with the exact final overlay commit named in the grant; and
+- `tests/test_openclaw_strict_packet_contract.py`: replace only the corresponding two expected
+  40-hex literals in `test_plan_and_baseline_constants_frozen` with those same grant-named values.
+
+No other byte in either file may change. No third product/test path may change. In particular,
+`CODE_BASELINE_SHA`, `M11_CONTROL_PLANE_INPUTS`, `EXPECTED_TEST_RUNTIME_TREE_SHA256`, product and
+schema allowlists, selectors, four deselections, dependencies, permissions, refusal behavior,
+test logic, node IDs, outcomes and T0–T5 semantics remain unchanged. Source/component hashes may
+change only as the deterministic consequence of these four literal replacements; their algorithms
+and member sets remain unchanged. The correction binds the already-reviewed authority packet; it
+does not grant new authority or alter the connector.
+
+**Preserved-branch application order.** The plan branch starts at reviewed overlay
+`b1b2341a4f98701f5784631f866c5405174c7414`. Kiro reviews the final milestone overlay and Ryan's
+later grant names that exact overlay plus its semantic parent. Grok applies every commit in the
+complete reviewed linear range after `b1b2341` through the grant-named final overlay, oldest to
+newest, onto preserved clean pushed integration tip `7f2a2e22c74cf9fd87c00982d1ea0ce18fc978af`,
+then pushes and stops. A merge, gap, reorder, squash, edit, conflict resolution, empty commit,
+branch recreation, history rewrite or non-plan change is `PAUSE`. Codex must prove the four final
+planning-document blobs equal the reviewed overlay and every non-plan byte equals `7f2a2e2`
+before a commit-specific `CONTINUE` may authorize the four-literal correction. Grok then commits,
+pushes and stops again; Codex proves the diff is exactly the two paths and four substitutions above.
+
+**Fresh final-source evidence.** Evidence already produced at `7f2a2e2` remains valid historical
+evidence for that exact source but is not silently transferred to a changed source tree. Codex
+therefore repeats §18.10's complete baseline-versus-final-candidate differential in the identical
+fixed slot and CI-compatible environment, including symmetric mismatch reruns and the closed
+five-node R2b proof. It then reruns the unchanged current-main Pylint gate, executes M8 twice from
+fresh roots using `--plan-sha` equal to the new semantic parent, runs the same seven legacy MCP
+regression files, verifies the runtime remained unchanged and copies all evidence to the
+grant-named durable root. Any new node/outcome/signature mismatch, authority-manifest drift,
+Pylint regression, M8 count/identity deviation, MCP failure, runtime mutation or required source
+change is `PAUSE`. The prior M8 refusal remains recorded and is never relabeled as a PASS.
+
+**Authority boundary.** This section authorizes planning only. Kiro must PASS the exact parent and
+overlay, and Ryan must issue a new resume grant naming them, `7f2a2e2`, the implementation branch,
+baseline `9c6421a`, the fixed execution slot, runtime prefix, durable evidence root, PAUSE evidence
+and its hash, exact two-file/four-literal correction, and complete final-evidence sequence. No
+previous grant may be reused. Merge, deployment, real OpenClaw, Gate D/W/D-V/E/F, watch
+activation, live data and promotion remain independently blocked.
+
+### 18.12 M11 bundle-schema literal drift reconciliation
+
+**Observed held checkpoint.** Kiro passed the §18.11 plan and Ryan granted its exact application,
+two-file/four-literal authority-packet correction and Codex-owned evidence sequence. The resulting
+clean pushed candidate is `d7b15926ab7e4e41b8a80edba5edbe4bfed4c165`; its four reviewed
+planning-document blobs equal overlay `57285608b2ee9ec5950201968bc533b8830a6ea8`. The fresh
+`9c6421a`-versus-candidate comparison again collected identical 2,912-node sets and outcomes at
+both tips: 2,612 passed, 173 failed, 62 skipped and 65 errors. All 238 retained failure/error nodes
+remain closed as 233 identical repository-debt nodes plus the five §18.10 R2b identity rotations.
+The verdict remains `PYTEST_DIFFERENTIAL_PASS=true` and `FULL_PYTEST_PASS=false`; its canonical
+verdict SHA-256 is `0e70c867e89d9b2bafb72e21749b2f3a6f460b28f4328162e9e29d3a8d79058a`.
+The unchanged current-main Pylint regression gate also passes with 458 findings and no new or
+increased fingerprint; its result SHA-256 is
+`fae5e508e7db97c36e98d8a8b1d7652b1ff17c32c1a20cfa157ddb422afc9853`.
+
+Final M8 run 1 then entered the unchanged isolated runner and completed all three frozen command
+groups with process status 2: 210 strict tests passed and 28 strict tests failed, while all 29 Node
+tests passed and the legacy group produced 115 passes, one skip and four deselections. Every strict
+failure collapsed at the same production boundary to `StrictPublisherError("bundle_schema")`.
+The canonical fixture schema, its JSON Schema, every fixture producer and the publisher's earlier
+input classifier use `convmem.strict-fixture-bundle.v2`; only
+`strict_projection_publisher.py`'s later validation check uses the invented
+`convmem.strict-fixture-work.bundle.v2`. The durable PAUSE classification SHA-256 is
+`c25ece6380d0b1cf4989a010419307dfdc29c2ecc31b9c4dd47faaee23b89148`; the independent
+schema-drift proof SHA-256 is
+`50a82638e4265c910dcdf7422d193bb6178ff29c51e175dd05fa1949cc4713d5`. Runtime post-run
+revalidation remained byte/mode-identical at tree SHA-256
+`74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`; its record hashes to
+`d457b6150543310cec6a63dedb4699f21269a666af7ba17623bbf0bc321ed5e5`. M8 run 2 and the seven
+legacy MCP regressions did not run.
+
+**Cause and bounded correction.** This is a production validation typo, not a schema ambiguity or
+test expectation problem. After exact-tip Kiro PASS and a new Ryan grant, the only product
+correction permitted is this exact replacement in `strict_projection_publisher.py`:
+
+```text
+convmem.strict-fixture-work.bundle.v2
+→ convmem.strict-fixture-bundle.v2
+```
+
+No other byte or path may change. No test edit is authorized: the existing M8 tests are the
+regression harness and must turn green without adjustment. Schema files, fixture producers,
+publisher control flow, exceptions, CLI behavior, selectors, four deselections, dependencies,
+permissions, T0–T5 semantics, test node IDs and expected outcomes remain unchanged. Source and
+component hashes may change only as the deterministic consequence of this literal replacement;
+their algorithms and member sets remain unchanged.
+
+**Preserved-branch application order.** This plan branch starts at reviewed overlay
+`57285608b2ee9ec5950201968bc533b8830a6ea8`. Kiro reviews the final milestone overlay and Ryan's
+later grant names that exact overlay plus its semantic parent. Grok applies every commit in the
+complete reviewed linear range after `57285608` through the grant-named final overlay, oldest to
+newest, onto preserved clean pushed candidate `d7b15926ab7e4e41b8a80edba5edbe4bfed4c165`, then
+pushes and stops. A merge, gap, reorder, squash, edit, conflict resolution, empty commit, branch
+recreation, history rewrite or non-plan change is `PAUSE`. Codex must prove the four final planning
+document blobs equal the reviewed overlay and every non-plan byte equals `d7b1592` before a
+commit-specific `CONTINUE` may authorize the literal correction. Grok then makes only the exact
+replacement above, commits, pushes and stops; Codex proves the diff is one path and one literal.
+
+**Fresh final-source evidence.** Evidence at `d7b1592` remains valid historical evidence for those
+exact bytes but is not transferred to the corrected source tree. Codex therefore repeats §18.10's
+complete `9c6421a`-versus-final-candidate differential in the identical fixed slot and
+CI-compatible environment, including symmetric mismatch reruns and the closed five-node R2b
+proof. It then reruns the unchanged current-main Pylint gate, executes M8 twice from separate
+fresh roots using `--plan-sha` equal to the new semantic parent, runs the same seven legacy MCP
+regression files, verifies the runtime remained unchanged and copies all evidence to the
+grant-named durable root. Any new node/outcome/signature mismatch, authority-manifest drift,
+Pylint regression, M8 count/identity deviation, MCP failure, runtime mutation or required source
+change is `PAUSE`. The failed M8 run remains recorded and is never relabeled as a PASS.
+
+**Authority boundary.** This section authorizes planning only. Kiro must PASS the exact parent and
+overlay, and Ryan must issue a new resume grant naming them, `d7b1592`, the implementation branch,
+baseline `9c6421a`, fixed execution slot, runtime prefix, durable evidence root, PAUSE evidence and
+classification hash, exact one-file/one-literal correction, and complete final-evidence sequence.
+No previous grant may be reused. Merge, deployment, real OpenClaw, Gate D/W/D-V/E/F, watch
+activation, live data and promotion remain independently blocked.
+
+### 18.13 M11 post-bundle authority-packet reconciliation
+
+**Observed held checkpoint.** Kiro passed §18.12 and Ryan granted the complete six-commit reviewed
+plan range, exact one-file/one-literal publisher correction and Codex-owned evidence sequence. The
+resulting clean pushed candidate is `851edbe49b820bd4081809022b10f67c30fef47a`; its four planning
+documents equal reviewed overlay `6b1b90b4865dc0b92e0ead470136eeebc3bd8447`, and its only source
+delta after plan application is the authorized replacement of
+`convmem.strict-fixture-work.bundle.v2` with `convmem.strict-fixture-bundle.v2` in
+`strict_projection_publisher.py`. The fresh `9c6421a`-versus-candidate comparison again collected
+identical 2,912-node sets and outcomes: 2,612 passed, 173 failed, 62 skipped and 65 errors. All 238
+retained failure/error nodes remain closed as 233 identical repository-debt nodes plus the five
+§18.10 R2b identity rotations. `PYTEST_DIFFERENTIAL_PASS=true`, `FULL_PYTEST_PASS=false`, and the
+unchanged current-main Pylint gate passes with 458 findings and no new/increased fingerprint.
+
+The first final M8 execution then refused during exact argument validation with process status 2:
+`plan_sha_mismatch: expected 48c9ce01bf557ff95fd82b84c3b0ab2e7e9f18cb`. The reviewed command
+correctly supplied §18.12 semantic parent `b46a16a3cdc928e98fba83cd64b17439d1734695`, but the
+unchanged fixture authority packet still declared parent `48c9ce01…` and overlay `57285608…` from
+the preceding §18.11 reconciliation. The refusal occurred before source export, fixture creation,
+integration import or runtime use. Runtime inventories before and after are byte-identical at tree
+SHA-256 `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`. The durable PAUSE
+classification SHA-256 is
+`3fbfab4bac23c30325961d21a974ec4ed03229759c1b974686d323c061982c77`. M8 run 2 and the seven
+legacy MCP regressions did not run.
+
+**Cause and bounded correction.** Section 18.12 intentionally authorized no test change, so its
+new semantic-parent and final-overlay identities could not be reflected in the fixture authority
+packet. The publisher correction itself is complete and unchanged. After exact-tip Kiro PASS and
+a new Ryan grant, the only subsequent correction permitted is exactly four 40-hex substitutions:
+
+- in `tests/fixtures/openclaw_strict/constants.py`, replace only the value of
+  `SEMANTIC_PARENT_SHA` with the exact semantic-parent commit named in the new grant and only the
+  value of `M11_REVIEWED_OVERLAY_SHA` with the exact final-overlay commit named in that grant; and
+- in `tests/test_openclaw_strict_packet_contract.py`, replace only the corresponding two expected
+  literals in `test_plan_and_baseline_constants_frozen` with those same grant-named values.
+
+No other byte or path may change. The already-corrected publisher literal must remain exactly
+`convmem.strict-fixture-bundle.v2`. `CODE_BASELINE_SHA`, `M11_CONTROL_PLANE_INPUTS`, the runtime
+hash, schema/product allowlists, selectors, four deselections, dependencies, permissions, refusal
+behavior, test logic, node IDs, outcomes and T0–T5 semantics remain unchanged. Source/component
+hashes may rotate only as the deterministic consequence of these four literal substitutions;
+their algorithms and member sets remain unchanged.
+
+**Preserved-branch application order.** This plan branch starts at reviewed overlay
+`6b1b90b4865dc0b92e0ead470136eeebc3bd8447`. Kiro reviews the final milestone overlay and Ryan's
+later grant names that exact overlay plus its semantic parent. Grok applies every commit in the
+complete reviewed linear range after `6b1b90b4` through the grant-named final overlay, oldest to
+newest, onto preserved clean pushed candidate `851edbe49b820bd4081809022b10f67c30fef47a`, then
+pushes and stops. A merge, gap, reorder, squash, edit, conflict resolution, empty commit, branch
+recreation, history rewrite or non-plan change is `PAUSE`. Codex proves the four final planning
+document blobs equal the reviewed overlay and every non-plan byte equals `851edbe4` before a
+commit-specific `CONTINUE` may authorize the four substitutions. Grok then commits, pushes and
+stops again; Codex proves the diff is exactly the two paths and four substitutions above.
+
+**Fresh final-source evidence.** Evidence at `851edbe4` remains valid historical evidence for
+those exact bytes but is not transferred to the newly rebound source tree. Codex repeats §18.10's
+complete `9c6421a`-versus-final-candidate differential in the identical fixed slot and
+CI-compatible environment, including symmetric mismatch reruns and the closed five-node R2b
+proof. It then reruns the unchanged current-main Pylint gate, executes M8 twice from separate
+fresh roots using `--plan-sha` equal to the new semantic parent, runs the same seven legacy MCP
+regression files, verifies the runtime remains unchanged and copies all evidence to the
+grant-named durable root. Any new node/outcome/signature mismatch, authority-manifest drift,
+Pylint regression, M8 count/identity deviation, MCP failure, runtime mutation or required source
+change is `PAUSE`. The pre-fixture M8 refusal remains recorded and is never relabeled as a PASS.
+
+**Authority boundary.** This section authorizes planning only. Kiro must PASS the exact new parent
+and overlay, and Ryan must issue a new resume grant naming them, `851edbe4`, the implementation
+branch, baseline `9c6421a`, fixed execution slot, runtime prefix, durable evidence root, PAUSE
+evidence and classification hash, exact two-file/four-literal correction, and complete
+final-evidence sequence. No previous grant may be reused. Merge, deployment, real OpenClaw,
+Gate D/W/D-V/E/F, watch activation, live data and promotion remain independently blocked.
+
+### 18.14 M11 current-main drift reconciliation
+
+**Observed merge hold.** Candidate
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b` is clean and pushed on
+`feat/2026-09-23-openclaw-convmem-m11-integration`. Its final authority-packet correction,
+repository-wide differential, unchanged Pylint gate, two fresh M8 runs, seven legacy MCP
+regressions and durable-evidence verification passed, and Kiro returned exact-tip PASS. No PR or
+merge followed. After a fresh fetch, `origin/main` was
+`a92a74eb326b3eaa59087b707de10153c7cc0c63`, twelve commits beyond the evidence baseline
+`9193f5ec744f059d07a20612489b210527b5660a`; the candidate is 105 commits ahead of current main.
+The current-main range changes 40 tracked paths, including Chroma write-guard and watch safety
+work. A three-way merge reproduces conflict markers in
+`docs/plans/STATUS-openclaw-convmem-integration.md`. Resolving that conflict or merging the old
+candidate directly would change a reviewed control-plane blob and the full tracked source hash.
+The prior PASS remains valid historical evidence for `cd60cf19`; it is not merge authorization for
+the new tree.
+
+**Closed path algebra.** Let `B` be historical integration baseline `9193f5ec…`, `N` be exact
+current main `a92a74e…`, `R` be reviewed candidate `cd60cf1…`, and `C` be the exact four paths in
+§18.8. Let `M = paths(B..N)`, `D = paths(B..R)`, and `P = D - C`, with paths sorted as raw UTF-8
+bytes and hashed as their NUL-terminated sequence. The independently observed identities are:
+
+- `M`: 40 paths, SHA-256
+  `596a484cbf550a63bf77ac559733455aceadef75aaa5d3d8a6fee417b6695e6b`;
+- `D`: 124 paths, SHA-256
+  `af1b9fd8a991fe689cf8819f03bb1e6417ff159c91677d70417f289cea53b314`;
+- `P`: 120 paths, SHA-256
+  `60903bc194bd6e471f6c7009df30ab0832cad7a5505e9fd14b2c64450d27c659`; and
+- `M ∩ D` is exactly `docs/plans/STATUS-openclaw-convmem-integration.md`, while
+  `M ∩ P` is empty. `P` contains no deletion.
+
+These values are preconditions, not implementation-derived expectations. A different base, tip,
+count, path digest, intersection or deletion is `PAUSE`; Grok does not update the plan to fit it.
+
+**Deterministic reconstruction.** After Kiro PASS and a new Ryan grant, Codex creates a new branch
+and dedicated worktree at exact `N`; the reviewed 105-commit branch is preserved and never rebased,
+merged, force-pushed or rewritten. Grok then performs three held commits:
+
+1. Set exactly the 120 `P` paths to the regular-file/blob modes and bytes at `R`, using the pinned
+   Git trees as the source. No path outside `P` changes. Push and stop.
+2. Set exactly the four `C` paths to the regular mode `100644` and blob bytes at the final
+   Kiro-reviewed milestone overlay named by Ryan. Push and stop.
+3. In only `tests/fixtures/openclaw_strict/constants.py` and
+   `tests/test_openclaw_strict_packet_contract.py`, make exactly six 40-hex substitutions: bind
+   `CODE_BASELINE_SHA` and its assertion to `N`, bind `SEMANTIC_PARENT_SHA` and its assertion to
+   the new reviewed semantic parent, and bind `M11_REVIEWED_OVERLAY_SHA` and its assertion to the
+   new reviewed overlay. Push and stop.
+
+Codex issues a commit-specific `CONTINUE` after each held commit. It proves every path outside
+`P ∪ C` equals `N`; every `P` path except the two identity files equals `R` by blob ID and mode;
+the two identity files differ from `R` only by the six substitutions; and every `C` path equals the
+reviewed overlay by blob ID and mode. No merge, cherry-pick, rebase, conflict resolution, path
+deletion, product reimplementation or test-logic edit is permitted. This exact tree composition,
+not commit-message similarity or worktree byte sampling, is the reconstruction contract.
+
+**Current-main differential.** Historical §18.10 evidence is retained, but final merge-readiness
+uses a fresh complete-pytest comparison between exact `N` and the reconstructed candidate in the
+same fixed disposable slot, runtime, argv and allowlisted environment. The baseline node set must
+be a subset of the candidate node set. A candidate-only node is permitted only when its source
+path is a test path in exact `P`, and it must finish `passed` or `skipped`; a baseline-only node,
+candidate-only failure/error, collection interruption, duplicate identity or unknown outcome is
+`PAUSE`. Every common baseline `passed` or `skipped` node must remain non-failing. Every common
+failure/error must retain its exact §18.10 normalized signature or clear through the same symmetric
+fresh-process rerun rules. Retained failures remain explicit debt, and any retained failure keeps
+`FULL_PYTEST_PASS=false`; the only positive token is `CURRENT_MAIN_DIFFERENTIAL_PASS`.
+
+The sole closed signature exception remains the five exact R2b nodes enumerated in §18.10. At
+`N`, the committed and independently resolved authority-content identity is
+`644552c552d655810d6834ef00c54fd8e3512950`. In the deterministic reconstructed product tree it is
+`3a74d3db553308e40c00c60ec16d9bd1489133c2`. Both manifests contain exactly 119 ordered members
+with path-set SHA-256
+`cd13b301320ebbfe15d13843160e8d93c5cdbf707fa357c3e56c226f87967cfb`; exactly one member changes:
+`mcp_server.py`, from SHA-256
+`f9ac448cf8ecbb9c8822f327a79a7af753685458ea1cd71e0dbed9c0fae85cb3` to
+`7fcbdcb4cdcfc635d2787cea10d031dcd9aed40f6678ab80fc772194aaf55123`.
+The candidate committed inventory remains `644552c…`; only those five nodes may retain the exact
+committed-versus-resolved identity rotation after both standard-library manifest recomputation and
+production-resolver agreement. Generic 40/64-hex normalization, a member-set change, a second
+changed member, a sixth node or a different operand/outcome/type is `PAUSE`.
+
+**Fresh acceptance and merge boundary.** After the differential passes, Codex runs the unchanged
+full-tree Pylint gate with the protected workflow, baseline and gate-script blobs from §18.9; two
+fresh-root M8 runs using the new semantic parent and `N` as `CODE_BASELINE_SHA`; and the same seven
+legacy MCP regressions. M8 must preserve 238 strict passes, 29 Node passes, 115 legacy passes, one
+skip, four deselections, exact node/outcome identity and all source/component/runtime invariants.
+The runtime tree must remain
+`sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+All evidence is copied to the grant-named durable root with verified hashes, then Kiro reviews the
+exact integrated tip and evidence.
+
+Immediately before PR creation and again before Ryan's merge decision, Codex fetches origin and
+requires `origin/main == N`; any movement is `PAUSE`, not an inferred rebase. A squash merge is
+eligible only if GitHub's predicted result tree is byte-for-byte the reviewed candidate tree over
+exact base `N`; history preservation is not required. Agents do not merge. Ryan alone decides PR
+creation and merge. Real OpenClaw, deployment, Gate D/W/D-V/E/F, watch activation, live data and
+promotion remain independently blocked.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test,
+runtime, CI, baseline, configuration or evidence byte. Kiro must PASS the exact new semantic
+parent and milestone overlay. A new Ryan grant must then name them, `B`, `N`, `R`, the new
+implementation branch, fixed slot, parent/baseline-bound runtime and durable evidence roots, path
+counts/digests, exact three-commit reconstruction, six substitutions and full evidence sequence.
+No previous grant, Kiro verdict or `CONTINUE` may be reused.
+
+### 18.15 M11 current-main differential applicability reconciliation
+
+**Observed governed PAUSE.** Ryan authorized §18.14's deterministic reconstruction and evidence
+sequence. The three held commits are clean, pushed and preserved on
+`feat/2026-09-26-openclaw-convmem-m11-main-reconciliation` at
+`30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca` (`H0`). Independent Git-tree checks re-proved exact
+`M/D/C/P` membership, the 120-path product transplant, four reviewed control-plane blobs, six
+identity substitutions and unchanged `origin/main` at
+`a92a74eb326b3eaa59087b707de10153c7cc0c63` (`N`). The qualified runtime remained byte-identical.
+Complete pytest collection and execution then finished at both `N` and `H0`; this was not a crash,
+partial collection or environment asymmetry.
+
+The exact results were:
+
+- `N`: 2,686 nodes — 2,469 passed, 62 skipped, 90 failed and 65 errored;
+- preserved reviewed Switchboard candidate
+  `cd60cf19dca6706e4175e9f82c9ba55e41bca10b` (`R`): 2,912 nodes — 2,612 passed,
+  62 skipped, 173 failed and 65 errored; and
+- `H0`: 2,924 nodes — 2,624 passed, 62 skipped, 173 failed and 65 errored.
+
+Every `N` node exists in `H0`. Exactly 238 `H0` nodes are absent from `N`; all 238 already exist
+in `R`, and their outcomes match `R` exactly: 160 passed and 78 failed, with no skip or error.
+The five common `N`/`H0` outcome rotations are exactly the closed §18.10 R2b nodes. Across the
+2,871 identities common to `R` and `H0`, there is no outcome mismatch. The historical `R` and
+current `H0` runs used different fixed-slot path bytes, so their failure-signature strings are not
+accepted as a cross-run oracle; the comparison must be repeated with all applicable tips in one
+identical slot.
+
+The sealed PAUSE evidence is under
+`/home/lauer/.local/share/convmem-openclaw-evidence/33767acaf563c25e8fbd9984f08316f1ba4b1b27/a92a74eb326b3eaa59087b707de10153c7cc0c63/runs/30bc134d74d7eeb4cef4d6371a5e96c926f0f2ca/m11-current-main-pytest-differential/`.
+Its canonical comparison has SHA-256
+`03873a4d4e368e5b5fd3de86140e3fd9b74525c3e83b966275d556fd9728693b`; its PAUSE ledger has
+SHA-256 `3bd89ebf3dd016d5fc709215862ae491688cb878c3477fbd9f21f3619b2d256e`.
+`CURRENT_MAIN_DIFFERENTIAL_PASS=false` and `FULL_PYTEST_PASS=false`; Pylint, M8 and MCP evidence
+correctly did not run.
+
+**Why §18.14's candidate-only rule is inapplicable.** `N` predates the entire Switchboard test
+surface. Requiring every node absent from `N` to pass or skip makes the ordinary full-repository
+pytest environment, which intentionally lacks the isolated runner's Unicode 15.1 and inner-role
+conditions, retroactively authoritative for 238 already-reviewed Switchboard nodes. That neither
+detects a reconstruction regression nor preserves the earlier honest debt classification. It
+instead guarantees a false PAUSE on 78 known outcomes. The correction does not exclude those
+nodes, change their tests, supply their isolated-runner environment to full pytest or relabel a
+failure. It adds the only source tree that can be their pre-reconstruction oracle: `R`.
+
+**Closed node identity.** For a record with identity `(file, classname, name)`, encode each UTF-8
+field followed by one NUL byte, sort records lexicographically by the three raw UTF-8 fields, and
+hash the concatenation. Let `S = nodes(F) - nodes(N)`, where `F` is the final candidate after the
+reviewed plan application and authority-packet rebind below. `S` must contain exactly 238 identities
+and hash to `fe50be2f51456d85efdf80305af83a7d0fa224110cd4980a27da74ed46e291b8`.
+Appending the UTF-8 outcome plus one NUL after each identity must hash to
+`2c03a11c8c5d66b822b406e35deb6874be0dd4301fe78d51780da96977b4c607`.
+The 160 passed identities hash to
+`b98f02f3f6d8b1c14b9d0e90e4dbb0f8e67e12698842ab37b381f5f4b2c35ae1`; the 78 failed identities
+hash to `e3fdc26e69739af0ff33282378d02d6d930416daa8b89fc6964825ecd6e08423`.
+These are predeclared observations from sealed evidence, not values the implementation may update.
+
+**Three-tip authority partition.** Fresh evidence uses `N`, `R` and `F`; no one tip is allowed to
+silently govern a node it never contained.
+
+1. `N` remains the sole oracle for every identity it contains. `nodes(N)` must be a subset of
+   `nodes(F)`. Common-node outcomes, normalized signatures, symmetric fresh-process reruns and the
+   exact five-node R2b disposition remain §18.14 rules without change.
+2. `R` is an oracle only for `S`, the identities present in `F` but absent from `N`. Every member
+   of `S` must exist in `R` and match `R`'s outcome. A failed/error member must also match `R`'s
+   exact §18.10-normalized failure signature after a symmetric rerun at both `R` and `F`.
+3. Any `F` identity absent from both `N` and `R` must pass or skip and is separately listed. Under
+   the sealed node set above there are zero such identities; a nonzero count is `PAUSE`.
+4. Identities present only in `R` are listed as historical removals but do not override `N`'s
+   current-main source ownership and are not injected into `F`.
+5. All retained failures/errors remain explicit debt. Any retained failure keeps
+   `FULL_PYTEST_PASS=false`. The only positive token is
+   `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`.
+
+The existing §18.10 normalization is closed and unchanged: exact source root, exact pytest temp
+root and the exact tip's Git object ID only. Generic path, 40/64-hex, message or representation
+rewriting is forbidden. All three complete runs use the same CI-compatible dependency closure,
+allowlisted environment, argv, built-in xunit1 reporter, resource limits and fixed disposable path,
+with a verified empty reset between tips. `R` must be executed freshly in that same slot; its old
+evidence is diagnostic only. Every mismatch is rerun in fresh processes at both applicable tips.
+Collection difference, reset/path asymmetry, incomplete JUnit, duplicate identity, unknown outcome,
+unresolved signature difference or a sixth R2b exception is `PAUSE`.
+
+**Plan application and final-source identity.** `H0` remains the preserved PAUSE input. After
+exact-tip Kiro PASS and a new Ryan grant, Grok applies every commit in the complete reviewed linear
+plan range from this correction's grant-named base overlay through its final overlay, oldest to
+newest, onto `H0`, then pushes and stops. Codex proves the four planning-document blobs and modes
+equal the final overlay and every non-plan byte still equals `H0`. Only after a commit-specific
+`CONTINUE`, Grok changes exactly four 40-hex values across exactly two files: the
+`SEMANTIC_PARENT_SHA` and `M11_REVIEWED_OVERLAY_SHA` declarations in
+`tests/fixtures/openclaw_strict/constants.py` and their two frozen assertions in
+`tests/test_openclaw_strict_packet_contract.py`. `CODE_BASELINE_SHA` remains `N`. No other byte,
+test logic, product path or runtime content changes. The resulting pushed commit is `F`.
+
+Only after the exact tree and four substitutions are independently verified may Codex run the
+fresh `N`/`R`/`F` sequence. If `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` is established, the
+unchanged §18.9 Pylint gate, two fresh-root M8 runs, seven legacy MCP regressions, durable-evidence
+verification and exact-tip Kiro conformance review remain mandatory. The prior M8 counts,
+deselections, selectors, dependencies, permissions, runtime hash, T0–T5 semantics and later-gate
+blocks do not change.
+
+**Authority boundary.** This section authorizes planning only. It authorizes no plan application,
+identity edit, source/test/runtime/CI/configuration correction, suite, PR, merge, deployment or
+real OpenClaw action. Kiro must PASS the exact new semantic parent and overlay. A new Ryan grant
+must name them, `N`, `R`, `H0`, the fixed slot, runtime prefix, durable evidence root, complete
+reviewed plan range, exact four substitutions and complete three-tip/Pylint/M8/MCP sequence.
+Gate D/W/D-V/E/F, watch activation, live data and promotion remain independently blocked.
+
+### 18.16 M11 current-main advance after the three-tip preflight
+
+**Observed fail-closed preflight.** Kiro passed the §18.15 parent/overlay and Ryan granted its
+held sequence. The reviewed plan commits and four-literal rebind were applied, independently
+verified, pushed and preserved at
+`d276cb4ab0a0613b965e772d49d378e761df337e` (`F0`). The four planning blobs matched reviewed
+overlay `05e0d79712fdb7c9d2e5640b8c4a744d3f84e56b`; every other byte matched the preserved
+`30bc134d` input except the exact four authorized identity substitutions. The unchanged qualified
+runtime rebind also passed with 30,421 regular files, zero symlinks or writable entries and tree
+SHA-256 `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+
+Before the first complete pytest process, fixed-slot creation or new evidence-run directory, the
+mandatory upstream check found `origin/main` at
+`5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d` (`N1`) rather than the grant-frozen
+`a92a74eb326b3eaa59087b707de10153c7cc0c63` (`N0`). The movement is the landed CPU-crash and
+silent-vector-loss safety change; it is not a Switchboard result. The preflight therefore issued
+`PAUSE` exactly as designed. No pytest, Pylint, M8 or MCP process ran, and no three-tip evidence
+slot or run root was created. `F0`, the reviewed evidence tip
+`cd60cf19dca6706e4175e9f82c9ba55e41bca10b` (`R`) and all prior evidence remain immutable
+historical inputs, not acceptance evidence for `N1`.
+
+**Closed advance and reconstruction algebra.** Let historical integration baseline `B` remain
+`9193f5ec744f059d07a20612489b210527b5660a`; let `C` remain the exact four §18.8 control-plane
+paths; let `D = paths(B..R)` and `P = D - C`; let `A = paths(N0..N1)`; and let
+`Q = paths(N0..F0)`. Paths are sorted as raw UTF-8 bytes and hashed as their NUL-terminated
+sequence. Independent Git-tree calculation freezes:
+
+- `A`: 11 paths, SHA-256
+  `0566d14e2246970abe77a89736db01a95ae89cb88d2c9556f33c14b6bf7c484c`;
+- `Q`: 124 paths, SHA-256
+  `af1b9fd8a991fe689cf8819f03bb1e6417ff159c91677d70417f289cea53b314`;
+- `paths(B..N1)`: 45 paths, SHA-256
+  `670241f7690afc18cf8689c7406ac6d86d395bfc323acfc5f2f72a85a46c853e`;
+- `D`: 124 paths, SHA-256
+  `af1b9fd8a991fe689cf8819f03bb1e6417ff159c91677d70417f289cea53b314`;
+- `P`: 120 paths, SHA-256
+  `60903bc194bd6e471f6c7009df30ab0832cad7a5505e9fd14b2c64450d27c659`;
+- `A ∩ Q` is empty; `paths(B..N1) ∩ D` is exactly
+  `docs/plans/STATUS-openclaw-convmem-integration.md`; and
+  `paths(B..N1) ∩ P` is empty. Neither `A` nor `P` contains a deletion.
+
+The equal `D`/`Q` path-set hash states only that the same 124 relative paths differ in those two
+ranges; it does not equate their bytes. Any moved source ref, different count/digest/intersection,
+deletion, symlink or non-regular product member is `PAUSE`, not a value Grok may update.
+
+**Second deterministic reconstruction.** After exact-tip Kiro PASS and a new Ryan grant, Codex
+creates a new grant-named branch and dedicated worktree at exact `N1`. Neither `R`, `F0`, nor the
+first reconstruction branch is rebased, merged, cherry-picked, force-pushed or used as the branch
+base. Grok performs exactly three held commits:
+
+1. Set exactly the 120 `P` paths to the regular-file/blob modes and bytes at `R`. Push and stop.
+2. Set exactly the four `C` paths to mode `100644` and the exact bytes at the final Kiro-reviewed
+   overlay named by Ryan. Push and stop.
+3. In only `tests/fixtures/openclaw_strict/constants.py` and
+   `tests/test_openclaw_strict_packet_contract.py`, make exactly six 40-hex substitutions: bind
+   `CODE_BASELINE_SHA` and its assertion to `N1`, bind `SEMANTIC_PARENT_SHA` and its assertion to
+   the new reviewed semantic parent, and bind `M11_REVIEWED_OVERLAY_SHA` and its assertion to the
+   new reviewed overlay. Push and stop.
+
+Codex issues a commit-specific `CONTINUE` after each held commit. Final composition requires every
+path outside `P ∪ C` to equal `N1`; every `P` path except the two identity files to equal `R` by
+Git blob ID and mode; those two files to differ from `R` only by the six substitutions; and all
+four `C` paths to equal the reviewed overlay. No plan-range replay onto `F0`, merge, conflict
+resolution, product reimplementation, test-logic change or fourth implementation commit is
+permitted.
+
+**Advanced R2b identity.** The authority-content manifest at `N1` contains exactly 120 ordered
+members, path-set SHA-256
+`fb062070b962265bfce6c2cc2b709eca4b2d5f7a8d1a516d5b3599bcb0361ec8`, and resolved identity
+`b716152fbf725633a55371f6acf7ed5580a704bd`. The provisional reconstructed product has the same
+120 members and path-set hash and resolved identity
+`e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b`. Exactly one member changes:
+`mcp_server.py`, from SHA-256
+`f9ac448cf8ecbb9c8822f327a79a7af753685458ea1cd71e0dbed9c0fae85cb3` to
+`7fcbdcb4cdcfc635d2787cea10d031dcd9aed40f6678ab80fc772194aaf55123`.
+The final candidate inherits `N1`'s committed inventory identity; no inventory regeneration or
+inventory edit is authorized. The exact five §18.10 R2b nodes remain the complete closed exception
+set, now evaluated against these advanced identities. A 121st member, different path set, second
+changed member, sixth node, different operand/outcome/type or generic identity normalization is
+`PAUSE`.
+
+**Fresh evidence and merge boundary.** Fresh complete pytest runs use `N1`, `R` and the newly
+reconstructed final candidate `F` sequentially in one verified-empty fixed slot with identical
+CI-compatible dependencies, argv, built-in xunit1 reporter, allowlisted environment and resource
+limits. Section 18.15's authority partition and §18.10 normalization remain unchanged. In
+particular, `S = nodes(F) - nodes(N1)` must still contain exactly 238 identities with identity
+SHA-256 `fe50be2f…`, identity/outcome SHA-256 `2c03a11c…`, 160 passed identity SHA-256
+`b98f02f3…` and 78 failed identity SHA-256 `e3fdc26e…`; every member must exist in freshly run
+`R` and match outcome, and every retained failure must match the closed normalized signature after
+symmetric fresh-process reruns. New-main nodes are governed only by `N1`. A node absent from both
+`N1` and `R`, unresolved mismatch, collection difference, reset/path asymmetry, sixth R2b node or
+new normalization is `PAUSE`. Retained failures remain explicit and keep
+`FULL_PYTEST_PASS=false`; the only positive token remains
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`.
+
+Only that PASS releases the unchanged §18.9 Pylint gate, two fresh M8 runs, seven legacy MCP
+regressions, durable-evidence verification and exact-tip Kiro conformance review. The runtime tree,
+M8 selectors/counts, four deselections, dependencies, permissions, T0–T5 semantics and later-gate
+blocks remain unchanged. Immediately before PR creation and again before Ryan's merge decision,
+Codex fetches and requires `origin/main == N1`; movement is another `PAUSE`. A squash merge is
+eligible only when GitHub's predicted result tree over exact `N1` is byte-for-byte the reviewed
+candidate tree. Agents do not merge; Ryan alone decides PR creation and merge.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test,
+runtime, CI, baseline, configuration or evidence byte. Kiro must PASS the exact new semantic
+parent and milestone overlay. A new Ryan grant must name them, `B`, `N1`, `R`, `F0`, the new
+implementation branch, fixed slot, parent/current-main-bound runtime and durable evidence roots,
+path counts/digests, exact three-commit reconstruction, six substitutions and complete three-tip/
+Pylint/M8/MCP sequence. No previous grant, Kiro verdict or `CONTINUE` may be reused. Gate
+D/W/D-V/E/F, watch activation, live data, deployment and promotion remain independently blocked.
+
+### 18.17 M11 inner-role failure-signature reconciliation
+
+**Observed governed PAUSE.** The §18.16 reconstruction completed in three held commits and is
+preserved, clean and pushed at `776a4ca3d4215490fb26b882dca2df9a41e0e03a` (`H1`). Complete
+same-slot pytest runs then collected 2,702 nodes at advanced current main `N1`, 2,912 nodes at the
+preserved reviewed candidate `R`, and 2,940 nodes at `H1`: respectively 2,485/62/90/65,
+2,612/62/173/65 and 2,640/62/173/65 passed/skipped/failed/errored. The frozen 238-node
+candidate-only partition remained exact: 160 passed and 78 failed with the identities, outcomes
+and hashes already fixed by §§18.15–18.16. The exact five R2b mismatches also remained the closed
+set. All 83 mismatch pairs were rerun symmetrically in 166 fresh processes.
+
+The finalizer stopped with `rerun_complete_record_mismatch:7:preserved`. Exactly 22 nodes in
+`tests/test_openclaw_strict_packet_contract.py` produced 44 raw complete-versus-rerun signature
+mismatches because pytest's assertion introspection rendered `os.environ` with a different key
+order or environment content. One of those nodes also differed between its preserved and final
+isolated reruns because a random pytest temporary suffix appeared inside the rendered
+`CONVMEM_CONFIG` value. The assertion meaning and result did not change. Codex sealed the PAUSE
+ledger at:
+
+```text
+/home/lauer/.local/share/convmem-openclaw-evidence/538d37eb498e2d3bd497db33daa006520ad56d06/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/776a4ca3d4215490fb26b882dca2df9a41e0e03a/m11-three-tip-pytest-differential/comparison/PAUSE-ledger.json
+```
+
+Its SHA-256 is `a6a2d95b6f294ad3893ea39fa8c739b15a7ea172d2067757492c49abf49399a6`.
+The diagnostic SHA-256 is
+`115492f91adeaf71aa09afd81b66e863191d0e7306efdd2a51a1168633c0376d`; the PAUSE-manifest
+SHA-256 is `78ac1cef55142892cdf75d2cad71a22a536519a4d27359fedba04881020e1c80`; the rerun-plan
+SHA-256 is `15d082c9805943a11c4c6236c5f23e48bf64440aa8b60cda29b25c2ad55eddcd`; and the preliminary
+comparison SHA-256 is `674f79845a763293128e5e2d95230c0ded1c296a42fa0365061e9f4a089f1f91`.
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS=false` and `FULL_PYTEST_PASS=false`; Pylint, M8 and
+MCP did not run.
+
+**Closed node set.** The only nodes eligible for the semantic projection below are exactly:
+
+```text
+tests/test_openclaw_strict_packet_contract.py::test_case57_fixture_legacy_identity_config_only
+tests/test_openclaw_strict_packet_contract.py::test_case57_kernel_denial_readonly_mount_writes
+tests/test_openclaw_strict_packet_contract.py::test_case57_outside_root_canary_kernel_denials
+tests/test_openclaw_strict_packet_contract.py::test_case57_preflight_fds_proc_self_fd_f_getfd
+tests/test_openclaw_strict_packet_contract.py::test_case57_preflight_sentinel_present_inside_runner
+tests/test_openclaw_strict_packet_contract.py::test_case57_pytest_plugin_inventory
+tests/test_openclaw_strict_packet_contract.py::test_case57_runtime_not_host_usr
+tests/test_openclaw_strict_packet_contract.py::test_case57_tmp_allocated_bytes_uses_st_blocks
+tests/test_openclaw_strict_packet_contract.py::test_case58_whole_case_not_passed_declared_future_reds
+tests/test_openclaw_strict_packet_contract.py::test_m2_case58_literal_inventories_and_independent_walkers
+tests/test_openclaw_strict_packet_contract.py::test_m2_case58_plugin_mutation_and_symlink_controls
+tests/test_openclaw_strict_packet_contract.py::test_m2_dual_independent_canonical_parsers_and_vectors
+tests/test_openclaw_strict_packet_contract.py::test_m2_future_production_modules_remain_absent
+tests/test_openclaw_strict_packet_contract.py::test_m2_gate_b_and_c_schema_inventory_exact
+tests/test_openclaw_strict_packet_contract.py::test_m2_idna2008_vectors_and_legacy_v1_retention
+tests/test_openclaw_strict_packet_contract.py::test_m2_legacy_envelope_bytes_preserved
+tests/test_openclaw_strict_packet_contract.py::test_m2_pinned_known_answer_vectors_dual_oracles
+tests/test_openclaw_strict_packet_contract.py::test_m2_protocol_fixture_specimens_present
+tests/test_openclaw_strict_packet_contract.py::test_m2_registry_schema_exact_binding_fields
+tests/test_openclaw_strict_packet_contract.py::test_m2_schema_meta_and_31_positive_negative_instances
+tests/test_openclaw_strict_packet_contract.py::test_m4_edit_allowlist_permits_mcp_server_protects_gate_w
+tests/test_openclaw_strict_packet_contract.py::test_m8_selected_nodes_strict_live_inventory
+```
+
+The sorted-NUL identity-set SHA-256 is
+`9fa64e04c15b96cbb935cb5b40d4e47a9cdd5869099d728a5213174c7244cbf6`. A missing member,
+additional member or changed identity is `PAUSE`.
+
+**Closed semantic signature.** For only a member of that exact set, a raw record is eligible only
+when its outcome is `failure`, its type is empty, and its message is exactly four newline-separated
+lines with all of these properties:
+
+1. line 1 is exactly `AssertionError: assert None == 'inner'`;
+2. line 2 is exactly ` +  where None = get('CONVMEM_OPENCLAW_INNER_ROLE')`;
+3. line 3 begins exactly ` +    where get = environ(` and ends exactly `).get`;
+4. line 4 begins exactly ` +      where environ(` and ends exactly `) = os.environ`; and
+5. the bytes between the fixed line-3 prefix/suffix and the bytes between the fixed line-4
+   prefix/suffix are identical within that record.
+
+For an eligible record, the canonical semantic signature is the two exact core lines plus the two
+fixed tail prefix/suffix pairs; the inner `environ(...)` representation is not part of that
+semantic signature. The raw message, complete JUnit, canonical raw record and their hashes remain
+stored unchanged. Nothing is deleted, rewritten or called passing. Each eligible node must have
+all four failure records—`R` complete, final-candidate complete, `R` isolated rerun and
+final-candidate isolated rerun—and all four must map independently to this one closed signature.
+
+This is not a generic normalization. Section 18.10's normalization allowlist remains exactly the
+source root, pytest temporary root and exact tip SHA. It gains no environment, ordering,
+representation, path, suffix, hash or arbitrary-text substitution. A 23rd node; nonempty type;
+different outcome; missing or extra line; changed core line; tail prefix/suffix mismatch; unequal
+duplicated environment payload inside one record; absent one of the four records; new R2b node; or
+any attempt to apply this rule outside the exact set is `PAUSE`. The exact five-node R2b rule is
+independent and unchanged. Retained failures remain explicit debt and keep
+`FULL_PYTEST_PASS=false`.
+
+**Resume and evidence boundary.** After exact-tip Kiro PASS and a new Ryan grant, Grok applies the
+complete reviewed linear plan range from this correction's grant-named base overlay through its
+final overlay, oldest to newest, onto preserved `H1`, then pushes and stops. Codex proves the four
+planning-document blobs and modes equal the reviewed overlay and every non-plan byte still equals
+`H1`. Only after a commit-specific `CONTINUE`, Grok changes exactly four 40-hex values across
+exactly two files: the `SEMANTIC_PARENT_SHA` and `M11_REVIEWED_OVERLAY_SHA` declarations in
+`tests/fixtures/openclaw_strict/constants.py` and their two frozen assertions in
+`tests/test_openclaw_strict_packet_contract.py`. `CODE_BASELINE_SHA` remains `N1`. No fifth
+substitution, third path, formatting, test logic or other byte may change.
+
+Codex then runs a fresh complete same-slot `N1`/`R`/final-candidate sequence and every symmetric
+mismatch rerun; prior output is diagnostic only. Section 18.15's 238-node partition, §18.16's
+advanced identities, §18.10's normalization allowlist, the five-node R2b proof and this 22-node
+semantic-signature rule must all pass independently. This projection alone cannot produce a PASS:
+every other differential gate still applies. Only a newly established
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases the unchanged §18.9 Pylint gate, two fresh M8
+runs, seven legacy MCP regressions, durable-evidence verification and exact-tip Kiro conformance
+review. Immediately before PR creation and Ryan's merge decision, `origin/main` must still equal
+`N1`.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test, CI,
+baseline, runtime, configuration or evidence byte and waives no failure. A new Ryan grant must name
+the semantic parent, final overlay, preserved `H1`, `N1`, `R`, complete reviewed plan range, exact
+four substitutions, fixed slot, runtime prefix, durable evidence root, the closed 22-node set/hash
+and complete three-tip/Pylint/M8/MCP sequence. Any conflict, extra change, signature mismatch,
+runtime mutation or required correction is `PAUSE`. PR, merge, deployment, real OpenClaw, Gate
+D/W/D-V/E/F, watch activation, live data and promotion remain independently blocked.
+
+### 18.18 M11 post-reconstruction Pylint regression correction
+
+**Observed governed PAUSE.** The reviewed §18.17 plan and four-literal authority rebind were
+applied to the advanced-main candidate. Fresh same-slot runs at `N1`, `R` and final candidate
+`65bbfd6f47515accfefa110b667afe1613f0dbed` collected 2,702, 2,912 and 2,940 nodes. The exact
+238-node partition, five-node R2b proof, 22-node semantic-signature proof and all 166 symmetric
+reruns passed, establishing `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` while retaining
+`FULL_PYTEST_PASS=false`. The unchanged full-tree Pylint command then produced 458 findings,
+including 72 `R0801/duplicate-code` messages. The protected regression gate compared that report
+with baseline `9193f5ec744f059d07a20612489b210527b5660a`, reported one increased aggregate `R0801`
+fingerprint (baseline 71, candidate 72), and exited 1. M8 and the seven legacy MCP regressions did
+not start. The original PAUSE ledger is retained at:
+
+```text
+/home/lauer/.local/share/convmem-openclaw-evidence/9faac8ea87532bc73f74b788b38234de0c614a4e/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/65bbfd6f47515accfefa110b667afe1613f0dbed/PAUSE-ledger.json
+```
+
+Its SHA-256 is `28c3db4d0450c37d2a36079c1d960318161dcf8dc3c1cabf1f0082a21357f45b`.
+
+Ryan authorized one read-only triage run at exact current main `N1` in the same fixed slot and
+byte-revalidated CI environment. `N1` produced 455 findings and 69 `R0801` messages; its protected
+gate passed with 240 fingerprints and no new/increased fingerprint. The candidate therefore adds
+three `R0801` pairs relative to current main; the gate failure is not inherited. The CI
+revalidation SHA-256 is
+`47f8c6ab276e1ee6f2b1bd1a2ff7aa508a731af10bc976ddf55a0c249175ec54`. The sealed triage ledger
+is retained at:
+
+```text
+/home/lauer/.local/share/convmem-openclaw-evidence/9faac8ea87532bc73f74b788b38234de0c614a4e/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/65bbfd6f47515accfefa110b667afe1613f0dbed/PYLINT-TRIAGE-ledger.json
+```
+
+Its SHA-256 is `53eb6004562c89854189961f5b8303de09d43d436ebd7070ed5676a581f48757`; the verified top-level
+`pylint-triage-files.sha256` manifest SHA-256 is
+`c9734c355b4d6d997ce4d163d6ba76893f13dd71049c132564c9353f57c6f3d3`.
+
+**Closed three-pair boundary.** The candidate-only normalized pair list contains exactly these
+three records, whose newline-terminated file has SHA-256
+`ab41f0096d024331fd06ce9d49eed0f0800e73f65668766bd806a2e2e3a70671`:
+
+```text
+==strict_projection:[1125:1130]|==tests.test_openclaw_strict_packet_contract:[277:282]
+==tests.test_bound_read_scope:[196:201]|==tests.test_strict_evidence_state:[402:407]
+==tests.test_strict_evidence_state:[481:498]|==tests.test_strict_projection:[1044:1071]
+```
+
+Line spans identify the frozen `65bbfd6f` report only; they are not source selectors after a
+correction shifts lines. The stable identities are the three ordered module pairs. A fourth pair,
+different message ID, different module pair or correction outside the surface below is `PAUSE`.
+
+**Exact two-file correction.** Section 18.9 continues to control and is not widened. Although all
+five modules named by the report are members of its existing 44-path allowlist, only these two
+test files may change:
+
+```text
+tests/test_openclaw_strict_packet_contract.py
+tests/test_strict_evidence_state.py
+```
+
+The correction is mechanical and fully specified:
+
+1. In `test_m2_gate_b_and_c_schema_inventory_exact`, replace only the Gate-C pipe-concatenated
+   seven-name string plus `.split("|")` with an explicit seven-element tuple iterated by the
+   existing list comprehension. Preserve every filename, order, prefixing call, assertion and
+   expected value.
+2. In `tests/test_strict_evidence_state.py::_binding`, replace only the six-field dictionary
+   expansion holding `public_ref`, `project`, `domain_root`, `site_mode`, `site` and
+   `non_expanding_roots` with the equivalent six direct named `ProjectBinding` arguments. Preserve
+   every value and all remaining constructor arguments.
+3. In `tests/test_strict_evidence_state.py::_source_record`, replace only the outer
+   `dict((key, value), ...)` construction with a direct dictionary literal in the same key order,
+   preserving every key and value exactly.
+
+`strict_projection.py`, `tests/test_bound_read_scope.py` and `tests/test_strict_projection.py` are
+reference sides and must remain byte-identical to `65bbfd6f`. The correction may add no helper,
+import, dependency, suppression, comment directive, expected value or test branch. It may not
+change node IDs, collection, selectors, outcomes, schema bytes, canonical bytes, production code,
+authority/oracle ownership or any observable behavior. No `pylint: disable`, baseline growth,
+workflow/gate/config edit, path exclusion or report laundering is allowed.
+
+**Held application and evidence boundary.** After exact-tip Kiro PASS and a new Ryan grant, Grok
+applies the complete reviewed linear plan range from `95011db461d51dcd3960a375757418401c5e505b`
+through the grant-named final overlay onto preserved `65bbfd6f`, pushes and stops. Codex proves
+exact four-document blob/mode equality and byte equality for every non-plan path. After a
+commit-specific `CONTINUE`, Grok rebinds only the two parent/overlay declarations and their two
+frozen assertions to the new semantic parent and overlay, pushes and stops. After a second
+commit-specific `CONTINUE`, Grok performs only the three transformations above in exactly the two
+files, pushes and stops. Codex verifies each commit independently; the authority rebind cannot be
+hidden inside the Pylint correction.
+
+Codex then repeats the complete fresh same-slot `N1`/`R`/final-candidate comparison, all required
+symmetric reruns, the closed 238-node partition, five-node R2b proof and 22-node inner-role proof.
+Only `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases the unchanged full-tree Pylint command.
+The final Pylint report must contain exactly 455 findings and 69 `R0801` messages, none of the three
+closed module pairs, no new pair, and no new/increased fingerprint; the unchanged gate must exit
+zero. Codex then runs two fresh M8 reproductions and seven legacy MCP regressions, verifies the
+runtime and durable-copy hashes, and obtains Kiro exact-tip conformance review. Any different
+count, finding, pair, gate result, test outcome, source byte, runtime mutation or required further
+correction is `PAUSE`.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test, CI,
+baseline, runtime, configuration or evidence byte. A new Ryan grant must name the new semantic
+parent and final overlay, preserved `65bbfd6f`, `N1`, `R`, the complete reviewed plan range, exact
+four-literal rebind, exact two-file transformations, fixed slot, runtime prefix, durable evidence
+root and complete three-tip/Pylint/M8/MCP sequence. No earlier grant, Kiro verdict, test result or
+`CONTINUE` may be reused. PR, merge, deployment, real OpenClaw, Gate D/W/D-V/E/F, watch
+activation, live data and promotion remain independently blocked.
+
+### 18.19 M11 Pylint acceptance-drift correction
+
+**Observed governed PAUSE.** The reviewed §18.18 plan, four-literal authority rebind and exact
+two-test-file/three-transformation correction were applied as separate held commits. Final source
+`c71d37a42de0937aff57a2af47770a89902f132a` then passed the complete fresh same-slot `N1`/`R`/final
+comparison: 2,702 / 2,912 / 2,940 collected nodes, the 238-node partition, five-node R2b proof,
+22-node inner-role proof and all 166 symmetric reruns. `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`
+therefore remains true for that exact source, while retained repository debt keeps
+`FULL_PYTEST_PASS=false`.
+
+The released unchanged full-tree Pylint command completed with raw status 30, empty stderr, 456
+findings, 71 `R0801` messages and 240 fingerprints. The protected baseline gate exited zero with no
+new/increased fingerprint, but the stronger reviewed §18.18 acceptance required 455/69 and exact
+absence of every candidate-only pair. The exact pair comparison found two additions relative to
+`N1` and no removal:
+
+```text
+tests.test_strict_evidence_state | tests.test_strict_projection
+tests.test_strict_evidence_state | tests.test_strict_projection_publisher
+```
+
+The first is one of §18.18's original three pairs; the second is new. M8 and the seven MCP
+regressions did not start. The sealed PAUSE packet is at:
+
+```text
+/home/lauer/.local/share/convmem-openclaw-evidence/3656104081a790676b02f1057bbc552631ce96d0/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/c71d37a42de0937aff57a2af47770a89902f132a/m11-pylint-final
+```
+
+Its `PAUSE-ledger.json` SHA-256 is
+`fe268988c98e944b679446f3551987eaeccf9dce9a2b3b0963896069148a3e62`; its complete
+`files.sha256` manifest SHA-256 is
+`6f631cb97c8ae3531f70dc38a4fd5c865b3965ae207bac7b06ccd072cb15c01f`; the raw report SHA-256 is
+`e114236db43b888184a3847631a1025031e31385c55664e2304d024618cd7a2b`; and the exact pair-comparison
+SHA-256 is `a61465a3f448dcf98a6a583cc5d8f334e7831783443b2e6568044b72fa616301`.
+
+**Cause and closed corrected surface.** The §18.18 Gate-C tuple rewrite succeeded and stays
+byte-identical. The other two prescribed constructions were not sufficient:
+
+1. six direct `ProjectBinding` keyword arguments recreated the static token sequence in
+   `tests.test_strict_projection`; and
+2. the single direct `_source_record` dictionary literal recreated the `title` through
+   `target_assertion_id` sequence in `tests.test_strict_projection_publisher`.
+
+Only `tests/test_strict_evidence_state.py` may change after this plan is applied and its separate
+authority-packet rebind is verified. Exactly these two transformations are permitted:
+
+1. In `_binding`, preserve the existing direct named arguments and values but reorder only the six
+   governed arguments after `id=binding_id` to this exact order:
+   `project`, `site`, `site_mode`, `domain_root`, `public_ref`, `non_expanding_roots`. Every
+   remaining `ProjectBinding` argument stays byte-identical and in its current order.
+2. In `_source_record`, replace the one direct return literal with the exact three-stage local
+   construction: assign `source` to a dictionary containing, in order, `record_kind`, `producer`,
+   `logical_key`, `title`, `document`, `observed_at`; call `source.update()` once with a dictionary
+   containing, in order, `confidence_bps`, `relates_to_assertion_id`, `target_assertion_id`,
+   `verification_result`, `provenance_assertion_id`; then `return source`. Preserve every value and
+   the resulting eleven-key insertion order.
+
+The correction adds no helper, import, branch, suppression, expected value, dependency or shared
+oracle. It changes no node ID, selector, collected test, outcome, schema/canonical byte, production
+surface or authority owner. `tests/test_openclaw_strict_packet_contract.py` may change only in the
+separate four-literal parent/overlay rebind. `strict_projection.py`,
+`strict_projection_publisher.py`, `tests/test_bound_read_scope.py`,
+`tests/test_strict_projection.py`, `tests/test_strict_projection_publisher.py` and every other
+non-plan path stay byte-identical to `c71d37a` except those four already-frozen authority literals.
+
+**Falsifiable design check, not acceptance evidence.** Codex reproduced both excess pairs in an
+untracked disposable export of `c71d37a`, applied only the two constructions above, and ran the
+unchanged full-tree command in the byte-revalidated CI environment. The diagnostic report had 454
+findings, 69 `R0801` messages and 240 fingerprints; the protected gate exited zero; and the complete
+69-record normalized `R0801` pair multiset equaled `N1` with no addition or removal. The diagnostic
+report SHA-256 is `db400a75f1a12f712a1f51e66e90a9ed631a87121ec0a21ff2ee9c28e055eb4f`, the pair-result SHA-256
+is `cafe5c059255fc82d6c2b538c3505a2168312aef87788ff420002dd2537e104c`, and the gate-stdout SHA-256
+is `a161f567da3656ef60ce3fe765abb4048ba0df2e5385a5d3171ee5e16fdd0f02`. These volatile probe
+artifacts justify plan specificity only. They are not governed acceptance, do not release M8/MCP
+and may not be cited as a PASS after source changes.
+
+The corrected total is exactly 454, not current main's 455. Candidate source has one fewer
+non-`R0801` cycle finding while retaining the same 240-fingerprint set allowed by the protected
+gate; equality of total finding counts across different source trees is not an authority rule.
+The exact requirements are therefore 454 total findings, 69 `R0801` messages, 240 fingerprints,
+raw status with no fatal/usage bit, empty stderr, protected-gate exit zero, and byte-for-byte
+equality of the normalized 69-pair multiset to `N1`. A different count, pair, fingerprint or gate
+result is `PAUSE`; fewer findings are not silently accepted.
+
+**Held application and evidence boundary.** After exact-tip Kiro PASS and a new Ryan grant, Grok
+applies the complete reviewed linear plan range beginning after the §18.18 reviewed overlay onto
+preserved `c71d37a`, pushes and stops. Codex proves exact four-document blob/mode equality and
+byte equality for every non-plan path. After a commit-specific `CONTINUE`, Grok updates only the
+same four parent/overlay SHA literals to the new semantic parent and overlay, pushes and stops.
+After a second `CONTINUE`, Grok makes only the one-file/two-transformation correction above,
+pushes and stops. Codex separately verifies each commit and the final composition.
+
+Codex then repeats the complete fresh same-slot `N1`/`R`/final comparison and every required
+symmetric rerun. Only a fresh `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases the unchanged
+full-tree Pylint command and the exact 454/69/240 plus pair-multiset acceptance above. Only that
+result releases two fresh M8 runs and seven MCP regressions, followed by durable-evidence
+verification and Kiro exact-tip conformance review. Earlier differential or probe output supplies
+no acceptance. Any conflict, extra byte/path, runtime mutation, evidence mismatch or required
+additional correction is `PAUSE`.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test, CI,
+baseline, runtime, configuration or governed evidence byte. A new Ryan grant must name the new
+semantic parent and final overlay, preserved `c71d37a`, `N1`, `R`, the complete reviewed plan
+range, exact four-literal rebind, exact one-file/two-transformation correction, fixed slot, runtime
+prefix, durable evidence root and complete three-tip/Pylint/M8/MCP sequence. No prior grant,
+review, test or `CONTINUE` may be reused. PR, merge, deployment, real OpenClaw, Gate D/W/D-V/E/F,
+watch activation, live data and promotion remain independently blocked.
+
+### 18.20 M11 Pylint `R0401` deterministic acceptance
+
+**Observed governed PAUSE.** The reviewed §18.19 plan, separate four-literal authority rebind and
+exact one-test-file/two-transformation correction were applied as held commits. Final source
+`caec5c6868f600e897b29a39f555365e5f818ac1` then passed a complete fresh same-slot
+`N1=5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d` /
+`R=cd60cf19dca6706e4175e9f82c9ba55e41bca10b` / final comparison: 2,702 / 2,912 /
+2,940 collected nodes, the 238-node partition, five-node R2b proof, 22-node inner-role proof and
+all 166 symmetric reruns. The sealed comparison established
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`; retained repository debt still keeps
+`FULL_PYTEST_PASS=false`. Its final-summary SHA-256 is
+`4b3999aef4490aedda3a365d052b5894da1a720e41a7f64c15284aa99dbf3a05`.
+
+The released unchanged full-tree Pylint command completed with raw status 30, empty stderr, 458
+findings, 69 `R0801` messages, 29 `R0401` messages and 240 fingerprints. The protected gate exited
+zero, and the complete normalized 69-pair `R0801` multiset equaled `N1` with no addition, removal
+or closed introduced pair. Exact §18.19 acceptance nevertheless required 454 total findings, so
+Codex issued `PAUSE` before M8 or MCP. The sealed packet is at:
+
+```text
+/home/lauer/.local/share/convmem-openclaw-evidence/c92bc708d1fc23e8d37584890e876c151682a48d/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/caec5c6868f600e897b29a39f555365e5f818ac1/m11-pylint-final
+```
+
+Its `PAUSE-ledger.json` SHA-256 is
+`b7fddc9534540a28116e62646e2989f80e6cd5f3d3efecc30a06649195f10860`; its complete
+`files.sha256` manifest SHA-256 is
+`9076aacd8185b88e73e1381fc1cb5706c1fd50b64609b8ce31a668438eb0d85d`; the raw report SHA-256 is
+`044f723a77946bd3b6c593dcea10987d7956ab62a5a58789dc2b23215553eeaf`; the `R0801` equivalence
+SHA-256 is `cafe5c059255fc82d6c2b538c3505a2168312aef87788ff420002dd2537e104c`; and the `R0401` drift
+record SHA-256 is `a606e77bf639f13350107ceee6ac7131b5f867b4310b9d195f88c1b8a9d9abd1`.
+
+**Closed diagnostic finding.** No import byte changed in §18.19's exact source correction. The
+earlier unseeded disposable design probe observed 25 `R0401` messages and predicted 454 total;
+the governed final run observed 29 `R0401` and 458 total, while both retained exactly 429
+non-`R0401` findings. Therefore the 454-total rule accidentally made one unfrozen cycle-report
+enumeration authoritative. Ryan authorized exactly four disposable, non-acceptance probes using
+the same qualified environment, full tracked-Python inventory, command, fixed reset slot and
+resource limits, adding only `PYTHONHASHSEED=0`: `N1` twice and exact final source twice.
+
+All four probes produced 458 findings, 29 `R0401`, 69 `R0801`, 429 non-`R0401` and 240
+fingerprints. Each tip was internally reproducible, and the two tips had identical message-ID
+counts, canonical `R0401` records and canonical `R0801` pairs. Raw JSON report hashes differed
+between repetitions because raw `R0801` message bodies and report ordering remained unstable;
+raw byte equality is therefore evidence, never an authority condition. The diagnostic root is:
+
+```text
+/home/lauer/.local/share/convmem-openclaw-evidence/c92bc708d1fc23e8d37584890e876c151682a48d/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/caec5c6868f600e897b29a39f555365e5f818ac1/m11-pylint-r0401-determinism-probe
+```
+
+The final-summary SHA-256 is
+`c68834661b2362a1e43a762460ab36a00077b91570fcb95767179d296ebef34b`; the canonical-authority
+SHA-256 is `cbeb6e3d6253f17907ff25e109576a680d028333908f167ccf39e1589b71c8fe`; and the root-manifest
+SHA-256 is `2cff8fe59f2e703e0183d175b33000b0b9d89e2651baf5dd0bf67bcff0d22eed`. These probes justify
+plan specificity only. They are not acceptance evidence, do not relabel the governed PAUSE and do
+not release M8 or MCP.
+
+**Deterministic semantic authority.** After a fresh three-tip differential passes at the final
+source, Codex must run the unchanged complete full-tree Pylint command first at `N1` and then at
+the final candidate in the same reset slot, qualified runtime and environment, adding exactly
+`PYTHONHASHSEED=0` to both executions. The Git-tracked Python inventory is derived independently
+at each exact source tip. The protected workflow, baseline, gate, Pylint arguments, dependencies,
+permissions and source bytes remain unchanged. Acceptance requires all of the following:
+
+1. both tips report exactly 458 findings, 29 `R0401`, 69 `R0801`, 429 non-`R0401` and 240
+   fingerprints; raw Pylint status has no fatal/usage bit, stderr is empty and the unchanged
+   protected gate exits zero at both tips;
+2. for each report, sort every `R0401` identity as the exact five-value sequence
+   `[path,line,column,symbol,message]`; the complete 29-record lists must be identical between
+   `N1` and final source, and their UTF-8 canonical JSON (`sort_keys=true`, separators `,` and `:`,
+   one trailing newline) must have SHA-256
+   `e0a2c3d9e41e204deff7fdc68265d2a4ed2952934b4eaea42a79fe22dfa09282`;
+3. the complete message-ID count objects must be identical between tips and have the same
+   canonical encoding with SHA-256
+   `278ff3c7e0935c2b2426635a5c178f15ff0a0e3fb7943c16281fda111391c896`;
+4. extract each `R0801` identity as the sorted two-module pair already frozen by §18.19; the
+   complete 69-record pair multisets must be identical, contain no closed introduced pair, and
+   their canonical list of `{count,left,right}` objects must have SHA-256
+   `51d818973d3f9054ff35e1ba721adadb281fa0eac61a929fda7b02c5fee78556`; and
+5. preserve both raw reports and their individual hashes, but never require raw report byte order
+   or use sorting to rewrite raw evidence.
+
+Any other seed, environment delta, count, canonical hash, pair, message-ID distribution, gate
+result, stderr content, fatal/usage bit, missing raw report or required source/runtime correction
+is `PAUSE`. A lower total is not silently accepted. This rule does not suppress, waive or
+normalize a finding; it closes the previously unfrozen enumeration input and compares semantic
+identities while retaining raw output.
+
+**Held application and evidence boundary.** After exact-tip Kiro PASS and a new Ryan grant, Grok
+applies the complete reviewed linear plan range beginning after the §18.19 reviewed overlay onto
+preserved `caec5c6`, pushes and stops. Codex proves exact four-document blob/mode equality and
+byte equality for every non-plan path. After a commit-specific `CONTINUE`, Grok changes only the
+same four parent/overlay SHA literals to the new semantic parent and overlay, pushes and stops.
+Codex proves the exact two-path/four-substitution diff. No further product, test, CI, baseline,
+runtime-content or configuration correction is eligible.
+
+Codex then runs a fresh same-slot `N1`/`R`/final comparison and every required symmetric rerun.
+Only a fresh `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases the paired seeded Pylint evidence
+above. Only exact Pylint semantic acceptance releases two fresh M8 runs and seven legacy MCP
+regressions, followed by durable-evidence verification and Kiro exact-tip conformance review. Any
+conflict, extra byte/path, runtime mutation, evidence mismatch or required correction is `PAUSE`.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test, CI,
+baseline, runtime content, configuration or governed acceptance evidence byte. A new Ryan grant
+must name the new semantic parent and final overlay, preserved `caec5c6`, `N1`, `R`, the complete
+reviewed plan range, exact four-literal rebind, fixed slot, runtime prefix, durable evidence root
+and complete three-tip/paired-Pylint/M8/MCP sequence. No prior grant, review, test, diagnostic
+probe or `CONTINUE` may be reused. PR, merge, deployment, real OpenClaw, Gate D/W/D-V/E/F, watch
+activation, live data and promotion remain independently blocked.
+
+### 18.21 M11 final-M8 legacy-count drift correction
+
+**Observed governed PAUSE.** The reviewed §18.20 plan range and exact four-literal authority
+rebind were applied as held commits. Final source
+`9da6dd98d276b250470de4e53ac786f7547d92d5` then completed a fresh same-slot
+`N1=5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d` /
+`R=cd60cf19dca6706e4175e9f82c9ba55e41bca10b` / final comparison, all 166
+symmetric reruns, the exact 238-node partition, five-node R2b proof and 22-node inner-role proof.
+The final comparison SHA-256 is
+`dee4a8746c307311984a8ee5aa19ffdd8f443ebf28a92566a915a57599769d11` and established
+`CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS`; retained repository debt still keeps
+`FULL_PYTEST_PASS=false`. Paired seeded Pylint then passed §18.20 exactly at both tips with
+458 findings, 29 `R0401`, 69 `R0801`, 429 non-`R0401`, 240 fingerprints, protected-gate zero and
+the three frozen semantic hashes. Its canonical authority SHA-256 is
+`89c9bde4db8807cb979ca10e516ecac3437136571ff612678a9b7e8adad69b0a`.
+
+Final M8 run 1 entered the unchanged isolated runner. Strict Python passed 238/238, Node passed
+29/29, and legacy Python completed successfully with 118 collected, 117 passed, zero failed,
+zero errored, one skipped and the same four deselections. The evidence parser correctly returned
+status 2 because `EXPECTED_LEGACY_JUNIT_COUNTS` still required the historical 116 collected /
+115 passed. Runtime inventories before and after were byte-identical. Run 2 and the seven MCP
+regressions did not start. The durable PAUSE packet is:
+
+```text
+/home/lauer/.local/share/convmem-openclaw-evidence/45863c87f1ae70b89dd063da8f09f6cd16fdb3a3/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/runs/9da6dd98d276b250470de4e53ac786f7547d92d5/m11-m8-run1-final
+```
+
+Its PAUSE-ledger SHA-256 is
+`73005d7a3b65d5de6652696c92a6801789b0051a90b399755c8e4c3854ce8aa8`; its complete
+evidence-manifest SHA-256 is
+`51bf7fef728223106a1da8f7dfeb3de42bce8a7e15d2e3830c0919eeabe7152d`; and its exact
+count-drift diagnostic SHA-256 is
+`a025ada8c43533577ed8a204f16317865b0e2beb7edd80687aa28a1184f48264`.
+
+**Closed diagnosis and authority.** The historical 116/115 count remains true for the accepted
+M8 source and preserved `R`; it is not the node set of current main. Current-main commit
+`ad524e1e5181b086918748161e489d608a329794` added two positive safety controls to the already
+selected `tests/test_shadow_writer_coverage_scan.py`. That file is current-main-owned and has
+identical Git blob `d1ed10f1f4a2d6b457e3e09f9af156f222efd4e8` at `N1` and final source. The exact additions are:
+
+- `tests/test_shadow_writer_coverage_scan.py::test_scan_skip_ignores_review_bundle_snapshots` —
+  `passed`; and
+- `tests/test_shadow_writer_coverage_scan.py::test_scan_skip_ignores_worktree_snapshots_but_not_tracked_files`
+  — `passed`.
+
+Independent comparison against the last accepted legacy JUnit found exactly those two additions,
+zero removals and zero outcome changes. Section 6.5.8 requires every node other than the four
+named deselections in every selected legacy file to remain selected. Excluding either new node,
+adding a deselection or narrowing the selector would therefore weaken the governing contract.
+The successor final-source expectation is exactly 118 collected, 117 passed, zero failed, zero
+errored, one skipped and four unchanged deselections. The two fresh M8 legacy arrays must each
+equal the historical accepted array plus exactly the two additions above, with no removal or
+outcome change, and must remain byte-for-byte equal to each other after canonicalization.
+
+**Exact successor correction.** After exact-tip Kiro PASS and a new Ryan grant, Grok applies the
+complete reviewed linear plan range beginning after the §18.20 reviewed overlay onto preserved
+`9da6dd98`, pushes and stops. Codex proves exact four-document blob/mode equality and byte equality
+for every non-plan path. After a commit-specific `CONTINUE`, Grok updates only the same four
+parent/overlay SHA literals to the new semantic parent and reviewed overlay, pushes and stops.
+After a second `CONTINUE`, Grok changes only
+`tests/fixtures/openclaw_strict/constants.py`: within `EXPECTED_LEGACY_JUNIT_COUNTS`, replace
+`"collected": 116` with `"collected": 118` and `"passed": 115` with `"passed": 117`.
+No test function, selector, deselection, parser, failure rule, Node command, dependency,
+permission, runtime byte or other source byte may change. Grok commits, pushes and stops; Codex
+proves the exact one-path/two-integer diff before any evidence execution.
+
+Codex then repeats the complete fresh same-slot `N1`/`R`/final comparison and every required
+symmetric rerun. Only a fresh `CURRENT_MAIN_THREE_TIP_DIFFERENTIAL_PASS` releases paired seeded
+Pylint under §18.20. Only exact Pylint semantic acceptance releases two fresh M8 runs under the
+118/117 successor contract and the seven legacy MCP regressions, followed by durable-evidence
+verification and Kiro exact-tip conformance review. Prior differential, Pylint and M8 output is
+historical evidence only. Any conflict, extra byte/path, changed selector/deselection, missing or
+different added node, runtime mutation, evidence mismatch or required additional correction is
+`PAUSE`.
+
+**Authority boundary.** This section authorizes planning only. It changes no product, test, CI,
+baseline, runtime content, configuration or governed acceptance evidence byte. A new Ryan grant
+must name the new semantic parent and final overlay, preserved `9da6dd98`, `N1`, `R`, the complete
+reviewed plan range, exact four-literal rebind, exact one-path/two-integer correction, fixed slot,
+runtime prefix, durable evidence root and complete three-tip/paired-Pylint/M8/MCP sequence. No
+prior grant, review, test, diagnostic or `CONTINUE` may be reused. PR, merge, deployment, real
+OpenClaw, Gate D/W/D-V/E/F, watch activation, live data and promotion remain independently
+blocked.
+
+### 18.22 M11 PR #342 safety, CI applicability and R2b convergence corrective
+
+**Observed merge-blocking state.** Pull request `#342`, “Add the bounded read-only
+OpenClaw connector to ConvMem,” compares exact base
+`5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d` with exact head
+`94f29ebabee31112cccb223fd1445cb782aac6eb`. CodeQL, secret scan and the unchanged
+Pylint regression gate passed. The live ruleset-required `pytest (3.12)` job failed
+with 83 failures: 22 packet-contract nodes require a fixture-only
+`CONVMEM_OPENCLAW_INNER_ROLE`, 56 nodes depend on the qualified CPython 3.13.12 /
+Unicode 15.1 runtime rather than GitHub CPython 3.12.14, and five nodes expose the
+already-recorded R2b committed-versus-resolved authority-content identity difference.
+The base commit passes the same workflow. This is a CI applicability failure, not
+permission to skip or weaken any test.
+
+A focused ultrareview of the effective four-file product delta also established two
+independent blockers:
+
+1. `mcp_server.py` correctly fails closed at import for an unknown or
+   `openclaw-strict` profile, but `doctor.py::_check_mcp_import()` catches only
+   `ImportError`. A stray invalid environment value can therefore abort the whole
+   doctor process before later health checks run.
+2. `strict_projection_publisher.py::_find_operation_outcome()` treats a historic
+   fenced record with the same `pending_operation_id` as a retry without independently
+   proving the canonical input digest. A crash between fence persistence and durable
+   input persistence makes same-operation/different-content replay indistinguishable
+   under that branch.
+
+The duplicated reader/publisher hashing helpers are a maintainability observation,
+not part of this correction. Moving them is forbidden here.
+
+#### 18.22.1 Doctor containment contract
+
+The MCP startup refusal remains import-time and fail-closed; this correction must not
+move, weaken or special-case it in `mcp_server.py`. Instead, only `doctor.py` and
+`tests/test_doctor.py` may change. `_check_mcp_import()` catches `SystemExit` from the
+import and returns a failed `DoctorCheck("mcp_import", False, <fixed sanitized
+message>)`. The overall doctor command continues every later check and exits through
+its normal nonzero health-check result. It must not stringify the `SystemExit`
+payload, raw profile value, environment, credentials or paths. Existing `ImportError`
+handling remains; `BaseException`, `KeyboardInterrupt` and unrelated failures are not
+caught.
+
+Fresh-process regression tests cover `openclaw-strict`, one fixed unknown sentinel,
+recognized `shell` and unset/full profiles, an injected sensitive `SystemExit`
+payload, empty disclosure surfaces, and proof that checks scheduled after
+`mcp_import` still execute. Tests bind the semantic failure and non-disclosure, not
+parent-unspecified presentation bytes.
+
+#### 18.22.2 Fenced publication and recovery contract
+
+Only `strict_projection_publisher.py` and
+`tests/test_strict_projection_publisher.py` may change for this defect. The existing
+CAS and lock checks run first. While the current publication is fenced, every ordinary
+publish/admission attempt refuses without writes, regardless of operation identifier
+or input bytes. Recovery is a distinct explicit path:
+
+- A crash after the fence but before durable authority input may clear the active
+  fence only after proving there is no durable intent or admission. Recovery restores
+  the predecessor authority under a new epoch with unchanged expiry, retains the
+  fenced history, and permanently consumes every operation identifier present in that
+  abandoned durable fence. Because the missing bytes cannot be proved, even apparent
+  “same bytes” reuse is forbidden; a new operation identifier is required.
+- A crash after durable input but before admission remains recovery-required and
+  ambiguous. Recovery does not clear the fence, serve predecessor authority, admit
+  the input, or manufacture `exact_retry`. Completing or abandoning that durable
+  intent is a later reconciliation surface and is not added here.
+- After durable admission but before projection, authority remains unavailable. A
+  verified exact retry may report the historic admitted outcome/current head without
+  mutation, and the existing rebuild path may project that admitted head.
+- A historic exact retry requires the same operation identifier, an independently
+  recomputed canonical input digest, and matching retained admitted-authority
+  bindings. Same identifier with different bytes always rejects before writes.
+- Missing, malformed, symlinked, inconsistent, multiply conflicting or uninspectable
+  required evidence is an error, never “not found.” Recovery must never clear a fence
+  and then rebuild the predecessor into service when durable intent exists.
+
+No schema, publication layout, hash algorithm, operation-ID syntax, data model or
+reader behavior changes. The crash matrix must prove write-free refusals and exact
+post-state bytes for every boundary above.
+
+#### 18.22.3 Required GitHub pytest partition
+
+The live ruleset context remains exactly `pytest (3.12)` and its existing workflow
+producer remains `.github/workflows/pylint.yml`; branch protection is not edited.
+Pylint, its baseline and the Pylint job remain byte-for-byte unchanged. On the actual
+GitHub pull-request merge commit, collect the complete pytest node universe `U`, then
+partition it using the exact existing 13 `STRICT_PYTEST_FILES`:
+
+- `Q` is every collected node whose file is one of those 13 exact paths. `Q` runs in
+  the qualified closed runtime and containment adapter.
+- `O` is every other collected repository node. `O` runs under the ordinary GitHub
+  Python 3.12 environment.
+- Evidence must prove `O ∩ Q = ∅` and `O ∪ Q = U`, with exact sorted node identities,
+  outcomes and hashes. The current reference collection is `|U|=2940`, `|Q|=238`;
+  successor ordinary counts must include newly added doctor and CI regression nodes
+  rather than freezing those reference totals.
+
+The qualified invocation also runs the unchanged 29-node connector suite and the
+unchanged legacy selector with its four exact deselections. Those four legacy nodes
+remain ordinary-coverage members in `O`; the qualified legacy repetition does not
+remove them from the complete ordinary partition. The Node and legacy executions are
+supplemental M8 regressions, not second memberships in `U` and not substitutes for an
+`O` outcome. Broad skip/xfail/markers, wildcards,
+failure-derived selectors, changing the four deselections, or a Python-version bump
+alone are forbidden.
+
+Add one bounded CI orchestration adapter, `scripts/run_switchboard_ci.py`, with its
+contract in `tests/test_switchboard_ci_contract.py` and immutable runtime coordinates
+in `ci/switchboard-runtime.json`. It must reuse—not copy or weaken—the existing M8
+containment, runtime inventory, negative controls, source export, preflight, suite
+commands, resource limits and result validation. It runs the exact checked-out
+commit/tree, validates real JUnit/node/process output, and emits a separate
+CI-regression receipt that can never be called M8 PASS, conformance PASS or runtime
+qualification. It accepts ordinary repository deltas without importing the historical
+M8 product allowlist as a general PR allowlist. The existing M8 runner remains
+unchanged and still runs separately twice.
+
+If the workflow uses dependent jobs, the required aggregate context runs under
+`always()` and explicitly requires every dependency to conclude `success`; a skipped,
+cancelled, missing or neutral dependency fails. Contract tests must make missing
+branches/nodes, duplicates, fake PASS output, skipped dependencies, selector drift,
+host `CONVMEM_OPENCLAW_INNER_ROLE`, stale evidence, any runtime byte drift, or a
+missing containment flag fail closed. Evidence records PR head, PR base, GitHub merge
+commit and merge-tree identity.
+
+#### 18.22.4 Immutable runtime delivery is a separate external gate
+
+The qualified local runtime is not yet a GitHub-accessible artifact. The proposed
+delivery coordinate is repository `alanmz-crypto/convmem`, tag
+`switchboard-fixture-runtime-74a12c725ac3bad4f`, asset
+`switchboard-fixture-runtime.tar.gz`, whose extracted tree must equal
+`sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+Those coordinates are a proposal, not authorization to publish.
+
+Before any asset exists, a separate runtime-delivery packet and Kiro review must bind
+the source runtime directory and full inventory, archive hash and deterministic
+extraction rules, extracted tree hash, release coordinates, provenance/licensing,
+hosted-runner/kernel compatibility, pinned `bwrap` provisioning recipe and hashes,
+negative controls, and replacement policy. The archive contains no credentials,
+configuration, live data, OpenClaw installation/model packages, symlinks, special
+files or path escapes. Ryan must then authorize the exact external release operation.
+CI never resolves `latest`, accepts a mutable replacement, repairs the runtime, uses
+host dependencies as fallback, or substitutes another source. Missing or incompatible
+bytes fail closed.
+
+#### 18.22.5 R2b authority-content convergence
+
+This planning correction crosses into Arc R2b Capture Authorization only for static
+content attestation; it authorizes no lease, writer quiescence, capture, packet, live
+mutation or I4–I8 action. At PR head `94f29eb`, the governed 120-member path set has
+committed identity `b716152fbf725633a55371f6acf7ed5580a704bd` and independently
+resolved identity `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b`. `mcp_server.py` is
+already the sole changed governed member; the doctor correction makes `doctor.py` the
+second. The publisher is not a governed R2b member.
+
+After every final governed edit, an independent lane regenerates only
+`docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`. The member count, exact path set,
+seed, closure and routes remain unchanged; all members other than `mcp_server.py` and
+`doctor.py` stay byte-identical to fixed main. The lane retains before/after canonical
+manifests and change proof, recomputes
+`SHA256("r2b-v2-authority-content:v1:" + canonical_manifest)[:40]`, and proves
+convergence with the runtime resolver, inventory binding/digest and artifact. No R2b
+algorithm, coordinate, writer gate, lease, capture or coverage expectation changes.
+
+Because `STATUS-r2b-capture-auth.md` is part of this reviewed cross-arc correction, the
+reviewed control-plane set becomes exactly five documents: the existing four
+Switchboard planning documents plus that R2b STATUS document. The five source blobs
+and modes must equal the reviewed overlay exactly and remain in source export,
+inventory and `source_tree_sha256`. `constants.py`, `allowlist.py` and the packet
+contract test may receive only the closed additions needed to name this fifth control
+document and the exact corrective product/test/CI/R2b paths. An unlisted sixth
+document, prefix/glob exception or product-allowlist widening fails closed. The
+original `EDIT_ALLOWLIST_EXACT`, `EDIT_ALLOWLIST_PREFIXES` and `SCHEMA_ALLOWLIST`
+remain unchanged. Instead, the packet freezes a separate M11-only exact corrective
+set containing only: `doctor.py`, `tests/test_doctor.py`,
+`strict_projection_publisher.py`, `tests/test_strict_projection_publisher.py`,
+`.github/workflows/pylint.yml`, `tests/test_ci_contract.py`,
+`scripts/run_switchboard_ci.py`, `tests/test_switchboard_ci_contract.py`,
+`ci/switchboard-runtime.json`, and
+`docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`. That set is valid only for this
+reviewed PR correction and is never a T0–T5 product allowance.
+
+#### 18.22.6 Ordered correction and final evidence
+
+The required order is: plan correction → Kiro exact-tip binary review → new Ryan
+implementation grant → held doctor commit → held publisher/recovery commit → held CI
+commit → independently held R2b inventory rotation → fresh evidence → Kiro exact-tip
+integrated review → Ryan merge decision. Codex verifies and issues a commit-specific
+`CONTINUE`, `CORRECT`, `PAUSE` or `REQUIRE TEST` after every pushed hold. Any conflict,
+extra path/byte, runtime-distribution uncertainty, authority ambiguity or required
+unplanned correction is `PAUSE`.
+
+Final evidence includes doctor continuation/non-disclosure; the complete fenced-crash
+matrix; complete `O`/`Q` union/intersection and actual GitHub merge-tree reconciliation;
+CI mutation controls; all five R2b failures plus existing R2b revision/coverage/
+authority-boundary/negative/shadow-writer tests; independent R2b convergence; the
+unchanged Pylint gate; two fresh M8 runs at 238 strict, 29 Node, and 118 collected /
+117 passed / one skipped / four deselected legacy outcomes; seven MCP regressions;
+durable verification; required GitHub checks green; focused safety/isolation review;
+and Kiro review of the exact integrated tip. Historical evidence is not replayed as a
+new PASS.
+
+**Authority boundary.** This section authorizes planning only. It does not authorize
+the plan application, doctor/publisher/CI/test/inventory edits, runtime provisioning or
+publication, evidence execution, PR update, merge, deployment, real OpenClaw, live
+data, watch activation, promotion, or Gates D/W/D-V/E/F. PR `#342` is amended rather
+than split only after the separately reviewed and granted correction completes.
+
+### 18.23 Qualified-runtime delivery packet
+
+Section 18.22.4 remains the authority boundary. Ryan authorized Codex to derive one
+disposable local archive from the frozen runtime and to encode the result in the four
+Switchboard plans. This section does not authorize an external release or make the
+archive acceptance evidence.
+
+#### 18.23.1 Exact source, coordinate and local artifact
+
+The source is the read-only directory
+`/home/lauer/.local/share/convmem-openclaw-runtimes/7dccb771b2f43288c52b7cb1dd18dedb18cb7e57/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`.
+Its canonical regular-file inventory is a sorted compact-JSON array of exact
+`mode,path,sha256` objects. The inventory contains 30,421 regular files and hashes to
+`sha256:74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+The tree has 2,840 directories including its root, zero symlinks, zero special files
+and zero writable paths. Recomputing every content hash and mode before and after
+archive construction matched that inventory.
+
+The only proposed external coordinate remains:
+
+```text
+repository=alanmz-crypto/convmem
+tag=switchboard-fixture-runtime-74a12c725ac3bad4f
+asset=switchboard-fixture-runtime.tar.gz
+archive_size=557628743
+archive_sha256=6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e
+runtime_tree_sha256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+complete_extracted_regular_file_tree_sha256=52d3f70a9eb64b5c5348abc8c487994acba7fe7de0b77c358175ff42cfd23d37
+```
+
+The disposable archive has 33,271 members: 30,429 regular files and 2,842
+directories. `runtime/` contributes the exact frozen runtime. `delivery/` contains
+one packet description and seven unmodified provisioning/rebind evidence files. All
+delivery files are mode `0444`, both delivery directories are mode `0555`, and their
+SHA-256 values are:
+
+| Archive member | SHA-256 |
+|---|---|
+| `delivery/PACKET.md` | `24073ab433c503c1d5721984b97fe957ccada0ce634f8bdeae4e8ed1f9907a7d` |
+| `delivery/provisioning/python-packages.json` | `8d95f92e57afa70111ad7304ce82cc7ed4fec4786643c66bf3e4a3dc0618c2f6` |
+| `delivery/provisioning/loaded-resolution.json` | `dcf4e9e762dac5bd56aaac45d622391be11b1959ab557d6bed691a26849c3707` |
+| `delivery/provisioning/runtime-checks.json` | `b0b51fb4d8dadb7e1c3d747728d01664c9d668a4963da5a0c2f8ec6dc25fc5e3` |
+| `delivery/provisioning/runtime-inventory.json` | `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b` |
+| `delivery/provisioning/runtime-provisioning-summary.json` | `82fefc9caef737c1691ae0ce354e71946ac1363da005c3e4e6015a8b16d4ffea` |
+| `delivery/provisioning/rebound-runtime-inventory.json` | `73750e4825dae93c1a77a8d7e63c9616fe83a00b080eff16c34073191e56b2b4` |
+| `delivery/provisioning/runtime-rebind-summary.json` | `051b2e4541931acac3e02451191e227a40450efae3bd50827ed91aaca3ce7a79` |
+
+#### 18.23.2 Deterministic construction and closed extraction
+
+Construction is frozen to GNU tar 1.35 and GNU gzip 1.15 under `LC_ALL=C`. Tar reads
+the source directly, sorts names, uses POSIX format, deletes `atime`/`ctime` PAX
+fields, sets every header `mtime=0`, `uid=gid=0`, preserves modes, and transforms
+only the source-root name to `runtime/`. It then adds the prebuilt `delivery/` tree.
+Gzip uses `-n -9`. A tool/version, ordering, metadata, source-root, transform or
+delivery-member change creates a different packet; it is never accepted as an
+equivalent rebuild.
+
+Before extraction, verify the exact archive hash and inspect every tar header. Each
+normalized UTF-8 POSIX name must be uniquely and strictly below `runtime/` or
+`delivery/`, with no absolute, empty, dot or dot-dot segment. Members must be only
+regular files or directories with zero uid/gid/mtime and no setuid, setgid, sticky or
+sparse metadata. Links, devices, FIFOs, sockets, duplicate names and path escapes
+reject the archive.
+
+Extraction occurs only into a newly created empty directory with Python 3.12+.
+For each prevalidated member, call `tarfile.data_filter`; then restore only the
+prevalidated archived mode with `filtered.replace(mode=member.mode)`. Do not restore
+ownership/time, and never use `fully_trusted` or a permissive fallback. This closed
+filter is required because the standard data filter intentionally adds owner-write
+permission and would otherwise invalidate the read-only inventory. Before any test
+import, recompute the embedded runtime inventory byte-for-byte, its tree hash, all
+directory/file modes and all counts. The locally extracted archive produced the exact
+runtime hash above, zero writable/link/special members, and complete regular-file tree
+hash `52d3f70a…`.
+
+#### 18.23.3 Contents, compatibility and bubblewrap
+
+Path and content controls found zero OpenClaw packages, user-state paths, live ConvMem
+data, external model/cache/checkpoint data or private-key markers. The two `.pem`
+members are package-owned public CA bundles, not credentials. Installed dependency
+code and package-owned test/license assets remain part of the inventoried runtime.
+
+The target is a GitHub-hosted x86_64 `ubuntu-24.04` runner. The historical failing job
+reported runner `2.337.0`, image `20260920.314.1` and kernel
+`6.17.0-1022-azure`; this observation is not a future compatibility grant. Every run
+must prove Linux/x86_64, unprivileged user namespaces, the mandatory bubblewrap flags,
+read-only runtime/sysroot, private `/tmp`, cleared environment, capability drop and
+network isolation before qualified test import. The local exact-shape probe passed
+with bubblewrap 0.13.0 on Linux 7.2.6, but it is diagnostic only.
+
+Hosted provisioning is pinned to Ubuntu Noble security package
+`bubblewrap_0.9.0-1ubuntu0.3_amd64.deb` from
+`https://security.ubuntu.com/ubuntu/pool/main/b/bubblewrap/`: size 50,436 bytes,
+SHA-256 `2461f1beee9cb04c8942739fe1a2b37e7b7c2a3d518f0779dc75f9245baa3094`,
+SHA-512
+`16cad315aa5a302ee8573c8ccb7e6adcdf5bd10dd29adeed0f7f061f39f7b52159d4020b2db1b1dde88fa7f7a3f54522d83037266c956a346882e234247c790b`,
+reported version `bubblewrap 0.9.0`. Download to a fresh path, verify size and both
+hashes, then install that exact package. APT substitution, an unverified cache, another
+version, setuid fallback, a `--*-try` flag, failed namespace probe or host dependency
+resolution is `PAUSE`.
+
+#### 18.23.4 Provenance, licensing and replacement disposition
+
+The packet retains the 110-package Python name/version inventory, 248 loaded-path/hash
+resolutions, 509-ELF checks, original provisioning summary, rebound summary and both
+complete inventories. The runtime contains its CPython license and installed Python
+package license/notice files. Those facts prove the frozen bytes; they do not complete
+public redistribution provenance.
+
+The historical evidence does not bind every Python wheel/conda artifact, Node 26.9.0
+distribution artifact, system-library package/source coordinate, license expression,
+notice or reciprocal-source obligation. Therefore the frozen result is:
+
+```text
+PUBLICATION_ELIGIBLE=false
+LICENSING_DISPOSITION=PAUSE
+```
+
+Before any external release grant, an independent licensing review must bind every
+shipped component to exact binary/source provenance, license and notice bytes, and any
+required corresponding-source delivery. It may not mutate this archive. If closure
+requires added or changed bytes, the archive hash, packet, Kiro review and Ryan grant
+must all be replaced. This is a material publication blocker, not a nit or an implied
+authorization for Codex, Cursor or CI to acquire substitute bytes.
+
+The proposed tag and asset are single-assignment. Creation is allowed only while both
+are absent and only with the exact reviewed hash. Never overwrite, delete/recreate,
+retag, resolve `latest`, follow a substituted asset, repair bytes or fall back to host
+dependencies. A different archive, tree, toolchain, license result or compatibility
+requirement uses a new tree-derived tag and a new reviewed packet.
+
+Negative controls cover the already frozen changed-byte
+`ddb476d3ccb8a11d3c379cfb53925bbd8e81024f753678d7fcdecad479ae19fe`,
+changed-mode `0318dbf5410aef57b9f03b2cc9a2f7a994caea673e7feffc90609971bae7be19`,
+removed-entry `73586a3f3ea59c3899a24425cd648ed53506920ae236c211f9d04bf3dab02838`
+and unlisted-entry `467a35f2b30e7e2056c871c307f0955ec856afd42a68697e86bf366536c6010f`
+mutant tree hashes, plus link/special/path-escape/duplicate member, changed archive,
+changed bubblewrap package, failed namespace, host-resolution and mutable-coordinate
+controls. Every control fails before qualified test import.
+
+**Authority boundary.** This packet authorizes no tag, release, asset upload,
+implementation, runtime-content change, evidence run, PR update, merge, deployment,
+real OpenClaw or later gate. Exact-tip Kiro PASS is required on this parent/overlay.
+Because licensing is `PAUSE`, even Kiro PASS does not make the asset externally
+publishable; licensing closure and a separate exact Ryan external-action grant remain
+mandatory.
+
+### 18.24 Replacement qualified-runtime delivery set after licensing PAUSE
+
+Section 18.23 remains the immutable record of the first delivery archive. Kiro passed
+that packet's byte/mode/extraction design, and two independent provenance/licensing
+reviews confirmed its own fail-closed disposition. The archive at SHA-256
+`6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e` is therefore
+**rejected for publication**, not repaired or retroactively cleared. It remains local
+diagnostic evidence and may never be uploaded under the proposed §18.23 coordinate.
+
+The reviews established the following concrete gaps without alleging that ConvMem or
+the aggregate is governed by any one component's license:
+
+- the 110 top-level Python distribution records are not a complete component
+  inventory: twelve setuptools-vendored distributions, the embedded
+  `lib/python3.13/ensurepip/_bundled/pip-25.3-py3-none-any.whl`, native dependencies
+  and SBOM-described Rust/C/C++ components require independent ownership rows;
+- the positive control found packaged license material for 106 of 110 top-level
+  distribution directories, while Apache-2.0 FlatBuffers and Tokenizers shipped no
+  `LICENSE`, `NOTICE` or declared `License-File` in their installed artifacts;
+- the copied sysroot includes Readline, glibc, GCC runtime libraries and other system
+  components while containing no component-bound license, notice or corresponding-
+  source material;
+- the frozen Node 26.9.0 executable is not bound to an authenticated binary artifact,
+  patches or build recipe, and its SHA-256 differs from the official Linux x64 binary;
+  CPython's conda-forge origin is substantially recoverable but its installed
+  relocation must be proved; and the locally built hnswlib extension has no retained
+  source-to-binary recipe.
+
+These findings freeze the successor starting state:
+
+```text
+REJECTED_RUNTIME_ARCHIVE_SHA256=6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e
+REJECTED_RUNTIME_PUBLICATION_ELIGIBLE=false
+REPLACEMENT_DELIVERY_SET_STATUS=PLAN_ONLY
+REPLACEMENT_PROVENANCE_CLOSURE=UNRESOLVED
+REPLACEMENT_LICENSING_DISPOSITION=PAUSE
+REPLACEMENT_PUBLICATION_ELIGIBLE=false
+```
+
+#### 18.24.1 One delivery set, three immutable assets
+
+The replacement is one logical delivery set with exactly three roles:
+
+1. a deterministic qualified-runtime archive containing only the rebuilt runtime,
+   its exact inventory, an embedded copy of the component lock and the exact
+   license/notice corpus needed by recipients;
+2. a deterministic compliance archive containing every source artifact, patch,
+   recipe, build/install script and offer/instruction material required by the
+   reviewed license dispositions, plus an identical component lock and notice
+   corpus; and
+3. a canonical `delivery-set.json` manifest that binds the two archives by exact names,
+   sizes, SHA-256 values, extracted-tree hashes and schema version. The
+   later reviewed packet binds the manifest's own size and SHA-256; the manifest never
+   attempts a recursive self-hash.
+
+The final names, tag, counts and hashes do not exist yet and may not be invented by an
+implementer. A later plan-only packet must pin them after an authorized deterministic
+build. The tag and all three assets are single-assignment. Qualified admission requires
+all three roles at the same immutable release coordinate; a missing, redirected,
+substituted, re-uploaded, differently hashed or differently versioned role rejects the
+entire set before extraction or test import. A standalone runtime archive is never an
+admissible substitute.
+
+This split is the least-worst boundary: executable/runtime bytes remain narrow, while
+source and compliance material can be inspected independently. The duplicated component
+lock and notice corpus must be byte-identical across the two archives, eliminating
+ambiguity rather than creating two authorities. `delivery-set.json` is the only
+set-level index; package metadata and SBOMs are evidence inputs, not competing
+manifests.
+
+#### 18.24.2 Exhaustive component and transformation lock
+
+Before any replacement build grant, a read-only provenance reconstruction must produce
+one canonical component lock and one complete file-ownership map. Every runtime regular
+file maps to exactly one component artifact or to one explicitly named generated output
+whose inputs and deterministic transformation are recorded. Overlapping ownership,
+unowned bytes, ambiguous host origin, a missing nested archive/component or a fallback
+row is `PAUSE`.
+
+Each component row freezes at least: stable component ID and package URL where
+available; exact name/version/build; selected SPDX license expression; original binary
+artifact name, authenticated origin, size and SHA-256; corresponding source artifact or
+commit, origin and SHA-256; patch hashes; build recipe, toolchain and flags; installed
+file-set hash; license/notice member hashes; required source-delivery disposition; and
+the runtime/compliance delivery paths satisfying that disposition. An `OR` license
+expression requires an explicit reviewed choice and supporting bytes. METADATA, RECORD,
+an installed filename, current-host package ownership or an SBOM label alone never
+proves artifact provenance.
+
+Recursive closure includes top-level packages, setuptools vendor trees, ensurepip
+archives, wheel/conda/native contents, every embedded SBOM component, copied shared
+libraries/data, Node, CPython, locally compiled extensions and generated launchers.
+Observed counts such as 110 top-level distributions, twelve setuptools-vendored
+distributions and Tokenizers' 127 SBOM components are audit controls, not completeness
+ceilings. The final proof is set equality between every shipped regular file and the
+canonical ownership map, plus a separate exact inventory of directories, links and
+special files.
+
+#### 18.24.3 Rebuild and minimization boundary
+
+The replacement runtime is constructed into a new empty root from the locked artifacts;
+it is not a copy, repair or overlay of the rejected tree. No live rolling-host file,
+ambient package cache, mutable index response, `latest`, dependency resolver choice or
+network-fetched unpinned byte may enter the build. Locally compiled output requires a
+fresh build from its pinned source, patches, container/toolchain digest, environment and
+command record; otherwise that component remains unresolved.
+
+Before the lock is frozen, the designer may propose removing components that the strict
+test workload and transitive loader/import closure do not require. Removal is not an
+in-place cleanup and is never inferred from one successful run. It changes the runtime
+tree and requires a new complete qualification. The final runtime must still provide
+the parent-required CPython, Unicode, Node, MCP, IDNA, baseline/test dependency and
+loader/library behavior without host fallback. A component stays if necessity or
+license-safe replacement is uncertain.
+
+The replacement uses a new versioned schema, archive/tree identities and tree-derived
+release tag. It may reuse the §18.23 closed extraction and containment mechanisms only
+after proving they apply to the new member layout. No §18.23 count, hash, compatibility
+PASS or mutation negative transfers to the replacement.
+
+#### 18.24.4 License, notice and corresponding-source closure
+
+The compliance archive must contain the exact reviewed license and notice corpus and
+all corresponding-source material required for the shipped bytes. Reciprocal-license
+rows must state whether the distributed file is a library, executable, linked work,
+aggregate or covered source, identify the precise obligation relied upon, and bind the
+source, patches, build/install scripts and recipient instructions that fulfill it.
+Permissive rows must retain their exact copyright/license/NOTICE material. MPL rows
+must bind covered files to the delivered source. No implementer, package manager or CI
+job may make a legal classification by inference.
+
+An independent provenance/licensing reviewer, separate from the builder, verifies every
+row and returns `PASS` or `PAUSE`. The reviewer may require human counsel for aggregate,
+linking, exception, offer-duration or jurisdiction questions; absence of that
+disposition is `PAUSE`. Kiro verifies design/scope and evidence bindings but does not
+substitute for licensing disposition. Exact runtime qualification does not substitute
+for either review.
+
+#### 18.24.5 Gated actualization sequence
+
+The successor sequence is closed:
+
+1. Kiro reviews this plan-only correction. No build follows from PASS.
+2. Under a separate Ryan provenance grant, Codex may derive the read-only component
+   lock, ownership map, proposed source-delivery matrix and build recipe. No runtime or
+   external coordinate is created.
+3. Kiro and the independent provenance/licensing reviewer inspect that exact lock. Any
+   unresolved row remains `PAUSE`.
+4. Under a separate Ryan build grant naming the reviewed lock and disposable roots,
+   the authorized builder creates the replacement set once, without mutating the old
+   archive or source runtime, then stops.
+5. Codex independently verifies construction, inventories, recursive ownership,
+   license/notice/source closure, extraction, containment, host independence and the
+   complete qualified test suite. A new plan-only packet then pins every final
+   coordinate, size and hash.
+6. Kiro reviews the exact final packet; an independent licensing reviewer rechecks the
+   actual bytes. Only simultaneous technical, provenance and licensing PASS can make a
+   later publication grant eligible.
+7. Ryan alone may authorize the exact single-assignment external tag and three assets.
+   Publication still does not authorize CI admission, PR modification or merge.
+8. A separately authorized CI run downloads all three roles, verifies the set manifest
+   and every frozen hash, then performs hosted-runner containment preflight before any
+   qualified test import.
+
+Negative controls must cover at least: missing/extra/duplicate component or file;
+unowned and multiply owned file; nested archive/SBOM omission; changed selected license;
+missing notice/source/patch/recipe; changed source or binary artifact; host/cache/index
+fallback; nonreproducible local build; manifest disagreement; missing/substituted asset;
+changed member/mode/hash; path escape/link/special file; mutable coordinate; and a
+runtime that passes tests while compliance closure fails. Every control rejects before
+publication or qualified import.
+
+**Authority boundary.** This section authorizes planning-document edits only. It does
+not authorize provenance acquisition, downloads, runtime construction, archive or
+compliance-byte creation, tag/release/asset creation, product/test/CI/configuration
+changes, evidence execution, PR update, merge, deployment, real OpenClaw, live data,
+watch activation, promotion or Gates D/W/D-V/E/F. The rejected archive remains
+immutable and unpublished. Each later step requires its own exact reviewed packet and
+Ryan grant.
+
+### 18.25 Provenance-lock schema packet
+
+Section 18.24 requires the provenance outputs, their schemas and their locations to be
+reviewed before any provenance execution. This section freezes that contract. It does
+not create the packet, inspect or fetch an artifact, or close any unresolved row.
+
+The schema packet is bound to the reviewed replacement-plan overlay and the rejected
+runtime tree, not to a mutable branch or current host:
+
+```text
+PROVENANCE_SCHEMA_VERSION=convmem.switchboard.provenance-lock.v1
+PROVENANCE_SCHEMA_PLAN_BASE_OVERLAY_SHA=3402e62a8479011814bfa76ce9e1c3269dc34350
+PROVENANCE_INPUT_RUNTIME_ROOT=/home/lauer/.local/share/convmem-openclaw-runtimes/7dccb771b2f43288c52b7cb1dd18dedb18cb7e57/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
+PROVENANCE_INPUT_RUNTIME_TREE_SHA256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+PROVENANCE_INPUT_RUNTIME_REGULAR_FILE_COUNT=30421
+PROVENANCE_PACKET_FILE_ROLE_COUNT=13
+PROVENANCE_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v1
+PROVENANCE_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v1
+PROVENANCE_DURABLE_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v1/packet
+PROVENANCE_DURABLE_REVIEW_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v1/review
+PROVENANCE_PACKET_STATUS=SCHEMA_ONLY
+PROVENANCE_EXECUTION_AUTHORIZED=false
+```
+
+None of these paths exists by authority of this plan. A later exact grant may permit
+Codex to create only those roots. Staging is disposable and never evidence. The packet
+is written first to a same-filesystem sibling of `PROVENANCE_DURABLE_PACKET_ROOT`
+ending `.partial`, verified, atomically renamed, made read-only and thereafter
+immutable. The reviewer later creates `PROVENANCE_DURABLE_REVIEW_ROOT` by the same
+closed partial-to-final process without touching the packet root. An existing target,
+cross-filesystem rename, symlink in any ancestor, writable final member or second
+packet/review at the same coordinate is `PAUSE`.
+`PROVENANCE_SCHEMA_VERSION` and its roots are single-assignment: any semantic field,
+type, enum, nullability, identity, closure, authority or negative-control change must
+advance the version and bind a new reviewed staging/durable coordinate. Editorial
+changes that do not alter this contract still require exact-tip review but cannot
+reinterpret an existing packet.
+
+#### 18.25.1 Canonical encoding and identifiers
+
+Every `.jsonl` is UTF-8 without BOM, one compact JSON object plus LF per record, with
+records sorted by the declared primary key's UTF-8 bytes. Every `.json` is one compact
+JSON value plus LF. Objects use lexicographically sorted keys, separators `,` and `:`,
+`ensure_ascii=false`, no duplicate keys, no floats, no surrogate code points and no
+Unicode normalization. Strings preserve the observed Unicode scalar sequence. Hashes
+are lowercase 64-character SHA-256 hex; sizes/counts are nonnegative decimal integers;
+modes are four-character octal strings. Arrays declared as sets are unique and sorted
+by UTF-8 bytes. Unknown keys, omitted required keys, CRLF, noncanonical escapes,
+unordered records or a second textual encoding reject the packet.
+
+Field types are closed. Names, versions, IDs, hashes, URLs, paths, media types,
+expressions, rationales and enum values are strings; `_sha256` strings use the hash
+rule above. Fields ending `_ids`, `_paths` or `_sha256s` are arrays of strings.
+Counts, sizes and `http_status` are integers (`http_status` is 100–599 when non-null).
+`human_counsel_required`, `reciprocal_review_required` and `blocks` are booleans.
+`argv` is an ordered string array; `environment` is an object from string keys to
+string values. Timestamps are UTC RFC 3339 strings with whole seconds and trailing
+`Z`. `redirect_chain` is an ordered URL array; every other scalar array is a set and
+therefore sorted. `packet_files`, `license_texts`, `notice_texts` and
+`copyright_texts` are arrays of the exact row objects specified below and sorted by
+`path` or `delivery_path`; `reviewed_packet_file_sha256s` is an array of exact
+`{path,sha256}` objects sorted by `path`; `review_scope` is a sorted string set; and
+`reviewer` is exactly `{actor,lane,tool,tool_version}` with string values. No implicit
+string-to-number/boolean coercion is allowed.
+
+Required keys are always present, but reconstruction must represent unknowns without
+inventing authority. `null` is allowed only for `objects.source_url` on an
+`existing-runtime` object; observation `request_url` and `final_url` on a
+`retained-local` `READ_RETAINED`; observation `source_path` on `https` or `vcs-https`;
+observation `http_status` on a `vcs-https` `FETCH_OBJECT` or `retained-local`
+`READ_RETAINED`; the nullable component identity fields `build`, `purl` and
+`origin_namespace`; `source-artifacts.revision` for a release/source-package archive;
+and `transformations.builder_image_digest` for a non-build copy/member/link operation.
+In addition, `component-lock.selected_license_expression` and `source_delivery_id`,
+`file-ownership.component_id`, `origin_kind`, `origin_id` and `origin_member_path`, and
+artifact `authority_observation_id` may be `null` only when one matching `unresolved`
+row names that exact subject and field. Build eligibility permits none of those
+unresolved null cases.
+
+Empty arrays are closed by field: `objects.authority_observation_ids` is empty only for
+`existing-runtime`; an observation's `redirect_chain` is empty only when no redirect
+occurred and `proof_object_ids` is empty only when `response_object_id` is itself the
+complete authority proof; artifact `signature_object_ids` is empty only for
+`not-published`, `not-applicable` or an exact unresolved signature row; transformation
+`patch_object_ids` may be empty for an unpatched input; license `notice_texts`,
+`copyright_texts` and `human_questions` may be empty when the reviewed license basis
+does not require them; and source-delivery `patch_object_ids` may be empty for an
+unpatched source. `review-disposition.open_unresolved_ids` is empty only when every
+verdict is `PASS`. Every other required reference array is nonempty unless one matching
+`unresolved` row names that exact subject and field; transformation inputs additionally
+require at least one of `input_artifact_ids` or `input_object_ids`. Build eligibility
+permits no unresolved empty case.
+
+Runtime-relative paths use `/`, are nonempty UTF-8 strings and preserve exact bytes
+under the runtime's proven UTF-8 path inventory. Absolute paths, backslashes, NUL,
+empty/dot/dot-dot segments and normalized aliases reject. The sole exception is an
+observation `source_path`, which is an exact absolute path under one future grant-named
+read-only retained-source root and never enters a replacement artifact. URLs are
+retained exactly as observed, including redirect order, but must contain no userinfo,
+credential, secret or tracking token.
+
+Content objects use `obj_sha256:<hex>`. Binary/source artifacts use respectively
+`bin_sha256:<object-hex>` and `src_sha256:<object-hex>`. A component ID is
+`cmp_sha256:<hex>`, where `<hex>` hashes the canonical JSON object containing exactly
+`ecosystem,name,version,build,purl,origin_namespace`; nullable fields are present as
+`null`. A transformation ID is `xform_sha256:<hex>` over its complete canonical row
+with `transformation_id` omitted. Notice, source-delivery, observation and unresolved
+IDs use the same prefix-plus-hash rule over their complete row with the ID omitted.
+IDs are recomputed independently; caller-selected labels are descriptive only.
+
+For each packet file, the manifest records raw-byte SHA-256, size, record count and
+`primary_key_sha256`, computed over each sorted primary-key UTF-8 byte sequence followed
+by one NUL. Empty JSONL has SHA-256 of empty bytes, zero records and the SHA-256 of empty
+bytes as its primary-key hash. The manifest never self-hashes. A later overlay binds
+the manifest's size and SHA-256; the independent review disposition separately binds
+that manifest hash, avoiding circular identity.
+
+#### 18.25.2 Closed packet files and schemas
+
+`PROVENANCE_DURABLE_PACKET_ROOT` contains exactly an `objects/` content-addressed tree
+and the first twelve regular mode-`0444` files below; directories are mode `0555`.
+`PROVENANCE_DURABLE_REVIEW_ROOT` later contains only the thirteenth file,
+`review-disposition.json`, at mode `0444`. No other member, link or special file is
+allowed in either leaf root.
+
+| File | Format and primary key | Required fields |
+|---|---|---|
+| `provenance-lock-manifest.json` | one object; no self-hash | `schema`, `plan_base_overlay_sha`, `input_runtime_tree_sha256`, `runtime_regular_file_count`, `packet_files`, `object_count`, `object_bytes`, `object_tree_sha256`, `unresolved_count`, `created_at_utc`; each `packet_files` row has exactly `path,size,sha256,record_count,primary_key_sha256` |
+| `objects.jsonl` | JSONL; `object_id` | `schema`, `object_id`, `sha256`, `size`, `media_type`, `acquisition_kind`, `source_url`, `authority_observation_ids`, `observed_at_utc`, `relative_path`; `relative_path` is exactly `objects/sha256/<first-two-hex>/<64-hex>` |
+| `authority-observations.jsonl` | JSONL; `observation_id` | `schema`, `observation_id`, `ecosystem`, `authority_class`, `transport`, `operation`, `request_url`, `final_url`, `source_path`, `redirect_chain`, `http_status`, `response_object_id`, `proof_kind`, `proof_object_ids`, `observed_at_utc` |
+| `component-lock.jsonl` | JSONL; `component_id` | `schema`, `component_id`, identity tuple fields, `runtime_scope`, `selected_license_expression`, `binary_artifact_ids`, `source_artifact_ids`, `transformation_ids`, `license_notice_ids`, `source_delivery_id`, `evidence_object_ids` |
+| `file-ownership.jsonl` | JSONL; `path` | `schema`, `path`, `mode`, `size`, `sha256`, `component_id`, `origin_kind`, `origin_id`, `origin_member_path`; `origin_kind` is only `binary-artifact`, `source-artifact` or `generated` |
+| `nested-components.jsonl` | JSONL; tuple `container_component_id,nested_component_id,relationship` joined with NUL | `schema`, the primary-key fields, `evidence_object_id`, `evidence_path`; relationship is only `vendored`, `embedded`, `statically-linked`, `dynamically-linked` or `generated-from` |
+| `binary-artifacts.jsonl` | JSONL; `binary_artifact_id` | `schema`, `binary_artifact_id`, `component_id`, `object_id`, `filename`, `artifact_type`, `authority_observation_id`, `signature_status`, `signature_object_ids`, `member_count`, `selected_member_set_sha256` |
+| `source-artifacts.jsonl` | JSONL; `source_artifact_id` | `schema`, `source_artifact_id`, `component_id`, `object_id`, `filename`, `source_kind`, `revision`, `authority_observation_id`, `signature_status`, `signature_object_ids` |
+| `transformations.jsonl` | JSONL; `transformation_id` | `schema`, `transformation_id`, `component_id`, `kind`, `input_artifact_ids`, `input_object_ids`, `patch_object_ids`, `toolchain_component_ids`, `builder_image_digest`, `argv`, `environment`, `working_directory`, `output_paths`, `output_set_sha256`; no shell string is accepted for `argv` |
+| `license-notices.jsonl` | JSONL; `license_notice_id` | `schema`, `license_notice_id`, `component_id`, `selected_spdx_expression`, `selection_basis_object_ids`, `license_texts`, `notice_texts`, `copyright_texts`, `reciprocal_review_required`, `human_questions`; each delivered text row binds `object_id,source_member,delivery_path,sha256` |
+| `source-delivery.jsonl` | JSONL; `source_delivery_id` | `schema`, `source_delivery_id`, `component_id`, `obligation_class`, `trigger`, `source_artifact_ids`, `patch_object_ids`, `recipe_transformation_ids`, `instruction_object_ids`, `delivery_paths`, `availability_owner`, `availability_period`, `review_status`, `review_rationale_object_id` |
+| `unresolved.jsonl` | JSONL; `unresolved_id` | `schema`, `unresolved_id`, `subject_type`, `subject_id`, `field`, `reason_code`, `required_evidence`, `status`, `blocks`; `status` is always `OPEN`, `blocks` is always `true` |
+| `review-disposition.json` | one object; separately created by the independent reviewer | `schema`, `manifest_sha256`, `reviewed_packet_file_sha256s`, `reviewer`, `review_scope`, `technical_verdict`, `provenance_verdict`, `licensing_verdict`, `human_counsel_required`, `open_unresolved_ids`, `reviewed_at_utc`; verdict values are only `PASS` or `PAUSE` |
+
+`packet_files` covers the other eleven packet ledgers but not
+`review-disposition.json`; the review disposition instead binds the immutable manifest
+and every reviewed packet-file hash. `objects.jsonl` is the only object inventory:
+every row has one matching regular object file, every object file has one row, and its
+path, filename, size and hash must agree. `object_tree_sha256` hashes the canonical
+sorted compact-JSON array of `relative_path,size,sha256` rows. No object is executed,
+imported or installed during provenance work.
+
+The exact enumerations are:
+
+- component/observation `ecosystem`: `python`, `node`, `rust`, `system`,
+  `toolchain`, `generated`, `other-reviewed`;
+- `runtime_scope`: `runtime`, `runtime-vendored`, `build-only`, `source-only`;
+- `acquisition_kind`: `existing-runtime`, `existing-cache`, `registry-metadata`,
+  `authority-response`, `binary-artifact`, `source-artifact`, `license-text`,
+  `notice-text`, `signature`, `build-recipe`, `review-rationale`;
+- `authority_class`: `original-distributor`, `original-project`, `signed-index`,
+  `signed-checksum`, `immutable-vcs`, `retained-package-record`,
+  `retained-build-record`;
+- observation `transport`: `https`, `vcs-https`, `retained-local`; observation
+  `operation`: `GET`, `HEAD`, `FETCH_OBJECT`, `READ_RETAINED`; `GET` and `HEAD`
+  require `https`, `FETCH_OBJECT` requires `vcs-https`, and `READ_RETAINED` requires
+  `retained-local`;
+- `proof_kind`: `original-release-metadata`, `artifact-checksum`,
+  `detached-signature`, `signed-index`, `immutable-vcs-object`,
+  `retained-package-record`, `retained-build-record`;
+- `signature_status`: `verified`, `not-published`, `not-applicable`, `unresolved`;
+- binary `artifact_type`: `python-wheel`, `conda-package`, `npm-package`,
+  `system-package`, `node-binary`, `native-library`, `executable`, `archive`,
+  `other-reviewed`;
+- `source_kind`: `release-archive`, `vcs-commit`, `source-package`, `generated-source`;
+- transformation `kind`: `install-copy`, `archive-member`,
+  `conda-prefix-relocation`, `build`, `generated`, `statically-linked`,
+  `dynamically-linked`;
+- `obligation_class`: `permissive-notice`, `apache-notice`, `python-license`,
+  `mpl-covered-source`, `lgpl-library`, `gpl-corresponding-source`,
+  `gcc-runtime-exception`, `other-reviewed`, `none-reviewed`;
+- `review_status`: `PASS`, `PAUSE`; and
+- `reason_code`: `missing-origin`, `missing-binary`, `missing-source`,
+  `missing-signature`, `missing-recipe`, `missing-owner`, `multiple-owners`,
+  `missing-license`, `missing-notice`, `license-choice`, `source-obligation`,
+  `human-disposition`, `hash-mismatch`, `unsupported-format`, `other-reviewed`.
+
+Every enum expansion is a semantic change requiring a new reviewed schema version.
+
+#### 18.25.3 Cross-file closure and eligibility
+
+The packet is structurally valid when every byte is canonical, every present reference
+resolves, all inventories/hashes agree and every missing authority value has one exact
+`unresolved` row. Structural validity permits an honest `PAUSE` packet. Build
+eligibility requires all of these independently recomputed equalities:
+
+1. the exact rejected-runtime regular-file inventory equals `file-ownership.jsonl` by
+   path, mode, size and SHA-256;
+2. every file has one non-null owner and one existing non-null origin reference; every component,
+   artifact, transformation, notice, delivery and evidence reference resolves exactly
+   once with no orphan row;
+3. every component reachable through a nested relation exists in `component-lock`, and
+   every nested/bundled/SBOM-declared component is represented; observed counts such as
+   110 top-level distributions, twelve setuptools-vendored distributions, the embedded
+   ensurepip wheel and Tokenizers' 127 SBOM components are positive controls, not
+   ceilings;
+4. every binary/source artifact and authority response has one matching immutable
+   object; every generated file is in one transformation's exact output set; and every
+   transformation input, patch and toolchain reference resolves;
+5. every runtime or runtime-vendored component has a non-null selected license expression, a
+   license/notice row and one source-delivery row; every `OR` choice has evidence and
+   every reciprocal row has the required source, patch, recipe, instruction and human
+   disposition references;
+6. `objects/` and `objects.jsonl` are equal sets, all packet hashes/counts agree, no
+   credential/private data is present, and all paths/modes/types satisfy this section;
+7. `unresolved.jsonl` may contain open rows during reconstruction, but build eligibility
+   requires the canonical empty file, `unresolved_count=0`, and independent technical,
+   provenance and licensing `PASS` in `review-disposition.json`.
+
+A lower count, a successful runtime test, a package-manager claim, a copied license
+directory or a reviewer statement without exact manifest/hash bindings cannot satisfy
+closure.
+
+#### 18.25.4 Source-authority and network boundary
+
+Future provenance execution is read-only acquisition. The grant must name the exact
+allowed HTTPS origins and operations before any request. Eligible evidence is limited
+to an original package distributor or project, its authenticated release metadata,
+signed checksum/index/package records, an immutable VCS commit/release, or a retained
+exact package/build record whose bytes are also captured. Search results, mirrors not
+named by the authoritative metadata, the current host package database by itself,
+mutable branch heads, `latest`, unauthenticated HTTP, ambient caches and inferred URLs
+are never authority.
+
+`response_object_id` always resolves to the retained canonical response envelope: for
+HTTP it contains status and selected identity-bearing headers plus any response body;
+for immutable VCS acquisition it contains the exact remote, requested object ID,
+resolved object ID and fetch transcript; for a retained-local read it contains the
+grant-named root, exact source path, pre/post identity and mutation check. A `HEAD`, VCS
+or retained-local observation therefore still has a response object even when no
+artifact body exists. That envelope is evidence,
+not a substitute for the separately hashed artifact/source object.
+
+Every request and redirect is recorded in `authority-observations.jsonl`; a redirect to
+an ungranted origin, credentialed URL, HTML interstitial in place of an artifact,
+changed ETag/content bytes, signature/checksum disagreement or unavailable proof is
+`PAUSE`. TLS alone establishes transport, not artifact identity. Downloaded bytes land
+under staging `incoming/`, are hashed before parsing, move to their content-addressed
+staging object path only after the expected identity matches, and are copied to durable
+evidence only in the final atomic packet. Parsers may list or safely extract data into
+disposable directories but may not execute setup hooks, imports, binaries, package
+installers, shell fragments, build scripts or downloaded code.
+
+The later execution grant may allow only HTTP `GET`/`HEAD`, immutable VCS object
+fetches from its named origins and `READ_RETAINED` under exact named read-only roots.
+It may not authenticate, upload, comment, publish,
+create a repository/ref/release/asset, accept a license on Ryan's behalf or incur a
+paid service. An origin discovered during execution but absent from the grant becomes
+one `unresolved` row and stops acquisition for that component.
+
+#### 18.25.5 Negative controls and supervision
+
+Before a packet can be reviewed, independent mutants must prove rejection for:
+
+- BOM/CRLF/noncanonical JSON, reordered/duplicate records or keys, unknown/missing key,
+  invalid enum, changed mode/path/hash/count or manifest self-reference;
+- one missing/extra object, ledger or runtime row; unowned, multiply owned or dangling
+  component/artifact/transformation/notice/source reference;
+- omitted setuptools/ensurepip/SBOM/native/sysroot member, nested-cycle or a positive-
+  control count treated as a completeness ceiling;
+- binary/source/signature/checksum/recipe/toolchain mismatch, current-host or ambient-
+  cache substitution, retained-source root/path escape or mutation, ungranted
+  redirect/origin, mutable ref or executed downloaded content;
+- absent license/notice, unreviewed `OR` choice, missing reciprocal source/patch/build/
+  instruction, self-authored legal conclusion or `PASS` with one unresolved row;
+- staging cited as evidence, partial/cross-filesystem publication, existing destination,
+  writable/symlink/special final member, manifest/disposition mismatch or review over a
+  different packet hash.
+
+Codex is the only authorized future provenance executor and packet collector. The
+independent provenance/licensing reviewer creates only
+`PROVENANCE_DURABLE_REVIEW_ROOT/review-disposition.json` after verifying the immutable
+packet root; that reviewer does not repair evidence. Kiro reviews
+design/scope and exact bindings, not legal sufficiency. Any correction creates a new
+staging root and reviewed packet identity; no in-place durable repair is allowed.
+
+**Authority boundary.** This section authorizes only the four planning-document edits.
+It creates no evidence root and authorizes no provenance HTTP/VCS request, artifact
+download, upstream VCS fetch, archive parsing, runtime inspection, provenance execution,
+license acceptance, build, install, runtime/compliance/manifest creation, external
+coordinate, product/test/CI/configuration change, PR update, evidence run, merge,
+deployment, real OpenClaw, live data, watch activation, promotion or Gates
+D/W/D-V/E/F. Kiro exact-tip PASS and a new Ryan provenance-execution grant naming the
+exact roots, origins and operations remain mandatory.
+
+### 18.26 Provenance-lock v2 CycloneDX revision projection
+
+The first offline P0 execution of §18.25 stopped while projecting retained CycloneDX
+evidence into `component-lock.jsonl`. The stopped schema-v1 staging tree is rejected
+diagnostic evidence: it is never a packet, never authority, never repaired in place and
+never copied into a successor packet. No schema-v1 durable packet or review root was
+created.
+
+The stop is bound to these exact facts:
+
+```text
+PROVENANCE_SCHEMA_V2_PLAN_BASE_OVERLAY_SHA=5f3978525c8685f59329ccae78d184d4a1822b4b
+PROVENANCE_V1_FIRST_COLLECTOR_SHA256=e84cf1e633541b9a7343bbaf78457573cf041e7f59f0cc71d6c7be8d491de59e
+PROVENANCE_V1_FIRST_INCORRECT_PROJECTION_SHA256=22da33da243b6fa7a7e75abe1e290fae22f2bf1d7ae87bb78ea4fd981b2e4bc4
+PROVENANCE_V1_RETRY_COLLECTOR_SHA256=c9ef70f2a728cac680a1227b5bafc5533a3211f244e1abbf2f89906749eae028
+PROVENANCE_V1_RUNTIME_CONTENT_PASS_COUNT=2
+PROVENANCE_V1_RUNTIME_READ_BYTES=4537493452
+PROVENANCE_V1_EVIDENCE_FILE_COUNT=780
+PROVENANCE_V1_EVIDENCE_BYTES=600463206
+PROVENANCE_V1_CYCLONEDX_DOCUMENT_COUNT=13
+PROVENANCE_V1_CYCLONEDX_COMPONENT_COUNT=1371
+PROVENANCE_V1_UNREPRESENTABLE_COMPONENT_COUNT=1
+PROVENANCE_V1_SBOM_OBJECT_SHA256=d3c068f4be653f38b8f6fca1dd1a9d1b41dc712dc9c3daa01b0e0f84882324d6
+PROVENANCE_V1_SBOM_COMPONENT_INDEX=0
+PROVENANCE_V1_SBOM_NAME=base64
+PROVENANCE_V1_SBOM_PURL=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
+PROVENANCE_V1_SBOM_BOM_REF=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
+PROVENANCE_V1_SBOM_VERSION_ASSUMPTION=null
+```
+
+The retry had already corrected `tree_inventory_hash()` so every inventory-row hash is
+encoded as `sha256:<64-lowercase-hex>`, matching the governed runtime inventory. It then
+proved the exact 30,421-file runtime tree before stopping at the sole missing component
+version. That collector correction and the amended read ceiling do not authorize a
+third schema-v1 pass. The consumed reads above remain part of the rejected v1 ledger.
+
+Schema v2 keeps every §18.25 encoding, file-role, ownership, closure, source-authority
+and review rule except the one closed component-version projection below. It binds new
+single-assignment roots:
+
+```text
+PROVENANCE_SCHEMA_VERSION=convmem.switchboard.provenance-lock.v2
+PROVENANCE_INPUT_RUNTIME_ROOT=/home/lauer/.local/share/convmem-openclaw-runtimes/7dccb771b2f43288c52b7cb1dd18dedb18cb7e57/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
+PROVENANCE_INPUT_RUNTIME_TREE_SHA256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+PROVENANCE_INPUT_RUNTIME_REGULAR_FILE_COUNT=30421
+PROVENANCE_PACKET_FILE_ROLE_COUNT=13
+PROVENANCE_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2
+PROVENANCE_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2
+PROVENANCE_DURABLE_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2/packet
+PROVENANCE_DURABLE_REVIEW_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2/review
+PROVENANCE_PACKET_STATUS=PLAN_ONLY
+PROVENANCE_EXECUTION_AUTHORIZED=false
+```
+
+#### 18.26.1 Closed version projection
+
+For a CycloneDX component, an existing nonempty string `version` remains the exact
+observed version string. It is not normalized. A JSON `null` version may be projected
+only when all of these conditions hold simultaneously:
+
+1. `name` is a nonempty string;
+2. `bom-ref` and `purl` are both strings and are byte-for-byte identical; and
+3. that shared string matches exactly
+   `^pkg:github/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*@([0-9a-f]{40})$`.
+
+The projected component `version` is the captured 40-lowercase-hex group exactly. The
+original `name`, then-assumed JSON-null `version` state, `purl`, `bom-ref`, component
+index and complete SBOM object were intended to bind the projection; §18.27 later
+proves the raw member is absent and supersedes that premise. The projected version is
+an immutable source revision identifier for component identity; it is not a release
+tag, license conclusion, artifact identity or authority to fetch/build anything.
+
+There is no second derivation route. Empty or non-string names; an absent, empty or
+non-string version; a non-null empty version; missing or unequal `bom-ref`/`purl`;
+uppercase or non-40-hex revisions; qualifiers (`?`), subpaths (`#`), userinfo,
+percent-encoding or any mutable/non-GitHub form remain `PAUSE`. The collector may not
+case-fold, percent-decode, Unicode-normalize, URL/PURL-normalize, follow aliases, infer
+a tag/version, consult the network or substitute package metadata. Any component not
+representable by the original v1 rule or this one projection creates an exact open
+`unresolved` row and blocks build eligibility.
+
+#### 18.26.2 Freshness, negative controls and authority boundary
+
+A future v2 execution must start from absent `schema-v2` staging/durable roots and
+repeat the complete governed runtime inventory and bounded evidence selection. It may
+use only a freshly frozen collector whose sole semantic difference from the corrected
+v1 retry collector is §18.26.1. It may not read, copy, hard-link or cite any object,
+ledger, manifest, counter or partial output from `schema-v1/packet.work`. The v1
+collector identities, read counters and stop record remain evidence of the rejected
+attempt, not inputs to v2 acceptance.
+
+Negative controls must independently reject at least: null/empty/missing/non-string
+`name`; missing/empty/non-string `purl` or `bom-ref`; unequal `purl` and `bom-ref`;
+uppercase, short, long or nonhex revisions; tags or branch names; qualifiers, subpaths,
+userinfo or percent-encoded aliases; any non-GitHub PURL; any normalization or network
+lookup; reuse of a v1 object; a second projected component not satisfying the closed
+grammar; and a packet that omits the raw SBOM-to-projection evidence binding.
+
+**Authority boundary.** This section authorizes only planning-document edits. It does
+not authorize a schema-v2 directory, packet retry, runtime/evidence read, collector
+execution, network request, artifact parsing, retained-source inspection, packet or
+review creation, product/test/CI/runtime/configuration change, build, publication, PR
+update, merge, deployment, real OpenClaw, live data, watch activation, promotion or
+Gates D/W/D-V/E/F. Kiro exact-tip PASS and a new Ryan P0 execution grant naming the
+schema-v2 roots, collector identity, read ceilings and operations remain mandatory.
+
+### 18.27 Provenance-lock v3 exact absent-version projection
+
+The single granted schema-v2 P0 execution disproved one premise of §18.26 without
+weakening its fail-closed boundary. The retained `base64` component does not encode
+`"version": null`; its `version` member is absent. The frozen v2 collector therefore
+exited at `missing SBOM component version` before writing any ledger, manifest, result,
+durable packet or review disposition. That refusal is correct under schema v2. The
+schema-v2 staging tree is rejected diagnostic evidence: it remains untouched, is never
+a packet or authority, and no byte, object or conclusion may be copied, hard-linked,
+resumed or accepted by a successor.
+
+The stopped attempt is bound to these exact facts. Runtime-read counters are derived
+from the frozen collector's completed first inventory pass plus its completed bounded
+780-file evidence copy; the absence of `p0-result.json` is preserved rather than
+papered over. The v2 delta is exactly `1,968,515,123 + 600,463,206 =
+2,568,978,329` bytes, and the cumulative ledger is exactly `4,537,493,452 +
+2,568,978,329 = 7,106,471,781` bytes:
+
+```text
+PROVENANCE_SCHEMA_V3_PLAN_BASE_OVERLAY_SHA=2956f70127544111d5d32e2f51a3e044fe878fb4
+PROVENANCE_V2_COLLECTOR_SHA256=737aa48f1b6d99111e98ac0bd5b75445b1896ed937d5676e404b8630ad0c220f
+PROVENANCE_V2_COLLECTOR_DIFF_SHA256=3065e94c18525191ebed2759001ec399b042131f8ad1214cccdc6a102dfb7c78
+PROVENANCE_V2_COLLECTOR_RECEIPT_SHA256=c5d63d15468eb2270ebf9c1002aa7640b784159d33499c2737623f24a5047a1b
+PROVENANCE_V2_EXIT_STATUS=1
+PROVENANCE_V2_FAILURE=missing SBOM component version
+PROVENANCE_V2_RUNTIME_CONTENT_PASS_COUNT=1
+PROVENANCE_V2_RUNTIME_READ_BYTES=2568978329
+PROVENANCE_CUMULATIVE_RUNTIME_CONTENT_PASS_COUNT=3
+PROVENANCE_CUMULATIVE_RUNTIME_READ_BYTES=7106471781
+PROVENANCE_V2_EVIDENCE_FILE_COUNT=780
+PROVENANCE_V2_EVIDENCE_BYTES=600463206
+PROVENANCE_V2_PARTIAL_OBJECT_COUNT=651
+PROVENANCE_V2_PARTIAL_OBJECT_BYTES=600094627
+PROVENANCE_V2_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v2
+PROVENANCE_V2_RESULT_PRESENT=false
+PROVENANCE_V2_DURABLE_ROOT_PRESENT=false
+PROVENANCE_V2_REVIEW_ROOT_PRESENT=false
+PROVENANCE_V2_SBOM_OBJECT_SHA256=d3c068f4be653f38b8f6fca1dd1a9d1b41dc712dc9c3daa01b0e0f84882324d6
+PROVENANCE_V2_SBOM_COMPONENT_PATH=components/0
+PROVENANCE_V2_SBOM_COMPONENT_CANONICAL_SHA256=820f3546548cdbcda11395dbeeb274485b71582c0316bf0518d78fe7d209994b
+PROVENANCE_V2_SBOM_COMPONENT_KEY_SET_SHA256=1516b75285ffd5cd81f18728ba54daa50a5991ea5e63c0b00a4d71bb26bda2ee
+PROVENANCE_V2_SBOM_COMPONENT_KEYS=bom-ref,externalReferences,licenses,name,purl,type
+PROVENANCE_V2_SBOM_VERSION_KEY_PRESENT=false
+PROVENANCE_V2_SBOM_NAME=base64
+PROVENANCE_V2_SBOM_PURL=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
+PROVENANCE_V2_SBOM_BOM_REF=pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff
+PROVENANCE_V2_PROJECTED_VERSION=bf058e571ac5002b75b03fed38e33ed4e8d45eff
+```
+
+Schema v3 keeps every §18.25 encoding, file-role, ownership, closure,
+source-authority and review rule. It supersedes only §18.26.1's raw input-state
+predicate and binds new, absent, single-assignment roots:
+
+```text
+PROVENANCE_SCHEMA_VERSION=convmem.switchboard.provenance-lock.v3
+PROVENANCE_INPUT_RUNTIME_ROOT=/home/lauer/.local/share/convmem-openclaw-runtimes/7dccb771b2f43288c52b7cb1dd18dedb18cb7e57/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d
+PROVENANCE_INPUT_RUNTIME_TREE_SHA256=74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b
+PROVENANCE_INPUT_RUNTIME_REGULAR_FILE_COUNT=30421
+PROVENANCE_PACKET_FILE_ROLE_COUNT=13
+PROVENANCE_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3
+PROVENANCE_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3
+PROVENANCE_DURABLE_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet
+PROVENANCE_DURABLE_REVIEW_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review
+PROVENANCE_PACKET_STATUS=PLAN_ONLY
+PROVENANCE_EXECUTION_AUTHORIZED=false
+```
+
+#### 18.27.1 Sole exact absent-member projection
+
+An existing nonempty string `version` remains its exact observed string. Schema v3
+admits exactly one absent-member projection, and only when all of these predicates hold
+simultaneously:
+
+1. the complete retained SBOM object is exactly
+   `obj_sha256:d3c068f4be653f38b8f6fca1dd1a9d1b41dc712dc9c3daa01b0e0f84882324d6`;
+2. the component path is exactly `components/0`;
+3. the component's canonical compact sorted-key JSON SHA-256 is exactly
+   `820f3546548cdbcda11395dbeeb274485b71582c0316bf0518d78fe7d209994b`, its
+   sorted NUL-terminated key-set SHA-256 is exactly
+   `1516b75285ffd5cd81f18728ba54daa50a5991ea5e63c0b00a4d71bb26bda2ee`,
+   and its exact key set is `bom-ref,externalReferences,licenses,name,purl,type`;
+4. `version` is absent as an object member, not present as null, empty or another type;
+5. `name` is exactly `base64`, while `bom-ref` and `purl` are byte-identical and
+   exactly
+   `pkg:github/aklomp/base64@bf058e571ac5002b75b03fed38e33ed4e8d45eff`; and
+6. that shared string independently matches §18.26's closed GitHub grammar and its
+   captured group is exactly `bf058e571ac5002b75b03fed38e33ed4e8d45eff`.
+
+The projected component version is that exact captured revision. The projection record
+uses `raw_version_state="absent"`; it must not manufacture `raw_version=null` or a raw
+`version` member. The complete raw SBOM object, component path, canonical component
+hash, key-set hash, exact fields and projected value remain jointly bound evidence.
+This rule is an exact-object exception, not a declaration that missing and null are
+equivalent. An explicit JSON null, an absent `version` on any other component, or a
+reconstructed component with the same visible identity but different object/component
+hash remains `PAUSE`.
+
+There is no second derivation route. Case folding, percent decoding, Unicode/URL/PURL
+normalization, alias following, metadata substitution, tag/branch inference, network
+lookup, qualifier/subpath removal or object reconstruction is forbidden. The projected
+revision is component identity only; it grants no source authority, artifact identity,
+license conclusion, acquisition, build or publication authority.
+
+#### 18.27.2 Freshness, read ledger, controls and authority boundary
+
+A future schema-v3 P0 must start from absent `schema-v3` staging and durable roots.
+It may use only a freshly frozen collector whose sole semantic difference from the
+frozen v2 collector is §18.27.1. The collector must begin with the cumulative consumed
+ledger of three complete runtime-content passes and `7,106,471,781` runtime bytes. A
+future grant may allow at most two additional complete runtime passes plus the same
+bounded evidence selection (`4,537,493,452` additional bytes;
+`11,643,965,233` cumulative bytes). It may not reset, reinterpret or omit the v1/v2
+reads and may not read, copy, hard-link, cite or delete any v1/v2 partial object,
+ledger, result or manifest.
+
+Negative controls must independently reject at least: the same component with explicit
+JSON null, empty/non-string `version`, a manufactured `version` member, any different
+object/component/key-set hash or component path, another absent-version component,
+missing/changed/non-string name/PURL/`bom-ref`, unequal identities, uppercase/short/
+long/nonhex revision, tag/branch, qualifier, subpath, userinfo, percent alias,
+non-GitHub PURL, normalization/lookup/second route, raw-binding omission, v1/v2 object
+reuse, preexisting v3 output and a second projected component. The positive control is
+exactly one projection with `raw_version_state="absent"`; zero or two projections is
+`PAUSE`.
+
+**Authority boundary.** This section authorizes only the four planning-document edits.
+It does not authorize a schema-v3 directory, collector freeze or execution, runtime or
+evidence read, deletion of rejected staging, network request, artifact parsing,
+retained-source inspection, packet/review creation, product/test/CI/runtime/
+configuration change, build, publication, PR update, merge, deployment, real OpenClaw,
+live data, watch activation, promotion or Gates D/W/D-V/E/F. Kiro exact-tip PASS and a
+new Ryan P0 grant naming the schema-v3 roots, collector identity, cumulative/additional
+read ceilings and exact operations remain mandatory.
+
+### 18.28 Schema-v3 offline P0 result and independent-review hold
+
+The separately granted schema-v3 offline P0 execution completed exactly once. The
+frozen collector exited zero after publishing one immutable packet leaf, but the packet
+honestly reports `status="PAUSE"` and `build_eligible=false`. Structural completion is
+not provenance closure. The durable packet is eligible only for exact-byte review; it
+is not eligible for build, publication, CI admission or implementation use.
+
+#### 18.28.1 Exact result and immutable packet identity
+
+The following facts are frozen together and may not be recomputed into a replacement
+identity, edited in place or combined with schema-v1/v2 staging:
+
+```text
+PROVENANCE_V3_COLLECTOR_SHA256=26352b39f3ff53bf8a41c579c4c9aec8a8f8734235fe99db0a8480fa9964adad
+PROVENANCE_V3_COLLECTOR_SIZE=67575
+PROVENANCE_V3_COLLECTOR_FREEZE_SHA256=c8f457b589b6554a33921965339a74db086806d9243bb5fa4565df39b5e74ada
+PROVENANCE_V3_COLLECTOR_DIFF_SHA256=be6b82f89aaac51cc8ae1cbaace78d111dc0f00de92ee7a45009d57d182f59a5
+PROVENANCE_V3_RESULT_SHA256=db755121a38ffa43587662337bf896196a944bdaaf0019e899c13bc0afb43045
+PROVENANCE_V3_RESULT_SIZE=20155
+PROVENANCE_V3_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+PROVENANCE_V3_MANIFEST_SIZE=2957
+PROVENANCE_V3_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+PROVENANCE_V3_PACKET_BYTES=654147403
+PROVENANCE_V3_OBJECT_COUNT=651
+PROVENANCE_V3_OBJECT_BYTES=600094627
+PROVENANCE_V3_COMPONENT_COUNT=1221
+PROVENANCE_V3_NESTED_COMPONENT_EDGE_COUNT=1384
+PROVENANCE_V3_OWNED_FILE_COUNT=30402
+PROVENANCE_V3_UNOWNED_OR_AMBIGUOUS_FILE_COUNT=19
+PROVENANCE_V3_UNRESOLVED_COUNT=98608
+PROVENANCE_V3_RUNTIME_CONTENT_PASS_COUNT=5
+PROVENANCE_V3_RUNTIME_READ_BYTES=11643965233
+PROVENANCE_V3_NEGATIVE_CONTROL_COUNT=65
+PROVENANCE_V3_PACKET_STATUS=PAUSE
+PROVENANCE_V3_BUILD_ELIGIBLE=false
+PROVENANCE_V3_REVIEW_ROOT_PRESENT=false
+```
+
+`p0-result.json` is mode `0400` staging evidence outside the packet. The staging
+`packet.work` and durable `packet` trees are mode-for-mode and byte-for-byte equal at
+`PROVENANCE_V3_PACKET_TREE_SHA256`; every packet file is mode `0444`, every directory
+is mode `0555`, and there is no symlink, special file or writable member. The manifest
+is now bound by its exact size and SHA-256 as §18.25 required. Its self-exclusion remains
+unchanged: the manifest does not hash itself, and the later independent disposition
+must bind the manifest and each packet-file hash without entering or mutating the
+packet leaf.
+
+The execution consumed exactly the authorized two additional complete content passes
+and bounded evidence selection: `7,106,471,781 + 4,537,493,452 = 11,643,965,233`
+runtime bytes and five cumulative passes. It retained exactly one §18.27 projection,
+the hash-bound `base64` component at `components/0` with
+`raw_version_state="absent"`; all 65 closed negative controls passed. Network requests,
+external bytes and retained-source reads were all zero. The unchanged ownership ledger
+independently reconstructs runtime tree SHA-256
+`74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`.
+
+#### 18.28.2 Exact unresolved classification
+
+The packet contains exactly 98,608 blocking `OPEN` rows:
+
+| Subject and field family | Reason | Count |
+|---|---|---:|
+| Every one of 30,421 runtime files: `origin_kind`, `origin_id`, `origin_member_path` | `missing-origin` | 91,263 |
+| Every one of 1,221 components: `binary_artifact_ids` | `missing-binary` | 1,221 |
+| Every one of 1,221 components: `source_artifact_ids` | `missing-source` | 1,221 |
+| Every one of 1,221 components: `transformation_ids` | `missing-recipe` | 1,221 |
+| Every one of 1,221 components: `selected_license_expression` | `license-choice` | 1,221 |
+| Every one of 1,221 components: `license_notice_ids` | `missing-license` | 1,221 |
+| Every one of 1,221 components: `source_delivery_id` | `source-obligation` | 1,221 |
+| Eighteen runtime files: `component_id` | `multiple-owners` | 18 |
+| One runtime file: `component_id` | `missing-owner` | 1 |
+
+These rows are not failures to hide or a checklist that an implementer may clear by
+inference. They prove that offline installed-byte inspection alone cannot establish
+source authority, artifact lineage, build recipes or redistribution obligations. A
+reviewer may confirm structural correctness while retaining provenance and licensing
+`PAUSE`; no disposition may call this packet complete, build-eligible or publishable.
+
+#### 18.28.3 Independent review and successor boundary
+
+Kiro first reviews this exact result-binding plan for design/scope and verifies that it
+names the immutable packet rather than blessing its contents. Only a later Ryan grant
+may authorize an independent provenance/licensing reviewer, separate from the
+collector, to inspect the exact durable packet and atomically create only
+`PROVENANCE_DURABLE_REVIEW_ROOT/review-disposition.json`. The reviewer must recompute
+the manifest and every packet-file hash, retain all open unresolved IDs, test the
+§18.25/§18.27 negative controls independently, inspect the captured objects for
+credential/private-data and licensing concerns, and return only the schema's exact
+technical/provenance/licensing `PASS` or `PAUSE` values. The reviewer cannot edit,
+repair, supplement or reinterpret the packet.
+
+Because the unresolved ledger is nonempty, this packet cannot satisfy build
+eligibility regardless of a structural technical finding. After the disposition, any
+attempt to resolve provenance requires another plan-only packet that names exact HTTPS
+or immutable-VCS origins, retained-local roots, methods, redirects, parsers, byte
+ceilings, credentials prohibition and checkpoints component by component. Search
+results, ambient caches, rolling-host ownership, guessed URLs and `latest` remain
+non-authoritative. No acquisition permission is implied here.
+
+#### 18.28.4 Authority boundary
+
+This correction authorizes only four planning-document edits and exact-tip review. It
+does not authorize creation of the review root or disposition, any network or retained-
+source access, provenance acquisition, packet repair/replacement, another collector
+execution, runtime read or mutation, build, install, test execution, tag/release/asset,
+CI admission, product/test/CI/configuration/R2b change, PR `#342` update, merge,
+deployment, real OpenClaw, live data, watch activation, promotion or Gates
+D/W/D-V/E/F. Kiro PASS is not reviewer-write, acquisition, build, publication or
+implementation authority.
+
+### 18.29 Independent disposition and pre-acquisition replacement contract
+
+Section 18.28 records the historical state before independent review: at that
+checkpoint the review root was absent and reviewer creation was unauthorized. Kiro
+passed that exact result binding, Ryan separately authorized Claude as the independent
+provenance/licensing reviewer, and Codex independently verified the sole disposition
+write. The immutable packet itself did not change. This successor freezes the review
+result and defines only the closed planning contract required before any provenance
+request or clean replacement build may be proposed.
+
+#### 18.29.1 Frozen review result and continuing PAUSE
+
+The following identities and verdicts are one indivisible current-state binding:
+
+```text
+P0_RESULT_BINDING_SEMANTIC_PARENT_SHA=9ecb10c3bb1b17b6190951037338f46d1f8e076b
+P0_RESULT_BINDING_REVIEWED_OVERLAY_SHA=3b3550c85f8c0482353dac55998d7b6f0fcbbbb0
+PROVENANCE_V3_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+PROVENANCE_V3_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+PROVENANCE_V3_REVIEW_DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+PROVENANCE_V3_REVIEW_DISPOSITION_SIZE=8383806
+PROVENANCE_V3_REVIEWED_AT_UTC=2026-09-27T21:34:24Z
+PROVENANCE_V3_TECHNICAL_VERDICT=PASS
+PROVENANCE_V3_PROVENANCE_VERDICT=PAUSE
+PROVENANCE_V3_LICENSING_VERDICT=PAUSE
+PROVENANCE_V3_HUMAN_COUNSEL_REQUIRED=true
+PROVENANCE_V3_OPEN_UNRESOLVED_COUNT=98608
+PROVENANCE_V3_BUILD_ELIGIBLE=false
+PROVENANCE_V3_PUBLICATION_ELIGIBLE=false
+```
+
+The review directory is mode `0555` and contains only canonical mode-`0444`
+`review-disposition.json`. Its 98,608 sorted unique `open_unresolved_ids` equal the
+packet's complete ordered unresolved-ID set, and its twelve reviewed file bindings
+equal the manifest plus every manifest-listed packet file. Technical `PASS` means the
+packet is structurally exact; it is not runtime-relocation, provenance, licensing,
+build, publication or CI-admission PASS. Provenance and licensing remain `PAUSE`, and
+legal selections or reciprocal-source obligations remain human-counsel decisions.
+The original packet, disposition and exhausted read ledger are immutable inputs; none
+of their rows closes in place.
+
+#### 18.29.2 Deterministic lossless planning coverage
+
+The packet contains no authority observations, binary-artifact rows, source-artifact
+rows, transformation rows, license-notice rows or source-delivery rows. This section
+therefore cannot name 1,221 authoritative origins honestly. It defines the coverage
+algorithm and information required to prepare later exact operation packets while
+leaving unsupported authority fields unresolved.
+
+The baseline sets are fixed by the packet manifest:
+
+| Set | Count | Manifest primary-key SHA-256 |
+|---|---:|---|
+| Components | 1,221 | `b6b73ee112f898acf91c37ac0ad4e704ddd0fe131d3bcc5599c62d81bcf12146` |
+| Runtime file paths | 30,421 | `432a960cd59db58b5c0345ff5179f71fb3aa7bb7a8780b3b5d2a072f390fb7aa` |
+| Nested-component edges | 1,384 | `2c144bbd5a6d5e0a477a841847c5d9700de60c8a9488c546d09b13c138a3b580` |
+| Open unresolved IDs | 98,608 | `2f207467c9e9308eda47a0dd762e361d687c7f6d614a46a810b8a43fc4554838` |
+
+Planning sorts the exact component IDs by raw UTF-8 bytes and partitions consecutive
+groups of 64: exactly twenty component batches, with five components in the final
+batch. It independently sorts the exact unresolved IDs by raw UTF-8 bytes and creates
+consecutive 2,048-ID verification pages: exactly 49 pages, with 304 IDs in the final
+page. Pages prove coverage; they do not create authority or define operation budgets.
+The observed ecosystem totals—1,031 Rust, 124 Python, 58 system, seven
+`other-reviewed`, and one Node component—are cross-checks only, never authority
+classes or completeness substitutes.
+
+Each component unresolved row belongs to its exact component. Each file unresolved
+row may be assigned through only the frozen non-null `file-ownership.jsonl`
+`component_id`. The 18 multiply-owned files and one unowned file form one explicit
+19-file ownership-dispute queue containing all four unresolved fields for each file;
+planning never selects an owner to simplify batching. All 1,384 nested-component
+edges remain dependencies. Reusing one upstream acquisition across components neither
+merges component identities nor removes nested licensing or source-delivery duties.
+
+Every future planning artifact must prove pairwise-disjoint primary assignments and
+exact union equality to all four baseline sets and independently recompute the
+manifest counts and primary-key hashes. An omission, duplicate, reassignment, new
+subject, changed parent identity, altered nested edge or ownership guess is `PAUSE`.
+Batching cannot multiply an operation packet's aggregate request, retry, content,
+decoded or expanded-byte ceiling.
+
+#### 18.29.3 Candidate records are not acquisition authority
+
+Each component or ownership work item must state at least:
+
+- `baseline_component_id`, exact covered unresolved IDs or an independently enumerable
+  set plus count/hash, affected runtime paths and nested dependencies;
+- exact evidence object IDs and member, JSON-pointer or byte-range citations;
+- candidate origin, candidate state, remaining authority gap and required proof; and
+- proposed operation, checkpoint and failure disposition.
+
+The planning-only candidate states are `UNRESOLVED`, `CANDIDATE_ONLY` and
+`READY_FOR_REVIEW`; they do not extend schema-v3 enums and never close a packet row.
+A package name, PURL, familiar registry convention, installed metadata URL, SBOM URL,
+search result, guessed path, ambient cache, current-host ownership or `latest` may
+support a cited candidate but cannot establish artifact authority. Ryan may nominate
+an exact candidate for later review, but nomination authorizes neither access nor a
+provenance conclusion. If immutable source or binary identity is absent from currently
+authorized evidence, the item stays unresolved. A metadata-resolution request is
+itself acquisition; a newly discovered origin or redirect stops the operation and
+requires a successor plan.
+
+A later operation may reach `READY_FOR_REVIEW` only when it names an exact HTTPS URL,
+immutable VCS remote and object, or exact authorized retained-local root and paths,
+plus all of:
+
+- allowed method and ordered permitted redirects;
+- request, retry and wall-clock ceilings;
+- compressed, decoded and expanded-byte ceilings plus archive member/depth limits;
+- pinned parser/tool identity and data-only behavior with no acquired-byte execution;
+- checksum, signature, VCS-object or equivalent identity verification;
+- expected packet roles and fresh staging/durable coordinates;
+- credential prohibition, responsible actor, checkpoints and fail-closed disposition.
+
+No such origin or operation is granted by this correction. A complete cited planning
+artifact, Kiro exact-tip review and a new Ryan operation-specific grant are required
+before one network request, VCS fetch or retained-source read.
+
+#### 18.29.4 Host-path evidence and clean-replacement rule
+
+The independent reviewer found three packet-owned ELF objects containing rejected-host
+paths. Codex reproduced the evidence without reading the original runtime:
+
+| Runtime path | Packet object / component | Exact evidence |
+|---|---|---|
+| `lib/libtcl8.6.so` | `obj_sha256:a69a8d60eb3240f152a22f42f99e3bbd15ba60dc9d232615709406511d057d9b` / `cmp_sha256:01ade610ab72de8c23aa63afe15e12d6cdbd00aeb76d5c326e61557af9e43367` | eight `/home/lauer/miniforge3` occurrences at byte offsets 61547, 1564224, 1564488, 1564752, 1565024, 1565288, 1835457 and 1835936; ELF `DT_RPATH=/home/lauer/miniforge3/lib:/home/conda/feedstock_root/build_artifacts/tk_1769459871528/_build_env/lib` |
+| `lib/libtk8.6.so` | `obj_sha256:3aef1cd676469b0e6d0402d3db3d74b9a64d25b3988adf069f8eae112a3dde0c` / `cmp_sha256:0aadfc99d8d94d11d49bbfb88d3752461e320a35f7f369bdf656baff3b795b7a` | one occurrence at byte offset 39637 and the same absolute ELF `DT_RPATH` |
+| `lib/libtinfow.so.6` | `obj_sha256:60ecdf843974955b99a8b0e63d2167915ca046c88e01a7c0245a1fa3a380c8d8` / `cmp_sha256:bc9d05dedaedcfa6a8db1a50a1138dc51f269e74c45242e68b765d20ff489768` | `/home/lauer/miniforge3/share/terminfo` at byte offset 225640; ELF `DT_RPATH=$ORIGIN/.` |
+
+These bytes disclose a local account path and prove ambient-host relocation. The Tcl
+and Tk loader paths are also loader-search hazards. They do not prove that a host
+escape occurred, and the packet's technical schema PASS must never be relabeled as
+runtime-relocation PASS.
+
+The only admissible remediation is a fresh replacement from independently locked
+source, artifacts, configuration, patches, recipes and toolchains. The reviewed
+recipe must prevent host/build-prefix embedding before construction. Copying the
+rejected binaries, rolling-host substitution, post-build ELF or string rewriting,
+`patchelf`, `chrpath`, binary prefix replacement, or any edit to the rejected runtime,
+packet or disposition is forbidden. The existing `conda-prefix-relocation` enum is
+not blanket repair authority. Removing Tcl, Tk or another component is a separate
+reviewed minimization decision requiring complete loader/import/data closure; the
+path finding alone grants no removal. Parent-governed CPython, Unicode, Node and
+qualified-workload behavior remains unchanged.
+
+Future qualification must scan the complete delivery set for host/build prefixes in
+ELF loader paths, debug and printable strings, generated configuration, Tcl package or
+data paths and terminfo lookup. It must inspect loader semantics and run with the
+rejected host paths unavailable. Two builds from distinct disposable prefixes must
+show that host-dependent paths do not influence distributable bytes. It must also
+reject out-of-tree or traversing `$ORIGIN`, inherited loader/Tcl/terminfo fallback,
+synthetic external libraries or data that make tests pass, omitted transitive
+dependencies, and runtime PASS with failed provenance, privacy or compliance closure.
+Any allowed absolute path requires one exact reviewed purpose and containment; there
+is no blanket `/usr`, environment or “debug-only” exception.
+
+#### 18.29.5 Closed sequence and authority boundary
+
+The only admissible successor sequence is:
+
+1. Kiro reviews this exact pre-acquisition planning contract.
+2. A separately reviewed planning artifact supplies complete cited candidate coverage
+   and preserves every unsupported item as unresolved.
+3. A separate exact metadata/acquisition operation packet and Ryan grant name the
+   precise origins, operations, ceilings, parsers, fresh roots and stop conditions.
+4. Codex performs only that bounded collection; an independent reviewer and human
+   counsel evaluate the resulting immutable bytes.
+5. Only a fresh successor lock with zero unresolved rows and independent technical,
+   provenance and licensing PASS may become build-eligible.
+6. A separately reviewed recipe/build packet and Ryan grant may then authorize one
+   clean construction, full host-path negative controls and qualification.
+7. The actual three-role delivery set receives independent technical and licensing
+   review before any separately authorized publication, CI admission or corrective
+   implementation.
+
+New evidence roles, closure rules or semantic schema fields require a new schema
+version and fresh coordinates. Counsel questions cannot be discharged by model-
+generated legal rationale. The rejected runtime, schema-v1/v2 staging, schema-v3
+packet, disposition and PR `#342` remain immutable and unchanged.
+
+**Authority boundary.** This correction authorizes only the four named planning-
+document edits and exact-tip design review. It authorizes no network request,
+retained-source inspection, acquisition, collector or evidence execution, packet/
+disposition mutation, binary repair, runtime construction, publication, CI admission,
+implementation, PR update, merge, live OpenClaw use or later gate. Planning PASS is
+not execution authority.
 
 ## Jargon TL;DR
 
@@ -4029,10 +7122,44 @@ before Kiro; the `0f1216f` report does not certify either later revision.
 | Monotonic supersession | Once a valid successor supersedes an assertion, that predecessor stays historical even if later successors are revoked or themselves superseded. |
 | Project binding | An opaque, service-owned membership assertion assigned only by trusted ingestion and resolved through an operator-owned registry; ordinary corpus metadata and paths cannot supply it. |
 | Scope oracle | A response difference that lets a caller infer whether an otherwise inaccessible record exists. |
+| Pylint pair identity | The sorted two-module identity extracted from one raw `R0801` message; line spans are evidence, not selectors. |
+| Pylint semantic identity | The canonical message fields compared across raw Pylint reports; raw report order and bytes remain evidence but are not the verdict oracle. |
 | Strict generation | A derivative of one exact cumulative authority head; atomic publication may instead select no serving generation. |
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
 | Track A | ConvMem session-chat indexing used for handoff evidence; it is not a durable decision record. |
+| Ordinary/qualified partition | The proof that every collected repository pytest node runs exactly once in its applicable ordinary (`O`) or qualified (`Q`) environment, with no gaps or overlap. |
+| Fenced publication | A lineage state that deliberately makes authority unavailable while a publication operation is unresolved. |
+| Authority-content identity | The content-derived R2b identifier computed from the canonical governed-member manifest; it attests bytes and does not authorize capture. |
+| Qualified-runtime delivery packet | The exact archive, inventory, extraction, compatibility, provenance and replacement contract for making the frozen strict-test runtime available to CI; it is not runtime qualification of real OpenClaw. |
+| Replacement delivery set | The inseparable runtime archive, compliance/corresponding-source archive and canonical manifest built from a complete reviewed component lock after the first archive failed publication provenance/licensing review. |
+| Component lock | The canonical file-to-component, binary/source artifact, recipe, license/notice and source-delivery mapping; installed metadata or an SBOM alone is only an input. |
+| Provenance-lock packet | The canonical immutable ledgers, content-addressed evidence objects, manifest and independent disposition that prove the component lock is complete before any replacement build. |
+| CycloneDX revision projection | The schema-v3 exact-object rule that projects the immutable 40-lowercase-hex GitHub revision only for the one hash-bound `base64` component whose raw `version` member is absent; null or any other missing version stays `PAUSE`. |
+| Source authority | An exact original distributor/project, signed index/checksum, immutable source revision or retained package/build record permitted by the grant; a search result, ambient cache or current-host inference is not authority. |
+| Licensing disposition | The fail-closed public-redistribution result. `PAUSE` means byte integrity may pass while publication remains forbidden. |
+| Pre-acquisition planning contract | The lossless component/obligation partition and exact operation requirements used to prepare later grant-ready acquisition packets; it authorizes no read or request. |
+| Clean replacement | Fresh bytes built from independently locked inputs and recipes; never a repaired or prefix-rewritten rejected binary. |
 
-**TL;DR:** [Arc none] Two concrete runner contradictions are repaired; independent manager and
-component-hash contracts are preserved. BUILD PASS; TEST NOT YET RUN; LIVE-DATA and PROMOTION BLOCKED. Grok implements the fixed
-T0–T5 scope only after exact-tip review and Ryan's grant; production gaps authorize no redesign.
+**TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
+evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main
+reconstruction and inner-role correction established the fresh three-tip differential at
+`65bbfd6f`; §18.18's first Pylint correction then reached `c71d37a` but paused exact acceptance at
+456 findings / 71 `R0801`. Section 18.19's test-local correction and a fresh differential passed at
+`caec5c6`, but exact Pylint acceptance paused because the old 454-total rule did not freeze
+`R0401` enumeration. Section 18.20's paired seeded Pylint rule then passed at `9da6dd98`; final M8
+run 1 paused because two passing current-main safety nodes raised the unchanged selected legacy
+suite from 116/115 to 118/117. Section 18.21 preserves that PAUSE and freezes only the exact
+one-path/two-integer successor correction, with selectors, deselections and test logic unchanged.
+The first qualified-runtime archive later passed local byte validation and Kiro packet review but
+failed independent publication provenance/licensing review. Section 18.24 keeps that archive
+immutable and rejected, and defines a new three-role replacement delivery set whose component
+lock, build, final packet and publication require separate reviews and Ryan grants. Exact-tip Kiro
+PASSed that replacement plan at `3402e62a`. Section 18.25 now freezes the provenance-lock
+packet's canonical schema, exact packet/review roots, source-authority boundary and negative
+controls without creating evidence; exact-tip Kiro review of this schema is next and authorizes no
+provenance execution. The first offline P0 attempt later stopped at one CycloneDX component believed
+to have a null version. Section 18.26 preserved schema v1 and defined schema v2, but the single
+granted v2 run proved the raw `version` member is absent and correctly stopped without a result or
+durable packet. Section 18.27 preserves both rejected attempts and defines only a fresh-root
+schema-v3 exact-object absent-member projection; it authorizes no collector freeze, retry or read.
+Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.

@@ -1,197 +1,310 @@
-# Arc Brief — ConvMem Switchboard (OpenClaw + ConvMem integration)
+# Arc Brief — ConvMem Switchboard
 
-> **Every model working on this arc must read this file at session start.**
+> **Arc: ConvMem Switchboard.** Current-state snapshot. Historical milestones and
+> evidence remain in the architecture/execution plans and Git history.
 
-**Routing snapshot: 2026-09-24. Owner: the active Codex Switchboard supervisor.**
-This snapshot carries forward the supervisor-owned [published STATUS](https://github.com/alanmz-crypto/convmem/blob/b55de5b43475595c08a00a4b1b5d2ef2aebd9796/docs/plans/STATUS-openclaw-convmem-integration.md)
-and [M11 overlay](https://github.com/alanmz-crypto/convmem/blob/b55de5b43475595c08a00a4b1b5d2ef2aebd9796/docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md) on
-`plan/2026-09-24-openclaw-convmem-m11-pylint-remediation`, exact tip
-`b55de5b43475595c08a00a4b1b5d2ef2aebd9796`. The paired semantic parent is
-`b810fcd7ee545399a368afada2b0e7d9dd7821f6`; these are **not** this documentation branch's SHA.
-The closeout verified pushed Git identities, not the test results anew. The
-outcomes below are the existing supervisor packet's record, not a new verdict.
+## 1. Product goal
 
-Before choosing work, the active supervisor checks that branch and the latest
-exact-tip review, Ryan grant and checkpoint receipt. If they have advanced,
-follow the newer applicable evidence; do not repeat a completed review from this
-snapshot. This cleanup neither creates a hold nor lifts the existing one. Do not
-apply its commits to the M11 source branch or include them in its reviewed plan
-range. Main's relative architecture/execution copies are older: use the exact
-packet links in §9, not this routing branch as a governing plan.
+Provide OpenClaw a version-adapted, read-only ConvMem connector without making
+OpenClaw, prompts, generated text or connector state an authority source. The
+connector may retrieve only within a startup-bound operator scope, may not write or
+approve ConvMem data, and may not weaken existing ConvMem behavior.
 
-## 1. What This Is For
+Done for the bounded merge slice means: the exact reviewed connector is safely
+integrated with current main; ordinary tests run under ordinary CI; the exact strict
+fixture tests run under the immutable qualified runtime; both sets reconcile to the
+complete collected universe; doctor and fenced-publication safety defects are closed;
+R2b content identity converges; M8/MCP/Pylint and required GitHub checks pass; Kiro
+passes the exact integrated tip; and Ryan separately authorizes merge. Real OpenClaw,
+live data and later Gates D/W/D-V/E/F are not part of this slice.
 
-OpenClaw is the user-facing orchestrator; ConvMem is the shared, read-only
-evidence and memory layer. This arc designs and lands the connector that lets
-OpenClaw — and the agents it dispatches — query ConvMem's memory at runtime,
-without letting unscoped retrieval, prompt-injection escalation,
-external-channel compromise, or unsafe transcript capture weaken ConvMem's
-authority or integrity.
-
-**Done means:** a version-adapted, read-only OpenClaw-to-ConvMem connector is
-live, with server-enforced project/site/domain scope as a hard ceiling,
-`related()` performing post-traversal authorization, `ask()` gated until
-synthesized-result handling is proven safe, and no durable write/approve
-capability exposed to OpenClaw. The still-open question of whether OpenClaw's
-*dispatched child agents* automatically inherit ConvMem access is answered by
-observing a real OpenClaw run, not assumed from design alone.
-
-## 2. System Design
+## 2. System state
 
 ```text
-OpenClaw (orchestrator)
-  │
-  ├─ dispatches child agents to do tasks
-  │     └─ open question: do these children get an MCP connection to
-  │         ConvMem, or start with no memory access? (unanswered — needs
-  │         an observed real run, see §6)
-  │
-  └─ read-only, scoped MCP connector to ConvMem
-        Option A (chosen): strict profile, project/site/domain scope bound
-        by the server instance; tool args may only narrow, never widen;
-        resources absent by default; related() denies all-or-nothing when
-        any node is out of scope.
+current main 5c6a4a8 ─┐
+                       ├─ PR #342 head 94f29eb ── required pytest RED
+reviewed M11 evidence ─┘                            │
+                                                   ├─ doctor import containment defect
+                                                   ├─ fenced retry/recovery defect
+                                                   ├─ qualified CI has no published runtime
+                                                   └─ R2b content identity not converged
 
-ConvMem (shared memory, unchanged authority)
-  ├─ ledger owns durable facts; Chroma is a rebuildable serving projection
-  └─ durable writes remain Ryan-approved CLI operations only
+reviewed plan-only §18.22 / §10.20 at a23d843
+        │
+        ├─ §18.23 / §10.21 local runtime packet Kiro PASS at c63e52b
+        │       └─ independent provenance/licensing FAIL / PAUSE
+        │               └─ first archive immutable and rejected for publication
+        │
+        ├─ §18.24 / §10.22 replacement delivery-set plan
+        │       └─ three roles: runtime + compliance/source + manifest
+        │       └─ Kiro exact-tip PASS at 3402e62a
+        │
+        ├─ §18.25 / §10.23 provenance-lock schema v1
+        │       └─ Kiro PASS; offline P0 stopped in disposable staging
+        │       └─ one component was initially classified as null-version
+        │
+        ├─ §18.26 / §10.24 provenance-lock schema v2 plan
+        │       └─ Kiro PASS; one granted P0 stopped fail-closed
+        │       └─ raw component omits version; no result/durable packet
+        │
+        ├─ §18.27 / §10.25 provenance-lock schema v3 plan
+        │       └─ Kiro PASS; exact-object absent-member projection only
+        │       └─ one granted offline P0 completed at the exact read ceiling
+        │       └─ immutable packet PAUSE: 98,608 unresolved rows
+        │
+        ├─ §18.28 / §10.26 P0 result-binding plan
+        │       └─ exact result/manifest/packet identities frozen
+        │       └─ Kiro PASS; independent disposition now frozen
+        │
+        ├─ §18.29 / §10.27 pre-acquisition + clean-replacement plan
+        │       └─ disposition: technical PASS, provenance/licensing PAUSE
+        │       └─ 98,608 blockers partitioned losslessly; no origin invented
+        │       └─ three host-path-bearing ELFs require clean replacement
+        │
+        │ Kiro PASS at a10a84d → current-main reconciliation and exact-tip re-review
+        │ → separately planned exact origins
+        │ → separately granted acquisition → clean build/review/publication
+        ▼
+held doctor → publisher/recovery → CI → R2b inventory corrections
+        │ fresh CI/M8/MCP/Pylint/safety evidence
+        ▼
+Kiro integrated-tip PASS → Ryan merge decision
 ```
 
-Key invariants (from `ARCHITECTURE-openclaw-convmem-integration.md`):
-OpenClaw is coordinator, never durable-memory authority; a bound scope is a
-hard ceiling callers can only narrow; an omitted selector inherits the bound
-scope rather than becoming unscoped or erroring; `cross_domain=true` is
-rejected under a bound scope; `related()` authorizes after traversal, before
-rendering, and denies all-or-nothing; transcript capture is a separate,
-blocking data-integrity phase gated behind the poison-transcript/Chroma
-crash-loop fix, not ordinary wiring.
+The bounded synthetic implementation and durable evidence are preserved. Kiro passed
+the PR-corrective design at overlay
+`a23d84390daa6b784d61b86b112361023363aae8`. Kiro then passed the separate
+runtime-delivery packet at `c63e52be138d0c101e8898dee929e33c33267672`, but Codex's
+independent provenance/licensing review and Kiro's independent concurrence both
+returned `PUBLICATION_ELIGIBLE=false`, `LICENSING_DISPOSITION=PAUSE`. The first
+archive stays immutable, local and rejected for publication. Sections 18.24/10.22 now
+define only the replacement delivery-set plan, which Kiro passed at
+`3402e62a8479011814bfa76ce9e1c3269dc34350`. Sections 18.25/10.23 froze
+schema v1; Kiro passed it at `5f3978525c8685f59329ccae78d184d4a1822b4b`.
+Ryan then granted an offline P0 attempt. It proved the exact 30,421-file runtime tree
+after a bounded collector retry, but stopped before packet publication on a component
+initially classified as `version=null`. No durable v1 packet or review root exists;
+its disposable `packet.work` remains rejected PAUSE evidence. Sections 18.26/10.24
+defined schema v2 around that explicit-null premise. Kiro passed it, but the single
+granted v2 run proved the raw component omits `version` and correctly stopped before a
+result or durable packet. Its one completed runtime pass and evidence copy bring the
+cumulative consumed ledger to three passes and 7,106,471,781 bytes. Sections
+18.27/10.25 defined a schema-v3 successor at fresh roots. Kiro passed it, Ryan granted
+one collector freeze and one offline P0 execution, and Codex completed that execution
+without network or retained-source access. The immutable packet binds the exact
+30,421-file runtime tree, 651 evidence objects, 1,221 components, one exact `base64`
+absent-member projection and 65 negative controls. It is honestly `PAUSE` and not
+build-eligible because 98,608 provenance/licensing rows remain open. Sections
+18.28/10.26 froze the exact result, manifest and packet for review. Kiro passed that
+binding, Ryan separately authorized Claude's independent review, and the canonical
+disposition at SHA-256 `45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669`
+records technical `PASS`, provenance and licensing `PAUSE`, and required human counsel
+without changing the packet. That review also found three captured ELF objects with
+embedded `/home/lauer/miniforge3` paths; Tcl/Tk additionally carry absolute loader
+paths. Sections 18.29/10.27 now define lossless pre-acquisition coverage and require a
+clean replacement build from independently locked inputs. They name no authoritative
+origin and authorize no request, retained-source read, repair, build, corrective
+implementation or external publication.
+PR `#342`
+remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
+the absent publishable qualified runtime.
 
-## 3. What Exists Right Now
+## 3. What exists right now
 
-| Surface | State |
+| Surface | Current state |
 |---|---|
-| Architecture direction | **BOUNDED BUILD/TEST PASS** for synthetic T0–T5; the current plan-only correction freezes an M11 lint-remediation boundary without changing T0–T5 semantics or weakening CI |
-| Bounded implementation | **ACCEPTED** at `8010fb060c2edc29e1b09d7a30b1a1da2689d489` over original baseline `7809f20dc53d9dd19f765c3ec3214a3df54ca5bf`; two M8 runs and exact-tip Kiro conformance passed |
-| Frozen M11 integration baseline | `9193f5ec744f059d07a20612489b210527b5660a`; accepted implementation and current main have no product-path overlap, but acceptance does not transfer without reconstruction and fresh evidence |
-| M11 integration branch | Reconstruction, reviewed-plan correction and follow-up evidence repairs are **PRESERVED, CLEAN AND PUSHED** at `9c6421a6891fd8a861a51f4fed410f541b53148c` on `feat/2026-09-23-openclaw-convmem-m11-integration` |
-| M11 verification | Two fresh M8 runs and all seven legacy MCP regressions pass at `9c6421a`; merge readiness is **PAUSED** because the unchanged current-main Pylint gate reports 699 new occurrences |
-| M11 lint correction | **PLAN-ONLY / NOT AUTHORIZED.** Architecture §18.9 and Execution §10.7 freeze an exact 44-path remediation that leaves the workflow, committed baseline and gate algorithm unchanged; Kiro exact-tip review and a new Ryan grant are next |
-| Runtime/evidence | Runtime hash `sha256:74a12c…` remained unchanged; successful M8/MCP evidence and the failed Pylint evidence are durable. Another run requires new parent-bound paths in a Ryan grant |
-| Installed OpenClaw capability | Last probed at `2026.3.2`, while a newer release was identified. M11 does not run or change OpenClaw; before any Gate D test, the installed distribution must be deliberately updated or pinned and freshly capability-probed/reviewed |
-| Related arc | [`STATUS-openclaw-watch-coverage.md`](STATUS-openclaw-watch-coverage.md) — separate arc, covers ConvMem watching OpenClaw's *committed repo files*, not this runtime connector |
+| Pull request | **OPEN / MERGE BLOCKED** — `#342`, base `5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`, head `94f29ebabee31112cccb223fd1445cb782aac6eb` |
+| Required checks | CodeQL, secret scan and Pylint pass; required `pytest (3.12)` fails with 83 failures |
+| Pytest failure families | 22 fixture-only inner-role nodes, 56 qualified-runtime/Unicode nodes, five R2b authority-content identity nodes |
+| Doctor safety | **REVIEWED PLAN / NOT IMPLEMENTED** — invalid/import-refused MCP profile can abort all of doctor because `SystemExit` is not contained |
+| Publisher safety | **REVIEWED PLAN / NOT IMPLEMENTED** — historic fenced record can match operation ID without independently proved input digest |
+| CI applicability | **REVIEWED PLAN / NOT IMPLEMENTED** — §18.22/§10.20 freeze complete `U=O∪Q` ordinary/qualified execution without skip/selector weakening |
+| Rejected runtime archive | **LOCAL BYTE PASS / PUBLICATION FAIL** — exact 30,421-file tree SHA-256 `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b`; archive SHA-256 `6f9cfa93e3847793a42279e6ff79e07ed0b47c23d6ec7a368a4e8cb530ce594e`; immutable local diagnostic evidence only |
+| Replacement delivery set | **PLAN-ONLY / KIRO PASS** at `3402e62a` — §18.24/§10.22 require a rebuilt runtime archive, compliance/corresponding-source archive and canonical manifest from a complete reviewed component lock |
+| Provenance-lock schema v1 | **KIRO PASS / P0 PAUSE** at `5f397852` — exact runtime tree proved; collection stopped on a component initially classified as null-version; no durable packet/review root exists and disposable staging is rejected evidence |
+| Provenance-lock schema v2 | **KIRO PASS / P0 PAUSE** at `2956f701` — the one granted run proved the raw `base64` component omits `version`; it stopped before result/ledger/manifest/durable packet creation, and its partial staging remains rejected evidence |
+| Provenance-lock schema v3 | **KIRO PASS / OFFLINE P0 PAUSE** — one exact run completed with five cumulative passes and 11,643,965,233 bytes; durable packet tree `491ae60b…` contains 98,608 open rows and is not build-eligible |
+| P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
+| Pre-acquisition and host-path plan | **KIRO PASS at `a10a84d` / MAIN RECONCILIATION RE-REVIEW PENDING** — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; draft PR `#345` replaces conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
+| Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
+| R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
+| Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
+| Real OpenClaw | **NOT EXERCISED / BLOCKED** — no installation, upgrade, runtime qualification, deployment or live use is authorized |
+| Related maintenance plane | OpenClaw Watch Coverage is separate; no watch activation is authorized here |
 
-## 4. Completion State
+## 4. Completion state
 
-| Milestone | Status | Blocking on |
+| Milestone | Status | Blocking condition |
 |---|---|---|
-| Architecture direction and bounded fixture contract | **DONE — BUILD PASS** | Current-main reconstruction does not reopen semantics |
-| M0–M8 implementation and Gate B/C evidence | **DONE — TEST PASS / ACCEPTED** at `8010fb0` | Applies only to the exact historical baseline/revisions/runtime/evidence |
-| M11 replay and pin reconciliation | **DONE / PRESERVED at `a11b7a2`** | no acceptance transfer; branch remains unmerged |
-| M11 reviewed-plan allowlist correction | **DONE / PRESERVED at `9c6421a`** | exact-blob/product-allowlist/source-inventory checks passed |
-| M11 fresh M8 and MCP evidence | **PASS at `9c6421a`** | two M8 runs and seven legacy MCP regressions pass; exact-tip acceptance withheld because Pylint failed |
-| M11 Pylint remediation | **PLAN-ONLY / PAUSED** | exact-tip Kiro review and new Ryan grant for the 44-path correction |
-| Merge readiness | **NOT YET PROVEN** | requires unchanged actual Pylint gate PASS, full pytest, repeated M8/MCP evidence at the final source, durable verification and Kiro integrated-tip PASS |
-| Phase 1A/1B real OpenClaw operation | **BLOCKED** | Gate D runtime qualification and later production gates |
-| Child-agent inheritance question | **UNANSWERED** | requires observing a real OpenClaw dispatch run after Phase 1B lands |
-| Transcript capture | **BLOCKED** | independent poison-transcript/Chroma upsert crash-loop fix; explicitly out of scope for this phase |
+| Architecture and bounded T0–T5 contract | **DONE / preserved** | Does not authorize production or real OpenClaw |
+| M0–M8 bounded implementation | **TEST PASS / accepted** at `8010fb0` | Historical exact baseline/runtime only |
+| M11 current-main reconstruction and evidence | **PASS / preserved** at `94f29eb` | Does not satisfy current required GitHub pytest context |
+| PR creation | **DONE** — PR `#342` | Merge not authorized |
+| PR required pytest | **FAIL** | Ordinary CI cannot execute qualified strict nodes correctly |
+| PR-corrective plan | **KIRO PASS / preserved** at `a23d843` | Does not authorize implementation |
+| Doctor import containment | **REVIEWED PLAN / NOT AUTHORIZED** | Ryan implementation grant after runtime gate |
+| Fenced publication recovery | **REVIEWED PLAN / NOT AUTHORIZED** | Ryan implementation grant after runtime gate |
+| CI ordinary/qualified partition | **REVIEWED PLAN / NOT AUTHORIZED** | Runtime delivery + Ryan implementation grant |
+| First runtime packet | **KIRO PASS / PUBLICATION FAIL** at `c63e52b` | Archive stays immutable and rejected for publication |
+| Replacement delivery-set plan | **KIRO PASS / preserved** at `3402e62a` | Does not authorize provenance execution or build |
+| Provenance-lock schema v1 | **KIRO PASS / OFFLINE P0 PAUSE** | Disposable v1 staging is rejected; no in-place repair, resume or acceptance transfer |
+| Provenance-lock schema v2 | **KIRO PASS / OFFLINE P0 PAUSE** | Exact absent-member refusal preserved; no result/durable packet and no in-place retry, repair, deletion or reuse |
+| Provenance-lock schema v3 P0 | **KIRO PASS / OFFLINE P0 PAUSE** | Durable packet exists and verifies; 98,608 unresolved rows block build eligibility |
+| P0 result binding | **KIRO PASS / INDEPENDENT REVIEW PAUSE** | Exact disposition preserves structural PASS while provenance/licensing and build eligibility remain blocked |
+| Pre-acquisition and host-path planning | **KIRO PASS at `a10a84d` / RECONCILIATION RE-REVIEW PENDING** | Conflict-free current-main semantic parent and milestone overlay; later origin planning and every operation remain separately gated |
+| Plan PR | **DRAFT / RE-REVIEW PENDING** — `#345` replaces conflicting `#344` | Exact current-main base, four Switchboard planning documents only, conflict-free merge tree; do not transfer the prior exact-tip PASS to its new Git identities |
+| Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
+| R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
+| Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
+| Merge | **BLOCKED / Ryan-owned** | Required checks green + safety review + Kiro exact-tip PASS + Ryan decision |
+| Gates D/W/D-V/E/F, live data, deployment, promotion | **BLOCKED** | Separate future architecture, review and Ryan grants |
 
-## 5. Your Role
+## 5. Your role
 
-**If Ryan sent you here:** review the exact linear-range M11 Pylint-remediation
-plan. Confirm that the observed 699-occurrence failure is bound to its exact
-report/environment, the edit surface is exactly 44 Switchboard paths, the real
-current-main workflow/baseline/gate remain byte-identical, and the suppression
-rules cannot become a blanket waiver. Confirm full pytest, two fresh M8 runs,
-seven MCP regressions and exact-tip Kiro conformance remain mandatory after
-remediation. Do not edit product/test code, run another acceptance suite,
-provision/rebind a runtime, merge, update/run OpenClaw, or touch live data.
-Only a later Ryan grant may authorize applying the plans and bounded correction
-to preserved source tip `9c6421a`. Real OpenClaw remains blocked by Gate D/W and
-later gates.
+**If Ryan sent you here now:** perform Kiro's exact-tip design/scope re-review of the
+current-main §§18.29/10.27 pre-acquisition and clean-replacement semantic parent and
+milestone overlay. Confirm their substantive plan blobs preserve the already-passed
+`a10a84d` design, the PR diff contains exactly the four Switchboard planning documents,
+the milestone overlay is the direct child of the semantic parent, and current-main
+STATUS facts are preserved. Reconfirm disposition `45442e93…`, all 98,608 blocking
+IDs, the exact manifest set identities, lossless coverage and the clean-build-only
+boundary for the three host-path-bearing objects.
 
-## 6. What Remains Before This Arc Is Live
+Do not access a provenance origin or retained-source root, create a work-item/evidence
+packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
+disposition, repair a binary, build a replacement, select a license, create
+compliance/source bytes, apply §18.22, edit product/tests/CI/inventory, create a tag/
+release/asset, rerun acceptance evidence, update PR `#342`, merge, deploy or run real
+OpenClaw.
 
-1. Kiro performs exact-tip binary design/scope review of the new semantic parent,
-   milestone overlay and STATUS in that exact packet, not this routing mirror.
-2. If Kiro passes, Ryan decides whether to grant resumption on preserved tip
-   `9c6421a`, naming the exact parent/overlay, 44 paths, integration
-   baseline/branch, rebound runtime prefix and durable evidence root.
-3. Under that grant, Grok applies every commit after plan base `c5513d5` through
-   the grant-named final overlay in reviewed first-parent order and stops; Codex
-   proves the range contains no merge, gap, reorder or out-of-scope path, all
-   four reviewed document blobs match the overlay, and every other byte still
-   equals `9c6421a`.
-4. After commit-specific `CONTINUE`, Grok completes the held production and
-   fixture/test lint checkpoints. Codex rejects a 45th path, broad suppression,
-   baseline/gate/config change or semantic drift.
-5. At one clean pushed tip, the unchanged current-main Pylint gate passes;
-   Codex then runs full pytest, M8 twice and the seven MCP regressions, preserves
-   durable evidence, and obtains Kiro exact-tip conformance review. Ryan alone
-   decides merge.
-6. Gate D/W, then Gate D-V and Gate E, remain separate later decisions. Before
-   Gate D, deliberately update or pin OpenClaw and perform a fresh capability
-   probe/review; no earlier version observation is qualification.
-7. A real OpenClaw run is observed to settle whether dispatched child agents
-   inherit ConvMem access by default; that observation becomes its own
-   Kiro-reviewed design decision, not an assumption.
-8. Transcript capture stays out of scope until the independent
-   poison-transcript/Chroma crash-loop data-integrity issue is separately
-   resolved and verified.
+## 6. What remains before merge and before live use
 
-## 7. Hard Stops
+1. Kiro returns binary exact-tip PASS or FAIL on the conflict-free current-main
+   §§18.29/10.27 semantic parent and milestone overlay. The prior `a10a84d` PASS is
+   preserved design evidence but does not transfer across the new Git identities.
+2. After PASS, prepare complete cited component and ownership work items using the
+   closed twenty-batch/49-page coverage contract. Unknown origin authority remains
+   unresolved; candidate names and URLs are not authority.
+3. A separate exact metadata/acquisition operation packet must name every allowed
+   origin/root, method, redirect, parser, byte/request ceiling, checkpoint and fresh
+   coordinate. Kiro review and another Ryan grant are required before any request,
+   VCS fetch or retained-source read.
+4. Codex may then perform only the granted bounded acquisition. An independent
+   provenance/licensing reviewer and human counsel inspect the resulting immutable
+   evidence. Only a later packet with zero unresolved rows plus independent technical,
+   provenance and licensing PASS can become build-eligible.
+5. A separately reviewed recipe/build packet must rebuild the host-path-bearing
+   components and complete runtime from independently locked inputs, without copying or
+   rewriting rejected binaries. Under a separate Ryan grant, a named builder creates
+   the three-role replacement set once in fresh disposable roots; Codex independently
+   qualifies it across two distinct build prefixes and host-path-negative controls.
+6. A plan-only final packet pins every name, size, hash and coordinate. Kiro and the
+   independent licensing reviewer inspect the actual final bytes. Only
+   after both PASS may Ryan consider a single-assignment publication grant. CI
+   admission remains a later separate grant.
+7. Ryan separately decides whether to grant the exact held product/test/CI/R2b
+   correction.
+8. Under those grants, Cursor applies the reviewed plan and stops at each held doctor,
+   publisher/recovery, CI and R2b inventory commit; Codex independently inspects and
+   issues commit-specific supervision.
+9. Codex runs fresh doctor, crash-matrix, ordinary/qualified CI, R2b convergence,
+   unchanged Pylint, two M8, seven MCP and durable-evidence verification on the exact
+   integration tip and actual GitHub PR merge commit.
+10. A focused independent safety/isolation audit reviews publisher recovery and CI
+   containment. Kiro reviews the exact integrated tip and evidence.
+11. Ryan alone decides whether PR `#342` may merge.
+12. Real OpenClaw still requires deliberate update/pin, fresh capability probe, Gate D
+   runtime/containment/distribution review, then Gates W/D-V/E and later promotion.
 
-- No implementation from the architecture or review alone — the execution plan,
-  exact-tip Kiro PASS, and exact applicable Ryan grant are all required.
-- No durable ConvMem write/approve capability exposed to OpenClaw.
-- No unscoped retrieval; a bound project/site/domain scope is a hard ceiling.
-- No `ask()` exposure to OpenClaw until synthesized-result handling is
-  independently verified.
-- No transcript capture before the independent data-integrity gate clears.
-- No OpenClaw plugin-tools/native-memory bridge into ACP workers without
-  separate review.
-- No OpenClaw upgrade without separate authorization.
-- No product/test correction or M8 retry until Kiro passes the exact plan tip
-  and Ryan issues a new resume grant.
-- Never add the four reviewed documents to a product allowlist or remove them
-  from source export, source inventory or `source_tree_sha256`.
-- Never raise or regenerate the Pylint baseline, change the workflow/gate,
-  exclude Switchboard paths, or replace the actual current-main gate with a
-  preserved-tip comparison.
-- No lint-remediation edit outside the exact 44 paths in Architecture §18.9;
-  no broad suppression or shared helper that weakens independent oracles.
+## 7. Hard stops
+
+- No merge while required `pytest (3.12)` is red or either safety defect remains.
+- No skip, xfail, marker, wildcard or failure-derived selector to make CI green.
+- No change to the Pylint job/baseline/gate or the existing M8 runner.
+- No import-time refusal weakening in `mcp_server.py`.
+- No ordinary publish/admission while a lineage is fenced.
+- No fence clearing when durable intent is present or uninspectable.
+- No runtime `latest`, mutable replacement, host fallback, repair or substitution.
+- No publication or CI use of the rejected §18.23 archive.
+- No schema-v3 collector rerun, runtime/evidence read, packet mutation or replacement;
+  the P0 budget is exhausted and its packet is immutable.
+- No review-root or disposition mutation: the canonical independent disposition exists
+  at `45442e93…`, retains all 98,608 open IDs and is immutable.
+- No provenance HTTP/VCS request, retained-source read or artifact parsing before a
+  separately reviewed origin-by-origin acquisition plan and exact Ryan grant.
+- No promotion of a package name, PURL, installed metadata/SBOM URL, search result,
+  familiar registry, guessed path, ambient cache, current-host ownership or `latest`
+  into artifact authority.
+- No omission, duplication, reassignment or owner guessing in the 1,221-component,
+  30,421-file, 1,384-edge and 98,608-unresolved baseline sets.
+- No repair, resume, deletion, copy, hard-link or authority citation from schema-v1/v2
+  staging; their partial output and consumed reads remain rejected PAUSE evidence.
+- No CycloneDX version inference except the exact §18.27 raw-object/component/key-set/
+  path-bound absent-member rule; explicit null and every other missing version remain
+  `PAUSE`.
+- No packet repair: packet and review leaf roots are separately atomic and immutable.
+- No copying or post-build repair of the three host-path-bearing ELF objects; no
+  `patchelf`, `chrpath`, binary prefix rewrite, rolling-host substitution or blanket
+  absolute-path/debug exception. Clean construction from independently locked inputs
+  is the only admissible remedy.
+- No replacement build from copied rejected-runtime or rolling-host bytes; every input
+  must be in the independently reviewed component lock.
+- No partial delivery set: runtime, compliance/source and manifest roles are jointly
+  required; the two archives must agree byte-for-byte on their shared component-lock/
+  notice corpus, while the external manifest binds both without self-reference.
+- No runtime release publication without exact external-action authorization.
+- No external publication while `PUBLICATION_ELIGIBLE=false` or
+  `LICENSING_DISPOSITION=PAUSE`; Kiro PASS does not clear licensing.
+- No R2b member-set/seed/closure/route change and no live R2b operation.
+- No sixth reviewed control document and no product allowlist widening.
+- No duplicate hashing-helper refactor in this correction.
+- No deployment, real OpenClaw, live data, watch activation, promotion or Gate
+  D/W/D-V/E/F action.
 
 ## 8. Relationship to ConvMem and OpenClaw
 
-This arc supplies the runtime *query* path (OpenClaw → ConvMem, read-only).
-[`STATUS-openclaw-watch-coverage.md`](STATUS-openclaw-watch-coverage.md)
-supplies the maintenance-knowledge plane (ConvMem watching OpenClaw's own
-committed repo files). The two are independent — this arc can be designed
-and reviewed without watch coverage, but the child-agent observation step in
-§6 is more useful once watch coverage is live, since it gives a concrete
-example (e.g. a Gmail CLI recipe) to check whether a dispatched agent
-actually reaches for it.
+This arc supplies the read-only runtime query path from OpenClaw to ConvMem. The
+ordinary/qualified CI split is a merge-safety control for ConvMem, not runtime
+qualification of real OpenClaw. Static R2b inventory convergence proves governed
+source identity only; it does not authorize a capture. OpenClaw Watch Coverage remains
+a separate repository-knowledge arc.
 
-## 9. Key Files
+## 9. Key files
 
 | Purpose | Path |
 |---|---|
-| Architecture | [Exact semantic parent](https://github.com/alanmz-crypto/convmem/blob/b810fcd7ee545399a368afada2b0e7d9dd7821f6/docs/plans/ARCHITECTURE-openclaw-convmem-integration.md) — do not substitute an older local/main copy |
-| Execution | [Exact parent execution contract](https://github.com/alanmz-crypto/convmem/blob/b810fcd7ee545399a368afada2b0e7d9dd7821f6/docs/plans/EXECUTION-openclaw-convmem-integration.md) and [paired M11 overlay](https://github.com/alanmz-crypto/convmem/blob/b55de5b43475595c08a00a4b1b5d2ef2aebd9796/docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md) |
-| Arc status | `docs/plans/STATUS-openclaw-convmem-integration.md` (this file) |
-| Human-language orientation | `docs/plans/README-openclaw-convmem-integration.md` |
-| Sibling arc | `docs/plans/STATUS-openclaw-watch-coverage.md` |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.29 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.27 |
+| Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
+| Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
+| Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
+| Implementation pull request | `https://github.com/alanmz-crypto/convmem/pull/342` |
+| Replacement plan pull request | `https://github.com/alanmz-crypto/convmem/pull/345` — draft pending exact-tip re-review |
+| Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
-## 10. Update Protocol
+## 10. Update protocol
 
-Keep this file a current-state snapshot. Overwrite sections 3–6 after Kiro
-review, Ryan approval, execution planning, or implementation. Do not append
-session narrative. Add one line below per milestone-level change.
+Keep this file a current-state snapshot. Overwrite sections 3–6 when the plan is
+reviewed, a grant is issued, a held correction lands, evidence changes state, or the PR
+merges. Session narrative belongs in Track A. Keep one current milestone-level line.
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-24 | Codex documentation closeout | Routed the retired final-review bookmark and shared indexes to the existing supervisor-owned `b55de5b` snapshot; no new grant, verdict, code, plan-contract or runtime change. |
-| 2026-09-24 | Codex | Replaced the self-invalidating fixed plan-commit count with the complete reviewed linear range from `c5513d5` through Ryan's grant-named final overlay. |
-| 2026-09-24 | Codex | M11 is preserved at `9c6421a` with M8/MCP PASS and Pylint PAUSE; the plan now freezes an exact 44-path remediation that keeps the current-main gate and baseline unchanged. |
-| 2026-09-24 | Codex | M11 replay/pinning is preserved at `a11b7a2`; first M8 attempt paused pre-import on the four reviewed control documents; a plan-only exact-blob/unchanged-product-allowlist correction now awaits Kiro and a new Ryan resume grant. |
-| 2026-09-23 | Codex | Bounded M0–M8 is accepted at `8010fb0`; M11 is paused before current-main reconstruction while the plan-only `9193f5e` reconciliation awaits exact-tip Kiro review and a new Ryan integration decision. |
-| 2026-09-23 | Codex | Exact-tip Kiro PASS at `d1ca459`; bounded execution overlay and PR #327 are ready for Ryan's two-SHA Execute decision. Separate implementation branch is partial through M3/T1–T2; no TEST PASS or live authorization. |
+| 2026-09-27 | Codex | Kiro passed the design at `a10a84d`; draft PR `#345` now replaces conflicting/out-of-scope `#344` with an exact current-main four-document reconstruction awaiting re-review. |
+
+**TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
+connector but cannot merge. The first qualified-runtime archive passed byte validation
+and Kiro packet review but failed independent publication provenance/licensing review;
+it remains immutable and unpublished. Kiro passed the separately gated three-role
+replacement plan at `3402e62a`. Schema v1 stopped on a component initially classified
+as null-version. Schema v2 passed review, but its one run proved the raw member is
+absent and stopped before result or durable packet creation. Schema v3 then passed
+review and its one granted offline P0 produced immutable packet tree `491ae60b…` at
+the exact read ceiling. Independent disposition `45442e93…` confirms the packet is
+technically exact but retains provenance/licensing `PAUSE`, human-counsel requirement
+and all 98,608 blockers. Kiro passed §§18.29/10.27 at `a10a84d`; draft plan PR `#345`
+replaces conflicting `#344` with an exact current-main four-document reconstruction
+that requires fresh exact-tip review. The plan defines lossless pre-acquisition coverage and
+clean replacement for three host-path-bearing ELFs without naming an authoritative
+origin. Acquisition, binary repair, build, implementation, publication, evidence
+reruns, merge, real OpenClaw and later gates remain unauthorized.
