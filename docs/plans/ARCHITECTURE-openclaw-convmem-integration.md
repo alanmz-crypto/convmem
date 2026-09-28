@@ -7457,6 +7457,75 @@ Initial `proposed_operation` is always explicit `null`. `READY_FOR_REVIEW` remai
 reserved vocabulary but is rejected in this initial packet; state is `UNRESOLVED`
 when `candidates` is empty and `CANDIDATE_ONLY` otherwise.
 
+#### 18.31.2a Closed scalar, container and ordering map
+
+Section 18.25.1's canonical scalar grammar is inherited without widening: hashes are
+lowercase 64-hex strings, sizes/counts/ordinals/offsets/lengths are nonnegative JSON
+integers (length is positive), modes are four-character octal strings, booleans are
+JSON booleans, and paths/IDs/enum values are strings with no implicit coercion.
+`schema` is always the exact v2 schema unless a different exact fixture/result schema
+is named. `packet_tree_sha256`, `input_packet_tree_sha256` and
+`disposition_sha256`/`input_disposition_sha256` are raw hashes, not prefixed IDs.
+Work-item, citation, component, object and unresolved IDs must match their governed
+prefix plus lowercase 64-hex grammar. Every copied scalar retains the exact source
+JSON type and value; no stringify/parse conversion is permitted.
+
+The nested container types and orderings are closed:
+
+| Field | Exact JSON type and order |
+|---|---|
+| `component_gaps`, `origin_gaps` | arrays of gap objects, unique and sorted by `unresolved_id` |
+| `owned_paths` | array of owned-path objects, unique and sorted by raw `path` |
+| `primary_nested_edges` | array of nested-edge objects, unique and sorted by raw `edge_key` |
+| `inbound_edge_keys`, `unresolved_ids`, `citation_ids`, `gap_unresolved_ids` | sorted unique string arrays |
+| `citations` | array of citation objects, unique and sorted by `citation_id` |
+| `candidates` | array of candidate objects, unique and sorted by `candidate_id` |
+| `candidate_owners` | array of candidate-owner objects, unique and sorted by `component_id,candidate_id` joined with NUL |
+| `host_path_findings` | array of host-finding objects, unique and sorted by raw `runtime_path` |
+| `offsets` | sorted unique arrays of nonnegative integers |
+| `component_ids`, `work_item_ids` | arrays of strings; sorted unique except the batch's two arrays are parallel in raw component-ID order |
+| `files` | array of manifest descriptors sorted by raw `path` |
+| `records` | array of manifest record descriptors sorted by raw `primary_key` |
+| output tree rows | array of exact `{path,mode,size,sha256}` objects sorted by raw `path` |
+
+Within those objects, every citation field is a string except
+`evidence_object_id`, which is a governed object-ID string or explicit null, and
+`locator`, which is exactly one locator object from §18.31.2. Every gap field is a
+string except `blocks`, which is boolean. Every candidate field is a string except
+its two sorted string arrays. Every candidate-owner field is a string except its
+sorted citation-ID array. An owned path uses string `path`, `mode`, `sha256`,
+`owner_component_id` and `file_citation_id`, integer `size`, and an origin-gap array.
+A nested edge uses only strings. A host finding uses strings except its integer array
+`offsets`, sorted citation-ID array and boolean `clean_replacement_required`.
+
+A component row's scalar fields `schema`, `packet_tree_sha256`,
+`disposition_sha256`, `work_item_id`, `work_item_kind`, `baseline_component_id`,
+`component_citation_id`, `planning_state`, `checkpoint` and `failure_disposition`
+are strings; `clean_replacement_required` is boolean; `proposed_operation` is JSON
+null; its remaining fields have exactly the array types above. A dispute row has
+string scalars `schema`, both hashes, both IDs, `work_item_kind`, `runtime_path`,
+`mode`, `sha256`, `file_citation_id`, `ownership_reason`, `planning_state`,
+`checkpoint` and `failure_disposition`; `size` is integer; `owner_gap` is one gap
+object; `selected_owner_component_id` and `proposed_operation` are JSON null; all
+remaining fields use the array types above.
+
+A batch/page row uses string `schema`, ID and authority/hash fields, integer
+`ordinal` and count, and the declared string arrays. Every coverage summary is one
+object with integer `count` and hash-string `primary_key_sha256`; coverage top-level
+counts are integers and its three eligibility/authority fields are booleans. A
+negative-control row uses strings for schema/IDs/hashes/verdicts/rejection codes and
+booleans for the two created flags and `passed`. A manifest descriptor uses string
+`path`, `mode`, `sha256`, hash-string `primary_key_sha256`, integer `size` and
+`record_count`, plus the ordered record-descriptor array; a record descriptor contains
+only string `primary_key` and hash-string `record_sha256`.
+
+The result uses strings for schemas/SHAs/roots/path/verdicts, integers for sizes,
+counts/read passes/read bytes/access counters, and booleans for authorization and
+eligibility. `argv` is an ordered string array. `author.path` is a string,
+`author.sha256` a hash string and `author.size` an integer; its interpreter has string
+`path`, hash strings `sha256`/`dependency_manifest_sha256`, integer `size` and exact
+string `version`. No result field is nullable or optional.
+
 #### 18.31.3 Exact primary records
 
 Each of the 1,221 rows in `component-work-items.jsonl` has exactly these keys:
