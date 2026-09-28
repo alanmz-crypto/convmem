@@ -7717,6 +7717,10 @@ the future freeze must independently bind its exact executable hash/size and loa
 standard-library dependency manifest. Third-party packages, subprocesses, shell
 evaluation, network and real evidence are forbidden.
 
+Every v3 work-item manifest/result `plan_base_sha` and the freeze manifest
+`plan_base_sha` equal `WORK_ITEM_CANDIDATE_GAP_PLAN_BASE_SHA`; no v2 plan-base value
+survives in a v3 output.
+
 #### 18.32.2 Canonical row and field locators
 
 All initial citations use only the two locator forms already admitted by §18.31:
@@ -7803,6 +7807,11 @@ same-cardinality baseline returns zero violations, exactly 42 individual runs re
 their matching code, and no rejected run creates a final packet or result. A 43rd
 semantic exception, combined mutant or nondeterministic receipt is `PAUSE` and requires
 another versioned plan.
+
+Accordingly, schema v3 `negative-controls.jsonl` contains exactly 42 rows rather than
+40, and every row's `fixture_schema` is
+`convmem.switchboard.work-item-synthetic-fixture.v3`. Its keys, ordering,
+deterministic-receipt rules and all other §18.31.4 semantics remain unchanged.
 
 #### 18.32.5 Exact synthetic freeze packet and ceilings
 
