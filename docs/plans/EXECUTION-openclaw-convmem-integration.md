@@ -1,14 +1,16 @@
 # Execution Plan — OpenClaw bounded ConvMem reader
 
 **Current status (2026-09-27): PROVENANCE PACKET TECHNICAL PASS;
-PROVENANCE/LICENSING PAUSE; PRE-ACQUISITION DESIGN REVIEW PENDING; EXTERNAL PUBLICATION BLOCKED.** The exact integration tip
+PROVENANCE/LICENSING PAUSE; COMPONENT/OWNERSHIP WORK-ITEM DESIGN REVIEW PENDING;
+EXTERNAL PUBLICATION BLOCKED.** The exact integration tip
 `94f29ebabee31112cccb223fd1445cb782aac6eb` and its durable evidence remain
 preserved. Required GitHub `pytest (3.12)` is red, and focused ultrareview identified
 doctor-import containment and fenced-retry safety defects. Section 10.20 controls that
 held PR correction; §10.21 records its rejected runtime-delivery packet; §10.22's
 replacement delivery-set plan received exact-tip Kiro PASS at `3402e62a`;
-§§10.23–10.26 freeze the schema-v3 packet and disposition sequence; and §10.27 defines
-pre-acquisition coverage and clean replacement. The first archive passed byte/mode/
+§§10.23–10.26 freeze the schema-v3 packet and disposition sequence; §10.27 defines
+pre-acquisition coverage and clean replacement; and §10.28 defines the closed offline
+work-item design. The first archive passed byte/mode/
 extraction validation, but incomplete provenance, licensing evidence and embedded host
 paths keep publication at `PAUSE`. Earlier §§10.1–10.19 remain
 historical evidence. This edit authorizes no implementation, provenance execution,
@@ -2440,6 +2442,79 @@ retained-source access, acquisition, evidence execution, packet/disposition muta
 binary repair, runtime construction, publication, CI admission, product/test/CI/R2b
 change, PR update, merge, real OpenClaw or later gate.
 
+### 10.28 Component/ownership work-item design and held authoring sequence
+
+Architecture §18.30 controls. The work-item schema is
+`convmem.switchboard.provenance-work-items.v1`, bound to current-main planning base
+`a986fce7e7c59ebbbe81a079a7e90c6bdaa816fb`, packet tree
+`491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5`, and
+disposition
+`45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669`.
+This execution section defines a future offline authoring sequence only. The proposed
+staging/durable roots remain absent, the packet status is `ABSENT`, and authoring and
+acquisition authorization are both false.
+
+The held sequence is:
+
+1. **Verify the reviewed plan tip.** Require Kiro binary PASS on the exact semantic
+   parent and milestone overlay. Recheck that only the four Switchboard plans changed,
+   every §18.29 identity and hard stop remains intact, and no work-item root exists.
+2. **Freeze a future author.** A later Ryan grant must name one author implementation,
+   its hash/size, exact packet/disposition read roots, the two absent output roots,
+   read ceilings, seven output roles, canonical encoding and stop conditions. It may
+   authorize only offline reads of the immutable packet/disposition and one atomic
+   write; network, retained-source and runtime access remain zero.
+3. **Build the primary assignments.** Emit exactly 1,221 component work items and 19
+   ownership-dispute work items. Assign `7,326` component-level rows, `91,206`
+   uniquely owned-file origin rows and `76` disputed-file rows for one exact
+   98,608-ID disjoint union. Keep each uniquely owned path with its three origin rows;
+   keep each disputed path with all four rows and no chosen owner.
+4. **Bind component topology.** Assign each of the 1,384 nested edges exactly once to
+   its `container_component_id` work item; derive inbound references without counting
+   them as coverage. Preserve component identity and every nested obligation even when
+   later acquisitions share an upstream artifact.
+5. **Derive, never promote, projections.** Emit twenty 64-component scheduling
+   batches, with five items in the last, and 49 2,048-ID verification pages, with 304
+   IDs in the last. Prove exact union/hash equality. Neither projection may own a row,
+   change state, supply authority or multiply a later budget.
+6. **Project cited candidates only.** Candidate bytes must come from exact packet
+   records/evidence objects and retain file role, primary key, canonical record hash,
+   object identity and internal locator. State is only `UNRESOLVED`,
+   `CANDIDATE_ONLY` or `READY_FOR_REVIEW`; no state closes a row or authorizes access.
+   Unsupported origin/owner/license facts remain open.
+7. **Carry clean-replacement findings.** The component items covering Tcl, Tk and
+   tinfow bind the three exact §18.29.4 object/path/offset/loader findings and set
+   `clean_replacement_required=true`. They contain no copy, removal, prefix rewrite,
+   `patchelf`, `chrpath`, host fallback or other repair path.
+8. **Run the closed structural controls.** Reject identity, encoding, mode, count,
+   union, assignment, citation, state, authority, ownership, edge, license,
+   host-path, budget, root-freshness and acquired-byte mutants named by §18.30.7. Any
+   non-rejection or additional semantic rule is `PAUSE`; do not patch output.
+9. **Publish once and stop.** Only under that future grant, freeze the seven-file
+   packet and external mode-`0400` authoring result by same-filesystem atomic rename,
+   byte/mode verification and immutable durable copy. Return exact hashes/counts and
+   stop. Structural PASS is not acquisition readiness.
+10. **Independent review before origin planning.** A separately named reviewer
+    recomputes all packet/result hashes, assignments, candidate citations and controls
+    and may write only a separately granted disposition. Any repair requires a new
+    schema/version/root. Only reviewed exact work items may feed a later origin-by-
+    origin operation plan and Ryan grant.
+
+Acceptance for this planning phase is static only: exact §18.30 schema/role/state
+closure; arithmetic `1,221 + 19 = 1,240` and
+`7,326 + 91,206 + 76 = 98,608`; file partition `30,402 + 19 = 30,421`;
+1,384 primary edge assignments; twenty/49 projection boundaries; immutable input
+identities; host-path clean-build flags; negative-control completeness; and explicit
+absence of authoring/acquisition authority. No work-item bytes are acceptance evidence
+for this phase because none may be created.
+
+**Current result:** the work-item design is plan-only and awaits exact-tip Kiro review.
+It authorizes edits only to the four Switchboard planning documents. No work-item
+root/result/packet, immutable-packet read, runtime read, network request, retained-
+source read, metadata resolution, acquisition, owner/license selection, binary repair,
+build, publication, CI admission, product/test/config/R2b change, PR `#342` update,
+merge, deployment, real OpenClaw or later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2465,4 +2540,7 @@ authorized. Section 10.26 binds the resulting immutable `PAUSE` packet and prese
 independent technical-`PASS`/provenance-and-licensing-`PAUSE` disposition. Section 10.27
 freezes lossless pre-acquisition coverage and clean replacement for the three exact
 host-path-bearing ELF objects; it authorizes no origin resolution, request, retained-source
-read, acquisition, binary repair, build, publication or implementation.
+read, acquisition, binary repair, build, publication or implementation. Section 10.28
+freezes the seven-role offline work-item design, exact 1,240-item/98,608-ID assignment,
+twenty-batch/49-page projections, 19 unresolved ownership disputes and cited-candidate
+boundary; no work-item packet or operation is authorized.
