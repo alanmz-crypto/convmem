@@ -1,8 +1,8 @@
 # Milestone Execution Plan — ConvMem–OpenClaw
 
 **Current status (2026-09-28): SCHEMA-V3 PACKET TECHNICAL PASS;
-PROVENANCE/LICENSING PAUSE; WORK-ITEM SCHEMA-V3 MAPPING CORRECTION / KIRO REVIEW
-REQUIRED.** The accepted bounded implementation and
+PROVENANCE/LICENSING PAUSE; WORK-ITEM SYNTHETIC-EDGE FREEZE-RETRY CORRECTION /
+KIRO REVIEW REQUIRED.** The accepted bounded implementation and
 final M11 evidence remain preserved at
 `PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb`.
 Kiro passed the PR-corrective overlay `a23d843`; required GitHub `pytest (3.12)`
@@ -32,7 +32,11 @@ read because v1 did not close every field, identity, result and control receipt.
 Kiro passed §§18.31/10.29 at `dea026c`; the next synthetic-freeze preflight stopped
 before any root/read because candidate-gap and locator mappings remained implicit.
 Sections 18.32/10.30 preserve v2 absent and define only a fresh-root v3 mapping/freeze
-correction. No author or work-item packet exists. These
+correction. Kiro passed that exact overlay at `21f5acc`; the one granted synthetic
+freeze then stopped before a JSON write or final rename because the unmutated fixture
+returned `W026` on 163 duplicate edge keys. The stopped partial contains only failed
+author `44b59831…`; no receipt, final freeze or work-item packet exists. Sections
+18.33/10.31 preserve that partial and define only a fresh collision-free retry. These
 plans authorize no packet/runtime read, request, retained-source access, acquisition,
 owner or license selection, binary repair, build, runtime publication, evidence rerun,
 PR update or merge.
@@ -42,8 +46,9 @@ EVIDENCE AND KIRO CONFORMANCE PASS PRESERVED AT `94f29eb`; PR `#342` MERGE
 BLOCKED. RUNTIME BYTE/MODE/EXTRACTION VALIDATION PASS; PUBLIC REDISTRIBUTION
 PROVENANCE/LICENSING FAIL/PAUSE. REPLACEMENT DELIVERY-SET PLAN KIRO PASS;
 COMPONENT/OWNERSHIP WORK-ITEM PLAN MERGED AT `d79f03c`; KIRO EXACT-MAIN PASS;
-SCHEMA-V2 CLOSURE KIRO PASS AT `dea026c`; SCHEMA-V3 MAPPING CORRECTION AWAITS
-EXACT-TIP KIRO REVIEW.
+SCHEMA-V2 CLOSURE KIRO PASS AT `dea026c`; SCHEMA-V3 MAPPING KIRO PASS AT
+`21f5acc`; FIRST GOVERNED FREEZE PAUSE; EDGE-RETRY CORRECTION AWAITS EXACT-TIP
+KIRO REVIEW.
 PRODUCT/TEST/CI/RUNTIME EDITS, TEST EXECUTION, PR UPDATE, MERGE AND REAL OPENCLAW
 WORK REMAIN PAUSED.
 
@@ -54,7 +59,8 @@ WORK REMAIN PAUSED.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=fc039640c3a194a6c5fad1c4b0327e832ea968fb
+SEMANTIC_PARENT_SHA=aa01b216a85d11aaddc054dbb39ec2e1b557389a
+WORK_ITEM_SYNTHETIC_EDGE_RETRY_PLAN_BASE_SHA=21f5accd742f4e4e53760420e33d0ecfe4c62829
 WORK_ITEM_CANDIDATE_GAP_PLAN_BASE_SHA=dea026ce561e480ba3436d3c1cbea9bbcae6a14b
 WORK_ITEM_SCHEMA_CLOSURE_PLAN_BASE_SHA=49130975a776864f9ba4bdf7347146fc07a2f95c
 COMPONENT_OWNERSHIP_WORK_ITEM_PLAN_BASE_SHA=a986fce7e7c59ebbbe81a079a7e90c6bdaa816fb
@@ -161,13 +167,28 @@ PROVENANCE_WORK_ITEM_UNRESOLVED_COUNT=98608
 PROVENANCE_WORK_ITEM_PACKET_FILE_COUNT=7
 PROVENANCE_WORK_ITEM_NEGATIVE_CONTROL_COUNT=42
 PROVENANCE_WORK_ITEM_PACKET_STATUS=ABSENT
-PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_STATUS=PAUSE
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_RETRY_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_RETRY_AUTHORIZED=false
 PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_AUTHORIZED=false
 PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
 PROPOSED_WORK_ITEM_STAGING_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
 PROPOSED_WORK_ITEM_DURABLE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
 PROPOSED_WORK_ITEM_AUTHOR_FREEZE_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/v3
 PROPOSED_WORK_ITEM_AUTHOR_FREEZE_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/v3.partial
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_FREEZE_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/v3.partial
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_FINAL_ROOT_EXISTS=false
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_SHA256=44b59831e95c551d59c58be13ae64d88d19d7d4064d27299404b8eef697e490c
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_SIZE=37887
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_MODE=0644
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_PARTIAL_TREE_SHA256=00ae693740248bf2c323a12d0faad10663160decbcff00fb530233f191d00ce1
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_EXIT_STATUS=1
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_PARTIAL_MEMBER_COUNT=1
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_JSON_MEMBER_COUNT=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_RETRY_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/21f5accd742f4e4e53760420e33d0ecfe4c62829/v3
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_RETRY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/21f5accd742f4e4e53760420e33d0ecfe4c62829/v3.partial
+SYNTHETIC_EDGE_COUNT=1384
+SYNTHETIC_EDGE_PRIMARY_KEY_SHA256=718184327681f68dbdee4f0920eaea71f0d9b5a989c453f1c3bf2ddc7e867051
 PROPOSED_WORK_ITEM_AUTHOR_INTERPRETER=/home/lauer/miniforge3/bin/python3
 PROPOSED_WORK_ITEM_AUTHOR_INTERPRETER_VERSION=3.13.12
 PROPOSED_WORK_ITEM_AUTHOR_FREEZE_MAX_TOTAL_WRITTEN_BYTES=67108864
@@ -699,16 +720,25 @@ Review and authority order is mandatory:
     exact freeze coordinates/ceilings. Sections 18.32/10.30 advance to fresh work-item
     schema v3, freeze those mappings, add only `W041`/`W042`, and define one future
     six-file synthetic freeze. No execution is authorized by this overlay.
+57. Kiro passed the exact schema-v3 mapping overlay at
+    `WORK_ITEM_SYNTHETIC_EDGE_RETRY_PLAN_BASE_SHA`. Ryan granted the six-file freeze,
+    but its one process exited 1 before any JSON write or final root because the
+    baseline's 1,384 rows contained only 1,221 unique edge keys and returned `W026`.
+    The old partial preserves only author `PRESERVED_FAILED_WORK_ITEM_AUTHOR_SHA256`;
+    it is non-reusable failure evidence. Sections 18.33/10.31 keep schema v3 and every
+    mapping/control/ceiling unchanged, freeze one exact collision-free 1,384-key
+    construction and same-cardinality `W026` representative, and bind fresh absent
+    retry roots. This overlay authorizes no retry.
 
 ## 1. State ledger
 
 | State | Items |
 |---|---|
-| **Specified** | Semantic parent Architecture §§18.22–18.32 and Execution §§10.20–10.30; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; complete component/ownership work-item design and closed schema-v3 candidate-gap/locator/freeze contract; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
+| **Specified** | Semantic parent Architecture §§18.22–18.33 and Execution §§10.20–10.31; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; complete component/ownership work-item design; closed schema-v3 candidate-gap/locator/freeze contract; preserved failed freeze; collision-free retry construction; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
-| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model and work-item schema v2 at `dea026c`; the synthetic-freeze preflight then stopped before root/script/read on missing candidate-gap/locator semantics. No synthetic author has run. |
+| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model, schema v2 at `dea026c` and schema-v3 mappings at `21f5acc`. The first governed v3 freeze then failed closed on baseline `W026`; only its one-file partial exists and no receipt/final root/real read occurred. |
 | **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
-| **Unresolved** | Exact-tip Kiro review of work-item schema v3; separately granted six-file synthetic author freeze, real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Unresolved** | Exact-tip Kiro review of the synthetic-edge retry correction; separately granted fresh-root six-file retry, real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -796,8 +826,11 @@ M0 baseline/runtime input
   → exact-tip Kiro schema-v2 PASS at dea026c
   → synthetic-freeze preflight PAUSE before root/script/read
   → plan-only §18.32/§10.30 work-item schema v3 mapping/freeze closure
-  → exact-tip Kiro schema-v3 review
-  → separate six-file synthetic author-freeze grant; stop before real reads
+  → exact-tip Kiro schema-v3 PASS at 21f5acc
+  → first governed six-file freeze PAUSE on baseline W026; one-file partial preserved
+  → plan-only §18.33/§10.31 collision-free edge and fresh-root retry correction
+  → exact-tip Kiro retry-plan review
+  → separate fresh-root six-file synthetic retry grant; stop before real reads
   → separate bounded offline work-item authoring grant and independent review
   → separate exact metadata/acquisition operation packet, review and Ryan grant
   → bounded Codex acquisition at fresh coordinates
@@ -824,8 +857,8 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 M0–M8 and the preceding M11 evidence are accepted historical scope; they are neither
 reopened nor promoted into a green GitHub required check. M9, M10, watch coverage and
 complete-system review remain decision gates, not implementation work. The next
-possible activity is Kiro exact-tip review of work-item schema v3. Only after PASS may
-Ryan separately grant the exact six-file synthetic author freeze; real packet
+possible activity is Kiro exact-tip review of the synthetic-edge retry correction.
+Only after PASS may Ryan separately grant the fresh-root six-file retry; real packet
 authoring and independent review remain later separately granted activities.
 Because the replacement freezes `REPLACEMENT_PROVENANCE_CLOSURE=UNRESOLVED`,
 `REPLACEMENT_LICENSING_DISPOSITION=PAUSE` and
@@ -1348,7 +1381,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    pages and cited candidates non-authoritative; work-item schema v3 closes every
    seven-file field/type/null case, citation/candidate identity, candidate-gap set,
    canonical row/field/byte-range locator, nonrecursive packet-tree/result field and
-   deterministic control receipt before any author may be frozen; and
+   deterministic control receipt before any author may be frozen; the first governed
+   freeze's duplicate-edge PAUSE is preserved, and a retry can proceed only from the
+   exact collision-free 1,384-key construction at a fresh coordinate; and
    final R2b authority-content identity converges over the
    unchanged 120-member set.
 3. **Affected surfaces:** Five reviewed control documents; three closed
@@ -1366,7 +1401,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    immutable, and this plan neither creates nor changes them. Sections 18.30/10.28
    preserve historical v1/v2 designs; §§18.32/10.30 change only the four Switchboard
    plans and define the executable successor's exact mappings and six-file synthetic
-   freeze at fresh v3 roots. This overlay creates no freeze, packet or result. Future acquisition,
+   freeze at fresh v3 roots. Sections 18.33/10.31 preserve the failed one-file partial
+   and change only the four plans to bind collision-free synthetic edges and fresh
+   retry roots. This overlay creates no freeze, packet or result. Future acquisition,
    build/packet paths and three
    asset names must be frozen by reviewed successors before creation. No other path
    may change. Evidence uses grant-named disposable/durable roots only.
@@ -1387,8 +1424,10 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    parent and overlay; PR `#348` merged the reviewed plan at `d79f03c`, and Kiro
    returned exact-main PASS. The v1 and v2 freeze preflights each stopped without real
    reads or roots; v2 passed Kiro at `WORK_ITEM_CANDIDATE_GAP_PLAN_BASE_SHA` but left
-   candidate-gap and locator mappings implicit. Exact-tip Kiro PASS on this v3
-   successor, a separately granted six-file synthetic author freeze, a separately granted offline author,
+   candidate-gap and locator mappings implicit. Kiro passed the v3 successor at
+   `WORK_ITEM_SYNTHETIC_EDGE_RETRY_PLAN_BASE_SHA`; its separately granted freeze
+   preserved a one-file PAUSE after baseline `W026`. Exact-tip Kiro PASS on this retry
+   correction, a separately granted fresh-root six-file retry, a separately granted offline author,
    independent work-item packet review, a later exact operation packet and Ryan
    acquisition grant, and Kiro/
    licensing review of a zero-unresolved component lock remain mandatory
@@ -1408,8 +1447,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    This overlay creates no component work-item file or operation packet and performs no
    host-path repair; it freezes the seven exact file schemas, supporting-object
    grammars, candidate-gap sets, locator pointers/ranges, nonrecursive identities,
-   result, exact primary assignments, derived views, citation states, 42 receipts and
-   held six-file-freeze/author/review sequence. The
+   result, exact primary assignments, derived views, citation states, 42 receipts,
+   the preserved failed author identity, exact collision-free synthetic edge key-set
+   hash and held retry/author/review sequence. The
    duplicate hashing helper cleanup is excluded.
 6. **Tests/evidence:** Static schema proof for all thirteen file roles, canonical
    encoding/types/enums/nullability, nonrecursive IDs/hashes, separate immutable
@@ -1427,6 +1467,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    exact complete-row, field, owner-evidence and host-byte-range pointer proof;
    component-all-gap and dispute-owner-gap candidate assignment proof; nonrecursive
    output packet-tree/result proof;
+   failed-author SHA/size/mode/one-member partial proof; absent old final and fresh
+   retry roots; exact counter-derived component domain; 1,384-edge count/set/hash
+   proof; and same-cardinality `W026` replacement proof;
    arithmetic `1,221 + 19 = 1,240`, `7,326 + 91,206 + 76 = 98,608` and
    `30,402 + 19 = 30,421`; one primary container assignment for each of 1,384 edges;
    cited-candidate/state/ID-derivation closure; v1/v2/v3 root absence; exact
@@ -1467,7 +1510,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    uninstantiated; schema v2 also remains absent, while schema v3 uses fresh
    coordinates and cannot alias `components.jsonl`, vary candidate-gap mappings,
    reinterpret root/field/byte-range locators, publish a review leaf or self-hash its
-   manifest/result. The
+   manifest/result. The stopped schema-v3 freeze partial is failure evidence only and
+   cannot be mutated or reused; a retry uses only the §18.33 fresh roots and exact
+   two-round edge formula. The
    replacement set's three roles
    are jointly single-assignment at later reviewed exact coordinates and are never
    repaired, partially published, substituted or resolved through `latest`. The
@@ -1488,6 +1533,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    candidate without exact packet citation; candidate assigned an incomplete/foreign/
    prohibited gap set; root pointer substituted for a field/byte-range pointer or vice
    versa; `components.jsonl` alias/autodetection;
+   deletion, chmod, completion, rename, copy, import, execution or acceptance transfer
+   from the failed freeze partial; reuse of its coordinate; a synthetic edge collision,
+   wrong 1,384-key hash, changed counter domain or non-same-cardinality `W026` retry;
    state promotion with missing operation
    fields; work-item license selection; work-item host-path repair route; multiplied
    per-batch/page/component operation budget;
@@ -1519,13 +1567,15 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    was reached by PR `#348` merged at `d79f03c` and Kiro exact-main PASS. The initial
    v1 author-freeze preflight stopped before reads or roots; schema-v2 design passed
    Kiro at `WORK_ITEM_CANDIDATE_GAP_PLAN_BASE_SHA`, but its freeze preflight stopped
-   before root/script/read. Schema-v3-design-ready requires Kiro PASS on this exact
+   before root/script/read. Schema-v3-design-ready was reached by Kiro PASS at
+   `WORK_ITEM_SYNTHETIC_EDGE_RETRY_PLAN_BASE_SHA`; its first governed freeze is a
+   preserved baseline-`W026` PAUSE. Retry-design-ready requires Kiro PASS on this exact
    parent/overlay. Author-freeze-ready and
    work-item-packet-ready,
    complete-origin-planning, operation-packet-ready,
    acquisition-ready, provenance-closed, lock-ready,
    build-ready, packet-ready, publication-ready and CI-admission-ready are separate
-   later states defined by §§18.24–18.32/§§10.22–10.30; none is reached here.
+   later states defined by §§18.24–18.33/§§10.22–10.31; none is reached here.
    Publication-ready additionally requires actual-byte technical/provenance/licensing
    PASS and Ryan's exact external-action grant. Correction-ready additionally requires
    Ryan's exact implementation grant and the separately published/verified set. Merge-ready requires
@@ -1533,7 +1583,7 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    focused safety PASS, Kiro integrated-tip PASS and Ryan's final merge decision.
 10. **Ryan confirmation:** The one schema-v3 P0 execution is complete and not reusable.
     The independent reviewer write is complete and not reusable. Confirmation remains
-    mandatory separately for the exact six-file synthetic author freeze, offline work-item authoring
+    mandatory separately for the exact fresh-root six-file synthetic retry, offline work-item authoring
     at the exact absent roots,
     independent work-item review, complete cited origin planning and each later schema-
     bound metadata/acquisition operation, including exact roots, origins,
@@ -1550,7 +1600,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
     unresolved-group arithmetic, exhausted read ledger, disposition identity/schema/
     packet bindings and complete open-ID equality, manifest primary-key set identities,
     work-item role/schema/ID/state/citation closure, root absence, the exact
-    1,240-item/98,608-ID/1,384-edge assignments, batch/page/ownership-dispute coverage,
+    1,240-item/98,608-ID/1,384-edge assignments, failed-partial identity and old-final
+    absence, fresh retry-root absence, synthetic edge count/set/hash construction,
+    same-cardinality `W026`, batch/page/ownership-dispute coverage,
     host-path objects/offsets/loader findings,
     nonrecursive hashes, component-lock/file-ownership closure, binary/
     source/build/license/notice/source-delivery proof, three-role manifest/archive/
@@ -1563,9 +1615,10 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
     result-binding and independent disposition verdicts are preserved results.
     The merged pre-acquisition/clean-replacement plan and exact-main verdict are
     preserved results. The merged component/ownership work-item plan and exact-main
-    verdict are preserved results; schema-v2 design PASS and its preflight PAUSE are
-    preserved, while the schema-v3 correction is plan-only. Separate verdicts remain
-    mandatory for schema-v3 design, author freeze, the offline
+    verdict are preserved results; schema-v2 design PASS and its preflight PAUSE,
+    schema-v3 design PASS and the first freeze's baseline-`W026` PAUSE are preserved,
+    while the fresh-root retry correction is plan-only. Separate verdicts remain
+    mandatory for retry design, author freeze, the offline
     work-item packet and review; complete cited origin planning; every exact acquisition operation;
     successor component-lock completeness;
     replacement construction; runtime byte qualification; public redistribution/
@@ -1705,9 +1758,13 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 - [x] Kiro exact-tip PASS on §§18.31/10.29 at schema-v2 overlay `dea026c`.
 - [x] The schema-v2 synthetic-freeze preflight stopped before root/script/read because
       candidate-gap and locator mappings remained implicit.
-- [ ] Kiro exact-tip PASS on §§18.32/10.30 and the schema-v3 milestone overlay.
-- [ ] Separately granted exact six-file same-cardinality synthetic author freeze, with
-      one clean baseline and deterministic `W001`–`W042`, stopping before real reads.
+- [x] Kiro exact-tip PASS on §§18.32/10.30 at schema-v3 overlay `21f5acc`.
+- [x] The first separately granted schema-v3 freeze stopped before JSON/final-root/
+      real-input reads because the baseline returned `W026`; its exact one-file
+      partial is preserved and non-reusable.
+- [ ] Kiro exact-tip PASS on §§18.33/10.31 and this fresh-root retry overlay.
+- [ ] Separately granted exact six-file synthetic retry, with one clean 1,384-unique-
+      edge baseline and deterministic `W001`–`W042`, stopping before real reads.
 - [ ] Separately granted offline authoring and independent review of the exact
       seven-file work-item packet with 1,240-item/98,608-ID/1,384-edge disjoint-union
       proof; unknown origins and all 19 ownership disputes remain unresolved unless
@@ -1767,7 +1824,7 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 | SBOM absent-version projection laundering | Architecture §18.27 / external gate | `STATIC`, schema-v3 identity control | Reuse/delete v1 or v2 staging; treat null and absence as equivalent; change the raw object, component path/hash/key set/name/identity; project another absent component; use a tag, branch, uppercase/non-40-hex revision, qualifier, subpath, percent alias, normalization, lookup or second route; omit the raw binding | `PAUSE` before any durable packet. Only the exact hash-bound `base64` object at `components/0` with the exact absent `version` member may project; explicit null and every other missing version reject; all other §18.25 rules remain unchanged | Exact v1/v2 stop identities and cumulative read counters, absent fresh v3 roots, raw SBOM/object/component/key-set proofs, exact `raw_version_state="absent"` projection, complete §18.27 positive/negative matrix and proof no v1/v2 object entered v3 |
 | Schema-v3 P0 result laundering | Architecture §18.28 / external gate | `STATIC`, immutable-packet review control | Relabel structural completion as provenance closure; omit an unresolved row; reset the exhausted read ledger; rerun the collector; mutate/replace the packet; create the review disposition inside the packet; let the collector review itself; infer origin/license/source from installed metadata; acquire from an unreviewed origin | `PAUSE`; only the exact result/manifest/packet identities are reviewable. All 98,608 open rows remain blocking; the review root stayed separate and absent until its distinct grant, and no acquisition/build/publication follows from either Kiro PASS or the later disposition | Exact collector/result/manifest/packet hashes, staging/durable byte-mode equality, 651 object hashes, nine unresolved-group counts, five-pass/11,643,965,233-byte ledger, historical absent review root and later disposition bound to every reviewed hash |
 | Pre-acquisition or host-path laundering | Architecture §18.29 / external gate | `STATIC`, planning and clean-build control | Omit/duplicate/reassign a component, file, edge or unresolved ID; guess an owner; treat package/PURL/metadata/SBOM/search/registry/cache/host hints as authority; multiply ceilings by batch; mutate the disposition; copy or rewrite a rejected ELF; use `patchelf`/`chrpath`, prefix replacement, host fallback, traversing `$ORIGIN`, inherited loader/Tcl/terminfo state, synthetic external libraries/data or a blanket absolute-path/debug exception | `PAUSE`; coverage must be disjoint and equal to the four manifest sets, unsupported origins stay unresolved, every operation is separately reviewed/granted, and the three path-bearing components are rebuilt only from independently locked inputs. Runtime PASS cannot override provenance/privacy/compliance failure | Exact disposition and manifest primary-key hashes; twenty-batch/49-page/19-file queue proof; packet citations; three object/path/offset/RPATH bindings; exact operation packet; two distinct-prefix build comparison; complete delivery-set host/build-prefix and loader-semantic scans |
-| Component/ownership work-item laundering | Architecture §18.32 / external gate | `STATIC`, offline-planning control | Create/freeze before a grant; use `components.jsonl` as an alias; vary candidate gap sets or root/field/byte-range locators; add/omit a freeze or packet role/key; omit/duplicate/reassign a work item, path, edge or unresolved ID; place a disputed path in a component item; split one path's origin rows; assign an edge outside its container; let a batch/page own a row; promote an uncited candidate or `READY_FOR_REVIEW`; choose a license/owner; self-hash manifest/result; emit a nondeterministic receipt; exceed freeze process/byte/access ceilings; include acquired bytes; multiply a later ceiling; add a host-path repair route | `PAUSE`; exactly six freeze roles and seven packet roles, 1,221 component items, 19 dispute items, 1,384 container-edge assignments and all 98,608 IDs must verify. Candidate states remain non-authoritative, all packet rows remain open, and no freeze/work-item byte exists under this overlay | Exact base/packet/disposition identities; absent fresh-v3 freeze/packet roots; canonical role/mode/hash manifests and nonrecursive trees; `7,326 + 91,206 + 76` arithmetic; component/file/edge/unresolved disjoint-union hashes; twenty-batch/49-page projections; exact candidate-gap/locator/ID/result derivations; three clean-replacement flags and deterministic `W001`–`W042` receipts |
+| Component/ownership work-item laundering | Architecture §§18.32–18.33 / external gate | `STATIC`, offline-planning control | Create/freeze before a grant; mutate/reuse/complete the stopped partial; reuse its coordinate; use `components.jsonl` as an alias; vary candidate gap sets or root/field/byte-range locators; collide a synthetic edge, change its counter domain/key hash or use a count-changing `W026`; add/omit a freeze or packet role/key; omit/duplicate/reassign a work item, path, edge or unresolved ID; place a disputed path in a component item; split one path's origin rows; assign an edge outside its container; let a batch/page own a row; promote an uncited candidate or `READY_FOR_REVIEW`; choose a license/owner; self-hash manifest/result; emit a nondeterministic receipt; exceed freeze process/byte/access ceilings; include acquired bytes; multiply a later ceiling; add a host-path repair route | `PAUSE`; the exact one-file failed partial remains failure evidence, while the old final, fresh retry and work-item roots stay absent. A granted retry must prove exactly six freeze roles, 1,384 unique synthetic keys at the frozen hash and sole-code `W026`; later authoring must prove seven packet roles, 1,221 component items, 19 dispute items, 1,384 container-edge assignments and all 98,608 IDs. Candidate states remain non-authoritative and all packet rows remain open | Exact base/packet/disposition identities; failed author/partial tree identities; absent old-final/fresh-retry/packet roots; counter-derived component domain and 1,384-key count/set/hash proof; same-cardinality `W026`; canonical role/mode/hash manifests and nonrecursive trees; `7,326 + 91,206 + 76` arithmetic; component/file/edge/unresolved disjoint-union hashes; twenty-batch/49-page projections; exact candidate-gap/locator/ID/result derivations; three clean-replacement flags and deterministic `W001`–`W042` receipts |
 | R2b content-attestation drift | Architecture §18.22.5 / M11 | `STATIC`, cross-arc merge control | 121st/missing member; changed seed/closure/route; third changed governed member; self-derived identity only; live gate/capture attempt | `PAUSE`; only inventory JSON may rotate after final edits; exact 120-member manifest and independent resolver/inventory/artifact identity must converge; no live effect | Before/after manifests, exact two-member change proof, independent identity recomputation, resolver/digest/artifact equality and existing R2b negative tests |
 
 ## 6. Live-supervision protocol
@@ -1942,8 +1999,10 @@ Ryan's explicit confirmation naming exact revisions is required before:
   pre-acquisition/clean-replacement plan is merged and Kiro-PASSed. The exact
   component/ownership work-item design is merged and Kiro-PASSed at `d79f03c`;
   schema-v2 passed at `dea026c` and its freeze preflight safely stopped. Schema-v3
-  mapping closure now awaits Kiro review, followed by separately granted six-file
-  synthetic freeze, offline authoring and independent review, complete cited origin planning,
+  mapping closure passed Kiro at `21f5acc`; its first governed freeze safely stopped
+  on baseline `W026` with only a one-file partial. The fresh collision-free retry
+  correction now awaits Kiro review, followed by a separately granted six-file retry,
+  offline authoring and independent review, complete cited origin planning,
   separately reviewed/granted operations, acquisition, zero-unresolved lock, clean build, packet, publication and
   CI-admission stages. The combined system is not operationally complete until
   Gate D/W, Gate D-V/E, live evidence, maintenance/watch and promotion pass.
@@ -1954,9 +2013,11 @@ No earlier T0–T5 or completed M11 architectural decision is reopened. The sche
 collector, P0 and disposition are complete and cannot run again. The merged
 component/ownership work-item plan has Kiro exact-main PASS. Two freeze preflights
 stopped before real reads/roots: v1 lacked closed files/results and reviewed v2 left
-candidate-gap/locator mappings implicit. Schema v3 requires exact-tip Kiro PASS, then
-separate exact grants for the six-file synthetic freeze, real offline authoring and
-independent review before any packet root exists.
+candidate-gap/locator mappings implicit. Schema v3 passed Kiro, but its first governed
+freeze stopped on baseline `W026`; the exact one-file partial is preserved and
+non-reusable. The retry correction requires exact-tip Kiro PASS, then separate exact
+grants for the fresh six-file retry, real offline authoring and independent review
+before any packet root exists.
 Complete cited origin operations and any access require a new exact operation packet,
 review and Ryan grant naming
 origins, methods, redirects, tools, ceilings, roots and checkpoints. Kiro
@@ -2058,7 +2119,8 @@ PROVENANCE-LOCK SCHEMAS V1/V2: P0 PAUSE. SCHEMA V3: IMMUTABLE P0 PAUSE PACKET;
 RESULT BINDING AND INDEPENDENT DISPOSITION COMPLETE; PRE-ACQUISITION/CLEAN-
 REPLACEMENT PLAN MERGED AND KIRO-PASS; COMPONENT/OWNERSHIP WORK-ITEM PLAN MERGED
 AT `d79f03c` AND KIRO EXACT-MAIN PASS; WORK-ITEM SCHEMA-V2 KIRO PASS / FREEZE
-PREFLIGHT PAUSE; SCHEMA-V3 MAPPING CORRECTION AWAITS EXACT-TIP KIRO REVIEW;
+PREFLIGHT PAUSE; SCHEMA-V3 MAPPING KIRO PASS AT `21f5acc`; FIRST GOVERNED FREEZE
+PAUSE; COLLISION-FREE RETRY CORRECTION AWAITS EXACT-TIP KIRO REVIEW;
 CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
 independent publication provenance/licensing review. The replacement delivery-set
 plan passed at `3402e62a`; schema v1 passed at `5f397852`, then its offline P0 stopped
@@ -2066,17 +2128,19 @@ on a component initially classified as null-version. Schema v2 passed at `2956f7
 then its one P0 proved the raw `version` member is absent and stopped without a result
 or durable packet. Schema v3 passed at `d03aa553`, then its one P0 published immutable
 packet tree `491ae60b…` and honestly retained 98,608 open rows. Two work-item
-author-freeze preflights stopped without real reads or roots; this overlay freezes
-schema v3's exact candidate-gap/locator/six-file-freeze contract, 1,240 primary work
+author-freeze preflights stopped without real reads or roots; the later governed v3
+freeze created only the preserved failed author before baseline `W026`. This overlay
+freezes schema v3's exact candidate-gap/locator/six-file-freeze contract, 1,240 primary work
 items, all 98,608 open-ID assignments, all 1,384 primary edge assignments and the
-cited-candidate/host-path boundaries. No author freeze, work-item packet, collector rerun,
+cited-candidate/host-path boundaries. The failed one-file partial grants no acceptance;
+no successful author freeze, retry, work-item packet, collector rerun,
 packet/runtime/evidence read, origin
 resolution, acquisition, binary repair, lock closure, build, final packet, publication or
 CI-admission stage is authorized. Required GitHub pytest is red, doctor and
 publisher safety corrections are unimplemented, GitHub runtime distribution is
 unpublished and currently ineligible because provenance/licensing remains `PAUSE`,
 and R2b authority-content identity is not converged for the final corrective tree.
-After the merged work-item-plan exact-main PASS, every later §§18.24–18.32/§§10.22–10.30 stage and the M11
+After the merged work-item-plan exact-main PASS, every later §§18.24–18.33/§§10.22–10.31 stage and the M11
 implementation still require separate exact Ryan grants and reviews. This overlay authorizes no
 product/test/CI/inventory/runtime edit, evidence execution, PR update or merge.
 
@@ -2088,7 +2152,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `fc039640c3a194a6c5fad1c4b0327e832ea968fb` semantic parent is the
+- The exact `aa01b216a85d11aaddc054dbb39ec2e1b557389a` semantic parent is the
   current source of truth; this overlay only sequences, supervises and gates it.
 - M0–M8 and the complete historical M11 evidence passed; the preserved source
   is `cd60cf19`; exact-current-main reconstruction is preserved at `30bc134d`.
@@ -2124,7 +2188,10 @@ successful fixture build.
   passed Kiro at `dea026c`, but its freeze preflight then stopped before root/script/
   read because candidate-gap and locator mappings remained implicit. Sections
   18.32/10.30 close fresh schema-v3 mappings, `W001`–`W042` and the exact six-file
-  synthetic freeze; Kiro review is next and no author or packet exists. Author freeze,
+  synthetic freeze; Kiro passed at `21f5acc`, but the first governed freeze stopped
+  on baseline `W026` before any JSON, final root or real read. Sections 18.33/10.31
+  preserve its exact one-file partial and define a fresh collision-free 1,384-key
+  retry; Kiro review is next and no retry or real packet exists. Author freeze,
   offline authoring, acquisition, zero-unresolved lock closure,
   build, final packet, publication and CI admission remain separately gated; merge is
   a later Ryan decision.
