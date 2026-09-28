@@ -1547,8 +1547,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 - [x] Separately granted independent review disposition bound to the exact manifest and
       packet hashes; no packet repair and no build-eligibility claim.
 - [x] Original Kiro exact-tip PASS on §18.29/§10.27 at overlay `a10a84d`.
-- [ ] Kiro exact-tip re-review of the conflict-free current-main pre-acquisition and
-      clean-replacement semantic parent/overlay.
+- [x] PR `#345` merged the conflict-free current-main pre-acquisition and
+      clean-replacement plan at `5bcc6c7`; Kiro exact-main PASS confirmed the four
+      merged plan blobs equal carrier `6429d27` and preserve §§18.29/10.27.
 - [ ] Complete cited component and ownership work-item planning with exact disjoint/
       union proof; unknown origins remain unresolved and no request is authorized.
 - [ ] Separately reviewed and granted exact-origin provenance acquisition; successor
