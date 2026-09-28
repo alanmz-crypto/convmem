@@ -7899,6 +7899,122 @@ binary repair, build, publication, CI admission, implementation, PR `#342` updat
 merge, deployment, real OpenClaw, live data, watch activation, promotion or Gate
 D/W/D-V/E/F action.
 
+### 18.33 Synthetic-edge freeze retry correction
+
+Kiro passed the exact §18.32/§10.30 parent and milestone overlay at
+`21f5accd742f4e4e53760420e33d0ecfe4c62829`. Ryan then granted only the
+schema-v3 six-file synthetic freeze. The single governed process stopped before
+creating any JSON member or final root because the unmutated synthetic baseline
+correctly returned `W026` instead of zero violations. The author constructed 1,384
+edge rows by cycling a 1,221-component ring without changing the nested component
+after the first cycle; ordinals 1,221 through 1,383 therefore duplicated ordinals 0
+through 162. This is an author-fixture defect, not a weakening of `W026` and not a
+defect in the reviewed real-packet 1,384-edge contract.
+
+#### 18.33.1 Preserved failed attempt and fresh coordinates
+
+```text
+WORK_ITEM_SYNTHETIC_EDGE_RETRY_PLAN_BASE_SHA=21f5accd742f4e4e53760420e33d0ecfe4c62829
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_STATUS=PAUSE
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_RETRY_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_RETRY_AUTHORIZED=false
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_FREEZE_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/v3.partial
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_SHA256=44b59831e95c551d59c58be13ae64d88d19d7d4064d27299404b8eef697e490c
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_SIZE=37887
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_MODE=0644
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_PARTIAL_TREE_SHA256=00ae693740248bf2c323a12d0faad10663160decbcff00fb530233f191d00ce1
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_EXIT_STATUS=1
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_PARTIAL_MEMBER_COUNT=1
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_JSON_MEMBER_COUNT=0
+PRESERVED_FAILED_WORK_ITEM_AUTHOR_FINAL_ROOT_EXISTS=false
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_RETRY_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/21f5accd742f4e4e53760420e33d0ecfe4c62829/v3
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_RETRY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/21f5accd742f4e4e53760420e33d0ecfe4c62829/v3.partial
+SYNTHETIC_EDGE_COUNT=1384
+SYNTHETIC_EDGE_PRIMARY_KEY_SHA256=718184327681f68dbdee4f0920eaea71f0d9b5a989c453f1c3bf2ddc7e867051
+```
+
+The failed partial root contains exactly the one mode-`0644` author named
+`work-item-author-v3.py`; its canonical one-row
+`{path,mode,size,sha256}` tree hashes to the value above. No fixture, dependency
+manifest, command contract, self-test receipt, freeze manifest or final root exists.
+The exception was `RuntimeError: synthetic baseline did not return zero violations`
+with exit status 1. Static inspection proves that the first rejection was `W026`.
+The process reached no JSON write, packet/disposition/runtime/retained-source read,
+network operation or subprocess. Because no receipt exists, the attempt is failure
+evidence only and cannot be cited as a zero-access acceptance receipt.
+
+The failed partial is immutable by authority despite its stopped writable modes: it
+must not be deleted, chmodded, completed, renamed, copied into a successor, imported,
+executed again, repaired or used as a source of acceptance. The old final root remains
+absent and must remain absent. The retry final/partial roots above are new,
+single-assignment and confirmed absent at planning time. Pre-existence at a later
+grant is `PAUSE`. Work-item schema v3, its packet roots, the immutable provenance
+packet/disposition, candidate-gap mappings, locators, counts, ceilings and controls
+`W001`–`W042` remain unchanged.
+
+#### 18.33.2 Exact collision-free synthetic edge construction
+
+The retry changes only the edge construction and the `W026` representative. Let
+`N=1221` and let `C[0]..C[N-1]` be the raw-UTF-8 sorted synthetic component IDs,
+where the unsorted counter domain is exactly:
+
+```text
+CANDIDATE(i) = "cmp_sha256:" +
+  H(UTF8("convmem.switchboard.work-item-synthetic-fixture.v3" || NUL ||
+         "component" || NUL || eight-ASCII-decimal-digits(i)))
+for i = 0..1220
+```
+
+Here `eight-ASCII-decimal-digits(i)` means the zero-padded eight-digit decimal
+representation used by the stopped author; it is locale-independent and has no sign
+or separator. For each edge ordinal `i=0..1383`, compute `q=floor(i/N)` and
+`r=i mod N`, then emit exactly:
+
+```text
+container_component_id = C[r]
+nested_component_id = C[(r + 1 + q) mod N]
+relationship = "contains"
+edge_key = container_component_id || NUL || nested_component_id || NUL || relationship
+```
+
+Thus `q` is zero for the first 1,221 rows and one for the final 163. Within a round,
+the container fixes `r`; across rounds, the same container points to offsets `+1`
+and `+2`, so no key can collide. The 1,384 unique keys, sorted by raw UTF-8 bytes and
+hashed as `H(concat(UTF8(edge_key)||NUL))`, must equal
+`SYNTHETIC_EDGE_PRIMARY_KEY_SHA256`. The retry author must independently prove count
+1,384, set size 1,384 and this hash before running any mutant.
+
+The `W026` retry mutant remains single and same-cardinality: replace edge ordinal
+1,383 with an exact second copy of edge ordinal 0, retain 1,384 list members, recompute
+transport hashes, and require the validator's sole rejection code to be `W026`.
+`W025` and `W027`–`W042` retain their reviewed meanings. The unmutated baseline must
+return exactly `[]`; any other code, extra code, exception, changed count/hash or
+successful `W026` mutant is `PAUSE` before a JSON write.
+
+#### 18.33.3 Held retry sequence and authority boundary
+
+The retry retains the exact §18.32.5 interpreter, environment, argv order, six file
+roles and closed JSON schemas, one-process ceiling, 67,108,864-byte total-write
+ceiling and zero real-input/network/runtime/retained-source/subprocess ceilings. The
+new author is written from the reviewed plan, never copied or patched from the failed
+partial. Its command contract names only the fresh retry partial root, and all new
+author, dependency, fixture, command, receipt, manifest and tree identities must be
+derived anew.
+
+The only admissible sequence is: Kiro exact-tip PASS on this correction; a new
+two-SHA Ryan grant naming the fresh retry roots; one synthetic process; external
+return of the six-file identities; and stop before real reads. Failure again preserves
+the new partial root without repair or retry. Real packet authoring and independent
+review remain separate later grants.
+
+**Authority boundary.** This correction authorizes only the four Switchboard
+planning-document edits and exact-tip review. It authorizes no mutation, chmod,
+deletion or execution of the failed partial; no retry author/root creation or
+execution; no packet/disposition/repository/runtime/retained-source read; no network,
+acquisition, owner/license selection, binary repair, build, publication, CI
+admission, implementation, PR `#342` update, merge, deployment, real OpenClaw, live
+data, watch activation, promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |

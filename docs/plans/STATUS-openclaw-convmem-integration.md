@@ -67,6 +67,13 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │       └─ 1,221 component items + 19 unresolved ownership disputes
         │       └─ 98,608 IDs assigned once; twenty batches / 49 audit pages
         │       └─ PR #348 merged at d79f03c; Kiro exact-main PASS
+        ├─ §18.31 / §10.29 work-item schema v2
+        │       └─ Kiro PASS at dea026c; freeze preflight stopped before root/read
+        ├─ §18.32 / §10.30 work-item schema v3 mappings
+        │       └─ Kiro PASS at 21f5acc; first governed freeze PAUSED on W026
+        │       └─ one-file v3.partial preserved; no JSON/final root/real read
+        ├─ §18.33 / §10.31 collision-free retry correction
+        │       └─ fresh roots + exact 1,384-key construction; plan-only
         │
         │ → separately granted offline work-item packet + independent review
         │ → separately planned exact origins
@@ -117,7 +124,14 @@ all 98,608 open IDs assigned once, all 1,384 nested edges assigned to their cont
 and deterministic twenty-batch/49-page derived views. No work-item packet exists and
 PR `#348` merged the plan at `d79f03c27976ce3460a79f168641d00f2ff291b6`;
 Kiro returned exact-main PASS. That merge and review authorize no packet creation,
-read or acquisition.
+read or acquisition. Kiro later passed schema-v3 mapping overlay `21f5acc`. Ryan's
+single synthetic-freeze grant then stopped fail-closed: the unmutated fixture cycled a
+1,221-edge ring and duplicated 163 keys, so the validator returned `W026` before any
+JSON write or final rename. The preserved partial contains only author
+`44b59831…` at mode `0644`; no acceptance receipt exists. Sections 18.33/10.31 keep
+that partial immutable, bind a fresh absent retry coordinate and close one exact
+collision-free 1,384-edge formula plus same-cardinality `W026` mutant. The retry is
+not authorized.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -140,7 +154,7 @@ the absent publishable qualified runtime.
 | P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
-| Work-item schema closure | **SCHEMA V2 KIRO PASS / FREEZE PREFLIGHT PAUSE / V3 PLAN-ONLY** — v2 closed seven-file/result structure but its synthetic-freeze preflight stopped before any read/root because candidate-gap and locator mappings remained implicit; §§18.32/10.30 preserve v2 absent and define fresh v3 roots, exact mappings, `W041`/`W042`, and a bounded six-file synthetic freeze; execution remains unauthorized |
+| Work-item schema closure | **SCHEMA V3 KIRO PASS / FIRST FREEZE PAUSE / RETRY PLAN-ONLY** — Kiro passed §§18.32/10.30 at `21f5acc`; the one governed process stopped on baseline `W026` before any JSON/final root/real read, preserving only author `44b59831…` in the old partial; §§18.33/10.31 freeze the exact collision-free 1,384-key construction and fresh retry roots without authorizing execution |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -170,7 +184,8 @@ the absent publishable qualified runtime.
 | Plan PR | **MERGED / REVIEWED** — `#345` at `5bcc6c7` replaced conflicting `#344` | Exact current-main parent, four Switchboard planning documents only and byte-equality to carrier `6429d27`; planning merge grants no acquisition or build authority |
 | Component/ownership work-item design | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` | Planning PASS grants no read or packet authority; a separate Ryan grant is required before an offline author may read the immutable packet or create the seven-file bundle |
 | Work-item schema-v2 correction | **KIRO PASS / FREEZE PREFLIGHT PAUSE** at `dea026c` | No freeze/evidence root was created; v2 remains absent and cannot be reused or reinterpreted |
-| Work-item schema-v3 mapping correction | **PLAN-ONLY / REVIEW PENDING** | Exact-tip Kiro PASS and a new two-SHA synthetic-freeze grant are required; no script or root exists |
+| Work-item schema-v3 mapping correction | **KIRO PASS / FIRST FREEZE PAUSE** at `21f5acc` | Failed one-file partial is immutable and non-reusable; no JSON, final freeze or real packet root exists |
+| Synthetic-edge freeze retry correction | **PLAN-ONLY / REVIEW PENDING** | Exact-tip Kiro PASS and a new two-SHA retry grant are required; fresh retry roots are absent |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -179,12 +194,12 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** review the exact §§18.32/10.30 work-item schema-v3
-mapping correction. Confirm that it preserves v2 absent, binds complete-row pointer
-`""`, exact field pointers and host byte ranges, assigns component candidates to the
-complete component gap set and owner candidates only to the owner gap, adds only
-`W041`/`W042`, and freezes exact six-file synthetic coordinates/ceilings. A PASS
-authorizes planning only; Ryan must separately grant the synthetic freeze.
+**If Ryan sent you here now:** review the exact §§18.33/10.31 synthetic-edge retry
+correction. Confirm that it preserves the stopped one-file partial without mutation,
+keeps work-item schema v3 and §§18.32 mappings unchanged, derives exactly 1,384 unique
+edge keys at frozen hash `71818432…`, makes only the `W026` representative
+same-cardinality, and binds fresh absent retry roots. A PASS authorizes planning only;
+Ryan must separately grant the retry freeze.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -195,12 +210,13 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro must review the exact schema-v3 semantic parent and milestone overlay. A
-   later two-SHA Ryan grant may create only the exact six-file freeze root using one
-   same-cardinality baseline and exactly 42 mutants, with zero real-input reads.
+1. Kiro must review the exact synthetic-edge retry semantic parent and milestone
+   overlay. A later two-SHA Ryan grant may create only the fresh six-file retry root
+   using the exact collision-free edge formula, one same-cardinality baseline and
+   exactly 42 mutants, with zero real-input reads. The stopped partial is never reused.
 2. Under another exact Ryan grant, that frozen offline author may read only the
    immutable packet/disposition within named ceilings and create the exact seven-file
-   v2 packet at fresh roots. An independent reviewer then proves the 1,240-item,
+   v3 packet at fresh roots. An independent reviewer then proves the 1,240-item,
    98,608-ID, 1,384-edge, twenty-batch, 49-page and 19-dispute unions. No network,
    runtime or retained-source read is part of that grant.
 3. A separate exact metadata/acquisition operation packet must name every allowed
@@ -299,8 +315,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.32 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.30 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.33 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.31 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -317,7 +333,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-09-28 | Codex | Preserved the second freeze-preflight PAUSE and defined schema-v3 candidate-gap, locator and exact synthetic-freeze closure; no root or evidence read occurred. |
+| 2026-09-28 | Codex | Preserved the failed one-file schema-v3 freeze partial and defined a fresh plan-only collision-free 1,384-edge retry; no retry is authorized. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -339,6 +355,9 @@ assignment and non-authoritative twenty-batch/49-page projections; Kiro review i
 complete on merged main `d79f03c`. Work-item schema v2 passed at `dea026c`, but its
 freeze preflight stopped before any read/root because candidate-gap and locator
 mappings remained implicit. Sections 18.32/10.30 preserve v2 absent and define fresh
-schema-v3 mappings, `W001`–`W042` and a six-file synthetic freeze; Kiro review is next
-and no author or packet exists. Acquisition, binary repair, build, implementation, publication, evidence
+schema-v3 mappings, `W001`–`W042` and a six-file synthetic freeze; Kiro passed at
+`21f5acc`, but the first governed freeze stopped on baseline `W026` before any JSON,
+final root or real read. Sections 18.33/10.31 preserve its one-file partial and define
+only a fresh collision-free 1,384-edge retry; Kiro review is next and no retry or real
+packet exists. Acquisition, binary repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.

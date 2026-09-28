@@ -2608,6 +2608,44 @@ runtime read, work-item packet/result, network access, retained-source read,
 acquisition, owner/license decision, build, publication, implementation, PR `#342`
 update, merge, real OpenClaw or later gate is authorized.
 
+### 10.31 Synthetic-edge freeze retry after the first governed PAUSE
+
+Architecture §18.33 controls. Kiro passed §§18.32/10.30 at overlay `21f5acc`, and
+Ryan granted only its six-file synthetic freeze. The one process exited 1 before a
+JSON write or final rename because the unmutated 1,384-edge baseline returned
+`W026`: the stopped author cycled 1,221 `(container,nested,contains)` keys and
+duplicated the first 163 in its second cycle. Preserve the exact one-file partial at
+SHA-256 `44b59831e95c551d59c58be13ae64d88d19d7d4064d27299404b8eef697e490c`,
+size 37,887 and mode `0644`. It is failure evidence, not a freeze, and cannot be
+repaired, completed, chmodded, deleted, renamed, copied or executed again.
+
+The held successor keeps work-item schema v3 and every §18.32 mapping, role, control
+and ceiling. It changes only:
+
+1. the retry roots to the fresh absent coordinates keyed by `21f5acc` in §18.33.1;
+2. the synthetic edge generator to the exact two-round formula in §18.33.2, whose
+   1,384 unique edge keys hash to
+   `718184327681f68dbdee4f0920eaea71f0d9b5a989c453f1c3bf2ddc7e867051`; and
+3. the `W026` representative to a same-cardinality replacement of ordinal 1,383 by
+   a duplicate of ordinal 0.
+
+The retry author must prove edge count and set size 1,384 plus the frozen key-set hash
+before the baseline validator runs. Baseline acceptance is exactly `[]`; each
+`W001`–`W042` mutant still returns only its own code. No exception, prewritten JSON,
+old-partial import, changed fixture cardinality or acceptance transfer is allowed.
+
+The held sequence is Kiro exact-tip review, a new two-SHA Ryan retry grant, one process
+under the unchanged interpreter/argv/environment/access ceilings, external return of
+the six fresh identities, and stop. Another failure preserves the new partial and has
+no retry route. Real packet authoring and review remain separately granted later
+stages.
+
+**Current result:** retry correction plan-only. The failed partial exists and the old
+final root does not; both fresh retry roots are absent. No retry execution, root/file
+creation, failed-root mutation, packet/disposition/repository/runtime/retained-source
+read, network access, acquisition, build, publication, implementation, PR `#342`
+update, merge, real OpenClaw or later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2637,3 +2675,6 @@ read, acquisition, binary repair, build, publication or implementation. Section 
 freezes the seven-role offline work-item design, exact 1,240-item/98,608-ID assignment,
 twenty-batch/49-page projections, 19 unresolved ownership disputes and cited-candidate
 boundary; no work-item packet or operation is authorized.
+Section 10.31 preserves the first schema-v3 freeze attempt as a one-file PAUSE,
+closes the unique 1,384-edge construction and same-cardinality `W026` mutation at a
+fresh absent retry coordinate, and authorizes no retry or real read.
