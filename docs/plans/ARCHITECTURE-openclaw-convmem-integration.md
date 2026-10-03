@@ -8352,14 +8352,30 @@ ledger. The ledger counts, from v4 partial-root creation through final seal:
 Each ledger row is exactly `{ordinal,path,purpose,size,sha256}`; `ordinal` is the
 zero-based file-creation order, paths are relative to the v4 partial, `purpose` is one
 of `author`, `synthetic-input`, `staging-output`, `durable-output`, `freeze-member`,
-or `temporary`, and rows retain raw write order. Every regular file is created
-exclusively, opened for write once, filled from one already-canonical in-memory byte
-string, flushed and fsynced before the next row. The pre-process setup may create only
-the new author as row zero; its observed size/hash must equal the file the governed
-process validates before any other creation.
+or `temporary`, and rows retain raw write order. `size` is always the exact
+nonnegative byte count. `sha256` is the exact 64-lowercase-hex digest except for
+exactly the `self-test-receipt.json` and `freeze-manifest.json` events, where it is
+JSON null. Those two nulls are mandatory: the receipt contains this ledger and the
+manifest binds the receipt, so placing either final digest back into the ledger would
+create a recursive or mutually recursive identity. The existing nonrecursive chain
+still binds their actual bytes: `freeze-manifest.json` hashes the receipt, and the
+external returned result hashes the manifest.
+
+Every regular file is created exclusively, opened for write once, filled from one
+already-canonical in-memory byte string, flushed and fsynced before the next row. The
+pre-process setup may create only the new author as row zero; its observed size/hash
+must equal the file the governed process validates before any other creation. Before
+writing any category 3–5 byte, the author constructs every other payload, inserts the
+two required null-digest rows, and resolves only their `size` fields by deterministic
+fixed-point iteration: start both sizes at zero; rebuild the ledger, receipt and
+non-self-hashing manifest in that order; replace the two sizes; and repeat until the
+ordered size pair is unchanged. Repetition without equality or more than sixteen
+iterations is `PAUSE`. One final rebuild must reproduce the same pair, receipt hash
+and manifest bytes before any output write.
 The forecast sum must be no greater than 1,073,741,824 before the first category 3–5
-write. The observed byte counter is incremented by the length of every regular-file
-write and must equal the forecast exactly after disposable cleanup and before rename.
+write. The observed byte counter sums the validated row-zero author size plus the
+length of every governed regular-file write and must equal the forecast exactly after
+disposable cleanup and before rename.
 Directory metadata, mode changes, fsync and rename contribute zero bytes; an unknown
 write, short write, second write to an exclusive role, forecast/observed mismatch or
 one byte above the cap is `PAUSE`.
@@ -8373,8 +8389,9 @@ and do not exceed `ceiling_bytes=1073741824`. The command contract's `ceilings` 
 changes only `max_total_written_bytes` to 1,073,741,824 and adds exact
 `max_peak_rss_bytes=2147483648`; every other key/value is unchanged. The complete
 ledger remains inside the existing receipt role, so no seventh freeze role or
-unreviewable sidecar exists. `F005` and `F010` cover any ceiling, ledger, output-role
-or transaction drift; no `F011`, combined mutant or weakened control is introduced.
+unreviewable sidecar exists. `F005` and `F010` cover any ceiling, ledger, special-row
+nullability, fixed-point, output-role or transaction drift; no `F011`, combined mutant
+or weakened control is introduced.
 
 The later real `author-packet` contract remains exactly §18.34.4: one input pass each,
 662,531,209 aggregate input bytes, 2-GiB peak RSS and per-output-root ceilings, and

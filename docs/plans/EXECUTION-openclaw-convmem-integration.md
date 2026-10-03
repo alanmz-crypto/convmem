@@ -2729,11 +2729,18 @@ The author must derive every canonical synthetic payload in memory before the fi
 packet/result write, produce a complete ordered `{ordinal,path,purpose,size,sha256}` ledger,
 and prove the forecast does not exceed the cap. Accounting includes author setup,
 materialized synthetic inputs, both physical output copies, every freeze member and
-any temporary byte. The observed counter covers every regular-file write and must
-equal the forecast before rename. Preallocation, padding, compression, sparse files,
-hard links, reflinks, deduplicated copies, unledgered/short/repeated writes and any
-forecast/observed mismatch are `PAUSE`. Each file is created exclusively and written
-once from canonical in-memory bytes; the setup-created author is ledger row zero.
+any temporary byte. Every digest is exact except the mandatory JSON-null digests for
+`self-test-receipt.json` and `freeze-manifest.json`; hashing either through the
+receipt-contained ledger would be recursive. The manifest still hashes the receipt,
+and the external result hashes the manifest. Their exact sizes are resolved before
+output by the closed zero-initialized, at-most-sixteen-iteration fixed-point procedure
+in §18.35.2, followed by one identical final rebuild. The observed counter covers the
+validated setup-author size plus every governed regular-file write and must equal the
+forecast before rename. Preallocation, padding, compression, sparse files, hard
+links, reflinks, deduplicated copies, unledgered/short/repeated writes, forbidden
+non-null/null digest placement, unstable size iteration and any forecast/observed
+mismatch are `PAUSE`. Each file is created exclusively and written once from
+canonical in-memory bytes; the setup-created author is ledger row zero.
 The receipt contains the complete ledger plus its hash, the cap and both equal totals
 without adding a freeze role; `F005`/`F010` retain the closed rejection surface.
 The later one-pass real-run 4-GiB write ceiling is unchanged and cannot be inferred
