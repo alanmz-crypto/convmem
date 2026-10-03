@@ -8415,6 +8415,106 @@ publication, CI admission, product/test/config/R2b change, implementation, PR `#
 update, merge, deployment, real OpenClaw, live data, watch activation, promotion or
 Gate D/W/D-V/E/F action.
 
+### 18.36 V4 synthetic result-identity preflight correction
+
+Kiro passed the exact §18.35/§10.33 write-budget overlay at
+`7fe275239a47db58bc1dc30bfa3748cb2d685c78`. Ryan then granted only the corrected
+v4 synthetic capability freeze. Before creating either root, writing an author or
+running a governed process, Astra's static preflight found one remaining recursive
+identity in the synthetic transaction. The preflight stopped without consuming the
+single-assignment coordinate or execution attempt. No v4 file or root exists, and no
+packet, disposition, repository, runtime or retained-source byte was read.
+
+#### 18.36.1 Exact stopped state and cycle proof
+
+```text
+WORK_ITEM_AUTHOR_RESULT_IDENTITY_PLAN_BASE_OVERLAY_SHA=7fe275239a47db58bc1dc30bfa3748cb2d685c78
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_RESULT_IDENTITY_PREFLIGHT_STATUS=PAUSE
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_RESULT_IDENTITY_PREFLIGHT_ROOT_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_RESULT_IDENTITY_PREFLIGHT_AUTHOR_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_RESULT_IDENTITY_PREFLIGHT_PROCESS_COUNT=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_RESULT_IDENTITY_PREFLIGHT_REAL_INPUT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_RESULT_IDENTITY_PREFLIGHT_NETWORK_REQUESTS=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+```
+
+Section 18.31.5 requires each synthetic `authoring-result.json` to contain
+`author_freeze_receipt_sha256` and `self_test_receipt_sha256`. Section 18.34.3
+requires the synthetic verb to exercise the unchanged production result builder, and
+§18.35.2 requires non-null exact digests for both disposable result copies in the
+ledger embedded by `self-test-receipt.json`. Let `R` be the final receipt bytes and
+`A` either identical result copy. Under the reviewed contract, `A` contains `H(R)`
+while `R` contains `H(A)`. The two reviewed null-digest events break only the
+receipt/manifest cycle; the size fixed point never authorizes a cryptographic fixed
+point. Inventing a placeholder, adding a third null digest, weakening the result
+schema or bypassing the production builder is `PAUSE`.
+
+#### 18.36.2 Closed synthetic predecessor-identity adapter
+
+The successor changes only the identity pair supplied to the unchanged result builder
+while `mode="synthetic-freeze"`. Define:
+
+```text
+SYNTHETIC_RESULT_IDENTITY_DOMAIN=convmem.switchboard.work-item-author-v4.synthetic-result-identity.v1
+SYNTHETIC_RESULT_IDENTITY_PLAN_BASE_SHA=7fe275239a47db58bc1dc30bfa3748cb2d685c78
+SYNTHETIC_AUTHOR_FREEZE_RECEIPT_IDENTITY_INPUT_BYTES=138
+SYNTHETIC_AUTHOR_FREEZE_RECEIPT_SHA256=62dbd8500091eeeb91b4c4c8171ea50d999a6b5e8eca4b569db46a27ce18ebaf
+SYNTHETIC_SELF_TEST_RECEIPT_IDENTITY_INPUT_BYTES=134
+SYNTHETIC_SELF_TEST_RECEIPT_SHA256=37d2d4fdf1c0f7ca10dbcf85b4be621a710e19bee83e35529950f2676081160c
+```
+
+For field name `F`, the exact derivation is
+`H(UTF8(SYNTHETIC_RESULT_IDENTITY_DOMAIN) || NUL || UTF8(F) || NUL ||
+UTF8(SYNTHETIC_RESULT_IDENTITY_PLAN_BASE_SHA))`. `F` is exactly
+`author_freeze_receipt_sha256` or `self_test_receipt_sha256`; there is no third field,
+normalization, encoding variation, caller override or lookup. The two canonical input
+byte strings are respectively 138 and 134 bytes and must reproduce the two hashes
+above before any output write.
+
+The shared production path contains one closed identity adapter with exactly two
+modes:
+
+1. `synthetic-freeze` accepts no identity input and returns exactly the two constants
+   above to the unchanged §18.31.5 result builder. They are test-only predecessor
+   identities, never claims about the receipt being constructed. Both staging and
+   durable disposable results must be byte-identical and contain those values.
+2. `author-packet` rejects both synthetic constants and requires the actual
+   independently frozen v4 identities: `author_freeze_receipt_sha256` is the reviewed
+   SHA-256 of `freeze-manifest.json`, and `self_test_receipt_sha256` is the reviewed
+   SHA-256 of `self-test-receipt.json`. A later result-binding overlay must freeze both
+   exact values before the real verb is eligible; this section does not supply or
+   authorize them.
+
+The adapter runs inside the same `load -> derive -> validate -> serialize` core. It is
+not a second result builder, fixture serializer, argv field, environment switch or
+output schema. The synthetic results retain ordinary non-null ledger hashes. Exactly
+the receipt and freeze-manifest ledger rows remain null, and the existing at-most-
+sixteen-iteration size fixed point remains unchanged. After the receipt and manifest
+are built, the self-test must prove that neither synthetic constant equals either
+actual v4 member digest. `F010` rejects the wrong mode, field, domain, base SHA,
+constant, caller-supplied synthetic identity, synthetic value on the real path, actual
+receipt value on the synthetic path or a changed result byte; no `F011`, extra control
+or acceptance transfer is introduced.
+
+#### 18.36.3 Preserved contract, sequence and authority boundary
+
+Every §18.34/§18.35 root, role, cardinality, parser, serializer, control, ceiling,
+write-ledger rule and later real-read contract remains unchanged. The only admissible
+next sequence is Kiro exact-tip review, a new Ryan two-SHA grant naming the still-
+absent v4 roots and this exact identity pair, one synthetic process, external return
+of the six identities plus ledger/result counters, then plan-only result binding and
+Kiro capability review. Neither prior grant is reusable.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no v4 root/file creation or execution, packet/disposition
+content read, work-item root/result creation, network, subprocess, retained-source or
+runtime read, acquisition, ownership/license selection, binary repair, build,
+publication, CI admission, product/test/config/R2b change, implementation, PR `#342`
+update, merge, deployment, real OpenClaw, live data, watch activation, promotion or
+Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -8456,6 +8556,7 @@ Gate D/W/D-V/E/F action.
 | Clean replacement | Fresh bytes built from independently locked inputs and recipes; never a repaired or prefix-rewritten rejected binary. |
 | Capability freeze | An immutable author package whose self-test executes the same production path later used on real input; a synthetic-only command is not a real-author capability freeze. |
 | Write ledger | The deterministic ordered accounting of every regular-file byte written by the v4 freeze; it proves the transaction stayed within its reviewed aggregate cap without allowing sparse, linked or compressed shortcuts. |
+| Synthetic predecessor identity | A domain-separated test-only SHA-256 supplied to the unchanged result builder so a disposable synthetic result can exercise the real field without claiming or recursively hashing the receipt under construction. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main
@@ -8486,5 +8587,9 @@ Section 18.35 records the zero-root v4 budget preflight PAUSE, proves the inheri
 64-MiB synthetic write cap impossible and replaces only that cap with a hard 1-GiB
 maximum plus exact pre-write ledger accounting. The full-cardinality shared production
 path, 52 controls, 2-GiB RSS limit and later real-run contract remain unchanged; the
+next granted preflight then stopped before root/source/process on a receipt/result hash
+cycle. Section 18.36 replaces only the synthetic result's two receipt-binding values
+with exact domain-separated predecessor identities while preserving the unchanged
+result builder and requiring actual reviewed v4 identities on the real path. The
 corrected freeze still requires Kiro review and a new Ryan grant.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.

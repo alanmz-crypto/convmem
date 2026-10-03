@@ -2753,6 +2753,35 @@ packet/disposition/repository/runtime/retained-source read, work-item packet/res
 network, acquisition, owner/license decision, binary repair, build, publication,
 implementation, PR `#342` update, merge, real OpenClaw or later gate is authorized.
 
+### 10.34 V4 synthetic result-identity correction
+
+Architecture §18.36 controls. Kiro passed the write-budget plan at `7fe2752`, but the
+newly granted static preflight stopped before root, source or process creation. The
+unchanged result builder requires both receipt-identity fields, while the receipt's
+ledger requires non-null hashes for both disposable result copies. Thus the result
+would contain the receipt hash and the receipt would contain the result hash. The
+reviewed two null rows and size fixed point do not resolve that cryptographic cycle.
+
+The correction adds one closed identity adapter inside the shared production core.
+Synthetic mode accepts no identity input and supplies exactly
+`62dbd8500091eeeb91b4c4c8171ea50d999a6b5e8eca4b569db46a27ce18ebaf` and
+`37d2d4fdf1c0f7ca10dbcf85b4be621a710e19bee83e35529950f2676081160c`, derived
+from the §18.36 domain, exact field name and plan-base SHA. Real mode rejects those
+values and requires the later reviewed actual v4 freeze-manifest and self-test-receipt
+hashes. The result builder/schema, both non-null result ledger hashes, exactly two
+null ledger rows, fixed-point sizing, six freeze roles, seven output serializers,
+full cardinality, 52 controls, 1-GiB write/2-GiB RSS limits and all zero-access
+counters remain unchanged. `F010` rejects every mode/value/domain/base/result drift;
+there is no new control or second builder.
+
+**Current result:** result-identity-correction plan-only. Kiro exact-tip review and a
+new Ryan two-SHA grant remain mandatory before the still-absent v4 partial may be
+created or a single synthetic process may run. Neither prior grant is reusable. No
+freeze, packet/disposition/repository/runtime/retained-source read, work-item packet/
+result, network, acquisition, owner/license decision, binary repair, build,
+publication, implementation, PR `#342` update, merge, real OpenClaw or later gate is
+authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2792,4 +2821,8 @@ Section 10.33 records that the first v4 preflight created no root or process bec
 the 143,967,680-byte two-copy lower bound cannot fit under 64 MiB. It preserves the
 full transaction and all 52 controls while changing only the synthetic write cap to
 1 GiB with exact forecast/observed accounting; Kiro review and a new Ryan grant remain
-mandatory.
+mandatory. That successor review passed, but the next static preflight stopped before
+root/source/process on a receipt/result hash cycle. Section 10.34 replaces only the
+synthetic result's two receipt-binding values with exact domain-separated predecessor
+identities; the result builder stays unchanged and the real path still requires actual
+reviewed v4 identities. Kiro review and a new grant remain mandatory.
