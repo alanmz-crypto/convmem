@@ -2817,6 +2817,47 @@ retained-source read, work-item packet/result, network, acquisition, owner/licen
 decision, binary repair, build, publication, implementation, PR `#342` update, PR
 creation, merge, real OpenClaw or later gate is authorized.
 
+### 10.36 V4 input packet-tree identity correction
+
+Architecture §18.38 controls. Kiro passed the real-command plan at `be76abc`, but the
+next granted static preflight stopped before root, author, process, input read or
+write. The future real verb must verify the immutable 902-member packet tree
+`491ae60b…`; the reviewed plan bound its hash, member count and regular-file bytes but
+did not define the directory/file inventory serialization. The objects-only and
+seven-file output identities are not substitutes.
+
+The correction adopts only the exact `directory_fingerprint()` recipe from frozen
+schema-v3 collector `26352b39…`, size 67,575, mode `0444`. It enumerates strict
+descendants while excluding the packet root; rejects links and special members;
+sorts POSIX relative paths by raw UTF-8 bytes; encodes directories as exact
+`path,mode,type` objects and regular files as exact `path,mode,type,size,sha256`
+objects; formats modes as four lowercase octal digits; uses unprefixed lowercase file
+digests; and hashes compact, key-sorted, UTF-8 JSON with `ensure_ascii=False`,
+`allow_nan=False` and no final LF. The root's `0555` mode is verified separately.
+Exactly 663 regular files plus 239 directories yield 902 rows, 654,147,403 regular-
+file bytes and the unchanged `491ae60b…` digest.
+
+The real author derives every file row from the same single content stream already
+authorized for parsing; the recipe grants no second pass. Its synthetic baseline
+executes the same production tree builder through the in-memory adapter and compares
+an independently precomputed fixture identity. Root inclusion, directory size/hash,
+prefixed digests, wrong keys/types/modes/order/encoding, a final LF, an extra/missing
+member or any second file open is `PAUSE` before output. The frozen collector is
+derivation authority only and is never imported, copied, patched or executed.
+
+Every §18.34–§18.37 mapping, parser, serializer, identity adapter, command vector,
+cwd, cardinality, `W001`–`W042`, `F001`–`F010`, six-role freeze, seven-role output,
+write-ledger rule, two null rows, fixed point and ceiling remains unchanged; there is
+no `F011`.
+
+**Current result:** input-tree-recipe correction plan-only. Exact-tip Kiro review and
+a new Ryan two-SHA grant remain mandatory before the still-absent v4 partial may be
+created or one synthetic process may run. The stopped execution and bounded
+derivation grants are not reusable. No freeze, packet/disposition/repository/runtime/
+retained-source read, work-item packet/result, network, acquisition, owner/license
+decision, binary repair, build, publication, implementation, PR `#342` update, PR
+creation, merge, real OpenClaw or later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2863,4 +2904,10 @@ identities; the result builder stays unchanged and the real path still requires 
 reviewed v4 identities. Kiro review and a new grant remain mandatory.
 Section 10.35 records the subsequent zero-effect argv preflight PAUSE and closes the
 v4 command contract with exact synthetic and real cwd/argv values plus one order-only
-`F002` representative. No root, process, read, write or operational authority exists.
+`F002`. Kiro passed that correction at `be76abc`, but the next granted static
+preflight stopped before root, author, process, input read or write because the
+902-member input packet tree had no reviewed canonical identity recipe. Section 10.36
+binds the exact frozen-collector recipe: strict descendants only, distinct closed
+directory/file rows, raw UTF-8 path order, compact sorted-key JSON without a final LF,
+and the unchanged `491ae60b…` digest. It adds no read pass or control ID.
+No root, process, read, write or operational authority exists.

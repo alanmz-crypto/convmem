@@ -8648,6 +8648,146 @@ publication, CI admission, product/test/config/R2b change, implementation, PR `#
 update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
 promotion or Gate D/W/D-V/E/F action.
 
+### 18.38 V4 input packet-tree identity preflight correction
+
+Kiro passed the exact §18.37/§10.35 real-command overlay at
+`be76abc544f02920336e7728f1b2a847fb02d40f`. Ryan then granted only the fresh v4
+synthetic capability freeze. Before creating either v4 root, writing an author or
+starting a process, Astra found that §18.34.4 binds the immutable input packet to
+902 members, 654,147,403 regular-file bytes and tree SHA-256 `491ae60b...`, but the
+reviewed plan never defines the canonical inventory that produces that tree hash.
+The objects-only recipe in §18.25.2 and the seven-file output recipe in §18.31.4 are
+different identities and cannot be substituted. Guessing a directory-row grammar
+and validating a synthetic fixture produced by the same guess would be circular, so
+the preflight stopped fail-closed without consuming either single-assignment root or
+the execution attempt.
+
+#### 18.38.1 Exact stopped state and derivation authority
+
+```text
+WORK_ITEM_AUTHOR_INPUT_TREE_RECIPE_PLAN_BASE_OVERLAY_SHA=be76abc544f02920336e7728f1b2a847fb02d40f
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_STATUS=PAUSE
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_ROOT_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_AUTHOR_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_PROCESS_COUNT=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_WRITTEN_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_REAL_INPUT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_PACKET_CONTENT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_DISPOSITION_CONTENT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_INPUT_TREE_PREFLIGHT_NETWORK_REQUESTS=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+```
+
+Both §18.34 v4 coordinates remain absent and single-assignment. No author, receipt,
+manifest, control result, member identity or freeze tree exists. The stopped grant is
+not reusable.
+
+Ryan separately authorized a bounded read-only derivation of the missing recipe. The
+authority source is the already frozen schema-v3 collector, not the packet contents,
+chat recollection or a newly invented fixture:
+
+```text
+AUTHORITATIVE_PACKET_TREE_COLLECTOR_PATH=/home/lauer/.cache/convmem-switchboard-provenance-collector-freeze/1cb8186e5e0938524414c530d5b842219f52412f/d03aa5538e0b82f1165a725394ef8df4bf805dbd/collect_p0.py
+AUTHORITATIVE_PACKET_TREE_COLLECTOR_SHA256=26352b39f3ff53bf8a41c579c4c9aec8a8f8734235fe99db0a8480fa9964adad
+AUTHORITATIVE_PACKET_TREE_COLLECTOR_SIZE=67575
+AUTHORITATIVE_PACKET_TREE_COLLECTOR_MODE=0444
+AUTHORITATIVE_PACKET_TREE_COLLECTOR_FREEZE_SHA256=c8f457b589b6554a33921965339a74db086806d9243bb5fa4565df39b5e74ada
+AUTHORITATIVE_PACKET_TREE_RESULT_SHA256=db755121a38ffa43587662337bf896196a944bdaaf0019e899c13bc0afb43045
+AUTHORITATIVE_PACKET_TREE_COLLECTOR_EXECUTED=false
+AUTHORITATIVE_PACKET_TREE_PACKET_CONTENT_READ_BYTES=0
+AUTHORITATIVE_PACKET_TREE_DISPOSITION_CONTENT_READ_BYTES=0
+```
+
+The collector hash, size and mode reproduce the §18.28.1 binding. Its immutable
+`directory_fingerprint()` implementation and the already frozen P0 result bind the
+recipe below to packet tree
+`491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5`.
+No collector, packet member, disposition member, runtime byte or retained source was
+executed or modified during derivation.
+
+#### 18.38.2 Exact 902-member input packet-tree recipe
+
+Let `root` be the exact immutable `INPUT_PACKET_ROOT` from §18.34.4. Enumerate every
+strict descendant of `root`; the root itself is not a row. Include every directory
+and regular file, including `provenance-lock-manifest.json`. Use `lstat` semantics and
+reject symlinks, hard-linked regular files, special files, path escapes, duplicate
+relative paths or a member that changes type, mode, size or content during the one
+governed pass. A relative path is the POSIX `/`-separated path from `root`, with no
+leading or trailing slash, empty segment, `.`, `..`, backslash or NUL. Sort the rows
+by the raw UTF-8 bytes of that relative-path string.
+
+Each directory row has exactly three keys and no `size` or `sha256` member, including
+no JSON-null placeholder:
+
+```json
+{"mode":"0555","path":"objects","type":"directory"}
+```
+
+Each regular-file row has exactly five keys:
+
+```json
+{"mode":"0444","path":"objects/sha256/00/<64-lowercase-hex>","sha256":"<64-lowercase-hex>","size":123,"type":"file"}
+```
+
+`path`, `mode`, `type` and `sha256` are JSON strings; `size` is a nonnegative JSON
+integer. `type` is exactly `directory` or `file`. Mode is exactly
+`f"{stat.S_IMODE(st_mode):04o}"`. The file digest is the unprefixed lowercase SHA-256
+of all raw file bytes consumed by that file's sole content stream. A prefixed digest,
+directory digest/size, unknown key, missing key, wrong scalar type, writable mode or
+unlisted member is `PAUSE`.
+
+Encode the complete sorted row array exactly as Python
+`json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+allow_nan=False).encode("utf-8")`. There is no BOM, indentation, extra whitespace or
+trailing LF. `packet_tree_sha256` is the unprefixed lowercase SHA-256 of those exact
+array bytes. The packet root's required mode `0555` is verified separately and is not
+a row. `packet_bytes` is the sum of regular-file sizes only.
+
+The frozen identity therefore closes at exactly 663 regular-file rows—651 object
+files plus the twelve packet files—and 239 directory rows, for 902 strict descendants.
+The final regular-file-size sum is exactly 654,147,403 and the final tree digest is
+exactly `491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5`.
+Missing, extra or differently typed rows are `PAUSE`; count and byte equality never
+substitute for tree-hash equality.
+
+#### 18.38.3 Single-pass adoption and authority boundary
+
+The future v4 source implements the recipe from this reviewed section; it does not
+import, copy, patch or execute the frozen collector. During `author-packet`, each
+regular input file remains opened for content at most once. Its retained relative
+path, mode, size and streaming digest feed both canonical parsing and the tree rows.
+Directory metadata enumeration does not consume a content pass. Reopening a regular
+file to reproduce the tree, relying on `Path.is_file()` after `lstat`, following a
+link, accepting a changed inode/link count, or hashing a second serialization is
+`PAUSE` before output creation.
+
+The synthetic baseline must exercise this exact production tree builder against its
+in-memory packet adapter and compare against an independently precomputed fixture
+identity. The baseline is nonzero on any root-inclusion, row-key, type, mode, digest-
+prefix, ordering, JSON-encoding or final-LF drift. This closes an input identity
+required by the existing production path; it adds no control ID and does not change
+`W001`–`W042`, `F001`–`F010`, either argv, either cwd, the nine-key command contract,
+the shared `load -> derive -> validate -> serialize` core, the six freeze roles, the
+seven output roles, the two synthetic predecessor identities, the two ledger nulls,
+fixed-point sizing, process/RSS/write/read ceilings or the later real-run transaction.
+There is no `F011`.
+
+The only admissible next sequence is exact-tip Kiro review, a new Ryan two-SHA grant
+naming the still-absent v4 roots and this closed recipe, one synthetic process,
+external return of the six identities plus ledger/result counters, then plan-only
+result binding and Kiro capability review. Neither the stopped execution grant nor
+the bounded derivation grant authorizes that process.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no v4 root/file creation or execution, packet/disposition
+content read, work-item root/result creation, network, subprocess, retained-source or
+runtime read, acquisition, ownership/license selection, binary repair, build,
+publication, CI admission, product/test/config/R2b change, implementation, PR `#342`
+update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -8672,6 +8812,7 @@ promotion or Gate D/W/D-V/E/F action.
 | Verification page | One of 49 deterministic unresolved-ID audit views; it proves coverage but cannot close or assign a row. |
 | Candidate record | A byte-preserving, packet-cited lead whose planning state never establishes origin, ownership, licensing or access authority. |
 | Closed command contract | A canonical command description with an exact schema, cwd and literal argv for each admitted verb; flag names, values and order cannot be chosen by the caller. |
+| Packet-tree identity | A SHA-256 over the exact canonical inventory of every strict descendant of an immutable packet root; directory rows and regular-file rows have different closed shapes, and the root mode is verified outside the hash. |
 | Pylint semantic identity | The canonical message fields compared across raw Pylint reports; raw report order and bytes remain evidence but are not the verdict oracle. |
 | Strict generation | A derivative of one exact cumulative authority head; atomic publication may instead select no serving generation. |
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
