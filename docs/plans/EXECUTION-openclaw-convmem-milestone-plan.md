@@ -3,7 +3,7 @@
 **Current status (2026-10-03): SCHEMA-V3 PACKET TECHNICAL PASS;
 PROVENANCE/LICENSING PAUSE; WORK-ITEM V3 SYNTHETIC FREEZE PASS;
 REAL-AUTHOR CAPABILITY ABSENT; V4 STARTUP PREFLIGHT PAUSE;
-STARTUP-ISOLATION CORRECTION PLAN / KIRO REVIEW REQUIRED.** The accepted bounded implementation and
+WORK-ITEM AUTHOR CONTRACT MERGED / KIRO EXACT-MAIN PASS.** The accepted bounded implementation and
 final M11 evidence remain preserved at
 `PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb`.
 Kiro passed the PR-corrective overlay `a23d843`; required GitHub `pytest (3.12)`
@@ -68,7 +68,9 @@ because global `site.py` would execute `distutils-precedence.pth` and import thi
 party `_distutils_hack` before the author's dependency boundary. Sections 18.39/10.37
 add only literal `-S` to both exact argv vectors, require
 `sys.flags.no_site == 1`, exclude site-package dependency origins and shift only the
-order-only `F002` slice indices. These successor
+order-only `F002` slice indices. PR `#351` squash-merged the complete reviewed
+work-item author contract at `a3b56abd3b5fa3fafe1b3f32de744bba3eb9772c`, and
+Kiro returned exact-main PASS. These successor
 plans authorize no packet/runtime read, request, retained-source access, acquisition,
 owner or license selection, binary repair, build, runtime publication, evidence rerun,
 PR update or merge.
@@ -84,7 +86,7 @@ SCHEMA-V2 CLOSURE KIRO PASS AT `dea026c`; SCHEMA-V3 MAPPING KIRO PASS AT
 CAPABILITY PLAN KIRO PASS AT `4210977`; WRITE-BUDGET PLAN KIRO PASS AT `7fe2752`;
 RESULT-IDENTITY PLAN KIRO PASS AT `3107d6f`; REAL-ARGV PLAN KIRO PASS AT `be76abc`;
 INPUT-TREE PLAN KIRO PASS AT `991f488`; STARTUP PREFLIGHT PAUSE; STARTUP-ISOLATION
-CORRECTION AWAITS EXACT-TIP KIRO REVIEW.
+CORRECTION MERGED IN PR `#351` AT `a3b56ab`; KIRO EXACT-MAIN PASS.
 PRODUCT/TEST/CI/RUNTIME EDITS, TEST EXECUTION, PR UPDATE, MERGE AND REAL OPENCLAW
 WORK REMAIN PAUSED.
 
@@ -906,9 +908,9 @@ Review and authority order is mandatory:
 |---|---|
 | **Specified** | Semantic parent Architecture §§18.22–18.39 and Execution §§10.20–10.37; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; complete component/ownership work-item design; closed schema-v3 candidate-gap/locator/freeze contract; preserved failed freeze; successful synthetic retry binding; explicit absent real-author capability; fresh v4 shared-core freeze, corrected synthetic write budget, exact synthetic predecessor identities, closed no-site two-command argv contract, exact 902-member input packet-tree identity and held one-pass real-read contract; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
-| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model, schema v2 at `dea026c`, schema-v3 mappings at `21f5acc`, retry correction at `59ae444`, capability plan at `4210977`, write-budget correction at `7fe2752`, result-identity correction at `3107d6f`, real-command correction at `be76abc` and input-tree correction at `991f488`. The first governed v3 freeze failed closed on baseline `W026`; its one-file partial remains immutable. The separately granted retry passed its clean baseline and `42/42` controls, freezing exact six-file tree `65f32f11…` with zero real access. Its source is synthetic-only. The five v4 preflights created no root/process; the last four also created no author, and the real-argv, input-tree and startup preflights performed zero reads/writes. The exact tree recipe was recovered read-only from hash-bound frozen collector `26352b39…`; no packet content was read. The startup preflight bound the global-site hook without executing Python. No real author or work-item packet has been tested. |
+| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model, schema v2 at `dea026c`, schema-v3 mappings at `21f5acc`, retry correction at `59ae444`, capability plan at `4210977`, write-budget correction at `7fe2752`, result-identity correction at `3107d6f`, real-command correction at `be76abc`, input-tree correction at `991f488` and startup-isolation overlay `fdf0901`. PR `#351` merged the reviewed author contract at `a3b56ab`, and Kiro returned exact-main PASS. The first governed v3 freeze failed closed on baseline `W026`; its one-file partial remains immutable. The separately granted retry passed its clean baseline and `42/42` controls, freezing exact six-file tree `65f32f11…` with zero real access. Its source is synthetic-only. The five v4 preflights created no root/process; the last four also created no author, and the real-argv, input-tree and startup preflights performed zero reads/writes. The exact tree recipe was recovered read-only from hash-bound frozen collector `26352b39…`; no packet content was read. The startup preflight bound the global-site hook without executing Python. No real author or work-item packet has been tested. |
 | **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
-| **Unresolved** | Exact-tip Kiro review of the v4 startup-isolation correction; a new separately granted fresh-root six-file v4 shared-core freeze under the corrected no-site/tree/command/identity/budget contract; plan-only v4 identity binding and review; one-pass real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Unresolved** | A new separately granted fresh-root six-file v4 shared-core freeze under the corrected no-site/tree/command/identity/budget contract; plan-only v4 identity binding and review; one-pass real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -1019,7 +1021,7 @@ M0 baseline/runtime input
   → granted static preflight PAUSE before root/author/process/read/write:
     global site hook would import third-party startup code
   → plan-only §18.39/§10.37 interpreter startup-isolation correction
-  → exact-tip Kiro startup-isolation review
+  → exact-tip PASS; PR #351 merged at a3b56ab; exact-main PASS
   → new separate fresh-root six-file v4 shared-core synthetic capability freeze
   → plan-only v4 identity binding and Kiro capability review
   → separate one-pass bounded offline work-item authoring grant and independent review
@@ -1048,9 +1050,9 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 M0–M8 and the preceding M11 evidence are accepted historical scope; they are neither
 reopened nor promoted into a green GitHub required check. M9, M10, watch coverage and
 complete-system review remain decision gates, not implementation work. The next
-possible activity is Kiro exact-tip review of the v4 real-argv correction. Only
-after PASS may Ryan issue a new grant for the fresh-root v4 shared-core synthetic
-freeze under the corrected command, identity and 1-GiB contracts; no prior grant is reusable. Its identity
+possible activity is Ryan's decision on a new grant for the fresh-root v4 shared-core
+synthetic freeze under the corrected no-site, command, tree, identity and 1-GiB
+contracts; no prior grant is reusable. Its identity
 binding/review, real packet authoring and independent review remain later separately
 granted activities.
 Because the replacement freezes `REPLACEMENT_PROVENANCE_CLOSURE=UNRESOLVED`,
@@ -1954,8 +1956,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
     plan passed at `be76abc`, while its execution preflight stopped on the absent
     input-tree recipe. The packet-tree plan passed at `991f488`, while its execution
     preflight stopped before all effects because global site startup would import
-    third-party code. The fresh-root v4 startup-isolation correction is plan-only.
-    Separate verdicts remain mandatory for startup-isolation design, v4 author freeze, the offline
+    third-party code. The startup-isolation overlay passed at `fdf0901`; PR `#351`
+    merged the complete author contract at `a3b56ab`, and Kiro returned exact-main
+    PASS. Separate verdicts remain mandatory for the v4 author freeze, the offline
     work-item packet and review; complete cited origin planning; every exact acquisition operation;
     successor component-lock completeness;
     replacement construction; runtime byte qualification; public redistribution/
@@ -2120,7 +2123,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 - [x] The next granted static preflight stopped before root, author, process, read or
       write because global site initialization would import third-party
       `_distutils_hack`; both v4 coordinates remain absent.
-- [ ] Kiro exact-tip PASS on §§18.39/10.37 and this startup-isolation overlay.
+- [x] Kiro exact-tip PASS on §§18.39/10.37 at `fdf0901`; PR `#351` merged the four
+      reviewed planning blobs at `a3b56ab`, and Kiro exact-main PASS confirmed their
+      equality. Planning merge and review create no root or execution authority.
 - [ ] Newly granted exact six-file v4 capability freeze, with the same shared
       production path executing on full-cardinality synthetic input, unchanged
       `W001`–`W042`, exact `F001`–`F010`, the two nonrecursive null-digest rows,
@@ -2199,7 +2204,8 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 **Current controlling state:** `PAUSE`. PR `#342` is merge-blocked. No plan
 application, corrective edit, runtime publication, evidence execution or PR update
 may begin from this document. The first archive is rejected for publication; exact-tip
-Kiro review of the v4 interpreter startup-isolation correction is next. The replacement,
+Kiro review of the v4 interpreter startup-isolation correction passed at `fdf0901`;
+PR `#351` merged it at `a3b56ab`, and Kiro returned exact-main PASS. The replacement,
 schema-v1/v2/v3 and result-binding reviews already PASSed at `3402e62a`, `5f397852`,
 `2956f701`, `d03aa553` and `3b3550c`; the v1/v2 stops, v3 immutable PAUSE packet and
 independent technical-PASS/provenance-and-licensing-PAUSE disposition authorize
@@ -2391,8 +2397,9 @@ Ryan's explicit confirmation naming exact revisions is required before:
   author, process, input read or write because the packet-tree recipe was absent. The
   input-tree correction passed Kiro at `991f488`; its next granted static preflight
   stopped before root, author, process, read or write because global site startup
-  would import third-party code. The startup-isolation correction now awaits Kiro review,
-  followed by a new separately granted shared-core v4 freeze under the exact two-mode
+  would import third-party code. The startup-isolation overlay passed at `fdf0901`;
+  PR `#351` merged the reviewed contract at `a3b56ab`, and Kiro returned exact-main
+  PASS. A new separately granted shared-core v4 freeze under the exact two-mode
   identity adapter, two-command contract and 1-GiB ledgered cap, plan-only identity binding, one-pass offline authoring
   and independent review, complete cited origin planning,
   separately reviewed/granted operations, acquisition, zero-unresolved lock, clean build, packet, publication and
@@ -2556,7 +2563,7 @@ WRITE-BUDGET PLAN KIRO PASS AT `7fe2752`; RESULT-IDENTITY PREFLIGHT PAUSE;
 RESULT-IDENTITY PLAN KIRO PASS AT `3107d6f`; REAL-ARGV PREFLIGHT PAUSE;
 REAL-ARGV PLAN KIRO PASS AT `be76abc`; INPUT-TREE PREFLIGHT PAUSE;
 INPUT-TREE PLAN KIRO PASS AT `991f488`; STARTUP PREFLIGHT PAUSE;
-STARTUP-ISOLATION CORRECTION AWAITS EXACT-TIP KIRO REVIEW;
+STARTUP-ISOLATION CORRECTION MERGED IN PR `#351` AT `a3b56ab`; KIRO EXACT-MAIN PASS;
 CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
 independent publication provenance/licensing review. The replacement delivery-set
 plan passed at `3402e62a`; schema v1 passed at `5f397852`, then its offline P0 stopped
@@ -2676,8 +2683,10 @@ successful fixture build.
   The next granted preflight stopped before root, author, process, read or write because
   global site startup would import third-party `_distutils_hack`. Sections 18.39/10.37
   add literal `-S`, require `sys.flags.no_site == 1`, close fourteen/twenty-member
-  argv and shift only `F002` slices. Kiro review of this correction is next; no v4
-  freeze or real packet exists. Author freeze,
+  argv and shift only `F002` slices. PR `#351` merged the complete reviewed author
+  contract at `a3b56ab`, and Kiro returned exact-main PASS. No v4 freeze or real
+  packet exists; a fresh Ryan two-SHA grant is the next possible substantive action.
+  Author freeze,
   offline authoring, acquisition, zero-unresolved lock closure,
   build, final packet, publication and CI admission remain separately gated; merge is
   a later Ryan decision.
