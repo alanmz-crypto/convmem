@@ -2858,6 +2858,42 @@ retained-source read, work-item packet/result, network, acquisition, owner/licen
 decision, binary repair, build, publication, implementation, PR `#342` update, PR
 creation, merge, real OpenClaw or later gate is authorized.
 
+### 10.37 V4 interpreter startup-isolation correction
+
+Architecture §18.39 controls. Kiro passed the packet-tree recipe at `991f488`, but
+the next granted static preflight stopped before root, author, process, read or write.
+Without `-S`, the bound interpreter runs global `site.py`, processes
+`distutils-precedence.pth` and imports third-party `_distutils_hack` because the exact
+five-key environment omits `SETUPTOOLS_USE_DISTUTILS`. `PYTHONNOUSERSITE=1` disables
+only the user site and cannot close that startup path. The exact stopped counters and
+bound file identities are frozen in §18.39.1; both v4 coordinates remain absent.
+
+The correction inserts literal `-S` immediately after the interpreter in both exact
+§18.37.2 arrays. Synthetic argv is therefore the exact fourteen-member vector in
+§18.39.2; held real argv is the exact twenty-member vector there. Synthetic and real
+cwd values, the nine-key command-contract schema, the five-key environment and every
+author flag/value pair remain unchanged. The governed source imports built-in `sys`
+first, requires `sys.flags.no_site == 1` before any file-backed import or output, and
+rejects `site`, `_distutils_hack` or any dependency origin under `site-packages` or
+`dist-packages`. No environment override, wrapper, module hiding, site mutation or
+alternate interpreter flag is admitted.
+
+The sole order-only `F002` representative moves mechanically from slices `[3:5]` and
+`[5:7]` to `[4:6]` and `[6:8]`. It preserves all twenty string values and length,
+swaps only the packet-root and disposition flag/value pairs, and rejects with exactly
+`F002` before input access or output. No control, schema, output role or result field
+is added. Every §18.34–§18.38 parser, serializer, identity, packet-tree recipe,
+cardinality, `W001`–`W042`, `F001`–`F010`, ledger rule, two-null invariant, ceiling
+and held real transaction remains unchanged.
+
+**Current result:** startup-isolation correction plan-only. Exact-tip Kiro review and
+a fresh Ryan two-SHA grant remain mandatory before the still-absent v4 partial may be
+created or one synthetic process may run. No prior grant is reusable. No freeze,
+packet/disposition/repository/runtime/retained-source read, work-item packet/result,
+network, acquisition, owner/license decision, binary repair, build, publication,
+implementation, PR `#342` update, PR creation, merge, real OpenClaw or later gate is
+authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2909,5 +2945,11 @@ preflight stopped before root, author, process, input read or write because the
 902-member input packet tree had no reviewed canonical identity recipe. Section 10.36
 binds the exact frozen-collector recipe: strict descendants only, distinct closed
 directory/file rows, raw UTF-8 path order, compact sorted-key JSON without a final LF,
-and the unchanged `491ae60b…` digest. It adds no read pass or control ID.
+and the unchanged `491ae60b…` digest. It adds no read pass or control ID. Kiro passed
+that correction at `991f488`, but the next static preflight stopped before root,
+author, process, read or write because global site initialization would import
+third-party `_distutils_hack`. Section 10.37 adds literal `-S` to both exact argv
+vectors, requires `sys.flags.no_site == 1`, excludes site-package dependency origins
+and shifts only the `F002` pair slices. It changes no schema, environment key, control,
+root or ceiling; Kiro review and a fresh grant remain mandatory.
 No root, process, read, write or operational authority exists.

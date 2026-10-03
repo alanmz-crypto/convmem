@@ -8788,6 +8788,165 @@ publication, CI admission, product/test/config/R2b change, implementation, PR `#
 update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
 promotion or Gate D/W/D-V/E/F action.
 
+### 18.39 V4 interpreter startup-isolation correction
+
+Kiro passed the exact §18.38/§10.36 packet-tree recipe overlay at
+`991f48866fcee52149211df3e70bac5d58acfb43`. Ryan then granted only the fresh v4
+synthetic capability freeze. Before creating either v4 root, writing the author or
+starting Python, Astra's final startup-dependency preflight proved that the literal
+reviewed argv would execute a global site-package hook before the author could
+install its audit boundary or validate the dependency manifest. The preflight stopped
+without consuming either single-assignment root or the one-process allowance.
+
+#### 18.39.1 Exact stopped state and startup proof
+
+```text
+WORK_ITEM_AUTHOR_STARTUP_ISOLATION_PLAN_BASE_OVERLAY_SHA=991f48866fcee52149211df3e70bac5d58acfb43
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_STATUS=PAUSE
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_ROOT_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_AUTHOR_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_PROCESS_COUNT=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_WRITTEN_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_REAL_INPUT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_PACKET_CONTENT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_DISPOSITION_CONTENT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STARTUP_PREFLIGHT_NETWORK_REQUESTS=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+```
+
+Both §18.34 v4 coordinates remain absent and single-assignment. No author, fixture,
+receipt, manifest, control result, dependency closure or freeze identity exists. The
+stopped grant is not reusable.
+
+The interpreter binding itself remains exact: literal path
+`/home/lauer/miniforge3/bin/python3`, version `3.13.12`, dereferenced executable size
+`32,959,480` and SHA-256
+`66c90902aba57b52abbe5e31e54fe65826c2046496f1656ef0f4e9d1ea26c8b0`.
+The defect is the default startup path around that executable:
+
+```text
+STARTUP_HOOK_PATH=/home/lauer/miniforge3/lib/python3.13/site-packages/distutils-precedence.pth
+STARTUP_HOOK_SHA256=2638ce9e2500e572a5e0de7faed6661eb569d1b696fcba07b0dd223da5f5d224
+STARTUP_HOOK_SIZE=151
+STARTUP_HOOK_MODE=0644
+STARTUP_SITE_PATH=/home/lauer/miniforge3/lib/python3.13/site.py
+STARTUP_SITE_SHA256=ea80b1f9fd676ec6d0c3ce8219d1ecfd103992e93e927c5d0a95a18443059f66
+STARTUP_SITE_SIZE=25556
+STARTUP_DISTUTILS_HACK_PATH=/home/lauer/miniforge3/lib/python3.13/site-packages/_distutils_hack/__init__.py
+STARTUP_DISTUTILS_HACK_SHA256=df81e6bcba34ee3e3952f776551fb669143b9490fdd6c4caeb32609f97e985b4
+STARTUP_DISTUTILS_HACK_SIZE=6755
+STARTUP_HOOK_EXECUTED=false
+```
+
+The hook's exact line sets `enabled` when
+`SETUPTOOLS_USE_DISTUTILS` is absent or equals `local`, then imports
+`_distutils_hack` and calls `add_shim()`. The frozen five-key environment omits that
+variable. The bound standard-library `site.py` calls global `addsitepackages()` and
+executes import-prefixed `.pth` lines unless `sys.flags.no_site` is set.
+`PYTHONNOUSERSITE=1` disables only the user site and does not suppress this global
+hook. Therefore the old thirteen- and nineteen-member argv arrays would import a
+third-party package before the author's first instruction, contradicting the
+standard-library-only dependency closure. No Python process was started to prove a
+condition already established from the bound startup bytes.
+
+#### 18.39.2 Closed no-site command vectors
+
+The successor changes only interpreter startup isolation. Insert literal `-S`
+immediately after the interpreter in both §18.37.2 argv vectors. The command-contract
+schema and exact nine-key set remain unchanged. The synthetic `argv` is now this exact
+fourteen-member string array:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/work-item-author-v4.py",
+  "synthetic-freeze",
+  "--fixture-spec",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/fixture-spec.json",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/freeze-manifest.json"
+]
+```
+
+The synthetic cwd remains the exact v4 partial root. The held
+`author_packet_argv` is now this exact twenty-member string array:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/work-item-author-v4.py",
+  "author-packet",
+  "--input-packet-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet",
+  "--input-disposition",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review/review-disposition.json",
+  "--staging-root",
+  "/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--durable-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/freeze-manifest.json"
+]
+```
+
+The held real cwd remains the sealed v4 final root. No `-I`, `-s`, environment
+override, `PYTHONPATH`, wrapper, module hiding or site-package mutation is admitted.
+The exact five-key environment stays unchanged. The literal `-S` is an interpreter
+option, not an author argument; the author path and verb therefore shift one argv
+position without changing the author's own flag grammar.
+
+#### 18.39.3 Startup invariant, `F002` shift and authority boundary
+
+The governed source imports built-in `sys` first and requires
+`sys.flags.no_site == 1` before importing any file-backed module or creating any
+output. Its complete `sys.modules` dependency closure must omit `site` and
+`_distutils_hack`, and every non-null module origin other than the independently
+hashed author must resolve outside `site-packages` and `dist-packages`. A false
+`no_site` flag, either forbidden module, a site-package origin, execution of any
+`.pth` line or a dependency row outside the standard library is `PAUSE`. This is a
+clean-baseline and dependency-closure invariant; it changes no JSON schema and adds
+no control ID.
+
+The sole `F002` representative retains the same semantic pair-order mutation. Because
+`-S` shifts the author and verb by one position, it now exchanges complete zero-based
+real-argv slices `[4:6]` and `[6:8]`. It preserves all twenty strings and array length,
+changes only the packet-root/disposition pair order, and must still return exactly
+`["F002"]` before content access or output creation. `F001` and `F003`–`F010` retain
+their meanings; there is no second `F002`, `F011`, combined mutant or new exception.
+
+Every §18.34–§18.38 root, source design, schema, parser, serializer, packet-tree
+recipe, mapping, cardinality, identity adapter, six freeze roles, seven output roles,
+`W001`–`W042`, `F001`–`F010`, write-ledger rule, exactly two null hashes, fixed-point
+sizing, process/RSS/write/read ceiling and later real-run transaction remains
+unchanged. The only admissible next sequence is Kiro exact-tip review, a fresh Ryan
+two-SHA grant naming the still-absent v4 roots and these isolated argv vectors, one
+synthetic process, external return of the six identities plus ledger/result counters,
+then plan-only result binding and Kiro capability review. No prior grant is reusable.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no v4 root/file creation or execution, packet/disposition
+content read, work-item root/result creation, network, subprocess, retained-source or
+runtime read, acquisition, ownership/license selection, binary repair, build,
+publication, CI admission, product/test/config/R2b change, implementation, PR `#342`
+update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -8812,6 +8971,7 @@ promotion or Gate D/W/D-V/E/F action.
 | Verification page | One of 49 deterministic unresolved-ID audit views; it proves coverage but cannot close or assign a row. |
 | Candidate record | A byte-preserving, packet-cited lead whose planning state never establishes origin, ownership, licensing or access authority. |
 | Closed command contract | A canonical command description with an exact schema, cwd and literal argv for each admitted verb; flag names, values and order cannot be chosen by the caller. |
+| Startup isolation | Launching the bound interpreter with literal `-S`, then proving `sys.flags.no_site == 1` and a dependency closure free of global/user site-package startup code before any governed output. |
 | Packet-tree identity | A SHA-256 over the exact canonical inventory of every strict descendant of an immutable packet root; directory rows and regular-file rows have different closed shapes, and the root mode is verified outside the hash. |
 | Pylint semantic identity | The canonical message fields compared across raw Pylint reports; raw report order and bytes remain evidence but are not the verdict oracle. |
 | Strict generation | A derivative of one exact cumulative authority head; atomic publication may instead select no serving generation. |
@@ -8869,6 +9029,11 @@ result builder and requiring actual reviewed v4 identities on the real path. Kir
 passed that correction, but the next granted preflight stopped before root/author/
 process/read/write because `F002` lacked its literal real argv. Section 18.37 closes
 the exact nine-key command contract, distinct synthetic/real cwd and argv values and
-one order-only `F002` representative. The corrected freeze still requires Kiro review
-and a new Ryan grant.
+one order-only `F002` representative. Kiro passed the exact §18.38 packet-tree
+successor at `991f488`, but the next granted preflight stopped before root, author,
+process, read or write because global site initialization would import third-party
+`_distutils_hack`. Section 18.39 adds only literal `-S` to both argv vectors, requires
+`sys.flags.no_site == 1`, excludes site-package dependency origins and shifts the sole
+`F002` slice indices mechanically. Every schema, environment key, control, root and
+ceiling remains unchanged; Kiro review and a fresh Ryan grant are mandatory.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
