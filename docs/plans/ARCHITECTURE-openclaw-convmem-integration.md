@@ -8015,6 +8015,229 @@ acquisition, owner/license selection, binary repair, build, publication, CI
 admission, implementation, PR `#342` update, merge, deployment, real OpenClaw, live
 data, watch activation, promotion or Gate D/W/D-V/E/F action.
 
+### 18.34 Successful freeze binding and real-author capability closure
+
+Kiro passed the exact §18.33/§10.31 retry overlay at
+`59ae444ea3f021c4807be82a0114c1a4d8558602`. Ryan then granted one retry at the
+fresh §18.33 coordinate. That single process completed the collision-free synthetic
+baseline and all `W001`–`W042` controls, froze exactly six files, renamed the partial
+root once and stopped before any real packet, disposition, repository, runtime or
+retained-source read. The prior one-file failed partial remains immutable.
+
+The successful freeze is valid synthetic evidence, but it is not a real-packet
+author. Its exact command contract admits only `synthetic-freeze`, and its exact
+source accepts only that argv. It has no real input-path grammar, packet/disposition
+reader, work-item output-root transaction or `author-packet` entry point. Therefore
+the frozen v3 artifact cannot satisfy the later-run premise in §§18.31.6/18.32.5.
+This is a capability boundary, not a failed semantic control: no synthetic PASS may
+be reinterpreted as proof that an absent real I/O path works.
+
+#### 18.34.1 Bound v3 freeze result and immutable stop
+
+```text
+WORK_ITEM_AUTHOR_RESULT_PLAN_BASE_OVERLAY_SHA=59ae444ea3f021c4807be82a0114c1a4d8558602
+PROVENANCE_WORK_ITEM_SCHEMA=convmem.switchboard.provenance-work-items.v3
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_STATUS=PASS
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/21f5accd742f4e4e53760420e33d0ecfe4c62829/v3
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_TREE_SHA256=65f32f116472de8bce8b9c01dedf52d33c0f2dec6794bb8a2a00a460c403f826
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_MEMBER_COUNT=6
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_TOTAL_BYTES=80329
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_ROOT_MODE=0555
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_MEMBER_MODE=0444
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_FIXTURE_ID=fixture:sha256:a74c1322e073b91d1e704db6bf596bba4f983647a4f0873cc27e2c7252dcedb2
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_EDGE_KEY_SET_SHA256=718184327681f68dbdee4f0920eaea71f0d9b5a989c453f1c3bf2ddc7e867051
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_CONTROL_COUNT=42
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_CONTROLS_PASSED=42
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_REAL_AUTHOR_CAPABILITY=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_REAL_AUTHOR_ELIGIBLE=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+PROVENANCE_ACQUISITION_EXECUTION_AUTHORIZED=false
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial
+```
+
+The v3 final root is single-assignment and immutable. It contains exactly:
+
+| File | Size | SHA-256 |
+|---|---:|---|
+| `work-item-author-v3.py` | 42,795 | `8c6dd7e2c1905980e9e431c96945f3c80d9f221e63680e9b8a58e1e34495f603` |
+| `fixture-spec.json` | 476 | `d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f` |
+| `dependency-manifest.json` | 8,471 | `6faff2fbede20477e4abeacfae62ff4156aa11ff732193f454740e5ed7bdb100` |
+| `command-contract.json` | 1,708 | `dc2ec169bb79ff98d2b2e0fc6d25b12121b1094c68b7d22a2863e3891ccd7002` |
+| `self-test-receipt.json` | 25,912 | `bd71db8ecaffd10ec7d2fa5e15c1fb4f91fad5a14d197ee2b0350f153ec7ae4f` |
+| `freeze-manifest.json` | 967 | `8e9bee683e79c969bdc32c62f75a578f7f2a4e271bbd65fe85550441dfc07992` |
+
+The interpreter remains `/home/lauer/miniforge3/bin/python3`, version `3.13.12`,
+size `32,959,480`, SHA-256
+`66c90902aba57b52abbe5e31e54fe65826c2046496f1656ef0f4e9d1ea26c8b0`,
+with the 65-row standard-library dependency manifest bound above. The self-test
+receipt records one zero-violation baseline, `42/42` individual controls, one process,
+80,329 total written bytes and zero real-input, network, runtime, retained-source and
+subprocess access. The required synthetic `W040` sentinel
+`https://user:secret@example.invalid/` is test data, not a credential or an admitted
+origin.
+
+The v3 root may not be modified, chmodded, deleted, renamed, copied into a successor,
+executed for real input or treated as an authoring grant. The new v4 roots and both
+existing v3 work-item packet roots (including `.partial` siblings) were absent when
+this plan was authored. Pre-existence at any later grant is `PAUSE`.
+
+#### 18.34.2 Exact capability gap
+
+The v3 `command-contract.json` contains one argv whose sole verb is
+`synthetic-freeze`. The frozen source requires exact equality with that argv and
+rejects every other command. It contains no admitted `author-packet` verb and no
+contract for:
+
+- the immutable schema-v3 packet root or independent disposition path;
+- one-pass input member enumeration, hashing and canonical parsing;
+- the v3 staging/durable packet roots or their `.partial` siblings;
+- the seven-file packet plus external result transaction in §18.31; or
+- the real-run read, write and access counters.
+
+Consequently `PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_REAL_AUTHOR_ELIGIBLE=false` is
+frozen. A wrapper, patched copy, dynamic import, shell pipeline, new subcommand,
+environment switch or caller-side reader would be a new unreviewed author and is
+forbidden. The v3 freeze remains positive evidence only for the shared deterministic
+work-item builder/validator and the exact synthetic controls it actually ran.
+
+#### 18.34.3 Successor v4 capability freeze
+
+The successor changes no work-item schema, candidate/gap mapping, locator, ID,
+ordering, coverage, `W001`–`W042` meaning or output-root coordinate. It freezes a new
+standard-library-only `work-item-author-v4.py` at the fresh v4 coordinate. One source
+must expose exactly two closed verbs:
+
+1. `synthetic-freeze`, which retains the §18.33 collision-free fixture and runs the
+   same zero-violation baseline plus `W001`–`W042`; and
+2. `author-packet`, which owns the complete read, build, validation, two-root commit
+   and result path in §18.34.4.
+
+Both verbs must call the same `load -> derive -> validate -> serialize` core. The
+synthetic path may substitute only a fixture-backed read adapter and disposable roots
+under the v4 partial. It must exercise the real packet/disposition parsers, the exact
+seven output serializers, both-root copy/verification logic and external-result
+builder without reading real input. It removes every disposable synthetic input and
+output before the six final freeze files are sealed. A test-only implementation that
+bypasses a production function, a production verb that is present but unexecuted, or
+two separately implemented derivation paths is `PAUSE`.
+
+The v4 final root again contains exactly the six mode-`0444` roles
+`work-item-author-v4.py`, `fixture-spec.json`, `dependency-manifest.json`,
+`command-contract.json`, `self-test-receipt.json` and `freeze-manifest.json` under a
+mode-`0555` root. The command contract contains both ordered argv contracts and the
+closed environment:
+
+```text
+LANG=C.UTF-8
+LC_ALL=C.UTF-8
+PYTHONDONTWRITEBYTECODE=1
+PYTHONHASHSEED=0
+PYTHONNOUSERSITE=1
+```
+
+The v4 synthetic freeze retains one process, zero subprocesses, zero network and zero
+real-input/runtime/retained-source reads, with one aggregate transient-plus-persisted
+write ceiling of `67,108,864` bytes. It runs exactly 52 independent controls: the
+unchanged `W001`–`W042` plus:
+
+| Control | Exact rejected capability drift |
+|---|---|
+| `F001` | missing or renamed `author-packet` verb |
+| `F002` | extra, missing, reordered or non-literal real argv member |
+| `F003` | input packet root differs from the exact governed coordinate |
+| `F004` | disposition path differs from the exact governed coordinate |
+| `F005` | a second content pass or byte above either frozen input ceiling |
+| `F006` | any output write before both inputs finish identity/schema validation |
+| `F007` | synthetic and real verbs reach different derive/validate/serialize cores |
+| `F008` | network, subprocess, repository, runtime or retained-source access |
+| `F009` | staging/durable final or partial root pre-exists or has a symlinked ancestor |
+| `F010` | output role/result/counter/mode/atomic-rename contract differs from §18.34.4 |
+
+Each control is one deterministic mutation whose expected and observed rejection code
+is its own ID; the clean baseline has zero violations. Combined controls, an `F011`,
+nondeterministic receipt, missing executed production path, leftover disposable file
+or post-failure output rewrite is `PAUSE`. A later exact Ryan grant is required before
+the v4 partial may be created or the single synthetic process may run.
+
+#### 18.34.4 Held one-pass real packet authoring contract
+
+Only after v4 Kiro PASS, a separately granted successful v4 freeze and a result-binding
+review may a still-later Ryan grant name one `author-packet` run. Its closed inputs are:
+
+```text
+INPUT_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet
+INPUT_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+INPUT_PACKET_MEMBER_COUNT=902
+INPUT_PACKET_BYTES=654147403
+INPUT_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+INPUT_DISPOSITION_PATH=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review/review-disposition.json
+INPUT_DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+INPUT_DISPOSITION_BYTES=8383806
+MAX_INPUT_PACKET_CONTENT_PASSES=1
+MAX_INPUT_DISPOSITION_CONTENT_PASSES=1
+MAX_REAL_INPUT_READ_BYTES=662531209
+MAX_PROCESS_COUNT=1
+MAX_SUBPROCESS_COUNT=0
+MAX_PEAK_RSS_BYTES=2147483648
+MAX_SINGLE_OUTPUT_ROOT_BYTES=2147483648
+MAX_TOTAL_WRITTEN_BYTES=4294967296
+NETWORK_REQUESTS=0
+RETAINED_SOURCE_READS=0
+RUNTIME_READS=0
+ACQUIRED_BYTES=0
+```
+
+The exact output roots remain the absent schema-v3 coordinates in §18.32.1. Directory
+metadata enumeration does not consume a second content pass. Every one of the 902
+regular input members is opened for content at most once; its bytes feed hashing and
+canonical parsing in the same stream. The disposition is opened once. The exact two
+byte ceilings sum to `662,531,209`; early EOF, an extra byte/member, missing member,
+symlink, special file, hard link, mode/hash/tree/manifest mismatch, second open for
+content or parser replay is `PAUSE` before any output write.
+
+After both inputs validate completely, retaining only bounded in-memory indexes in the
+one process,
+the author creates only the two exact absent `.partial` roots. It emits the seven
+§18.31/§18.32 packet roles and external `authoring-result.json` to staging, validates
+all 1,240 items, 98,608 unique open-ID assignments, 30,421 paths, 1,384 primary edges,
+20 batches, 49 pages, 19 disputes, exact candidate/citation unions, `W001`–`W042`,
+hashes and modes, then copies only those newly generated bytes to the durable partial.
+It proves byte/mode/tree equality, freezes both roots, and atomically renames each once.
+The aggregate write ceiling includes both copies, results and every transient regular
+file; no per-component, per-page or retry multiplier exists.
+
+Both final roots are mode `0555` and contain exactly mode-`0555` `packet/` plus mode-
+`0400` `authoring-result.json`; packet files are mode `0444`. The result retains the
+closed §18.31.5 schema, binds the future v4 author/freeze identities and reports the
+exact input read counters above. It returns its own external size/SHA-256 and both root
+tree identities; it never self-hashes. Any failure preserves partials, writes no final
+root/result, and has no automatic retry, repair, deletion or resume route.
+
+#### 18.34.5 Review sequence and authority boundary
+
+The only valid sequence is:
+
+1. Kiro exact-tip reviews this v3 result binding, capability diagnosis, v4 freeze and
+   held real-read contract.
+2. A new two-SHA Ryan grant may create and run only the fresh v4 synthetic freeze.
+3. Codex binds the returned six identities in another plan-only overlay; Kiro reviews
+   the exact frozen capability.
+4. A separate Ryan grant may authorize one exact `author-packet` run with the inputs,
+   roots, argv and ceilings above.
+5. A separately granted independent reviewer recomputes every output identity and
+   assignment without modifying packet, result or inputs.
+
+This section authorizes only four Switchboard planning-document edits and exact-tip
+review. It authorizes no v4 root/file creation, freeze execution, packet/disposition
+content read, work-item root/result creation, network, retained-source or runtime
+read, acquisition, ownership/license selection, binary repair, build, publication,
+CI admission, product/test/config/R2b change, implementation, PR `#342` update, merge,
+deployment, real OpenClaw, live data, watch activation, promotion or Gate
+D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -8054,6 +8277,7 @@ data, watch activation, promotion or Gate D/W/D-V/E/F action.
 | Licensing disposition | The fail-closed public-redistribution result. `PAUSE` means byte integrity may pass while publication remains forbidden. |
 | Pre-acquisition planning contract | The lossless component/obligation partition and exact operation requirements used to prepare later grant-ready acquisition packets; it authorizes no read or request. |
 | Clean replacement | Fresh bytes built from independently locked inputs and recipes; never a repaired or prefix-rewritten rejected binary. |
+| Capability freeze | An immutable author package whose self-test executes the same production path later used on real input; a synthetic-only command is not a real-author capability freeze. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main
@@ -8077,4 +8301,7 @@ to have a null version. Section 18.26 preserved schema v1 and defined schema v2,
 granted v2 run proved the raw `version` member is absent and correctly stopped without a result or
 durable packet. Section 18.27 preserves both rejected attempts and defines only a fresh-root
 schema-v3 exact-object absent-member projection; it authorizes no collector freeze, retry or read.
+Section 18.34 binds the successful six-file synthetic retry but records that its frozen
+source has no real `author-packet` command. It therefore defines a fresh v4 capability
+freeze and one-pass real-read contract without authorizing either execution.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
