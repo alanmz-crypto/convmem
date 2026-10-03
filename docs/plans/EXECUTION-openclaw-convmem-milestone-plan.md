@@ -2,8 +2,8 @@
 
 **Current status (2026-10-03): SCHEMA-V3 PACKET TECHNICAL PASS;
 PROVENANCE/LICENSING PAUSE; WORK-ITEM V3 SYNTHETIC FREEZE PASS;
-REAL-AUTHOR CAPABILITY ABSENT; V4 CAPABILITY CORRECTION / KIRO REVIEW
-REQUIRED.** The accepted bounded implementation and
+REAL-AUTHOR CAPABILITY ABSENT; V4 WRITE-BUDGET PREFLIGHT PAUSE;
+CORRECTED BUDGET PLAN / KIRO REVIEW REQUIRED.** The accepted bounded implementation and
 final M11 evidence remain preserved at
 `PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb`.
 Kiro passed the PR-corrective overlay `a23d843`; required GitHub `pytest (3.12)`
@@ -43,6 +43,11 @@ six-file synthetic freeze tree `65f32f11…` with one clean baseline and `42/42`
 controls. The immutable author accepts only `synthetic-freeze`, so it is ineligible
 for real input. Sections 18.34/10.32 bind that result and define only a fresh v4
 capability freeze plus a held one-pass real-read contract. These
+plans passed Kiro at `4210977`; the granted v4 static preflight then stopped before
+root/process creation because a 143,967,680-byte two-copy lower bound cannot fit under
+the inherited 67,108,864-byte write cap. Sections 18.35/10.33 preserve the full
+transaction and all 52 controls, and change only that synthetic cap to a hard 1 GiB
+with exact pre-write accounting. These successor
 plans authorize no packet/runtime read, request, retained-source access, acquisition,
 owner or license selection, binary repair, build, runtime publication, evidence rerun,
 PR update or merge.
@@ -55,7 +60,8 @@ COMPONENT/OWNERSHIP WORK-ITEM PLAN MERGED AT `d79f03c`; KIRO EXACT-MAIN PASS;
 SCHEMA-V2 CLOSURE KIRO PASS AT `dea026c`; SCHEMA-V3 MAPPING KIRO PASS AT
 `21f5acc`; FIRST GOVERNED FREEZE PAUSE; COLLISION-FREE RETRY KIRO PASS AT
 `59ae444`; SIX-FILE SYNTHETIC FREEZE PASS; REAL-AUTHOR CAPABILITY ABSENT; V4
-CAPABILITY CORRECTION AWAITS EXACT-TIP KIRO REVIEW.
+CAPABILITY PLAN KIRO PASS AT `4210977`; WRITE-BUDGET PREFLIGHT PAUSE; CORRECTED
+BUDGET PLAN AWAITS EXACT-TIP KIRO REVIEW.
 PRODUCT/TEST/CI/RUNTIME EDITS, TEST EXECUTION, PR UPDATE, MERGE AND REAL OPENCLAW
 WORK REMAIN PAUSED.
 
@@ -66,7 +72,8 @@ WORK REMAIN PAUSED.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=49a99f1385a3ee6c568935cb1d39048f8a2ff633
+SEMANTIC_PARENT_SHA=dec5c21f98bb08c03632cdb0a106bc21d31fc974
+WORK_ITEM_AUTHOR_WRITE_BUDGET_PLAN_BASE_OVERLAY_SHA=42109775294bf9f20bacaac8f33abf00211fc082
 WORK_ITEM_AUTHOR_RESULT_PLAN_BASE_OVERLAY_SHA=59ae444ea3f021c4807be82a0114c1a4d8558602
 WORK_ITEM_SYNTHETIC_EDGE_RETRY_PLAN_BASE_SHA=21f5accd742f4e4e53760420e33d0ecfe4c62829
 WORK_ITEM_CANDIDATE_GAP_PLAN_BASE_SHA=dea026ce561e480ba3436d3c1cbea9bbcae6a14b
@@ -223,7 +230,9 @@ SYNTHETIC_EDGE_COUNT=1384
 SYNTHETIC_EDGE_PRIMARY_KEY_SHA256=718184327681f68dbdee4f0920eaea71f0d9b5a989c453f1c3bf2ddc7e867051
 PROPOSED_WORK_ITEM_AUTHOR_INTERPRETER=/home/lauer/miniforge3/bin/python3
 PROPOSED_WORK_ITEM_AUTHOR_INTERPRETER_VERSION=3.13.12
-PROPOSED_WORK_ITEM_AUTHOR_FREEZE_MAX_TOTAL_WRITTEN_BYTES=67108864
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_MAX_TOTAL_WRITTEN_BYTES=67108864
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_MAX_TOTAL_WRITTEN_BYTES=1073741824
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_MAX_PEAK_RSS_BYTES=2147483648
 PROPOSED_WORK_ITEM_AUTHOR_FREEZE_MAX_PROCESS_COUNT=1
 PROPOSED_WORK_ITEM_AUTHOR_FREEZE_REAL_INPUT_READ_BYTES=0
 PROPOSED_WORK_ITEM_AUTHOR_FREEZE_NETWORK_REQUESTS=0
@@ -231,6 +240,15 @@ PROPOSED_WORK_ITEM_AUTHOR_FREEZE_RUNTIME_READS=0
 PROPOSED_WORK_ITEM_AUTHOR_FREEZE_RETAINED_SOURCE_READS=0
 PROPOSED_WORK_ITEM_AUTHOR_V4_CAPABILITY_CONTROL_COUNT=10
 PROPOSED_WORK_ITEM_AUTHOR_V4_TOTAL_CONTROL_COUNT=52
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_STATUS=PAUSE
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_ROOT_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_PROCESS_COUNT=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_REAL_INPUT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_NETWORK_REQUESTS=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_MIN_GAP_BYTES=262
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_MIN_CITATION_BYTES=468
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_ONE_COPY_LOWER_BOUND_BYTES=71983840
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_TWO_COPY_LOWER_BOUND_BYTES=143967680
 PROPOSED_WORK_ITEM_AUTHOR_INPUT_PACKET_TREE_MEMBER_COUNT=902
 PROPOSED_WORK_ITEM_AUTHOR_INPUT_PACKET_BYTES=654147403
 PROPOSED_WORK_ITEM_AUTHOR_INPUT_DISPOSITION_BYTES=8383806
@@ -779,16 +797,28 @@ Review and authority order is mandatory:
     eligibility false, and define fresh absent v4 roots, one shared-core synthetic
     capability freeze, `F001`–`F010`, and one held bounded real-read contract. This
     overlay authorizes planning review only.
+59. Kiro passed the capability plan at
+    `WORK_ITEM_AUTHOR_WRITE_BUDGET_PLAN_BASE_OVERLAY_SHA`, and Ryan granted only its
+    v4 synthetic freeze. Astra's static preflight stopped before root creation or
+    process execution because the required two-copy gap/citation lower bound is
+    143,967,680 bytes, which cannot fit under the inherited 67,108,864-byte aggregate
+    cap. Sections 18.35/10.33 preserve the absent roots, full-cardinality shared path,
+    52 controls and 2-GiB RSS bound, replace only the synthetic write cap with
+    1,073,741,824 bytes and require an exact forecast/observed write ledger. Exactly
+    the receipt and manifest ledger rows use JSON-null digests to avoid recursive
+    identity; the existing manifest/external-result chain binds their actual bytes.
+    This overlay authorizes planning review only; the prior execution grant is not
+    reusable.
 
 ## 1. State ledger
 
 | State | Items |
 |---|---|
-| **Specified** | Semantic parent Architecture §§18.22–18.34 and Execution §§10.20–10.32; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; complete component/ownership work-item design; closed schema-v3 candidate-gap/locator/freeze contract; preserved failed freeze; successful synthetic retry binding; explicit absent real-author capability; fresh v4 shared-core freeze and held one-pass real-read contract; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
+| **Specified** | Semantic parent Architecture §§18.22–18.35 and Execution §§10.20–10.33; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; complete component/ownership work-item design; closed schema-v3 candidate-gap/locator/freeze contract; preserved failed freeze; successful synthetic retry binding; explicit absent real-author capability; fresh v4 shared-core freeze, corrected synthetic write budget and held one-pass real-read contract; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
-| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model, schema v2 at `dea026c`, schema-v3 mappings at `21f5acc` and retry correction at `59ae444`. The first governed v3 freeze failed closed on baseline `W026`; its one-file partial remains immutable. The separately granted retry passed its clean baseline and `42/42` controls, freezing exact six-file tree `65f32f11…` with zero real access. Its source is synthetic-only and no real author or work-item packet has been tested. |
+| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model, schema v2 at `dea026c`, schema-v3 mappings at `21f5acc`, retry correction at `59ae444` and capability plan at `4210977`. The first governed v3 freeze failed closed on baseline `W026`; its one-file partial remains immutable. The separately granted retry passed its clean baseline and `42/42` controls, freezing exact six-file tree `65f32f11…` with zero real access. Its source is synthetic-only. The v4 budget preflight created no root/process and proved only that 64 MiB cannot contain the full transaction; no real author or work-item packet has been tested. |
 | **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
-| **Unresolved** | Exact-tip Kiro review of the v3-result/v4-capability correction; separately granted fresh-root six-file v4 shared-core freeze; plan-only v4 identity binding and review; one-pass real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Unresolved** | Exact-tip Kiro review of the v4 write-budget correction; a new separately granted fresh-root six-file v4 shared-core freeze under the corrected 1-GiB cap; plan-only v4 identity binding and review; one-pass real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -882,8 +912,11 @@ M0 baseline/runtime input
   → exact-tip Kiro retry-plan PASS at 59ae444
   → separate fresh-root six-file synthetic retry PASS at tree 65f32f11…
   → plan-only §18.34/§10.32 result binding and v4 real-author capability correction
-  → exact-tip Kiro capability-plan review
-  → separate fresh-root six-file v4 shared-core synthetic capability freeze
+  → exact-tip Kiro capability-plan PASS at 4210977
+  → granted v4 static preflight PAUSE before root/process: 64-MiB cap impossible
+  → plan-only §18.35/§10.33 synthetic write-budget correction
+  → exact-tip Kiro write-budget review
+  → new separate fresh-root six-file v4 shared-core synthetic capability freeze
   → plan-only v4 identity binding and Kiro capability review
   → separate one-pass bounded offline work-item authoring grant and independent review
   → separate exact metadata/acquisition operation packet, review and Ryan grant
@@ -911,10 +944,11 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 M0–M8 and the preceding M11 evidence are accepted historical scope; they are neither
 reopened nor promoted into a green GitHub required check. M9, M10, watch coverage and
 complete-system review remain decision gates, not implementation work. The next
-possible activity is Kiro exact-tip review of the v3-result/v4-capability correction.
-Only after PASS may Ryan separately grant the fresh-root v4 shared-core synthetic
-freeze; its identity binding/review, real packet authoring and independent review
-remain later separately granted activities.
+possible activity is Kiro exact-tip review of the v4 write-budget correction. Only
+after PASS may Ryan issue a new grant for the fresh-root v4 shared-core synthetic
+freeze under the corrected 1-GiB cap; the prior grant is not reusable. Its identity
+binding/review, real packet authoring and independent review remain later separately
+granted activities.
 Because the replacement freezes `REPLACEMENT_PROVENANCE_CLOSURE=UNRESOLVED`,
 `REPLACEMENT_LICENSING_DISPOSITION=PAUSE` and
 `REPLACEMENT_PUBLICATION_ELIGIBLE=false`, Kiro PASS cannot
@@ -1463,7 +1497,10 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    and change only the four plans to bind collision-free synthetic edges and fresh
    retry roots. Sections 18.34/10.32 bind the successful six-file retry, record its
    absent real-author capability and define only fresh v4 freeze coordinates plus a
-   held real-read contract. This overlay creates no freeze, packet or result. Future acquisition,
+   held real-read contract. Sections 18.35/10.33 preserve those coordinates and every
+   semantic/control boundary while replacing only the impossible 64-MiB synthetic
+   write cap with the exact 1-GiB ledgered cap. This overlay creates no freeze, packet
+   or result. Future acquisition,
    build/packet paths and three
    asset names must be frozen by reviewed successors before creation. No other path
    may change. Evidence uses grant-named disposable/durable roots only.
@@ -1489,9 +1526,11 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    preserved a one-file PAUSE after baseline `W026`. Kiro passed the retry correction
    at `WORK_ITEM_AUTHOR_RESULT_PLAN_BASE_OVERLAY_SHA`; its separately granted process
    froze exact tree `PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_TREE_SHA256`, but the
-   immutable source accepts only `synthetic-freeze`. Exact-tip Kiro PASS on this
-   capability correction, a separately granted fresh-root v4 six-file freeze, a later
-   identity-binding review, a separately granted one-pass offline author,
+   immutable source accepts only `synthetic-freeze`. Kiro passed the capability plan
+   at `WORK_ITEM_AUTHOR_WRITE_BUDGET_PLAN_BASE_OVERLAY_SHA`; its granted v4 static
+   preflight stopped before root/process because the old budget was impossible.
+   Exact-tip Kiro PASS on this write-budget correction, a new separately granted
+   fresh-root v4 six-file freeze, a later identity-binding review, a separately granted one-pass offline author,
    independent work-item packet review, a later exact operation packet and Ryan
    acquisition grant, and Kiro/
    licensing review of a zero-unresolved component lock remain mandatory
@@ -1514,8 +1553,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    result, exact primary assignments, derived views, citation states, 42 receipts,
    the preserved failed author identity, exact collision-free synthetic edge key-set
    hash, the successful synthetic freeze identities, explicit absent real-author
-   capability, fresh v4 roots, ten capability controls and held one-pass author/review
-   sequence. The
+   capability, fresh v4 roots, ten capability controls, the failed-budget lower bound,
+   exact 1-GiB write ledger, its two closed null-digest rows and deterministic
+   receipt/manifest size fixed point, and the held one-pass author/review sequence. The
    duplicate hashing helper cleanup is excluded.
 6. **Tests/evidence:** Static schema proof for all thirteen file roles, canonical
    encoding/types/enums/nullability, nonrecursive IDs/hashes, separate immutable
@@ -1542,8 +1582,12 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    `30,402 + 19 = 30,421`; one primary container assignment for each of 1,384 edges;
    cited-candidate/state/ID-derivation closure; v1/v2/v3 root absence; exact
    `W001`–`W042` closed mutants; v4 shared-core production-path proof; exact
-   `F001`–`F010`; one-pass 654,147,403-byte packet plus 8,383,806-byte disposition
-   read contract; six-file freeze schema/coordinate/ceiling proof; and the three host-path
+   `F001`–`F010`; exact 262/468-byte artificial-object proof,
+   71,983,840/143,967,680-byte lower bounds and ledgered 1-GiB synthetic cap; exact
+   two-row null-digest exception, at-most-sixteen-iteration size fixed point and
+   nonrecursive manifest/external-result identity chain; one-pass
+   654,147,403-byte packet plus 8,383,806-byte disposition read contract; six-file
+   freeze schema/coordinate/ceiling proof; and the three host-path
    objects, occurrence offsets and loader findings. Then, only under future grants,
    one offline work-item packet and independent review; complete cited origin work
    items and exact granted operations; exact
@@ -1584,7 +1628,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    cannot be mutated or reused. The successful v3 retry root is immutable synthetic
    evidence only; its missing `author-packet` command is never supplied by a wrapper,
    patch, import or caller-side reader. A successor uses only the §18.34 fresh v4 roots,
-   one shared production path and exact read/root transaction. The
+   one shared production path and exact read/root transaction. Its synthetic freeze
+   uses §18.35's hard 1-GiB cap and exact forecast/observed write ledger; the rejected
+   64-MiB grant cannot be reused or transferred. The
    replacement set's three roles
    are jointly single-assignment at later reviewed exact coordinates and are never
    repaired, partially published, substituted or resolved through `latest`. The
@@ -1611,7 +1657,10 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    mutation, execution on real input or capability laundering of the successful v3
    freeze; wrapper/patch/import/dynamic-command substitution for its absent
    `author-packet` verb; a v4 synthetic path that bypasses the real parser/serializer/
-   root transaction; missing/combined/extra capability control; second input content
+   root transaction; reuse of the impossible 64-MiB grant; padding, preallocation,
+   compression, sparse files, hard links, reflinks, deduplicated copies, unledgered/
+   short/repeated writes, any third/missing/misplaced ledger null, unstable size fixed
+   point or forecast/observed byte drift; missing/combined/extra capability control; second input content
    pass; write before complete input validation; or any real read/root creation before
    the separately reviewed v4 result and exact Ryan grant;
    state promotion with missing operation
@@ -1651,13 +1700,15 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    `WORK_ITEM_AUTHOR_RESULT_PLAN_BASE_OVERLAY_SHA`, and its separately granted retry
    produced exact synthetic tree `PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V3_TREE_SHA256`.
    Real-author-freeze-ready is not reached because that source has no `author-packet`
-   verb. Capability-freeze-design-ready requires Kiro PASS on this exact parent/
-   overlay. Author-freeze-ready and
+   verb. Capability-plan-ready was reached by Kiro PASS at
+   `WORK_ITEM_AUTHOR_WRITE_BUDGET_PLAN_BASE_OVERLAY_SHA`; the first v4 preflight then
+   stopped before root/process on the impossible 64-MiB cap. Write-budget-design-ready
+   requires Kiro PASS on this exact parent/overlay. Author-freeze-ready and
    work-item-packet-ready,
    complete-origin-planning, operation-packet-ready,
    acquisition-ready, provenance-closed, lock-ready,
    build-ready, packet-ready, publication-ready and CI-admission-ready are separate
-   later states defined by §§18.24–18.34/§§10.22–10.32; none is reached here.
+   later states defined by §§18.24–18.35/§§10.22–10.33; none is reached here.
    Publication-ready additionally requires actual-byte technical/provenance/licensing
    PASS and Ryan's exact external-action grant. Correction-ready additionally requires
    Ryan's exact implementation grant and the separately published/verified set. Merge-ready requires
@@ -1665,7 +1716,7 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    focused safety PASS, Kiro integrated-tip PASS and Ryan's final merge decision.
 10. **Ryan confirmation:** The one schema-v3 P0 execution is complete and not reusable.
     The independent reviewer write is complete and not reusable. Confirmation remains
-    mandatory separately for the exact fresh-root six-file v4 capability freeze,
+    mandatory separately for the corrected exact fresh-root six-file v4 capability freeze,
     its plan-only result binding and review, offline one-pass work-item authoring at
     the exact absent roots,
     independent work-item review, complete cited origin planning and each later schema-
@@ -1851,10 +1902,15 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 - [x] Kiro exact-tip PASS on §§18.33/10.31 at `59ae444`.
 - [x] Separately granted exact six-file synthetic retry, with one clean 1,384-unique-
       edge baseline and deterministic `W001`–`W042`, stopping before real reads.
-- [ ] Kiro exact-tip PASS on §§18.34/10.32 and this v3-result/v4-capability overlay.
-- [ ] Separately granted exact six-file v4 capability freeze, with the same shared
-      production path executing on synthetic input, unchanged `W001`–`W042`, exact
-      `F001`–`F010`, and zero real-input access.
+- [x] Kiro exact-tip PASS on §§18.34/10.32 at capability overlay `4210977`.
+- [x] The granted v4 static preflight stopped before root/process creation because the
+      143,967,680-byte two-copy lower bound cannot fit under the inherited 64-MiB cap.
+- [ ] Kiro exact-tip PASS on §§18.35/10.33 and this write-budget overlay.
+- [ ] Newly granted exact six-file v4 capability freeze, with the same shared
+      production path executing on full-cardinality synthetic input, unchanged
+      `W001`–`W042`, exact `F001`–`F010`, the two nonrecursive null-digest rows,
+      stable size fixed point, exact write-ledger equality within 1 GiB,
+      and zero real-input access.
 - [ ] Plan-only v4 identity binding and Kiro exact-tip capability review.
 - [ ] Separately granted offline authoring and independent review of the exact
       seven-file work-item packet with 1,240-item/98,608-ID/1,384-edge disjoint-union
@@ -1915,7 +1971,7 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 | SBOM absent-version projection laundering | Architecture §18.27 / external gate | `STATIC`, schema-v3 identity control | Reuse/delete v1 or v2 staging; treat null and absence as equivalent; change the raw object, component path/hash/key set/name/identity; project another absent component; use a tag, branch, uppercase/non-40-hex revision, qualifier, subpath, percent alias, normalization, lookup or second route; omit the raw binding | `PAUSE` before any durable packet. Only the exact hash-bound `base64` object at `components/0` with the exact absent `version` member may project; explicit null and every other missing version reject; all other §18.25 rules remain unchanged | Exact v1/v2 stop identities and cumulative read counters, absent fresh v3 roots, raw SBOM/object/component/key-set proofs, exact `raw_version_state="absent"` projection, complete §18.27 positive/negative matrix and proof no v1/v2 object entered v3 |
 | Schema-v3 P0 result laundering | Architecture §18.28 / external gate | `STATIC`, immutable-packet review control | Relabel structural completion as provenance closure; omit an unresolved row; reset the exhausted read ledger; rerun the collector; mutate/replace the packet; create the review disposition inside the packet; let the collector review itself; infer origin/license/source from installed metadata; acquire from an unreviewed origin | `PAUSE`; only the exact result/manifest/packet identities are reviewable. All 98,608 open rows remain blocking; the review root stayed separate and absent until its distinct grant, and no acquisition/build/publication follows from either Kiro PASS or the later disposition | Exact collector/result/manifest/packet hashes, staging/durable byte-mode equality, 651 object hashes, nine unresolved-group counts, five-pass/11,643,965,233-byte ledger, historical absent review root and later disposition bound to every reviewed hash |
 | Pre-acquisition or host-path laundering | Architecture §18.29 / external gate | `STATIC`, planning and clean-build control | Omit/duplicate/reassign a component, file, edge or unresolved ID; guess an owner; treat package/PURL/metadata/SBOM/search/registry/cache/host hints as authority; multiply ceilings by batch; mutate the disposition; copy or rewrite a rejected ELF; use `patchelf`/`chrpath`, prefix replacement, host fallback, traversing `$ORIGIN`, inherited loader/Tcl/terminfo state, synthetic external libraries/data or a blanket absolute-path/debug exception | `PAUSE`; coverage must be disjoint and equal to the four manifest sets, unsupported origins stay unresolved, every operation is separately reviewed/granted, and the three path-bearing components are rebuilt only from independently locked inputs. Runtime PASS cannot override provenance/privacy/compliance failure | Exact disposition and manifest primary-key hashes; twenty-batch/49-page/19-file queue proof; packet citations; three object/path/offset/RPATH bindings; exact operation packet; two distinct-prefix build comparison; complete delivery-set host/build-prefix and loader-semantic scans |
-| Component/ownership work-item laundering | Architecture §§18.32–18.34 / external gate | `STATIC`, offline-planning control | Create/freeze before a grant; mutate/reuse/complete the stopped partial; reuse its coordinate; use `components.jsonl` as an alias; vary candidate gap sets or root/field/byte-range locators; collide a synthetic edge, change its counter domain/key hash or use a count-changing `W026`; treat the successful synthetic-only v3 source as a real author; add a wrapper/patch/imported reader or unexecuted production verb; split synthetic and real derivation paths; omit/combine/add a capability control; take a second input pass or write before full input validation; add/omit a freeze or packet role/key; omit/duplicate/reassign a work item, path, edge or unresolved ID; place a disputed path in a component item; split one path's origin rows; assign an edge outside its container; let a batch/page own a row; promote an uncited candidate or `READY_FOR_REVIEW`; choose a license/owner; self-hash manifest/result; emit a nondeterministic receipt; exceed freeze/read/process/RSS/write/access ceilings; include acquired bytes; multiply a later ceiling; add a host-path repair route | `PAUSE`; the exact one-file failed partial and successful six-file v3 synthetic tree remain immutable evidence, while fresh v4 and work-item roots stay absent. A granted v4 freeze must prove one shared production path, exactly six final roles, the unchanged 1,384-key baseline and `W001`–`W042`, exact `F001`–`F010`, and zero real access; later authoring must use one bounded content pass per immutable input and prove seven packet roles, 1,221 component items, 19 dispute items, 1,384 container-edge assignments and all 98,608 IDs. Candidate states remain non-authoritative and all packet rows remain open | Exact base/packet/disposition identities; failed author/partial identities; successful six-file tree/member identities and synthetic-only command proof; absent v4/packet roots; shared-core execution receipt; counter-derived component domain and 1,384-key count/set/hash proof; same-cardinality `W026`; deterministic `W001`–`W042` and `F001`–`F010`; exact 654,147,403 + 8,383,806 = 662,531,209 input ledger; canonical role/mode/hash manifests and nonrecursive trees; `7,326 + 91,206 + 76` arithmetic; component/file/edge/unresolved disjoint-union hashes; twenty-batch/49-page projections; exact candidate-gap/locator/ID/result derivations and three clean-replacement flags |
+| Component/ownership work-item laundering | Architecture §§18.32–18.35 / external gate | `STATIC`, offline-planning control | Create/freeze before a grant; reuse the impossible 64-MiB grant; mutate/reuse/complete the stopped partial; reuse its coordinate; use `components.jsonl` as an alias; vary candidate gap sets or root/field/byte-range locators; collide a synthetic edge, change its counter domain/key hash or use a count-changing `W026`; treat the successful synthetic-only v3 source as a real author; add a wrapper/patch/imported reader or unexecuted production verb; split synthetic and real derivation paths; omit/combine/add a capability control; pad/preallocate/compress/sparsify/link/deduplicate output; omit or falsify a write-ledger row; add, omit or move a null digest; accept an unstable receipt/manifest size fixed point; take a second input pass or write before full input validation; add/omit a freeze or packet role/key; omit/duplicate/reassign a work item, path, edge or unresolved ID; place a disputed path in a component item; split one path's origin rows; assign an edge outside its container; let a batch/page own a row; promote an uncited candidate or `READY_FOR_REVIEW`; choose a license/owner; self-hash manifest/result; emit a nondeterministic receipt; exceed freeze/read/process/RSS/write/access ceilings; include acquired bytes; multiply a later ceiling; add a host-path repair route | `PAUSE`; the exact one-file failed partial and successful six-file v3 synthetic tree remain immutable evidence, while fresh v4 and work-item roots stay absent. The failed-budget proof remains explicit. A newly granted v4 freeze must prove one shared production path, exactly six final roles, the unchanged 1,384-key baseline and `W001`–`W042`, exact `F001`–`F010`, exactly two null-digest ledger rows, a stable receipt/manifest size fixed point, exact forecast/observed accounting within 1 GiB, and zero real access; later authoring must use one bounded content pass per immutable input and prove seven packet roles, 1,221 component items, 19 dispute items, 1,384 container-edge assignments and all 98,608 IDs. Candidate states remain non-authoritative and all packet rows remain open | Exact base/packet/disposition identities; failed author/partial identities; successful six-file tree/member identities and synthetic-only command proof; absent v4/packet roots; exact 262/468-byte artificial-object and 71,983,840/143,967,680-byte lower-bound proof; ordered write-ledger hash/forecast/observed equality; two required null-digest events, fixed-point receipt/manifest sizes and nonrecursive manifest/external-result hashes; shared-core execution receipt; counter-derived component domain and 1,384-key count/set/hash proof; same-cardinality `W026`; deterministic `W001`–`W042` and `F001`–`F010`; exact 654,147,403 + 8,383,806 = 662,531,209 input ledger; canonical role/mode/hash manifests and nonrecursive trees; `7,326 + 91,206 + 76` arithmetic; component/file/edge/unresolved disjoint-union hashes; twenty-batch/49-page projections; exact candidate-gap/locator/ID/result derivations and three clean-replacement flags |
 | R2b content-attestation drift | Architecture §18.22.5 / M11 | `STATIC`, cross-arc merge control | 121st/missing member; changed seed/closure/route; third changed governed member; self-derived identity only; live gate/capture attempt | `PAUSE`; only inventory JSON may rotate after final edits; exact 120-member manifest and independent resolver/inventory/artifact identity must converge; no live effect | Before/after manifests, exact two-member change proof, independent identity recomputation, resolver/digest/artifact equality and existing R2b negative tests |
 
 ## 6. Live-supervision protocol
@@ -1923,7 +1979,7 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 **Current controlling state:** `PAUSE`. PR `#342` is merge-blocked. No plan
 application, corrective edit, runtime publication, evidence execution or PR update
 may begin from this document. The first archive is rejected for publication; exact-tip
-Kiro review of the v3-result/v4-capability correction is next. The replacement,
+Kiro review of the v4 synthetic write-budget correction is next. The replacement,
 schema-v1/v2/v3 and result-binding reviews already PASSed at `3402e62a`, `5f397852`,
 `2956f701`, `d03aa553` and `3b3550c`; the v1/v2 stops, v3 immutable PAUSE packet and
 independent technical-PASS/provenance-and-licensing-PAUSE disposition authorize
@@ -2027,7 +2083,8 @@ Ryan's explicit confirmation naming exact revisions is required before:
 - creating or executing the fresh v4 synthetic capability freeze; the grant must name
   the exact semantic parent/overlay, absent v4 roots, interpreter, command/environment,
   one shared production path, `W001`–`W042`, `F001`–`F010`, one-process/2-GiB RSS/
-  64-MiB write ceilings and zero real-input/network/runtime/retained-source access;
+  1-GiB aggregate write ceilings, exact nonrecursive write-ledger accounting and zero real-input/
+  network/runtime/retained-source access; the rejected 64-MiB grant is not reusable;
 - binding and reviewing the resulting v4 identities before any real authoring grant;
 - authoring or accepting the seven-file offline component/ownership work-item packet;
   the grant must name the exact author identity, immutable packet/disposition reads,
@@ -2103,8 +2160,10 @@ Ryan's explicit confirmation naming exact revisions is required before:
   on baseline `W026` with only a one-file partial. The collision-free retry passed
   Kiro at `59ae444`, and the separately granted process produced exact six-file
   synthetic tree `65f32f11…`; its immutable author has no real `author-packet` command.
-  The fresh v4 capability correction now awaits Kiro review, followed by a separately
-  granted shared-core v4 freeze, plan-only identity binding, one-pass offline authoring
+  Kiro passed the v4 capability plan at `4210977`; its granted static preflight then
+  stopped before root/process because the two-copy lower bound cannot fit under 64 MiB.
+  The corrected write-budget plan now awaits Kiro review, followed by a new separately
+  granted shared-core v4 freeze under the exact 1-GiB ledgered cap, plan-only identity binding, one-pass offline authoring
   and independent review, complete cited origin planning,
   separately reviewed/granted operations, acquisition, zero-unresolved lock, clean build, packet, publication and
   CI-admission stages. The combined system is not operationally complete until
@@ -2120,8 +2179,10 @@ candidate-gap/locator mappings implicit. Schema v3 passed Kiro, but its first go
 freeze stopped on baseline `W026`; the exact one-file partial is preserved and
 non-reusable. The retry correction passed Kiro and its granted synthetic run produced
 immutable six-file tree `65f32f11…`, but the exact source admits only
-`synthetic-freeze`. The v4 capability correction requires exact-tip Kiro PASS, then
-separate exact grants for the fresh shared-core six-file freeze, plan-only identity
+`synthetic-freeze`. Kiro passed the v4 capability correction, but its static preflight
+proved the reviewed 64-MiB aggregate impossible before creating a root or process. The
+v4 write-budget correction requires exact-tip Kiro PASS, then a new exact grant for
+the fresh shared-core six-file freeze, plan-only identity
 binding review, real one-pass offline authoring and independent packet review before
 any packet root exists.
 Complete cited origin operations and any access require a new exact operation packet,
@@ -2171,6 +2232,11 @@ capability, adding a wrapper/patch/imported reader, choosing another verb/argv/p
 splitting the synthetic and real cores, changing `W001`–`W042`, changing or omitting
 `F001`–`F010`, taking another input pass, widening any RSS/read/write/access ceiling,
 writing before full input validation, repairing partials or choosing retry behavior.
+Sections 18.35/10.33 additionally forbid reusing the rejected grant, padding or
+preallocating toward the new cap, sparse/link/reflink/compression/dedup shortcuts,
+omitting a write-ledger event, adding/omitting/moving either closed null digest,
+accepting an unstable size fixed point, allowing forecast/observed drift or transferring the
+synthetic 1-GiB cap into the later real run.
 Codex owns evidence, and an independent lane
 owns final R2b manifest derivation.
 
@@ -2232,8 +2298,8 @@ REPLACEMENT PLAN MERGED AND KIRO-PASS; COMPONENT/OWNERSHIP WORK-ITEM PLAN MERGED
 AT `d79f03c` AND KIRO EXACT-MAIN PASS; WORK-ITEM SCHEMA-V2 KIRO PASS / FREEZE
 PREFLIGHT PAUSE; SCHEMA-V3 MAPPING KIRO PASS AT `21f5acc`; FIRST GOVERNED FREEZE
 PAUSE; COLLISION-FREE RETRY KIRO PASS AT `59ae444`; SIX-FILE SYNTHETIC FREEZE
-PASS; REAL-AUTHOR CAPABILITY ABSENT; V4 CAPABILITY CORRECTION AWAITS EXACT-TIP
-KIRO REVIEW;
+PASS; REAL-AUTHOR CAPABILITY ABSENT; V4 CAPABILITY PLAN KIRO PASS AT `4210977`;
+WRITE-BUDGET PREFLIGHT PAUSE; CORRECTED BUDGET PLAN AWAITS EXACT-TIP KIRO REVIEW;
 CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
 independent publication provenance/licensing review. The replacement delivery-set
 plan passed at `3402e62a`; schema v1 passed at `5f397852`, then its offline P0 stopped
@@ -2244,7 +2310,9 @@ packet tree `491ae60b…` and honestly retained 98,608 open rows. Two work-item
 author-freeze preflights stopped without real reads or roots; the later governed v3
 freeze created only the preserved failed author before baseline `W026`. Its corrected
 retry later produced immutable synthetic tree `65f32f11…`, but the exact source has no
-real packet-authoring verb. This overlay
+real packet-authoring verb. Kiro passed the v4 capability plan at `4210977`; its
+granted static preflight created no root/process and proved the inherited 64-MiB cap
+impossible. This overlay
 freezes schema v3's exact candidate-gap/locator/six-file-freeze contract, 1,240 primary work
 items, all 98,608 open-ID assignments, all 1,384 primary edge assignments and the
 cited-candidate/host-path boundaries. The failed one-file partial grants no acceptance;
@@ -2256,7 +2324,7 @@ CI-admission stage is authorized. Required GitHub pytest is red, doctor and
 publisher safety corrections are unimplemented, GitHub runtime distribution is
 unpublished and currently ineligible because provenance/licensing remains `PAUSE`,
 and R2b authority-content identity is not converged for the final corrective tree.
-After the merged work-item-plan exact-main PASS, every later §§18.24–18.34/§§10.22–10.32 stage and the M11
+After the merged work-item-plan exact-main PASS, every later §§18.24–18.35/§§10.22–10.33 stage and the M11
 implementation still require separate exact Ryan grants and reviews. This overlay authorizes no
 product/test/CI/inventory/runtime edit, evidence execution, PR update or merge.
 
@@ -2268,7 +2336,7 @@ successful fixture build.
 
 ## TL;DR
 
-- The exact `49a99f1385a3ee6c568935cb1d39048f8a2ff633` semantic parent is the
+- The exact `dec5c21f98bb08c03632cdb0a106bc21d31fc974` semantic parent is the
   current source of truth; this overlay only sequences, supervises and gates it.
 - M0–M8 and the complete historical M11 evidence passed; the preserved source
   is `cd60cf19`; exact-current-main reconstruction is preserved at `30bc134d`.
@@ -2311,8 +2379,12 @@ successful fixture build.
   six-file synthetic tree `65f32f11…` with `42/42` controls. That immutable source
   has no real `author-packet` command. Sections 18.34/10.32 therefore bind the result,
   keep real-author eligibility false and define a fresh shared-core v4 capability
-  freeze plus held one-pass real-read contract. Kiro review is next; no v4 freeze or
-  real packet exists. Author freeze,
+  freeze plus held one-pass real-read contract. Kiro passed that design at `4210977`,
+  but the granted static preflight stopped before root/process creation because its
+  143,967,680-byte two-copy lower bound cannot fit under 64 MiB. Sections 18.35/10.33
+  preserve full cardinality and all 52 controls while changing only the synthetic cap
+  to 1 GiB with exact nonrecursive forecast/observed accounting. Kiro review is next; no v4 freeze
+  or real packet exists. Author freeze,
   offline authoring, acquisition, zero-unresolved lock closure,
   build, final packet, publication and CI admission remain separately gated; merge is
   a later Ryan decision.
