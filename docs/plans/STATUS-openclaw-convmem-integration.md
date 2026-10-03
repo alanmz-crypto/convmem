@@ -78,6 +78,9 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         ├─ §18.34 / §10.32 capability closure + held real-read design
         │       └─ exact v3 freeze bound; real-author eligibility false
         │       └─ fresh v4 capability freeze + one-pass real-read contract; plan-only
+        ├─ §18.35 / §10.33 synthetic write-budget correction
+        │       └─ granted preflight stopped before root/process: 64 MiB is impossible
+        │       └─ full-cardinality proof retained; corrected 1-GiB cap is plan-only
         │
         │ → separately granted offline work-item packet + independent review
         │ → separately planned exact origins
@@ -141,7 +144,14 @@ controls. That immutable author accepts only `synthetic-freeze`; it has no real
 `author-packet` command or real I/O/root transaction. Sections 18.34/10.32 bind the
 successful artifact honestly, set real-author eligibility false and define only a
 fresh v4 capability freeze plus a later one-pass real-read contract. Neither is
-authorized.
+authorized. Kiro passed that capability plan at `4210977`, and Ryan granted only the
+synthetic v4 freeze. Astra stopped its static preflight before root creation or
+process execution: the mandatory 98,608 gaps and citations require at least
+71,983,840 bytes in one packet and 143,967,680 across the required two copies, so the
+inherited 67,108,864-byte aggregate ceiling is impossible. Sections 18.35/10.33 keep
+the full transaction and all 52 controls unchanged, replace only that rejected cap
+with a hard 1-GiB aggregate plus an exact pre-write ledger, and require new review and
+grant. All v4 and work-item roots remain absent.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -164,7 +174,7 @@ the absent publishable qualified runtime.
 | P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
-| Work-item schema closure | **V3 SYNTHETIC FREEZE PASS / REAL-AUTHOR CAPABILITY ABSENT / V4 PLAN-ONLY** — Kiro passed §§18.33/10.31 at `59ae444`; the separately granted retry produced immutable six-file tree `65f32f11…` with `42/42` controls and zero real reads, but its source accepts only `synthetic-freeze`; §§18.34/10.32 require a fresh v4 freeze that executes the real `author-packet` path on synthetic input before any real-read grant |
+| Work-item schema closure | **V3 SYNTHETIC FREEZE PASS / V4 BUDGET PREFLIGHT PAUSE / CORRECTION PLAN-ONLY** — Kiro passed §§18.34/10.32 at `4210977`; the granted v4 preflight created no root/process because the 143,967,680-byte two-copy lower bound exceeds 64 MiB; §§18.35/10.33 preserve the full shared-path transaction and 52 controls under a corrected hard 1-GiB cap with exact write accounting |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -196,7 +206,8 @@ the absent publishable qualified runtime.
 | Work-item schema-v2 correction | **KIRO PASS / FREEZE PREFLIGHT PAUSE** at `dea026c` | No freeze/evidence root was created; v2 remains absent and cannot be reused or reinterpreted |
 | Work-item schema-v3 mapping correction | **KIRO PASS / FIRST FREEZE PAUSE** at `21f5acc` | Failed one-file partial is immutable and non-reusable; no JSON, final freeze or real packet root exists |
 | Synthetic-edge freeze retry correction | **PASS / COMPLETED** — Kiro PASS at `59ae444`; six-file tree `65f32f11…` | Synthetic semantics passed, but the frozen v3 source has no real-author command and is ineligible for real input |
-| Real-author capability correction | **PLAN-ONLY / KIRO REVIEW REQUIRED** — §§18.34/10.32 | Fresh v4 roots are absent; review and a new exact freeze grant are required before one synthetic capability process |
+| Real-author capability correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `4210977` | Fresh v4 roots remain absent; the reviewed 64-MiB write cap is mathematically impossible and the prior grant cannot be reused |
+| V4 synthetic write-budget correction | **PLAN-ONLY / KIRO REVIEW REQUIRED** — §§18.35/10.33 | Full cardinality, shared production path, 52 controls and 2-GiB RSS remain frozen; only the synthetic aggregate cap advances to 1 GiB with exact pre-write accounting |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -205,13 +216,13 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** review the exact §§18.34/10.32 freeze-result binding
-and capability correction. Confirm the six successful v3 freeze identities and
-`42/42` controls, the exact synthetic-only command/source diagnosis, the immutable
-`REAL_AUTHOR_ELIGIBLE=false` stop, the fresh absent v4 roots, the shared production
-path requirement, `F001`–`F010`, and the held one-pass packet/disposition read and
-two-root transaction. A PASS authorizes planning only; Ryan must separately grant the
-v4 synthetic capability freeze.
+**If Ryan sent you here now:** review the exact §§18.35/10.33 write-budget correction.
+Confirm the zero-root/zero-process preflight stop, the 71,983,840-byte one-copy and
+143,967,680-byte two-copy lower bounds, the unchanged absent v4 coordinates, full
+cardinality, shared production path, `W001`–`W042`, `F001`–`F010`, one-process and
+2-GiB RSS limits, and the corrected hard 1-GiB aggregate with exact forecast/observed
+write-ledger equality. A PASS authorizes planning only; Ryan must separately issue a
+new two-SHA v4 freeze grant. The prior grant is not reusable.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -222,11 +233,13 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro must review the exact freeze-result/capability semantic parent and milestone
-   overlay. A later two-SHA Ryan grant may create only the fresh six-file v4 freeze,
-   run one shared-core synthetic baseline, unchanged `W001`–`W042` and exact
-   `F001`–`F010`, and stop with zero real-input reads. Neither the stopped partial nor
-   the successful but synthetic-only v3 root is reused or modified.
+1. Kiro must review the exact write-budget semantic parent and milestone overlay. A
+   later new two-SHA Ryan grant may create only the fresh six-file v4 freeze, run one
+   shared-core full-cardinality synthetic transaction, unchanged `W001`–`W042` and
+   exact `F001`–`F010`, and stop with zero real-input reads. Its exact pre-write ledger
+   and observed counter must agree within 1,073,741,824 bytes. The impossible prior
+   grant is not reused, and neither the stopped v3 partial nor successful synthetic-
+   only v3 root is reused or modified.
 2. Codex binds the returned v4 identities in a new plan-only overlay; Kiro reviews the
    exact frozen capability. Under another exact Ryan grant, that author may then read
    the immutable 654,147,403-byte packet and 8,383,806-byte disposition exactly once
@@ -333,8 +346,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.34 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.32 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.35 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.33 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -351,7 +364,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-03 | Codex | Bound the successful six-file synthetic freeze, recorded its absent real-author command and defined a fresh plan-only v4 capability freeze plus held one-pass real-read contract. |
+| 2026-10-03 | Codex | Recorded the zero-root v4 budget preflight PAUSE and replaced only the impossible 64-MiB synthetic cap with a plan-only 1-GiB hard ceiling plus exact write-ledger accounting. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -380,6 +393,10 @@ the fresh collision-free 1,384-edge retry; Kiro passed at `59ae444`, and the sep
 granted process produced immutable synthetic freeze tree `65f32f11…` with `42/42`
 controls. The frozen source is synthetic-only, so §§18.34/10.32 hold real authoring at
 `REAL_AUTHOR_ELIGIBLE=false` and define a fresh v4 capability freeze plus one-pass
-real-read contract for review; no v4 freeze or real packet exists. Acquisition, binary
+real-read contract. Kiro passed that design at `4210977`, but the granted preflight
+stopped before root/process creation because the mandatory two-copy lower bound is
+143,967,680 bytes and therefore cannot fit under 64 MiB. Sections 18.35/10.33 preserve
+the full transaction and all 52 controls while proposing a hard 1-GiB cap with exact
+forecast/observed write accounting; no v4 freeze or real packet exists. Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.

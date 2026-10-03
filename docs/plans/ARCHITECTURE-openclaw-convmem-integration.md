@@ -8238,6 +8238,152 @@ CI admission, product/test/config/R2b change, implementation, PR `#342` update, 
 deployment, real OpenClaw, live data, watch activation, promotion or Gate
 D/W/D-V/E/F action.
 
+### 18.35 V4 synthetic write-budget preflight correction
+
+Kiro passed the exact §18.34/§10.32 capability plan at
+`42109775294bf9f20bacaac8f33abf00211fc082`. Ryan then granted only the fresh v4
+synthetic capability freeze. Before creating either v4 root or running a governed
+process, Astra's static preflight proved that the inherited 67,108,864-byte aggregate
+write ceiling cannot contain the full-cardinality shared production transaction.
+The preflight therefore stopped without consuming a root coordinate or execution
+attempt. No v4 author, receipt, manifest or partial exists, and no real packet or
+disposition byte was read.
+
+#### 18.35.1 Exact failed-budget proof and preserved state
+
+```text
+WORK_ITEM_AUTHOR_WRITE_BUDGET_PLAN_BASE_OVERLAY_SHA=42109775294bf9f20bacaac8f33abf00211fc082
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_STATUS=PAUSE
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_ROOT_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_PROCESS_COUNT=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_REAL_INPUT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PREFLIGHT_NETWORK_REQUESTS=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_MIN_GAP_BYTES=262
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_MIN_CITATION_BYTES=468
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_OPEN_UNRESOLVED_COUNT=98608
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_ONE_COPY_LOWER_BOUND_BYTES=71983840
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_TWO_COPY_LOWER_BOUND_BYTES=143967680
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_MAX_TOTAL_WRITTEN_BYTES=67108864
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+```
+
+Sections 18.31.2 and 18.32.2 require every one of the 98,608 open unresolved
+assignments to appear as a gap object and to contribute its complete unresolved-row
+citation to the owning item's exact citation union. Even an artificially shortened
+canonical gap with empty field/reason/evidence strings is 262 bytes, and even a
+canonical citation using a bare 64-character primary key is 468 bytes. Thus one
+packet requires at least
+`98,608 × (262 + 468) = 71,983,840` bytes for only those objects; the mandatory
+staging and durable copies require at least 143,967,680 written bytes. The one-copy
+minimum alone exceeds 67,108,864 by 4,874,976 bytes. The proof deliberately excludes
+array punctuation, record wrappers, components, paths, edges, candidates, batches,
+pages, manifests, results, fixtures, the author and freeze receipts, so it is a strict
+lower bound rather than a size prediction.
+
+The two byte counts are reproducible as `len(J(value))` over these exact artificial
+lower-bound objects, where `Z64` is sixty-four ASCII zeroes. They intentionally omit
+the required `unresolved:sha256:` prefixes, so no real object can be shorter:
+
+```text
+MIN_GAP={
+  "blocks":true,
+  "citation_id":"citation:sha256:" + Z64,
+  "field":"",
+  "reason_code":"",
+  "required_evidence":"",
+  "status":"OPEN",
+  "unresolved_id":Z64
+}  # 262 canonical bytes
+
+MIN_CITATION={
+  "citation_id":"citation:sha256:" + Z64,
+  "evidence_object_id":null,
+  "locator":{"kind":"record-json-pointer","pointer":""},
+  "packet_file_role":"unresolved.jsonl",
+  "packet_tree_sha256":Z64,
+  "primary_key":Z64,
+  "record_sha256":Z64
+}  # 468 canonical bytes
+```
+
+The §18.34 v4 final/partial roots and all four schema-v3 work-item final/partial roots
+remain absent and single-assignment. The successful v3 freeze and earlier failed
+partial remain byte- and mode-immutable. This preflight did not run an author, create
+a file, consume an input pass or authorize a retry under the impossible ceiling.
+
+#### 18.35.2 Corrected bounded write contract
+
+The successor changes only the v4 synthetic-freeze aggregate write budget and makes
+its accounting executable. Every §18.34 schema, role, root, interpreter, environment,
+shared `load -> derive -> validate -> serialize` path, full-cardinality fixture,
+`W001`–`W042`, `F001`–`F010`, one-process limit, 2-GiB peak-RSS ceiling and zero
+subprocess/network/real-input/repository/runtime/retained-source counters remains
+unchanged.
+
+```text
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_MAX_TOTAL_WRITTEN_BYTES=1073741824
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_MAX_PEAK_RSS_BYTES=2147483648
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_MAX_PROCESS_COUNT=1
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_SUBPROCESSES=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_REAL_INPUT_READ_BYTES=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_NETWORK_REQUESTS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RUNTIME_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETAINED_SOURCE_READS=0
+```
+
+The 1-GiB ceiling is a hard maximum, not a target, reservation or permission to pad.
+It is greater than the proved two-copy lower bound while remaining one quarter of the
+unchanged 4-GiB later real-run ceiling. The governed process must minimize writes and
+must not preallocate, fill, compress, sparsify, hard-link, reflink or deduplicate a
+payload to evade accounting.
+
+Before the first disposable packet or result byte is written, the author builds the
+complete canonical synthetic payloads in memory and computes an exact ordered write
+ledger. The ledger counts, from v4 partial-root creation through final seal:
+
+1. the new author and every persisted freeze member;
+2. every materialized synthetic input or fixture byte;
+3. every staging packet/result and every separately written durable-copy byte;
+4. every temporary or rejected-control output byte actually written; and
+5. every replacement write, which is otherwise forbidden.
+
+Each ledger row is exactly `{ordinal,path,purpose,size,sha256}`; paths are relative to
+the v4 partial, `purpose` is one of `author`, `synthetic-input`, `staging-output`,
+`durable-output`, `freeze-member`, or `temporary`, and rows retain raw write order.
+The forecast sum must be no greater than 1,073,741,824 before the first category 3–5
+write. The observed byte counter is incremented by the length of every regular-file
+write and must equal the forecast exactly after disposable cleanup and before rename.
+Directory metadata, mode changes, fsync and rename contribute zero bytes; an unknown
+write, short write, second write to an exclusive role, forecast/observed mismatch or
+one byte above the cap is `PAUSE`. The self-test receipt binds the ordered ledger's
+canonical SHA-256, forecast total and observed total without adding a seventh freeze
+role. `F005` and `F010` cover any ceiling, ledger, output-role or transaction drift;
+no `F011`, combined mutant or weakened control is introduced.
+
+The later real `author-packet` contract remains exactly §18.34.4: one input pass each,
+662,531,209 aggregate input bytes, 2-GiB peak RSS and per-output-root ceilings, and
+4,294,967,296 aggregate written bytes. The synthetic correction neither multiplies
+nor transfers its 1-GiB ceiling into that later run.
+
+#### 18.35.3 Review sequence and authority boundary
+
+The only admissible next sequence is Kiro exact-tip review of this correction, a new
+Ryan two-SHA grant naming the still-absent v4 roots and corrected 1-GiB ceiling, one
+synthetic process, external return of the six identities plus write-ledger hash and
+counters, then another plan-only result binding and Kiro capability review. The prior
+grant cannot be reused because its frozen budget was impossible, even though no root
+or process was consumed.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no v4 root/file creation or execution, packet/disposition
+content read, work-item root/result creation, network, subprocess, retained-source or
+runtime read, acquisition, ownership/license selection, binary repair, build,
+publication, CI admission, product/test/config/R2b change, implementation, PR `#342`
+update, merge, deployment, real OpenClaw, live data, watch activation, promotion or
+Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -8278,6 +8424,7 @@ D/W/D-V/E/F action.
 | Pre-acquisition planning contract | The lossless component/obligation partition and exact operation requirements used to prepare later grant-ready acquisition packets; it authorizes no read or request. |
 | Clean replacement | Fresh bytes built from independently locked inputs and recipes; never a repaired or prefix-rewritten rejected binary. |
 | Capability freeze | An immutable author package whose self-test executes the same production path later used on real input; a synthetic-only command is not a real-author capability freeze. |
+| Write ledger | The deterministic ordered accounting of every regular-file byte written by the v4 freeze; it proves the transaction stayed within its reviewed aggregate cap without allowing sparse, linked or compressed shortcuts. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main
@@ -8304,4 +8451,9 @@ schema-v3 exact-object absent-member projection; it authorizes no collector free
 Section 18.34 binds the successful six-file synthetic retry but records that its frozen
 source has no real `author-packet` command. It therefore defines a fresh v4 capability
 freeze and one-pass real-read contract without authorizing either execution.
+Section 18.35 records the zero-root v4 budget preflight PAUSE, proves the inherited
+64-MiB synthetic write cap impossible and replaces only that cap with a hard 1-GiB
+maximum plus exact pre-write ledger accounting. The full-cardinality shared production
+path, 52 controls, 2-GiB RSS limit and later real-run contract remain unchanged; the
+corrected freeze still requires Kiro review and a new Ryan grant.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.

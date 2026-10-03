@@ -2706,6 +2706,44 @@ work-item packet/result, network access, acquisition, owner/license decision, bi
 repair, build, publication, implementation, PR `#342` update, merge, real OpenClaw or
 later gate is authorized.
 
+### 10.33 V4 synthetic write-budget correction
+
+Architecture §18.35 controls. Kiro passed the §18.34/§10.32 plan at `4210977`, and
+Ryan granted only its fresh v4 synthetic capability freeze. Static preflight stopped
+before root creation or process execution because the inherited 67,108,864-byte cap
+cannot contain the required full-cardinality transaction. Every one of 98,608 open
+IDs requires both a gap and its unresolved-row citation in an owning item. Even
+artificially shortened canonical objects require 71,983,840 bytes in one packet and
+143,967,680 across the mandatory staging and durable copies. No v4 author, file,
+receipt or root exists; real input reads and network requests remain zero.
+
+The correction retains the exact absent v4 coordinates, six final roles, interpreter,
+closed environment, shared production path, seven output serializers, two-root copy
+and verification transaction, full 1,240-item/98,608-ID/30,421-path/1,384-edge/
+20-batch/49-page/19-dispute fixture, `W001`–`W042`, `F001`–`F010`, one process,
+2-GiB RSS and zero external-access counters. It changes only the synthetic aggregate
+write ceiling from the rejected 67,108,864 bytes to a hard 1,073,741,824 bytes and
+requires exact pre-write accounting.
+
+The author must derive every canonical synthetic payload in memory before the first
+packet/result write, produce an ordered `{ordinal,path,purpose,size,sha256}` ledger,
+and prove the forecast does not exceed the cap. Accounting includes author setup,
+materialized synthetic inputs, both physical output copies, every freeze member and
+any temporary byte. The observed counter covers every regular-file write and must
+equal the forecast before rename. Preallocation, padding, compression, sparse files,
+hard links, reflinks, deduplicated copies, unledgered/short/repeated writes and any
+forecast/observed mismatch are `PAUSE`. The receipt binds the ledger hash and both
+totals without adding a freeze role; `F005`/`F010` retain the closed rejection surface.
+The later one-pass real-run 4-GiB write ceiling is unchanged and cannot be inferred
+from or multiplied by this correction.
+
+**Current result:** budget-correction plan-only. Kiro exact-tip review and a new Ryan
+two-SHA grant remain mandatory before the still-absent v4 partial may be created or a
+single synthetic process may run. The previous grant is not reusable. No freeze,
+packet/disposition/repository/runtime/retained-source read, work-item packet/result,
+network, acquisition, owner/license decision, binary repair, build, publication,
+implementation, PR `#342` update, merge, real OpenClaw or later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2741,3 +2779,8 @@ fresh absent retry coordinate, and authorizes no retry or real read.
 Section 10.32 binds the resulting six-file synthetic PASS, records that its immutable
 author lacks a real `author-packet` command, and holds a fresh v4 capability freeze
 plus one-pass real-read contract behind separate Kiro reviews and Ryan grants.
+Section 10.33 records that the first v4 preflight created no root or process because
+the 143,967,680-byte two-copy lower bound cannot fit under 64 MiB. It preserves the
+full transaction and all 52 controls while changing only the synthetic write cap to
+1 GiB with exact forecast/observed accounting; Kiro review and a new Ryan grant remain
+mandatory.
