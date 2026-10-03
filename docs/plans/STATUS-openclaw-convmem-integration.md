@@ -83,7 +83,10 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │       └─ Kiro PASS at 7fe2752; corrected 1-GiB cap retained
         ├─ §18.36 / §10.34 synthetic result-identity correction
         │       └─ next preflight stopped before root/source/process: hash cycle
-        │       └─ exact two-value synthetic adapter is plan-only
+        │       └─ Kiro PASS at 3107d6f; exact two-value adapter retained
+        ├─ §18.37 / §10.35 real-command argv correction
+        │       └─ next preflight stopped before root/author/process/read/write
+        │       └─ exact real argv + cwd + order-only F002; plan-only
         │
         │ → separately granted offline work-item packet + independent review
         │ → separately planned exact origins
@@ -159,7 +162,13 @@ preflight stopped before root, source or process because the disposable result w
 hash the receipt while the receipt ledger hashes the result. Sections 18.36/10.34
 replace only the synthetic result's two receipt-binding values with exact domain-
 separated predecessor identities. The unchanged real result path still requires the
-actual independently reviewed v4 identities. All v4 and work-item roots remain absent.
+actual independently reviewed v4 identities. Kiro passed that correction at
+`3107d6f`; Ryan granted only the corrected synthetic freeze. Astra's next static
+preflight stopped before root, author, process, read or write because `F002` requires
+an exact ordered real argv that the reviewed plan never enumerated. Sections
+18.37/10.35 close only the nine-key v4 command contract, exact synthetic/real argv
+and cwd values, and one order-only `F002` representative. All v4 and work-item roots
+remain absent.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -182,7 +191,7 @@ the absent publishable qualified runtime.
 | P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
-| Work-item schema closure | **V3 SYNTHETIC FREEZE PASS / V4 IDENTITY PREFLIGHT PAUSE / CORRECTION PLAN-ONLY** — Kiro passed §§18.35/10.33 at `7fe2752`; the next granted preflight created no root/source/process because receipt and result hashes were cyclic; §§18.36/10.34 define only the exact synthetic predecessor-identity adapter while preserving the shared path, 52 controls and corrected ceilings |
+| Work-item schema closure | **V3 SYNTHETIC FREEZE PASS / V4 REAL-ARGV PREFLIGHT PAUSE / CORRECTION PLAN-ONLY** — Kiro passed §§18.36/10.34 at `3107d6f`; the next granted preflight created no root/author/process/read/write because `F002` lacked a literal real argv; §§18.37/10.35 close only the exact nine-key command contract, nineteen-member real vector and order-only `F002` representative while preserving the shared path, identities, 52 controls and ceilings |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -216,7 +225,8 @@ the absent publishable qualified runtime.
 | Synthetic-edge freeze retry correction | **PASS / COMPLETED** — Kiro PASS at `59ae444`; six-file tree `65f32f11…` | Synthetic semantics passed, but the frozen v3 source has no real-author command and is ineligible for real input |
 | Real-author capability correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `4210977` | Fresh v4 roots remain absent; the reviewed 64-MiB write cap is mathematically impossible and the prior grant cannot be reused |
 | V4 synthetic write-budget correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `7fe2752` | Corrected 1-GiB ledger remains frozen; receipt/result identities are cyclic under the reviewed synthetic result |
-| V4 synthetic result-identity correction | **PLAN-ONLY / KIRO REVIEW REQUIRED** — §§18.36/10.34 | Exactly two domain-separated synthetic predecessor values break only the disposable-result cycle; real authoring still requires actual reviewed v4 identities |
+| V4 synthetic result-identity correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `3107d6f` | Exact predecessor identities remain frozen; `F002` lacks the literal ordered real command vector needed to construct the author |
+| V4 real-command argv correction | **PLAN-ONLY / KIRO REVIEW REQUIRED** — §§18.37/10.35 | Exact nine-key contract, synthetic/real cwd and argv, plus one order-only `F002` representative; all other semantics stay frozen |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -225,14 +235,15 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** review the exact §§18.36/10.34 synthetic result-
-identity correction. Confirm the zero-root/zero-source/zero-process preflight stop,
-the exact domain/base/field derivations and two fixed hashes, synthetic-only adapter,
-unchanged production result builder, ordinary non-null result ledger hashes, exactly
-two existing null ledger rows, actual reviewed identities on the later real path,
-unchanged full cardinality, 52 controls and ceilings. A PASS authorizes planning only;
-Ryan must separately issue a new two-SHA v4 freeze grant. Neither prior grant is
-reusable.
+**If Ryan sent you here now:** review the exact §§18.37/10.35 real-command argv
+correction. Confirm the zero-root/zero-author/zero-process/zero-read/zero-write
+preflight stop; the exact nine-key command contract and schema literal; thirteen-
+member synthetic and nineteen-member real argv arrays; distinct partial/final cwd;
+exact final input/output/self-file coordinates; and one pair-order-only `F002`
+representative that rejects before access or output. Confirm every identity,
+cardinality, `W001`–`W042`, `F001`–`F010`, ceiling and ledger rule is unchanged. A
+PASS authorizes planning only; Ryan must separately issue a new two-SHA v4 freeze
+grant. No prior grant is reusable.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -243,11 +254,11 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro must review the exact result-identity semantic parent and milestone overlay. A
+1. Kiro must review the exact real-argv semantic parent and milestone overlay. A
    later new two-SHA Ryan grant may create only the fresh six-file v4 freeze, run one
    shared-core full-cardinality synthetic transaction, unchanged `W001`–`W042` and
-   exact `F001`–`F010`, exact synthetic predecessor identities, and stop with zero
-   real-input reads. Its exact pre-write ledger
+   exact `F001`–`F010`, exact synthetic predecessor identities, the closed two-command
+   contract and order-only `F002`, and stop with zero real-input reads. Its exact pre-write ledger
    and observed counter must agree within 1,073,741,824 bytes. The impossible prior
    grant is not reused, and neither the stopped v3 partial nor successful synthetic-
    only v3 root is reused or modified.
@@ -357,8 +368,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.36 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.34 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.37 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.35 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -375,7 +386,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-03 | Codex | Recorded the zero-root/zero-source v4 identity preflight PAUSE and defined only two exact synthetic predecessor identities for the unchanged result builder. |
+| 2026-10-03 | Codex | Recorded the zero-effect real-argv preflight PAUSE and closed the exact two-command v4 contract plus order-only F002 representative. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -411,7 +422,11 @@ the full transaction and all 52 controls under a hard 1-GiB cap with exact
 forecast/observed write accounting; Kiro passed at `7fe2752`. The next static
 preflight then stopped before root/source/process because the result/receipt hashes
 were cyclic. Sections 18.36/10.34 replace only the synthetic result's two binding
-values with exact domain-separated predecessor identities; no v4 freeze or real packet
-exists. Acquisition, binary
+values with exact domain-separated predecessor identities; Kiro passed at `3107d6f`.
+The next granted preflight stopped before root/author/process/read/write because the
+literal real argv required by `F002` was absent. Sections 18.37/10.35 close exactly
+the nine-key v4 command contract, thirteen-member synthetic and nineteen-member real
+argv arrays, distinct cwd values and one order-only `F002` representative; no v4
+freeze or real packet exists. Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.

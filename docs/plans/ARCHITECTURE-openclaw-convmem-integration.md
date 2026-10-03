@@ -8515,6 +8515,139 @@ publication, CI admission, product/test/config/R2b change, implementation, PR `#
 update, merge, deployment, real OpenClaw, live data, watch activation, promotion or
 Gate D/W/D-V/E/F action.
 
+### 18.37 V4 real-command argv preflight correction
+
+Kiro passed the exact §18.36/§10.34 result-identity overlay at
+`3107d6f57fc8835c5252fcd75fa3f87fea918aa3`. Ryan then granted only the corrected
+v4 synthetic capability freeze. Before creating either root, writing the author or
+running a governed process, Astra's static preflight found that §18.34.3 requires two
+ordered argv contracts and `F002` rejects drift from the literal real vector, but no
+reviewed section enumerates that vector. Choosing flags, order, implicit values or a
+no-argument real command during author construction would therefore invent the
+control oracle. The preflight stopped without consuming the coordinate or execution
+attempt.
+
+#### 18.37.1 Exact stopped state
+
+```text
+WORK_ITEM_AUTHOR_REAL_ARGV_PLAN_BASE_OVERLAY_SHA=3107d6f57fc8835c5252fcd75fa3f87fea918aa3
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_REAL_ARGV_PREFLIGHT_STATUS=PAUSE
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_REAL_ARGV_PREFLIGHT_ROOT_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_REAL_ARGV_PREFLIGHT_AUTHOR_CREATED=false
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_REAL_ARGV_PREFLIGHT_PROCESS_COUNT=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_REAL_ARGV_PREFLIGHT_WRITTEN_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_REAL_ARGV_PREFLIGHT_REAL_INPUT_READ_BYTES=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_REAL_ARGV_PREFLIGHT_NETWORK_REQUESTS=0
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_AUTHORIZED=false
+PROVENANCE_WORK_ITEM_AUTHORING_AUTHORIZED=false
+```
+
+Both §18.34 v4 coordinates remain absent and single-assignment. No acceptance
+receipt, member identity, ledger, control result or tree hash exists. Neither earlier
+execution grant transfers to a successor.
+
+#### 18.37.2 Closed two-command contract
+
+The v4 `command-contract.json` object has exactly these nine keys:
+
+```text
+schema
+interpreter_path
+argv
+cwd
+environment
+ceilings
+expected_final_members
+author_packet_argv
+author_packet_cwd
+```
+
+`schema` is exactly
+`convmem.switchboard.work-item-author-command-contract.v4`.
+`interpreter_path`, `environment`, `ceilings` and `expected_final_members` retain
+their §18.32.5/§18.35 meanings and values. Unknown, missing or additional keys are
+`PAUSE`. The existing `argv` and `cwd` remain the synthetic contract: `cwd` is the
+exact v4 partial root, and `argv` is this exact thirteen-member string array:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/work-item-author-v4.py",
+  "synthetic-freeze",
+  "--fixture-spec",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/fixture-spec.json",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4.partial/freeze-manifest.json"
+]
+```
+
+`author_packet_cwd` is exactly the sealed v4 final root
+`/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4`.
+`author_packet_argv` is exactly this nineteen-member string array:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/work-item-author-v4.py",
+  "author-packet",
+  "--input-packet-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet",
+  "--input-disposition",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review/review-disposition.json",
+  "--staging-root",
+  "/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--durable-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4/freeze-manifest.json"
+]
+```
+
+No optional argument, alias, reordered pair, implicit value, identity override,
+environment-derived coordinate or positional tail is admitted. The two output
+arguments name the governed final roots; only their literal `.partial` siblings are
+derived by the already reviewed two-root transaction. The synthetic partial cwd
+disappears on successful rename, so it cannot serve as the real cwd. `ceilings`
+continues to describe the synthetic freeze; §18.34.4 remains the separate unchanged
+real-run ceiling contract.
+
+#### 18.37.3 Exact `F002` representative and authority boundary
+
+The sole `F002` mutant exchanges complete zero-based argv slices `[3:5]` and `[5:7]`:
+the `--input-packet-root` flag/value pair and the `--input-disposition` flag/value
+pair. The mutant preserves all nineteen string values and array length, changes only
+their pair order, and must return exactly `["F002"]` before content access or output
+creation. No combined mutant, second `F002` representative, `F011` or exception is
+admitted.
+
+Every §18.34–§18.36 root, identity adapter, result schema, mapping, cardinality,
+parser, serializer, `W001`–`W042`, `F001`–`F010`, ceiling, write-ledger rule and later
+real-read contract remains unchanged. The only admissible next sequence is exact-tip
+Kiro review, a new Ryan two-SHA grant naming the still-absent v4 roots and this closed
+command contract, one synthetic process, external return of the six identities plus
+ledger/result counters, then plan-only result binding and Kiro capability review.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no v4 root/file creation or execution, packet/disposition
+content read, work-item root/result creation, network, subprocess, retained-source or
+runtime read, acquisition, ownership/license selection, binary repair, build,
+publication, CI admission, product/test/config/R2b change, implementation, PR `#342`
+update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -8538,6 +8671,7 @@ Gate D/W/D-V/E/F action.
 | Planning batch | One of twenty deterministic component scheduling views; it owns nothing and cannot multiply an operation budget. |
 | Verification page | One of 49 deterministic unresolved-ID audit views; it proves coverage but cannot close or assign a row. |
 | Candidate record | A byte-preserving, packet-cited lead whose planning state never establishes origin, ownership, licensing or access authority. |
+| Closed command contract | A canonical command description with an exact schema, cwd and literal argv for each admitted verb; flag names, values and order cannot be chosen by the caller. |
 | Pylint semantic identity | The canonical message fields compared across raw Pylint reports; raw report order and bytes remain evidence but are not the verdict oracle. |
 | Strict generation | A derivative of one exact cumulative authority head; atomic publication may instead select no serving generation. |
 | Strict profile | The proposed `openclaw-strict` ConvMem MCP surface containing only `search`, `unresolved`, and `related`, with no resources. |
@@ -8590,6 +8724,10 @@ path, 52 controls, 2-GiB RSS limit and later real-run contract remain unchanged;
 next granted preflight then stopped before root/source/process on a receipt/result hash
 cycle. Section 18.36 replaces only the synthetic result's two receipt-binding values
 with exact domain-separated predecessor identities while preserving the unchanged
-result builder and requiring actual reviewed v4 identities on the real path. The
-corrected freeze still requires Kiro review and a new Ryan grant.
+result builder and requiring actual reviewed v4 identities on the real path. Kiro
+passed that correction, but the next granted preflight stopped before root/author/
+process/read/write because `F002` lacked its literal real argv. Section 18.37 closes
+the exact nine-key command contract, distinct synthetic/real cwd and argv values and
+one order-only `F002` representative. The corrected freeze still requires Kiro review
+and a new Ryan grant.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.

@@ -2782,6 +2782,41 @@ result, network, acquisition, owner/license decision, binary repair, build,
 publication, implementation, PR `#342` update, merge, real OpenClaw or later gate is
 authorized.
 
+### 10.35 V4 real-command argv correction
+
+Architecture §18.37 controls. Kiro passed the result-identity plan at `3107d6f`, but
+the next granted static preflight stopped before root, author, process, read or write.
+The reviewed v4 command contract requires both ordered argv vectors, and `F002`
+rejects drift from the literal real vector, but §§18.34–18.36 never enumerate that
+vector. The correction therefore closes only the command grammar.
+
+The v4 command-contract schema is exactly
+`convmem.switchboard.work-item-author-command-contract.v4` with the exact nine-key
+set in §18.37.2. Existing `argv` and `cwd` retain the thirteen-member synthetic
+command and v4 partial cwd. New `author_packet_argv` contains the exact nineteen
+literal strings in §18.37.2, in this order: interpreter, sealed v4 author,
+`author-packet`, packet-root pair, disposition pair, staging-root pair, durable-root
+pair, command-contract pair, dependency-manifest pair, receipt pair and freeze-
+manifest pair. `author_packet_cwd` is the sealed v4 final root. No alias, optional
+argument, positional tail, implicit/environment-derived value or caller-selected
+coordinate exists. Only the already governed `.partial` output siblings may be
+derived.
+
+The sole `F002` representative swaps only real-argv slices `[3:5]` and `[5:7]`,
+preserving all nineteen values and length while reversing the first two flag/value
+pairs. It must reject with exactly `F002` before input content access or output
+creation. The stopped-preflight counters remain root/author/process/read/write/network
+zero. Every identity, result/fixture/work-item schema, cardinality, mapping, parser,
+serializer, `W001`–`W042`, `F001`–`F010`, ceiling, write-ledger rule, root and later
+real-read contract is unchanged.
+
+**Current result:** real-argv-correction plan-only. Exact-tip Kiro review and a new
+Ryan two-SHA grant remain mandatory before the still-absent v4 partial may be created
+or one synthetic process may run. No freeze, packet/disposition/repository/runtime/
+retained-source read, work-item packet/result, network, acquisition, owner/license
+decision, binary repair, build, publication, implementation, PR `#342` update, PR
+creation, merge, real OpenClaw or later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2826,3 +2861,6 @@ root/source/process on a receipt/result hash cycle. Section 10.34 replaces only 
 synthetic result's two receipt-binding values with exact domain-separated predecessor
 identities; the result builder stays unchanged and the real path still requires actual
 reviewed v4 identities. Kiro review and a new grant remain mandatory.
+Section 10.35 records the subsequent zero-effect argv preflight PAUSE and closes the
+v4 command contract with exact synthetic and real cwd/argv values plus one order-only
+`F002` representative. No root, process, read, write or operational authority exists.
