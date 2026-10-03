@@ -2726,14 +2726,16 @@ write ceiling from the rejected 67,108,864 bytes to a hard 1,073,741,824 bytes a
 requires exact pre-write accounting.
 
 The author must derive every canonical synthetic payload in memory before the first
-packet/result write, produce an ordered `{ordinal,path,purpose,size,sha256}` ledger,
+packet/result write, produce a complete ordered `{ordinal,path,purpose,size,sha256}` ledger,
 and prove the forecast does not exceed the cap. Accounting includes author setup,
 materialized synthetic inputs, both physical output copies, every freeze member and
 any temporary byte. The observed counter covers every regular-file write and must
 equal the forecast before rename. Preallocation, padding, compression, sparse files,
 hard links, reflinks, deduplicated copies, unledgered/short/repeated writes and any
-forecast/observed mismatch are `PAUSE`. The receipt binds the ledger hash and both
-totals without adding a freeze role; `F005`/`F010` retain the closed rejection surface.
+forecast/observed mismatch are `PAUSE`. Each file is created exclusively and written
+once from canonical in-memory bytes; the setup-created author is ledger row zero.
+The receipt contains the complete ledger plus its hash, the cap and both equal totals
+without adding a freeze role; `F005`/`F010` retain the closed rejection surface.
 The later one-pass real-run 4-GiB write ceiling is unchanged and cannot be inferred
 from or multiplied by this correction.
 

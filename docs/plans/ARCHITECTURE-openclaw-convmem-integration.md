@@ -8349,18 +8349,32 @@ ledger. The ledger counts, from v4 partial-root creation through final seal:
 4. every temporary or rejected-control output byte actually written; and
 5. every replacement write, which is otherwise forbidden.
 
-Each ledger row is exactly `{ordinal,path,purpose,size,sha256}`; paths are relative to
-the v4 partial, `purpose` is one of `author`, `synthetic-input`, `staging-output`,
-`durable-output`, `freeze-member`, or `temporary`, and rows retain raw write order.
+Each ledger row is exactly `{ordinal,path,purpose,size,sha256}`; `ordinal` is the
+zero-based file-creation order, paths are relative to the v4 partial, `purpose` is one
+of `author`, `synthetic-input`, `staging-output`, `durable-output`, `freeze-member`,
+or `temporary`, and rows retain raw write order. Every regular file is created
+exclusively, opened for write once, filled from one already-canonical in-memory byte
+string, flushed and fsynced before the next row. The pre-process setup may create only
+the new author as row zero; its observed size/hash must equal the file the governed
+process validates before any other creation.
 The forecast sum must be no greater than 1,073,741,824 before the first category 3–5
 write. The observed byte counter is incremented by the length of every regular-file
 write and must equal the forecast exactly after disposable cleanup and before rename.
 Directory metadata, mode changes, fsync and rename contribute zero bytes; an unknown
 write, short write, second write to an exclusive role, forecast/observed mismatch or
-one byte above the cap is `PAUSE`. The self-test receipt binds the ordered ledger's
-canonical SHA-256, forecast total and observed total without adding a seventh freeze
-role. `F005` and `F010` cover any ceiling, ledger, output-role or transaction drift;
-no `F011`, combined mutant or weakened control is introduced.
+one byte above the cap is `PAUSE`.
+
+The v4 self-test receipt retains every §18.32.5 field and adds exactly one
+`write_budget` object with exactly `ceiling_bytes`, `events`,
+`forecast_total_written_bytes`, `ledger_sha256` and
+`observed_total_written_bytes`. `events` is the complete row array above;
+`ledger_sha256=H(J(events))`; both totals are nonnegative integers, are equal on PASS
+and do not exceed `ceiling_bytes=1073741824`. The command contract's `ceilings` object
+changes only `max_total_written_bytes` to 1,073,741,824 and adds exact
+`max_peak_rss_bytes=2147483648`; every other key/value is unchanged. The complete
+ledger remains inside the existing receipt role, so no seventh freeze role or
+unreviewable sidecar exists. `F005` and `F010` cover any ceiling, ledger, output-role
+or transaction drift; no `F011`, combined mutant or weakened control is introduced.
 
 The later real `author-packet` contract remains exactly §18.34.4: one input pass each,
 662,531,209 aggregate input bytes, 2-GiB peak RSS and per-output-root ceilings, and
