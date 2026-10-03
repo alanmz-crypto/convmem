@@ -8170,7 +8170,7 @@ review may a still-later Ryan grant name one `author-packet` run. Its closed inp
 ```text
 INPUT_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet
 INPUT_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
-INPUT_PACKET_MEMBER_COUNT=902
+INPUT_PACKET_TREE_MEMBER_COUNT=902
 INPUT_PACKET_BYTES=654147403
 INPUT_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
 INPUT_DISPOSITION_PATH=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review/review-disposition.json
@@ -8191,9 +8191,9 @@ ACQUIRED_BYTES=0
 ```
 
 The exact output roots remain the absent schema-v3 coordinates in §18.32.1. Directory
-metadata enumeration does not consume a second content pass. Every one of the 902
-regular input members is opened for content at most once; its bytes feed hashing and
-canonical parsing in the same stream. The disposition is opened once. The exact two
+metadata enumeration does not consume a second content pass. Every regular input file
+represented in the 902-member tree is opened for content at most once; its bytes feed
+hashing and canonical parsing in the same stream. The disposition is opened once. The exact two
 byte ceilings sum to `662,531,209`; early EOF, an extra byte/member, missing member,
 symlink, special file, hard link, mode/hash/tree/manifest mismatch, second open for
 content or parser replay is `PAUSE` before any output write.
