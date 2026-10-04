@@ -3,7 +3,7 @@
 **Current status (2026-10-03): SCHEMA-V3 PACKET TECHNICAL PASS;
 PROVENANCE/LICENSING PAUSE; WORK-ITEM V3 SYNTHETIC FREEZE PASS;
 REAL-AUTHOR CAPABILITY ABSENT; V4 DURABILITY FREEZE PAUSE;
-ROW-ZERO RETRY CORRECTION PLAN / KIRO REVIEW REQUIRED.** The accepted bounded implementation and
+ROW-ZERO RETRY PLAN MERGED / KIRO EXACT-MAIN PASS.** The accepted bounded implementation and
 final M11 evidence remain preserved at
 `PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb`.
 Kiro passed the PR-corrective overlay `a23d843`; required GitHub `pytest (3.12)`
@@ -77,7 +77,9 @@ inside every process/write/RSS/access ceiling. Acceptance nevertheless remains
 `PAUSE` because external setup did not explicitly prove row-zero file `fsync` before
 ledger event 1. Sections 18.40/10.38 preserve the sealed root as immutable rejected
 evidence and define only a fresh-root retry with setup and governed file-then-directory
-`fsync` before event 1. These successor
+`fsync` before event 1. PR `#353` squash-merged the reviewed four-document plan at
+`073b19b1871203d50edb84ad845530441a4ba8d4`, and Kiro returned exact-main PASS.
+These successor
 plans authorize no packet/runtime read, request, retained-source access, acquisition,
 owner or license selection, binary repair, build, runtime publication, evidence rerun,
 PR update or merge.
@@ -94,7 +96,8 @@ CAPABILITY PLAN KIRO PASS AT `4210977`; WRITE-BUDGET PLAN KIRO PASS AT `7fe2752`
 RESULT-IDENTITY PLAN KIRO PASS AT `3107d6f`; REAL-ARGV PLAN KIRO PASS AT `be76abc`;
 INPUT-TREE PLAN KIRO PASS AT `991f488`; STARTUP-ISOLATION CORRECTION MERGED IN PR
 `#351` AT `a3b56ab`; KIRO EXACT-MAIN PASS; V4 SEALED TECHNICAL PASS / ACCEPTANCE
-PAUSE; ROW-ZERO DURABILITY RETRY CORRECTION AWAITS EXACT-TIP KIRO REVIEW.
+PAUSE; ROW-ZERO DURABILITY RETRY PLAN MERGED IN PR `#353` AT `073b19b1`; KIRO
+EXACT-MAIN PASS.
 PRODUCT/TEST/CI/RUNTIME EDITS, TEST EXECUTION, PR UPDATE, MERGE AND REAL OPENCLAW
 WORK REMAIN PAUSED.
 
@@ -952,6 +955,11 @@ Review and authority order is mandatory:
     1. All schemas, controls, roles, identities, ceilings and zero-access constraints
     remain unchanged. This overlay authorizes planning review only; no prior grant is
     reusable.
+65. PR `#353` squash-merged §§18.40/10.38 and the four reviewed planning blobs at
+    `073b19b1871203d50edb84ad845530441a4ba8d4`; Kiro returned exact-main PASS and
+    confirmed byte equality to reviewed carrier `b7a8ade6…`, the immutable rejected
+    root, absent fresh retry roots and unchanged authority boundary. The merge and
+    review grant no root creation, source write, process execution or retry authority.
 
 ## 1. State ledger
 
@@ -959,9 +967,9 @@ Review and authority order is mandatory:
 |---|---|
 | **Specified** | Semantic parent Architecture §§18.22–18.40 and Execution §§10.20–10.38; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; complete component/ownership work-item design; closed schema-v3 candidate-gap/locator/freeze contract; preserved failed freeze; successful synthetic retry binding; explicit absent real-author capability; rejected v4 durability freeze; fresh v4 row-zero durability retry; corrected synthetic write budget, exact synthetic predecessor identities, closed no-site two-command argv contract, exact 902-member input packet-tree identity and held one-pass real-read contract; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
-| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model, schema v2 at `dea026c`, schema-v3 mappings at `21f5acc`, retry correction at `59ae444`, capability plan at `4210977`, write-budget correction at `7fe2752`, result-identity correction at `3107d6f`, real-command correction at `be76abc`, input-tree correction at `991f488` and startup-isolation overlay `fdf0901`. PR `#351` merged the reviewed author contract at `a3b56ab`, and Kiro returned exact-main PASS. The first governed v3 freeze failed closed on baseline `W026`; its one-file partial remains immutable. The separately granted retry passed its clean baseline and `42/42` controls, freezing exact six-file tree `65f32f11…` with zero real access. Its source is synthetic-only. The five v4 preflights created no root/process; the last four also created no author, and the real-argv, input-tree and startup preflights performed zero reads/writes. The exact tree recipe was recovered read-only from hash-bound frozen collector `26352b39…`; no packet content was read. The startup preflight bound the global-site hook without executing Python. The separately granted v4 freeze later sealed exact tree `f6936649…`, passed a clean baseline and `52/52` controls with forecast/observed writes 333,949,322 and zero external access, but acceptance is `PAUSE` because row-zero pre-event-1 file durability was not proved. No real author or work-item packet has been tested. |
+| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model, schema v2 at `dea026c`, schema-v3 mappings at `21f5acc`, retry correction at `59ae444`, capability plan at `4210977`, write-budget correction at `7fe2752`, result-identity correction at `3107d6f`, real-command correction at `be76abc`, input-tree correction at `991f488` and startup-isolation overlay `fdf0901`. PR `#351` merged the reviewed author contract at `a3b56ab`, and Kiro returned exact-main PASS. The first governed v3 freeze failed closed on baseline `W026`; its one-file partial remains immutable. The separately granted retry passed its clean baseline and `42/42` controls, freezing exact six-file tree `65f32f11…` with zero real access. Its source is synthetic-only. The five v4 preflights created no root/process; the last four also created no author, and the real-argv, input-tree and startup preflights performed zero reads/writes. The exact tree recipe was recovered read-only from hash-bound frozen collector `26352b39…`; no packet content was read. The startup preflight bound the global-site hook without executing Python. The separately granted v4 freeze later sealed exact tree `f6936649…`, passed a clean baseline and `52/52` controls with forecast/observed writes 333,949,322 and zero external access, but acceptance is `PAUSE` because row-zero pre-event-1 file durability was not proved. PR `#353` merged the row-zero durability plan at `073b19b1`, and Kiro returned exact-main PASS. No real author or work-item packet has been tested. |
 | **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
-| **Unresolved** | Exact-tip Kiro review of the row-zero durability correction; one new separately granted fresh-root six-file v4 retry proving both setup and governed durability transitions; plan-only accepted v4 identity binding and review; one-pass real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Unresolved** | Ryan's decision on one new separately granted fresh-root six-file v4 retry proving both setup and governed durability transitions; plan-only accepted v4 identity binding and review; one-pass real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -1076,7 +1084,7 @@ M0 baseline/runtime input
   → separately granted six-file v4 process sealed f6936649… but acceptance PAUSE:
     row-zero file durability before event 1 was not proved
   → plan-only §18.40/§10.38 row-zero durability retry correction
-  → exact-tip Kiro correction review
+  → exact-tip PASS; PR #353 merged at 073b19b1; exact-main PASS
   → new two-SHA grant for one fresh-root retry with setup and governed
     file-then-directory fsync before event 1
   → plan-only accepted v4 identity binding and Kiro capability review
@@ -1105,9 +1113,9 @@ M8 → M9 Gate D ─┼→ M10 Gate D-V, then Gate E → M11 complete review
 
 M0–M8 and the preceding M11 evidence are accepted historical scope; they are neither
 reopened nor promoted into a green GitHub required check. M9, M10, watch coverage and
-complete-system review remain decision gates, not implementation work. The next
-possible activity is Kiro exact-tip review of the row-zero durability correction.
-Only after PASS may Ryan decide whether to grant one fresh-root v4 retry under the
+complete-system review remain decision gates, not implementation work. PR `#353` and
+Kiro exact-main PASS are complete. The next possible activity is Ryan's decision
+whether to grant one fresh-root v4 retry under the
 corrected no-site, command, tree, identity, 1-GiB and durability contracts; no prior
 grant is reusable. Its identity
 binding/review, real packet authoring and independent review remain later separately
@@ -1734,8 +1742,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    `WORK_ITEM_AUTHOR_ROW_ZERO_DURABILITY_PLAN_BASE_MAIN_SHA`. The next granted process
    sealed exact tree `REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_TREE_SHA256` and passed all
    52 controls, but row-zero durability remained unproved and acceptance is `PAUSE`.
-   Exact-tip Kiro PASS on this row-zero correction, a new separately granted
-   fresh-root v4 six-file retry, a later identity-binding review, a separately granted one-pass offline author,
+   Kiro passed this row-zero correction; PR `#353` merged it at `073b19b1`, and
+   Kiro returned exact-main PASS. A new separately granted fresh-root v4 six-file
+   retry, a later identity-binding review, a separately granted one-pass offline author,
    independent work-item packet review, a later exact operation packet and Ryan
    acquisition grant, and Kiro/
    licensing review of a zero-unresolved component lock remain mandatory
@@ -1965,7 +1974,8 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    would import third-party code. Startup-isolation-design-ready was reached by Kiro
    PASS and PR `#351`. The granted successor sealed `f6936649…` but acceptance paused
    because row-zero file durability before event 1 was not proved. Row-zero-retry-
-   design-ready requires Kiro PASS on this exact parent/overlay. Author-freeze-ready and
+   design-ready was reached by Kiro PASS and PR `#353` merged at `073b19b1` with
+   exact-main PASS. Author-freeze-ready and
    work-item-packet-ready,
    complete-origin-planning, operation-packet-ready,
    acquisition-ready, provenance-closed, lock-ready,
@@ -2206,7 +2216,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
       and sealed tree `f6936649…` with zero real-input access. Acceptance remains
       `PAUSE`: setup did not prove row-zero file durability before event 1. The sealed
       root is immutable rejected evidence and grants no capability.
-- [ ] Kiro exact-tip PASS on §§18.40/10.38 and this milestone overlay.
+- [x] Kiro exact-tip PASS on §§18.40/10.38; PR `#353` merged the four reviewed
+      planning blobs at `073b19b1`, and Kiro exact-main PASS confirmed their equality
+      and unchanged authority boundary.
 - [ ] One new Ryan two-SHA grant for the fresh `fdf09017…/v4.partial` and sibling
       final roots; setup and the sole governed process each complete row-zero file-
       then-directory `fsync` before event 1; exact durability counters return; no real
@@ -2659,8 +2671,8 @@ RESULT-IDENTITY PLAN KIRO PASS AT `3107d6f`; REAL-ARGV PREFLIGHT PAUSE;
 REAL-ARGV PLAN KIRO PASS AT `be76abc`; INPUT-TREE PREFLIGHT PAUSE;
 INPUT-TREE PLAN KIRO PASS AT `991f488`; STARTUP PREFLIGHT PAUSE;
 STARTUP-ISOLATION CORRECTION MERGED IN PR `#351` AT `a3b56ab`; KIRO EXACT-MAIN PASS;
-V4 SEALED TECHNICAL PASS / ACCEPTANCE PAUSE; ROW-ZERO DURABILITY RETRY PLAN AWAITS
-KIRO EXACT-TIP REVIEW; CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
+V4 SEALED TECHNICAL PASS / ACCEPTANCE PAUSE; ROW-ZERO DURABILITY RETRY PLAN MERGED
+IN PR `#353` AT `073b19b1`; KIRO EXACT-MAIN PASS; CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
 independent publication provenance/licensing review. The replacement delivery-set
 plan passed at `3402e62a`; schema v1 passed at `5f397852`, then its offline P0 stopped
 on a component initially classified as null-version. Schema v2 passed at `2956f701`,
@@ -2788,9 +2800,9 @@ successful fixture build.
   process sealed exact tree `f6936649…` with `52/52` controls and zero external
   access, but acceptance remains `PAUSE` because setup did not prove row-zero file
   durability before event 1. Sections 18.40/10.38 preserve that root and define fresh
-  absent retry roots plus the exact setup/governed durability transition. Kiro exact-
-  tip review is next; only a later fresh Ryan two-SHA grant may run one retry. No real
-  packet exists.
+  absent retry roots plus the exact setup/governed durability transition. PR `#353`
+  merged those sections at `073b19b1`, and Kiro returned exact-main PASS. Ryan's fresh
+  two-SHA grant decision is next; no retry or real packet is authorized.
   Author freeze,
   offline authoring, acquisition, zero-unresolved lock closure,
   build, final packet, publication and CI admission remain separately gated; merge is
