@@ -3010,6 +3010,129 @@ packet/result, network, acquisition, owner/license decision, binary repair, buil
 publication, implementation, PR `#342` update, PR creation, merge, real OpenClaw or
 later gate is authorized.
 
+### 10.40 V4 standard-library dependency-link freeze-retry correction
+
+Architecture §18.42 controls. PR `#355` merged the coordinate-parent correction at
+`8e4bb2b704ea858301207c21b71427df4975b889`, Kiro returned exact-main PASS and PR
+`#356` merged its descriptive snapshot at
+`30052061942c4c016fcb305946444c0453046cb1`. Ryan separately granted one exact retry
+under reviewed overlay `816b713adac7f987efa282380b892ab03994fbed`. Setup proved
+row-zero durability, but the sole no-site process exited one before any JSON or
+disposable output write. The dependency reader raised
+`RuntimeError: not single-link regular file` on the canonical standard-library module
+`/home/lauer/miniforge3/lib/python3.13/lib-dynload/_blake2.cpython-313-x86_64-linux-gnu.so`.
+
+The sibling final root is absent. The consumed `b7a8ade6…/v4.partial` contains only
+mode-`0644`, single-link author `57ecd07b…`, size 70,266 bytes. Its canonical one-row,
+138-byte partial-tree serialization hashes to `99e4939d…`; no JSON member, receipt,
+manifest or result exists. The failing dependency is a mode-`0775` regular file with
+link count two, size 398,208 and SHA-256 `73da16b0…`. The run performed zero real-
+input, network, runtime, retained-source and subprocess access. The partial, its
+source, coordinate and grant are immutable PAUSE evidence and non-reusable.
+
+The defect is an internal overconstraint. Dependency-manifest rows are exactly
+`{name,kind,path,size,sha256}` and do not use link count as identity, but the fresh
+author reused the single-link evidence predicate for a canonical stdlib origin. The
+fix must not weaken the general hard-link rule, add an alias/path search, admit a
+symlink, accept site packages, copy the dependency, add a schema field or accept the
+stopped partial.
+
+The sole successor uses fresh, absent, single-assignment coordinates under
+`/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/816b713adac7f987efa282380b892ab03994fbed`:
+sibling `v4.partial` and `v4`. Pre-existence of the parent or either child is `PAUSE`.
+Setup retains §18.40; publication retains §18.41. A new author must be written from
+the reviewed plan, never copied or patched from the failed partial.
+
+One internal `read_stdlib_dependency` boundary may accept `st_nlink >= 1` only for
+the exact canonical module-origin path already obtained from an imported module. It
+must prove strict descent from the bound `/home/lauer/miniforge3/lib/python3.13`
+standard-library root, reject `site-packages`/`dist-packages`, open once as
+`O_RDONLY | O_CLOEXEC | O_NOFOLLOW`, require a regular non-symlink file, hash one
+content stream and require stable pre/post descriptor metadata: device, inode, file
+type, mode, link count, size, mtime-ns and ctime-ns. It emits only the unchanged
+five-field row. It may not enumerate, open, compare, hash or cite any alternate link.
+
+All interpreter, startup-support, synthetic-input, freeze, packet, disposition,
+object, output and result readers keep the exact single-link rule. Canonical-path or
+descriptor drift, a forbidden path component, link-count change during the stream,
+short/extra read, digest drift or second content pass is `PAUSE`. The synthetic
+baseline uses the same production dependency reader. `W001`–`W042`, `F001`–`F010`,
+the 52-control total, `F010` transaction-drift meaning and absence of `F011` remain
+unchanged.
+
+The correction also retains every prior schema/mapping, six freeze roles, seven
+output roles, 22-event/two-null ledger, fixed point, exact identities, 902-member
+packet-tree recipe, fourteen-/twenty-member no-site argv, `F002` slices
+`[4:6]`/`[6:8]`, five-key environment, row-zero and coordinate-parent durability,
+one process, 1-GiB write cap, 2-GiB RSS cap and zero external-access limits. No
+control, file role, wrapper, sidecar, path authority or acceptance exception is added.
+
+**Current result:** standard-library dependency-link correction plan-only. Exact-tip
+Kiro review and a fresh Ryan two-SHA grant naming the absent roots and exact stdlib
+dependency-reader boundary are mandatory before setup or one synthetic process. No
+retry root, source, process, dependency/packet/disposition/repository/runtime/
+retained-source read, work-item packet/result, network, acquisition, owner/license
+decision, binary repair, build, publication, implementation, PR `#342` update, PR
+creation, merge, real OpenClaw or later gate is authorized.
+
+### 10.41 V4 self-test receipt control-order freeze-retry correction
+
+Architecture §18.43 controls. Kiro passed the stdlib-link correction at
+`946b469e27c7eb27c198898fa330c2475bde29fa`, and Ryan granted one exact
+`816b713…` retry. Setup and the sole no-site process completed the reviewed row-zero,
+dependency, full-cardinality, 22-event and coordinate-parent transitions. The process
+accepted canonical `_blake2`, ran a zero-violation baseline and 52 individual controls,
+wrote exactly `302,475,056` forecast/observed bytes, stayed below 2 GiB RSS, sealed
+six mode-`0444` members under a mode-`0555` final root and emitted `PASS`.
+
+Acceptance is `PAUSE`. Sealed tree `d399e356…` contains receipt `8d3ecbe0…`, whose
+control IDs are `W001`–`W042` followed by `F001`–`F010`. The inherited raw-ID order is
+`F001`–`F010` followed by `W001`–`W042`. The author checked individual mutant results
+but omitted aggregate receipt-order validation, so its F010/transaction check failed
+closed only after the independent read-only post-run comparison. The final root,
+members, source, external result claim and grant are immutable rejected evidence; the
+absent `.partial` sibling may not be recreated. No acceptance transfers from the
+reported PASS or any prior attempt.
+
+The fresh successor coordinate parent and siblings are exactly:
+
+```text
+/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa
+/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4.partial
+/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4
+```
+
+All three were absent at planning time and are single-assignment. Pre-existence at a
+future grant is `PAUSE`. A future author must be written from this reviewed plan and
+must retain §§18.40–18.42 unchanged. It may not copy, patch, import, execute or cite
+the rejected source as acceptance.
+
+The successor derives the exact complete ID set `F001`–`F010` plus `W001`–`W042`,
+sorts it once by raw UTF-8 bytes, indexes the 52 independent receipts by ID and emits
+rows only in that expected order. Missing, extra, duplicate, separately concatenated
+or unstable IDs are `PAUSE`. Every row must bind the same ID through its mutation,
+expected/observed code, verdicts, created flags and `passed=true`. After the at-most-
+sixteen-iteration size fixed point, the author must canonicalize and parse the final
+receipt bytes through the production parser and compare the parsed ID array exactly
+before the first governed output write. The clean baseline and all controls call this
+same aggregate validator. Later reorder or serializer drift is `F010`/`PAUSE`.
+
+The W-only `negative-controls.jsonl` remains exactly 42 rows in `W001`–`W042` order;
+the receipt remains the sole 52-row surface. No control meaning or representative,
+schema, field, role, sidecar, wrapper, ceiling, access boundary or acceptance
+exception changes. The six freeze roles, seven output roles, two-null 22-event ledger,
+fixed point, identities, full-cardinality packet, 14/20-member no-site argv, F002
+slice swap, row-zero and parent durability, canonical stdlib link reader, one process,
+1-GiB write cap, 2-GiB RSS cap and zero external access are frozen.
+
+**Current result:** control-order correction plan-only. Exact-tip Kiro review and a
+fresh Ryan two-SHA grant naming the absent roots and exact aggregate receipt validator
+are mandatory before setup or one synthetic process. No retry root, source, process,
+dependency/packet/disposition/repository/runtime/retained-source read, work-item
+packet/result, network, acquisition, owner/license decision, repair, build,
+publication, implementation, PR `#342` update, PR creation, merge, real OpenClaw or
+later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -3075,5 +3198,11 @@ sole governed process. That retry passed all controls but failed closed before r
 because its audit hook rejected the coordinate-parent directory open. Section 10.39
 preserves sealed partial `a9ceaa06…`, keeps the final absent and defines only fresh
 `b7a8ade…` roots plus exact pre-/post-rename parent barriers without widening content
-authority. Kiro review and a new two-SHA grant remain mandatory. No retry root,
-process, read, write or operational authority exists.
+authority. Section 10.40 then preserved the one-file `99e4939d…` PAUSE and admitted
+stable link counts only inside the canonical stdlib dependency reader. Kiro passed
+that correction at `946b469`; the granted retry sealed final tree `d399e356…` and
+reported PASS, but receipt `8d3ecbe0…` concatenated W controls before F controls.
+Section 10.41 preserves the final root as immutable PAUSE evidence and defines only
+fresh `946b469…` coordinates plus exact complete raw-ID receipt validation before
+output. Kiro review and a new two-SHA grant remain mandatory. No retry root, process,
+read, write or operational authority exists.
