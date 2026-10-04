@@ -92,7 +92,7 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │       └─ Kiro PASS at 991f488; exact 902-member recipe retained
         ├─ §18.39 / §10.37 interpreter startup-isolation correction
         │       └─ next preflight stopped before root/author/process/read/write
-        │       └─ global .pth would import third-party code; exact -S correction plan-only
+        │       └─ PR #351 merged at a3b56ab; Kiro exact-main PASS
         │
         │ → separately granted offline work-item packet + independent review
         │ → separately planned exact origins
@@ -189,7 +189,10 @@ the reviewed interpreter command would run global `site.py`, execute
 could establish its standard-library-only boundary. Sections 18.39/10.37 preserve the
 nine-key command schema, five-key environment and every existing contract while adding
 literal `-S` to both argv vectors, requiring `sys.flags.no_site == 1` and shifting only
-the order-only `F002` slice indices. All v4 and work-item roots remain absent.
+the order-only `F002` slice indices. PR `#351` squash-merged the reviewed four-document
+author contract at `a3b56abd3b5fa3fafe1b3f32de744bba3eb9772c`, and Kiro returned
+exact-main PASS. That merge and review authorize no v4 root, read or execution; all v4
+and work-item roots remain absent.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -212,7 +215,7 @@ the absent publishable qualified runtime.
 | P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
-| Work-item schema closure | **V3 SYNTHETIC FREEZE PASS / V4 STARTUP PREFLIGHT PAUSE / CORRECTION PLAN-ONLY** — Kiro passed §§18.38/10.36 at `991f488`; the next granted preflight created no root/author/process/read/write because global site initialization would import third-party `_distutils_hack`; §§18.39/10.37 add literal `-S`, a no-site invariant and only the mechanical `F002` index shift while preserving the shared path, identities, schemas, 52 controls and ceilings |
+| Work-item author contract | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` landed §§18.31–18.39/§§10.29–10.37 with the closed schema/mappings, synthetic qualification, shared-core command, write ledger, packet-tree recipe and literal `-S` startup isolation; the last preflight created no root/author/process/read/write, and a fresh Ryan grant remains mandatory before one v4 process may run |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -249,7 +252,7 @@ the absent publishable qualified runtime.
 | V4 synthetic result-identity correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `3107d6f` | Exact predecessor identities remain frozen; `F002` lacks the literal ordered real command vector needed to construct the author |
 | V4 real-command argv correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `be76abc` | Exact command contract remains frozen; the 902-member input packet-tree identity recipe was missing |
 | V4 input packet-tree identity correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `991f488` | Exact packet-tree recipe remains frozen; the literal interpreter command would execute a third-party global-site hook before the author |
-| V4 interpreter startup-isolation correction | **PLAN-ONLY / KIRO REVIEW REQUIRED** — §§18.39/10.37 | Literal `-S`, `sys.flags.no_site == 1`, fourteen-/twenty-member argv and shifted `F002`; no schema, environment, control, root or execution authority change |
+| V4 interpreter startup-isolation correction | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` | Literal `-S`, `sys.flags.no_site == 1`, fourteen-/twenty-member argv and shifted `F002` are preserved; planning merge and review grant no root or execution authority |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -258,17 +261,12 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** review the exact §§18.39/10.37 interpreter
-startup-isolation correction. Confirm the zero-root/zero-author/zero-process/zero-read/
-zero-write stop; the bound `distutils-precedence.pth`, `site.py` and
-`_distutils_hack` evidence; that `PYTHONNOUSERSITE=1` does not disable the global site;
-the exact literal `-S` insertion after the interpreter; fourteen-member synthetic and
-twenty-member real argv vectors; unchanged cwd/environment/schema; the required
-`sys.flags.no_site == 1` and site-package-free dependency closure; and the sole
-mechanical `F002` shift to `[4:6]`/`[6:8]`. Confirm that every packet-tree rule,
-identity, cardinality, `W001`–`W042`, `F001`–`F010`, ceiling and ledger rule remains
-unchanged. A PASS authorizes planning only; Ryan must separately issue a new two-SHA
-v4 freeze grant. No prior grant is reusable.
+**If Ryan sent you here now:** preserve the merged PR `#351` work-item author contract
+and Kiro exact-main PASS at `a3b56ab`. The next substantive decision belongs to Ryan:
+whether to issue one fresh two-SHA grant naming the still-absent v4 roots, literal
+fourteen-/twenty-member no-site argv, exact six-file freeze contract, 1-GiB ledgered
+write ceiling and zero-real-input boundary. Do not infer that grant from the merged
+plan or review PASS. No prior grant is reusable.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -279,8 +277,7 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro must review the exact startup-isolation semantic parent and milestone overlay. A
-   later new two-SHA Ryan grant may create only the fresh six-file v4 freeze, run one
+1. A new two-SHA Ryan grant may create only the fresh six-file v4 freeze, run one
    shared-core full-cardinality synthetic transaction, unchanged `W001`–`W042` and
    exact `F001`–`F010`, exact synthetic predecessor identities, the closed two-command
    contract under literal `-S`, order-only `F002` and exact production packet-tree
@@ -410,6 +407,7 @@ a separate repository-knowledge arc.
 | Implementation pull request | `https://github.com/alanmz-crypto/convmem/pull/342` |
 | Replacement plan pull request | `https://github.com/alanmz-crypto/convmem/pull/345` — merged as `5bcc6c7`; Kiro exact-main PASS |
 | Work-item plan pull request | `https://github.com/alanmz-crypto/convmem/pull/348` — merged as `d79f03c`; Kiro exact-main PASS |
+| Work-item author-contract pull request | `https://github.com/alanmz-crypto/convmem/pull/351` — merged as `a3b56ab`; Kiro exact-main PASS |
 | Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
@@ -420,7 +418,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-03 | Codex | Recorded the zero-effect global-site startup PAUSE and bound literal `-S`, no-site dependency isolation and the mechanical `F002` index shift without changing schemas, controls or authority. |
+| 2026-10-03 | Codex | Recorded PR `#351` merged at `a3b56ab` and Kiro exact-main PASS; the next v4 freeze remains separately Ryan-gated. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -471,6 +469,8 @@ author, process, read or write because global site initialization would import
 third-party `_distutils_hack`. Sections 18.39/10.37 add only literal `-S`, require
 `sys.flags.no_site == 1`, close fourteen-/twenty-member argv and shift `F002` slices
 mechanically; every schema, environment key, control and ceiling remains unchanged.
-No v4 freeze or real packet exists. Acquisition, binary
+PR `#351` merged that complete author contract at `a3b56ab`, and Kiro returned
+exact-main PASS. No v4 freeze or real packet exists; one fresh two-SHA Ryan grant is
+the next possible substantive action. Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
