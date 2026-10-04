@@ -2944,6 +2944,72 @@ result, network, acquisition, owner/license decision, binary repair, build,
 publication, implementation, PR `#342` update, PR creation, merge, real OpenClaw or
 later gate is authorized.
 
+### 10.39 V4 coordinate-parent durability-audit correction
+
+Architecture §18.41 controls. PR `#353` merged the row-zero durability correction at
+`073b19b1871203d50edb84ad845530441a4ba8d4`, Kiro returned exact-main PASS and PR
+`#354` merged the descriptive snapshot at
+`6de8845473e09742bcf5a44b2da22a285ed77570`. Ryan separately granted one exact
+retry under reviewed overlay `b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288`.
+Setup proved row-zero file and partial-directory durability, but the sole no-site
+process exited one during final publication. Its audit hook rejected the exact
+coordinate-parent directory open required for the pre-rename `fsync`.
+
+The sibling final root is absent. The consumed `fdf09017…/v4.partial` is immutable
+mode-`0555` PAUSE evidence containing exactly six single-link mode-`0444` files,
+97,757 bytes and canonical tree
+`a9ceaa06945c17d588bb1ec66a17184c2f2df0612cc947a703cce61d70e0093d`.
+Read-only verification reproduced a clean baseline, all 52 controls, the 22-event
+ledger with exactly two null digests, ledger
+`993ddf3b65b54f18f6d432d962c88925c6b61c2902b22eceb7bf0eb09f8be271`,
+forecast/observed writes 356,219,589 and zero real-input/external access. No external
+PASS result or accepted peak-RSS/final-root identity exists. The partial, its source
+and the consumed grant are non-reusable.
+
+The defect is exact: the ordinary audit predicate admits the partial/final and other
+governed content roots but not their coordinate parent; finalization calls
+`fsync_dir(dirname(PARTIAL))`, whose `os.open` emits the rejected `open` event. Adding
+the parent to the ordinary prefix allowlist is forbidden because it would admit
+unreviewed descendants. Omitting either parent `fsync`, disabling the hook, moving the
+rename to a wrapper, passing a caller-opened descriptor or accepting the partial is
+also forbidden.
+
+The sole successor uses fresh, absent, single-assignment coordinates under
+`/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288`:
+sibling `v4.partial` and `v4`. Setup retains the exact §18.40 row-zero transaction.
+The source keeps the ordinary content allowlist unchanged and admits only an exact
+open of the coordinate parent with
+`O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW`, never by prefix, only in the
+internal states `BEFORE_FINAL_RENAME` and `AFTER_FINAL_RENAME`. Each state permits one
+open, one successful directory `fsync` and one close; enumeration, child lookup,
+content reads, alternate paths, inherited descriptors and caller choices remain
+forbidden.
+
+Finalization must complete the first exact parent barrier, atomically rename the
+partial to the sibling final root, complete the second exact parent barrier, and only
+then emit the external result. It returns exactly one for the four parent open/`fsync`
+counters in §18.41.3 in addition to the unchanged five row-zero counters. Any missing,
+repeated, reordered or extra event; wrong path/flags/state; early rename/result; or
+audit rejection is `PAUSE`. Failure before rename preserves the partial; failure after
+rename preserves the final coordinate as rejected evidence. Neither may be repaired,
+deleted, renamed back, completed or retried.
+
+The correction retains the nine-key command contract, five-key environment, literal
+`-S`, fourteen-/twenty-member argv shapes, distinct synthetic/real cwd, order-only
+`F002` slices `[4:6]`/`[6:8]`, six freeze roles, seven output roles, 22-event ledger,
+two null digests, fixed point, packet-tree recipe, cardinalities, `W001`–`W042`,
+`F001`–`F010`, one-process/1-GiB-write/2-GiB-RSS ceilings, row-zero durability and
+zero-access limits. `F010` remains the transaction-drift code; there is no `F011`,
+sidecar, wrapper, broad parent allowlist or acceptance transfer.
+
+**Current result:** coordinate-parent durability-audit correction plan-only. Exact-tip
+Kiro review and a fresh Ryan two-SHA grant naming the absent roots and exact two-phase
+parent barrier are mandatory before setup or one synthetic process. No retry root,
+source, process, packet/disposition/repository/runtime/retained-source read, work-item
+packet/result, network, acquisition, owner/license decision, binary repair, build,
+publication, implementation, PR `#342` update, PR creation, merge, real OpenClaw or
+later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -3005,5 +3071,9 @@ root or ceiling. The granted successor sealed six files and passed every technic
 control, but acceptance paused because setup did not prove row-zero file durability
 before event 1. Section 10.38 preserves that root as immutable rejected evidence and
 defines only a fresh-root file-then-directory `fsync` transition in both setup and the
-sole governed process. Kiro review and a new two-SHA grant remain mandatory. No retry
-root, process, read, write or operational authority exists.
+sole governed process. That retry passed all controls but failed closed before rename
+because its audit hook rejected the coordinate-parent directory open. Section 10.39
+preserves sealed partial `a9ceaa06…`, keeps the final absent and defines only fresh
+`b7a8ade…` roots plus exact pre-/post-rename parent barriers without widening content
+authority. Kiro review and a new two-SHA grant remain mandatory. No retry root,
+process, read, write or operational authority exists.

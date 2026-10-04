@@ -9167,6 +9167,228 @@ publication, CI admission, product/test/config/R2b change, implementation, PR `#
 update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
 promotion or Gate D/W/D-V/E/F action.
 
+### 18.41 V4 coordinate-parent durability-audit correction
+
+PR `#353` squash-merged the reviewed row-zero durability correction at
+`073b19b1871203d50edb84ad845530441a4ba8d4`, Kiro returned exact-main PASS and PR
+`#354` merged the descriptive snapshot at
+`6de8845473e09742bcf5a44b2da22a285ed77570`. Ryan then issued one exact two-SHA
+grant for the fresh `fdf09017…/v4.partial` and sibling final roots. External setup
+exclusive-created the row-zero author, completed one write, file-`fsync`, close and
+partial-directory `fsync`, and verified the exact bytes before launching the sole
+no-site process. The process reached final publication after producing and sealing all
+six freeze members, but exited one when its own audit hook rejected the required open
+of the coordinate parent directory for the pre-rename durability `fsync`.
+
+The failure is fail-closed. No final root exists, no external PASS result was emitted
+and the consumed partial is immutable rejected evidence. The synthetic baseline,
+controls and write ledger are useful diagnostic evidence only; they do not authorize
+acceptance, repair or retry.
+
+#### 18.41.1 Exact sealed PAUSE evidence
+
+```text
+WORK_ITEM_AUTHOR_COORDINATE_PARENT_AUDIT_PLAN_BASE_MAIN_SHA=6de8845473e09742bcf5a44b2da22a285ed77570
+WORK_ITEM_AUTHOR_COORDINATE_PARENT_AUDIT_REVIEWED_OVERLAY_SHA=b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_STATUS=PAUSE
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_SETUP_STATUS=PASS
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_PROCESS_EXIT_STATUS=1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_EXCEPTION=RuntimeError: forbidden open
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_FAILURE_STAGE=COORDINATE_PARENT_FSYNC_BEFORE_FINAL_RENAME
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_ROOT_PRESENT=false
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_PARTIAL_ROOT_PRESENT=true
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_PARTIAL_TREE_SHA256=a9ceaa06945c17d588bb1ec66a17184c2f2df0612cc947a703cce61d70e0093d
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_MEMBER_COUNT=6
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_TOTAL_PERSISTED_BYTES=97757
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_ROOT_MODE=0555
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_MEMBER_MODE=0444
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_AUTHOR_SIZE=52513
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_AUTHOR_SHA256=26dcc5f1c5641597912f35f42c5f3dc5705fce0c8cd16d78a3186a68d53c8a57
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_ROW_ZERO_SETUP_FILE_FSYNC_COUNT=1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_ROW_ZERO_SETUP_DIRECTORY_FSYNC_COUNT=1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_CONTROL_COUNT=52
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_CONTROLS_PASSED=52
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_BASELINE_VIOLATION_COUNT=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_WRITE_LEDGER_EVENT_COUNT=22
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_WRITE_LEDGER_NULL_DIGEST_COUNT=2
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_WRITE_LEDGER_SHA256=993ddf3b65b54f18f6d432d962c88925c6b61c2902b22eceb7bf0eb09f8be271
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_FORECAST_WRITTEN_BYTES=356219589
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_OBSERVED_WRITTEN_BYTES=356219589
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_DEPENDENCY_ROW_COUNT=58
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_REAL_INPUT_READ_BYTES=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_NETWORK_REQUESTS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_RUNTIME_READS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_RETAINED_SOURCE_READS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_SUBPROCESSES=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_EXTERNAL_RESULT_EMITTED=false
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_ACCEPTED=false
+```
+
+The preserved partial contains exactly these single-link mode-`0444` regular files
+under a mode-`0555` directory:
+
+| File | Size | SHA-256 |
+|---|---:|---|
+| `work-item-author-v4.py` | 52,513 | `26dcc5f1c5641597912f35f42c5f3dc5705fce0c8cd16d78a3186a68d53c8a57` |
+| `fixture-spec.json` | 476 | `d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f` |
+| `dependency-manifest.json` | 7,513 | `67e6cedcb5aa364f28312864c02cbe03ab42b8a63c1bcbc3ee7b135fbb6b7b94` |
+| `command-contract.json` | 3,544 | `7b2d7b7e5c671a1dbaa2a0a08f063184ae8211e479c9c58afaf0408504b9c2d3` |
+| `self-test-receipt.json` | 32,735 | `218bca1d11a607f521c6bdc61eaf286581e86e8d9a3db67e66a54cbab01142b8` |
+| `freeze-manifest.json` | 976 | `3b6ad9d3d989e1f512fc73ddbece0c2530784039e8ec3acc86ece6188e9514be` |
+
+Read-only verification reproduced every member size, hash, mode and link count, the
+canonical six-row partial-tree digest, the clean baseline, all `W001`–`W042` and
+`F001`–`F010` receipts, and the 22-event ledger with exactly two null digests.
+Forecast and observed writes both equal 356,219,589 and remain below the unchanged
+1,073,741,824-byte ceiling. The receipt records zero real-input, network, runtime,
+retained-source and subprocess access. Because the process failed before external
+result emission, no peak-RSS or final-root identity is accepted or inferred.
+
+The partial may not be changed, chmodded, deleted, renamed, copied, hard-linked,
+imported, executed, used as source, accepted, repaired or reinterpreted. Its setup and
+governed work consumed the grant and coordinate. There is no in-place remedy and no
+acceptance transfer from either rejected v4 attempt.
+
+#### 18.41.2 Exact failure and rejected broad fix
+
+The frozen source's ordinary path predicate admits the partial root, final root,
+packet/disposition inputs, output roots, interpreter directory and standard-library
+directory. It does not admit the shared coordinate parent
+`/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22`.
+Finalization calls `fsync_dir(os.path.dirname(PARTIAL))` before rename. That helper
+uses `os.open`, which emits the audited `open` event; the audit hook therefore raised
+`RuntimeError("forbidden open")` before rename. The sibling final remained absent and
+the already sealed partial remained present.
+
+Adding the coordinate parent to the ordinary prefix-based path roots is forbidden: it
+would admit every descendant, including unreviewed siblings and files outside the
+partial/final roots. Disabling the audit hook, accepting the sealed partial, omitting
+either parent-directory `fsync`, moving the rename outside the governed process,
+using a wrapper, inheriting a caller-opened directory descriptor or treating later
+inspection as durability proof are also forbidden. The correction must keep ordinary
+content-path authority byte-for-byte closed and add only an exact directory-handle
+exception for the two publication barriers.
+
+#### 18.41.3 Fresh coordinates and closed directory-only exception
+
+```text
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_AUTHORIZED=false
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4.partial
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_MAX_PROCESS_COUNT=1
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_MAX_TOTAL_WRITTEN_BYTES=1073741824
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_MAX_PEAK_RSS_BYTES=2147483648
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_REAL_INPUT_READ_BYTES=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_NETWORK_REQUESTS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_RUNTIME_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_RETAINED_SOURCE_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_PARENT_FSYNC_RETRY_SUBPROCESSES=0
+```
+
+The coordinate parent and both children were absent when this correction was authored.
+They are fresh single-assignment coordinates; pre-existence of any one at a future
+grant is `PAUSE`. Setup retains the exact §18.40 row-zero transaction and may create
+only the coordinate parent, partial directory and plan-derived author. The source must
+be written fresh from the reviewed plan and may not copy, patch, import or execute a
+rejected author.
+
+The governed source defines one canonical `coordinate_parent` equal to both
+`dirname(partial_root)` and `dirname(final_root)`. The ordinary prefix-based path
+predicate remains unchanged and must continue to reject that parent as a general
+content root. The audit hook may admit an `open` of the coordinate parent only when
+all of these conditions hold:
+
+1. the canonical path equals `coordinate_parent` exactly, never by prefix;
+2. the flags are exactly `O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW` and the
+   event carries no file-creation, write, truncate or content-read mode;
+3. internal publication state is exactly `BEFORE_FINAL_RENAME` or
+   `AFTER_FINAL_RENAME`;
+4. each state admits exactly one open, one successful directory `fsync` and one close;
+5. no directory enumeration, child lookup, path fallback, inherited descriptor or
+   caller-selected coordinate is permitted.
+
+After verifying the six final members and completing the existing partial-directory
+flush and mode transition, the process enters `BEFORE_FINAL_RENAME`, performs the
+first exact coordinate-parent open/`fsync`/close, and returns to a closed state. It
+then performs the one atomic rename from the partial root to the sibling final root,
+enters `AFTER_FINAL_RENAME`, performs the second exact coordinate-parent
+open/`fsync`/close and returns to a closed state before emitting the external result.
+The result adds exactly these scalar counters:
+
+```text
+coordinate_parent_pre_rename_open_count=1
+coordinate_parent_pre_rename_fsync_count=1
+coordinate_parent_post_rename_open_count=1
+coordinate_parent_post_rename_fsync_count=1
+```
+
+Any missing, repeated, reordered or extra parent open/`fsync`; wrong flags; path or
+state mismatch; content read; enumeration; alternate parent; rename before the first
+barrier; result emission before the second barrier; or audit rejection is `PAUSE`.
+Failure before rename preserves the partial; failure after rename preserves the final
+coordinate as rejected evidence. Neither state may be repaired, renamed back,
+deleted, completed or retried. `F010` remains the sole transaction-drift control and
+must reject every such mutation before acceptance; there is no `F011` or exception.
+
+The command contract retains exactly nine keys, the five-key environment, literal
+`-S`, the fourteen-member synthetic argv and twenty-member held real argv. Only the
+fresh freeze coordinate changes. The synthetic argv is:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4.partial/work-item-author-v4.py",
+  "synthetic-freeze",
+  "--fixture-spec",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4.partial/fixture-spec.json",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4.partial/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4.partial/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4.partial/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4.partial/freeze-manifest.json"
+]
+```
+
+The held real argv retains the exact §18.40 order and values, changing only each
+`fdf09017…/v4` freeze-member path and cwd to sibling final
+`b7a8ade6…/v4`. The packet, disposition, staging and durable roots remain byte-for-
+byte unchanged. The sole `F002` representative still swaps complete real-argv slices
+`[4:6]` and `[6:8]`, preserves all twenty values and length, and must return exactly
+`F002` before content access or output creation.
+
+#### 18.41.4 Frozen surrounding contract and authority boundary
+
+Every §18.31–§18.40 schema, mapping, candidate/locator rule, parser, serializer,
+identity adapter, packet-tree recipe, cardinality, six freeze roles, seven output
+roles, 22-event ledger with exactly two null digests, fixed-point rule,
+`W001`–`W042`, `F001`–`F010`, row-zero durability transition, one-process/2-GiB
+RSS/1-GiB synthetic ceilings, zero-access boundary and held later real-run contract
+remains unchanged. This correction changes only the fresh freeze coordinate and the
+exact directory-only audit transition required to persist the atomic rename. It adds
+no file role, sidecar, wrapper, content read, control ID or acceptance exception.
+
+The only admissible next sequence is Kiro exact-tip review of this correction, a new
+Ryan two-SHA grant naming the fresh roots and exact parent-directory transition, one
+synthetic process, external return of the six identities plus ledger/result/row-zero/
+parent-durability counters, then plan-only result binding and Kiro capability review.
+Both rejected v4 roots and every prior grant are non-reusable.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no retry coordinate/root/file creation, source write, freeze
+execution, packet/disposition/repository/runtime/retained-source read, work-item
+packet/result, network, subprocess, acquisition, ownership/license selection, binary
+repair, build, publication, CI admission, product/test/config/R2b change,
+implementation, PR `#342` update, PR creation, merge, deployment, real OpenClaw,
+live data, watch activation, promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -9213,6 +9435,7 @@ promotion or Gate D/W/D-V/E/F action.
 | Write ledger | The deterministic ordered accounting of every regular-file byte written by the v4 freeze; it proves the transaction stayed within its reviewed aggregate cap without allowing sparse, linked or compressed shortcuts. |
 | Synthetic predecessor identity | A domain-separated test-only SHA-256 supplied to the unchanged result builder so a disposable synthetic result can exercise the real field without claiming or recursively hashing the receipt under construction. |
 | Row-zero durability transition | The exact file-`fsync` then directory-`fsync` boundary that must complete for the externally created author before ledger event 1 may create any directory or file. |
+| Coordinate-parent durability barrier | An exact no-follow directory-handle `fsync` on the single parent shared by the partial and final roots, once before and once after atomic rename; it grants no descendant content-read authority. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main
@@ -9261,5 +9484,10 @@ file v4 root with a clean baseline and `52/52` controls, but acceptance correctl
 remained `PAUSE`: setup did not prove row-zero file durability before ledger event 1.
 Section 18.40 preserves that root as immutable rejected evidence and defines only a
 fresh-root retry whose setup and governed process both complete file-then-directory
-`fsync` before event 1. Kiro review and a fresh Ryan two-SHA grant are mandatory.
+`fsync` before event 1. That retry proved row-zero durability and passed all controls,
+but its audit hook rejected the coordinate-parent pre-rename directory open. Section
+18.41 preserves sealed partial `a9ceaa06…`, keeps its sibling final absent and defines
+only fresh `b7a8ade…` coordinates plus two exact phase-bound parent-directory
+barriers without widening content-read authority. Kiro review and a fresh Ryan two-
+SHA grant are mandatory.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
