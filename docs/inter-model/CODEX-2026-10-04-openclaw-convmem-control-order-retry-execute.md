@@ -1,9 +1,9 @@
 # Execute Handoff: Switchboard V4 Receipt-Order Freeze Retry
 
-**Arc:** ConvMem Switchboard  
-**Date:** 2026-10-04  
-**Author:** Codex supervision lane  
-**For:** Astra execution lane  
+**Arc:** ConvMem Switchboard
+**Date:** 2026-10-04
+**Author:** Codex supervision lane
+**For:** Astra execution lane
 **Authorization:** Ryan, 2026-10-04 — explicit `granted` response after PR `#358`
 merged the post-review status snapshot
 
