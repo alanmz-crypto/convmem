@@ -4,7 +4,7 @@
 PROVENANCE/LICENSING PAUSE; WORK-ITEM V3 SYNTHETIC FREEZE PASS;
 REAL-AUTHOR CAPABILITY ABSENT; V4 DURABILITY FREEZE PAUSE;
 STDLIB DEPENDENCY-LINK CORRECTION KIRO PASS; CONTROL-ORDER FREEZE PAUSE;
-PLAN-ONLY CORRECTION / KIRO REVIEW REQUIRED.**
+CONTROL-ORDER CORRECTION MERGED / KIRO EXACT-MAIN PASS.**
 The accepted bounded implementation and
 final M11 evidence remain preserved at
 `PRESERVED_PR342_HEAD_SHA=94f29ebabee31112cccb223fd1445cb782aac6eb`.
@@ -104,8 +104,10 @@ zero. Acceptance nevertheless remains `PAUSE`: receipt `8d3ecbe0…` orders
 `W001`–`W042` before `F001`–`F010`, while the inherited raw-ID order is
 `F001`–`F010` then `W001`–`W042`. Sections 18.43/10.41 preserve that final root as
 immutable rejected evidence and define only fresh absent `946b469…` coordinates plus
-the exact aggregate receipt-order validator. Exact-tip Kiro review is next; no retry
-is authorized.
+the exact aggregate receipt-order validator. PR `#357` squash-merged those four
+reviewed planning blobs at `c5cb7c7871354b97157f392123a658a1adab4210`, and Kiro
+returned exact-main PASS. The merge and review authorize no setup, root, source, read,
+process or retry.
 These successor
 plans authorize no packet/runtime read, request, retained-source access, acquisition,
 owner or license selection, binary repair, build, runtime publication, evidence rerun,
@@ -126,8 +128,8 @@ INPUT-TREE PLAN KIRO PASS AT `991f488`; STARTUP-ISOLATION CORRECTION MERGED IN P
 PAUSE; ROW-ZERO DURABILITY RETRY PLAN MERGED IN PR `#353` AT `073b19b1`; KIRO
 EXACT-MAIN PASS; PARENT-FSYNC RETRY PAUSE; COORDINATE-PARENT AUDIT CORRECTION
 MERGED IN PR `#355` AT `8e4bb2b`; KIRO EXACT-MAIN PASS; STDLIB DEPENDENCY-LINK
-CORRECTION KIRO PASS AT `946b469`; CONTROL-ORDER FREEZE PAUSE; PLAN-ONLY
-CORRECTION AWAITS KIRO EXACT-TIP REVIEW.
+CORRECTION KIRO PASS AT `946b469`; CONTROL-ORDER FREEZE PAUSE; CONTROL-ORDER
+CORRECTION MERGED IN PR `#357` AT `c5cb7c7`; KIRO EXACT-MAIN PASS.
 PRODUCT/TEST/CI/RUNTIME EDITS, TEST EXECUTION, PR UPDATE, MERGE AND REAL OPENCLAW
 WORK REMAIN PAUSED.
 
@@ -140,6 +142,8 @@ This is a sequencing and supervision overlay. Its semantic parent is exactly:
 ```text
 SEMANTIC_PARENT_SHA=b279a5c9b1725157e663da610f7f66cb75773522
 WORK_ITEM_AUTHOR_CONTROL_ORDER_PLAN_BASE_OVERLAY_SHA=946b469e27c7eb27c198898fa330c2475bde29fa
+WORK_ITEM_AUTHOR_CONTROL_ORDER_MERGED_MAIN_SHA=c5cb7c7871354b97157f392123a658a1adab4210
+WORK_ITEM_AUTHOR_CONTROL_ORDER_REVIEWED_OVERLAY_SHA=e649da29108ec17165ec9c5fd129f5e41a183ac4
 WORK_ITEM_AUTHOR_STDLIB_LINK_PLAN_BASE_MAIN_SHA=30052061942c4c016fcb305946444c0453046cb1
 WORK_ITEM_AUTHOR_STDLIB_LINK_REVIEWED_OVERLAY_SHA=816b713adac7f987efa282380b892ab03994fbed
 WORK_ITEM_AUTHOR_COORDINATE_PARENT_AUDIT_PLAN_BASE_MAIN_SHA=6de8845473e09742bcf5a44b2da22a285ed77570
@@ -1151,6 +1155,13 @@ Review and authority order is mandatory:
     complete raw-ID aggregate receipt validator. No control, schema, role, ceiling,
     reader, durability barrier or access authority changes. This overlay authorizes
     planning review only; no prior grant or root is reusable.
+70. PR `#357` squash-merged the four reviewed §§18.43/10.41 planning blobs at
+    `WORK_ITEM_AUTHOR_CONTROL_ORDER_MERGED_MAIN_SHA`; Kiro exact-main review confirmed
+    byte equality to `WORK_ITEM_AUTHOR_CONTROL_ORDER_REVIEWED_OVERLAY_SHA` and returned
+    `PASS`. Sealed final tree `d399e356…` and receipt `8d3ecbe0…` remain immutable
+    rejected evidence, and fresh `946b469…` roots remain absent and single-assignment.
+    The merge and review grant no setup, root, source, read, process or retry authority;
+    Ryan's decision on one new exact two-SHA grant is separate.
 
 ## 1. State ledger
 
@@ -1160,7 +1171,7 @@ Review and authority order is mandatory:
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
 | **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design at `3402e62a`, provenance schemas v1/v2/v3 and result binding. The provenance v1/v2 P0 stops remain rejected; immutable provenance v3 retains 98,608 rows and independent technical PASS/provenance-licensing PAUSE. Kiro passed the merged work-item model, schema v2 at `dea026c`, schema-v3 mappings at `21f5acc`, retry correction at `59ae444`, capability plan at `4210977`, write-budget correction at `7fe2752`, result-identity correction at `3107d6f`, real-command correction at `be76abc`, input-tree correction at `991f488` and startup-isolation overlay `fdf0901`. PR `#351` merged the reviewed author contract at `a3b56ab`, and Kiro returned exact-main PASS. The first governed v3 freeze failed closed on baseline `W026`; its one-file partial remains immutable. The separately granted retry passed its clean baseline and `42/42` controls, freezing exact six-file tree `65f32f11…` with zero real access. Its source is synthetic-only. The five v4 preflights created no root/process; the last four also created no author, and the real-argv, input-tree and startup preflights performed zero reads/writes. The exact tree recipe was recovered read-only from hash-bound frozen collector `26352b39…`; no packet content was read. The startup preflight bound the global-site hook without executing Python. The separately granted v4 freeze later sealed exact tree `f6936649…`, passed a clean baseline and `52/52` controls with forecast/observed writes 333,949,322 and zero external access, but acceptance is `PAUSE` because row-zero pre-event-1 file durability was not proved. PR `#353` merged the row-zero durability plan at `073b19b1`, and Kiro returned exact-main PASS. The next granted retry proved setup durability and reached final publication after all 52 controls, but exited one before rename when its audit hook rejected the coordinate-parent directory open. Sealed partial tree `a9ceaa06…` is immutable and the final root is absent. PR `#355` merged the coordinate-parent correction at `8e4bb2b`, and Kiro returned exact-main PASS. The next granted retry proved setup durability but stopped before JSON output because the dependency reader rejected link-count-two canonical stdlib `_blake2`; one-file partial tree `99e4939d…` is immutable and the final root absent. Kiro passed that correction at `946b469`; the next granted retry sealed final tree `d399e356…` and reported `PASS`, but its receipt serialized W controls before F controls, so acceptance is `PAUSE`. No real author or work-item packet has been tested. |
 | **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
-| **Unresolved** | Kiro exact-tip review, then Ryan's decision on one new separately granted fresh-root six-file v4 retry proving exact aggregate receipt order plus the unchanged row-zero and pre-/post-rename parent durability transitions; plan-only accepted v4 identity binding and review; one-pass real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Unresolved** | Ryan's decision on one new separately granted fresh-root six-file v4 retry proving exact aggregate receipt order plus the unchanged row-zero and pre-/post-rename parent durability transitions; plan-only accepted v4 identity binding and review; one-pass real offline packet authoring and independent review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; Ryan's later external-publication and implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -1290,7 +1301,7 @@ M0 baseline/runtime input
   → separately granted 816b713… retry sealed d399e356… and reported PASS, then
     acceptance PAUSED on W-before-F aggregate receipt order
   → plan-only §18.43/§10.41 self-test receipt control-order retry correction
-  → exact-tip Kiro review
+  → PR #357 merged at c5cb7c7; Kiro exact-main PASS
   → Ryan decision on a new two-SHA grant for one fresh 946b469…-root retry with the
     exact raw-ID aggregate receipt validator, canonical-origin stdlib reader,
     unchanged row-zero transition and exact pre-/post-rename directory-only
@@ -1977,9 +1988,10 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    absent. Kiro passed §§18.42/10.40 at `946b469`; the separately granted
    `816b713…` retry sealed six-file final tree `d399e356…` and reported `PASS`, but
    acceptance paused because receipt `8d3ecbe0…` serializes W controls before F
-   controls. That final is immutable rejected evidence. Exact-tip Kiro PASS on
-   §§18.43/10.41 and a new Ryan grant for the absent `946b469…` roots remain
-   mandatory. A separately granted fresh-root v4 six-file retry with the complete
+   controls. That final is immutable rejected evidence. PR `#357` merged
+   §§18.43/10.41 at `c5cb7c7`, and Kiro returned exact-main PASS. A new Ryan grant
+   for the absent `946b469…` roots remains mandatory. A separately granted fresh-root
+   v4 six-file retry with the complete
    raw-ID aggregate receipt validator, exact stdlib reader and both parent barriers, a later identity-
    binding review, a separately granted one-pass offline author,
    independent work-item packet review, a later exact operation packet and Ryan
@@ -2235,8 +2247,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    stopped on the stdlib link-count overconstraint. Standard-library dependency-link-
    retry-design-ready was reached by Kiro PASS at `946b469`; the separately granted
    successor sealed `d399e356…` and reported `PASS`, but acceptance paused on the
-   aggregate receipt control order. Control-order-retry-design-ready requires exact-
-   tip Kiro PASS on §§18.43/10.41; it is not reached here. Author-freeze-ready and
+   aggregate receipt control order. Control-order-retry-design-ready was reached when
+   PR `#357` merged §§18.43/10.41 at `c5cb7c7` and Kiro returned exact-main PASS.
+   Author-freeze-ready and
    work-item-packet-ready,
    complete-origin-planning, operation-packet-ready,
    acquisition-ready, provenance-closed, lock-ready,
@@ -2501,9 +2514,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
       completed the baseline and all 52 controls and sealed final tree `d399e356…`,
       but acceptance paused because receipt `8d3ecbe0…` orders W controls before F
       controls. The final is immutable rejected evidence; the grant is consumed.
-- [ ] Kiro exact-tip PASS on §§18.43/10.41 and this milestone overlay, including the
-      exact complete raw-ID aggregate receipt validator and unchanged control
-      execution semantics.
+- [x] PR `#357` merged §§18.43/10.41 and this milestone overlay at `c5cb7c7`; Kiro
+      exact-main PASS confirmed the exact complete raw-ID aggregate receipt validator,
+      unchanged control execution semantics and unchanged authority boundary.
 - [ ] One new Ryan two-SHA grant for the fresh `946b469…/v4.partial` and sibling
       final roots. Setup, row-zero and parent barriers remain exact; the stdlib reader
       and all 52 controls remain unchanged; the final parsed receipt must equal the
@@ -2583,9 +2596,9 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
 
 **Current controlling state:** `PAUSE`. PR `#342` is merge-blocked. No plan
 application, corrective edit, runtime publication, evidence execution or PR update
-may begin from this document. The exact §§18.43/10.41 semantic parent and this overlay
-await Kiro review; their only possible consequence is a later Ryan grant decision on
-one fresh synthetic retry. Sealed final tree `d399e356…` remains immutable PAUSE
+may begin from this document. PR `#357` merged the exact §§18.43/10.41 correction at
+`c5cb7c7`, and Kiro returned exact-main PASS; their only possible consequence is a
+later Ryan grant decision on one fresh synthetic retry. Sealed final tree `d399e356…` remains immutable PAUSE
 evidence and grants no accepted capability. The first archive is rejected for publication; exact-tip
 Kiro review of the v4 interpreter startup-isolation correction passed at `fdf0901`;
 PR `#351` merged it at `a3b56ab`, and Kiro returned exact-main PASS. The replacement,
@@ -2633,9 +2646,9 @@ may issue only:
 - `REQUIRE TEST` — a required specified test/evidence item is missing.
 
 The historical legacy-count PAUSE is closed by the evidence at
-`PRESERVED_PR342_HEAD_SHA`; it is not the current stop. Ryan's present direction
-authorizes only this four-document stdlib dependency-link retry plan. Exact-tip Kiro
-PASS is required before a fresh v4 synthetic capability freeze may be separately granted.
+`PRESERVED_PR342_HEAD_SHA`; it is not the current stop. PR `#357` merged the
+four-document control-order correction at `c5cb7c7`, and Kiro returned exact-main
+PASS. A fresh v4 synthetic capability freeze still requires a separate exact Ryan grant.
 That freeze cannot read real input. A later plan-only identity binding and review, then
 another exact Ryan grant, are required before the one-pass real author may run. A
 separate exact operation packet, review and Ryan grant are required before any
@@ -2806,8 +2819,8 @@ Ryan's explicit confirmation naming exact revisions is required before:
   `d399e356…` and reported `PASS`, but acceptance paused because its receipt orders W
   controls before F controls. Sections 18.43/10.41 preserve that final as immutable
   rejected evidence and define only fresh `946b469…` roots plus exact aggregate
-  receipt validation. Exact-tip Kiro review and a new separately granted fresh-root
-  retry under the exact raw-ID order, row-zero and pre-/post-rename parent
+  receipt validation. PR `#357` merged §§18.43/10.41 at `c5cb7c7`, and Kiro returned
+  exact-main PASS. A new separately granted fresh-root retry under the exact raw-ID order, row-zero and pre-/post-rename parent
   transitions, two-mode identity adapter, two-command contract, stdlib reader
   boundary and 1-GiB ledgered cap,
   plan-only identity binding, one-pass offline authoring
@@ -2848,8 +2861,8 @@ on the stdlib link-count overconstraint; one-file partial `99e4939d…` and its 
 are non-reusable. Kiro passed §§18.42/10.40 at `946b469`; the separately granted
 successor sealed final tree `d399e356…` and reported `PASS`, but receipt
 `8d3ecbe0…` serialized W controls before F controls. That final and its grant are
-non-reusable. Sections 18.43/10.41 await exact-tip Kiro review. Only after PASS may
-Ryan decide whether to grant the fresh `946b469…` shared-core six-file retry with the
+non-reusable. PR `#357` merged §§18.43/10.41 at `c5cb7c7`, and Kiro returned
+exact-main PASS. Ryan may now decide whether to grant the fresh `946b469…` shared-core six-file retry with the
 complete raw-ID aggregate receipt validator, canonical-origin stdlib reader and both
 parent barriers, followed by plan-only accepted identity binding review, real
 one-pass offline authoring and independent packet review before any packet root
@@ -3019,7 +3032,8 @@ V4 SEALED TECHNICAL PASS / ACCEPTANCE PAUSE; ROW-ZERO DURABILITY RETRY PLAN MERG
 IN PR `#353` AT `073b19b1`; KIRO EXACT-MAIN PASS; PARENT-FSYNC RETRY PAUSE;
 COORDINATE-PARENT AUDIT CORRECTION MERGED IN PR `#355` AT `8e4bb2b`; KIRO
 EXACT-MAIN PASS; STDLIB DEPENDENCY-LINK CORRECTION KIRO PASS AT `946b469`;
-CONTROL-ORDER FREEZE PAUSE; PLAN-ONLY CORRECTION AWAITS KIRO EXACT-TIP REVIEW;
+CONTROL-ORDER FREEZE PAUSE; CONTROL-ORDER CORRECTION MERGED IN PR `#357` AT
+`c5cb7c7`; KIRO EXACT-MAIN PASS;
 CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
 independent publication provenance/licensing review. The replacement delivery-set
 plan passed at `3402e62a`; schema v1 passed at `5f397852`, then its offline P0 stopped
@@ -3180,8 +3194,9 @@ successful fixture build.
   and reported `PASS`, but receipt `8d3ecbe0…` orders W controls before F controls.
   Sections 18.43/10.41 preserve that final as immutable PAUSE evidence, bind fresh
   absent `946b469…` roots and require the exact complete raw-ID F-then-W aggregate
-  receipt validation before acceptance. Exact-tip Kiro review is next; no retry or
-  real packet is authorized.
+  receipt validation before acceptance. PR `#357` merged that correction at
+  `c5cb7c7`, and Kiro returned exact-main PASS. No retry or real packet is authorized
+  without a new exact Ryan grant.
   Author freeze,
   offline authoring, acquisition, zero-unresolved lock closure,
   build, final packet, publication and CI admission remain separately gated; merge is
