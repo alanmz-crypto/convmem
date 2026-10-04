@@ -3133,6 +3133,52 @@ packet/result, network, acquisition, owner/license decision, repair, build,
 publication, implementation, PR `#342` update, PR creation, merge, real OpenClaw or
 later gate is authorized.
 
+### 10.42 V4 capability-freeze result binding
+
+Architecture §18.44 controls. After PR `#357` merged the reviewed receipt-order
+correction and PR `#358` merged its snapshot, Ryan granted exactly one retry under
+semantic parent `b279a5c9…` and reviewed overlay `e649da29…`. Setup exclusive-created
+and durably revalidated row zero once. The sole direct no-site process ran the shared
+`author_packet` path on synthetic input, completed one zero-violation baseline and all
+52 individual controls, sealed the final root once, emitted `PASS` and exited zero.
+No retry, wrapper, subprocess or real-input read occurred.
+
+The exact final root is
+`/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4`.
+It is mode `0555`, its `.partial` sibling is absent, and it contains exactly six
+single-link mode-`0444` members totaling 196,646 bytes. Their canonical tree SHA-256
+is `291cf77798b652a41512902a5bc40a107afa661abf2edec53fa3f32e7158ff20`;
+Architecture §18.44.1 freezes every member path, size and digest.
+
+Receipt `3b01f77c…` contains exactly `F001`–`F010` then `W001`–`W042`. All 52 rows
+bind unchanged mutations, codes, verdicts and created flags and report `passed=true`.
+The baseline has zero violations. Ledger `3732c403…` has 22 ordered events and exactly
+two null digests, for the receipt and freeze manifest. Forecast equals observed at
+323,536,730 bytes; peak RSS is 931,274,752 bytes. All nine row-zero/parent durability
+counters are one. Real-input, network, runtime, retained-source, repository,
+acquisition, credential and subprocess counters are zero. The 76-module dependency
+closure is standard-library-only and retains the exact canonical `_blake2` identity.
+
+The process result remains `accepted=false` with acceptance state
+`PENDING_EXACT_TIP_KIRO_REVIEW`. The external PASS cannot accept its own source or
+authorize real input. Kiro must review the exact result-binding semantic parent and
+milestone overlay. A mismatch is `PAUSE`; no mutation, regeneration or retry is
+permitted.
+
+If Kiro passes this exact binding, tree `291cf777…` is the sole accepted v4 author-
+capability candidate. A separate Ryan two-SHA grant is still required before the
+frozen twenty-member `author-packet` command may open the immutable packet and
+disposition or create fresh work-item roots. That later grant must bind this plan,
+the final-root author/receipt/manifest identities, exact input identities, absent
+output roots, one-pass ceilings and all inherited stop conditions.
+
+**Current result:** synthetic execution PASS; capability acceptance pending exact-tip
+Kiro review. This result binding changes no schema, role, control, reader, ledger,
+ceiling, access rule or real-command contract. It grants no root/source creation,
+execution, read, packet/result, acquisition, build, publication, implementation, PR
+creation/update, merge, real OpenClaw or later gate. The consumed retry grant is not
+reusable.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
