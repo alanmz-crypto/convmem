@@ -97,7 +97,12 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │       └─ granted v4 process sealed f6936649… and passed 52/52 controls
         │       └─ acceptance PAUSE: row-zero file fsync before event 1 unproved
         │       └─ PR #353 merged at 073b19b1; Kiro exact-main PASS
-        │       └─ rejected root immutable; fresh retry roots absent; Ryan grant decision next
+        │       └─ rejected root immutable; fresh retry grant executed once
+        ├─ §18.41 / §10.39 coordinate-parent durability-audit correction
+        │       └─ setup proved row-zero durability; process reached final publication
+        │       └─ audit hook rejected coordinate-parent open before rename
+        │       └─ sealed a9ceaa06… partial preserved; final root absent
+        │       └─ fresh b7a8ade… roots absent; Kiro exact-tip review next
         │
         │ → separately granted fresh-root retry + accepted identity review
         │ → separately granted offline work-item packet + independent review
@@ -208,8 +213,16 @@ immutable rejected evidence. Sections 18.40/10.38 define only new absent retry r
 under `fdf09017…/v4`, with exclusive row-zero creation and setup plus governed file-
 then-directory `fsync` before event 1. PR `#353` squash-merged the reviewed four-
 document plan at `073b19b1871203d50edb84ad845530441a4ba8d4`, and Kiro returned
-exact-main PASS. Ryan's decision on one fresh two-SHA retry grant is next; no retry
-grant exists and no prior grant is reusable.
+exact-main PASS. PR `#354` then merged the descriptive snapshot at
+`6de8845473e09742bcf5a44b2da22a285ed77570`, and Ryan granted one exact retry.
+Setup proved row-zero file and partial-directory durability, and the sole process
+reached final publication after passing its clean baseline and all 52 controls. It
+exited one because the audit hook rejected the required coordinate-parent directory
+open for the pre-rename `fsync`. The final root is absent; sealed six-file partial
+tree `a9ceaa06…` is immutable PAUSE evidence. Sections 18.41/10.39 define only fresh
+absent `b7a8ade…/v4.partial` and sibling final roots plus an exact phase-bound,
+directory-only audit exception for the pre-/post-rename parent barriers. Kiro exact-
+tip review is next. No retry grant exists and no prior grant or root is reusable.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -233,7 +246,7 @@ the absent publishable qualified runtime.
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
 | Work-item author contract | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` landed §§18.31–18.39/§§10.29–10.37 with the closed schema/mappings, synthetic qualification, shared-core command, write ledger, packet-tree recipe and literal `-S` startup isolation; PR `#352` merged its descriptive snapshot at `0f84b4a` |
-| V4 synthetic capability freeze | **SEALED TECHNICAL PASS / ACCEPTANCE PAUSE** — one granted process sealed immutable six-file tree `f6936649…`, passed a clean baseline and `52/52` controls with zero external access, but setup did not prove row-zero file durability before event 1; §§18.40/10.38 preserve that root as rejected and define only fresh absent retry roots; PR `#353` merged at `073b19b1` with Kiro exact-main PASS, and Ryan's fresh-grant decision is next |
+| V4 synthetic capability freeze | **SECOND RETRY PAUSE / FINAL ROOT ABSENT** — the first process sealed rejected tree `f6936649…`; PR `#353` merged the row-zero correction at `073b19b1` with Kiro exact-main PASS and PR `#354` merged its snapshot at `6de8845`; the separately granted retry proved setup durability and passed all 52 controls but exited one when the audit hook rejected the coordinate-parent pre-rename `fsync`; sealed partial tree `a9ceaa06…` is immutable, fresh `b7a8ade…` roots remain absent, and §§18.41/10.39 authorize planning review only |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -272,6 +285,7 @@ the absent publishable qualified runtime.
 | V4 input packet-tree identity correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `991f488` | Exact packet-tree recipe remains frozen; the literal interpreter command would execute a third-party global-site hook before the author |
 | V4 interpreter startup-isolation correction | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` | Literal `-S`, `sys.flags.no_site == 1`, fourteen-/twenty-member argv and shifted `F002` are preserved; planning merge and review grant no root or execution authority |
 | V4 row-zero durability retry correction | **MERGED / KIRO EXACT-MAIN PASS** at `073b19b1` — PR `#353` | Rejected tree `f6936649…` is immutable; fresh `fdf09017…/v4.partial` and sibling final roots are absent; merge and review grant no setup, source-write or process authority, and a new Ryan two-SHA grant remains mandatory |
+| V4 coordinate-parent durability-audit correction | **PLAN-ONLY / KIRO REVIEW REQUIRED** | Sealed `a9ceaa06…` partial is immutable and its sibling final root is absent; fresh `b7a8ade…/v4.partial` and sibling final roots are absent; the correction permits only exact phase-bound directory handles for the pre-/post-rename parent barriers and grants no setup or execution authority |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -280,12 +294,14 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** preserve PR `#353` merged at `073b19b1` and Kiro's
-exact-main PASS as descriptive state only. The next substantive decision belongs to
-Ryan: whether to issue one fresh two-SHA grant naming the still-absent
-`fdf09017…/v4.partial` and sibling final roots and the exact row-zero durability
-transition. The merge and review grant no setup, source-write, process or retry
-authority; no prior grant is reusable.
+**If Ryan sent you here now:** review the exact §§18.41/10.39 coordinate-parent
+durability-audit correction and its milestone overlay. Confirm the consumed
+`fdf09017…/v4.partial` evidence identity, absent sibling final, exact failure cause,
+fresh absent `b7a8ade…` coordinates, directory-only equality rule, two publication
+barriers, unchanged surrounding contract and zero operational authority. Return a
+binary exact-tip PASS/FAIL. Do not create a root, write a source, execute an author,
+open a PR or merge. A Kiro PASS remains planning review only; Ryan must separately
+issue a new two-SHA grant before one future process may run.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -296,17 +312,18 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Ryan may issue one new two-SHA grant naming the absent `fdf09017…/v4.partial` and
-   sibling final roots. PR `#353` and Kiro exact-main PASS do not issue that grant.
-   Setup may exclusive-create only the
-   partial directory and plan-derived row-zero author, then must file-`fsync`, close
-   and directory-`fsync` before launch. The sole no-site governed process must
-   revalidate row zero and repeat file-then-directory `fsync` before event 1. It then
-   runs the unchanged full-cardinality shared-core transaction, `W001`–`W042`,
-   `F001`–`F010`, exact identities, fourteen-/twenty-member argv, packet-tree builder,
-   one-process/1-GiB-write/2-GiB-RSS ceilings and zero real-input/external-access
-   boundary. Failure preserves the fresh partial without repair, deletion or retry.
-   The rejected `59ae444…/v4` root and every prior grant remain non-reusable.
+1. Kiro reviews the exact §§18.41/10.39 semantic parent and milestone overlay. After
+   PASS, Ryan may issue one new two-SHA grant naming absent
+   `b7a8ade…/v4.partial` and sibling final roots. Setup and row-zero durability remain
+   exactly §18.40. The sole no-site process keeps the ordinary content allowlist
+   unchanged and may open the exact coordinate parent only as a no-follow directory
+   handle in the pre-rename and post-rename publication states, once each, solely for
+   `fsync`. It then runs the unchanged full-cardinality shared-core transaction,
+   `W001`–`W042`, `F001`–`F010`, exact identities, fourteen-/twenty-member argv,
+   packet-tree builder, one-process/1-GiB-write/2-GiB-RSS ceilings and zero real-input/
+   external-access boundary. Failure preserves the coordinate where it stopped
+   without repair, deletion or retry. Rejected `f6936649…` and `a9ceaa06…` evidence,
+   their sources and every prior grant remain non-reusable.
 2. Codex binds the accepted returned v4 identities in a new plan-only overlay; Kiro reviews the
    exact frozen capability. Under another exact Ryan grant, that author may then read
    the immutable 654,147,403-byte packet and 8,383,806-byte disposition exactly once
@@ -377,6 +394,11 @@ OpenClaw.
   `f6936649…`. No event 1 before the fresh setup and governed row-zero file-then-
   directory `fsync` transitions complete exactly once; no later directory flush,
   byte recheck or receipt assertion substitutes for the missing ordering proof.
+- No mutation, deletion, chmod, rename, copy, source reuse, execution, repair or
+  acceptance of sealed partial tree `a9ceaa06…`. The coordinate parent is never a
+  general content-path prefix: only two exact no-follow directory opens, one before
+  and one after the atomic rename, may be reviewed for a future grant. No omitted
+  parent barrier, wrapper, inherited descriptor or later inspection is equivalent.
 - No work-item omission, duplicate or reassignment: 1,221 component items, 19
   ownership-dispute items, 1,384 primary container-edge assignments and all 98,608
   open IDs remain exact. Batches and pages are derived views, never authority.
@@ -423,8 +445,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.40 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.38 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.41 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.39 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -434,6 +456,7 @@ a separate repository-knowledge arc.
 | Work-item author-contract pull request | `https://github.com/alanmz-crypto/convmem/pull/351` — merged as `a3b56ab`; Kiro exact-main PASS |
 | Author-contract status pull request | `https://github.com/alanmz-crypto/convmem/pull/352` — merged as `0f84b4a`; descriptive snapshot only |
 | Row-zero durability plan pull request | `https://github.com/alanmz-crypto/convmem/pull/353` — merged as `073b19b1`; Kiro exact-main PASS |
+| Row-zero status pull request | `https://github.com/alanmz-crypto/convmem/pull/354` — merged as `6de8845`; descriptive snapshot only |
 | Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
@@ -444,7 +467,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-03 | Codex | Recorded PR #353 merged at `073b19b1` and Kiro exact-main PASS; the fresh row-zero retry remains separately Ryan-gated. |
+| 2026-10-03 | Codex | Bound the fail-closed coordinate-parent-fsync PAUSE and fresh directory-only retry plan; no new execution authority. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -503,7 +526,13 @@ acceptance remains `PAUSE` because setup did not prove row-zero file durability 
 event 1. Sections 18.40/10.38 preserve that root as immutable rejected evidence and
 define fresh absent retry roots plus exact setup and governed file-then-directory
 `fsync` ordering. PR `#353` merged that plan at `073b19b1`, and Kiro returned exact-
-main PASS. Ryan's fresh two-SHA grant decision is next. No retry or real packet is
-authorized; only that later grant may run one process. Acquisition, binary
+main PASS; PR `#354` merged its snapshot at `6de8845`. Ryan's separately granted
+retry proved row-zero durability and passed all 52 controls, but finalization failed
+closed before rename because the audit hook rejected the coordinate-parent directory
+open. Sections 18.41/10.39 preserve sealed partial `a9ceaa06…`, keep the sibling final
+absent, bind fresh absent `b7a8ade…` roots and define only an exact directory-handle
+exception for the pre-/post-rename parent barriers. Kiro exact-tip review is next. No
+retry or real packet is authorized; only a later new Ryan grant may run one process.
+Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
