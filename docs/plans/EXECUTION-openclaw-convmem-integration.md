@@ -2894,6 +2894,56 @@ network, acquisition, owner/license decision, binary repair, build, publication,
 implementation, PR `#342` update, PR creation, merge, real OpenClaw or later gate is
 authorized.
 
+### 10.38 V4 row-zero durability freeze-retry correction
+
+Architecture §18.40 controls. PR `#351` merged the complete §§18.31–18.39 author
+contract at `a3b56abd3b5fa3fafe1b3f32de744bba3eb9772c`, Kiro returned exact-main
+PASS and PR `#352` merged the descriptive snapshot at
+`0f84b4a983f9c1a367bc6e790d109c4342560653`. The separately granted v4 process then
+exited zero, passed its clean baseline and all 52 controls, stayed inside the 1-GiB
+write and 2-GiB RSS ceilings and atomically sealed six files under
+`/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4`.
+The sealed tree is `f6936649147140d2a9ee1da53284a2e8a1159e24a5f7aba3b2b2d62cec9c825f`;
+forecast and observed writes both equal 333,949,322; the 22-event ledger is
+`2c60f635797baaa5be654c6605e0ca1b369fc71396df560a92ad6ad2a74f3f33` and retains
+exactly two null digests. All real-input, repository, runtime, retained-source,
+network, acquisition, credential and subprocess counters are zero.
+
+Acceptance is nevertheless `PAUSE`. External setup created ledger row zero but did
+not explicitly prove file `fsync` followed by partial-directory `fsync` before the
+governed process created event 1. Later byte validation and a final directory `fsync`
+cannot establish that historical ordering. The sealed root is immutable rejected
+evidence and may not be changed, deleted, copied, used as source, accepted, repaired
+or reinterpreted. Its source and every prior execution grant are non-reusable.
+
+The sole successor uses fresh, absent, single-assignment coordinates
+`/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial`
+and sibling final `v4`. Setup may exclusive-create only the partial directory and a
+new plan-derived row-zero author. It must complete one write, set mode `0644`, file-
+`fsync`, close, directory-`fsync`, then reopen without following links and verify
+type/link/mode/size/hash before launch. The sole governed process must independently
+revalidate row zero, file-`fsync`, close and directory-`fsync` before any event-1
+directory or file creation. The external result must return exactly one for each of
+the five row-zero durability counters in §18.40.3. Any missing, repeated, failed or
+reordered transition is `PAUSE` and preserves the new partial without repair or retry.
+
+The retry retains the exact nine-key contract, five-key environment, literal `-S`,
+fourteen-/twenty-member argv shapes, synthetic/real cwd distinction, order-only
+`F002` slices `[4:6]` and `[6:8]`, six freeze roles, seven output roles, 22-event
+ledger with exactly two null digests, fixed point, packet-tree recipe, cardinalities,
+`W001`–`W042`, `F001`–`F010`, one-process/1-GiB-write/2-GiB-RSS ceilings and all zero-
+external-access limits. Only the fresh literal roots and row-zero durability ordering
+change. `F010` remains the transaction-drift code; there is no `F011`, sidecar,
+wrapper, exception or acceptance transfer.
+
+**Current result:** row-zero durability retry correction plan-only. Exact-tip Kiro
+review and a fresh Ryan two-SHA grant naming the fresh roots and exact durability
+transition are mandatory before setup or one synthetic process. No retry root, source,
+process, packet/disposition/repository/runtime/retained-source read, work-item packet/
+result, network, acquisition, owner/license decision, binary repair, build,
+publication, implementation, PR `#342` update, PR creation, merge, real OpenClaw or
+later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -2951,5 +3001,9 @@ author, process, read or write because global site initialization would import
 third-party `_distutils_hack`. Section 10.37 adds literal `-S` to both exact argv
 vectors, requires `sys.flags.no_site == 1`, excludes site-package dependency origins
 and shifts only the `F002` pair slices. It changes no schema, environment key, control,
-root or ceiling; Kiro review and a fresh grant remain mandatory.
-No root, process, read, write or operational authority exists.
+root or ceiling. The granted successor sealed six files and passed every technical
+control, but acceptance paused because setup did not prove row-zero file durability
+before event 1. Section 10.38 preserves that root as immutable rejected evidence and
+defines only a fresh-root file-then-directory `fsync` transition in both setup and the
+sole governed process. Kiro review and a new two-SHA grant remain mandatory. No retry
+root, process, read, write or operational authority exists.
