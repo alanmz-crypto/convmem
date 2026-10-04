@@ -8947,6 +8947,226 @@ publication, CI admission, product/test/config/R2b change, implementation, PR `#
 update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
 promotion or Gate D/W/D-V/E/F action.
 
+### 18.40 V4 row-zero durability freeze-retry correction
+
+PR `#351` squash-merged the reviewed §§18.31–18.39 work-item author contract at
+`a3b56abd3b5fa3fafe1b3f32de744bba3eb9772c`, and Kiro returned exact-main PASS.
+PR `#352` then merged the descriptive current-state snapshot at
+`0f84b4a983f9c1a367bc6e790d109c4342560653`. Ryan separately granted one fresh v4
+synthetic freeze under the exact §18.39 no-site contract. The one process exited zero,
+passed its clean baseline and all 52 controls, stayed inside its write/RSS ceilings and
+sealed six files atomically. Post-run inspection nevertheless found that the external
+setup which created ledger row zero did not explicitly prove a file `fsync` before the
+process created ledger row one. The reviewed §18.35.2 transaction requires every
+regular-file event, including the setup-created author, to be flushed and `fsync`ed
+before the next row. Acceptance therefore remains `PAUSE` even though every payload
+identity and process counter reproduced.
+
+#### 18.40.1 Exact sealed PAUSE evidence
+
+```text
+WORK_ITEM_AUTHOR_ROW_ZERO_DURABILITY_PLAN_BASE_MAIN_SHA=0f84b4a983f9c1a367bc6e790d109c4342560653
+WORK_ITEM_AUTHOR_ROW_ZERO_DURABILITY_REVIEWED_OVERLAY_SHA=fdf09017b1898a6ba4eabce127a3c34374feee22
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_STATUS=PAUSE
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_PROCESS_EXIT_STATUS=0
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/59ae444ea3f021c4807be82a0114c1a4d8558602/v4
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_PARTIAL_ROOT_PRESENT=false
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_TREE_SHA256=f6936649147140d2a9ee1da53284a2e8a1159e24a5f7aba3b2b2d62cec9c825f
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_MEMBER_COUNT=6
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_TOTAL_PERSISTED_BYTES=144330
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_ROOT_MODE=0555
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_MEMBER_MODE=0444
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_COUNT=52
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROLS_PASSED=52
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_BASELINE_VIOLATION_COUNT=0
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_WRITE_LEDGER_EVENT_COUNT=22
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_WRITE_LEDGER_NULL_DIGEST_COUNT=2
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_WRITE_LEDGER_SHA256=2c60f635797baaa5be654c6605e0ca1b369fc71396df560a92ad6ad2a74f3f33
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_FORECAST_WRITTEN_BYTES=333949322
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_OBSERVED_WRITTEN_BYTES=333949322
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_PEAK_RSS_BYTES=1804357632
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_FIXED_POINT_ITERATIONS=3
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_SYNTHETIC_RESULT_SIZE=4053
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_SYNTHETIC_RESULT_SHA256=b7a490a2700a45e69fd9871250ae918df3f749337e753a216df82ce221818dd3
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_SYNTHETIC_PACKET_TREE_SHA256=0625e41dced1b209c7c5c029d629f96a7776e74455c5aaa955fb254f405d6530
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_SYNTHETIC_INPUT_TREE_SHA256=96f62d3d37235655952c19da31e8c8a7365c04bee00d42911920d7173071a6ac
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_SYNTHETIC_INPUT_TREE_MEMBER_COUNT=902
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_DEPENDENCY_ROW_COUNT=76
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_ROW_ZERO_PRELAUNCH_FILE_FSYNC_PROVED=false
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_ROW_ZERO_PRELAUNCH_DIRECTORY_FSYNC_PROVED=false
+REJECTED_WORK_ITEM_AUTHOR_FREEZE_V4_ACCEPTED=false
+```
+
+The sealed root contains exactly these single-link mode-`0444` regular files under a
+mode-`0555` directory:
+
+| File | Size | SHA-256 |
+|---|---:|---|
+| `work-item-author-v4.py` | 95,560 | `6b8027326657d1907d3b51af88bc60202cbe06f74f4b4026e5a6e7a52a736d2d` |
+| `fixture-spec.json` | 476 | `d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f` |
+| `dependency-manifest.json` | 10,921 | `b96ea9a50e60f8aad2cf8cf2861a81cb3c49bcd557d728bceb4f7a5ec17cad63` |
+| `command-contract.json` | 3,544 | `58e9c3254adfeea701334f892c2c78b646764840348e599bd90efbb0d93234ab` |
+| `self-test-receipt.json` | 32,861 | `e0a15635de53a269213eb639d87a0e162fb4601e0ab0fb7465d503fa97182b33` |
+| `freeze-manifest.json` | 968 | `fa54c86c25cbf17321268d0e99a339353e5745879660c72c74927d4079561a81` |
+
+Read-only verification reproduced every member size/hash/mode, the 22-event ledger
+with exactly two null digests, `52/52` controls, zero baseline violations and 76
+dependency rows without `site`, `_distutils_hack`, `site-packages` or `dist-packages`
+origins. Forecast and observed writes both equal 333,949,322 and remain below
+1,073,741,824; peak RSS remains below 2,147,483,648. Process, subprocess, network,
+real-input, repository, runtime, retained-source, acquisition and credential counters
+are all zero. No real `author-packet` command ran.
+
+The root is immutable rejected evidence. It may not be changed, chmodded, deleted,
+renamed, copied, hard-linked, used as a source, accepted, repaired or reinterpreted.
+Its successful controls prove only the bytes and behavior they actually observed;
+they do not cure the missing row-zero durability transition.
+
+#### 18.40.2 Exact durability gap
+
+The external setup created `work-item-author-v4.py` once, checked its size and digest,
+then launched the one reviewed process. The frozen author validates row-zero type,
+link count, size and bytes. Its governed writer exclusively creates events 1–21 and
+calls file `fsync` before advancing each event. Before the final rename it also calls
+`fsync` on the partial directory. None of those later actions proves that row zero's
+regular-file bytes were flushed before event 1: directory `fsync` persists directory
+metadata and cannot substitute for file `fsync`; re-reading and hashing bytes cannot
+establish the missing durability ordering. No after-the-fact `sync`, reopen, chmod,
+receipt rewrite or review assertion can repair that historical sequence.
+
+The accepted retry must therefore make the transition occur inside the sole governed
+process before any event-1 directory or regular-file creation. This is a transaction-
+ordering correction, not a new file role, schema inference or acceptance exception.
+
+#### 18.40.3 Fresh retry coordinates and closed row-zero transition
+
+```text
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_AUTHORIZED=false
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_MAX_PROCESS_COUNT=1
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_MAX_TOTAL_WRITTEN_BYTES=1073741824
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_MAX_PEAK_RSS_BYTES=2147483648
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_REAL_INPUT_READ_BYTES=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_NETWORK_REQUESTS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_RUNTIME_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_RETAINED_SOURCE_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_RETRY_SUBPROCESSES=0
+```
+
+Both proposed roots were absent when this correction was authored and are new single-
+assignment coordinates. Pre-existence at a future grant is `PAUSE`. The executor may
+construct a new source only from the reviewed plan; it may not copy, patch, import or
+execute the rejected v4 source. Before launch it may create only the partial directory
+and row-zero author. Setup must use exclusive creation, complete one write, verify the
+write count, set mode `0644`, call file `fsync`, close the descriptor, call `fsync` on
+the partial directory, then re-open without following links and verify type, link
+count, mode, size and SHA-256. Every operation must succeed before process creation.
+
+The governed source must import built-in `sys` first, prove `sys.flags.no_site == 1`
+and install the existing audit boundary. Before any event-1 directory or regular-file
+creation, it must open its own row-zero path without following links, revalidate the
+same type/link/mode/size/hash, call file `fsync` successfully, close it and call
+`fsync` successfully on the partial directory. Only then may the existing writer
+advance to ledger event 1. The external result adds exactly these nonnegative scalar
+counters without changing a frozen file schema:
+
+```text
+row_zero_setup_file_fsync_count=1
+row_zero_setup_directory_fsync_count=1
+row_zero_governed_file_fsync_count=1
+row_zero_governed_directory_fsync_count=1
+row_zero_event_one_write_count_after_governed_fsync=1
+```
+
+Any missing, repeated, failed or reordered transition; any event-1 directory or file
+creation before both governed `fsync` calls; any extra setup file; or any mismatch in
+row-zero bytes/metadata is `PAUSE`. Failure preserves the new partial root without
+repair, deletion, completion or retry. There is no in-place remedy and no acceptance
+transfer from the rejected root.
+
+The retry command contract retains exactly nine keys and the five-key environment.
+It changes only the fresh literal root paths required by single assignment. The exact
+synthetic argv is:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial/work-item-author-v4.py",
+  "synthetic-freeze",
+  "--fixture-spec",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial/fixture-spec.json",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4.partial/freeze-manifest.json"
+]
+```
+
+The exact held real argv is:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4/work-item-author-v4.py",
+  "author-packet",
+  "--input-packet-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet",
+  "--input-disposition",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review/review-disposition.json",
+  "--staging-root",
+  "/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--durable-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/fdf09017b1898a6ba4eabce127a3c34374feee22/v4/freeze-manifest.json"
+]
+```
+
+The synthetic cwd is the new partial root and the held real cwd is the new final root.
+The sole `F002` representative still swaps complete real-argv slices `[4:6]` and
+`[6:8]`. It preserves all twenty values and length and must return exactly `F002`
+before content access or output creation. No alias, implicit coordinate, caller choice,
+environment override, second `F002`, `F011` or combined mutant is admitted.
+
+#### 18.40.4 Frozen surrounding contract and authority boundary
+
+Every §18.31–§18.39 schema, mapping, candidate/locator rule, parser, serializer,
+identity adapter, packet-tree recipe, synthetic predecessor identity, cardinality,
+six freeze roles, seven output roles, 22-event ledger shape, exactly two null digests,
+fixed-point rule, `W001`–`W042`, `F001`–`F010`, one-process/2-GiB RSS/1-GiB synthetic
+ceilings, zero-access boundary and held later real-run transaction remains unchanged.
+The correction changes only the fresh literal root paths and closes the row-zero file/
+directory `fsync` ordering before event 1. `F010` remains the transaction-drift code;
+there is no new control ID or exception.
+
+The only admissible next sequence is Kiro exact-tip review of this correction, a new
+Ryan two-SHA grant naming the fresh roots and exact row-zero transition, one synthetic
+process, external return of the six identities plus ledger/result/durability counters,
+then plan-only result binding and Kiro capability review. The rejected root and every
+prior grant are non-reusable.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no retry-root creation, source write, freeze execution,
+packet/disposition/repository/runtime/retained-source read, work-item packet/result,
+network, subprocess, acquisition, ownership/license selection, binary repair, build,
+publication, CI admission, product/test/config/R2b change, implementation, PR `#342`
+update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -8992,6 +9212,7 @@ promotion or Gate D/W/D-V/E/F action.
 | Capability freeze | An immutable author package whose self-test executes the same production path later used on real input; a synthetic-only command is not a real-author capability freeze. |
 | Write ledger | The deterministic ordered accounting of every regular-file byte written by the v4 freeze; it proves the transaction stayed within its reviewed aggregate cap without allowing sparse, linked or compressed shortcuts. |
 | Synthetic predecessor identity | A domain-separated test-only SHA-256 supplied to the unchanged result builder so a disposable synthetic result can exercise the real field without claiming or recursively hashing the receipt under construction. |
+| Row-zero durability transition | The exact file-`fsync` then directory-`fsync` boundary that must complete for the externally created author before ledger event 1 may create any directory or file. |
 
 **TL;DR:** [Arc ConvMem Switchboard] Bounded M0–M8 passed at `8010fb0`, and complete bounded M11
 evidence plus Kiro conformance passed at preserved candidate `cd60cf19`. The advanced-main
@@ -9035,5 +9256,10 @@ process, read or write because global site initialization would import third-par
 `_distutils_hack`. Section 18.39 adds only literal `-S` to both argv vectors, requires
 `sys.flags.no_site == 1`, excludes site-package dependency origins and shifts the sole
 `F002` slice indices mechanically. Every schema, environment key, control, root and
-ceiling remains unchanged; Kiro review and a fresh Ryan grant are mandatory.
+ceiling remains unchanged. The separately granted process then sealed the exact six-
+file v4 root with a clean baseline and `52/52` controls, but acceptance correctly
+remained `PAUSE`: setup did not prove row-zero file durability before ledger event 1.
+Section 18.40 preserves that root as immutable rejected evidence and defines only a
+fresh-root retry whose setup and governed process both complete file-then-directory
+`fsync` before event 1. Kiro review and a fresh Ryan two-SHA grant are mandatory.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.

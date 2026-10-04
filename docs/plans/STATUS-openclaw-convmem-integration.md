@@ -93,7 +93,12 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         ├─ §18.39 / §10.37 interpreter startup-isolation correction
         │       └─ next preflight stopped before root/author/process/read/write
         │       └─ PR #351 merged at a3b56ab; Kiro exact-main PASS
+        ├─ §18.40 / §10.38 row-zero durability retry correction
+        │       └─ granted v4 process sealed f6936649… and passed 52/52 controls
+        │       └─ acceptance PAUSE: row-zero file fsync before event 1 unproved
+        │       └─ rejected root immutable; fresh retry roots absent; Kiro review next
         │
+        │ → separately granted fresh-root retry + accepted identity review
         │ → separately granted offline work-item packet + independent review
         │ → separately planned exact origins
         │ → separately granted acquisition → clean build/review/publication
@@ -191,8 +196,17 @@ nine-key command schema, five-key environment and every existing contract while 
 literal `-S` to both argv vectors, requiring `sys.flags.no_site == 1` and shifting only
 the order-only `F002` slice indices. PR `#351` squash-merged the reviewed four-document
 author contract at `a3b56abd3b5fa3fafe1b3f32de744bba3eb9772c`, and Kiro returned
-exact-main PASS. That merge and review authorize no v4 root, read or execution; all v4
-and work-item roots remain absent.
+exact-main PASS. PR `#352` merged the descriptive current-state snapshot at
+`0f84b4a983f9c1a367bc6e790d109c4342560653`. Ryan then separately granted one
+fresh v4 process. It exited zero, passed its clean baseline and all 52 controls,
+reproduced forecast/observed writes of 333,949,322, stayed under the 2-GiB RSS ceiling
+and atomically sealed six-file tree `f6936649…` with zero real-input or external
+access. Acceptance remains `PAUSE`: external setup did not explicitly prove row-zero
+file `fsync` before the governed process created ledger event 1. The sealed root is
+immutable rejected evidence. Sections 18.40/10.38 define only new absent retry roots
+under `fdf09017…/v4`, with exclusive row-zero creation and setup plus governed file-
+then-directory `fsync` before event 1. Kiro exact-tip review is next; no retry grant
+exists and no prior grant is reusable.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -215,7 +229,8 @@ the absent publishable qualified runtime.
 | P0 result binding and independent disposition | **KIRO PASS / REVIEW PAUSE** — §§18.28/10.26 preserve result `db755121…`, manifest `6791d33a…` and packet `491ae60b…`; disposition `45442e93…` is technical PASS but provenance/licensing PAUSE with 98,608 exact open IDs and human counsel required |
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
-| Work-item author contract | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` landed §§18.31–18.39/§§10.29–10.37 with the closed schema/mappings, synthetic qualification, shared-core command, write ledger, packet-tree recipe and literal `-S` startup isolation; the last preflight created no root/author/process/read/write, and a fresh Ryan grant remains mandatory before one v4 process may run |
+| Work-item author contract | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` landed §§18.31–18.39/§§10.29–10.37 with the closed schema/mappings, synthetic qualification, shared-core command, write ledger, packet-tree recipe and literal `-S` startup isolation; PR `#352` merged its descriptive snapshot at `0f84b4a` |
+| V4 synthetic capability freeze | **SEALED TECHNICAL PASS / ACCEPTANCE PAUSE** — one granted process sealed immutable six-file tree `f6936649…`, passed a clean baseline and `52/52` controls with zero external access, but setup did not prove row-zero file durability before event 1; §§18.40/10.38 preserve that root as rejected and define only fresh absent retry roots; Kiro review is next |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -253,6 +268,7 @@ the absent publishable qualified runtime.
 | V4 real-command argv correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `be76abc` | Exact command contract remains frozen; the 902-member input packet-tree identity recipe was missing |
 | V4 input packet-tree identity correction | **KIRO PASS / STATIC PREFLIGHT PAUSE** at `991f488` | Exact packet-tree recipe remains frozen; the literal interpreter command would execute a third-party global-site hook before the author |
 | V4 interpreter startup-isolation correction | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` | Literal `-S`, `sys.flags.no_site == 1`, fourteen-/twenty-member argv and shifted `F002` are preserved; planning merge and review grant no root or execution authority |
+| V4 row-zero durability retry correction | **PLAN-ONLY / KIRO REVIEW REQUIRED** | Rejected tree `f6936649…` is immutable; fresh `fdf09017…/v4.partial` and sibling final roots are absent; no setup, source write or process is authorized before exact-tip PASS and a new Ryan two-SHA grant |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -261,12 +277,14 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** preserve the merged PR `#351` work-item author contract
-and Kiro exact-main PASS at `a3b56ab`. The next substantive decision belongs to Ryan:
-whether to issue one fresh two-SHA grant naming the still-absent v4 roots, literal
-fourteen-/twenty-member no-site argv, exact six-file freeze contract, 1-GiB ledgered
-write ceiling and zero-real-input boundary. Do not infer that grant from the merged
-plan or review PASS. No prior grant is reusable.
+**If Ryan sent you here now:** perform Kiro's read-only exact-tip design/scope review
+of the §§18.40/10.38 row-zero durability correction and its milestone overlay. Verify
+the sealed `f6936649…` root is preserved as immutable rejected evidence, both
+`fdf09017…/v4` retry roots remain absent, setup and the governed process each require
+row-zero file-then-directory `fsync` before event 1, all surrounding schemas/roles/
+controls/ceilings remain unchanged, and no execution authority is introduced. Return
+binary PASS/FAIL only. A PASS is design review, not a retry grant; no prior grant is
+reusable.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -277,17 +295,18 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. A new two-SHA Ryan grant may create only the fresh six-file v4 freeze, run one
-   shared-core full-cardinality synthetic transaction, unchanged `W001`–`W042` and
-   exact `F001`–`F010`, exact synthetic predecessor identities, the closed two-command
-   contract under literal `-S`, order-only `F002` and exact production packet-tree
-   builder, and stop with zero real-input reads. It must prove
-   `sys.flags.no_site == 1` and a dependency closure with no site-package startup code.
-   Its exact pre-write ledger
-   and observed counter must agree within 1,073,741,824 bytes. The impossible prior
-   grant is not reused, and neither the stopped v3 partial nor successful synthetic-
-   only v3 root is reused or modified.
-2. Codex binds the returned v4 identities in a new plan-only overlay; Kiro reviews the
+1. Kiro reviews the exact §§18.40/10.38 semantic parent and milestone overlay. Only
+   after PASS may Ryan issue one new two-SHA grant naming the absent
+   `fdf09017…/v4.partial` and sibling final roots. Setup may exclusive-create only the
+   partial directory and plan-derived row-zero author, then must file-`fsync`, close
+   and directory-`fsync` before launch. The sole no-site governed process must
+   revalidate row zero and repeat file-then-directory `fsync` before event 1. It then
+   runs the unchanged full-cardinality shared-core transaction, `W001`–`W042`,
+   `F001`–`F010`, exact identities, fourteen-/twenty-member argv, packet-tree builder,
+   one-process/1-GiB-write/2-GiB-RSS ceilings and zero real-input/external-access
+   boundary. Failure preserves the fresh partial without repair, deletion or retry.
+   The rejected `59ae444…/v4` root and every prior grant remain non-reusable.
+2. Codex binds the accepted returned v4 identities in a new plan-only overlay; Kiro reviews the
    exact frozen capability. Under another exact Ryan grant, that author may then read
    the immutable 654,147,403-byte packet and 8,383,806-byte disposition exactly once
    each within the 662,531,209-byte aggregate ceiling and create the exact seven-file
@@ -353,6 +372,10 @@ OpenClaw.
 - No v4 Python launch without the exact §18.39 literal `-S` position, fourteen-/twenty-
   member argv arrays and `sys.flags.no_site == 1`; no environment override, wrapper,
   module hiding, `.pth` execution or site-package dependency is an alternative.
+- No acceptance, mutation, deletion, copy, source reuse or repair of rejected v4 tree
+  `f6936649…`. No event 1 before the fresh setup and governed row-zero file-then-
+  directory `fsync` transitions complete exactly once; no later directory flush,
+  byte recheck or receipt assertion substitutes for the missing ordering proof.
 - No work-item omission, duplicate or reassignment: 1,221 component items, 19
   ownership-dispute items, 1,384 primary container-edge assignments and all 98,608
   open IDs remain exact. Batches and pages are derived views, never authority.
@@ -399,8 +422,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.39 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.37 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.40 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.38 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -408,6 +431,7 @@ a separate repository-knowledge arc.
 | Replacement plan pull request | `https://github.com/alanmz-crypto/convmem/pull/345` — merged as `5bcc6c7`; Kiro exact-main PASS |
 | Work-item plan pull request | `https://github.com/alanmz-crypto/convmem/pull/348` — merged as `d79f03c`; Kiro exact-main PASS |
 | Work-item author-contract pull request | `https://github.com/alanmz-crypto/convmem/pull/351` — merged as `a3b56ab`; Kiro exact-main PASS |
+| Author-contract status pull request | `https://github.com/alanmz-crypto/convmem/pull/352` — merged as `0f84b4a`; descriptive snapshot only |
 | Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
@@ -418,7 +442,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-03 | Codex | Recorded PR `#351` merged at `a3b56ab` and Kiro exact-main PASS; the next v4 freeze remains separately Ryan-gated. |
+| 2026-10-03 | Codex | Recorded the sealed v4 technical PASS / acceptance PAUSE and defined only a fresh-root row-zero durability retry for exact-tip review. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -457,7 +481,7 @@ were cyclic. Sections 18.36/10.34 replace only the synthetic result's two bindin
 values with exact domain-separated predecessor identities; Kiro passed at `3107d6f`.
 The next granted preflight stopped before root/author/process/read/write because the
 literal real argv required by `F002` was absent. Sections 18.37/10.35 close exactly
-the nine-key v4 command contract, thirteen-member synthetic and nineteen-member real
+the nine-key v4 command contract, fourteen-member synthetic and twenty-member real
 argv arrays, distinct cwd values and one order-only `F002` representative; Kiro passed
 at `be76abc`. The next granted preflight stopped before root, author, process, input
 read or write because the 902-member input packet tree had no reviewed canonical
@@ -470,7 +494,13 @@ third-party `_distutils_hack`. Sections 18.39/10.37 add only literal `-S`, requi
 `sys.flags.no_site == 1`, close fourteen-/twenty-member argv and shift `F002` slices
 mechanically; every schema, environment key, control and ceiling remains unchanged.
 PR `#351` merged that complete author contract at `a3b56ab`, and Kiro returned
-exact-main PASS. No v4 freeze or real packet exists; one fresh two-SHA Ryan grant is
-the next possible substantive action. Acquisition, binary
+exact-main PASS. PR `#352` merged the descriptive snapshot at `0f84b4a`. The next
+granted v4 process sealed six-file tree `f6936649…`, passed a clean baseline and all
+52 controls within every ceiling and performed no real-input/external access, but
+acceptance remains `PAUSE` because setup did not prove row-zero file durability before
+event 1. Sections 18.40/10.38 preserve that root as immutable rejected evidence and
+define fresh absent retry roots plus exact setup and governed file-then-directory
+`fsync` ordering. Kiro exact-tip review is next. No retry or real packet is authorized;
+only a later fresh two-SHA Ryan grant may run one process. Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
