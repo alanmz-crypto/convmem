@@ -3075,6 +3075,64 @@ retained-source read, work-item packet/result, network, acquisition, owner/licen
 decision, binary repair, build, publication, implementation, PR `#342` update, PR
 creation, merge, real OpenClaw or later gate is authorized.
 
+### 10.41 V4 self-test receipt control-order freeze-retry correction
+
+Architecture §18.43 controls. Kiro passed the stdlib-link correction at
+`946b469e27c7eb27c198898fa330c2475bde29fa`, and Ryan granted one exact
+`816b713…` retry. Setup and the sole no-site process completed the reviewed row-zero,
+dependency, full-cardinality, 22-event and coordinate-parent transitions. The process
+accepted canonical `_blake2`, ran a zero-violation baseline and 52 individual controls,
+wrote exactly `302,475,056` forecast/observed bytes, stayed below 2 GiB RSS, sealed
+six mode-`0444` members under a mode-`0555` final root and emitted `PASS`.
+
+Acceptance is `PAUSE`. Sealed tree `d399e356…` contains receipt `8d3ecbe0…`, whose
+control IDs are `W001`–`W042` followed by `F001`–`F010`. The inherited raw-ID order is
+`F001`–`F010` followed by `W001`–`W042`. The author checked individual mutant results
+but omitted aggregate receipt-order validation, so its F010/transaction check failed
+closed only after the independent read-only post-run comparison. The final root,
+members, source, external result claim and grant are immutable rejected evidence; the
+absent `.partial` sibling may not be recreated. No acceptance transfers from the
+reported PASS or any prior attempt.
+
+The fresh successor coordinate parent and siblings are exactly:
+
+```text
+/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa
+/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4.partial
+/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4
+```
+
+All three were absent at planning time and are single-assignment. Pre-existence at a
+future grant is `PAUSE`. A future author must be written from this reviewed plan and
+must retain §§18.40–18.42 unchanged. It may not copy, patch, import, execute or cite
+the rejected source as acceptance.
+
+The successor derives the exact complete ID set `F001`–`F010` plus `W001`–`W042`,
+sorts it once by raw UTF-8 bytes, indexes the 52 independent receipts by ID and emits
+rows only in that expected order. Missing, extra, duplicate, separately concatenated
+or unstable IDs are `PAUSE`. Every row must bind the same ID through its mutation,
+expected/observed code, verdicts, created flags and `passed=true`. After the at-most-
+sixteen-iteration size fixed point, the author must canonicalize and parse the final
+receipt bytes through the production parser and compare the parsed ID array exactly
+before the first governed output write. The clean baseline and all controls call this
+same aggregate validator. Later reorder or serializer drift is `F010`/`PAUSE`.
+
+The W-only `negative-controls.jsonl` remains exactly 42 rows in `W001`–`W042` order;
+the receipt remains the sole 52-row surface. No control meaning or representative,
+schema, field, role, sidecar, wrapper, ceiling, access boundary or acceptance
+exception changes. The six freeze roles, seven output roles, two-null 22-event ledger,
+fixed point, identities, full-cardinality packet, 14/20-member no-site argv, F002
+slice swap, row-zero and parent durability, canonical stdlib link reader, one process,
+1-GiB write cap, 2-GiB RSS cap and zero external access are frozen.
+
+**Current result:** control-order correction plan-only. Exact-tip Kiro review and a
+fresh Ryan two-SHA grant naming the absent roots and exact aggregate receipt validator
+are mandatory before setup or one synthetic process. No retry root, source, process,
+dependency/packet/disposition/repository/runtime/retained-source read, work-item
+packet/result, network, acquisition, owner/license decision, repair, build,
+publication, implementation, PR `#342` update, PR creation, merge, real OpenClaw or
+later gate is authorized.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -3140,5 +3198,11 @@ sole governed process. That retry passed all controls but failed closed before r
 because its audit hook rejected the coordinate-parent directory open. Section 10.39
 preserves sealed partial `a9ceaa06…`, keeps the final absent and defines only fresh
 `b7a8ade…` roots plus exact pre-/post-rename parent barriers without widening content
-authority. Kiro review and a new two-SHA grant remain mandatory. No retry root,
-process, read, write or operational authority exists.
+authority. Section 10.40 then preserved the one-file `99e4939d…` PAUSE and admitted
+stable link counts only inside the canonical stdlib dependency reader. Kiro passed
+that correction at `946b469`; the granted retry sealed final tree `d399e356…` and
+reported PASS, but receipt `8d3ecbe0…` concatenated W controls before F controls.
+Section 10.41 preserves the final root as immutable PAUSE evidence and defines only
+fresh `946b469…` coordinates plus exact complete raw-ID receipt validation before
+output. Kiro review and a new two-SHA grant remain mandatory. No retry root, process,
+read, write or operational authority exists.

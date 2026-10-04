@@ -9559,6 +9559,191 @@ selection, binary repair, build, publication, CI admission, product/test/config/
 change, implementation, PR `#342` update, PR creation, merge, deployment, real
 OpenClaw, live data, watch activation, promotion or Gate D/W/D-V/E/F action.
 
+### 18.43 V4 self-test receipt control-order freeze-retry correction
+
+Kiro passed the exact §18.42/§10.40 standard-library dependency-link correction at
+`946b469e27c7eb27c198898fa330c2475bde29fa`. Ryan then granted one exact two-SHA
+retry at the fresh `816b713…` coordinate. External setup completed the reviewed
+row-zero transaction and the sole no-site process accepted the canonical link-count-
+two `_blake2` origin through the narrow §18.42 reader. The process ran the clean
+baseline and all 52 individual controls, completed the 22-event transaction and both
+coordinate-parent durability barriers, atomically renamed the partial root, emitted
+an external `PASS` result and exited zero.
+
+Acceptance is nevertheless `PAUSE`. The post-run read-only check proved that
+`self-test-receipt.json.controls` was serialized as `W001` through `W042` followed by
+`F001` through `F010`. Section 18.32.5 requires the receipt's control rows to be
+sorted by raw control-ID bytes, and §§18.34–18.42 preserve that ordering while adding
+the ten `F` controls. The required complete order is therefore `F001` through `F010`
+followed by `W001` through `W042`. The author validated each mutation independently
+but omitted this aggregate receipt-order invariant, so its zero-violation baseline,
+52/52 count and external `PASS` do not establish acceptance.
+
+#### 18.43.1 Exact sealed PAUSE evidence
+
+```text
+WORK_ITEM_AUTHOR_CONTROL_ORDER_PLAN_BASE_OVERLAY_SHA=946b469e27c7eb27c198898fa330c2475bde29fa
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_STATUS=PAUSE
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_PROCESS_EXIT_STATUS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_PROCESS_REPORTED_STATUS=PASS
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_ACCEPTED=false
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/816b713adac7f987efa282380b892ab03994fbed
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/816b713adac7f987efa282380b892ab03994fbed/v4.partial
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_PARTIAL_ROOT_PRESENT=false
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/816b713adac7f987efa282380b892ab03994fbed/v4
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_ROOT_PRESENT=true
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_ROOT_MODE=0555
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_MEMBER_COUNT=6
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_MEMBER_MODE=0444
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_TREE_SHA256=d399e3561740f9f9be5cd1eab0e69f7dd788b5c1398d3f38d9e37dd18af2c37e
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_TOTAL_BYTES=109452
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_AUTHOR_SHA256=799838f975300c4430c9342d61c44e7eb21bb380c122e2843f7539f9938819a1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_AUTHOR_SIZE=62316
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_FIXTURE_SHA256=d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_FIXTURE_SIZE=476
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_DEPENDENCY_MANIFEST_SHA256=bdcf8f3bf7c95e7f47905f8360a7beb495fa46a74f15ea4e472bacc42fc63bca
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_DEPENDENCY_MANIFEST_SIZE=9365
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_COMMAND_CONTRACT_SHA256=8dc6ef51a7fad11a8d51c05b5ce43dad8197e1e70a97f12b2e7cdb027433be3e
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_COMMAND_CONTRACT_SIZE=3544
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_SELF_TEST_RECEIPT_SHA256=8d3ecbe08de5047a5eee473cf64958479a4062f4cd235b0544cfb8a39474cb9a
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_SELF_TEST_RECEIPT_SIZE=32775
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_FREEZE_MANIFEST_SHA256=19da463aa480a6ad2241763f30a2faa0a6cd5e6dcfe4cff1fb5fb1296b197f59
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_FREEZE_MANIFEST_SIZE=976
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_WRITE_LEDGER_SHA256=a5456f8247507f88c703052dd2bec7d2c0c988ad84f45bf7bbfa118744ed7b60
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_FORECAST_WRITTEN_BYTES=302475056
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_OBSERVED_WRITTEN_BYTES=302475056
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_PEAK_RSS_BYTES=2059636736
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_BASELINE_VIOLATION_COUNT=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_CONTROL_COUNT=52
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_CONTROLS_REPORTED_PASSED=52
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_ACTUAL_FIRST_ID=W001
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_ACTUAL_FAMILY_BOUNDARY=W042,F001
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_ACTUAL_LAST_ID=F010
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_EXPECTED_FIRST_ID=F001
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_EXPECTED_FAMILY_BOUNDARY=F010,W001
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_EXPECTED_LAST_ID=W042
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_REAL_INPUT_READ_BYTES=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_NETWORK_REQUESTS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RUNTIME_READS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETAINED_SOURCE_READS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_SUBPROCESSES=0
+```
+
+The six member identities and modes independently match the sealed final root. The
+receipt records exactly 22 ledger events, exactly two null digests for
+`self-test-receipt.json` and `freeze-manifest.json`, equal forecast/observed writes,
+one process, zero external access and peak RSS below 2 GiB. The dependency manifest
+contains the canonical `_blake2` row with size `398208` and SHA-256 `73da16b0…`, so
+the §18.42 correction worked as designed. Those facts remain useful failure evidence,
+but none transfers acceptance across the receipt-order defect.
+
+The coordinate parent, sealed final root, six members, source, external result claim
+and grant are consumed and immutable by authority. They may not be changed, chmodded,
+deleted, renamed, copied, hard-linked, imported, executed, used as a successor source,
+accepted, repaired or reinterpreted. The absent `.partial` sibling may not be
+recreated. There is no in-place remedy or acceptance transfer.
+
+#### 18.43.2 Exact ordering gap and rejected broad fixes
+
+Raw UTF-8 ordering of the admitted ASCII IDs is executable and unambiguous:
+
+```text
+EXPECTED_SELF_TEST_CONTROL_IDS =
+  [F001, F002, ..., F010, W001, W002, ..., W042]
+ACTUAL_REJECTED_CONTROL_IDS =
+  [W001, W002, ..., W042, F001, F002, ..., F010]
+```
+
+The failure is not a control-semantic failure: every individual row reported its own
+expected and observed code, and no 53rd control or `F011` appeared. It is a closed-
+receipt aggregate-validation failure. Counting 52 rows, validating the first and last
+within each family, preserving insertion order, sorting families separately, relying
+on canonical JSON object-key sorting, or sorting only `negative-controls.jsonl` does
+not satisfy the inherited receipt rule.
+
+The correction must not relabel IDs, change a mutation, reorder the execution of a
+control to manufacture receipt order, add a receipt field, add `F011`, add a sidecar,
+accept either family order, sort by numeric suffix, or treat external `PASS` as
+stronger than the sealed receipt. It must not weaken any identity, dependency-reader,
+write-ledger, output, durability or access invariant.
+
+#### 18.43.3 Fresh coordinates and closed receipt validator
+
+```text
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_AUTHORIZED=false
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4.partial
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_MAX_PROCESS_COUNT=1
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_MAX_TOTAL_WRITTEN_BYTES=1073741824
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_MAX_PEAK_RSS_BYTES=2147483648
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_REAL_INPUT_READ_BYTES=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_NETWORK_REQUESTS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_RUNTIME_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_RETAINED_SOURCE_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_CONTROL_ORDER_RETRY_SUBPROCESSES=0
+```
+
+The coordinate parent and both children were absent when this correction was authored.
+They are fresh single-assignment coordinates; pre-existence of any one at a later
+grant is `PAUSE`. Setup retains the exact §18.40 row-zero transaction, publication
+retains §18.41 and dependencies retain the exact §18.42 deep reader. A new source must
+be written from the reviewed plan and may not copy, patch, import, execute or derive
+acceptance from the rejected source.
+
+The one canonical self-test receipt builder owns a single ordered `control_rows`
+array. Before the first disposable or persisted category-3-through-5 output byte, it
+must:
+
+1. construct the expected ID set as exactly `F001`–`F010` plus `W001`–`W042`;
+2. sort that complete set once by raw UTF-8 bytes, producing exactly the 52-ID order
+   above, with no family-specific concatenation or caller-provided order;
+3. index the 52 independently executed receipts by `control_id`, reject a missing,
+   extra or duplicate ID, and materialize rows only by iterating the expected list;
+4. require every row's `control_id`, `mutation_id`, expected/observed rejection code,
+   verdicts, created flags and `passed` value to match that same ID and its unchanged
+   control contract;
+5. canonicalize the complete receipt, parse the final fixed-point bytes back through
+   the production receipt parser, and require the parsed control-ID array to equal the
+   expected array byte-for-byte before any write; and
+6. run the same aggregate receipt validator on the clean baseline and every control
+   path. Any later reorder, family concatenation, unstable iteration or serializer
+   drift is `F010`/`PAUSE` before output acceptance.
+
+Control execution order is not authority and need not equal receipt order; only the
+sealed receipt array is canonical. Schema-v3 `negative-controls.jsonl` remains the
+unchanged W-only 42-row role sorted `W001` through `W042`. The receipt remains the
+only 52-row surface and keeps its existing schema and keys. `F010` remains the sole
+transaction/output-contract drift code; its meaning is not widened, and there is no
+new control, schema field, file role, wrapper or acceptance exception.
+
+#### 18.43.4 Frozen surrounding contract and authority boundary
+
+Every §18.31–§18.42 schema, mapping, candidate/locator rule, parser, serializer,
+identity adapter, packet-tree recipe, cardinality, six freeze roles, seven output
+roles, 22-event ledger with exactly two null digests, fixed-point rule,
+`W001`–`W042`, `F001`–`F010`, fourteen-/twenty-member no-site argv, `F002` slices
+`[4:6]`/`[6:8]`, row-zero durability transition, coordinate-parent barriers,
+canonical stdlib dependency reader, one-process/2-GiB-RSS/1-GiB-write ceilings,
+zero-access boundary and held later real-run contract remains unchanged. This
+correction closes only the already-required aggregate ordering validation for the
+52-row self-test receipt.
+
+The only admissible next sequence is Kiro exact-tip review of this correction, a new
+Ryan two-SHA grant naming the fresh roots and exact receipt validator, one synthetic
+process, external return of the six identities plus ledger/result/row-zero/parent-
+durability counters, then plan-only result binding and Kiro capability review. Every
+rejected v4 coordinate and every prior grant is non-reusable.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no retry coordinate/root/file creation, source write,
+freeze execution, dependency, packet, disposition, repository, runtime or retained-
+source read, work-item packet/result, network, subprocess, acquisition, ownership/
+license selection, binary repair, build, publication, CI admission, product/test/
+config/R2b change, implementation, PR `#342` update, PR creation, merge, deployment,
+real OpenClaw, live data, watch activation, promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -9604,6 +9789,7 @@ OpenClaw, live data, watch activation, promotion or Gate D/W/D-V/E/F action.
 | Clean replacement | Fresh bytes built from independently locked inputs and recipes; never a repaired or prefix-rewritten rejected binary. |
 | Capability freeze | An immutable author package whose self-test executes the same production path later used on real input; a synthetic-only command is not a real-author capability freeze. |
 | Write ledger | The deterministic ordered accounting of every regular-file byte written by the v4 freeze; it proves the transaction stayed within its reviewed aggregate cap without allowing sparse, linked or compressed shortcuts. |
+| Aggregate control-order validator | The single pre-write check that indexes all 52 self-test receipts by exact ID and emits them only in complete raw-UTF-8 order; family insertion order or a process-reported PASS cannot replace it. |
 | Synthetic predecessor identity | A domain-separated test-only SHA-256 supplied to the unchanged result builder so a disposable synthetic result can exercise the real field without claiming or recursively hashing the receipt under construction. |
 | Row-zero durability transition | The exact file-`fsync` then directory-`fsync` boundary that must complete for the externally created author before ledger event 1 may create any directory or file. |
 | Coordinate-parent durability barrier | An exact no-follow directory-handle `fsync` on the single parent shared by the partial and final roots, once before and once after atomic rename; it grants no descendant content-read authority. |
@@ -9659,6 +9845,12 @@ fresh-root retry whose setup and governed process both complete file-then-direct
 but its audit hook rejected the coordinate-parent pre-rename directory open. Section
 18.41 preserves sealed partial `a9ceaa06…`, keeps its sibling final absent and defines
 only fresh `b7a8ade…` coordinates plus two exact phase-bound parent-directory
-barriers without widening content-read authority. Kiro review and a fresh Ryan two-
-SHA grant are mandatory.
+barriers without widening content-read authority. Section 18.42 then preserved the
+one-file `99e4939d…` PAUSE and admitted stable link counts only inside the canonical
+stdlib dependency reader. That correction passed Kiro at `946b469`; the granted
+retry sealed final tree `d399e356…` and reported PASS, but acceptance paused because
+receipt `8d3ecbe0…` concatenated W controls before F controls. Section 18.43 preserves
+that final root as immutable rejected evidence and defines only fresh `946b469…`
+coordinates plus exact complete raw-ID receipt validation before output. Kiro review
+and a fresh Ryan two-SHA grant are mandatory.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
