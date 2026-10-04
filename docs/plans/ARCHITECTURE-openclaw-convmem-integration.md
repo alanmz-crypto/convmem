@@ -9389,6 +9389,176 @@ repair, build, publication, CI admission, product/test/config/R2b change,
 implementation, PR `#342` update, PR creation, merge, deployment, real OpenClaw,
 live data, watch activation, promotion or Gate D/W/D-V/E/F action.
 
+### 18.42 V4 standard-library dependency-link freeze-retry correction
+
+PR `#355` squash-merged the reviewed coordinate-parent correction at
+`8e4bb2b704ea858301207c21b71427df4975b889`, Kiro returned exact-main PASS and PR
+`#356` merged the descriptive snapshot at
+`30052061942c4c016fcb305946444c0453046cb1`. Ryan then issued one exact two-SHA
+grant for the fresh `b7a8ade6…/v4.partial` and sibling final roots. External setup
+exclusive-created the coordinate parent and row-zero author, completed one write,
+file-`fsync`, close and partial-directory `fsync`, and verified the exact bytes before
+launching the sole no-site process. The process exited one before any JSON or
+disposable output write because the dependency reader rejected one canonical
+standard-library extension module whose regular-file inode has link count two.
+
+The failure is fail-closed. No final root, receipt, manifest or external result exists.
+The consumed partial contains only the fresh author and is immutable PAUSE evidence
+by authority. It is not an author source, a capability freeze or acceptance evidence.
+
+#### 18.42.1 Exact one-file PAUSE evidence
+
+```text
+WORK_ITEM_AUTHOR_STDLIB_LINK_PLAN_BASE_MAIN_SHA=30052061942c4c016fcb305946444c0453046cb1
+WORK_ITEM_AUTHOR_STDLIB_LINK_REVIEWED_OVERLAY_SHA=816b713adac7f987efa282380b892ab03994fbed
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_STATUS=PAUSE
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_SETUP_STATUS=PASS
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_PROCESS_EXIT_STATUS=1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_EXCEPTION=RuntimeError: not single-link regular file: /home/lauer/miniforge3/lib/python3.13/lib-dynload/_blake2.cpython-313-x86_64-linux-gnu.so
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_FAILURE_STAGE=DEPENDENCY_MANIFEST_COLLECTION
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_ROOT_PRESENT=false
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/b7a8ade6a5acd80c09ab627ad2bb7ffcebe81288/v4.partial
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_PARTIAL_ROOT_PRESENT=true
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_PARTIAL_ROOT_MODE=0755
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_PARTIAL_MEMBER_COUNT=1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_JSON_MEMBER_COUNT=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_PARTIAL_TREE_SHA256=99e4939d367cb9440e902c2cb29211508c2d5e17bb031de69e544af86e29c13f
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_AUTHOR_MODE=0644
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_AUTHOR_LINK_COUNT=1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_AUTHOR_SIZE=70266
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_AUTHOR_SHA256=57ecd07bd142dc33569ed6a2f92309fc577f93c6daecd5f9876f8162a2e4eca3
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_ROW_ZERO_SETUP_FILE_FSYNC_COUNT=1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_ROW_ZERO_SETUP_DIRECTORY_FSYNC_COUNT=1
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_REAL_INPUT_READ_BYTES=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_NETWORK_REQUESTS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RUNTIME_READS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETAINED_SOURCE_READS=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_SUBPROCESSES=0
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_EXTERNAL_RESULT_EMITTED=false
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_ACCEPTED=false
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_DEPENDENCY_PATH=/home/lauer/miniforge3/lib/python3.13/lib-dynload/_blake2.cpython-313-x86_64-linux-gnu.so
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_DEPENDENCY_MODE=0775
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_DEPENDENCY_LINK_COUNT=2
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_DEPENDENCY_SIZE=398208
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_DEPENDENCY_SHA256=73da16b0b8a13515b59fa651d63e675cf213f09dc1696d2b8f91889bd262367d
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_DEPENDENCY_DEVICE=66306
+FAILED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_DEPENDENCY_INODE=18621870
+```
+
+The one-row partial tree uses the existing compact sorted-key UTF-8 JSON grammar over
+`{path,mode,size,sha256}`; its canonical bytes are 138 bytes and hash to
+`99e4939d…`. The stopped process wrote no JSON member and left no receipt, manifest or
+final root. No packet, disposition, repository, runtime or retained-source byte was
+read; no network request or subprocess occurred. These are stopped-run facts, not an
+accepted result.
+
+The coordinate parent, partial root, author and grant are consumed. They may not be
+changed, chmodded, deleted, renamed, completed, copied, hard-linked, imported,
+executed, used as source, accepted, repaired or reinterpreted. There is no in-place
+remedy and no acceptance transfer from any earlier v4 attempt.
+
+#### 18.42.2 Exact overconstraint and rejected broad fixes
+
+The reviewed dependency-manifest contract records each imported module as exactly
+`{name,kind,path,size,sha256}`. It binds the canonical absolute module origin under
+the frozen standard-library root; it does not make inode link count part of module
+identity. The fresh author nevertheless reused the single-link evidence predicate
+when hashing that origin. The canonical `_blake2` origin is a regular file and stayed
+at one bound path, size and digest, but its inode has `st_nlink=2`; the reused
+predicate therefore raised before the dependency manifest could be serialized.
+
+The correction must not remove no-follow opens, admit a symlink, search for or read an
+alternate hard-link name, enumerate aliases, normalize a different origin, admit a
+module outside the canonical standard-library root, admit `site-packages` or
+`dist-packages`, add a dependency-manifest field, or relax any packet/output/freeze/
+root/evidence single-link rule. A blanket `st_nlink >= 1` change in the common evidence
+reader, a caller override, an allowlist of observed inodes, a copied dependency, a
+wrapper, or accepting the stopped partial is forbidden.
+
+#### 18.42.3 Fresh coordinates and deep dependency-reader boundary
+
+```text
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_STATUS=ABSENT
+PROVENANCE_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_AUTHORIZED=false
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/816b713adac7f987efa282380b892ab03994fbed
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/816b713adac7f987efa282380b892ab03994fbed/v4.partial
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/816b713adac7f987efa282380b892ab03994fbed/v4
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_MAX_PROCESS_COUNT=1
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_MAX_TOTAL_WRITTEN_BYTES=1073741824
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_MAX_PEAK_RSS_BYTES=2147483648
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_REAL_INPUT_READ_BYTES=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_NETWORK_REQUESTS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_RUNTIME_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_RETAINED_SOURCE_READS=0
+PROPOSED_WORK_ITEM_AUTHOR_FREEZE_V4_STDLIB_LINK_RETRY_SUBPROCESSES=0
+```
+
+The coordinate parent and both children were absent when this correction was authored.
+They are fresh single-assignment coordinates; pre-existence of any one at a future
+grant is `PAUSE`. Setup retains the exact §18.40 row-zero transaction and the sole
+process retains the exact §18.41 coordinate-parent barriers. The author must be
+written fresh from the reviewed plan and may not copy, patch, import or execute the
+failed author.
+
+One deep `read_stdlib_dependency` boundary owns the sole link-count distinction. For
+each already-imported module it must:
+
+1. obtain the module's canonical absolute `__file__` origin without searching for an
+   alternate path, and prove it is a strict descendant of the exact bound
+   `/home/lauer/miniforge3/lib/python3.13` standard-library root while rejecting every
+   `site-packages` or `dist-packages` component;
+2. open that exact origin once with `O_RDONLY | O_CLOEXEC | O_NOFOLLOW`, reject a
+   symlink or non-regular file, and record the first descriptor `fstat` identity;
+3. accept `st_nlink >= 1` only inside this boundary, never as an assertion that other
+   names are known, approved or readable;
+4. hash exactly one content stream, require its byte count to equal `st_size`, then
+   require the second descriptor `fstat` to preserve device, inode, file type, mode,
+   link count, size, mtime-ns and ctime-ns before close; and
+5. emit only the existing `{name,kind,path,size,sha256}` row using the canonical origin
+   path. Link count, device and inode are validation metadata and never serialized,
+   promoted to identity or exposed as authority.
+
+Every other governed file reader keeps `st_nlink == 1`, including interpreter,
+startup-isolation support, fixture/command/dependency inputs after creation, freeze
+members, receipts, manifests, packet/disposition members, object members, staging/
+durable outputs and external results. No alias may be enumerated, opened, hashed,
+compared, copied or cited. Any canonical-path drift, forbidden path component,
+open/fstat mismatch, link-count change during the stream, short/extra read, digest
+drift or second content pass is `PAUSE` before output acceptance.
+
+The synthetic baseline and every control use this same production dependency reader.
+`W001`–`W042` and `F001`–`F010` retain their exact meanings; `F010` remains the sole
+transaction-drift control and there is no `F011`, 53rd control, new schema field or
+acceptance exception.
+
+#### 18.42.4 Frozen surrounding contract and authority boundary
+
+Every §18.31–§18.41 schema, mapping, candidate/locator rule, parser, serializer,
+identity adapter, packet-tree recipe, cardinality, six freeze roles, seven output
+roles, 22-event ledger with exactly two null digests, fixed-point rule,
+`W001`–`W042`, `F001`–`F010`, fourteen-/twenty-member no-site argv, `F002` slices
+`[4:6]`/`[6:8]`, row-zero durability transition, coordinate-parent barriers,
+one-process/2-GiB-RSS/1-GiB-write ceilings, zero-access boundary and held later
+real-run contract remains unchanged. This correction changes only the internal
+standard-library dependency file-reader rule from single-link to stable regular-file
+`st_nlink >= 1` under the exact canonical-origin constraints above.
+
+The only admissible next sequence is Kiro exact-tip review of this correction, a new
+Ryan two-SHA grant naming the fresh roots and exact dependency-reader boundary, one
+synthetic process, external return of the six identities plus ledger/result/row-zero/
+parent-durability counters, then plan-only result binding and Kiro capability review.
+All rejected v4 roots and every prior grant are non-reusable.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no retry coordinate/root/file creation, source write, freeze
+execution, dependency, packet, disposition, repository, runtime or retained-source
+read, work-item packet/result, network, subprocess, acquisition, ownership/license
+selection, binary repair, build, publication, CI admission, product/test/config/R2b
+change, implementation, PR `#342` update, PR creation, merge, deployment, real
+OpenClaw, live data, watch activation, promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -9414,6 +9584,7 @@ live data, watch activation, promotion or Gate D/W/D-V/E/F action.
 | Candidate record | A byte-preserving, packet-cited lead whose planning state never establishes origin, ownership, licensing or access authority. |
 | Closed command contract | A canonical command description with an exact schema, cwd and literal argv for each admitted verb; flag names, values and order cannot be chosen by the caller. |
 | Startup isolation | Launching the bound interpreter with literal `-S`, then proving `sys.flags.no_site == 1` and a dependency closure free of global/user site-package startup code before any governed output. |
+| Standard-library dependency reader | The sole internal boundary that hashes one canonical imported-module origin; it may tolerate a stable regular-file hard-link count without discovering or authorizing any alternate name. |
 | Packet-tree identity | A SHA-256 over the exact canonical inventory of every strict descendant of an immutable packet root; directory rows and regular-file rows have different closed shapes, and the root mode is verified outside the hash. |
 | Pylint semantic identity | The canonical message fields compared across raw Pylint reports; raw report order and bytes remain evidence but are not the verdict oracle. |
 | Strict generation | A derivative of one exact cumulative authority head; atomic publication may instead select no serving generation. |
