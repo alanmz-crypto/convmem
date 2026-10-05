@@ -17,7 +17,7 @@
 | **Tip SHA** | see `git log -1` on the branch (this commit) |
 | **Push status** | pushed to origin |
 | **PR** | not opened. Do not open until Ryan asks |
-| **Ryan GATE** | Hand the packet to Kiro. After the verdict, Ryan decides: revise into v2, narrow to a first slice, or drop |
+| **Ryan GATE** | Kiro has passed revision 2. **Ryan decided (2026-10-05): the goal is to *use* OpenClaw, not to learn it**, so the sequencing stands: deterministic baseline first, OpenClaw only where it beats it, Switchboard-gated retrieval last. Still open: the first-slice choice and any OpenClaw upgrade authorization |
 | **Track A ingest** | `~/.claude/projects/-home-lauer-Projects-convmem/b95b425e-5341-4538-8528-8054bfe945e3.jsonl` |
 
 ---
