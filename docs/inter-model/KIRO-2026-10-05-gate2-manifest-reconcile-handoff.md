@@ -7,6 +7,15 @@
 **Type:** Reconciliation question + blocked gate. **A change IS needed, but I did not make it** — routing to the arc owner for a decision, then Ryan review.
 **Resume state:** BLOCKED_ON_OPENCLAW-LANE-OWNER
 
+### Ownership boundary confirmed (2026-10-05, Switchboard agent)
+
+The Switchboard agent explicitly disclaimed Gate 2: *"The manifest,
+`reviewed_plan_sha=19dea97`, and its reconciliation belong to Arc OpenClaw Watch
+Coverage. I did not create, review, or modify that manifest or plan, so its owner
+must choose the correct SHA/path."* Gate 1 touched Switchboard work; Gate 2 does
+not. So Gate 2 has **no active owner this session** — this handoff waits for
+whoever next picks up Arc OpenClaw Watch Coverage. No conflict; clean boundary.
+
 ---
 
 ## Consequence first (why you're getting this)
