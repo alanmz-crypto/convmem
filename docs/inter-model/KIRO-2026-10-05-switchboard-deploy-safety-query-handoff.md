@@ -5,7 +5,30 @@
 **Date:** 2026-10-05
 **Arc (mine):** none (ad-hoc operational) — querying **Arc ConvMem Switchboard** across a boundary
 **Type:** Cross-arc question. **No code change requested.** I need a yes/no + resting-point confirmation from you before anything proceeds.
-**Resume state:** BLOCKED_ON_SWITCHBOARD-AGENT
+**Resume state:** ANSWERED — Gate 1 CLEARED
+
+---
+
+## VERDICT (2026-10-05, Switchboard agent)
+
+**Gate 1: DEPLOY-SAFE at `ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c`.**
+
+The Switchboard portion through that SHA is a coherent, fail-closed **planning**
+resting point: it changes only the four planning documents, introduces no live
+watcher/runtime connector code, and leaves execution/root creation unauthorized.
+Open PR `#363` is plan-only and NOT part of `ff5ce7b`, so advancing the watcher
+checkout cannot catch Switchboard half-applied. Clears the Switchboard side ONLY —
+does not bless the unrelated code in the 18-commit range, fix the manifest gate,
+restart watch, or grant deployment.
+
+**Kiro independent check (confirms + bounds the verdict):** `git diff --stat
+a92a74e..ff5ce7b` confirms the Switchboard docs are plan-only (ARCHITECTURE/
+EXECUTION/STATUS-openclaw-convmem-integration, ~12k doc lines). It ALSO confirms
+the agent's scope note: the same 18-commit range carries non-Switchboard
+**executable** changes — `cpu_tripwire.py` (+231 new), `chroma_write_guard.py`,
+`doctor.py`, `deepseek_audit_substitute.py`, and a **+20-line change to the
+manifest itself** — none of which the Switchboard clearance covers. Those move to
+Gate 2 and the respective owners / Ryan.
 
 ---
 

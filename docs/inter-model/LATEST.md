@@ -9,6 +9,19 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Gate 2 manifest reconcile BLOCKED — ASK OUT (2026-10-05):** Tripwire deploy
+  is held at Gate 2. The watch-scope manifest
+  (`config/repository-knowledge/openclaw-watch-scope-v1.json`) pins
+  `reviewed_plan_sha 19dea97`, which is **not an ancestor** of the deploy target
+  `ff5ce7b` (nor `origin/main`) and lives only on the unmerged
+  `*openclaw-watch-coverage*` branches — unchanged by the 18-commit advance.
+  Kiro sent the OpenClaw Watch Coverage lane a reconciliation query: (1) merge
+  the reviewed plan into deploy history, or (2) re-pin to a reviewed ancestor of
+  `ff5ce7b`. Both need owner decision + Ryan review. Gate 1 (Switchboard) cleared
+  DEPLOY-SAFE at `ff5ce7b`; Gate 3 (Ryan deploy grant) withheld until Gate 2
+  passes. Watch stays inactive+disabled (DeepSeek burn). See
+  `docs/inter-model/KIRO-2026-10-05-gate2-manifest-reconcile-handoff.md`.
+
 - **Tripwire deploy BLOCKED on Switchboard deploy-safety — ASK OUT (2026-10-05):**
   The OpenClaw Watch Coverage "tripwire" deploy would advance the live watcher
   code dir (`.worktrees/runtime-main`) 18 commits (`a92a74e`→`origin/main`
