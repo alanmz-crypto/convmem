@@ -26,7 +26,9 @@ audit passed at `f1de192`; Kiro passed the canonical-path correction at
 `4a7d38a`. Copilot rechecked the older integration branch's documentation
 acceptance at `19d34a5` and returned PASS; Codex independently ran
 `git diff e99856e 19d34a5 --check` with exit 0. These earlier verdicts do
-not transfer to the final candidate tip. No live operation was performed.
+do not transfer to later code tips. Copilot and Kiro then both passed the exact
+implementation tip `e211c03`; the subsequent status-only documentation update
+does not change production code. No live operation was performed.
 
 Candidate verification used fake providers and temporary real Chroma: 157
 focused route/recovery/coverage tests passed before the canonical-path fix;
@@ -51,7 +53,7 @@ surfaces. The watcher stayed disabled throughout.
 |-------|--------|
 | **State** | Codex branch work authorized; production activation remains `BLOCKED_ON_RYAN` |
 | **Reviewed impl (PASS)** | `506afc1` on `feat/2026-09-17-issue-286-incremental-index` — Copilot PASS, Kiro PASS, no PR |
-| **Integration successor** | `19d34a5` on `feat/2026-09-17-issue-286-main-integration` — pushed, unmerged; prior Copilot documentation FAIL at `e99856e` was rechecked PASS at `19d34a5`; Kiro exact-tip recheck remains open |
+| **Integration successor** | `19d34a5` on `feat/2026-09-17-issue-286-main-integration` — pushed, unmerged; prior Copilot documentation FAIL at `e99856e` was rechecked PASS by Copilot and Kiro at `19d34a5`, with Codex whitespace check exit 0 |
 | **main at integration grant** | `18f63db` (re-fetch actual `origin/main` at start) |
 | **Copilot corrective branch** | `fix/2026-09-17-...-issue-286-copilot-corrective` `d14f8a6` — 0 commits ahead of origin/main (stale/folded; verify, do not assume) |
 | **PR** | none opened for any #286 branch |

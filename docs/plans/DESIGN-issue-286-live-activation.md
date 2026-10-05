@@ -2,10 +2,11 @@
 
 **Arc: Trapdoor Hunt (#286), using the Arc Codex incremental engine.**
 **State:** Kiro design PASS at `e4fa954`; RC-1 through RC-3 bind the branch
-implementation. Copilot safety audit PASS at `f1de192`; Copilot's older
-integration documentation-acceptance recheck PASS at `19d34a5`. Kiro passed
-the canonical-path correction at `4a7d38a`. Final exact-tip rechecks remain.
-No live grant.
+implementation. Copilot and Kiro passed the exact implementation tip
+`e211c03`; Copilot and Kiro also rechecked the older integration branch's
+documentation acceptance at `19d34a5` (Codex independently checked its diff
+for whitespace). This later documentation-only status update does not change
+the reviewed code. No live grant.
 **Base:** `origin/main` `ff5ce7b` on 2026-10-05.
 
 ## Product result and boundary
@@ -137,8 +138,9 @@ RC-1 distinguishes unselected legacy routing, selected success, and selected
 visible nonzero refusal; RC-2 forbids using the hermetic root or other
 isolation environment variables as live authority; RC-3 proves generic
 watcher/ingest events cannot invoke the one-shot bootstrap. These are not
-production grants. Copilot's independent safety audit and the older
-documentation-acceptance recheck remain outstanding.
+production grants. Copilot and Kiro passed the static implementation review at
+`e211c03`; Copilot and Kiro rechecked the older documentation failure at
+`19d34a5`. No review constitutes a production grant.
 
 1. Copilot audits isolation, fail-closed behavior, first-source bootstrap,
    and the prior docs acceptance failure. Kiro's design PASS at `e4fa954`
