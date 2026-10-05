@@ -3262,6 +3262,80 @@ document edits and exact-tip review; it authorizes no input-content read, output
 creation, execution, retry, acquisition, build, publication, implementation, PR
 creation, merge, deployment, real OpenClaw or later gate.
 
+### 10.44 W001 unresolved-ID correction and requalification packet
+
+PR `#361` merged the reviewed real-author boundary at `8d1c017…`; PR `#362`
+merged its reviewed snapshot at `ff5ce7b…`. The two later Ryan grants are consumed.
+The first stopped during zero-effect read-only preflight on the expected absent output
+lineage. The corrected successor passed preflight, launched exactly one no-site
+process and failed closed with exit `1`, stage `DEPENDENCY_CLOSURE`, and
+`Refusal: W001: input ID prefix` after `54,052,776` real-input bytes. Peak RSS was
+`2,059,636,736`; subprocess and every forbidden-access counter were zero; all four
+output coordinates remain absent; no receipt, result, ledger, role file or
+cardinality exists.
+
+The read count is the exact difference between the immutable packet's
+`654,147,403` total bytes and `600,094,627` object-payload bytes. The refusal
+therefore occurred in the last raw-UTF-8-sorted non-object role,
+`unresolved.jsonl`, before an object payload or the disposition was opened. The
+prior independent packet/disposition review recorded all 98,608 immutable IDs in
+the exact form `unresolved_sha256:<64 lowercase hexadecimal characters>`. The
+accepted source instead validates and synthetically generates
+`unresolved:sha256:<64 lowercase hexadecimal characters>`, allowing the synthetic
+producer and validator to agree with each other while drifting from real input.
+
+The sole correction is closed:
+
+1. use literal `unresolved_sha256:` in the real validator, full-ID recomputation and
+   synthetic generator through one shared production path;
+2. keep the canonical unresolved-row body and lowercase SHA-256 computation
+   unchanged;
+3. add, within existing `W001`, an otherwise-valid synthetic row using the former
+   `unresolved:sha256:` spelling and require fail-closed before governed output;
+4. expose at most role, field and row ordinal in an external identifier refusal,
+   never the identifier or other input content; and
+5. reject aliases, dual-prefix acceptance, punctuation normalization, translation,
+   fallback parsing, packet/disposition rewrite and caller-selected grammar.
+
+This correction creates no `W043`, `F011`, schema, role, wrapper, sidecar, reader or
+acceptance exception. `F010` remains the sole transaction-drift control. All other
+identifiers, mappings, serializers, packet-tree rules, identity adapters,
+cardinalities and ceilings are unchanged. The same-length literal correction does
+not change any lower-bound byte calculation.
+
+The accepted root `946b469…/v4`, tree `291cf777…`, is immutable evidence and may
+not be edited, copied, executed again or used on real input. The only possible next
+execution is a separately granted full synthetic capability freeze at:
+
+```text
+AUTHORIZATION_BASE_MAIN_SHA=ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c
+PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+CORRECTED_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c/v4.partial
+CORRECTED_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c/v4
+CORRECTED_PARTIAL_ROOT_STATUS=ABSENT
+CORRECTED_FINAL_ROOT_STATUS=ABSENT
+AUTHORIZED=false
+```
+
+Any pre-existence is `PAUSE`. A later grant may name only the unchanged
+`synthetic-freeze` command, fourteen-member no-site argv, five-key environment,
+one-process/zero-subprocess boundary, one-GiB write and two-GiB RSS ceilings,
+row-zero and parent-directory durability barriers, 22-event/two-null ledger and zero
+external access. It grants no real packet/disposition content read and no
+`author-packet` execution. The clean baseline and all 52 controls must pass in exact
+`F001`–`F010`, `W001`–`W042` order, after which a plan-only binding records every
+new six-member identity, tree, receipt, ledger and counter for Kiro review.
+
+The route is plan exact-tip review, Ryan PR/merge decision, exact-main review, a
+fresh two-SHA synthetic-freeze grant, result binding and review, then a separately
+planned/reviewed/granted real-author operation with fresh output coordinates. The
+consumed grants, old candidate, plan, review and merge are non-reusable as execution
+authority. This section authorizes only the four planning-document edits and exact-
+tip review; it authorizes no read, root/source creation, freeze, author execution,
+retry, acquisition, build, publication, implementation, PR creation, merge,
+deployment, real OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
