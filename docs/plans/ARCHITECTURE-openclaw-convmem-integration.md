@@ -9921,6 +9921,189 @@ admission, product/test/config/R2b change, implementation, PR `#342` update, PR
 creation, merge, deployment, real OpenClaw, live data, watch activation, promotion or
 Gate D/W/D-V/E/F action. The consumed retry grant cannot be reused.
 
+### 18.45 One-shot real work-item author grant boundary
+
+PR `#359` squash-merged the exact §18.44/§10.42 capability binding at
+`02bf65c2b4c4930da632d5a9c818f8e8047d05de`; Kiro returned exact-main PASS.
+PR `#360` then squash-merged the descriptive current-state snapshot at
+`ca0397c084b2616809307249212b7153d9d8ba39`. Candidate tree
+`291cf77798b652a41512902a5bc40a107afa661abf2edec53fa3f32e7158ff20`
+is therefore the sole accepted v4 author-capability candidate. The process result's
+`accepted=false` remains the correct historical non-self-acceptance value and is not
+a current rejection of the candidate.
+
+This section closes the exact authority boundary for one possible later real
+`author-packet` process. It does not grant that process. The already-frozen author,
+command contract, input identities, output schemas, transaction, controls and
+ceilings remain unchanged.
+
+#### 18.45.1 Accepted author, immutable inputs and fresh output coordinates
+
+```text
+WORK_ITEM_REAL_AUTHOR_PLAN_AUTHORIZATION_BASE_MAIN_SHA=ca0397c084b2616809307249212b7153d9d8ba39
+WORK_ITEM_REAL_AUTHOR_PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+WORK_ITEM_REAL_AUTHOR_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+WORK_ITEM_REAL_AUTHOR_OPERATION_STATUS=PLAN_ONLY
+WORK_ITEM_REAL_AUTHOR_AUTHORIZED=false
+
+WORK_ITEM_AUTHOR_CAPABILITY_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4
+WORK_ITEM_AUTHOR_CAPABILITY_TREE_SHA256=291cf77798b652a41512902a5bc40a107afa661abf2edec53fa3f32e7158ff20
+WORK_ITEM_AUTHOR_CAPABILITY_MEMBER_COUNT=6
+WORK_ITEM_AUTHOR_CAPABILITY_MEMBER_MODE=0444
+WORK_ITEM_AUTHOR_CAPABILITY_TOTAL_BYTES=196646
+WORK_ITEM_AUTHOR_SOURCE_SHA256=fcfc60c21623093e75fef7d0cc88eba7481d16fe8a096b20cba3263124d1da07
+WORK_ITEM_AUTHOR_COMMAND_CONTRACT_SHA256=c413185ef0a90d1e8785655abcdbece0ce94fba42fdaba89a79c6336deb2ba40
+WORK_ITEM_AUTHOR_DEPENDENCY_MANIFEST_SHA256=b96ea9a50e60f8aad2cf8cf2861a81cb3c49bcd557d728bceb4f7a5ec17cad63
+WORK_ITEM_AUTHOR_FIXTURE_SPEC_SHA256=d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f
+WORK_ITEM_AUTHOR_FREEZE_MANIFEST_SHA256=217e256fce5121f08a5687fba1b2ed4d11f0beeaaa7dd9fb6efe9a58c0ba2005
+WORK_ITEM_AUTHOR_SELF_TEST_RECEIPT_SHA256=3b01f77c48990d115e962d8798820110553962cc2145e2e177872a4ee4932092
+
+INPUT_PACKET_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet
+INPUT_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+INPUT_PACKET_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+INPUT_PACKET_MEMBER_COUNT=902
+INPUT_PACKET_FILE_COUNT=663
+INPUT_PACKET_DIRECTORY_COUNT=239
+INPUT_PACKET_BYTES=654147403
+INPUT_DISPOSITION=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review/review-disposition.json
+INPUT_DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+INPUT_DISPOSITION_BYTES=8383806
+TOTAL_REAL_INPUT_READ_BYTES=662531209
+
+STAGING_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3.partial
+STAGING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+DURABLE_PARTIAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3.partial
+DURABLE_FINAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+STAGING_PARTIAL_ROOT_STATUS=ABSENT
+STAGING_FINAL_ROOT_STATUS=ABSENT
+DURABLE_PARTIAL_ROOT_STATUS=ABSENT
+DURABLE_FINAL_ROOT_STATUS=ABSENT
+```
+
+The accepted six-file root and both real inputs are immutable. A grant-time
+preflight must reproduce the accepted root mode `0555`, the six member modes `0444`,
+link counts one, sizes and SHA-256 values from §18.44.1 using metadata and read-only
+hashing only. It must verify the packet root mode `0555`, the disposition's exact
+regular-file identity and all four output-coordinate absences without opening packet
+members or disposition content. Each output coordinate is single-assignment: any
+pre-existence, identity mismatch or unexpected type/link/mode is `PAUSE`, with zero
+processes and zero content bytes read. The preflight may not create a parent, partial,
+final, author copy, wrapper, log or sidecar.
+
+The milestone-only overlay binds the semantic parent after that commit exists. The
+reviewed overlay is supplied externally as the exact Kiro review tip because a commit
+cannot contain its own SHA. Any later grant must name both full SHAs; the symbolic
+values above are not executable authority.
+
+#### 18.45.2 Exact process grant
+
+The sole admissible real command remains the literal twenty-member array already
+sealed in `command-contract.json`:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4/work-item-author-v4.py",
+  "author-packet",
+  "--input-packet-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet",
+  "--input-disposition",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review/review-disposition.json",
+  "--staging-root",
+  "/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--durable-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4/freeze-manifest.json"
+]
+```
+
+The cwd is exactly the accepted v4 root. The complete environment is exactly
+`LANG=C.UTF-8`, `LC_ALL=C.UTF-8`, `PYTHONDONTWRITEBYTECODE=1`,
+`PYTHONHASHSEED=0`, and `PYTHONNOUSERSITE=1`. Launch is direct `execve` semantics:
+no shell, wrapper, inherited descriptor, extra argument, extra environment member,
+path substitution, import, copy or source rewrite.
+
+Ryan's later grant must name, in one decision, the exact plan semantic parent and
+reviewed overlay, authorization-base main SHA, accepted author tree and all six
+member identities, packet and disposition identities, four absent output
+coordinates, exact argv/cwd/environment, one-process rule, content-read ceilings,
+write/RSS ceilings, stop conditions and returned evidence. No earlier grant, PASS,
+merge, candidate acceptance or `CONTINUE` supplies any part of that authority.
+
+#### 18.45.3 One-pass transaction and ceilings
+
+After successful preflight, exactly one no-site process may run. It independently
+revalidates the accepted author and inputs under the frozen §18.31–§18.44 rules,
+opens each of the 663 packet files and the disposition content at most once, and
+reads exactly `662,531,209` governed input bytes. It creates neither partial root
+until both inputs, the 902-row packet-tree identity and the complete disposition have
+validated. It then exclusive-creates only the exact staging and durable `.partial`
+roots and performs the unchanged seven-role/fixed-point/durability transaction.
+
+Success requires exactly 1,221 component items, 19 ownership-dispute items, 98,608
+unresolved IDs, 30,421 paths, 1,384 edges, twenty batches and 49 pages in each
+seven-file packet; packet members are `0444`, `packet/` and both final roots are
+`0555`, and `authoring-result.json` is `0400`. The unchanged result schema is
+`convmem.switchboard.work-item-authoring-result.v2`; structural status is `PASS`,
+provenance/licensing remains `PAUSE`, and every authorization/eligibility field
+remains false. The real identity adapter supplies freeze-manifest SHA-256
+`217e256f…` and self-test-receipt SHA-256 `3b01f77c…`; no synthetic predecessor is
+admissible.
+
+The hard ceilings are one process, zero subprocesses, peak RSS at most
+`2,147,483,648`, at most `2,147,483,648` written bytes per output root and at most
+`4,294,967,296` total written bytes. Network requests, runtime/repository/retained-
+source reads, credentials, acquisitions and every non-input content read remain
+zero. There is no retry, resume, repair, deletion, cleanup, partial acceptance or
+second input pass. Failure preserves the exact coordinate state where execution
+stopped and returns `PAUSE`.
+
+#### 18.45.4 Returned evidence and acceptance boundary
+
+The supervisor returns, outside both output roots, the exact process count, exit
+status, reported status, input bytes by role, output bytes by root, peak RSS,
+subprocess/network/forbidden-access counters, both partial/final presence states,
+both final tree identities when present, and the external SHA-256 and byte size of
+each `authoring-result.json`. The result does not self-hash. The returned evidence is
+not a seventh packet role, sidecar or acceptance authority.
+
+Even a zero exit and two byte-identical structurally passing packets cannot accept
+their own provenance, licensing, acquisition, build or publication conclusions.
+Success advances only to a plan-only exact-result binding and Kiro review. Any later
+independent provenance/licensing review, acquisition, build, publication, CI
+admission, implementation or real OpenClaw use requires a separately reviewed packet
+and a separate Ryan grant.
+
+#### 18.45.5 Sequence and authority boundary
+
+The only admissible sequence is: Kiro exact-tip review of this two-commit plan;
+Ryan's PR decision; squash merge and exact-main confirmation; a current-state
+snapshot if required; one fresh Ryan two-SHA grant naming the still-absent roots and
+the exact boundary above; one supervised process; plan-only result binding and Kiro
+review; then a separately granted independent review. Kiro PASS, PR creation, merge
+and descriptive snapshots do not collapse or imply the later grant.
+
+Every §18.31–§18.44 schema, mapping, parser, serializer, identity adapter, seven
+output roles, packet-tree recipe, cardinality, control, ledger, fixed-point rule,
+durability barrier, command member, environment member and ceiling remains
+unchanged. No new schema, role, control, `F011`, wrapper, reader, sidecar, exception
+or acceptance transfer is introduced.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no input-content read, output parent/root/file creation,
+author execution, retry, repair, network, subprocess, acquisition, ownership/license
+selection, build, publication, CI admission, product/test/config/R2b change,
+implementation, PR `#342` update, PR creation, merge, deployment, real OpenClaw,
+live data, watch activation, promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
