@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-24
+**Updated:** 2026-10-05
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,17 +9,19 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
-  held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
-  preserves integration tip `9c6421a` and routes its 44-path remediation to
-  exact-tip Kiro review, then a new Ryan resume decision. Start with
-  [`STATUS-openclaw-convmem-integration.md`](../plans/STATUS-openclaw-convmem-integration.md)
-  for the exact published packet and owner. The active Codex supervisor must
-  reconcile any newer review/grant/checkpoint before choosing work; this is not
-  a new hold, acceptance verdict or authorization. The old final-review prompt
-  is retired: do not restart Astra/Kiro on `cd9d269`, M3, or runtime setup.
-  This documentation cleanup is not a prerequisite for Switchboard's existing
-  workflow and does not authorize code, tests, runtime changes, merge or live use.
+- **Arc ConvMem Switchboard — one-shot real work-item author AUTHORIZED / NOT
+  STARTED (2026-10-05):** PR `#361` merged the exact §§18.45/10.43 boundary at
+  `8d1c017`, Kiro returned exact-main PASS, and PR `#362` merged the reviewed
+  snapshot at `ff5ce7b`. Ryan then granted exactly one offline `author-packet`
+  process governed by semantic parent `31d4c919…` and reviewed overlay
+  `d7f82fbc…`. Astra may read the immutable packet/disposition once and create only
+  the four still-absent single-assignment outputs under the frozen ceilings. Resume
+  from
+  [`CODEX-2026-10-05-openclaw-convmem-real-author-execute.md`](CODEX-2026-10-05-openclaw-convmem-real-author-execute.md)
+  and the current
+  [`STATUS-openclaw-convmem-integration.md`](../plans/STATUS-openclaw-convmem-integration.md).
+  Any discrepancy is `PAUSE`; no repair, second attempt, independent review, PR,
+  merge, acquisition, build, publication or later gate is authorized.
 - **Arc Poison Pill — Part B write guard MERGED ([#338](https://github.com/alanmz-crypto/convmem/pull/338), `d521281`), watcher deployed (Claude, 2026-09-24):**
   every production Chroma write now runs under a crash-containment guard. `.worktrees/runtime-main` was fast-forwarded,
   restore points were created (332 MB in `~/.local/share/convmem/chroma.write-guard/`), and `doctor` reports
