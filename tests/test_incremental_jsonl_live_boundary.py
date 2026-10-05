@@ -54,7 +54,7 @@ def _route(cfg: dict, source: Path) -> tuple | None:
         cfg=cfg,
         idx=cfg["index"],
         path=str(source),
-        path_key=str(source),
+        path_key=str(source.expanduser().resolve()),
         file_hash="changed",
         processed={},
         models={},
@@ -89,7 +89,7 @@ def test_live_boundary_rejects_symlink_and_role_overlap(tmp_path: Path) -> None:
     alias = tmp_path / "alias.jsonl"
     alias.symlink_to(source)
     cfg["index"]["incremental_jsonl"]["live_sources"] = [str(alias)]
-    with pytest.raises(IsolationViolation, match="symlink"):
+    with pytest.raises(IncrementalJsonlConfigError, match="canonical"):
         ProductionBoundary(cfg, alias)
     cfg["index"]["incremental_jsonl"]["live_sources"] = [str(source)]
     cfg["index"]["incremental_jsonl"]["state_dir"] = cfg["index"]["chroma_dir"]
@@ -110,6 +110,24 @@ def test_live_source_configuration_rejects_duplicate_grants(tmp_path: Path) -> N
     cfg["index"]["incremental_jsonl"]["live_sources"] = [str(source), str(source)]
     with pytest.raises(IncrementalJsonlConfigError, match="duplicate"):
         incremental_jsonl_settings(cfg)
+
+
+def test_live_source_configuration_rejects_noncanonical_grants(tmp_path: Path) -> None:
+    cfg, source = _fixture(tmp_path)
+    alias = tmp_path / "alias.jsonl"
+    alias.symlink_to(source)
+    for invalid in (str(alias), str(source.parent / ".." / "source" / source.name)):
+        cfg["index"]["incremental_jsonl"]["live_sources"] = [invalid]
+        with pytest.raises(IncrementalJsonlConfigError, match="canonical"):
+            _route(cfg, alias)
+
+
+def test_symlinked_input_cannot_bypass_selected_live_boundary(tmp_path: Path) -> None:
+    cfg, source = _fixture(tmp_path)
+    alias = tmp_path / "alias.jsonl"
+    alias.symlink_to(source)
+    with pytest.raises(IsolationViolation, match="symlink"):
+        _route(cfg, alias)
 
 
 @pytest.mark.parametrize("bad", [0, -1, True, "768"])

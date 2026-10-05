@@ -423,6 +423,14 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
             "index.incremental_jsonl.live_sources must be exact absolute paths",
         )
     live_sources = tuple(str(Path(source).expanduser().absolute()) for source in raw_sources)
+    if any(
+        Path(source).resolve(strict=False) != Path(source)
+        for source in live_sources
+    ):
+        raise IncrementalJsonlConfigError(
+            "noncanonical_live_source",
+            "index.incremental_jsonl.live_sources must contain canonical paths without symlinks",
+        )
     if len(set(live_sources)) != len(live_sources):
         raise IncrementalJsonlConfigError(
             "duplicate_live_source",

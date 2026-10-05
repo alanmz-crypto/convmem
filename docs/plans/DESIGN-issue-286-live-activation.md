@@ -64,6 +64,9 @@ Keep the existing `enabled = false` default. Production routing requires an
 additional explicit exact-path source grant in configuration (no wildcard or
 directory-only grant for the first live slice). `enabled = true` without a
 source grant remains inert and observable, not `"skipped"` for a changed file.
+Grant paths must already be canonical: a symlink or `..` component is a
+configuration error before source selection, so ingest's resolved `path_key`
+cannot silently miss a configured source and fall through to legacy indexing.
 Selected live sources also require an explicit positive embedding dimension;
 the coordinator's historical default of 8 is a hermetic fake-provider value
 and must never be assumed for the live model. A wrong dimension fails before
