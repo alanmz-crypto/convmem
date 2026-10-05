@@ -3179,6 +3179,89 @@ execution, read, packet/result, acquisition, build, publication, implementation,
 creation/update, merge, real OpenClaw or later gate. The consumed retry grant is not
 reusable.
 
+### 10.43 One-shot real work-item author grant packet
+
+PR `#359` merged the exact §18.44/§10.42 capability binding at
+`02bf65c2b4c4930da632d5a9c818f8e8047d05de`, Kiro returned exact-main PASS, and
+PR `#360` merged its descriptive snapshot at
+`ca0397c084b2616809307249212b7153d9d8ba39`. Candidate tree `291cf777…` is the
+sole accepted v4 author-capability candidate. This section specifies, but does not
+authorize, one later real author process.
+
+The grant packet is closed by these identities:
+
+```text
+AUTHORIZATION_BASE_MAIN_SHA=ca0397c084b2616809307249212b7153d9d8ba39
+PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+AUTHOR_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4
+AUTHOR_TREE_SHA256=291cf77798b652a41512902a5bc40a107afa661abf2edec53fa3f32e7158ff20
+PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+PACKET_BYTES=654147403
+DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+DISPOSITION_BYTES=8383806
+TOTAL_INPUT_BYTES=662531209
+PROCESS_COUNT=1
+SUBPROCESSES=0
+MAX_PEAK_RSS_BYTES=2147483648
+MAX_WRITTEN_BYTES_PER_ROOT=2147483648
+MAX_TOTAL_WRITTEN_BYTES=4294967296
+AUTHORIZED=false
+```
+
+The milestone-only overlay records the semantic-parent SHA after that commit exists.
+The reviewed-overlay SHA is supplied externally in Kiro's exact-tip review target and
+any later grant because no commit can contain its own identity. Symbolic values are
+never accepted at grant time.
+
+Before a later grant can be consumed, the supervisor must read-only stat/hash the
+accepted `0555` six-file root and its six `0444`, link-count-one members; verify only
+the packet/disposition metadata required to bind their types, modes and identities;
+and `lstat` the exact staging/durable partial/final coordinates. It must not open
+packet members or disposition content during preflight. All four output coordinates
+must be absent. Any pre-existing coordinate or identity/type/link/mode mismatch is
+`PAUSE` with `PROCESS_COUNT=0`, `TOTAL_INPUT_BYTES=0` and no created path.
+
+The sole later process is the exact twenty-member `author-packet` vector sealed in
+`command-contract.json`: interpreter, literal `-S`, accepted v4 source, verb, then
+the ordered packet, disposition, staging, durable, command-contract, dependency-
+manifest, receipt and freeze-manifest flag/value pairs. Its cwd is the accepted v4
+root. Its environment is exactly `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`,
+`PYTHONDONTWRITEBYTECODE=1`, `PYTHONHASHSEED=0`, `PYTHONNOUSERSITE=1`. It is
+launched directly, without shell, wrapper, extra argument/environment, inherited
+descriptor, author copy or imported alternate path.
+
+The process independently revalidates the author and both inputs, reads each of the
+663 packet files and the disposition at most once, and consumes exactly
+`662,531,209` governed input bytes. No output root may exist before both complete
+inputs and the 902-row packet-tree identity validate. It then follows the unchanged
+exclusive-create, seven-role, fixed-point, file/directory-fsync and atomic-publication
+transaction for both roots. Success has 1,240 primary items, 98,608 IDs, 30,421
+paths, 1,384 edges, twenty batches and 49 pages; packet members are `0444`, result
+files `0400`, packet/final directories `0555`. The real identity adapter uses actual
+freeze-manifest `217e256f…` and self-test receipt `3b01f77c…`.
+
+The supervisor enforces one process, zero subprocesses, 2-GiB peak RSS, 2-GiB writes
+per root, 4-GiB total writes and zero network/runtime/repository/retained-source/
+credential/acquisition access. Failure has no retry, repair, resume, deletion,
+cleanup or second input pass. It preserves the exact coordinate state and returns
+`PAUSE`.
+
+Returned evidence includes exact exit/reported status, process and forbidden-access
+counters, input bytes by role, written bytes by root, peak RSS, coordinate presence,
+final tree identities, and external result hashes/sizes. Results never self-hash and
+cannot accept themselves. A success permits only a later plan-only result binding
+and Kiro review; independent provenance/licensing review and every subsequent
+operation remain separately Ryan-gated.
+
+The only allowed progression is exact-tip Kiro review of this plan, Ryan's PR/merge
+decision, exact-main confirmation, one fresh two-SHA execution grant, one supervised
+process, plan-only result binding and review, then a separately granted independent
+review. No prior grant is reusable. This section authorizes only the four planning-
+document edits and exact-tip review; it authorizes no input-content read, output-root
+creation, execution, retry, acquisition, build, publication, implementation, PR
+creation, merge, deployment, real OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
