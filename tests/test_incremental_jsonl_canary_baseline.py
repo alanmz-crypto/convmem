@@ -14,7 +14,9 @@ BASELINE_HASHES = {
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
     "watch.py": "ff226b0890017175af2664a8d5da49a9a31eca9a9ee750084b6535995a94cb7c",
     "ingest.py": "a3c20269537735a096921bdfd25451c403a83305c1d7f729962b453bd6a7a4f3",
-    "incremental_jsonl.py": "33cb607b306a406399af68c0b0c28dc3b1155c96ad466399249b69d11d4d9cb8",
+    # Refreshed for issue #286's gated live route and one-shot bootstrap;
+    # the canary remains unreachable from the CLI and watcher.
+    "incremental_jsonl.py": "9a73eb7e043d74eeedd17239b61302a35d2d783f0999e6c006f20737e1d81721",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

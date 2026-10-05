@@ -2,8 +2,10 @@
 
 **Arc: Trapdoor Hunt (#286), using the Arc Codex incremental engine.**
 **State:** Kiro design PASS at `e4fa954`; RC-1 through RC-3 bind the branch
-implementation. Copilot safety audit and exact-tip documentation recheck remain
-open. No live grant.
+implementation. Copilot safety audit PASS at `f1de192`; Copilot's older
+integration documentation-acceptance recheck PASS at `19d34a5`. Kiro passed
+the canonical-path correction at `4a7d38a`. Final exact-tip rechecks remain.
+No live grant.
 **Base:** `origin/main` `ff5ce7b` on 2026-10-05.
 
 ## Product result and boundary

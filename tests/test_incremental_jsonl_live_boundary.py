@@ -353,6 +353,16 @@ def test_watcher_route_cannot_resume_one_shot_bootstrap(
         boundary, source, cfg=cfg, chunk_size=2
     ).run()
     assert watcher.outcome == "bootstrap_requires_one_shot"
+    wrong_grant = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256="0" * 64,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+    ).run()
+    assert wrong_grant.outcome == "bootstrap_replay_grant_mismatch"
     assert not list(Path(cfg["index"]["incremental_jsonl"]["state_dir"]).glob("*/checkpoint.json"))
 
 

@@ -19,10 +19,23 @@ At Ryan's subsequent request, Codex stopped and disabled
 `MainPID=0`. The watcher remains off until Ryan separately authorizes a
 reviewed test or activation. A separate forced index process seen during the
 initial check had exited by the time the watcher stop was verified.
-The first design draft is
-`docs/plans/DESIGN-issue-286-live-activation.md`; it calls for a distinct
-production boundary, exact-source selection, and one-shot existing-source
-bootstrap before any watcher enablement.
+The pushed candidate now has the distinct production boundary, canonical
+exact-source selection, and one-shot existing-source bootstrap described in
+`docs/plans/DESIGN-issue-286-live-activation.md`. Copilot's static safety
+audit passed at `f1de192`; Kiro passed the canonical-path correction at
+`4a7d38a`. Copilot rechecked the older integration branch's documentation
+acceptance at `19d34a5` and returned PASS; Codex independently ran
+`git diff e99856e 19d34a5 --check` with exit 0. These earlier verdicts do
+not transfer to the final candidate tip. No live operation was performed.
+
+Candidate verification used fake providers and temporary real Chroma: 157
+focused route/recovery/coverage tests passed before the canonical-path fix;
+61 focused tests passed after it; 26 bootstrap/live tests passed after the
+audit's two suggested coverage additions; 99 canary tests passed after the
+expected source-hash pin was refreshed. One unrelated ingest-dedupe test could
+not open its hard-coded real writer-lock path inside this sandbox; it was not
+rerun against the live lock. Pylint errors-only passed for touched Python
+surfaces. The watcher stayed disabled throughout.
 
 > **This is an implementation handoff, not a collision check.** It asks Codex to
 > finish the one thing that actually reduces the burn: wiring the *merged,
@@ -38,7 +51,7 @@ bootstrap before any watcher enablement.
 |-------|--------|
 | **State** | Codex branch work authorized; production activation remains `BLOCKED_ON_RYAN` |
 | **Reviewed impl (PASS)** | `506afc1` on `feat/2026-09-17-issue-286-incremental-index` — Copilot PASS, Kiro PASS, no PR |
-| **Integration successor** | `19d34a5` on `feat/2026-09-17-issue-286-main-integration` — READY_FOR_RECHECK; pushed; **Copilot FAIL (documentation acceptance) outstanding at earlier tip `e99856e`**; needs fresh exact-tip Copilot + Kiro rechecks |
+| **Integration successor** | `19d34a5` on `feat/2026-09-17-issue-286-main-integration` — pushed, unmerged; prior Copilot documentation FAIL at `e99856e` was rechecked PASS at `19d34a5`; Kiro exact-tip recheck remains open |
 | **main at integration grant** | `18f63db` (re-fetch actual `origin/main` at start) |
 | **Copilot corrective branch** | `fix/2026-09-17-...-issue-286-copilot-corrective` `d14f8a6` — 0 commits ahead of origin/main (stale/folded; verify, do not assume) |
 | **PR** | none opened for any #286 branch |

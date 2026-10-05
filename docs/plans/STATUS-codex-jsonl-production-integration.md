@@ -71,8 +71,8 @@ Key invariants:
 | Hermetic isolation | Tokenized, fake-provider test boundary; it cannot be a live switch. |
 | Format registry | Kiro JSONL outside isolation; Codex history/rollout only inside isolation. Cursor JSONL and Crush SQLite are not eligible. |
 | Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
-| Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; exact-tip Copilot docs acceptance and Kiro rechecks are needed. |
-| Issue #286 live design | Fresh branch from origin/main ff5ce7b; Kiro design PASS at e4fa954. The branch has a distinct production boundary, exact-source gate, and one-shot bootstrap candidate under test; no live config or runtime promotion. |
+| Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot documentation-acceptance recheck PASS at that exact tip, with whitespace independently checked by Codex. Kiro exact-tip recheck remains open. |
+| Issue #286 live candidate | Fresh branch from origin/main ff5ce7b, pushed. Distinct production boundary, canonical exact-source gate, and one-shot existing-source bootstrap candidate; no live config or runtime promotion. Kiro design-condition recheck PASS at 4a7d38a; Copilot safety PASS at f1de192 before the canonical-path fix. |
 | Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
 
 ## 4. Completion State
@@ -80,30 +80,28 @@ Key invariants:
 | Milestone | State | Next gate |
 |---|---|---|
 | Coordinator and canary | Merged on main through PR #301; disabled | Preserve reviewed behavior |
-| S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged | Copilot/Kiro exact-tip recheck and Ryan PR decision |
-| Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Carry required conditions into implementation; Copilot audit pending |
-| Production boundary and exact-source gate | Implemented on branch; focused tests pass | Independent safety audit, broader regression and rollback proof |
-| Existing-source bootstrap | One-shot candidate implemented on branch; no live execution or grant | Broader rollback/replay proof, audit, Ryan budget/resource grant |
+| S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot docs recheck PASS | Kiro exact-tip recheck and Ryan PR decision |
+| Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserve conditions through final review |
+| Production boundary and exact-source gate | Implemented on branch; canonical-path correction at 4a7d38a passed focused tests and Kiro static recheck | Final exact-tip safety audit and broader regression gate |
+| Existing-source bootstrap | One-shot candidate, real temporary Chroma replay/rollback tests, no live execution or grant | Final exact-tip audit, Ryan budget/resource grant |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Codex is preparing issue #286 branch work under Ryan's 2026-10-05 proceed
-instruction. Copilot audits isolation and the earlier documentation-acceptance
-failure; Kiro reviews the same exact revision. Ryan alone merges and grants
-one-source bootstrap or any runtime promotion and watcher restart. Branch work
-and review do not authorize live-corpus access.
+Codex is closing the pushed live candidate under Ryan's 2026-10-05 proceed
+instruction. Copilot's earlier static safety review and the old integration
+documentation recheck passed; the final candidate still needs an exact-tip
+audit after the canonical-path correction and test additions. Kiro rechecks
+the final tip. Ryan alone merges and grants one-source bootstrap or any
+runtime promotion and watcher restart.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Review the design and reconcile the S0-S3 successor against current main.
-2. Implement a distinct production boundary and exact-source route without
-   loosening the hermetic contract; prove default-off, unrelated-source,
-   crash, rollback, and fail-closed behavior with temporary resources.
-3. Prove a one-shot existing-source bootstrap or retain the legacy route;
-   account for its one-time provider cost.
-4. Obtain fresh exact-tip Copilot and Kiro PASS verdicts and Ryan's PR decision.
-5. Obtain separate Ryan grants for any exact-source bootstrap and later
+1. Complete branch regression checks and exact-tip Copilot/Kiro rechecks;
+   resolve any findings before Ryan's PR decision.
+2. Confirm an exact Kiro source, its complete-prefix digest, current backup,
+   embedding dimension, and acceptable one-time transform budget.
+3. Obtain separate Ryan grants for that exact-source bootstrap and later
    runtime/config/restart test. Measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -201,11 +199,11 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-12 | Cursor | C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`; next lane is exact-tip Kiro recheck. No Claude, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | CI overlay-digest and writer-inventory corrective after repo-wide pytest failure on preserved `6cb0107`; next lane is Kiro exact-tip recheck of the new tip. Existing PR #301. No Claude, live Gate 0/P2, or replacement grant |
 
-| 2026-10-05 | Codex | Kiro passed live design; production boundary and exact-source gate implemented on branch while watcher remains disabled |
+| 2026-10-05 | Codex | Pushed guarded live route and one-shot bootstrap candidate; Kiro passed canonical-path correction, Copilot passed first safety audit and old docs acceptance; final exact-tip review remains |
 
 ## TL;DR
 
 - Arc Codex's coordinator and canary are on main, default off.
 - Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
-- Issue #286 activation needs a distinct production boundary, existing-source
-  bootstrap decision, and fresh exact-tip review before any live grant.
+- Issue #286 candidate has a distinct production boundary and bounded bootstrap;
+  final exact-tip review and Ryan's source/budget grants remain before any live use.

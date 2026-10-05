@@ -19,8 +19,9 @@ cross-arc snapshot and the linked arc brief below.
   live route refuses without the hermetic root. Already indexed sources also
   need an adoption or rebuild decision: the current coordinator returns
   `bootstrap_required`/`skipped` without a checkpoint. Codex is designing a
-  safe live boundary and one-shot bootstrap candidate; Copilot audits safety and
-  documentation acceptance, then Kiro reviews the exact tip. Resume from
+  guarded live boundary and one-shot bootstrap candidate on a pushed branch;
+  Copilot passed the first safety audit and old documentation recheck, while
+  final exact-tip review remains. Resume from
   [`CODEX-2026-10-05-issue-286-live-activation-handoff.md`](CODEX-2026-10-05-issue-286-live-activation-handoff.md)
   and the [live-activation design](../plans/DESIGN-issue-286-live-activation.md).
 
