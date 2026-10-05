@@ -3336,6 +3336,72 @@ tip review; it authorizes no read, root/source creation, freeze, author executio
 retry, acquisition, build, publication, implementation, PR creation, merge,
 deployment, real OpenClaw or later gate.
 
+### 10.45 Corrected capability-freeze result binding packet
+
+PR `#363` merged the exact W001 correction at `0a250b1…`, byte-identical to
+reviewed overlay `9241543…`, and Kiro returned exact-main PASS. PR `#364` merged
+the reviewed snapshot at `4f6266e…`. Ryan's separate exact two-SHA grant naming
+semantic parent `a64fdcf…`, reviewed overlay `9241543…` and the fresh
+`ff5ce7b…` coordinate was consumed once. One fourteen-member no-site process exited
+zero, reported `PASS`, used no real packet/disposition or external source, and
+atomically sealed the corrected six-file final root; the `.partial` sibling is absent.
+
+The exact binding is:
+
+```text
+GRANT_SEMANTIC_PARENT_SHA=a64fdcfe941743ef2b5f8d18829830a846d362a3
+GRANT_REVIEWED_OVERLAY_SHA=9241543c22b3d2f25e54cabd8ccb0203ed1feca5
+AUTHORIZATION_BASE_MAIN_SHA=4f6266e94c2add550ae15d456141536f9937dbf8
+PLAN_MERGED_MAIN_SHA=0a250b197ce316f058e2df6d974aedc68d3db0e4
+CORRECTED_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c/v4
+CORRECTED_PARTIAL_ROOT_PRESENT=false
+CORRECTED_FINAL_ROOT_PRESENT=true
+CORRECTED_FINAL_ROOT_MODE=0555
+CORRECTED_MEMBER_COUNT=6
+CORRECTED_MEMBER_MODE=0444
+CORRECTED_TOTAL_BYTES=197259
+CORRECTED_TREE_SHA256=939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396
+CORRECTED_SOURCE_SHA256=5550d1ecdc4a5375940166fe58232e2ba25d821e37478a6fe1608a771c5597b0
+CORRECTED_RECEIPT_SHA256=920c0e0e74515b5b1304de59b2a32a00b55c949b11938f9b3ddd68b12213bce1
+CORRECTED_LEDGER_SHA256=959e64ba5782afbacb8eb94f0d7df297ee3351fe596ebc927c8c51b1a6932055
+PROCESS_EXIT_STATUS=0
+PROCESS_REPORTED_STATUS=PASS
+ACCEPTED=false
+ACCEPTANCE_STATE=PENDING_EXACT_TIP_KIRO_REVIEW
+```
+
+The final members are command contract `e5291097…` (3,544 bytes), dependency
+manifest `b96ea9a…` (10,921), fixture spec `d4e2a09b…` (476), freeze manifest
+`8291129e…` (969), receipt `920c0e0e…` (32,868) and corrected source
+`5550d1ec…` (148,481); each is a single-link `0444` file beneath the `0555` root.
+The source has 2,952 lines. The final tree digest is computed from that exact
+canonical six-row inventory.
+
+The baseline is clean. All 52 controls pass in exact `F001`–`F010`, then
+`W001`–`W042` order. W001 retains its prior input-tree mutation and additionally
+rejects obsolete `unresolved:sha256:` while the shared validator, full-ID
+recomputation and fixture generator use only authoritative `unresolved_sha256:`.
+There is no alias, normalization, `W043`, `F011` or 53rd control. The ledger contains
+22 events and exactly two null digests, for the receipt and freeze manifest. Forecast
+and observed writes both equal `323,537,343`; peak RSS is `2,059,636,736` below the
+unchanged two-GiB ceiling. Every nine durability counters equals one, all eight
+forbidden-access counters equal zero, process count is one and subprocess count zero.
+
+The coordinate, final root, members, evidence and consumed grant are immutable. The
+absent partial may not be recreated. `accepted=false` remains controlling because the
+process cannot accept itself. If and only if Kiro passes the exact two-commit binding,
+tree `939b8849…` becomes the sole accepted corrected v4 author-capability candidate
+for a later Ryan decision. A real author operation still needs a separate plan,
+review, merge confirmation and fresh two-SHA grant naming new absent outputs.
+
+All schemas, six freeze roles, seven output roles, cardinalities, parsers,
+serializers, packet-tree recipe, fourteen-/twenty-member argv, five-key environment,
+`F002` slices, 52-control set, F-before-W order, 22-event/two-null ledger,
+durability transaction, ceilings and zero-access rules remain unchanged. This section
+authorizes only four planning-document edits and exact-tip review; it authorizes no
+read, root/source creation, execution, retry, acquisition, build, publication,
+implementation, PR creation, merge, deployment, real OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip

@@ -129,10 +129,13 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │       └─ actual `unresolved_sha256:` vs author `unresolved:sha256:`
         │       └─ old candidate immutable/ineligible for real input
         │       └─ PR #363 merged at 0a250b1; Kiro exact-main PASS
-        │       └─ fresh ff5ce7b… synthetic-freeze roots absent; no freeze grant
+        │       └─ PR #364 merged reviewed snapshot at 4f6266e
+        ├─ §18.47 / §10.45 corrected capability-freeze result binding
+        │       └─ separate exact two-SHA grant consumed once
+        │       └─ tree 939b8849… sealed; receipt 920c0e0e…; 52/52 F-before-W
+        │       └─ accepted=false pending exact-tip Kiro review
         │
-        │ → Ryan decision on a separate two-SHA synthetic-freeze grant
-        │ → if granted, synthetic freeze → binding/review
+        │ → Kiro exact-tip review of corrected result binding
         │ → separately planned/granted real author at fresh output roots
         │ → separately planned exact origins
         │ → separately granted acquisition → clean build/review/publication
@@ -309,9 +312,13 @@ the author's wrong `unresolved:sha256:` spelling to the immutable packet's exact
 squash-merged that exact reviewed plan at
 `0a250b197ce316f058e2df6d974aedc68d3db0e4`, byte-identical to reviewed overlay
 `9241543c22b3d2f25e54cabd8ccb0203ed1feca5`; all six checks passed and Kiro
-returned exact-main PASS. Ryan's separate fresh two-SHA synthetic-freeze grant
-decision is next; merge, review and this snapshot authorize no source creation,
-freeze or retry.
+returned exact-main PASS. PR `#364` merged its reviewed snapshot at `4f6266e…`.
+Ryan's separate exact two-SHA synthetic-freeze grant was consumed once; the sole
+process sealed immutable tree `939b8849…`, receipt `920c0e0e…` proves exact
+F-before-W order and 52/52 controls, all nine durability counters are one, every
+forbidden-access counter is zero and resource ceilings hold. Sections 18.47/10.45
+bind that result with `accepted=false`; exact-tip Kiro review is next and authorizes
+no real read, root or process.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -337,7 +344,8 @@ the absent publishable qualified runtime.
 | Work-item author contract | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` landed §§18.31–18.39/§§10.29–10.37 with the closed schema/mappings, synthetic qualification, shared-core command, write ledger, packet-tree recipe and literal `-S` startup isolation; PR `#352` merged its descriptive snapshot at `0f84b4a` |
 | V4 synthetic capability freeze | **OLD CANDIDATE IMMUTABLE / REAL AUTHOR ATTEMPT PAUSED** — the first process sealed rejected tree `f6936649…`; the second stopped before rename and sealed `a9ceaa06…`; the third stopped at canonical `_blake2` and left one-file partial `99e4939d…`; the fourth sealed rejected tree `d399e356…` with W-before-F receipt order; the fifth sealed tree `291cf777…`, receipt `3b01f77c…` is exactly F-before-W, baseline and 52/52 controls pass, and Kiro accepted it under §18.44. The later real attempt exposed its source's W001 unresolved-ID grammar drift, so the tree remains immutable evidence and is no longer eligible for real input |
 | Real work-item author attempt | **BOTH GRANTS CONSUMED / FAIL-CLOSED W001 PAUSE** — PR `#361` landed §§18.45/10.43 at `8d1c017`; PR `#362` merged the reviewed snapshot at `ff5ce7b`; the first grant stopped before effects; the corrected successor launched once and exited `1` at `DEPENDENCY_CLOSURE` on `Refusal: W001: input ID prefix`; all four outputs remain absent and neither grant is reusable |
-| W001 unresolved-ID correction | **MERGED / KIRO EXACT-MAIN PASS** at `0a250b1` — PR `#363` landed §§18.46/10.44 byte-identical to reviewed overlay `9241543`; actual `unresolved_sha256:<64hex>`, rejection of the author's colon-style typo and W001–W042/F001–F010 remain bound; fresh `ff5ce7b…/v4.partial` and sibling final coordinates remain absent, `W001_CORRECTION_FREEZE_AUTHORIZED=false`, and no source, root or process is authorized |
+| W001 unresolved-ID correction | **MERGED / KIRO EXACT-MAIN PASS** at `0a250b1` — PR `#363` landed §§18.46/10.44 byte-identical to reviewed overlay `9241543`; PR `#364` merged its reviewed snapshot at `4f6266e`; actual `unresolved_sha256:<64hex>`, rejection of the author's colon-style typo and W001–W042/F001–F010 remain bound |
+| Corrected V4 capability freeze | **SEALED TECHNICAL PASS / KIRO REVIEW REQUIRED** — Ryan's separate one-shot grant was consumed; partial absent; final `0555` tree `939b8849…` has six single-link `0444` members and receipt `920c0e0e…`; clean baseline, exact 52/52 F-before-W controls, 22-event/two-null ledger, nine durability counters at one, zero forbidden access and resource ceilings pass; `accepted=false` remains controlling and no real author execution is authorized |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -382,6 +390,7 @@ the absent publishable qualified runtime.
 | V4 capability-freeze result binding | **MERGED / KIRO EXACT-MAIN PASS** at `02bf65c` — PR `#359`; tree `291cf777…`, receipt `3b01f77c…` | One process exited zero after a clean baseline and 52/52 controls; exact F-before-W receipt order, 22 events/two nulls, nine durability counters at one, equal 323,536,730-byte forecast/observed writes, 931,274,752-byte peak RSS and zero forbidden access are bound in §§18.44/10.42. Kiro exact-main PASS established the sole accepted v4 author-capability candidate. The process result's `accepted=false` remains historical non-self-acceptance; no real read or author run is authorized |
 | One-shot real-author grant boundary | **BOTH GRANTS CONSUMED / FAIL-CLOSED W001 PAUSE** — reviewed plan PR `#361` at `8d1c017`; snapshot PR `#362` at `ff5ce7b`; governing pair `31d4c919…` + `d7f82fbc…` | The first grant stopped before effects. The corrected successor passed preflight, but its sole process failed at `DEPENDENCY_CLOSURE` on W001. All four outputs remain absent; a new planning/review cycle is required before any correction or attempt |
 | W001 unresolved-ID grammar correction | **MERGED / KIRO EXACT-MAIN PASS** at `0a250b1` — PR `#363` | Actual packet/disposition IDs use `unresolved_sha256:` while both synthetic producer and accepted validator used `unresolved:sha256:`. The merged plan corrects only that literal, adds the former spelling as a W001 negative case and requires a separately Ryan-granted fresh synthetic capability freeze before any later real-author plan |
+| Corrected capability-freeze result binding | **PLAN-ONLY / KIRO REVIEW REQUIRED** — §§18.47/10.45 | Immutable tree `939b8849…`, receipt `920c0e0e…`, ledger `959e64ba…`, six members and exact counters are bound. Historical `accepted=false` prevents self-acceptance; only exact-tip Kiro PASS can establish the corrected candidate, and review grants no real read or execution |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -390,30 +399,25 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** the next substantive decision belongs to Ryan: whether
-to issue one fresh two-SHA grant for the corrected synthetic capability freeze merged
-in PR `#363`. Any grant must name merged plan main `0a250b1…`, the exact reviewed
-overlay `9241543…`, both fresh absent `ff5ce7b…` roots, the unchanged synthetic
-command/environment/ceilings, zero real packet/disposition access and every stop
-condition.
+**If Ryan sent you here now:** perform only a read-only exact-tip design/scope review
+of the two-commit §§18.47/10.45 corrected capability-freeze binding. Verify the exact
+six members, tree `939b8849…`, receipt `920c0e0e…`, F-before-W order, 52/52 controls,
+22-event/two-null ledger, nine durability counters, zero forbidden access, resource
+ceilings, preserved W001 grammar boundary and `accepted=false` hold.
 
-Do not infer that grant from PR `#363`, Kiro PASS, this snapshot, either consumed
-real-author grant or any prior synthetic grant. Do not inspect packet/disposition
-content, alter the old accepted root, create a fresh root/source, execute either
-command, retry, acquire, build, publish, deploy or run real OpenClaw.
+Do not inspect packet/disposition content, mutate or execute the sealed root, recreate
+the absent partial, transfer acceptance, create a real output root, run `author-packet`,
+retry, acquire, build, publish, deploy or run real OpenClaw. Review grants no later
+authority.
 
 ## 6. What remains before merge and before live use
 
-1. Ryan decides whether to issue one fresh two-SHA grant for the synthetic capability
-   freeze. PR `#363` merged §§18.46/10.44 at `0a250b1…` and Kiro returned exact-main
-   PASS, but neither event authorizes source or root creation, a freeze, a read or a
-   process. Any grant must name exact reviewed overlay `9241543…`, merged main
-   `0a250b1…`, both absent single-assignment `ff5ce7b…` roots and the unchanged
-   command/environment/52-control/ledger/ceiling contract. That grant reads no real
-   packet/disposition and
-   authorizes no `author-packet` process. Its result requires a separate plan-only
-   binding and Kiro review. Only an accepted corrected candidate can support a later,
-   separately planned/reviewed/granted real-author attempt at fresh output roots.
+1. Kiro reviews the exact two-commit §§18.47/10.45 result binding. The consumed
+   synthetic-freeze grant sealed immutable tree `939b8849…`; `accepted=false` remains
+   controlling until PASS. Only an accepted corrected candidate can support a later,
+   separately planned, reviewed, merged and Ryan-granted real-author attempt at fresh
+   output roots. Neither this binding nor review authorizes real packet/disposition
+   read, output-root creation or `author-packet` execution.
 2. A separate exact metadata/acquisition operation packet must name every allowed
    origin/root, method, redirect, parser, byte/request ceiling, checkpoint and fresh
    coordinate. Kiro review and another Ryan grant are required before any request,
@@ -552,8 +556,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.46 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.44 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.47 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.45 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -582,7 +586,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-05 | Codex | Recorded PR `#363` merged at `0a250b1` with Kiro exact-main PASS; Ryan's separate fresh two-SHA synthetic-freeze grant decision is next, and no execution is implied. |
+| 2026-10-05 | Codex | Bound the separately granted corrected synthetic freeze: immutable tree `939b8849…` and receipt `920c0e0e…` passed the frozen synthetic contract; `accepted=false` remains pending exact-tip Kiro review and no real execution is authorized. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -677,9 +681,12 @@ input bytes, with zero forbidden access and all four outputs absent. Sections
 literal, bind the immutable packet's exact `unresolved_sha256:` grammar and require a
 fresh synthetic capability freeze before any later real-author plan. PR `#363` merged
 that exact plan at `0a250b1`, byte-identical to reviewed overlay `9241543`; all six
-checks passed and Kiro returned exact-main PASS. Ryan's separate fresh two-SHA
-synthetic-freeze grant decision is next; merge, review and this snapshot authorize no
-source, root, freeze, read or process.
+checks passed and Kiro returned exact-main PASS. PR `#364` merged the reviewed
+snapshot at `4f6266e`. Ryan's separate one-shot synthetic-freeze grant then sealed
+tree `939b8849…` with receipt `920c0e0e…`, 52/52 controls, all durability counters
+at one and zero forbidden access. Sections 18.47/10.45 bind the immutable result;
+`accepted=false` remains controlling until exact-tip Kiro PASS. No real read, root or
+process is authorized.
 Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
