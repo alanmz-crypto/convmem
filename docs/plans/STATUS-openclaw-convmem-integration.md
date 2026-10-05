@@ -117,10 +117,11 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │       └─ granted 946b469… retry sealed candidate tree 291cf777…
         │       └─ baseline clean; 52/52; receipt F001–F010 then W001–W042
         │       └─ all durability counters one; all forbidden-access counters zero
-        │       └─ capability acceptance pending exact-tip Kiro review
+        │       └─ PR #359 merged at 02bf65c; Kiro exact-main PASS
+        │       └─ sole accepted v4 author-capability candidate; no execution grant
         │
-        │ → exact-tip Kiro capability review
-        │ → separately granted offline work-item packet + independent review
+        │ → Ryan decision on a separate two-SHA offline-authoring grant
+        │ → if granted, one offline work-item packet + independent review
         │ → separately planned exact origins
         │ → separately granted acquisition → clean build/review/publication
         ▼
@@ -266,9 +267,13 @@ once; the sole no-site process completed the clean baseline, all 52 controls, th
 `PASS` and exited zero. Receipt `3b01f77c…` orders the complete controls exactly
 `F001`–`F010`, `W001`–`W042`; forecast equals observed at 323,536,730 bytes, peak RSS
 is 931,274,752 bytes, every durability counter is one and every forbidden-access
-counter is zero. Sections 18.44/10.42 bind that immutable candidate. Capability
-acceptance remains false pending Kiro review of the exact result-binding tip; the
-consumed grant is not reusable and no real authoring is authorized.
+counter is zero. PR `#359` squash-merged the reviewed §§18.44/10.42 binding at
+`02bf65c2b4c4930da632d5a9c818f8e8047d05de`, byte-identical to reviewed overlay
+`5e268c861442375e97beb70585e48b4b7c60c8af`, and Kiro returned exact-main PASS.
+Under §18.44.3, tree `291cf777…` is now the sole accepted v4 author-capability
+candidate for a later Ryan decision. The process result's `accepted=false` remains
+historically correct because the process could not accept itself; the consumed grant
+is not reusable and no real authoring is authorized.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -292,7 +297,7 @@ the absent publishable qualified runtime.
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
 | Work-item author contract | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` landed §§18.31–18.39/§§10.29–10.37 with the closed schema/mappings, synthetic qualification, shared-core command, write ledger, packet-tree recipe and literal `-S` startup isolation; PR `#352` merged its descriptive snapshot at `0f84b4a` |
-| V4 synthetic capability freeze | **FIFTH RETRY PASS / CAPABILITY REVIEW REQUIRED** — the first process sealed rejected tree `f6936649…`; the second stopped before rename and sealed `a9ceaa06…`; the third stopped at canonical `_blake2` and left one-file partial `99e4939d…`; the fourth sealed rejected tree `d399e356…` with W-before-F receipt order; PR `#357` merged the correction at `c5cb7c7` and Kiro returned exact-main PASS; Ryan's separately granted fifth retry sealed candidate tree `291cf777…`, receipt `3b01f77c…` is exactly F-before-W, baseline and 52/52 controls pass, durability/access/resource counters match, and capability acceptance remains false pending exact-tip Kiro review of §§18.44/10.42 |
+| V4 synthetic capability freeze | **CANDIDATE ACCEPTED / REAL AUTHORING RYAN-GATED** — the first process sealed rejected tree `f6936649…`; the second stopped before rename and sealed `a9ceaa06…`; the third stopped at canonical `_blake2` and left one-file partial `99e4939d…`; the fourth sealed rejected tree `d399e356…` with W-before-F receipt order; PR `#357` merged the correction at `c5cb7c7` and Kiro returned exact-main PASS; Ryan's separately granted fifth retry sealed tree `291cf777…`, receipt `3b01f77c…` is exactly F-before-W, baseline and 52/52 controls pass, durability/access/resource counters match; PR `#359` merged the binding at `02bf65c`, and Kiro exact-main PASS made that tree the sole accepted v4 author-capability candidate without authorizing real input or execution |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -334,7 +339,7 @@ the absent publishable qualified runtime.
 | V4 coordinate-parent durability-audit correction | **MERGED / KIRO EXACT-MAIN PASS** at `8e4bb2b` — PR `#355` | Sealed `a9ceaa06…` partial is immutable and its sibling final root is absent; fresh `b7a8ade…/v4.partial` and sibling final roots are absent; the correction permits only exact phase-bound directory handles for the pre-/post-rename parent barriers and grants no setup or execution authority |
 | V4 standard-library dependency-link retry correction | **KIRO PASS / RETRY CONSUMED** at `946b469` | Consumed `b7a8ade…/v4.partial` remains immutable PAUSE evidence; the separately granted `816b713…` retry proved the canonical stdlib reader correction and sealed a final root, but that final is rejected by the later receipt-order check and transfers no acceptance |
 | V4 self-test receipt control-order retry correction | **MERGED / KIRO EXACT-MAIN PASS** at `c5cb7c7` — PR `#357` | Sealed final tree `d399e356…` is immutable PAUSE evidence despite the process-reported PASS; its receipt orders `W001`–`W042` before `F001`–`F010`. Fresh `946b469…` coordinates remain absent; the merged correction adds only the already-required raw-ID aggregate receipt validator and grants no setup/read/execution authority |
-| V4 capability-freeze result binding | **SYNTHETIC PASS / KIRO REVIEW REQUIRED** — candidate tree `291cf777…`, receipt `3b01f77c…` | One process exited zero after a clean baseline and 52/52 controls; exact F-before-W receipt order, 22 events/two nulls, nine durability counters at one, equal 323,536,730-byte forecast/observed writes, 931,274,752-byte peak RSS and zero forbidden access are bound in §§18.44/10.42. `accepted=false` remains controlling until Kiro reviews this exact two-commit plan; no real read or author run is authorized |
+| V4 capability-freeze result binding | **MERGED / KIRO EXACT-MAIN PASS** at `02bf65c` — PR `#359`; tree `291cf777…`, receipt `3b01f77c…` | One process exited zero after a clean baseline and 52/52 controls; exact F-before-W receipt order, 22 events/two nulls, nine durability counters at one, equal 323,536,730-byte forecast/observed writes, 931,274,752-byte peak RSS and zero forbidden access are bound in §§18.44/10.42. Kiro exact-main PASS established the sole accepted v4 author-capability candidate. The process result's `accepted=false` remains historical non-self-acceptance; no real read or author run is authorized |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -343,13 +348,12 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** review the exact §§18.44/10.42 capability-result
-semantic parent and its milestone overlay. Confirm the branch is a linear two-commit
-plan from merged main `2c22898…`, the overlay changes only the milestone plan, sealed
-tree `291cf777…` and all six member identities match the returned evidence, receipt
-`3b01f77c…` contains exactly `F001`–`F010`,`W001`–`W042`, and every inherited
-§§18.31–18.43 contract remains unchanged. Return binary PASS/FAIL with confidence.
-This is read-only design/capability review; make no edits and run no author.
+**If Ryan sent you here now:** PR `#359` merged the exact §§18.44/10.42 binding at
+`02bf65c`, and Kiro returned exact-main PASS. The next substantive decision belongs to
+Ryan: whether to issue one fresh two-SHA grant for the held twenty-member
+`author-packet` operation. Any such grant must name the accepted candidate identities,
+immutable packet/disposition inputs, absent output roots, one-pass ceilings and stop
+conditions. The merge and reviews grant no read, process, root or real-author authority.
 
 Do not access a provenance origin or retained-source root, create a work-item/evidence
 packet, rerun a collector, read or mutate the runtime, edit the immutable packet or
@@ -360,14 +364,12 @@ OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Kiro reviews the exact two-commit §§18.44/10.42 result binding. The sealed candidate
-   `291cf777…` is immutable and the consumed retry grant is non-reusable. Review must
-   independently confirm six member identities, F-before-W receipt order, 22-event/
-   two-null ledger, equal forecast/observed writes, resource ceilings, nine durability
-   counters and zero forbidden access. A discrepancy is `PAUSE`; no regeneration,
-   mutation or second synthetic attempt is authorized.
-2. Only after Kiro PASS and Ryan's separate two-SHA decision may the accepted frozen
-   author read
+1. Ryan decides whether to issue one exact two-SHA real-author grant. PR `#359` and
+   Kiro exact-main PASS establish tree `291cf777…` as the sole accepted v4
+   author-capability candidate but authorize no execution. A future grant must bind the
+   exact candidate identities, immutable inputs, absent roots, one-pass read/write/RSS
+   ceilings, no network/runtime/retained-source access and all stop conditions.
+2. Only under that separate grant may the accepted frozen author read
    the immutable 654,147,403-byte packet and 8,383,806-byte disposition exactly once
    each within the 662,531,209-byte aggregate ceiling and create the exact seven-file
    v3 packet at fresh roots. An independent reviewer then proves the 1,240-item,
@@ -420,9 +422,9 @@ OpenClaw.
   at `45442e93…`, retains all 98,608 open IDs and is immutable.
 - No provenance HTTP/VCS request, retained-source read or artifact parsing before a
   separately reviewed origin-by-origin acquisition plan and exact Ryan grant.
-- No work-item root, packet or result before exact-tip Kiro PASS and a separate Ryan
-  offline-authoring grant; that future grant cannot include network, retained-source or
-  runtime access.
+- No work-item root, packet or result before a separate Ryan offline-authoring grant;
+  Kiro PASS is complete but grants no execution, and that future grant cannot include
+  network, retained-source or runtime access.
 - No real packet read through synthetic-only v3 author `8c6dd7e2…`; its immutable
   command/source admits no `author-packet` verb. A fresh reviewed v4 capability freeze,
   separate identity-binding overlay and exact Ryan real-run grant are mandatory.
@@ -454,8 +456,9 @@ OpenClaw.
   family concatenation, numeric-suffix sort or post-seal reorder is equivalent.
 - No mutation, deletion, chmod, rename, copy, hard-link, source reuse, re-execution,
   self-acceptance or real-input use of candidate tree `291cf777…` or receipt
-  `3b01f77c…`. They remain immutable review evidence until exact-tip Kiro PASS, and
-  any later `author-packet` process requires a new Ryan two-SHA grant.
+  `3b01f77c…`. Kiro exact-main PASS makes the tree the sole accepted capability
+  candidate, but it remains immutable and any later `author-packet` process requires a
+  new Ryan two-SHA grant.
 - No work-item omission, duplicate or reassignment: 1,221 component items, 19
   ownership-dispute items, 1,384 primary container-edge assignments and all 98,608
   open IDs remain exact. Batches and pages are derived views, never authority.
@@ -517,6 +520,7 @@ a separate repository-knowledge arc.
 | Coordinate-parent durability plan pull request | `https://github.com/alanmz-crypto/convmem/pull/355` — merged as `8e4bb2b`; Kiro exact-main PASS |
 | Coordinate-parent status pull request | `https://github.com/alanmz-crypto/convmem/pull/356` — merged as `3005206`; descriptive snapshot only |
 | Control-order correction pull request | `https://github.com/alanmz-crypto/convmem/pull/357` — merged as `c5cb7c7`; Kiro exact-main PASS |
+| Capability-result binding pull request | `https://github.com/alanmz-crypto/convmem/pull/359` — merged as `02bf65c`; Kiro exact-main PASS |
 | Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
@@ -527,7 +531,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-04 | Codex | Bound the one-shot synthetic PASS as immutable candidate tree `291cf777…`; exact-tip Kiro capability review is next, with no real-author authority. |
+| 2026-10-04 | Codex | Recorded PR `#359` merged at `02bf65c` with Kiro exact-main PASS; tree `291cf777…` is the sole accepted v4 author-capability candidate, and real authoring remains Ryan-gated. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -606,8 +610,10 @@ receipt-order correction at `c5cb7c7`, and Kiro returned exact-main PASS. Fresh
 `946b469…` roots were then consumed by one exact Ryan-granted retry. The sole process
 sealed six-file candidate tree `291cf777…`; receipt `3b01f77c…` is exactly F-before-W,
 the baseline and all 52 controls pass, forecast equals observed, every durability
-counter is one and every forbidden-access counter is zero. Sections 18.44/10.42 bind
-those identities while leaving capability acceptance false pending exact-tip Kiro
-review. No real packet/disposition read or authoring is authorized. Acquisition, binary
+counter is one and every forbidden-access counter is zero. PR `#359` merged the exact
+§§18.44/10.42 binding at `02bf65c`, and Kiro exact-main PASS established tree
+`291cf777…` as the sole accepted v4 author-capability candidate. The process result's
+`accepted=false` remains historical non-self-acceptance, and no real packet/disposition
+read or authoring is authorized. Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
