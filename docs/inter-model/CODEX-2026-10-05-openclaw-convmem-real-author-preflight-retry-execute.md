@@ -13,7 +13,7 @@ first grant's zero-effect read-only preflight `PAUSE` was recorded
 
 | Field | Value |
 |---|---|
-| **State** | `AUTHORIZED / NOT_STARTED` — one fresh preflight and at most one offline `author-packet` process |
+| **State** | `CONSUMED / PAUSE` — corrected preflight passed; the sole offline `author-packet` process exited `1` at `DEPENDENCY_CLOSURE` |
 | **Grant branch** | `plan/2026-10-05-openclaw-convmem-real-author-preflight-retry-grant` |
 | **Semantic parent** | `31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d` |
 | **Reviewed overlay** | `d7f82fbcd3afd3887d4b3764b173958d5094ee53` |
@@ -23,9 +23,63 @@ first grant's zero-effect read-only preflight `PAUSE` was recorded
 | **Consumed predecessor** | `d6ff557f8759db442221f8a0d1e88a83d5672543` — zero effects, non-reusable |
 | **Push status** | Read and execute only the exact pushed origin tip of this branch |
 | **PR** | Not opened; this grant authorizes no PR creation or merge |
-| **Ryan GATE** | None for this exact fresh attempt; every mismatch, deviation or further attempt requires a new Ryan grant |
+| **Ryan GATE** | Fresh planning and review are required before any correction or further attempt; this grant is non-reusable |
 
-## Authoritative fresh two-SHA grant
+## Consumed-attempt result
+
+The corrected component-wise no-follow preflight passed without reading packet or
+disposition content and without creating or mutating a path. Astra then launched the
+literal twenty-member command exactly once from the accepted final author root with
+the exact five-key environment. The process failed closed:
+
+```text
+PROCESS_COUNT=1
+SUBPROCESSES=0
+EXIT_STATUS=1
+REPORTED_STATUS=PAUSE
+STOP_STAGE=DEPENDENCY_CLOSURE
+EXCEPTION=Refusal: W001: input ID prefix
+REAL_INPUT_READ_BYTES=54052776
+PEAK_RSS_BYTES=2059636736
+RSS_CEILING_BYTES=2147483648
+ACCEPTED=false
+```
+
+The first missing component for both staging targets was
+`/home/lauer/.cache/convmem-switchboard-provenance-work-items`; the first missing
+component for both durable targets was
+`/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items`. Per the
+corrected rule, each `ENOENT` proved its two named partial/final descendants absent
+without probing beneath the missing component.
+
+All network, repository, runtime, retained-source, credential and acquisition counters
+were zero. All four authorized output coordinates remain absent; no output root,
+receipt, result, ledger, role file, hash, size, mode, link count or work-item
+cardinality exists. `baseline_count=0`, `controls=[]`, and the ledger and both
+forecast/observed written-byte fields are null. The process result's
+`final_exists=true` refers to the immutable accepted author-capability root, not an
+authorized output final root. No retry, repair, deletion, resume, second process,
+acceptance or later-gate action occurred.
+
+Durability counters stopped before the first governed event:
+
+```text
+ROW_ZERO_SETUP_FILE_FSYNC_COUNT=1
+ROW_ZERO_SETUP_DIRECTORY_FSYNC_COUNT=1
+GOVERNED_ROW_ZERO_FILE_FSYNC_COUNT=0
+GOVERNED_ROW_ZERO_DIRECTORY_FSYNC_COUNT=0
+EVENT_ONE_WRITE_AFTER_GOVERNED_FSYNC_COUNT=0
+COORDINATE_PARENT_PRE_RENAME_OPEN_COUNT=0
+COORDINATE_PARENT_PRE_RENAME_FSYNC_COUNT=0
+COORDINATE_PARENT_POST_RENAME_OPEN_COUNT=0
+COORDINATE_PARENT_POST_RENAME_FSYNC_COUNT=0
+```
+
+This evidence records a consumed fail-closed attempt only. It grants no diagnosis,
+source change, new root, retry, execution, read, acquisition, build, publication,
+implementation, PR, merge, deployment, real OpenClaw or later-gate authority.
+
+## Consumed two-SHA grant
 
 ```text
 SEMANTIC_PARENT_SHA=31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d
@@ -41,8 +95,9 @@ predecessor and grant-branch SHAs are traceability checks and cannot replace eit
 governing SHA. The normative contract is Architecture §18.45 retaining §§18.31–18.44,
 Execution §10.43, milestone M11/§7, current STATUS and this handoff.
 
-The predecessor grant stopped before effects and is not reused, resumed or repaired.
-This is one new decision. Any conflict, missing value or changed SHA is `PAUSE`.
+The predecessor grant stopped before effects and was not reused, resumed or repaired.
+This successor grant is also consumed and cannot be reused. Any future correction or
+attempt requires a new reviewed plan and a new Ryan decision.
 
 ## Sole correction: expected-absence ancestor handling
 
@@ -198,9 +253,9 @@ There is no retry, resume, repair, deletion, cleanup, partial acceptance, second
 pass or second process. Any failure preserves the exact coordinate state and returns
 `PAUSE`.
 
-## Required return and stop
+## Required return and stop — satisfied
 
-Return in chat, without a repository log:
+Astra returned in chat, without a repository log:
 
 - corrected-preflight outcome and the first missing component for each absent lineage;
 - process count, exit status, reported status and exact stop stage;
@@ -225,43 +280,26 @@ origin request; network/runtime/repository/retained-source/credential access;
 acquisition; ownership/license decision; repair; build; publication; CI admission;
 product/test/config/inventory/R2b edit; implementation; PR `#342` update; PR creation;
 merge; deployment; real OpenClaw; live data; watch activation; promotion; or Gate
-D/W/D-V/E/F action. Codex may later record returned evidence in a plan-only binding;
-that recording is not authorized until Astra returns.
+D/W/D-V/E/F action. Ryan's subsequent `record` direction authorizes only this
+handoff/LATEST/STATUS current-state update. It grants no diagnosis, correction or new
+attempt.
 
-## Copy-paste Astra prompt
+## Consumed-grant disposition
 
-```text
-You are Astra, the sole execution lane for one fresh bounded operation in Arc ConvMem
-Switchboard. Read the pushed fresh-grant tip and the complete
-CODEX-2026-10-05-openclaw-convmem-real-author-preflight-retry-execute.md handoff plus
-its normative plan sections before acting.
-
-Ryan issued one fresh grant governed by:
-SEMANTIC_PARENT_SHA=31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d
-REVIEWED_OVERLAY_SHA=d7f82fbcd3afd3887d4b3764b173958d5094ee53
-AUTHORIZATION_BASE_MAIN_SHA=ca0397c084b2616809307249212b7153d9d8ba39
-AUTHORIZED_MODE=author-packet
-
-The predecessor grant is consumed and non-reusable. Repeat preflight with the sole
-correction: during a no-follow component walk of each exact output lineage, the first
-ENOENT proves that component and named descendants absent; record it and stop that
-lineage without probing descendants. Every non-ENOENT error or mismatch is PAUSE.
-Preflight creates nothing and opens no packet member or disposition content.
-
-If every check passes, launch the literal frozen twenty-member argv once, direct from
-the accepted final-root cwd with the exact five-key environment. Enforce one process,
-662,531,209 governed input bytes in one pass, 2 GiB RSS, 2 GiB writes per root, 4 GiB
-total writes and zero forbidden access. Return the complete packet above and stop.
-No repository edit, PR, retry, independent review or later gate is authorized.
-```
+Do not copy, invoke or reinterpret the former Astra launch prompt. Both grants are
+consumed. The first stopped before effects at ancestor preflight; the second passed
+the corrected preflight and failed closed after one launch on `W001`. A later plan may
+diagnose that exact input-ID-prefix rejection, but this handoff supplies no authority
+to inspect content again, change the author, create a root or launch another process.
 
 ## TL;DR
 
-- Fresh grant: `31d4c919…` + `d7f82fbc…`, one corrected preflight and at most one
-  `author-packet` process; the consumed predecessor remains non-reusable.
-- On each exact output lineage, first `ENOENT` proves the named target absent and ends
-  that walk; non-`ENOENT` errors remain `PAUSE`; preflight creates and reads nothing.
-- Author `291cf777…`, immutable inputs, literal command/environment, four outputs,
-  schemas, cardinalities, ceilings, transaction and return evidence are unchanged.
-- No retry, self-acceptance, independent review, acquisition, build, publication, PR,
-  merge, real OpenClaw or later gate.
+- The fresh `31d4c919…` + `d7f82fbc…` grant is consumed: corrected preflight passed,
+  then the sole process exited `1` at `DEPENDENCY_CLOSURE` with `Refusal: W001: input
+  ID prefix`.
+- All four output coordinates remain absent. The process created no output receipt,
+  result, ledger or work-item files; forbidden-access counters remained zero.
+- Peak RSS was 2,059,636,736 bytes under the 2-GiB ceiling; 54,052,776 real-input
+  bytes were read before the fail-closed stop.
+- No retry, repair, self-acceptance, independent review, acquisition, build,
+  publication, PR, merge, real OpenClaw or later gate is authorized.

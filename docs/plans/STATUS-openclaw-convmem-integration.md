@@ -301,11 +301,16 @@ that grant at read-only preflight and stopped at `PAUSE`: its ancestor walker ra
 `FileNotFoundError` on the absent staging base. No process launched, no packet or
 disposition content was read, no byte was written and no path was created or mutated.
 All four outputs remain absent; the grant is non-reusable.
-Ryan has now issued one fresh grant with the same exact governing pair, author, inputs,
-outputs, command, ceilings and stops. Its sole correction treats the first `ENOENT` on
-each exact output lineage as proof that the named descendants are absent, then stops
-that lineage without probing below the missing component. Astra execution under this
-fresh grant is authorized and has not started.
+Ryan then issued one fresh grant with the same exact governing pair, author, inputs,
+outputs, command, ceilings and stops. Its sole correction treated the first `ENOENT`
+on each exact output lineage as proof that the named descendants were absent, then
+stopped that lineage without probing below the missing component. Corrected preflight
+passed and the sole process launched once, but it exited `1` at
+`DEPENDENCY_CLOSURE` with `Refusal: W001: input ID prefix`. It read 54,052,776
+real-input bytes, used 2,059,636,736 bytes peak RSS under the 2-GiB ceiling and made
+zero forbidden accesses. All four output coordinates remain absent; no receipt,
+result, ledger, role file or work-item cardinality exists. Both grants are consumed
+and non-reusable.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -329,8 +334,8 @@ the absent publishable qualified runtime.
 | Pre-acquisition and host-path plan | **MERGED / KIRO EXACT-MAIN PASS** at `5bcc6c7` — §§18.29/10.27 define lossless coverage, origin-candidate authority boundaries and clean replacement for three host-path-bearing ELFs; PR `#345` replaced conflicting `#344` with the same four-document plan reconstructed from exact current main; no acquisition or build is authorized |
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
 | Work-item author contract | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` landed §§18.31–18.39/§§10.29–10.37 with the closed schema/mappings, synthetic qualification, shared-core command, write ledger, packet-tree recipe and literal `-S` startup isolation; PR `#352` merged its descriptive snapshot at `0f84b4a` |
-| V4 synthetic capability freeze | **CANDIDATE ACCEPTED / ONE REAL AUTHOR RUN GRANTED, NOT STARTED** — the first process sealed rejected tree `f6936649…`; the second stopped before rename and sealed `a9ceaa06…`; the third stopped at canonical `_blake2` and left one-file partial `99e4939d…`; the fourth sealed rejected tree `d399e356…` with W-before-F receipt order; PR `#357` merged the correction at `c5cb7c7` and Kiro returned exact-main PASS; Ryan's separately granted fifth retry sealed tree `291cf777…`, receipt `3b01f77c…` is exactly F-before-W, baseline and 52/52 controls pass, durability/access/resource counters match; PR `#359` merged the binding at `02bf65c`, and Kiro exact-main PASS made that tree the sole accepted v4 author-capability candidate. Ryan's later exact one-shot real-author grant is now recorded separately and not started |
-| Real work-item author grant plan | **MERGED / KIRO EXACT-MAIN PASS / FRESH CORRECTED RETRY AUTHORIZED, NOT STARTED** — PR `#361` landed §§18.45/10.43 at `8d1c017`; PR `#362` merged the reviewed snapshot at `ff5ce7b`; the first `31d4c919…` + `d7f82fbc…` grant paused with zero effects and is non-reusable; Ryan issued one fresh grant changing only expected-`ENOENT` output-lineage handling, with all four outputs still absent |
+| V4 synthetic capability freeze | **CANDIDATE ACCEPTED / REAL AUTHOR ATTEMPT PAUSED** — the first process sealed rejected tree `f6936649…`; the second stopped before rename and sealed `a9ceaa06…`; the third stopped at canonical `_blake2` and left one-file partial `99e4939d…`; the fourth sealed rejected tree `d399e356…` with W-before-F receipt order; PR `#357` merged the correction at `c5cb7c7` and Kiro returned exact-main PASS; Ryan's separately granted fifth retry sealed tree `291cf777…`, receipt `3b01f77c…` is exactly F-before-W, baseline and 52/52 controls pass, durability/access/resource counters match; PR `#359` merged the binding at `02bf65c`, and Kiro exact-main PASS made that tree the sole accepted v4 author-capability candidate. The later real-author retry failed closed on W001 before any output root was created |
+| Real work-item author grant plan | **MERGED / KIRO EXACT-MAIN PASS / BOTH GRANTS CONSUMED / W001 PAUSE** — PR `#361` landed §§18.45/10.43 at `8d1c017`; PR `#362` merged the reviewed snapshot at `ff5ce7b`; the first `31d4c919…` + `d7f82fbc…` grant paused before effects; the corrected retry launched once and exited `1` at `DEPENDENCY_CLOSURE` on `Refusal: W001: input ID prefix`; all four outputs remain absent and neither grant is reusable |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -373,7 +378,7 @@ the absent publishable qualified runtime.
 | V4 standard-library dependency-link retry correction | **KIRO PASS / RETRY CONSUMED** at `946b469` | Consumed `b7a8ade…/v4.partial` remains immutable PAUSE evidence; the separately granted `816b713…` retry proved the canonical stdlib reader correction and sealed a final root, but that final is rejected by the later receipt-order check and transfers no acceptance |
 | V4 self-test receipt control-order retry correction | **MERGED / KIRO EXACT-MAIN PASS** at `c5cb7c7` — PR `#357` | Sealed final tree `d399e356…` is immutable PAUSE evidence despite the process-reported PASS; its receipt orders `W001`–`W042` before `F001`–`F010`. Fresh `946b469…` coordinates remain absent; the merged correction adds only the already-required raw-ID aggregate receipt validator and grants no setup/read/execution authority |
 | V4 capability-freeze result binding | **MERGED / KIRO EXACT-MAIN PASS** at `02bf65c` — PR `#359`; tree `291cf777…`, receipt `3b01f77c…` | One process exited zero after a clean baseline and 52/52 controls; exact F-before-W receipt order, 22 events/two nulls, nine durability counters at one, equal 323,536,730-byte forecast/observed writes, 931,274,752-byte peak RSS and zero forbidden access are bound in §§18.44/10.42. Kiro exact-main PASS established the sole accepted v4 author-capability candidate. The process result's `accepted=false` remains historical non-self-acceptance; no real read or author run is authorized |
-| One-shot real-author grant boundary | **FIRST PREFLIGHT PAUSE / FRESH RETRY AUTHORIZED, NOT STARTED** — reviewed plan PR `#361` at `8d1c017`; snapshot PR `#362` at `ff5ce7b`; governing pair `31d4c919…` + `d7f82fbc…` | The consumed first grant stopped with zero effects. The fresh grant changes only exact output-lineage `ENOENT` handling; author/input identities, command, four absent outputs, transaction, ceilings, stops and later-gate holds remain unchanged |
+| One-shot real-author grant boundary | **BOTH GRANTS CONSUMED / FAIL-CLOSED W001 PAUSE** — reviewed plan PR `#361` at `8d1c017`; snapshot PR `#362` at `ff5ce7b`; governing pair `31d4c919…` + `d7f82fbc…` | The first grant stopped before effects. Corrected preflight passed under the successor, but its sole process failed at `DEPENDENCY_CLOSURE` on the W001 input-ID-prefix check. All four outputs remain absent; a new planning/review cycle is required before any correction or attempt |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -382,31 +387,25 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** Astra consumes the fresh corrected real-author grant in
-`docs/inter-model/CODEX-2026-10-05-openclaw-convmem-real-author-preflight-retry-execute.md`.
-The predecessor grant remains consumed and non-reusable after its zero-effect
-`READ_ONLY_PREFLIGHT_ANCESTOR_CHECK` pause. The fresh grant retains governing pair
-`31d4c919…` + `d7f82fbc…`, accepted author `291cf777…`, immutable inputs, four
-absent outputs, literal command/environment, transaction, ceilings and stops.
+**If Ryan sent you here now:** preserve the two consumed real-author grants and their
+zero-output evidence. The corrected successor passed preflight, launched the sole
+process and failed closed at `DEPENDENCY_CLOSURE` with `Refusal: W001: input ID
+prefix`. Do not inspect input content again, alter the accepted author, create an
+output root, repair, resume or retry.
 
-Repeat preflight once with the sole correction: on each exact output lineage, the
-first `ENOENT` proves that component and named descendants absent and ends that walk;
-every other error is `PAUSE`. If all checks pass, run at most one author process and
-return the required evidence. No further attempt, repair, independent review,
-acquisition, build, publication, deployment or real OpenClaw is authorized.
+The next admissible work is a plan-only diagnosis and correction of that exact W001
+boundary, followed by Kiro review and a separate Ryan decision. No source change,
+process, read, independent review, acquisition, build, publication, deployment or
+real OpenClaw is authorized now.
 
 ## 6. What remains before merge and before live use
 
-1. Astra consumes the fresh exact `31d4c919…` + `d7f82fbc…` grant. It performs one
-   corrected no-follow output-lineage preflight: first `ENOENT` proves named descendant
-   absence and ends that lineage, while any other error or mismatch is `PAUSE`. If all
-   checks pass, it launches at most one `author-packet` process with the unchanged
-   accepted author, inputs, four outputs, command, environment, transaction, ceilings
-   and stops. The consumed predecessor supplies no authority.
-2. A successful return advances only to a
-   Codex plan-only result binding and Kiro review. Independent provenance/licensing
-   review remains behind another Ryan grant; process success cannot self-accept the
-   packet or advance acquisition, build or publication.
+1. Codex may prepare only a plan-level diagnosis and narrowly bounded correction for
+   the recorded `W001` input-ID-prefix refusal. Both execution grants are consumed;
+   their evidence grants no read, edit, root creation or retry authority.
+2. Kiro reviews the exact correction tip. Only after PASS may Ryan separately decide
+   whether to merge the plan and later issue a fresh two-SHA attempt. Process success
+   would still not self-accept the packet or advance acquisition, build or publication.
 3. A separate exact metadata/acquisition operation packet must name every allowed
    origin/root, method, redirect, parser, byte/request ceiling, checkpoint and fresh
    coordinate. Kiro review and another Ryan grant are required before any request,
@@ -562,7 +561,7 @@ a separate repository-knowledge arc.
 | Real-author grant-plan pull request | `https://github.com/alanmz-crypto/convmem/pull/361` — merged as `8d1c017`; Kiro exact-main PASS |
 | Real-author status pull request | `https://github.com/alanmz-crypto/convmem/pull/362` — merged as `ff5ce7b`; Kiro exact-main PASS |
 | Consumed real-author execution grant | `docs/inter-model/CODEX-2026-10-05-openclaw-convmem-real-author-execute.md` — zero-effect read-only preflight `PAUSE`; no process/content read/write/create, grant non-reusable |
-| Fresh corrected real-author grant | `docs/inter-model/CODEX-2026-10-05-openclaw-convmem-real-author-preflight-retry-execute.md` — one corrected preflight and at most one process; authorized, not started |
+| Consumed corrected real-author grant | `docs/inter-model/CODEX-2026-10-05-openclaw-convmem-real-author-preflight-retry-execute.md` — corrected preflight passed; sole process exited `1` at `DEPENDENCY_CLOSURE` on W001; four outputs absent, grant non-reusable |
 | Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
@@ -573,7 +572,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-05 | Codex | Recorded Ryan's fresh corrected real-author grant: first `ENOENT` proves exact output-lineage absence; predecessor consumed, retry authorized and not started. |
+| 2026-10-05 | Codex | Recorded the consumed corrected real-author attempt: preflight passed, sole process failed closed on W001, all four outputs remain absent. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -667,11 +666,14 @@ accepted author tree `291cf777…`, immutable inputs and four absent output coor
 Astra consumed that grant at read-only preflight and stopped before effects because
 the ancestor check raised `FileNotFoundError` on the absent staging base. Zero
 processes launched, zero content bytes were read, zero bytes were written, no path was
-created or mutated and all four outputs remain absent. The grant is non-reusable; a
-fresh Ryan grant now authorizes one corrected preflight and at most one process. Its
-sole change treats the first `ENOENT` on each exact output lineage as proof of named
-descendant absence; all author/input identities, outputs, command, transaction,
-ceilings, stops and later-gate holds remain unchanged. Execution has not started.
+created or mutated and all four outputs remained absent. Ryan then issued one fresh
+grant changing only expected-`ENOENT` output-lineage handling. Corrected preflight
+passed and the sole process launched once, but it exited `1` at
+`DEPENDENCY_CLOSURE` with `Refusal: W001: input ID prefix`. It read 54,052,776 bytes,
+stayed below the 2-GiB RSS ceiling and made zero forbidden accesses. All four output
+coordinates remain absent; no receipt, result, ledger, role file or cardinality
+exists. Both grants are consumed and non-reusable. A new planning/review cycle is
+required before any correction or further attempt.
 Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.

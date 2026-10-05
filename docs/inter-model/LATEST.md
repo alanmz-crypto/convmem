@@ -9,20 +9,22 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc ConvMem Switchboard — corrected real-author preflight retry AUTHORIZED / NOT
-  STARTED (2026-10-05):** PR `#361` merged the exact §§18.45/10.43 boundary at
-  `8d1c017`, Kiro returned exact-main PASS, and PR `#362` merged the reviewed
-  snapshot at `ff5ce7b`. The first grant paused before effects when its checker raised
-  `FileNotFoundError` on the absent staging base; it is consumed with zero
-  process/read/write/create. Ryan issued one fresh `31d4c919…` + `d7f82fbc…` grant
-  whose sole correction treats the first `ENOENT` on each exact output lineage as
-  proof of descendant absence. Resume from
+- **Arc ConvMem Switchboard — corrected real-author retry CONSUMED / W001 PAUSE
+  (2026-10-05):** PR `#361` merged the exact §§18.45/10.43 boundary at `8d1c017`,
+  Kiro returned exact-main PASS, and PR `#362` merged the reviewed snapshot at
+  `ff5ce7b`. The first grant paused before effects on the absent staging base. Ryan's
+  fresh `31d4c919…` + `d7f82fbc…` grant corrected only expected-`ENOENT` handling;
+  that preflight passed, then the sole process exited `1` at `DEPENDENCY_CLOSURE`
+  with `Refusal: W001: input ID prefix`. It read 54,052,776 real-input bytes, stayed
+  below the 2-GiB RSS ceiling, made zero forbidden accesses and left all four output
+  coordinates absent. Resume from
   [`CODEX-2026-10-05-openclaw-convmem-real-author-preflight-retry-execute.md`](CODEX-2026-10-05-openclaw-convmem-real-author-preflight-retry-execute.md)
   and the current
   [`STATUS-openclaw-convmem-integration.md`](../plans/STATUS-openclaw-convmem-integration.md).
-  All author/input identities still match and all four outputs remain absent. Astra may
-  consume this fresh grant once; no further attempt, repair, independent review, PR,
-  merge, acquisition, build, publication or later gate is authorized.
+  Both grants are consumed and non-reusable. Next is a new planning/review cycle for
+  the exact W001 input-prefix rejection; no further attempt, repair, content read,
+  independent review, PR, merge, acquisition, build, publication or later gate is
+  authorized.
 - **Arc Poison Pill — Part B write guard MERGED ([#338](https://github.com/alanmz-crypto/convmem/pull/338), `d521281`), watcher deployed (Claude, 2026-09-24):**
   every production Chroma write now runs under a crash-containment guard. `.worktrees/runtime-main` was fast-forwarded,
   restore points were created (332 MB in `~/.local/share/convmem/chroma.write-guard/`), and `doctor` reports
