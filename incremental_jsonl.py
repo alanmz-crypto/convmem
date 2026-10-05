@@ -42,6 +42,7 @@ from incremental_jsonl_isolation import (
     open_source_readonly,
     validate_regular_source,
 )
+from incremental_jsonl_production import ProductionBoundary
 from ingest import (
     ChunkArtifact,
     build_chunk_artifact,
@@ -436,7 +437,7 @@ class IncrementalJsonlCoordinator:
 
     def __init__(
         self,
-        boundary: IsolationBoundary,
+        boundary: IsolationBoundary | ProductionBoundary,
         source: Path | str,
         *,
         cfg: dict | None = None,
@@ -458,7 +459,8 @@ class IncrementalJsonlCoordinator:
         if os.environ.get("CONVMEM_INCREMENTAL_ROOT"):
             IsolationBoundary.require_fake_provider("deterministic-fake")
         self.boundary = boundary
-        self.source = boundary.resolve_mutable(source, label="source fixture")
+        source_resolver = getattr(boundary, "resolve_source", boundary.resolve_mutable)
+        self.source = source_resolver(source, label="source fixture")
         self.cfg = cfg or self._load_isolated_config()
         settings = incremental_jsonl_settings(self.cfg)
         self.settings = settings
@@ -1721,31 +1723,36 @@ def maybe_route_incremental(
     settings = incremental_jsonl_settings(cfg)
     if not settings.enabled:
         return None
-    allowed = routed_formats(
-        isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT"))
-    )
-    if detected_format not in allowed:
-        return None
-    if os.environ.get("CONVMEM_INCREMENTAL_ROOT"):
+    isolated = bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT"))
+    if isolated:
+        if detected_format not in routed_formats(isolated_codex=True):
+            return None
         boundary = IsolationBoundary.from_environment()
-        coordinator = IncrementalJsonlCoordinator(
-            boundary,
-            path,
-            cfg=cfg,
-            enabled=True,
-            models=models,
-            chunk_size=chunk_size,
-            overlap=overlap,
-            min_confidence=min_confidence,
-            force_reindex=force_reindex,
-            supersede_on_reindex=supersede_on_reindex,
-            file_hash=file_hash,
-            processed=processed,
-        )
-        result = coordinator.run()
-        return result.ingest_tuple()
-    # Live activation is unauthorized for this Execute; refuse rather than
-    # constructing production-state machinery outside a hermetic root.
-    if force_reindex or supersede_on_reindex:
-        return "skipped", 0, 0, 0, 0
-    return "skipped", 0, 0, 0, 0
+    else:
+        # An enabled table alone does not select production sources. Unselected
+        # files retain the legacy route, including formats without a spec.
+        if path_key not in settings.live_sources:
+            return None
+        if detected_format not in routed_formats():
+            raise IncrementalJsonlError("live_format_not_eligible", str(detected_format))
+        if force_reindex or supersede_on_reindex:
+            raise IncrementalJsonlError("live_force_unsupported")
+        boundary = ProductionBoundary(cfg, path)
+    coordinator = IncrementalJsonlCoordinator(
+        boundary,
+        path,
+        cfg=cfg,
+        enabled=True,
+        models=models,
+        chunk_size=chunk_size,
+        overlap=overlap,
+        min_confidence=min_confidence,
+        force_reindex=force_reindex,
+        supersede_on_reindex=supersede_on_reindex,
+        file_hash=file_hash,
+        processed=processed,
+    )
+    result = coordinator.run()
+    if not isolated and result.outcome not in {"committed", "unchanged"}:
+        raise IncrementalJsonlError("live_route_refused", result.outcome)
+    return result.ingest_tuple()

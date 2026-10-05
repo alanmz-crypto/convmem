@@ -1,7 +1,9 @@
 # Issue #286 — guarded live incremental indexing design
 
 **Arc: Trapdoor Hunt (#286), using the Arc Codex incremental engine.**
-**State:** design for Copilot safety audit and Kiro review; no live grant.
+**State:** Kiro design PASS at `e4fa954`; RC-1 through RC-3 bind the branch
+implementation. Copilot safety audit and exact-tip documentation recheck remain
+open. No live grant.
 **Base:** `origin/main` `ff5ce7b` on 2026-10-05.
 
 ## Product result and boundary
@@ -108,9 +110,18 @@ watched files remain legacy; their cost is outside the JSONL claim.
 
 ## Verification and release order
 
-1. Review this design and the current-main delta. Copilot audits isolation,
-   fail-closed behavior, first-source bootstrap, and the prior docs acceptance
-   failure; Kiro reviews the same exact tip. A review is not a live grant.
+Kiro's exact-tip design PASS at `e4fa954` binds three implementation checks:
+RC-1 distinguishes unselected legacy routing, selected success, and selected
+visible nonzero refusal; RC-2 forbids using the hermetic root or other
+isolation environment variables as live authority; RC-3 proves generic
+watcher/ingest events cannot invoke the one-shot bootstrap. These are not
+production grants. Copilot's independent safety audit and the older
+documentation-acceptance recheck remain outstanding.
+
+1. Copilot audits isolation, fail-closed behavior, first-source bootstrap,
+   and the prior docs acceptance failure. Kiro's design PASS at `e4fa954`
+   does not transfer to later implementation tips; Kiro rechecks the final
+   exact tip. A review is not a live grant.
 2. Implement boundary and exact-source gate with no service/config edits. Test
    off/invalid config, unselected/selected sources, old processed data, symlink
    and role-alias attacks, provider denial, crash points, both Chroma

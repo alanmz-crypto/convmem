@@ -49,6 +49,7 @@ class IncrementalJsonlSettings:
     state_dir: str
     allow_full_rebuild: bool
     table_present: bool
+    live_sources: tuple[str, ...] = ()
 
 SUPPORTED_SHADOW_CONFIG_FILESYSTEMS = frozenset({"ext4", "xfs", "btrfs", "tmpfs"})
 _SHADOW_HEADER_RE = re.compile(r"^\s*\[shadow_ledger\]\s*(?:#.*)?$")
@@ -408,11 +409,30 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
             "invalid_state_dir",
             "index.incremental_jsonl.state_dir must be a non-empty string",
         )
+    raw_sources = table.get("live_sources", [])
+    if not isinstance(raw_sources, list) or any(
+        not isinstance(source, str)
+        or not source.strip()
+        or not Path(source).expanduser().is_absolute()
+        or any(character in source for character in "*?[]")
+        for source in raw_sources
+    ):
+        raise IncrementalJsonlConfigError(
+            "invalid_live_sources",
+            "index.incremental_jsonl.live_sources must be exact absolute paths",
+        )
+    live_sources = tuple(str(Path(source).expanduser().absolute()) for source in raw_sources)
+    if len(set(live_sources)) != len(live_sources):
+        raise IncrementalJsonlConfigError(
+            "duplicate_live_source",
+            "index.incremental_jsonl.live_sources contains a duplicate path",
+        )
     return IncrementalJsonlSettings(
         enabled=bool(enabled),
         state_dir=str(Path(state_dir).expanduser()),
         allow_full_rebuild=bool(rebuild),
         table_present=True,
+        live_sources=live_sources,
     )
 
 
