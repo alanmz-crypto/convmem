@@ -9,6 +9,20 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Trapdoor Hunt / issue #286 — live activation BUILDING (2026-10-05):**
+  Ryan authorized Codex to proceed on a fresh worktree branch from current
+  `origin/main`; the separate watcher/config activation and merge remain
+  Ryan-gated. At Ryan's request Codex stopped and disabled
+  `convmem-watch.service` as temporary cost containment; it is inactive and
+  stays off until a separate reviewed restart decision. The config-only
+  toggle cannot reduce DeepSeek cost because the
+  live route refuses without the hermetic root. Already indexed sources also
+  need an adoption or rebuild decision: the current coordinator returns
+  `bootstrap_required`/`skipped` without a checkpoint. Codex is designing a
+  safe live boundary and source-coverage decision; Copilot audits safety and
+  documentation acceptance, then Kiro reviews the exact tip. Resume from
+  [`CODEX-2026-10-05-issue-286-live-activation-handoff.md`](CODEX-2026-10-05-issue-286-live-activation-handoff.md).
+
 - **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
   held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
   preserves integration tip `9c6421a` and routes its 44-path remediation to
