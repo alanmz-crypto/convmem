@@ -1,4 +1,4 @@
-# Review Request: OpenClaw Opportunity Map (adversarial review, v1)
+# Review Request: OpenClaw Opportunity Map (adversarial review, revision 2)
 
 **Date:** 2026-10-05
 **Author:** Claude Code (Opus 5.5)
@@ -12,7 +12,7 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `BLOCKED_ON_RYAN`: waiting for Ryan to route the packet to Kiro. Nothing is blocked on implementation |
+| **State** | `BLOCKED_ON_RYAN`: revision 2 is ready; waiting for Ryan to route the revision-2 packet to Kiro. Nothing is blocked on implementation |
 | **Branch** | `docs/2026-10-05-openclaw-opportunity-map-review` (this doc only) |
 | **Tip SHA** | see `git log -1` on the branch (this commit) |
 | **Push status** | pushed to origin |
@@ -35,6 +35,21 @@ ConvMem stays the memory of record; verification lives outside OpenClaw.**
 This request asks Kiro to **try to falsify** that assessment before Ryan uses it
 to narrow scope.
 
+### Review history
+
+| Revision | Packet (local) | Review | Result |
+|---|---|---|---|
+| v1 | `artifacts/openclaw-opportunity-map-adversarial-review-v1.zip` (`3a6ab925…94596`) | Codex (advisory) | **ADVISORY FAIL**: four High (packet stageable in the public repo; no no-OpenClaw baseline; phone front door risk understated; shared household gateway against OpenClaw's trust model), four Medium (factual corrections, feasibility labels, local-model triage boundary) |
+| **revision 2** | `artifacts/openclaw-opportunity-map-adversarial-review-v2.zip` (`0c4817da…6321a`) | **Kiro (formal), pending** | — |
+
+Revision 2 adds a no-OpenClaw baseline comparison and reorders the top
+opportunities around it. It stages and gates the phone front door behind the
+Switchboard gates, and makes one gateway per privacy principal the default.
+It also corrects the factual items. A point-by-point response is in the packet's
+`RESPONSE-TO-REVIEW.md`. The packet-staging finding is fixed with a local,
+never-committed `.git/info/exclude` rule (verified: a dry-run `git add -A`
+stages zero packet files).
+
 ## Where the review material is (local only)
 
 > **The review packet is deliberately not in git.** This repository is public,
@@ -43,12 +58,13 @@ to narrow scope.
 
 | Item | Location |
 |---|---|
-| Sealed bundle | `artifacts/openclaw-opportunity-map-adversarial-review-v1.zip` (untracked, read-only) |
-| Bundle SHA-256 | `3a6ab9254046c85bf7a491da3c2b8579404f82c3be9195354b14e14573e94596` |
-| Assessment (exact v1 bytes) SHA-256 | `772f4283fcc090c3af26c0767c532e787c798760cf9855218121cc31b662e302` |
-| Seal | `artifacts/openclaw-opportunity-map-adversarial-review-v1-seal.json` |
-| Unpacked copy | `artifacts/openclaw-opportunity-map-adversarial-review-v1/`: **start at `README-FIRST.md`** |
-| Live page (Ryan only; private) | https://claude.ai/artifact/FF8hrm2DjDuw9bHCP53wsd (version 1) |
+| Sealed bundle (**review this**) | `artifacts/openclaw-opportunity-map-adversarial-review-v2.zip` (untracked, ignored, read-only) |
+| Bundle SHA-256 | `0c4817dacd0bff0e5301411da65eaf0b298dfd13d5dd2a4dcd511620b376321a` |
+| Assessment (exact revision-2 bytes) SHA-256 | `cf374cebd70598439d8bc824fce2f2d70415565e66875a5efc31d2b7df193425` |
+| Seal | `artifacts/openclaw-opportunity-map-adversarial-review-v2-seal.json` |
+| Unpacked copy | `artifacts/openclaw-opportunity-map-adversarial-review-v2/`: **start at `README-FIRST.md`** |
+| Superseded v1 bundle | `artifacts/openclaw-opportunity-map-adversarial-review-v1.zip` (`3a6ab925…94596`), kept for history |
+| Live page (Ryan only; private) | https://claude.ai/artifact/FF8hrm2DjDuw9bHCP53wsd (artifact version 5 = revision 2) |
 
 The packet holds Ryan's original brief verbatim, the exact v1 page, a claims
 ledger (every load-bearing claim with evidence, status and re-check command),
@@ -68,10 +84,9 @@ self-critique, which the reviewer should read **last**.
 Each finding states severity, failure path, exact location, evidence, the
 violated requirement or invariant, and the minimum correction.
 
-**Known post-publish corrections (author self-reported):** one operational
-failure was understated in duration; another was described as silent although
-its unit has a desktop-notification hook; and one ID series collides. Details
-are in the packet's `CLAIMS-LEDGER.md` (A4, A6, E4).
+**Additional focus for revision 2:** verify each fix against the page itself,
+attack the new baseline comparison (it now drives the top three
+recommendations), and look for regressions and overclaiming in the response doc.
 
 ## What NOT to do
 
@@ -84,7 +99,7 @@ are in the packet's `CLAIMS-LEDGER.md` (A4, A6, E4).
 
 ## Acceptance criteria
 
-- [ ] Kiro verdict (`PASS`/`FAIL`) delivered to Ryan, against the exact bundle hash above
+- [ ] Kiro verdict (`PASS`/`FAIL`) delivered to Ryan, against the exact revision-2 bundle hash above
 - [ ] Each finding carries all six required fields
 - [ ] Self-critique items are explicitly confirmed, rejected or re-rated
 - [ ] Ryan decides the next step (v2 revision, first-slice narrowing, or drop)
@@ -113,7 +128,7 @@ This branch carries only this handoff doc and the LATEST pointer. Squash OK.
 - [x] This file committed on a pushed branch
 - [x] `LATEST.md` bullet at top with link and resume state
 - [x] No STATUS Update Log line (no arc owns this work)
-- [x] Review packet sealed locally; hashes above
+- [x] Review packets sealed locally (v1 superseded, revision 2 current) and excluded from Git; hashes above
 
 **Reviewer (picking up):**
 
@@ -121,7 +136,8 @@ This branch carries only this handoff doc and the LATEST pointer. Squash OK.
 - [ ] Read the packet in the README order; self-critique last
 - [ ] Return the verdict to Ryan; do not post it publicly if it quotes packet content
 
-**TL;DR:** [Arc: none (ad-hoc)] Kiro is asked to adversarially review the
-OpenClaw Opportunity Map v1. The sealed packet is local-only because the repo
-is public. The verdict is PASS/FAIL with six-field findings, and Ryan decides
-what happens next.
+**TL;DR:** [Arc: none (ad-hoc)] v1 received a Codex ADVISORY FAIL. Revision 2
+answers every finding. Kiro is asked to adversarially review the sealed
+revision-2 packet, which is local-only and Git-excluded because the repo is
+public. The verdict is PASS/FAIL with six-field findings, and Ryan decides what
+happens next.
