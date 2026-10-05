@@ -159,7 +159,7 @@ WORK REMAIN PAUSED.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=<FIRST_PLAN_COMMIT_SHA>
+SEMANTIC_PARENT_SHA=31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d
 WORK_ITEM_REAL_AUTHOR_PLAN_AUTHORIZATION_BASE_MAIN_SHA=ca0397c084b2616809307249212b7153d9d8ba39
 WORK_ITEM_REAL_AUTHOR_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
 WORK_ITEM_REAL_AUTHOR_OPERATION_STATUS=PLAN_ONLY
@@ -704,6 +704,14 @@ PROPOSED_DURABLE_EVIDENCE_ROOT=/home/lauer/.local/share/convmem-openclaw-evidenc
 ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
 ```
+
+The SHA layers are distinct. `WORK_ITEM_REAL_AUTHOR_PLAN_AUTHORIZATION_BASE_MAIN_SHA`
+is merged main before these planning commits. `SEMANTIC_PARENT_SHA` is the first
+four-document commit that defines §§18.45/10.43. This commit is the milestone-only
+review overlay and therefore cannot contain its own SHA; Kiro's exact-tip target and
+any later Ryan grant must supply that full reviewed-overlay SHA externally. No SHA
+from the earlier synthetic qualification or capability binding may substitute for
+either plan SHA.
 
 After Ryan confirms that root, exact plan-review artifacts go only under
 `PROPOSED_DURABLE_EVIDENCE_ROOT/planning-reviews/`; M11 run evidence goes only
