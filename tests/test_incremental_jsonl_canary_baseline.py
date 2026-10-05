@@ -16,7 +16,7 @@ BASELINE_HASHES = {
     "ingest.py": "a3c20269537735a096921bdfd25451c403a83305c1d7f729962b453bd6a7a4f3",
     # Refreshed for issue #286's gated live route and one-shot bootstrap;
     # the canary remains unreachable from the CLI and watcher.
-    "incremental_jsonl.py": "9a73eb7e043d74eeedd17239b61302a35d2d783f0999e6c006f20737e1d81721",
+    "incremental_jsonl.py": "f1da9ea59ccf337c30c702ea917e1a106cc833a05ccc5dcbb05dfb0db398604f",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

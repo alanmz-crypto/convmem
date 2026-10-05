@@ -37,11 +37,7 @@ def _checked_path(raw: Path | str, *, label: str) -> Path:
 
 
 def _inside(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False
+    return path.is_relative_to(root)
 
 
 class ProductionBoundary:

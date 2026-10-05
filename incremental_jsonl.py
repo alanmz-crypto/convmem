@@ -1578,7 +1578,7 @@ class IncrementalJsonlCoordinator:
             self._cleanup(snapshot_dir)
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
 
-    def run(self) -> IncrementalRunResult:
+    def run(self) -> IncrementalRunResult:  # pylint: disable=too-many-return-statements
         if not self.enabled:
             return self._refusal("disabled")
         detected = detect_format(self.source)

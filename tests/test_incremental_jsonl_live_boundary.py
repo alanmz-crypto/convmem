@@ -2,7 +2,7 @@
 
 # Ruff targets the repo Python version where tomllib is third-party to this
 # import sorter; Pylint uses the host stdlib classification.
-# pylint: disable=wrong-import-order,protected-access
+# pylint: disable=wrong-import-order,protected-access,duplicate-code
 
 from __future__ import annotations
 
