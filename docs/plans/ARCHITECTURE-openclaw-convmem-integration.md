@@ -10245,6 +10245,186 @@ admission, product/test/config/R2b change, implementation, PR `#342` update, PR
 creation, merge, deployment, real OpenClaw, live data, watch activation, promotion
 or Gate D/W/D-V/E/F action.
 
+### 18.47 Corrected capability-freeze result binding
+
+PR `#363` squash-merged the exact §18.46/§10.44 unresolved-ID correction at
+`0a250b197ce316f058e2df6d974aedc68d3db0e4`, byte-identical to reviewed overlay
+`9241543c22b3d2f25e54cabd8ccb0203ed1feca5`, and Kiro returned exact-main PASS.
+PR `#364` then squash-merged the descriptive current-state snapshot at
+`4f6266e94c2add550ae15d456141536f9937dbf8`. Ryan separately issued one exact
+two-SHA synthetic-freeze grant naming semantic parent
+`a64fdcfe941743ef2b5f8d18829830a846d362a3`, reviewed overlay
+`9241543c22b3d2f25e54cabd8ccb0203ed1feca5` and the fresh `ff5ce7b…`
+coordinate. Setup wrote and durably bound the reviewed source once, and the sole
+fourteen-member no-site process completed a clean baseline, all 52 controls, the
+22-event ledger and both coordinate-parent durability barriers before atomically
+sealing the final root. It reported `PASS`, exited zero and returned the complete
+evidence packet without reading any real packet or disposition.
+
+The process result is technically `PASS`; `accepted=false` remains controlling
+until Kiro reviews this exact plan-only binding. Neither the process-reported status
+nor this planning edit authorizes the held real `author-packet` command.
+
+#### 18.47.1 Exact sealed candidate evidence
+
+```text
+W001_CORRECTION_BINDING_GRANT_SEMANTIC_PARENT_SHA=a64fdcfe941743ef2b5f8d18829830a846d362a3
+W001_CORRECTION_BINDING_GRANT_REVIEWED_OVERLAY_SHA=9241543c22b3d2f25e54cabd8ccb0203ed1feca5
+W001_CORRECTION_BINDING_AUTHORIZATION_BASE_MAIN_SHA=4f6266e94c2add550ae15d456141536f9937dbf8
+W001_CORRECTION_BINDING_PLAN_MERGED_MAIN_SHA=0a250b197ce316f058e2df6d974aedc68d3db0e4
+W001_CORRECTION_BINDING_PROCESS_EXIT_STATUS=0
+W001_CORRECTION_BINDING_PROCESS_REPORTED_STATUS=PASS
+W001_CORRECTION_BINDING_ACCEPTED=false
+W001_CORRECTION_BINDING_ACCEPTANCE_STATE=PENDING_EXACT_TIP_KIRO_REVIEW
+W001_CORRECTION_BINDING_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c
+W001_CORRECTION_BINDING_COORDINATE_PARENT_MODE=0700
+W001_CORRECTION_BINDING_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c/v4.partial
+W001_CORRECTION_BINDING_PARTIAL_ROOT_PRESENT=false
+W001_CORRECTION_BINDING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c/v4
+W001_CORRECTION_BINDING_FINAL_ROOT_PRESENT=true
+W001_CORRECTION_BINDING_FINAL_ROOT_MODE=0555
+W001_CORRECTION_BINDING_MEMBER_COUNT=6
+W001_CORRECTION_BINDING_MEMBER_MODE=0444
+W001_CORRECTION_BINDING_TOTAL_BYTES=197259
+W001_CORRECTION_BINDING_TREE_SHA256=939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396
+W001_CORRECTION_BINDING_SOURCE_SIZE=148481
+W001_CORRECTION_BINDING_SOURCE_LINE_COUNT=2952
+W001_CORRECTION_BINDING_SOURCE_SHA256=5550d1ecdc4a5375940166fe58232e2ba25d821e37478a6fe1608a771c5597b0
+W001_CORRECTION_BINDING_RECEIPT_SHA256=920c0e0e74515b5b1304de59b2a32a00b55c949b11938f9b3ddd68b12213bce1
+W001_CORRECTION_BINDING_FREEZE_MANIFEST_SHA256=8291129e3b47bb29dd39cfa7d2e8d60a62fcb8df8c6578d53e028ee7d7f48903
+W001_CORRECTION_BINDING_WRITE_LEDGER_SHA256=959e64ba5782afbacb8eb94f0d7df297ee3351fe596ebc927c8c51b1a6932055
+W001_CORRECTION_BINDING_COMMAND_CONTRACT_SHA256=e5291097982fdb8086bd7e7315e4a4cd577091c7ec6701d80486f0f7412a1206
+W001_CORRECTION_BINDING_DEPENDENCY_MANIFEST_SHA256=b96ea9a50e60f8aad2cf8cf2861a81cb3c49bcd557d728bceb4f7a5ec17cad63
+W001_CORRECTION_BINDING_FIXTURE_SHA256=d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f
+W001_CORRECTION_BINDING_SYNTHETIC_INPUT_TREE_SHA256=9551fa86cb9bf33f757bf584a16d5d930da5006ee0145beb2a675f136f38b4ab
+W001_CORRECTION_BINDING_SYNTHETIC_DISPOSITION_SHA256=758764a25432300fb098d5480f9fcebd7a7648cf319b3d623c7eb294a4f80a82
+W001_CORRECTION_BINDING_SYNTHETIC_PACKET_TREE_SHA256=2d1d95d6991fe9368d29746d0704267628884810a026a5d9a5814ab31e50b8a7
+W001_CORRECTION_BINDING_SYNTHETIC_RESULT_SHA256=d9a17dd0daf5a601873addd0fb5d8c9226ecfda587a733de7f1bfa227d2253b2
+W001_CORRECTION_BINDING_EXTERNAL_RESULT_SHA256=66bf06a25f02f102e876c7f2f396aed6c68c91b8a52f565834b401cd7cbbef36
+W001_CORRECTION_BINDING_EXTERNAL_RESULT_SIZE=32527
+W001_CORRECTION_BINDING_PROCESS_COUNT=1
+W001_CORRECTION_BINDING_SUBPROCESSES=0
+W001_CORRECTION_BINDING_BASELINE_COUNT=1
+W001_CORRECTION_BINDING_BASELINE_VIOLATION_COUNT=0
+W001_CORRECTION_BINDING_CONTROL_COUNT=52
+W001_CORRECTION_BINDING_CONTROLS_PASSED=52
+W001_CORRECTION_BINDING_ACTUAL_FIRST_ID=F001
+W001_CORRECTION_BINDING_ACTUAL_FAMILY_BOUNDARY=F010,W001
+W001_CORRECTION_BINDING_ACTUAL_LAST_ID=W042
+W001_CORRECTION_BINDING_EXPECTED_FIRST_ID=F001
+W001_CORRECTION_BINDING_EXPECTED_FAMILY_BOUNDARY=F010,W001
+W001_CORRECTION_BINDING_EXPECTED_LAST_ID=W042
+W001_CORRECTION_BINDING_WRITE_EVENT_COUNT=22
+W001_CORRECTION_BINDING_FORECAST_WRITTEN_BYTES=323537343
+W001_CORRECTION_BINDING_OBSERVED_WRITTEN_BYTES=323537343
+W001_CORRECTION_BINDING_PEAK_RSS_BYTES=2059636736
+W001_CORRECTION_BINDING_FIXED_POINT_ITERATIONS=3
+W001_CORRECTION_BINDING_DEPENDENCY_COUNT=76
+W001_CORRECTION_BINDING_STOP_STAGE=null
+```
+
+The exact final members are:
+
+| Path | Size | Mode | SHA-256 |
+|---|---:|---:|---|
+| `command-contract.json` | 3,544 | `0444` | `e5291097982fdb8086bd7e7315e4a4cd577091c7ec6701d80486f0f7412a1206` |
+| `dependency-manifest.json` | 10,921 | `0444` | `b96ea9a50e60f8aad2cf8cf2861a81cb3c49bcd557d728bceb4f7a5ec17cad63` |
+| `fixture-spec.json` | 476 | `0444` | `d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f` |
+| `freeze-manifest.json` | 969 | `0444` | `8291129e3b47bb29dd39cfa7d2e8d60a62fcb8df8c6578d53e028ee7d7f48903` |
+| `self-test-receipt.json` | 32,868 | `0444` | `920c0e0e74515b5b1304de59b2a32a00b55c949b11938f9b3ddd68b12213bce1` |
+| `work-item-author-v4.py` | 148,481 | `0444` | `5550d1ecdc4a5375940166fe58232e2ba25d821e37478a6fe1608a771c5597b0` |
+
+Read-only verification reproduced every member size, mode, single-link identity and
+digest. `freeze-manifest.json` remains nonrecursive: it hashes the other five members
+and never itself. The 22-event receipt ledger has null digests only for
+`self-test-receipt.json` and `freeze-manifest.json`; its other twenty rows have
+ordinary non-null digests. The external result is not a seventh member.
+
+#### 18.47.2 Exact acceptance proof and limits
+
+The clean baseline returned `PASS`, created neither packet nor result and had zero
+violations. The sealed receipt contains exactly 52 unique passing rows in the required
+raw-ID order `F001`–`F010`, then `W001`–`W042`; actual and expected first ID,
+family boundary and last ID match exactly. The corrected shared production path uses
+only `unresolved_sha256:`. Existing W001 retains its input-tree-hash mutation and
+also rejects an otherwise-valid row using obsolete `unresolved:sha256:`. No alias,
+normalization, dual-prefix path, `W043`, `F011` or 53rd control exists.
+
+The fixture preserves 1,221 components, 19 disputes, twenty batches, 49 pages,
+98,608 unresolved IDs, 30,402 owned paths, 30,421 runtime paths and 1,384 nested
+edges. Synthetic packet and disposition reads were exactly `55,760,899` and
+`8,383,504` bytes. Forecast and observed writes both equal `323,537,343`, below the
+unchanged one-GiB ceiling. Peak RSS was `2,059,636,736`, below the unchanged
+`2,147,483,648` ceiling.
+
+Every required durability counter is exactly one:
+
+```text
+row_zero_setup_file_fsync_count=1
+row_zero_setup_directory_fsync_count=1
+row_zero_governed_file_fsync_count=1
+row_zero_governed_directory_fsync_count=1
+row_zero_event_one_write_count_after_governed_fsync=1
+coordinate_parent_pre_rename_open_count=1
+coordinate_parent_pre_rename_fsync_count=1
+coordinate_parent_post_rename_open_count=1
+coordinate_parent_post_rename_fsync_count=1
+```
+
+Every prohibited access counter is zero:
+
+```text
+REAL_INPUT_READ_BYTES=0
+NETWORK_REQUESTS=0
+RUNTIME_READS=0
+RETAINED_SOURCE_READS=0
+REPOSITORY_READS=0
+ACQUIRED_BYTES=0
+CREDENTIAL_ACCESS=0
+SUBPROCESSES=0
+```
+
+These facts close only corrected synthetic qualification. `accepted=false` prevents
+the process from accepting itself. Kiro must review the exact committed binding and
+its inherited contract before the candidate can become accepted.
+
+#### 18.47.3 Immutable candidate and held real operation
+
+The coordinate parent, final root, six members, source, receipt, manifests, external
+result claim and consumed grant are immutable. They may not be changed, chmodded,
+deleted, renamed, copied, hard-linked, imported, executed again, repaired or
+reinterpreted; the absent `.partial` sibling may not be recreated. A mismatch during
+review is `PAUSE`, not authority to regenerate the candidate.
+
+If and only if Kiro returns PASS on this exact two-commit result binding, tree
+`939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396`
+becomes the sole accepted corrected v4 author-capability candidate for a later Ryan
+decision. That review grants no real read or author execution. The held real operation
+requires a new plan, exact-tip review, exact-main confirmation and separate Ryan
+two-SHA grant naming the accepted candidate, immutable real packet/disposition and
+fresh absent work-item output coordinates. No prior real-author or synthetic-freeze
+grant is reusable.
+
+#### 18.47.4 Frozen surrounding contract and authority boundary
+
+Every §18.31–§18.46 schema, mapping, role, parser, serializer, candidate/locator
+rule, identity adapter, packet-tree recipe, cardinality, 22-event/two-null ledger,
+fixed-point rule, `W001`–`W042`, `F001`–`F010`, `F010`-only drift control,
+fourteen-/twenty-member no-site argv, `F002` slices `[4:6]`/`[6:8]`, row-zero and
+coordinate-parent durability transition, canonical stdlib dependency reader,
+one-process/write/RSS ceilings, zero-access boundary and held one-pass real contract
+remain unchanged. No new schema field, file role, sidecar, wrapper, reader,
+acceptance exception or second synthetic attempt is introduced.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no root/file/source creation, execution, packet/disposition/
+repository/runtime/retained-source read, work-item packet/result, retry, network,
+subprocess, acquisition, ownership/license selection, binary repair, build,
+publication, CI admission, product/test/config/R2b change, implementation, PR `#342`
+update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action. The consumed synthetic-freeze grant cannot be
+reused.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
