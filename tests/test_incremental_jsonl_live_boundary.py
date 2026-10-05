@@ -12,10 +12,10 @@ from types import SimpleNamespace
 import pytest
 import tomllib
 
+import config
 import incremental_jsonl
 from adapters.kiro_session_jsonl import parse_complete_prefix
 from chroma_store import SUMMARIES, UNITS
-from config import IncrementalJsonlConfigError, incremental_jsonl_settings
 from incremental_jsonl_isolation import IsolationBoundary, IsolationViolation
 from incremental_jsonl_production import ProductionBoundary
 from tests.incremental_jsonl_helpers import (
@@ -89,7 +89,7 @@ def test_live_boundary_rejects_symlink_and_role_overlap(tmp_path: Path) -> None:
     alias = tmp_path / "alias.jsonl"
     alias.symlink_to(source)
     cfg["index"]["incremental_jsonl"]["live_sources"] = [str(alias)]
-    with pytest.raises(IncrementalJsonlConfigError, match="canonical"):
+    with pytest.raises(config.IncrementalJsonlConfigError, match="canonical"):
         ProductionBoundary(cfg, alias)
     cfg["index"]["incremental_jsonl"]["live_sources"] = [str(source)]
     cfg["index"]["incremental_jsonl"]["state_dir"] = cfg["index"]["chroma_dir"]
@@ -101,15 +101,15 @@ def test_live_boundary_rejects_symlink_and_role_overlap(tmp_path: Path) -> None:
 def test_live_source_configuration_requires_exact_paths(tmp_path: Path, bad) -> None:
     cfg, _source = _fixture(tmp_path)
     cfg["index"]["incremental_jsonl"]["live_sources"] = [bad]
-    with pytest.raises(IncrementalJsonlConfigError):
-        incremental_jsonl_settings(cfg)
+    with pytest.raises(config.IncrementalJsonlConfigError):
+        config.incremental_jsonl_settings(cfg)
 
 
 def test_live_source_configuration_rejects_duplicate_grants(tmp_path: Path) -> None:
     cfg, source = _fixture(tmp_path)
     cfg["index"]["incremental_jsonl"]["live_sources"] = [str(source), str(source)]
-    with pytest.raises(IncrementalJsonlConfigError, match="duplicate"):
-        incremental_jsonl_settings(cfg)
+    with pytest.raises(config.IncrementalJsonlConfigError, match="duplicate"):
+        config.incremental_jsonl_settings(cfg)
 
 
 def test_live_source_configuration_rejects_noncanonical_grants(tmp_path: Path) -> None:
@@ -118,7 +118,7 @@ def test_live_source_configuration_rejects_noncanonical_grants(tmp_path: Path) -
     alias.symlink_to(source)
     for invalid in (str(alias), str(source.parent / ".." / "source" / source.name)):
         cfg["index"]["incremental_jsonl"]["live_sources"] = [invalid]
-        with pytest.raises(IncrementalJsonlConfigError, match="canonical"):
+        with pytest.raises(config.IncrementalJsonlConfigError, match="canonical"):
             _route(cfg, alias)
 
 
@@ -134,8 +134,8 @@ def test_symlinked_input_cannot_bypass_selected_live_boundary(tmp_path: Path) ->
 def test_live_embedding_dimension_must_be_positive_integer(tmp_path: Path, bad) -> None:
     cfg, _source = _fixture(tmp_path)
     cfg["index"]["incremental_jsonl"]["embed_dimension"] = bad
-    with pytest.raises(IncrementalJsonlConfigError, match="embed_dimension"):
-        incremental_jsonl_settings(cfg)
+    with pytest.raises(config.IncrementalJsonlConfigError, match="embed_dimension"):
+        config.incremental_jsonl_settings(cfg)
 
 
 def test_selected_source_needs_explicit_embedding_dimension(
@@ -144,7 +144,7 @@ def test_selected_source_needs_explicit_embedding_dimension(
     cfg, source = _fixture(tmp_path)
     del cfg["index"]["incremental_jsonl"]["embed_dimension"]
     monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
-    with pytest.raises(IncrementalJsonlConfigError, match="embed_dimension"):
+    with pytest.raises(incremental_jsonl.IncrementalJsonlConfigError, match="embed_dimension"):
         _route(cfg, source)
     assert not (tmp_path / "data").exists()
 
