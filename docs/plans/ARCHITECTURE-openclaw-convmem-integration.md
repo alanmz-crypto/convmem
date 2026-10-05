@@ -8284,7 +8284,7 @@ lower bound rather than a size prediction.
 
 The two byte counts are reproducible as `len(J(value))` over these exact artificial
 lower-bound objects, where `Z64` is sixty-four ASCII zeroes. They intentionally omit
-the required `unresolved:sha256:` prefixes, so no real object can be shorter:
+the required `unresolved_sha256:` prefixes, so no real object can be shorter:
 
 ```text
 MIN_GAP={
@@ -10103,6 +10103,147 @@ author execution, retry, repair, network, subprocess, acquisition, ownership/lic
 selection, build, publication, CI admission, product/test/config/R2b change,
 implementation, PR `#342` update, PR creation, merge, deployment, real OpenClaw,
 live data, watch activation, promotion or Gate D/W/D-V/E/F action.
+
+### 18.46 Real-author W001 unresolved-ID grammar correction
+
+PR `#361` squash-merged the reviewed §18.45/§10.43 real-author boundary at
+`8d1c01762d920a91667f96182fab04c4fc583e86`, and PR `#362` squash-merged its
+reviewed current-state snapshot at
+`ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c`. Ryan subsequently issued two exact
+grants over semantic parent `31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d` and
+reviewed overlay `d7f82fbcd3afd3887d4b3764b173958d5094ee53`. Both grants
+are consumed and non-reusable. This section preserves their evidence, closes the one
+localized W001 grammar defect and defines a fresh synthetic capability-freeze route.
+It does not authorize that freeze or another real-author process.
+
+#### 18.46.1 Exact stopped state and localization
+
+The first grant stopped during read-only output-lineage preflight because its
+ancestor walker treated the expected first `ENOENT` as an error. It launched zero
+processes, read zero packet/disposition content bytes, wrote zero bytes and created
+or mutated no path. The successor grant changed only that preflight interpretation:
+the first `ENOENT` on each exact output lineage proved the named descendants absent
+and stopped traversal below the missing component.
+
+Corrected preflight passed. Exactly one no-site process then launched and failed
+closed with exit status `1`, stage `DEPENDENCY_CLOSURE`, and
+`Refusal: W001: input ID prefix`. It read `54,052,776` real-input bytes, reached
+peak RSS `2,059,636,736` below the `2,147,483,648` ceiling, launched no subprocess,
+and made zero network, runtime, repository, retained-source, credential or
+acquisition accesses. All four §18.45.1 output coordinates remain absent. No receipt,
+result, write ledger, role file or work-item cardinality exists; setup row-zero
+file/directory fsync counts are each one, while governed row-zero, event-one and
+coordinate-parent barrier counts are zero.
+
+The byte position localizes the refusal without reopening either input. The immutable
+packet contains `654,147,403` bytes, of which its object payloads contain
+`600,094,627`; their difference is exactly `54,052,776`. The process therefore read
+every non-object packet member, reached the last raw-UTF-8-sorted role
+`unresolved.jsonl`, and failed before opening any object payload or the disposition.
+
+The earlier independent schema-v3 packet/disposition review recorded the immutable
+packet's authoritative unresolved identifier grammar as
+`unresolved_sha256:<64 lowercase hexadecimal characters>`. Its 98,608 identifiers
+begin with
+`unresolved_sha256:00026163d2a8b5be29c262045a87cd7bf8931cdfe0a1baa2936c1884a0754bb6`
+and end with
+`unresolved_sha256:fffee57633575222636d30ab1c65d051dae7eb6d7c4493dc4d95bcdd4c424581`;
+the independently reviewed disposition carries the same ordered ID list. The
+accepted author's real validator and synthetic fixture instead require and generate
+`unresolved:sha256:<64 lowercase hexadecimal characters>`. Because both synthetic
+producer and validator share that wrong literal, the clean baseline and all 52
+controls could pass without exercising the real packet grammar.
+
+#### 18.46.2 Sole correction and rejected broad fixes
+
+The successor source has exactly one semantic correction: the authoritative
+unresolved-ID form is
+`unresolved_sha256:` followed by the lowercase SHA-256 of the unchanged canonical
+unresolved-row body. The real-input validator, full-ID recomputation and synthetic
+fixture generator must all use that same literal and the same shared production
+validation path. Existing `W001` additionally substitutes the former
+`unresolved:sha256:` spelling into an otherwise valid synthetic row and requires
+that mutation to fail before any governed output write. This is an additional case
+inside `W001`, not `W043`, `F011` or a 53rd control.
+
+The immutable packet and disposition are correct and must not be rewritten. The
+correction admits no alias, dual-prefix compatibility, punctuation normalization,
+prefix translation, fallback parser, packet repair, pre-validation rewrite or
+caller-selected grammar. Every non-unresolved identifier rule remains byte-for-byte
+unchanged. If a future process rejects an input identifier, its external failure
+context may expose only role, field and row ordinal; it must not echo the identifier
+or any other input content.
+
+The historical §18.35 lower-bound arithmetic is unchanged: replacing one punctuation
+character with another does not change identifier length, object size or any read,
+write or RSS ceiling.
+
+#### 18.46.3 Fresh synthetic capability freeze
+
+The accepted §18.44 candidate is immutable evidence of its reviewed source and is no
+longer eligible for real input because that source contains the wrong unresolved-ID
+literal. It must not be edited, copied, patched, rehashed into a successor, executed
+again or treated as partially reusable authority. A corrected source can become a
+candidate only through a new full synthetic capability freeze at fresh,
+single-assignment coordinates:
+
+```text
+W001_CORRECTION_PLAN_AUTHORIZATION_BASE_MAIN_SHA=ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c
+W001_CORRECTION_PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+W001_CORRECTION_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+W001_CORRECTION_OPERATION_STATUS=PLAN_ONLY
+W001_CORRECTION_FREEZE_AUTHORIZED=false
+
+REJECTED_REAL_AUTHOR_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/946b469e27c7eb27c198898fa330c2475bde29fa/v4
+REJECTED_REAL_AUTHOR_TREE_SHA256=291cf77798b652a41512902a5bc40a107afa661abf2edec53fa3f32e7158ff20
+CORRECTED_CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c/v4.partial
+CORRECTED_CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c/v4
+CORRECTED_CAPABILITY_PARTIAL_ROOT_STATUS=ABSENT
+CORRECTED_CAPABILITY_FINAL_ROOT_STATUS=ABSENT
+```
+
+Any pre-existence at grant time is `PAUSE`; neither coordinate may be deleted,
+repaired, completed or reused. A later grant may authorize only the existing
+`synthetic-freeze` command under the unchanged `-S` interpreter, fourteen-member
+argv, five-key environment, one-process/no-subprocess rule, row-zero and
+pre-/post-rename durability transaction, 22-event/two-null ledger, one-GiB write and
+two-GiB RSS ceilings, and zero external-access contract. It authorizes no real packet
+or disposition read and no `author-packet` command.
+
+The clean baseline and all 52 controls `F001`–`F010`, `W001`–`W042` must pass in the
+required raw-ID order. The resulting source, command contract, dependency manifest,
+fixture spec, freeze manifest, receipt and six-file tree receive new exact hashes;
+none is inherited from tree `291cf777…`. A later plan-only result binding must record
+those hashes, modes, sizes, control receipt, ledger, durability counters, resource
+counters and `accepted=false`, followed by exact-tip Kiro review. No synthetic result
+self-accepts.
+
+#### 18.46.4 Frozen contract, sequence and authority boundary
+
+Everything outside the literal correction and its `W001` negative case remains
+unchanged: the six freeze roles, seven output roles, schemas, field mappings,
+canonical serializers/parsers, 902-member packet-tree recipe, identity adapters,
+14-/20-member argv, `F002` slices `[4:6]`/`[6:8]`, 52-control set, F-before-W receipt
+order, 22-event/two-null ledger, fixed point, durability barriers, cardinalities,
+read/write/RSS ceilings, and zero-access rules. `F010` remains the sole transaction-
+drift control. No new schema, role, wrapper, sidecar, reader, exception, `W043`,
+`F011` or acceptance transfer is introduced.
+
+The only admissible sequence is: exact-tip Kiro review of this two-commit plan;
+Ryan's PR decision; squash merge and exact-main confirmation; one new Ryan two-SHA
+grant for only the fresh synthetic capability freeze; plan-only result binding and
+Kiro review; then, if that corrected candidate is accepted, a separately planned,
+reviewed and granted real-author operation using fresh output coordinates. Neither
+consumed real-author grant, the old accepted candidate, this plan, a review PASS nor
+a merge supplies any part of those later grants.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no packet/disposition content read, root/source/file
+creation, capability freeze, author execution, real-author retry, network,
+subprocess, acquisition, ownership/license selection, build, publication, CI
+admission, product/test/config/R2b change, implementation, PR `#342` update, PR
+creation, merge, deployment, real OpenClaw, live data, watch activation, promotion
+or Gate D/W/D-V/E/F action.
 
 ## Jargon TL;DR
 
