@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-24
+**Updated:** 2026-10-05
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #286 — live activation BUILDING (2026-10-05):**
+- **Trapdoor Hunt / issue #286 — guarded live route IN PR (2026-10-05):**
   Ryan authorized Codex to proceed on a fresh worktree branch from current
   `origin/main`; the separate watcher/config activation and merge remain
   Ryan-gated. At Ryan's request Codex stopped and disabled
@@ -18,10 +18,11 @@ cross-arc snapshot and the linked arc brief below.
   toggle cannot reduce DeepSeek cost because the
   live route refuses without the hermetic root. Already indexed sources also
   need an adoption or rebuild decision: the current coordinator returns
-  `bootstrap_required`/`skipped` without a checkpoint. Codex is designing a
-  guarded live boundary and one-shot bootstrap candidate on a pushed branch;
-  Copilot and Kiro passed the exact implementation tip `e211c03`, and the old
-  documentation failure was rechecked. Ryan's PR decision is next. Resume from
+  `bootstrap_required`/`skipped` without a checkpoint. Codex opened
+  [PR #365](https://github.com/alanmz-crypto/convmem/pull/365) for the guarded
+  live boundary and one-shot bootstrap candidate. Copilot and Kiro passed the
+  corrected code tip `05197a7`, and Pylint CI passed; remaining checks await
+  runners. Ryan alone decides merge and grants live operations. Resume from
   [`CODEX-2026-10-05-issue-286-live-activation-handoff.md`](CODEX-2026-10-05-issue-286-live-activation-handoff.md)
   and the [live-activation design](../plans/DESIGN-issue-286-live-activation.md).
 
