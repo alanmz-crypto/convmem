@@ -9,15 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **OpenClaw Opportunity Map — revision 2 ready for Kiro (BLOCKED_ON_RYAN;
+- **OpenClaw Opportunity Map — revision 2 Kiro PASS (BLOCKED_ON_RYAN;
   Arc: none):** v1 of Claude's OpenClaw opportunity assessment (private
   claude.ai page) received a Codex **ADVISORY FAIL** (four High). Revision 2
   answers every finding: it adds a no-OpenClaw baseline, gates the phone front
   door, and uses one gateway per person. Kiro is the formal reviewer. The packet is
   **local-only, untracked and Git-excluded**
   (`artifacts/openclaw-opportunity-map-adversarial-review-v2/`, bundle sha256
-  `0c4817da…`) because this repo is public. **Next:** Ryan routes the
-  revision-2 packet to Kiro. See
+  `0c4817da…`) because this repo is public. Kiro returned **PASS** on
+  revision 2 (2026-10-05). **Next:** Ryan decides whether to narrow to a first
+  slice; no implementation is authorized. See
   [`CLAUDE-2026-10-05-openclaw-opportunity-map-kiro-review-handoff.md`](CLAUDE-2026-10-05-openclaw-opportunity-map-kiro-review-handoff.md).
 - **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
   held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet

@@ -12,7 +12,7 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `BLOCKED_ON_RYAN`: revision 2 is ready; waiting for Ryan to route the revision-2 packet to Kiro. Nothing is blocked on implementation |
+| **State** | `BLOCKED_ON_RYAN`: **Kiro PASS on revision 2** (2026-10-05). Ryan decides next steps; no implementation is authorized |
 | **Branch** | `docs/2026-10-05-openclaw-opportunity-map-review` (this doc only) |
 | **Tip SHA** | see `git log -1` on the branch (this commit) |
 | **Push status** | pushed to origin |
@@ -40,7 +40,7 @@ to narrow scope.
 | Revision | Packet (local) | Review | Result |
 |---|---|---|---|
 | v1 | `artifacts/openclaw-opportunity-map-adversarial-review-v1.zip` (`3a6ab925…94596`) | Codex (advisory) | **ADVISORY FAIL**: four High (packet stageable in the public repo; no no-OpenClaw baseline; phone front door risk understated; shared household gateway against OpenClaw's trust model), four Medium (factual corrections, feasibility labels, local-model triage boundary) |
-| **revision 2** | `artifacts/openclaw-opportunity-map-adversarial-review-v2.zip` (`0c4817da…6321a`) | **Kiro (formal), pending** | — |
+| **revision 2** | `artifacts/openclaw-opportunity-map-adversarial-review-v2.zip` (`0c4817da…6321a`) | **Kiro (formal)** | **PASS.** All Codex High and Medium findings verified as fixed in the page. Lowest confidence (~0.6): the route B and C limits in the §16 baseline table are unverified judgment. Low-severity notes: the "What changed" box omits three late fixes and contains a rename typo; a sealed evidence note about the exec-posture row is stale. Open for Ryan: whether "no AI first" under-weights a goal of learning OpenClaw itself |
 
 Revision 2 adds a no-OpenClaw baseline comparison and reorders the top
 opportunities around it. It stages and gates the phone front door behind the
@@ -99,7 +99,7 @@ recommendations), and look for regressions and overclaiming in the response doc.
 
 ## Acceptance criteria
 
-- [ ] Kiro verdict (`PASS`/`FAIL`) delivered to Ryan, against the exact revision-2 bundle hash above
+- [x] Kiro verdict delivered to Ryan: **PASS** against the revision-2 bundle hash above
 - [ ] Each finding carries all six required fields
 - [ ] Self-critique items are explicitly confirmed, rejected or re-rated
 - [ ] Ryan decides the next step (v2 revision, first-slice narrowing, or drop)
