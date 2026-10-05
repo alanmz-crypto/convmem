@@ -64,6 +64,10 @@ Keep the existing `enabled = false` default. Production routing requires an
 additional explicit exact-path source grant in configuration (no wildcard or
 directory-only grant for the first live slice). `enabled = true` without a
 source grant remains inert and observable, not `"skipped"` for a changed file.
+Selected live sources also require an explicit positive embedding dimension;
+the coordinator's historical default of 8 is a hermetic fake-provider value
+and must never be assumed for the live model. A wrong dimension fails before
+publication and requires a corrected reviewed grant.
 Hermetic routing still uses the tokenized root. A selected source must have a
 supported format and an existing valid checkpoint before automatic watcher
 routing. Missing/corrupt checkpoint, incompatible fingerprint, unexpected
@@ -87,6 +91,19 @@ ambiguous preimage refuses with no publish. This work does not infer a cursor
 from `processed.json` or Chroma rows alone. Source bootstrap is never triggered
 by ordinary watcher events. The candidate branch must prove rollback and
 replay with fake providers and real temporary Chroma before any live grant.
+
+The branch provides `scripts/bootstrap-incremental-jsonl.py` as a one-shot
+candidate. It is not called by `watch.py` or `ingest.py`. Invocation requires
+`--execute` and a mode-0600 JSON grant containing exactly the source path,
+complete-prefix SHA-256, complete byte boundary, maximum transform chunks,
+embedding dimension, and verified backup snapshot ID. The script checks that
+watch is inactive and disabled, then checks the source digest and chunk cap
+before calling the coordinator. It selects the source only in its in-memory
+config; it does not edit the live TOML or start a service. The backup ID is a
+reviewed operator assertion, so Ryan must verify the snapshot separately
+before execution. A failed bootstrap can be resumed only through the same
+one-shot path with the same grant; a generic watcher event refuses a marked
+bootstrap transaction.
 
 An alternative, zero-call adoption from legacy rows was considered. It would
 need an exact mapping from every source chunk to summary/unit physical IDs,

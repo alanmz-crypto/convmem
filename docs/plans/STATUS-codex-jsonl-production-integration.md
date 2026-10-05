@@ -72,7 +72,7 @@ Key invariants:
 | Format registry | Kiro JSONL outside isolation; Codex history/rollout only inside isolation. Cursor JSONL and Crush SQLite are not eligible. |
 | Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
 | Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; exact-tip Copilot docs acceptance and Kiro rechecks are needed. |
-| Issue #286 live design | Fresh branch from origin/main ff5ce7b; Kiro design PASS at e4fa954. The branch now has a distinct production boundary and exact-source gate under test; no live config or runtime promotion. |
+| Issue #286 live design | Fresh branch from origin/main ff5ce7b; Kiro design PASS at e4fa954. The branch has a distinct production boundary, exact-source gate, and one-shot bootstrap candidate under test; no live config or runtime promotion. |
 | Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
 
 ## 4. Completion State
@@ -83,7 +83,7 @@ Key invariants:
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged | Copilot/Kiro exact-tip recheck and Ryan PR decision |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Carry required conditions into implementation; Copilot audit pending |
 | Production boundary and exact-source gate | Implemented on branch; focused tests pass | Independent safety audit, broader regression and rollback proof |
-| Existing-source bootstrap | Not implemented or live-authorized | One-source proof, tests, review, Ryan budget/resource grant |
+| Existing-source bootstrap | One-shot candidate implemented on branch; no live execution or grant | Broader rollback/replay proof, audit, Ryan budget/resource grant |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role

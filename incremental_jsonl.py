@@ -455,6 +455,9 @@ class IncrementalJsonlCoordinator:
         supersede_on_reindex: bool = False,
         file_hash: str | None = None,
         processed: dict | None = None,
+        bootstrap_existing: bool = False,
+        expected_prefix_sha256: str | None = None,
+        max_bootstrap_chunks: int | None = None,
     ):
         if os.environ.get("CONVMEM_INCREMENTAL_ROOT"):
             IsolationBoundary.require_fake_provider("deterministic-fake")
@@ -473,6 +476,20 @@ class IncrementalJsonlCoordinator:
         self.supersede_on_reindex = supersede_on_reindex
         self.file_hash = file_hash
         self.processed_override = processed
+        self.bootstrap_existing = bootstrap_existing
+        self.expected_prefix_sha256 = expected_prefix_sha256
+        self.max_bootstrap_chunks = max_bootstrap_chunks
+        if bootstrap_existing:
+            if not isinstance(boundary, ProductionBoundary):
+                raise IncrementalJsonlError("bootstrap_requires_production_boundary")
+            try:
+                if len(expected_prefix_sha256 or "") != 64:
+                    raise ValueError("expected prefix digest length")
+                int(expected_prefix_sha256 or "", 16)
+            except ValueError as exc:
+                raise IncrementalJsonlError("bootstrap_digest_invalid") from exc
+            if not isinstance(max_bootstrap_chunks, int) or max_bootstrap_chunks < 1:
+                raise IncrementalJsonlError("bootstrap_chunk_limit_invalid")
         index = self.cfg.get("index") if isinstance(self.cfg.get("index"), dict) else {}
         self.chunk_size = int(chunk_size if chunk_size is not None else index.get("chunk_size", 2))
         self.overlap = int(overlap if overlap is not None else index.get("chunk_overlap", 0))
@@ -1400,6 +1417,7 @@ class IncrementalJsonlCoordinator:
                     "version": TRANSACTION_VERSION,
                     "transaction_id": transaction_id,
                     "phase": "APPLYING",
+                    "bootstrap_existing": self.bootstrap_existing,
                     "source_path": self.path_key,
                     "source_identity": self.source_id,
                     "generation": generation,
@@ -1481,6 +1499,12 @@ class IncrementalJsonlCoordinator:
         raw = snapshot_path.read_bytes()
         view = self.format_spec.parse_complete_prefix(str(snapshot_path), raw=raw)
         self._validate_incremental_prefix_view(view)
+        if self.bootstrap_existing and (
+            view.prefix_sha256 != self.expected_prefix_sha256
+            or len(chunk_messages(view.messages, self.chunk_size, self.overlap))
+            > int(self.max_bootstrap_chunks or 0)
+        ):
+            raise IncrementalJsonlError("bootstrap_replay_grant_mismatch")
         snapshot = {
             "raw": raw,
             "complete_boundary": view.complete_boundary,
@@ -1571,6 +1595,14 @@ class IncrementalJsonlCoordinator:
         try:
             existing_tx = _read_json(self.paths["transaction"])
             if existing_tx:
+                if isinstance(self.boundary, ProductionBoundary):
+                    was_bootstrap = existing_tx.get("bootstrap_existing") is True
+                    if was_bootstrap != self.bootstrap_existing:
+                        return self._refusal("bootstrap_requires_one_shot")
+                    if was_bootstrap and (
+                        existing_tx.get("prefix_sha256") != self.expected_prefix_sha256
+                    ):
+                        return self._refusal("bootstrap_replay_grant_mismatch")
                 return self._roll_forward(existing_tx)
             transaction_id = uuid.uuid4().hex
             try:
@@ -1582,6 +1614,9 @@ class IncrementalJsonlCoordinator:
                 checkpoint = self.checkpoint()
             except IncrementalJsonlError:
                 return self._refusal("invalid_state", snapshot=snapshot)
+            if self.bootstrap_existing and snapshot["prefix_sha256"] != self.expected_prefix_sha256:
+                self._cleanup(snapshot["snapshot_dir"])
+                return self._refusal("bootstrap_source_digest_mismatch")
             processed = self._processed()
             chroma_count = 0
             if checkpoint is None and not _path_has_processed_entry(processed, self.path_key):
@@ -1597,7 +1632,19 @@ class IncrementalJsonlCoordinator:
                 supersede_on_reindex=self.supersede_on_reindex,
                 eligible_formats=self.routed_formats,
             )
+            if self.bootstrap_existing and outcome != "bootstrap_required":
+                self._cleanup(snapshot["snapshot_dir"])
+                return self._refusal("bootstrap_not_required")
+            if outcome == "bootstrap_required" and self.bootstrap_existing:
+                chunk_count = len(chunk_messages(
+                    snapshot["messages"], self.chunk_size, self.overlap
+                ))
+                if chunk_count > int(self.max_bootstrap_chunks or 0):
+                    self._cleanup(snapshot["snapshot_dir"])
+                    return self._refusal("bootstrap_chunk_limit_exceeded")
+                outcome = "eligible_bootstrap_existing"
             if outcome in {"bootstrap_required", "invalid_state"}:
+                self._cleanup(snapshot["snapshot_dir"])
                 return self._refusal(outcome, snapshot=snapshot)
             continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
             if continuity and continuity != "initial_full" and not self.settings.allow_full_rebuild:
@@ -1640,6 +1687,7 @@ class IncrementalJsonlCoordinator:
                     "version": TRANSACTION_VERSION,
                     "transaction_id": transaction_id,
                     "phase": "PREPARING",
+                    "bootstrap_existing": self.bootstrap_existing,
                     "source_path": self.path_key,
                     "source_identity": self.source_id,
                     "generation_identity": snapshot["generation_identity"],
@@ -1651,8 +1699,10 @@ class IncrementalJsonlCoordinator:
                     else None,
                 }
             )
-            mode = "full_rebuild_fallback" if continuity and continuity != "initial_full" else (
-                "initial_full" if continuity == "initial_full" else "incremental"
+            mode = "bootstrap_existing" if self.bootstrap_existing else (
+                "full_rebuild_fallback" if continuity and continuity != "initial_full" else (
+                    "initial_full" if continuity == "initial_full" else "incremental"
+                )
             )
             cache_required_before = frontier if mode == "incremental" else 0
             try:
@@ -1669,6 +1719,7 @@ class IncrementalJsonlCoordinator:
                     "version": TRANSACTION_VERSION,
                     "transaction_id": transaction_id,
                     "phase": "PREPARING",
+                    "bootstrap_existing": self.bootstrap_existing,
                     "source_path": self.path_key,
                     "source_identity": self.source_id,
                     "generation_identity": snapshot["generation_identity"],
@@ -1719,7 +1770,7 @@ def maybe_route_incremental(
     detected_format: str | None,
 ) -> tuple[str, int, int, int, int] | None:
     """Return ingest tuple when the incremental route owns the file, else None."""
-    _ = (idx, path_key, tool, units_export, verbose)
+    _ = (idx, tool, units_export, verbose)
     settings = incremental_jsonl_settings(cfg)
     if not settings.enabled:
         return None
@@ -1737,6 +1788,11 @@ def maybe_route_incremental(
             raise IncrementalJsonlError("live_format_not_eligible", str(detected_format))
         if force_reindex or supersede_on_reindex:
             raise IncrementalJsonlError("live_force_unsupported")
+        if settings.embed_dimension is None:
+            raise IncrementalJsonlConfigError(
+                "live_embed_dimension_required",
+                "selected live sources require an explicit embed_dimension",
+            )
         boundary = ProductionBoundary(cfg, path)
     coordinator = IncrementalJsonlCoordinator(
         boundary,
@@ -1747,6 +1803,7 @@ def maybe_route_incremental(
         chunk_size=chunk_size,
         overlap=overlap,
         min_confidence=min_confidence,
+        embed_dimension=settings.embed_dimension or 8,
         force_reindex=force_reindex,
         supersede_on_reindex=supersede_on_reindex,
         file_hash=file_hash,

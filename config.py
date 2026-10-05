@@ -50,6 +50,7 @@ class IncrementalJsonlSettings:
     allow_full_rebuild: bool
     table_present: bool
     live_sources: tuple[str, ...] = ()
+    embed_dimension: int | None = None
 
 SUPPORTED_SHADOW_CONFIG_FILESYSTEMS = frozenset({"ext4", "xfs", "btrfs", "tmpfs"})
 _SHADOW_HEADER_RE = re.compile(r"^\s*\[shadow_ledger\]\s*(?:#.*)?$")
@@ -427,12 +428,21 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
             "duplicate_live_source",
             "index.incremental_jsonl.live_sources contains a duplicate path",
         )
+    embed_dimension = table.get("embed_dimension")
+    if embed_dimension is not None and (
+        type(embed_dimension) is not int or embed_dimension < 1
+    ):
+        raise IncrementalJsonlConfigError(
+            "invalid_embed_dimension",
+            "index.incremental_jsonl.embed_dimension must be a positive integer",
+        )
     return IncrementalJsonlSettings(
         enabled=bool(enabled),
         state_dir=str(Path(state_dir).expanduser()),
         allow_full_rebuild=bool(rebuild),
         table_present=True,
         live_sources=live_sources,
+        embed_dimension=embed_dimension,
     )
 
 
