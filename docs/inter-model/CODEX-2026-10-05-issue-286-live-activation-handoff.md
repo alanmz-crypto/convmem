@@ -19,6 +19,10 @@ At Ryan's subsequent request, Codex stopped and disabled
 `MainPID=0`. The watcher remains off until Ryan separately authorizes a
 reviewed test or activation. A separate forced index process seen during the
 initial check had exited by the time the watcher stop was verified.
+The first design draft is
+`docs/plans/DESIGN-issue-286-live-activation.md`; it calls for a distinct
+production boundary, exact-source selection, and one-shot existing-source
+bootstrap before any watcher enablement.
 
 > **This is an implementation handoff, not a collision check.** It asks Codex to
 > finish the one thing that actually reduces the burn: wiring the *merged,

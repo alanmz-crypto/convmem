@@ -67,98 +67,44 @@ Key invariants:
 
 | Surface | Current state |
 |---|---|
-| `incremental_jsonl.py` | Production coordinator on `main` via PR #293; this branch adds rollback-only capture/restore of processed, checkpoint/state, prepared, and dedupe files, with C4 routing dedupe through `boundary.resolve_mutable`. Default-off. Live enable without `CONVMEM_INCREMENTAL_ROOT` fail-closed skips rather than writing. |
-| `ingest.py` | Build/commit split; default-off dispatch after detect; content-addressed UUID4 ingest assertion IDs |
-| `adapters/kiro_session_jsonl.py` | `parse()` unchanged; `parse_complete_prefix()` adds byte ranges |
-| `config.py` / `config.example.toml` | `[index.incremental_jsonl]` absent/false by default |
-| `chroma_store.py` | Source-scoped snapshot/restore primitives |
-| `watch.py` | Unchanged; still `convmem index --file` |
-| `incremental_jsonl_isolation.py` | Hermetic T0 boundary; `-I` workers get host site via `CONVMEM_INCREMENTAL_SITE` |
-| `incremental_jsonl_canary.py` | P1 harness plus v1 hermetic P2 fixture on `main`; live P2 now fails closed on v1 after the runtime-readiness corrective |
-| `incremental_jsonl_canary_p2.py` | Production-owned `p2-exact-resource-v2` runtime; R1–R4, C1–C4, then a CI overlay-digest Gate 0 corrective after Kiro PASS at preserved `6cb0107` |
-| `incremental_jsonl_canary_network.py` | Loopback-allowing, fail-closed network policy shared by Gate 0 and the live worker |
-| `incremental_jsonl_canary_live_worker.py` | Live worker; installs network/service denial before provider imports; `t5-bind` binds the second append before T5 |
-| `scripts/run-jsonl-production-canary.py` | Explicit P1/P2 launcher; live P2 is one-stage only; `--stage t5-bind-append` binds the second append; `p2-all` is refused |
-| `chroma_readonly.py` | Extended with source-path counts for Gate 0; still SQLite `mode=ro` |
-| `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` | Kiro-reviewed canary architecture; PASS at `8b48a39` via PR #295 |
-| `docs/plans/EXECUTION-codex-jsonl-production-canary.md` | Two-grant P1/P2 plan merged via PR #295 |
-| `docs/plans/VERIFY-codex-jsonl-production-canary.md` | P1, hermetic P2-corrective, runtime-readiness, live-safety, R1–R4, C1–C4, and CI overlay/inventory evidence; next lane is Kiro exact-tip recheck |
-| `docs/plans/VERIFY-codex-jsonl-production-integration.md` | Cursor T0–T6 evidence |
-| Scratch prototype + canary on `main` | Unchanged inherited evidence |
-
-PR #293 was squash-merged as `881133d`. PR #295 merged the canary
-architecture/plan at `b23cabad`. PR #296 merged the P1 hermetic harness as
-`907c828`. PR #298 merged the reviewed P2 capability-gap packet as `8741774`.
-PR #299 merged the corrective positive-capability seam as `8beda7d` after Kiro
-PASS at final head `fe0086c` and six green CI checks. The merged runner at
-`7360a04` was not live-safe. Cursor implemented the Kiro-PASSed C0–C7
-runtime-readiness corrective on
-`feat/2026-09-12-codex-jsonl-p2-runtime-readiness` from that `origin/main`
-base. Local Claude FAIL at preserved tip `5bdc132`; live-safety FAIL at
-preserved `a47f32b`; Kiro CONDITIONAL PASS at preserved `4acb4c5`. The C1–C4
-corrective Kiro-PASS tip `6cb01076a3c57420d07c2b89bb6df9d4ba1659c8` is a
-preserved ancestor. Repo-wide CI then failed on overlay-inode reuse and
-stale writer inventory. The CI corrective is later commits on the same
-branch and existing PR #301. No live grant, digest, Gate 0, P2 run, or
-activation exists.
+| Incremental coordinator | On main, default off. Enabled Kiro routing without the hermetic root returns skipped. Existing indexed sources without a checkpoint return bootstrap_required/skipped. |
+| Hermetic isolation | Tokenized, fake-provider test boundary; it cannot be a live switch. |
+| Format registry | Kiro JSONL outside isolation; Codex history/rollout only inside isolation. Cursor JSONL and Crush SQLite are not eligible. |
+| Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
+| Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; exact-tip Copilot docs acceptance and Kiro rechecks are needed. |
+| Issue #286 live design | Fresh branch from origin/main ff5ce7b; see DESIGN-issue-286-live-activation.md. No engine change yet. |
+| Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
 
 ## 4. Completion State
 
-| Milestone | Status | Blocking on |
+| Milestone | State | Next gate |
 |---|---|---|
-| Scratch JSONL state machine | **DONE on `main`** (PR #289) | — |
-| Isolated real-Chroma writer/pruner pass | **DONE on `main`** (PR #291) | — |
-| Read-only live-source canary | **DONE on `main`** (PR #292) | — |
-| Production architecture | **PASS at `84ec51a`** | — |
-| Bounded Execute plan | **PASS / AUTHORIZED** | — |
-| Ryan architecture/Execute acceptance | **DONE 2026-09-10** | — |
-| Cursor implementation | **DONE on `main`** via PR #293 (`881133d`) | — |
-| Implementation review/PR | **DONE**; Kiro exact-tip PASS at `17d7e23`, six CI checks PASS, squash-merged as `881133d` | — |
-| Production-canary architecture/plan | **DONE on `main`** via PR #295 (`b23cabad`); Kiro PASS at `8b48a39` | — |
-| P1 hermetic canary harness | **DONE on `main`** via PR #296 (`907c828`); Kiro PASS at final head `40b8c11`, six CI checks green, 128 focused tests PASS | — |
-| P2 transfer seam corrective | **DONE on `main`** via PR #299 (`8beda7d`); Kiro PASS at final head `fe0086c`, six CI checks green | — |
-| P2 runtime-readiness corrective | **CLAUDE_FAIL** at preserved `5bdc132` | Live-safety corrective on the same branch |
-| P2 live-safety corrective | **CLAUDE_FAIL** at preserved `a47f32b` | R1–R4 sequence-completeness corrective on the same branch |
-| P2 R1–R4 sequence corrective | **KIRO_CONDITIONAL_PASS** at preserved `4acb4c5` | C1–C4 exact-tip corrective on the same branch |
-| P2 C1–C4 Kiro-condition corrective | **KIRO_PASS** at preserved `6cb0107` | Repo-wide CI then failed; ancestor preserved |
-| P2 CI overlay/inventory corrective | **READY_FOR_KIRO_RECHECK** on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` | Kiro targeted exact-tip recheck of the new tip; existing PR #301; no new PR; no Claude re-review |
-| P2 exact-resource grant packet | **UNAUTHORIZED / MUST NOT REUSE** candidate digest `c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621` | Corrective merge + remasured source + fresh packet + Kiro review + Ryan exact-digest authorization |
-| P2 one-source live canary | **UNAUTHORIZED**; no executable grant digest | Fresh packet + Kiro review + Ryan exact-digest authorization + twelve-part Gate 0 |
-| Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
+| Coordinator and canary | Merged on main through PR #301; disabled | Preserve reviewed behavior |
+| S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged | Copilot/Kiro exact-tip recheck and Ryan PR decision |
+| Live-activation design | Draft on fresh branch | Copilot safety audit and Kiro design review |
+| Production boundary and exact-source gate | Not implemented | Design review, hermetic implementation and tests |
+| Existing-source bootstrap | Not implemented or live-authorized | One-source proof, tests, review, Ryan budget/resource grant |
+| Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-**If Ryan sent you for exact-tip Kiro review:** recheck the exact pushed tip
-of `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` after the CI overlay-
-digest and writer-inventory corrective. Preserved ancestor
-`6cb01076a3c57420d07c2b89bb6df9d4ba1659c8` must remain in history. No Claude
-re-review. Authorize nothing operationally. Do not open a new PR; #301 already
-exists.
-
-**If Ryan sent you to implement further code:** stop unless Ryan names new
-review conditions after this CI-corrective tip.
-
-**If Ryan sent you to prepare a replacement grant packet:** stop until this
-corrective is reviewed and, if Ryan chooses, merged. The previous candidate
-digest must not be reused.
-
-**If Ryan sent you to execute live P2 or activate:** stop unless Ryan supplied
-a separately reviewed exact-resource P2 grant and digest after this corrective
-merges. Implementation on this branch does not authorize live operations.
+Codex is preparing issue #286 branch work under Ryan's 2026-10-05 proceed
+instruction. Copilot audits isolation and the earlier documentation-acceptance
+failure; Kiro reviews the same exact revision. Ryan alone merges and grants
+one-source bootstrap or any runtime promotion and watcher restart. Branch work
+and review do not authorize live-corpus access.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro rechecks the exact CI-corrective tip. No Claude re-review. No new PR.
-2. If Kiro PASSes unconditionally, Ryan separately decides whether to merge
-   existing PR #301.
-3. After merge, revalidate the still-closed source; if it remains eligible,
-   freeze every remaining grant field into a **new** packet and digest.
-4. Kiro reviews that packet; Ryan may then authorize its exact digest and
-   non-mutating Gate 0.
-5. Only after Gate 0 passes and Ryan separately authorizes the run, Cursor runs
-   one live stage at a time against the named resources and stops at evidence.
-6. Independent review decides whether activation should be planned at all.
-7. Ryan alone edits live configuration or activates the watcher route.
+1. Review the design and reconcile the S0-S3 successor against current main.
+2. Implement a distinct production boundary and exact-source route without
+   loosening the hermetic contract; prove default-off, unrelated-source,
+   crash, rollback, and fail-closed behavior with temporary resources.
+3. Prove a one-shot existing-source bootstrap or retain the legacy route;
+   account for its one-time provider cost.
+4. Obtain fresh exact-tip Copilot and Kiro PASS verdicts and Ryan's PR decision.
+5. Obtain separate Ryan grants for any exact-source bootstrap and later
+   runtime/config/restart test. Measure calls and coverage by source class.
 
 ## 7. Hard Stops
 
@@ -255,18 +201,11 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-12 | Cursor | C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`; next lane is exact-tip Kiro recheck. No Claude, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | CI overlay-digest and writer-inventory corrective after repo-wide pytest failure on preserved `6cb0107`; next lane is Kiro exact-tip recheck of the new tip. Existing PR #301. No Claude, live Gate 0/P2, or replacement grant |
 
+| 2026-10-05 | Codex | Reconciled merged canary state and opened issue #286 live-activation design; watcher disabled at Ryan's request |
+
 ## TL;DR
 
-- Arc Codex production code is on `main` via PR #293 (`881133d`) and remains
-  disabled by default.
-- The canary architecture/plan merged via PR #295 (`b23cabad`), and the P1
-  hermetic harness merged via PR #296 (`907c828`) after Kiro PASS and green CI.
-- The positive exact-resource P2 seam is on `main` via PR #299 (`8beda7d`)
-  after Kiro PASS and green CI, but that runtime was not live-safe.
-- Cursor implemented the C0–C7 runtime-readiness corrective, a live-safety
-  pass after Claude FAIL at `5bdc132`, R1–R4 after Claude FAIL at preserved
-  `a47f32b`, C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`, then a
-  CI overlay-digest and writer-inventory corrective after repo-wide pytest
-  failed on preserved `6cb0107`. Next lane is Kiro exact-tip recheck of the
-  new tip. Existing PR #301. No Claude, live Gate 0/P2, grant digest, or
-  activation.
+- Arc Codex's coordinator and canary are on main, default off.
+- Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
+- Issue #286 activation needs a distinct production boundary, existing-source
+  bootstrap decision, and fresh exact-tip review before any live grant.
