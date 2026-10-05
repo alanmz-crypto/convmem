@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-24
+**Updated:** 2026-10-05
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **OpenClaw Opportunity Map — adversarial review requested (BLOCKED_ON_RYAN;
+  Arc: none):** Claude produced a broad OpenClaw opportunity assessment (private
+  claude.ai page, v1). Ryan asked for an adversarial review, so Kiro is the
+  formal reviewer (PASS/FAIL). The review packet is **local-only and untracked**
+  (`artifacts/openclaw-opportunity-map-adversarial-review-v1/`, bundle sha256
+  `3a6ab925…`) because this repo is public. **Next:** Ryan routes the packet to
+  Kiro. See
+  [`CLAUDE-2026-10-05-openclaw-opportunity-map-kiro-review-handoff.md`](CLAUDE-2026-10-05-openclaw-opportunity-map-kiro-review-handoff.md).
 - **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
   held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
   preserves integration tip `9c6421a` and routes its 44-path remediation to
