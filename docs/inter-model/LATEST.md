@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-24
+**Updated:** 2026-10-05
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,22 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **Watch recovery + runtime-main clean — DONE (2026-10-05):** `convmem-watch`
+  had been dead ~2 days on a stale-lock deadlock (`watch.lock` held dead pid
+  1218), so no incremental indexing was running; the runtime worktree also
+  carried an uncommitted, unreviewed Crush adapter (2026-09-25) that indexed
+  Butsaba `.docx` resume PII. Ryan authorized a reversible recovery after
+  Switchboard Arc cleared it and the OpenClaw / #286 lanes were confirmed to
+  have no assigned or active owner. Actions: restored `.worktrees/runtime-main`
+  to clean `a92a74e` (edits preserved in git-ignored
+  `artifacts/runtime-main-uncommitted-2026-09-25.zip`), cleared the stale lock,
+  restarted watch (now `active`, ~165 MB, `subprocess_index=on`). `doctor` all
+  checks pass, `dirty_main` cleared, corpus 104,241→105,236. Intentionally-off
+  services (monitor timer, shadow-ledger) and the `a92a74e` pin / OpenClaw
+  manifest untouched. **Next:** if the Butsaba adapter is wanted, branch +
+  review with privacy-safe naming from the archive — not yet authorized. See
+  [`KIRO-2026-10-05-watch-restart-collision-check-handoff.md`](KIRO-2026-10-05-watch-restart-collision-check-handoff.md).
 
 - **Decision and Review Guardrails (opt-in doc) — MERGED (2026-09-24):**
   Kiro design review PASS, no blockers, two non-blocking amendments applied
@@ -171,3 +187,4 @@ its existing archive/reference location. Use
 | T4 | The next Recovery Authority execution stage; it is not currently authorized. |
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
+- [2026-09-26] Disk cleanup paused (Crush/DeepSeek V4 Flash). Freed 33 G (paru 24 G, Chrome/Chromium 9 G). Remaining items pinned; NOT deleted. See `/home/lauer/.config/crush/disk-cleanup-pin.md`.
