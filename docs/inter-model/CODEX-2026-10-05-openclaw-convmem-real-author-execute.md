@@ -1,9 +1,9 @@
 # Execute Handoff: Switchboard One-Shot Real Work-Item Author
 
-**Arc:** ConvMem Switchboard  
-**Date:** 2026-10-05  
-**Author:** Codex supervision lane  
-**For:** Astra execution lane  
+**Arc:** ConvMem Switchboard
+**Date:** 2026-10-05
+**Author:** Codex supervision lane
+**For:** Astra execution lane
 **Authorization:** Ryan, 2026-10-05 — explicit `granted` response after PR `#362`
 merged the reviewed current-state snapshot and Kiro returned exact-main PASS
 
