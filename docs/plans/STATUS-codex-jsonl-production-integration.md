@@ -72,7 +72,7 @@ Key invariants:
 | Format registry | Kiro JSONL outside isolation; Codex history/rollout only inside isolation. Cursor JSONL and Crush SQLite are not eligible. |
 | Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
 | Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
-| Issue #286 live candidate | PR #365 is open and mergeable. Its guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap candidate remain default off; no live config or runtime promotion. Copilot and Kiro passed the corrected code tip 05197a7 after the Pylint fix. |
+| Issue #286 live candidate | PR #365 is open, clean, and mergeable at b17f47c. Its guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap candidate remain default off; no live config or runtime promotion. Copilot and Kiro passed the code and exact-tip merge rechecks; all six GitHub checks passed, including 2680 Python 3.12 tests. |
 | Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
 
 ## 4. Completion State
@@ -82,21 +82,21 @@ Key invariants:
 | Coordinator and canary | Merged on main through PR #301; disabled | Preserve reviewed behavior |
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
-| Production boundary and exact-source gate | In open PR #365; Copilot/Kiro PASS at corrected code tip 05197a7; Pylint CI PASS | Complete remaining PR checks, then Ryan merge decision; no production grant |
-| Existing-source bootstrap | One-shot candidate, real temporary Chroma replay/rollback tests, no live execution or grant; Copilot/Kiro PASS at corrected code tip 05197a7 | Ryan source/digest/backup/budget grant before any execution |
+| Production boundary and exact-source gate | In open PR #365; Copilot/Kiro PASS through b17f47c; six CI checks PASS on that tip | Ryan merge decision; no production grant |
+| Existing-source bootstrap | One-shot candidate, real temporary Chroma replay/rollback tests, no live execution or grant; Copilot/Kiro PASS through b17f47c | Ryan source/digest/backup/budget grant before any execution |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-The PR steward is resolving CI and review state for open PR #365. Copilot and
-Kiro passed the corrected code tip `05197a7`; Pylint CI passed. The latest
-pytest, secret-scan, and analysis jobs still need a successful exact-head run
-after runner contention. Ryan alone decides merge and separately grants any
+The PR steward completed the code correction, branch update, exact-tip Copilot
+and Kiro rechecks, and six passing GitHub checks for open PR #365 at `b17f47c`.
+Ryan decides merge. A status-only documentation refresh may trigger new checks;
+it does not change the reviewed implementation. Ryan separately grants any
 one-source bootstrap, runtime promotion, or watcher restart.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Finish PR #365 checks on its final tip; Ryan decides merge. No agent merge.
+1. Ryan decides whether to merge PR #365 after final-tip checks. No agent merge.
 2. Confirm an exact Kiro source, its complete-prefix digest, current backup,
    embedding dimension, and acceptable one-time transform budget.
 3. Obtain separate Ryan grants for that exact-source bootstrap and later
@@ -198,11 +198,12 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-12 | Cursor | CI overlay-digest and writer-inventory corrective after repo-wide pytest failure on preserved `6cb0107`; next lane is Kiro exact-tip recheck of the new tip. Existing PR #301. No Claude, live Gate 0/P2, or replacement grant |
 
 | 2026-10-05 | Codex | Opened PR #365; corrected the Pylint regression without changing the safety contract, obtained Copilot/Kiro PASS at 05197a7, and kept the watcher disabled while remaining CI waits for runners |
+| 2026-10-05 | Codex | Resolved the full-suite reload-order failure, brought PR #365 current with main, and obtained Copilot/Kiro exact-tip PASS plus six green checks at b17f47c; Ryan's merge and live grants remain separate |
 
 ## TL;DR
 
 - Arc Codex's coordinator and canary are on main, default off.
 - Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
 - Issue #286 PR #365 has a distinct production boundary and bounded bootstrap;
-  safety/design reviews and Pylint passed. Remaining CI and Ryan's merge and
-  source/budget grants stand before any live use.
+  safety/design reviews and all six CI checks passed at b17f47c. Ryan's merge
+  decision and separate source/budget grants stand before any live use.

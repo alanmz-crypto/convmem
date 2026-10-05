@@ -20,9 +20,11 @@ cross-arc snapshot and the linked arc brief below.
   need an adoption or rebuild decision: the current coordinator returns
   `bootstrap_required`/`skipped` without a checkpoint. Codex opened
   [PR #365](https://github.com/alanmz-crypto/convmem/pull/365) for the guarded
-  live boundary and one-shot bootstrap candidate. Copilot and Kiro passed the
-  corrected code tip `05197a7`, and Pylint CI passed; remaining checks await
-  runners. Ryan alone decides merge and grants live operations. Resume from
+  live boundary and one-shot bootstrap candidate. Codex corrected a full-suite
+  config-reload test failure and brought the branch current with main at
+  `b17f47c`. Copilot and Kiro passed the code and exact-tip merge rechecks;
+  all six GitHub checks passed, including 2680 Python 3.12 tests. Ryan alone
+  decides merge and grants live operations. Resume from
   [`CODEX-2026-10-05-issue-286-live-activation-handoff.md`](CODEX-2026-10-05-issue-286-live-activation-handoff.md)
   and the [live-activation design](../plans/DESIGN-issue-286-live-activation.md).
 
