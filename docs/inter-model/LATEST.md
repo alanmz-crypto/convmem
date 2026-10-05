@@ -9,6 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Tripwire deploy BLOCKED on Switchboard deploy-safety — ASK OUT (2026-10-05):**
+  The OpenClaw Watch Coverage "tripwire" deploy would advance the live watcher
+  code dir (`.worktrees/runtime-main`) 18 commits (`a92a74e`→`origin/main`
+  `ff5ce7b`). Those 18 commits are the in-flight **Switchboard Arc** (#345–#362)
+  plus #341/#343. Kiro sent the Switchboard agent a deploy-safety query
+  (DEPLOY-SAFE / NOT YET / NEEDS RYAN) — deploy stays NO-GO until answered.
+  Two further gates independent of the arc: manifest `reviewed_plan_sha`
+  `19dea97` is **not** in `origin/main` (fails), and the brief needs a separate
+  Ryan grant. Watch is intentionally inactive+disabled (DeepSeek burn). See
+  `docs/inter-model/KIRO-2026-10-05-switchboard-deploy-safety-query-handoff.md`.
+
 - **Watch recovery + runtime-main clean — DONE (2026-10-05):** `convmem-watch`
   had been dead ~2 days on a stale-lock deadlock (`watch.lock` held dead pid
   1218), so no incremental indexing was running; the runtime worktree also
