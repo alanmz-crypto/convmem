@@ -130,7 +130,7 @@ def test_symlinked_input_cannot_bypass_selected_live_boundary(tmp_path: Path) ->
         _route(cfg, alias)
 
 
-@pytest.mark.parametrize("bad", [0, -1, True, "768"])
+@pytest.mark.parametrize("bad", [0, -1, True, "768", type("IntSubclass", (int,), {})(8)])
 def test_live_embedding_dimension_must_be_positive_integer(tmp_path: Path, bad) -> None:
     cfg, _source = _fixture(tmp_path)
     cfg["index"]["incremental_jsonl"]["embed_dimension"] = bad

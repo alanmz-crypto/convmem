@@ -438,8 +438,7 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
         )
     embed_dimension = table.get("embed_dimension")
     if embed_dimension is not None and (
-        not isinstance(embed_dimension, int)
-        or isinstance(embed_dimension, bool)
+        type(embed_dimension) is not int  # pylint: disable=unidiomatic-typecheck
         or embed_dimension < 1
     ):
         raise IncrementalJsonlConfigError(
