@@ -9,19 +9,20 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc ConvMem Switchboard — one-shot real work-item author PREFLIGHT PAUSE / ZERO
-  EFFECTS (2026-10-05):** PR `#361` merged the exact §§18.45/10.43 boundary at
+- **Arc ConvMem Switchboard — corrected real-author preflight retry AUTHORIZED / NOT
+  STARTED (2026-10-05):** PR `#361` merged the exact §§18.45/10.43 boundary at
   `8d1c017`, Kiro returned exact-main PASS, and PR `#362` merged the reviewed
-  snapshot at `ff5ce7b`. Ryan's exact `31d4c919…` + `d7f82fbc…` grant was consumed
-  before effects when Astra's read-only ancestor check raised `FileNotFoundError` on
-  the absent staging base. No process launched, no content was read, nothing was
-  written or created, and all four outputs remain absent. Resume from
-  [`CODEX-2026-10-05-openclaw-convmem-real-author-execute.md`](CODEX-2026-10-05-openclaw-convmem-real-author-execute.md)
+  snapshot at `ff5ce7b`. The first grant paused before effects when its checker raised
+  `FileNotFoundError` on the absent staging base; it is consumed with zero
+  process/read/write/create. Ryan issued one fresh `31d4c919…` + `d7f82fbc…` grant
+  whose sole correction treats the first `ENOENT` on each exact output lineage as
+  proof of descendant absence. Resume from
+  [`CODEX-2026-10-05-openclaw-convmem-real-author-preflight-retry-execute.md`](CODEX-2026-10-05-openclaw-convmem-real-author-preflight-retry-execute.md)
   and the current
   [`STATUS-openclaw-convmem-integration.md`](../plans/STATUS-openclaw-convmem-integration.md).
-  The consumed grant is non-reusable; Ryan decides whether to issue a fresh grant.
-  No retry, repair, independent review, PR, merge, acquisition, build, publication
-  or later gate is authorized.
+  All author/input identities still match and all four outputs remain absent. Astra may
+  consume this fresh grant once; no further attempt, repair, independent review, PR,
+  merge, acquisition, build, publication or later gate is authorized.
 - **Arc Poison Pill — Part B write guard MERGED ([#338](https://github.com/alanmz-crypto/convmem/pull/338), `d521281`), watcher deployed (Claude, 2026-09-24):**
   every production Chroma write now runs under a crash-containment guard. `.worktrees/runtime-main` was fast-forwarded,
   restore points were created (332 MB in `~/.local/share/convmem/chroma.write-guard/`), and `doctor` reports
