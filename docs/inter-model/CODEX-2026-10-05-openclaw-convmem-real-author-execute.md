@@ -13,7 +13,7 @@ merged the reviewed current-state snapshot and Kiro returned exact-main PASS
 
 | Field | Value |
 |---|---|
-| **State** | `AUTHORIZED / NOT_STARTED` — exactly one offline `author-packet` process |
+| **State** | `CONSUMED / PAUSE_BEFORE_EFFECTS` — no author process launched |
 | **Grant branch** | `plan/2026-10-05-openclaw-convmem-real-author-execute-grant` |
 | **Plan authorization base** | `ca0397c084b2616809307249212b7153d9d8ba39` |
 | **Semantic parent** | `31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d` |
@@ -22,7 +22,7 @@ merged the reviewed current-state snapshot and Kiro returned exact-main PASS
 | **Status merge** | PR `#362`, `ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c` |
 | **Push status** | Grant branch must be read from its pushed origin tip before execution |
 | **PR** | Not opened; execution does not authorize PR creation or merge |
-| **Ryan GATE** | None for this exact one-shot real author process; every deviation or second attempt requires a new Ryan grant |
+| **Ryan GATE** | A fresh Ryan grant is required before any new preflight or author launch; this grant is non-reusable |
 
 ## Authoritative two-SHA grant
 
@@ -49,6 +49,32 @@ is:
 
 Any conflict, missing value or changed governing SHA is `PAUSE`; Astra does not choose
 between readings.
+
+## Execution result
+
+Astra consumed this grant and stopped fail-closed before effects:
+
+```text
+STOP_STAGE=READ_ONLY_PREFLIGHT_ANCESTOR_CHECK
+STOP_REASON=FileNotFoundError while walking ancestors of an absent staging coordinate
+PROCESS_COUNT=0
+PACKET_CONTENT_READ_BYTES=0
+DISPOSITION_CONTENT_READ_BYTES=0
+OUTPUT_WRITTEN_BYTES=0
+PATHS_CREATED_OR_MUTATED=0
+REPORTED_STATUS=PAUSE
+```
+
+The missing ancestor was
+`/home/lauer/.cache/convmem-switchboard-provenance-work-items`. The checker treated
+that absent staging base as an unexpected exception instead of completing the
+no-follow absence proof. The grant's fail-closed rule therefore required `PAUSE`.
+
+Read-only diagnostics after the stop reconfirmed the governing SHAs, accepted author
+root and all six member identities, packet-root metadata, disposition type/mode/link/
+size and all four output-coordinate absences. No packet member or disposition content
+was opened. No root, file, result, ledger event or acceptance claim exists from this
+attempt. The grant is consumed and cannot authorize another preflight or process.
 
 ## Accepted immutable author
 
@@ -285,19 +311,18 @@ the repository, open a PR, conduct independent review or continue to another gat
 
 **Astra:**
 
-- [ ] Run the session-start protocol and state Goal/role/system/next plus the arc.
-- [ ] Resolve and read the pushed grant-branch tip.
-- [ ] Verify the governing SHAs, immutable identities and four absent coordinates.
-- [ ] Execute at most one exact process under all ceilings and exclusions.
-- [ ] Return the complete result packet and stop.
+- [x] Ran the session-start protocol and read the pushed grant tip.
+- [x] Verified the governing SHAs and immutable accepted-author/input metadata.
+- [x] Stopped at `PAUSE` on the unexpected ancestor-check exception.
+- [x] Launched zero processes and performed zero content reads or writes.
+- [x] Returned the zero-effect result packet and stopped without retry.
 
 ## TL;DR
 
-- Ryan authorized one real `author-packet` process governed by `31d4c919…` plus
-  `d7f82fbc…`; accepted author tree `291cf777…` is the sole executable source.
-- The immutable 654,147,403-byte packet and 8,383,806-byte disposition may each be
-  read once; only the four exact absent output coordinates may be created.
-- One process, 662,531,209 input bytes, at most 2 GiB RSS, 2 GiB per root and 4 GiB
-  total writes, with every forbidden-access counter zero.
-- Any discrepancy is `PAUSE`; no repair, retry, self-acceptance, PR, merge,
-  independent review, acquisition, build, publication or later gate.
+- The exact `31d4c919…` + `d7f82fbc…` grant is consumed at
+  `READ_ONLY_PREFLIGHT_ANCESTOR_CHECK` after an unexpected `FileNotFoundError`.
+- Zero processes launched, zero content bytes were read, zero bytes were written and
+  no path was created or mutated; all four output coordinates remain absent.
+- Accepted author and input metadata still match, but this grant is non-reusable.
+- A fresh Ryan decision is required before any new preflight or author launch; no
+  repair, retry, independent review, acquisition, build, publication or later gate.

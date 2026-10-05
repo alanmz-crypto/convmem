@@ -124,10 +124,11 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │       └─ packet/disposition identities + four absent roots bound
         │       └─ PR #361 merged at 8d1c017; Kiro exact-main PASS
         │       └─ PR #362 merged snapshot at ff5ce7b; Kiro exact-main PASS
-        │       └─ one exact two-SHA author-packet run granted; not started
+        │       └─ granted preflight PAUSED before effects on missing ancestor
+        │       └─ zero process/read/write/create; all four outputs still absent
         │
-        │ → one granted offline work-item packet run → plan-only result binding
-        │ → separate independent review grant
+        │ → Ryan decision on a fresh exact grant; consumed grant non-reusable
+        │ → if later successful, plan-only result binding + separate review grant
         │ → separately planned exact origins
         │ → separately granted acquisition → clean build/review/publication
         ▼
@@ -294,8 +295,11 @@ snapshot at `ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c`, and Kiro returned exact-
 PASS. Ryan has now issued one exact two-SHA grant naming semantic parent
 `31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d`, reviewed overlay
 `d7f82fbcd3afd3887d4b3764b173958d5094ee53`, accepted author tree `291cf777…`,
-the immutable inputs and the four still-absent output coordinates. Astra execution is
-authorized and has not started; no second attempt or broader authority is included.
+the immutable inputs and the four still-absent output coordinates. Astra consumed
+that grant at read-only preflight and stopped at `PAUSE`: its ancestor walker raised
+`FileNotFoundError` on the absent staging base. No process launched, no packet or
+disposition content was read, no byte was written and no path was created or mutated.
+All four outputs remain absent; the grant is non-reusable.
 PR `#342`
 remains merge-blocked by required GitHub `pytest (3.12)`, the two safety findings and
 the absent publishable qualified runtime.
@@ -320,7 +324,7 @@ the absent publishable qualified runtime.
 | Component/ownership work-item plan | **MERGED / KIRO EXACT-MAIN PASS** at `d79f03c` — PR `#348` landed §§18.30/10.28 with one future seven-file offline packet, 1,221 component items, 19 unresolved ownership disputes and exact 98,608-ID/1,384-edge coverage; no packet, read or acquisition is authorized |
 | Work-item author contract | **MERGED / KIRO EXACT-MAIN PASS** at `a3b56ab` — PR `#351` landed §§18.31–18.39/§§10.29–10.37 with the closed schema/mappings, synthetic qualification, shared-core command, write ledger, packet-tree recipe and literal `-S` startup isolation; PR `#352` merged its descriptive snapshot at `0f84b4a` |
 | V4 synthetic capability freeze | **CANDIDATE ACCEPTED / ONE REAL AUTHOR RUN GRANTED, NOT STARTED** — the first process sealed rejected tree `f6936649…`; the second stopped before rename and sealed `a9ceaa06…`; the third stopped at canonical `_blake2` and left one-file partial `99e4939d…`; the fourth sealed rejected tree `d399e356…` with W-before-F receipt order; PR `#357` merged the correction at `c5cb7c7` and Kiro returned exact-main PASS; Ryan's separately granted fifth retry sealed tree `291cf777…`, receipt `3b01f77c…` is exactly F-before-W, baseline and 52/52 controls pass, durability/access/resource counters match; PR `#359` merged the binding at `02bf65c`, and Kiro exact-main PASS made that tree the sole accepted v4 author-capability candidate. Ryan's later exact one-shot real-author grant is now recorded separately and not started |
-| Real work-item author grant plan | **MERGED / KIRO EXACT-MAIN PASS / ONE EXECUTION AUTHORIZED, NOT STARTED** — PR `#361` landed §§18.45/10.43 at `8d1c017`; PR `#362` merged the reviewed snapshot at `ff5ce7b`; Ryan's exact `31d4c919…` + `d7f82fbc…` grant authorizes Astra to run the frozen twenty-member command once against immutable packet/disposition inputs and four still-absent single-assignment outputs |
+| Real work-item author grant plan | **MERGED / KIRO EXACT-MAIN PASS / GRANT CONSUMED AT PREFLIGHT PAUSE** — PR `#361` landed §§18.45/10.43 at `8d1c017`; PR `#362` merged the reviewed snapshot at `ff5ce7b`; Ryan's exact `31d4c919…` + `d7f82fbc…` grant stopped before effects on an unexpected missing-ancestor exception: zero process/read/write/create, four outputs still absent, grant non-reusable |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -363,7 +367,7 @@ the absent publishable qualified runtime.
 | V4 standard-library dependency-link retry correction | **KIRO PASS / RETRY CONSUMED** at `946b469` | Consumed `b7a8ade…/v4.partial` remains immutable PAUSE evidence; the separately granted `816b713…` retry proved the canonical stdlib reader correction and sealed a final root, but that final is rejected by the later receipt-order check and transfers no acceptance |
 | V4 self-test receipt control-order retry correction | **MERGED / KIRO EXACT-MAIN PASS** at `c5cb7c7` — PR `#357` | Sealed final tree `d399e356…` is immutable PAUSE evidence despite the process-reported PASS; its receipt orders `W001`–`W042` before `F001`–`F010`. Fresh `946b469…` coordinates remain absent; the merged correction adds only the already-required raw-ID aggregate receipt validator and grants no setup/read/execution authority |
 | V4 capability-freeze result binding | **MERGED / KIRO EXACT-MAIN PASS** at `02bf65c` — PR `#359`; tree `291cf777…`, receipt `3b01f77c…` | One process exited zero after a clean baseline and 52/52 controls; exact F-before-W receipt order, 22 events/two nulls, nine durability counters at one, equal 323,536,730-byte forecast/observed writes, 931,274,752-byte peak RSS and zero forbidden access are bound in §§18.44/10.42. Kiro exact-main PASS established the sole accepted v4 author-capability candidate. The process result's `accepted=false` remains historical non-self-acceptance; no real read or author run is authorized |
-| One-shot real-author grant boundary | **MERGED / KIRO EXACT-MAIN PASS / ONE EXECUTION AUTHORIZED, NOT STARTED** — PR `#361` at `8d1c017`; snapshot PR `#362` at `ff5ce7b` | Ryan's exact grant names semantic parent `31d4c919…`, reviewed overlay `d7f82fbc…`, accepted author tree `291cf777…`, immutable inputs and four absent outputs. It authorizes one Astra process only; every deviation and second attempt remain Ryan-gated |
+| One-shot real-author grant boundary | **PREFLIGHT PAUSE / ZERO EFFECTS** — reviewed plan PR `#361` at `8d1c017`; snapshot PR `#362` at `ff5ce7b`; consumed grant `31d4c919…` + `d7f82fbc…` | Astra stopped at `READ_ONLY_PREFLIGHT_ANCESTOR_CHECK` after `FileNotFoundError` on the absent staging base. Process/content-read/write/create counts are zero; all outputs remain absent. A fresh Ryan grant is mandatory for any new preflight or process |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -372,35 +376,30 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** Astra executes the one exact two-SHA real work-item
-author process Ryan granted after PR `#362` merged the reviewed snapshot at
-`ff5ce7b`. The grant names semantic parent
-`31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d`, reviewed overlay
-`d7f82fbcd3afd3887d4b3764b173958d5094ee53`, accepted author tree `291cf777…`,
-the immutable packet/disposition inputs and the four absent output coordinates. Read
-`docs/inter-model/CODEX-2026-10-05-openclaw-convmem-real-author-execute.md`, then run
-exactly one no-site `author-packet` process under the frozen ceilings. Do not ask Ryan
-to re-authorize actions already inside that exact packet.
+**If Ryan sent you here now:** the one exact `31d4c919…` + `d7f82fbc…` real-author
+grant is consumed and non-reusable. Astra stopped before effects at
+`READ_ONLY_PREFLIGHT_ANCESTOR_CHECK` because the checker raised `FileNotFoundError`
+while walking the absent staging base. The author never launched; packet/disposition
+content-read bytes, written bytes and created/mutated paths are all zero. Accepted
+author/input metadata still match and all four output coordinates remain absent.
 
-On any discrepancy, stop at `PAUSE`, preserve the stopped coordinate and return the
-required counters and identities. No second attempt, repair, deletion, independent
-review, acquisition, build, publication, deployment or real OpenClaw is authorized.
+The next substantive decision belongs to Ryan: whether to issue a fresh exact grant
+whose preflight handles an absent ancestor as fail-closed coordinate absence rather
+than an unexpected exception. Do not rerun, repair, delete, create a root, read input
+content, execute the author, independently review, acquire, build, publish, deploy or
+run real OpenClaw under the consumed grant.
 
 ## 6. What remains before merge and before live use
 
-1. Astra executes exactly one granted `author-packet` process governed by semantic
-   parent `31d4c919cfe77ae6d2fbbcb473a0fd8e0857515d` and reviewed overlay
-   `d7f82fbcd3afd3887d4b3764b173958d5094ee53`. It uses accepted author tree
-   `291cf777…`, the exact twenty-member command/final-root cwd/five-key environment,
-   and the four still-absent single-assignment output coordinates. It reads the
-   immutable 654,147,403-byte packet and 8,383,806-byte disposition exactly once each
-   within the 662,531,209-byte aggregate ceiling. One process, zero subprocesses,
-   2-GiB RSS, 2-GiB writes per root, 4-GiB total writes and zero network/runtime/
-   repository/retained-source/credential/acquisition access are mandatory. Any miss
-   is `PAUSE`; there is no repair, deletion, resume or second attempt.
-2. Codex records the exact returned evidence in a plan-only result-binding overlay.
-   Kiro reviews that exact overlay. A separate Ryan grant is required before any
-   independent provenance/licensing review; process success cannot self-accept the
+1. Ryan decides whether to issue a fresh exact two-SHA grant. The prior
+   `31d4c919…` + `d7f82fbc…` grant is consumed by the zero-effect preflight `PAUSE`
+   and cannot be retried or resumed. Any successor must retain the exact accepted
+   author, inputs, outputs, command, ceilings and stops while explicitly handling an
+   absent output ancestor without attempting to inspect a nonexistent parent.
+2. Only under that fresh grant may Astra re-run preflight and, if every condition
+   passes, launch one `author-packet` process. A successful return advances only to a
+   Codex plan-only result binding and Kiro review. Independent provenance/licensing
+   review remains behind another Ryan grant; process success cannot self-accept the
    packet or advance acquisition, build or publication.
 3. A separate exact metadata/acquisition operation packet must name every allowed
    origin/root, method, redirect, parser, byte/request ceiling, checkpoint and fresh
@@ -449,9 +448,9 @@ review, acquisition, build, publication, deployment or real OpenClaw is authoriz
   at `45442e93…`, retains all 98,608 open IDs and is immutable.
 - No provenance HTTP/VCS request, retained-source read or artifact parsing before a
   separately reviewed origin-by-origin acquisition plan and exact Ryan grant.
-- No work-item root, packet or result outside Ryan's exact `31d4c919…` +
-  `d7f82fbc…` one-shot grant. That grant includes no network, repository, retained-
-  source, runtime, credential or acquisition access and cannot be reused.
+- No work-item root, packet or result under the consumed `31d4c919…` +
+  `d7f82fbc…` grant. Any successor requires a fresh Ryan grant and still includes no
+  network, repository, retained-source, runtime, credential or acquisition access.
 - No packet/disposition content read, output-parent/root creation or author process
   until Astra reproduces the exact preflight in the Execute handoff. Any pre-existing
   staging/durable partial/final coordinate is `PAUSE` with zero content read and no
@@ -555,7 +554,7 @@ a separate repository-knowledge arc.
 | Capability status pull request | `https://github.com/alanmz-crypto/convmem/pull/360` — merged as `ca0397c`; descriptive snapshot only |
 | Real-author grant-plan pull request | `https://github.com/alanmz-crypto/convmem/pull/361` — merged as `8d1c017`; Kiro exact-main PASS |
 | Real-author status pull request | `https://github.com/alanmz-crypto/convmem/pull/362` — merged as `ff5ce7b`; Kiro exact-main PASS |
-| Authorized real-author execution | `docs/inter-model/CODEX-2026-10-05-openclaw-convmem-real-author-execute.md` — Ryan's exact two-SHA, one-process grant; execution not started |
+| Consumed real-author execution grant | `docs/inter-model/CODEX-2026-10-05-openclaw-convmem-real-author-execute.md` — zero-effect read-only preflight `PAUSE`; no process/content read/write/create, grant non-reusable |
 | Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
@@ -566,7 +565,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-05 | Codex | Recorded Ryan's exact `31d4c919…` + `d7f82fbc…` one-shot real-author grant; Astra execution is authorized and not started. |
+| 2026-10-05 | Codex | Recorded the consumed real-author grant's zero-effect preflight `PAUSE`; no process/read/write/create occurred, all four outputs remain absent, and a fresh Ryan decision is required. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -657,8 +656,11 @@ passed and Kiro returned exact-main PASS. PR `#362` merged the reviewed current-
 snapshot at `ff5ce7b`, and Kiro returned exact-main PASS. Ryan has now issued one exact
 two-SHA grant naming semantic parent `31d4c919…`, reviewed overlay `d7f82fbc…`,
 accepted author tree `291cf777…`, immutable inputs and four absent output coordinates.
-Astra's one-process real author run is authorized but has not started; no second
-attempt, independent review or broader authority is included.
+Astra consumed that grant at read-only preflight and stopped before effects because
+the ancestor check raised `FileNotFoundError` on the absent staging base. Zero
+processes launched, zero content bytes were read, zero bytes were written, no path was
+created or mutated and all four outputs remain absent. The grant is non-reusable; a
+fresh Ryan decision is required before any new preflight or author process.
 Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
