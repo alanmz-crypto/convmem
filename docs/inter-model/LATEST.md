@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-24
+**Updated:** 2026-10-09
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,16 +9,31 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **pr-steward-reminder — DECIDED (2026-09-28): Option B.** Ryan chose to
-  start assigning PR Steward (default: Codex) for bounded PR-lifecycle work
-  going forward, activating the already-reviewed role from
-  `CODEX-2026-07-21-pr-steward-role.md` (Copilot audit + Kiro sign-off,
-  landed `main` 2026-07-22 as `0e2b396`) — no new design involved.
-  Bounded-brief criteria are the existing `TEAM-CHARTER-2026-07-06.md` PR
-  Steward clause, not redefined. `standing-checks-register.json`'s
-  `last_verified` bumped to 2026-09-28. See
-  [`CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md`](CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md)
-  for the full record.
+- **Trapdoor Hunt / issue #286 — guarded live route IN PR (2026-10-05):**
+  Ryan authorized Codex to proceed on a fresh worktree branch from current
+  `origin/main`; the separate watcher/config activation and merge remain
+  Ryan-gated. At Ryan's request Codex stopped and disabled
+  `convmem-watch.service` as temporary cost containment; it is inactive and
+  stays off until a separate reviewed restart decision. The config-only
+  toggle cannot reduce DeepSeek cost because the
+  live route refuses without the hermetic root. Already indexed sources also
+  need an adoption or rebuild decision: the current coordinator returns
+  `bootstrap_required`/`skipped` without a checkpoint. Codex opened
+  [PR #365](https://github.com/alanmz-crypto/convmem/pull/365) for the guarded
+  live boundary and one-shot bootstrap candidate. Codex corrected a full-suite
+  config-reload test failure and brought the branch current with main at
+  `b17f47c`. Copilot and Kiro passed the code and exact-tip merge rechecks;
+  all six GitHub checks passed, including 2680 Python 3.12 tests. Ryan alone
+  decides merge and grants live operations. Resume from
+  [`CODEX-2026-10-05-issue-286-live-activation-handoff.md`](CODEX-2026-10-05-issue-286-live-activation-handoff.md)
+  and the [live-activation design](../plans/DESIGN-issue-286-live-activation.md).
+
+- **PR Steward reminder — Ryan chose Option B (2026-09-28):** Assign the
+  existing PR Steward role (default: Codex) through explicit, bounded briefs
+  for future PR lifecycle work. Each assignment remains Ryan-granted under
+  the [team charter](TEAM-CHARTER-2026-07-06.md). The
+  [decision record](CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md)
+  and `standing-checks-register.json` capture this choice.
 - **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
   held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
   preserves integration tip `9c6421a` and routes its 44-path remediation to
@@ -96,7 +111,7 @@ cross-arc snapshot and the linked arc brief below.
   and [`VERIFY-openclaw-watch-coverage.md`](../plans/VERIFY-openclaw-watch-coverage.md).
 - **Claude Gate 1 smoke retirement — MERGED / CLOSED:** issue [#317](https://github.com/alanmz-crypto/convmem/issues/317) found six blockers confined to the optional smoke harness. PR [#330](https://github.com/alanmz-crypto/convmem/pull/330) removed that harness and squash-merged as `e2148b2`; Kiro's post-update carry-forward review passed the updated branch tip and merged commit. The supported on-demand Claude adapter remains unchanged, and issue #317 is closed. Any future real-source containment smoke requires a new design and Ryan grant.
 - **Claude Watch Parity — CLOSED (`NO_GATE2_ROUTE`):** Gate 1 on-demand Claude indexing remains supported. Ryan closed the automatic Gate 2 route after three Security Review FAIL tips (`10322a6`: six findings; `52bdc02`: ten; `95ef122`: three). Kiro is stood down. No live canary, production route, watcher/source/service change, or activation occurred. Experimental plans and tips are preserved under `milestone/claude-watch-parity-*` tags. Issue #317 retired the optional Gate 1 smoke harness after its own Security Review FAIL; any future real-source containment smoke requires a new design and Ryan grant. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md); do not resume Gate 2 from its tagged branches.
-- **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
+- **Trapdoor Hunt / issue #286 — S0–S3 main integration (RECHECKED / UNMERGED):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`, tip `19d34a5…`. Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance); Copilot and Kiro rechecked documentation at `19d34a5…` and passed, with Codex whitespace check exit 0. **Next:** Ryan's separate PR decision for that branch. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
   `ef4a7dd…` on 2026-09-17 (Copilot audit + Kiro review + Claude advisory PASS on

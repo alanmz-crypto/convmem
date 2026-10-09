@@ -1,9 +1,9 @@
-# Decision Request: pr-steward-reminder (overdue, Ryan-only)
+# PR Steward reminder: Ryan chose Option B
 
 **Date:** 2026-09-27 (decided 2026-09-28)
 **Author:** Claude (Sonnet 5)
-**For:** Ryan (no other lane can resolve this)
-**Authorization:** N/A — this is a request for a decision, not implementation
+**For:** Ryan and future PR lifecycle lanes
+**Decision:** Ryan chose Option B on 2026-09-28; individual Steward assignments still require Ryan's explicit grant
 
 ---
 
@@ -32,19 +32,16 @@ default.
 
 ---
 
-## Resume state
+## Current state
 
-| Field | Value |
-|-------|--------|
-| **State** | `BLOCKED_ON_RYAN` — pure decision, no implementation blocked |
-| **Branch** | `docs/2026-09-27-2026-09-27-pr-steward-reminder-decision-handoff` |
-| **Push status** | pushed to origin |
-| **PR** | not opened — this is a decision request, not a change to review |
-| **Ryan GATE** | the entire content of this doc — see "What to decide" |
+The standing-check decision is complete. The next bounded PR lifecycle task
+may use PR Steward only when Ryan explicitly assigns that role and supplies
+the brief required by the team charter. This decision does not grant Steward
+authority over any particular PR.
 
 ---
 
-## Why this can't be delegated or completed by any agent
+## Decision context (historical)
 
 `pr-steward-reminder` is a standing check (`docs/standing-checks-register.json`)
 whose own definition is: *"Manual reminder: when describing a bounded,
@@ -55,19 +52,17 @@ brief."*
 
 Per the team charter, PR Steward activation is **"a separate Ryan grant and
 is never inferred from planning or implementation handoff."** No review
-lane, subagent, or delegate can satisfy that — it requires you, specifically,
-to decide and state it. I asked this question directly four times across a
-2026-09-24 → 2026-09-27 session and did not get a direct answer, so I'm
-converting it to a durable handoff instead of continuing to re-ask in chat,
-where it would otherwise be lost at session close.
+lane, subagent, or delegate could satisfy that — Ryan had to decide and state
+it. Claude asked four times across a 2026-09-24 → 2026-09-27 session and
+created this durable handoff when no direct answer had arrived. Ryan then
+chose Option B on 2026-09-28.
 
 ---
 
-## What to decide
+## Options Ryan considered
 
-`doctor`'s `standing_register` check currently reports this at **67 days
-since verified (limit 30)**. The check exists to periodically force this
-exact question:
+At the time of the decision, `doctor` reported the reminder at **67 days
+since verified (limit 30)**. The check posed this question:
 
 **Should PR Steward (default: Codex) be assigned for bounded PR-lifecycle
 tasks (branch → commits → push → PR open → CI monitoring → review-finding
@@ -92,24 +87,23 @@ whichever lane is already in-session doing the work directly.
 
 ---
 
-## What NOT to do
+## Authority boundary
 
-- No agent should bump `last_verified` without your actual answer — that
-  would be self-certifying a decision that's explicitly reserved for you.
-- No agent should start assigning PR Steward to anything based on this doc
-  alone — Option B requires your explicit go, per the charter's "never
-  inferred from planning or implementation handoff" rule.
+- The 2026-09-28 `last_verified` update records Ryan's actual answer. Future
+  updates must likewise reflect a real Ryan decision, not self-certification.
+- No agent should infer a PR Steward assignment from this document alone.
+  Each task needs Ryan's explicit grant and bounded brief, per the charter.
 
 ---
 
 ## Acceptance criteria
 
 - [x] Ryan states Option A or Option B (or a third option not listed here) — **B, 2026-09-28**
-- [ ] If A: `docs/standing-checks-register.json`'s `pr-steward-reminder` row
-      gets `last_verified` bumped to the date of the decision
 - [x] If B: a follow-up note describes what "bounded brief" criteria trigger
       Steward assignment going forward — see "DECIDED" section above; criteria
       are the existing charter clause, not newly defined here
+- [x] `docs/standing-checks-register.json`'s `pr-steward-reminder` row records
+      the decision date and Option B
 
 ---
 
@@ -120,20 +114,3 @@ whichever lane is already in-session doing the work directly.
 | Standing check definition | `docs/standing-checks-register.json` (id: `pr-steward-reminder`) |
 | Governing charter | `docs/inter-model/TEAM-CHARTER-2026-07-06.md` — PR Steward role + activation rule |
 | Where this originated | `docs/role-charters.md:70,74` |
-
----
-
-## Leaving / picking up checklist
-
-**Author (leaving):**
-
-- [x] This file committed on a pushed branch
-- [ ] `LATEST.md` bullet at top — not yet added, see note below
-- [x] Branch pushed
-
-**Whoever picks this up (Ryan, or an agent relaying to Ryan):**
-
-- [ ] Read this file
-- [ ] Get Ryan's actual answer (A, B, or other)
-- [ ] Apply the matching acceptance-criteria item above
-- [ ] Do not act on Option B without Ryan's explicit go per the charter
