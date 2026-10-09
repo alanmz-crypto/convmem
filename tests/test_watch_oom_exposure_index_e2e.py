@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -396,7 +398,9 @@ def test_e2e_paired_ingest_index_measurement() -> None:
             "12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
         )
 
+    run_id = f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:8]}"
     evidence = {
+        "run_id": run_id,
         "hostname": host["hostname"],
         "candidate_main_sha": FROZEN_MAIN_SHA,
         "harness_branch_tip": branch_tip,
@@ -414,11 +418,12 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         "rows": rows,
         "verdict": verdict,
     }
-    evidence_path = ROOT / "docs" / "plans" / "EVIDENCE-watch-oom-exposure-index-e2e.json"
-    evidence_path.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+    evidence_path = ROOT / "docs" / "plans" / f"EVIDENCE-watch-oom-exposure-index-e2e-{run_id}.json"
+    with evidence_path.open("x", encoding="utf-8") as handle:
+        handle.write(json.dumps(evidence, indent=2) + "\n")
     print(json.dumps(evidence, indent=2), flush=True)
-    if hard_failures:
-        pytest.fail("hermetic safety or paired semantic failure during §9.7 measurement")
+    if blocked:
+        pytest.fail("§9.7 measurement blocked; no full-curve floor is accepted")
 
 
 def test_e2e_wiring_in_denied_subprocess(tmp_path: Path) -> None:

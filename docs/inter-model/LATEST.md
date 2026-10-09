@@ -23,8 +23,11 @@ cross-arc snapshot and the linked arc brief below.
   log write. No candidate arm or paired floor exists; production canaries had
   no observed drift. A 64-row baseline control passes without the 2 GiB
   address-space limit but fails with it while Chroma starts its compactor.
-  **Next:** review the diagnostic harness correction, then Ryan decides whether
-  a revised memory-bound measurement design and fresh one-shot grant are
+  Copilot passed the diagnostic redirect at `aec5371` and found two follow-up
+  evidence-handling defects, now corrected: blocked results fail pytest and
+  future evidence uses run-unique exclusive files. **Next:** exact-tip Copilot
+  recheck and Kiro review, then Ryan decides whether a revised memory-bound
+  measurement design and fresh one-shot grant are
   warranted. The watcher remains disabled; the live 12.5 GiB OOM and issue
   #268 remain open. See the
   [§9.7 execution evidence](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).

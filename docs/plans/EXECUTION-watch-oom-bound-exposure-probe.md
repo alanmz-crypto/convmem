@@ -453,8 +453,9 @@ tests/test_watch_oom_exposure_index_e2e.py` → 3 passed, 1 full-curve skip;
 the two C5 path/network denial controls → 2 passed; scoped `pylint --score=n`
 on the four changed test helpers → exit 0. A separate 64-row baseline smoke
 against `5c103aa` succeeded with exit 0, one processed file, and no denied
-paths. No full curve, production indexing, watcher operation, or §9.8
-decision occurred.
+paths **with the 2 GiB address-space limit disabled**. That wiring smoke did
+not prove the full worker ceiling. No full curve, production indexing,
+watcher operation, or §9.8 decision occurred at that point.
 
 Next: Copilot audits the pushed corrective exact tip, then Kiro reviews the
 evidence. Ryan must name a quiet host and execution lane before a new full
@@ -479,9 +480,16 @@ implicates address-space reservation, not a measured RSS excess, but the
 underlying 5,000-row failure was hidden by the denied failure-log write. The
 test worker now redirects that diagnostic log into its temporary writer root
 and reports its tail on a skipped transcript; the 2 GiB ceiling remains
-unchanged. No full curve was rerun. Copilot/Kiro must review the new tip before
-any proposed revised run. Ryan must separately grant any further full run and
-decide whether the 2 GiB `RLIMIT_AS` contract itself needs redesign.
+unchanged. No full curve was rerun. Copilot's targeted audit of the first
+diagnostic correction (`aec5371`) passed isolation and evidence honesty, then
+identified two further evidence-handling defects: a blocked run without a
+denial could leave pytest green, and the fixed evidence filename could be
+overwritten. The harness now fails pytest for every blocked result and writes
+future evidence under a run-unique filename opened exclusively. The blocked
+first-run evidence remains at its original path with its original `e486925`
+harness hash. Copilot and Kiro must review the revised tip before any proposed
+new run. Ryan must separately grant any further full run and decide whether
+the 2 GiB `RLIMIT_AS` contract itself needs redesign.
 
 ## 11. Jargon glossary
 
