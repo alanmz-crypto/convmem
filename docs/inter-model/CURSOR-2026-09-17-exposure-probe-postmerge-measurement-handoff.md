@@ -7,6 +7,14 @@
 
 **Arc:** Watch OOM Bound Exposure Probe (Trapdoor Hunt operational follow-up; issue #268; does **not** reopen the closed provenance T3 gate)
 
+**2026-10-09 pause:** This is the historical §9.7 Execute specification. Its
+2 GiB `RLIMIT_AS` boundary blocked the authorized one-shot measurement before
+any complete baseline/candidate pair. Do not execute or reuse this handoff as
+written. A proposed replacement bound is in
+[`EXECUTION-watch-oom-bound-exposure-probe.md` §9.7a](../plans/EXECUTION-watch-oom-bound-exposure-probe.md);
+it awaits Kiro design review and separate Ryan implementation and full-run
+grants. The watcher remains disabled and issue #268 remains open.
+
 ---
 
 ## Resume state

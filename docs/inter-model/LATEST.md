@@ -25,10 +25,13 @@ cross-arc snapshot and the linked arc brief below.
   address-space limit but fails with it while Chroma starts its compactor.
   Copilot passed the diagnostic redirect at `aec5371` and found two follow-up
   evidence-handling defects, now corrected: blocked results fail pytest and
-  future evidence uses run-unique exclusive files. **Next:** exact-tip Copilot
-  recheck and Kiro review, then Ryan decides whether a revised memory-bound
-  measurement design and fresh one-shot grant are
-  warranted. The watcher remains disabled; the live 12.5 GiB OOM and issue
+  future evidence uses run-unique exclusive files. Copilot and Kiro passed
+  the corrected harness at `3237c03`. Codex has drafted a §9.7a amendment:
+  replace the 2 GiB address-space limit with a hard 2 GiB transient-service
+  cgroup bound, then require an exact-setup small control before any full
+  curve. **Next:** Kiro design review; Ryan separately decides whether to
+  grant harness implementation and, later, another one-shot measurement.
+  The watcher remains disabled; the live 12.5 GiB OOM and issue
   #268 remain open. See the
   [§9.7 execution evidence](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
 
