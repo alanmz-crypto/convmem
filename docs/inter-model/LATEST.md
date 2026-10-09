@@ -14,14 +14,19 @@ cross-arc snapshot and the linked arc brief below.
   default-running wiring test could reach production Chroma after an early
   config import; the recorded run was blocked and established no paired memory
   floor. A replacement correction is isolated on
-  `fix/2026-10-09-2026-10-09-watch-oom-measurement-safety`, based on current
-  `main`. Its default smoke uses a guarded subprocess and temporary Chroma;
-  it does not hash production canaries. Both 64-row candidate and baseline
-  smokes pass, with no denied paths; the full 5k/20k/58,825 curve remains
-  gated and unrun. **Next:** Copilot
-  exact-tip safety/evidence audit, then Kiro review. Ryan must name a quiet
-  host/lane before another full measurement. The watcher remains disabled;
-  the live 12.5 GiB OOM and issue #268 remain open. See the
+  `fix/2026-10-09-2026-10-09-watch-oom-measurement-safety`, frozen from
+  `18dcf45`. Its default smoke uses a guarded subprocess and temporary Chroma;
+  it does not hash production canaries. Copilot and Kiro passed the reviewed
+  `e486925` tree. Ryan then granted one hermetic full run on `archlinux` with
+  disk-backed scratch. It stopped at the first 5,000-row baseline arm: ingest
+  skipped the transcript and the guard denied a production synthesis-failure
+  log write. No candidate arm or paired floor exists; production canaries had
+  no observed drift. A 64-row baseline control passes without the 2 GiB
+  address-space limit but fails with it while Chroma starts its compactor.
+  **Next:** review the diagnostic harness correction, then Ryan decides whether
+  a revised memory-bound measurement design and fresh one-shot grant are
+  warranted. The watcher remains disabled; the live 12.5 GiB OOM and issue
+  #268 remain open. See the
   [§9.7 execution evidence](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
 
 - **Arc Codex / issue #286 — guarded Kiro route MERGED, default off

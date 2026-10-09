@@ -460,6 +460,29 @@ Next: Copilot audits the pushed corrective exact tip, then Kiro reviews the
 evidence. Ryan must name a quiet host and execution lane before a new full
 curve. The live 12.5 GiB OOM remains unexplained and issue #268 stays open.
 
+**One-shot host result (2026-10-09, `archlinux`):** Copilot and Kiro passed
+the `e486925` harness, and Ryan authorized a serial full run on this host
+with disk-backed scratch. The tool sandbox initially blocked the user-systemd
+bus check before fixture creation; the authorized run then passed preflight
+outside that sandbox. Its first 5,000-row **baseline** arm at `5c103aa`
+returned `files_processed=0`, `files_skipped=1`, and a denied attempt to open
+the production `synthesis_failures.jsonl`. The harness stopped before any
+candidate arm. Its canary comparison found no drift. The generated
+`EVIDENCE-watch-oom-exposure-index-e2e.json` records `measurement_blocked=true`
+and `complete_pairs=0`; it establishes no §9.8 memory floor.
+
+Read-only inspection found the production failure-log default behind the
+denied attempt. A small 64-row baseline control subsequently failed with the
+2 GiB `RLIMIT_AS` while Chroma started its compactor; the same guarded control
+without that address-space limit succeeded at about 145 MiB peak RSS. This
+implicates address-space reservation, not a measured RSS excess, but the
+underlying 5,000-row failure was hidden by the denied failure-log write. The
+test worker now redirects that diagnostic log into its temporary writer root
+and reports its tail on a skipped transcript; the 2 GiB ceiling remains
+unchanged. No full curve was rerun. Copilot/Kiro must review the new tip before
+any proposed revised run. Ryan must separately grant any further full run and
+decide whether the 2 GiB `RLIMIT_AS` contract itself needs redesign.
+
 ## 11. Jargon glossary
 
 - **Exposure window:** the standing check requiring a corpus-clean scan after a

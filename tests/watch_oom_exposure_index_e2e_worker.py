@@ -180,6 +180,7 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
 
     probe_results: list[tuple[bool, str]] = []
     real_probe = doctor._exposure_window_probe
+    failure_log = writer_root / "synthesis_failures.jsonl"
 
     def observed_probe(*probe_args, **probe_kwargs):
         result = real_probe(*probe_args, **probe_kwargs)
@@ -196,6 +197,7 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
         stack.enter_context(patch("ingest.summarize", return_value="e2e summary"))
         stack.enter_context(patch("ingest._distill_with_provenance", side_effect=_distill_stub))
         stack.enter_context(patch("ingest.ollama_embed", return_value=EMBED_VECTOR))
+        stack.enter_context(patch.object(ingest, "_SYNTHESIS_FAIL_LOG", failure_log))
         stack.enter_context(patch("llm.summarize", return_value="e2e summary"))
         stack.enter_context(patch("llm.ollama_embed", return_value=EMBED_VECTOR))
         stack.enter_context(patch("distill.distill_with_response", side_effect=_distill_stub))
@@ -228,7 +230,11 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
     units_after = chroma_readonly.collection_count(str(chroma_dir), "knowledge_units")
 
     if stats.get("files_processed", 0) < 1:
-        raise RuntimeError(f"ingest.index did not process transcript: {stats}")
+        failure_detail = failure_log.read_text(encoding="utf-8")[-1200:] if failure_log.is_file() else ""
+        raise RuntimeError(
+            f"ingest.index did not process transcript: {stats}; "
+            f"temporary_failure_log_tail={failure_detail!r}"
+        )
     if units_after <= units_before:
         raise RuntimeError(
             f"expected new units in temporary Chroma: before={units_before} after={units_after}"
