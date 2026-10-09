@@ -9,24 +9,18 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #286 — guarded live route IN PR (2026-10-05):**
-  Ryan authorized Codex to proceed on a fresh worktree branch from current
-  `origin/main`; the separate watcher/config activation and merge remain
-  Ryan-gated. At Ryan's request Codex stopped and disabled
-  `convmem-watch.service` as temporary cost containment; it is inactive and
-  stays off until a separate reviewed restart decision. The config-only
-  toggle cannot reduce DeepSeek cost because the
-  live route refuses without the hermetic root. Already indexed sources also
-  need an adoption or rebuild decision: the current coordinator returns
-  `bootstrap_required`/`skipped` without a checkpoint. Codex opened
-  [PR #365](https://github.com/alanmz-crypto/convmem/pull/365) for the guarded
-  live boundary and one-shot bootstrap candidate. Codex corrected a full-suite
-  config-reload test failure and brought the branch current with main at
-  `b17f47c`. Copilot and Kiro passed the code and exact-tip merge rechecks;
-  all six GitHub checks passed, including 2680 Python 3.12 tests. Ryan alone
-  decides merge and grants live operations. Resume from
-  [`CODEX-2026-10-05-issue-286-live-activation-handoff.md`](CODEX-2026-10-05-issue-286-live-activation-handoff.md)
-  and the [live-activation design](../plans/DESIGN-issue-286-live-activation.md).
+- **Arc Codex / issue #286 — guarded Kiro route MERGED, default off
+  (2026-10-09):** Ryan squash-merged
+  [PR #365](https://github.com/alanmz-crypto/convmem/pull/365) onto `main` as
+  `f3171fc`. Copilot and Kiro passed the reviewed PR tip `7ed46c4`, and all
+  six CI checks passed. The guarded production boundary and one-shot bootstrap
+  can cover one Kiro JSONL source after an express grant; Crush SQLite and
+  Cursor JSONL remain on the legacy route. The watcher remains stopped and
+  disabled for cost containment. No live bootstrap, config/runtime promotion,
+  watcher restart, or paid-call measurement was granted by the merge. Ryan must issue
+  separate exact-source/budget and later runtime/restart grants. Resume from
+  the [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md)
+  and [live-route design](../plans/DESIGN-issue-286-live-activation.md).
 
 - **PR Steward reminder — Ryan chose Option B (2026-09-28):** Assign the
   existing PR Steward role (default: Codex) through explicit, bounded briefs
