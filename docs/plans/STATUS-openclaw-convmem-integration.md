@@ -135,9 +135,14 @@ reviewed plan-only §18.22 / §10.20 at a23d843
         │       └─ tree 939b8849… sealed; receipt 920c0e0e…; 52/52 F-before-W
         │       └─ PR #366 merged at dd4dd39; Kiro exact-tip + exact-main PASS
         │       └─ sole accepted corrected-v4 candidate; no execution grant
+        ├─ §18.48 / §10.46 corrected one-shot real-author grant boundary
+        │       └─ PR #368 acceptance snapshot merged at 16dbd79
+        │       └─ corrected author + exact 20-member command preserved
+        │       └─ immutable inputs + four fresh absent output roots bound
+        │       └─ plan-only; Kiro exact-tip review required before Ryan's decision
         │
-        │ → separately planned and reviewed real-author operation
-        │ → separate Ryan two-SHA grant at fresh output roots
+        │ → Kiro exact-tip review → Ryan PR/merge decision → exact-main review
+        │ → separate Ryan two-SHA grant at fresh output roots, if approved
         │ → separately planned exact origins
         │ → separately granted acquisition → clean build/review/publication
         ▼
@@ -353,6 +358,7 @@ the absent publishable qualified runtime.
 | Real work-item author attempt | **BOTH GRANTS CONSUMED / FAIL-CLOSED W001 PAUSE** — PR `#361` landed §§18.45/10.43 at `8d1c017`; PR `#362` merged the reviewed snapshot at `ff5ce7b`; the first grant stopped before effects; the corrected successor launched once and exited `1` at `DEPENDENCY_CLOSURE` on `Refusal: W001: input ID prefix`; all four outputs remain absent and neither grant is reusable |
 | W001 unresolved-ID correction | **MERGED / KIRO EXACT-MAIN PASS** at `0a250b1` — PR `#363` landed §§18.46/10.44 byte-identical to reviewed overlay `9241543`; PR `#364` merged its reviewed snapshot at `4f6266e`; actual `unresolved_sha256:<64hex>`, rejection of the author's colon-style typo and W001–W042/F001–F010 remain bound |
 | Corrected V4 capability freeze | **SOLE ACCEPTED CORRECTED CANDIDATE / REAL AUTHORING SEPARATELY GATED** — Ryan's one-shot grant was consumed; partial absent; final `0555` tree `939b8849…` has six single-link `0444` members and receipt `920c0e0e…`; PR `#366` merged the exact binding at `dd4dd39`, and Kiro exact-tip plus exact-main PASS established candidate acceptance without authorizing execution. The nine durability counters and peak RSS remain process-attested at 80% confidence |
+| Corrected real-author grant plan | **PLAN-ONLY / KIRO REVIEW REQUIRED** — §§18.48/10.46 bind merged-main base `16dbd79…`, accepted tree `939b8849…`, the exact twenty-member no-site command, immutable packet/disposition identities, four fresh absent single-assignment outputs, one-pass ceilings and returned evidence. The 80% durability/RSS limitation remains explicit; no content read, root creation or process is authorized |
 | Runtime publication | **PAUSE / NOT AUTHORIZED** — independent reviews confirmed incomplete provenance/licensing; no tag, release or asset exists |
 | R2b identity | 120-member governed set; committed `b716152fbf725633a55371f6acf7ed5580a704bd`, independently resolved `e060dce4eb3d51e0f4650ded8bd1aad4f2a34f4b` at pre-correction PR head |
 | Historical bounded evidence | M0–M8 accepted at `8010fb0`; final M11 implementation/evidence and Kiro conformance PASS preserved at `94f29eb` |
@@ -398,6 +404,7 @@ the absent publishable qualified runtime.
 | One-shot real-author grant boundary | **BOTH GRANTS CONSUMED / FAIL-CLOSED W001 PAUSE** — reviewed plan PR `#361` at `8d1c017`; snapshot PR `#362` at `ff5ce7b`; governing pair `31d4c919…` + `d7f82fbc…` | The first grant stopped before effects. The corrected successor passed preflight, but its sole process failed at `DEPENDENCY_CLOSURE` on W001. All four outputs remain absent; a new planning/review cycle is required before any correction or attempt |
 | W001 unresolved-ID grammar correction | **MERGED / KIRO EXACT-MAIN PASS** at `0a250b1` — PR `#363` | Actual packet/disposition IDs use `unresolved_sha256:` while both synthetic producer and accepted validator used `unresolved:sha256:`. The merged plan corrects only that literal, adds the former spelling as a W001 negative case and requires a separately Ryan-granted fresh synthetic capability freeze before any later real-author plan |
 | Corrected capability-freeze result binding | **MERGED / KIRO EXACT-MAIN PASS** at `dd4dd39` — PR `#366`; tree `939b8849…`, receipt `920c0e0e…` | Immutable tree `939b8849…`, receipt `920c0e0e…`, ledger `959e64ba…` and six members are bound. Kiro exact-tip PASS satisfied §18.47.3 and exact-main PASS confirmed the merge was byte-identical to overlay `8c27c823…`; the tree is the sole accepted corrected-v4 candidate. Historical `accepted=false` remains non-self-acceptance. Durability counters and peak RSS remain process-attested at 80% confidence; no real read or execution is authorized |
+| Corrected one-shot real-author boundary | **PLAN-ONLY / KIRO REVIEW REQUIRED** — §§18.48/10.46 | Kiro must review the exact two-commit plan. Only after a plan PR merges and exact-main is confirmed may Ryan decide whether to issue one fresh two-SHA grant. All four `16dbd79…/491ae60b…/v3(.partial)` output coordinates remain absent and single-assignment |
 | Runtime licensing/publication | **PAUSE / NOT AUTHORIZED** | Complete lock, replacement build, final packet, independent licensing PASS and separate Ryan external-action grant |
 | R2b content-attestation convergence | **REVIEWED PLAN / NOT AUTHORIZED** | Independent held inventory rotation after all governed edits |
 | Corrective evidence and integrated review | **NOT STARTED** | All held corrections must pass supervision |
@@ -406,55 +413,62 @@ the absent publishable qualified runtime.
 
 ## 5. Your role
 
-**If Ryan sent you here now:** PR `#366` merged the exact §§18.47/10.45 corrected
-capability binding at `dd4dd39`, and Kiro returned exact-main PASS. Tree `939b8849…`
-is the sole accepted corrected-v4 author-capability candidate. The next substantive
-work is a separate real-author plan; it must preserve the process-attested 80%
-confidence boundary for the nine durability counters and peak RSS, name fresh absent
-output roots and carry the full one-pass/read/write/RSS/access stop contract.
+**If Ryan sent you here now:** review the exact §§18.48/10.46 semantic parent and
+milestone-only overlay. Confirm that the range is two linear merge-free commits based
+on PR `#368` merged main `16dbd79…`; only the four Switchboard plans change; the
+overlay changes only the milestone plan; accepted corrected tree `939b8849…`, its six
+members, literal twenty-member command and five-key environment remain exact; the
+packet/disposition identities and four fresh absent output roots are bound; all one-
+pass read/write/RSS and zero-access ceilings are unchanged; the prior durability/RSS
+evidence remains explicitly process-attested at 80% confidence; and no operational
+authority is introduced.
 
-Do not inspect packet/disposition content, mutate or execute the sealed root, recreate
-the absent partial, create a real output root, run `author-packet`, retry, acquire,
-build, publish, deploy or run real OpenClaw. Acceptance and review grant no later
-authority.
+Return binary PASS/FAIL with per-claim confidence. This is a read-only design/scope
+review. Do not inspect packet/disposition content, create an output root, execute the
+author, open a PR, merge, acquire, build, publish, deploy or run real OpenClaw.
 
 ## 6. What remains before merge and before live use
 
-1. Codex may prepare a separate real-author plan around accepted corrected candidate
-   `939b8849…`. That plan requires exact-tip Kiro review, merge and exact-main
-   confirmation before Ryan may consider one fresh two-SHA grant. It must preserve the
-   process-attested 80% confidence boundary for the nine durability counters and peak
-   RSS. Candidate acceptance, PR `#366` and both reviews authorize no real packet/
-   disposition read, output-root creation or `author-packet` execution.
-2. A separate exact metadata/acquisition operation packet must name every allowed
+1. Kiro reviews the exact two-commit §§18.48/10.46 plan and returns PASS/FAIL. The
+   review grants no input read, root creation, author execution, PR or merge authority.
+2. Ryan decides whether to open and squash-merge the reviewed planning PR. After any
+   merge, Kiro confirms exact main and the STATUS snapshot is rewritten to reality.
+3. Only then may Ryan decide whether to issue one exact two-SHA real-author grant. It
+   must bind the reviewed plan SHAs, accepted candidate, immutable inputs, four absent
+   roots, exact argv/cwd/environment, one-pass ceilings and stop conditions while
+   preserving the prior 80% durability/RSS evidence boundary.
+4. Only under that grant may one process read exactly `662,531,209` governed input
+   bytes and attempt the unchanged seven-role output transaction once. A result must
+   be bound plan-only and independently reviewed before any later gate.
+5. A separate exact metadata/acquisition operation packet must name every allowed
    origin/root, method, redirect, parser, byte/request ceiling, checkpoint and fresh
    coordinate. Kiro review and another Ryan grant are required before any request,
    VCS fetch or retained-source read.
-3. Codex may then perform only the granted bounded acquisition. An independent
+6. Codex may then perform only the granted bounded acquisition. An independent
    provenance/licensing reviewer and human counsel inspect the resulting immutable
    evidence. Only a later packet with zero unresolved rows plus independent technical,
    provenance and licensing PASS can become build-eligible.
-4. A separately reviewed recipe/build packet must rebuild the host-path-bearing
+7. A separately reviewed recipe/build packet must rebuild the host-path-bearing
    components and complete runtime from independently locked inputs, without copying or
    rewriting rejected binaries. Under a separate Ryan grant, a named builder creates
    the three-role replacement set once in fresh disposable roots; Codex independently
    qualifies it across two distinct build prefixes and host-path-negative controls.
-5. A plan-only final packet pins every name, size, hash and coordinate. Kiro and the
+8. A plan-only final packet pins every name, size, hash and coordinate. Kiro and the
    independent licensing reviewer inspect the actual final bytes. Only
    after both PASS may Ryan consider a single-assignment publication grant. CI
    admission remains a later separate grant.
-6. Ryan separately decides whether to grant the exact held product/test/CI/R2b
+9. Ryan separately decides whether to grant the exact held product/test/CI/R2b
    correction.
-7. Under those grants, Cursor applies the reviewed plan and stops at each held doctor,
+10. Under those grants, Cursor applies the reviewed plan and stops at each held doctor,
    publisher/recovery, CI and R2b inventory commit; Codex independently inspects and
    issues commit-specific supervision.
-8. Codex runs fresh doctor, crash-matrix, ordinary/qualified CI, R2b convergence,
+11. Codex runs fresh doctor, crash-matrix, ordinary/qualified CI, R2b convergence,
    unchanged Pylint, two M8, seven MCP and durable-evidence verification on the exact
    integration tip and actual GitHub PR merge commit.
-9. A focused independent safety/isolation audit reviews publisher recovery and CI
+12. A focused independent safety/isolation audit reviews publisher recovery and CI
    containment. Kiro reviews the exact integrated tip and evidence.
-10. Ryan alone decides whether PR `#342` may merge.
-11. Real OpenClaw still requires deliberate update/pin, fresh capability probe, Gate D
+13. Ryan alone decides whether PR `#342` may merge.
+14. Real OpenClaw still requires deliberate update/pin, fresh capability probe, Gate D
    runtime/containment/distribution review, then Gates W/D-V/E and later promotion.
 
 ## 7. Hard stops
@@ -481,6 +495,9 @@ authority.
   tip review, merge and exact-main confirmation and Ryan issues its exact fresh two-SHA
   grant. Tree `939b8849…` and its absent partial sibling remain immutable; no deletion,
   repair, recreation or reuse is authorized.
+- No confidence upgrade from byte identity alone: the nine accepted-candidate
+  durability counters and peak RSS remain process-attested at 80% until genuinely
+  independent evidence is separately reviewed.
 - No acceptance of both unresolved-ID spellings, alias, punctuation normalization,
   prefix translation, fallback parser or packet/disposition rewrite. The immutable
   real grammar is exactly `unresolved_sha256:<64 lowercase hexadecimal characters>`;
@@ -564,8 +581,8 @@ a separate repository-knowledge arc.
 
 | Purpose | Path |
 |---|---|
-| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.47 |
-| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.45 |
+| Architecture | `docs/plans/ARCHITECTURE-openclaw-convmem-integration.md` §§18.22–18.48 |
+| Execution | `docs/plans/EXECUTION-openclaw-convmem-integration.md` §§10.20–10.46 |
 | Milestone overlay | `docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md` M11 |
 | Switchboard status | `docs/plans/STATUS-openclaw-convmem-integration.md` |
 | Cross-arc R2b status | `docs/plans/STATUS-r2b-capture-auth.md` |
@@ -586,6 +603,7 @@ a separate repository-knowledge arc.
 | W001 correction-plan pull request | `https://github.com/alanmz-crypto/convmem/pull/363` — merged as `0a250b1`; Kiro exact-main PASS |
 | W001 correction status pull request | `https://github.com/alanmz-crypto/convmem/pull/364` — merged as `4f6266e`; descriptive snapshot only |
 | Corrected capability-result binding pull request | `https://github.com/alanmz-crypto/convmem/pull/366` — merged as `dd4dd39`; Kiro exact-tip and exact-main PASS; durability/RSS evidence remains process-attested at 80% confidence |
+| Corrected capability acceptance pull request | `https://github.com/alanmz-crypto/convmem/pull/368` — merged as `16dbd79`; Kiro exact-main PASS; acceptance grants no execution |
 | Superseded conflicting plan pull request | `https://github.com/alanmz-crypto/convmem/pull/344` |
 
 ## 10. Update protocol
@@ -596,7 +614,7 @@ merges. Session narrative belongs in Track A. Keep one current milestone-level l
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-09 | Codex | Recorded PR `#366` merged at `dd4dd39` with Kiro exact-tip and exact-main PASS; tree `939b8849…` is the sole accepted corrected-v4 candidate, durability/RSS evidence remains process-attested at 80% confidence and real authoring remains separately gated. |
+| 2026-10-09 | Codex | Added plan-only §§18.48/10.46 for one corrected real-author attempt from PR `#368` merged main `16dbd79`; four fresh outputs are absent, Kiro exact-tip review is next and execution remains Ryan-gated. |
 
 **TL;DR:** [Arc ConvMem Switchboard] PR `#342` preserves the accepted bounded
 connector but cannot merge. The first qualified-runtime archive passed byte validation
@@ -698,8 +716,11 @@ at one and zero forbidden access. PR `#366` merged the exact §§18.47/10.45 bin
 `dd4dd39`, byte-identical to overlay `8c27c823`; Kiro exact-tip and exact-main PASS
 established tree `939b8849…` as the sole accepted corrected-v4 capability candidate.
 The process result's `accepted=false` remains historical non-self-acceptance. The nine
-durability counters and peak RSS remain process-attested at 80% confidence; no real
-read, root or process is authorized.
+durability counters and peak RSS remain process-attested at 80% confidence. PR `#368`
+merged the acceptance snapshot at `16dbd79`. Sections 18.48/10.46 now bind the exact
+corrected author, twenty-member command, immutable inputs, four fresh absent output
+coordinates, ceilings and returned evidence for one possible later process. Kiro
+exact-tip review is next; this plan authorizes no real read, root or process.
 Acquisition, binary
 repair, build, implementation, publication, evidence
 reruns, merge, real OpenClaw and later gates remain unauthorized.
