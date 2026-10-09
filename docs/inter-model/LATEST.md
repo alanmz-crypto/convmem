@@ -29,8 +29,10 @@ cross-arc snapshot and the linked arc brief below.
   the corrected harness at `3237c03`. Codex has drafted a §9.7a amendment:
   replace the 2 GiB address-space limit with a hard 2 GiB transient-service
   cgroup bound, then require an exact-setup small control before any full
-  curve. **Next:** Kiro design review; Ryan separately decides whether to
-  grant harness implementation and, later, another one-shot measurement.
+  curve. Kiro conditionally passed the design at `b93ab2b`; its five
+  testable conditions are now bound in the plan for exact-tip recheck.
+  **Next:** Kiro rechecks the amended plan; Ryan separately decides whether
+  to grant harness implementation and, later, another one-shot measurement.
   The watcher remains disabled; the live 12.5 GiB OOM and issue
   #268 remain open. See the
   [§9.7 execution evidence](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).

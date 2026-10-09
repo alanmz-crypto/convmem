@@ -493,11 +493,12 @@ Ryan must separately grant any further full run and decide whether the 2 GiB
 
 ### Proposed §9.7a measurement-bound amendment (2026-10-09)
 
-**State: DESIGN REVIEW PENDING; no implementation or run grant.** The
-September §9.7 handoff remains the historical specification for the blocked
+**State: KIRO CONDITIONAL PASS at `b93ab2b`; conditions below now bound for
+exact-tip recheck. No implementation or run grant.** The September §9.7
+handoff remains the historical specification for the blocked
 one-shot run. Its 2 GiB `RLIMIT_AS` requirement must not be silently removed
 from an executable harness. This amendment proposes a replacement boundary
-for Ryan to accept after Kiro design review. It does not change production
+for Ryan to accept after Kiro exact-tip recheck. It does not change production
 code, the watcher, the merged exposure-probe fix, or §9.8 authority.
 
 **Reason for change.** The first 5,000-row baseline arm produced no index and
@@ -530,36 +531,48 @@ transient unit is only a measurement child, not a restart or edit of
 
 **Implementation and acceptance order, after a separate Ryan Execute grant:**
 
-1. Add a narrow launch adapter to the existing isolated test harness. Before
-   any large fixture or target import, use a harmless transient-service probe
-   to prove user-bus access, clean JSON stdout/stderr capture, propagated exit
-   status, cgroup v2 membership, the worker's *effective* 2 GiB memory and
-   zero-swap limits, and reliable memory telemetry on both successful and
-   failed exits. A successful transient unit may be unloaded immediately, so
-   post-exit `systemctl show` alone is insufficient. Fail closed if the unit
-   is missing, the limits or telemetry are not verifiable, or the adapter
-   falls back to an uncapped subprocess. The
-   earlier tool-sandbox user-bus failure is a host-access preflight condition,
-   not permission to skip this proof.
-2. Preserve path and network denial before target imports; temporary config,
+1. Add a narrow launch adapter to the existing isolated test harness. On the
+   **same named host and lane** intended for the 64-row smoke, and only after
+   the existing quiet-watcher and host-resource preflight, run a harmless
+   transient-service capability probe before any large fixture or target
+   import. Require the worker to read its *own* cgroup v2 membership and
+   `memory.max`/`memory.swap.max` and positively assert the effective values
+   are exactly 2 GiB and zero. Checking launcher properties alone is not
+   enough. Prove clean single-object JSON stdout capture, stderr capture,
+   propagated nonzero exit, and preservation of `denied_paths` and
+   `network_denied` from the worker payload. A missing user bus or user
+   manager is a blocked preflight, never a fallback to `RLIMIT_AS` or an
+   uncapped subprocess. The earlier tool-sandbox user-bus failure is no
+   exception.
+2. Prove the telemetry channel before indexing: capture `memory.peak` and
+   `memory.events` on both a successful throwaway unit and a deliberately
+   OOM-killed **small-cap throwaway unit**. Require nonzero exit and
+   `oom_kill >= 1` to classify the latter as blocked. A successful transient
+   unit may be unloaded immediately, so post-exit `systemctl show` alone is
+   insufficient. Fail closed if the limit, JSON, exit, or telemetry proof
+   is missing. Use a small test cap for this negative control, not a 2 GiB
+   allocation on the shared host.
+3. Preserve path and network denial before target imports; temporary config,
    Chroma, diagnostics, writer, lock, attestation, census, and Agent Run paths;
    module-origin checks; negative controls; frozen baseline and main tips;
    identical fixture and harness hashes; read-only production canaries; and
    run-unique exclusive evidence files. Keep fixture creation and the pytest
-   parent outside the measured cgroup. Do not change production modules.
-3. Run **only** a 64-row baseline and candidate smoke with the *exact*
+   parent outside the measured cgroup. Assert `preflight_host` still reports
+   `convmem-watch.service` inactive and disabled with the uniquely named
+   transient measurement unit present. Do not change production modules.
+4. Run **only** a 64-row baseline and candidate smoke with the *exact*
    proposed worker launch and isolation setup. Require one processed file,
    zero skipped files, zero denied paths and network calls, real brief
    execution, clean canaries, no cgroup OOM event, and successful Chroma
    completion in both arms. A failed smoke stops the route; do not scale it
    up or infer an RSS floor.
-4. Have Copilot audit the implemented isolation and evidence boundary and
+5. Have Copilot audit the implemented isolation and evidence boundary and
    Kiro review the exact tip. A later full 5,000/20,000/58,825-row curve
    requires a **fresh named-host, named-lane, one-shot Ryan grant**. Keep the
    existing serial, disk-backed scratch, quiet-watcher, 8 GiB available
    RAM/disk preflight, and 4 GiB host-availability stop rules. No current PR
    needs rerunning for this separate harness route.
-5. For each arm, record its exit/result, effective limits, cgroup
+6. For each arm, record its exit/result, effective limits, cgroup
    `memory.peak`, `memory.events` (`max`, `oom`, `oom_kill`), and worker peak
    RSS. Collect cgroup telemetry during execution or through a proven exit
    channel before unit garbage collection; do not depend on a successful
