@@ -425,6 +425,30 @@ the live 12.5 GiB watcher OOM.
 corrective tip. No production access, watcher operation, config change, Kiro, or
 Arc Codex Gate 0/P2.
 
+### §9.7 measurement-harness safety corrective (2026-10-09)
+
+Copilot's targeted audit FAILed the prior unmerged tip `2d3ba40`: the
+default-running in-process wiring test could use live Chroma when `config`
+was imported before its temporary environment assignment. The old evidence
+also contained a branch SHA in the candidate-main field, a run from an
+uncommitted harness tree, and no complete paired memory result. Preserve that
+tip as failed evidence; do not rerun its test.
+
+The isolated replacement branch
+`fix/2026-10-09-2026-10-09-watch-oom-measurement-safety` starts at main
+`18dcf45`. It moves the default wiring smoke into a guarded subprocess with
+temporary config, Chroma, writer lock, attestation, census, and Agent Run
+paths. The worker fails on preloaded target modules and production-path
+denials. The gated full-curve harness records the frozen main SHA separately
+from its own branch tip, hashes all harness files, checks a quiet watcher and
+disk-backed scratch, and cannot claim success from an incomplete pair.
+Only the small guarded smoke and denial controls have run; no full curve,
+production indexing, watcher operation, or §9.8 decision occurred.
+
+Next: Copilot audits the pushed corrective exact tip, then Kiro reviews the
+evidence. Ryan must name a quiet host and execution lane before a new full
+curve. The live 12.5 GiB OOM remains unexplained and issue #268 stays open.
+
 ## 11. Jargon glossary
 
 - **Exposure window:** the standing check requiring a corpus-clean scan after a
