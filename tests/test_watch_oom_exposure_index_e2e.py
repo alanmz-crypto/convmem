@@ -373,7 +373,10 @@ def test_e2e_paired_ingest_index_measurement() -> None:
             "The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
         )
     elif hard_failures:
-        verdict = "Measurement refused after a hermetic denial. No floor delta is authorized for §9.8."
+        verdict = (
+            "Measurement refused after a hermetic denial or paired semantic mismatch. "
+            "No floor delta is authorized for §9.8."
+        )
     elif complete_pairs == 0:
         verdict = (
             "The real ingest.index(force_file=...) paired curve under the 2 GiB "
@@ -415,7 +418,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
     evidence_path.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(evidence, indent=2), flush=True)
     if hard_failures:
-        pytest.fail("hermetic denial during §9.7 measurement")
+        pytest.fail("hermetic safety or paired semantic failure during §9.7 measurement")
 
 
 def test_e2e_wiring_in_denied_subprocess(tmp_path: Path) -> None:
