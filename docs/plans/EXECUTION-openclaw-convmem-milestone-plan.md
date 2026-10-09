@@ -193,7 +193,7 @@ WORK REMAIN PAUSED.
 This is a sequencing and supervision overlay. Its semantic parent is exactly:
 
 ```text
-SEMANTIC_PARENT_SHA=<FIRST_PLAN_COMMIT_SHA>
+SEMANTIC_PARENT_SHA=ce768a79eeddb36d3a150d09d850161a42338227
 W001_CORRECTION_PLAN_SEMANTIC_PARENT_SHA=a64fdcfe941743ef2b5f8d18829830a846d362a3
 W001_CORRECTION_PLAN_AUTHORIZATION_BASE_MAIN_SHA=ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c
 W001_CORRECTION_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
@@ -226,7 +226,7 @@ W001_CORRECTION_BINDING_CANDIDATE_STATUS=ACCEPTED_FOR_LATER_RYAN_DECISION
 W001_CORRECTION_BINDING_DURABILITY_RSS_EVIDENCE=PROCESS_ATTESTED_80_PERCENT_CONFIDENCE
 CORRECTED_REAL_AUTHOR_ACCEPTANCE_MERGED_MAIN_SHA=16dbd7926a8c14d71595440a5ac4ba78b99e26ed
 CORRECTED_REAL_AUTHOR_PLAN_AUTHORIZATION_BASE_MAIN_SHA=16dbd7926a8c14d71595440a5ac4ba78b99e26ed
-CORRECTED_REAL_AUTHOR_PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+CORRECTED_REAL_AUTHOR_PLAN_SEMANTIC_PARENT_SHA=ce768a79eeddb36d3a150d09d850161a42338227
 CORRECTED_REAL_AUTHOR_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
 CORRECTED_REAL_AUTHOR_OPERATION_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
 CORRECTED_REAL_AUTHOR_AUTHORIZED=false
@@ -796,13 +796,14 @@ ARCHITECTURE=docs/plans/ARCHITECTURE-openclaw-convmem-integration.md
 EXECUTION=docs/plans/EXECUTION-openclaw-convmem-integration.md
 ```
 
-The SHA layers are distinct. `WORK_ITEM_REAL_AUTHOR_PLAN_AUTHORIZATION_BASE_MAIN_SHA`
-is merged main before these planning commits. `SEMANTIC_PARENT_SHA` is the first
-four-document commit that defines §§18.45/10.43. This commit is the milestone-only
-review overlay and therefore cannot contain its own SHA; Kiro's exact-tip target and
-any later Ryan grant must supply that full reviewed-overlay SHA externally. No SHA
-from the earlier synthetic qualification or capability binding may substitute for
-either plan SHA.
+The SHA layers are distinct. `CORRECTED_REAL_AUTHOR_PLAN_AUTHORIZATION_BASE_MAIN_SHA`
+is PR `#368` merged main before these planning commits. `SEMANTIC_PARENT_SHA` and
+`CORRECTED_REAL_AUTHOR_PLAN_SEMANTIC_PARENT_SHA` name the first four-document commit
+that defines §§18.48/10.46. This commit is the milestone-only review overlay and
+therefore cannot contain its own SHA; Kiro's exact-tip target and any later Ryan grant
+must supply that full reviewed-overlay SHA externally. No SHA from the earlier real-
+author attempt, grammar correction, synthetic freeze, result binding or acceptance
+snapshot may substitute for either current plan SHA.
 
 After Ryan confirms that root, exact plan-review artifacts go only under
 `PROPOSED_DURABLE_EVIDENCE_ROOT/planning-reviews/`; M11 run evidence goes only
