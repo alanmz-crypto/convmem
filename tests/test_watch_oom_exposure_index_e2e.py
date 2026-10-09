@@ -42,6 +42,12 @@ HARNESS_FILES = (
     WORKER,
     Path(__file__).resolve().parent / "watch_oom_exposure_index_e2e_support.py",
     Path(__file__).resolve(),
+    Path(__file__).resolve().parent / "watch_oom_hermetic_isolation.py",
+    Path(__file__).resolve().parent / "watch_oom_memory_worker_shared.py",
+    Path(__file__).resolve().parent / "linux_proc.py",
+    Path(__file__).resolve().parent / "watch_oom_brief_hermetic.py",
+    Path(__file__).resolve().parent / "watch_oom_exposure_hermetic.py",
+    Path(__file__).resolve().parent / "watch_oom_memory_test_support.py",
 )
 BASELINE_ROOT = Path("/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline")
 RUN_FULL = os.environ.get("CONVMEM_E2E_FULL") == "1" or os.environ.get("CONVMEM_C6_FULL") == "1"
@@ -65,6 +71,8 @@ def _assert_frozen_candidate() -> str:
     ).splitlines()
     assert all(path.startswith("tests/") for path in changed), changed
     assert _git_sha(BASELINE_ROOT) == BASELINE_SHA
+    if subprocess.check_output(["git", "status", "--porcelain"], cwd=BASELINE_ROOT):
+        raise AssertionError("baseline target tree must be clean")
     return branch_tip
 
 
@@ -340,17 +348,20 @@ def test_e2e_paired_ingest_index_measurement() -> None:
             and "peak_rss_bytes" in baseline
             and "peak_rss_bytes" in candidate
         ):
-            row["delta_peak_bytes"] = (
-                candidate["peak_rss_bytes"] - baseline["peak_rss_bytes"]
-            )
-            row["delta_floor_bytes"] = (
-                _remaining_floor(candidate) - _remaining_floor(baseline)
-            )
-            assert baseline["probe_digest"] == candidate["probe_digest"]
-            complete_pairs += 1
+            if not (
+                baseline.get("probe_digest") == candidate.get("probe_digest")
+                and baseline.get("transcript_sha256") == candidate.get("transcript_sha256") == transcript_hash
+                and baseline.get("index_stats", {}).get("files_processed") == 1
+                and candidate.get("index_stats", {}).get("files_processed") == 1
+            ):
+                hard_failures.append(f"n={n}: paired semantic or transcript mismatch")
+            else:
+                row["delta_peak_bytes"] = candidate["peak_rss_bytes"] - baseline["peak_rss_bytes"]
+                row["delta_floor_bytes"] = _remaining_floor(candidate) - _remaining_floor(baseline)
+                complete_pairs += 1
         rows.append(row)
         shutil.rmtree(seed_dir, ignore_errors=True)
-        if baseline.get("status") != "succeeded" or candidate.get("status") != "succeeded":
+        if hard_failures or baseline.get("status") != "succeeded" or candidate.get("status") != "succeeded":
             break
 
     blocked = complete_pairs != len(FULL_SIZES) or bool(canary_ambiguity) or bool(hard_failures)
@@ -412,18 +423,14 @@ def test_e2e_wiring_in_denied_subprocess(tmp_path: Path) -> None:
     seed_info = build_writable_fixture_seed(tmp_path / "seed", 64)
     layout = arm_layout(tmp_path, "candidate", 64)
     prepare_arm_paths(layout, Path(seed_info["seed_dir"]), seed_info)
-    before = snapshot_canaries()
-    try:
-        outcome = _run_index_worker(
-            target_root=ROOT,
-            target_sha=_git_sha(ROOT),
-            layout=layout,
-            harness_hash=harness_bundle_hash(harness_file_hashes(HARNESS_FILES)),
-            timeout=300,
-            wiring_no_as_limit=True,
-        )
-    finally:
-        assert_canaries_unchanged(before, refresh_canary_stats(before))
+    outcome = _run_index_worker(
+        target_root=ROOT,
+        target_sha=_git_sha(ROOT),
+        layout=layout,
+        harness_hash=harness_bundle_hash(harness_file_hashes(HARNESS_FILES)),
+        timeout=300,
+        wiring_no_as_limit=True,
+    )
 
     assert outcome["status"] == "succeeded", outcome
     assert outcome["returncode"] == 0

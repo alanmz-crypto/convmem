@@ -9,7 +9,6 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +16,6 @@ from chroma_store import ChromaStore
 from chroma_readonly import collection_count
 from tests.watch_oom_brief_hermetic import ENVELOPE_32K
 from tests.watch_oom_exposure_hermetic import write_exposure_register
-from writer_census import start_writer_census
 
 EMBED_DIM = 2
 EMBED_VECTOR = [0.1, 0.2]
@@ -460,12 +458,6 @@ def prepare_arm_paths(
     layout["writer"].mkdir(parents=True, exist_ok=True)
     writer_lock = layout["writer"] / "writer.lock"
     writer_lock.touch(mode=0o600, exist_ok=True)
-    start_writer_census(
-        chroma_root=chroma_dir,
-        writer_gate_path=writer_lock,
-        census_dir=layout["writer"] / "census",
-        now=datetime.now(timezone.utc) - timedelta(days=2),
-    )
 
     if transcript_path is not None:
         layout["transcript"].parent.mkdir(parents=True, exist_ok=True)

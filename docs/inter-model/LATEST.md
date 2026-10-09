@@ -16,7 +16,9 @@ cross-arc snapshot and the linked arc brief below.
   floor. A replacement correction is isolated on
   `fix/2026-10-09-2026-10-09-watch-oom-measurement-safety`, based on current
   `main`. Its default smoke uses a guarded subprocess and temporary Chroma;
-  the full 5k/20k/58,825 curve remains gated and unrun. **Next:** Copilot
+  it does not hash production canaries. Both 64-row candidate and baseline
+  smokes pass, with no denied paths; the full 5k/20k/58,825 curve remains
+  gated and unrun. **Next:** Copilot
   exact-tip safety/evidence audit, then Kiro review. Ryan must name a quiet
   host/lane before another full measurement. The watcher remains disabled;
   the live 12.5 GiB OOM and issue #268 remain open. See the

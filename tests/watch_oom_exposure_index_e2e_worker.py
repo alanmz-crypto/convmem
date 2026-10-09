@@ -10,6 +10,7 @@ import os
 import sys
 import time
 from contextlib import ExitStack
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 EMBED_VECTOR = [0.1, 0.2]
@@ -69,6 +70,16 @@ def _log(step: str) -> None:
     print(f"[e2e-worker] {step}", file=sys.stderr, flush=True)
 
 
+def _require_temporary_path(path: Path) -> None:
+    resolved = path.resolve()
+    forbidden = (
+        (Path.home() / ".local/share/convmem").resolve(),
+        (Path.home() / ".config/convmem").resolve(),
+    )
+    if any(resolved.is_relative_to(root) for root in forbidden):
+        raise RuntimeError(f"worker role resolves into production: {resolved}")
+
+
 def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
     from unittest.mock import patch
 
@@ -84,6 +95,8 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
     brief_path = Path(args.brief_path).resolve()
     register_path = Path(args.register_path).resolve()
     transcript = Path(args.transcript).resolve()
+    for role in (config_path, writer_root, brief_path, register_path, transcript, Path(args.chroma_dir)):
+        _require_temporary_path(role)
 
     os.environ["CONVMEM_CONFIG"] = str(config_path)
     _log("config set")
@@ -134,6 +147,13 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
         },
     )
 
+    chroma_dir = Path(args.chroma_dir).resolve()
+    writer_census.start_writer_census(
+        chroma_root=chroma_dir,
+        writer_gate_path=writer_root / "writer.lock",
+        census_dir=writer_root / "census",
+        now=datetime.now(timezone.utc) - timedelta(days=2),
+    )
     import_baseline = rss_bytes_fn()
     started = time.monotonic()
 
@@ -156,7 +176,6 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
         writer_calls.append({"kind": "writer_boundary", "entrypoint": entrypoint})
         return real_writer_boundary(entrypoint=entrypoint, **kwargs)
 
-    chroma_dir = Path(args.chroma_dir).resolve()
     units_before = chroma_readonly.collection_count(str(chroma_dir), "knowledge_units")
 
     probe_results: list[tuple[bool, str]] = []
@@ -241,6 +260,11 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
     if not census_events.is_file() or not census_events.read_text(encoding="utf-8").strip():
         raise RuntimeError("temporary writer census did not record events")
 
+    open_fd_paths = sorted(set(proc_fd_targets_fn()))
+    for opened in open_fd_paths:
+        if opened.startswith("/"):
+            _require_temporary_path(Path(opened))
+
     emit_worker_json(
         {
             "status": "succeeded",
@@ -266,7 +290,7 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
             "brief_digest": hashlib.sha256(brief_path.read_bytes()).hexdigest(),
             "brief_bytes": brief_path.stat().st_size,
             "target_module_paths": target_paths,
-            "opened_paths": sorted(set(proc_fd_targets_fn())),
+            "opened_paths": open_fd_paths,
             "denied_paths": DENIED,
             "network_denied": NETWORK_DENIED,
             "transcript_sha256": hashlib.sha256(transcript.read_bytes()).hexdigest(),

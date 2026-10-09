@@ -442,8 +442,19 @@ paths. The worker fails on preloaded target modules and production-path
 denials. The gated full-curve harness records the frozen main SHA separately
 from its own branch tip, hashes all harness files, checks a quiet watcher and
 disk-backed scratch, and cannot claim success from an incomplete pair.
-Only the small guarded smoke and denial controls have run; no full curve,
-production indexing, watcher operation, or §9.8 decision occurred.
+The first corrective tip `88d8443` received Copilot FAIL: parent-created
+census headers carried the candidate revision into the baseline arm, and the
+default smoke still hashed live canaries. The follow-up moves census setup
+inside each guarded target worker and confines production-canary hashing to
+the explicitly gated full curve. The default test uses 64 temporary rows.
+
+Focused verification on the follow-up: `pytest -q
+tests/test_watch_oom_exposure_index_e2e.py` → 3 passed, 1 full-curve skip;
+the two C5 path/network denial controls → 2 passed; scoped `pylint --score=n`
+on the four changed test helpers → exit 0. A separate 64-row baseline smoke
+against `5c103aa` succeeded with exit 0, one processed file, and no denied
+paths. No full curve, production indexing, watcher operation, or §9.8
+decision occurred.
 
 Next: Copilot audits the pushed corrective exact tip, then Kiro reviews the
 evidence. Ryan must name a quiet host and execution lane before a new full
