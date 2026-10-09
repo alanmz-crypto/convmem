@@ -12,8 +12,9 @@
 any complete baseline/candidate pair. Do not execute or reuse this handoff as
 written. A proposed replacement bound is in
 [`EXECUTION-watch-oom-bound-exposure-probe.md` §9.7a](../plans/EXECUTION-watch-oom-bound-exposure-probe.md);
-it awaits Kiro design review and separate Ryan implementation and full-run
-grants. The watcher remains disabled and issue #268 remains open.
+Kiro passed its design at `f43e386`; it still needs separate Ryan
+implementation and full-run grants. The watcher remains disabled and issue
+#268 remains open.
 
 ---
 

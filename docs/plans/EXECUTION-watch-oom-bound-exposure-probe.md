@@ -493,13 +493,13 @@ Ryan must separately grant any further full run and decide whether the 2 GiB
 
 ### Proposed §9.7a measurement-bound amendment (2026-10-09)
 
-**State: KIRO CONDITIONAL PASS at `b93ab2b`; conditions below now bound for
-exact-tip recheck. No implementation or run grant.** The September §9.7
+**State: KIRO DESIGN PASS at `f43e386` after C-1 through C-5 were bound;
+no implementation or run grant.** The September §9.7
 handoff remains the historical specification for the blocked
 one-shot run. Its 2 GiB `RLIMIT_AS` requirement must not be silently removed
 from an executable harness. This amendment proposes a replacement boundary
-for Ryan to accept after Kiro exact-tip recheck. It does not change production
-code, the watcher, the merged exposure-probe fix, or §9.8 authority.
+for Ryan to accept after Kiro's exact-tip design PASS. It does not change
+production code, the watcher, the merged exposure-probe fix, or §9.8 authority.
 
 **Reason for change.** The first 5,000-row baseline arm produced no index and
 no paired result. The later guarded 64-row control succeeded without
