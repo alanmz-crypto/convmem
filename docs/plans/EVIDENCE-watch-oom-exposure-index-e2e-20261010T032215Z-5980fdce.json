@@ -536,7 +536,15 @@
     "candidate n=20000: chroma /home/lauer/.local/share/convmem/chroma/chroma.sqlite3: before=PathCanary(path='/home/lauer/.local/share/convmem/chroma/chroma.sqlite3', surface='chroma', exists=True, size=6035537920, mode=33188, mtime_ns=1791602365646118981, sha256='e101950a00e346d5be9fdaf92fc7c887257b24f98919208113c144191e49e9d6', device=66306, inode=21628379) after=PathCanary(path='/home/lauer/.local/share/convmem/chroma/chroma.sqlite3', surface='chroma', exists=True, size=6035537920, mode=33188, mtime_ns=1791602525174030797, sha256='e9679962087d120f11e3120a6e6f8b6e888efe5457beecc7a34c29fb3165c7aa', device=66306, inode=21628379)"
   ],
   "hard_failures": [],
-  "complete_pairs": 2,
+  "complete_pairs": 1,
+  "review_correction": {
+    "original_generated_complete_pairs": 2,
+    "successful_worker_pairs": 2,
+    "admissible_pairs": 1,
+    "canary_tainted_pair_n": 20000,
+    "writer_attribution": "unknown",
+    "basis": "The watcher was inactive and disabled. The production Chroma canary drift was detected on the 20000-row candidate check, but its recorded file mtime precedes the candidate worker start in the user journal. Concurrent agent and user-service records did not identify the writer. The raw worker outcomes remain below, but the tainted pair cannot support a floor delta."
+  },
   "measurement_blocked": true,
   "rows": [
     {
@@ -1108,9 +1116,8 @@
           "worker_returncode": 0
         }
       },
-      "delta_peak_bytes": -685330432,
-      "delta_floor_bytes": -686518272
+      "canary_tainted": true
     }
   ],
-  "verdict": "Measurement stopped: production canary drift detected during the paired run (active watch may have changed a canary). Do not operate the watcher from this evidence. No remaining-floor delta is claimed for \u00a79.8. The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
+  "verdict": "Measurement stopped: production Chroma canary drift was detected on the 20000-row candidate check; its writer is unknown, and the recorded file mtime precedes the candidate worker start. The watcher was inactive and disabled. Only the 5000-row pair is admissible, so no full-curve remaining-floor delta is claimed for \u00a79.8. Do not operate the watcher from this evidence. The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
 }
