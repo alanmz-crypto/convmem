@@ -590,6 +590,61 @@ failure and measured cgroup events for a new Ryan budget/design decision;
 do not raise the cap during that run. The live 12.5 GiB watcher OOM remains
 unexplained and issue #268 remains open.
 
+### Proposed §9.7b bound after the 2 GiB baseline OOM (2026-10-10)
+
+**State: design for review; no implementation or run grant.** The current-main
+one-shot at `d105c5e702264e93b9ff84e7cd2776455718f6ce` completed clean
+5,000- and 20,000-row baseline/candidate pairs under the reviewed 2 GiB
+cgroup. At 58,825 rows the baseline worker hit `memory.max=2 GiB`, reported
+`oom=1` and `oom_kill=1`, and exited 137 before the candidate arm ran. The
+run-unique evidence file
+`EVIDENCE-watch-oom-exposure-index-e2e-20261010T210439Z-31f4ffc5.json`
+therefore has `complete_pairs=2` and `measurement_blocked=true`. Copilot and
+Kiro passed that evidence at branch tip `9cfa594`; neither accepted a full
+curve or an explanation for the live 12.5 GiB watcher OOM.
+
+The next diagnostic should use the same frozen production and baseline trees,
+fixture shape, serial pair order, hermetic guards, canary contract, and
+disk-backed scratch, with a **4 GiB cgroup `memory.max` and zero swap for each
+worker**. An earlier hermetic 58,825-row baseline measured about 2,682 MiB
+peak RSS under a different bound; that makes 4 GiB a plausible *test* cap,
+not a promise that cgroup-charged memory will fit. A repeat at 2 GiB would
+predictably replay the known baseline OOM. Do not raise the cap during a run.
+
+Preparation and acceptance order:
+
+1. On a new branch, change only the measurement harness and this plan. Bind
+   the 4 GiB value consistently in the systemd launcher, worker self-claim,
+   parent verification, import-order evidence, smoke, and full-curve output;
+   preserve the separate small-cap OOM telemetry control. Reject any actual
+   cgroup limit other than exactly 4 GiB/zero swap. Keep the prior 2 GiB
+   evidence immutable and label each new result with its own cap and exact
+   harness/target hashes.
+2. Run only the default hermetic tests and a 64-row baseline/candidate cgroup
+   smoke. Do not start large fixtures as part of preparation. Copilot audits
+   the revised isolation/evidence boundary; Kiro reviews the exact tip and
+   disposition. Any FAIL blocks the measurement.
+3. After both reviews pass, Ryan may issue a *new* one-shot grant naming
+   `archlinux`, Codex as execution lane, the exact reviewed tip, and scratch
+   `/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch`. Immediately
+   before execution, confirm remote `main` still matches the frozen target,
+   both worktrees are clean, no indexing writer is active, production canaries
+   are quiet, watcher remains inactive/disabled, host RAM and ext4 scratch
+   meet the existing 8 GiB preflight, and no measurement unit is left over.
+   Ryan need only hold other agents' indexing for the brief measurement window,
+   not while this amendment is prepared.
+4. Under that grant, run exactly one serial 5,000/20,000/58,825 paired curve.
+   The existing 4 GiB host-availability stop rule and all per-arm canary,
+   denial, status, semantic, RSS, and cgroup-event checks remain mandatory.
+   A cgroup OOM, missing telemetry, drift, denial, timeout, incomplete pair, or
+   changed main stops the run with a blocked verdict. Do not retry, raise the
+   bound, combine 2 GiB and 4 GiB rows into one accepted curve, or advance
+   §9.8 from partial evidence.
+
+This is a diagnostic bound, not a watcher memory limit or live-activation
+proposal. No production source, runtime configuration, watcher service,
+current PR, or #286 work is changed by this amendment.
+
 References: [Linux cgroup v2 memory controller](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html),
 [systemd resource control](https://github.com/systemd/systemd/blob/main/man/systemd.resource-control.xml),
 and [systemd-run](https://github.com/systemd/systemd/blob/main/man/systemd-run.xml).
