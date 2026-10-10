@@ -13,14 +13,14 @@ bounded scope below
 
 | Field | Value |
 |---|---|
-| **State** | `IMPLEMENTED_REVIEW_PENDING` — same-revision review and CI-equivalent full-suite evidence pending |
-| **Baseline** | `a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b` on `origin/main` after Switchboard PR #369 |
-| **Implementation branch** | `fix/2026-10-09-issue-286-bootstrap-budget-safety-main` |
-| **Implementation commit** | `273c27a` (`b78cbd5` on the superseded pre-PR-#369 branch contains the same code patch) |
-| **Push status** | implementation commit pushed to the explicit branch ref |
+| **State** | `CORRECTIVE_REQUIRED` — Sol-High accepted Copilot's exact-revision replay/rollback FAIL |
+| **Baseline** | `956d74e8bab4a6c397a80a14a5709043b8b205ef` on `origin/main` after Switchboard PR #370 |
+| **Implementation branch** | `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective` |
+| **Carried implementation** | `a23eb22` contains the code from reviewed `273c27a`; `5a7f640` carries the full packet/handoff state onto current `main` |
+| **Push status** | current-main branch pushed with an explicit refspec after every carried commit |
 | **PR** | not opened; PR creation remains separately Ryan-granted |
 | **Ryan GATE** | none for this bounded hermetic implementation; live resources and PR creation remain ungranted |
-| **Required review** | Kiro design review and GitHub Copilot safety audit on the same exact implementation revision |
+| **Required review** | after correction, Kiro design review and GitHub Copilot safety audit on the same exact implementation revision |
 
 ---
 
@@ -192,10 +192,11 @@ ship a second whole-file copy under another name.
 
 ## Implementation checkpoint
 
-Cursor implemented and pushed the corrective as `273c27a` on the collision-safe
-branch based on `a94bc57`. The four protected Arc ConvMem Switchboard planning
-files are byte-identical to `origin/main` and are outside this branch's changed
-path set.
+Cursor implemented and pushed the first corrective as `273c27a` on the
+post-PR-#369 branch. That exact code is carried as `a23eb22` onto the current
+branch based on post-PR-#370 `main` `956d74e`. The four Arc ConvMem Switchboard
+planning files are inherited unchanged from `origin/main` and remain outside
+this branch's changed path set.
 
 Evidence currently available:
 
@@ -210,9 +211,40 @@ Evidence currently available:
   path collision. GitHub CI or an equivalently isolated writable home remains
   required before PR disposition.
 
-The prior branch `fix/2026-10-09-issue-286-bootstrap-budget-safety` is preserved
-as a remote backup and must not be proposed for merge because it predates PR
-#369. The `-main` branch is the only review candidate.
+The two prior bootstrap-safety branches are preserved as remote backups and
+must not be proposed for merge because they predate the current-main baseline.
+Only `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective` is a
+candidate for correction and later review.
+
+### Sol-High adjudication and required correction
+
+Kiro issued `PASS` and Copilot issued `FAIL` on exact revision `b68daea`. The
+verdicts materially conflicted over whether APPLYING replay preserves the
+original rollback and isolation authority. Sol-High adjudicated in Copilot's
+favor after tracing the source sequence: `_roll_forward()` reads the original
+rollback, then `_commit_generation()` takes a fresh snapshot of partially
+applied state and overwrites `rollback.json`. Isolation comparison can therefore
+use the mutation as its new baseline, and a later unexpected replay crash can
+leave no durable original before-image.
+
+Cursor must correct and prove all three Copilot blockers:
+
+1. APPLYING replay reuses the immutable original rollback and original
+   non-source isolation digest. It must not snapshot or overwrite either before
+   a terminal commit or exact restoration.
+2. Any exception during replay leaves the original rollback authority durable
+   on disk. Add hermetic faults that mutate a foreign row and crash after a
+   partial apply; recovery must detect/restore the violation and must not spend
+   its allowance into an unrecoverable re-baselined state.
+3. Embedding dimension must be checked against an independent effective
+   authority before any paid provider attempt. Comparing a grant value with a
+   settings value injected from that same grant is not evidence. If no
+   independent preflight authority is available, refuse before paid work.
+
+The correction must also disable automatic HTTP redirects or account durably
+for every redirected request before transport. Normal routes remain default
+off and unchanged. All evidence remains hermetic; no live provider or corpus
+resource is authorized.
 
 ---
 
@@ -294,22 +326,25 @@ hashes mechanically without showing why the changed authority bytes require it.
 - [x] Authorization branch pushed; implementation branch is created and pushed
       before Cursor starts.
 
-**Cursor (implementation result):**
+**Cursor (corrective result):**
 
-- [x] Read this file and the Arc Codex STATUS brief before the first edit.
-- [x] Implemented on an isolated Arc Codex branch; collision-safe replay is on
-      `fix/2026-10-09-issue-286-bootstrap-budget-safety-main`.
-- [x] Preserved the live-resource and provider prohibition.
-- [x] No material architecture fork or inability to preserve bounded-memory
-      rollback semantics was reported.
-- [x] Cursor Track A transcript:
-      `~/.cursor/projects/home-lauer-local-share-convmem-worktrees-fix-2026-10-09-issue-286-bootstrap-budget-safety/agent-transcripts/d78bb8ed-6ef2-4540-beb3-c2797dea257a/d78bb8ed-6ef2-4540-beb3-c2797dea257a.jsonl`.
+- [ ] Read this file and the Arc Codex STATUS brief before the first edit.
+- [ ] Work only on
+      `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective`.
+- [ ] Preserve the live-resource and provider prohibition.
+- [ ] Preserve immutable rollback/isolation authority across APPLYING replay.
+- [ ] Add an independent pre-paid-work embedding-dimension check.
+- [ ] Disable or durably account for redirected HTTP transports.
+- [ ] Provide the new Cursor Track A transcript; prior implementation evidence
+      remains at `~/.cursor/projects/home-lauer-local-share-convmem-worktrees-fix-2026-10-09-issue-286-bootstrap-budget-safety/agent-transcripts/d78bb8ed-6ef2-4540-beb3-c2797dea257a/d78bb8ed-6ef2-4540-beb3-c2797dea257a.jsonl`.
+- [ ] Return exact tip, focused evidence, unresolved risks, and Track A path.
 - [ ] Kiro/Copilot same-revision review and CI-equivalent full-suite evidence.
 
 ## TL;DR
 
-Cursor implemented Ryan's authorized issue #286 bootstrap corrective at
-`273c27a` on the collision-safe branch. Focused tests and the Pylint regression
-gate pass; same-revision Kiro/Copilot review and CI-equivalent full-suite
-evidence remain. Live bootstrap, providers, runtime/config, watcher operations,
-PR creation, and merge are separately gated.
+Sol-High accepted Copilot's FAIL on the first implementation: APPLYING replay
+can replace original rollback/isolation authority, and embedding dimension is
+not independently checked before paid work. The current-main corrective branch
+awaits Cursor's hermetic repair and new same-revision review. Live bootstrap,
+providers, runtime/config, watcher operations, PR creation, and merge remain
+separately gated.

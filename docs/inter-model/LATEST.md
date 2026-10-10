@@ -9,18 +9,20 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — bootstrap safety corrective IMPLEMENTED / REVIEW
-  PENDING
+- **Arc Codex / issue #286 — replay-authority corrective REQUIRED
   (2026-10-09):** Sol resolved the first exact-packet Kiro/Copilot conflict in
   Copilot's favor, corrected the packet, and obtained same-revision `PASS` from
   both lanes at packet commit `4aecb96`. Ryan then authorized Cursor's bounded
-  hermetic corrective. Cursor implemented it as `273c27a` on collision-safe
-  branch `fix/2026-10-09-issue-286-bootstrap-budget-safety-main`, based on
-  post-PR-#369 `main` `a94bc57`; the four protected Switchboard planning files
-  are unchanged. Focused safety tests (`140 passed`), secret scan, invariants,
-  and Pylint gate are green. CI-equivalent full-suite evidence and same-revision
-  Kiro/Copilot review remain pending. The packet remains `NO-GO` for live use
-  until the corrective is reviewed and merged. No live bootstrap,
+  hermetic corrective. On exact implementation revision `b68daea`, Kiro issued
+  `PASS` while Copilot issued `FAIL`. Sol-High adjudicated the material conflict
+  in Copilot's favor: APPLYING replay re-snapshots partially applied state and
+  can overwrite the original rollback/isolation authority; embedding dimension
+  is also not independently checked before paid work. After Switchboard PR #370
+  merged, the existing work was replayed without conflict onto current `main`
+  `956d74e` at branch tip `5a7f640` on
+  `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective`. Cursor must
+  correct those blockers and add hermetic regressions before a new exact-tip
+  Kiro/Copilot review. The packet remains `NO-GO`. No live bootstrap,
   provider call, config/runtime change, watcher action, PR, or merge is
   authorized. Resume from the
   [Cursor Execute handoff](SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md)
