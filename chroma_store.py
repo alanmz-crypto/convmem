@@ -739,6 +739,82 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
             )
         return rows
 
+    def non_source_inventory_digest(
+        self,
+        collection_name: str,
+        source_path: str,
+        *,
+        batch_size: int = 512,
+    ) -> dict:
+        """Digest exact non-source ids, metadata, documents, and embeddings.
+
+        Chroma is paged so evidence collection does not materialize the full
+        collection payload at once.  Only compact row commitments are sorted.
+        """
+
+        import hashlib
+        import json
+
+        col = self._collection(collection_name)
+        commitments: list[tuple[str, str, str, str]] = []
+        count = col.count()
+        for offset in range(0, count, batch_size):
+            page = col.get(
+                limit=batch_size,
+                offset=offset,
+                include=["documents", "embeddings", "metadatas"],
+            )
+            ids = page.get("ids") or []
+            documents = page.get("documents") or []
+            metadatas = page.get("metadatas") or []
+            embeddings = page.get("embeddings")
+            if embeddings is None:
+                embeddings = []
+            for index, row_id in enumerate(ids):
+                metadata = dict(
+                    metadatas[index] if index < len(metadatas) else {}
+                )
+                if metadata.get("source_path") == source_path:
+                    continue
+                document = documents[index] if index < len(documents) else ""
+                embedding = embeddings[index] if index < len(embeddings) else []
+                if embedding is None:
+                    embedding = []
+                if hasattr(embedding, "tolist"):
+                    embedding = embedding.tolist()
+                commitments.append(
+                    (
+                        str(row_id),
+                        hashlib.sha256(
+                            json.dumps(
+                                metadata,
+                                sort_keys=True,
+                                separators=(",", ":"),
+                                default=str,
+                            ).encode("utf-8")
+                        ).hexdigest(),
+                        hashlib.sha256(str(document).encode("utf-8")).hexdigest(),
+                        hashlib.sha256(
+                            json.dumps(
+                                list(embedding), separators=(",", ":"), default=str
+                            ).encode("utf-8")
+                        ).hexdigest(),
+                    )
+                )
+        commitments.sort()
+        return {
+            "fields": [
+                "id",
+                "all_metadata_canonical_sha256",
+                "document_sha256",
+                "embedding_sha256",
+            ],
+            "rows": len(commitments),
+            "digest": hashlib.sha256(
+                json.dumps(commitments, separators=(",", ":")).encode("utf-8")
+            ).hexdigest(),
+        }
+
     def restore_source_rows(self, collection_name: str, rows: list[dict]) -> None:
         """Restore exact before-image rows through the governed writer path."""
         self._require_authorized_writer()

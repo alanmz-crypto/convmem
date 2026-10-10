@@ -10,10 +10,12 @@ cache plus source-scoped Chroma before-image rollback.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
 import stat
+import tempfile
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -56,7 +58,7 @@ ADAPTER_CONTRACT_VERSION = "kiro-complete-prefix-v1"
 CHECKPOINT_VERSION = 1
 TRANSACTION_VERSION = 1
 PREPARED_VERSION = 1
-ROLLBACK_VERSION = 1
+ROLLBACK_VERSION = 2
 DEDUPE_FILENAMES = ("dedupe_queue.jsonl", "ingest_duplicate_suppressions.jsonl")
 CONTINUITY_REASONS = (
     "initial_full",
@@ -127,9 +129,15 @@ class CallCounters:
     distill: int = 0
     summary_embed: int = 0
     unit_embed: int = 0
+    summarize_success: int = 0
+    distill_success: int = 0
 
     def as_dict(self) -> dict[str, int]:
-        return asdict(self)
+        return {
+            name: value
+            for name, value in asdict(self).items()
+            if name not in {"summarize_success", "distill_success"}
+        }
 
     @property
     def total(self) -> int:
@@ -352,7 +360,13 @@ def validate_rollback(payload: dict, *, source_path: str | None = None) -> dict:
         raise IncrementalJsonlError("recovery_unproven", "rollback is not an object")
     if payload.get("version") != ROLLBACK_VERSION:
         raise IncrementalJsonlError("recovery_unproven", "unsupported rollback version")
-    required = ("summaries", "units", "export_lines", "processed_preimage", "source_path")
+    required = (
+        "summaries",
+        "units",
+        "export_preimage",
+        "processed_preimage",
+        "source_path",
+    )
     missing = [name for name in required if name not in payload]
     if missing:
         raise IncrementalJsonlError("recovery_unproven", f"rollback missing {missing}")
@@ -458,6 +472,9 @@ class IncrementalJsonlCoordinator:
         bootstrap_existing: bool = False,
         expected_prefix_sha256: str | None = None,
         max_bootstrap_chunks: int | None = None,
+        bootstrap_grant_fingerprint: str | None = None,
+        bootstrap_operation_id: str | None = None,
+        bootstrap_binding_fingerprint: str | None = None,
     ):
         if os.environ.get("CONVMEM_INCREMENTAL_ROOT"):
             IsolationBoundary.require_fake_provider("deterministic-fake")
@@ -479,6 +496,9 @@ class IncrementalJsonlCoordinator:
         self.bootstrap_existing = bootstrap_existing
         self.expected_prefix_sha256 = expected_prefix_sha256
         self.max_bootstrap_chunks = max_bootstrap_chunks
+        self.bootstrap_grant_fingerprint = bootstrap_grant_fingerprint
+        self.bootstrap_operation_id = bootstrap_operation_id
+        self.bootstrap_binding_fingerprint = bootstrap_binding_fingerprint
         if bootstrap_existing:
             if not isinstance(boundary, ProductionBoundary):
                 raise IncrementalJsonlError("bootstrap_requires_production_boundary")
@@ -490,6 +510,17 @@ class IncrementalJsonlCoordinator:
                 raise IncrementalJsonlError("bootstrap_digest_invalid") from exc
             if not isinstance(max_bootstrap_chunks, int) or max_bootstrap_chunks < 1:
                 raise IncrementalJsonlError("bootstrap_chunk_limit_invalid")
+            for value, code in (
+                (bootstrap_grant_fingerprint, "bootstrap_grant_fingerprint_invalid"),
+                (bootstrap_operation_id, "bootstrap_operation_id_invalid"),
+                (bootstrap_binding_fingerprint, "bootstrap_binding_invalid"),
+            ):
+                try:
+                    if len(value or "") != 64:
+                        raise ValueError("digest length")
+                    int(value or "", 16)
+                except ValueError as exc:
+                    raise IncrementalJsonlError(code) from exc
         index = self.cfg.get("index") if isinstance(self.cfg.get("index"), dict) else {}
         self.chunk_size = int(chunk_size if chunk_size is not None else index.get("chunk_size", 2))
         self.overlap = int(overlap if overlap is not None else index.get("chunk_overlap", 0))
@@ -552,6 +583,7 @@ class IncrementalJsonlCoordinator:
             adapter_contract_version=self.format_spec.adapter_contract_version,
         )
         self.last_result: IncrementalRunResult | None = None
+        self.last_evidence: dict[str, Any] = {}
         self._lock: SourceAdvisoryLock | None = None
         self._max_units_in_flight = 0
 
@@ -944,6 +976,23 @@ class IncrementalJsonlCoordinator:
 
         self._transition("transaction_phase_publish", publish)
 
+    def _bootstrap_transaction_binding(self) -> dict[str, str]:
+        if not self.bootstrap_existing:
+            return {}
+        return {
+            "grant_fingerprint": str(self.bootstrap_grant_fingerprint),
+            "operation_id": str(self.bootstrap_operation_id),
+            "binding_fingerprint": str(self.bootstrap_binding_fingerprint),
+        }
+
+    def _validate_bootstrap_transaction_binding(self, transaction: dict) -> None:
+        if not self.bootstrap_existing:
+            return
+        expected = self._bootstrap_transaction_binding()
+        actual = {name: transaction.get(name) for name in expected}
+        if actual != expected:
+            raise IncrementalJsonlError("bootstrap_replay_grant_mismatch")
+
     def _write_rollback(self, payload: dict) -> None:
         def prepare() -> None:
             self.paths["rollback"].parent.mkdir(parents=True, exist_ok=True)
@@ -1064,40 +1113,96 @@ class IncrementalJsonlCoordinator:
             self._transition("units_prune", prune_units)
         return chunks, units, events, keep_summaries, keep_units
 
+    @staticmethod
+    def _export_line_owned_by_source(raw: bytes, source_path: str) -> bool:
+        try:
+            row = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return False
+        return isinstance(row, dict) and row.get("source_path") == source_path
+
+    def _snapshot_export_before_image(self) -> dict:
+        from purge_locks import export_flock
+
+        export_path = Path(self.cfg["index"]["units_export"])
+        foreign_digest = hashlib.sha256()
+        full_digest = hashlib.sha256()
+        foreign_bytes = 0
+        foreign_lines = 0
+        source_lines: list[dict[str, Any]] = []
+        with export_flock(self.cfg):
+            existed = export_path.is_file()
+            if existed:
+                with export_path.open("rb") as handle:
+                    for raw in handle:
+                        full_digest.update(raw)
+                        if self._export_line_owned_by_source(raw, self.path_key):
+                            source_lines.append(
+                                {
+                                    "foreign_lines_before": foreign_lines,
+                                    "payload_base64": base64.b64encode(raw).decode("ascii"),
+                                }
+                            )
+                        else:
+                            foreign_digest.update(raw)
+                            foreign_bytes += len(raw)
+                            foreign_lines += 1
+        return {
+            "version": 1,
+            "existed": existed,
+            "file_sha256": full_digest.hexdigest(),
+            "foreign_sha256": foreign_digest.hexdigest(),
+            "foreign_bytes": foreign_bytes,
+            "foreign_lines": foreign_lines,
+            "source_lines": source_lines,
+        }
+
     def _snapshot_before_images(self) -> dict:
         with self._session() as session:
             summaries = session.store.snapshot_source_rows(SUMMARIES, self.path_key)
             units = session.store.snapshot_source_rows(UNITS, self.path_key)
-        export_path = Path(self.cfg["index"]["units_export"])
-        export_lines = []
-        if export_path.is_file():
-            for line in export_path.read_text(encoding="utf-8").splitlines():
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    export_lines.append(("keep", line))
-                    continue
-                if isinstance(row, dict) and row.get("source_path") == self.path_key:
-                    export_lines.append(("source", line))
-                else:
-                    export_lines.append(("keep", line))
+            non_source_collections = {
+                name: session.store.non_source_inventory_digest(name, self.path_key)
+                for name in (SUMMARIES, UNITS)
+            }
         processed = self._processed()
         processed_preimage = {
             key: value
             for key, value in processed.items()
             if isinstance(value, dict) and value.get("path") == self.path_key
         }
+        export_preimage = self._snapshot_export_before_image()
+        self.last_evidence["non_source_collections_before"] = non_source_collections
+        self.last_evidence["export_before"] = {
+            key: value
+            for key, value in export_preimage.items()
+            if key != "source_lines"
+        }
         return {
             "version": ROLLBACK_VERSION,
             "summaries": summaries,
             "units": units,
-            "export_lines": export_lines,
+            "export_preimage": export_preimage,
             "processed_preimage": processed_preimage,
             "source_path": self.path_key,
             "state_files": self._capture_state_files(),
             "prepared_files": self._capture_prepared_files(),
             "dedupe_files": self._capture_dedupe_files(),
+            "non_source_collections": non_source_collections,
         }
+
+    def _verify_non_source_collections(self, expected: dict) -> None:
+        with self._session() as session:
+            current = {
+                name: session.store.non_source_inventory_digest(name, self.path_key)
+                for name in (SUMMARIES, UNITS)
+            }
+        self.last_evidence["non_source_collections_after"] = current
+        if current != expected:
+            raise IncrementalJsonlError(
+                "non_source_isolation_changed",
+                "non-source collection id/metadata/document/embedding evidence differs",
+            )
 
     def _file_preimage(self, path: Path) -> str | None:
         if not path.is_file():
@@ -1233,40 +1338,104 @@ class IncrementalJsonlCoordinator:
                 )
             session.store.restore_source_rows(SUMMARIES, rollback.get("summaries") or [])
             session.store.restore_source_rows(UNITS, rollback.get("units") or [])
-        self._restore_export(rollback.get("export_lines") or [])
+        self._restore_export(rollback.get("export_preimage") or {})
         self._restore_processed(rollback.get("processed_preimage") or {})
         self._restore_state_files(rollback.get("state_files"))
         self._restore_prepared_files(rollback.get("prepared_files"))
         self._restore_dedupe_files(rollback.get("dedupe_files"))
 
-    def _restore_export(self, export_lines: list) -> None:
+    @staticmethod
+    def _export_temp(export_path: Path):  # pylint: disable=consider-using-with
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+        handle = tempfile.NamedTemporaryFile(  # pylint: disable=consider-using-with
+            mode="w+b",
+            dir=export_path.parent,
+            prefix=export_path.name + ".",
+            suffix=".tmp",
+            delete=False,
+        )
+        os.chmod(handle.name, 0o600)
+        return handle
+
+    def _restore_export(self, preimage: dict) -> None:
+        if preimage.get("version") != 1:
+            raise IncrementalJsonlError("recovery_unproven", "export preimage invalid")
         export_path = Path(self.cfg["index"]["units_export"])
-        if not export_lines and not export_path.exists():
-            return
-        kept = []
-        if export_path.is_file():
-            for line in export_path.read_text(encoding="utf-8").splitlines():
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    kept.append(line)
-                    continue
-                if isinstance(row, dict) and row.get("source_path") == self.path_key:
-                    continue
-                kept.append(line)
-        restored = [line for kind, line in export_lines if kind == "source"]
-        foreign = [line for kind, line in export_lines if kind == "keep"]
-        # Preserve unrelated current lines plus the preimage source lines.
-        merged = foreign + kept
-        seen = set(merged)
-        output = list(merged)
-        for line in restored:
-            if line not in seen:
-                output.append(line)
+        source_lines = list(preimage.get("source_lines") or [])
         from purge_locks import export_flock
 
         with export_flock(self.cfg):
-            _atomic_bytes(export_path, ("".join(f"{line}\n" for line in output)).encode("utf-8"))
+            temp = self._export_temp(export_path)
+            temp_path = Path(temp.name)
+            foreign_digest = hashlib.sha256()
+            foreign_bytes = 0
+            foreign_lines = 0
+            source_index = 0
+            try:
+                current = (  # pylint: disable=consider-using-with
+                    export_path.open("rb")  # pylint: disable=consider-using-with
+                    if export_path.is_file()
+                    else None
+                )
+                try:
+                    if current is not None:
+                        for raw in current:
+                            if self._export_line_owned_by_source(raw, self.path_key):
+                                continue
+                            while (
+                                source_index < len(source_lines)
+                                and source_lines[source_index].get("foreign_lines_before")
+                                == foreign_lines
+                            ):
+                                temp.write(
+                                    base64.b64decode(
+                                        source_lines[source_index]["payload_base64"],
+                                        validate=True,
+                                    )
+                                )
+                                source_index += 1
+                            temp.write(raw)
+                            foreign_digest.update(raw)
+                            foreign_bytes += len(raw)
+                            foreign_lines += 1
+                finally:
+                    if current is not None:
+                        current.close()
+                while (
+                    source_index < len(source_lines)
+                    and source_lines[source_index].get("foreign_lines_before")
+                    == foreign_lines
+                ):
+                    temp.write(
+                        base64.b64decode(
+                            source_lines[source_index]["payload_base64"], validate=True
+                        )
+                    )
+                    source_index += 1
+                authority = (
+                    foreign_digest.hexdigest() == preimage.get("foreign_sha256")
+                    and foreign_bytes == preimage.get("foreign_bytes")
+                    and foreign_lines == preimage.get("foreign_lines")
+                    and source_index == len(source_lines)
+                )
+                if not authority:
+                    raise IncrementalJsonlError(
+                        "rollback_export_foreign_changed",
+                        "unrelated export bytes differ from rollback authority",
+                    )
+                temp.flush()
+                os.fsync(temp.fileno())
+                temp.close()
+                if not preimage.get("existed") and temp_path.stat().st_size == 0:
+                    export_path.unlink(missing_ok=True)
+                    temp_path.unlink(missing_ok=True)
+                else:
+                    os.replace(temp_path, export_path)
+                _fsync_dir(export_path.parent)
+            finally:
+                if not temp.closed:
+                    temp.close()
+                temp_path.unlink(missing_ok=True)
 
     def _reconcile_export(self) -> None:
         from purge_locks import export_flock
@@ -1276,25 +1445,33 @@ class IncrementalJsonlCoordinator:
         def reconcile() -> None:
             with self._session() as session:
                 rows = session.store.snapshot_source_rows(UNITS, self.path_key)
-            existing: list[str] = []
-            if export_path.is_file():
-                for line in export_path.read_text(encoding="utf-8").splitlines():
-                    try:
-                        row = json.loads(line)
-                    except json.JSONDecodeError:
-                        existing.append(line)
-                        continue
-                    if isinstance(row, dict) and row.get("source_path") == self.path_key:
-                        continue
-                    existing.append(line)
-            for row in rows:
-                payload = self._export_unit_payload(row)
-                existing.append(json.dumps(payload, separators=(",", ":")))
             with export_flock(self.cfg):
-                _atomic_bytes(
-                    export_path,
-                    ("".join(f"{line}\n" for line in existing)).encode("utf-8"),
-                )
+                temp = self._export_temp(export_path)
+                temp_path = Path(temp.name)
+                try:
+                    if export_path.is_file():
+                        with export_path.open("rb") as current:
+                            for raw in current:
+                                if not self._export_line_owned_by_source(
+                                    raw, self.path_key
+                                ):
+                                    temp.write(raw)
+                    for row in rows:
+                        payload = self._export_unit_payload(row)
+                        temp.write(
+                            (json.dumps(payload, separators=(",", ":")) + "\n").encode(
+                                "utf-8"
+                            )
+                        )
+                    temp.flush()
+                    os.fsync(temp.fileno())
+                    temp.close()
+                    os.replace(temp_path, export_path)
+                    _fsync_dir(export_path.parent)
+                finally:
+                    if not temp.closed:
+                        temp.close()
+                    temp_path.unlink(missing_ok=True)
 
         self._transition("export_reconcile", reconcile)
 
@@ -1303,28 +1480,129 @@ class IncrementalJsonlCoordinator:
 
         exact = []
         semantic = []
+        sequence = 0
         for result in events:
             for row in result.exact_suppressions:
+                sequence += 1
                 event = dict(row)
+                event.pop("suppressed_at", None)
                 event["transaction_id"] = transaction_id
+                event["transaction_sequence"] = sequence
                 event["event_id"] = _sha(
-                    f"{transaction_id}:{row.get('suppressed_id')}:{row.get('matched_id')}"
+                    f"{transaction_id}:exact:{sequence}:"
+                    f"{row.get('suppressed_id')}:{row.get('matched_id')}"
                 )
                 exact.append(event)
             for row in result.semantic_candidates:
+                sequence += 1
                 event = dict(row)
+                event.pop("queued_at", None)
                 event["transaction_id"] = transaction_id
+                event["transaction_sequence"] = sequence
                 event["event_id"] = _sha(
-                    f"{transaction_id}:{row.get('id_a')}:{row.get('id_b')}"
+                    f"{transaction_id}:semantic:{sequence}:"
+                    f"{row.get('id_a')}:{row.get('id_b')}"
                 )
                 semantic.append(event)
         combined = IngestDedupeResult(exact_suppressions=exact, semantic_candidates=semantic)
+        paths = self._dedupe_restore_paths()
+        before = {
+            name: self._file_prefix_authority(path) for name, path in paths.items()
+        }
+
+        stats: dict[str, int] = {}
 
         def reconcile() -> None:
-            persist_ingest_dedupe(self.cfg, combined)
+            stats.update(persist_ingest_dedupe(self.cfg, combined))
 
         self._transition("dedupe_reconcile", reconcile)
-        return len(exact), len(semantic)
+        expected_ids = {
+            name: {
+                str(row["event_id"])
+                for row in (exact if name == "ingest_duplicate_suppressions.jsonl" else semantic)
+            }
+            for name in DEDUPE_FILENAMES
+        }
+        self.last_evidence["dedupe"] = {
+            name: self._verify_dedupe_append(
+                paths[name], before[name], transaction_id, expected_ids[name]
+            )
+            for name in DEDUPE_FILENAMES
+        }
+        return (
+            int(stats.get("exact_suppressed", 0)),
+            int(stats.get("semantic_candidates_queued", 0)),
+        )
+
+    @staticmethod
+    def _file_prefix_authority(path: Path) -> dict[str, Any]:
+        digest = hashlib.sha256()
+        size = 0
+        if path.is_file():
+            with path.open("rb") as handle:
+                for block in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(block)
+                    size += len(block)
+        return {"size": size, "sha256": digest.hexdigest()}
+
+    @staticmethod
+    def _verify_dedupe_append(
+        path: Path,
+        before: dict[str, Any],
+        transaction_id: str,
+        expected_event_ids: set[str],
+    ) -> dict[str, Any]:
+        digest = hashlib.sha256()
+        suffix = b""
+        if not path.is_file():
+            if int(before["size"]) == 0 and not expected_event_ids:
+                return {
+                    "old_size": 0,
+                    "old_sha256": before["sha256"],
+                    "new_bytes": 0,
+                    "event_ids": [],
+                }
+            raise IncrementalJsonlError(
+                "dedupe_append_missing", "expected dedupe append file is absent"
+            )
+        with path.open("rb") as handle:
+            remaining = int(before["size"])
+            while remaining:
+                block = handle.read(min(1024 * 1024, remaining))
+                if not block:
+                    raise IncrementalJsonlError(
+                        "dedupe_prefix_changed", "dedupe file was truncated"
+                    )
+                digest.update(block)
+                remaining -= len(block)
+            suffix = handle.read()
+        if digest.hexdigest() != before["sha256"]:
+            raise IncrementalJsonlError(
+                "dedupe_prefix_changed", "old dedupe bytes are not an exact prefix"
+            )
+        observed: set[str] = set()
+        for raw in suffix.splitlines():
+            try:
+                row = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise IncrementalJsonlError(
+                    "dedupe_append_invalid", "new dedupe row is invalid JSON"
+                ) from exc
+            if row.get("transaction_id") != transaction_id:
+                raise IncrementalJsonlError(
+                    "dedupe_append_unbound", "new dedupe row belongs to another transaction"
+                )
+            observed.add(str(row.get("event_id") or ""))
+        if not observed.issubset(expected_event_ids):
+            raise IncrementalJsonlError(
+                "dedupe_append_unbound", "new dedupe event was not deterministically derived"
+            )
+        return {
+            "old_size": int(before["size"]),
+            "old_sha256": before["sha256"],
+            "new_bytes": len(suffix),
+            "event_ids": sorted(observed),
+        }
 
     def _publish_processed(self, processed_hash: str, chunks: int, units: int) -> bool:
         from ingest import commit_processed_index_entry, _path_is_excluded
@@ -1418,6 +1696,7 @@ class IncrementalJsonlCoordinator:
                     "transaction_id": transaction_id,
                     "phase": "APPLYING",
                     "bootstrap_existing": self.bootstrap_existing,
+                    **self._bootstrap_transaction_binding(),
                     "source_path": self.path_key,
                     "source_identity": self.source_id,
                     "generation": generation,
@@ -1436,6 +1715,9 @@ class IncrementalJsonlCoordinator:
             if isinstance(rollback, dict):
                 rollback["candidate_ids"] = candidate_ids
                 self._write_rollback(rollback)
+                self._verify_non_source_collections(
+                    rollback.get("non_source_collections") or {}
+                )
             self._revalidate_live_prefix(snapshot)
             checkpoint = {
                 "version": CHECKPOINT_VERSION,
@@ -1483,6 +1765,9 @@ class IncrementalJsonlCoordinator:
         return result
 
     def _roll_forward(self, transaction: dict) -> IncrementalRunResult:
+        phase = str(transaction.get("phase") or "")
+        if phase not in {"PREPARING", "transform_failed", "APPLYING"}:
+            raise IncrementalJsonlError("recovery_unproven", "unknown transaction phase")
         rollback_path = self.paths["rollback"]
         if rollback_path.is_file():
             rollback = _read_json(rollback_path)
@@ -1527,6 +1812,10 @@ class IncrementalJsonlCoordinator:
             prepared = []
             reused = 0
             keys = list(transaction.get("prepared_keys") or [])
+            if phase == "APPLYING" and not keys:
+                raise IncrementalJsonlError(
+                    "recovery_unproven", "applying transaction lacks prepared keys"
+                )
             if keys:
                 for key in keys:
                     payload = _read_json(self._prepared_path(key))
@@ -1562,7 +1851,11 @@ class IncrementalJsonlCoordinator:
                 fallback=None,
                 reused=reused,
                 transaction_id=str(transaction.get("transaction_id") or uuid.uuid4().hex),
-                mode="replay_forward",
+                mode={
+                    "APPLYING": "replay_forward",
+                    "PREPARING": "preparing_recovery",
+                    "transform_failed": "transform_failed_recovery",
+                }[phase],
             )
         except SourceCaptureError:
             if rollback is None:
@@ -1572,7 +1865,8 @@ class IncrementalJsonlCoordinator:
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
         except IncrementalJsonlError as exc:
             if rollback is None:
-                self._cleanup(snapshot_dir)
+                if not self.bootstrap_existing:
+                    self._cleanup(snapshot_dir)
                 return self._refusal(exc.code, mode="aborted", snapshot=snapshot)
             self._restore_before_images(rollback)
             self._cleanup(snapshot_dir)
@@ -1603,6 +1897,10 @@ class IncrementalJsonlCoordinator:
                         existing_tx.get("prefix_sha256") != self.expected_prefix_sha256
                     ):
                         return self._refusal("bootstrap_replay_grant_mismatch")
+                    try:
+                        self._validate_bootstrap_transaction_binding(existing_tx)
+                    except IncrementalJsonlError as exc:
+                        return self._refusal(exc.code)
                 return self._roll_forward(existing_tx)
             transaction_id = uuid.uuid4().hex
             try:
@@ -1688,6 +1986,7 @@ class IncrementalJsonlCoordinator:
                     "transaction_id": transaction_id,
                     "phase": "PREPARING",
                     "bootstrap_existing": self.bootstrap_existing,
+                    **self._bootstrap_transaction_binding(),
                     "source_path": self.path_key,
                     "source_identity": self.source_id,
                     "generation_identity": snapshot["generation_identity"],
@@ -1711,15 +2010,40 @@ class IncrementalJsonlCoordinator:
                     frontier,
                     cache_required_before=cache_required_before,
                 )
-            except IncrementalJsonlError as exc:
-                self._cleanup(snapshot["snapshot_dir"])
-                return self._refusal(exc.code, fallback=exc.detail or None, snapshot=snapshot)
+            except Exception as exc:  # bootstrap preserves paid-work recovery state
+                if self.bootstrap_existing:
+                    transaction = _read_json(self.paths["transaction"]) or {}
+                    transaction.update(
+                        {
+                            "phase": "transform_failed",
+                            "failure_code": getattr(
+                                exc, "code", type(exc).__name__
+                            ),
+                        }
+                    )
+                    self._write_transaction(transaction)
+                    if isinstance(exc, IncrementalJsonlError):
+                        return self._refusal(
+                            exc.code,
+                            fallback=exc.detail or None,
+                            snapshot=snapshot,
+                        )
+                    raise
+                if isinstance(exc, IncrementalJsonlError):
+                    self._cleanup(snapshot["snapshot_dir"])
+                    return self._refusal(
+                        exc.code,
+                        fallback=exc.detail or None,
+                        snapshot=snapshot,
+                    )
+                raise
             self._write_transaction(
                 {
                     "version": TRANSACTION_VERSION,
                     "transaction_id": transaction_id,
                     "phase": "PREPARING",
                     "bootstrap_existing": self.bootstrap_existing,
+                    **self._bootstrap_transaction_binding(),
                     "source_path": self.path_key,
                     "source_identity": self.source_id,
                     "generation_identity": snapshot["generation_identity"],
