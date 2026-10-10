@@ -73,7 +73,7 @@ Key invariants:
 | Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
 | Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
 | Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
-| Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the corrected packet as an accurate `NO-GO`: the merged command lacks a hard paid-processing cap, durable failure accounting, and complete provider/config binding. Ryan authorized Cursor's bounded hermetic corrective on 2026-10-09; implementation has not started. |
+| Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the corrected packet as an accurate `NO-GO`. Cursor completed the authorized bounded hermetic corrective on `fix/2026-10-09-issue-286-bootstrap-budget-safety`: durable pre-call attempt budgeting and accounting, immutable grant binding, paid-work-preserving recovery, transaction-bound isolation evidence, and bounded export rollback are present. The branch remains default off and has not touched live resources. |
 | Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
 
 ## 4. Completion State
@@ -84,33 +84,28 @@ Key invariants:
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap | One-shot capability merged; corrected exact-source packet passed Kiro/Copilot review as `NO-GO`; bounded safety corrective authorized but not started | Cursor implementation, then same-revision Kiro/Copilot review before any live grant |
+| Existing-source bootstrap | One-shot capability merged; bounded safety corrective implemented hermetically on `fix/2026-10-09-issue-286-bootstrap-budget-safety` | Same-revision Kiro design review and Copilot safety audit before any PR or live grant |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-The guarded implementation is on `main`, and the exact-source packet passed
-both required review lanes as a `NO-GO` decision packet. Ryan authorized Cursor
-to implement the bounded hermetic safety corrective described in
-`docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md`.
-Cursor must keep the route default off, avoid every live resource/provider, and
-return one exact revision for Kiro design review and Copilot safety audit. Live
+Cursor completed the authorized bounded hermetic safety corrective described in
+`docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md`
+on `fix/2026-10-09-issue-286-bootstrap-budget-safety`. The next lanes are Kiro
+design review and Copilot safety audit of the same exact pushed revision. Any
+material opposing `PASS`/`FAIL` on that revision returns to Sol-High. Live
 bootstrap, PR creation, merge, runtime promotion, config change, and watcher
 operation remain separately Ryan-gated. Crush/Cursor transcript coverage
 remains out of scope for this Kiro-only route.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Cursor implements the authorized correction for a durable paid-attempt cap,
-   failure accounting, exact provider/config binding, complete failure
-   recovery, transaction-aware isolation evidence, and bounded-memory export
-   rollback.
-2. Kiro and Copilot review the same exact implementation revision before any
+1. Kiro and Copilot review the same exact pushed corrective revision before any
    production use. A material opposing `PASS`/`FAIL` returns to Sol-High.
-3. After Ryan's separate PR/merge decision, prepare a new live packet with the execution-day source digest, verified
+2. After Ryan's separate PR/merge decision, prepare a new live packet with the execution-day source digest, verified
    backup, dimension, enforceable budget, source-backup disposition, and one
    explicit recovery allowance. Obtain a separate Ryan grant before execution.
-4. Obtain a later Ryan grant before any runtime/config/restart test. Measure
+3. Obtain a later Ryan grant before any runtime/config/restart test. Measure
    calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -215,11 +210,12 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-09 | Ryan | Squash-merged guarded Kiro live-route implementation via PR #365 as f3171fc; production bootstrap, activation, watcher restart, and broader source coverage remain ungranted |
 | 2026-10-09 | Sol | Resolved the exact-source packet conflict in Copilot's favor and obtained same-revision Kiro/Copilot PASS at corrected commit 4aecb96; packet remains `NO-GO` pending Ryan's implementation-correction decision |
 | 2026-10-09 | Ryan / Sol | Ryan authorized Cursor's bounded hermetic bootstrap-safety corrective; live resources, providers, PR creation, merge, and watcher/config/runtime operations remain gated |
+| 2026-10-09 | Cursor | Completed the authorized hermetic bootstrap-safety corrective on the dedicated fix branch; next gate is same-revision Kiro/Copilot review, with all live and delivery operations still gated |
 
 ## TL;DR
 
 - Arc Codex's coordinator and canary are on main, default off.
 - Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
-- Issue #286's guarded Kiro route is on `main` and default off. The corrected
-  exact-source packet passed Kiro and Copilot as an accurate `NO-GO`; Cursor's
-  bounded hermetic safety corrective is authorized and is the next lane.
+- Issue #286's guarded Kiro route is on `main` and default off. Cursor completed
+  the bounded hermetic safety corrective on the dedicated fix branch; the next
+  gate is same-revision Kiro design review and Copilot safety audit.

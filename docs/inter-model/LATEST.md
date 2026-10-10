@@ -9,17 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — bootstrap safety corrective AUTHORIZED
-  (2026-10-09):** Sol resolved the first exact-packet Kiro/Copilot conflict in
-  Copilot's favor, corrected the packet, and obtained same-revision `PASS` from
-  both lanes at packet commit `4aecb96`. The reviewed packet remains `NO-GO`
-  for live use because the merged command lacks a durable paid-attempt cap,
-  failure accounting, and complete transform binding. Ryan has now authorized
-  Cursor's bounded hermetic correction on
-  `fix/2026-10-09-issue-286-bootstrap-budget-safety`; no live bootstrap,
-  provider call, config/runtime change, watcher action, PR, or merge is
-  authorized. Resume from the
-  [Cursor Execute handoff](SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md)
+- **Arc Codex / issue #286 — bootstrap safety corrective READY FOR REVIEW
+  (2026-10-09):** Cursor completed Ryan's bounded hermetic correction on
+  `fix/2026-10-09-issue-286-bootstrap-budget-safety`. The default-off route now
+  has durable pre-call attempt budgeting and accounting, immutable grant
+  binding, paid-work-preserving recovery, transaction-bound isolation evidence,
+  and bounded export rollback. No live bootstrap, provider call, corpus/config/
+  runtime change, watcher action, PR, or merge occurred. Next: Kiro design
+  review and Copilot safety audit must inspect the same exact pushed revision.
+  Resume from the
+  [Cursor completion handoff](CURSOR-2026-10-09-issue-286-bootstrap-safety-corrective-review.md)
   and [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **PR Steward reminder — Ryan chose Option B (2026-09-28):** Assign the
