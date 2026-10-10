@@ -1158,8 +1158,14 @@ def test_crash_window_staged_archive_and_corrupt_lineage_fail_closed_without_aut
     shutil.rmtree(lineage_root)
 
     archive_root = state / "superseded_bootstrap_transactions"
-    shutil.rmtree(archive_root)
-    archive_root.symlink_to(".")
+    outside_archive = tmp_path / "outside-archive-root"
+    outside_archive.mkdir()
+    if archive_root.exists() or archive_root.is_symlink():
+        if archive_root.is_symlink():
+            archive_root.unlink()
+        else:
+            shutil.rmtree(archive_root)
+    archive_root.symlink_to(outside_archive)
     with pytest.raises(BootstrapGrantError, match="archive evidence is ambiguous"):
         guard_ordinary_bootstrap_admission(state)
     archive_root.unlink()
@@ -1172,6 +1178,278 @@ def test_crash_window_staged_archive_and_corrupt_lineage_fail_closed_without_aut
     (archive_entry / "transaction.json").symlink_to(real_tx.name)
     with pytest.raises(BootstrapGrantError, match="archive evidence is ambiguous"):
         guard_ordinary_bootstrap_admission(state)
+
+
+def _staged_supersession_without_lineage(
+    tmp_path: Path,
+) -> tuple[Path, dict, dict, dict, dict, dict, Path]:
+    source = tmp_path / "source.jsonl"
+    predecessor = _grant(source, runtime="1" * 40)
+    successor = _grant(source, runtime="2" * 40)
+    transaction = _transaction(predecessor, _binding_fp(predecessor))
+    state = _setup_state(tmp_path, predecessor, transaction)
+    cfg = _cfg(tmp_path)
+    authority = _authority(
+        state, predecessor, successor, state / "transaction.json", cfg, tmp_path
+    )
+    tx_path = state / "transaction.json"
+    archive = (
+        state
+        / "superseded_bootstrap_transactions"
+        / f"{transaction['transaction_id']}__{successor['operation_id']}"
+    )
+    archive.mkdir(parents=True)
+    os.replace(tx_path, archive / "transaction.json")
+    return state, cfg, predecessor, successor, transaction, authority, archive
+
+
+def _outside_snapshot(outside: Path) -> tuple[str, float, int]:
+    stat = outside.stat()
+    return outside.read_text(encoding="utf-8"), stat.st_mtime, stat.st_mode
+
+
+def _assert_outside_unchanged(outside: Path, before: tuple[str, float, int]) -> None:
+    after = _outside_snapshot(outside)
+    assert after == before
+
+
+def test_authority_path_refuses_symlinked_lineage_root_before_inspect(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.jsonl"
+    predecessor = _grant(source, runtime="1" * 40)
+    successor = _grant(source, runtime="2" * 40)
+    transaction = _transaction(predecessor, _binding_fp(predecessor))
+    state = _setup_state(tmp_path, predecessor, transaction)
+    cfg = _cfg(tmp_path)
+    authority = _authority(
+        state, predecessor, successor, state / "transaction.json", cfg, tmp_path
+    )
+    _inspect_activate(state, predecessor, successor, authority, cfg, tmp_path)
+    outside = tmp_path / "outside-lineage-root"
+    outside.mkdir()
+    lineage_root = state / "bootstrap_supersession_lineage"
+    shutil.rmtree(lineage_root)
+    lineage_root.symlink_to(outside)
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    with pytest.raises(BootstrapGrantError, match="lineage evidence is ambiguous"):
+        inspect_bootstrap_supersession(
+            source_state=state,
+            grant=successor,
+            authority=authority,
+            mutation_inventory=inventory,
+        )
+
+
+def test_authority_path_refuses_symlinked_archive_entry_before_inspect(
+    tmp_path: Path,
+) -> None:
+    state, cfg, predecessor, successor, _transaction, authority, archive = (
+        _staged_supersession_without_lineage(tmp_path)
+    )
+    outside = tmp_path / "outside-archive-entry"
+    outside.mkdir()
+    outside_tx = outside / "transaction.json"
+    outside_tx.write_bytes((archive / "transaction.json").read_bytes())
+    before = _outside_snapshot(outside_tx)
+    shutil.rmtree(archive)
+    archive.symlink_to(outside)
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    with pytest.raises(BootstrapGrantError, match="archive evidence is ambiguous"):
+        inspect_bootstrap_supersession(
+            source_state=state,
+            grant=successor,
+            authority=authority,
+            mutation_inventory=inventory,
+        )
+    _assert_outside_unchanged(outside_tx, before)
+
+
+def test_authority_path_refuses_symlinked_archived_transaction_before_inspect(
+    tmp_path: Path,
+) -> None:
+    state, cfg, predecessor, successor, transaction, authority, archive = (
+        _staged_supersession_without_lineage(tmp_path)
+    )
+    outside_tx = tmp_path / "outside-transaction.json"
+    archived = archive / "transaction.json"
+    outside_tx.write_bytes(archived.read_bytes())
+    before = _outside_snapshot(outside_tx)
+    archived.unlink()
+    archived.symlink_to(outside_tx)
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    with pytest.raises(BootstrapGrantError, match="archive evidence is ambiguous"):
+        inspect_bootstrap_supersession(
+            source_state=state,
+            grant=successor,
+            authority=authority,
+            mutation_inventory=inventory,
+        )
+    _assert_outside_unchanged(outside_tx, before)
+    assert not _lineage_path(state, transaction["transaction_id"]).exists()
+
+
+def test_authority_path_refuses_unreadable_lineage_root_before_activate_finish(
+    tmp_path: Path,
+) -> None:
+    state, cfg, predecessor, successor, transaction, authority, _archive = (
+        _staged_supersession_without_lineage(tmp_path)
+    )
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    admission = inspect_bootstrap_supersession(
+        source_state=state,
+        grant=successor,
+        authority=authority,
+        mutation_inventory=inventory,
+    )
+    lineage_root = state / "bootstrap_supersession_lineage"
+    lineage_root.mkdir()
+    os.chmod(lineage_root, 0o000)
+    outside = tmp_path / "outside-lineage-publish.json"
+    outside.write_text("secret", encoding="utf-8")
+    before = _outside_snapshot(outside)
+    try:
+        with pytest.raises(BootstrapGrantError, match="lineage evidence is unreadable"):
+            activate_bootstrap_supersession(
+                cfg=cfg,
+                source_state=state,
+                data_root=tmp_path,
+                chroma_dir=Path(cfg["index"]["chroma_dir"]),
+                grant=successor,
+                authority=authority,
+                admission=admission,
+            )
+    finally:
+        os.chmod(lineage_root, 0o700)
+    _assert_outside_unchanged(outside, before)
+    assert not _lineage_path(state, transaction["transaction_id"]).exists()
+
+
+def test_authority_path_refuses_symlinked_lineage_record_before_activate_finish(
+    tmp_path: Path,
+) -> None:
+    state, cfg, predecessor, successor, transaction, authority, _archive = (
+        _staged_supersession_without_lineage(tmp_path)
+    )
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    admission = inspect_bootstrap_supersession(
+        source_state=state,
+        grant=successor,
+        authority=authority,
+        mutation_inventory=inventory,
+    )
+    lineage_root = state / "bootstrap_supersession_lineage"
+    lineage_root.mkdir()
+    outside = tmp_path / "outside-lineage-record.json"
+    outside.write_text("secret", encoding="utf-8")
+    before = _outside_snapshot(outside)
+    lineage_path = _lineage_path(state, transaction["transaction_id"])
+    lineage_path.symlink_to(outside)
+    with pytest.raises(BootstrapGrantError, match="lineage record is ambiguous"):
+        activate_bootstrap_supersession(
+            cfg=cfg,
+            source_state=state,
+            data_root=tmp_path,
+            chroma_dir=Path(cfg["index"]["chroma_dir"]),
+            grant=successor,
+            authority=authority,
+            admission=admission,
+        )
+    _assert_outside_unchanged(outside, before)
+    assert lineage_path.is_symlink()
+
+
+def test_authority_path_refuses_wrong_type_lineage_record_before_inspect(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.jsonl"
+    predecessor = _grant(source, runtime="1" * 40)
+    successor = _grant(source, runtime="2" * 40)
+    transaction = _transaction(predecessor, _binding_fp(predecessor))
+    state = _setup_state(tmp_path, predecessor, transaction)
+    cfg = _cfg(tmp_path)
+    authority = _authority(
+        state, predecessor, successor, state / "transaction.json", cfg, tmp_path
+    )
+    _inspect_activate(state, predecessor, successor, authority, cfg, tmp_path)
+    lineage_path = _lineage_path(state, transaction["transaction_id"])
+    lineage_path.unlink()
+    lineage_path.mkdir()
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    with pytest.raises(BootstrapGrantError, match="lineage record is ambiguous"):
+        inspect_bootstrap_supersession(
+            source_state=state,
+            grant=successor,
+            authority=authority,
+            mutation_inventory=inventory,
+        )
+
+
+def test_authority_path_refuses_unreadable_archive_root_before_inspect(
+    tmp_path: Path,
+) -> None:
+    state, cfg, predecessor, successor, _transaction, authority, archive = (
+        _staged_supersession_without_lineage(tmp_path)
+    )
+    archive_root = state / "superseded_bootstrap_transactions"
+    os.chmod(archive_root, 0o000)
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    try:
+        with pytest.raises(BootstrapGrantError, match="archive evidence is unreadable"):
+            inspect_bootstrap_supersession(
+                source_state=state,
+                grant=successor,
+                authority=authority,
+                mutation_inventory=inventory,
+            )
+    finally:
+        os.chmod(archive_root, 0o700)
+        os.chmod(archive, 0o700)
+
+
+def test_authority_path_refuses_symlinked_archive_root_before_activate(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.jsonl"
+    predecessor = _grant(source, runtime="1" * 40)
+    successor = _grant(source, runtime="2" * 40)
+    transaction = _transaction(predecessor, _binding_fp(predecessor))
+    state = _setup_state(tmp_path, predecessor, transaction)
+    cfg = _cfg(tmp_path)
+    authority = _authority(
+        state, predecessor, successor, state / "transaction.json", cfg, tmp_path
+    )
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    admission = inspect_bootstrap_supersession(
+        source_state=state,
+        grant=successor,
+        authority=authority,
+        mutation_inventory=inventory,
+    )
+    archive_root = state / "superseded_bootstrap_transactions"
+    outside_archive = tmp_path / "outside-archive-root"
+    outside_archive.mkdir()
+    if archive_root.exists() or archive_root.is_symlink():
+        if archive_root.is_symlink():
+            archive_root.unlink()
+        else:
+            shutil.rmtree(archive_root)
+    archive_root.symlink_to(outside_archive)
+    outside = tmp_path / "outside-mutation.txt"
+    outside.write_text("unchanged", encoding="utf-8")
+    before = _outside_snapshot(outside)
+    with pytest.raises(BootstrapGrantError, match="archive evidence is ambiguous"):
+        activate_bootstrap_supersession(
+            cfg=cfg,
+            source_state=state,
+            data_root=tmp_path,
+            chroma_dir=Path(cfg["index"]["chroma_dir"]),
+            grant=successor,
+            authority=authority,
+            admission=admission,
+        )
+    _assert_outside_unchanged(outside, before)
+    assert (state / "transaction.json").is_file()
 
 
 def test_ordinary_bootstrap_admits_when_no_supersession_evidence(tmp_path: Path) -> None:

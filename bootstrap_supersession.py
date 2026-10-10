@@ -812,13 +812,123 @@ def _iter_supersession_evidence_entries(root: Path, *, kind: str) -> list[Path]:
         raise BootstrapGrantError(f"supersession {kind} evidence is unreadable") from exc
 
 
+def _assert_supersession_path_contained(path: Path, source_state: Path) -> None:
+    try:
+        path.absolute().relative_to(source_state.absolute())
+    except ValueError as exc:
+        raise BootstrapGrantError("supersession path escapes source state") from exc
+
+
+def _validate_supersession_lineage_root(source_state: Path) -> bool:
+    root = source_state / _LINEAGE_DIR_NAME
+    _assert_supersession_path_contained(root, source_state)
+    return _classify_supersession_evidence_root(root, kind="lineage")
+
+
+def _validate_supersession_archive_root(source_state: Path) -> bool:
+    root = source_state / _ARCHIVE_ROOT_NAME
+    _assert_supersession_path_contained(root, source_state)
+    return _classify_supersession_evidence_root(root, kind="archive")
+
+
+def _ensure_supersession_directory_readable(path: Path, *, kind: str) -> None:
+    if not path.is_dir():
+        return
+    try:
+        path.iterdir()
+    except OSError as exc:
+        raise BootstrapGrantError(f"supersession {kind} evidence is unreadable") from exc
+
+
+def _validate_authority_lineage_record_before_read(
+    source_state: Path, lineage_record: Path
+) -> None:
+    _assert_supersession_path_contained(lineage_record, source_state)
+    if _validate_supersession_lineage_root(source_state):
+        _ensure_supersession_directory_readable(
+            source_state / _LINEAGE_DIR_NAME, kind="lineage"
+        )
+    if lineage_record.is_symlink():
+        raise BootstrapGrantError("supersession lineage record is ambiguous")
+    if lineage_record.exists() and not lineage_record.is_file():
+        raise BootstrapGrantError("supersession lineage record is ambiguous")
+    if lineage_record.is_file():
+        try:
+            lineage_record.stat()
+        except OSError as exc:
+            raise BootstrapGrantError("supersession lineage record is unreadable") from exc
+
+
+def _validate_authority_archive_dir_before_use(
+    source_state: Path, archive_dir: Path
+) -> None:
+    _assert_supersession_path_contained(archive_dir, source_state)
+    if _validate_supersession_archive_root(source_state):
+        _ensure_supersession_directory_readable(
+            source_state / _ARCHIVE_ROOT_NAME, kind="archive"
+        )
+    if archive_dir.is_symlink():
+        raise BootstrapGrantError("supersession archive evidence is ambiguous")
+    if archive_dir.exists() and not archive_dir.is_dir():
+        raise BootstrapGrantError("supersession archive evidence is ambiguous")
+    if archive_dir.is_dir():
+        _ensure_supersession_directory_readable(archive_dir, kind="archive")
+
+
+def _validate_authority_archived_transaction_before_read(
+    source_state: Path, archived: Path
+) -> None:
+    _assert_supersession_path_contained(archived, source_state)
+    if archived.is_symlink():
+        raise BootstrapGrantError("supersession archive evidence is ambiguous")
+    if not archived.is_file():
+        raise BootstrapGrantError("supersession archive is missing predecessor transaction")
+    try:
+        archived.stat()
+    except OSError as exc:
+        raise BootstrapGrantError("supersession archive evidence is unreadable") from exc
+
+
+def _validate_authority_archived_transaction_shape(
+    source_state: Path, archived: Path
+) -> None:
+    _assert_supersession_path_contained(archived, source_state)
+    if archived.is_symlink():
+        raise BootstrapGrantError("supersession archive evidence is ambiguous")
+    if archived.exists() and not archived.is_file():
+        raise BootstrapGrantError("supersession archive evidence is ambiguous")
+
+
+def _revalidate_supersession_authority_paths(
+    source_state: Path,
+    authority: dict[str, Any],
+    archive_dir: Path,
+    *,
+    read_lineage: bool,
+    write_lineage: bool,
+    read_archive: bool,
+    write_archive: bool,
+) -> None:
+    lineage_record = _lineage_path(source_state, authority["predecessor_transaction_id"])
+    if read_lineage or write_lineage:
+        _validate_authority_lineage_record_before_read(source_state, lineage_record)
+    if read_archive or write_archive:
+        _validate_authority_archive_dir_before_use(source_state, archive_dir)
+    archived = archive_dir / "transaction.json"
+    if read_archive:
+        _validate_authority_archived_transaction_before_read(source_state, archived)
+    elif write_archive:
+        _validate_authority_archived_transaction_shape(source_state, archived)
+
+
 def _scan_durable_bootstrap_supersession_evidence(source_state: Path) -> bool:
     """Return True when durable supersession artifacts require explicit authority."""
 
     evidence = False
-    lineage_root = source_state / _LINEAGE_DIR_NAME
-    if _classify_supersession_evidence_root(lineage_root, kind="lineage"):
-        for entry in _iter_supersession_evidence_entries(lineage_root, kind="lineage"):
+    if _validate_supersession_lineage_root(source_state):
+        for entry in _iter_supersession_evidence_entries(
+            source_state / _LINEAGE_DIR_NAME, kind="lineage"
+        ):
             if entry.is_symlink():
                 raise BootstrapGrantError("supersession lineage evidence is ambiguous")
             if not entry.is_file():
@@ -828,9 +938,10 @@ def _scan_durable_bootstrap_supersession_evidence(source_state: Path) -> bool:
             _validate_lineage_evidence_file(entry)
             evidence = True
 
-    archive_root = source_state / _ARCHIVE_ROOT_NAME
-    if _classify_supersession_evidence_root(archive_root, kind="archive"):
-        for entry in _iter_supersession_evidence_entries(archive_root, kind="archive"):
+    if _validate_supersession_archive_root(source_state):
+        for entry in _iter_supersession_evidence_entries(
+            source_state / _ARCHIVE_ROOT_NAME, kind="archive"
+        ):
             if entry.is_symlink():
                 raise BootstrapGrantError("supersession archive evidence is ambiguous")
             if entry.is_file():
@@ -874,6 +985,7 @@ def _read_lineage_record(
     source_state: Path, predecessor_transaction_id: str
 ) -> dict[str, Any] | None:
     path = _lineage_path(source_state, predecessor_transaction_id)
+    _validate_authority_lineage_record_before_read(source_state, path)
     if not path.is_file():
         return None
     try:
@@ -908,13 +1020,16 @@ def _conflicting_predecessor_archive(
     authority: dict[str, Any],
     archive_dir: Path,
 ) -> None:
-    root = source_state / _ARCHIVE_ROOT_NAME
-    if not root.is_dir():
+    _validate_authority_archive_dir_before_use(source_state, archive_dir)
+    if not _validate_supersession_archive_root(source_state):
         return
+    root = source_state / _ARCHIVE_ROOT_NAME
     prefix = f"{authority['predecessor_transaction_id']}__"
-    for entry in root.iterdir():
+    for entry in _iter_supersession_evidence_entries(root, kind="archive"):
+        if entry.is_symlink():
+            raise BootstrapGrantError("supersession archive evidence is ambiguous")
         if not entry.is_dir():
-            continue
+            raise BootstrapGrantError("supersession archive evidence is ambiguous")
         if entry.name.startswith(prefix) and entry != archive_dir:
             raise BootstrapGrantError(
                 "predecessor transaction already superseded by another successor"
@@ -922,11 +1037,11 @@ def _conflicting_predecessor_archive(
 
 
 def _validate_archived_transaction(
-    archive_dir: Path, authority: dict[str, Any]
+    source_state: Path, archive_dir: Path, authority: dict[str, Any]
 ) -> None:
     archived = archive_dir / "transaction.json"
-    if not archived.is_file():
-        raise BootstrapGrantError("supersession archive is missing predecessor transaction")
+    _validate_authority_archive_dir_before_use(source_state, archive_dir)
+    _validate_authority_archived_transaction_before_read(source_state, archived)
     digest = sha256_file(archived)
     if digest != authority["predecessor_transaction_sha256"]:
         raise BootstrapGrantError("archived predecessor transaction digest mismatch")
@@ -1126,7 +1241,7 @@ def inspect_bootstrap_supersession(
             raise BootstrapGrantError(
                 "predecessor transaction already superseded by another successor"
             )
-        _validate_archived_transaction(archive_dir, authority)
+        _validate_archived_transaction(source_state, archive_dir, authority)
         carried_paid = _validate_predecessor_operation_evidence(
             source_state, authority
         )
@@ -1165,13 +1280,22 @@ def inspect_bootstrap_supersession(
             successor_recovery_without_transaction=successor_recovery_without_transaction,
         )
 
-    staged_archive = archive_dir.is_dir() and (archive_dir / "transaction.json").is_file()
+    _validate_authority_archive_dir_before_use(source_state, archive_dir)
+    archived_tx_path = archive_dir / "transaction.json"
+    staged_archive = False
+    if archive_dir.is_dir() and not archive_dir.is_symlink():
+        _validate_authority_archived_transaction_shape(source_state, archived_tx_path)
+        if archived_tx_path.is_file():
+            _validate_authority_archived_transaction_before_read(
+                source_state, archived_tx_path
+            )
+            staged_archive = True
     if staged_archive:
         if _read_transaction(transaction_path) is not None:
             raise BootstrapGrantError(
                 "supersession staged archive conflicts with active predecessor transaction"
             )
-        _validate_archived_transaction(archive_dir, authority)
+        _validate_archived_transaction(source_state, archive_dir, authority)
         archived_tx = _read_transaction(archive_dir / "transaction.json")
         carried_paid = _validate_predecessor_operation_evidence(
             source_state,
@@ -1231,6 +1355,15 @@ def activate_bootstrap_supersession(
     def _publish_lineage(
         carried_paid: int, mutation_inventory: dict[str, Any]
     ) -> None:
+        _revalidate_supersession_authority_paths(
+            source_state,
+            authority,
+            archive_dir,
+            read_lineage=False,
+            write_lineage=True,
+            read_archive=False,
+            write_archive=False,
+        )
         payload = _lineage_payload(
             authority=authority,
             grant=grant,
@@ -1255,10 +1388,20 @@ def activate_bootstrap_supersession(
         if admission.finish_lineage_only:
             if admission.archive_dir is None:
                 raise BootstrapGrantError("supersession lineage finish lacks archive")
+            _revalidate_supersession_authority_paths(
+                source_state,
+                authority,
+                archive_dir,
+                read_lineage=False,
+                write_lineage=True,
+                read_archive=True,
+                write_archive=False,
+            )
+            archived_tx = archive_dir / "transaction.json"
             carried_paid = _validate_predecessor_operation_evidence(
                 source_state,
                 authority,
-                transaction=_read_transaction(archive_dir / "transaction.json"),
+                transaction=_read_transaction(archived_tx),
                 mutation_inventory=mutation_inventory,
             )
             _publish_lineage(carried_paid, mutation_inventory)
@@ -1285,6 +1428,15 @@ def activate_bootstrap_supersession(
             mutation_inventory=mutation_inventory,
         )
         transaction_path = source_state / "transaction.json"
+        _revalidate_supersession_authority_paths(
+            source_state,
+            authority,
+            archive_dir,
+            read_lineage=False,
+            write_lineage=True,
+            read_archive=False,
+            write_archive=True,
+        )
         if archive_dir.exists():
             raise BootstrapGrantError("supersession archive path already exists")
         archive_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -1292,10 +1444,28 @@ def activate_bootstrap_supersession(
         archive_dir.mkdir(parents=False, exist_ok=False)
         os.chmod(archive_dir, 0o700)
         archived_tx = archive_dir / "transaction.json"
+        _revalidate_supersession_authority_paths(
+            source_state,
+            authority,
+            archive_dir,
+            read_lineage=False,
+            write_lineage=True,
+            read_archive=False,
+            write_archive=True,
+        )
         os.replace(transaction_path, archived_tx)
         _fsync_directory(archive_dir)
         _fsync_directory(source_state)
-        _validate_archived_transaction(archive_dir, authority)
+        _revalidate_supersession_authority_paths(
+            source_state,
+            authority,
+            archive_dir,
+            read_lineage=False,
+            write_lineage=True,
+            read_archive=True,
+            write_archive=False,
+        )
+        _validate_archived_transaction(source_state, archive_dir, authority)
         carried_paid = _validate_predecessor_operation_evidence(
             source_state,
             authority,
