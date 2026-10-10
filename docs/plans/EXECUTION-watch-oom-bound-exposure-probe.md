@@ -592,7 +592,7 @@ unexplained and issue #268 remains open.
 
 ### Proposed §9.7b bound after the 2 GiB baseline OOM (2026-10-10)
 
-**State: design for review; no implementation or run grant.** The current-main
+**State: Kiro design PASS at `512ef34`; no run grant.** The current-main
 one-shot at `d105c5e702264e93b9ff84e7cd2776455718f6ce` completed clean
 5,000- and 20,000-row baseline/candidate pairs under the reviewed 2 GiB
 cgroup. At 58,825 rows the baseline worker hit `memory.max=2 GiB`, reported
@@ -606,8 +606,9 @@ curve or an explanation for the live 12.5 GiB watcher OOM.
 The next diagnostic should use the same frozen production and baseline trees,
 fixture shape, serial pair order, hermetic guards, canary contract, and
 disk-backed scratch, with a **4 GiB cgroup `memory.max` and zero swap for each
-worker**. An earlier hermetic 58,825-row baseline measured about 2,682 MiB
-peak RSS under a different bound; that makes 4 GiB a plausible *test* cap,
+worker**. An earlier hermetic 58,825-row pre-PR #303 source measured about
+2,682 MiB peak RSS under a different bound; that makes 4 GiB a plausible
+*test* cap,
 not a promise that cgroup-charged memory will fit. A repeat at 2 GiB would
 predictably replay the known baseline OOM. Do not raise the cap during a run.
 
