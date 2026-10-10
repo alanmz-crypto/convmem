@@ -1325,6 +1325,64 @@ def test_authority_path_refuses_unreadable_lineage_root_before_activate_finish(
     assert not _lineage_path(state, transaction["transaction_id"]).exists()
 
 
+def test_staged_activation_refuses_symlinked_lineage_tmp_before_publication(
+    tmp_path: Path,
+) -> None:
+    state, cfg, predecessor, successor, transaction, authority, archive = (
+        _staged_supersession_without_lineage(tmp_path)
+    )
+    inventory = _inventory(state, tmp_path, cfg, predecessor["source"])
+    admission = inspect_bootstrap_supersession(
+        source_state=state,
+        grant=successor,
+        authority=authority,
+        mutation_inventory=inventory,
+    )
+    assert admission.finish_lineage_only is True
+    lineage_root = state / "bootstrap_supersession_lineage"
+    lineage_root.mkdir()
+    outside = tmp_path / "outside-lineage-tmp.json"
+    outside.write_text("secret", encoding="utf-8")
+    before = _outside_snapshot(outside)
+    tmp_path_lineage = _lineage_path(state, transaction["transaction_id"]).with_name(
+        f"{transaction['transaction_id']}.json.tmp"
+    )
+    tmp_path_lineage.symlink_to(outside)
+    attempts_before = (
+        state
+        / "operations"
+        / grant_fingerprint(predecessor)
+        / "provider_attempts.jsonl"
+    ).read_bytes()
+    snapshot_before = (
+        state / "snapshots" / transaction["transaction_id"] / "messages.jsonl"
+    ).read_bytes()
+    archived_before = (archive / "transaction.json").read_bytes()
+    with pytest.raises(BootstrapGrantError, match="temporary evidence is ambiguous"):
+        activate_bootstrap_supersession(
+            cfg=cfg,
+            source_state=state,
+            data_root=tmp_path,
+            chroma_dir=Path(cfg["index"]["chroma_dir"]),
+            grant=successor,
+            authority=authority,
+            admission=admission,
+        )
+    _assert_outside_unchanged(outside, before)
+    assert tmp_path_lineage.is_symlink()
+    assert not _lineage_path(state, transaction["transaction_id"]).exists()
+    assert (archive / "transaction.json").read_bytes() == archived_before
+    assert (
+        state / "snapshots" / transaction["transaction_id"] / "messages.jsonl"
+    ).read_bytes() == snapshot_before
+    assert (
+        state
+        / "operations"
+        / grant_fingerprint(predecessor)
+        / "provider_attempts.jsonl"
+    ).read_bytes() == attempts_before
+
+
 def test_authority_path_refuses_symlinked_lineage_record_before_activate_finish(
     tmp_path: Path,
 ) -> None:

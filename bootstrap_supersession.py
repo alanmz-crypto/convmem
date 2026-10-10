@@ -301,17 +301,52 @@ def _fsync_directory(path: Path) -> None:
         os.close(directory)
 
 
+_AMBIGUOUS_TEMPORARY_EVIDENCE = "supersession temporary evidence is ambiguous"
+
+
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(path.parent, 0o700)
     tmp = path.with_name(path.name + ".tmp")
-    with tmp.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
-        handle.flush()
-        os.fsync(handle.fileno())
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, path)
-    _fsync_directory(path.parent)
+    try:
+        os.lstat(tmp)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        raise BootstrapGrantError(_AMBIGUOUS_TEMPORARY_EVIDENCE) from exc
+    else:
+        raise BootstrapGrantError(_AMBIGUOUS_TEMPORARY_EVIDENCE)
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    created = False
+    fd = -1
+    try:
+        try:
+            fd = os.open(str(tmp), flags, 0o600)
+        except FileExistsError as exc:
+            raise BootstrapGrantError(_AMBIGUOUS_TEMPORARY_EVIDENCE) from exc
+        except OSError as exc:
+            raise BootstrapGrantError(_AMBIGUOUS_TEMPORARY_EVIDENCE) from exc
+        created = True
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = -1
+            json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        _fsync_directory(path.parent)
+    except Exception:
+        if created:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+        raise
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _row_active_for_source(row: dict[str, Any], source_path: str) -> bool:
