@@ -75,7 +75,7 @@ The failed transform did not replace the legacy projection:
 The required embedding dimension remains **768**. A retry must require dimension
 768 before any provider request or projection write.
 
-## Backup coverage and accepted limitation
+## Backup coverage and source limitation
 
 The named rollback baseline is local Restic snapshot
 `ac1087c862cae7e43b72ca4978379d4c07a0550b9cf2964557dfed9601da3954`,
@@ -87,10 +87,19 @@ timestamp, and covered path. It predates the failed invocation and covers the
 mutable corpus: Chroma, `processed.json`, exports, dedupe sidecars, locks, and
 the incremental-state root as it existed at snapshot time.
 
-Ryan has explicitly accepted these limitations for this bootstrap:
+Current `convmem doctor --json` also confirms a matching offsite copy:
 
-- the local snapshot has no matching offsite copy; and
-- the read-only Kiro source is outside the snapshot.
+- source snapshot:
+  `ac1087c862cae7e43b72ca4978379d4c07a0550b9cf2964557dfed9601da3954`;
+- offsite destination snapshot:
+  `653a8198a8b5b540cb029801efd72ced0b9156daccbceb5c6f93ab732b4f7ac4`;
+  and
+- status: `offsite copy covers today`.
+
+This improves on the earlier grant-time condition Ryan accepted, when the local
+snapshot lacked a matching offsite copy. One accepted limitation remains:
+
+- the read-only Kiro source is outside both mutable-corpus snapshots.
 
 The bootstrap must never write the source. The prefix and metadata checks detect
 source drift but do not replace a source backup. The `backup_snapshot` grant
@@ -203,9 +212,9 @@ it.
 
 1. Recheck the exact source identity, boundary, full-prefix digest, metadata
    digest, 68-message count, and two-chunk count.
-2. Reconfirm local snapshot `ac1087...3954`, the accepted offsite/source
-   limitations, dimension `768`, the exact reviewed runtime, config digest, and
-   transform fingerprint.
+2. Reconfirm local snapshot `ac1087...3954`, matching offsite snapshot
+   `653a8198...7ac4`, the accepted source exclusion, dimension `768`, the exact
+   reviewed runtime, config digest, and transform fingerprint.
 3. Require the watcher to remain inactive and disabled with `MainPID=0`, and
    capture a no-other-writer census.
 4. Capture the source-scoped and exact unrelated-state inventories for both
@@ -298,8 +307,8 @@ This packet and its reviews authorize none of the following:
 ## TL;DR
 
 - The exact source remains unchanged: digest `dfea479e...732741`, two chunks,
-  dimension 768, with local rollback snapshot `ac1087...3954` and Ryan's
-  accepted offsite/source limitations.
+  dimension 768, with local rollback snapshot `ac1087...3954`, matching offsite
+  snapshot `653a8198...7ac4`, and the accepted read-only source exclusion.
 - The first run spent two DeepSeek attempts and 8574 tokens, then left a
   `transform_failed` transaction bound to the old grant.
 - The old recovery is budget/runtime blocked; a fresh grant is transaction-
