@@ -7,7 +7,8 @@ the selected source's incremental state directory.
 
 # Exact built-in type checks reject booleans and subclasses in authority data.
 # The journal intentionally carries explicit path/limit state for auditability.
-# pylint: disable=unidiomatic-typecheck,too-many-instance-attributes
+# pylint: disable=unidiomatic-typecheck,too-many-instance-attributes,duplicate-code
+# Atomic JSON/fsync helpers shared with bootstrap supersession and incremental script.
 
 from __future__ import annotations
 
@@ -302,6 +303,68 @@ class InvocationAuthority:
     refusal_code: str | None
 
 
+
+
+def _require_lowercase_sha256_digest(value: Any, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or value.lower() != value
+    ):
+        raise BootstrapGrantError(f"supersession_accounting {field} must be a lowercase SHA-256")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise BootstrapGrantError(
+            f"supersession_accounting {field} must be hexadecimal"
+        ) from exc
+    return value
+
+
+def _validate_supersession_accounting(
+    payload: dict[str, Any],
+    *,
+    predecessor_paid_http_attempts: int,
+    lifetime_paid_http_attempts: int,
+) -> dict[str, Any]:
+    required = frozenset(
+        {
+            "predecessor_paid_http_attempts",
+            "lifetime_max_paid_http_attempts",
+            "predecessor_operation_id",
+            "predecessor_grant_fingerprint",
+            "authority_fingerprint",
+        }
+    )
+    if set(payload) != required:
+        raise BootstrapGrantError("supersession_accounting has unexpected fields")
+    paid = payload["predecessor_paid_http_attempts"]
+    lifetime = payload["lifetime_max_paid_http_attempts"]
+    if type(paid) is not int or paid < 0:
+        raise BootstrapGrantError(
+            "supersession_accounting predecessor_paid_http_attempts invalid"
+        )
+    if type(lifetime) is not int or lifetime < 1:
+        raise BootstrapGrantError(
+            "supersession_accounting lifetime_max_paid_http_attempts invalid"
+        )
+    if paid != predecessor_paid_http_attempts:
+        raise BootstrapGrantError("supersession_accounting predecessor paid mismatch")
+    if lifetime != lifetime_paid_http_attempts:
+        raise BootstrapGrantError("supersession_accounting lifetime ceiling mismatch")
+    validated: dict[str, Any] = {
+        "predecessor_paid_http_attempts": paid,
+        "lifetime_max_paid_http_attempts": lifetime,
+    }
+    for field in (
+        "predecessor_operation_id",
+        "predecessor_grant_fingerprint",
+        "authority_fingerprint",
+    ):
+        validated[field] = _require_lowercase_sha256_digest(payload[field], field)
+    return validated
+
+
 class BootstrapOperationJournal:
     """Append-only invocation, permit, usage, and terminal receipt authority."""
 
@@ -310,12 +373,47 @@ class BootstrapOperationJournal:
         source_state_dir: Path,
         grant: dict[str, Any],
         binding: dict[str, Any],
+        *,
+        predecessor_paid_http_attempts: int = 0,
+        lifetime_paid_http_attempts: int | None = None,
+        supersession_accounting: dict[str, Any] | None = None,
     ) -> None:
         self.grant = validate_grant(grant)
         self.fingerprint = grant_fingerprint(self.grant)
         self.operation_id = self.grant["operation_id"]
         self.max_attempts = int(self.grant["max_provider_http_attempts"])
         self.max_recoveries = int(self.grant["max_recovery_invocations"])
+        if type(predecessor_paid_http_attempts) is not int or predecessor_paid_http_attempts < 0:
+            raise BootstrapGrantError(
+                "predecessor_paid_http_attempts must be a non-negative integer"
+            )
+        self.predecessor_paid_http_attempts = predecessor_paid_http_attempts
+        resolved_lifetime = (
+            lifetime_paid_http_attempts
+            if lifetime_paid_http_attempts is not None
+            else self.max_attempts
+        )
+        if type(resolved_lifetime) is not int or resolved_lifetime < 1:
+            raise BootstrapGrantError(
+                "lifetime_paid_http_attempts must be a positive integer"
+            )
+        if self.predecessor_paid_http_attempts > resolved_lifetime:
+            raise BootstrapGrantError(
+                "predecessor paid attempts exceed lifetime paid HTTP ceiling"
+            )
+        if self.predecessor_paid_http_attempts + self.max_attempts > resolved_lifetime:
+            raise BootstrapGrantError(
+                "successor grant exceeds lifetime paid HTTP attempt ceiling"
+            )
+        self.lifetime_paid_http_attempts = resolved_lifetime
+        requires_supersession_accounting = (
+            self.predecessor_paid_http_attempts != 0
+            or self.lifetime_paid_http_attempts != self.max_attempts
+        )
+        if requires_supersession_accounting and supersession_accounting is None:
+            raise BootstrapGrantError(
+                "supersession_accounting required for carried paid HTTP accounting"
+            )
         self.root = source_state_dir / "operations" / self.fingerprint
         self.root.mkdir(parents=True, exist_ok=True)
         os.chmod(self.root, 0o700)
@@ -331,6 +429,16 @@ class BootstrapOperationJournal:
             "grant": self.grant,
             "binding": binding,
         }
+        if supersession_accounting is not None:
+            if not isinstance(supersession_accounting, dict):
+                raise BootstrapGrantError(
+                    "supersession_accounting must be a JSON object"
+                )
+            manifest["supersession_accounting"] = _validate_supersession_accounting(
+                supersession_accounting,
+                predecessor_paid_http_attempts=self.predecessor_paid_http_attempts,
+                lifetime_paid_http_attempts=self.lifetime_paid_http_attempts,
+            )
         existing = None
         if self.manifest_path.is_file():
             try:
@@ -351,15 +459,20 @@ class BootstrapOperationJournal:
 
     def begin_invocation(self, *, recoverable_transaction: bool) -> InvocationAuthority:
         with self._locked():
-            starts = [
-                row
-                for row in _read_jsonl(self.invocations_path)
-                if row.get("record_type") == "start"
-            ]
+            rows = _read_jsonl(self.invocations_path)
+            starts = [row for row in rows if row.get("record_type") == "start"]
+            terminals = [row for row in rows if row.get("record_type") == "terminal"]
             ordinal = len(starts) + 1
             recovery = ordinal > 1
             refusal = None
-            if ordinal > 1 + self.max_recoveries:
+            if any(
+                str(terminal.get("outcome") or "") == "committed"
+                or str(terminal.get("transaction_phase") or "")
+                in {"complete", "COMMITTED", "applied"}
+                for terminal in terminals
+            ):
+                refusal = "successor_already_committed"
+            elif ordinal > 1 + self.max_recoveries:
                 refusal = "recovery_exhausted"
             elif recovery and not recoverable_transaction:
                 refusal = "recovery_not_available"
@@ -392,12 +505,18 @@ class BootstrapOperationJournal:
         paid_cap_consumed = _new_provider_attempt_paid_cap_consumed(event)
         with self._locked():
             attempts = _read_jsonl(self.attempts_path)
-            consumed_paid = sum(
+            consumed_local = sum(
                 _provider_attempt_paid_cap_consumed(row) for row in attempts
             )
-            if paid_cap_consumed and consumed_paid >= self.max_attempts:
+            consumed_total = self.predecessor_paid_http_attempts + consumed_local
+            if paid_cap_consumed and consumed_local >= self.max_attempts:
                 raise ProviderAttemptBudgetExceeded(
-                    f"provider_http_budget_exhausted:{consumed_paid}/{self.max_attempts}"
+                    f"provider_http_budget_exhausted:{consumed_local}/{self.max_attempts}"
+                )
+            if paid_cap_consumed and consumed_total >= self.lifetime_paid_http_attempts:
+                raise ProviderAttemptBudgetExceeded(
+                    "provider_http_budget_exhausted:"
+                    f"{consumed_total}/{self.lifetime_paid_http_attempts}"
                 )
             observed = len(attempts)
             _append_jsonl(
@@ -456,9 +575,14 @@ class BootstrapOperationJournal:
             _provider_attempt_paid_cap_consumed(row) for row in current_attempts
         )
         paid_cumulative = sum(_provider_attempt_paid_cap_consumed(row) for row in attempts)
+        lifetime_paid_current = self.predecessor_paid_http_attempts + paid_current
+        lifetime_paid_cumulative = self.predecessor_paid_http_attempts + paid_cumulative
         return {
             "permitted_http_attempts": paid_current,
             "cumulative_permitted_http_attempts": paid_cumulative,
+            "lifetime_paid_provider_http_attempts": lifetime_paid_current,
+            "cumulative_lifetime_paid_provider_http_attempts": lifetime_paid_cumulative,
+            "predecessor_paid_provider_http_attempts": self.predecessor_paid_http_attempts,
             "paid_provider_http_attempts": paid_current,
             "cumulative_paid_provider_http_attempts": paid_cumulative,
             "observed_provider_http_attempts": len(current_attempts),

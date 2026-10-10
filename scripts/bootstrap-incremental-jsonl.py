@@ -10,7 +10,8 @@ or control the watcher.
 # The imports below follow the repo-root path insertion used by standalone scripts.
 # ruff: noqa: I001
 # The hyphenated script name follows scripts/ convention; exact int checks reject bool.
-# pylint: disable=invalid-name,unidiomatic-typecheck,too-many-locals,too-many-statements
+# pylint: disable=invalid-name,unidiomatic-typecheck,too-many-locals,too-many-statements,duplicate-code
+# Shared bootstrap safety/supersession helpers intentionally mirror this script's I/O shape.
 
 from __future__ import annotations
 
@@ -35,6 +36,13 @@ from bootstrap_safety import (  # pylint: disable=wrong-import-position
     grant_fingerprint,
     sha256_file,
     validate_grant,
+)
+from bootstrap_supersession import (  # pylint: disable=wrong-import-position
+    activate_bootstrap_supersession,
+    bootstrap_mutation_inventory,
+    inspect_bootstrap_supersession,
+    parse_grant_document,
+    supersession_accounting_from_authority,
 )
 from chroma_write_store import (  # pylint: disable=wrong-import-position
     current_implementation_revision,
@@ -67,7 +75,7 @@ class BootstrapRunRefused(RuntimeError):
         self.receipt = receipt
 
 
-def _read_grant(path: Path) -> dict[str, Any]:
+def _read_grant(path: Path) -> tuple[dict[str, Any], dict[str, Any] | None]:
     raw = path.expanduser().absolute()
     if raw.resolve(strict=True) != raw or raw.is_symlink():
         raise BootstrapGrantError("grant path contains a symlink")
@@ -76,8 +84,8 @@ def _read_grant(path: Path) -> dict[str, Any]:
         raise BootstrapGrantError("grant must be an owned regular file")
     if info.st_mode & 0o077:
         raise BootstrapGrantError("grant must have mode 0600 or stricter")
-    grant = json.loads(raw.read_text(encoding="utf-8"))
-    return validate_grant(grant)
+    document = json.loads(raw.read_text(encoding="utf-8"))
+    return parse_grant_document(document)
 
 
 def _require_watcher_disabled() -> None:
@@ -349,7 +357,11 @@ def _receipt(
     return receipt
 
 
-def bootstrap(grant: dict[str, Any]) -> dict[str, Any]:
+def bootstrap(
+    grant: dict[str, Any],
+    *,
+    supersession_authority: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Apply one reviewed grant with durable budget and invocation accounting."""
 
     grant = validate_grant(grant)
@@ -375,33 +387,40 @@ def bootstrap(grant: dict[str, Any]) -> dict[str, Any]:
     state_root = boundary.resolve_mutable(settings.state_dir, label="incremental state")
     source_state = state_root / source_state_id(str(source))
     expected_binding = _grant_binding(grant)
-    journal = BootstrapOperationJournal(source_state, grant, expected_binding)
-    transaction_path = source_state / "transaction.json"
-    existing_transaction = _read_transaction(transaction_path)
+    data_root = Path(cfg["index"]["chroma_dir"]).parent
     fingerprint = grant_fingerprint(grant)
-    recoverable = bool(
-        existing_transaction
-        and existing_transaction.get("bootstrap_existing") is True
-        and existing_transaction.get("grant_fingerprint") == fingerprint
-        and existing_transaction.get("phase") in {"PREPARING", "transform_failed", "APPLYING"}
-    )
-    authority = journal.begin_invocation(recoverable_transaction=recoverable)
+    supersession_admission = None
+    supersession_accounting_payload: dict[str, Any] | None = None
+    mutation_inventory: dict[str, Any] | None = None
+    if supersession_authority is not None:
+        chroma_dir = Path(cfg["index"]["chroma_dir"])
+        mutation_inventory = bootstrap_mutation_inventory(
+            source_state,
+            data_root,
+            cfg,
+            chroma_dir=chroma_dir,
+            source_path=str(source),
+        )
+        supersession_admission = inspect_bootstrap_supersession(
+            source_state=source_state,
+            grant=grant,
+            authority=supersession_authority,
+            mutation_inventory=mutation_inventory,
+        )
+        supersession_accounting_payload = supersession_accounting_from_authority(
+            supersession_authority
+        )
+    elif _read_transaction(source_state / "transaction.json") is not None:
+        existing = _read_transaction(source_state / "transaction.json")
+        if existing and existing.get("grant_fingerprint") != fingerprint:
+            raise BootstrapGrantError(
+                "existing bootstrap transaction requires supersession authority"
+            )
     observed_binding: dict[str, Any] = expected_binding
     coordinator: IncrementalJsonlCoordinator | None = None
     terminal_written = False
-    if not authority.authorized:
-        receipt = journal.finish(
-            _receipt(
-                grant=grant,
-                journal=journal,
-                binding=observed_binding,
-                coordinator=None,
-                outcome="refused",
-                mode="recovery",
-                failure_code=authority.refusal_code,
-            )
-        )
-        raise BootstrapRunRefused(receipt)
+    journal: BootstrapOperationJournal | None = None
+    authority = None
     try:
         observed_binding = _effective_binding(cfg, config_path)
         if observed_binding != expected_binding:
@@ -439,6 +458,60 @@ def bootstrap(grant: dict[str, Any]) -> dict[str, Any]:
             bootstrap_binding_fingerprint=_binding_fingerprint(expected_binding),
         )
         coordinator.require_existing_embedding_dimension(grant["embed_dimension"])
+        if supersession_authority is not None:
+            if mutation_inventory is None or supersession_admission is None:
+                raise BootstrapGrantError("supersession preflight is incomplete")
+            supersession_admission = activate_bootstrap_supersession(
+                cfg=cfg,
+                source_state=source_state,
+                data_root=data_root,
+                chroma_dir=Path(cfg["index"]["chroma_dir"]),
+                grant=grant,
+                authority=supersession_authority,
+                admission=supersession_admission,
+            )
+        predecessor_paid = 0
+        lifetime_paid = int(grant["max_provider_http_attempts"])
+        if supersession_admission is not None:
+            predecessor_paid = supersession_admission.predecessor_paid_http_attempts
+            lifetime_paid = supersession_admission.lifetime_max_paid_http_attempts
+        journal = BootstrapOperationJournal(
+            source_state,
+            grant,
+            expected_binding,
+            predecessor_paid_http_attempts=predecessor_paid,
+            lifetime_paid_http_attempts=lifetime_paid,
+            supersession_accounting=supersession_accounting_payload,
+        )
+        transaction_path = source_state / "transaction.json"
+        existing_transaction = _read_transaction(transaction_path)
+        recoverable = bool(
+            existing_transaction
+            and existing_transaction.get("bootstrap_existing") is True
+            and existing_transaction.get("grant_fingerprint") == fingerprint
+            and existing_transaction.get("phase")
+            in {"PREPARING", "transform_failed", "APPLYING"}
+        )
+        if (
+            not recoverable
+            and supersession_admission is not None
+            and supersession_admission.successor_recovery_without_transaction
+        ):
+            recoverable = True
+        authority = journal.begin_invocation(recoverable_transaction=recoverable)
+        if not authority.authorized:
+            receipt = journal.finish(
+                _receipt(
+                    grant=grant,
+                    journal=journal,
+                    binding=observed_binding,
+                    coordinator=None,
+                    outcome="refused",
+                    mode="recovery",
+                    failure_code=authority.refusal_code,
+                )
+            )
+            raise BootstrapRunRefused(receipt)
         with provider_http_accounting(
             journal.consume_provider_http_attempt,
             journal.report_provider_usage,
@@ -461,7 +534,7 @@ def bootstrap(grant: dict[str, Any]) -> dict[str, Any]:
     except BootstrapRunRefused:
         raise
     except Exception as exc:
-        if not terminal_written:
+        if not terminal_written and journal is not None and authority is not None:
             receipt = journal.finish(
                 _receipt(
                     grant=grant,
@@ -486,7 +559,8 @@ def main() -> int:
     if not args.execute:
         parser.error("--execute is required for the reviewed one-shot bootstrap")
     try:
-        receipt = bootstrap(_read_grant(args.grant_file))
+        grant, supersession = _read_grant(args.grant_file)
+        receipt = bootstrap(grant, supersession_authority=supersession)
     except BootstrapRunRefused as exc:
         print(json.dumps(exc.receipt, sort_keys=True))
         return 1
