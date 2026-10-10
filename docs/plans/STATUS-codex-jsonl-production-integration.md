@@ -84,31 +84,29 @@ Key invariants:
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap | Runtime paid-cap split landed at `32fae68` on `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` (DeepSeek-only cap; Ollama observed but exempt). Hermetic evidence: `tests/test_incremental_jsonl_bootstrap_safety.py` + `tests/test_incremental_jsonl_bootstrap_command.py` — 14 passed locally (fake transports only). No live re-run. | Kiro/Copilot review of branch tip, then Ryan merge/grant decision |
+| Existing-source bootstrap | On `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting`: runtime commit `32fae68` (DeepSeek-only cap; Ollama observed but cap-exempt) received Copilot scoped PASS; committed test/evidence commit `2b7228b` (`tests/test_incremental_jsonl_bootstrap_safety.py` + `tests/test_incremental_jsonl_bootstrap_command.py` — 12 focused passes, fake transports only) received Kiro PASS. No live re-run occurred. | Ryan PR/merge decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Paid-cap runtime correction and matching hermetic tests are on
-`fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` at `32fae68` (uncommitted
-test/doc deltas may sit atop that tip in the worktree). Next lane: Kiro/Copilot
-review of the branch, then Ryan's merge and live-grant decision. Live bootstrap,
-runtime promotion, config change, and watcher operation remain separately
-Ryan-gated. Crush/Cursor transcript coverage remains out of scope for this
-Kiro-only route.
+On `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting`, runtime commit
+`32fae68` received Copilot scoped PASS; evidence commit `2b7228b` (hermetic
+tests and STATUS corrections) received Kiro PASS. Next lane: Ryan PR/merge
+decision. Live bootstrap, runtime promotion, config change, and watcher operation
+remain separately Ryan-gated. Crush/Cursor transcript coverage remains out of
+scope for this Kiro-only route.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Review the paid-cap accounting correction on
-   `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` (DeepSeek-only cap
-   consumption; Ollama observed but cap-exempt; clarified receipt counters).
-2. After review, Ryan decides whether to merge the correction branch.
-3. Prepare a new live packet with execution-day source digest, verified backup,
-   dimension, enforceable DeepSeek HTTP budget, source-backup disposition, and
-   one explicit recovery allowance; obtain a separate Ryan grant before any
-   retried live bootstrap.
-4. Obtain a later Ryan grant before any runtime/config/restart test. Measure
-   calls and coverage by source class.
+1. Ryan decides whether to create and merge the correction PR for
+   `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` (runtime `32fae68`,
+   evidence `2b7228b`).
+2. Prepare a fresh exact-resource live packet (execution-day source digest,
+   verified backup, dimension, enforceable DeepSeek HTTP budget, source-backup
+   disposition, one explicit recovery allowance) and obtain a separate Ryan
+   grant before any retried live bootstrap.
+3. Obtain a later separate Ryan grant before any runtime/config/restart or
+   watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
 
@@ -216,14 +214,13 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-09 | Sol-High | Accepted Copilot's exact-revision FAIL over Kiro's PASS: APPLYING replay can replace original rollback/isolation authority; carried work onto post-PR-#370 main for Cursor correction |
 | 2026-10-09 | Cursor / Sol | Corrected replay authority, independent dimension preflight, and redirects at b108ab6; focused, inventory, secret, invariant, and Pylint gates pass; exact-tip review and CI-equivalent full suite remain |
 | 2026-10-09 | Kiro / Copilot | Both lanes issued complete PASS verdicts with no blockers on exact corrected revision 318c2f9; CI-equivalent full suite and Ryan's PR decision remain |
-| 2026-10-10 | Cursor | Hermetic bootstrap paid-cap tests aligned to `32fae68` accounting (12 focused passes); branch awaits review |
-| 2026-10-10 | Cursor | Recorded live bootstrap paid-cap failure (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); paid-cap-only correction implemented on `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting`, awaiting review |
+| 2026-10-10 | Cursor | Live bootstrap exposed paid-cap mis-accounting (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); runtime fix `32fae68`, 12 focused passes at evidence commit `2b7228b`, Copilot scoped PASS on runtime, Kiro PASS on evidence; next gate Ryan PR/merge decision |
 
 ## TL;DR
 
 - Arc Codex's coordinator and canary are on main, default off.
 - Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
 - Bootstrap safety merged via PR #373; live 2026-10-10 run exposed paid-cap
-  mis-accounting. Runtime fix at `32fae68` plus hermetic tests (12 focused passes)
-  on `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` await review before
-  merge or retried live grant.
+  mis-accounting. Runtime fix `32fae68` and evidence commit `2b7228b` (12 focused
+  passes) passed Copilot runtime and Kiro evidence review; branch awaits Ryan
+  PR/merge decision before any retried live grant.
