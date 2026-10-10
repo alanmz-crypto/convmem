@@ -617,6 +617,13 @@ promise that 6 GiB will suffice. A 6 GiB worker cap is still contained well
 below the observed 12.5 GiB live watcher OOM. Do not raise the cap during a
 run.
 
+Remote `main` later advanced to `269929a90567d79fb7d6985a7afd799c06d8a552`
+through PR #380, which changed only four ConvMem Switchboard planning files.
+The measured production Python sources are unchanged. The successor harness
+binds to this new `main` tip; the earlier 2 GiB evidence remains bound to
+`d105c5e702264e93b9ff84e7cd2776455718f6ce`. Copilot and Kiro must
+review the successor tip before any fresh one-shot grant.
+
 Preparation and acceptance order:
 
 1. On a new branch, change only the measurement harness and this plan. Bind
