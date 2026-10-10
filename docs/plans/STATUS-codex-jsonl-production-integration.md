@@ -73,6 +73,7 @@ Key invariants:
 | Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
 | Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
 | Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
+| Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the corrected packet as an accurate `NO-GO`: the merged command lacks a hard paid-processing cap, durable failure accounting, and complete provider/config binding. |
 | Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
 
 ## 4. Completion State
@@ -83,25 +84,32 @@ Key invariants:
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap | One-shot capability merged; real temporary Chroma replay/rollback tests passed; no live execution or grant | Ryan source/digest/backup/budget grant before any execution |
+| Existing-source bootstrap | One-shot capability merged; corrected exact-source packet passed Kiro/Copilot review as `NO-GO`; no live execution or grant | Ryan decision on a separately scoped implementation correction before any live grant |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-The implementation is on `main` after Ryan's squash merge of PR #365. The next
-lane may prepare an exact Kiro-source, digest, backup, embedding-dimension, and
-one-time budget packet for Ryan's review. No agent may bootstrap a live source,
-enable the route, promote runtime, or restart the watcher without the separate
-Ryan grant for that operation. Crush/Cursor coverage remains out of scope for
-this merged Kiro-only route.
+The guarded implementation is on `main`, and the exact-source packet has passed
+both required review lanes as a `NO-GO` decision packet. The next lane is Ryan's
+decision whether to authorize Cursor to correct paid-processing enforcement,
+failure accounting, provider/config binding, recovery coverage, and the
+reviewers' remaining evidence advisories. No agent may implement that change,
+bootstrap a live source, enable the route, promote runtime, or restart the
+watcher without the corresponding separate Ryan grant. Crush/Cursor transcript
+coverage remains out of scope for this Kiro-only route.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Confirm an exact Kiro source, its complete-prefix digest, current backup,
-   embedding dimension, and acceptable one-time transform budget.
-2. Obtain a separate Ryan grant before that exact-source bootstrap.
-3. Obtain a later Ryan grant before any
-   runtime/config/restart test. Measure calls and coverage by source class.
+1. Ryan decides whether to authorize a bounded implementation correction for a
+   hard paid-processing cap, durable failure accounting, exact provider/config
+   binding, complete failure recovery, and reviewable isolation evidence.
+2. If authorized, Cursor implements the correction; Kiro and Copilot review
+   the same exact revision before any production use.
+3. Prepare a new live packet with the execution-day source digest, verified
+   backup, dimension, enforceable budget, source-backup disposition, and one
+   explicit recovery allowance. Obtain a separate Ryan grant before execution.
+4. Obtain a later Ryan grant before any runtime/config/restart test. Measure
+   calls and coverage by source class.
 
 ## 7. Hard Stops
 
@@ -147,6 +155,7 @@ visible to readers.
 | Production-canary architecture | `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` |
 | Production-canary execution plan | `docs/plans/EXECUTION-codex-jsonl-production-canary.md` |
 | Current arc snapshot | `docs/plans/STATUS-codex-jsonl-production-integration.md` |
+| Corrected exact-source decision packet | `docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-review-packet.md` at reviewed commit `4aecb96` |
 | Cursor T0–T6 evidence | `docs/plans/VERIFY-codex-jsonl-production-integration.md` |
 | Scratch evidence | `docs/inter-model/VERIFY-jsonl-incremental-scratch-prototype.md` |
 | Live-source canary evidence | `docs/inter-model/VERIFY-jsonl-incremental-live-source-canary.md` |
@@ -201,11 +210,12 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-05 | Codex | Opened PR #365; corrected the Pylint regression without changing the safety contract, obtained Copilot/Kiro PASS at 05197a7, and kept the watcher disabled while remaining CI waits for runners |
 | 2026-10-05 | Codex | Resolved the full-suite reload-order failure, brought PR #365 current with main, and obtained Copilot/Kiro exact-tip PASS plus six green checks at b17f47c; Ryan's merge and live grants remain separate |
 | 2026-10-09 | Ryan | Squash-merged guarded Kiro live-route implementation via PR #365 as f3171fc; production bootstrap, activation, watcher restart, and broader source coverage remain ungranted |
+| 2026-10-09 | Sol | Resolved the exact-source packet conflict in Copilot's favor and obtained same-revision Kiro/Copilot PASS at corrected commit 4aecb96; packet remains `NO-GO` pending Ryan's implementation-correction decision |
 
 ## TL;DR
 
 - Arc Codex's coordinator and canary are on main, default off.
 - Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
-- Issue #286's guarded Kiro route and bounded bootstrap are on `main` via
-  PR #365. They remain default off; Ryan's separate exact-source and runtime
-  grants stand before any live use.
+- Issue #286's guarded Kiro route is on `main` and default off. The corrected
+  exact-source packet passed Kiro and Copilot as an accurate `NO-GO`; Ryan's
+  next decision is whether to authorize the required implementation correction.
