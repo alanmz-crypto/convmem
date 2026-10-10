@@ -84,34 +84,29 @@ Key invariants:
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap | One-shot capability merged; corrected packet remains `NO-GO`; b108ab6 preserves original replay authority, proves dimension independently before provider work, and disables redirects; Kiro/Copilot PASS at 318c2f9 | CI-equivalent full-suite evidence, then Ryan's PR decision |
+| Existing-source bootstrap | On `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting`: runtime commit `32fae68` (DeepSeek-only cap; Ollama observed but cap-exempt) received Copilot scoped PASS; committed test/evidence commit `2b7228b` (`tests/test_incremental_jsonl_bootstrap_safety.py` + `tests/test_incremental_jsonl_bootstrap_command.py` — 12 focused passes, fake transports only) received Kiro PASS. No live re-run occurred. | Ryan PR/merge decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-The guarded implementation is on `main`, and the exact-source packet passed
-both required review lanes as a `NO-GO` decision packet. Cursor corrected the
-bounded hermetic safety implementation described in
-`docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md`
-at b108ab6 on the current-main branch. Kiro and Copilot both passed exact
-revision 318c2f9 with no blockers. The next lane is CI-equivalent full-suite
-evidence and Ryan's PR decision. Live bootstrap, PR creation, merge,
-runtime promotion, config change, and watcher operation remain separately
-Ryan-gated. Crush/Cursor transcript coverage remains out of scope for this
-Kiro-only route.
+On `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting`, runtime commit
+`32fae68` received Copilot scoped PASS; evidence commit `2b7228b` (hermetic
+tests and STATUS corrections) received Kiro PASS. Next lane: Ryan PR/merge
+decision. Live bootstrap, runtime promotion, config change, and watcher operation
+remain separately Ryan-gated. Crush/Cursor transcript coverage remains out of
+scope for this Kiro-only route.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Obtain CI-equivalent full-suite evidence in an isolated writable
-   environment; the local managed sandbox cannot write the production-shaped
-   writer-lock path used by that suite.
-2. After verification evidence is satisfactory, Ryan decides
-   whether to open and merge a PR.
-3. After Ryan's separate PR/merge decision, prepare a new live packet with the execution-day source digest, verified
-   backup, dimension, enforceable budget, source-backup disposition, and one
-   explicit recovery allowance. Obtain a separate Ryan grant before execution.
-4. Obtain a later Ryan grant before any runtime/config/restart test. Measure
-   calls and coverage by source class.
+1. Ryan decides whether to create and merge the correction PR for
+   `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` (runtime `32fae68`,
+   evidence `2b7228b`).
+2. Prepare a fresh exact-resource live packet (execution-day source digest,
+   verified backup, dimension, enforceable DeepSeek HTTP budget, source-backup
+   disposition, one explicit recovery allowance) and obtain a separate Ryan
+   grant before any retried live bootstrap.
+3. Obtain a later separate Ryan grant before any runtime/config/restart or
+   watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
 
@@ -219,12 +214,13 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-09 | Sol-High | Accepted Copilot's exact-revision FAIL over Kiro's PASS: APPLYING replay can replace original rollback/isolation authority; carried work onto post-PR-#370 main for Cursor correction |
 | 2026-10-09 | Cursor / Sol | Corrected replay authority, independent dimension preflight, and redirects at b108ab6; focused, inventory, secret, invariant, and Pylint gates pass; exact-tip review and CI-equivalent full suite remain |
 | 2026-10-09 | Kiro / Copilot | Both lanes issued complete PASS verdicts with no blockers on exact corrected revision 318c2f9; CI-equivalent full suite and Ryan's PR decision remain |
+| 2026-10-10 | Cursor | Live bootstrap exposed paid-cap mis-accounting (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); runtime fix `32fae68`, 12 focused passes at evidence commit `2b7228b`, Copilot scoped PASS on runtime, Kiro PASS on evidence; next gate Ryan PR/merge decision |
 
 ## TL;DR
 
 - Arc Codex's coordinator and canary are on main, default off.
 - Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
-- Issue #286's guarded Kiro route is on `main` and default off. The corrected
-  exact-source packet remains `NO-GO`; the replay-authority correction is
-  implemented at b108ab6 and passed Kiro/Copilot review at 318c2f9; full-suite
-  evidence and Ryan's PR decision remain.
+- Bootstrap safety merged via PR #373; live 2026-10-10 run exposed paid-cap
+  mis-accounting. Runtime fix `32fae68` and evidence commit `2b7228b` (12 focused
+  passes) passed Copilot runtime and Kiro evidence review; branch awaits Ryan
+  PR/merge decision before any retried live grant.

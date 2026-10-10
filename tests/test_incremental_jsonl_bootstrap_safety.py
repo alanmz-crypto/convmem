@@ -12,7 +12,11 @@ from pathlib import Path
 import pytest
 
 import llm
-from bootstrap_safety import BootstrapOperationJournal, operation_identity
+from bootstrap_safety import (
+    BootstrapGrantError,
+    BootstrapOperationJournal,
+    operation_identity,
+)
 from incremental_jsonl import IncrementalJsonlCoordinator
 from ingest_dedupe import IngestDedupeResult, persist_ingest_dedupe
 from tests.incremental_jsonl_helpers import (
@@ -42,6 +46,41 @@ class _Response:
         return self.payload
 
 
+def _deepseek_post_response() -> _Response:
+    return _Response(
+        {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+        }
+    )
+
+
+def _ollama_embed_post_response() -> _Response:
+    return _Response(
+        {
+            "embedding": [0.1, 0.2, 0.3],
+            "prompt_eval_count": 3,
+            "eval_count": 2,
+        }
+    )
+
+
+def _valid_attempt_event(provider: str = "deepseek") -> dict[str, object]:
+    if provider == "deepseek":
+        return {
+            "provider": "deepseek",
+            "operation": "generate",
+            "model": "deepseek-v4-test",
+            "base_url": "https://provider.invalid",
+        }
+    return {
+        "provider": "ollama",
+        "operation": "embed",
+        "model": "model",
+        "base_url": "http://fake.invalid",
+    }
+
+
 def test_paid_transport_disables_automatic_redirects(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -68,7 +107,7 @@ def test_paid_transport_disables_automatic_redirects(
     assert seen[0]["allow_redirects"] is False
 
 
-def test_http_attempt_cap_is_consumed_before_transport_and_survives_restart(
+def test_deepseek_paid_cap_blocks_transport_and_survives_restart(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     grant = _with_budget(_grant(tmp_path / "source.jsonl"), 2)
@@ -79,26 +118,43 @@ def test_http_attempt_cap_is_consumed_before_transport_and_survives_restart(
 
     def fake_post(url, **_kwargs):
         transports.append(url)
-        return _Response(
-            {
-                "response": "ok",
-                "prompt_eval_count": 3,
-                "eval_count": 2,
-            }
-        )
+        return _deepseek_post_response()
 
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "hermetic-test-key")
     monkeypatch.setattr(llm.requests, "post", fake_post)
     with llm.provider_http_accounting(
         journal.consume_provider_http_attempt,
         journal.report_provider_usage,
     ):
-        assert llm._ollama_generate("one", "model", "http://fake.invalid") == "ok"
-        assert llm._ollama_generate("two", "model", "http://fake.invalid") == "ok"
+        assert (
+            llm._deepseek_generate(
+                "one",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+            == "ok"
+        )
+        assert (
+            llm._deepseek_generate(
+                "two",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+            == "ok"
+        )
         with pytest.raises(llm.ProviderAttemptBudgetExceeded, match="exhausted"):
-            llm._ollama_generate("three", "model", "http://fake.invalid")
+            llm._deepseek_generate(
+                "three",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
     assert len(transports) == 2
-    assert journal.accounting()["cumulative_permitted_http_attempts"] == 2
-    assert len(journal.accounting()["provider_usage"]) == 2
+    accounting = journal.accounting()
+    assert accounting["cumulative_paid_provider_http_attempts"] == 2
+    assert accounting["cumulative_observed_provider_http_attempts"] == 2
     journal.finish({"outcome": "failed", "failure_code": "interrupted"})
 
     restarted = BootstrapOperationJournal(state, grant, _binding(grant))
@@ -109,9 +165,275 @@ def test_http_attempt_cap_is_consumed_before_transport_and_survives_restart(
         restarted.report_provider_usage,
     ):
         with pytest.raises(llm.ProviderAttemptBudgetExceeded, match="exhausted"):
-            llm._ollama_generate("recovery", "model", "http://fake.invalid")
+            llm._deepseek_generate(
+                "recovery",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
     assert len(transports) == 2
-    assert restarted.accounting()["cumulative_permitted_http_attempts"] == 2
+    assert restarted.accounting()["cumulative_paid_provider_http_attempts"] == 2
+
+
+def test_ollama_observed_cap_exempt_beyond_paid_ceiling_and_survives_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    grant = _with_budget(_grant(tmp_path / "source.jsonl"), 1)
+    state = tmp_path / "state"
+    journal = BootstrapOperationJournal(state, grant, _binding(grant))
+    assert journal.begin_invocation(recoverable_transaction=False).authorized
+    transports: list[str] = []
+
+    def fake_post(url, **_kwargs):
+        transports.append(url)
+        if "/v1/chat/completions" in url:
+            return _deepseek_post_response()
+        return _ollama_embed_post_response()
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "hermetic-test-key")
+    monkeypatch.setattr(llm.requests, "post", fake_post)
+    with llm.provider_http_accounting(
+        journal.consume_provider_http_attempt,
+        journal.report_provider_usage,
+    ):
+        assert (
+            llm._deepseek_generate(
+                "paid",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+            == "ok"
+        )
+        for label in ("embed-one", "embed-two", "embed-three"):
+            assert llm.ollama_embed(label, "model", "http://fake.invalid") == [
+                0.1,
+                0.2,
+                0.3,
+            ]
+        with pytest.raises(llm.ProviderAttemptBudgetExceeded, match="exhausted"):
+            llm._deepseek_generate(
+                "paid-blocked",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+    assert len(transports) == 4
+    accounting = journal.accounting()
+    assert accounting["paid_provider_http_attempts"] == 1
+    assert accounting["observed_provider_http_attempts"] == 4
+    assert accounting["cumulative_paid_provider_http_attempts"] == 1
+    assert accounting["cumulative_observed_provider_http_attempts"] == 4
+    journal.finish({"outcome": "failed", "failure_code": "interrupted"})
+
+    restarted = BootstrapOperationJournal(state, grant, _binding(grant))
+    recovery = restarted.begin_invocation(recoverable_transaction=True)
+    assert recovery.authorized and recovery.recovery
+    with llm.provider_http_accounting(
+        restarted.consume_provider_http_attempt,
+        restarted.report_provider_usage,
+    ):
+        assert llm.ollama_embed("after-restart", "model", "http://fake.invalid") == [
+            0.1,
+            0.2,
+            0.3,
+        ]
+    assert len(transports) == 5
+    restarted_accounting = restarted.accounting()
+    assert restarted_accounting["cumulative_paid_provider_http_attempts"] == 1
+    assert restarted_accounting["cumulative_observed_provider_http_attempts"] == 5
+
+
+def test_mixed_providers_receipt_counters(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    grant = _with_budget(_grant(tmp_path / "source.jsonl"), 3)
+    state = tmp_path / "state"
+    journal = BootstrapOperationJournal(state, grant, _binding(grant))
+    assert journal.begin_invocation(recoverable_transaction=False).authorized
+
+    def fake_post(url, **_kwargs):
+        if "/v1/chat/completions" in url:
+            return _deepseek_post_response()
+        return _ollama_embed_post_response()
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "hermetic-test-key")
+    monkeypatch.setattr(llm.requests, "post", fake_post)
+    with llm.provider_http_accounting(
+        journal.consume_provider_http_attempt,
+        journal.report_provider_usage,
+    ):
+        assert (
+            llm._deepseek_generate(
+                "d1",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+            == "ok"
+        )
+        assert llm.ollama_embed("o1", "model", "http://fake.invalid") == [0.1, 0.2, 0.3]
+        assert (
+            llm._deepseek_generate(
+                "d2",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+            == "ok"
+        )
+        assert llm.ollama_embed("o2", "model", "http://fake.invalid") == [0.1, 0.2, 0.3]
+        assert (
+            llm._deepseek_generate(
+                "d3",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+            == "ok"
+        )
+        with pytest.raises(llm.ProviderAttemptBudgetExceeded, match="exhausted"):
+            llm._deepseek_generate(
+                "d4",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+
+    accounting = journal.accounting()
+    assert accounting["paid_provider_http_attempts"] == 3
+    assert accounting["observed_provider_http_attempts"] == 5
+    assert accounting["cumulative_paid_provider_http_attempts"] == 3
+    assert accounting["cumulative_observed_provider_http_attempts"] == 5
+    assert accounting["permitted_http_attempts"] == 3
+
+
+def test_legacy_malformed_ledger_rows_cannot_create_paid_exemptions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    grant = _with_budget(_grant(tmp_path / "source.jsonl"), 4)
+    state = tmp_path / "state"
+    journal = BootstrapOperationJournal(state, grant, _binding(grant))
+    assert journal.begin_invocation(recoverable_transaction=False).authorized
+    base = {
+        "operation_id": journal.operation_id,
+        "grant_fingerprint": journal.fingerprint,
+        "invocation_ordinal": 1,
+        "recorded_at": "2026-10-10T00:00:00.000Z",
+    }
+    legacy_rows = [
+        {
+            **base,
+            "record_type": "permit_consumed",
+            "attempt_ordinal": 1,
+            "provider": "ollama",
+            "operation": "embed",
+            "model": "m",
+            "base_url": "http://fake.invalid",
+        },
+        {
+            **base,
+            "record_type": "permit_consumed",
+            "attempt_ordinal": 2,
+            "provider": "ollama",
+            "operation": "embed",
+            "model": "m",
+            "base_url": "http://provider.invalid",
+            "paid_cap_consumed": True,
+        },
+        {
+            **base,
+            "record_type": "permit_consumed",
+            "attempt_ordinal": 3,
+            "provider": "deepseek",
+            "operation": "generate",
+            "model": "deepseek-v4-test",
+            "base_url": "https://provider.invalid",
+            "paid_cap_consumed": False,
+        },
+        {
+            **base,
+            "record_type": "legacy_unknown",
+            "attempt_ordinal": 4,
+            "provider": "unknown",
+            "operation": "embed",
+            "model": "m",
+            "base_url": "http://fake.invalid",
+            "paid_cap_consumed": False,
+        },
+    ]
+    journal.attempts_path.parent.mkdir(parents=True, exist_ok=True)
+    with journal.attempts_path.open("w", encoding="utf-8") as handle:
+        for row in legacy_rows:
+            handle.write(json.dumps(row, sort_keys=True) + "\n")
+
+    transports: list[str] = []
+
+    def fake_post(url, **_kwargs):
+        transports.append(url)
+        return _deepseek_post_response()
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "hermetic-test-key")
+    monkeypatch.setattr(llm.requests, "post", fake_post)
+    with llm.provider_http_accounting(
+        journal.consume_provider_http_attempt,
+        journal.report_provider_usage,
+    ):
+        with pytest.raises(llm.ProviderAttemptBudgetExceeded, match="exhausted"):
+            llm._deepseek_generate(
+                "blocked",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+    assert not transports
+
+
+def test_malformed_provider_attempt_events_fail_before_transport(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    grant = _with_budget(_grant(tmp_path / "source.jsonl"), 4)
+    journal = BootstrapOperationJournal(tmp_path / "state", grant, _binding(grant))
+    assert journal.begin_invocation(recoverable_transaction=False).authorized
+    transports: list[str] = []
+
+    def fake_post(url, **_kwargs):
+        transports.append(url)
+        return _deepseek_post_response()
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "hermetic-test-key")
+    monkeypatch.setattr(llm.requests, "post", fake_post)
+    with llm.provider_http_accounting(
+        journal.consume_provider_http_attempt,
+        journal.report_provider_usage,
+    ):
+        event = _valid_attempt_event()
+        with pytest.raises(BootstrapGrantError, match="exactly"):
+            journal.consume_provider_http_attempt({**event, "operation_id": "forged-operation"})
+        with pytest.raises(BootstrapGrantError, match="missing provider"):
+            journal.consume_provider_http_attempt({**event, "provider": ""})
+        with pytest.raises(BootstrapGrantError, match="unsupported provider"):
+            journal.consume_provider_http_attempt(
+                {
+                    "provider": "openai",
+                    "operation": "generate",
+                    "model": "m",
+                    "base_url": "https://provider.invalid",
+                }
+            )
+        assert (
+            llm._deepseek_generate(
+                "ok",
+                "deepseek-v4-test",
+                "https://provider.invalid",
+                max_attempts=1,
+            )
+            == "ok"
+        )
+    assert len(transports) == 1
+    attempts = json.loads(journal.attempts_path.read_text(encoding="utf-8").strip().splitlines()[-1])
+    assert attempts["operation_id"] == journal.operation_id
+    assert attempts["operation_id"] != "forged-operation"
 
 
 def test_invocation_journal_allows_exactly_one_recovery(tmp_path: Path) -> None:
@@ -154,7 +476,7 @@ def test_transaction_bound_dedupe_is_deterministic_and_idempotent(tmp_path: Path
 
 
 def test_export_rollback_streams_foreign_bytes_and_restores_exact_order(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     boundary, env = isolated_env(tmp_path)
     apply_env(monkeypatch, env)
