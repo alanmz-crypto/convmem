@@ -16,6 +16,9 @@ from typing import Callable
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 MEMORY_LIMIT_BYTES = 2 * 1024**3
 PROBE_OOM_LIMIT_BYTES = 64 * 1024**2
+TELEMETRY_MARKER = "CONVMEM_CGROUP_EXIT_TELEMETRY:"
+DENIED_PATH_MARKER = "cgroup-probe-denied-path-marker"
+NETWORK_DENIED_MARKER = "cgroup-probe-network-denied-marker"
 
 
 def _limit_value(path: Path) -> int | None:
@@ -103,16 +106,20 @@ def _control_group(unit: str) -> str:
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
-def _own_unit_action(action: str, unit: str) -> None:
+def _own_unit_action(action: str, unit: str) -> bool:
     if not unit.startswith("convmem-oom-measure-") or not unit.endswith(".service"):
         raise ValueError("refusing action on a non-measurement unit")
-    subprocess.run(
-        ["systemctl", "--user", action, unit],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        timeout=5,
-    )
+    try:
+        result = subprocess.run(
+            ["systemctl", "--user", action, unit],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0
 
 
 class _Sampler:
@@ -151,6 +158,33 @@ class _Sampler:
             handle.close()
 
 
+def _parse_exit_telemetry(stderr: str, limit_claim: dict | None) -> dict | None:
+    lines = [
+        line.removeprefix(TELEMETRY_MARKER)
+        for line in stderr.splitlines()
+        if line.startswith(TELEMETRY_MARKER)
+    ]
+    if len(lines) != 1:
+        return None
+    try:
+        telemetry = json.loads(lines[0])
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(telemetry, dict) or telemetry.get("claim") != limit_claim:
+        return None
+    if not isinstance(telemetry.get("peak_bytes"), int) or telemetry["peak_bytes"] <= 0:
+        return None
+    events = telemetry.get("events")
+    if not isinstance(events, dict) or not all(
+        isinstance(events.get(key), int) and events[key] >= 0
+        for key in ("max", "oom", "oom_kill")
+    ):
+        return None
+    if not isinstance(telemetry.get("worker_returncode"), int):
+        return None
+    return telemetry
+
+
 def run_capped_worker(
     worker_argv: list[str],
     *,
@@ -164,18 +198,24 @@ def run_capped_worker(
     """Run one worker under a checked cap; return evidence, never fall back."""
     if ready_path.exists() or not ready_path.parent.is_dir():
         raise RuntimeError("cgroup-ready path must be fresh under an existing arm")
+    temp_ready = ready_path.with_name(ready_path.name + ".tmp")
+    if temp_ready.exists():
+        raise RuntimeError("temporary cgroup-ready path already exists")
     unit = f"convmem-oom-measure-{uuid.uuid4().hex}.service"
+    supervisor = Path(__file__).with_name("watch_oom_cgroup_supervisor.py")
     command = [
         "systemd-run", "--user", "--service-type=exec", "--pipe", "--wait",
         "--quiet", "--same-dir", f"--unit={unit}",
         "--property=MemoryAccounting=yes",
         f"--property=MemoryMax={expected_bytes}",
         "--property=MemorySwapMax=0",
-        *worker_argv,
+        f"--property=RuntimeMaxSec={int(timeout + 30)}s",
+        sys.executable, str(supervisor), str(expected_bytes), *worker_argv,
     ]
     proc = subprocess.Popen(  # pylint: disable=consider-using-with
         command,
         cwd=cwd,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -194,7 +234,8 @@ def run_capped_worker(
         while selector.get_map() or proc.poll() is None:
             if time.monotonic() >= deadline:
                 timed_out = True
-                _own_unit_action("stop", unit)
+                if not _own_unit_action("stop", unit):
+                    _own_unit_action("kill", unit)
                 proc.terminate()
                 break
             if sampler is None and proc.poll() is None:
@@ -211,7 +252,8 @@ def run_capped_worker(
                             raise RuntimeError("cgroup telemetry unreadable before worker start")
                         if while_active is not None:
                             active_host = while_active()
-                        ready_path.write_text("ready\n", encoding="ascii")
+                        temp_ready.write_text("ready\n", encoding="ascii")
+                        temp_ready.replace(ready_path)
                 except (OSError, subprocess.SubprocessError):
                     pass
             if sampler is not None:
@@ -230,6 +272,8 @@ def run_capped_worker(
             proc.wait(timeout=max(1, deadline - time.monotonic()))
         if sampler is not None:
             sampler.sample()
+        stderr = bytes(output[proc.stderr]).decode("utf-8", errors="replace")
+        exit_telemetry = _parse_exit_telemetry(stderr, limit_claim)
         return {
             "unit": unit,
             "control_group": group_path,
@@ -237,21 +281,31 @@ def run_capped_worker(
             "active_host": active_host,
             "returncode": proc.returncode,
             "stdout": bytes(output[proc.stdout]).decode("utf-8", errors="replace"),
-            "stderr": bytes(output[proc.stderr]).decode("utf-8", errors="replace"),
+            "stderr": stderr,
             "timed_out": timed_out,
             "cgroup_samples": sampler.samples if sampler else 0,
-            "cgroup_peak_bytes": sampler.peak_bytes if sampler else None,
-            "cgroup_events": sampler.events if sampler else None,
+            "cgroup_peak_bytes": exit_telemetry["peak_bytes"] if exit_telemetry else None,
+            "cgroup_events": exit_telemetry["events"] if exit_telemetry else None,
+            "exit_telemetry": exit_telemetry,
+            "sampled_peak_bytes": sampler.peak_bytes if sampler else None,
+            "sampled_events": sampler.events if sampler else None,
         }
     finally:
         selector.close()
+        temp_ready.unlink(missing_ok=True)
         if sampler is not None:
             sampler.close()
-        if proc.poll() is None:
-            _own_unit_action("stop", unit)
-            proc.kill()
-            proc.wait(timeout=5)
-        _own_unit_action("reset-failed", unit)
+        try:
+            if proc.poll() is None:
+                if not _own_unit_action("stop", unit):
+                    _own_unit_action("kill", unit)
+                try:
+                    proc.kill()
+                except ProcessLookupError:
+                    pass
+                proc.wait(timeout=5)
+        finally:
+            _own_unit_action("reset-failed", unit)
 
 
 def run_capability_probes(
@@ -285,6 +339,7 @@ def run_capability_probes(
             not result["cgroup_samples"],
             not result["cgroup_peak_bytes"],
             not result["cgroup_events"],
+            not result["exit_telemetry"],
         )):
             raise RuntimeError(f"cgroup {mode} capability probe could not verify cap/telemetry")
         if mode == "success":
@@ -293,17 +348,34 @@ def run_capability_probes(
                 result["returncode"] != 0
                 or payload.get("status") != "succeeded"
                 or "cgroup probe stderr captured" not in result["stderr"]
+                or result["exit_telemetry"]["worker_returncode"] != 0
             ):
                 raise RuntimeError("cgroup service did not preserve success JSON and exit")
             if payload.get("claim", {}).get("memory_max_bytes") != cap:
                 raise RuntimeError("worker did not attest its own cgroup cap")
+            if payload.get("denied_paths") != [DENIED_PATH_MARKER] or payload.get(
+                "network_denied"
+            ) != [NETWORK_DENIED_MARKER]:
+                raise RuntimeError("worker denial fields were lost in service stdout")
         elif mode == "exit":
             payload = json.loads(result["stdout"])
-            if result["returncode"] != 17 or payload.get("status") != "exited":
+            if (
+                result["returncode"] != 17
+                or payload.get("status") != "exited"
+                or result["exit_telemetry"]["worker_returncode"] != 17
+            ):
                 raise RuntimeError("cgroup service did not propagate nonzero worker exit")
             if payload.get("claim", {}).get("memory_max_bytes") != cap:
                 raise RuntimeError("nonzero worker did not attest its cgroup cap")
-        elif result["returncode"] == 0 or result["cgroup_events"].get("oom_kill", 0) < 1:
+            if payload.get("denied_paths") != [DENIED_PATH_MARKER] or payload.get(
+                "network_denied"
+            ) != [NETWORK_DENIED_MARKER]:
+                raise RuntimeError("nonzero worker denial fields were lost")
+        elif (
+            result["returncode"] == 0
+            or result["exit_telemetry"]["worker_returncode"] >= 0
+            or result["cgroup_events"].get("oom_kill", 0) < 1
+        ):
             raise RuntimeError("small-cap OOM was not captured and classified as blocked")
         observations[mode] = result
     return observations

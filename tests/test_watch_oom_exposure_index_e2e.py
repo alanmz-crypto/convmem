@@ -49,6 +49,7 @@ HARNESS_FILES = (
     WORKER,
     Path(__file__).resolve().parent / "watch_oom_cgroup_runner.py",
     Path(__file__).resolve().parent / "watch_oom_cgroup_probe.py",
+    Path(__file__).resolve().parent / "watch_oom_cgroup_supervisor.py",
     Path(__file__).resolve().parent / "watch_oom_exposure_index_e2e_support.py",
     Path(__file__).resolve(),
     Path(__file__).resolve().parent / "watch_oom_hermetic_isolation.py",
@@ -178,6 +179,7 @@ def _run_index_worker(
             "cgroup_peak_bytes": cgroup_result["cgroup_peak_bytes"],
             "cgroup_events": cgroup_result["cgroup_events"],
             "cgroup_samples": cgroup_result["cgroup_samples"],
+            "cgroup_exit_telemetry": cgroup_result["exit_telemetry"],
         }
         events = cgroup_result["cgroup_events"] or {}
         if any((
@@ -186,6 +188,7 @@ def _run_index_worker(
             not cgroup_result["active_host"],
             not cgroup_result["cgroup_samples"],
             not cgroup_result["cgroup_peak_bytes"],
+            not cgroup_result["exit_telemetry"],
             not all(key in events for key in ("max", "oom", "oom_kill")),
         )):
             return {
@@ -227,6 +230,12 @@ def _run_index_worker(
     status = payload.pop("status", "invalid_output")
     if status == "succeeded" and returncode != 0:
         status = "invalid_output"
+    if (
+        status == "succeeded"
+        and cgroup_result is not None
+        and cgroup_result["exit_telemetry"]["worker_returncode"] != 0
+    ):
+        status = "blocked_boundary"
     if status == "succeeded" and any(
         key not in payload for key in (
             "denied_paths", "network_denied", "index_stats", "brief_bytes",
@@ -275,6 +284,19 @@ def _checked_active_host(scratch: Path, watcher: dict) -> dict:
     if not observed["ok"] or observed["watcher"] != watcher:
         raise RuntimeError(f"host/watcher preflight changed with active unit: {observed}")
     return observed
+
+
+def _validated_scratch() -> Path:
+    setting = os.environ.get("CONVMEM_E2E_SCRATCH")
+    assert setting, "name a disk-backed CONVMEM_E2E_SCRATCH"
+    scratch = Path(setting).resolve()
+    forbidden = (
+        (Path.home() / ".local/share/convmem").resolve(),
+        (Path.home() / ".config/convmem").resolve(),
+    )
+    assert not any(scratch.is_relative_to(root) for root in forbidden)
+    scratch.mkdir(parents=True, exist_ok=True)
+    return scratch
 
 
 def _cgroup_smoke(scratch: Path, host: dict, branch_tip: str, harness_hash: str) -> dict:
@@ -371,10 +393,7 @@ def test_e2e_negative_control_denies_production_default_brief(tmp_path: Path) ->
     not RUN_CGROUP_SMOKE, reason="§9.7a 64-row service smoke needs a named-host grant"
 )
 def test_e2e_cgroup_64_row_smoke() -> None:
-    scratch_setting = os.environ.get("CONVMEM_E2E_SCRATCH")
-    assert scratch_setting, "name a disk-backed CONVMEM_E2E_SCRATCH"
-    scratch = Path(scratch_setting).resolve()
-    scratch.mkdir(parents=True, exist_ok=True)
+    scratch = _validated_scratch()
     host = preflight_host(scratch)
     assert host["ok"], host
     branch_tip = _assert_frozen_candidate()
@@ -384,15 +403,7 @@ def test_e2e_cgroup_64_row_smoke() -> None:
 
 @pytest.mark.skipif(not RUN_FULL, reason="full §9.7 curve is host evidence, not CI RSS gate")
 def test_e2e_paired_ingest_index_measurement() -> None:
-    scratch_setting = os.environ.get("CONVMEM_E2E_SCRATCH")
-    assert scratch_setting, "name a disk-backed CONVMEM_E2E_SCRATCH for the host run"
-    scratch = Path(scratch_setting).resolve()
-    forbidden = (
-        (Path.home() / ".local/share/convmem").resolve(),
-        (Path.home() / ".config/convmem").resolve(),
-    )
-    assert not any(scratch.is_relative_to(root) for root in forbidden)
-    scratch.mkdir(parents=True, exist_ok=True)
+    scratch = _validated_scratch()
     host = preflight_host(scratch)
     assert host["ok"], host
 

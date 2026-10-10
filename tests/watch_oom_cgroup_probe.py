@@ -7,7 +7,6 @@ import json
 import sys
 from pathlib import Path
 
-
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     if str(root) not in sys.path:
@@ -19,16 +18,29 @@ def main() -> int:
     parser.add_argument("--expected-bytes", type=int, required=True)
     args = parser.parse_args()
 
-    from tests.watch_oom_cgroup_runner import wait_for_parent_ready, worker_limit_claim
+    from tests.watch_oom_cgroup_runner import (
+        DENIED_PATH_MARKER,
+        NETWORK_DENIED_MARKER,
+        wait_for_parent_ready,
+        worker_limit_claim,
+    )
 
     wait_for_parent_ready(args.ready)
     claim = worker_limit_claim(args.expected_bytes)
     print("cgroup probe stderr captured", file=sys.stderr, flush=True)
     if args.mode == "success":
-        print(json.dumps({"status": "succeeded", "claim": claim}), flush=True)
+        print(json.dumps({
+            "status": "succeeded", "claim": claim,
+            "denied_paths": [DENIED_PATH_MARKER],
+            "network_denied": [NETWORK_DENIED_MARKER],
+        }), flush=True)
         return 0
     if args.mode == "exit":
-        print(json.dumps({"status": "exited", "claim": claim}), flush=True)
+        print(json.dumps({
+            "status": "exited", "claim": claim,
+            "denied_paths": [DENIED_PATH_MARKER],
+            "network_denied": [NETWORK_DENIED_MARKER],
+        }), flush=True)
         return 17
 
     # The 64 MiB throwaway cap makes this a small, controlled OOM proof.
