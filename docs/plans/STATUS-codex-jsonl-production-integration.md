@@ -84,32 +84,32 @@ Key invariants:
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap | One-shot capability merged; corrected packet remains `NO-GO`; b108ab6 preserves original replay authority, proves dimension independently before provider work, and disables redirects; Kiro/Copilot PASS at 318c2f9 | CI-equivalent full-suite evidence, then Ryan's PR decision |
+| Existing-source bootstrap | Durable bootstrap command merged on `main` via PR #373 (`3df8638`): grant journal, paid HTTP cap, recovery, and terminal receipts. Live grant execution on 2026-10-10 failed when local Ollama embedding permits consumed the shared DeepSeek cap (2 paid generates + 6 Ollama embeds against an 8-attempt grant). Paid-cap accounting correction is implemented on `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` and awaits review; no live re-run. | Kiro/Copilot review of the paid-cap correction, then Ryan's grant/PR decision before any live bootstrap retry |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-The guarded implementation is on `main`, and the exact-source packet passed
-both required review lanes as a `NO-GO` decision packet. Cursor corrected the
-bounded hermetic safety implementation described in
-`docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md`
-at b108ab6 on the current-main branch. Kiro and Copilot both passed exact
-revision 318c2f9 with no blockers. The next lane is CI-equivalent full-suite
-evidence and Ryan's PR decision. Live bootstrap, PR creation, merge,
-runtime promotion, config change, and watcher operation remain separately
-Ryan-gated. Crush/Cursor transcript coverage remains out of scope for this
-Kiro-only route.
+Bootstrap safety is on `main` through PR #373. The 2026-10-10 live bootstrap
+attempt exposed a paid-cap accounting defect: `max_provider_http_attempts` must
+apply only to DeepSeek HTTP work across the initial invocation and its one
+recovery, while local Ollama calls stay observable but cap-exempt. Cursor
+implemented that correction on
+`fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting`; the next lane is
+independent review of that diff, then Ryan's decision on merge and any retried
+live grant. Live bootstrap, runtime promotion, config change, and watcher
+operation remain separately Ryan-gated. Crush/Cursor transcript coverage remains
+out of scope for this Kiro-only route.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Obtain CI-equivalent full-suite evidence in an isolated writable
-   environment; the local managed sandbox cannot write the production-shaped
-   writer-lock path used by that suite.
-2. After verification evidence is satisfactory, Ryan decides
-   whether to open and merge a PR.
-3. After Ryan's separate PR/merge decision, prepare a new live packet with the execution-day source digest, verified
-   backup, dimension, enforceable budget, source-backup disposition, and one
-   explicit recovery allowance. Obtain a separate Ryan grant before execution.
+1. Review the paid-cap accounting correction on
+   `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` (DeepSeek-only cap
+   consumption; Ollama observed but cap-exempt; clarified receipt counters).
+2. After review, Ryan decides whether to merge the correction branch.
+3. Prepare a new live packet with execution-day source digest, verified backup,
+   dimension, enforceable DeepSeek HTTP budget, source-backup disposition, and
+   one explicit recovery allowance; obtain a separate Ryan grant before any
+   retried live bootstrap.
 4. Obtain a later Ryan grant before any runtime/config/restart test. Measure
    calls and coverage by source class.
 
@@ -219,12 +219,13 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-09 | Sol-High | Accepted Copilot's exact-revision FAIL over Kiro's PASS: APPLYING replay can replace original rollback/isolation authority; carried work onto post-PR-#370 main for Cursor correction |
 | 2026-10-09 | Cursor / Sol | Corrected replay authority, independent dimension preflight, and redirects at b108ab6; focused, inventory, secret, invariant, and Pylint gates pass; exact-tip review and CI-equivalent full suite remain |
 | 2026-10-09 | Kiro / Copilot | Both lanes issued complete PASS verdicts with no blockers on exact corrected revision 318c2f9; CI-equivalent full suite and Ryan's PR decision remain |
+| 2026-10-10 | Cursor | Recorded live bootstrap paid-cap failure (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); paid-cap-only correction implemented on `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting`, awaiting review |
 
 ## TL;DR
 
 - Arc Codex's coordinator and canary are on main, default off.
 - Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
-- Issue #286's guarded Kiro route is on `main` and default off. The corrected
-  exact-source packet remains `NO-GO`; the replay-authority correction is
-  implemented at b108ab6 and passed Kiro/Copilot review at 318c2f9; full-suite
-  evidence and Ryan's PR decision remain.
+- Bootstrap safety merged via PR #373; a 2026-10-10 live run hit a paid-cap
+  accounting bug (Ollama embeds consumed the DeepSeek HTTP budget). A correction
+  on `fix/2026-10-10-kiro-bootstrap-paid-attempt-accounting` awaits review before
+  any retried live grant.

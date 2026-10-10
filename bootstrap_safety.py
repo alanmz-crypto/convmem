@@ -66,6 +66,8 @@ _POSITIVE_INT_FIELDS = (
     "max_provider_http_attempts",
     "max_recovery_invocations",
 )
+_PROVIDER_ATTEMPT_EVENT_FIELDS = ("provider", "operation", "model", "base_url")
+_BOOTSTRAP_HTTP_PROVIDERS = frozenset({"deepseek", "ollama"})
 
 
 class BootstrapGrantError(ValueError):
@@ -74,6 +76,37 @@ class BootstrapGrantError(ValueError):
 
 class RecoveryAllowanceExceeded(RuntimeError):
     """The exact grant has no authorized recovery invocation remaining."""
+
+
+def _validate_provider_attempt_event(event: dict[str, object]) -> None:
+    if not isinstance(event, dict):
+        raise BootstrapGrantError("provider attempt event must be a JSON object")
+    if set(event.keys()) != set(_PROVIDER_ATTEMPT_EVENT_FIELDS):
+        raise BootstrapGrantError(
+            "provider attempt event must contain exactly provider, operation, model, base_url"
+        )
+    for field in _PROVIDER_ATTEMPT_EVENT_FIELDS:
+        value = event.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise BootstrapGrantError(f"provider attempt event missing {field}")
+    provider = event["provider"]
+    if provider not in _BOOTSTRAP_HTTP_PROVIDERS:
+        raise BootstrapGrantError("provider attempt event has unsupported provider")
+
+
+def _provider_attempt_paid_cap_consumed(row: dict[str, Any]) -> bool:
+    if (
+        row.get("record_type") == "permit_consumed"
+        and row.get("provider") == "ollama"
+        and row.get("paid_cap_consumed") is False
+    ):
+        return False
+    # Unknown types, missing fields, legacy rows, and falsely exempt rows count.
+    return True
+
+
+def _new_provider_attempt_paid_cap_consumed(event: dict[str, object]) -> bool:
+    return event["provider"] == "deepseek"
 
 
 def canonical_json(value: Any) -> str:
@@ -355,12 +388,18 @@ class BootstrapOperationJournal:
     def consume_provider_http_attempt(self, event: dict[str, object]) -> None:
         if self.current is None or not self.current.authorized:
             raise ProviderAttemptBudgetExceeded("bootstrap invocation is not authorized")
+        _validate_provider_attempt_event(event)
+        paid_cap_consumed = _new_provider_attempt_paid_cap_consumed(event)
         with self._locked():
-            consumed = len(_read_jsonl(self.attempts_path))
-            if consumed >= self.max_attempts:
+            attempts = _read_jsonl(self.attempts_path)
+            consumed_paid = sum(
+                _provider_attempt_paid_cap_consumed(row) for row in attempts
+            )
+            if paid_cap_consumed and consumed_paid >= self.max_attempts:
                 raise ProviderAttemptBudgetExceeded(
-                    f"provider_http_budget_exhausted:{consumed}/{self.max_attempts}"
+                    f"provider_http_budget_exhausted:{consumed_paid}/{self.max_attempts}"
                 )
+            observed = len(attempts)
             _append_jsonl(
                 self.attempts_path,
                 {
@@ -369,7 +408,8 @@ class BootstrapOperationJournal:
                     "operation_id": self.operation_id,
                     "grant_fingerprint": self.fingerprint,
                     "invocation_ordinal": self.current.ordinal,
-                    "attempt_ordinal": consumed + 1,
+                    "attempt_ordinal": observed + 1,
+                    "paid_cap_consumed": paid_cap_consumed,
                     **event,
                 },
             )
@@ -409,11 +449,20 @@ class BootstrapOperationJournal:
         attempts = _read_jsonl(self.attempts_path)
         usage = _read_jsonl(self.usage_path)
         current_ordinal = self.current.ordinal if self.current else 0
+        current_attempts = [
+            row for row in attempts if row.get("invocation_ordinal") == current_ordinal
+        ]
+        paid_current = sum(
+            _provider_attempt_paid_cap_consumed(row) for row in current_attempts
+        )
+        paid_cumulative = sum(_provider_attempt_paid_cap_consumed(row) for row in attempts)
         return {
-            "permitted_http_attempts": sum(
-                row.get("invocation_ordinal") == current_ordinal for row in attempts
-            ),
-            "cumulative_permitted_http_attempts": len(attempts),
+            "permitted_http_attempts": paid_current,
+            "cumulative_permitted_http_attempts": paid_cumulative,
+            "paid_provider_http_attempts": paid_current,
+            "cumulative_paid_provider_http_attempts": paid_cumulative,
+            "observed_provider_http_attempts": len(current_attempts),
+            "cumulative_observed_provider_http_attempts": len(attempts),
             "provider_usage": [
                 row for row in usage if row.get("invocation_ordinal") == current_ordinal
             ],
