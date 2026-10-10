@@ -270,6 +270,17 @@ _CANARY_BLOCKED_VERDICT = (
     "The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
 )
 
+_PAIR_DELTA_INTERPRETATION = (
+    "Candidate-minus-baseline peak and remaining-floor deltas are descriptive "
+    "across multiple production changes between the frozen baseline and current "
+    "main; they are not a causal estimate of the merged exposure-probe fix."
+)
+
+_REMAINING_FLOOR_DEFINITION = (
+    "Per arm: remaining_floor_bytes = peak_rss_bytes - import_baseline_rss_bytes; "
+    "delta_floor_bytes is the candidate floor minus the baseline floor."
+)
+
 
 def _pair_canary_tainted(canary_ambiguity: list[str], n: int) -> bool:
     token = f"n={n}:"
@@ -640,7 +651,9 @@ def test_e2e_paired_ingest_index_measurement() -> None:
     else:
         verdict = (
             "All three paired ingest.index sizes completed under the 2 GiB "
-            "cgroup memory ceiling. This quantifies the measured brief-path floor only; the live "
+            "cgroup memory ceiling. "
+            f"{_PAIR_DELTA_INTERPRETATION} {_REMAINING_FLOOR_DEFINITION} "
+            "This quantifies the measured brief-path comparison only; the live "
             "12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
         )
 
@@ -663,6 +676,8 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         "hard_failures": hard_failures,
         "complete_pairs": complete_pairs,
         "measurement_blocked": blocked,
+        "pair_delta_interpretation": _PAIR_DELTA_INTERPRETATION,
+        "remaining_floor_definition": _REMAINING_FLOOR_DEFINITION,
         "rows": rows,
         "verdict": verdict,
     }
