@@ -62,7 +62,6 @@ HARNESS_FILES = (
 BASELINE_ROOT = Path("/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline")
 RUN_FULL = os.environ.get("CONVMEM_E2E_FULL") == "1" or os.environ.get("CONVMEM_C6_FULL") == "1"
 RUN_CGROUP_SMOKE = os.environ.get("CONVMEM_E2E_CGROUP_SMOKE") == "1"
-WORKER_CEILING = 2 * 1024 * 1024 * 1024
 WORKER_TIMEOUT_SECONDS = 90
 
 
@@ -249,7 +248,7 @@ def _run_index_worker(
     if cgroup_result is not None and (
         payload.get("cgroup_claim") != cgroup_result["limit_claim"]
         or payload.get("import_order", [])[:2]
-        != ["hermetic_guards_installed", "cgroup_4gib"]
+        != ["hermetic_guards_installed", "cgroup_6gib"]
     ):
         status = "blocked_boundary"
     payload["status"] = status
@@ -515,7 +514,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         if canary_ambiguity or hard_failures:
             break
         if should_stop_between_arms():
-            pytest.fail(f"stop condition: available RAM below 4 GiB before n={n}")
+            pytest.fail(f"stop condition: available RAM below 8 GiB before n={n}")
 
         seed_dir = run_scratch / f"n-{n}" / "seed"
         seed_info = build_writable_fixture_seed(seed_dir, n)
@@ -576,7 +575,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
                     assert outcome["network_denied"] == []
                     assert outcome.get("import_order", [])[:2] == [
                         "hermetic_guards_installed",
-                        "cgroup_4gib",
+                        "cgroup_6gib",
                     ]
                     pending_success_logs.append((label, outcome))
                 else:
@@ -638,7 +637,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         )
     elif complete_pairs == 0:
         verdict = (
-            "The real ingest.index(force_file=...) paired curve under the 4 GiB "
+            "The real ingest.index(force_file=...) paired curve under the 6 GiB "
             "cgroup memory ceiling did not complete. No remaining-floor delta "
             "is claimed for §9.8. The live 12.5 GiB watcher OOM remains unexplained "
             "and issue #268 is not closed."
@@ -650,7 +649,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         )
     else:
         verdict = (
-            "All three paired ingest.index sizes completed under the 4 GiB "
+            "All three paired ingest.index sizes completed under the 6 GiB "
             "cgroup memory ceiling. "
             f"{_PAIR_DELTA_INTERPRETATION} {_REMAINING_FLOOR_DEFINITION} "
             "This quantifies the measured brief-path comparison only; the live "

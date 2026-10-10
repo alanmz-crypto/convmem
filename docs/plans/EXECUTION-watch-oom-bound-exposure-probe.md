@@ -592,7 +592,10 @@ unexplained and issue #268 remains open.
 
 ### Proposed §9.7b bound after the 2 GiB baseline OOM (2026-10-10)
 
-**State: Kiro design PASS at `512ef34`; no run grant.** The current-main
+**State: 6 GiB revision for review; no run grant.** Kiro passed the earlier
+4 GiB design at `512ef34`, then Copilot and Kiro passed its harness at
+`cc68b9e`. Copilot noted that 4 GiB may be too close to the expected
+58,825-row baseline peak. The current-main
 one-shot at `d105c5e702264e93b9ff84e7cd2776455718f6ce` completed clean
 5,000- and 20,000-row baseline/candidate pairs under the reviewed 2 GiB
 cgroup. At 58,825 rows the baseline worker hit `memory.max=2 GiB`, reported
@@ -605,20 +608,22 @@ curve or an explanation for the live 12.5 GiB watcher OOM.
 
 The next diagnostic should use the same frozen production and baseline trees,
 fixture shape, serial pair order, hermetic guards, canary contract, and
-disk-backed scratch, with a **4 GiB cgroup `memory.max` and zero swap for each
-worker**. An earlier hermetic 58,825-row pre-PR #303 source measured about
-2,682 MiB peak RSS under a different bound; that makes 4 GiB a plausible
-*test* cap,
-not a promise that cgroup-charged memory will fit. A repeat at 2 GiB would
-predictably replay the known baseline OOM. Do not raise the cap during a run.
+disk-backed scratch, with a **6 GiB cgroup `memory.max` and zero swap for each
+worker**. The 2 GiB run's baseline cgroup peaks were about 0.42 GiB at 5,000
+rows and 1.41 GiB at 20,000 rows. A simple linear extrapolation reaches about
+3.96 GiB at 58,825 rows, leaving roughly 1% margin under the reviewed 4 GiB
+cap. Extrapolation is only a sizing heuristic, not a memory-floor claim or a
+promise that 6 GiB will suffice. A 6 GiB worker cap is still contained well
+below the observed 12.5 GiB live watcher OOM. Do not raise the cap during a
+run.
 
 Preparation and acceptance order:
 
 1. On a new branch, change only the measurement harness and this plan. Bind
-   the 4 GiB value consistently in the systemd launcher, worker self-claim,
+   the 6 GiB value consistently in the systemd launcher, worker self-claim,
    parent verification, import-order evidence, smoke, and full-curve output;
    preserve the separate small-cap OOM telemetry control. Reject any actual
-   cgroup limit other than exactly 4 GiB/zero swap. Keep the prior 2 GiB
+   cgroup limit other than exactly 6 GiB/zero swap. Keep the prior 2 GiB
    evidence immutable and label each new result with its own cap and exact
    harness/target hashes.
 2. Run only the default hermetic tests and a 64-row baseline/candidate cgroup
@@ -631,15 +636,17 @@ Preparation and acceptance order:
    before execution, confirm remote `main` still matches the frozen target,
    both worktrees are clean, no indexing writer is active, production canaries
    are quiet, watcher remains inactive/disabled, host RAM and ext4 scratch
-   meet the existing 8 GiB preflight, and no measurement unit is left over.
+   meet a raised 16 GiB available-RAM preflight and the existing 8 GiB ext4
+   scratch preflight, and no measurement unit is left over.
    Ryan need only hold other agents' indexing for the brief measurement window,
    not while this amendment is prepared.
 4. Under that grant, run exactly one serial 5,000/20,000/58,825 paired curve.
-   The existing 4 GiB host-availability stop rule and all per-arm canary,
+   Stop between arms below 8 GiB host-available RAM; retain the 16 GiB active
+   host preflight and all per-arm canary,
    denial, status, semantic, RSS, and cgroup-event checks remain mandatory.
    A cgroup OOM, missing telemetry, drift, denial, timeout, incomplete pair, or
    changed main stops the run with a blocked verdict. Do not retry, raise the
-   bound, combine 2 GiB and 4 GiB rows into one accepted curve, or advance
+   bound, combine 2, 4, and 6 GiB rows into one accepted curve, or advance
    §9.8 from partial evidence.
 
 This is a diagnostic bound, not a watcher memory limit or live-activation
