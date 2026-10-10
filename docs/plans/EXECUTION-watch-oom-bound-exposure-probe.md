@@ -592,7 +592,7 @@ unexplained and issue #268 remains open.
 
 ### Proposed §9.7b bound after the 2 GiB baseline OOM (2026-10-10)
 
-**State: 6 GiB revision for review; no run grant.** Kiro passed the earlier
+**State: 6 GiB one-shot blocked at the 64-row smoke; no rerun grant.** Kiro passed the earlier
 4 GiB design at `512ef34`, then Copilot and Kiro passed its harness at
 `cc68b9e`. Copilot noted that 4 GiB may be too close to the expected
 58,825-row baseline peak. The current-main
@@ -623,6 +623,16 @@ The measured production Python sources are unchanged. The successor harness
 binds to this new `main` tip; the earlier 2 GiB evidence remains bound to
 `d105c5e702264e93b9ff84e7cd2776455718f6ce`. Copilot and Kiro must
 review the successor tip before any fresh one-shot grant.
+
+Ryan granted one one-shot at the reviewed successor tip `7fc243e`. The run on
+`archlinux` stopped during the 64-row baseline smoke because the production
+Chroma canary changed. Its mtime was 18:35:14 CDT, before the baseline worker
+unit started at 18:35:19 CDT. The watcher stayed inactive, but the writer is
+unknown. The candidate smoke arm and all large pairs were not run. The grant
+is spent; `EVIDENCE-watch-oom-exposure-index-e2e-20261010T233510Z-9e8ad3b2.json`
+records the blocked result. Copilot should audit this evidence, Kiro should
+review it, and Ryan decides whether a quiet-window rerun merits a separate
+one-shot grant. No floor claim or §9.8 advance follows from this run.
 
 Preparation and acceptance order:
 
