@@ -835,7 +835,7 @@ def _ensure_supersession_directory_readable(path: Path, *, kind: str) -> None:
     if not path.is_dir():
         return
     try:
-        path.iterdir()
+        next(path.iterdir(), None)
     except OSError as exc:
         raise BootstrapGrantError(f"supersession {kind} evidence is unreadable") from exc
 
