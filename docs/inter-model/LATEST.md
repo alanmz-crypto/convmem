@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — replay-authority corrective IMPLEMENTED / REVIEW
+- **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING
   (2026-10-09):** Sol resolved the first exact-packet Kiro/Copilot conflict in
   Copilot's favor, corrected the packet, and obtained same-revision `PASS` from
@@ -27,8 +27,12 @@ cross-arc snapshot and the linked arc brief below.
   provider work, and redirects are disabled. The selected 273-test focused set
   passes across the main run plus three isolated environment reruns; 25 governed
   inventory tests, secret scan, critical invariants, and the Pylint regression
-  gate also pass. Same-revision Kiro/Copilot review and CI-equivalent full-suite
-  evidence remain. The packet remains `NO-GO`. No live bootstrap,
+  gate also pass. Kiro and Copilot both issued complete `PASS` verdicts with no
+  blockers on exact revision `318c2f9`. Remaining advisories are fail-closed or
+  separately gated: v1 canary rollback compatibility, replay-time foreign
+  dedupe/export evidence limits, clearer 3xx taxonomy, existing-row dimension
+  scope, and the pending CI-equivalent full suite. The packet remains `NO-GO`
+  until merge and a new exact live grant. No live bootstrap,
   provider call, config/runtime change, watcher action, PR, or merge is
   authorized. Resume from the
   [Cursor Execute handoff](SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md)

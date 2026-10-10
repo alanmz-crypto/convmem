@@ -73,7 +73,7 @@ Key invariants:
 | Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
 | Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
 | Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
-| Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the packet as an accurate `NO-GO`. The first implementation received exact-revision Kiro PASS and Copilot FAIL at b68daea; Sol-High accepted Copilot's replay/rollback finding. Cursor's corrected implementation is pushed at b108ab6 on post-PR-#370 `main`; focused evidence passes and same-revision review remains. |
+| Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the packet as an accurate `NO-GO`. The first implementation received exact-revision Kiro PASS and Copilot FAIL at b68daea; Sol-High accepted Copilot's replay/rollback finding. Cursor corrected it at b108ab6, and Kiro/Copilot both passed exact revision 318c2f9 with no blockers. |
 | Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
 
 ## 4. Completion State
@@ -84,7 +84,7 @@ Key invariants:
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap | One-shot capability merged; corrected packet remains `NO-GO`; b108ab6 preserves original replay authority, proves dimension independently before provider work, and disables redirects | Same-revision Kiro/Copilot review and CI-equivalent full-suite evidence |
+| Existing-source bootstrap | One-shot capability merged; corrected packet remains `NO-GO`; b108ab6 preserves original replay authority, proves dimension independently before provider work, and disables redirects; Kiro/Copilot PASS at 318c2f9 | CI-equivalent full-suite evidence, then Ryan's PR decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -93,27 +93,24 @@ The guarded implementation is on `main`, and the exact-source packet passed
 both required review lanes as a `NO-GO` decision packet. Cursor corrected the
 bounded hermetic safety implementation described in
 `docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md`
-at b108ab6 on the current-main branch. The next lane is Kiro design review and
-Copilot safety audit on one frozen revision, followed by CI-equivalent
-full-suite evidence. Live bootstrap, PR creation, merge,
+at b108ab6 on the current-main branch. Kiro and Copilot both passed exact
+revision 318c2f9 with no blockers. The next lane is CI-equivalent full-suite
+evidence and Ryan's PR decision. Live bootstrap, PR creation, merge,
 runtime promotion, config change, and watcher operation remain separately
 Ryan-gated. Crush/Cursor transcript coverage remains out of scope for this
 Kiro-only route.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Freeze the corrected revision and obtain Kiro design review and Copilot
-   safety audit on that same exact revision. A material opposing `PASS`/`FAIL`
-   returns to Sol-High.
-2. Obtain CI-equivalent full-suite evidence in an isolated writable
+1. Obtain CI-equivalent full-suite evidence in an isolated writable
    environment; the local managed sandbox cannot write the production-shaped
    writer-lock path used by that suite.
-3. After both review and verification evidence are satisfactory, Ryan decides
+2. After verification evidence is satisfactory, Ryan decides
    whether to open and merge a PR.
-4. After Ryan's separate PR/merge decision, prepare a new live packet with the execution-day source digest, verified
+3. After Ryan's separate PR/merge decision, prepare a new live packet with the execution-day source digest, verified
    backup, dimension, enforceable budget, source-backup disposition, and one
    explicit recovery allowance. Obtain a separate Ryan grant before execution.
-5. Obtain a later Ryan grant before any runtime/config/restart test. Measure
+4. Obtain a later Ryan grant before any runtime/config/restart test. Measure
    calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -221,6 +218,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-09 | Cursor / Sol | Implemented the authorized bootstrap-safety corrective at 273c27a on a collision-safe post-PR-#369 branch; focused tests and Pylint pass, while exact-tip review and CI-equivalent full-suite evidence remain |
 | 2026-10-09 | Sol-High | Accepted Copilot's exact-revision FAIL over Kiro's PASS: APPLYING replay can replace original rollback/isolation authority; carried work onto post-PR-#370 main for Cursor correction |
 | 2026-10-09 | Cursor / Sol | Corrected replay authority, independent dimension preflight, and redirects at b108ab6; focused, inventory, secret, invariant, and Pylint gates pass; exact-tip review and CI-equivalent full suite remain |
+| 2026-10-09 | Kiro / Copilot | Both lanes issued complete PASS verdicts with no blockers on exact corrected revision 318c2f9; CI-equivalent full suite and Ryan's PR decision remain |
 
 ## TL;DR
 
@@ -228,4 +226,5 @@ Keep this document a current-state snapshot, not a session diary.
 - Ryan stopped and disabled the watcher on 2026-10-05 for cost containment.
 - Issue #286's guarded Kiro route is on `main` and default off. The corrected
   exact-source packet remains `NO-GO`; the replay-authority correction is
-  implemented at b108ab6 and awaits same-revision review and full-suite evidence.
+  implemented at b108ab6 and passed Kiro/Copilot review at 318c2f9; full-suite
+  evidence and Ryan's PR decision remain.

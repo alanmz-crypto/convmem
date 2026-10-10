@@ -13,14 +13,14 @@ bounded scope below
 
 | Field | Value |
 |---|---|
-| **State** | `IMPLEMENTED_REVIEW_PENDING` — corrected implementation and focused evidence complete |
+| **State** | `REVIEWED_PASS_CI_PENDING` — Kiro and Copilot passed exact revision `318c2f9` with no blockers |
 | **Baseline** | `956d74e8bab4a6c397a80a14a5709043b8b205ef` on `origin/main` after Switchboard PR #370 |
 | **Implementation branch** | `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective` |
 | **Corrected implementation** | `b108ab6` on the current-main branch; `a23eb22` preserves the first implementation for comparison |
 | **Push status** | corrected implementation pushed to the explicit branch ref |
 | **PR** | not opened; PR creation remains separately Ryan-granted |
 | **Ryan GATE** | none for this bounded hermetic implementation; live resources and PR creation remain ungranted |
-| **Required review** | after correction, Kiro design review and GitHub Copilot safety audit on the same exact implementation revision |
+| **Required review** | complete at `318c2f981a1982b08128b5b2ac9802676529a2f3`; CI-equivalent full suite and Ryan's PR decision remain |
 
 ---
 
@@ -273,6 +273,27 @@ Verification evidence:
   new/increased findings against `956d74e`); and
 - full repository suite: not claimed; CI-equivalent execution remains pending.
 
+### Same-revision review outcome
+
+Kiro and GitHub Copilot reviewed exact revision
+`318c2f981a1982b08128b5b2ac9802676529a2f3` and both returned complete `PASS`
+verdicts with no blocking findings.
+
+Unresolved nonblocking findings:
+
+1. The separately gated P2 canary still constructs a v1 rollback capsule while
+   the coordinator now requires rollback version 2; this fails closed and must
+   be reconciled before any later canary grant.
+2. Chroma foreign-row isolation is bound to the original rollback authority,
+   while foreign dedupe append and export evidence have narrower replay-time
+   guarantees covered by the required no-other-writer window.
+3. DeepSeek redirects are prevented, but an unexpected 3xx does not yet have a
+   dedicated failure code.
+4. Independent dimension proof intentionally supports existing sources with
+   non-empty summary and unit rows; other source shapes require a new reviewed
+   authority design.
+5. CI-equivalent full-suite evidence remains pending.
+
 ---
 
 ## Test expectations
@@ -367,13 +388,15 @@ hashes mechanically without showing why the changed authority bytes require it.
       and
       `~/.cursor/projects/home-lauer-local-share-convmem-worktrees-fix-2026-10-09-issue-286-bootstrap-replay-authority-corrective/agent-transcripts/f707d20e-a38d-44e6-9e8e-7f81998ccf1a/f707d20e-a38d-44e6-9e8e-7f81998ccf1a.jsonl`.
 - [x] Exact code tip, focused evidence, and unresolved full-suite gap recorded.
-- [ ] Kiro/Copilot same-revision review and CI-equivalent full-suite evidence.
+- [x] Kiro/Copilot same-revision review at `318c2f9`.
+- [ ] CI-equivalent full-suite evidence.
 
 ## TL;DR
 
 Sol-High accepted Copilot's FAIL on the first implementation. Cursor's corrected
 implementation at `b108ab6` now preserves original replay authority, proves
-dimension before provider work, and disables redirects. Same-revision review
-and CI-equivalent full-suite evidence remain. Live bootstrap,
+dimension before provider work, and disables redirects. Kiro and Copilot both
+passed exact revision `318c2f9`; CI-equivalent full-suite evidence remains.
+Live bootstrap,
 providers, runtime/config, watcher operations, PR creation, and merge remain
 separately gated.
