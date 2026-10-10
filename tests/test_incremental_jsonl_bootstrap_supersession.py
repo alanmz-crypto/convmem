@@ -1,5 +1,7 @@
 """Hermetic regression tests for transform_failed bootstrap supersession."""
 
+# pylint: disable=too-many-lines,too-many-positional-arguments,unused-argument,unnecessary-lambda
+
 from __future__ import annotations
 
 import json
@@ -26,6 +28,7 @@ from bootstrap_supersession import (
     _terminal_receipt_digest,
     activate_bootstrap_supersession,
     bootstrap_mutation_inventory,
+    guard_ordinary_bootstrap_admission,
     bootstrap_source_chroma_inventory,
     classify_legacy_predecessor_attempts,
     generation_identity_digest,
@@ -34,7 +37,6 @@ from bootstrap_supersession import (
     parse_grant_document,
     successor_invocation_terminal_committed,
     supersession_accounting_from_authority,
-    supersession_authority_fingerprint,
     transaction_file_digest,
     validate_supersession_authority,
 )
@@ -352,6 +354,67 @@ def _inspect_activate(state, predecessor, successor, authority, cfg, tmp_path):
         authority=authority,
         admission=admission,
     )
+
+
+def _cfg_for_script_state(tmp_path: Path) -> dict:
+    cfg = _cfg(tmp_path)
+    cfg["index"]["incremental_jsonl"] = {
+        "enabled": False,
+        "state_dir": str(tmp_path / "incremental"),
+        "allow_full_rebuild": False,
+    }
+    return cfg
+
+
+def _relocate_state_for_script(tmp_path: Path, state: Path, source: Path) -> Path:
+    state_root = tmp_path / "incremental" / source_state_id(str(source))
+    state_root.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(state), str(state_root))
+    return state_root
+
+
+def _chroma_files(chroma_dir: Path) -> set[str]:
+    if not chroma_dir.exists():
+        return set()
+    return {str(item.relative_to(chroma_dir)) for item in chroma_dir.rglob("*") if item.is_file()}
+
+
+def _forbidden_provider_path(*_args, **_kwargs):
+    raise RuntimeError("bootstrap reached provider or network path")
+
+
+def _install_script_bootstrap_harness(
+    monkeypatch: pytest.MonkeyPatch, cfg: dict, tmp_path: Path
+) -> tuple:
+    namespace = runpy.run_path(str(SCRIPT), run_name="bootstrap_test")
+    bootstrap = namespace["bootstrap"]
+    globals_ = bootstrap.__globals__
+    monkeypatch.setitem(globals_, "load_config", lambda: cfg)
+    monkeypatch.setitem(globals_, "CONFIG_PATH", tmp_path / "config.toml")
+    (tmp_path / "config.toml").write_text("# test\n", encoding="utf-8")
+    monkeypatch.setitem(globals_, "_require_watcher_disabled", lambda: None)
+    monkeypatch.setitem(
+        globals_,
+        "ProductionBoundary",
+        lambda *_a, **_k: type(
+            "B",
+            (),
+            {"resolve_mutable": staticmethod(lambda p, *, label: Path(p))},
+        )(),
+    )
+    monkeypatch.setitem(globals_, "_effective_binding", _forbidden_provider_path)
+    monkeypatch.setitem(globals_, "detect_format", _forbidden_provider_path)
+    monkeypatch.setitem(globals_, "parse_complete_prefix", _forbidden_provider_path)
+    monkeypatch.setitem(globals_, "chunk_messages", _forbidden_provider_path)
+    monkeypatch.setitem(globals_, "IncrementalJsonlCoordinator", _forbidden_provider_path)
+    return bootstrap, globals_
+
+
+def _assert_no_successor_bootstrap_mutation(
+    state: Path, chroma_dir: Path, *, grant: dict, chroma_before: set[str]
+) -> None:
+    assert not (state / "operations" / grant_fingerprint(grant) / "manifest.json").is_file()
+    assert _chroma_files(chroma_dir) == chroma_before
 
 
 def test_parse_grant_document_rejects_unknown_wrapper_keys(tmp_path: Path) -> None:
@@ -747,6 +810,8 @@ def test_successor_journal_enforces_lifetime_paid_cap_with_carryforward(tmp_path
             journal.consume_provider_http_attempt(event)
         with pytest.raises(llm.ProviderAttemptBudgetExceeded, match="exhausted"):
             journal.consume_provider_http_attempt(event)
+    assert journal.lifetime_paid_http_attempts == 8
+    assert journal.max_attempts == 6
     accounting = journal.accounting()
     assert accounting["predecessor_paid_provider_http_attempts"] == 2
     assert accounting["cumulative_lifetime_paid_provider_http_attempts"] == 8
@@ -770,7 +835,9 @@ def test_unbound_carried_accounting_refuses_journal(tmp_path: Path) -> None:
     ordinary = _grant(source, max_attempts=6, runtime="9" * 40)
     journal = BootstrapOperationJournal(state, ordinary, _binding(ordinary))
     assert journal.manifest_path.is_file()
-    assert not (journal.manifest_path.read_text(encoding="utf-8").count("supersession_accounting"))
+    assert not journal.manifest_path.read_text(encoding="utf-8").count(
+        "supersession_accounting"
+    )
 
 
 
@@ -928,7 +995,11 @@ def test_script_preflight_dimension_failure_leaves_predecessor_unarchived(
         lambda *_a: type(
             "V",
             (),
-            {"prefix_sha256": successor["prefix_sha256"], "complete_boundary": successor["complete_boundary"], "messages": []},
+            {
+                "prefix_sha256": successor["prefix_sha256"],
+                "complete_boundary": successor["complete_boundary"],
+                "messages": [],
+            },
         )(),
     )
     monkeypatch.setitem(globals_, "chunk_messages", lambda *_a, **_k: [1, 2])
@@ -936,3 +1007,178 @@ def test_script_preflight_dimension_failure_leaves_predecessor_unarchived(
         bootstrap(successor, supersession_authority=authority)
     assert (state / "transaction.json").is_file()
     assert not _lineage_path(state, transaction["transaction_id"]).exists()
+
+def test_crash_window_ordinary_omission_refuses_same_successor_after_lineage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source.jsonl"
+    predecessor = _grant(source, runtime="1" * 40)
+    successor = _grant(source, runtime="2" * 40)
+    transaction = _transaction(predecessor, _binding_fp(predecessor))
+    state = _setup_state(tmp_path, predecessor, transaction)
+    cfg = _cfg_for_script_state(tmp_path)
+    authority = _authority(state, predecessor, successor, state / "transaction.json", cfg, tmp_path)
+    _inspect_activate(state, predecessor, successor, authority, cfg, tmp_path)
+    state = _relocate_state_for_script(tmp_path, state, source)
+    chroma_dir = Path(cfg["index"]["chroma_dir"])
+    chroma_before = _chroma_files(chroma_dir)
+    bootstrap, _globals = _install_script_bootstrap_harness(monkeypatch, cfg, tmp_path)
+    with pytest.raises(
+        BootstrapGrantError,
+        match="durable bootstrap supersession evidence requires supersession authority",
+    ):
+        bootstrap(successor)
+    _assert_no_successor_bootstrap_mutation(
+        state, chroma_dir, grant=successor, chroma_before=chroma_before
+    )
+
+
+def test_crash_window_ordinary_omission_refuses_different_grant_after_lineage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source.jsonl"
+    predecessor = _grant(source, runtime="1" * 40)
+    successor = _grant(source, runtime="2" * 40)
+    ordinary = _grant(source, runtime="3" * 40)
+    assert grant_fingerprint(ordinary) != grant_fingerprint(successor)
+    transaction = _transaction(predecessor, _binding_fp(predecessor))
+    state = _setup_state(tmp_path, predecessor, transaction)
+    cfg = _cfg_for_script_state(tmp_path)
+    authority = _authority(state, predecessor, successor, state / "transaction.json", cfg, tmp_path)
+    _inspect_activate(state, predecessor, successor, authority, cfg, tmp_path)
+    state = _relocate_state_for_script(tmp_path, state, source)
+    chroma_dir = Path(cfg["index"]["chroma_dir"])
+    chroma_before = _chroma_files(chroma_dir)
+    bootstrap, _globals = _install_script_bootstrap_harness(monkeypatch, cfg, tmp_path)
+    with pytest.raises(
+        BootstrapGrantError,
+        match="durable bootstrap supersession evidence requires supersession authority",
+    ):
+        bootstrap(ordinary)
+    _assert_no_successor_bootstrap_mutation(
+        state, chroma_dir, grant=ordinary, chroma_before=chroma_before
+    )
+    _assert_no_successor_bootstrap_mutation(
+        state, chroma_dir, grant=successor, chroma_before=chroma_before
+    )
+
+
+def test_crash_window_authority_bearing_successor_resumes_lifetime_accounting(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.jsonl"
+    predecessor = _grant(source, runtime="1" * 40, max_attempts=6)
+    successor = _grant(source, runtime="2" * 40, max_attempts=6)
+    transaction = _transaction(predecessor, _binding_fp(predecessor))
+    state = _setup_state(tmp_path, predecessor, transaction)
+    cfg = _cfg(tmp_path)
+    authority = _authority(state, predecessor, successor, state / "transaction.json", cfg, tmp_path)
+    _inspect_activate(state, predecessor, successor, authority, cfg, tmp_path)
+    assert not (
+        state / "operations" / grant_fingerprint(successor) / "manifest.json"
+    ).is_file()
+    admission = inspect_bootstrap_supersession(
+        source_state=state,
+        grant=successor,
+        authority=authority,
+        mutation_inventory=_inventory(state, tmp_path, cfg, predecessor["source"]),
+    )
+    assert admission.predecessor_paid_http_attempts == 2
+    assert admission.lifetime_max_paid_http_attempts == 8
+    journal = BootstrapOperationJournal(
+        state,
+        successor,
+        _binding(successor),
+        predecessor_paid_http_attempts=admission.predecessor_paid_http_attempts,
+        lifetime_paid_http_attempts=admission.lifetime_max_paid_http_attempts,
+        supersession_accounting=_accounting_from_authority(authority),
+    )
+    assert journal.lifetime_paid_http_attempts == 8
+    assert journal.max_attempts == 6
+    accounting = journal.accounting()
+    assert accounting["predecessor_paid_provider_http_attempts"] == 2
+
+
+def test_crash_window_staged_archive_and_corrupt_lineage_fail_closed_without_authority(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.jsonl"
+    predecessor = _grant(source, runtime="1" * 40)
+    successor = _grant(source, runtime="2" * 40)
+    transaction = _transaction(predecessor, _binding_fp(predecessor))
+    state = _setup_state(tmp_path, predecessor, transaction)
+    cfg = _cfg(tmp_path)
+    authority = _authority(state, predecessor, successor, state / "transaction.json", cfg, tmp_path)
+    tx_path = state / "transaction.json"
+    archive = (
+        state
+        / "superseded_bootstrap_transactions"
+        / f"{transaction['transaction_id']}__{successor['operation_id']}"
+    )
+    archive.mkdir(parents=True)
+    os.replace(tx_path, archive / "transaction.json")
+    with pytest.raises(
+        BootstrapGrantError,
+        match="durable bootstrap supersession evidence requires supersession authority",
+    ):
+        guard_ordinary_bootstrap_admission(state)
+    admission = inspect_bootstrap_supersession(
+        source_state=state,
+        grant=successor,
+        authority=authority,
+        mutation_inventory=_inventory(state, tmp_path, cfg, predecessor["source"]),
+    )
+    activate_bootstrap_supersession(
+        cfg=cfg,
+        source_state=state,
+        data_root=tmp_path,
+        chroma_dir=Path(cfg["index"]["chroma_dir"]),
+        grant=successor,
+        authority=authority,
+        admission=admission,
+    )
+    lineage_path = _lineage_path(state, transaction["transaction_id"])
+    lineage_path.write_text("{not-json", encoding="utf-8")
+    with pytest.raises(BootstrapGrantError, match="invalid JSON"):
+        guard_ordinary_bootstrap_admission(state)
+
+    lineage_root = state / "bootstrap_supersession_lineage"
+    shutil.rmtree(lineage_root)
+    lineage_root.write_text("not-a-directory", encoding="utf-8")
+    with pytest.raises(BootstrapGrantError, match="lineage evidence is ambiguous"):
+        guard_ordinary_bootstrap_admission(state)
+    lineage_root.unlink()
+    lineage_root.mkdir()
+    outside_lineage = tmp_path / "outside-lineage.json"
+    outside_lineage.write_text("{}", encoding="utf-8")
+    symlink_lineage = lineage_root / "linked.json"
+    symlink_lineage.symlink_to(outside_lineage)
+    with pytest.raises(BootstrapGrantError, match="lineage evidence is ambiguous"):
+        guard_ordinary_bootstrap_admission(state)
+    shutil.rmtree(lineage_root)
+
+    archive_root = state / "superseded_bootstrap_transactions"
+    shutil.rmtree(archive_root)
+    archive_root.symlink_to(".")
+    with pytest.raises(BootstrapGrantError, match="archive evidence is ambiguous"):
+        guard_ordinary_bootstrap_admission(state)
+    archive_root.unlink()
+    archive_root.mkdir()
+    archive_entry = archive_root / f"{transaction['transaction_id']}__{successor['operation_id']}"
+    archive_entry.mkdir()
+    real_tx = archive_entry / "transaction.json"
+    real_tx.write_text("{}", encoding="utf-8")
+    (archive_entry / "transaction.json").unlink()
+    (archive_entry / "transaction.json").symlink_to(real_tx.name)
+    with pytest.raises(BootstrapGrantError, match="archive evidence is ambiguous"):
+        guard_ordinary_bootstrap_admission(state)
+
+
+def test_ordinary_bootstrap_admits_when_no_supersession_evidence(tmp_path: Path) -> None:
+    source = tmp_path / "source.jsonl"
+    grant = _grant(source, runtime="1" * 40)
+    state = tmp_path / "state" / source_state_id(str(source))
+    state.mkdir(parents=True)
+    guard_ordinary_bootstrap_admission(state)
+    journal = BootstrapOperationJournal(state, grant, _binding(grant))
+    assert journal.accounting()["predecessor_paid_provider_http_attempts"] == 0

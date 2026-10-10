@@ -778,6 +778,90 @@ def _read_transaction(path: Path) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+def _validate_lineage_evidence_file(path: Path) -> None:
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise BootstrapGrantError("supersession lineage record is unreadable") from exc
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise BootstrapGrantError("supersession lineage record is invalid JSON") from exc
+    if not isinstance(value, dict):
+        raise BootstrapGrantError("supersession lineage record must be a JSON object")
+    if set(value) != _LINEAGE_RECORD_FIELDS:
+        raise BootstrapGrantError("supersession lineage record has unexpected shape")
+
+
+def _classify_supersession_evidence_root(path: Path, *, kind: str) -> bool:
+    """Return True when a real directory is present; fail closed on unsafe shapes."""
+
+    if path.is_symlink():
+        raise BootstrapGrantError(f"supersession {kind} evidence is ambiguous")
+    if not path.exists():
+        return False
+    if not path.is_dir():
+        raise BootstrapGrantError(f"supersession {kind} evidence is ambiguous")
+    return True
+
+
+def _iter_supersession_evidence_entries(root: Path, *, kind: str) -> list[Path]:
+    try:
+        return sorted(root.iterdir(), key=lambda item: item.name)
+    except OSError as exc:
+        raise BootstrapGrantError(f"supersession {kind} evidence is unreadable") from exc
+
+
+def _scan_durable_bootstrap_supersession_evidence(source_state: Path) -> bool:
+    """Return True when durable supersession artifacts require explicit authority."""
+
+    evidence = False
+    lineage_root = source_state / _LINEAGE_DIR_NAME
+    if _classify_supersession_evidence_root(lineage_root, kind="lineage"):
+        for entry in _iter_supersession_evidence_entries(lineage_root, kind="lineage"):
+            if entry.is_symlink():
+                raise BootstrapGrantError("supersession lineage evidence is ambiguous")
+            if not entry.is_file():
+                raise BootstrapGrantError("supersession lineage evidence is ambiguous")
+            if entry.suffix != ".json":
+                raise BootstrapGrantError("supersession lineage evidence is ambiguous")
+            _validate_lineage_evidence_file(entry)
+            evidence = True
+
+    archive_root = source_state / _ARCHIVE_ROOT_NAME
+    if _classify_supersession_evidence_root(archive_root, kind="archive"):
+        for entry in _iter_supersession_evidence_entries(archive_root, kind="archive"):
+            if entry.is_symlink():
+                raise BootstrapGrantError("supersession archive evidence is ambiguous")
+            if entry.is_file():
+                raise BootstrapGrantError("supersession archive evidence is ambiguous")
+            if not entry.is_dir():
+                raise BootstrapGrantError("supersession archive evidence is ambiguous")
+            archived_tx = entry / "transaction.json"
+            if archived_tx.is_symlink():
+                raise BootstrapGrantError("supersession archive evidence is ambiguous")
+            if archived_tx.is_file():
+                evidence = True
+                continue
+            try:
+                nonempty = any(entry.iterdir())
+            except OSError as exc:
+                raise BootstrapGrantError("supersession archive evidence is unreadable") from exc
+            if nonempty:
+                raise BootstrapGrantError("supersession archive evidence is ambiguous")
+            raise BootstrapGrantError("supersession archive evidence is ambiguous")
+    return evidence
+
+
+def guard_ordinary_bootstrap_admission(source_state: Path) -> None:
+    """Refuse ordinary bootstrap when durable supersession evidence is present."""
+
+    if _scan_durable_bootstrap_supersession_evidence(source_state):
+        raise BootstrapGrantError(
+            "durable bootstrap supersession evidence requires supersession authority"
+        )
+
+
 def _lineage_path(source_state: Path, predecessor_transaction_id: str) -> Path:
     return (
         source_state

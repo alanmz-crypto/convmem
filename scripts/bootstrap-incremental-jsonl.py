@@ -40,6 +40,7 @@ from bootstrap_safety import (  # pylint: disable=wrong-import-position
 from bootstrap_supersession import (  # pylint: disable=wrong-import-position
     activate_bootstrap_supersession,
     bootstrap_mutation_inventory,
+    guard_ordinary_bootstrap_admission,
     inspect_bootstrap_supersession,
     parse_grant_document,
     supersession_accounting_from_authority,
@@ -410,9 +411,10 @@ def bootstrap(
         supersession_accounting_payload = supersession_accounting_from_authority(
             supersession_authority
         )
-    elif _read_transaction(source_state / "transaction.json") is not None:
+    else:
+        guard_ordinary_bootstrap_admission(source_state)
         existing = _read_transaction(source_state / "transaction.json")
-        if existing and existing.get("grant_fingerprint") != fingerprint:
+        if existing is not None and existing.get("grant_fingerprint") != fingerprint:
             raise BootstrapGrantError(
                 "existing bootstrap transaction requires supersession authority"
             )
