@@ -249,7 +249,7 @@ def _run_index_worker(
     if cgroup_result is not None and (
         payload.get("cgroup_claim") != cgroup_result["limit_claim"]
         or payload.get("import_order", [])[:2]
-        != ["hermetic_guards_installed", "cgroup_2gib"]
+        != ["hermetic_guards_installed", "cgroup_4gib"]
     ):
         status = "blocked_boundary"
     payload["status"] = status
@@ -576,7 +576,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
                     assert outcome["network_denied"] == []
                     assert outcome.get("import_order", [])[:2] == [
                         "hermetic_guards_installed",
-                        "cgroup_2gib",
+                        "cgroup_4gib",
                     ]
                     pending_success_logs.append((label, outcome))
                 else:
@@ -638,7 +638,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         )
     elif complete_pairs == 0:
         verdict = (
-            "The real ingest.index(force_file=...) paired curve under the 2 GiB "
+            "The real ingest.index(force_file=...) paired curve under the 4 GiB "
             "cgroup memory ceiling did not complete. No remaining-floor delta "
             "is claimed for §9.8. The live 12.5 GiB watcher OOM remains unexplained "
             "and issue #268 is not closed."
@@ -650,7 +650,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         )
     else:
         verdict = (
-            "All three paired ingest.index sizes completed under the 2 GiB "
+            "All three paired ingest.index sizes completed under the 4 GiB "
             "cgroup memory ceiling. "
             f"{_PAIR_DELTA_INTERPRETATION} {_REMAINING_FLOOR_DEFINITION} "
             "This quantifies the measured brief-path comparison only; the live "

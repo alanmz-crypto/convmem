@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")
-MEMORY_LIMIT_BYTES = 2 * 1024**3
+MEMORY_LIMIT_BYTES = 4 * 1024**3
 PROBE_OOM_LIMIT_BYTES = 64 * 1024**2
 TELEMETRY_MARKER = "CONVMEM_CGROUP_EXIT_TELEMETRY:"
 DENIED_PATH_MARKER = "cgroup-probe-denied-path-marker"

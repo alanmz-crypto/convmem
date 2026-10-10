@@ -344,7 +344,7 @@ def main() -> int:
 
             wait_for_parent_ready(args.cgroup_ready)
             cgroup_claim = worker_limit_claim(MEMORY_LIMIT_BYTES)
-            import_order.append("cgroup_2gib")
+            import_order.append("cgroup_4gib")
         else:
             import_order.append(
                 "wiring_no_as_limit" if args.wiring_no_as_limit else "rlimit_as_2gib"
