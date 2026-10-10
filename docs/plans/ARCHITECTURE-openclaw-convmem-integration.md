@@ -10843,6 +10843,206 @@ older sealed `dea026ce…` roots are neither inspected nor adopted. Only the fut
 two-step route in §18.49.3 can progress, each step under its own exact reviewed plan
 and fresh Ryan grant.
 
+### 18.50 Output-coordinate-corrected capability-freeze result binding
+
+PR `#370` squash-merged the exact §§18.49/10.47 output-coordinate correction at
+`956d74e8bab4a6c397a80a14a5709043b8b205ef`, byte-identical to reviewed overlay
+`7b80c92b999282afe5edd614d4080bb4ebd8792e`, and Kiro returned exact-main PASS.
+PR `#372` then squash-merged the reviewed current-state snapshot at
+`bef5328123b279e38c9df075b070b9c352cdf1eb`. Ryan separately issued one exact
+two-SHA synthetic-freeze grant naming semantic parent
+`cfa8bb879af6efc785692eea3d64c6bdd2d83626`, reviewed overlay
+`7b80c92b999282afe5edd614d4080bb4ebd8792e` and the fresh `a94bc57…`
+capability coordinate. Metadata-only preflight proved all six selected capability
+and future real-output coordinates absent and every immutable predecessor exact.
+
+The sole fourteen-member no-site process completed a clean baseline, all 52 controls,
+the 22-event ledger, row-zero durability and both coordinate-parent barriers before
+atomically sealing the final capability root. It reported `PASS`, exited zero, read no
+real packet or disposition content, used no forbidden external source and left all
+four future real-author output coordinates absent. The one-shot grant is consumed.
+
+The process result is technically `PASS`; `accepted=false` remains controlling. Kiro
+must review this exact plan-only binding, after which Ryan separately decides whether
+to accept the successor capability. Neither the process result, this edit nor Kiro
+review authorizes the held real `author-packet` command.
+
+#### 18.50.1 Exact sealed successor evidence
+
+```text
+OUTPUT_COORDINATE_CAPABILITY_BINDING_GRANT_SEMANTIC_PARENT_SHA=cfa8bb879af6efc785692eea3d64c6bdd2d83626
+OUTPUT_COORDINATE_CAPABILITY_BINDING_GRANT_REVIEWED_OVERLAY_SHA=7b80c92b999282afe5edd614d4080bb4ebd8792e
+OUTPUT_COORDINATE_CAPABILITY_BINDING_AUTHORIZATION_BASE_MAIN_SHA=bef5328123b279e38c9df075b070b9c352cdf1eb
+OUTPUT_COORDINATE_CAPABILITY_BINDING_PLAN_MERGED_MAIN_SHA=956d74e8bab4a6c397a80a14a5709043b8b205ef
+OUTPUT_COORDINATE_CAPABILITY_BINDING_PROCESS_EXIT_STATUS=0
+OUTPUT_COORDINATE_CAPABILITY_BINDING_PROCESS_REPORTED_STATUS=PASS
+OUTPUT_COORDINATE_CAPABILITY_BINDING_ACCEPTED=false
+OUTPUT_COORDINATE_CAPABILITY_BINDING_ACCEPTANCE_STATE=PENDING_EXACT_TIP_KIRO_REVIEW_AND_RYAN_ACCEPTANCE
+OUTPUT_COORDINATE_CAPABILITY_BINDING_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b
+OUTPUT_COORDINATE_CAPABILITY_BINDING_COORDINATE_PARENT_MODE=0700
+OUTPUT_COORDINATE_CAPABILITY_BINDING_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial
+OUTPUT_COORDINATE_CAPABILITY_BINDING_PARTIAL_ROOT_PRESENT=false
+OUTPUT_COORDINATE_CAPABILITY_BINDING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4
+OUTPUT_COORDINATE_CAPABILITY_BINDING_FINAL_ROOT_PRESENT=true
+OUTPUT_COORDINATE_CAPABILITY_BINDING_FINAL_ROOT_MODE=0555
+OUTPUT_COORDINATE_CAPABILITY_BINDING_MEMBER_COUNT=6
+OUTPUT_COORDINATE_CAPABILITY_BINDING_MEMBER_MODE=0444
+OUTPUT_COORDINATE_CAPABILITY_BINDING_TOTAL_BYTES=197259
+OUTPUT_COORDINATE_CAPABILITY_BINDING_TREE_SHA256=e685ee056772c2c8831c4eb65ee23f5719c293bffd796501ff8e68029ccbc32f
+OUTPUT_COORDINATE_CAPABILITY_BINDING_SOURCE_SIZE=148481
+OUTPUT_COORDINATE_CAPABILITY_BINDING_SOURCE_LINE_COUNT=2952
+OUTPUT_COORDINATE_CAPABILITY_BINDING_SOURCE_SHA256=e53b5d70cd6cf0a5c4cdd2cfbb782234ebab0353d15ee078a3ae55990df42c23
+OUTPUT_COORDINATE_CAPABILITY_BINDING_RECEIPT_SHA256=f15b15f3b7d290a8d2ebfaf630921fab10c9d4779164f1ebea3b062f388868c4
+OUTPUT_COORDINATE_CAPABILITY_BINDING_FREEZE_MANIFEST_SHA256=a75dd70a5eaa8420bc1c03cdf16a225a180672bb86604e3fa8db4c9973803ff9
+OUTPUT_COORDINATE_CAPABILITY_BINDING_WRITE_LEDGER_SHA256=419a107bece7b8cd73e01b1ef9f72c2e428f9a13bd175004231f2bd33ffde28d
+OUTPUT_COORDINATE_CAPABILITY_BINDING_COMMAND_CONTRACT_SHA256=168575b26ebcfdb7dc6aab19743e70ac5500c165bd3fac10c8ca5165ec305c5c
+OUTPUT_COORDINATE_CAPABILITY_BINDING_DEPENDENCY_MANIFEST_SHA256=b96ea9a50e60f8aad2cf8cf2861a81cb3c49bcd557d728bceb4f7a5ec17cad63
+OUTPUT_COORDINATE_CAPABILITY_BINDING_FIXTURE_SHA256=d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f
+OUTPUT_COORDINATE_CAPABILITY_BINDING_SYNTHETIC_INPUT_TREE_SHA256=9551fa86cb9bf33f757bf584a16d5d930da5006ee0145beb2a675f136f38b4ab
+OUTPUT_COORDINATE_CAPABILITY_BINDING_SYNTHETIC_DISPOSITION_SHA256=758764a25432300fb098d5480f9fcebd7a7648cf319b3d623c7eb294a4f80a82
+OUTPUT_COORDINATE_CAPABILITY_BINDING_SYNTHETIC_PACKET_TREE_SHA256=c1dc9a1012979c09cbc931d207af5dbf648031b76ff9be9abc5fcad5f431c00d
+OUTPUT_COORDINATE_CAPABILITY_BINDING_SYNTHETIC_RESULT_SHA256=cc9a8a0323e18ce3d527f2799c6d312ea93922bc459a8d4a0a4028edf316cd6a
+OUTPUT_COORDINATE_CAPABILITY_BINDING_EXTERNAL_RESULT_SHA256=e4abb793a6b19e9041accfb2d6b4ea079419383829e7a7a54fc2153746dba5a3
+OUTPUT_COORDINATE_CAPABILITY_BINDING_EXTERNAL_RESULT_SIZE=32526
+OUTPUT_COORDINATE_CAPABILITY_BINDING_PROCESS_COUNT=1
+OUTPUT_COORDINATE_CAPABILITY_BINDING_SUBPROCESSES=0
+OUTPUT_COORDINATE_CAPABILITY_BINDING_BASELINE_COUNT=1
+OUTPUT_COORDINATE_CAPABILITY_BINDING_BASELINE_VIOLATION_COUNT=0
+OUTPUT_COORDINATE_CAPABILITY_BINDING_CONTROL_COUNT=52
+OUTPUT_COORDINATE_CAPABILITY_BINDING_CONTROLS_PASSED=52
+OUTPUT_COORDINATE_CAPABILITY_BINDING_ACTUAL_FIRST_ID=F001
+OUTPUT_COORDINATE_CAPABILITY_BINDING_ACTUAL_FAMILY_BOUNDARY=F010,W001
+OUTPUT_COORDINATE_CAPABILITY_BINDING_ACTUAL_LAST_ID=W042
+OUTPUT_COORDINATE_CAPABILITY_BINDING_EXPECTED_FIRST_ID=F001
+OUTPUT_COORDINATE_CAPABILITY_BINDING_EXPECTED_FAMILY_BOUNDARY=F010,W001
+OUTPUT_COORDINATE_CAPABILITY_BINDING_EXPECTED_LAST_ID=W042
+OUTPUT_COORDINATE_CAPABILITY_BINDING_WRITE_EVENT_COUNT=22
+OUTPUT_COORDINATE_CAPABILITY_BINDING_FORECAST_WRITTEN_BYTES=323537343
+OUTPUT_COORDINATE_CAPABILITY_BINDING_OBSERVED_WRITTEN_BYTES=323537343
+OUTPUT_COORDINATE_CAPABILITY_BINDING_PEAK_RSS_BYTES=1515155456
+OUTPUT_COORDINATE_CAPABILITY_BINDING_FIXED_POINT_ITERATIONS=3
+OUTPUT_COORDINATE_CAPABILITY_BINDING_DEPENDENCY_COUNT=76
+OUTPUT_COORDINATE_CAPABILITY_BINDING_STOP_STAGE=null
+OUTPUT_COORDINATE_CAPABILITY_BINDING_DURABILITY_RSS_EVIDENCE=PROCESS_ATTESTED_80_PERCENT_CONFIDENCE
+```
+
+The exact final members are:
+
+| Path | Size | Mode | SHA-256 |
+|---|---:|---:|---|
+| `command-contract.json` | 3,544 | `0444` | `168575b26ebcfdb7dc6aab19743e70ac5500c165bd3fac10c8ca5165ec305c5c` |
+| `dependency-manifest.json` | 10,921 | `0444` | `b96ea9a50e60f8aad2cf8cf2861a81cb3c49bcd557d728bceb4f7a5ec17cad63` |
+| `fixture-spec.json` | 476 | `0444` | `d4e2a09b9ee93ee8c4c59ac6e622da946d58a2f3bd96c7e38e1c0a3b6418966f` |
+| `freeze-manifest.json` | 969 | `0444` | `a75dd70a5eaa8420bc1c03cdf16a225a180672bb86604e3fa8db4c9973803ff9` |
+| `self-test-receipt.json` | 32,868 | `0444` | `f15b15f3b7d290a8d2ebfaf630921fab10c9d4779164f1ebea3b062f388868c4` |
+| `work-item-author-v4.py` | 148,481 | `0444` | `e53b5d70cd6cf0a5c4cdd2cfbb782234ebab0353d15ee078a3ae55990df42c23` |
+
+Read-only verification reproduced every member size, mode, single-link identity and
+digest; the compact sorted-key canonical six-row inventory reproduces tree
+`e685ee05…`. `freeze-manifest.json` remains nonrecursive: it hashes the other five
+members and never itself. The 22-event receipt ledger has null digests only for
+`self-test-receipt.json` and `freeze-manifest.json`; hashing its canonical event array
+reproduces `419a107b…`. The external process result is not a seventh member.
+
+#### 18.50.2 Exact qualification proof and evidence limit
+
+The clean baseline returned `PASS`, created neither packet nor result and had zero
+violations. The sealed receipt contains exactly 52 unique passing rows in required
+raw-ID order `F001`–`F010`, then `W001`–`W042`; actual and expected first ID,
+family boundary and last ID match. Corrected `unresolved_sha256:` remains the sole
+production grammar, while obsolete `unresolved:sha256:` remains a W001 negative
+case. No alias, normalization, dual-prefix path, `W043`, `F011` or 53rd control
+exists.
+
+The fixture preserves 1,221 components, 19 disputes, twenty batches, 49 pages,
+98,608 unresolved IDs, 30,402 owned paths, 30,421 runtime paths and 1,384 nested
+edges. Synthetic packet and disposition reads were exactly `55,760,899` and
+`8,383,504` bytes. Forecast and observed writes both equal `323,537,343`, below the
+unchanged one-GiB ceiling. Process-reported peak RSS was `1,515,155,456`, below the
+unchanged `2,147,483,648` ceiling.
+
+Every required durability counter is process-reported as exactly one:
+
+```text
+row_zero_setup_file_fsync_count=1
+row_zero_setup_directory_fsync_count=1
+row_zero_governed_file_fsync_count=1
+row_zero_governed_directory_fsync_count=1
+row_zero_event_one_write_count_after_governed_fsync=1
+coordinate_parent_pre_rename_open_count=1
+coordinate_parent_pre_rename_fsync_count=1
+coordinate_parent_post_rename_open_count=1
+coordinate_parent_post_rename_fsync_count=1
+```
+
+Every prohibited access counter is zero:
+
+```text
+REAL_INPUT_READ_BYTES=0
+NETWORK_REQUESTS=0
+RUNTIME_READS=0
+RETAINED_SOURCE_READS=0
+REPOSITORY_READS=0
+ACQUIRED_BYTES=0
+CREDENTIAL_ACCESS=0
+SUBPROCESSES=0
+```
+
+The member identities, modes, sizes, tree, receipt control order, command vectors,
+ledger digest and continued output-root absence are independently reproducible from
+sealed bytes and metadata. The nine durability counters and peak RSS are not: they
+remain process-attested at 80% confidence. Neither this binding, byte identity nor
+Kiro review may raise that ceiling without genuinely independent evidence.
+
+#### 18.50.3 Whole-vector proof, immutability and held acceptance
+
+The sealed command contract contains exactly fourteen synthetic argv members and
+twenty real argv members. The synthetic cwd is the now-absent `.partial` root; the
+real cwd is the sealed final root. Real argv `[9]` equals the still-absent
+`a94bc57…/491ae60b…/v3` staging final root and `[11]` equals the still-absent
+durable final root byte-for-byte. The environment contains exactly the five frozen
+keys and no inherited sixth key. Source, fixture and command contract share the whole
+vector; F002 remains the sole literal-argv control.
+
+The coordinate parent, final root, six members, source, receipt, manifests, external
+result claim and consumed grant are immutable. They may not be changed, chmodded,
+deleted, renamed, copied, hard-linked, imported, executed again, repaired or
+reinterpreted; the absent `.partial` sibling may not be recreated. A review mismatch
+is `PAUSE`, not authority to regenerate the candidate.
+
+Tree `939b8849…` remains the historically accepted corrected-v4 candidate but is
+output-coordinate-ineligible. Tree `e685ee05…` is the sole new successor candidate,
+not yet accepted. If Kiro returns PASS on this exact two-commit binding, Ryan may
+separately decide whether to accept it; Kiro PASS does not self-accept the process
+result. Only a later explicit acceptance may make `e685ee05…` the sole accepted
+output-coordinate-corrected capability.
+
+Acceptance still grants no real read or author execution. A held real operation
+requires a new plan, exact-tip review, merge, exact-main confirmation and separate
+Ryan two-SHA grant naming the accepted successor, immutable packet/disposition and
+the four still-absent `a94bc57…/491ae60b…/v3(.partial)` coordinates. No prior
+real-author or synthetic-freeze grant is reusable.
+
+#### 18.50.4 Frozen surrounding contract and authority boundary
+
+Every §18.31–§18.49 schema, mapping, role, parser, serializer, candidate/locator
+rule, identity adapter, packet-tree recipe, cardinality, 22-event/two-null ledger,
+fixed-point rule, `W001`–`W042`, `F001`–`F010`, `F010`-only drift control,
+fourteen-/twenty-member no-site argv, `F002` slices, row-zero and coordinate-parent
+durability transition, canonical stdlib dependency reader, one-process/write/RSS
+ceilings, zero-access boundary and held one-pass real contract remain unchanged. No
+new schema field, file role, sidecar, wrapper, reader, acceptance exception or second
+synthetic attempt is introduced.
+
+This section authorizes only the four Switchboard planning-document edits and exact-
+tip review. It authorizes no root/file/source creation, execution, packet/disposition/
+repository/runtime/retained-source read, work-item packet/result, retry, network,
+subprocess, acquisition, ownership/license selection, binary repair, build,
+publication, CI admission, product/test/config/R2b change, implementation, PR `#342`
+update, PR creation, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action. The consumed synthetic-freeze grant cannot be
+reused.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
