@@ -3766,6 +3766,84 @@ review; it authorizes no content read, root/file creation, process, retry, acqui
 build, publication, implementation, PR creation/update, merge, deployment, real
 OpenClaw or later gate.
 
+### 10.50 W001 manifest-aggregate PAUSE result packet
+
+PR `#379` merged §§18.51/10.49 at `d32658a…`, preserving reviewed overlay
+`6c4b2bde…`; current main `d105c5e…` preserves the four plan blobs unchanged. Ryan's
+later grant named semantic parent `72619502…`, reviewed overlay `6c4b2bde…`, accepted
+tree `e685ee05…` and all four exact absent outputs. Metadata-only preflight passed,
+and the one-shot grant was consumed by exactly one author process.
+
+The process returned this stopped state:
+
+```text
+RESULT_BINDING_BASE_MAIN_SHA=d105c5e702264e93b9ff84e7cd2776455718f6ce
+RESULT_BINDING_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+RESULT_BINDING_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+GOVERNING_PLAN_SEMANTIC_PARENT_SHA=72619502f195ef34dd2cde04a6945d412a8a7f66
+GOVERNING_PLAN_REVIEWED_OVERLAY_SHA=6c4b2bde2e5adbb54eac4a67c249756d6fb892d9
+GOVERNING_PLAN_MERGED_MAIN_SHA=d32658a5652b8ccd3e75d85fbeb125d223a932ea
+GRANT_STATUS=CONSUMED_NON_REUSABLE
+RESULT_BINDING_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+AUTHORIZED=false
+PROCESS_COUNT=1
+SUBPROCESS_COUNT=0
+EXIT_STATUS=1
+REPORTED_STATUS=PAUSE
+ACCEPTED=false
+STOP_STAGE=DEPENDENCY_CLOSURE
+EXCEPTION=Refusal: W001: manifest aggregate closure
+BASELINE_COUNT=0
+CONTROL_COUNT=0
+CONTROLS=[]
+INPUT_BYTES_READ=54052776
+FORECAST_TOTAL_WRITTEN_BYTES=null
+OBSERVED_TOTAL_WRITTEN_BYTES=null
+WRITE_LEDGER_SHA256=null
+PEAK_RSS_BYTES=1515155456
+MAX_PEAK_RSS_BYTES=2147483648
+EXTERNAL_RESULT_SHA256=3fbf20779b2c29f0bdeb09761a7dda00ae886fe7b820113badc7288fc92edcde
+EXTERNAL_RESULT_BYTES=1393
+CAPABILITY_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b
+CAPABILITY_COORDINATE_PARENT_EXISTS=true
+CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial
+CAPABILITY_PARTIAL_EXISTS=false
+CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4
+CAPABILITY_FINAL_EXISTS=true
+```
+
+The supervisor used one same-PID direct-`execve` transition to the sealed twenty-
+member argv, accepted cwd and exact five-key environment. The source passed startup,
+literal-command and dependency gates, then stopped at its multi-conjunct manifest
+aggregate predicate after `54,052,776` authorized real-input bytes. The result cannot
+identify which predicate member differed, and no content was reopened to infer one.
+It reached neither a clean baseline nor the 52-control receipt.
+
+The result's generic coordinate/final/partial fields refer to the accepted capability
+root: its coordinate parent and final exist, while its partial is absent. They do not
+refer to the four governed work-item output coordinates.
+
+All four staging/durable partial/final roots and both previously absent namespace
+parents remain absent. The null forecast, observed-write and ledger fields plus the
+sealed pre-output ordering establish that no output transaction began. Post-run work
+performed no cleanup or mutation.
+
+Access counters are `real_input_read_bytes=54052776` and zero for network, runtime,
+repository, retained-source, credentials, acquisition and subprocesses. Setup row-
+zero file/directory fsync counters remain one; governed row-zero file/directory,
+event-one, and all four coordinate-parent open/fsync counters remain zero. Peak RSS
+`1,515,155,456` is below the two-GiB limit. These facts are process-emitted evidence;
+the accepted capability's historical durability/RSS evidence remains capped at 80%.
+
+The grant is consumed. Tree `e685ee05…`, historical `accepted=false`, Ryan's separate
+acceptance record and immutable/ineligible tree `939b8849…` are preserved, but none
+permits a retry or patch. The only forward route is exact-tip Kiro review of this two-
+commit binding, Ryan's PR/merge decision and exact-main confirmation, followed by a
+separately planned/reviewed/merged diagnostic and requalification route using fresh
+single-assignment coordinates and a new Ryan grant. This packet grants no input read,
+root creation, execution, retry, repair, cleanup, diagnosis, acquisition, build,
+publication, implementation, PR/merge, deployment, real OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -3850,3 +3928,9 @@ Section 10.48 binds the one-shot successor freeze at tree `e685ee05…`, with re
 real outputs still absent. The result remains `accepted=false`; Kiro review and a
 separate Ryan acceptance decision are next. Durability/RSS evidence remains process-
 attested at 80%, and no real read, execution or later-gate authority exists.
+Section 10.49 was later reviewed and merged in PR `#379`; its exact two-SHA grant is
+consumed by one exit-`1` W001 manifest-aggregate PAUSE after `54,052,776` input bytes.
+Section 10.50 binds exact external result `3fbf2077…`/1,393 bytes, process/access/
+durability counters, null output-ledger fields and the continued absence of all output
+roots and parents. It does not identify the failed conjunct or grant diagnosis,
+correction, retry, read, root, execution or later authority.

@@ -11217,6 +11217,160 @@ file creation, author execution, retry, cleanup, deletion, acquisition, build,
 publication, implementation, PR creation/update, merge, deployment, real OpenClaw,
 live data, watch activation, promotion or Gate D/W/D-V/E/F action.
 
+### 18.52 Output-coordinate-corrected real-author W001 result binding
+
+PR `#379` squash-merged the exact §§18.51/10.49 plan at
+`d32658a5652b8ccd3e75d85fbeb125d223a932ea`, preserving reviewed overlay
+`6c4b2bde2e5adbb54eac4a67c249756d6fb892d9`; Kiro returned exact-tip and
+exact-merge PASS. Current main `d105c5e702264e93b9ff84e7cd2776455718f6ce`
+preserves the four Switchboard plan blobs byte-for-byte after unrelated PR `#378`.
+Ryan then issued exactly one grant naming semantic parent
+`72619502f195ef34dd2cde04a6945d412a8a7f66`, reviewed overlay `6c4b2bde…`,
+accepted capability tree `e685ee05…6ccbc32f` and the four exact absent
+`a94bc57…/491ae60b…/v3(.partial)` outputs.
+
+Metadata-only preflight passed without opening packet/disposition content or creating
+a path. The grant was consumed by one direct-`execve` author process. It failed closed
+before output creation with `PAUSE`, exit `1`, stage `DEPENDENCY_CLOSURE`, and
+`Refusal: W001: manifest aggregate closure`. This section binds that stopped result
+only. It neither diagnoses a particular failed manifest conjunct nor authorizes a
+retry, correction or additional read.
+
+#### 18.52.1 Exact process and external-result evidence
+
+```text
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_BASE_MAIN_SHA=d105c5e702264e93b9ff84e7cd2776455718f6ce
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+OUTPUT_COORDINATE_REAL_AUTHOR_GOVERNING_PLAN_SEMANTIC_PARENT_SHA=72619502f195ef34dd2cde04a6945d412a8a7f66
+OUTPUT_COORDINATE_REAL_AUTHOR_GOVERNING_PLAN_REVIEWED_OVERLAY_SHA=6c4b2bde2e5adbb54eac4a67c249756d6fb892d9
+OUTPUT_COORDINATE_REAL_AUTHOR_GOVERNING_PLAN_MERGED_MAIN_SHA=d32658a5652b8ccd3e75d85fbeb125d223a932ea
+OUTPUT_COORDINATE_REAL_AUTHOR_GOVERNING_PLAN_CURRENT_MAIN_SHA=d105c5e702264e93b9ff84e7cd2776455718f6ce
+OUTPUT_COORDINATE_REAL_AUTHOR_GRANT_STATUS=CONSUMED_NON_REUSABLE
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+OUTPUT_COORDINATE_REAL_AUTHOR_AUTHORIZED=false
+
+OUTPUT_COORDINATE_REAL_AUTHOR_PROCESS_COUNT=1
+OUTPUT_COORDINATE_REAL_AUTHOR_SUBPROCESS_COUNT=0
+OUTPUT_COORDINATE_REAL_AUTHOR_PROCESS_EXIT_STATUS=1
+OUTPUT_COORDINATE_REAL_AUTHOR_PROCESS_REPORTED_STATUS=PAUSE
+OUTPUT_COORDINATE_REAL_AUTHOR_PROCESS_ACCEPTED=false
+OUTPUT_COORDINATE_REAL_AUTHOR_STOP_STAGE=DEPENDENCY_CLOSURE
+OUTPUT_COORDINATE_REAL_AUTHOR_EXCEPTION=Refusal: W001: manifest aggregate closure
+OUTPUT_COORDINATE_REAL_AUTHOR_BASELINE_COUNT=0
+OUTPUT_COORDINATE_REAL_AUTHOR_CONTROL_COUNT=0
+OUTPUT_COORDINATE_REAL_AUTHOR_CONTROLS=[]
+OUTPUT_COORDINATE_REAL_AUTHOR_INPUT_BYTES_READ=54052776
+OUTPUT_COORDINATE_REAL_AUTHOR_FORECAST_TOTAL_WRITTEN_BYTES=null
+OUTPUT_COORDINATE_REAL_AUTHOR_OBSERVED_TOTAL_WRITTEN_BYTES=null
+OUTPUT_COORDINATE_REAL_AUTHOR_WRITE_LEDGER_SHA256=null
+OUTPUT_COORDINATE_REAL_AUTHOR_PEAK_RSS_BYTES=1515155456
+OUTPUT_COORDINATE_REAL_AUTHOR_MAX_PEAK_RSS_BYTES=2147483648
+OUTPUT_COORDINATE_REAL_AUTHOR_EXTERNAL_RESULT_SHA256=3fbf20779b2c29f0bdeb09761a7dda00ae886fe7b820113badc7288fc92edcde
+OUTPUT_COORDINATE_REAL_AUTHOR_EXTERNAL_RESULT_BYTES=1393
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_CAPABILITY_COORDINATE_PARENT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_CAPABILITY_COORDINATE_PARENT_EXISTS=true
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_CAPABILITY_PARTIAL_EXISTS=false
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_CAPABILITY_FINAL_EXISTS=true
+```
+
+The external result is the canonical compact JSON line emitted by the process; it is
+not an output member, seventh role, receipt, write ledger or acceptance authority.
+Its generic `coordinate_parent`, `partial_root` and `final_root` fields describe the
+already accepted capability coordinate, not any staging or durable work-item output.
+Thus `final_exists=true` preserves the immutable capability while all four governed
+output coordinates below remain absent.
+The trusted supervisor closed inherited descriptors and performed one same-PID
+`execve` transition into the sealed twenty-member vector, exact capability cwd and
+five-key environment. Reaching W001 proves the accepted source passed its earlier
+startup, literal-command and dependency-closure gates. It does not prove the complete
+packet or disposition, because the process stopped after only `54,052,776` of the
+planned `662,531,209` governed input bytes.
+
+The failure arose at the accepted source's aggregate manifest predicate. That single
+predicate compares multiple recorded counts, byte totals and tree identities. The
+emitted result does not identify which conjunct differed. No packet/disposition
+content was reopened after the process, so this binding records the aggregate refusal
+without converting it into an unsupported root-cause claim.
+
+#### 18.52.2 Exact stopped coordinate, access and durability state
+
+All four grant-named roots remained absent after exit:
+
+```text
+OUTPUT_COORDINATE_REAL_AUTHOR_STAGING_PARTIAL_STATUS=ABSENT
+OUTPUT_COORDINATE_REAL_AUTHOR_STAGING_FINAL_STATUS=ABSENT
+OUTPUT_COORDINATE_REAL_AUTHOR_DURABLE_PARTIAL_STATUS=ABSENT
+OUTPUT_COORDINATE_REAL_AUTHOR_DURABLE_FINAL_STATUS=ABSENT
+OUTPUT_COORDINATE_REAL_AUTHOR_STAGING_NAMESPACE_PARENT_STATUS=ABSENT
+OUTPUT_COORDINATE_REAL_AUTHOR_DURABLE_NAMESPACE_PARENT_STATUS=ABSENT
+```
+
+The sealed control flow permits output creation only after complete input validation.
+The W001 stop, null forecast/observed-write/ledger fields, and post-run absence of the
+four roots and their namespace parents therefore establish that no governed output
+transaction began. No cleanup was performed or needed.
+
+The process-emitted access counters are exact:
+
+```text
+real_input_read_bytes=54052776
+network_requests=0
+runtime_reads=0
+repository_reads=0
+retained_source_reads=0
+credential_access=0
+acquired_bytes=0
+subprocesses=0
+```
+
+The process-emitted durability counters are also exact:
+
+```text
+row_zero_setup_file_fsync_count=1
+row_zero_setup_directory_fsync_count=1
+row_zero_governed_file_fsync_count=0
+row_zero_governed_directory_fsync_count=0
+row_zero_event_one_write_count_after_governed_fsync=0
+coordinate_parent_pre_rename_open_count=0
+coordinate_parent_pre_rename_fsync_count=0
+coordinate_parent_post_rename_open_count=0
+coordinate_parent_post_rename_fsync_count=0
+```
+
+The real-input counter is authorized input, not forbidden access. Every forbidden-
+access counter is zero, process count is one, subprocess count is zero, and peak RSS
+`1,515,155,456` remains below the `2,147,483,648` ceiling. The stopped run produced
+no baseline or control receipt; `baseline_count=0` and `controls=[]` must not be
+reported as a failed 52-control run.
+
+#### 18.52.3 Capability status, diagnosis route and authority boundary
+
+Capability tree `e685ee05…` and prior tree `939b8849…` remain immutable. Historical
+`accepted=false` remains process non-self-acceptance, and Ryan's external acceptance
+record remains separate. This failed real-input attempt does not retroactively alter
+the accepted capability's nine durability counters or peak RSS, which remain
+process-attested at 80% confidence. Hash, merge or result identity does not raise that
+confidence.
+
+The execution grant is consumed and the accepted source, command contract, input
+identities and four coordinates are not retry authority. The next possible
+substantive action is a separately authored, exact-tip-reviewed, merged and exact-
+main-confirmed diagnostic/requalification plan. It must bound any permitted read,
+identify the exact failed aggregate conjunct without mutating the immutable packet or
+disposition, and define fresh single-assignment capability/output coordinates before
+Ryan may consider any new grant. A correction may not patch or rerun the accepted
+tree.
+
+This section authorizes only edits to the four Switchboard planning documents and
+read-only exact-tip review. It authorizes no packet/disposition content read, source
+write, capability/output parent or root creation, execution, retry, repair, resume,
+cleanup, deletion, diagnostic read, acquisition, build, publication, implementation,
+PR creation/update, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -11327,3 +11481,10 @@ that final root as immutable rejected evidence and defines only fresh `946b469�
 coordinates plus exact complete raw-ID receipt validation before output. Kiro review
 and a fresh Ryan two-SHA grant are mandatory.
 Real OpenClaw, live data, PR, merge, deployment and promotion remain blocked.
+
+Section 18.52 binds the later consumed real-author attempt: exact result
+`3fbf2077…`/1,393 bytes, one process, exit `1`, `PAUSE`, W001 manifest aggregate
+closure after `54,052,776` authorized input bytes, peak RSS `1,515,155,456`, zero
+subprocess/forbidden access and no output transaction. All four output roots and both
+namespace parents remain absent. The failed aggregate conjunct is unresolved; no
+diagnosis, correction, retry, content read, root creation or later authority exists.
