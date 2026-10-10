@@ -15,7 +15,7 @@ from typing import Any
 from chroma_store import ChromaStore
 from chroma_readonly import collection_count
 from tests.watch_oom_brief_hermetic import ENVELOPE_32K
-from tests.watch_oom_exposure_hermetic import write_exposure_register
+from tests.watch_oom_exposure_hermetic import exposure_memory_meta, write_exposure_register
 
 EMBED_DIM = 2
 EMBED_VECTOR = [0.1, 0.2]
@@ -41,11 +41,8 @@ class PathCanary:
 
 
 def _file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
     with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+        return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
 # Handoff § Hermetic rules: Chroma, brief, config, export, watcher/service paths.
@@ -208,9 +205,12 @@ def preflight_host(scratch_dir: Path) -> dict[str, Any]:
 
 def watcher_state() -> dict[str, str]:
     """Read service state; an unavailable manager cannot satisfy preflight."""
+    command = ["systemctl", "--user", "show", "convmem-watch.service"]
+    for prop in ("ActiveState", "UnitFileState"):
+        command.extend(("-p", prop))
     try:
         result = subprocess.run(
-            ["systemctl", "--user", "show", "convmem-watch.service", "-p", "ActiveState", "-p", "UnitFileState"],
+            command,
             check=True,
             capture_output=True,
             text=True,
@@ -246,28 +246,6 @@ def clone_fixture_seed(seed_dir: Path, clone_dir: Path) -> None:
     shutil.copytree(seed_dir, clone_dir)
 
 
-def _unit_meta(i: int, envelope: str, source_path: str) -> dict[str, Any]:
-    kind = "decision" if i % 17 == 0 else "observation"
-    lid = f"obs_mem_{i}" if kind != "decision" else f"dec_prop_mem_{i}"
-    meta = {
-        "ledger_id": lid,
-        "ledger_kind": kind,
-        "type": "decision" if kind == "decision" else "observation",
-        "timestamp": f"2026-09-13T{i % 24:02d}:{(i % 60):02d}:00Z",
-        "provenance_envelope": envelope,
-        "title": f"Unit {i}",
-        "summary": f"Unit {i}",
-        "rationale": f"rationale {i}",
-        "source_path": source_path,
-    }
-    if kind == "observation" and i % 23 == 0:
-        meta["severity"] = "critical"
-        meta["verification_result"] = "pass"
-    elif kind == "observation" and i % 29 == 0:
-        meta["severity"] = "high"
-    return meta
-
-
 def build_writable_fixture_seed(
     seed_dir: Path,
     n: int,
@@ -294,7 +272,7 @@ def build_writable_fixture_seed(
         src = str(source)
         for i in range(n):
             eid = f"m-{i:06d}"
-            meta = _unit_meta(i, envelope, src)
+            meta = exposure_memory_meta(i, envelope, src)
             ids.append(eid)
             docs.append(f"document body for {eid}")
             embeddings.append(EMBED_VECTOR)
