@@ -425,6 +425,175 @@ the live 12.5 GiB watcher OOM.
 corrective tip. No production access, watcher operation, config change, Kiro, or
 Arc Codex Gate 0/P2.
 
+### §9.7 measurement-harness safety corrective (2026-10-09)
+
+Copilot's targeted audit FAILed the prior unmerged tip `2d3ba40`: the
+default-running in-process wiring test could use live Chroma when `config`
+was imported before its temporary environment assignment. The old evidence
+also contained a branch SHA in the candidate-main field, a run from an
+uncommitted harness tree, and no complete paired memory result. Preserve that
+tip as failed evidence; do not rerun its test.
+
+The isolated replacement branch
+`fix/2026-10-09-2026-10-09-watch-oom-measurement-safety` starts at main
+`18dcf45`. It moves the default wiring smoke into a guarded subprocess with
+temporary config, Chroma, writer lock, attestation, census, and Agent Run
+paths. The worker fails on preloaded target modules and production-path
+denials. The gated full-curve harness records the frozen main SHA separately
+from its own branch tip, hashes all harness files, checks a quiet watcher and
+disk-backed scratch, and cannot claim success from an incomplete pair.
+The first corrective tip `88d8443` received Copilot FAIL: parent-created
+census headers carried the candidate revision into the baseline arm, and the
+default smoke still hashed live canaries. The follow-up moves census setup
+inside each guarded target worker and confines production-canary hashing to
+the explicitly gated full curve. The default test uses 64 temporary rows.
+
+Focused verification on the follow-up: `pytest -q
+tests/test_watch_oom_exposure_index_e2e.py` → 3 passed, 1 full-curve skip;
+the two C5 path/network denial controls → 2 passed; scoped `pylint --score=n`
+on the four changed test helpers → exit 0. A separate 64-row baseline smoke
+against `5c103aa` succeeded with exit 0, one processed file, and no denied
+paths **with the 2 GiB address-space limit disabled**. That wiring smoke did
+not prove the full worker ceiling. No full curve, production indexing,
+watcher operation, or §9.8 decision occurred at that point.
+
+Next: Copilot audits the pushed corrective exact tip, then Kiro reviews the
+evidence. Ryan must name a quiet host and execution lane before a new full
+curve. The live 12.5 GiB OOM remains unexplained and issue #268 stays open.
+
+**One-shot host result (2026-10-09, `archlinux`):** Copilot and Kiro passed
+the `e486925` harness, and Ryan authorized a serial full run on this host
+with disk-backed scratch. The tool sandbox initially blocked the user-systemd
+bus check before fixture creation; the authorized run then passed preflight
+outside that sandbox. Its first 5,000-row **baseline** arm at `5c103aa`
+returned `files_processed=0`, `files_skipped=1`, and a denied attempt to open
+the production `synthesis_failures.jsonl`. The harness stopped before any
+candidate arm. Its canary comparison found no drift. The generated
+`EVIDENCE-watch-oom-exposure-index-e2e.json` records `measurement_blocked=true`
+and `complete_pairs=0`; it establishes no §9.8 memory floor.
+
+Read-only inspection found the production failure-log default behind the
+denied attempt. A small 64-row baseline control subsequently failed with the
+2 GiB `RLIMIT_AS` while Chroma started its compactor; the same guarded control
+without that address-space limit succeeded at about 145 MiB peak RSS. This
+implicates address-space reservation, not a measured RSS excess, but the
+underlying 5,000-row failure was hidden by the denied failure-log write. The
+test worker now redirects that diagnostic log into its temporary writer root
+and reports its tail on a skipped transcript; the 2 GiB ceiling remains
+unchanged. No full curve was rerun. Copilot's targeted audit of the first
+diagnostic correction (`aec5371`) passed isolation and evidence honesty, then
+identified two further evidence-handling defects: a blocked run without a
+denial could leave pytest green, and the fixed evidence filename could be
+overwritten. The harness now fails pytest for every blocked result and writes
+future evidence under a run-unique filename opened exclusively. The blocked
+first-run evidence remains at its original path with its original `e486925`
+harness hash. Copilot and Kiro passed the corrected harness at `3237c03`.
+Ryan must separately grant any further full run and decide whether the 2 GiB
+`RLIMIT_AS` contract itself needs redesign.
+
+### Proposed §9.7a measurement-bound amendment (2026-10-09)
+
+**State: KIRO DESIGN PASS at `f43e386` after C-1 through C-5 were bound;
+no implementation or run grant.** The September §9.7
+handoff remains the historical specification for the blocked
+one-shot run. Its 2 GiB `RLIMIT_AS` requirement must not be silently removed
+from an executable harness. This amendment proposes a replacement boundary
+for Ryan to accept after Kiro's exact-tip design PASS. It does not change
+production code, the watcher, the merged exposure-probe fix, or §9.8 authority.
+
+**Reason for change.** The first 5,000-row baseline arm produced no index and
+no paired result. The later guarded 64-row control succeeded without
+`RLIMIT_AS` at about 145 MiB peak RSS and failed with 2 GiB `RLIMIT_AS` while
+Chroma started its compactor. Copilot independently reproduced small guarded
+baseline and candidate successes without that limit and failures with it.
+This supports an address-space incompatibility in the small control; it does
+not prove why the first 5,000-row arm failed or establish a memory floor.
+
+**Proposed bound.** Launch each measured worker in its own uniquely named,
+transient **user service** with cgroup v2 `memory.max=2 GiB` (systemd
+`MemoryMax=2G`), `memory.swap.max=0` (`MemorySwapMax=0`), and memory accounting
+enabled. Do not set the worker's 2 GiB `RLIMIT_AS`. The hard cgroup bound
+contains charged memory for the worker and its children without limiting
+virtual address reservations. It may still fail below 2 GiB RSS because it
+also charges page cache and kernel memory; such a failure is a blocked result,
+not evidence that the candidate exceeds an RSS floor. The prior 8 GiB
+`RLIMIT_AS` plus a polled 4 GiB RSS watchdog completed its hermetic comparison,
+but neither is the proposed hard 2 GiB physical bound. Do not use an
+unbounded worker or an RSS watchdog alone to replace it.
+
+Use a transient **service**, not `systemd-run --scope`: the worker protocol
+needs captured stdout/stderr and an exit status, and `--pipe` is incompatible
+with scope mode. The intended adapter is `systemd-run --user` in service mode
+with `--pipe`, `--wait`, a unique unit name, and the properties above. Treat
+the exact command line as unverified until the capability probe below. A
+transient unit is only a measurement child, not a restart or edit of
+`convmem-watch`, its timer, or any persistent user service file.
+
+**Implementation and acceptance order, after a separate Ryan Execute grant:**
+
+1. Add a narrow launch adapter to the existing isolated test harness. On the
+   **same named host and lane** intended for the 64-row smoke, and only after
+   the existing quiet-watcher and host-resource preflight, run a harmless
+   transient-service capability probe before any large fixture or target
+   import. Require the worker to read its *own* cgroup v2 membership and
+   `memory.max`/`memory.swap.max` and positively assert the effective values
+   are exactly 2 GiB and zero. Checking launcher properties alone is not
+   enough. Prove clean single-object JSON stdout capture, stderr capture,
+   propagated nonzero exit, and preservation of `denied_paths` and
+   `network_denied` from the worker payload. A missing user bus or user
+   manager is a blocked preflight, never a fallback to `RLIMIT_AS` or an
+   uncapped subprocess. The earlier tool-sandbox user-bus failure is no
+   exception.
+2. Prove the telemetry channel before indexing: capture `memory.peak` and
+   `memory.events` on both a successful throwaway unit and a deliberately
+   OOM-killed **small-cap throwaway unit**. Require nonzero exit and
+   `oom_kill >= 1` to classify the latter as blocked. A successful transient
+   unit may be unloaded immediately, so post-exit `systemctl show` alone is
+   insufficient. Fail closed if the limit, JSON, exit, or telemetry proof
+   is missing. Use a small test cap for this negative control, not a 2 GiB
+   allocation on the shared host.
+3. Preserve path and network denial before target imports; temporary config,
+   Chroma, diagnostics, writer, lock, attestation, census, and Agent Run paths;
+   module-origin checks; negative controls; frozen baseline and main tips;
+   identical fixture and harness hashes; read-only production canaries; and
+   run-unique exclusive evidence files. Keep fixture creation and the pytest
+   parent outside the measured cgroup. Assert `preflight_host` still reports
+   `convmem-watch.service` inactive and disabled with the uniquely named
+   transient measurement unit present. Do not change production modules.
+4. Run **only** a 64-row baseline and candidate smoke with the *exact*
+   proposed worker launch and isolation setup. Require one processed file,
+   zero skipped files, zero denied paths and network calls, real brief
+   execution, clean canaries, no cgroup OOM event, and successful Chroma
+   completion in both arms. A failed smoke stops the route; do not scale it
+   up or infer an RSS floor.
+5. Have Copilot audit the implemented isolation and evidence boundary and
+   Kiro review the exact tip. A later full 5,000/20,000/58,825-row curve
+   requires a **fresh named-host, named-lane, one-shot Ryan grant**. Keep the
+   existing serial, disk-backed scratch, quiet-watcher, 8 GiB available
+   RAM/disk preflight, and 4 GiB host-availability stop rules. No current PR
+   needs rerunning for this separate harness route.
+6. For each arm, record its exit/result, effective limits, cgroup
+   `memory.peak`, `memory.events` (`max`, `oom`, `oom_kill`), and worker peak
+   RSS. Collect cgroup telemetry during execution or through a proven exit
+   channel before unit garbage collection; do not depend on a successful
+   unit remaining queryable after exit. Clean up only the run's own failed
+   transient unit if it remains loaded. Report cgroup peak and RSS as
+   **different measures**.
+   Missing telemetry, an OOM kill, timeout, denial, failed index, canary
+   drift, or an incomplete pair makes the result blocked; never report it as
+   a successful floor or advance §9.8.
+
+**Decision boundary.** Kiro's review can accept, amend, or reject this
+proposal. Even an accepted plan grants neither harness implementation nor a
+second full run. If the cgroup-bound 64-row control still fails, return the
+failure and measured cgroup events for a new Ryan budget/design decision;
+do not raise the cap during that run. The live 12.5 GiB watcher OOM remains
+unexplained and issue #268 remains open.
+
+References: [Linux cgroup v2 memory controller](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html),
+[systemd resource control](https://github.com/systemd/systemd/blob/main/man/systemd.resource-control.xml),
+and [systemd-run](https://github.com/systemd/systemd/blob/main/man/systemd-run.xml).
+
 ## 11. Jargon glossary
 
 - **Exposure window:** the standing check requiring a corpus-clean scan after a

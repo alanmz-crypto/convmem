@@ -1,0 +1,83 @@
+{
+  "hostname": "archlinux",
+  "candidate_main_sha": "18dcf45c38bf493d9b2ef7bf426779b914c06289",
+  "harness_branch_tip": "e4869251633b776240f1f6694639172866c3c4a2",
+  "baseline_sha": "5c103aa2f11f54de74be3a7eab90c433c0c019cd",
+  "harness_hash": "6c33b9c174ca7d49e4bcdc1c4ac36d41e19d671c0f951959295f1db7d0cdafd5",
+  "harness_file_hashes": {
+    "watch_oom_exposure_index_e2e_worker.py": "d03feb49703383b69c0a6d5e68f489b2e8f9484447c56dbb240f5e63d2210e0e",
+    "watch_oom_exposure_index_e2e_support.py": "51772f0a52fab2d57cafd34515af3f934255ea30d2947ded0c7edd1b9f85d5a3",
+    "test_watch_oom_exposure_index_e2e.py": "93df43c95006852566017bc13631364192f284b69b6d69d643f1c7b41f9ce28a",
+    "watch_oom_hermetic_isolation.py": "09bd339c4982f2ec6a328321aad1c0fe87b7969f12144ecd4b879ddd9e403ced",
+    "watch_oom_memory_worker_shared.py": "566955b581d99e339598428d3284e6ce904d18fd8f748f4cf1348b6c0c55e2a5",
+    "linux_proc.py": "fac634b0dbd307f9dacfe625eb7e96faae5bbf9dd15c217e801e83d741af6e7f",
+    "watch_oom_brief_hermetic.py": "7e804e5b401afa5c7c53f3d3f258ff0497fd3103f90c40ddeb9771e0ddedec70",
+    "watch_oom_exposure_hermetic.py": "c507f23177c1a74613ae865ff28a2e9746dbaffefd3c29958e4afdc6d6d2e3fe",
+    "watch_oom_memory_test_support.py": "7ec443a26fb4af1128e52c7c40d1c73b61b7b76d2651a51c1bbf9b96f56828ee"
+  },
+  "canary_contract": {
+    "brief": [
+      "/home/lauer/.local/share/convmem/brief.md"
+    ],
+    "chroma": [
+      "/home/lauer/.local/share/convmem/chroma/chroma.sqlite3"
+    ],
+    "config": [
+      "/home/lauer/.config/convmem/config.toml"
+    ],
+    "export": [
+      "/home/lauer/.local/share/convmem/knowledge_units.jsonl",
+      "/home/lauer/.local/share/convmem/processed.json"
+    ],
+    "watcher_service": [
+      "/home/lauer/.config/systemd/user/convmem-watch.service",
+      "/home/lauer/.config/systemd/user/convmem-refine.service",
+      "/home/lauer/.config/systemd/user/convmem-monitor.timer"
+    ],
+    "writer_gate": [
+      "/home/lauer/.local/share/convmem/locks/chroma_writer_gate.lock"
+    ]
+  },
+  "worker_as_limit_gib": 2,
+  "worker_timeout_seconds": 90,
+  "outcome_counts": {
+    "timed_out": 0,
+    "exited": 1,
+    "invalid_output": 0,
+    "succeeded": 0
+  },
+  "canary_ambiguity": [],
+  "hard_failures": [
+    "baseline n=5000: hermetic denial: {'detail': \"ingest.index did not process transcript: {'files_processed': 0, 'files_skipped': 1, 'chunks_indexed': 0, 'units_indexed': 0, 'exact_duplicates_suppressed': 0, 'semantic_candidates_queued': 0}\", 'import_order': ['hermetic_guards_installed', 'rlimit_as_2gib', 'config', 'ingest', 'brief', 'doctor', 'chroma_readonly', 'agent_run_ledger'], 'denied_paths': ['/home/lauer/.local/share/convmem/synthesis_failures.jsonl'], 'network_denied': [], 'status': 'exited', 'returncode': 1, 'elapsed_seconds': 1.073}"
+  ],
+  "complete_pairs": 0,
+  "measurement_blocked": true,
+  "rows": [
+    {
+      "n": 5000,
+      "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+      "baseline": {
+        "detail": "ingest.index did not process transcript: {'files_processed': 0, 'files_skipped': 1, 'chunks_indexed': 0, 'units_indexed': 0, 'exact_duplicates_suppressed': 0, 'semantic_candidates_queued': 0}",
+        "import_order": [
+          "hermetic_guards_installed",
+          "rlimit_as_2gib",
+          "config",
+          "ingest",
+          "brief",
+          "doctor",
+          "chroma_readonly",
+          "agent_run_ledger"
+        ],
+        "denied_paths": [
+          "/home/lauer/.local/share/convmem/synthesis_failures.jsonl"
+        ],
+        "network_denied": [],
+        "status": "exited",
+        "returncode": 1,
+        "elapsed_seconds": 1.073
+      },
+      "candidate": null
+    }
+  ],
+  "verdict": "Measurement refused after a hermetic denial or paired semantic mismatch. No floor delta is authorized for \u00a79.8."
+}

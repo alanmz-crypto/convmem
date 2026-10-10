@@ -28,10 +28,11 @@ def add_common_worker_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--processed", default="")
 
 
-def prepare_worker() -> None:
+def prepare_worker(*, limit_as: bool = True) -> None:
     install_hermetic_guards()
-    limit = 2 * 1024 * 1024 * 1024
-    resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+    if limit_as:
+        limit = 2 * 1024 * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
 
 
 def handle_c5_negative_network() -> int:
