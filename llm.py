@@ -16,6 +16,9 @@ import sys
 import threading
 import time
 from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Callable
 
 import requests
 
@@ -31,6 +34,75 @@ Conversation:
 
 # Cap chunk text fed to the summarizer to keep latency and context bounded.
 _MAX_CHUNK_CHARS = 8000
+
+ProviderAttemptPermit = Callable[[dict[str, object]], None]
+ProviderUsageReporter = Callable[[dict[str, object], dict[str, object]], None]
+_PROVIDER_ATTEMPT_PERMIT: ContextVar[ProviderAttemptPermit | None] = ContextVar(
+    "provider_attempt_permit", default=None
+)
+_PROVIDER_USAGE_REPORTER: ContextVar[ProviderUsageReporter | None] = ContextVar(
+    "provider_usage_reporter", default=None
+)
+
+
+class ProviderAttemptBudgetExceeded(RuntimeError):
+    """Raised before transport when a bootstrap HTTP-attempt cap is exhausted."""
+
+
+@contextmanager
+def provider_http_accounting(
+    permit: ProviderAttemptPermit,
+    usage_reporter: ProviderUsageReporter,
+):
+    """Install bootstrap-only HTTP accounting without changing ordinary calls."""
+
+    permit_token = _PROVIDER_ATTEMPT_PERMIT.set(permit)
+    usage_token = _PROVIDER_USAGE_REPORTER.set(usage_reporter)
+    try:
+        yield
+    finally:
+        _PROVIDER_USAGE_REPORTER.reset(usage_token)
+        _PROVIDER_ATTEMPT_PERMIT.reset(permit_token)
+
+
+def _permit_provider_http_attempt(
+    *, provider: str, operation: str, model: str, base_url: str
+) -> dict[str, object]:
+    event: dict[str, object] = {
+        "provider": provider,
+        "operation": operation,
+        "model": model,
+        "base_url": base_url.rstrip("/"),
+    }
+    permit = _PROVIDER_ATTEMPT_PERMIT.get()
+    if permit is not None:
+        permit(dict(event))
+    return event
+
+
+def _report_provider_usage(
+    event: dict[str, object], payload: dict[str, object]
+) -> None:
+    reporter = _PROVIDER_USAGE_REPORTER.get()
+    if reporter is None:
+        return
+    usage = payload.get("usage")
+    if isinstance(usage, dict):
+        reporter(dict(event), dict(usage))
+        return
+    local_usage = {
+        key: payload[key]
+        for key in (
+            "prompt_eval_count",
+            "eval_count",
+            "prompt_eval_duration",
+            "eval_duration",
+            "total_duration",
+        )
+        if key in payload
+    }
+    if local_usage:
+        reporter(dict(event), local_usage)
 
 
 def resolve_generation_binding(model: str) -> dict[str, object]:
@@ -78,6 +150,12 @@ def summarize_prompt(chunk_text: str) -> str:
 
 def ollama_embed(text: str, model: str, host: str) -> list[float]:
     """Return an embedding vector for `text` from a local Ollama model."""
+    event = _permit_provider_http_attempt(
+        provider="ollama",
+        operation="embed",
+        model=model,
+        base_url=host,
+    )
     resp = requests.post(
         f"{host.rstrip('/')}/api/embeddings",
         json={"model": model, "prompt": text},
@@ -85,6 +163,7 @@ def ollama_embed(text: str, model: str, host: str) -> list[float]:
     )
     resp.raise_for_status()
     data = resp.json()
+    _report_provider_usage(event, data)
     embedding = data.get("embedding")
     if not embedding:
         raise RuntimeError(f"Empty embedding from Ollama for model {model!r}")
@@ -92,6 +171,12 @@ def ollama_embed(text: str, model: str, host: str) -> list[float]:
 
 
 def _ollama_generate(prompt: str, model: str, host: str, *, timeout: float = 300) -> str:
+    event = _permit_provider_http_attempt(
+        provider="ollama",
+        operation="generate",
+        model=model,
+        base_url=host,
+    )
     resp = requests.post(
         f"{host.rstrip('/')}/api/generate",
         json={
@@ -103,7 +188,9 @@ def _ollama_generate(prompt: str, model: str, host: str, *, timeout: float = 300
         timeout=timeout,
     )
     resp.raise_for_status()
-    return resp.json().get("response", "").strip()
+    data = resp.json()
+    _report_provider_usage(event, data)
+    return data.get("response", "").strip()
 
 
 def _post_deepseek(
@@ -116,6 +203,12 @@ def _post_deepseek(
     timeout: float,
 ) -> requests.Response:
     """POST a DeepSeek chat completion; raise on non-2xx. Shared by stream/generate."""
+    event = _permit_provider_http_attempt(
+        provider="deepseek",
+        operation="generate_stream" if stream else "generate",
+        model=model,
+        base_url=base_url,
+    )
     body: dict = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -127,9 +220,11 @@ def _post_deepseek(
         headers={"Authorization": f"Bearer {api_key}"},
         json=body,
         timeout=timeout,
+        allow_redirects=False,
         **({"stream": True} if stream else {}),
     )
     resp.raise_for_status()
+    setattr(resp, "_convmem_provider_event", event)
     return resp
 
 
@@ -187,7 +282,10 @@ def _deepseek_generate(
             resp = _post_deepseek(
                 prompt, model, base_url, api_key, stream=False, timeout=timeout
             )
-            return resp.json()["choices"][0]["message"]["content"].strip()
+            data = resp.json()
+            event = getattr(resp, "_convmem_provider_event", {})
+            _report_provider_usage(event, data)
+            return data["choices"][0]["message"]["content"].strip()
         except (
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
@@ -218,6 +316,12 @@ def _ollama_generate_stream(
     timeout: float | None = None,
     connection_timeout: float = 10,
 ) -> Iterator[str]:
+    event = _permit_provider_http_attempt(
+        provider="ollama",
+        operation="generate_stream",
+        model=model,
+        base_url=host,
+    )
     resp = requests.post(
         f"{host.rstrip('/')}/api/generate",
         json={
@@ -242,6 +346,7 @@ def _ollama_generate_stream(
         if chunk:
             yield chunk
         if data.get("done"):
+            _report_provider_usage(event, data)
             break
 
 
@@ -283,6 +388,7 @@ def _deepseek_generate_stream(
                 stream=True,
                 timeout=connection_timeout or 0,
             )
+            final_usage: dict[str, object] = {}
             for line in resp.iter_lines(decode_unicode=True):
                 _check_stream_stop(stop, timeout)
                 if not line or not line.startswith("data: "):
@@ -295,6 +401,8 @@ def _deepseek_generate_stream(
                 except json.JSONDecodeError:
                     continue
                 choices = data.get("choices") or []
+                if isinstance(data.get("usage"), dict):
+                    final_usage = dict(data["usage"])
                 if not choices:
                     continue
                 delta = choices[0].get("delta") or {}
@@ -302,6 +410,11 @@ def _deepseek_generate_stream(
                 if content:
                     yielded_any = True
                     yield content
+            if final_usage:
+                event = getattr(resp, "_convmem_provider_event", {})
+                reporter = _PROVIDER_USAGE_REPORTER.get()
+                if reporter is not None:
+                    reporter(dict(event), final_usage)
             return
         except (
             requests.exceptions.ConnectionError,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -228,7 +229,13 @@ def semantic_queue_at_max_depth(cfg: dict) -> tuple[bool, int, int]:
     return count >= max_depth, count, max_depth
 
 
-def _append_jsonl(path: Path, rows: list[dict], *, unique_pairs: bool = False) -> int:
+def _append_jsonl(
+    path: Path,
+    rows: list[dict],
+    *,
+    unique_pairs: bool = False,
+    unique_event_ids: bool = False,
+) -> int:
     if not rows:
         return 0
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -236,20 +243,42 @@ def _append_jsonl(path: Path, rows: list[dict], *, unique_pairs: bool = False) -
     with lock_path.open("a+", encoding="utf-8") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         existing_pairs: set[tuple[str, str]] = set()
-        if unique_pairs and path.is_file():
-            for line in path.read_text(encoding="utf-8").splitlines():
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                pair = tuple(
-                    sorted((str(row.get("id_a") or ""), str(row.get("id_b") or "")))
-                )
-                if all(pair):
-                    existing_pairs.add(pair)
+        existing_events: dict[str, str] = {}
+        if (unique_pairs or unique_event_ids) and path.is_file():
+            with path.open(encoding="utf-8") as existing:
+                for line in existing:
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if unique_pairs:
+                        pair = tuple(
+                            sorted(
+                                (
+                                    str(row.get("id_a") or ""),
+                                    str(row.get("id_b") or ""),
+                                )
+                            )
+                        )
+                        if all(pair):
+                            existing_pairs.add(pair)
+                    event_id = str(row.get("event_id") or "")
+                    if unique_event_ids and event_id:
+                        existing_events[event_id] = json.dumps(
+                            row, sort_keys=True, separators=(",", ":")
+                        )
         written = 0
         with path.open("a", encoding="utf-8") as handle:
             for row in rows:
+                if unique_event_ids:
+                    event_id = str(row.get("event_id") or "")
+                    if not event_id:
+                        raise ValueError("transaction-bound dedupe row lacks event_id")
+                    encoded = json.dumps(row, sort_keys=True, separators=(",", ":"))
+                    if event_id in existing_events:
+                        if existing_events[event_id] != encoded:
+                            raise ValueError("dedupe event_id collision with different bytes")
+                        continue
                 if unique_pairs:
                     pair = tuple(
                         sorted((str(row.get("id_a") or ""), str(row.get("id_b") or "")))
@@ -258,7 +287,11 @@ def _append_jsonl(path: Path, rows: list[dict], *, unique_pairs: bool = False) -
                         continue
                     existing_pairs.add(pair)
                 handle.write(json.dumps(row, separators=(",", ":")) + "\n")
+                if unique_event_ids:
+                    existing_events[event_id] = encoded
                 written += 1
+            handle.flush()
+            os.fsync(handle.fileno())
         fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
     return written
 
@@ -268,6 +301,8 @@ def persist_ingest_dedupe(cfg: dict, result: IngestDedupeResult) -> dict:
     exact_written = _append_jsonl(
         data_dir / "ingest_duplicate_suppressions.jsonl",
         result.exact_suppressions,
+        unique_event_ids=bool(result.exact_suppressions)
+        and all(row.get("event_id") for row in result.exact_suppressions),
     )
     # Total-line depth (not pending-only) — same rule as job_semantic_dedupe.
     paused, depth, max_depth = semantic_queue_at_max_depth(cfg)
@@ -283,6 +318,8 @@ def persist_ingest_dedupe(cfg: dict, result: IngestDedupeResult) -> dict:
         data_dir / "dedupe_queue.jsonl",
         result.semantic_candidates,
         unique_pairs=True,
+        unique_event_ids=bool(result.semantic_candidates)
+        and all(row.get("event_id") for row in result.semantic_candidates),
     )
     return {
         "exact_suppressed": exact_written,

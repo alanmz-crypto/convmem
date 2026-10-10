@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -68,6 +70,14 @@ def _route(cfg: dict, source: Path) -> tuple | None:
         verbose=False,
         detected_format="jsonl_kiro_session",
     )
+
+
+def _bootstrap_binding() -> dict[str, str]:
+    return {
+        "bootstrap_grant_fingerprint": "1" * 64,
+        "bootstrap_operation_id": "2" * 64,
+        "bootstrap_binding_fingerprint": "3" * 64,
+    }
 
 
 def test_exact_grants_exclude_source_from_mutable_roles(tmp_path: Path) -> None:
@@ -245,6 +255,7 @@ def test_one_shot_bootstrap_then_append_reuses_historical_transforms(
         bootstrap_existing=True,
         expected_prefix_sha256=view.prefix_sha256,
         max_bootstrap_chunks=4,
+        **_bootstrap_binding(),
         chunk_size=2,
         overlap=0,
     )
@@ -262,6 +273,13 @@ def test_one_shot_bootstrap_then_append_reuses_historical_transforms(
     assert first.outcome == "committed"
     assert first.mode == "bootstrap_existing"
     assert first.counters.summarize > 0
+    assert coordinator.last_evidence["non_source_collections_before"] == (
+        coordinator.last_evidence["non_source_collections_after"]
+    )
+    assert set(coordinator.last_evidence["dedupe"]) == {
+        "dedupe_queue.jsonl",
+        "ingest_duplicate_suppressions.jsonl",
+    }
     with coordinator._session() as session:
         assert "legacy-summary" not in session.store.ids_for_source(SUMMARIES, str(source))
         assert "legacy-unit" not in session.store.ids_for_source(UNITS, str(source))
@@ -299,6 +317,7 @@ def test_bootstrap_requires_exact_digest_and_chunk_limit(
         bootstrap_existing=True,
         expected_prefix_sha256="0" * 64,
         max_bootstrap_chunks=4,
+        **_bootstrap_binding(),
         chunk_size=2,
     ).run()
     assert mismatch.outcome == "bootstrap_source_digest_mismatch"
@@ -311,6 +330,7 @@ def test_bootstrap_requires_exact_digest_and_chunk_limit(
         bootstrap_existing=True,
         expected_prefix_sha256=view.prefix_sha256,
         max_bootstrap_chunks=1,
+        **_bootstrap_binding(),
         chunk_size=2,
     ).run()
     assert over_budget.outcome == "bootstrap_chunk_limit_exceeded"
@@ -346,6 +366,7 @@ def test_watcher_route_cannot_resume_one_shot_bootstrap(
             bootstrap_existing=True,
             expected_prefix_sha256=view.prefix_sha256,
             max_bootstrap_chunks=4,
+            **_bootstrap_binding(),
             chunk_size=2,
             fault=interrupt,
         ).run()
@@ -360,9 +381,24 @@ def test_watcher_route_cannot_resume_one_shot_bootstrap(
         bootstrap_existing=True,
         expected_prefix_sha256="0" * 64,
         max_bootstrap_chunks=4,
+        **_bootstrap_binding(),
         chunk_size=2,
     ).run()
     assert wrong_grant.outcome == "bootstrap_replay_grant_mismatch"
+    changed_binding = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256=view.prefix_sha256,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        **{
+            **_bootstrap_binding(),
+            "bootstrap_grant_fingerprint": "9" * 64,
+        },
+    ).run()
+    assert changed_binding.outcome == "bootstrap_replay_grant_mismatch"
     assert not list(Path(cfg["index"]["incremental_jsonl"]["state_dir"]).glob("*/checkpoint.json"))
 
 
@@ -398,6 +434,7 @@ def test_bootstrap_crash_replays_or_restores_exact_before_images(
         bootstrap_existing=True,
         expected_prefix_sha256=digest,
         max_bootstrap_chunks=4,
+        **_bootstrap_binding(),
         chunk_size=2,
         fault=interrupt,
     )
@@ -424,6 +461,7 @@ def test_bootstrap_crash_replays_or_restores_exact_before_images(
         bootstrap_existing=True,
         expected_prefix_sha256=digest,
         max_bootstrap_chunks=4,
+        **_bootstrap_binding(),
         chunk_size=2,
     )
     result = replay.run()
@@ -435,3 +473,423 @@ def test_bootstrap_crash_replays_or_restores_exact_before_images(
         source_ids = session.store.ids_for_source(SUMMARIES, str(source))
         assert ("legacy-summary" in source_ids) is mutate_source
         assert "other-summary" in session.store.ids_for_source(SUMMARIES, "/other")
+
+
+def test_bootstrap_transform_failure_reuses_prepared_work_on_recovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    enable_incremental(isolated)
+    source = write_source(isolated.root, 4)
+    cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
+    cfg["index"]["incremental_jsonl"].update(
+        live_sources=[str(source)], embed_dimension=8
+    )
+    boundary = ProductionBoundary(
+        cfg, source, config_path=isolated.layout["user_config"]
+    )
+    view = parse_complete_prefix(str(source))
+    original = incremental_jsonl.build_chunk_artifact
+    first_offsets: list[int] = []
+
+    def fail_second(*args, chunk=None, **kwargs):
+        assert chunk is not None
+        first_offsets.append(int(chunk["start_offset"]))
+        if int(chunk["start_offset"]) == 2:
+            raise incremental_jsonl.IncrementalJsonlError("transform_failed", "fake")
+        return original(*args, chunk=chunk, **kwargs)
+
+    monkeypatch.setattr(incremental_jsonl, "build_chunk_artifact", fail_second)
+    first = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        processed={"old-hash": {"path": str(source)}},
+        bootstrap_existing=True,
+        expected_prefix_sha256=view.prefix_sha256,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        overlap=0,
+        **_bootstrap_binding(),
+    ).run()
+    assert first.outcome == "transform_failed"
+    assert first_offsets == [0, 2]
+    transaction = json.loads(
+        next(Path(cfg["index"]["incremental_jsonl"]["state_dir"]).glob("*/transaction.json")).read_text(
+            encoding="utf-8"
+        )
+    )
+    assert transaction["phase"] == "transform_failed"
+
+    recovery_offsets: list[int] = []
+
+    def track_recovery(*args, chunk=None, **kwargs):
+        assert chunk is not None
+        recovery_offsets.append(int(chunk["start_offset"]))
+        return original(*args, chunk=chunk, **kwargs)
+
+    monkeypatch.setattr(incremental_jsonl, "build_chunk_artifact", track_recovery)
+    recovered = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256=view.prefix_sha256,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        overlap=0,
+        **_bootstrap_binding(),
+    ).run()
+    assert recovered.outcome == "committed"
+    assert recovered.mode == "transform_failed_recovery"
+    assert recovery_offsets == [2]
+    assert recovered.reused_artifacts == 1
+
+
+def test_bootstrap_preparing_transaction_recovers_under_same_binding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    enable_incremental(isolated)
+    source = write_source(isolated.root, 2)
+    cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
+    cfg["index"]["incremental_jsonl"].update(
+        live_sources=[str(source)], embed_dimension=8
+    )
+    boundary = ProductionBoundary(
+        cfg, source, config_path=isolated.layout["user_config"]
+    )
+    view = parse_complete_prefix(str(source))
+    interrupted = False
+
+    def stop_preparing(point: str) -> None:
+        nonlocal interrupted
+        if point == "after_transaction_phase_publish" and not interrupted:
+            interrupted = True
+            raise RuntimeError("preparing interruption")
+
+    first = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        processed={"old-hash": {"path": str(source)}},
+        bootstrap_existing=True,
+        expected_prefix_sha256=view.prefix_sha256,
+        max_bootstrap_chunks=2,
+        chunk_size=2,
+        overlap=0,
+        fault=stop_preparing,
+        **_bootstrap_binding(),
+    )
+    with pytest.raises(RuntimeError, match="preparing interruption"):
+        first.run()
+    assert first.counters.total == 0
+
+    recovered = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256=view.prefix_sha256,
+        max_bootstrap_chunks=2,
+        chunk_size=2,
+        overlap=0,
+        **_bootstrap_binding(),
+    ).run()
+    assert recovered.outcome == "committed"
+    assert recovered.mode == "preparing_recovery"
+    assert recovered.counters.summarize == 1
+
+
+
+def test_bootstrap_dimension_uses_existing_collection_rows_as_authority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    enable_incremental(isolated)
+    source = write_source(isolated.root, 2)
+    cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
+    cfg["index"]["incremental_jsonl"].update(
+        live_sources=[str(source)], embed_dimension=8
+    )
+    boundary = ProductionBoundary(
+        cfg, source, config_path=isolated.layout["user_config"]
+    )
+    coordinator = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256=parse_complete_prefix(str(source)).prefix_sha256,
+        max_bootstrap_chunks=2,
+        chunk_size=2,
+        **_bootstrap_binding(),
+    )
+    with coordinator._session() as session:
+        session.store.add_summary(
+            "legacy-summary", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+        session.store.add_unit(
+            "legacy-unit", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+
+    assert coordinator.require_existing_embedding_dimension(8) == {
+        SUMMARIES: 8,
+        UNITS: 8,
+    }
+    with pytest.raises(
+        incremental_jsonl.IncrementalJsonlError,
+        match="embedding_dimension_mismatch",
+    ):
+        coordinator.require_existing_embedding_dimension(7)
+
+    with coordinator._session() as session:
+        session.store.delete_units_for_source(str(source))
+    with pytest.raises(
+        incremental_jsonl.IncrementalJsonlError,
+        match="embedding_dimension_unproven",
+    ):
+        coordinator.require_existing_embedding_dimension(8)
+
+
+def test_replay_detects_foreign_mutation_without_rebaselining_rollback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    enable_incremental(isolated)
+    source = write_source(isolated.root, 4)
+    cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
+    cfg["index"]["incremental_jsonl"].update(
+        live_sources=[str(source)], embed_dimension=8
+    )
+    boundary = ProductionBoundary(
+        cfg, source, config_path=isolated.layout["user_config"]
+    )
+    digest = parse_complete_prefix(str(source)).prefix_sha256
+
+    def first_crash(point: str) -> None:
+        if point == "after_summary_upsert":
+            raise RuntimeError("initial partial apply")
+
+    first = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        processed={"old-hash": {"path": str(source)}},
+        bootstrap_existing=True,
+        expected_prefix_sha256=digest,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        fault=first_crash,
+        **_bootstrap_binding(),
+    )
+    with first._session() as session:
+        session.store.add_summary(
+            "legacy-summary", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+        session.store.add_unit(
+            "legacy-unit", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+        session.store.add_summary(
+            "foreign-summary", "foreign", [0.1] * 8, {"source_path": "/other"}
+        )
+    with pytest.raises(RuntimeError, match="initial partial apply"):
+        first.run()
+    rollback_path = first.paths["rollback"]
+    original_rollback = rollback_path.read_bytes()
+
+    with first._session() as session:
+        session.store.add_summary(
+            "foreign-summary", "tampered", [0.2] * 8, {"source_path": "/other"}
+        )
+
+    replay = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256=digest,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        **_bootstrap_binding(),
+    )
+    with pytest.raises(
+        incremental_jsonl.IncrementalJsonlError,
+        match="non_source_isolation_changed",
+    ):
+        replay.run()
+    assert rollback_path.read_bytes() == original_rollback
+    assert json.loads(replay.paths["transaction"].read_text(encoding="utf-8"))[
+        "phase"
+    ] == "APPLYING"
+    with replay._session() as session:
+        assert "legacy-summary" in session.store.ids_for_source(SUMMARIES, str(source))
+        foreign = session.store.snapshot_source_rows(SUMMARIES, "/other")
+    assert foreign[0]["document"] == "tampered"
+
+
+def test_second_replay_crash_keeps_original_rollback_authority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    enable_incremental(isolated)
+    source = write_source(isolated.root, 4)
+    cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
+    cfg["index"]["incremental_jsonl"].update(
+        live_sources=[str(source)], embed_dimension=8
+    )
+    boundary = ProductionBoundary(
+        cfg, source, config_path=isolated.layout["user_config"]
+    )
+    digest = parse_complete_prefix(str(source)).prefix_sha256
+
+    def first_crash(point: str) -> None:
+        if point == "after_summary_upsert":
+            raise RuntimeError("initial partial apply")
+
+    first = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        processed={"old-hash": {"path": str(source)}},
+        bootstrap_existing=True,
+        expected_prefix_sha256=digest,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        fault=first_crash,
+        **_bootstrap_binding(),
+    )
+    with first._session() as session:
+        session.store.add_summary(
+            "legacy-summary", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+        session.store.add_unit(
+            "legacy-unit", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+        session.store.add_summary(
+            "foreign-summary", "foreign", [0.1] * 8, {"source_path": "/other"}
+        )
+    with pytest.raises(RuntimeError, match="initial partial apply"):
+        first.run()
+    rollback_path = first.paths["rollback"]
+    original_rollback = rollback_path.read_bytes()
+    crashed_again = False
+
+    def replay_crash(point: str) -> None:
+        nonlocal crashed_again
+        if point == "after_unit_upsert" and not crashed_again:
+            crashed_again = True
+            raise RuntimeError("second partial apply")
+
+    replay = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256=digest,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        fault=replay_crash,
+        **_bootstrap_binding(),
+    )
+    with pytest.raises(RuntimeError, match="second partial apply"):
+        replay.run()
+    assert crashed_again
+    assert rollback_path.read_bytes() == original_rollback
+    transaction = json.loads(replay.paths["transaction"].read_text(encoding="utf-8"))
+    assert transaction["rollback_authority_sha256"] == hashlib.sha256(
+        original_rollback
+    ).hexdigest()
+    assert transaction["phase"] == "APPLYING"
+
+
+def test_replay_rejects_replaced_rollback_authority_before_apply(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    enable_incremental(isolated)
+    source = write_source(isolated.root, 4)
+    cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
+    cfg["index"]["incremental_jsonl"].update(
+        live_sources=[str(source)], embed_dimension=8
+    )
+    boundary = ProductionBoundary(
+        cfg, source, config_path=isolated.layout["user_config"]
+    )
+    digest = parse_complete_prefix(str(source)).prefix_sha256
+
+    def first_crash(point: str) -> None:
+        if point == "after_summary_upsert":
+            raise RuntimeError("initial partial apply")
+
+    first = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        processed={"old-hash": {"path": str(source)}},
+        bootstrap_existing=True,
+        expected_prefix_sha256=digest,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        fault=first_crash,
+        **_bootstrap_binding(),
+    )
+    with first._session() as session:
+        session.store.add_summary(
+            "legacy-summary", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+        session.store.add_unit(
+            "legacy-unit", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+    with pytest.raises(RuntimeError, match="initial partial apply"):
+        first.run()
+
+    rollback_path = first.paths["rollback"]
+    original_rollback = rollback_path.read_bytes()
+    transaction = json.loads(first.paths["transaction"].read_text(encoding="utf-8"))
+    assert transaction["rollback_authority_sha256"] == hashlib.sha256(
+        original_rollback
+    ).hexdigest()
+    replacement = json.loads(original_rollback)
+    replacement["candidate_ids"] = ["replacement"]
+    rollback_path.write_text(
+        json.dumps(replacement, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    before_replay = rollback_path.read_bytes()
+
+    replay = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256=digest,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        **_bootstrap_binding(),
+    )
+    with pytest.raises(
+        incremental_jsonl.IncrementalJsonlError,
+        match="original rollback journal changed during replay",
+    ):
+        replay.run()
+    assert rollback_path.read_bytes() == before_replay
+    assert json.loads(
+        first.paths["transaction"].read_text(encoding="utf-8")
+    ) == transaction

@@ -9,6 +9,35 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
+  PENDING
+  (2026-10-09):** Sol resolved the first exact-packet Kiro/Copilot conflict in
+  Copilot's favor, corrected the packet, and obtained same-revision `PASS` from
+  both lanes at packet commit `4aecb96`. Ryan then authorized Cursor's bounded
+  hermetic corrective. On exact implementation revision `b68daea`, Kiro issued
+  `PASS` while Copilot issued `FAIL`. Sol-High adjudicated the material conflict
+  in Copilot's favor: APPLYING replay re-snapshots partially applied state and
+  can overwrite the original rollback/isolation authority; embedding dimension
+  is also not independently checked before paid work. After Switchboard PR #370
+  merged, the existing work was replayed without conflict onto current `main`
+  `956d74e` on
+  `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective`. Cursor's
+  corrected implementation is pushed at `b108ab6`: replay preserves original
+  rollback authority, dimension is proven from existing source rows before
+  provider work, and redirects are disabled. The selected 273-test focused set
+  passes across the main run plus three isolated environment reruns; 25 governed
+  inventory tests, secret scan, critical invariants, and the Pylint regression
+  gate also pass. Kiro and Copilot both issued complete `PASS` verdicts with no
+  blockers on exact revision `318c2f9`. Remaining advisories are fail-closed or
+  separately gated: v1 canary rollback compatibility, replay-time foreign
+  dedupe/export evidence limits, clearer 3xx taxonomy, existing-row dimension
+  scope, and the pending CI-equivalent full suite. The packet remains `NO-GO`
+  until merge and a new exact live grant. No live bootstrap,
+  provider call, config/runtime change, watcher action, PR, or merge is
+  authorized. Resume from the
+  [Cursor Execute handoff](SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md)
+  and [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
+
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
   default-running wiring test could reach production Chroma after an early
@@ -36,19 +65,6 @@ cross-arc snapshot and the linked arc brief below.
   The watcher remains disabled; the live 12.5 GiB OOM and issue
   #268 remain open. See the
   [§9.7 execution evidence](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
-
-- **Arc Codex / issue #286 — guarded Kiro route MERGED, default off
-  (2026-10-09):** Ryan squash-merged
-  [PR #365](https://github.com/alanmz-crypto/convmem/pull/365) onto `main` as
-  `f3171fc`. Copilot and Kiro passed the reviewed PR tip `7ed46c4`, and all
-  six CI checks passed. The guarded production boundary and one-shot bootstrap
-  can cover one Kiro JSONL source after an express grant; Crush SQLite and
-  Cursor JSONL remain on the legacy route. The watcher remains stopped and
-  disabled for cost containment. No live bootstrap, config/runtime promotion,
-  watcher restart, or paid-call measurement was granted by the merge. Ryan must issue
-  separate exact-source/budget and later runtime/restart grants. Resume from
-  the [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md)
-  and [live-route design](../plans/DESIGN-issue-286-live-activation.md).
 
 - **PR Steward reminder — Ryan chose Option B (2026-09-28):** Assign the
   existing PR Steward role (default: Codex) through explicit, bounded briefs

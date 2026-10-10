@@ -33,6 +33,7 @@ from distill import (
     normalize_unit,
 )
 from llm import (
+    ProviderAttemptBudgetExceeded,
     ollama_embed,
     resolve_generation_binding,
     summarize,
@@ -825,6 +826,7 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
                     "deepseek_base_url", "https://api.deepseek.com"
                 ),
             )
+            _bump_counter(counters, "summarize_success")
             _bump_counter(counters, "summary_embed")
             summary_embedding = ollama_embed(
                 summary,
@@ -833,6 +835,8 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
             )
             break
         except Exception as exc:  # pylint: disable=broad-exception-caught
+            if isinstance(exc, ProviderAttemptBudgetExceeded):
+                raise
             fatal_status = _provider_fatal(exc)
             if fatal_status is not None:
                 _log_chunk_failure(chunk["start_offset"], "summarize", path, exc)
@@ -863,8 +867,11 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
                     "deepseek_base_url", "https://api.deepseek.com"
                 ),
             )
+            _bump_counter(counters, "distill_success")
             break
         except Exception as exc:  # pylint: disable=broad-exception-caught
+            if isinstance(exc, ProviderAttemptBudgetExceeded):
+                raise
             fatal_status = _provider_fatal(exc)
             if fatal_status is not None:
                 _log_chunk_failure(chunk["start_offset"], "distill", path, exc)
@@ -986,6 +993,8 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
                 host=models["ollama_host"],
             )
         except Exception as exc:  # pylint: disable=broad-exception-caught
+            if isinstance(exc, ProviderAttemptBudgetExceeded):
+                raise
             fatal_status = _provider_fatal(exc)
             if fatal_status is not None:
                 _log_chunk_failure(chunk["start_offset"], "embed", path, exc)

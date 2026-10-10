@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -52,6 +54,24 @@ class PathCandidateTests(unittest.TestCase):
 
 
 class LockTests(unittest.TestCase):
+    def test_lock_files_are_private_under_permissive_umask(self):
+        with tempfile.TemporaryDirectory() as td:
+            cfg = _cfg(Path(td))
+            canon = "/tmp/private-source.jsonl"
+            old_umask = os.umask(0o022)
+            try:
+                with source_flock(cfg, canon):
+                    pass
+                with export_flock(cfg):
+                    pass
+            finally:
+                os.umask(old_umask)
+
+            self.assertEqual(
+                stat.S_IMODE(source_lock_path(cfg, canon).stat().st_mode), 0o600
+            )
+            self.assertEqual(stat.S_IMODE(export_lock_path(cfg).stat().st_mode), 0o600)
+
     def test_source_lock_under_configured_data_root(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

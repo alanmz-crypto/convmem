@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import fcntl
 import hashlib
+import os
+import stat
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterator, TextIO
 
 _tls = threading.local()
 
@@ -60,12 +62,29 @@ def export_lock_path(cfg: dict) -> Path:
     return export_lock_path_for_file(cfg["index"]["units_export"])
 
 
+def _open_private_lock(path: Path) -> TextIO:
+    """Create or reopen a regular lock file with private permissions."""
+    flags = os.O_RDWR | os.O_CREAT | os.O_APPEND | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise RuntimeError(f"lock path is not a regular file: {path}")
+        os.fchmod(descriptor, 0o600)
+        handle = os.fdopen(descriptor, "a+", encoding="utf-8")
+        descriptor = -1
+        return handle
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 @contextmanager
 def source_flock(cfg: dict, canonical_path: str) -> Iterator[Path]:
     assert_lock_ordering_ok(acquiring="source")
     lock = source_lock_path(cfg, canonical_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+", encoding="utf-8") as handle:
+    with _open_private_lock(lock) as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         _tls.source_depth = _source_depth() + 1
         try:
@@ -79,7 +98,7 @@ def source_flock(cfg: dict, canonical_path: str) -> Iterator[Path]:
 def export_flock_path(export_path: Path | str) -> Iterator[Path]:
     lock = export_lock_path_for_file(export_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+", encoding="utf-8") as handle:
+    with _open_private_lock(lock) as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         _tls.export_depth = _export_depth() + 1
         try:
