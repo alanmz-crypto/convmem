@@ -13,11 +13,11 @@ bounded scope below
 
 | Field | Value |
 |---|---|
-| **State** | `CORRECTIVE_REQUIRED` — Sol-High accepted Copilot's exact-revision replay/rollback FAIL |
+| **State** | `IMPLEMENTED_REVIEW_PENDING` — corrected implementation and focused evidence complete |
 | **Baseline** | `956d74e8bab4a6c397a80a14a5709043b8b205ef` on `origin/main` after Switchboard PR #370 |
 | **Implementation branch** | `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective` |
-| **Carried implementation** | `a23eb22` contains the code from reviewed `273c27a`; `5a7f640` carries the full packet/handoff state onto current `main` |
-| **Push status** | current-main branch pushed with an explicit refspec after every carried commit |
+| **Corrected implementation** | `b108ab6` on the current-main branch; `a23eb22` preserves the first implementation for comparison |
+| **Push status** | corrected implementation pushed to the explicit branch ref |
 | **PR** | not opened; PR creation remains separately Ryan-granted |
 | **Ryan GATE** | none for this bounded hermetic implementation; live resources and PR creation remain ungranted |
 | **Required review** | after correction, Kiro design review and GitHub Copilot safety audit on the same exact implementation revision |
@@ -246,6 +246,33 @@ for every redirected request before transport. Normal routes remain default
 off and unchanged. All evidence remains hermetic; no live provider or corpus
 resource is authorized.
 
+### Corrected implementation checkpoint
+
+Cursor's preserved diff was completed and verified as `b108ab6`:
+
+- APPLYING replay hashes and reuses the original rollback journal, checks the
+  original non-source digest before and after apply, and never rewrites that
+  journal during replay;
+- replay rollback restores source-owned state while preserving the durable
+  transaction and rollback authority for a fail-stopped second attempt;
+- existing summary and unit rows independently prove the effective embedding
+  dimension before provider accounting is entered; absence or disagreement
+  refuses before paid work; and
+- DeepSeek transport sets `allow_redirects=False`.
+
+Verification evidence:
+
+- new adjudication regressions: `5 passed`;
+- selected incremental/provider suite: `270 passed`, with three environment
+  failures (temporary lock modes and the managed read-only writer-lock path)
+  rerun under isolated `HOME` and restrictive `umask`: `3 passed`;
+- governed R2b/Shadow inventory tests: `25 passed`;
+- secret scan: PASS;
+- critical-invariant manifest: PASS (`16 modules`);
+- Pylint regression gate: PASS (`461 findings`, `240 fingerprints`, no
+  new/increased findings against `956d74e`); and
+- full repository suite: not claimed; CI-equivalent execution remains pending.
+
 ---
 
 ## Test expectations
@@ -328,23 +355,25 @@ hashes mechanically without showing why the changed authority bytes require it.
 
 **Cursor (corrective result):**
 
-- [ ] Read this file and the Arc Codex STATUS brief before the first edit.
-- [ ] Work only on
+- [x] Read this file and the Arc Codex STATUS brief before the first edit.
+- [x] Worked only on
       `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective`.
-- [ ] Preserve the live-resource and provider prohibition.
-- [ ] Preserve immutable rollback/isolation authority across APPLYING replay.
-- [ ] Add an independent pre-paid-work embedding-dimension check.
-- [ ] Disable or durably account for redirected HTTP transports.
-- [ ] Provide the new Cursor Track A transcript; prior implementation evidence
-      remains at `~/.cursor/projects/home-lauer-local-share-convmem-worktrees-fix-2026-10-09-issue-286-bootstrap-budget-safety/agent-transcripts/d78bb8ed-6ef2-4540-beb3-c2797dea257a/d78bb8ed-6ef2-4540-beb3-c2797dea257a.jsonl`.
-- [ ] Return exact tip, focused evidence, unresolved risks, and Track A path.
+- [x] Preserved the live-resource and provider prohibition.
+- [x] Preserved immutable rollback/isolation authority across APPLYING replay.
+- [x] Added an independent pre-paid-work embedding-dimension check.
+- [x] Disabled redirected paid HTTP transports.
+- [x] Cursor Track A transcripts:
+      `~/.cursor/projects/home-lauer-local-share-convmem-worktrees-fix-2026-10-09-issue-286-bootstrap-replay-authority-corrective/agent-transcripts/9a735eba-1111-4cf2-ae12-428b483f47ac/9a735eba-1111-4cf2-ae12-428b483f47ac.jsonl`
+      and
+      `~/.cursor/projects/home-lauer-local-share-convmem-worktrees-fix-2026-10-09-issue-286-bootstrap-replay-authority-corrective/agent-transcripts/f707d20e-a38d-44e6-9e8e-7f81998ccf1a/f707d20e-a38d-44e6-9e8e-7f81998ccf1a.jsonl`.
+- [x] Exact code tip, focused evidence, and unresolved full-suite gap recorded.
 - [ ] Kiro/Copilot same-revision review and CI-equivalent full-suite evidence.
 
 ## TL;DR
 
-Sol-High accepted Copilot's FAIL on the first implementation: APPLYING replay
-can replace original rollback/isolation authority, and embedding dimension is
-not independently checked before paid work. The current-main corrective branch
-awaits Cursor's hermetic repair and new same-revision review. Live bootstrap,
+Sol-High accepted Copilot's FAIL on the first implementation. Cursor's corrected
+implementation at `b108ab6` now preserves original replay authority, proves
+dimension before provider work, and disables redirects. Same-revision review
+and CI-equivalent full-suite evidence remain. Live bootstrap,
 providers, runtime/config, watcher operations, PR creation, and merge remain
 separately gated.

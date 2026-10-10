@@ -9,7 +9,8 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — replay-authority corrective REQUIRED
+- **Arc Codex / issue #286 — replay-authority corrective IMPLEMENTED / REVIEW
+  PENDING
   (2026-10-09):** Sol resolved the first exact-packet Kiro/Copilot conflict in
   Copilot's favor, corrected the packet, and obtained same-revision `PASS` from
   both lanes at packet commit `4aecb96`. Ryan then authorized Cursor's bounded
@@ -19,10 +20,15 @@ cross-arc snapshot and the linked arc brief below.
   can overwrite the original rollback/isolation authority; embedding dimension
   is also not independently checked before paid work. After Switchboard PR #370
   merged, the existing work was replayed without conflict onto current `main`
-  `956d74e` at branch tip `5a7f640` on
-  `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective`. Cursor must
-  correct those blockers and add hermetic regressions before a new exact-tip
-  Kiro/Copilot review. The packet remains `NO-GO`. No live bootstrap,
+  `956d74e` on
+  `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective`. Cursor's
+  corrected implementation is pushed at `b108ab6`: replay preserves original
+  rollback authority, dimension is proven from existing source rows before
+  provider work, and redirects are disabled. The selected 273-test focused set
+  passes across the main run plus three isolated environment reruns; 25 governed
+  inventory tests, secret scan, critical invariants, and the Pylint regression
+  gate also pass. Same-revision Kiro/Copilot review and CI-equivalent full-suite
+  evidence remain. The packet remains `NO-GO`. No live bootstrap,
   provider call, config/runtime change, watcher action, PR, or merge is
   authorized. Resume from the
   [Cursor Execute handoff](SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md)
