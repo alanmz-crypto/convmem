@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import stat
 from pathlib import Path
 
 import pytest
@@ -152,6 +153,8 @@ def test_export_rollback_streams_foreign_bytes_and_restores_exact_order(
     export.write_bytes(foreign_a + foreign_b + json.dumps({"id": "new", "source_path": str(source)}).encode() + b"\n")
     coordinator._restore_export(preimage)  # pylint: disable=protected-access
     assert export.read_bytes() == original
+    lock = export.with_suffix(export.suffix + ".lock")
+    assert stat.S_IMODE(lock.stat().st_mode) == 0o600
 
     for method in (
         coordinator._snapshot_export_before_image,  # pylint: disable=protected-access

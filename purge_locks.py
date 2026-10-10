@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import fcntl
 import hashlib
+import os
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -79,7 +80,13 @@ def source_flock(cfg: dict, canonical_path: str) -> Iterator[Path]:
 def export_flock_path(export_path: Path | str) -> Iterator[Path]:
     lock = export_lock_path_for_file(export_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+", encoding="utf-8") as handle:
+    descriptor = os.open(
+        lock,
+        os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0),
+        0o600,
+    )
+    os.fchmod(descriptor, 0o600)
+    with os.fdopen(descriptor, "a+", encoding="utf-8") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         _tls.export_depth = _export_depth() + 1
         try:

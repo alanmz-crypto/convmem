@@ -13,10 +13,11 @@ BASELINE_HASHES = {
     # watch.py restores torn HNSW saves after an abrupt index-child exit; see
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
     "watch.py": "ff226b0890017175af2664a8d5da49a9a31eca9a9ee750084b6535995a94cb7c",
-    "ingest.py": "a3c20269537735a096921bdfd25451c403a83305c1d7f729962b453bd6a7a4f3",
-    # Refreshed for issue #286's gated live route and one-shot bootstrap;
-    # the canary remains unreachable from the CLI and watcher.
-    "incremental_jsonl.py": "f1da9ea59ccf337c30c702ea917e1a106cc833a05ccc5dcbb05dfb0db398604f",
+    # Refreshed for issue #286's authorized bootstrap safety corrective:
+    # bootstrap-only attempt accounting and recovery now cross these authority
+    # bytes; the canary remains unreachable from the CLI and watcher.
+    "ingest.py": "8d3062f262b3888ebaebd86fe2bc2f6d3311c7e964f5c446394ba9bef3d6014d",
+    "incremental_jsonl.py": "b46445e2bd9796be93afff32baaa78060a0a776cb3a7e9dbaf9fca53f290599d",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
