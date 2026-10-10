@@ -263,21 +263,74 @@ def _remaining_floor(payload: dict) -> int:
     return int(payload["peak_rss_bytes"]) - int(payload["import_baseline_rss_bytes"])
 
 
+_CANARY_BLOCKED_VERDICT = (
+    "Measurement stopped: production canary drift or watcher-state change was "
+    "detected during the paired run; the writer is unknown. Do not operate the "
+    "watcher from this evidence. No remaining-floor delta is claimed for §9.8. "
+    "The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
+)
+
+
+def _pair_canary_tainted(canary_ambiguity: list[str], n: int) -> bool:
+    token = f"n={n}:"
+    return any(
+        line.startswith(("baseline n=", "candidate n=")) and token in line
+        for line in canary_ambiguity
+    )
+
+
+def _try_admissible_pair_deltas(
+    row: dict,
+    *,
+    n: int,
+    transcript_hash: str,
+    baseline: dict,
+    candidate: dict,
+    pair_canary_tainted: bool,
+    hard_failures: list[str],
+) -> bool:
+    """Write peak/floor deltas when the pair is semantically complete and untainted."""
+    if (
+        baseline.get("status") != "succeeded"
+        or candidate.get("status") != "succeeded"
+        or "peak_rss_bytes" not in baseline
+        or "peak_rss_bytes" not in candidate
+    ):
+        return False
+    if not (
+        baseline.get("probe_digest") == candidate.get("probe_digest")
+        and baseline.get("transcript_sha256") == candidate.get("transcript_sha256") == transcript_hash
+        and baseline.get("index_stats", {}).get("files_processed") == 1
+        and candidate.get("index_stats", {}).get("files_processed") == 1
+        and baseline.get("index_stats", {}).get("files_skipped") == 0
+        and candidate.get("index_stats", {}).get("files_skipped") == 0
+    ):
+        hard_failures.append(f"n={n}: paired semantic or transcript mismatch")
+        return False
+    if pair_canary_tainted:
+        row["canary_tainted"] = True
+        return False
+    row["delta_peak_bytes"] = candidate["peak_rss_bytes"] - baseline["peak_rss_bytes"]
+    row["delta_floor_bytes"] = _remaining_floor(candidate) - _remaining_floor(baseline)
+    return True
+
+
 def _finalize_arm_canaries(
     before: dict,
     *,
     label: str,
     n: int,
     canary_ambiguity: list[str],
-) -> None:
+) -> bool:
     after = refresh_canary_stats(before)
     drift = canary_drift_report(before, after)
     if drift:
         canary_ambiguity.extend(
             [f"{label} n={n}: {line}" for line in drift]
         )
-        return
+        return True
     assert_canaries_unchanged(before, after)
+    return False
 
 
 def _checked_active_host(scratch: Path, watcher: dict) -> dict:
@@ -459,6 +512,8 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         transcript_hash = write_synthetic_transcript(transcript_path)
 
         pair: dict[str, dict] = {}
+        pair_canary_tainted = False
+        pending_success_logs: list[tuple[str, dict]] = []
         for label, tip_root, tip_sha in (
             ("baseline", BASELINE_ROOT, BASELINE_SHA),
             ("candidate", ROOT, branch_tip),
@@ -487,14 +542,16 @@ def test_e2e_paired_ingest_index_measurement() -> None:
                     while_active=active_check,
                 )
             finally:
-                _finalize_arm_canaries(
+                if _finalize_arm_canaries(
                     canaries_before,
                     label=label,
                     n=n,
                     canary_ambiguity=canary_ambiguity,
-                )
+                ):
+                    pair_canary_tainted = True
                 if watcher_state() != host["watcher"]:
                     canary_ambiguity.append(f"{label} n={n}: watcher state changed")
+                    pair_canary_tainted = True
 
             if outcome is not None:
                 status = outcome["status"]
@@ -510,13 +567,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
                         "hermetic_guards_installed",
                         "cgroup_2gib",
                     ]
-                    print(
-                        f"§9.7 {label} n={n}: import={format_mib(outcome['import_baseline_rss_bytes'])} "
-                        f"peak={format_mib(outcome['peak_rss_bytes'])} "
-                        f"floor={format_mib(_remaining_floor(outcome))} "
-                        f"probe={outcome['probe_digest']}",
-                        flush=True,
-                    )
+                    pending_success_logs.append((label, outcome))
                 else:
                     print(
                         f"§9.7 {label} n={n}: {status} "
@@ -531,6 +582,16 @@ def test_e2e_paired_ingest_index_measurement() -> None:
 
             shutil.rmtree(layout["root"], ignore_errors=True)
 
+        for label, outcome in pending_success_logs:
+            parts = [
+                f"§9.7 {label} n={n}: import={format_mib(outcome['import_baseline_rss_bytes'])}",
+                f"peak={format_mib(outcome['peak_rss_bytes'])}",
+            ]
+            if not pair_canary_tainted:
+                parts.append(f"floor={format_mib(_remaining_floor(outcome))}")
+            parts.append(f"probe={outcome['probe_digest']}")
+            print(" ".join(parts), flush=True)
+
         row = {
             "n": n,
             "transcript_sha256": transcript_hash,
@@ -539,25 +600,18 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         }
         baseline = pair.get("baseline") or {}
         candidate = pair.get("candidate") or {}
-        if (
-            baseline.get("status") == "succeeded"
-            and candidate.get("status") == "succeeded"
-            and "peak_rss_bytes" in baseline
-            and "peak_rss_bytes" in candidate
+        if _pair_canary_tainted(canary_ambiguity, n):
+            pair_canary_tainted = True
+        if _try_admissible_pair_deltas(
+            row,
+            n=n,
+            transcript_hash=transcript_hash,
+            baseline=baseline,
+            candidate=candidate,
+            pair_canary_tainted=pair_canary_tainted,
+            hard_failures=hard_failures,
         ):
-            if not (
-                baseline.get("probe_digest") == candidate.get("probe_digest")
-                and baseline.get("transcript_sha256") == candidate.get("transcript_sha256") == transcript_hash
-                and baseline.get("index_stats", {}).get("files_processed") == 1
-                and candidate.get("index_stats", {}).get("files_processed") == 1
-                and baseline.get("index_stats", {}).get("files_skipped") == 0
-                and candidate.get("index_stats", {}).get("files_skipped") == 0
-            ):
-                hard_failures.append(f"n={n}: paired semantic or transcript mismatch")
-            else:
-                row["delta_peak_bytes"] = candidate["peak_rss_bytes"] - baseline["peak_rss_bytes"]
-                row["delta_floor_bytes"] = _remaining_floor(candidate) - _remaining_floor(baseline)
-                complete_pairs += 1
+            complete_pairs += 1
         rows.append(row)
         shutil.rmtree(seed_dir, ignore_errors=True)
         if hard_failures or baseline.get("status") != "succeeded" or candidate.get("status") != "succeeded":
@@ -565,12 +619,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
 
     blocked = complete_pairs != len(FULL_SIZES) or bool(canary_ambiguity) or bool(hard_failures)
     if canary_ambiguity:
-        verdict = (
-            "Measurement stopped: production canary drift detected during the paired "
-            "run (active watch may have changed a canary). Do not operate the watcher "
-            "from this evidence. No remaining-floor delta is claimed for §9.8. "
-            "The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
-        )
+        verdict = _CANARY_BLOCKED_VERDICT
     elif hard_failures:
         verdict = (
             "Measurement refused after a hermetic denial or paired semantic mismatch. "
@@ -623,6 +672,67 @@ def test_e2e_paired_ingest_index_measurement() -> None:
     print(json.dumps(evidence, indent=2), flush=True)
     if blocked:
         pytest.fail("§9.7 measurement blocked; no full-curve floor is accepted")
+
+
+def test_canary_drift_excludes_successful_pair_from_admissible_deltas() -> None:
+    """Successful workers with canary drift must not emit admissible floor deltas."""
+    transcript = "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf"
+    baseline = {
+        "status": "succeeded",
+        "peak_rss_bytes": 1_000,
+        "import_baseline_rss_bytes": 100,
+        "probe_digest": "probe",
+        "transcript_sha256": transcript,
+        "index_stats": {"files_processed": 1, "files_skipped": 0},
+    }
+    candidate = {
+        "status": "succeeded",
+        "peak_rss_bytes": 900,
+        "import_baseline_rss_bytes": 100,
+        "probe_digest": "probe",
+        "transcript_sha256": transcript,
+        "index_stats": {"files_processed": 1, "files_skipped": 0},
+    }
+    hard_failures: list[str] = []
+
+    clean_row: dict = {"n": 64}
+    assert _try_admissible_pair_deltas(
+        clean_row,
+        n=64,
+        transcript_hash=transcript,
+        baseline=baseline,
+        candidate=candidate,
+        pair_canary_tainted=False,
+        hard_failures=hard_failures,
+    )
+    assert clean_row["delta_peak_bytes"] == -100
+    assert clean_row["delta_floor_bytes"] == -100
+
+    tainted_row: dict = {"n": 20_000}
+    assert _try_admissible_pair_deltas(
+        tainted_row,
+        n=20_000,
+        transcript_hash=transcript,
+        baseline=baseline,
+        candidate=candidate,
+        pair_canary_tainted=True,
+        hard_failures=hard_failures,
+    ) is False
+    assert tainted_row["canary_tainted"] is True
+    assert "delta_peak_bytes" not in tainted_row
+    assert "delta_floor_bytes" not in tainted_row
+    assert not hard_failures
+
+    ambiguity = ["candidate n=20000: chroma drift example"]
+    assert _pair_canary_tainted(ambiguity, 20_000)
+    assert not _pair_canary_tainted(ambiguity, 64)
+    assert _CANARY_BLOCKED_VERDICT == (
+        "Measurement stopped: production canary drift or watcher-state change was "
+        "detected during the paired run; the writer is unknown. Do not operate the "
+        "watcher from this evidence. No remaining-floor delta is claimed for §9.8. "
+        "The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
+    )
+    assert "active watch" not in _CANARY_BLOCKED_VERDICT.lower()
 
 
 def test_e2e_wiring_in_denied_subprocess(tmp_path: Path) -> None:
