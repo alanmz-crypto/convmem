@@ -247,6 +247,29 @@ def exposure_c0_scenarios() -> list[dict[str, Any]]:
     ]
 
 
+def exposure_memory_meta(i: int, envelope: str, source_path: str) -> dict[str, Any]:
+    """Build the shared synthetic metadata for both exposure measurements."""
+    kind = "decision" if i % 17 == 0 else "observation"
+    lid = f"obs_mem_{i}" if kind != "decision" else f"dec_prop_mem_{i}"
+    meta = {
+        "ledger_id": lid,
+        "ledger_kind": kind,
+        "type": "decision" if kind == "decision" else "observation",
+        "timestamp": f"2026-09-13T{i % 24:02d}:{(i % 60):02d}:00Z",
+        "provenance_envelope": envelope,
+        "title": f"Unit {i}",
+        "summary": f"Unit {i}",
+        "rationale": f"rationale {i}",
+        "source_path": source_path,
+    }
+    if kind == "observation" and i % 23 == 0:
+        meta["severity"] = "critical"
+        meta["verification_result"] = "pass"
+    elif kind == "observation" and i % 29 == 0:
+        meta["severity"] = "high"
+    return meta
+
+
 def write_exposure_memory_fixture(
     chroma_dir: Path,
     n: int,
@@ -256,24 +279,7 @@ def write_exposure_memory_fixture(
     """Bulk synthetic Chroma for C6 exposure probe / brief-chain measurement."""
     records = []
     for i in range(n):
-        kind = "decision" if i % 17 == 0 else "observation"
-        lid = f"obs_mem_{i}" if kind != "decision" else f"dec_prop_mem_{i}"
-        meta = {
-            "ledger_id": lid,
-            "ledger_kind": kind,
-            "type": "decision" if kind == "decision" else "observation",
-            "timestamp": f"2026-09-13T{i % 24:02d}:{(i % 60):02d}:00Z",
-            "provenance_envelope": envelope,
-            "title": f"Unit {i}",
-            "summary": f"Unit {i}",
-            "rationale": f"rationale {i}",
-            "source_path": "/tmp/memory-source",
-        }
-        if kind == "observation" and i % 23 == 0:
-            meta["severity"] = "critical"
-            meta["verification_result"] = "pass"
-        elif kind == "observation" and i % 29 == 0:
-            meta["severity"] = "high"
+        meta = exposure_memory_meta(i, envelope, "/tmp/memory-source")
         records.append(_meta_record(f"m-{i:06d}", **meta))
     write_chroma_sqlite(chroma_dir, {"knowledge_units": records})
 

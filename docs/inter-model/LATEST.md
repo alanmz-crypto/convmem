@@ -9,6 +9,34 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
+  Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
+  default-running wiring test could reach production Chroma after an early
+  config import; the recorded run was blocked and established no paired memory
+  floor. A replacement correction is isolated on
+  `fix/2026-10-09-2026-10-09-watch-oom-measurement-safety`, frozen from
+  `18dcf45`. Its default smoke uses a guarded subprocess and temporary Chroma;
+  it does not hash production canaries. Copilot and Kiro passed the reviewed
+  `e486925` tree. Ryan then granted one hermetic full run on `archlinux` with
+  disk-backed scratch. It stopped at the first 5,000-row baseline arm: ingest
+  skipped the transcript and the guard denied a production synthesis-failure
+  log write. No candidate arm or paired floor exists; production canaries had
+  no observed drift. A 64-row baseline control passes without the 2 GiB
+  address-space limit but fails with it while Chroma starts its compactor.
+  Copilot passed the diagnostic redirect at `aec5371` and found two follow-up
+  evidence-handling defects, now corrected: blocked results fail pytest and
+  future evidence uses run-unique exclusive files. Copilot and Kiro passed
+  the corrected harness at `3237c03`. Codex has drafted a §9.7a amendment:
+  replace the 2 GiB address-space limit with a hard 2 GiB transient-service
+  cgroup bound, then require an exact-setup small control before any full
+  curve. Kiro passed the amended design at exact tip `f43e386` after its five
+  conditions were bound into the plan. **Next:** Ryan separately decides
+  whether to grant harness implementation and, later, another one-shot
+  measurement.
+  The watcher remains disabled; the live 12.5 GiB OOM and issue
+  #268 remain open. See the
+  [§9.7 execution evidence](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
+
 - **Arc Codex / issue #286 — guarded Kiro route MERGED, default off
   (2026-10-09):** Ryan squash-merged
   [PR #365](https://github.com/alanmz-crypto/convmem/pull/365) onto `main` as
