@@ -1,9 +1,9 @@
 # Sol Review Packet — Issue #286 Kiro Bootstrap Retry
 
-**Arc:** Kiro bootstrap  
-**Issue:** [#286 — Make changed-file indexing incremental at chunk/append level](https://github.com/alanmz-crypto/convmem/issues/286)  
-**Prepared:** 2026-10-10 by Sol  
-**Review lanes:** Kiro for route design and source/bootstrap assumptions; GitHub Copilot audit lane for safety and isolation  
+**Arc:** Kiro bootstrap
+**Issue:** [#286 — Make changed-file indexing incremental at chunk/append level](https://github.com/alanmz-crypto/convmem/issues/286)
+**Prepared:** 2026-10-10 by Sol
+**Review lanes:** Kiro for route design and source/bootstrap assumptions; GitHub Copilot audit lane for safety and isolation
 **State:** review packet only; `NO-GO` for a live retry; no operational authority
 
 ## Decision consequence
