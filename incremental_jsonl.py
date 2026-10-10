@@ -1890,11 +1890,26 @@ class IncrementalJsonlCoordinator:
             raise IncrementalJsonlError(
                 "recovery_unproven", "rollback authority exists after transform failure"
             )
-        snapshot_dirs = list(self.paths["snapshots"].glob("*"))
-        if not snapshot_dirs:
-            raise IncrementalJsonlError("recovery_unproven", "missing snapshot")
-        snapshot_dir = Path(snapshot_dirs[0])
+        transaction_id = transaction.get("transaction_id")
+        if (
+            not isinstance(transaction_id, str)
+            or len(transaction_id) != 32
+            or any(char not in "0123456789abcdef" for char in transaction_id)
+        ):
+            raise IncrementalJsonlError(
+                "recovery_unproven", "transaction lacks a valid transaction_id"
+            )
+        snapshot_dir = self.paths["snapshots"] / transaction_id
         snapshot_path = snapshot_dir / self.format_spec.snapshot_basename
+        if (
+            snapshot_dir.is_symlink()
+            or not snapshot_dir.is_dir()
+            or snapshot_path.is_symlink()
+            or not snapshot_path.is_file()
+        ):
+            raise IncrementalJsonlError(
+                "recovery_unproven", "missing snapshot for transaction"
+            )
         raw = snapshot_path.read_bytes()
         view = self.format_spec.parse_complete_prefix(str(snapshot_path), raw=raw)
         self._validate_incremental_prefix_view(view)
@@ -1964,7 +1979,7 @@ class IncrementalJsonlCoordinator:
                 frontier=frontier,
                 fallback=None,
                 reused=reused,
-                transaction_id=str(transaction.get("transaction_id") or uuid.uuid4().hex),
+                transaction_id=transaction_id,
                 mode={
                     "APPLYING": "replay_forward",
                     "PREPARING": "preparing_recovery",

@@ -2,7 +2,7 @@
 
 # Ruff targets the repo Python version where tomllib is third-party to this
 # import sorter; Pylint uses the host stdlib classification.
-# pylint: disable=wrong-import-order,protected-access,duplicate-code
+# pylint: disable=wrong-import-order,protected-access,duplicate-code,too-many-lines
 
 from __future__ import annotations
 
@@ -547,6 +547,213 @@ def test_bootstrap_transform_failure_reuses_prepared_work_on_recovery(
     assert recovered.mode == "transform_failed_recovery"
     assert recovery_offsets == [2]
     assert recovered.reused_artifacts == 1
+
+
+def test_transform_failed_recovery_uses_only_its_own_snapshot(  # pylint: disable=too-many-locals
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    enable_incremental(isolated)
+    source = write_source(isolated.root, 4)
+    cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
+    cfg["index"]["incremental_jsonl"].update(
+        live_sources=[str(source)], embed_dimension=8
+    )
+    boundary = ProductionBoundary(
+        cfg, source, config_path=isolated.layout["user_config"]
+    )
+    view = parse_complete_prefix(str(source))
+    original = incremental_jsonl.build_chunk_artifact
+
+    def fail_second(*args, chunk=None, **kwargs):
+        assert chunk is not None
+        if int(chunk["start_offset"]) == 2:
+            raise incremental_jsonl.IncrementalJsonlError("transform_failed", "fake")
+        return original(*args, chunk=chunk, **kwargs)
+
+    def coordinator(**kwargs):
+        return incremental_jsonl.IncrementalJsonlCoordinator(
+            boundary,
+            source,
+            cfg=cfg,
+            bootstrap_existing=True,
+            expected_prefix_sha256=view.prefix_sha256,
+            max_bootstrap_chunks=4,
+            chunk_size=2,
+            overlap=0,
+            **_bootstrap_binding(),
+            **kwargs,
+        )
+
+    monkeypatch.setattr(incremental_jsonl, "build_chunk_artifact", fail_second)
+    first = coordinator(processed={"old-hash": {"path": str(source)}}).run()
+    assert first.outcome == "transform_failed"
+    transaction_path = next(
+        Path(cfg["index"]["incremental_jsonl"]["state_dir"]).glob("*/transaction.json")
+    )
+    transaction_bytes = transaction_path.read_bytes()
+    transaction = json.loads(transaction_bytes)
+    successor_id = transaction["transaction_id"]
+    source_state = transaction_path.parent
+    snapshots = source_state / "snapshots"
+    successor_dir = snapshots / successor_id
+    assert successor_dir.is_dir()
+
+    predecessor_tx_id = "0" * 32
+    predecessor_grant_fp = "4" * 64
+    successor_operation_id = transaction["operation_id"]
+
+    predecessor_dir = snapshots / predecessor_tx_id
+    predecessor_dir.mkdir()
+    predecessor_snapshot_file = predecessor_dir / "messages.jsonl"
+    predecessor_snapshot_session = predecessor_dir / "session.json"
+    predecessor_snapshot_bytes = (
+        b'{"role":"user","message":"retained predecessor snapshot evidence"}\n'
+    )
+    predecessor_snapshot_session_bytes = b'{"retained":"predecessor-session"}\n'
+    predecessor_snapshot_file.write_bytes(predecessor_snapshot_bytes)
+    predecessor_snapshot_session.write_bytes(predecessor_snapshot_session_bytes)
+
+    archive_dir = (
+        source_state
+        / "superseded_bootstrap_transactions"
+        / f"{predecessor_tx_id}__{successor_operation_id}"
+    )
+    archive_dir.mkdir(parents=True)
+    archived_transaction_bytes = (
+        json.dumps(
+            {
+                "version": 1,
+                "transaction_id": predecessor_tx_id,
+                "phase": "transform_failed",
+                "operation_id": "3" * 64,
+                "grant_fingerprint": predecessor_grant_fp,
+                "source_path": str(source),
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    archived_transaction_path = archive_dir / "transaction.json"
+    archived_transaction_path.write_bytes(archived_transaction_bytes)
+
+    operation_root = source_state / "operations" / predecessor_grant_fp
+    operation_root.mkdir(parents=True)
+    ledger_bytes = (
+        json.dumps(
+            {
+                "record_type": "permit_consumed",
+                "operation_id": "3" * 64,
+                "grant_fingerprint": predecessor_grant_fp,
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    (operation_root / "provider_attempts.jsonl").write_bytes(ledger_bytes)
+    manifest_bytes = (
+        json.dumps(
+            {
+                "version": 1,
+                "operation_id": "3" * 64,
+                "grant_fingerprint": predecessor_grant_fp,
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    (operation_root / "manifest.json").write_bytes(manifest_bytes)
+    terminal_receipt_bytes = (
+        json.dumps(
+            {
+                "record_type": "terminal",
+                "operation_id": "3" * 64,
+                "grant_fingerprint": predecessor_grant_fp,
+                "outcome": "failed",
+                "transaction_phase": "transform_failed",
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    (operation_root / "invocations.jsonl").write_bytes(terminal_receipt_bytes)
+
+    lineage_path = (
+        source_state
+        / "bootstrap_supersession_lineage"
+        / f"{predecessor_tx_id}.json"
+    )
+    lineage_path.parent.mkdir(parents=True, exist_ok=True)
+    lineage_bytes = (
+        json.dumps(
+            {
+                "record_type": "supersession",
+                "predecessor_transaction_id": predecessor_tx_id,
+                "predecessor_transaction_sha256": hashlib.sha256(
+                    archived_transaction_bytes
+                ).hexdigest(),
+                "predecessor_operation_id": "3" * 64,
+                "predecessor_grant_fingerprint": predecessor_grant_fp,
+                "successor_operation_id": successor_operation_id,
+                "successor_grant_fingerprint": transaction["grant_fingerprint"],
+                "archive_relpath": str(archive_dir.relative_to(source_state)),
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    lineage_path.write_bytes(lineage_bytes)
+
+    retained_artifact_paths = (
+        archived_transaction_path,
+        operation_root / "provider_attempts.jsonl",
+        operation_root / "manifest.json",
+        operation_root / "invocations.jsonl",
+        lineage_path,
+        predecessor_snapshot_file,
+        predecessor_snapshot_session,
+    )
+
+    def digest_retained_evidence() -> dict[str, str]:
+        return {
+            str(path.relative_to(source_state)): hashlib.sha256(
+                path.read_bytes()
+            ).hexdigest()
+            for path in retained_artifact_paths
+        }
+
+    retained_digests = digest_retained_evidence()
+    monkeypatch.setattr(incremental_jsonl, "build_chunk_artifact", original)
+
+    def assert_retained_predecessor_evidence_unchanged() -> None:
+        assert digest_retained_evidence() == retained_digests
+
+    parked = tmp_path / "parked-successor-snapshot"
+    successor_dir.rename(parked)
+    with pytest.raises(incremental_jsonl.IncrementalJsonlError) as missing:
+        coordinator().run()
+    assert missing.value.code == "recovery_unproven"
+    assert transaction_path.read_bytes() == transaction_bytes
+    assert_retained_predecessor_evidence_unchanged()
+    parked.rename(successor_dir)
+
+    invalid = json.loads(transaction_bytes)
+    invalid["transaction_id"] = "../" + predecessor_tx_id
+    transaction_path.write_text(json.dumps(invalid), encoding="utf-8")
+    with pytest.raises(incremental_jsonl.IncrementalJsonlError) as bad_id:
+        coordinator().run()
+    assert bad_id.value.code == "recovery_unproven"
+    transaction_path.write_bytes(transaction_bytes)
+    assert_retained_predecessor_evidence_unchanged()
+
+    recovered = coordinator().run()
+    assert recovered.outcome == "committed"
+    assert recovered.mode == "transform_failed_recovery"
+    assert not successor_dir.exists()
+    assert_retained_predecessor_evidence_unchanged()
 
 
 def test_bootstrap_preparing_transaction_recovers_under_same_binding(
