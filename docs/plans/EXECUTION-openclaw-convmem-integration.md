@@ -3667,6 +3667,105 @@ authorizes only four planning-document edits and exact-tip review; it authorizes
 read, root/source creation, execution, retry, acquisition, build, publication,
 implementation, PR creation/update, merge, deployment, real OpenClaw or later gate.
 
+### 10.49 Output-coordinate-corrected one-shot real author packet
+
+PR `#374` merged §§18.50/10.48 at `43b51214…`, byte-identical to reviewed overlay
+`7f9df36b…`, with all six checks and Kiro exact-tip/exact-main PASS. PR `#376`
+merged the reviewed acceptance snapshot at `2c72c197…`, byte-identical to reviewed
+tip `8eb83dbb…`, with all six checks and Kiro exact-main PASS. Ryan externally
+accepted tree `e685ee05…6ccbc32f` as the sole output-coordinate-corrected v4
+author-capability candidate. Historical `accepted=false` remains process non-self-
+acceptance; the nine durability counters and peak RSS remain process-attested at 80%
+confidence.
+
+The possible one-shot operation is closed by these identities:
+
+```text
+AUTHORIZATION_BASE_MAIN_SHA=2c72c197f84e89e595723d5d425692b3428666e8
+PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+OPERATION_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+AUTHORIZED=false
+AUTHOR_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4
+AUTHOR_TREE_SHA256=e685ee056772c2c8831c4eb65ee23f5719c293bffd796501ff8e68029ccbc32f
+AUTHOR_SOURCE_SHA256=e53b5d70cd6cf0a5c4cdd2cfbb782234ebab0353d15ee078a3ae55990df42c23
+AUTHOR_COMMAND_CONTRACT_SHA256=168575b26ebcfdb7dc6aab19743e70ac5500c165bd3fac10c8ca5165ec305c5c
+AUTHOR_RECEIPT_SHA256=f15b15f3b7d290a8d2ebfaf630921fab10c9d4779164f1ebea3b062f388868c4
+AUTHOR_LEDGER_SHA256=419a107bece7b8cd73e01b1ef9f72c2e428f9a13bd175004231f2bd33ffde28d
+AUTHOR_DURABILITY_RSS_EVIDENCE=PROCESS_ATTESTED_80_PERCENT_CONFIDENCE
+PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+PACKET_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+PACKET_BYTES=654147403
+DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+DISPOSITION_BYTES=8383806
+TOTAL_INPUT_BYTES=662531209
+PROCESS_COUNT=1
+SUBPROCESSES=0
+MAX_PEAK_RSS_BYTES=2147483648
+MAX_WRITTEN_BYTES_PER_ROOT=2147483648
+MAX_TOTAL_WRITTEN_BYTES=4294967296
+```
+
+The exact four absent single-assignment coordinates are:
+
+```text
+STAGING_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3.partial
+STAGING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+DURABLE_PARTIAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3.partial
+DURABLE_FINAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+STAGING_PARTIAL_ROOT_STATUS=ABSENT
+STAGING_FINAL_ROOT_STATUS=ABSENT
+DURABLE_PARTIAL_ROOT_STATUS=ABSENT
+DURABLE_FINAL_ROOT_STATUS=ABSENT
+```
+
+Before any later grant is consumed, metadata-only preflight must reproduce the
+accepted `0555` root, six single-link `0444` members, identities and sizes; verify
+only packet/disposition metadata; and `lstat` the four outputs without opening real
+content. Any mismatch or pre-existing coordinate returns zero-effect `PAUSE` and
+consumes the grant. No parent, root, copy, wrapper, log or sidecar may be created.
+
+The sole admissible process is the exact twenty-member array in §18.51.2, using the
+accepted source under `a94bc57…/v4`, packet and disposition under the immutable
+`3402e62a…/schema-v3` lock, staging and durable finals under the exact
+`a94bc57…/491ae60b…/v3` namespace, then the accepted command contract, dependency
+manifest, receipt and freeze manifest. Its zero-based values `[9]` and `[11]` equal
+the two final roots byte-for-byte. Cwd is the accepted final root. The environment is
+exactly `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`, `PYTHONDONTWRITEBYTECODE=1`,
+`PYTHONHASHSEED=0`, `PYTHONNOUSERSITE=1`. Launch is direct `execve`, with no shell,
+wrapper, extra member, inherited descriptor, copied source or alternate import path.
+
+The process revalidates capability and input identities, reads the 663 packet files
+and disposition at most once, consumes exactly `662,531,209` governed bytes and
+validates all 902 packet members before exclusive partial creation. It then follows
+the unchanged seven-role, fixed-point, file/directory-`fsync`, coordinate-parent-
+`fsync` and atomic-publication transaction. Staging and durable copies must match.
+
+Success remains 1,221 component items plus 19 ownership disputes, 1,240 primary
+items, 98,608 IDs, 30,421 paths, 1,384 edges, twenty batches and 49 pages in result
+schema v2. Correct `unresolved_sha256:` is the sole production grammar; obsolete
+`unresolved:sha256:` remains a W001 negative. The existing 52 controls remain exactly
+`F001`–`F010` then `W001`–`W042`; no alias, `F011`, `W043`, 53rd control, schema or
+role change is admitted.
+
+The supervisor enforces one process, zero subprocesses, one input pass, two-GiB RSS,
+two-GiB writes per root, four-GiB aggregate writes, all durability barriers and zero
+network/runtime/repository/retained-source/credential/acquisition access. Success,
+mismatch or failure consumes the one-shot grant; no retry, repair, resume, cleanup,
+deletion or second pass exists. Returned evidence includes all status, control,
+input/write, RSS, durability, access, coordinate and identity fields required by
+§18.51.3. Success cannot retroactively upgrade the accepted capability's 80%
+durability/RSS confidence.
+
+The route is exact-tip Kiro review, Ryan PR/merge decision, exact-main confirmation,
+then a separate Ryan two-SHA decision on one exact execution grant. Any success moves
+only to a plan-only result binding and separate independent packet review. Tree
+`939b8849…` remains immutable/output-coordinate-ineligible, and no prior grant is
+reusable. This section authorizes only four planning-document edits and read-only
+review; it authorizes no content read, root/file creation, process, retry, acquisition,
+build, publication, implementation, PR creation/update, merge, deployment, real
+OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
