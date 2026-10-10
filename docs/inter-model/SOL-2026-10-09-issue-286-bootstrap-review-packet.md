@@ -1,9 +1,9 @@
 # Sol Review Packet — Issue #286 One-Source Kiro Bootstrap
 
-**Arc:** Codex  
-**Issue:** [#286 — Make changed-file indexing incremental at chunk/append level](https://github.com/alanmz-crypto/convmem/issues/286)  
-**Prepared:** 2026-10-09 by Sol  
-**Review lanes:** Kiro for route design and source/bootstrap assumptions; GitHub Copilot audit lane for safety and isolation  
+**Arc:** Codex
+**Issue:** [#286 — Make changed-file indexing incremental at chunk/append level](https://github.com/alanmz-crypto/convmem/issues/286)
+**Prepared:** 2026-10-09 by Sol
+**Review lanes:** Kiro for route design and source/bootstrap assumptions; GitHub Copilot audit lane for safety and isolation
 **Revision:** corrected after the same-revision Kiro/Copilot conflict on commit `f0895a20dd25722b46245aa4a0945c86d5fb741f`
 **State:** review packet only; `NO-GO` for a live grant under the merged command;
 no operational authority

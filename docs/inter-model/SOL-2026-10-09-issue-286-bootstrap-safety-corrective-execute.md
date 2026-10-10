@@ -1,9 +1,9 @@
 # Implementation Handoff: Issue #286 Bootstrap Safety Corrective
 
-**Arc:** Codex  
-**Date:** 2026-10-09  
-**Author:** Sol conflict-adjudication lane  
-**For:** Cursor implementation lane  
+**Arc:** Codex
+**Date:** 2026-10-09
+**Author:** Sol conflict-adjudication lane
+**For:** Cursor implementation lane
 **Authorization:** Ryan, 2026-10-09, explicit chat authorization of the exact
 bounded scope below
 

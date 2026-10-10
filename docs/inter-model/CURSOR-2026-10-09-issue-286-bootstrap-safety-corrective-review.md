@@ -1,9 +1,9 @@
 # Implementation Handoff: issue #286 bootstrap safety corrective
 
-**Arc:** Codex  
-**Date:** 2026-10-09  
-**Author:** Cursor implementation lane  
-**For:** Kiro design review and Copilot safety audit  
+**Arc:** Codex
+**Date:** 2026-10-09
+**Author:** Cursor implementation lane
+**For:** Kiro design review and Copilot safety audit
 **Authorization:** Ryan, 2026-10-09, via the Sol corrective Execute handoff
 
 ---
