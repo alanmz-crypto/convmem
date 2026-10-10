@@ -22,6 +22,12 @@ cross-arc snapshot and the linked arc brief below.
   the [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md)
   and [live-route design](../plans/DESIGN-issue-286-live-activation.md).
 
+- **PR Steward reminder — Ryan chose Option B (2026-09-28):** Assign the
+  existing PR Steward role (default: Codex) through explicit, bounded briefs
+  for future PR lifecycle work. Each assignment remains Ryan-granted under
+  the [team charter](TEAM-CHARTER-2026-07-06.md). The
+  [decision record](CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md)
+  and `standing-checks-register.json` capture this choice.
 - **Arc ConvMem Switchboard — historical M0–M8 ACCEPTED; M11 merge-readiness
   held at Pylint (routing snapshot 2026-09-24):** the existing supervisor packet
   preserves integration tip `9c6421a` and routes its 44-path remediation to
