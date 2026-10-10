@@ -386,7 +386,7 @@ def test_legacy_malformed_ledger_rows_cannot_create_paid_exemptions(
                 "https://provider.invalid",
                 max_attempts=1,
             )
-    assert transports == []
+    assert not transports
 
 
 def test_malformed_provider_attempt_events_fail_before_transport(
