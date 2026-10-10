@@ -3402,6 +3402,91 @@ authorizes only four planning-document edits and exact-tip review; it authorizes
 read, root/source creation, execution, retry, acquisition, build, publication,
 implementation, PR creation, merge, deployment, real OpenClaw or later gate.
 
+### 10.46 Corrected one-shot real work-item author grant packet
+
+PR `#366` merged the exact §18.47/§10.45 corrected capability binding at
+`dd4dd39ce493e06462acdd21e9dd68466149f4b5`, Kiro returned exact-tip and
+exact-main PASS, and PR `#368` merged the acceptance snapshot at
+`16dbd7926a8c14d71595440a5ac4ba78b99e26ed`. Corrected candidate tree
+`939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396`
+is the sole accepted corrected-v4 author-capability candidate. Historical
+`accepted=false` remains non-self-acceptance. The prior nine durability counters and
+peak RSS remain process-attested at 80% confidence; this plan does not upgrade them.
+
+The possible one-shot operation is closed by these identities:
+
+```text
+AUTHORIZATION_BASE_MAIN_SHA=16dbd7926a8c14d71595440a5ac4ba78b99e26ed
+PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+AUTHOR_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/ff5ce7b9cc30e4466045387e27e4d4f9fcdb482c/v4
+AUTHOR_TREE_SHA256=939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396
+AUTHOR_RECEIPT_SHA256=920c0e0e74515b5b1304de59b2a32a00b55c949b11938f9b3ddd68b12213bce1
+AUTHOR_LEDGER_SHA256=959e64ba5782afbacb8eb94f0d7df297ee3351fe596ebc927c8c51b1a6932055
+AUTHOR_DURABILITY_RSS_EVIDENCE=PROCESS_ATTESTED_80_PERCENT_CONFIDENCE
+PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+PACKET_BYTES=654147403
+DISPOSITION_SHA256=45442e93958e7f0c4a2e4bf474d0b7430653fc0320ab1bad1b8222501b830669
+DISPOSITION_BYTES=8383806
+TOTAL_INPUT_BYTES=662531209
+PROCESS_COUNT=1
+SUBPROCESSES=0
+MAX_PEAK_RSS_BYTES=2147483648
+MAX_WRITTEN_BYTES_PER_ROOT=2147483648
+MAX_TOTAL_WRITTEN_BYTES=4294967296
+AUTHORIZED=false
+```
+
+The four staging/durable partial/final coordinates under merged-main namespace
+`16dbd792…`, packet namespace `491ae60b…` and leaf names `v3.partial`/`v3` are absent
+and single-assignment as listed in §18.48.1. Before any later grant is consumed, the
+supervisor must read-only stat/hash the accepted `0555` six-file root and six
+single-link `0444` members, verify only packet/disposition metadata and `lstat` all
+four outputs. It opens no packet member or disposition content. A mismatch or
+pre-existing coordinate is zero-effect `PAUSE`. Matching hashes preserve, but do not
+lift, the 80% confidence ceiling on the prior process-attested durability/RSS facts.
+
+The sole process is the exact twenty-member `author-packet` vector in §18.48.2: the
+bound interpreter, literal `-S`, corrected accepted source, verb, then the ordered
+packet, disposition, fresh staging final, fresh durable final, command-contract,
+dependency-manifest, receipt and freeze-manifest flag/value pairs. Its cwd is the
+accepted corrected root. Its environment contains exactly `LANG=C.UTF-8`,
+`LC_ALL=C.UTF-8`, `PYTHONDONTWRITEBYTECODE=1`, `PYTHONHASHSEED=0` and
+`PYTHONNOUSERSITE=1`. Launch is direct, with no wrapper, shell, extra argument or
+environment member, inherited descriptor, copied source or alternate import.
+
+The process independently revalidates the candidate and both inputs, reads each of
+the 663 packet files and the disposition at most once and consumes exactly
+`662,531,209` governed bytes. It validates the 902-member packet tree before output
+creation, then uses the unchanged exclusive-create, seven-role, fixed-point,
+file/directory-`fsync`, coordinate-parent-`fsync` and atomic-publication transaction.
+The sole accepted unresolved-ID grammar is `unresolved_sha256:` plus 64 lowercase
+hex characters; existing `W001` rejects obsolete `unresolved:sha256:` and no alias or
+normalization exists.
+
+Structural success remains 1,221 component items plus 19 ownership disputes, 1,240
+primary items, 98,608 IDs, 30,421 paths, 1,384 edges, twenty batches and 49 pages in
+schema `convmem.switchboard.work-item-authoring-result.v2`. It does not resolve an
+origin, owner, license, provenance or build-eligibility blocker. The supervisor
+enforces one process, zero subprocesses, 2-GiB RSS, 2-GiB writes per root, 4-GiB total
+writes and zero network/runtime/repository/retained-source/credential/acquisition
+access. Failure has no retry, repair, resume, deletion, cleanup or second input pass.
+
+Returned evidence contains exact exit/reported status, baseline/control counts and
+F001–F010 then W001–W042 order, input and output bytes, peak RSS, durability and
+forbidden-access counters, coordinate states, final tree identities and external
+result hashes/sizes. Results never self-hash or accept themselves. Success permits
+only a later plan-only result binding, Kiro review and separately granted independent
+packet review; the old 80% capability-evidence limitation remains explicit unless
+genuinely independent evidence is later reviewed.
+
+The route is exact-tip Kiro review, Ryan PR/merge decision, exact-main confirmation,
+one fresh two-SHA execution grant, one supervised process and a plan-only result
+binding. No prior grant is reusable. This section authorizes only the four planning-
+document edits and exact-tip review; it authorizes no content read, output-root
+creation, author execution, retry, acquisition, build, publication, implementation,
+PR creation/update, merge, deployment, real OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
