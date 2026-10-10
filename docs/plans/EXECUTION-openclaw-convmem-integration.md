@@ -3578,6 +3578,95 @@ review. It authorizes no source write, root/file creation, packet/disposition co
 read, freeze, execution, retry, acquisition, build, publication, implementation, PR
 creation/update, merge, deployment, real OpenClaw, watch activation or later gate.
 
+### 10.48 Output-coordinate-corrected capability result binding packet
+
+PR `#370` merged §§18.49/10.47 at `956d74e8…`, byte-identical to reviewed overlay
+`7b80c92b…`, and Kiro returned exact-main PASS. PR `#372` merged the reviewed
+snapshot at `bef53281…`. Ryan's separate exact two-SHA grant naming semantic parent
+`cfa8bb87…`, reviewed overlay `7b80c92b…` and the fresh `a94bc57…` capability
+coordinate was consumed once. One fourteen-member no-site process exited zero,
+reported `PASS`, used no real packet/disposition content or external source, and
+atomically sealed the successor six-file final root; the `.partial` sibling and all
+four future real-author outputs are absent.
+
+The exact result binding is:
+
+```text
+GRANT_SEMANTIC_PARENT_SHA=cfa8bb879af6efc785692eea3d64c6bdd2d83626
+GRANT_REVIEWED_OVERLAY_SHA=7b80c92b999282afe5edd614d4080bb4ebd8792e
+AUTHORIZATION_BASE_MAIN_SHA=bef5328123b279e38c9df075b070b9c352cdf1eb
+PLAN_MERGED_MAIN_SHA=956d74e8bab4a6c397a80a14a5709043b8b205ef
+SUCCESSOR_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4
+SUCCESSOR_PARTIAL_ROOT_PRESENT=false
+SUCCESSOR_FINAL_ROOT_PRESENT=true
+SUCCESSOR_FINAL_ROOT_MODE=0555
+SUCCESSOR_MEMBER_COUNT=6
+SUCCESSOR_MEMBER_MODE=0444
+SUCCESSOR_TOTAL_BYTES=197259
+SUCCESSOR_TREE_SHA256=e685ee056772c2c8831c4eb65ee23f5719c293bffd796501ff8e68029ccbc32f
+SUCCESSOR_SOURCE_SHA256=e53b5d70cd6cf0a5c4cdd2cfbb782234ebab0353d15ee078a3ae55990df42c23
+SUCCESSOR_RECEIPT_SHA256=f15b15f3b7d290a8d2ebfaf630921fab10c9d4779164f1ebea3b062f388868c4
+SUCCESSOR_LEDGER_SHA256=419a107bece7b8cd73e01b1ef9f72c2e428f9a13bd175004231f2bd33ffde28d
+SUCCESSOR_EXTERNAL_RESULT_SHA256=e4abb793a6b19e9041accfb2d6b4ea079419383829e7a7a54fc2153746dba5a3
+SUCCESSOR_EXTERNAL_RESULT_SIZE=32526
+PROCESS_EXIT_STATUS=0
+PROCESS_REPORTED_STATUS=PASS
+ACCEPTED=false
+ACCEPTANCE_STATE=PENDING_EXACT_TIP_KIRO_REVIEW_AND_RYAN_ACCEPTANCE
+DURABILITY_RSS_EVIDENCE=PROCESS_ATTESTED_80_PERCENT_CONFIDENCE
+```
+
+The final members are command contract `168575b2…` (3,544 bytes), dependency
+manifest `b96ea9a5…` (10,921), fixture spec `d4e2a09b…` (476), freeze manifest
+`a75dd70a…` (969), receipt `f15b15f3…` (32,868) and corrected source
+`e53b5d70…` (148,481); each is a single-link `0444` file beneath the `0555` root.
+The source has 2,952 lines. The compact sorted-key canonical six-row inventory
+reproduces tree `e685ee05…`; the canonical 22-event array reproduces ledger
+`419a107b…`. The freeze manifest remains nonrecursive and the external result is not
+a seventh member.
+
+The baseline is clean. All 52 controls pass in exact `F001`–`F010`, then
+`W001`–`W042` order. W001 retains its input-tree mutation and obsolete
+`unresolved:sha256:` rejection while the shared production path uses only
+`unresolved_sha256:`. There is no alias, normalization, `W043`, `F011` or 53rd
+control. The fixture cardinalities and every schema, role and serializer remain
+unchanged.
+
+The ledger contains 22 events and exactly two null digests, for the receipt and freeze
+manifest. Forecast and observed writes both equal `323,537,343`; process-reported
+peak RSS is `1,515,155,456`, below the unchanged two-GiB ceiling. Each of the nine
+durability counters is process-reported as one and all eight forbidden-access counters
+are zero. The member/tree/receipt/vector/ledger/absence facts are independently
+reproducible, but the durability counters and peak RSS remain process-attested at 80%
+confidence; byte identity and review do not raise that ceiling.
+
+The sealed contract has exactly fourteen synthetic argv members, twenty real argv
+members and five environment keys. Real argv `[9]` and `[11]` equal the still-absent
+`a94bc57…/491ae60b…/v3` staging and durable final roots byte-for-byte. Source,
+fixture and command contract share the whole vector; F002 remains the sole literal-
+argv control. All four real partial/final output coordinates remain absent and single-
+assignment.
+
+The coordinate, final root, members, evidence and consumed grant are immutable. The
+absent partial may not be recreated. `accepted=false` remains controlling because the
+process cannot accept itself. Kiro reviews this exact two-commit binding; only after
+PASS may Ryan separately decide acceptance. Until that decision, tree `939b8849…`
+remains the historically accepted but output-coordinate-ineligible capability and
+tree `e685ee05…` remains an unaccepted successor candidate.
+
+Even acceptance grants no real author operation. A later real run still requires a
+separate plan, exact-tip review, merge, exact-main confirmation and fresh two-SHA
+Ryan grant naming the accepted successor, immutable inputs and the four absent output
+coordinates. No prior grant is reusable.
+
+All schemas, six freeze roles, seven output roles, cardinalities, parsers,
+serializers, packet-tree recipe, fourteen-/twenty-member argv, five-key environment,
+`F002` slices, 52-control set, F-before-W order, 22-event/two-null ledger,
+durability transaction, ceilings and zero-access rules remain unchanged. This section
+authorizes only four planning-document edits and exact-tip review; it authorizes no
+read, root/source creation, execution, retry, acquisition, build, publication,
+implementation, PR creation/update, merge, deployment, real OpenClaw or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -3657,3 +3746,8 @@ synthetic capability whose sealed twenty-member vector names the new `a94bc57…
 staging/durable finals exactly. Exact-tip review, merge, exact-main confirmation and a
 new Ryan two-SHA synthetic-freeze grant remain mandatory. No source write, root,
 freeze, real read, process, retry or later authority exists.
+Section 10.48 binds the one-shot successor freeze at tree `e685ee05…`, with receipt
+`f15b15f3…`, ledger `419a107b…`, exact 14/20-member vectors and all four future
+real outputs still absent. The result remains `accepted=false`; Kiro review and a
+separate Ryan acceptance decision are next. Durability/RSS evidence remains process-
+attested at 80%, and no real read, execution or later-gate authority exists.
