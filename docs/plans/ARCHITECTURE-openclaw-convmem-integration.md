@@ -10626,6 +10626,223 @@ creation, author execution, retry, acquisition, build, publication, implementati
 PR creation or update, merge, deployment, real OpenClaw, watch activation, live data,
 promotion or Gate D/W/D-V/E/F action.
 
+### 18.49 Output-coordinate binding correction after the F002 startup pause
+
+PR `#369` squash-merged the reviewed §§18.48/10.46 plan at
+`a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b`; Kiro returned exact-tip and
+exact-main PASS. Ryan then issued the exact two-SHA grant naming semantic parent
+`ce768a79eeddb36d3a150d09d850161a42338227`, reviewed overlay
+`ac04fddadaa7a5ae741c49a2960c20e83151aff9`, accepted capability tree
+`939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396` and the
+four `16dbd79…/491ae60b…/v3(.partial)` output coordinates. The grant is consumed.
+
+The exact preflight passed. The sole direct process then exited `1` at `STARTUP`
+with `status=PAUSE` and `Refusal: F002: literal argv`. It started no subprocess,
+read zero packet/disposition content bytes, ran zero baseline or governed controls,
+wrote zero governed bytes and created no output coordinate. All four grant-named
+roots remain absent. The supervisor reported peak RSS `1,367,023,616` bytes and
+zero network, runtime, repository, retained-source, credential and acquisition
+access. Those facts preserve fail-closed behavior; they do not make the grant
+reusable.
+
+The mismatch is exact and narrow. The immutable accepted command contract pins
+`author_packet_argv[9]` and `[11]` to final roots in the older `dea026ce…`
+namespace, while §§18.48/10.46 and the grant substituted final roots in the
+`16dbd79…` namespace. The accepted source compares the runtime argv literally to
+that sealed vector before opening real input, so F002 correctly refused the
+substitution. Output coordinates are therefore part of the capability itself, not
+late-bound invocation parameters.
+
+This section plans the only admissible correction: freeze a new synthetic
+capability whose sealed twenty-member real argv already names one new output
+namespace. It does not authorize that freeze or another real-author attempt.
+
+#### 18.49.1 Immutable failure record and ineligible accepted candidate
+
+```text
+OUTPUT_COORDINATE_BINDING_PLAN_AUTHORIZATION_BASE_MAIN_SHA=a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b
+OUTPUT_COORDINATE_BINDING_PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+OUTPUT_COORDINATE_BINDING_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+OUTPUT_COORDINATE_BINDING_OPERATION_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+OUTPUT_COORDINATE_BINDING_FREEZE_AUTHORIZED=false
+OUTPUT_COORDINATE_BINDING_REAL_AUTHOR_AUTHORIZED=false
+
+FAILED_REAL_AUTHOR_GRANT_SEMANTIC_PARENT_SHA=ce768a79eeddb36d3a150d09d850161a42338227
+FAILED_REAL_AUTHOR_GRANT_REVIEWED_OVERLAY_SHA=ac04fddadaa7a5ae741c49a2960c20e83151aff9
+FAILED_REAL_AUTHOR_PLAN_MERGED_MAIN_SHA=a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b
+FAILED_REAL_AUTHOR_CAPABILITY_TREE_SHA256=939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396
+FAILED_REAL_AUTHOR_GRANT_STATUS=CONSUMED_F002_STARTUP_PAUSE
+FAILED_REAL_AUTHOR_PROCESS_COUNT=1
+FAILED_REAL_AUTHOR_SUBPROCESS_COUNT=0
+FAILED_REAL_AUTHOR_EXIT_STATUS=1
+FAILED_REAL_AUTHOR_STOP_STAGE=STARTUP
+FAILED_REAL_AUTHOR_EXCEPTION=Refusal: F002: literal argv
+FAILED_REAL_AUTHOR_BASELINE_COUNT=0
+FAILED_REAL_AUTHOR_CONTROL_COUNT=0
+FAILED_REAL_AUTHOR_REAL_INPUT_BYTES_READ=0
+FAILED_REAL_AUTHOR_GOVERNED_BYTES_WRITTEN=0
+FAILED_REAL_AUTHOR_PEAK_RSS_BYTES=1367023616
+FAILED_REAL_AUTHOR_FORBIDDEN_ACCESS_COUNT=0
+
+SEALED_STAGING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+SEALED_DURABLE_FINAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/dea026ce561e480ba3436d3c1cbea9bbcae6a14b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+GRANTED_STAGING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/16dbd7926a8c14d71595440a5ac4ba78b99e26ed/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+GRANTED_DURABLE_FINAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/16dbd7926a8c14d71595440a5ac4ba78b99e26ed/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+FAILED_REAL_AUTHOR_STAGING_PARTIAL_STATUS=ABSENT
+FAILED_REAL_AUTHOR_STAGING_FINAL_STATUS=ABSENT
+FAILED_REAL_AUTHOR_DURABLE_PARTIAL_STATUS=ABSENT
+FAILED_REAL_AUTHOR_DURABLE_FINAL_STATUS=ABSENT
+
+ACCEPTED_CORRECTED_V4_TREE_SHA256=939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396
+ACCEPTED_CORRECTED_V4_STATUS=IMMUTABLE_ACCEPTED_BUT_OUTPUT_COORDINATE_INELIGIBLE
+ACCEPTED_CORRECTED_V4_DURABILITY_RSS_EVIDENCE=PROCESS_ATTESTED_80_PERCENT_CONFIDENCE
+```
+
+Tree `939b8849…` remains the sole historically accepted corrected-v4 candidate and
+its `accepted=false` remains historical non-self-acceptance. It is not revoked,
+rewritten or repaired. It is ineligible for a grant naming any output coordinate
+other than its sealed argv, and this plan does not inspect or authorize the older
+`dea026ce…` roots. Byte identity cannot turn an argv mismatch into authority or
+raise the prior durability/RSS evidence above 80%.
+
+#### 18.49.2 Fresh capability and future real-output coordinate set
+
+The replacement freeze and the later real operation, if separately authorized,
+must use these six presently absent single-assignment coordinates:
+
+```text
+FRESH_CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial
+FRESH_CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4
+FRESH_CAPABILITY_PARTIAL_STATUS=ABSENT
+FRESH_CAPABILITY_FINAL_STATUS=ABSENT
+
+FRESH_REAL_STAGING_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3.partial
+FRESH_REAL_STAGING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+FRESH_REAL_DURABLE_PARTIAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3.partial
+FRESH_REAL_DURABLE_FINAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+FRESH_REAL_STAGING_PARTIAL_STATUS=ABSENT
+FRESH_REAL_STAGING_FINAL_STATUS=ABSENT
+FRESH_REAL_DURABLE_PARTIAL_STATUS=ABSENT
+FRESH_REAL_DURABLE_FINAL_STATUS=ABSENT
+```
+
+The successor freeze itself uses this exact fourteen-member synthetic vector and the
+partial capability root as cwd:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial/work-item-author-v4.py",
+  "synthetic-freeze",
+  "--fixture-spec",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial/fixture-spec.json",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial/freeze-manifest.json"
+]
+```
+
+The successor must seal this exact twenty-member real vector:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4/work-item-author-v4.py",
+  "author-packet",
+  "--input-packet-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet",
+  "--input-disposition",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/review/review-disposition.json",
+  "--staging-root",
+  "/home/lauer/.cache/convmem-switchboard-provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--durable-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4/freeze-manifest.json"
+]
+```
+
+Its synthetic cwd is exactly `FRESH_CAPABILITY_PARTIAL_ROOT`; its real cwd is exactly
+`FRESH_CAPABILITY_FINAL_ROOT`. Its environment remains
+exactly `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`, `PYTHONDONTWRITEBYTECODE=1`,
+`PYTHONHASHSEED=0` and `PYTHONNOUSERSITE=1`, with no sixth key or inherited member.
+
+The semantic correction changes only the source/fixture/command-contract path
+constants needed to seal those exact roots and the identities mechanically derived
+from those bytes. The new `author_packet_argv` remains exactly twenty members;
+members `[9]` and `[11]` must equal `FRESH_REAL_STAGING_FINAL_ROOT` and
+`FRESH_REAL_DURABLE_FINAL_ROOT` byte-for-byte. Its source, synthetic fixture and
+validator must use that one shared literal vector. No runtime override, placeholder,
+template expansion, environment substitution, alias, symlink, wrapper, rewrite or
+normalization route is permitted.
+
+All other source semantics remain frozen: corrected `unresolved_sha256:` grammar;
+obsolete `unresolved:sha256:` rejection inside W001; `F001`–`F010` then
+`W001`–`W042`; six capability roles; seven real-output roles; schemas;
+serializers; packet-tree recipe; fixed-point identities; 22-event/two-null ledger;
+durability barriers; one-process/zero-subprocess rule; five-key environment;
+one-pass read, write and RSS ceilings; and zero forbidden access. F002 remains the
+sole literal-argv control. This correction creates no alias, `W043`, `F011`, 53rd
+control, schema field, role or alternate command path.
+
+#### 18.49.3 Sequencing and proof obligations
+
+The correction requires two separately reviewed and granted operations, never one
+combined grant:
+
+1. Kiro reviews this exact two-commit plan. Ryan may then decide whether to merge it;
+   Kiro exact-main confirmation follows.
+2. Ryan may issue one fresh two-SHA **synthetic capability-freeze** grant naming the
+   reviewed plan SHAs and both absent `a94bc57…/v4(.partial)` roots. That grant may
+   use only synthetic inputs and must not inspect packet/disposition content.
+3. A result-binding plan records the new six-member tree, member hashes/sizes/modes,
+   receipt, ledger, exact twenty-member argv and both `[9]`/`[11]` equalities. Kiro
+   reviews that result; Ryan separately decides acceptance.
+4. Only an accepted successor capability may enter a new real-author plan. That later
+   plan must bind the four still-absent `a94bc57…/491ae60b…/v3(.partial)` roots and
+   repeat exact-tip, merge, exact-main and fresh two-SHA Ryan-grant gates.
+
+Before a synthetic-freeze grant is consumed, metadata-only preflight must prove all
+six new coordinates absent and all immutable predecessors exact. Any pre-existence,
+unexpected type, link, mode, identity or argv/root inequality is `PAUSE` with zero
+processes and zero created paths. Any launched freeze process is one-shot: success,
+failure or mismatch consumes the grant and coordinate; there is no retry, repair,
+cleanup, deletion, resume or acceptance transfer.
+
+Independent review must compare the sealed command-contract array, source constant,
+fixture vector and planned roots directly, member by member. Checking only argv
+length, source hash, tree digest or byte identity is insufficient. The review must
+state the exact values at indices `[9]` and `[11]` and confirm that partial roots are
+derived only by the unchanged transaction. This proof obligation is enforced under
+existing F002; it is not a new runtime control.
+
+#### 18.49.4 Authority boundary
+
+This section authorizes only edits to the four Switchboard planning documents and
+read-only exact-tip review. It authorizes no source write, capability root or file
+creation, packet/disposition read, synthetic freeze, author execution, retry,
+acquisition, implementation, PR creation or update, merge, deployment, real
+OpenClaw, watch activation, live data, promotion or Gate D/W/D-V/E/F action.
+
+The consumed §§18.48/10.46 grant cannot be reused. The absent `16dbd79…` roots do
+not carry forward execution authority and are not selected by this correction. The
+older sealed `dea026ce…` roots are neither inspected nor adopted. Only the future
+two-step route in §18.49.3 can progress, each step under its own exact reviewed plan
+and fresh Ryan grant.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
