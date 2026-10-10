@@ -1,0 +1,1123 @@
+{
+  "run_id": "20261010T032215Z-5980fdce",
+  "hostname": "archlinux",
+  "candidate_main_sha": "18dcf45c38bf493d9b2ef7bf426779b914c06289",
+  "harness_branch_tip": "bef5328123b279e38c9df075b070b9c352cdf1eb",
+  "baseline_sha": "5c103aa2f11f54de74be3a7eab90c433c0c019cd",
+  "harness_hash": "7c7b22927e8df7ba406abdfa13206779d01f49746cd4f7a212cea2cb18bc9782",
+  "harness_file_hashes": {
+    "watch_oom_exposure_index_e2e_worker.py": "b595ceb1ab1804a1a1c3e333d842129bbfc554c66612e5a7605ae39fa2f39f73",
+    "watch_oom_cgroup_runner.py": "b9c4dff8ebfbf19188379522e84cab469e7d40a30df0306423c9b9b12d8a068f",
+    "watch_oom_cgroup_probe.py": "403a0d5bc6bc2382341efd2668fc844c49dd65ccf421901a0b43f9a2d8ac62aa",
+    "watch_oom_cgroup_supervisor.py": "c80865ad4bad5644c5b80e338728b7f6a77537c163bdf569fa2d78951e7be88f",
+    "watch_oom_exposure_index_e2e_support.py": "ebdcfa7ced9e72f084d2e6e55af9fec9b58da02621812604837a9d0448d38220",
+    "test_watch_oom_exposure_index_e2e.py": "d77cdf747d65531e99dcee60c6161833d43c70b21b02f831194c63e7ea2afb93",
+    "watch_oom_hermetic_isolation.py": "09bd339c4982f2ec6a328321aad1c0fe87b7969f12144ecd4b879ddd9e403ced",
+    "watch_oom_memory_worker_shared.py": "566955b581d99e339598428d3284e6ce904d18fd8f748f4cf1348b6c0c55e2a5",
+    "linux_proc.py": "fac634b0dbd307f9dacfe625eb7e96faae5bbf9dd15c217e801e83d741af6e7f",
+    "watch_oom_brief_hermetic.py": "7e804e5b401afa5c7c53f3d3f258ff0497fd3103f90c40ddeb9771e0ddedec70",
+    "watch_oom_exposure_hermetic.py": "ca4b55ccdbeb1f798438fb00fcc6592d2ac3457e547df3c7f7f3893489b2325d",
+    "watch_oom_memory_test_support.py": "7ec443a26fb4af1128e52c7c40d1c73b61b7b76d2651a51c1bbf9b96f56828ee"
+  },
+  "canary_contract": {
+    "brief": [
+      "/home/lauer/.local/share/convmem/brief.md"
+    ],
+    "chroma": [
+      "/home/lauer/.local/share/convmem/chroma/chroma.sqlite3"
+    ],
+    "config": [
+      "/home/lauer/.config/convmem/config.toml"
+    ],
+    "export": [
+      "/home/lauer/.local/share/convmem/knowledge_units.jsonl",
+      "/home/lauer/.local/share/convmem/processed.json"
+    ],
+    "watcher_service": [
+      "/home/lauer/.config/systemd/user/convmem-watch.service",
+      "/home/lauer/.config/systemd/user/convmem-refine.service",
+      "/home/lauer/.config/systemd/user/convmem-monitor.timer"
+    ],
+    "writer_gate": [
+      "/home/lauer/.local/share/convmem/locks/chroma_writer_gate.lock"
+    ]
+  },
+  "worker_cgroup_memory_max_bytes": 2147483648,
+  "worker_cgroup_swap_max_bytes": 0,
+  "cgroup_smoke": {
+    "capability_probes": {
+      "success": {
+        "unit": "convmem-oom-measure-0657cbbe30614b39ab6a967a1f4d3fd2.service",
+        "control_group": "/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-0657cbbe30614b39ab6a967a1f4d3fd2.service",
+        "limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-0657cbbe30614b39ab6a967a1f4d3fd2.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "oom_policy_verified": true,
+        "active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 45.29,
+          "scratch_free_gib": 292.34,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "returncode": 0,
+        "stdout": "{\"status\": \"succeeded\", \"claim\": {\"cgroup_path\": \"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-0657cbbe30614b39ab6a967a1f4d3fd2.service\", \"memory_max_bytes\": 2147483648, \"memory_swap_max_bytes\": 0}, \"denied_paths\": [\"cgroup-probe-denied-path-marker\"], \"network_denied\": [\"cgroup-probe-network-denied-marker\"]}\n",
+        "stderr": "cgroup probe stderr captured\nCONVMEM_CGROUP_EXIT_TELEMETRY:{\"claim\": {\"cgroup_path\": \"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-0657cbbe30614b39ab6a967a1f4d3fd2.service\", \"memory_max_bytes\": 2147483648, \"memory_swap_max_bytes\": 0}, \"events\": {\"high\": 0, \"low\": 0, \"max\": 0, \"oom\": 0, \"oom_group_kill\": 0, \"oom_kill\": 0, \"sock_throttled\": 0}, \"peak_bytes\": 16973824, \"worker_returncode\": 0}\n",
+        "timed_out": false,
+        "cgroup_samples": 6,
+        "cgroup_peak_bytes": 16973824,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-0657cbbe30614b39ab6a967a1f4d3fd2.service",
+            "memory_max_bytes": 2147483648,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 16973824,
+          "worker_returncode": 0
+        },
+        "sampled_peak_bytes": 16973824,
+        "sampled_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        }
+      },
+      "exit": {
+        "unit": "convmem-oom-measure-112260c57f1e4efc85b430b47b3620f4.service",
+        "control_group": "/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-112260c57f1e4efc85b430b47b3620f4.service",
+        "limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-112260c57f1e4efc85b430b47b3620f4.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "oom_policy_verified": true,
+        "active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 45.28,
+          "scratch_free_gib": 292.34,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "returncode": 17,
+        "stdout": "{\"status\": \"exited\", \"claim\": {\"cgroup_path\": \"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-112260c57f1e4efc85b430b47b3620f4.service\", \"memory_max_bytes\": 2147483648, \"memory_swap_max_bytes\": 0}, \"denied_paths\": [\"cgroup-probe-denied-path-marker\"], \"network_denied\": [\"cgroup-probe-network-denied-marker\"]}\n",
+        "stderr": "cgroup probe stderr captured\nCONVMEM_CGROUP_EXIT_TELEMETRY:{\"claim\": {\"cgroup_path\": \"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-112260c57f1e4efc85b430b47b3620f4.service\", \"memory_max_bytes\": 2147483648, \"memory_swap_max_bytes\": 0}, \"events\": {\"high\": 0, \"low\": 0, \"max\": 0, \"oom\": 0, \"oom_group_kill\": 0, \"oom_kill\": 0, \"sock_throttled\": 0}, \"peak_bytes\": 17117184, \"worker_returncode\": 17}\n",
+        "timed_out": false,
+        "cgroup_samples": 6,
+        "cgroup_peak_bytes": 17117184,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-112260c57f1e4efc85b430b47b3620f4.service",
+            "memory_max_bytes": 2147483648,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 17117184,
+          "worker_returncode": 17
+        },
+        "sampled_peak_bytes": 17117184,
+        "sampled_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        }
+      },
+      "oom": {
+        "unit": "convmem-oom-measure-7d432427cdad4d9b88a6b00089f0a9ab.service",
+        "control_group": "/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-7d432427cdad4d9b88a6b00089f0a9ab.service",
+        "limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-7d432427cdad4d9b88a6b00089f0a9ab.service",
+          "memory_max_bytes": 67108864,
+          "memory_swap_max_bytes": 0
+        },
+        "oom_policy_verified": true,
+        "active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 45.27,
+          "scratch_free_gib": 292.34,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "returncode": 137,
+        "stdout": "",
+        "stderr": "cgroup probe stderr captured\nCONVMEM_CGROUP_EXIT_TELEMETRY:{\"claim\": {\"cgroup_path\": \"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-7d432427cdad4d9b88a6b00089f0a9ab.service\", \"memory_max_bytes\": 67108864, \"memory_swap_max_bytes\": 0}, \"events\": {\"high\": 0, \"low\": 0, \"max\": 53, \"oom\": 1, \"oom_group_kill\": 0, \"oom_kill\": 1, \"sock_throttled\": 0}, \"peak_bytes\": 67108864, \"worker_returncode\": -9}\n",
+        "timed_out": false,
+        "cgroup_samples": 5,
+        "cgroup_peak_bytes": 67108864,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 53,
+          "oom": 1,
+          "oom_group_kill": 0,
+          "oom_kill": 1,
+          "sock_throttled": 0
+        },
+        "exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-7d432427cdad4d9b88a6b00089f0a9ab.service",
+            "memory_max_bytes": 67108864,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 53,
+            "oom": 1,
+            "oom_group_kill": 0,
+            "oom_kill": 1,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 67108864,
+          "worker_returncode": -9
+        },
+        "sampled_peak_bytes": 67108864,
+        "sampled_events": {
+          "low": 0,
+          "high": 0,
+          "max": 53,
+          "oom": 1,
+          "oom_kill": 1,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        }
+      }
+    },
+    "arms": {
+      "baseline": {
+        "target_sha": "5c103aa2f11f54de74be3a7eab90c433c0c019cd",
+        "harness_hash": "7c7b22927e8df7ba406abdfa13206779d01f49746cd4f7a212cea2cb18bc9782",
+        "import_order": [
+          "hermetic_guards_installed",
+          "cgroup_2gib",
+          "config",
+          "ingest",
+          "brief",
+          "doctor",
+          "chroma_readonly",
+          "agent_run_ledger"
+        ],
+        "cgroup_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-6dd6cae34e084f07b4272d2f996340a5.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "import_baseline_rss_bytes": 104849408,
+        "peak_rss_bytes": 154628096,
+        "elapsed_seconds": 0.258,
+        "index_stats": {
+          "files_processed": 1,
+          "files_skipped": 0,
+          "chunks_indexed": 1,
+          "units_indexed": 1,
+          "exact_duplicates_suppressed": 0,
+          "semantic_candidates_queued": 3
+        },
+        "units_before": 64,
+        "units_after": 65,
+        "probe_due": true,
+        "probe_detail": "P0 obs_mem_23 closed 2026-09-13, corpus-clean scan not recorded (last_verified 2026-07-01)",
+        "probe_digest": "c706510116a85b6265822673ff582439a830874647112cc8097f2f0fefdc5d32",
+        "probe_call_count": 1,
+        "writer_calls": [
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.processed"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.export"
+          }
+        ],
+        "writer_paths": {
+          "lock": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-smoke-e863441cee1a48fc9adf2b954d0c6980/n-64/baseline/writer/writer.lock",
+          "attest": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-smoke-e863441cee1a48fc9adf2b954d0c6980/n-64/baseline/writer/attest",
+          "census": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-smoke-e863441cee1a48fc9adf2b954d0c6980/n-64/baseline/writer/census/session-events.jsonl"
+        },
+        "brief_digest": "bb55c3c386438458a75e51a641c73ae1d825ec085c21a855e2e8f2a311331763",
+        "brief_bytes": 2503,
+        "target_module_paths": {
+          "ingest": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/ingest.py",
+          "brief": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/brief.py",
+          "doctor": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/doctor.py",
+          "config": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/config.py",
+          "chroma_readonly": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_readonly.py",
+          "chroma_store": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_store.py",
+          "chroma_write_store": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_write_store.py",
+          "writer_census": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/writer_census.py",
+          "agent_run_ledger": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/agent_run_ledger.py"
+        },
+        "opened_paths": [
+          "/dev/null",
+          "pipe:[15825133]",
+          "pipe:[15825134]",
+          "socket:[15825151]",
+          "socket:[15825152]"
+        ],
+        "denied_paths": [],
+        "network_denied": [],
+        "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+        "status": "succeeded",
+        "returncode": 0,
+        "cgroup_unit": "convmem-oom-measure-6dd6cae34e084f07b4272d2f996340a5.service",
+        "cgroup_limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-6dd6cae34e084f07b4272d2f996340a5.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "cgroup_oom_policy": "continue",
+        "cgroup_active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 45.24,
+          "scratch_free_gib": 292.33,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "cgroup_peak_bytes": 116146176,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_samples": 54,
+        "cgroup_exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-6dd6cae34e084f07b4272d2f996340a5.service",
+            "memory_max_bytes": 2147483648,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 116146176,
+          "worker_returncode": 0
+        }
+      },
+      "candidate": {
+        "target_sha": "bef5328123b279e38c9df075b070b9c352cdf1eb",
+        "harness_hash": "7c7b22927e8df7ba406abdfa13206779d01f49746cd4f7a212cea2cb18bc9782",
+        "import_order": [
+          "hermetic_guards_installed",
+          "cgroup_2gib",
+          "config",
+          "ingest",
+          "brief",
+          "doctor",
+          "chroma_readonly",
+          "agent_run_ledger"
+        ],
+        "cgroup_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-adec2ec5eb4b4271ab20b60a5483fdea.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "import_baseline_rss_bytes": 104476672,
+        "peak_rss_bytes": 152625152,
+        "elapsed_seconds": 0.257,
+        "index_stats": {
+          "files_processed": 1,
+          "files_skipped": 0,
+          "chunks_indexed": 1,
+          "units_indexed": 1,
+          "exact_duplicates_suppressed": 0,
+          "semantic_candidates_queued": 3
+        },
+        "units_before": 64,
+        "units_after": 65,
+        "probe_due": true,
+        "probe_detail": "P0 obs_mem_23 closed 2026-09-13, corpus-clean scan not recorded (last_verified 2026-07-01)",
+        "probe_digest": "c706510116a85b6265822673ff582439a830874647112cc8097f2f0fefdc5d32",
+        "probe_call_count": 1,
+        "writer_calls": [
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.processed"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.export"
+          }
+        ],
+        "writer_paths": {
+          "lock": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-smoke-e863441cee1a48fc9adf2b954d0c6980/n-64/candidate/writer/writer.lock",
+          "attest": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-smoke-e863441cee1a48fc9adf2b954d0c6980/n-64/candidate/writer/attest",
+          "census": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-smoke-e863441cee1a48fc9adf2b954d0c6980/n-64/candidate/writer/census/session-events.jsonl"
+        },
+        "brief_digest": "18427aa6d4c869d9e60e48a90d9481a033769fd363de85018343b8835a99e5d3",
+        "brief_bytes": 2490,
+        "target_module_paths": {
+          "ingest": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/ingest.py",
+          "brief": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/brief.py",
+          "doctor": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/doctor.py",
+          "config": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/config.py",
+          "chroma_readonly": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_readonly.py",
+          "chroma_store": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_store.py",
+          "chroma_write_store": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_write_store.py",
+          "writer_census": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/writer_census.py",
+          "agent_run_ledger": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/agent_run_ledger.py"
+        },
+        "opened_paths": [
+          "/dev/null",
+          "pipe:[15798875]",
+          "pipe:[15798876]",
+          "socket:[15798887]",
+          "socket:[15798888]"
+        ],
+        "denied_paths": [],
+        "network_denied": [],
+        "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+        "status": "succeeded",
+        "returncode": 0,
+        "cgroup_unit": "convmem-oom-measure-adec2ec5eb4b4271ab20b60a5483fdea.service",
+        "cgroup_limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-adec2ec5eb4b4271ab20b60a5483fdea.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "cgroup_oom_policy": "continue",
+        "cgroup_active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 45.2,
+          "scratch_free_gib": 292.32,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "cgroup_peak_bytes": 112955392,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_samples": 57,
+        "cgroup_exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-adec2ec5eb4b4271ab20b60a5483fdea.service",
+            "memory_max_bytes": 2147483648,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 112955392,
+          "worker_returncode": 0
+        }
+      }
+    }
+  },
+  "worker_timeout_seconds": 90,
+  "outcome_counts": {
+    "timed_out": 0,
+    "exited": 0,
+    "invalid_output": 0,
+    "succeeded": 4
+  },
+  "canary_ambiguity": [
+    "candidate n=20000: chroma /home/lauer/.local/share/convmem/chroma/chroma.sqlite3: before=PathCanary(path='/home/lauer/.local/share/convmem/chroma/chroma.sqlite3', surface='chroma', exists=True, size=6035537920, mode=33188, mtime_ns=1791602365646118981, sha256='e101950a00e346d5be9fdaf92fc7c887257b24f98919208113c144191e49e9d6', device=66306, inode=21628379) after=PathCanary(path='/home/lauer/.local/share/convmem/chroma/chroma.sqlite3', surface='chroma', exists=True, size=6035537920, mode=33188, mtime_ns=1791602525174030797, sha256='e9679962087d120f11e3120a6e6f8b6e888efe5457beecc7a34c29fb3165c7aa', device=66306, inode=21628379)"
+  ],
+  "hard_failures": [],
+  "complete_pairs": 1,
+  "review_correction": {
+    "original_generated_complete_pairs": 2,
+    "successful_worker_pairs": 2,
+    "admissible_pairs": 1,
+    "canary_tainted_pair_n": 20000,
+    "writer_attribution": "unknown",
+    "basis": "The watcher was inactive and disabled. The production Chroma canary drift was detected on the 20000-row candidate check, but its recorded file mtime precedes the candidate worker start in the user journal. Concurrent agent and user-service records did not identify the writer. The raw worker outcomes remain below, but the tainted pair cannot support a floor delta."
+  },
+  "measurement_blocked": true,
+  "rows": [
+    {
+      "n": 5000,
+      "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+      "baseline": {
+        "target_sha": "5c103aa2f11f54de74be3a7eab90c433c0c019cd",
+        "harness_hash": "7c7b22927e8df7ba406abdfa13206779d01f49746cd4f7a212cea2cb18bc9782",
+        "import_order": [
+          "hermetic_guards_installed",
+          "cgroup_2gib",
+          "config",
+          "ingest",
+          "brief",
+          "doctor",
+          "chroma_readonly",
+          "agent_run_ledger"
+        ],
+        "cgroup_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-f6823b841c4d43f89d8a680742204a77.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "import_baseline_rss_bytes": 103899136,
+        "peak_rss_bytes": 326389760,
+        "elapsed_seconds": 0.763,
+        "index_stats": {
+          "files_processed": 1,
+          "files_skipped": 0,
+          "chunks_indexed": 1,
+          "units_indexed": 1,
+          "exact_duplicates_suppressed": 0,
+          "semantic_candidates_queued": 3
+        },
+        "units_before": 5000,
+        "units_after": 5001,
+        "probe_due": true,
+        "probe_detail": "P0 obs_mem_23 closed 2026-09-13, corpus-clean scan not recorded (last_verified 2026-07-01)",
+        "probe_digest": "c706510116a85b6265822673ff582439a830874647112cc8097f2f0fefdc5d32",
+        "probe_call_count": 1,
+        "writer_calls": [
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.processed"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.export"
+          }
+        ],
+        "writer_paths": {
+          "lock": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-5000/baseline/writer/writer.lock",
+          "attest": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-5000/baseline/writer/attest",
+          "census": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-5000/baseline/writer/census/session-events.jsonl"
+        },
+        "brief_digest": "eec590619b95e4168f705c1c7242967841c802e44fe8481eedd44130147200d8",
+        "brief_bytes": 2595,
+        "target_module_paths": {
+          "ingest": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/ingest.py",
+          "brief": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/brief.py",
+          "doctor": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/doctor.py",
+          "config": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/config.py",
+          "chroma_readonly": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_readonly.py",
+          "chroma_store": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_store.py",
+          "chroma_write_store": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_write_store.py",
+          "writer_census": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/writer_census.py",
+          "agent_run_ledger": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/agent_run_ledger.py"
+        },
+        "opened_paths": [
+          "/dev/null",
+          "pipe:[15798890]",
+          "pipe:[15798891]",
+          "socket:[15825185]",
+          "socket:[15825186]"
+        ],
+        "denied_paths": [],
+        "network_denied": [],
+        "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+        "status": "succeeded",
+        "returncode": 0,
+        "cgroup_unit": "convmem-oom-measure-f6823b841c4d43f89d8a680742204a77.service",
+        "cgroup_limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-f6823b841c4d43f89d8a680742204a77.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "cgroup_oom_policy": "continue",
+        "cgroup_active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 44.82,
+          "scratch_free_gib": 291.62,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "cgroup_peak_bytes": 456527872,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_samples": 81,
+        "cgroup_exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-f6823b841c4d43f89d8a680742204a77.service",
+            "memory_max_bytes": 2147483648,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 456527872,
+          "worker_returncode": 0
+        }
+      },
+      "candidate": {
+        "target_sha": "bef5328123b279e38c9df075b070b9c352cdf1eb",
+        "harness_hash": "7c7b22927e8df7ba406abdfa13206779d01f49746cd4f7a212cea2cb18bc9782",
+        "import_order": [
+          "hermetic_guards_installed",
+          "cgroup_2gib",
+          "config",
+          "ingest",
+          "brief",
+          "doctor",
+          "chroma_readonly",
+          "agent_run_ledger"
+        ],
+        "cgroup_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-1d0250d5498b48c8a76a20b7d8c31a1a.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "import_baseline_rss_bytes": 105021440,
+        "peak_rss_bytes": 149803008,
+        "elapsed_seconds": 0.539,
+        "index_stats": {
+          "files_processed": 1,
+          "files_skipped": 0,
+          "chunks_indexed": 1,
+          "units_indexed": 1,
+          "exact_duplicates_suppressed": 0,
+          "semantic_candidates_queued": 3
+        },
+        "units_before": 5000,
+        "units_after": 5001,
+        "probe_due": true,
+        "probe_detail": "P0 obs_mem_23 closed 2026-09-13, corpus-clean scan not recorded (last_verified 2026-07-01)",
+        "probe_digest": "c706510116a85b6265822673ff582439a830874647112cc8097f2f0fefdc5d32",
+        "probe_call_count": 1,
+        "writer_calls": [
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.processed"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.export"
+          }
+        ],
+        "writer_paths": {
+          "lock": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-5000/candidate/writer/writer.lock",
+          "attest": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-5000/candidate/writer/attest",
+          "census": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-5000/candidate/writer/census/session-events.jsonl"
+        },
+        "brief_digest": "ab70207c08b5bea024d4495f0d760376f1c44f7f67d39355ec8772378b82c99d",
+        "brief_bytes": 2582,
+        "target_module_paths": {
+          "ingest": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/ingest.py",
+          "brief": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/brief.py",
+          "doctor": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/doctor.py",
+          "config": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/config.py",
+          "chroma_readonly": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_readonly.py",
+          "chroma_store": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_store.py",
+          "chroma_write_store": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_write_store.py",
+          "writer_census": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/writer_census.py",
+          "agent_run_ledger": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/agent_run_ledger.py"
+        },
+        "opened_paths": [
+          "/dev/null",
+          "pipe:[15825190]",
+          "pipe:[15825191]",
+          "socket:[15825208]",
+          "socket:[15825209]"
+        ],
+        "denied_paths": [],
+        "network_denied": [],
+        "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+        "status": "succeeded",
+        "returncode": 0,
+        "cgroup_unit": "convmem-oom-measure-1d0250d5498b48c8a76a20b7d8c31a1a.service",
+        "cgroup_limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-1d0250d5498b48c8a76a20b7d8c31a1a.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "cgroup_oom_policy": "continue",
+        "cgroup_active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 44.85,
+          "scratch_free_gib": 291.62,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "cgroup_peak_bytes": 110972928,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_samples": 71,
+        "cgroup_exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-1d0250d5498b48c8a76a20b7d8c31a1a.service",
+            "memory_max_bytes": 2147483648,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 110972928,
+          "worker_returncode": 0
+        }
+      },
+      "delta_peak_bytes": -176586752,
+      "delta_floor_bytes": -177709056
+    },
+    {
+      "n": 20000,
+      "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+      "baseline": {
+        "target_sha": "5c103aa2f11f54de74be3a7eab90c433c0c019cd",
+        "harness_hash": "7c7b22927e8df7ba406abdfa13206779d01f49746cd4f7a212cea2cb18bc9782",
+        "import_order": [
+          "hermetic_guards_installed",
+          "cgroup_2gib",
+          "config",
+          "ingest",
+          "brief",
+          "doctor",
+          "chroma_readonly",
+          "agent_run_ledger"
+        ],
+        "cgroup_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-7fe1040d4e094a1eac9b588d5ddc501e.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "import_baseline_rss_bytes": 103936000,
+        "peak_rss_bytes": 865136640,
+        "elapsed_seconds": 4.133,
+        "index_stats": {
+          "files_processed": 1,
+          "files_skipped": 0,
+          "chunks_indexed": 1,
+          "units_indexed": 1,
+          "exact_duplicates_suppressed": 0,
+          "semantic_candidates_queued": 3
+        },
+        "units_before": 20000,
+        "units_after": 20001,
+        "probe_due": true,
+        "probe_detail": "P0 obs_mem_23 closed 2026-09-13, corpus-clean scan not recorded (last_verified 2026-07-01)",
+        "probe_digest": "c706510116a85b6265822673ff582439a830874647112cc8097f2f0fefdc5d32",
+        "probe_call_count": 1,
+        "writer_calls": [
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.processed"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.export"
+          }
+        ],
+        "writer_paths": {
+          "lock": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-20000/baseline/writer/writer.lock",
+          "attest": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-20000/baseline/writer/attest",
+          "census": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-20000/baseline/writer/census/session-events.jsonl"
+        },
+        "brief_digest": "67e411f71f0c773046f8e759c2a8958c850f81eb10ec415b158abeac65b640ae",
+        "brief_bytes": 2601,
+        "target_module_paths": {
+          "ingest": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/ingest.py",
+          "brief": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/brief.py",
+          "doctor": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/doctor.py",
+          "config": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/config.py",
+          "chroma_readonly": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_readonly.py",
+          "chroma_store": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_store.py",
+          "chroma_write_store": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/chroma_write_store.py",
+          "writer_census": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/writer_census.py",
+          "agent_run_ledger": "/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline/agent_run_ledger.py"
+        },
+        "opened_paths": [
+          "/dev/null",
+          "pipe:[15825223]",
+          "pipe:[15825224]",
+          "socket:[15798920]",
+          "socket:[15798921]"
+        ],
+        "denied_paths": [],
+        "network_denied": [],
+        "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+        "status": "succeeded",
+        "returncode": 0,
+        "cgroup_unit": "convmem-oom-measure-7fe1040d4e094a1eac9b588d5ddc501e.service",
+        "cgroup_limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-7fe1040d4e094a1eac9b588d5ddc501e.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "cgroup_oom_policy": "continue",
+        "cgroup_active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 44.57,
+          "scratch_free_gib": 289.71,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "cgroup_peak_bytes": 1514356736,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_samples": 249,
+        "cgroup_exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-7fe1040d4e094a1eac9b588d5ddc501e.service",
+            "memory_max_bytes": 2147483648,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 1514356736,
+          "worker_returncode": 0
+        }
+      },
+      "candidate": {
+        "target_sha": "bef5328123b279e38c9df075b070b9c352cdf1eb",
+        "harness_hash": "7c7b22927e8df7ba406abdfa13206779d01f49746cd4f7a212cea2cb18bc9782",
+        "import_order": [
+          "hermetic_guards_installed",
+          "cgroup_2gib",
+          "config",
+          "ingest",
+          "brief",
+          "doctor",
+          "chroma_readonly",
+          "agent_run_ledger"
+        ],
+        "cgroup_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-fba2cc6950fb4dcdb074fccbe8373975.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "import_baseline_rss_bytes": 105123840,
+        "peak_rss_bytes": 179806208,
+        "elapsed_seconds": 1.444,
+        "index_stats": {
+          "files_processed": 1,
+          "files_skipped": 0,
+          "chunks_indexed": 1,
+          "units_indexed": 1,
+          "exact_duplicates_suppressed": 0,
+          "semantic_candidates_queued": 3
+        },
+        "units_before": 20000,
+        "units_after": 20001,
+        "probe_due": true,
+        "probe_detail": "P0 obs_mem_23 closed 2026-09-13, corpus-clean scan not recorded (last_verified 2026-07-01)",
+        "probe_digest": "c706510116a85b6265822673ff582439a830874647112cc8097f2f0fefdc5d32",
+        "probe_call_count": 1,
+        "writer_calls": [
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "write_session",
+            "entrypoint": "ingest.write"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.processed"
+          },
+          {
+            "kind": "writer_boundary",
+            "entrypoint": "ingest.export"
+          }
+        ],
+        "writer_paths": {
+          "lock": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-20000/candidate/writer/writer.lock",
+          "attest": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-20000/candidate/writer/attest",
+          "census": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-full-bdcc89fc027d46ef8577dacd0febdaa6/n-20000/candidate/writer/census/session-events.jsonl"
+        },
+        "brief_digest": "2498115f95ef798bd7269ce3299c2f84b2b863babfc5da7027744bcafcbba069",
+        "brief_bytes": 2588,
+        "target_module_paths": {
+          "ingest": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/ingest.py",
+          "brief": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/brief.py",
+          "doctor": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/doctor.py",
+          "config": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/config.py",
+          "chroma_readonly": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_readonly.py",
+          "chroma_store": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_store.py",
+          "chroma_write_store": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/chroma_write_store.py",
+          "writer_census": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/writer_census.py",
+          "agent_run_ledger": "/home/lauer/Projects/convmem/.worktrees/issue-268-cgroup-smoke-main/agent_run_ledger.py"
+        },
+        "opened_paths": [
+          "/dev/null",
+          "pipe:[15825247]",
+          "pipe:[15825248]",
+          "socket:[15825265]",
+          "socket:[15825266]"
+        ],
+        "denied_paths": [],
+        "network_denied": [],
+        "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
+        "status": "succeeded",
+        "returncode": 0,
+        "cgroup_unit": "convmem-oom-measure-fba2cc6950fb4dcdb074fccbe8373975.service",
+        "cgroup_limit_claim": {
+          "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-fba2cc6950fb4dcdb074fccbe8373975.service",
+          "memory_max_bytes": 2147483648,
+          "memory_swap_max_bytes": 0
+        },
+        "cgroup_oom_policy": "continue",
+        "cgroup_active_host": {
+          "hostname": "archlinux",
+          "ram_available_gib": 44.16,
+          "scratch_free_gib": 289.71,
+          "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch",
+          "scratch_fstype": "ext4",
+          "watcher": {
+            "ActiveState": "inactive",
+            "UnitFileState": "disabled"
+          },
+          "ok": true
+        },
+        "cgroup_peak_bytes": 148058112,
+        "cgroup_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_samples": 115,
+        "cgroup_exit_telemetry": {
+          "claim": {
+            "cgroup_path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/convmem-oom-measure-fba2cc6950fb4dcdb074fccbe8373975.service",
+            "memory_max_bytes": 2147483648,
+            "memory_swap_max_bytes": 0
+          },
+          "events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "peak_bytes": 148058112,
+          "worker_returncode": 0
+        }
+      },
+      "canary_tainted": true
+    }
+  ],
+  "verdict": "Measurement stopped: production Chroma canary drift was detected on the 20000-row candidate check; its writer is unknown, and the recorded file mtime precedes the candidate worker start. The watcher was inactive and disabled. Only the 5000-row pair is admissible, so no full-curve remaining-floor delta is claimed for \u00a79.8. Do not operate the watcher from this evidence. The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
+}
