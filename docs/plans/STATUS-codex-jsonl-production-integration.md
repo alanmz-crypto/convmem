@@ -84,31 +84,28 @@ Key invariants:
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap | PR #377 merged the DeepSeek-only cap correction as `d1c28f9`; all six checks passed and Kiro passed the exact final tip. The earlier live attempt remains `transform_failed` under old grant `dc56d5af...` after 2 DeepSeek and 6 Ollama requests. The old recovery is runtime/budget blocked, while a fresh grant is rejected by exact transaction binding. | Review the `NO-GO` retry packet, then Ryan decides whether to authorize a narrow failed-operation supersession implementation |
+| Existing-source bootstrap | PR #377 merged the DeepSeek-only cap correction as `d1c28f9`; all six checks passed. The earlier live attempt remains `transform_failed` under old grant `dc56d5af...` after 2 DeepSeek and 6 Ollama requests. Kiro and Copilot both passed the corrected `NO-GO` retry packet at exact revision `d358a71` and packet digest `a106deec...429f`: old recovery is runtime/budget blocked, while a fresh grant is rejected by exact transaction binding. | Ryan decides whether to authorize a narrow failed-operation supersession implementation |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Review the exact retry packet on
-`plan/2026-10-10-kiro-bootstrap-retry-packet`. The packet documents why neither
-the old same-grant recovery nor a fresh grant can progress from the preserved
-`transform_failed` transaction. Next lane: Kiro design review and GitHub
-Copilot safety/isolation audit on the same revision, then Ryan decides whether
-to authorize a narrow failed-operation supersession implementation. Live
-bootstrap, runtime promotion, config change, and watcher operation remain
-separately Ryan-gated. Other transcript adapters remain out of scope.
+Kiro and GitHub Copilot both passed exact packet revision `d358a71`; there is no
+review conflict. The packet documents why neither the old same-grant recovery
+nor a fresh grant can progress from the preserved `transform_failed`
+transaction. Next lane: Ryan decides whether to authorize Cursor to implement
+the narrow failed-operation supersession contract. Live bootstrap, runtime
+promotion, config change, and watcher operation remain separately Ryan-gated.
+Other transcript adapters remain out of scope.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro and GitHub Copilot review the same exact revision of the `NO-GO` retry
-   packet.
-2. Ryan decides whether to authorize Cursor to implement explicit,
+1. Ryan decides whether to authorize Cursor to implement explicit,
    predecessor-preserving supersession of this exact pre-apply
    `transform_failed` transaction, carrying forward the two spent DeepSeek
    attempts.
-3. After a reviewed correction merges, prepare a new execution-day packet with
+2. After a reviewed correction merges, prepare a new execution-day packet with
    an exact runtime and grant. Obtain a separate Ryan grant before any retry.
-4. Obtain a later separate Ryan grant before any runtime/config/restart or
+3. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -219,6 +216,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-09 | Kiro / Copilot | Both lanes issued complete PASS verdicts with no blockers on exact corrected revision 318c2f9; CI-equivalent full suite and Ryan's PR decision remain |
 | 2026-10-10 | Cursor | Live bootstrap exposed paid-cap mis-accounting (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); runtime fix `32fae68`, 12 focused passes at evidence commit `2b7228b`, Copilot scoped PASS on runtime, Kiro PASS on evidence; next gate Ryan PR/merge decision |
 | 2026-10-10 | Ryan / Sol | Ryan merged the paid-cap correction via PR #377 as `d1c28f9`; Sol prepared a `NO-GO` retry packet after confirming the preserved old transaction blocks both old-grant recovery and a fresh grant |
+| 2026-10-10 | Kiro / Copilot | Both lanes passed corrected retry packet revision `d358a71` with no blockers; the live retry remains `NO-GO` pending Ryan's supersession-implementation decision |
 
 ## TL;DR
 
@@ -228,5 +226,6 @@ Keep this document a current-state snapshot, not a session diary.
   paid-cap correction as `d1c28f9` with all six checks green.
 - The failed old transaction cannot use that correction: old recovery is
   runtime/budget blocked, and a fresh grant is transaction-binding blocked.
-  The retry packet is `NO-GO` pending same-revision review and a separately
-  authorized failed-operation supersession correction.
+  Kiro and Copilot passed exact retry-packet revision `d358a71`; it remains
+  `NO-GO` pending Ryan's decision on a separately authorized failed-operation
+  supersession correction.
