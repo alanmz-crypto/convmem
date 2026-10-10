@@ -9,18 +9,18 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — guarded Kiro route MERGED, default off
-  (2026-10-09):** Ryan squash-merged
-  [PR #365](https://github.com/alanmz-crypto/convmem/pull/365) onto `main` as
-  `f3171fc`. Copilot and Kiro passed the reviewed PR tip `7ed46c4`, and all
-  six CI checks passed. The guarded production boundary and one-shot bootstrap
-  can cover one Kiro JSONL source after an express grant; Crush SQLite and
-  Cursor JSONL remain on the legacy route. The watcher remains stopped and
-  disabled for cost containment. No live bootstrap, config/runtime promotion,
-  watcher restart, or paid-call measurement was granted by the merge. Ryan must issue
-  separate exact-source/budget and later runtime/restart grants. Resume from
-  the [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md)
-  and [live-route design](../plans/DESIGN-issue-286-live-activation.md).
+- **Arc Codex / issue #286 — bootstrap safety corrective AUTHORIZED
+  (2026-10-09):** Sol resolved the first exact-packet Kiro/Copilot conflict in
+  Copilot's favor, corrected the packet, and obtained same-revision `PASS` from
+  both lanes at packet commit `4aecb96`. The reviewed packet remains `NO-GO`
+  for live use because the merged command lacks a durable paid-attempt cap,
+  failure accounting, and complete transform binding. Ryan has now authorized
+  Cursor's bounded hermetic correction on
+  `fix/2026-10-09-issue-286-bootstrap-budget-safety`; no live bootstrap,
+  provider call, config/runtime change, watcher action, PR, or merge is
+  authorized. Resume from the
+  [Cursor Execute handoff](SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md)
+  and [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **PR Steward reminder — Ryan chose Option B (2026-09-28):** Assign the
   existing PR Steward role (default: Codex) through explicit, bounded briefs
