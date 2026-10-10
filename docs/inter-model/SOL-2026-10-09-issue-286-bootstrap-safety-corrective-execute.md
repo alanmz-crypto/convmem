@@ -13,11 +13,11 @@ bounded scope below
 
 | Field | Value |
 |---|---|
-| **State** | `NOT_STARTED` |
-| **Baseline** | `4f4e051af273309db5749bafcd5cf73ae2483a9c` on `docs/2026-10-09-issue-286-bootstrap-review-packet` |
-| **Implementation branch** | `fix/2026-10-09-issue-286-bootstrap-budget-safety` |
-| **Tip SHA** | implementation not started; begin from the pushed authorization handoff |
-| **Push status** | authorization branch pushed; push implementation branch after every commit |
+| **State** | `IMPLEMENTED_REVIEW_PENDING` — same-revision review and CI-equivalent full-suite evidence pending |
+| **Baseline** | `a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b` on `origin/main` after Switchboard PR #369 |
+| **Implementation branch** | `fix/2026-10-09-issue-286-bootstrap-budget-safety-main` |
+| **Implementation commit** | `273c27a` (`b78cbd5` on the superseded pre-PR-#369 branch contains the same code patch) |
+| **Push status** | implementation commit pushed to the explicit branch ref |
 | **PR** | not opened; PR creation remains separately Ryan-granted |
 | **Ryan GATE** | none for this bounded hermetic implementation; live resources and PR creation remain ungranted |
 | **Required review** | Kiro design review and GitHub Copilot safety audit on the same exact implementation revision |
@@ -190,6 +190,32 @@ ship a second whole-file copy under another name.
 
 ---
 
+## Implementation checkpoint
+
+Cursor implemented and pushed the corrective as `273c27a` on the collision-safe
+branch based on `a94bc57`. The four protected Arc ConvMem Switchboard planning
+files are byte-identical to `origin/main` and are outside this branch's changed
+path set.
+
+Evidence currently available:
+
+- focused incremental/provider safety set: `140 passed`;
+- narrower final safety set: `40 passed`;
+- changed-file syntax and whitespace checks: PASS;
+- secret scan and critical-invariant manifest: PASS;
+- Pylint regression gate: PASS with no new/increased findings; and
+- full suite: **not claimed**. The local sandbox makes unrelated CLI tests fail
+  when they attempt the hard-coded production writer-lock path under the CI
+  config. The first such test passes under Python 3.12 without that sandboxed
+  path collision. GitHub CI or an equivalently isolated writable home remains
+  required before PR disposition.
+
+The prior branch `fix/2026-10-09-issue-286-bootstrap-budget-safety` is preserved
+as a remote backup and must not be proposed for merge because it predates PR
+#369. The `-main` branch is the only review candidate.
+
+---
+
 ## Test expectations
 
 All tests must use temporary roots, fake providers, denied network, and
@@ -268,19 +294,22 @@ hashes mechanically without showing why the changed authority bytes require it.
 - [x] Authorization branch pushed; implementation branch is created and pushed
       before Cursor starts.
 
-**Cursor (picking up):**
+**Cursor (implementation result):**
 
-- [ ] Read this file and the Arc Codex STATUS brief before the first edit.
-- [ ] Work only in `fix/2026-10-09-issue-286-bootstrap-budget-safety`.
-- [ ] State Goal / role / system state / next action and **Arc: Codex**.
-- [ ] Stop on a material architecture fork, live-resource dependency, or
-      inability to preserve bounded-memory rollback semantics.
-- [ ] Return exact final SHA, diff, test evidence, unresolved risks, and Track A
-      transcript path for Kiro/Copilot review.
+- [x] Read this file and the Arc Codex STATUS brief before the first edit.
+- [x] Implemented on an isolated Arc Codex branch; collision-safe replay is on
+      `fix/2026-10-09-issue-286-bootstrap-budget-safety-main`.
+- [x] Preserved the live-resource and provider prohibition.
+- [x] No material architecture fork or inability to preserve bounded-memory
+      rollback semantics was reported.
+- [x] Cursor Track A transcript:
+      `~/.cursor/projects/home-lauer-local-share-convmem-worktrees-fix-2026-10-09-issue-286-bootstrap-budget-safety/agent-transcripts/d78bb8ed-6ef2-4540-beb3-c2797dea257a/d78bb8ed-6ef2-4540-beb3-c2797dea257a.jsonl`.
+- [ ] Kiro/Copilot same-revision review and CI-equivalent full-suite evidence.
 
 ## TL;DR
 
-Ryan authorized Cursor to correct the issue #286 bootstrap's durable paid-call
-cap, binding, receipts, recovery, isolation evidence, and export rollback in a
-hermetic branch. Live bootstrap, providers, runtime/config, watcher operations,
-PR creation, and merge remain separately gated.
+Cursor implemented Ryan's authorized issue #286 bootstrap corrective at
+`273c27a` on the collision-safe branch. Focused tests and the Pylint regression
+gate pass; same-revision Kiro/Copilot review and CI-equivalent full-suite
+evidence remain. Live bootstrap, providers, runtime/config, watcher operations,
+PR creation, and merge are separately gated.
