@@ -164,7 +164,13 @@ def test_bootstrap_checks_watcher_and_chunk_cap_before_coordinator(
             self.last_result = None
             self.last_evidence = {}
 
+        def require_existing_embedding_dimension(self, expected):
+            assert expected == 8
+            calls.append("dimension")
+            return {"conversation_summaries": 8, "knowledge_units": 8}
+
         def run(self):
+            calls.append("run")
             self.last_result = SimpleNamespace(
                 outcome="committed",
                 mode="bootstrap_existing",
@@ -202,7 +208,7 @@ def test_bootstrap_checks_watcher_and_chunk_cap_before_coordinator(
     )
     monkeypatch.setitem(globals_, "_effective_binding", lambda *_args: _binding(allowed))
     receipt = bootstrap(allowed)
-    assert calls == ["watcher", "coordinator"]
+    assert calls == ["watcher", "coordinator", "dimension", "run"]
     assert receipt["outcome"] == "committed"
     assert receipt["logical_attempts"]["summarize"] == 2
     assert receipt["recovery_remains_available"] is False

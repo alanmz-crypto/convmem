@@ -220,6 +220,7 @@ def _post_deepseek(
         headers={"Authorization": f"Bearer {api_key}"},
         json=body,
         timeout=timeout,
+        allow_redirects=False,
         **({"stream": True} if stream else {}),
     )
     resp.raise_for_status()

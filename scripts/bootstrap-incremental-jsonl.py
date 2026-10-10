@@ -438,6 +438,7 @@ def bootstrap(grant: dict[str, Any]) -> dict[str, Any]:
             bootstrap_operation_id=grant["operation_id"],
             bootstrap_binding_fingerprint=_binding_fingerprint(expected_binding),
         )
+        coordinator.require_existing_embedding_dimension(grant["embed_dimension"])
         with provider_http_accounting(
             journal.consume_provider_http_attempt,
             journal.report_provider_usage,

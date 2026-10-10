@@ -42,6 +42,32 @@ class _Response:
         return self.payload
 
 
+def test_paid_transport_disables_automatic_redirects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: list[dict] = []
+
+    def fake_post(_url, **kwargs):
+        seen.append(kwargs)
+        return _Response(
+            {"choices": [{"message": {"content": "ok"}}], "usage": {}}
+        )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "hermetic-test-key")
+    monkeypatch.setattr(llm.requests, "post", fake_post)
+    assert (
+        llm._deepseek_generate(
+            "prompt",
+            "deepseek-v4-test",
+            "https://provider.invalid",
+            max_attempts=1,
+        )
+        == "ok"
+    )
+    assert len(seen) == 1
+    assert seen[0]["allow_redirects"] is False
+
+
 def test_http_attempt_cap_is_consumed_before_transport_and_survives_restart(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

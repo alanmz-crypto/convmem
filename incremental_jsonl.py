@@ -671,6 +671,32 @@ class IncrementalJsonlCoordinator:
                 session.store.ids_for_source(UNITS, self.path_key)
             )
 
+    def require_existing_embedding_dimension(self, expected: int) -> dict[str, int]:
+        """Prove the effective dimension from existing source rows, not config."""
+
+        dimensions: dict[str, int] = {}
+        with self._session() as session:
+            for name in (SUMMARIES, UNITS):
+                rows = session.store.snapshot_source_rows(name, self.path_key)
+                row_dimensions = {
+                    len(row.get("embedding") or [])
+                    for row in rows
+                    if row.get("embedding") is not None
+                }
+                if not rows or len(row_dimensions) != 1 or 0 in row_dimensions:
+                    raise IncrementalJsonlError(
+                        "embedding_dimension_unproven",
+                        f"{name} has no single non-empty source embedding dimension",
+                    )
+                dimensions[name] = row_dimensions.pop()
+        if set(dimensions.values()) != {expected}:
+            raise IncrementalJsonlError(
+                "embedding_dimension_mismatch",
+                f"existing collection dimensions {dimensions} differ from {expected}",
+            )
+        self.last_evidence["embedding_dimension_authority"] = dict(dimensions)
+        return dimensions
+
     def _processed(self) -> dict:
         if self.processed_override is not None:
             return self.processed_override
@@ -1283,10 +1309,17 @@ class IncrementalJsonlCoordinator:
         restored.update(processed_preimage)
         save_processed(processed_path, restored)
 
-    def _restore_state_files(self, state_files: dict | None) -> None:
+    def _restore_state_files(
+        self,
+        state_files: dict | None,
+        *,
+        preserve_recovery_authority: bool = False,
+    ) -> None:
         if not state_files:
             return
         for name in ("checkpoint", "transaction", "rollback"):
+            if preserve_recovery_authority and name in {"transaction", "rollback"}:
+                continue
             if name not in state_files:
                 continue
             self._restore_file_preimage(self.paths[name], state_files[name])
@@ -1312,7 +1345,12 @@ class IncrementalJsonlCoordinator:
                 continue
             self._restore_file_preimage(paths[name], dedupe_files[name])
 
-    def _restore_before_images(self, rollback: dict) -> None:
+    def _restore_before_images(
+        self,
+        rollback: dict,
+        *,
+        preserve_recovery_authority: bool = False,
+    ) -> None:
         if rollback.get("version") != ROLLBACK_VERSION:
             raise IncrementalJsonlError("recovery_unproven", "rollback version mismatch")
         if rollback.get("source_path") != self.path_key:
@@ -1340,7 +1378,10 @@ class IncrementalJsonlCoordinator:
             session.store.restore_source_rows(UNITS, rollback.get("units") or [])
         self._restore_export(rollback.get("export_preimage") or {})
         self._restore_processed(rollback.get("processed_preimage") or {})
-        self._restore_state_files(rollback.get("state_files"))
+        self._restore_state_files(
+            rollback.get("state_files"),
+            preserve_recovery_authority=preserve_recovery_authority,
+        )
         self._restore_prepared_files(rollback.get("prepared_files"))
         self._restore_dedupe_files(rollback.get("dedupe_files"))
 
@@ -1675,6 +1716,7 @@ class IncrementalJsonlCoordinator:
         reused: int,
         transaction_id: str,
         mode: str,
+        rollback_authority_sha256: str | None = None,
     ) -> IncrementalRunResult:
         from ingest import _path_is_excluded
         from purge_locks import source_flock
@@ -1688,36 +1730,47 @@ class IncrementalJsonlCoordinator:
         with source_flock(self.cfg, self.path_key):
             if _path_is_excluded(self._processed(), self.path_key):
                 return self._refusal("excluded", snapshot=snapshot)
-            rollback = self._snapshot_before_images()
-            self._write_rollback(rollback)
-            self._write_transaction(
-                {
-                    "version": TRANSACTION_VERSION,
-                    "transaction_id": transaction_id,
-                    "phase": "APPLYING",
-                    "bootstrap_existing": self.bootstrap_existing,
-                    **self._bootstrap_transaction_binding(),
-                    "source_path": self.path_key,
-                    "source_identity": self.source_id,
-                    "generation": generation,
-                    "prepared_keys": [item["cache_key"] for item in prepared],
-                    "generation_identity": snapshot["generation_identity"],
-                    "complete_boundary": snapshot["complete_boundary"],
-                    "prefix_sha256": snapshot["prefix_sha256"],
-                    "session_meta_digest": snapshot["session_meta_digest"],
-                }
-            )
-            chunks, units, events, keep_summaries, keep_units = self._apply_prepared(
-                prepared
-            )
-            candidate_ids = sorted(keep_summaries | keep_units)
-            rollback = _read_json(self.paths["rollback"])
-            if isinstance(rollback, dict):
-                rollback["candidate_ids"] = candidate_ids
+            if rollback_authority_sha256 is None:
+                rollback = self._snapshot_before_images()
                 self._write_rollback(rollback)
+                rollback_authority_sha256 = hashlib.sha256(
+                    self.paths["rollback"].read_bytes()
+                ).hexdigest()
+                self._write_transaction(
+                    {
+                        "version": TRANSACTION_VERSION,
+                        "transaction_id": transaction_id,
+                        "phase": "APPLYING",
+                        "bootstrap_existing": self.bootstrap_existing,
+                        **self._bootstrap_transaction_binding(),
+                        "source_path": self.path_key,
+                        "source_identity": self.source_id,
+                        "generation": generation,
+                        "prepared_keys": [item["cache_key"] for item in prepared],
+                        "generation_identity": snapshot["generation_identity"],
+                        "complete_boundary": snapshot["complete_boundary"],
+                        "prefix_sha256": snapshot["prefix_sha256"],
+                        "session_meta_digest": snapshot["session_meta_digest"],
+                        "rollback_authority_sha256": rollback_authority_sha256,
+                    }
+                )
+            else:
+                rollback = self._require_rollback_authority(
+                    rollback_authority_sha256
+                )
                 self._verify_non_source_collections(
                     rollback.get("non_source_collections") or {}
                 )
+            chunks, units, events, keep_summaries, keep_units = self._apply_prepared(
+                prepared
+            )
+            if rollback_authority_sha256 is not None:
+                rollback = self._require_rollback_authority(
+                    rollback_authority_sha256
+                )
+            self._verify_non_source_collections(
+                rollback.get("non_source_collections") or {}
+            )
             self._revalidate_live_prefix(snapshot)
             checkpoint = {
                 "version": CHECKPOINT_VERSION,
@@ -1764,18 +1817,79 @@ class IncrementalJsonlCoordinator:
         self.last_result = result
         return result
 
+    def _require_rollback_authority(self, expected_sha256: str) -> dict:
+        try:
+            raw = self.paths["rollback"].read_bytes()
+        except OSError as exc:
+            raise IncrementalJsonlError(
+                "recovery_unproven", "original rollback journal is unavailable"
+            ) from exc
+        if hashlib.sha256(raw).hexdigest() != expected_sha256:
+            raise IncrementalJsonlError(
+                "recovery_unproven", "original rollback journal changed during replay"
+            )
+        rollback = _read_json(self.paths["rollback"])
+        if rollback is None:
+            raise IncrementalJsonlError(
+                "recovery_unproven", "rollback journal corrupt"
+            )
+        return validate_rollback(rollback, source_path=self.path_key)
+
+    def _restore_replay_before_images(
+        self,
+        rollback: dict,
+        rollback_sha256: str,
+        snapshot_dir: Path,
+    ) -> None:
+        self._restore_before_images(
+            rollback,
+            preserve_recovery_authority=True,
+        )
+        self._verify_non_source_collections(
+            rollback.get("non_source_collections") or {}
+        )
+        self._require_rollback_authority(rollback_sha256)
+        self._cleanup(snapshot_dir)
+
     def _roll_forward(self, transaction: dict) -> IncrementalRunResult:
         phase = str(transaction.get("phase") or "")
         if phase not in {"PREPARING", "transform_failed", "APPLYING"}:
             raise IncrementalJsonlError("recovery_unproven", "unknown transaction phase")
         rollback_path = self.paths["rollback"]
+        rollback_sha256 = None
         if rollback_path.is_file():
-            rollback = _read_json(rollback_path)
-            if rollback is None:
-                raise IncrementalJsonlError("recovery_unproven", "rollback journal corrupt")
-            rollback = validate_rollback(rollback, source_path=self.path_key)
+            if phase == "APPLYING":
+                rollback_sha256 = str(
+                    transaction.get("rollback_authority_sha256") or ""
+                )
+                if len(rollback_sha256) != 64 or any(
+                    char not in "0123456789abcdef" for char in rollback_sha256
+                ):
+                    raise IncrementalJsonlError(
+                        "recovery_unproven",
+                        "applying transaction lacks bound rollback authority",
+                    )
+                rollback = self._require_rollback_authority(rollback_sha256)
+            else:
+                rollback_sha256 = hashlib.sha256(
+                    rollback_path.read_bytes()
+                ).hexdigest()
+                rollback = _read_json(rollback_path)
+                if rollback is None:
+                    raise IncrementalJsonlError(
+                        "recovery_unproven", "rollback journal corrupt"
+                    )
+                rollback = validate_rollback(rollback, source_path=self.path_key)
         else:
             rollback = None
+        if phase == "APPLYING" and (rollback is None or rollback_sha256 is None):
+            raise IncrementalJsonlError(
+                "recovery_unproven", "applying transaction lacks rollback authority"
+            )
+        if phase == "transform_failed" and rollback is not None:
+            raise IncrementalJsonlError(
+                "recovery_unproven", "rollback authority exists after transform failure"
+            )
         snapshot_dirs = list(self.paths["snapshots"].glob("*"))
         if not snapshot_dirs:
             raise IncrementalJsonlError("recovery_unproven", "missing snapshot")
@@ -1856,20 +1970,29 @@ class IncrementalJsonlCoordinator:
                     "PREPARING": "preparing_recovery",
                     "transform_failed": "transform_failed_recovery",
                 }[phase],
+                rollback_authority_sha256=rollback_sha256,
             )
         except SourceCaptureError:
             if rollback is None:
                 return self._refusal("source_moved", mode="aborted", snapshot=snapshot)
-            self._restore_before_images(rollback)
-            self._cleanup(snapshot_dir)
+            assert rollback_sha256 is not None
+            self._restore_replay_before_images(
+                rollback,
+                rollback_sha256,
+                snapshot_dir,
+            )
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
         except IncrementalJsonlError as exc:
             if rollback is None:
                 if not self.bootstrap_existing:
                     self._cleanup(snapshot_dir)
                 return self._refusal(exc.code, mode="aborted", snapshot=snapshot)
-            self._restore_before_images(rollback)
-            self._cleanup(snapshot_dir)
+            assert rollback_sha256 is not None
+            self._restore_replay_before_images(
+                rollback,
+                rollback_sha256,
+                snapshot_dir,
+            )
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
 
     def run(self) -> IncrementalRunResult:  # pylint: disable=too-many-return-statements
