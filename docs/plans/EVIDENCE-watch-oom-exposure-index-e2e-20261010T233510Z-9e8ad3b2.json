@@ -12,6 +12,7 @@
   "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-smoke-9e8ad3b2695f442295ae76f6282ab5c1",
   "worker_cgroup_memory_max_bytes": 6442450944,
   "worker_cgroup_swap_max_bytes": 0,
+  "worker_limit_provenance": "Harness constants and the systemd launch command; the smoke stopped before a validated arm outcome or effective-limit telemetry was retained in evidence",
   "pytest_result": {
     "exit_code": 1,
     "duration_seconds": 15.64,
@@ -33,19 +34,23 @@
       "sha256_reported_by_harness": "b2244a9fa3431cc36225699d088b5ac9a1489b3cdc40003846111d7d13fd7cf4",
       "inode": 21628379
     },
-    "after_mtime_local": "2026-10-10T18:35:14.969024636-05:00"
+    "after_mtime_local": "2026-10-10T18:35:14.969024636-05:00",
+    "hash_limitation": "The harness stats a canary and then hashes it; a concurrent write can make a reported hash a torn snapshot. The mtime and digest difference prove canary drift, not a consistent before/after database snapshot."
   },
   "timing": {
     "cgroup_capability_probes_started_local": "2026-10-10T18:35:10-05:00",
     "baseline_worker_unit_started_local": "2026-10-10T18:35:19-05:00",
     "baseline_worker_unit": "convmem-oom-measure-ba19fcb0911744fda1875db3ef1f844d.service",
     "baseline_worker_unit_peak_journal": "111.2M",
-    "observation": "The production Chroma mtime preceded the baseline worker unit start by about four seconds. The writer was not identified. No attribution to the inactive watcher or the baseline worker is supported by this evidence."
+    "concurrent_activity": "Copilot's read-only audit found a separate Kiro CLI session and runtime-main MCP server starting at about 18:34:28-18:34:29 CDT. This shows the host was not fully quiet; it does not identify the Chroma writer.",
+    "observation": "The production Chroma mtime preceded the baseline worker unit start by about four seconds. The writer was not identified. The pytest harness process itself was not excluded. No attribution to the inactive watcher or the later baseline worker is supported by this evidence."
   },
   "completion": {
     "capability_probes_advanced_to_baseline": true,
     "baseline_worker_launched": true,
     "baseline_arm_admissible": false,
+    "other_canaries_evaluated_after_chroma_drift": false,
+    "smoke_post_arm_watcher_check_executed": false,
     "candidate_arm_launched": false,
     "large_curve_started": false,
     "complete_pairs": 0,
@@ -56,7 +61,8 @@
   "post_run": {
     "watcher_active_state": "inactive",
     "remaining_measurement_units": 0,
-    "harness_worktree_clean_before_evidence_commit": true
+    "harness_worktree_clean_before_evidence_commit": true,
+    "review_provenance": "Copilot and Kiro gave written PASS on harness tip 7fc243e in CLI sessions during this conversation; those verdicts are not stored in the repository"
   },
   "verdict": "The smoke failed closed on production Chroma canary drift. No 5,000/20,000/58,825 paired curve ran, no memory-floor claim is accepted, and issue #268 remains open. A separate grant would be required for any rerun."
 }

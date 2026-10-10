@@ -628,7 +628,9 @@ Ryan granted one one-shot at the reviewed successor tip `7fc243e`. The run on
 `archlinux` stopped during the 64-row baseline smoke because the production
 Chroma canary changed. Its mtime was 18:35:14 CDT, before the baseline worker
 unit started at 18:35:19 CDT. The watcher stayed inactive, but the writer is
-unknown. The candidate smoke arm and all large pairs were not run. The grant
+unknown. A separate Kiro CLI/MCP session had started shortly before the run,
+so the host was not fully quiet; no causal link to the Chroma write is proven.
+The candidate smoke arm and all large pairs were not run. The grant
 is spent; `EVIDENCE-watch-oom-exposure-index-e2e-20261010T233510Z-9e8ad3b2.json`
 records the blocked result. Copilot should audit this evidence, Kiro should
 review it, and Ryan decides whether a quiet-window rerun merits a separate
