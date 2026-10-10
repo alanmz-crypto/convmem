@@ -3487,6 +3487,97 @@ document edits and exact-tip review; it authorizes no content read, output-root
 creation, author execution, retry, acquisition, build, publication, implementation,
 PR creation/update, merge, deployment, real OpenClaw or later gate.
 
+### 10.47 Output-coordinate binding correction packet
+
+PR `#369` merged §§18.48/10.46 at
+`a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b` after exact-tip and exact-main Kiro
+PASS. Ryan's later exact grant was consumed by one process that failed closed at
+startup with `Refusal: F002: literal argv`. Preflight had passed, but the sealed
+command contract named `dea026ce…` staging/durable final roots at argv indices
+`[9]` and `[11]`, while the reviewed plan and grant named `16dbd79…` roots. The
+process read zero real-input bytes, wrote zero governed bytes, created no output root
+and started no subprocess. All four grant-named outputs remain absent; no retry is
+authorized.
+
+The correction packet is plan-only:
+
+```text
+AUTHORIZATION_BASE_MAIN_SHA=a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b
+PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+SYNTHETIC_FREEZE_AUTHORIZED=false
+REAL_AUTHOR_AUTHORIZED=false
+
+FAILED_GRANT_STATUS=CONSUMED_F002_STARTUP_PAUSE
+FAILED_CAPABILITY_TREE_SHA256=939b8849d95eaf146efa528284d29d69f516c8aa400f432f1bed43009199a396
+FAILED_PROCESS_COUNT=1
+FAILED_SUBPROCESS_COUNT=0
+FAILED_EXIT_STATUS=1
+FAILED_STOP_STAGE=STARTUP
+FAILED_REAL_INPUT_BYTES_READ=0
+FAILED_GOVERNED_BYTES_WRITTEN=0
+FAILED_PEAK_RSS_BYTES=1367023616
+FAILED_FORBIDDEN_ACCESS_COUNT=0
+
+FRESH_CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4.partial
+FRESH_CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/v4
+FRESH_REAL_STAGING_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3.partial
+FRESH_REAL_STAGING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+FRESH_REAL_DURABLE_PARTIAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3.partial
+FRESH_REAL_DURABLE_FINAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/a94bc57ae7d01f3e5e449a8bd43e75ba7e597c8b/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v3
+ALL_SIX_FRESH_COORDINATES_STATUS=ABSENT
+```
+
+The accepted tree `939b8849…` remains immutable accepted evidence with historical
+`accepted=false`, but it is operationally ineligible for any grant that substitutes
+different output roots for its sealed argv. The correction does not adopt or inspect
+its older `dea026ce…` outputs and does not reuse the consumed `16dbd79…` grant.
+
+A future synthetic-freeze implementation may change only the output-coordinate
+literals in the shared source/fixture/command-contract path and the hashes, sizes and
+tree identities mechanically derived from those bytes. The new sealed
+`author_packet_argv` must contain exactly twenty members. Index `[9]` must equal
+`FRESH_REAL_STAGING_FINAL_ROOT`; index `[11]` must equal
+`FRESH_REAL_DURABLE_FINAL_ROOT`. The source constant, synthetic fixture, command
+contract and reviewer reconstruction must be byte-equal on the whole vector. No
+runtime binding, substitution, template, alias, wrapper or alternate invocation is
+admissible.
+
+All 52 existing controls remain exactly `F001`–`F010` then `W001`–`W042`. F002
+continues to compare the literal ordered argv before content access or output. The
+correction adds no `F011`, `W043` or 53rd control. Corrected unresolved-ID grammar,
+six freeze roles, seven output roles, schemas, serializers, fixed-point identity,
+packet-tree recipe, five-key environment, one-process/zero-subprocess limit,
+22-event/two-null durability transaction, read/write/RSS ceilings and zero-access
+rules remain unchanged.
+
+The route is:
+
+1. exact-tip Kiro review of this two-commit plan;
+2. Ryan's PR/merge decision and Kiro exact-main confirmation;
+3. a fresh Ryan two-SHA grant for one synthetic-only capability freeze at the two
+   absent `a94bc57…/v4(.partial)` roots;
+4. plan-only binding and review of that result, including explicit `[9]` and `[11]`
+   equality proof, followed by a separate Ryan acceptance decision; and
+5. only then, a new plan/review/merge/exact-main/two-SHA-grant cycle for one real
+   author at the four absent `a94bc57…/491ae60b…/v3(.partial)` roots.
+
+Each future grant is one-shot and consumed by mismatch, failure or success. Before
+the synthetic freeze, metadata-only preflight proves all six fresh coordinates
+absent and immutable inputs exact. It reads no packet/disposition content. Any
+pre-existence or mismatch returns `PAUSE` with zero processes and zero created paths.
+No retry, repair, deletion, cleanup, resume or acceptance transfer exists.
+
+The prior nine durability counters and peak RSS remain process-attested at 80%
+confidence. Neither this correction, byte identity, the F002 refusal nor a later
+synthetic PASS retroactively raises that evidence ceiling.
+
+This section authorizes only the four planning-document edits and read-only exact-tip
+review. It authorizes no source write, root/file creation, packet/disposition content
+read, freeze, execution, retry, acquisition, build, publication, implementation, PR
+creation/update, merge, deployment, real OpenClaw, watch activation or later gate.
+
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
 reconstruction is preserved at `776a4ca3`. The reviewed inner-role correction and fresh three-tip
@@ -3560,3 +3651,9 @@ Section 10.41 preserves the final root as immutable PAUSE evidence and defines o
 fresh `946b469…` coordinates plus exact complete raw-ID receipt validation before
 output. Kiro review and a new two-SHA grant remain mandatory. No retry root, process,
 read, write or operational authority exists.
+Section 10.47 records PR `#369` and the consumed F002 startup pause, preserves tree
+`939b8849…` as immutable but ineligible for substituted roots, and plans only a fresh
+synthetic capability whose sealed twenty-member vector names the new `a94bc57…`
+staging/durable finals exactly. Exact-tip review, merge, exact-main confirmation and a
+new Ryan two-SHA synthetic-freeze grant remain mandatory. No source write, root,
+freeze, real read, process, retry or later authority exists.
