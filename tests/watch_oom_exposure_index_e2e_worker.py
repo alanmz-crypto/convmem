@@ -80,7 +80,7 @@ def _require_temporary_path(path: Path) -> None:
         raise RuntimeError(f"worker role resolves into production: {resolved}")
 
 
-def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
+def _dispatch(args: argparse.Namespace, import_order: list[str], cgroup_claim: dict | None) -> int:
     from unittest.mock import patch
 
     from tests.linux_proc import peak_rss_bytes as peak_rss_bytes_fn
@@ -277,6 +277,7 @@ def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
             "target_sha": args.target_sha,
             "harness_hash": args.harness_hash,
             "import_order": import_order,
+            "cgroup_claim": cgroup_claim,
             "import_baseline_rss_bytes": import_baseline,
             "peak_rss_bytes": peak_rss_bytes_fn(),
             "elapsed_seconds": round(elapsed, 3),
@@ -320,18 +321,35 @@ def main() -> int:
     parser.add_argument("--brief-path", required=True)
     parser.add_argument("--register-path", required=True)
     parser.add_argument("--transcript", required=True)
-    parser.add_argument("--wiring-no-as-limit", action="store_true")
+    bound = parser.add_mutually_exclusive_group()
+    bound.add_argument("--wiring-no-as-limit", action="store_true")
+    bound.add_argument("--cgroup-enforced", action="store_true")
+    parser.add_argument("--cgroup-ready", type=Path)
     args = parser.parse_args()
+    if args.cgroup_enforced != (args.cgroup_ready is not None):
+        parser.error("--cgroup-enforced requires --cgroup-ready, and vice versa")
 
     from tests.watch_oom_memory_worker_shared import prepare_worker
 
-    import_order = [
-        "hermetic_guards_installed",
-        "wiring_no_as_limit" if args.wiring_no_as_limit else "rlimit_as_2gib",
-    ]
-    prepare_worker(limit_as=not args.wiring_no_as_limit)
+    import_order = ["hermetic_guards_installed"]
+    prepare_worker(limit_as=not (args.wiring_no_as_limit or args.cgroup_enforced))
+    cgroup_claim = None
     try:
-        return _dispatch(args, import_order)
+        if args.cgroup_enforced:
+            from tests.watch_oom_cgroup_runner import (
+                MEMORY_LIMIT_BYTES,
+                wait_for_parent_ready,
+                worker_limit_claim,
+            )
+
+            wait_for_parent_ready(args.cgroup_ready)
+            cgroup_claim = worker_limit_claim(MEMORY_LIMIT_BYTES)
+            import_order.append("cgroup_2gib")
+        else:
+            import_order.append(
+                "wiring_no_as_limit" if args.wiring_no_as_limit else "rlimit_as_2gib"
+            )
+        return _dispatch(args, import_order, cgroup_claim)
     except Exception as exc:  # pylint: disable=broad-except
         from tests.watch_oom_memory_worker_shared import emit_worker_json
         from tests.watch_oom_hermetic_isolation import DENIED, NETWORK_DENIED
@@ -341,6 +359,7 @@ def main() -> int:
                 "status": "exited",
                 "detail": str(exc),
                 "import_order": import_order,
+                "cgroup_claim": cgroup_claim,
                 "denied_paths": list(DENIED),
                 "network_denied": list(NETWORK_DENIED),
             }

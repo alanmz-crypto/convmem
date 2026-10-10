@@ -15,6 +15,11 @@ from pathlib import Path
 
 import pytest
 
+from tests.watch_oom_cgroup_runner import (
+    MEMORY_LIMIT_BYTES,
+    run_capability_probes,
+    run_capped_worker,
+)
 from tests.watch_oom_exposure_index_e2e_support import (
     BASELINE_SHA,
     FROZEN_MAIN_SHA,
@@ -42,6 +47,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKER = Path(__file__).resolve().parent / "watch_oom_exposure_index_e2e_worker.py"
 HARNESS_FILES = (
     WORKER,
+    Path(__file__).resolve().parent / "watch_oom_cgroup_runner.py",
+    Path(__file__).resolve().parent / "watch_oom_cgroup_probe.py",
     Path(__file__).resolve().parent / "watch_oom_exposure_index_e2e_support.py",
     Path(__file__).resolve(),
     Path(__file__).resolve().parent / "watch_oom_hermetic_isolation.py",
@@ -53,6 +60,7 @@ HARNESS_FILES = (
 )
 BASELINE_ROOT = Path("/home/lauer/Projects/convmem-watch-oom-exposure-e2e-baseline")
 RUN_FULL = os.environ.get("CONVMEM_E2E_FULL") == "1" or os.environ.get("CONVMEM_C6_FULL") == "1"
+RUN_CGROUP_SMOKE = os.environ.get("CONVMEM_E2E_CGROUP_SMOKE") == "1"
 WORKER_CEILING = 2 * 1024 * 1024 * 1024
 WORKER_TIMEOUT_SECONDS = 90
 
@@ -86,39 +94,67 @@ def _run_index_worker(
     harness_hash: str,
     timeout: int = WORKER_TIMEOUT_SECONDS,
     wiring_no_as_limit: bool = False,
+    cgroup_enforced: bool = False,
+    while_active=None,
 ) -> dict:
+    if wiring_no_as_limit and cgroup_enforced:
+        raise ValueError("worker cannot have two measurement bounds")
     chroma_dir = layout["fixture"] / "chroma"
     started = time.monotonic()
+    command = [
+        sys.executable,
+        str(WORKER),
+        "--target-root", str(target_root),
+        "--target-sha", target_sha,
+        "--harness-hash", harness_hash,
+        "--config-path", str(layout["config"]),
+        "--chroma-dir", str(chroma_dir),
+        "--writer-root", str(layout["writer"]),
+        "--brief-path", str(layout["brief"]),
+        "--register-path", str(layout["arm"] / "standing-checks-register.json"),
+        "--transcript", str(layout["transcript"]),
+    ]
+    cgroup_result = None
+    stdout = ""
+    stderr = ""
+    returncode = None
+    if cgroup_enforced:
+        ready = layout["arm"] / f"cgroup-worker-{uuid.uuid4().hex}.ready"
+        command.extend(("--cgroup-enforced", "--cgroup-ready", str(ready)))
+        try:
+            try:
+                cgroup_result = run_capped_worker(
+                    command,
+                    ready_path=ready,
+                    cwd=ROOT,
+                    expected_bytes=MEMORY_LIMIT_BYTES,
+                    timeout=timeout,
+                    while_active=while_active,
+                )
+            except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+                return {
+                    "status": "blocked_boundary",
+                    "returncode": None,
+                    "elapsed_seconds": round(time.monotonic() - started, 3),
+                    "detail": str(exc),
+                }
+        finally:
+            ready.unlink(missing_ok=True)
+        stdout = cgroup_result["stdout"].strip()
+        stderr = cgroup_result["stderr"].strip()
+        returncode = cgroup_result["returncode"]
+    else:
+        if wiring_no_as_limit:
+            command.append("--wiring-no-as-limit")
     try:
-        proc = subprocess.run(
-            [
-                sys.executable,
-                str(WORKER),
-                "--target-root",
-                str(target_root),
-                "--target-sha",
-                target_sha,
-                "--harness-hash",
-                harness_hash,
-                "--config-path",
-                str(layout["config"]),
-                "--chroma-dir",
-                str(chroma_dir),
-                "--writer-root",
-                str(layout["writer"]),
-                "--brief-path",
-                str(layout["brief"]),
-                "--register-path",
-                str(layout["arm"] / "standing-checks-register.json"),
-                "--transcript",
-                str(layout["transcript"]),
-            ] + (["--wiring-no-as-limit"] if wiring_no_as_limit else []),
-            cwd=str(ROOT),
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
+        if not cgroup_enforced:
+            proc = subprocess.run(
+                command, cwd=str(ROOT), check=False, capture_output=True,
+                text=True, timeout=timeout,
+            )
+            stdout = proc.stdout.strip()
+            stderr = proc.stderr.strip()
+            returncode = proc.returncode
     except subprocess.TimeoutExpired as exc:
         elapsed = round(time.monotonic() - started, 3)
         stderr = exc.stderr
@@ -133,30 +169,82 @@ def _run_index_worker(
         }
 
     elapsed = round(time.monotonic() - started, 3)
-    stdout = proc.stdout.strip()
+    boundary = {}
+    if cgroup_result is not None:
+        boundary = {
+            "cgroup_unit": cgroup_result["unit"],
+            "cgroup_limit_claim": cgroup_result["limit_claim"],
+            "cgroup_active_host": cgroup_result["active_host"],
+            "cgroup_peak_bytes": cgroup_result["cgroup_peak_bytes"],
+            "cgroup_events": cgroup_result["cgroup_events"],
+            "cgroup_samples": cgroup_result["cgroup_samples"],
+        }
+        events = cgroup_result["cgroup_events"] or {}
+        if any((
+            cgroup_result["timed_out"],
+            not cgroup_result["limit_claim"],
+            not cgroup_result["active_host"],
+            not cgroup_result["cgroup_samples"],
+            not cgroup_result["cgroup_peak_bytes"],
+            not all(key in events for key in ("max", "oom", "oom_kill")),
+        )):
+            return {
+                "status": "blocked_boundary", "returncode": returncode,
+                "elapsed_seconds": elapsed, "detail": stderr or "cgroup evidence missing",
+                **boundary,
+            }
+        if events["oom_kill"] or events["oom"]:
+            return {
+                "status": "blocked_oom", "returncode": returncode,
+                "elapsed_seconds": elapsed, "detail": stderr or "cgroup OOM event",
+                **boundary,
+            }
     if not stdout:
         return {
             "status": "exited",
-            "returncode": proc.returncode,
+            "returncode": returncode,
             "elapsed_seconds": elapsed,
-            "detail": proc.stderr.strip() or f"worker exited {proc.returncode} with no stdout",
+            "detail": stderr or f"worker exited {returncode} with no stdout",
+            **boundary,
         }
     try:
         payload = json.loads(stdout)
     except json.JSONDecodeError:
         return {
             "status": "invalid_output",
-            "returncode": proc.returncode,
+            "returncode": returncode,
             "elapsed_seconds": elapsed,
-            "detail": proc.stderr.strip() or proc.stdout.strip(),
+            "detail": stderr or stdout,
+            **boundary,
+        }
+    if not isinstance(payload, dict):
+        return {
+            "status": "invalid_output", "returncode": returncode,
+            "elapsed_seconds": elapsed, "detail": "worker output is not a JSON object",
+            **boundary,
         }
 
     status = payload.pop("status", "invalid_output")
-    if status == "succeeded" and proc.returncode != 0:
+    if status == "succeeded" and returncode != 0:
         status = "invalid_output"
+    if status == "succeeded" and any(
+        key not in payload for key in (
+            "denied_paths", "network_denied", "index_stats", "brief_bytes",
+            "probe_digest", "peak_rss_bytes", "import_baseline_rss_bytes",
+            "transcript_sha256",
+        )
+    ):
+        status = "invalid_output"
+    if cgroup_result is not None and (
+        payload.get("cgroup_claim") != cgroup_result["limit_claim"]
+        or payload.get("import_order", [])[:2]
+        != ["hermetic_guards_installed", "cgroup_2gib"]
+    ):
+        status = "blocked_boundary"
     payload["status"] = status
-    payload["returncode"] = proc.returncode
+    payload["returncode"] = returncode
     payload.setdefault("elapsed_seconds", elapsed)
+    payload.update(boundary)
     return payload
 
 
@@ -179,6 +267,78 @@ def _finalize_arm_canaries(
         )
         return
     assert_canaries_unchanged(before, after)
+
+
+def _checked_active_host(scratch: Path, watcher: dict) -> dict:
+    """Repeat the host preflight while our throwaway service is present."""
+    observed = preflight_host(scratch)
+    if not observed["ok"] or observed["watcher"] != watcher:
+        raise RuntimeError(f"host/watcher preflight changed with active unit: {observed}")
+    return observed
+
+
+def _cgroup_smoke(scratch: Path, host: dict, branch_tip: str, harness_hash: str) -> dict:
+    """Prove the exact bounded route at 64 rows before any large fixture."""
+    run_dir = scratch / f"cgroup-smoke-{uuid.uuid4().hex}"
+    run_dir.mkdir()
+    def active_check():
+        return _checked_active_host(scratch, host["watcher"])
+
+    probe_dir = run_dir / "probe"
+    probe_dir.mkdir()
+    probes = run_capability_probes(probe_dir, cwd=ROOT, while_active=active_check)
+    seed_dir = run_dir / "n-64" / "seed"
+    seed_info = build_writable_fixture_seed(seed_dir, 64)
+    shared_transcript = arm_layout(run_dir, "shared", 64)["transcript"]
+    transcript_hash = write_synthetic_transcript(shared_transcript)
+    outcomes = {}
+    for label, tip_root, tip_sha in (
+        ("baseline", BASELINE_ROOT, BASELINE_SHA),
+        ("candidate", ROOT, branch_tip),
+    ):
+        if should_stop_between_arms():
+            raise RuntimeError(f"host memory stop before 64-row {label} arm")
+        layout = arm_layout(run_dir, label, 64)
+        prepare_arm_paths(
+            layout, Path(seed_info["seed_dir"]), seed_info,
+            transcript_path=shared_transcript,
+        )
+        before = snapshot_canaries()
+        try:
+            outcome = _run_index_worker(
+                target_root=tip_root,
+                target_sha=tip_sha,
+                layout=layout,
+                harness_hash=harness_hash,
+                cgroup_enforced=True,
+                while_active=active_check,
+            )
+        finally:
+            after = refresh_canary_stats(before)
+            assert_canaries_unchanged(before, after)
+            if watcher_state() != host["watcher"]:
+                raise RuntimeError("watcher state changed during 64-row smoke")
+        outcomes[label] = outcome
+        if not (
+            outcome["status"] == "succeeded"
+            and outcome["returncode"] == 0
+            and outcome["index_stats"]["files_processed"] == 1
+            and outcome["index_stats"]["files_skipped"] == 0
+            and outcome["brief_bytes"] > 0
+            and outcome["denied_paths"] == []
+            and outcome["network_denied"] == []
+            and outcome["cgroup_events"]["oom"] == 0
+            and outcome["cgroup_events"]["oom_kill"] == 0
+        ):
+            raise RuntimeError(f"64-row {label} smoke blocked: {outcome}")
+    if outcomes["baseline"]["probe_digest"] != outcomes["candidate"]["probe_digest"]:
+        raise RuntimeError("64-row paired probe semantics differ")
+    if any(
+        outcome["transcript_sha256"] != transcript_hash
+        for outcome in outcomes.values()
+    ):
+        raise RuntimeError("64-row paired transcripts differ")
+    return {"capability_probes": probes, "arms": outcomes}
 
 
 def test_production_canary_contract_covers_handoff_surfaces() -> None:
@@ -207,6 +367,21 @@ def test_e2e_negative_control_denies_production_default_brief(tmp_path: Path) ->
     assert_c5_negative_denies_default_brief(_run, fx)
 
 
+@pytest.mark.skipif(
+    not RUN_CGROUP_SMOKE, reason="§9.7a 64-row service smoke needs a named-host grant"
+)
+def test_e2e_cgroup_64_row_smoke() -> None:
+    scratch_setting = os.environ.get("CONVMEM_E2E_SCRATCH")
+    assert scratch_setting, "name a disk-backed CONVMEM_E2E_SCRATCH"
+    scratch = Path(scratch_setting).resolve()
+    scratch.mkdir(parents=True, exist_ok=True)
+    host = preflight_host(scratch)
+    assert host["ok"], host
+    branch_tip = _assert_frozen_candidate()
+    harness_hash = harness_bundle_hash(harness_file_hashes(HARNESS_FILES))
+    print(json.dumps(_cgroup_smoke(scratch, host, branch_tip, harness_hash), indent=2))
+
+
 @pytest.mark.skipif(not RUN_FULL, reason="full §9.7 curve is host evidence, not CI RSS gate")
 def test_e2e_paired_ingest_index_measurement() -> None:
     scratch_setting = os.environ.get("CONVMEM_E2E_SCRATCH")
@@ -224,6 +399,12 @@ def test_e2e_paired_ingest_index_measurement() -> None:
     branch_tip = _assert_frozen_candidate()
     file_hashes = harness_file_hashes(HARNESS_FILES)
     harness_hash = harness_bundle_hash(file_hashes)
+    smoke = _cgroup_smoke(scratch, host, branch_tip, harness_hash)
+    run_scratch = scratch / f"cgroup-full-{uuid.uuid4().hex}"
+    run_scratch.mkdir()
+    def active_check():
+        return _checked_active_host(scratch, host["watcher"])
+
     rows: list[dict] = []
     outcome_counts = {
         "timed_out": 0,
@@ -244,7 +425,8 @@ def test_e2e_paired_ingest_index_measurement() -> None:
                 "baseline_sha": BASELINE_SHA,
                 "harness_hash": harness_hash,
                 "harness_file_hashes": file_hashes,
-                "worker_as_limit_gib": 2,
+                "worker_cgroup_memory_max_bytes": MEMORY_LIMIT_BYTES,
+                "worker_cgroup_swap_max_bytes": 0,
                 "worker_timeout_seconds": WORKER_TIMEOUT_SECONDS,
             },
             indent=2,
@@ -258,11 +440,9 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         if should_stop_between_arms():
             pytest.fail(f"stop condition: available RAM below 4 GiB before n={n}")
 
-        seed_dir = scratch / f"n-{n}" / "seed"
-        if seed_dir.exists():
-            shutil.rmtree(seed_dir)
+        seed_dir = run_scratch / f"n-{n}" / "seed"
         seed_info = build_writable_fixture_seed(seed_dir, n)
-        transcript_path = arm_layout(scratch, "shared", n)["transcript"]
+        transcript_path = arm_layout(run_scratch, "shared", n)["transcript"]
         transcript_hash = write_synthetic_transcript(transcript_path)
 
         pair: dict[str, dict] = {}
@@ -275,7 +455,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
             if should_stop_between_arms():
                 pytest.fail(f"stop condition before {label} arm at n={n}")
 
-            layout = arm_layout(scratch, label, n)
+            layout = arm_layout(run_scratch, label, n)
             prepare_arm_paths(
                 layout,
                 Path(seed_info["seed_dir"]),
@@ -290,6 +470,8 @@ def test_e2e_paired_ingest_index_measurement() -> None:
                     target_sha=tip_sha,
                     layout=layout,
                     harness_hash=harness_hash,
+                    cgroup_enforced=True,
+                    while_active=active_check,
                 )
             finally:
                 _finalize_arm_canaries(
@@ -313,7 +495,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
                     assert outcome["network_denied"] == []
                     assert outcome.get("import_order", [])[:2] == [
                         "hermetic_guards_installed",
-                        "rlimit_as_2gib",
+                        "cgroup_2gib",
                     ]
                     print(
                         f"§9.7 {label} n={n}: import={format_mib(outcome['import_baseline_rss_bytes'])} "
@@ -355,6 +537,8 @@ def test_e2e_paired_ingest_index_measurement() -> None:
                 and baseline.get("transcript_sha256") == candidate.get("transcript_sha256") == transcript_hash
                 and baseline.get("index_stats", {}).get("files_processed") == 1
                 and candidate.get("index_stats", {}).get("files_processed") == 1
+                and baseline.get("index_stats", {}).get("files_skipped") == 0
+                and candidate.get("index_stats", {}).get("files_skipped") == 0
             ):
                 hard_failures.append(f"n={n}: paired semantic or transcript mismatch")
             else:
@@ -382,7 +566,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
     elif complete_pairs == 0:
         verdict = (
             "The real ingest.index(force_file=...) paired curve under the 2 GiB "
-            "RLIMIT_AS worker ceiling did not complete. No remaining-floor delta "
+            "cgroup memory ceiling did not complete. No remaining-floor delta "
             "is claimed for §9.8. The live 12.5 GiB watcher OOM remains unexplained "
             "and issue #268 is not closed."
         )
@@ -394,7 +578,7 @@ def test_e2e_paired_ingest_index_measurement() -> None:
     else:
         verdict = (
             "All three paired ingest.index sizes completed under the 2 GiB "
-            "RLIMIT_AS ceiling. This quantifies the measured brief-path floor only; the live "
+            "cgroup memory ceiling. This quantifies the measured brief-path floor only; the live "
             "12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
         )
 
@@ -408,7 +592,9 @@ def test_e2e_paired_ingest_index_measurement() -> None:
         "harness_hash": harness_hash,
         "harness_file_hashes": file_hashes,
         "canary_contract": production_canary_contract(),
-        "worker_as_limit_gib": 2,
+        "worker_cgroup_memory_max_bytes": MEMORY_LIMIT_BYTES,
+        "worker_cgroup_swap_max_bytes": 0,
+        "cgroup_smoke": smoke,
         "worker_timeout_seconds": WORKER_TIMEOUT_SECONDS,
         "outcome_counts": outcome_counts,
         "canary_ambiguity": canary_ambiguity,
