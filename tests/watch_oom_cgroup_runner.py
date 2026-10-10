@@ -95,9 +95,9 @@ def wait_for_parent_ready(path: Path, *, timeout: float = 50) -> None:
     raise TimeoutError("parent did not verify cgroup telemetry before worker start")
 
 
-def _control_group(unit: str) -> str:
+def _unit_property(unit: str, name: str) -> str:
     result = subprocess.run(
-        ["systemctl", "--user", "show", unit, "-p", "ControlGroup", "--value"],
+        ["systemctl", "--user", "show", unit, "-p", name, "--value"],
         check=False,
         capture_output=True,
         text=True,
@@ -209,6 +209,7 @@ def run_capped_worker(
         "--property=MemoryAccounting=yes",
         f"--property=MemoryMax={expected_bytes}",
         "--property=MemorySwapMax=0",
+        "--property=OOMPolicy=continue",
         f"--property=RuntimeMaxSec={int(timeout + 30)}s",
         sys.executable, str(supervisor), str(expected_bytes), *worker_argv,
     ]
@@ -228,6 +229,7 @@ def run_capped_worker(
     sampler: _Sampler | None = None
     group_path = ""
     limit_claim: dict | None = None
+    oom_policy_verified = False
     active_host: dict | None = None
     timed_out = False
     try:
@@ -240,8 +242,11 @@ def run_capped_worker(
                 break
             if sampler is None and proc.poll() is None:
                 try:
-                    group_path = _control_group(unit)
+                    group_path = _unit_property(unit, "ControlGroup")
                     if group_path:
+                        if _unit_property(unit, "OOMPolicy") != "continue":
+                            raise RuntimeError("transient service did not retain OOMPolicy=continue")
+                        oom_policy_verified = True
                         group = cgroup_root / group_path.lstrip("/")
                         limit_claim = _assert_limits(
                             group, expected_bytes=expected_bytes, root=cgroup_root
@@ -278,6 +283,7 @@ def run_capped_worker(
             "unit": unit,
             "control_group": group_path,
             "limit_claim": limit_claim,
+            "oom_policy_verified": oom_policy_verified,
             "active_host": active_host,
             "returncode": proc.returncode,
             "stdout": bytes(output[proc.stdout]).decode("utf-8", errors="replace"),
@@ -335,6 +341,7 @@ def run_capability_probes(
         if any((
             result["timed_out"],
             not result["limit_claim"],
+            not result["oom_policy_verified"],
             not result["active_host"],
             not result["cgroup_samples"],
             not result["cgroup_peak_bytes"],

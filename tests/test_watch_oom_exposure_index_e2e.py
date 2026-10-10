@@ -175,6 +175,7 @@ def _run_index_worker(
         boundary = {
             "cgroup_unit": cgroup_result["unit"],
             "cgroup_limit_claim": cgroup_result["limit_claim"],
+            "cgroup_oom_policy": "continue" if cgroup_result["oom_policy_verified"] else None,
             "cgroup_active_host": cgroup_result["active_host"],
             "cgroup_peak_bytes": cgroup_result["cgroup_peak_bytes"],
             "cgroup_events": cgroup_result["cgroup_events"],
@@ -185,6 +186,7 @@ def _run_index_worker(
         if any((
             cgroup_result["timed_out"],
             not cgroup_result["limit_claim"],
+            not cgroup_result["oom_policy_verified"],
             not cgroup_result["active_host"],
             not cgroup_result["cgroup_samples"],
             not cgroup_result["cgroup_peak_bytes"],
