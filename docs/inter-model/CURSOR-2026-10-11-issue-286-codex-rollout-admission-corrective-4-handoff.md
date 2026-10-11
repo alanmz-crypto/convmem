@@ -224,3 +224,30 @@ Notes for the reviewers, which don't block review:
   `source_too_large`. It fails closed, but the label is wrong.
 - **STATUS merge:** the resolution condensed `main`'s Kiro-bootstrap §5
   paragraph instead of keeping it verbatim.
+
+---
+
+## Verification of `86597d8` (Claude, 2026-10-11) — clean; merge `main` before review
+
+Corrective 4b clears both `fc8ea2a` blockers, checked in a clean scratch
+worktree with a fresh CI-style config:
+
+- Pylint regression gate: PASS against `main`'s merge base.
+- The 70-file Codex, watcher, breaker, doctor, config and inventory set: 705
+  passed, 0 failed.
+- `streaming_complete_prefix_digest_for_path` matches the reference digest
+  on 4,000 random files with buffer sizes 1–16, and peaks at about 136 KB on
+  a 16 MiB unterminated line. The unused byte-digest helper is gone.
+
+**Remaining step before review:** `main` moved to `db8aebb` (PR #385, the
+#268 watch-memory diagnosis harness). The branch now conflicts with `main` in
+four generated files: the shadow and R2B writer inventories,
+`eval_corpus/r2b_v2/coverage/inventory.py`, and the canary baseline test.
+`convmem.py`, `ingest.py` and `watch.py` auto-merge, but #385 adds
+diagnostic markers to `ingest.py` and `convmem.py`, and it changes
+`scripts/pylint_regression_gate.py`.
+
+- Merge `origin/main`. Don't rebase.
+- Resolve the four files by regenerating them, not by hand-editing.
+- Rerun the full suite and the Pylint gate from a clean checkout.
+- Remove the leftover `.worktrees/ci-verify-286-4b-clean`.
