@@ -637,16 +637,9 @@ def _process_ready_path(
                 print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
             return
         if breaker.has_refusal_quarantine_for_path(path):
-            try:
-                from adapters.jsonl_prefix import streaming_complete_prefix_digest_for_path
-
-                prefix_digest = streaming_complete_prefix_digest_for_path(path)
-            except OSError:
-                prefix_digest = ""
-            if prefix_digest and breaker.is_refusal_quarantined(path, prefix_digest):
-                if verbose:
-                    print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
-                return
+            if verbose:
+                print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
+            return
         flush_path(path, verbose=verbose, use_subprocess=True)
         breaker.record_success(path)
     except Exception as e:  # pylint: disable=broad-exception-caught

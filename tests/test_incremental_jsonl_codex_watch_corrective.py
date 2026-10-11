@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 import watch
-from adapters.jsonl_prefix import streaming_complete_prefix_digest_for_path
+from tests.incremental_jsonl_helpers import codex_rollout_record
 from tests.test_incremental_jsonl_codex_rollout_route import (
     _admitted_rollout,
     _sessions_root,
@@ -69,29 +69,36 @@ def test_record_refusal_prefers_child_marker_digest(
     assert breaker.is_refusal_quarantined(path, marker_digest)
 
 
-def test_refusal_quarantine_new_digest_flushes_once_per_event(
+def test_refusal_quarantine_terminal_path_skips_digest_after_appends(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """§13 c3/c4: one refusal quarantines the path; later digest changes do not respawn."""
     monkeypatch.setenv("HOME", str(tmp_path))
     sessions = _sessions_root(tmp_path)
     sessions.mkdir(parents=True)
     admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
     source = _admitted_rollout(sessions, admitted)
     breaker = CircuitBreakerState(tmp_path / "breaker.json")
-    digest_a = streaming_complete_prefix_digest_for_path(str(source))
-    breaker.record_refusal(str(source), outcome="bootstrap_required", prefix_digest=digest_a)
-    from tests.incremental_jsonl_helpers import codex_rollout_record
-
-    with source.open("ab") as handle:
-        handle.write(codex_rollout_record(42))
-    digest_b = streaming_complete_prefix_digest_for_path(str(source))
-    assert digest_b != digest_a
-    calls: list[str] = []
-    monkeypatch.setattr(
-        watch,
-        "flush_path",
-        lambda path, **kwargs: calls.append(path),
+    breaker.record_refusal(
+        str(source),
+        outcome="bootstrap_required",
+        prefix_digest="deadbeef" * 8,
     )
-    for _ in range(3):
+    flush_calls: list[str] = []
+
+    def track_flush(path: str, **kwargs):  # noqa: ANN003
+        flush_calls.append(path)
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("prefix digest must not be computed for terminal quarantine")
+
+    monkeypatch.setattr(watch, "flush_path", track_flush)
+    monkeypatch.setattr(
+        "adapters.jsonl_prefix.streaming_complete_prefix_digest_for_path",
+        boom,
+    )
+    for index in range(3):
+        with source.open("ab") as handle:
+            handle.write(codex_rollout_record(40 + index))
         watch._process_ready_path(str(source), cfg={}, breaker=breaker, verbose=False)
-    assert calls == [str(source), str(source), str(source)]
+    assert flush_calls == []
