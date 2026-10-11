@@ -86,7 +86,7 @@ Key invariants:
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
 | Failed-operation supersession | Merged on `main` via PR #381 (`e798bba`, 2026-10-10); Kiro and Copilot PASS at `a6169a5`. No live retry yet. | Sol successor packet, then Ryan successor-bootstrap grant |
-| Codex rollout admission design | DRAFT on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; watcher refusal quarantine required. | Kiro design review |
+| Codex rollout admission design | Kiro PASS at `9e91973` with six binding conditions (design §13), on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; terminal refusal quarantine keyed by (path, prefix digest). | Ryan implementation grant |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -95,7 +95,8 @@ Two independent tracks. **Kiro bootstrap:** the failed-operation supersession
 merged via PR #381; Sol prepares the fresh exact-resource successor packet,
 then Ryan decides the grant and the retry budget (six additional DeepSeek
 attempts may not cover the worst case of eight). **Codex rollouts:** Kiro
-reviews the admission design draft at its exact revision. Neither track
+passed the admission design at `9e91973` with six conditions (§13); Ryan
+decides the implementation grant. Neither track
 authorizes live bootstrap, config, runtime, or watcher action.
 
 ## 6. What Remains Before Live (sequential per track)
@@ -110,10 +111,10 @@ Kiro bootstrap:
 
 Codex rollouts:
 
-1. Kiro reviews `DESIGN-issue-286-codex-rollout-admission.md`.
-2. Ryan implementation grant; Cursor implements; Copilot targeted audit and
+1. Ryan implementation grant (Kiro design PASS at `9e91973`, conditions in
+   design §13); Cursor implements; Copilot targeted audit and
    Kiro exact-tip recheck.
-3. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
+2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
    watcher canary, which also needs the #308 fix and the watch memory drop-in
    reconciliation); activation is a separate Ryan grant.
 
@@ -227,6 +228,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Cursor / Sol | Failed-operation supersession implementation complete on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession` (manifest-bound carried accounting, 34 focused pytest cases, pylint clean); exact-tip Kiro/Copilot review next; no live retry/config/watcher authority |
 | 2026-10-10 | Sol / Kiro / Copilot | Exact-tip review complete at `a6169a5`: both lanes PASS after contained exclusive lineage-temp creation closed the final blocker; 178 affected production-Python tests pass; Ryan PR/merge decision next |
 | 2026-10-10 | Claude | Recorded PR #381 merge (`e798bba`); drafted Codex rollout admission design for Kiro review on `docs/2026-10-10-issue-286-codex-rollout-admission-design`; no live authority |
+| 2026-10-10 | Kiro | Design PASS at `9e91973` with six binding conditions (design §13); next gate Ryan implementation grant |
 
 ## TL;DR
 
@@ -234,7 +236,7 @@ Keep this document a current-state snapshot, not a session diary.
   failed-operation supersession (PR #381) are on `main`, default off; the
   watcher stays stopped and disabled.
 - Kiro track: Sol's fresh successor packet and Ryan's grant come next.
-- Codex track: the rollout admission design is a draft awaiting Kiro review;
-  it admits only rollouts created after an explicit cutoff and needs no bulk
+- Codex track: Kiro passed the rollout admission design with six conditions;
+  Ryan's implementation grant is next. It admits only rollouts created after an explicit cutoff and needs no bulk
   bootstrap.
 - No live bootstrap, config change, or watcher promotion is authorized.

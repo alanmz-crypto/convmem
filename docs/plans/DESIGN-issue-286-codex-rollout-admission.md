@@ -1,7 +1,8 @@
 # Issue #286 — Codex rollout admission design
 
 **Arc: Codex (#286), second live slice after the guarded Kiro route.**
-**State:** DRAFT for Kiro design review. Author: Claude (Opus 5.5), 2026-10-10.
+**State:** Kiro design PASS at `9e91973` with six binding conditions (§13). Author:
+Claude (Opus 5.5), 2026-10-10.
 **Base:** `origin/main` `348ec0b`. No implementation, grant, config change, or
 watcher action is authorized by this document.
 
@@ -149,7 +150,7 @@ it rather than adding a parallel mechanism.
 
 `complete_prefix_view` reads the whole file into memory, splits it into a
 second copy, and retains the prefix (`adapters/jsonl_prefix.py:56`, `:123`,
-`:141`). The incremental route reduces model calls, not source I/O or parse
+`:142`). The incremental route reduces model calls, not source I/O or parse
 memory. Admitted sources need `max_source_bytes` (default 256 MiB; one of
 654 rollouts exceeds it today). Above the ceiling an admitted source refuses
 visibly. It does not fall back to legacy, which would be worse. Streaming
@@ -311,7 +312,8 @@ Pass when:
 2. Should a `session_meta` mismatch on an otherwise admitted path refuse (as
    proposed) or route legacy?
 3. Is threshold-1 refusal quarantine with operator-only clearing correct?
-   Should it be keyed by path or by (path, prefix digest)?
+   Should it be keyed by path or by (path, prefix digest)? (Kiro: by
+   (path, prefix digest); see §13.)
 4. Are the defaults right (20 chunks per run, 256 MiB), or should Stage 1
    measure them first?
 
@@ -326,6 +328,35 @@ Pass when:
 6. Ryan: activation.
 
 No gate implies the next.
+
+## 13. Kiro design review — binding conditions
+
+Kiro issued **PASS** on exact revision `9e91973` (2026-10-10), verifying the §7
+integration points against `origin/main` `348ec0b` and RC-1–RC-3
+non-regression. The runtime-data counts in §2 were not independently
+reproduced; the code facts behind them were. These conditions bind the
+implementation, and the exact-tip recheck at gate 3 must confirm each one:
+
+1. Citation fix: `adapters/jsonl_prefix.py:141` → `:142`. Done in this
+   revision.
+2. **The check-5 refusal is mandatory and visible.** A path that passes D1
+   checks 1–4 but fails the `session_meta` check emits the D3 refusal marker
+   and never produces a legacy ingest tuple. This is RC-1 load-bearing.
+3. **The quarantine key is (path, prefix digest),** not the path alone,
+   reusing the refused prefix digest that D3 persists.
+4. **The D3 refusal class lands before or with the admitted route.** A
+   `live_route_refused` from an admitted path quarantines terminally:
+   threshold 1, no respawn, doctor WARN. If the #308 terminal-failure fix
+   lands first, reuse it. The route must not ship while a refusal still
+   respawns on each append (gap verified at `watch.py:593`).
+5. Stage 1 measures the D4 and D5 limits before Stage 2. The defaults ship
+   only as fail-closed backstops.
+6. No scope creep beyond §10.
+
+Kiro's answers to §11: (1) the relaxation is acceptable and contained;
+(2) a `session_meta` mismatch refuses; (3) threshold-1 quarantine with
+operator-only clearing, keyed by (path, prefix digest); (4) ship the defaults
+as backstops and measure them in Stage 1.
 
 ## TL;DR
 
