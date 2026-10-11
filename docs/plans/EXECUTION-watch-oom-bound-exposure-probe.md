@@ -592,7 +592,7 @@ unexplained and issue #268 remains open.
 
 ### Proposed §9.7b bound after the 2 GiB baseline OOM (2026-10-10)
 
-**State: 6 GiB one-shot blocked at the 64-row smoke; no rerun grant.** Kiro passed the earlier
+**State: 6 GiB paired curve complete; evidence review pending.** Kiro passed the earlier
 4 GiB design at `512ef34`, then Copilot and Kiro passed its harness at
 `cc68b9e`. Copilot noted that 4 GiB may be too close to the expected
 58,825-row baseline peak. The current-main
@@ -630,11 +630,22 @@ Chroma canary changed. Its mtime was 18:35:14 CDT, before the baseline worker
 unit started at 18:35:19 CDT. The watcher stayed inactive, but the writer is
 unknown. A separate Kiro CLI/MCP session had started shortly before the run,
 so the host was not fully quiet; no causal link to the Chroma write is proven.
-The candidate smoke arm and all large pairs were not run. The grant
-is spent; `EVIDENCE-watch-oom-exposure-index-e2e-20261010T233510Z-9e8ad3b2.json`
-records the blocked result. Copilot should audit this evidence, Kiro should
-review it, and Ryan decides whether a quiet-window rerun merits a separate
-one-shot grant. No floor claim or §9.8 advance follows from this run.
+The candidate smoke arm and all large pairs were not run. That grant
+was spent; `EVIDENCE-watch-oom-exposure-index-e2e-20261010T233510Z-9e8ad3b2.json`
+records the blocked result. Copilot and Kiro passed the corrected blocked
+evidence at `0ba1f1f`; no floor claim or §9.8 advance followed from that run.
+
+Ryan then granted a separate one-shot at `0ba1f1f` on `archlinux`. Its 64-row
+cgroup smoke and all three serial 5,000/20,000/58,825-row baseline/candidate
+pairs completed under 6 GiB `memory.max` and zero swap. The run-unique file
+`EVIDENCE-watch-oom-exposure-index-e2e-20261011T004945Z-e0bd34c6.json`
+records `complete_pairs=3`, `measurement_blocked=false`, six successful full
+arms, no canary ambiguity, denials, hard failures, or cgroup OOM events. At
+58,825 rows, baseline peak RSS was 2,244.5 MiB and candidate peak RSS was
+323.8 MiB. The delta is descriptive across multiple production changes, not
+a causal estimate of the merged exposure-probe fix. Copilot audits this
+evidence, Kiro reviews it, and Ryan decides the §9.8 follow-up. The live
+12.5 GiB watcher OOM remains unexplained and issue #268 remains open.
 
 Preparation and acceptance order:
 
