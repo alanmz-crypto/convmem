@@ -293,6 +293,22 @@ def is_timeout_message(message: str) -> bool:
     return "index subprocess timed out after" in message
 
 
+_LIVE_ROUTE_REFUSED_RE = re.compile(
+    r"live_route_refused:([^:\s]+)(?::([0-9a-f]{64}))?"
+)
+
+
+def parse_live_route_refused(message: str) -> tuple[str, str] | None:
+    match = _LIVE_ROUTE_REFUSED_RE.search(message)
+    if not match:
+        return None
+    return match.group(1), match.group(2) or ""
+
+
+def _refusal_quarantine_key(path: str, prefix_digest: str) -> str:
+    return f"{path}\0{prefix_digest}"
+
+
 def _circuit_breaker_state_path_from_config(cfg: dict) -> Path:
     watch_cfg = cfg.get("watch") or {}
     if watch_cfg.get("circuit_breaker_state_file"):
@@ -357,15 +373,16 @@ class CircuitBreakerState:
         try:
             raw = self.state_path.read_text(encoding="utf-8")
         except OSError:
-            return {"paths": {}, "global_events": []}
+            return {"paths": {}, "global_events": [], "refusals": {}}
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            return {"paths": {}, "global_events": []}
+            return {"paths": {}, "global_events": [], "refusals": {}}
         if not isinstance(data, dict):
-            return {"paths": {}, "global_events": []}
+            return {"paths": {}, "global_events": [], "refusals": {}}
         data.setdefault("paths", {})
         data.setdefault("global_events", [])
+        data.setdefault("refusals", {})
         return data
 
     def _save(self) -> None:
@@ -377,6 +394,48 @@ class CircuitBreakerState:
     def is_quarantined(self, path: str) -> bool:
         entry = self._data["paths"].get(path)
         return bool(entry and entry.get("quarantined"))
+
+    def is_refusal_quarantined(self, path: str, prefix_digest: str) -> bool:
+        key = _refusal_quarantine_key(path, prefix_digest)
+        entry = self._data["refusals"].get(key)
+        return bool(entry and entry.get("quarantined"))
+
+    def record_refusal(
+        self,
+        path: str,
+        *,
+        outcome: str,
+        prefix_digest: str,
+        now: float | None = None,
+    ) -> bool:
+        """Record a live-route refusal; threshold 1 quarantine keyed by (path, digest)."""
+        if now is None:
+            now = time.time()
+        key = _refusal_quarantine_key(path, prefix_digest)
+        entry = self._data["refusals"].setdefault(
+            key,
+            {
+                "path": path,
+                "prefix_sha256": prefix_digest,
+                "outcome": outcome,
+                "first_refused_at": now,
+                "quarantined": False,
+            },
+        )
+        entry["outcome"] = outcome
+        entry["prefix_sha256"] = prefix_digest
+        entry.setdefault("first_refused_at", now)
+        entry["quarantined"] = True
+        self._save()
+        return True
+
+    def list_refusal_quarantines(self) -> list[dict]:
+        rows: list[dict] = []
+        for entry in self._data.get("refusals", {}).values():
+            if entry.get("quarantined"):
+                rows.append(dict(entry))
+        rows.sort(key=lambda item: item.get("first_refused_at", 0))
+        return rows
 
     def record_success(self, path: str) -> None:
         """Reset a path's counters after a clean index. Does not clear quarantine."""
@@ -432,9 +491,13 @@ class CircuitBreakerState:
 
     def clear(self, path: str | None = None) -> None:
         if path is None:
-            self._data = {"paths": {}, "global_events": []}
+            self._data = {"paths": {}, "global_events": [], "refusals": {}}
         else:
             self._data["paths"].pop(path, None)
+            prefix = f"{path}\0"
+            for key in list(self._data.get("refusals", {})):
+                if key.startswith(prefix):
+                    self._data["refusals"].pop(key, None)
         self._save()
 
 
@@ -566,6 +629,16 @@ def _process_ready_path(
             if verbose:
                 print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
             return
+        try:
+            from adapters.jsonl_prefix import complete_prefix_digest_for_path
+
+            prefix_digest = complete_prefix_digest_for_path(path)
+        except OSError:
+            prefix_digest = ""
+        if prefix_digest and breaker.is_refusal_quarantined(path, prefix_digest):
+            if verbose:
+                print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
+            return
         flush_path(path, verbose=verbose, use_subprocess=True)
         breaker.record_success(path)
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -582,6 +655,24 @@ def _record_ready_path_failure(
     from repository_knowledge_sync import is_reconcile_token
 
     message = str(exc)
+    refused = parse_live_route_refused(message)
+    if refused and not is_reconcile_token(path):
+        outcome, digest = refused
+        if not digest:
+            try:
+                from adapters.jsonl_prefix import complete_prefix_digest_for_path
+
+                digest = complete_prefix_digest_for_path(path)
+            except OSError:
+                digest = ""
+        breaker.record_refusal(path, outcome=outcome, prefix_digest=digest)
+        if verbose:
+            print(
+                f"[watch] refusal quarantined (threshold 1): {path}",
+                file=sys.stderr,
+            )
+        print(f"[watch] error processing {path}: {exc}", file=sys.stderr)
+        return
     returncode = parse_native_fault_returncode(message)
     timeout = is_timeout_message(message)
     if timeout or (returncode is not None and returncode < 0):

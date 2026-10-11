@@ -12,7 +12,9 @@ BASELINE_HASHES = {
     # Intentionally refreshed: Arc Poison Pill Part B write guard (2026-09-24) —
     # watch.py restores torn HNSW saves after an abrupt index-child exit; see
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
-    "watch.py": "ff226b0890017175af2664a8d5da49a9a31eca9a9ee750084b6535995a94cb7c",
+    # Refreshed for issue #286 Codex rollout admission: terminal live-route
+    # refusal quarantine keyed by (path, prefix digest).
+    "watch.py": "c390854cfe599b61a4586d12a4154d34f4e805528d413d8ba42db143347bc59a",
     # Refreshed for issue #286's authorized bootstrap safety corrective:
     # bootstrap-only accounting and immutable replay authority cross these
     # bytes; the canary remains unreachable from the CLI and watcher.
@@ -20,7 +22,9 @@ BASELINE_HASHES = {
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.
-    "incremental_jsonl.py": "0cbcd03fdfdd3feda7c38604fda6ce30f40aae656ee5101cc76388143409ed7e",
+    # Refreshed for issue #286 Codex rollout admission route, guards, and
+    # structured admitted-run logging.
+    "incremental_jsonl.py": "72d3d8d2e558550ec494a916a17bd8b0630e358731d727c0dfa89ed79ba12ea0",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

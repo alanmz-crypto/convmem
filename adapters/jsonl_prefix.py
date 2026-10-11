@@ -44,6 +44,13 @@ def prefix_sha256(prefix: bytes) -> str:
     return hashlib.sha256(prefix).hexdigest()
 
 
+def complete_prefix_digest_for_path(path: str | Path) -> str:
+    """SHA-256 of the complete-line prefix for one on-disk JSONL source."""
+    data = Path(path).read_bytes()
+    boundary = prefix_boundary(data)
+    return prefix_sha256(data[:boundary])
+
+
 def scan_complete_jsonl_lines(
     prefix: bytes,
     message_from_record: Callable[[object], dict | None],

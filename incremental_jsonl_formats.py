@@ -74,7 +74,13 @@ def source_state_id(format_id: str, canonical_path: str) -> str:
     return hashlib.sha256(f"{format_id}:{canonical_path}".encode("utf-8")).hexdigest()
 
 
-def routed_formats(*, isolated_codex: bool = False) -> frozenset[str]:
+def routed_formats(
+    *,
+    isolated_codex: bool = False,
+    production_codex_rollout: bool = False,
+) -> frozenset[str]:
     if isolated_codex:
         return ALL_ISOLATED_FORMATS
+    if production_codex_rollout:
+        return KIRO_ROUTE_FORMATS | frozenset({_CODEX_ROLLOUT.format_id})
     return KIRO_ROUTE_FORMATS

@@ -15,7 +15,9 @@ import hashlib
 import json
 import os
 import stat
+import sys
 import tempfile
+import time
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -44,6 +46,11 @@ from incremental_jsonl_isolation import (
     open_source_readonly,
     validate_regular_source,
 )
+from incremental_jsonl_codex_admission import (
+    admits_path_checks_1_4,
+    is_production_source_granted,
+    verify_session_meta_identity,
+)
 from incremental_jsonl_production import ProductionBoundary
 from ingest import (
     ChunkArtifact,
@@ -52,6 +59,15 @@ from ingest import (
     load_processed,
     render_chunk,
 )
+
+LIVE_ROUTE_REFUSED_EXIT = 91
+
+
+def format_live_route_refused(outcome: str, prefix_sha256: str = "") -> str:
+    if prefix_sha256:
+        return f"live_route_refused:{outcome}:{prefix_sha256}"
+    return f"live_route_refused:{outcome}"
+
 
 ELIGIBLE_FORMAT = "jsonl_kiro_session"
 ADAPTER_CONTRACT_VERSION = "kiro-complete-prefix-v1"
@@ -532,8 +548,19 @@ class IncrementalJsonlCoordinator:
         self.path_key = str(self.source)
         detected_format = detect_format(self.source)
         self.format_spec: IncrementalFormatSpec | None = get_format_spec(detected_format)
+        production_codex = (
+            isinstance(boundary, ProductionBoundary)
+            and settings.codex_rollout_admission is not None
+            and admits_path_checks_1_4(
+                settings.codex_rollout_admission,
+                self.path_key,
+                detected_format,
+            )
+        )
+        self.codex_admitted_live = production_codex
         self.routed_formats = routed_formats(
-            isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT"))
+            isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT")),
+            production_codex_rollout=production_codex,
         )
         if self.format_spec is None:
             self.format_spec = get_format_spec(ELIGIBLE_FORMAT)
@@ -584,6 +611,7 @@ class IncrementalJsonlCoordinator:
         )
         self.last_result: IncrementalRunResult | None = None
         self.last_evidence: dict[str, Any] = {}
+        self._run_started = 0.0
         self._lock: SourceAdvisoryLock | None = None
         self._max_units_in_flight = 0
 
@@ -961,6 +989,89 @@ class IncrementalJsonlCoordinator:
             prepared.append(loaded or artifact)
         _ = frontier  # retained for call-site evidence; cache hits encode stability
         return prepared, reused
+
+    def _allowed_transform_starts(
+        self, messages: list[dict], prior_record_count: int
+    ) -> frozenset[int]:
+        chunks = chunk_messages(messages, self.chunk_size, self.overlap)
+        if prior_record_count <= 0:
+            return frozenset(int(chunk["start_offset"]) for chunk in chunks)
+        frontier = frontier_start(prior_record_count, self.chunk_size, self.overlap)
+        return frozenset(
+            int(chunk["start_offset"])
+            for chunk in chunks
+            if int(chunk["start_offset"]) >= frontier
+        )
+
+    def _planned_transform_starts(
+        self,
+        messages: list[dict],
+        *,
+        cache_required_before: int,
+    ) -> set[int]:
+        chunks = chunk_messages(messages, self.chunk_size, self.overlap)
+        planned: set[int] = set()
+        for chunk in chunks:
+            expected = {
+                "chunk_start": int(chunk["start_offset"]),
+                "input_digest": self._chunk_input_digest(chunk),
+            }
+            key = self._prepared_key(expected["chunk_start"], expected["input_digest"])
+            if self._load_prepared(key, expected=expected) is not None:
+                continue
+            if int(chunk["start_offset"]) < cache_required_before:
+                continue
+            planned.add(int(chunk["start_offset"]))
+        return planned
+
+    def _codex_admission_guard_code(
+        self,
+        snapshot: dict,
+        *,
+        checkpoint: dict | None,
+        continuity: str | None,
+        cache_required_before: int,
+    ) -> str | None:
+        admission = self.settings.codex_rollout_admission
+        if not self.codex_admitted_live or admission is None:
+            return None
+        if int(snapshot.get("size") or 0) > admission.max_source_bytes:
+            return "source_too_large"
+        prior_count = int(checkpoint.get("record_count") or 0) if checkpoint else 0
+        if continuity == "initial_full":
+            prior_count = 0
+        allowed = self._allowed_transform_starts(snapshot["messages"], prior_count)
+        planned = self._planned_transform_starts(
+            snapshot["messages"],
+            cache_required_before=cache_required_before,
+        )
+        if not planned.issubset(allowed):
+            return "frontier_violation"
+        if len(planned) > admission.max_transform_chunks_per_run:
+            return "transform_chunk_cap"
+        return None
+
+    def _emit_codex_admitted_log(
+        self,
+        result: IncrementalRunResult,
+        *,
+        snapshot: dict | None,
+        elapsed_seconds: float,
+    ) -> None:
+        if not self.codex_admitted_live:
+            return
+        payload = {
+            "event": "incremental_codex_admitted_run",
+            "format": result.adapter_format,
+            "outcome": result.outcome,
+            "chunks_reused": result.reused_artifacts,
+            "chunks_transformed": max(0, result.chunks - result.reused_artifacts),
+            "chunks_pruned": 0,
+            "provider_requests": result.counters.as_dict(),
+            "source_bytes": int(snapshot.get("size") or 0) if snapshot else 0,
+            "elapsed_seconds": round(elapsed_seconds, 3),
+        }
+        print(json.dumps(payload, sort_keys=True), file=sys.stderr)
 
     def _artifact_from_build(self, built: ChunkArtifact, chunk_start: int) -> dict:
         units = []
@@ -1703,6 +1814,8 @@ class IncrementalJsonlCoordinator:
             active_generation="",
             ingest_status=ingest_status,
         )
+        if snapshot and snapshot.get("prefix_sha256"):
+            self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
         self.last_result = result
         return result
 
@@ -1814,7 +1927,13 @@ class IncrementalJsonlCoordinator:
             semantic_queued=semantic,
             ingest_status="processed" if committed else "skipped",
         )
+        self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
         self.last_result = result
+        self._emit_codex_admitted_log(
+            result,
+            snapshot=snapshot,
+            elapsed_seconds=time.monotonic() - self._run_started,
+        )
         return result
 
     def _require_rollback_authority(self, expected_sha256: str) -> dict:
@@ -2011,6 +2130,7 @@ class IncrementalJsonlCoordinator:
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
 
     def run(self) -> IncrementalRunResult:  # pylint: disable=too-many-return-statements
+        self._run_started = time.monotonic()
         if not self.enabled:
             return self._refusal("disabled")
         detected = detect_format(self.source)
@@ -2045,6 +2165,19 @@ class IncrementalJsonlCoordinator:
                 snapshot = self._capture(transaction_id)
             except IncrementalJsonlError as exc:
                 return self._refusal(exc.code, fallback=exc.detail or None)
+            if self.codex_admitted_live:
+                identity_refusal = verify_session_meta_identity(
+                    self.source, snapshot["raw"]
+                )
+                if identity_refusal:
+                    self._cleanup(snapshot["snapshot_dir"])
+                    result = self._refusal(identity_refusal, snapshot=snapshot)
+                    self._emit_codex_admitted_log(
+                        result,
+                        snapshot=snapshot,
+                        elapsed_seconds=time.monotonic() - self._run_started,
+                    )
+                    return result
             checkpoint = None
             try:
                 checkpoint = self.checkpoint()
@@ -2112,12 +2245,38 @@ class IncrementalJsonlCoordinator:
                     ingest_status="skipped",
                 )
                 self.last_result = result
+                self._emit_codex_admitted_log(
+                    result,
+                    snapshot=snapshot,
+                    elapsed_seconds=time.monotonic() - self._run_started,
+                )
                 return result
             frontier = 0 if continuity else frontier_start(
                 int(checkpoint["record_count"]) if checkpoint else 0,
                 self.chunk_size,
                 self.overlap,
             )
+            mode = "bootstrap_existing" if self.bootstrap_existing else (
+                "full_rebuild_fallback" if continuity and continuity != "initial_full" else (
+                    "initial_full" if continuity == "initial_full" else "incremental"
+                )
+            )
+            cache_required_before = frontier if mode == "incremental" else 0
+            guard_code = self._codex_admission_guard_code(
+                snapshot,
+                checkpoint=checkpoint,
+                continuity=continuity,
+                cache_required_before=cache_required_before,
+            )
+            if guard_code:
+                self._cleanup(snapshot["snapshot_dir"])
+                result = self._refusal(guard_code, snapshot=snapshot)
+                self._emit_codex_admitted_log(
+                    result,
+                    snapshot=snapshot,
+                    elapsed_seconds=time.monotonic() - self._run_started,
+                )
+                return result
             self._write_transaction(
                 {
                     "version": TRANSACTION_VERSION,
@@ -2136,12 +2295,6 @@ class IncrementalJsonlCoordinator:
                     else None,
                 }
             )
-            mode = "bootstrap_existing" if self.bootstrap_existing else (
-                "full_rebuild_fallback" if continuity and continuity != "initial_full" else (
-                    "initial_full" if continuity == "initial_full" else "incremental"
-                )
-            )
-            cache_required_before = frontier if mode == "incremental" else 0
             try:
                 prepared, reused = self._build_frontier(
                     snapshot["messages"],
@@ -2244,9 +2397,19 @@ def maybe_route_incremental(
     else:
         # An enabled table alone does not select production sources. Unselected
         # files retain the legacy route, including formats without a spec.
-        if path_key not in settings.live_sources:
+        if not is_production_source_granted(
+            path_key=path_key,
+            live_sources=settings.live_sources,
+            admission=settings.codex_rollout_admission,
+            detected_format=detected_format,
+        ):
             return None
-        if detected_format not in routed_formats():
+        production_codex = (
+            settings.codex_rollout_admission is not None
+            and detected_format == "jsonl_codex_rollout"
+            and path_key not in settings.live_sources
+        )
+        if detected_format not in routed_formats(production_codex_rollout=production_codex):
             raise IncrementalJsonlError("live_format_not_eligible", str(detected_format))
         if force_reindex or supersede_on_reindex:
             raise IncrementalJsonlError("live_force_unsupported")
@@ -2273,5 +2436,9 @@ def maybe_route_incremental(
     )
     result = coordinator.run()
     if not isolated and result.outcome not in {"committed", "unchanged"}:
-        raise IncrementalJsonlError("live_route_refused", result.outcome)
+        digest = getattr(coordinator, "last_evidence", {}).get("prefix_sha256", "")
+        raise IncrementalJsonlError(
+            "live_route_refused",
+            f"{result.outcome}:{digest}" if digest else result.outcome,
+        )
     return result.ingest_tuple()
