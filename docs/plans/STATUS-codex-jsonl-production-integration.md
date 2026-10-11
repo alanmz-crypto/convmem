@@ -85,7 +85,7 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. Ryan authorized replacement proposal `c5fec18c…79c81` and then its retry after local timeout diagnosis. The retry stopped when Restic attempted its normal lock path against the read-only offsite mount. Explicit `--no-lock` reads opened the repository in 0.546 seconds and returned exact snapshot `bfa9ac35…16da1` with the expected tree in 0.547 seconds. No repository fault was found; execution remained before writer pause or transport and the proposal remains unconsumed. | Correct the temporary backup validator to use `--no-lock` for the read-only offsite repository, then Ryan decides whether to retry |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. Ryan authorized replacement proposal `c5fec18c…79c81` and then its retry after local timeout diagnosis. The retry stopped when Restic attempted its normal lock path against the read-only offsite mount. The corrected temporary validator now uses `--no-lock` only for that offsite read and PASSed every exact-ID, tree, lineage, path, timestamp, and tag check. Execution remained before writer pause or transport and the proposal remains unconsumed. | Ryan decides whether to retry the still-unconsumed exact proposal after the corrected backup preflight PASS |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -108,26 +108,27 @@ the exact encrypted snapshot object matched its filename digest, and no
 repository fault was found. The drive was unmounted after diagnosis. No writer
 pause, successor operation, provider call, or corpus mutation occurred; the
 source, config, runtime, proposal, watcher state, and absence of successor
-operation/lineage remain unchanged. Correct the temporary validator before any
-further retry decision. No lane may promote config/runtime or restart the
-watcher without separate Ryan authority.
+operation/lineage remain unchanged. The temporary exact-pair validator now
+uses normal locking locally and `--no-lock` only for the read-only offsite
+repository. It PASSed the exact local ID `19201163…340a5`, exact offsite ID
+`bfa9ac35…16da1`, shared tree `eb4cd065…575a`, copy lineage, paths, timestamp,
+and tags. The drive was unmounted afterward. Ryan's retry decision is next. No
+lane may promote config/runtime or restart the watcher without separate Ryan
+authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Correct the temporary exact-pair validator to use Restic `--no-lock` only for
-   the offsite repository mounted read-only, then verify both exact snapshot
-   IDs and their shared tree.
-2. Ryan decides whether to retry the still-unconsumed proposal after that
-   corrected preflight passes.
-3. Immediately before any authorized retry, revalidate the exact local/offsite
+1. Ryan decides whether to retry the still-unconsumed proposal after the
+   corrected exact-pair preflight PASS.
+2. Immediately before any authorized retry, revalidate the exact local/offsite
    pair and then revalidate
    source/runtime/config/binding,
    archive the void stale grant, and establish a no-other-writer window through
    final evidence capture, including the reconcile and Restic timers plus any
    process holding the Chroma database.
-4. If granted, execute only the exact source/runtime/config/budget operation and
+3. If granted, execute only the exact source/runtime/config/budget operation and
    return measured call, coverage, lineage, and isolation evidence.
-5. Obtain a later separate Ryan grant before any runtime/config/restart or
+4. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -251,6 +252,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Sol | Diagnosed the local Restic timeout as a workspace-sandbox boundary: the same exact-ID read completed with the expected tree in 0.728 seconds under scoped host access; the proposal remains unconsumed pending Ryan's retry decision |
 | 2026-10-10 | Ryan / Sol | Ryan authorized the retry; local exact validation succeeded under scoped host access, but offsite snapshot `bfa9ac35…16da1` timed out after 120 seconds, so execution again stopped before transport or mutation and the proposal remains unconsumed |
 | 2026-10-10 | Sol | Diagnosed the offsite timeout as Restic's normal lock path against the read-only mount; explicit `--no-lock` opened the repository and returned the exact expected snapshot/tree in about 0.55 seconds without mutation |
+| 2026-10-10 | Sol | Corrected the temporary validator to use `--no-lock` only offsite; the exact local/offsite IDs, shared tree, copy lineage, paths, timestamp, and tags all PASSed, with the proposal still unconsumed |
 
 ## TL;DR
 
@@ -263,6 +265,6 @@ Keep this document a current-state snapshot, not a session diary.
 - Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
   `c5fec18c…79c81` remains unconsumed. Offsite reads timed out because Restic's
   normal lock path met a read-only mount; `--no-lock` returned the exact
-  snapshot and expected tree in about 0.55 seconds. Corrected exact-pair
-  preflight and Ryan's retry decision are next; config and watcher promotion
-  remain separately gated.
+  snapshot and expected tree in about 0.55 seconds. The corrected exact-pair
+  validator now PASSes all required backup fields. Ryan's retry decision is
+  next; config and watcher promotion remain separately gated.
