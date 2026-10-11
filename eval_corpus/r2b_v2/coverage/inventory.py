@@ -89,8 +89,9 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "coverage_status": "gated",
         # Line pin refreshed 2026-09-23: unchanged ChromaStore ctor call site,
         # shifted by the Arc Poison Pill --clear-quarantine CLI flags added
-        # above it in convmem.py's watch() command.
-        "governed_mutation_sinks": ("convmem.py:695",),
+        # above it in convmem.py's watch() command. Refreshed 2026-10-11:
+        # same site, shifted by the issue #268 D1 env-gated index bootstrap.
+        "governed_mutation_sinks": ("convmem.py:699",),
     },
     {
         "route_id": "cg2_file_generation_pointer",

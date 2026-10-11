@@ -12,10 +12,12 @@ BASELINE_HASHES = {
     # Intentionally refreshed: Arc Poison Pill Part B write guard (2026-09-24) —
     # watch.py restores torn HNSW saves after an abrupt index-child exit; see
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
-    # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4).
-    "watch.py": "e941f9106e04c7ec5ee1a6a6c7c7d65559cd3a55349b71fd6e87572bea654bf0",
-    # Refreshed for Codex D8 processed incremental_jsonl_lineage on commit_processed_index_entry.
-    "ingest.py": "18b5df7a10eb35989ea97a8cedaabed71cfcb880353160abd2604ebb275b33c1",
+    # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4) and
+    # issue #268 D1 scratch diagnosis harness on the merged branch.
+    "watch.py": "dde8e84a13cb4f897b51b1a18688c5bdfd93b3a148342f59d369ff803bfd6e94",
+    # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
+    # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
+    "ingest.py": "b6454436cea7c561128c7beea3a885a67884da68dd8d1acfd4023aaa2314623b",
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.

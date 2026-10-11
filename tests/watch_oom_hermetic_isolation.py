@@ -2,17 +2,9 @@
 
 from __future__ import annotations
 
-import builtins
-import os
 import socket
-import sqlite3
-from pathlib import Path
 
-PRODUCTION_PREFIXES = (
-    str((Path.home() / ".local/share/convmem").resolve()),
-    str((Path.home() / ".config/convmem").resolve()),
-)
-DEFAULT_BRIEF = str((Path.home() / ".local/share/convmem/brief.md").expanduser())
+from hermetic_open_guards import install_path_open_guards
 DENIED: list[str] = []
 NETWORK_DENIED: list[str] = []
 
@@ -25,71 +17,13 @@ class NetworkDenied(RuntimeError):
     """Attempted outbound network access from a hermetic worker."""
 
 
-def _denied(path: object) -> bool:
-    try:
-        raw = os.fspath(path)
-    except TypeError:
-        return False
-    expanded = str(Path(raw).expanduser())
-    try:
-        resolved = str(Path(expanded).resolve())
-    except OSError:
-        resolved = expanded
-    if DEFAULT_BRIEF in (expanded, resolved):
-        return True
-    for prefix in PRODUCTION_PREFIXES:
-        if resolved.startswith(prefix) or expanded.startswith(prefix):
-            return True
-    return False
+def _on_production_path_denied(target: object) -> None:
+    DENIED.append(str(target))
+    raise ProductionPathDenied(str(target))
 
 
 def install_path_denial() -> None:
-    import io
-
-    real_open = builtins.open
-    real_os_open = os.open
-    real_connect = sqlite3.connect
-    real_io_open = io.open
-    real_path_open = Path.open
-
-    def guarded_open(file, *args, **kwargs):
-        if _denied(file):
-            DENIED.append(str(file))
-            raise ProductionPathDenied(str(file))
-        return real_open(file, *args, **kwargs)
-
-    def guarded_os_open(path, *args, **kwargs):
-        if _denied(path):
-            DENIED.append(str(path))
-            raise ProductionPathDenied(str(path))
-        return real_os_open(path, *args, **kwargs)
-
-    def guarded_io_open(file, *args, **kwargs):
-        if _denied(file):
-            DENIED.append(str(file))
-            raise ProductionPathDenied(str(file))
-        return real_io_open(file, *args, **kwargs)
-
-    def guarded_path_open(self, *args, **kwargs):
-        if _denied(self):
-            DENIED.append(str(self))
-            raise ProductionPathDenied(str(self))
-        return real_path_open(self, *args, **kwargs)
-
-    def guarded_connect(database, *args, **kwargs):
-        target = database
-        if isinstance(database, str) and database.startswith("file:"):
-            target = database[5:].split("?", 1)[0]
-        if _denied(target):
-            DENIED.append(str(database))
-            raise ProductionPathDenied(str(database))
-        return real_connect(database, *args, **kwargs)
-
-    builtins.open = guarded_open  # type: ignore[assignment]
-    os.open = guarded_os_open  # type: ignore[assignment]
-    io.open = guarded_io_open  # type: ignore[assignment]
-    Path.open = guarded_path_open  # type: ignore[assignment]
-    sqlite3.connect = guarded_connect  # type: ignore[assignment]
+    install_path_open_guards(on_path_denied=_on_production_path_denied)
 
 
 def install_network_denial() -> None:

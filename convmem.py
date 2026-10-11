@@ -291,6 +291,10 @@ def index(
     ),
 ):
     """Ingest all sources (skip unchanged), or one file (--file; add --force to re-ingest)."""
+    if os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") == "1":
+        from live_diagnosis import bootstrap_index_child
+
+        bootstrap_index_child()
     _guard_write()
     from ingest import (
         ProviderUnavailableError,
