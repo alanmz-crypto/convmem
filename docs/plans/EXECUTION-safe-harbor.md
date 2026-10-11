@@ -32,6 +32,7 @@ Source anchors used to shape the tasks (P unless marked D):
 - `backup_workflows.py:145,187,197-228,283,317,350,366-374`: probe, live ensure, auto-backup handling, copy and health consumers; offsite resolver failure is WARN, not local health's FAIL.
 - `chroma_write_guard.py:586-631,636-689,694-792,796-828,840-849`: marker parsing/overwrite/clear, native admission, snapshot pruning, restore, audit publication and recover recheck gap.
 - `conflict_events.py:43-57`: the shared writer lease is acquired **before** the governed lock. `propose_decision.py:235-280,569-595` currently reopens a production store during recovery; `ledger.py:395-402` caches a filtered lookup.
+- `conflict_events.py:60-86`: append writes then flushes/fsyncs; an exception does not establish that APPROVED is absent. The reader rejects a malformed final record. Recovery must reconcile the authoritative log rather than assume an unsuccessful call rolled back.
 - `observe.py:116-120,128-144`: approval recovery can affect Chroma and the JSONL export, in addition to proposal events. The admitted target must cover all of these.
 - D `restic_snapshot.py:544-547,802,825`: current-day freshness admits future dates. P `restic_snapshot.py:40-52` is the existing numeric error vocabulary.
 
@@ -138,7 +139,7 @@ Release:
 
 **Deliverable:** `record --recover` cannot turn unavailable, tombstoned or conflicting state into a re-upsert or successful approval event.
 
-**Depends on:** T1–T3. **Files:** recovery portions of `propose_decision.py`, `convmem.py`, narrowly scoped store-aware helpers in `observe.py`/`ledger.py`/`chroma_store.py` and writer admission, relevant governed recovery/writer/gate tests.
+**Depends on:** T1–T3. **Files:** recovery portions of `propose_decision.py`, `convmem.py`, narrowly scoped event-completion helpers in `conflict_events.py`, store-aware helpers in `observe.py`/`ledger.py`/`chroma_store.py` and writer admission, relevant governed recovery/writer/gate tests.
 
 Contract:
 
@@ -148,9 +149,11 @@ Contract:
 - Obtain a fresh lookup including superseded records from the admitted store after reload; bypass the process cache for this decision. Missing collections, duplicate ledger identities, invalid/missing hashes, unreadable proposal/approved authority and read failures are explicit unknown/conflict states, not absence.
 - Tombstoned/unavailable/conflicting → review, no re-upsert/export/APPROVED append. Proven absence → retry only for the existing authorized proposal intent. Valid matching proposed content and proposal marker → idempotent completion. Valid unchanged base → existing authorized retry. Marker repair requires matching proposed content and the correct durable intent; a conflicting marker is not silently overwritten.
 - Hold the native critical section from final state recheck through the recovered mutation and its completion event/export effects; `forget`/refine compete at that same native lock. Complete post-native validation/guard maintenance before publishing a successful approval event; do not append APPROVED inside an outer context whose exit can still discover a torn save. This serializes admitted operations but does not forbid a separately authorized mutation that occurs after recovery finishes.
-- Preserve recoverability of partial Chroma/export/event completion; no cross-file atomicity claim. If any stage fails, keep APPROVAL_STARTED and report incomplete recovery, never emit success. On retry, verify/complete missing export effects rather than letting an unchanged-Chroma shortcut skip them. Do not reapply a tombstoned target merely to repair an export.
+- Preserve recoverability of partial Chroma/export/event completion; no cross-file atomicity claim. On failure, stop the affected recovery and report incomplete recovery or **completion outcome unknown**, never command success. An append/flush/fsync error or interrupted return can occur after a complete APPROVED record became visible or durable. Do not promise APPROVAL_STARTED remains, rewrite history to make it so, or infer rollback from the exception.
+- Before retrying an uncertain completion, reload and reduce the authoritative event log under the governed lock; recheck the bound intent, current Chroma state and required export effects inside T4's native critical section. A valid APPROVED record prohibits duplicate approval append or blind re-upsert; return success only after the required effects and publication durability are established. A valid APPROVAL_STARTED state with no completion record permits only the already-defined state-aware recovery. A malformed/truncated/unreadable log or contradictory effects stop for review, without automatic truncation or speculative append. Rereading visible bytes alone does not cure failed fsync or prove power-loss durability; the event publication's required file/directory durability must succeed before completion is reported. No new lifecycle state or parallel ledger is introduced by the diagnostic outcome.
+- On retry, verify/complete missing export effects rather than letting an unchanged-Chroma shortcut skip them. Do not reapply a tombstoned target merely to repair an export, and do not treat a terminal event alone as proof that every associated effect is complete.
 
-**Evidence / gate:** V5: CLI and direct recovery helper; cold/warm caches; unavailable, tombstone, true absence, stale base, matching/mismatched marker; config replacement; export/event failure after Chroma success; concurrent `forget` and refine. Assert document, vector, metadata/tombstone, export bytes and reduced proposal lifecycle. Use process barriers to force the race, not sleeps. Old unknown→empty classification and moving the recheck outside the guard must fail the proof. Existing index/plain-add gate exemptions remain behaviorally unchanged.
+**Evidence / gate:** V5: CLI and direct recovery helper; cold/warm caches; unavailable, tombstone, true absence, stale base, matching/mismatched marker; config replacement; export/event failure after Chroma success; concurrent `forget` and refine. Inject completion failures before append, after a partial record, after a complete record but failed fsync, and after durable append but before return; restart and reconcile each from the log. Assert no premature command success, no duplicate APPROVED, no blind replay, and no discarded malformed tail; do not assert that every failed invocation leaves APPROVAL_STARTED. Assert document, vector, metadata/tombstone, export bytes and reduced proposal lifecycle. Use process barriers to force the race, not sleeps. Old unknown→empty classification, failure-assumed-rollback retry and moving the recheck outside the guard must fail the proof. Existing index/plain-add gate exemptions remain behaviorally unchanged.
 
 **Stop:** unresolved lock inversion or a needed authority-model change goes back to planning; no rewrite of the broader proposal lifecycle or other durable-state publishers.
 
@@ -210,7 +213,65 @@ Next: Kiro reviews this execution plan and the concrete v2-owned T2 proposal; Ry
 
 ### Review focus for this new artifact
 
-Check whether T2 can reject future eligibility without auto-backup hiding it; whether the probe and offsite WARN retain honest distinct claims; whether T3's watermark proof is sufficient and implementable on the active backend; whether release/preservation remain conservative at every durability failure; and whether T4 binds all mutable targets and avoids lock inversion or export-loss success. Compare against the approved architecture rather than restarting the earlier direction debate. Return exact-revision PASS/FAIL, smallest concrete blockers, and confidence percentages; separate plan defects from pending execution evidence.
+The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. This is the **first Kiro review of the execution artifact**, not another direction-review round. Use the following prompt with the exact revision supplied in the handoff:
+
+```text
+Arc: Safe Harbor. Kiro governing execution-plan review, static/read-only.
+
+TARGET: The exact plan commit Ryan supplies with this prompt, on
+plan/2026-10-11-safe-harbor. Record its full SHA before reading. Use git show
+at that revision throughout; do not substitute a moving branch or live tree.
+
+Read EXECUTION-safe-harbor.md, VERIFY-safe-harbor.md and STATUS-safe-harbor.md
+under docs/plans, the approved architecture and its E1–E7/E4 record, and
+docs/inter-model/DECISION-REVIEW-GUARDRAILS.md. Verify disputed source claims
+against the plan's pinned D/P revisions; label deployed versus planning code.
+
+Direction is approved at 5ea16a6; E4 compatibility PASS is complete without
+ownership transfer. Neither verdict approves this execution plan or B-E4.1's
+detailed v2 change. No implementation evidence exists; VERIFY is NOT RUN.
+
+Prioritize:
+1. T3 release correctness: can the active backend establish the proposed
+   source-watermark/empty-changed-set proof, including update/delete/re-upsert,
+   queue purge and restart? Could stale vectors pass, or could the predicate
+   make ordinary release unattainable? Decide whether the early backend proof
+   must precede the rest of T3. Check preservation, all unresolved findings,
+   fresh owner disposition and append/unlink crash windows together. Do not
+   substitute ID census for content freshness or claim static reads prove it.
+2. T4 uncertain completion: an APPROVED append can take effect before failure
+   returns. Challenge the corrected reread/reduction, durability and idempotent
+   retry contract. Cover absent, partial, complete-but-fsync-failed and durable-
+   but-unacknowledged records; verify no blind replay, duplicate approval,
+   success with missing export, or automatic log truncation. Check real lock
+   order and whether the scope remains within existing recovery authority.
+3. T2 v2 decisions: disposition B-E4.1 separately from the plan verdict.
+   Challenge exact-time future rejection, code 25/reason propagation, preventing
+   auto-backup/fallback concealment, post-backup clock refresh, and all five
+   consumers. Probe eligibility remains unchecked; local FAIL and offsite WARN
+   are intentional distinct claims. Check target/profile/affected-path binding,
+   production skip refusal and unchanged lineage/profile/restore contracts.
+   Resolve O-E4.e: approval recovery consumes the approved existing gate; it is
+   not a new parallel mechanism. Do not silently change the approved scope.
+
+Review the remaining task boundaries/E1–E7 coverage for concrete omissions;
+do not reopen settled direction without evidence. Distinguish a missing plan
+contract from proof properly scheduled for implementation. The new ext4 drive
+is capacity only; no recovery qualification or loss window is assumed.
+
+Return: exact-revision PASS/FAIL with confidence percentages in conclusions;
+blockers separated from advisories, each with file/line, a failure scenario,
+local/interface/architectural classification and smallest correction; explicit
+B-E4.1 owner disposition (or named outstanding owner decision); O-E4.e verdict;
+unverified claims and next authorized lane. If you lack v2-owner authority,
+do not turn compatibility approval into that owner's disposition.
+
+No ConvMem CLI/MCP/session ritual or indexing (reads can write), tests, probes,
+edits, restores, backups, drive/service operations, implementation or merge.
+Use static files/git only. This review authorizes no execution. A rejection
+routes to Ryan before Codex revises. Any follow-up review should be a delta
+on findings and changed contracts, preserving unresolved safety gates.
+```
 
 ## TL;DR
 

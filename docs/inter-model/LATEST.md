@@ -13,6 +13,8 @@ cross-arc snapshot and the linked arc brief below.
   Ryan authorized drafting. Read the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
   and [unrun VERIFY stub](../plans/VERIFY-safe-harbor.md). Kiro plan review and
   v2-owner disposition precede Ryan's plan acceptance and any task grant.
+  The [review prompt](../plans/EXECUTION-safe-harbor.md#review-focus-for-this-new-artifact)
+  prioritizes release correctness, uncertain approval completion and v2 decisions.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
   for direction-review provenance. Implementation and live operations remain pending.

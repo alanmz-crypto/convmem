@@ -38,7 +38,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
-- `EXECUTION-safe-harbor.md`: first execution-plan draft, five serial tasks with E1–E7 and O-E4.a–e coverage, a concrete B-E4.1 proposal for v2-owner disposition, crash/concurrency evidence requirements and separate operational entry conditions. Not accepted or executed.
+- `EXECUTION-safe-harbor.md`: five-task execution draft with E1–E7/O-E4.a–e coverage and a concrete B-E4.1 proposal. T4 now distinguishes uncertain event completion from rollback, with reread/durability/retry requirements. Section 7 contains Kiro's focused first execution-review prompt. Not accepted or executed.
 - `VERIFY-safe-harbor.md`: V0–V6 stub accompanying the draft; all evidence NOT RUN. No runtime PASS or completed recovery claim.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
@@ -67,7 +67,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 **Opus:** The first review and delta cadence is complete. No further review for the requested E7 clause; return only if new contracts beyond that clarification are introduced.
 
-**Kiro:** Review the new execution artifact, not the settled architecture again. Check E1's conservative release oracle, E2/E3/E7 crash and serialization mechanics, T2's concrete v2 consumer outcomes and O-E4.e's existing-gate coverage. Obtain or clearly separate the v2 owner's B-E4.1 disposition; the earlier E4 direction PASS does not grant that change.
+**Kiro:** Use the execution section 7 prompt at the supplied exact revision. Review release correctness, uncertain approval-event completion and v2 interface decisions first, then remaining task/obligation coverage. Obtain or clearly separate the v2 owner's B-E4.1 disposition; the earlier E4 direction PASS does not grant that change. No review has yet been invoked or recorded for this execution artifact.
 
 **Ryan:** Drafting is authorized and the first plan is ready for review. After the required verdicts, accept/reject the exact plan and separately name any implementation task. Recovery/loss-window inputs remain open before live operational protection can be declared adequate; providing the new drive did not authorize a backup or restore.
 
@@ -121,6 +121,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Codex: recorded Kiro E4 PASS at `20283bd` (85%) and carried its obligations; truncated-prompt coverage clarification requested, execution planning still pending.
 - 2026-10-11 — Codex: recorded Kiro's full-scope E4 PASS addendum at `1268a50` (85%), O-E4.d/e and two source/contract qualifications; Ryan's execution-planning decision is next.
 - 2026-10-11 — Codex: recorded Ryan's drafting grant, authored five-task EXECUTION and unrun VERIFY stub, and inspected the added ext4 destination; plan/v2 review and acceptance are next, implementation/live operations pending.
+- 2026-10-11 — Codex: at Ryan's request, clarified uncertain approval-event completion and its unrun evidence cases; saved Kiro's focused execution-review prompt. Review/acceptance and all execution remain pending.
 
 ## TL;DR
 
