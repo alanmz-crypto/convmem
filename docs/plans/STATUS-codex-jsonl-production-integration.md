@@ -85,7 +85,7 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. | Same-revision Kiro/Copilot review of the corrected packet, then a new Ryan exact-grant decision |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Kiro and Copilot both PASS corrected packet `b380a43`, digest `3b9d1138…b21ff`, with no blockers. | Ryan decides whether to issue a new exact grant with fresh backup and writer-isolation preflight |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -94,17 +94,22 @@ The first successor grant safely refused before supersession activation,
 operation-journal creation, provider transport, or corpus mutation because its
 transform fingerprint was measured before the command's in-memory route
 overlay. The corrected packet binds `d2ecd101…473f5` after that overlay. Kiro
-and Copilot must review the same corrected revision; then Ryan decides whether
-to issue a new exact grant. No lane may execute another live bootstrap,
-promote config/runtime, or restart the watcher without separate Ryan authority.
+and Copilot both PASS that exact packet revision with no blockers. Ryan now
+decides whether to issue a new exact grant. Before any execution, re-create the
+grant from the production post-overlay binding, revalidate or refresh local and
+offsite backup coverage, and establish a named no-other-writer window. No lane
+may promote config/runtime or restart the watcher without separate Ryan
+authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro and Copilot review the exact corrected packet revision and its
-   post-overlay transform fingerprint.
-2. If both PASS, Ryan decides whether to issue a new exact successor grant,
-   including an immediate read-only Restic recheck, a no-other-writer window
-   through final evidence capture, and explicit operator-enforced checks.
+1. Ryan decides whether to issue a new exact successor grant. Prepare it from
+   the production post-overlay binding, with a fresh local/offsite backup pair
+   or Ryan's explicit acceptance of measured backup drift.
+2. Immediately before any execution, revalidate source/runtime/config/binding,
+   archive the void stale grant, and establish a no-other-writer window through
+   final evidence capture, including the reconcile and Restic timers plus any
+   process holding the Chroma database.
 3. If granted, execute only the exact source/runtime/config/budget operation and
    return measured call, coverage, lineage, and isolation evidence.
 4. Obtain a later separate Ryan grant before any runtime/config/restart or
@@ -223,7 +228,8 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Kiro / Copilot | Both lanes PASS the exact successor packet at `c7c12e8`, digest `b7dc9bfc…b980`; Ryan's backup-disposition and execution-grant decisions remain |
 | 2026-10-10 | Sol | Mounted the designated offsite drive and verified snapshot `653a8198…f7ac4` as the exact Restic copy of local snapshot `ac1087c8…a3954`; refreshed packet awaits same-revision Kiro/Copilot review |
 | 2026-10-10 | Kiro / Copilot | Both lanes PASS packet `f9418bf`, digest `f8ca5df1…ceb3d`, with no blockers; Ryan's separate exact-grant decision is next, with Restic recheck and writer-window advisories to include |
-| 2026-10-10 | Sol | Authorized successor grant safely refused before activation or calls: packet used pre-overlay fingerprint `7fda8eef…528f`; corrected post-overlay fingerprint is `d2ecd101…473f5`; exact corrected-packet review is next |
+| 2026-10-10 | Sol | Authorized successor grant safely refused before activation or calls: packet used pre-overlay fingerprint `7fda8eef…f8528`; corrected post-overlay fingerprint is `d2ecd101…473f5`; exact corrected-packet review is next |
+| 2026-10-10 | Kiro / Copilot | Both lanes PASS corrected packet `b380a43`, digest `3b9d1138…b21ff`, with no blockers; Ryan's new exact-grant decision is next, with fresh backup and named writer-isolation conditions |
 
 ## TL;DR
 
@@ -231,6 +237,7 @@ Keep this document a current-state snapshot, not a session diary.
   stopped and disabled with no restart authority.
 - Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
   first successor grant safely refused with zero new calls or corpus mutation;
-  corrected fingerprint `d2ecd101…473f5` awaits exact packet review.
-- No successor bootstrap, config change, or watcher promotion completed; a new
-  exact grant is required after Kiro/Copilot PASS the corrected packet.
+  Kiro and Copilot both PASS corrected packet `b380a43`, digest
+  `3b9d1138…b21ff`, with no blockers.
+- No successor bootstrap, config change, or watcher promotion completed; Ryan's
+  new exact-grant decision is next, after backup and writer-isolation preflight.
