@@ -85,7 +85,7 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. A fresh matching local/offsite backup pair now covers the mutable corpus. | Narrow Kiro/Copilot confirmation of the refreshed packet, then Ryan's replacement exact-grant decision |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. | Ryan's replacement exact-grant decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -94,27 +94,24 @@ The first successor grant safely refused before supersession activation,
 operation-journal creation, provider transport, or corpus mutation because its
 transform fingerprint was measured before the command's in-memory route
 overlay. The corrected packet binds `d2ecd101…473f5` after that overlay. Kiro
-and Copilot both PASS that exact packet revision with no blockers. Sol created
-a fresh matching local/offsite backup pair and refreshed the packet with its
-exact identities. Kiro and Copilot must narrowly confirm that same refreshed
-revision before Ryan decides whether to issue a replacement exact grant. No
-lane may promote config/runtime or restart the watcher without separate Ryan
-authority.
+and Copilot both PASS the refreshed packet at `2fa81eb`, digest
+`5e29ae13…90bb`, with no blockers. Sol prepared replacement grant proposal
+operation `c5fec18c…79c81`, grant fingerprint `c860712f…8fb1`, from the
+production post-overlay binding without executing it. Ryan now decides whether
+to issue the replacement exact grant. No lane may promote config/runtime or
+restart the watcher without separate Ryan authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro and Copilot narrowly confirm the refreshed packet revision containing
-   the fresh local/offsite backup pair.
-2. Sol prepares a replacement exact grant from the production post-overlay
-   binding and presents it to Ryan without execution.
-3. Immediately before any authorized execution, revalidate
+1. Ryan decides whether to authorize the presented replacement exact grant.
+2. Immediately before any authorized execution, revalidate
    source/runtime/config/binding,
    archive the void stale grant, and establish a no-other-writer window through
    final evidence capture, including the reconcile and Restic timers plus any
    process holding the Chroma database.
-4. If granted, execute only the exact source/runtime/config/budget operation and
+3. If granted, execute only the exact source/runtime/config/budget operation and
    return measured call, coverage, lineage, and isolation evidence.
-5. Obtain a later separate Ryan grant before any runtime/config/restart or
+4. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -233,6 +230,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Sol | Authorized successor grant safely refused before activation or calls: packet used pre-overlay fingerprint `7fda8eef…f8528`; corrected post-overlay fingerprint is `d2ecd101…473f5`; exact corrected-packet review is next |
 | 2026-10-10 | Kiro / Copilot | Both lanes PASS corrected packet `b380a43`, digest `3b9d1138…b21ff`, with no blockers; Ryan's new exact-grant decision is next, with fresh backup and named writer-isolation conditions |
 | 2026-10-10 | Sol | Created fresh local snapshot `19201163…340a5` and exact offsite copy `bfa9ac35…16da1`, sharing tree `eb4cd065…575a`; refreshed packet awaits narrow same-revision review |
+| 2026-10-10 | Kiro / Copilot / Sol | Both lanes PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers; Sol prepared non-executed replacement proposal operation `c5fec18c…79c81`; Ryan's exact-grant decision is next |
 
 ## TL;DR
 
@@ -240,8 +238,8 @@ Keep this document a current-state snapshot, not a session diary.
   stopped and disabled with no restart authority.
 - Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
   first successor grant safely refused with zero new calls or corpus mutation;
-  Kiro and Copilot both PASS corrected packet `b380a43`, digest
-  `3b9d1138…b21ff`, with no blockers.
-- Fresh local/offsite backups now share tree `eb4cd065…575a`; no successor
-  bootstrap, config change, or watcher promotion completed. Narrow packet
-  confirmation and Ryan's replacement exact-grant decision are next.
+  Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
+  `5e29ae13…90bb`, with no blockers.
+- Fresh local/offsite backups share tree `eb4cd065…575a`; replacement proposal
+  operation `c5fec18c…79c81` is prepared but not executed. Ryan's exact-grant
+  decision is next; config and watcher promotion remain separately gated.
