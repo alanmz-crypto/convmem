@@ -185,3 +185,42 @@ after every commit with an explicit refspec. Ryan squash-merges.
 
 - [ ] Cherry-pick the docs commit; read §13 and this file
 - [ ] State Goal / role / system state / next action; Arc: Codex
+
+---
+
+## Verification of `fc8ea2a` (Claude, 2026-10-11) — not ready for review
+
+Cursor's corrective-4 tip fixes C1–C6 in code, and the branch merges
+cleanly with `main`. Two mechanical blockers remain, checked in clean
+scratch worktrees with a fresh CI-style config:
+
+1. **The Pylint regression gate fails** with 3 new findings in
+   `tests/test_incremental_jsonl_codex_corrective_4.py`: an unused `mock`
+   import (line 10) and unused arguments `path` and `kwargs` (line 152).
+   This happens with the exact CI command, against either `905ad40` or
+   `main`'s merge base (`6a23aa9`). The baseline file is identical on both,
+   so the base ref is not the cause.
+2. **51 tests fail on the tip; `main` passes the same 70-file set (665
+   passed, 0 failed).**
+   - The `convmem.py` C0207 fix shifted that file's lines by one, so the
+     shadow and R2B writer inventories are stale (`convmem.py:416/520/694/
+     710/1772` → `+1`). That cascades through the R2B v2 authority and
+     revision tests.
+   - The `watch.py` canary baseline hash was not refreshed; three baseline
+     tests fail.
+
+Notes for the reviewers, which don't block review:
+
+- **Native-fault detection now uses the real exit code.** Before, a
+  crashing child that printed anything to stderr was never counted as a
+  native fault. This is a behavior change for every watched path, and Kiro
+  should rule on it.
+- **C3:** the parent no longer hashes (good). But `streaming_byte_digest_for_path`
+  is used only by its test, and the old `streaming_complete_prefix_digest_for_path`
+  still has the unbounded buffer. Remove both, or fix and use them. Refusals
+  for `source_too_large` carry no digest, which is allowed.
+- **Verbose mode now hides child stderr when the child succeeds.**
+- **C1 recovery:** an `OSError` on `fstat` is reported as
+  `source_too_large`. It fails closed, but the label is wrong.
+- **STATUS merge:** the resolution condensed `main`'s Kiro-bootstrap §5
+  paragraph instead of keeping it verbatim.
