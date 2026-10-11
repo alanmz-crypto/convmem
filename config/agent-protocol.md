@@ -116,6 +116,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - **The test:** Could a fresh model read *only* this file and orient itself? If your update makes that harder, undo it.
 
 **Active STATUS files:**
+- `docs/plans/STATUS-safe-harbor.md` — Safe Harbor (**provisional name; recovery/containment direction draft, review and Ryan approval pending**)
 - `docs/plans/STATUS-judgebench.md` — JudgeBench semantic calibration v1
 - `docs/plans/STATUS-r2b-capture-auth.md` — R2b capture authorization
 - `docs/plans/STATUS-shadow-ledger-phase0.md` — Shadow Ledger Phase 0 delta capture
@@ -146,6 +147,7 @@ Known arc codenames (update when new arcs are named):
 
 | Codename | Subject | State |
 |----------|---------|-------|
+| Safe Harbor (provisional) | Scoped recovery evidence and existing-guard incident containment | Direction draft; see `docs/plans/STATUS-safe-harbor.md` |
 | Trapdoor Hunt | Dependability & provenance trust architecture | Active — review complete, awaiting lock |
 | Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — parent frozen |
 | CI Kryptonite | Behavioral CI merge gate | **Closed** (PR #187 + #189) |

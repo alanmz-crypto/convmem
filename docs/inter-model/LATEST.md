@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-09
+**Updated:** 2026-10-11
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,19 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **Arc Safe Harbor (provisional name) — DIRECTION DRAFT (2026-10-11):** Ryan
+  resumed the durability planning work after the GitHub checkpoint. Codex
+  authored a bounded direction using existing backups and incident containment;
+  Opus review, Kiro sign-off and Ryan direction approval are next. No execution
+  plan, deployment, watch start, live restore or indexing is authorized.
+  Backup access checks now pass, including the matching offline password copy;
+  new Rescuezilla image completion and loss-window policy remain unconfirmed.
+  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md), then the
+  [architecture and reviewer assignment](../plans/ARCHITECTURE-safe-harbor.md).
+  Branch: `plan/2026-10-11-safe-harbor`. No generated agent surfaces were
+  regenerated or deployed; propagate the arc pointer at a later authorized
+  protocol generation/deployment.
 
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING
