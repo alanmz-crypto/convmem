@@ -85,25 +85,42 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Implementation and review complete at `a6169a5` on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`: hermetic `transform_failed` predecessor-preserving supersession, manifest-bound accounting, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained predecessor evidence. Production Python 3.11 affected suite: 178 passed; pylint 10.00/10. Kiro and Copilot both PASS on the exact implementation tip. No live retry, config change, watcher restart, or runtime promotion. | Ryan PR/merge decision |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. Tests and linters have not been run. | Ryan decides focused verification and PR creation; fresh backup/proposal authority follows only after the fix lands |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-On `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`, the hermetic
-failed-operation supersession implementation passed exact-tip Kiro design review
-and Copilot safety audit at `a6169a5`. Next lane: Ryan PR/merge decision. No lane
-may execute a live bootstrap retry, successor grant, runtime
-promotion, config change, or watcher restart without separate Ryan authority.
+The Kiro bootstrap remains stopped before grant materialization or paid calls.
+Proposal `c5fec18c…79c81` is unconsumed but stale and cannot be reused. The sole
+inventory drift was two mocked 402/503 rows that
+`tests/test_index_loud_failures.py` appended to live
+`synthesis_failures.jsonl`; all other mutation surfaces, including the Kiro
+source's two summary rows and 17 knowledge units, remained exact.
+
+Cursor corrected the isolation leak at code commit `eaae6e9` on
+`fix/2026-10-10-pytest-synthesis-failure-isolation`. Each affected `_build`
+call now patches `ingest._SYNTHESIS_FAIL_LOG` to a temporary path while keeping
+the real failure-logging code under exercise. Production code and the live
+ledger were unchanged. Copilot's targeted safety/isolation audit PASSed that
+exact code commit with no blockers. Tests and linters were not run because the
+implementation grant did not include test execution. Ryan decides focused
+verification and PR creation. Fresh backups, proposal, packet review, and live
+execution remain later separate gates. No lane may promote config/runtime or
+restart the watcher without separate Ryan authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Ryan decides whether to open and merge the failed-operation supersession PR
-   from `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`.
-2. After merge, Sol prepares a fresh exact-resource successor packet (revalidated
-   source, backup, dimension 768, six additional DeepSeek attempts with lifetime
-   total eight, one same-grant recovery) and Ryan grants one successor bootstrap.
-3. Obtain a later separate Ryan grant before any runtime/config/restart or
+1. If Ryan authorizes it, run focused verification while measuring the live
+   ledger before and after to prove zero production-state mutation.
+2. Ryan decides whether to create and merge the test-isolation PR.
+3. After the fix lands, capture current mutation state, refresh
+   backup coverage, and prepare a new exact proposal and review packet.
+4. Immediately before any later authorized retry, revalidate the exact
+   local/offsite pair, source/runtime/config/binding/dimension, and establish a
+   no-other-writer window through final evidence capture.
+5. If granted, execute only the exact source/runtime/config/budget operation and
+   return measured call, coverage, lineage, and isolation evidence.
+6. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -215,14 +232,35 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Cursor | Live bootstrap exposed paid-cap mis-accounting (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); runtime fix `32fae68`, 12 focused passes at evidence commit `2b7228b`, Copilot scoped PASS on runtime, Kiro PASS on evidence; next gate Ryan PR/merge decision |
 | 2026-10-10 | Cursor / Sol | Failed-operation supersession implementation complete on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession` (manifest-bound carried accounting, 34 focused pytest cases, pylint clean); exact-tip Kiro/Copilot review next; no live retry/config/watcher authority |
 | 2026-10-10 | Sol / Kiro / Copilot | Exact-tip review complete at `a6169a5`: both lanes PASS after contained exclusive lineage-temp creation closed the final blocker; 178 affected production-Python tests pass; Ryan PR/merge decision next |
+| 2026-10-10 | Ryan / Sol | Ryan merged PR #381 as `e798bba`; source remains unchanged and fresh successor packet preparation began with live execution still `NO-GO` |
+| 2026-10-10 | Kiro / Copilot | Both lanes PASS the exact successor packet at `c7c12e8`, digest `b7dc9bfc…b980`; Ryan's backup-disposition and execution-grant decisions remain |
+| 2026-10-10 | Sol | Mounted the designated offsite drive and verified snapshot `653a8198…f7ac4` as the exact Restic copy of local snapshot `ac1087c8…a3954`; refreshed packet awaits same-revision Kiro/Copilot review |
+| 2026-10-10 | Kiro / Copilot | Both lanes PASS packet `f9418bf`, digest `f8ca5df1…ceb3d`, with no blockers; Ryan's separate exact-grant decision is next, with Restic recheck and writer-window advisories to include |
+| 2026-10-10 | Sol | Authorized successor grant safely refused before activation or calls: packet used pre-overlay fingerprint `7fda8eef…f8528`; corrected post-overlay fingerprint is `d2ecd101…473f5`; exact corrected-packet review is next |
+| 2026-10-10 | Kiro / Copilot | Both lanes PASS corrected packet `b380a43`, digest `3b9d1138…b21ff`, with no blockers; Ryan's new exact-grant decision is next, with fresh backup and named writer-isolation conditions |
+| 2026-10-10 | Sol | Created fresh local snapshot `19201163…340a5` and exact offsite copy `bfa9ac35…16da1`, sharing tree `eb4cd065…575a`; refreshed packet awaits narrow same-revision review |
+| 2026-10-10 | Kiro / Copilot / Sol | Both lanes PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers; Sol prepared non-executed replacement proposal operation `c5fec18c…79c81`; Ryan's exact-grant decision is next |
+| 2026-10-10 | Ryan / Sol | Ryan authorized replacement proposal `c5fec18c…79c81`; exact local Restic resolution timed out before writer pause or transport, so execution stopped with zero new calls or corpus mutation and the proposal remains unconsumed |
+| 2026-10-10 | Sol | Diagnosed the local Restic timeout as a workspace-sandbox boundary: the same exact-ID read completed with the expected tree in 0.728 seconds under scoped host access; the proposal remains unconsumed pending Ryan's retry decision |
+| 2026-10-10 | Ryan / Sol | Ryan authorized the retry; local exact validation succeeded under scoped host access, but offsite snapshot `bfa9ac35…16da1` timed out after 120 seconds, so execution again stopped before transport or mutation and the proposal remains unconsumed |
+| 2026-10-10 | Sol | Diagnosed the offsite timeout as Restic's normal lock path against the read-only mount; explicit `--no-lock` opened the repository and returned the exact expected snapshot/tree in about 0.55 seconds without mutation |
+| 2026-10-10 | Sol | Corrected the temporary validator to use `--no-lock` only offsite; the exact local/offsite IDs, shared tree, copy lineage, paths, timestamp, and tags all PASSed, with the proposal still unconsumed |
+| 2026-10-10 | Ryan / Sol | Ryan authorized another exact retry; after backup PASS and writer-window establishment, supersession admission refused the stale proposal on predecessor mutation-inventory mismatch before grant materialization, dimension probing, transport, or mutation |
+| 2026-10-10 | Sol | Proved the sole drift was a 310-byte append to live `synthesis_failures.jsonl`: two mocked HTTP-failure rows from `tests/test_index_loud_failures.py`; all other mutation surfaces, including Kiro Chroma rows, remained exact |
+| 2026-10-10 | Cursor / Copilot / Sol | Cursor isolated the mocked failure logger to temporary test storage at `eaae6e9`; Copilot's targeted safety/isolation audit PASSed that exact code commit with no blockers; tests and linters remain unrun pending Ryan's decision |
 
 ## TL;DR
 
 - The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
   stopped and disabled with no restart authority.
-- Failed-operation supersession is implementation- and review-complete at
-  `a6169a5` (178 affected production-Python tests, pylint 10.00/10, Kiro and
-  Copilot PASS); Ryan's PR/merge decision is next.
-- No live bootstrap retry, successor grant execution, config change, or watcher
-  promotion exists; those remain separately Ryan-gated after merge and a fresh
-  Sol successor packet.
+- Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
+  first successor grant safely refused with zero new calls or corpus mutation;
+  Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
+  `5e29ae13…90bb`, with no blockers.
+- Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
+  `c5fec18c…79c81` is unconsumed but stale because the live predecessor
+  mutation inventory no longer matches its bound digest. The sole drift is two
+  mocked test failures appended to the live synthesis-failure ledger. The retry
+  stopped before grant materialization or paid calls. The isolation fix is
+  implemented and Copilot-audited at `eaae6e9`; focused verification and Ryan's
+  PR decision are next. Config and watcher promotion remain separately gated.
