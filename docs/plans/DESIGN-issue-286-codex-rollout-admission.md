@@ -126,7 +126,8 @@ Required behavior:
   (`live_route_refused:<outcome>`) or a dedicated exit code.
 - The watcher records it as a third failure class with threshold 1:
   - it quarantines the path immediately;
-  - it persists the outcome and the refused prefix digest;
+  - it persists the outcome and the refused prefix digest as evidence
+    (the skip decision is by path; see §13 condition 3);
   - it never retries on later events.
 - `convmem doctor` gains an `incremental_refusals` check listing quarantined
   admitted paths with their outcomes. Any entry makes the check WARN.
@@ -260,8 +261,9 @@ Validation fails closed:
    - an unchanged rerun makes zero provider calls (extend
      `tests/test_codex_incremental_jsonl_route.py`).
 4. Race: an admitted path with an existing processed entry gives a visible
-   refusal and quarantines once, with no respawn on later events and the
-   doctor check WARN.
+   refusal and quarantines once. After that refusal, N later appends (each
+   changing the prefix digest) spawn zero index children, and the doctor
+   check WARNs.
 5. Guards: a frontier-subset violation, a chunk backstop overflow and a size
    ceiling overflow each refuse before any provider call.
 6. Continuity: a Codex `compacted` record appended mid-session keeps the
@@ -312,8 +314,8 @@ Pass when:
 2. Should a `session_meta` mismatch on an otherwise admitted path refuse (as
    proposed) or route legacy?
 3. Is threshold-1 refusal quarantine with operator-only clearing correct?
-   Should it be keyed by path or by (path, prefix digest)? (Kiro: by
-   (path, prefix digest); see §13.)
+   Should it be keyed by path or by (path, prefix digest)? (Kiro: by path,
+   with the digest kept as evidence; amended 2026-10-11, see §13.)
 4. Are the defaults right (20 chunks per run, 256 MiB), or should Stage 1
    measure them first?
 
@@ -342,21 +344,48 @@ implementation, and the exact-tip recheck at gate 3 must confirm each one:
 2. **The check-5 refusal is mandatory and visible.** A path that passes D1
    checks 1–4 but fails the `session_meta` check emits the D3 refusal marker
    and never produces a legacy ingest tuple. This is RC-1 load-bearing.
-3. **The quarantine key is (path, prefix digest),** not the path alone,
-   reusing the refused prefix digest that D3 persists.
-4. **The D3 refusal class lands before or with the admitted route.** A
-   `live_route_refused` from an admitted path quarantines terminally:
-   threshold 1, no respawn, doctor WARN. If the #308 terminal-failure fix
-   lands first, reuse it. The route must not ship while a refusal still
-   respawns on each append (gap verified at `watch.py:593`).
+3. **The refusal quarantine is terminal and keyed by path** (amended
+   2026-10-11). The first `live_route_refused` from an admitted path
+   quarantines that path (threshold 1). The refused prefix digest and
+   outcome are persisted as evidence only: they are recorded in state and
+   shown by doctor `incremental_refusals`, and never used as a
+   re-evaluation key. A later append to a quarantined path does not respawn
+   an index child, whatever its digest.
+4. **The terminal-refusal class lands before or with the admitted route**
+   (amended 2026-10-11). No admitted path may respawn an index child after
+   its first refusal. If the #308 terminal-failure fix lands first and
+   covers `live_route_refused`, reuse it. The watcher's pre-index gate skips
+   whenever the path has a refusal quarantine, before computing any digest;
+   the digest recompute-and-compare branch is removed from the skip
+   decision (gap verified at `watch.py:593` and `:638`).
 5. Stage 1 measures the D4 and D5 limits before Stage 2. The defaults ship
    only as fail-closed backstops.
 6. No scope creep beyond §10.
 
 Kiro's answers to §11: (1) the relaxation is acceptable and contained;
 (2) a `session_meta` mismatch refuses; (3) threshold-1 quarantine with
-operator-only clearing, keyed by (path, prefix digest); (4) ship the defaults
-as backstops and measure them in Stage 1.
+operator-only clearing, keyed by path (amended from (path, prefix digest));
+(4) ship the defaults as backstops and measure them in Stage 1.
+
+**Amendment, 2026-10-11 (Kiro).** The original conditions 3 and 4
+contradicted each other for a refused rollout that is still growing: every
+append changes the prefix digest, so a (path, digest) key re-evaluated each
+append and spawned one child per append, which condition 4 forbids. No
+refusal outcome this design emits recovers under appends:
+
+| Outcome | Under appends |
+|---|---|
+| `bootstrap_required` | unchanged; appending creates no checkpoint |
+| `source_too_large` (D5) | worse; the file only grows |
+| `transform_chunk_cap` (D4) | worse; the frontier grows |
+| `frontier_violation` (D4) | checkpoint/projection mismatch; appends don't repair it |
+| truncation or rewrite | prefix discontinuity; appends don't restore it |
+| `codex_session_identity_mismatch` (D1 check 5) | property of the file head |
+| stale checkpoint after rollback (D8) | unchanged until a per-path repair |
+
+So terminal path-keying loses no legitimate recovery path. Clearing stays
+operator-only. The rest of the `9e91973` PASS stands; this amendment does
+not touch D1, D2, D4, D5 or the §10 scope lock.
 
 ## TL;DR
 

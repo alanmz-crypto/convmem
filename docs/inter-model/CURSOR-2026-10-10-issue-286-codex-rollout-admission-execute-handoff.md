@@ -57,7 +57,7 @@ wins; report the conflict.
 | D1 check 5 (`session_meta` identity) on the parsed prefix, before provider work | coordinator, after `parse_complete_prefix` |
 | D4 frontier-subset invariant plus chunk backstop; D5 size ceiling | coordinator, before the provider phase (`run`, `incremental_jsonl.py:2013`) |
 | Child refusal marker | `incremental_jsonl.py:2276` (`live_route_refused`) and its CLI exit path |
-| Watcher refusal class: threshold 1, keyed by (path, prefix digest) | `watch.py:274–292` (classification), `:388` (`record_failure`), `:575`/`:593` (`_record_ready_path_failure`) |
+| Watcher refusal class: threshold 1, terminal by path (digest is evidence) | `watch.py:274–292` (classification), `:388` (`record_failure`), `:575`/`:593` (`_record_ready_path_failure`) |
 | Doctor `incremental_refusals` check | `doctor.py` |
 | One structured line per admitted run (D6) | coordinator result emission; counters already exist (`CallCounters`, `incremental_jsonl.py:156`) |
 
@@ -118,10 +118,10 @@ Check 5 runs on the parsed prefix: the first complete record is
 
 - **Child refusal:** stderr carries `live_route_refused:<outcome>` plus a
   nonzero exit (or a dedicated exit code). The watcher parses either.
-- **Watcher:** a refusal records class `refused` and quarantines immediately.
-  The key is (path, prefix digest). It persists `outcome`, `prefix_sha256` and
-  `first_refused_at`. A later event on the same (path, digest) never spawns
-  a child. Clearing a quarantine is operator-only. If the #308
+- **Watcher:** a refusal records class `refused` and quarantines the path
+  immediately. It persists `outcome`, `prefix_sha256` and `first_refused_at`
+  as evidence. A later event on that path never spawns a child, whatever its
+  digest (design §13 condition 3, amended 2026-10-11). Clearing a quarantine is operator-only. If the #308
   terminal-failure fix is already on `main`, reuse its mechanism (Kiro
   condition 4).
 - **Doctor:** the `incremental_refusals` check reports PASS with zero
@@ -182,8 +182,9 @@ Hermetic only: fake providers, temporary real Chroma, network denied,
 5. **Race:** an admitted path with an existing `processed.json` entry and no
    checkpoint refuses. The watcher quarantines once and does not respawn on
    three later events, and the doctor check WARNs.
-6. **Quarantine key:** the same (path, digest) stays quarantined. An append
-   that changes the digest is a new state, and is evaluated again exactly once.
+6. **Quarantine is by path** (amended 2026-10-11, design §13): after one
+   refusal, three later appends that each change the digest spawn zero
+   children, and the watcher computes no digest to decide the skip.
 7. **Guards:** a frontier-subset violation, chunk cap overflow and size
    ceiling overflow each refuse with zero provider calls.
 8. **Config validation:** every fail-closed case in design §5.
