@@ -1,6 +1,6 @@
-# Arc Brief — Kiro JSONL Incremental Production Integration
+# Arc Brief — Kiro Bootstrap for JSONL Incremental Production Integration
 
-> **Arc: Codex. Every model working on this arc must read this file first.**
+> **Arc: Kiro bootstrap. Every model working on this arc must read this file first.**
 > State the product goal, your role, current system state, and next action before
 > doing substantive work.
 
@@ -9,10 +9,10 @@
 ## 1. What This Is For (product goal)
 
 ConvMem currently reprocesses an entire Kiro session transcript whenever its
-append-heavy `messages.jsonl` changes. Arc Codex aims to make repeated indexing
-incremental and crash-replayable: reuse stable historical chunks, transform
-only the overlap frontier and new messages, and never pay twice for a completed
-transform after a crash.
+append-heavy `messages.jsonl` changes. Arc Kiro bootstrap aims to make repeated
+indexing incremental and crash-replayable: reuse stable historical chunks,
+transform only the overlap frontier and new messages, and never pay twice for
+a completed transform after a crash.
 
 **Done means:** disabled-by-default production code has passed hermetic
 real-Chroma fault/replay review, a one-shot exact-resource production canary
@@ -85,41 +85,46 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`; Copilot and Kiro PASSed the reviewed correction, all six GitHub checks passed, and the focused refusal tests left the live ledger unchanged. A 2026-10-11 local/offsite pair was created and independently validated, but two mocked 402/503 rows consistent with an older checkout reached the live failure ledger after its snapshot time. The current inventory digest is `104acbef…34b73`; the valid pair therefore is not current rollback authority for a successor proposal. | Ryan decides whether to authorize the exact replacement backup operation in `SOL-2026-10-11-issue-286-fresh-backup-authority.md` |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-The Kiro bootstrap remains stopped before grant materialization or paid calls.
-Proposal `c5fec18c…79c81` is unconsumed but stale and cannot be reused. The sole
-inventory drift was two mocked 402/503 rows that
-`tests/test_index_loud_failures.py` appended to live
-`synthesis_failures.jsonl`; all other mutation surfaces, including the Kiro
-source's two summary rows and 17 knowledge units, remained exact.
+PR #384 is merged on `main` as `6a23aa9`; the scoped pytest isolation defect is
+fixed and reviewed. The Kiro bootstrap remains stopped before grant
+materialization or paid calls. Proposal `c5fec18c…79c81` is unconsumed but
+stale and cannot be reused.
 
-Cursor corrected the isolation leak at code commit `eaae6e9` on
-`fix/2026-10-10-pytest-synthesis-failure-isolation`. Each affected `_build`
-call now patches `ingest._SYNTHESIS_FAIL_LOG` to a temporary path while keeping
-the real failure-logging code under exercise. Production code is unchanged.
-Copilot's targeted safety/isolation audit PASSed that exact code commit with no
-blockers. The two focused refusal tests pass in 0.50 seconds. The live ledger's
-SHA-256 (`31e8d29e…9672`), 633839-byte size, and nanosecond mtime were identical
-before and after; all four paused timers were restored active. Ryan decides PR
-creation and merge. Fresh backups, proposal, packet review, and live execution
-remain later separate gates. No lane may promote config/runtime or restart the
-watcher without separate Ryan authority.
+Sol used Ryan's one-pair authorization to copy today's scheduled local snapshot
+`f8d69dc1…c324b` to offsite snapshot `a38bd4c7…6f449`. Exact-ID validation
+PASSed shared tree `84795d75…51084`, copy lineage, timestamp, paths, and tags.
+The local snapshot time was `00:18:59-05:00`. At `00:36:40-05:00`, an older
+checkout appended another mocked 402/503 pair to the live failure ledger. The
+current mutation-inventory digest is `104acbef…34b73`; all other measured
+surfaces remain exact, including 2 Kiro summary rows and 17 knowledge units.
+The validated pair is therefore evidence but not current rollback authority.
+
+Prepare no bootstrap proposal until Ryan authorizes and the operator completes
+the exact replacement backup operation in
+`docs/inter-model/SOL-2026-10-11-issue-286-fresh-backup-authority.md`. No lane
+may clean the live ledger, promote config/runtime, call a paid provider, or
+restart the watcher without separate Ryan authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Ryan decides whether to create and merge the test-isolation PR.
-2. After the fix lands, capture current mutation state, refresh
-   backup coverage, and prepare a new exact proposal and review packet.
-3. Immediately before any later authorized retry, revalidate the exact
+1. Ryan decides whether to authorize the exact one-shot replacement backup
+   operation prepared on this branch.
+2. If authorized, capture an inventory-stable local snapshot and exact offsite
+   copy, then publish their full IDs, shared tree, lineage, and evidence digest.
+3. Bind a new successor proposal and review packet to that current pair and
+   mutation inventory; obtain Kiro and Copilot verdicts on the same revision.
+4. Immediately before any later authorized retry, revalidate the exact
    local/offsite pair, source/runtime/config/binding/dimension, and establish a
    no-other-writer window through final evidence capture.
-4. If granted, execute only the exact source/runtime/config/budget operation and
-   return measured call, coverage, lineage, and isolation evidence.
-5. Obtain a later separate Ryan grant before any runtime/config/restart or
+5. If separately granted, execute only the exact
+   source/runtime/config/budget operation and return measured call, coverage,
+   lineage, and isolation evidence.
+6. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -139,7 +144,7 @@ or canary PASS does not enable production indexing.
 
 ## 8. Relationship to ConvMem
 
-Arc Codex changes the ingestion efficiency and recovery mechanism for one
+Arc Kiro bootstrap changes the ingestion efficiency and recovery mechanism for one
 adapter. It does not change ConvMem's source/projection authority direction,
 retrieval scoring, semantic calibration, or other active arcs.
 
@@ -248,20 +253,16 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Sol | Proved the sole drift was a 310-byte append to live `synthesis_failures.jsonl`: two mocked HTTP-failure rows from `tests/test_index_loud_failures.py`; all other mutation surfaces, including Kiro Chroma rows, remained exact |
 | 2026-10-10 | Cursor / Copilot / Sol | Cursor isolated the mocked failure logger to temporary test storage at `eaae6e9`; Copilot's targeted safety/isolation audit PASSed that exact code commit with no blockers; tests and linters remain unrun pending Ryan's decision |
 | 2026-10-10 | Sol | Focused pytest passed both provider-refusal cases in 0.50 seconds while the live failure ledger's SHA-256, size, and nanosecond mtime remained identical; all paused timers were restored active and Ryan's PR decision is next |
+| 2026-10-11 | Sol | Recorded PR #384 on `main`; validated a fresh backup pair, then blocked its use after a later old-checkout test append changed the current inventory; prepared exact replacement backup authority |
 
 ## TL;DR
 
 - The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
   stopped and disabled with no restart authority.
-- Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
-  first successor grant safely refused with zero new calls or corpus mutation;
-  Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
-  `5e29ae13…90bb`, with no blockers.
-- Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
-  `c5fec18c…79c81` is unconsumed but stale because the live predecessor
-  mutation inventory no longer matches its bound digest. The sole drift is two
-  mocked test failures appended to the live synthesis-failure ledger. The retry
-  stopped before grant materialization or paid calls. The isolation fix is
-  implemented and Copilot-audited at `eaae6e9`; its two focused tests pass with
-  the live failure ledger unchanged. Ryan's PR decision is next. Config and
-  watcher promotion remain separately gated.
+- Failed-operation supersession is on `main` through PR #381 (`e798bba`), and
+  the test-isolation correction is on `main` through PR #384 (`6a23aa9`).
+- The 2026-10-11 local/offsite pair is internally valid but predates two new
+  mocked ledger rows from an older checkout. Current inventory digest
+  `104acbef…34b73` therefore requires the exact replacement backup authority
+  prepared on this branch. Bootstrap, paid calls, config promotion, and watcher
+  restart remain separately gated.
