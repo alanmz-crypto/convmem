@@ -21,7 +21,20 @@ _PHASE_ENV = "CONVMEM_LIVE_DIAG_PHASE_PATH"
 _ROOTS_ENV = "CONVMEM_LIVE_DIAG_SCRATCH_ROOTS"
 _HERMETIC_ENV = "CONVMEM_LIVE_DIAG_HERMETIC"
 _SOURCE_SHA_ENV = "CONVMEM_LIVE_DIAG_SOURCE_SHA256"
+_SOURCE_SIZE_ENV = "CONVMEM_LIVE_DIAG_SOURCE_SIZE"
+_SOURCE_MTIME_ENV = "CONVMEM_LIVE_DIAG_SOURCE_MTIME_NS"
+_DENIAL_PATH_ENV = "CONVMEM_LIVE_DIAG_DENIAL_PATH"
+_GATE_PATH_ENV = "CONVMEM_LIVE_DIAG_INDEX_GATE_PATH"
+_SUPERVISOR_PID_ENV = "CONVMEM_LIVE_DIAG_SUPERVISOR_PID_PATH"
+GATE_PENDING = "pending"
+GATE_SCOPE_READY = "scope_ready"
+GATE_SPAWN_GRANTED = "spawn_granted"
+GATE_INDEX_AT_GATE = "index_at_gate"
+GATE_RUN_GRANTED = "run_granted"
+_HANDSHAKE_WAIT_SECONDS = 900.0
+_PHASE_LINES_ENV = "CONVMEM_LIVE_DIAG_PHASE_LINES"
 _MAX_PHASE_LINES = 4096
+_MAX_DENIAL_EVENTS = 256
 
 PRODUCTION_PREFIXES = (
     str((Path.home() / ".local/share/convmem").resolve()),
@@ -79,6 +92,53 @@ def _phase_path() -> Path | None:
     return path
 
 
+def _phase_lines_written() -> int:
+    raw = os.environ.get(_PHASE_LINES_ENV, "").strip()
+    if not raw:
+        return 0
+    try:
+        return int(raw)
+    except ValueError:
+        return 0
+
+
+def _bump_phase_lines() -> None:
+    os.environ[_PHASE_LINES_ENV] = str(_phase_lines_written() + 1)
+
+
+def _denial_path() -> Path | None:
+    raw = os.environ.get(_DENIAL_PATH_ENV, "").strip()
+    if not raw:
+        return None
+    path = Path(raw).expanduser()
+    roots = _scratch_roots()
+    if roots is None or not _under_scratch(path, roots):
+        raise LiveDiagnosisRefused("denial_path_outside_scratch")
+    return path
+
+
+def emit_denial_event(kind: str, detail: str) -> None:
+    """Append one bounded denial row visible to the out-of-cgroup parent."""
+    path = _denial_path()
+    if path is None:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file() and path.stat().st_size > 512 * 1024:
+        raise LiveDiagnosisRefused("denial_log_full")
+    if path.is_file():
+        existing = sum(1 for _ in path.open("r", encoding="utf-8"))
+        if existing >= _MAX_DENIAL_EVENTS:
+            raise LiveDiagnosisRefused("denial_log_full")
+    row = {
+        "ts": time.time(),
+        "pid": os.getpid(),
+        "kind": kind,
+        "detail": detail[:500],
+    }
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(row, sort_keys=True) + "\n")
+
+
 def mark(phase: str, **fields: Any) -> None:
     """Append one bounded phase marker when diagnosis mode is armed."""
     if not active():
@@ -86,11 +146,9 @@ def mark(phase: str, **fields: Any) -> None:
     path = _phase_path()
     if path is None:
         return
+    if _phase_lines_written() >= _MAX_PHASE_LINES:
+        raise LiveDiagnosisRefused("phase_log_full")
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.is_file():
-        lines = path.read_text(encoding="utf-8").splitlines()
-        if len(lines) >= _MAX_PHASE_LINES:
-            raise LiveDiagnosisRefused("phase_log_full")
     payload = {
         "ts": time.time(),
         "phase": phase,
@@ -98,6 +156,94 @@ def mark(phase: str, **fields: Any) -> None:
     }
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, sort_keys=True) + "\n")
+    _bump_phase_lines()
+
+
+def init_index_gate_pending() -> None:
+    raw = os.environ.get(_GATE_PATH_ENV, "").strip()
+    if not raw:
+        return
+    path = Path(raw).expanduser()
+    roots = _scratch_roots()
+    if roots is None or not _under_scratch(path, roots):
+        raise LiveDiagnosisRefused("index_gate_outside_scratch")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("pending\n", encoding="ascii")
+
+
+def write_index_gate_state(state: str) -> None:
+    raw = os.environ.get(_GATE_PATH_ENV, "").strip()
+    if not raw:
+        return
+    Path(raw).write_text(f"{state}\n", encoding="ascii")
+
+
+def read_index_gate_state() -> str | None:
+    raw = os.environ.get(_GATE_PATH_ENV, "").strip()
+    if not raw:
+        return None
+    path = Path(raw)
+    if not path.is_file():
+        return None
+    return path.read_text(encoding="ascii").strip()
+
+
+def _synthetic_fast_handshake() -> bool:
+    return os.environ.get("CONVMEM_LIVE_DIAG_SYNTHETIC_FAST") == "1"
+
+
+def _wait_for_gate_state(expected: str, *, timeout: float = _HANDSHAKE_WAIT_SECONDS) -> None:
+    if _synthetic_fast_handshake():
+        return
+    allowed_before: set[str | None] = {GATE_PENDING, None}
+    if expected == GATE_SPAWN_GRANTED:
+        allowed_before.add(GATE_SCOPE_READY)
+    if expected == GATE_RUN_GRANTED:
+        allowed_before.update({GATE_SPAWN_GRANTED, GATE_INDEX_AT_GATE})
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        state = read_index_gate_state()
+        if state == expected:
+            return
+        if state in allowed_before:
+            time.sleep(0.05)
+            continue
+        raise LiveDiagnosisRefused(f"index_gate_invalid:{state}")
+    raise LiveDiagnosisRefused(f"index_gate_timeout:{expected}")
+
+
+def wait_for_spawn_granted() -> None:
+    if os.environ.get(_HERMETIC_ENV) != "1":
+        return
+    if not os.environ.get(_GATE_PATH_ENV, "").strip():
+        return
+    _wait_for_gate_state(GATE_SPAWN_GRANTED)
+
+
+def wait_for_run_granted() -> None:
+    if os.environ.get(_HERMETIC_ENV) != "1":
+        return
+    if not os.environ.get(_GATE_PATH_ENV, "").strip():
+        return
+    _wait_for_gate_state(GATE_RUN_GRANTED)
+
+
+def publish_supervisor_pid() -> None:
+    raw = os.environ.get(_SUPERVISOR_PID_ENV, "").strip()
+    if not raw:
+        return
+    roots = _scratch_roots()
+    if roots is None:
+        raise LiveDiagnosisRefused("supervisor_pid_without_scratch_roots")
+    path = Path(raw).expanduser()
+    if not _under_scratch(path, roots):
+        raise LiveDiagnosisRefused("supervisor_pid_outside_scratch")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{os.getpid()}\n", encoding="ascii")
+
+
+def signal_index_at_gate() -> None:
+    write_index_gate_state(GATE_INDEX_AT_GATE)
 
 
 def assert_source_unchanged(path: str | Path) -> None:
@@ -144,24 +290,28 @@ def _install_hermetic_guards() -> None:
     def guarded_open(file, *args, **kwargs):
         if _production_denied(file):
             _DENIED.append(str(file))
+            emit_denial_event("production_path", str(file))
             raise LiveDiagnosisRefused(f"production_path_denied:{file}")
         return real_open(file, *args, **kwargs)
 
     def guarded_os_open(path, *args, **kwargs):
         if _production_denied(path):
             _DENIED.append(str(path))
+            emit_denial_event("production_path", str(path))
             raise LiveDiagnosisRefused(f"production_path_denied:{path}")
         return real_os_open(path, *args, **kwargs)
 
     def guarded_io_open(file, *args, **kwargs):
         if _production_denied(file):
             _DENIED.append(str(file))
+            emit_denial_event("production_path", str(file))
             raise LiveDiagnosisRefused(f"production_path_denied:{file}")
         return real_io_open(file, *args, **kwargs)
 
     def guarded_path_open(self, *args, **kwargs):
         if _production_denied(self):
             _DENIED.append(str(self))
+            emit_denial_event("production_path", str(self))
             raise LiveDiagnosisRefused(f"production_path_denied:{self}")
         return real_path_open(self, *args, **kwargs)
 
@@ -171,11 +321,13 @@ def _install_hermetic_guards() -> None:
             target = database[5:].split("?", 1)[0]
         if _production_denied(target):
             _DENIED.append(str(database))
+            emit_denial_event("production_path", str(database))
             raise LiveDiagnosisRefused(f"production_path_denied:{database}")
         return real_connect(database, *args, **kwargs)
 
     def denied(*_args, **_kwargs):
         _NETWORK_DENIED.append("outbound")
+        emit_denial_event("network", "outbound")
         raise LiveDiagnosisRefused("network_denied")
 
     _RESTORE_HOOKS.update(
@@ -248,20 +400,43 @@ def _require_nonempty_source_sha() -> None:
 def _assert_frozen_source_contract() -> None:
     if os.environ.get(_HERMETIC_ENV) != "1":
         return
+    raw_path = os.environ.get("CONVMEM_LIVE_DIAG_SOURCE_PATH", "").strip()
+    if not raw_path:
+        raise LiveDiagnosisRefused("source_contract_missing")
+    _assert_frozen_source_contract_for_path(Path(raw_path))
+
+
+def assert_source_identity_postcheck(path: str | Path) -> None:
+    """Parent-side postcheck using externally supplied identity contract."""
+    if os.environ.get(_HERMETIC_ENV) != "1":
+        return
+    _assert_frozen_source_contract_for_path(Path(path))
+
+
+def _assert_frozen_source_contract_for_path(path: Path) -> None:
     roots = _scratch_roots()
     if roots is None:
         raise LiveDiagnosisRefused("source_contract_without_scratch_roots")
-    raw_path = os.environ.get("CONVMEM_LIVE_DIAG_SOURCE_PATH", "").strip()
     expected = os.environ.get(_SOURCE_SHA_ENV, "").strip()
+    raw_path = os.environ.get("CONVMEM_LIVE_DIAG_SOURCE_PATH", "").strip()
     if not raw_path or not expected:
         raise LiveDiagnosisRefused("source_contract_missing")
-    path = Path(raw_path).expanduser().resolve()
-    if not _under_scratch(path, roots):
+    resolved = path.expanduser().resolve()
+    if resolved != Path(raw_path).expanduser().resolve():
+        raise LiveDiagnosisRefused("source_path_mismatch")
+    if not _under_scratch(resolved, roots):
         raise LiveDiagnosisRefused("source_path_outside_scratch")
-    with path.open("rb") as handle:
+    with resolved.open("rb") as handle:
         observed = hashlib.file_digest(handle, "sha256").hexdigest()
     if observed != expected:
         raise LiveDiagnosisRefused("source_identity_drift")
+    expected_size = os.environ.get(_SOURCE_SIZE_ENV, "").strip()
+    expected_mtime = os.environ.get(_SOURCE_MTIME_ENV, "").strip()
+    st = resolved.stat()
+    if expected_size and str(st.st_size) != expected_size:
+        raise LiveDiagnosisRefused("source_size_drift")
+    if expected_mtime and str(st.st_mtime_ns) != expected_mtime:
+        raise LiveDiagnosisRefused("source_mtime_drift")
 
 
 def _publish_index_child_pid() -> None:
@@ -438,6 +613,20 @@ def _redirect_brief_path() -> None:
     brief.DEFAULT_BRIEF_PATH = Path(raw).expanduser()
 
 
+def _run_configured_net_probe(role: str) -> None:
+    if os.environ.get(_HERMETIC_ENV) != "1":
+        return
+    try:
+        from tests.watch_oom_live_diagnosis_net_probe import (
+            NetProbeVerificationError,
+            run_configured_net_probe,
+        )
+
+        run_configured_net_probe(role)
+    except NetProbeVerificationError as exc:
+        raise LiveDiagnosisRefused(str(exc)) from exc
+
+
 def bootstrap_index_child() -> None:
     """Entry hook for `convmem index` subprocess under the D1 harness."""
     if os.environ.get(_HERMETIC_ENV) != "1":
@@ -445,11 +634,13 @@ def bootstrap_index_child() -> None:
     _require_nonempty_source_sha()
     _assert_config_under_scratch()
     _assert_frozen_source_contract()
+    _publish_index_child_pid()
+    signal_index_at_gate()
+    wait_for_run_granted()
     _redirect_brief_path()
     _install_scratch_writer_routes()
     _install_hermetic_guards()
     _install_fake_providers()
-    _publish_index_child_pid()
     mark("index_child_bootstrap")
 
 
@@ -460,6 +651,7 @@ def bootstrap_watch_worker() -> None:
     _require_nonempty_source_sha()
     _assert_config_under_scratch()
     _redirect_brief_path()
+    _run_configured_net_probe("outer")
     _install_hermetic_guards()
     mark("watch_worker_bootstrap")
 

@@ -1685,22 +1685,26 @@ def _index_impl(
     if needs_brief_refresh:
         try:
             from brief import refresh_brief_after_change
-
+        except ImportError:
+            refresh_brief_after_change = None
+        if refresh_brief_after_change is not None:
             try:
-                from live_diagnosis import mark
+                from live_diagnosis import LiveDiagnosisRefused, mark
 
                 mark("brief_refresh_begin")
             except ImportError:
-                pass
-            refresh_brief_after_change(cfg)
-            try:
-                from live_diagnosis import mark
+                LiveDiagnosisRefused = None  # type: ignore[misc, assignment]
 
+                def mark(*_args, **_kwargs):  # type: ignore[no-redef]
+                    return None
+
+            try:
+                refresh_brief_after_change(cfg)
                 mark("brief_refresh_done")
-            except ImportError:
+            except Exception as exc:
+                if LiveDiagnosisRefused is not None and isinstance(exc, LiveDiagnosisRefused):
+                    raise
                 pass
-        except Exception:
-            pass
 
     # Compact the JSONL export to remove duplicate unit IDs from re-indexing.
     if units_export and units_export.is_file():

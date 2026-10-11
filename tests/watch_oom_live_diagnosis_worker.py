@@ -32,8 +32,17 @@ def _write_worker_pid() -> None:
 
 
 def _dispatch(args: argparse.Namespace) -> int:
-    from live_diagnosis import bootstrap_watch_worker, hermetic_denial_snapshot, mark
-    from tests.watch_oom_live_diagnosis_support import assert_source_readonly
+    from live_diagnosis import (
+        bootstrap_watch_worker,
+        hermetic_denial_snapshot,
+        init_index_gate_pending,
+        mark,
+    )
+    from tests.watch_oom_live_diagnosis_support import (
+        assert_source_readonly,
+        load_external_backup_manifest,
+        verify_backup_manifest,
+    )
 
     scratch_root = Path(args.scratch_root).resolve()
     config_path = Path(args.config_path).resolve()
@@ -42,20 +51,38 @@ def _dispatch(args: argparse.Namespace) -> int:
     writer_root = Path(args.writer_root).resolve()
     register_path = Path(args.register_path).resolve()
     phase_path = Path(args.phase_path).resolve()
+    incident_canary = Path(args.incident_source_canary_path).resolve()
+    manifest_path = Path(args.backup_manifest_path).resolve()
 
-    for role in (config_path, source, brief_path, writer_root, register_path, phase_path):
+    for role in (
+        config_path,
+        source,
+        brief_path,
+        writer_root,
+        register_path,
+        phase_path,
+        incident_canary,
+        manifest_path,
+    ):
         _require_scratch(role, scratch_root)
 
     os.environ["CONVMEM_CONFIG"] = str(config_path)
+    # Config must be set in main() before bwrap re-exec and any config import.
+    os.environ["CONVMEM_LIVE_DIAG_SOURCE_SIZE"] = str(args.source_size)
+    os.environ["CONVMEM_LIVE_DIAG_SOURCE_MTIME_NS"] = str(args.source_mtime_ns)
     _write_worker_pid()
     bootstrap_watch_worker()
 
+    manifest = load_external_backup_manifest(manifest_path)
+    verify_backup_manifest(manifest=manifest, corpus_root=scratch_root / "arm" / "seed")
     assert_source_readonly(source, args.source_sha256)
+
+    init_index_gate_pending()
 
     import watch
 
     with ExitStack() as stack:
-        if args.mode == "injected_kill":
+        if args.mode == "injected_kill" and not args.cgroup_enforced:
             import subprocess as subprocess_mod
 
             original_popen = subprocess_mod.Popen
@@ -128,6 +155,10 @@ def main() -> int:
     parser.add_argument("--config-path", required=True)
     parser.add_argument("--source", required=True)
     parser.add_argument("--source-sha256", required=True)
+    parser.add_argument("--source-size", type=int, required=True)
+    parser.add_argument("--source-mtime-ns", type=int, required=True)
+    parser.add_argument("--incident-source-canary-path", required=True)
+    parser.add_argument("--backup-manifest-path", required=True)
     parser.add_argument("--chroma-dir", required=True)
     parser.add_argument("--brief-path", required=True)
     parser.add_argument("--writer-root", required=True)
@@ -140,6 +171,16 @@ def main() -> int:
 
     if args.cgroup_enforced != (args.cgroup_ready is not None):
         parser.error("--cgroup-enforced requires --cgroup-ready, and vice versa")
+
+    os.environ["CONVMEM_CONFIG"] = str(Path(args.config_path).resolve())
+    from tests.watch_oom_live_diagnosis_support import d1_worker_enter_bwrap_or_exit
+
+    d1_worker_enter_bwrap_or_exit(
+        argv=sys.argv,
+        scratch_root=Path(args.scratch_root),
+        source_path=Path(args.source),
+        repo_root=root,
+    )
 
     if args.cgroup_enforced:
         from tests.watch_oom_cgroup_runner import wait_for_parent_ready, worker_limit_claim

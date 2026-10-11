@@ -196,6 +196,19 @@ _LIVE_DIAG_ENV_KEYS = (
     "CONVMEM_LIVE_DIAG_INNER_SCOPE_MARKER",
     "CONVMEM_LIVE_DIAG_SOURCE_PATH",
     "CONVMEM_LIVE_DIAG_INDEX_PID_PATH",
+    "CONVMEM_LIVE_DIAG_SOURCE_SIZE",
+    "CONVMEM_LIVE_DIAG_SOURCE_MTIME_NS",
+    "CONVMEM_LIVE_DIAG_DENIAL_PATH",
+    "CONVMEM_LIVE_DIAG_INDEX_GATE_PATH",
+    "CONVMEM_LIVE_DIAG_INNER_FINAL_PATH",
+    "CONVMEM_LIVE_DIAG_INNER_ACK_PATH",
+    "CONVMEM_LIVE_DIAG_PHASE_LINES",
+    "CONVMEM_LIVE_DIAG_SCOPE_READY_PATH",
+    "CONVMEM_LIVE_DIAG_SUPERVISOR_PID_PATH",
+    "CONVMEM_LIVE_DIAG_SYNTHETIC_FAST",
+    "CONVMEM_LIVE_DIAG_NET_PROBE_PORT",
+    "CONVMEM_LIVE_DIAG_NET_PROBE_OUTER_PATH",
+    "CONVMEM_LIVE_DIAG_NET_PROBE_INNER_PATH",
 )
 
 
@@ -206,7 +219,11 @@ def _scoped_index_cmd(
     verbose: bool = False,
 ) -> list[str]:
     """Wrap index argv in a memory-capped systemd user scope when available."""
-    hermetic = os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") == "1"
+    from live_diagnosis import active as live_diag_active
+
+    hermetic = (
+        os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") == "1" and live_diag_active()
+    )
     inner_unit = os.environ.get("CONVMEM_LIVE_DIAG_INNER_SCOPE_UNIT", "").strip()
     if hermetic:
         from live_diagnosis import LiveDiagnosisRefused
@@ -247,13 +264,19 @@ def _scoped_index_cmd(
         ]
     )
     if hermetic:
-        # User scopes accept IPAddressDeny on this host; RestrictAddressFamilies is
-        # verified on the outer transient service, not on inner scopes.
+        # IPAddressDeny=any on inner scopes is supplemental; AF_INET isolation is
+        # proven via parent loopback probe artifacts (outer bwrap route), not here.
         cmd.extend(["-p", "IPAddressDeny=any"])
         for key in _LIVE_DIAG_ENV_KEYS:
             value = os.environ.get(key)
             if value:
                 cmd.extend(["--setenv", f"{key}={value}"])
+        sup = (
+            Path(__file__).resolve().parent
+            / "tests"
+            / "watch_oom_live_diagnosis_inner_supervisor.py"
+        )
+        inner_cmd = [sys.executable, str(sup), "--", *inner_cmd]
     cmd.extend(["--", *inner_cmd])
     return cmd
 

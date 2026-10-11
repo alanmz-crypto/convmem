@@ -8,9 +8,12 @@ import json
 import os
 import stat
 import subprocess
+import sys
+import tomllib
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from tests.watch_oom_exposure_index_e2e_support import (
     PathCanary,
@@ -20,10 +23,6 @@ from tests.watch_oom_exposure_index_e2e_support import (
     snapshot_canaries,
     write_e2e_config,
     write_synthetic_transcript,
-)
-
-_D1_INCIDENT_SOURCE_MARKER = (
-    Path.home() / ".local/share/convmem/live-diag-incident-source.path"
 )
 
 PHASE_ORDER = (
@@ -45,8 +44,121 @@ PHASE_ORDER = (
     "export_compaction_done",
 )
 
-MAX_TELEMETRY_BYTES = 512 * 1024
+# 900s @ 250ms, dual boundaries + index RSS rows (~320 bytes/row) with headroom.
+MAX_TELEMETRY_BYTES = 10 * 1024 * 1024
 SAMPLE_INTERVAL_SECONDS = 0.25
+
+# Explicit D1 cgroup caps (also written to scratch config [d1_harness]).
+D1_OUTER_MEMORY_BYTES = 256 * 1024**2
+D1_INNER_MEMORY_BYTES = 2 * 1024**3
+D1_BWRAP_ACTIVE_ENV = "CONVMEM_LIVE_DIAG_BWRAP_ACTIVE"
+
+
+def d1_worker_enter_bwrap_or_exit(
+    *,
+    argv: list[str],
+    scratch_root: Path,
+    source_path: Path,
+    repo_root: Path,
+) -> None:
+    """Hermetic D1 worker routes must run under bwrap (RO root, writable scratch, unshared net)."""
+    if os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") != "1":
+        return
+    from tests.watch_oom_live_diagnosis_bwrap import (
+        bwrap_available,
+        build_bwrap_command,
+        verify_d1_kernel_envelope,
+    )
+
+    if os.environ.get(D1_BWRAP_ACTIVE_ENV) == "1":
+        verify_d1_kernel_envelope(
+            scratch_root=scratch_root,
+            source_path=source_path,
+            repo_root=repo_root,
+        )
+        return
+
+    if not bwrap_available():
+        raise RuntimeError("d1_bwrap_unavailable")
+    cmd = build_bwrap_command(
+        [sys.executable, *argv],
+        scratch_root=scratch_root.resolve(),
+        source_path=source_path.resolve(),
+        repo_root=repo_root.resolve(),
+    )
+    env = os.environ.copy()
+    env[D1_BWRAP_ACTIVE_ENV] = "1"
+    completed = subprocess.run(cmd, env=env, check=False)
+    raise SystemExit(completed.returncode)
+
+
+def append_d1_harness_limits(config_path: Path) -> None:
+    block = (
+        "\n[d1_harness]\n"
+        f"outer_memory_bytes = {D1_OUTER_MEMORY_BYTES}\n"
+        f"inner_memory_bytes = {D1_INNER_MEMORY_BYTES}\n"
+    )
+    config_path.write_text(config_path.read_text(encoding="utf-8") + block, encoding="utf-8")
+
+
+def read_d1_harness_limits(config_path: Path) -> tuple[int, int]:
+    if not config_path.is_file():
+        raise RuntimeError("d1_harness_config_missing")
+    section = tomllib.loads(config_path.read_text(encoding="utf-8")).get("d1_harness")
+    if not isinstance(section, dict):
+        raise RuntimeError("d1_harness_limits_missing")
+    try:
+        outer = int(section["outer_memory_bytes"])
+        inner = int(section["inner_memory_bytes"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError("d1_harness_limits_invalid") from exc
+    if outer <= 0 or inner <= 0:
+        raise RuntimeError("d1_harness_limits_invalid")
+    if outer != D1_OUTER_MEMORY_BYTES or inner != D1_INNER_MEMORY_BYTES:
+        raise RuntimeError("d1_harness_limits_fixture_mismatch")
+    return outer, inner
+
+
+@contextmanager
+def overlay_live_diagnosis_env(env: dict[str, str]) -> Iterator[None]:
+    """Temporarily apply harness env for parent postchecks; always restore."""
+    keys = [k for k in env if k.startswith("CONVMEM_LIVE_DIAG_") or k == "CONVMEM_CONFIG"]
+    saved: dict[str, str | None] = {k: os.environ.get(k) for k in keys}
+    try:
+        for key in keys:
+            os.environ[key] = env[key]
+        yield
+    finally:
+        for key in keys:
+            prior = saved[key]
+            if prior is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = prior
+
+
+def d1_parent_teardown_postcheck(
+    *,
+    env: dict[str, str],
+    source_path: Path,
+    denial_path: Path,
+    incident_source_canary: Path,
+    canaries_before: dict,
+) -> None:
+    """Fail-closed parent postchecks (denials, frozen source, production canaries)."""
+    assert_denial_events_empty(denial_path)
+    inner_ack = Path(env["CONVMEM_LIVE_DIAG_INNER_ACK_PATH"])
+    inner_final = Path(env["CONVMEM_LIVE_DIAG_INNER_FINAL_PATH"])
+    if inner_final.is_file():
+        inner_ack.write_text("ack\n", encoding="ascii")
+    with overlay_live_diagnosis_env(env):
+        from live_diagnosis import assert_source_identity_postcheck
+
+        assert_source_identity_postcheck(source_path)
+    assert_parent_production_canaries_unchanged(
+        canaries_before,
+        incident_source=incident_source_canary,
+    )
 
 
 @dataclass(frozen=True)
@@ -134,48 +246,90 @@ def assert_production_canaries_unchanged() -> list[str]:
     return production_canary_drift_lines(before, after)
 
 
-def d1_extended_production_canary_paths() -> list[tuple[str, Path]]:
-    """Handoff surfaces plus failure logs, locks, and optional incident source."""
+def d1_mandatory_canary_paths(incident_source: Path) -> list[tuple[str, Path]]:
+    """Full production touchpoint census plus mandatory incident-source path."""
     share = Path.home() / ".local/share/convmem"
     seen: set[str] = set()
     out: list[tuple[str, Path]] = []
-    for surface, path in production_canary_paths():
+
+    def add(surface: str, path: Path) -> None:
         key = str(path)
-        if key not in seen:
-            seen.add(key)
-            out.append((surface, path))
+        if key in seen:
+            return
+        seen.add(key)
+        out.append((surface, path))
+
+    for surface, path in production_canary_paths():
+        add(surface, path)
     for rel in (
         "index_failures.jsonl",
         "native_crash_failures.jsonl",
         "synthesis_failures.jsonl",
     ):
-        path = share / rel
-        key = str(path)
-        if key not in seen:
-            seen.add(key)
-            out.append(("failure_log", path))
-    lock = share / "locks/chroma_writer_gate.lock"
-    key = str(lock)
-    if key not in seen:
-        out.append(("writer_gate", lock))
-    if _D1_INCIDENT_SOURCE_MARKER.is_file():
-        raw = _D1_INCIDENT_SOURCE_MARKER.read_text(encoding="utf-8").strip()
-        if raw:
-            incident = Path(raw).expanduser()
-            key = str(incident)
-            if key not in seen:
-                out.append(("incident_source", incident))
+        add("failure_log", share / rel)
+    add("writer_gate", share / "locks/chroma_writer_gate.lock")
+    chroma_root = share / "chroma"
+    if chroma_root.is_dir():
+        for path in sorted(chroma_root.rglob("*")):
+            if path.is_file():
+                add("chroma_tree", path)
+    for rel in ("writer/attest", "writer/census", "agent_runs"):
+        candidate = share / rel
+        if candidate.exists():
+            if candidate.is_file():
+                add("agent_run_state", candidate)
+            else:
+                for path in sorted(candidate.rglob("*")):
+                    if path.is_file():
+                        add("agent_run_state", path)
+    add("incident_source", incident_source.expanduser())
     return out
 
 
-def snapshot_d1_parent_canaries() -> dict[str, PathCanary]:
+def load_external_backup_manifest(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        raise RuntimeError("backup_manifest_unavailable")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("backup_manifest_unreadable") from exc
+    if not isinstance(payload, dict) or not payload:
+        raise RuntimeError("backup_manifest_missing")
+    manifest: dict[str, str] = {}
+    for key, value in payload.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise RuntimeError("backup_manifest_invalid")
+        manifest[key] = value
+    return manifest
+
+
+def supply_external_backup_manifest_file(
+    manifest_path: Path,
+    *,
+    entries: dict[str, str],
+) -> Path:
+    """Author manifest out-of-band from prepare_scratch_arm (external supply)."""
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(entries, sort_keys=True) + "\n", encoding="utf-8")
+    return manifest_path
+
+
+def assert_denial_events_empty(path: Path) -> None:
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            raise RuntimeError(f"denial_event_recorded:{line[:200]}")
+
+
+def snapshot_d1_parent_canaries(incident_source: Path) -> dict[str, PathCanary]:
     out: dict[str, PathCanary] = {}
-    for surface, path in d1_extended_production_canary_paths():
+    for surface, path in d1_mandatory_canary_paths(incident_source):
         key = str(path)
         if not path.exists():
             out[key] = PathCanary(key, surface, False, None, None, None, None, None, None)
             continue
-        stat = path.stat()
+        st = path.stat()
         sha = None
         if path.is_file():
             with path.open("rb") as handle:
@@ -184,12 +338,12 @@ def snapshot_d1_parent_canaries() -> dict[str, PathCanary]:
             key,
             surface,
             True,
-            stat.st_size,
-            stat.st_mode,
-            stat.st_mtime_ns,
+            st.st_size,
+            st.st_mode,
+            st.st_mtime_ns,
             sha,
-            stat.st_dev,
-            stat.st_ino,
+            st.st_dev,
+            st.st_ino,
         )
     return out
 
@@ -213,8 +367,6 @@ def refresh_canary_stats_unguarded(
     open_fn,
 ) -> dict:
     """Re-stat production canaries using an unguarded open (after hermetic guards)."""
-    from tests.watch_oom_exposure_index_e2e_support import PathCanary
-
     out: dict = {}
     for key, left in before.items():
         path = Path(key)
@@ -223,19 +375,19 @@ def refresh_canary_stats_unguarded(
                 key, left.surface, False, None, None, None, None, None, None
             )
             continue
-        stat = path.stat()
+        st = path.stat()
         with open_fn(path, "rb") as handle:
             sha = hashlib.file_digest(handle, "sha256").hexdigest()
         out[key] = PathCanary(
             key,
             left.surface,
             True,
-            stat.st_size,
-            stat.st_mode,
-            stat.st_mtime_ns,
+            st.st_size,
+            st.st_mode,
+            st.st_mtime_ns,
             sha,
-            stat.st_dev,
-            stat.st_ino,
+            st.st_dev,
+            st.st_ino,
         )
     return out
 
@@ -295,12 +447,19 @@ def arm_diagnosis_env(
     phase_path: Path,
     telemetry_path: Path,
     source_sha256: str,
+    source_size: int,
+    source_mtime_ns: int,
     config_path: Path | None = None,
+    gate_auto_go: bool = True,
 ) -> dict[str, str]:
     if not source_sha256 or len(source_sha256) != 64:
         raise ValueError("source_sha256 must be a 64-char hex digest")
     roots = json.dumps([str(scratch_root.resolve())])
     env = os.environ.copy()
+    env.pop(D1_BWRAP_ACTIVE_ENV, None)
+    from tests.watch_oom_live_diagnosis_bwrap import D1_PARENT_NETNS_ENV, net_namespace_id
+
+    parent_ns = net_namespace_id(os.getpid())
     cfg = config_path or (scratch_root / "arm" / "config" / "config.toml")
     if not cfg.is_file():
         raise ValueError(f"scratch config missing: {cfg}")
@@ -308,6 +467,14 @@ def arm_diagnosis_env(
     worker_pid_path = arm / "worker.pid"
     inner_scope_marker = arm / "inner_scope_unit.txt"
     index_pid_path = arm / "index.pid"
+    denial_path = arm / "denials.jsonl"
+    gate_path = arm / "index_gate.txt"
+    inner_final_path = arm / "inner_final.json"
+    inner_ack_path = arm / "inner_ack.txt"
+    scope_ready_path = arm / "inner_scope_ready.txt"
+    supervisor_pid_path = arm / "supervisor.pid"
+    net_probe_outer_path = arm / "net_probe_outer.json"
+    net_probe_inner_path = arm / "net_probe_inner.json"
     env.update(
         {
             "CONVMEM_CONFIG": str(cfg.resolve()),
@@ -315,12 +482,30 @@ def arm_diagnosis_env(
             "CONVMEM_LIVE_DIAG_PHASE_PATH": str(phase_path),
             "CONVMEM_LIVE_DIAG_HERMETIC": "1",
             "CONVMEM_LIVE_DIAG_SOURCE_SHA256": source_sha256,
+            "CONVMEM_LIVE_DIAG_SOURCE_SIZE": str(source_size),
+            "CONVMEM_LIVE_DIAG_SOURCE_MTIME_NS": str(source_mtime_ns),
             "CONVMEM_LIVE_DIAG_TELEMETRY_PATH": str(telemetry_path),
             "CONVMEM_LIVE_DIAG_WORKER_PID_PATH": str(worker_pid_path),
             "CONVMEM_LIVE_DIAG_INNER_SCOPE_MARKER": str(inner_scope_marker),
             "CONVMEM_LIVE_DIAG_INDEX_PID_PATH": str(index_pid_path),
+            "CONVMEM_LIVE_DIAG_DENIAL_PATH": str(denial_path),
+            "CONVMEM_LIVE_DIAG_INDEX_GATE_PATH": str(gate_path),
+            "CONVMEM_LIVE_DIAG_INNER_FINAL_PATH": str(inner_final_path),
+            "CONVMEM_LIVE_DIAG_INNER_ACK_PATH": str(inner_ack_path),
+            "CONVMEM_LIVE_DIAG_SCOPE_READY_PATH": str(scope_ready_path),
+            "CONVMEM_LIVE_DIAG_SUPERVISOR_PID_PATH": str(supervisor_pid_path),
+            "CONVMEM_LIVE_DIAG_NET_PROBE_OUTER_PATH": str(net_probe_outer_path),
+            "CONVMEM_LIVE_DIAG_NET_PROBE_INNER_PATH": str(net_probe_inner_path),
+            "CONVMEM_LIVE_DIAG_PHASE_LINES": "0",
         }
     )
+    if parent_ns:
+        env[D1_PARENT_NETNS_ENV] = parent_ns
+    if gate_auto_go:
+        from live_diagnosis import GATE_RUN_GRANTED, GATE_SPAWN_GRANTED
+
+        env["CONVMEM_LIVE_DIAG_SYNTHETIC_FAST"] = "1"
+        gate_path.write_text(f"{GATE_SPAWN_GRANTED}\n", encoding="ascii")
     brief = scratch_root / "arm" / "brief.md"
     writer_root = scratch_root / "arm" / "writer"
     if brief.parent.exists():
@@ -383,23 +568,25 @@ def prepare_scratch_arm(tmp_root: Path, *, corpus_n: int = 8, prefix_lines: int 
         units_export=units_export,
         transcript=source,
     )
+    append_d1_harness_limits(cfg_path)
     phase_path = arm / "phases.jsonl"
     telemetry_path = arm / "telemetry.jsonl"
-    backup_manifest = {
-        "processed.json": hashlib.sha256(processed.read_bytes()).hexdigest(),
-        "chroma/chroma.sqlite3": hashlib.sha256(
-            (chroma_dir / "chroma.sqlite3").read_bytes()
-        ).hexdigest(),
-    }
-    verify_backup_manifest(manifest=backup_manifest, corpus_root=arm / "seed")
+    source_stat = source.stat()
+    incident_source_canary = arm / "incident_source_canary.jsonl"
+    incident_source_canary.write_text("", encoding="utf-8")
     inner_scope_marker = arm / "inner_scope_unit.txt"
     index_pid_path = arm / "index.pid"
+    backup_manifest_path = arm / "external_backup_manifest.json"
     return {
         "arm": arm,
         "scratch_root": tmp_root,
         "config_path": cfg_path,
         "source": source,
         "source_sha256": source_sha,
+        "source_size": source_stat.st_size,
+        "source_mtime_ns": source_stat.st_mtime_ns,
+        "incident_source_canary": incident_source_canary,
+        "backup_manifest_path": backup_manifest_path,
         "chroma_dir": chroma_dir,
         "processed": processed,
         "units_export": units_export,
@@ -408,10 +595,11 @@ def prepare_scratch_arm(tmp_root: Path, *, corpus_n: int = 8, prefix_lines: int 
         "register_path": Path(seed["register"]),
         "phase_path": phase_path,
         "telemetry_path": telemetry_path,
-        "backup_manifest": backup_manifest,
-        "production_canary_count": len(d1_extended_production_canary_paths()),
         "inner_scope_marker": inner_scope_marker,
         "index_pid_path": index_pid_path,
+        "denial_path": arm / "denials.jsonl",
+        "d1_outer_memory_bytes": D1_OUTER_MEMORY_BYTES,
+        "d1_inner_memory_bytes": D1_INNER_MEMORY_BYTES,
     }
 
 
@@ -426,12 +614,14 @@ def read_phases(path: Path) -> list[str]:
     return phases
 
 
-def snapshot_production_canaries_for_parent() -> dict:
-    return snapshot_d1_parent_canaries()
+def snapshot_production_canaries_for_parent(incident_source: Path) -> dict:
+    return snapshot_d1_parent_canaries(incident_source)
 
 
-def assert_parent_production_canaries_unchanged(before: dict) -> None:
-    after = refresh_d1_parent_canaries(before)
+def assert_parent_production_canaries_unchanged(
+    before: dict, *, incident_source: Path
+) -> None:
+    after = snapshot_d1_parent_canaries(incident_source)
     drift = production_canary_drift_lines(before, after)
     if drift:
         raise RuntimeError(f"production_canary_drift:{drift}")

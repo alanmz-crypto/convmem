@@ -96,6 +96,15 @@ def pid_in_cgroup(pid: int, group: Path) -> bool:
     return pid in members
 
 
+def read_supervisor_pid(supervisor_pid_path: Path) -> int | None:
+    if not supervisor_pid_path.is_file():
+        return None
+    try:
+        return int(supervisor_pid_path.read_text(encoding="ascii").strip())
+    except (OSError, ValueError):
+        return None
+
+
 def read_index_pid(index_pid_path: Path) -> int | None:
     if not index_pid_path.is_file():
         return None

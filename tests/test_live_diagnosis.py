@@ -8,7 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from live_diagnosis import LiveDiagnosisRefused, active, mark
+from live_diagnosis import LiveDiagnosisRefused, active, emit_denial_event, mark
+
+from tests.watch_oom_live_diagnosis_support import assert_denial_events_empty
 
 
 @pytest.fixture()
@@ -47,6 +49,25 @@ def test_phase_path_outside_scratch_fails_closed(
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_PHASE_PATH", str(outside))
     with pytest.raises(LiveDiagnosisRefused, match="phase_path_outside_scratch"):
         mark("index_hash")
+
+
+def test_denial_event_visible_to_parent(scratch_env, monkeypatch: pytest.MonkeyPatch) -> None:
+    tmp_path, _phase = scratch_env
+    denial = tmp_path / "denials.jsonl"
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(denial))
+    emit_denial_event("network", "outbound")
+    assert denial.is_file()
+    with pytest.raises(RuntimeError, match="denial_event_recorded"):
+        assert_denial_events_empty(denial)
+
+
+def test_phase_mark_uses_o1_counter(scratch_env, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_PHASE_LINES", "0")
+    mark("one")
+    mark("two")
+    assert os.environ["CONVMEM_LIVE_DIAG_PHASE_LINES"] == "2"
 
 
 def test_source_drift_fail_closed(scratch_env, monkeypatch: pytest.MonkeyPatch) -> None:
