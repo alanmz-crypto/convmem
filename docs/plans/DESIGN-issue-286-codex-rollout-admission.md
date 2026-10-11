@@ -191,7 +191,13 @@ sources then fall back to legacy on their next change, which re-indexes the
 whole file and makes their checkpoints stale.
 
 Re-enabling later makes those paths refuse visibly (D3), because their
-projections no longer match their checkpoints. Recovery is per-path: an
+projections no longer match their checkpoints. The implementation detects
+this with a lineage digest. An admitted commit stamps the same projection
+fingerprint into its `processed.json` entry (`incremental_jsonl_lineage`)
+and its checkpoint (`projection_fingerprint`, `processed_lineage_digest`).
+A legacy re-index replaces that entry without the field, so a re-enabled run
+refuses `rebuild_required:projection_checkpoint_mismatch` before any
+provider work. Legacy writes are byte-unchanged. Recovery is per-path: an
 exact-path bootstrap, or a checkpoint retirement procedure. Rollback is
 therefore one-way per source, and the activation note must say so.
 
@@ -384,7 +390,16 @@ refusal outcome this design emits recovers under appends:
 | stale checkpoint after rollback (D8) | unchanged until a per-path repair |
 
 So terminal path-keying loses no legitimate recovery path. Clearing stays
-operator-only. The rest of the `9e91973` PASS stands; this amendment does
+operator-only.
+
+**Gate-3 rulings, 2026-10-11 (Kiro, at `905ad40`).** (a) The D8 lineage
+fields above are accepted and within scope. (b) The terminal refusal
+quarantine applies to every `live_route_refused`, including Kiro exact-path
+live sources, not only admitted Codex paths. That is within §10 and is
+required by condition 4; limiting it would bring back the respawn loop for
+Kiro sources. (c) The D8 prose should name the lineage mechanism (done). The
+gate-3 verdict was FAIL on the Pylint regression gate, and the Copilot audit
+failed the same tip with six safety findings; see the corrective-4 handoff. The rest of the `9e91973` PASS stands; this amendment does
 not touch D1, D2, D4, D5 or the §10 scope lock.
 
 ## TL;DR

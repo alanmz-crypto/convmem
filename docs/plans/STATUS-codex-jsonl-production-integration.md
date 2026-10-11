@@ -86,7 +86,7 @@ Key invariants:
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
 | Failed-operation supersession | Merged on `main` via PR #381 (`e798bba`, 2026-10-10); Kiro and Copilot PASS at `a6169a5`. No live retry yet. | Sol successor packet, then Ryan successor-bootstrap grant |
-| Codex rollout admission design | Kiro PASS at `9e91973` with six binding conditions (design §13), on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; terminal refusal quarantine keyed by (path, prefix digest). | Cursor implementation (Ryan granted 2026-10-10; handoff `docs/inter-model/CURSOR-2026-10-10-issue-286-codex-rollout-admission-execute-handoff.md`) |
+| Codex rollout admission design | Kiro PASS at `9e91973` with six binding conditions (design §13), on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; terminal refusal quarantine by path (§13 amended 2026-10-11). Implemented on `feat/2026-10-10-issue-286-codex-rollout-admission` (tip `905ad40`); gate 3 FAIL from Kiro (Pylint gate) and Copilot audit (six safety findings). | Cursor corrective 4 (`docs/inter-model/CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md`) |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -95,8 +95,9 @@ Two independent tracks. **Kiro bootstrap:** the failed-operation supersession
 merged via PR #381; Sol prepares the fresh exact-resource successor packet,
 then Ryan decides the grant and the retry budget (six additional DeepSeek
 attempts may not cover the worst case of eight). **Codex rollouts:** Kiro
-passed the admission design at `9e91973` with six conditions (§13); Ryan
-granted hermetic implementation, and Cursor starts from the Execute handoff. Neither track
+passed the admission design at `9e91973` (§13 amended 2026-10-11). Cursor's
+implementation at `905ad40` failed gate 3: Kiro on the Pylint gate, Copilot
+audit on six safety findings. Cursor starts corrective 4 from its handoff. Neither track
 authorizes live bootstrap, config, runtime, or watcher action.
 
 ## 6. What Remains Before Live (sequential per track)
@@ -111,9 +112,9 @@ Kiro bootstrap:
 
 Codex rollouts:
 
-1. Cursor implements under Ryan's 2026-10-10 grant (Kiro conditions in design
-   §13); Copilot targeted audit and
-   Kiro exact-tip recheck.
+1. Cursor applies corrective 4 under Ryan's 2026-10-10 grant (findings
+   C1–C6, K1 in the corrective-4 handoff); then Copilot audit and Kiro
+   recheck the new exact tip; then Ryan's PR decision.
 2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
    watcher canary, which also needs the #308 fix and the watch memory drop-in
    reconciliation); activation is a separate Ryan grant.
@@ -231,6 +232,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Kiro | Design PASS at `9e91973` with six binding conditions (design §13); next gate Ryan implementation grant |
 | 2026-10-10 | Ryan / Claude | Ryan granted hermetic Cursor implementation; Execute handoff written; resume state `NOT_STARTED` |
 | 2026-10-11 | Kiro / Claude | Kiro amended design §13 conditions 3–4: refusal quarantine is terminal by path (digest is evidence only); implementation on `feat/2026-10-10-issue-286-codex-rollout-admission` needs one more corrective |
+| 2026-10-11 | Kiro / Copilot / Claude | Gate 3 FAIL at `905ad40` (Kiro: Pylint gate; Copilot: six safety findings); Kiro accepted the D8 lineage fields and generic quarantine; corrective-4 handoff written, `NOT_STARTED` |
 
 ## TL;DR
 
