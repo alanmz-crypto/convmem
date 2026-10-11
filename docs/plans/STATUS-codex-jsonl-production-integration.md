@@ -85,32 +85,30 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. A validated 2026-10-11 backup pair predates two later mocked failure-ledger rows and is not current rollback authority. Sol-High accepted Copilot's first packet finding at `4d7741a`. Copilot FAILed `6037368` on writer detection and late reservation; both were corrected. Copilot FAILed `270705a` on the dependency-incomplete interpreter, then confirmed that correction at `524bb15` while finding its mounted-device shell guard ineffective under `set -e`. The packet now uses an explicit conditional exit and enforces its interpreter/isolation flags. | Kiro and Copilot review the new exact revision; if both PASS, Ryan decides whether to grant the backup-only operation |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed replacement-backup runner `a9f2acf`; Ryan's exact grant then safely refused before snapshot creation because a later Track A reindex changed global `processed.json` and `knowledge_units.jsonl`. The consumed result reports restored timers, an inactive/disabled watcher, and an unmounted device. The current inventory is `0ecb33ea…9b27b`; the Kiro projection remains 2 summaries and 17 knowledge units. | Kiro and Copilot review the fresh-marker/current-inventory revision; if both PASS, Ryan decides whether to issue a new backup-only grant |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Review the second corrected replacement-backup authority and attachment on the
-same exact revision. The attachment SHA-256 is
-`afb1d1a00718e211283156356af6c6bae162249f3a936576aeaf66cbc7419e47`.
-It recognizes the known ConvMem mutation commands and reserves/fsyncs its
-one-shot result marker before stopping timers, mounting, or touching the
-corpus. It binds the dependency-complete ConvMem Python interpreter, then uses
-existing governed APIs to create exactly one fresh tagged local snapshot and
-copy the returned full ID exactly once to the designated offsite repository.
-It has not been executed.
+Review the fresh-marker/current-inventory replacement-backup authority and
+attachment on the same exact revision. The attachment SHA-256 is
+`1364cfa7b4e5b95b6b9e7bb1e39a0c4b323372a13f8cc60fb52687e0cf622d5a`.
+It preserves the reviewed one-shot design while binding inventory
+`0ecb33ea…9b27b` and unused result path
+`/tmp/convmem-kiro-replacement-backup-result-20261011-r2.json`. The preceding
+grant and marker are consumed; no local or offsite snapshot was created.
 
 The Kiro bootstrap remains stopped before successor proposal preparation,
 grant materialization, or paid calls. The stale proposal
-`c5fec18c…79c81` must not be reused. No lane may run the backup attachment,
-clean the live ledger, prepare a successor bootstrap proposal, promote
-config/runtime, call a provider, or restart the watcher without the applicable
-separate Ryan grant.
+`c5fec18c…79c81` and consumed backup grant at `a9f2acf` must not be reused. No
+lane may run the revised backup attachment, clean the live ledger, prepare a
+successor bootstrap proposal, promote config/runtime, call a provider, or
+restart the watcher without the applicable separate Ryan grant.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro and Copilot review the corrected replacement-backup packet and runner
-   on the same exact revision.
+1. Kiro and Copilot review the current-inventory/fresh-marker
+   replacement-backup packet and runner on the same exact revision.
 2. If both PASS, Ryan decides whether to authorize the exact one-shot
    backup-only operation.
 3. If authorized, capture an inventory-stable local snapshot and exact offsite
@@ -257,6 +255,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Copilot / Sol | Copilot FAILed `6037368` on incomplete writer detection and late one-shot reservation; Sol corrected both boundaries and restored the reboot-cleared detached runtime for exact-tip review |
 | 2026-10-11 | Copilot / Sol | Copilot confirmed both `6037368` blockers closed but FAILed `270705a` because isolated system Python lacked `chromadb`; Sol bound the ConvMem interpreter and tightened the remaining known-writer and signal boundaries |
 | 2026-10-11 | Copilot / Sol | Copilot confirmed the interpreter and prior boundaries at `524bb15` but FAILed its `set -e`-exempt mounted-device guard; Sol replaced it with explicit refusal and bound runtime interpreter assertions |
+| 2026-10-11 | Ryan / Sol | Kiro and Copilot PASSed `a9f2acf`; Ryan's one-shot grant safely refused before backup creation after Track A indexing changed two global mutation-proof roles, so Sol bound the current inventory and a fresh marker for re-review |
 
 ## TL;DR
 
@@ -264,8 +263,8 @@ Keep this document a current-state snapshot, not a session diary.
   stopped and disabled with no restart authority.
 - Failed-operation supersession is on `main` through PR #381 (`e798bba`), and
   the test-isolation correction is on `main` through PR #384 (`6a23aa9`).
-- The 2026-10-11 local/offsite pair is internally valid but predates two new
-  mocked ledger rows from an older checkout. Current inventory digest
-  `104acbef…34b73` therefore requires the exact replacement backup authority
-  prepared on this branch. Bootstrap, paid calls, config promotion, and watcher
+- The first reviewed replacement run safely refused before snapshot creation
+  because later Track A indexing changed global projection roles. Its grant is
+  consumed; current inventory `0ecb33ea…9b27b` and a fresh marker now await
+  same-revision review. Bootstrap, paid calls, config promotion, and watcher
   restart remain separately gated.

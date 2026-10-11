@@ -20,13 +20,29 @@ timestamp `2026-10-11T00:18:59.640911-05:00`, path
 offsite snapshot's `original` field equals the full local ID.
 
 At `2026-10-11T00:36:40.664144791-05:00`, an older checkout appended two
-mocked HTTP 402/503 test rows to live `synthesis_failures.jsonl`. The current
-predecessor mutation-inventory digest is therefore
-`104acbef1f22f85c27380c0cda703dba051d4e0c8182f3608c64392d2e634b73`.
-All other measured surfaces remain stable, including the exact Kiro
-projection of 2 summaries and 17 knowledge units. PR #384's isolation fix is
-on `main` as `6a23aa93184460ed853996608bb28190c61f8d89`, but stale checkouts can still
-run the older test code.
+mocked HTTP 402/503 test rows to live `synthesis_failures.jsonl`. PR #384's
+isolation fix is on `main` as
+`6a23aa93184460ed853996608bb28190c61f8d89`, but stale checkouts can still run
+the older test code.
+
+Ryan later authorized the exact reviewed runner at commit
+`a9f2acf753994fec078d80b39b34d387dc652fd4`. It safely refused before backup
+creation because the bound mutation inventory had become stale. A prior
+handoff explicitly indexed this Codex session at `2026-10-11T12:25-05:00`;
+that one-chunk reindex pruned 13 stale units and wrote 8 units, updating only
+the global `processed.json` and `knowledge_units.jsonl` mutation-proof roles.
+The failure result is
+`/tmp/convmem-kiro-replacement-backup-result-20261011.json`, SHA-256
+`6b57b6ec135360580f1b12720766d7099329943dd6ef9e4ae6efcb7a74676f99`.
+It reports no local or offsite snapshot, successful timer restoration, an
+inactive/disabled watcher, and an unmounted offsite device. That grant is
+consumed and must never be reused.
+
+The current predecessor mutation-inventory digest is now
+`0ecb33ea8a62be7fd4d0faeee30929cefbca04d001b59be8459b2a1616a9b27b`.
+The exact Kiro projection remains 2 summaries and 17 knowledge units; the
+failure ledger, queues, checkpoint, rollback, and prepared cache also remain
+unchanged from the prior authority.
 
 Kiro PASSed the earlier proposal at exact commit
 `4d7741a58c242bac0b0cdac91e093405c6a2feb9`. Copilot FAILed that same
@@ -69,9 +85,9 @@ the runner enforce its bound interpreter plus `-I -B` flags.
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `afb1d1a00718e211283156356af6c6bae162249f3a936576aeaf66cbc7419e47` |
-| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011.py` |
-| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011.json` |
+| Attachment SHA-256 | `1364cfa7b4e5b95b6b9e7bb1e39a0c4b323372a13f8cc60fb52687e0cf622d5a` |
+| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py` |
+| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011-r2.json` |
 | Valid local date | `2026-10-11` in `America/Chicago` |
 
 After Ryan grants the exact reviewed revision and attachment digest, the
@@ -82,10 +98,10 @@ set -e
 if findmnt -rn -S /dev/sda1 -o TARGET; then
     exit 1
 fi
-cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011.py
-chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011.py
-printf '%s  %s\n' 'afb1d1a00718e211283156356af6c6bae162249f3a936576aeaf66cbc7419e47' '/tmp/convmem-kiro-replacement-backup-runner-20261011.py' | sha256sum --check --strict -
-/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011.py --execute
+cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py
+chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py
+printf '%s  %s\n' '1364cfa7b4e5b95b6b9e7bb1e39a0c4b323372a13f8cc60fb52687e0cf622d5a' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py' | sha256sum --check --strict -
+/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py --execute
 ```
 
 `set -e` makes a digest mismatch stop before the runner. The detached runtime
@@ -134,7 +150,7 @@ The runner performs this closed sequence:
 7. Acquire the exclusive corpus writer gate. Compute the predecessor mutation
    inventory with `bootstrap_mutation_inventory`; bind its digest using
    `convmem-bootstrap-mutation-proof-v1`; require exact digest
-   `104acbef1f22f85c27380c0cda703dba051d4e0c8182f3608c64392d2e634b73`.
+   `0ecb33ea8a62be7fd4d0faeee30929cefbca04d001b59be8459b2a1616a9b27b`.
 8. Capture complete-data evidence, then call the governed
    `backup_data_root` API exactly once with extra tag
    `kiro-successor-preflight`. Require exact path and the complete tag set.
@@ -164,9 +180,9 @@ is introduced; all Restic I/O remains in `restic_snapshot.py`.
 |---|---|
 | Mutable data root | `/home/lauer/.local/share/convmem` |
 | Detached runtime | clean `/tmp/convmem-kiro-bootstrap-e798bba` at `e798bba284c96642fc31229e6375eadc26986493` |
-| Current inventory digest | `104acbef1f22f85c27380c0cda703dba051d4e0c8182f3608c64392d2e634b73` |
-| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261010.json` |
-| Inventory evidence SHA-256 | `558fbaf70da5c04a3e62d9800857f045ac9b55c508fe75b4438673c3d406d5b4` |
+| Current inventory digest | `0ecb33ea8a62be7fd4d0faeee30929cefbca04d001b59be8459b2a1616a9b27b` |
+| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261011-r2.json` |
+| Inventory evidence SHA-256 | `e3ec2f1c5badae2307e2ef3abedec259ea4fb0bf0171ef96a0ca0a7b287faeb0` |
 | Inventory procedure | `bootstrap_mutation_inventory` + `convmem-bootstrap-mutation-proof-v1` at runtime `e798bba…` |
 | Local Restic repository | `/home/lauer/.local/share/convmem-restic` |
 | Offsite block device | `/dev/sda1`, UUID `f1bd69b4-e567-4ef3-89ec-13faff0602e9` |
@@ -215,9 +231,9 @@ successor packet. It does not authorize bootstrap execution.
 
 ## TL;DR
 
-The old pair is valid but stale relative to the live mutation inventory. This
-corrected proposal binds one governed, date-limited runner that creates one
-tagged local snapshot, passes its returned full ID directly into one offsite
-copy, proves the inventory remained stable, and restores all paused services.
-It remains `NO-GO` until same-revision Kiro/Copilot PASS and Ryan's exact
-grant.
+The old pair is valid but stale. The first reviewed replacement runner then
+safely refused because later session indexing changed two global
+projection roles before execution; it created no snapshots and its grant is
+consumed. This revision binds the current inventory and a fresh one-shot
+marker while preserving the reviewed operation. It remains `NO-GO` until
+same-revision Kiro/Copilot PASS and Ryan's new exact grant.

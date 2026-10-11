@@ -29,7 +29,7 @@ SOURCE = Path(
 )
 SOURCE_SHA256 = "dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741"
 SOURCE_STATE_ID = "13c4c30c5c644a1771f0372e1b16fde35ab8cd283c26f594b96f800aad3976d2"
-EXPECTED_INVENTORY = "104acbef1f22f85c27380c0cda703dba051d4e0c8182f3608c64392d2e634b73"
+EXPECTED_INVENTORY = "0ecb33ea8a62be7fd4d0faeee30929cefbca04d001b59be8459b2a1616a9b27b"
 DATA_ROOT = Path("/home/lauer/.local/share/convmem")
 LOCAL_REPOSITORY = "/home/lauer/.local/share/convmem-restic"
 OFFSITE_DEVICE = "/dev/sda1"
@@ -40,7 +40,7 @@ OLD_LOCAL = "f8d69dc1199636f66d6216f0325cf4218c566c829907dd205c244d00115c324b"
 OLD_OFFSITE = "a38bd4c7bfac4aa5c44634674138fa9c65f83cf37d7b3025c952b5368786f449"
 RUN_DATE = "2026-10-11"
 REQUIRED_TAGS = {"convmem-data-v2", "convmem-2026-10-11", "kiro-successor-preflight"}
-RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261011.json")
+RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261011-r2.json")
 BACKUP_EVIDENCE = DATA_ROOT / ".convmem-backup-evidence.json"
 LOCK = DATA_ROOT / "locks/chroma_writer_gate.lock"
 TIMERS = (
