@@ -4,22 +4,97 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
 import incremental_jsonl
+import ingest
+from adapters.detect import get_parser
 from incremental_jsonl_production import ProductionBoundary
 from tests.incremental_jsonl_helpers import codex_rollout_record, install_fakes
+from tests.purge_test_util import patch_live_config
 from tests.test_incremental_jsonl_codex_rollout_route import (
     _admitted_rollout,
     _production_cfg,
     _sessions_root,
     _write_user_config,
 )
+
+
+def _write_config_without_admission(path: Path, cfg: dict) -> None:
+    index = cfg["index"]
+    incremental = index["incremental_jsonl"]
+    path.write_text(
+        "\n".join(
+            [
+                "[index]",
+                f'chroma_dir = "{index["chroma_dir"]}"',
+                f'processed_log = "{index["processed_log"]}"',
+                f'units_export = "{index["units_export"]}"',
+                f"chunk_size = {index.get('chunk_size', 4)}",
+                f"chunk_overlap = {index.get('chunk_overlap', 0)}",
+                "",
+                "[index.incremental_jsonl]",
+                "enabled = true",
+                f'state_dir = "{incremental["state_dir"]}"',
+                f"embed_dimension = {incremental['embed_dimension']}",
+                "live_sources = []",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def _legacy_reindex(
+    cfg: dict,
+    source: Path,
+    *,
+    force_reindex: bool = True,
+) -> None:
+    idx = cfg["index"]
+    processed = ingest.load_processed(idx["processed_log"])
+    real_write_session = ingest.production_chroma_write_session
+    root = Path(idx["chroma_dir"]).parent
+
+    def hermetic_write_session(*, entrypoint: str, **kwargs):
+        return real_write_session(
+            entrypoint=entrypoint,
+            lock_path=root / "writer.lock",
+            attest_dir=root / "attest",
+            census_dir=root / "census",
+            **kwargs,
+        )
+
+    with patch_live_config(cfg), mock.patch(
+        "ingest.production_chroma_write_session",
+        side_effect=hermetic_write_session,
+    ), mock.patch(
+        "inter_model_index.production_chroma_write_session",
+        side_effect=hermetic_write_session,
+    ):
+        ingest._index_one_file(  # pylint: disable=protected-access
+            cfg=cfg,
+            idx=idx,
+            path=str(source),
+            parser=get_parser(str(source)),
+            processed=processed,
+            models=cfg["models"],
+            units_export=Path(idx["units_export"]),
+            chunk_size=idx.get("chunk_size", 4),
+            overlap=idx.get("chunk_overlap", 0),
+            min_confidence=0.6,
+            force_file=str(source),
+            force_reindex=force_reindex,
+            supersede_on_reindex=False,
+            verbose=False,
+        )
 
 
 def _coordinator(boundary, source, cfg, **kwargs):
@@ -176,16 +251,14 @@ def test_rollback_reenable_refuses_visible(
     install_fakes(monkeypatch)
     boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
     assert _coordinator(boundary, source, cfg).run().outcome == "committed"
-    # D8 rollback: legacy re-index leaves a stale incremental checkpoint (table re-enabled).
-    state_dir = Path(cfg["index"]["incremental_jsonl"]["state_dir"])
-    checkpoint_path = next(state_dir.rglob("checkpoint.json"))
-    checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
-    checkpoint["transform_fingerprint"] = "legacy-route-stale"
-    checkpoint_path.write_text(json.dumps(checkpoint), encoding="utf-8")
+    cfg_rollback = copy.deepcopy(cfg)
+    del cfg_rollback["index"]["incremental_jsonl"]["codex_rollout_admission"]
+    _write_config_without_admission(cfg_path, cfg_rollback)
+    _legacy_reindex(cfg_rollback, source)
+    with source.open("ab") as handle:
+        handle.write(codex_rollout_record(9))
     _write_user_config(cfg_path, cfg)
-    result = _coordinator(boundary, source, cfg).run()
-    assert result.outcome == "rebuild_required:transform_fingerprint_changed"
-    assert result.counters.total == 0
+    processed = ingest.load_processed(cfg["index"]["processed_log"])
     with pytest.raises(incremental_jsonl.IncrementalJsonlError, match="live_route_refused"):
         incremental_jsonl.maybe_route_incremental(
             cfg=cfg,
@@ -193,10 +266,10 @@ def test_rollback_reenable_refuses_visible(
             path=str(source),
             path_key=str(source),
             file_hash="post-rollback-hash",
-            processed={},
+            processed=processed,
             models=cfg["models"],
             tool="codex",
-            units_export=None,
+            units_export=Path(cfg["index"]["units_export"]),
             chunk_size=4,
             overlap=0,
             min_confidence=0.6,
@@ -205,3 +278,11 @@ def test_rollback_reenable_refuses_visible(
             verbose=False,
             detected_format="jsonl_codex_rollout",
         )
+    result = _coordinator(
+        ProductionBoundary(cfg, source, config_path=cfg_path),
+        source,
+        cfg,
+        processed=processed,
+    ).run()
+    assert result.outcome == "rebuild_required:projection_checkpoint_mismatch"
+    assert result.counters.total == 0

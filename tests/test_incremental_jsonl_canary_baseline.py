@@ -24,7 +24,7 @@ BASELINE_HASHES = {
     # CLI and watcher.
     # Refreshed for issue #286 Codex rollout admission route, guards, and
     # structured admitted-run logging.
-    "incremental_jsonl.py": "6314ac447817ff7b8afa04c32209150fd18abefee3385ba9c08a8a7806a62a7b",
+    "incremental_jsonl.py": "3f8c242dc164888b92514f270b4df6c70b5d1cd46b1a3c3a2d032b31c1b9ff03",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

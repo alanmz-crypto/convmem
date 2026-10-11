@@ -1031,6 +1031,47 @@ class IncrementalJsonlCoordinator:
             planned.add(int(chunk["start_offset"]))
         return planned
 
+    def _codex_projection_fingerprint(self) -> str:
+        with self._session() as session:
+            summaries = session.store.snapshot_source_rows(SUMMARIES, self.path_key)
+            units = session.store.snapshot_source_rows(UNITS, self.path_key)
+        payload = {
+            "summaries": sorted(
+                (
+                    row["id"],
+                    row.get("document") or "",
+                    row.get("metadata") or {},
+                )
+                for row in summaries
+            ),
+            "units": sorted(
+                (
+                    row["id"],
+                    row.get("document") or "",
+                    row.get("metadata") or {},
+                )
+                for row in units
+            ),
+        }
+        return hashlib.sha256(_canonical_json(payload).encode()).hexdigest()
+
+    def _codex_projection_checkpoint_mismatch(self, checkpoint: dict | None) -> str | None:
+        """D8: legacy re-index drops incremental processed lineage for the path."""
+        if not self.codex_admitted_live or checkpoint is None:
+            return None
+        expected = checkpoint.get("processed_lineage_digest")
+        if not expected:
+            return None
+        processed = load_processed(str(self.cfg["index"]["processed_log"]))
+        for entry in processed.values():
+            if not isinstance(entry, dict) or entry.get("excluded"):
+                continue
+            if entry.get("path") != self.path_key:
+                continue
+            if entry.get("incremental_jsonl_lineage") == expected:
+                return None
+        return "projection_checkpoint_mismatch"
+
     def _codex_admission_guard_code(
         self,
         snapshot: dict,
@@ -1767,6 +1808,11 @@ class IncrementalJsonlCoordinator:
         from ingest import commit_processed_index_entry, _path_is_excluded
 
         committed = {"ok": False}
+        lineage = (
+            self._codex_projection_fingerprint()
+            if self.codex_admitted_live
+            else None
+        )
 
         def publish() -> None:
             if _path_is_excluded(self._processed(), self.path_key):
@@ -1778,6 +1824,7 @@ class IncrementalJsonlCoordinator:
                 path_key=self.path_key,
                 chunks=chunks,
                 units=units,
+                incremental_jsonl_lineage=lineage,
             )
 
         self._transition("processed_publish", publish)
@@ -1892,6 +1939,7 @@ class IncrementalJsonlCoordinator:
                 rollback.get("non_source_collections") or {}
             )
             self._revalidate_live_prefix(snapshot)
+            projection_fingerprint = self._codex_projection_fingerprint()
             checkpoint = {
                 "version": CHECKPOINT_VERSION,
                 "commit_state": "complete",
@@ -1907,6 +1955,10 @@ class IncrementalJsonlCoordinator:
                 "active_generation": generation,
                 "summary_ids": sorted(keep_summaries),
                 "unit_ids": sorted(keep_units),
+                "projection_fingerprint": projection_fingerprint,
+                "processed_lineage_digest": (
+                    projection_fingerprint if self.codex_admitted_live else None
+                ),
                 "processed_hash": snapshot["prefix_sha256"],
                 "raw_line_coverage": snapshot["raw_line_coverage"],
                 "fallback_reason": fallback,
@@ -2222,6 +2274,14 @@ class IncrementalJsonlCoordinator:
             if outcome in {"bootstrap_required", "invalid_state"}:
                 self._cleanup(snapshot["snapshot_dir"])
                 return self._refusal(outcome, snapshot=snapshot)
+            projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
+            if projection_mismatch:
+                self._cleanup(snapshot["snapshot_dir"])
+                return self._refusal(
+                    f"rebuild_required:{projection_mismatch}",
+                    fallback=projection_mismatch,
+                    snapshot=snapshot,
+                )
             continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
             if continuity and continuity != "initial_full" and not self.settings.allow_full_rebuild:
                 return self._refusal(
