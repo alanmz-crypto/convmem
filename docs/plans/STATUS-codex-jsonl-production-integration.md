@@ -85,43 +85,38 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Runner `a9f2acf` safely refused after Track A changed the global inventory. Kiro and Copilot PASSed the current-inventory r2 correction at `4fd5ef3`; its grant safely refused before backup creation because an already-exited external-backup service retained systemd state `failed` despite `MainPID=0`. Both results report no snapshots and successful cleanup. Current inventory remains `0ecb33ea…9b27b`; the Kiro projection remains 2 summaries and 17 knowledge units. | Kiro and Copilot review the r3 quiescence correction and fresh marker; if both PASS, Ryan decides whether to issue a new backup-only grant |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. After two safe pre-snapshot refusals, Kiro and Copilot PASSed r3 at `bf50c62`; Ryan's one-shot grant completed with local snapshot `89aaf9ef…3ecc`, exact offsite copy `99510210…4a8`, shared tree `de8888c7…24c6`, and unchanged inventory `0ecb33ea…9b27b`. The watcher remained disabled and the device was unmounted. | Kiro and Copilot review the fresh-backup successor packet on one exact revision; execution remains Ryan-gated |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Review the r3 quiescence correction and attachment on the same exact revision.
-The attachment SHA-256 is
-`8c87799a39e394e4495af2dfc2d4828e0282d669683ef7e3573553266e0e001b`.
-It accepts a governed service only when its systemd state is `inactive` or
-`failed` and `MainPID=0`, records every observed state/PID, preserves the
-reviewed one-shot design and inventory `0ecb33ea…9b27b`, and binds unused
-result path `/tmp/convmem-kiro-replacement-backup-result-20261011-r3.json`.
+Review the fresh-backup successor packet on the same exact revision. Confirm
+the exact source and prefix, detached runtime/config/transform binding,
+predecessor evidence, r3 local/offsite lineage, 768 dimension, two-chunk cap,
+two-carried/six-additional/eight-lifetime paid-attempt budget, one recovery,
+and measurement/isolation plan.
 
-The Kiro bootstrap remains stopped before successor proposal preparation,
-grant materialization, or paid calls. The stale proposal
-`c5fec18c…79c81` and consumed backup grants at `a9f2acf` and `4fd5ef3` must not
-be reused. No lane may run the revised backup attachment, clean the live
-ledger, prepare a successor bootstrap proposal, promote config/runtime, call a
-provider, or restart the watcher without the applicable separate Ryan grant.
+Ryan authorized Sol to prepare and seal a non-executed successor proposal only
+after same-revision review. The stale proposal `c5fec18c…79c81` and consumed
+backup grants at `a9f2acf`, `4fd5ef3`, and `bf50c62` must never be reused. No
+lane may execute a successor, call a provider, index the source, promote
+config/runtime, or restart the watcher without a later separate Ryan grant.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro and Copilot review the r3 quiescence/fresh-marker replacement-backup
-   packet and runner on the same exact revision.
-2. If both PASS, Ryan decides whether to authorize the exact one-shot
-   backup-only operation.
-3. If authorized, capture an inventory-stable local snapshot and exact offsite
-   copy, then publish their full IDs, shared tree, lineage, and evidence digest.
-4. Bind a new successor proposal and review packet to that current pair and
-   mutation inventory; obtain Kiro and Copilot verdicts on the same revision.
-5. Immediately before any later authorized retry, revalidate the exact
+1. Kiro and Copilot review the fresh-backup successor packet on the same exact
+   revision.
+2. If both PASS, Sol seals the authorized non-executed proposal against that
+   exact packet revision and publishes its proposal SHA-256, operation id,
+   grant fingerprint, and authority fingerprint.
+3. Ryan decides whether to issue a separate exact successor-bootstrap grant.
+4. Immediately before any later authorized execution, revalidate the exact
    local/offsite pair, source/runtime/config/binding/dimension, and establish a
    no-other-writer window through final evidence capture.
-6. If separately granted, execute only the exact
+5. If separately granted, execute only the exact
    source/runtime/config/budget operation and return measured call, coverage,
    lineage, and isolation evidence.
-7. Obtain a later separate Ryan grant before any runtime/config/restart or
+6. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -257,6 +252,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Copilot / Sol | Copilot confirmed the interpreter and prior boundaries at `524bb15` but FAILed its `set -e`-exempt mounted-device guard; Sol replaced it with explicit refusal and bound runtime interpreter assertions |
 | 2026-10-11 | Ryan / Sol | Kiro and Copilot PASSed `a9f2acf`; Ryan's one-shot grant safely refused before backup creation after Track A indexing changed two global mutation-proof roles, so Sol bound the current inventory and a fresh marker for re-review |
 | 2026-10-11 | Ryan / Sol | Kiro and Copilot PASSed r2 `4fd5ef3`; its grant safely refused on a quiescent service's persistent `failed` state with `MainPID=0`, so r3 now requires both a quiescent state and zero PID and awaits re-review |
+| 2026-10-11 | Ryan / Sol | Kiro and Copilot PASSed r3 `bf50c62`; its one-shot grant created current matching local/offsite coverage with unchanged inventory, and Ryan authorized preparation of a new non-executed successor proposal after packet review |
 
 ## TL;DR
 
@@ -264,8 +260,8 @@ Keep this document a current-state snapshot, not a session diary.
   stopped and disabled with no restart authority.
 - Failed-operation supersession is on `main` through PR #381 (`e798bba`), and
   the test-isolation correction is on `main` through PR #384 (`6a23aa9`).
-- The first replacement run safely refused after Track A changed the inventory;
-  r2 safely refused on a quiescent service's persistent `failed` state. Both
-  grants are consumed and created no snapshots. R3 requires `inactive` or
-  `failed` plus `MainPID=0` and awaits same-revision review. Bootstrap, paid
-  calls, config promotion, and watcher restart remain separately gated.
+- R3 created current matching local/offsite coverage while the mutation
+  inventory remained exact. The successor packet now awaits same-revision
+  Kiro/Copilot review before Sol seals the authorized non-executed proposal.
+  Bootstrap, paid calls, config promotion, and watcher restart remain
+  separately gated.
