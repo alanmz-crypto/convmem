@@ -4,7 +4,8 @@
 **Issue:** #286 — changed-file indexing at chunk/append level  
 **Prepared:** 2026-10-10 by Sol  
 **Review lanes:** Kiro design review; GitHub Copilot safety/isolation audit  
-**State:** review packet only; `NO-GO` absent a separate Ryan execution grant
+**State:** corrected review packet only; `NO-GO` absent new same-revision review
+and a separate Ryan execution grant
 
 ## Decision consequence
 
@@ -45,8 +46,10 @@ later grant before provider transport or corpus mutation.
   `main` movement must not silently change the runtime binding.
 - Config SHA-256:
   `be9be9e963eade2a095d61fbda48a79db7e9fad4305d4af6e9c0ee68d7ce9413`.
-- Transform fingerprint under the merged implementation and named config:
-  `7fda8eefd284c17a40579d3bda5ebd806ed30408f5ddae147bc32bccf46f8528`.
+- Transform fingerprint after applying the one-shot command's in-memory route
+  overlay (`enabled=true`, exact `live_sources`, `embed_dimension=768`,
+  `allow_full_rebuild=false`):
+  `d2ecd101c3537c8d17620e876206e83c416e05f17106c207e3e1ebe1624473f5`.
 - Required existing embedding dimension: `768` in both
   `conversation_summaries` and `knowledge_units`.
 - Generation binding: DeepSeek `deepseek-v4-flash` for summarize/distill,
@@ -56,6 +59,25 @@ later grant before provider transport or corpus mutation.
 
 The clean runtime SHA, config bytes, transform fingerprint, provider bindings,
 and both collection dimensions must be rechecked before transport.
+
+## Refused first successor grant
+
+Ryan authorized the prior reviewed packet, and Sol ran its exact preflight on
+2026-10-10. The executable grant bound transform fingerprint
+`7fda8eefd284c17a40579d3bda5ebd806ed30408f5ddae147bc32bccf46f8528`,
+operation id
+`3e4a85fbf7bd086b7d0d58b38ef1ab4f0d49d1b0e16f0705260f870ba3903c6d`,
+and grant fingerprint
+`b676709822efc120f378047ff217e8e944eb490303df6eca40e0ee3c09f530e5`.
+
+The production command correctly applied its in-memory route overlay before
+computing the effective binding and observed transform fingerprint
+`d2ecd101c3537c8d17620e876206e83c416e05f17106c207e3e1ebe1624473f5`.
+It refused the stale binding before supersession activation, operation-journal
+creation, provider transport, or corpus mutation. The predecessor transaction
+remains `transform_failed`; the successor operation directory and lineage are
+absent; the carried paid count remains `2`; and the additional paid count is
+`0`. That exact grant is void and must not be retried or edited.
 
 ## Backup disposition
 
@@ -173,27 +195,29 @@ a second recovery request stops the operation without changing the grant.
 Kiro and GitHub Copilot must review this same file revision and digest.
 
 - **Kiro:** confirm the source/bootstrap assumptions, detached merged runtime,
-  supersession model, verified backup disposition, budget, and measurement
-  plan.
+  corrected post-overlay transform fingerprint, supersession model, verified
+  backup disposition, budget, and measurement plan.
 - **Copilot:** audit evidence preservation, filesystem containment, authority
-  binding, budget carry-forward, fail-before-mutation ordering, and isolation.
+  binding, the zero-call refusal claim, budget carry-forward,
+  fail-before-mutation ordering, and isolation.
 
 Each reviewer returns written `PASS` or `FAIL`, with blockers separate from
 advisories. A deferral or missing review is not a conflict.
 
 ## Recommendation
 
-`NO-GO` for a live successor bootstrap absent a separate Ryan grant. If Kiro
-and Copilot PASS this exact revision, Ryan may issue an exact grant naming the
-verified backup disposition and requiring all execution-day measurements to
-pass again. Runtime/config promotion and watcher restart remain later,
-separate grants.
+`NO-GO` for a live successor bootstrap. Kiro and Copilot must first PASS this
+corrected exact revision. Ryan may then issue a new exact grant naming the
+corrected post-overlay transform fingerprint and verified backup disposition,
+with all execution-day measurements repeated. Runtime/config promotion and
+watcher restart remain later, separate grants.
 
 ## TL;DR
 
 The reviewed supersession implementation is merged and the exact Kiro source
-is unchanged. A successor may spend at most six additional DeepSeek attempts,
-eight lifetime, across one invocation and one recovery. The exact local and
-offsite mutable-corpus snapshots now match; the read-only source remains
-outside both backup sets by Ryan's accepted disposition. Execution remains
-`NO-GO` until same-revision review and a separate exact Ryan grant.
+is unchanged. The first successor grant refused before activation or calls
+because its pre-overlay transform fingerprint was stale; the corrected
+post-overlay fingerprint is `d2ecd101…473f5`. The two carried paid attempts,
+six-additional/eight-lifetime cap, matching local/offsite backups, and accepted
+read-only source disposition remain unchanged. Execution is `NO-GO` until
+same-revision review and a new exact Ryan grant.
