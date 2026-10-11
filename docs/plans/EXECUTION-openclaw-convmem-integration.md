@@ -3769,7 +3769,8 @@ OpenClaw or later gate.
 ### 10.50 W001 manifest-aggregate PAUSE result packet
 
 PR `#379` merged §§18.51/10.49 at `d32658a…`, preserving reviewed overlay
-`6c4b2bde…`; current main `d105c5e…` preserves the four plan blobs unchanged. Ryan's
+`6c4b2bde…`; later main `d105c5e…` preserved the four plan blobs unchanged before PR
+`#380`. Ryan's
 later grant named semantic parent `72619502…`, reviewed overlay `6c4b2bde…`, accepted
 tree `e685ee05…` and all four exact absent outputs. Metadata-only preflight passed,
 and the one-shot grant was consumed by exactly one author process.
@@ -3778,13 +3779,16 @@ The process returned this stopped state:
 
 ```text
 RESULT_BINDING_BASE_MAIN_SHA=d105c5e702264e93b9ff84e7cd2776455718f6ce
-RESULT_BINDING_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
-RESULT_BINDING_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+RESULT_BINDING_SEMANTIC_PARENT_SHA=38f03f198815f5b13b4807357c7d8542c701670f
+RESULT_BINDING_REVIEWED_OVERLAY_SHA=a5f4dc55d2d6ed8e195ed3aad935e5ca9268b71c
+RESULT_BINDING_MERGED_MAIN_SHA=269929a90567d79fb7d6985a7afd799c06d8a552
+RESULT_BINDING_EXACT_TIP_REVIEW=PASS
+RESULT_BINDING_EXACT_MAIN_REVIEW=PASS
 GOVERNING_PLAN_SEMANTIC_PARENT_SHA=72619502f195ef34dd2cde04a6945d412a8a7f66
 GOVERNING_PLAN_REVIEWED_OVERLAY_SHA=6c4b2bde2e5adbb54eac4a67c249756d6fb892d9
 GOVERNING_PLAN_MERGED_MAIN_SHA=d32658a5652b8ccd3e75d85fbeb125d223a932ea
 GRANT_STATUS=CONSUMED_NON_REUSABLE
-RESULT_BINDING_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+RESULT_BINDING_STATUS=MERGED_EXACT_MAIN_PASS
 AUTHORIZED=false
 PROCESS_COUNT=1
 SUBPROCESS_COUNT=0
@@ -3843,6 +3847,100 @@ separately planned/reviewed/merged diagnostic and requalification route using fr
 single-assignment coordinates and a new Ryan grant. This packet grants no input read,
 root creation, execution, retry, repair, cleanup, diagnosis, acquisition, build,
 publication, implementation, PR/merge, deployment, real OpenClaw or later gate.
+
+### 10.51 W001 manifest diagnosis and successor requalification packet
+
+PR `#380` merged §§18.52/10.50 at `269929a…`, byte-identical to reviewed tip
+`a5f4dc5…`; all six checks passed and Kiro returned exact-main PASS. The recorded
+W001 aggregate refusal still identifies no failed conjunct. This packet defines only
+the sequence and closed interfaces needed to learn that fact without turning
+diagnosis into correction or retry authority.
+
+```text
+W001_MANIFEST_DIAGNOSTIC_PLAN_BASE_MAIN_SHA=269929a90567d79fb7d6985a7afd799c06d8a552
+W001_MANIFEST_DIAGNOSTIC_PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+W001_MANIFEST_DIAGNOSTIC_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+W001_MANIFEST_DIAGNOSTIC_PLAN_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+W001_MANIFEST_DIAGNOSTIC_CAPABILITY_FREEZE_AUTHORIZED=false
+W001_MANIFEST_DIAGNOSTIC_READ_AUTHORIZED=false
+W001_MANIFEST_REQUALIFICATION_FREEZE_AUTHORIZED=false
+W001_MANIFEST_REAL_AUTHOR_AUTHORIZED=false
+W001_MANIFEST_GOVERNING_RESULT_BINDING_MERGED_MAIN_SHA=269929a90567d79fb7d6985a7afd799c06d8a552
+W001_MANIFEST_GOVERNING_RESULT_BINDING_REVIEWED_TIP_SHA=a5f4dc55d2d6ed8e195ed3aad935e5ca9268b71c
+W001_MANIFEST_CONSUMED_RESULT_SHA256=3fbf20779b2c29f0bdeb09761a7dda00ae886fe7b820113badc7288fc92edcde
+W001_MANIFEST_ACCEPTED_CAPABILITY_TREE_SHA256=e685ee056772c2c8831c4eb65ee23f5719c293bffd796501ff8e68029ccbc32f
+W001_MANIFEST_ACCEPTED_CAPABILITY_SOURCE_SHA256=e53b5d70cd6cf0a5c4cdd2cfbb782234ebab0353d15ee078a3ae55990df42c23
+W001_MANIFEST_INPUT_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+W001_MANIFEST_INPUT_PACKET_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+W001_MANIFEST_DIAGNOSTIC_MAX_READ_BYTES=54052776
+W001_MANIFEST_DIAGNOSTIC_MAX_STDOUT_BYTES=16384
+W001_MANIFEST_DIAGNOSTIC_MAX_PEAK_RSS_BYTES=2147483648
+W001_MANIFEST_DIAGNOSTIC_CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1.partial
+W001_MANIFEST_DIAGNOSTIC_CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1
+W001_MANIFEST_DIAGNOSTIC_CAPABILITY_COORDINATE_STATUS=UNOBSERVED_REQUIRES_FUTURE_METADATA_ONLY_PREFLIGHT
+W001_MANIFEST_SUCCESSOR_CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v5.partial
+W001_MANIFEST_SUCCESSOR_CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v5
+W001_MANIFEST_SUCCESSOR_CAPABILITY_COORDINATE_STATUS=RESERVED_UNOBSERVED_REQUIRES_LATER_PLAN
+W001_MANIFEST_FUTURE_STAGING_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/269929a90567d79fb7d6985a7afd799c06d8a552/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v4.partial
+W001_MANIFEST_FUTURE_STAGING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/269929a90567d79fb7d6985a7afd799c06d8a552/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v4
+W001_MANIFEST_FUTURE_DURABLE_PARTIAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/269929a90567d79fb7d6985a7afd799c06d8a552/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v4.partial
+W001_MANIFEST_FUTURE_DURABLE_FINAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/269929a90567d79fb7d6985a7afd799c06d8a552/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v4
+W001_MANIFEST_FUTURE_OUTPUT_COORDINATE_STATUS=RESERVED_UNOBSERVED_REQUIRES_LATER_PLAN
+```
+
+The route is deliberately split:
+
+1. exact-tip Kiro review → Ryan PR/merge decision → exact-main confirmation for this
+   plan-only boundary;
+2. a separately reviewed and Ryan-granted synthetic-only freeze of a six-member
+   diagnostic capability at the fresh `269929a…/v1(.partial)` coordinates;
+3. plan-only binding, review, merge, exact-main confirmation and separate Ryan
+   acceptance of that diagnostic capability;
+4. a separate one-shot Ryan grant for one stdout-only fourteen-member diagnostic
+   command against the immutable packet's manifest and eleven top-level JSONL ledgers;
+5. plan-only result binding, exact-tip review, merge, exact-main confirmation and
+   separate Ryan acceptance of the exact nonempty failed-check set;
+6. a new correction/requalification plan and separate synthetic-freeze grant at the
+   reserved fresh `269929a…/v5(.partial)` capability coordinate;
+7. result binding, review and separate acceptance of that successor; and only then
+8. a separate real-author plan and grant at the reserved fresh
+   `269929a…/491ae60b…/v4(.partial)` staging/durable outputs.
+
+No step inherits authority from the prior one. A mismatch or any outcome consumes
+the grant for that step. No combined diagnostic/freeze/author grant exists.
+
+The diagnostic source must be derived from accepted source `e53b5d70…` and expose
+only one observation seam around the existing aggregate predicate. Its six rows are
+`A001` object count, `A002` object bytes, `A003` object-tree hash, `A004` runtime file
+count, `A005` unresolved count and `A006` runtime-tree hash. Each row reports named
+operands, the exact relation and a boolean. The result also binds capability/input/
+command identities, the exact read-role order, total input bytes, access counters,
+peak RSS, `author_eligible=false` and `correction_authorized=false`.
+
+`A001`–`A006` are diagnostic receipt labels only. They do not alter the author
+receipt, which remains exactly `F001`–`F010` followed by `W001`–`W042`. The probe may
+open the manifest and exactly these top-level ledgers once, in raw-UTF-8 path order:
+`authority-observations.jsonl`, `binary-artifacts.jsonl`, `component-lock.jsonl`,
+`file-ownership.jsonl`, `license-notices.jsonl`, `nested-components.jsonl`,
+`objects.jsonl`, `source-artifacts.jsonl`, `source-delivery.jsonl`,
+`transformations.jsonl` and `unresolved.jsonl`. It writes one canonical JSON line to
+stdout and does nothing else. It may not open the disposition or `objects/`
+payloads, create a path, use network/runtime/repository/retained-source/credential/
+acquisition access, exceed `54,052,776` bytes read, `16,384` stdout bytes or 2 GiB RSS,
+or infer success from an empty failure set.
+
+Requalification is held until the exact diagnostic result is independently accepted.
+A later plan may change only a constant, comparison or canonical derivation named by
+failed `A` rows. It preserves the production grammar, schemas, roles, cardinalities,
+fourteen-/twenty-member command shapes, five-key environment, transaction, barriers,
+ceilings and 52-control order. The diagnosed regression is added within existing W001;
+no alias, normalization, `F011`, `W043` or 53rd author control is permitted.
+
+This packet authorizes only the four planning-document edits and read-only exact-tip
+review. It grants no filesystem probe, source write, capability construction, root,
+packet/disposition read, diagnostic process, correction, requalification freeze,
+author execution, retry, repair, cleanup, acquisition, implementation, PR/merge,
+deployment, real OpenClaw or later gate.
 
 **TL;DR:** [Arc ConvMem Switchboard] The exact-current-main reconstruction is preserved at
 `30bc134d`, the reviewed three-tip candidate is preserved at `d276cb4`, and the advanced-main
@@ -3934,3 +4032,8 @@ Section 10.50 binds exact external result `3fbf2077…`/1,393 bytes, process/acc
 durability counters, null output-ledger fields and the continued absence of all output
 roots and parents. It does not identify the failed conjunct or grant diagnosis,
 correction, retry, read, root, execution or later authority.
+Section 10.51 defines a separated route: freeze and accept a synthetic-only diagnostic
+capability; separately grant one stdout-only top-level-ledger read; bind and accept its
+nonempty `A001`–`A006` failure set; then separately plan/freeze/accept a fresh `v5`
+author capability before any fresh-`v4` real-author plan. It changes no author schema,
+role, grammar or 52-control inventory and grants no operation now.
