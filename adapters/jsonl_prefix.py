@@ -62,8 +62,7 @@ def streaming_complete_prefix_digest_for_path(
                 incomplete = data
                 continue
             head, incomplete = data.rsplit(b"\n", 1)
-            if head:
-                hasher.update(head + b"\n")
+            hasher.update(head + b"\n")
     return hasher.hexdigest()
 
 
