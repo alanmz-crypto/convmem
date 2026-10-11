@@ -85,22 +85,24 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. No live retry, config change, watcher restart, or runtime promotion occurred. | Review the fresh successor packet, resolve its backup disposition, then obtain a separate Ryan grant |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The fresh successor packet at `c7c12e8`, SHA-256 `b7dc9bfc…b980`, received same-revision Kiro and Copilot PASS. No live retry, config change, watcher restart, or runtime promotion occurred. | Ryan resolves the backup disposition and decides whether to issue a separate exact grant |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Prepare and review the fresh exact-resource successor packet after PR #381's
-merge. Next lane: same-revision Kiro design review and Copilot safety audit,
-then Ryan decides the backup disposition and whether to grant one successor
-bootstrap. No lane may execute a live bootstrap, promote config/runtime, or
-restart the watcher without separate Ryan authority.
+The fresh exact-resource successor packet passed same-revision Kiro design
+review and Copilot safety audit at `c7c12e8`. Next lane: Ryan decides whether
+to restore and verify the offsite snapshot or explicitly accept local-only
+mutable-corpus coverage with no source backup, then whether to grant one exact
+successor bootstrap. No lane may execute a live bootstrap, promote
+config/runtime, or restart the watcher without separate Ryan authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro and Copilot review the fresh successor packet at one exact revision.
-2. Ryan resolves the packet's offsite-backup disposition and decides whether to
+1. Ryan resolves the packet's offsite-backup disposition and decides whether to
    grant one exact successor bootstrap.
+2. If granted, execute only the exact source/runtime/config/budget operation and
+   return measured call, coverage, lineage, and isolation evidence.
 3. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
@@ -214,14 +216,15 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Cursor / Sol | Failed-operation supersession implementation complete on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession` (manifest-bound carried accounting, 34 focused pytest cases, pylint clean); exact-tip Kiro/Copilot review next; no live retry/config/watcher authority |
 | 2026-10-10 | Sol / Kiro / Copilot | Exact-tip review complete at `a6169a5`: both lanes PASS after contained exclusive lineage-temp creation closed the final blocker; 178 affected production-Python tests pass; Ryan PR/merge decision next |
 | 2026-10-10 | Ryan / Sol | Ryan merged PR #381 as `e798bba`; source remains unchanged and fresh successor packet preparation began with live execution still `NO-GO` |
+| 2026-10-10 | Kiro / Copilot | Both lanes PASS the exact successor packet at `c7c12e8`, digest `b7dc9bfc…b980`; Ryan's backup-disposition and execution-grant decisions remain |
 
 ## TL;DR
 
 - The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
   stopped and disabled with no restart authority.
 - Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
-  fresh successor packet awaits same-revision Kiro/Copilot review and Ryan's
-  backup-disposition decision.
+  fresh successor packet passed same-revision Kiro/Copilot review at `c7c12e8`;
+  Ryan's backup-disposition and execution-grant decisions are next.
 - No live bootstrap retry, successor grant execution, config change, or watcher
   promotion exists; those remain separately Ryan-gated after merge and a fresh
   Sol successor packet.
