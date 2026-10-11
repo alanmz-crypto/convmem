@@ -11222,8 +11222,8 @@ live data, watch activation, promotion or Gate D/W/D-V/E/F action.
 PR `#379` squash-merged the exact §§18.51/10.49 plan at
 `d32658a5652b8ccd3e75d85fbeb125d223a932ea`, preserving reviewed overlay
 `6c4b2bde2e5adbb54eac4a67c249756d6fb892d9`; Kiro returned exact-tip and
-exact-merge PASS. Current main `d105c5e702264e93b9ff84e7cd2776455718f6ce`
-preserves the four Switchboard plan blobs byte-for-byte after unrelated PR `#378`.
+exact-merge PASS. Later main `d105c5e702264e93b9ff84e7cd2776455718f6ce`
+preserved the four Switchboard plan blobs byte-for-byte after unrelated PR `#378`.
 Ryan then issued exactly one grant naming semantic parent
 `72619502f195ef34dd2cde04a6945d412a8a7f66`, reviewed overlay `6c4b2bde…`,
 accepted capability tree `e685ee05…6ccbc32f` and the four exact absent
@@ -11240,14 +11240,17 @@ retry, correction or additional read.
 
 ```text
 OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_BASE_MAIN_SHA=d105c5e702264e93b9ff84e7cd2776455718f6ce
-OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
-OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_SEMANTIC_PARENT_SHA=38f03f198815f5b13b4807357c7d8542c701670f
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_REVIEWED_OVERLAY_SHA=a5f4dc55d2d6ed8e195ed3aad935e5ca9268b71c
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_MERGED_MAIN_SHA=269929a90567d79fb7d6985a7afd799c06d8a552
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_EXACT_TIP_REVIEW=PASS
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_EXACT_MAIN_REVIEW=PASS
 OUTPUT_COORDINATE_REAL_AUTHOR_GOVERNING_PLAN_SEMANTIC_PARENT_SHA=72619502f195ef34dd2cde04a6945d412a8a7f66
 OUTPUT_COORDINATE_REAL_AUTHOR_GOVERNING_PLAN_REVIEWED_OVERLAY_SHA=6c4b2bde2e5adbb54eac4a67c249756d6fb892d9
 OUTPUT_COORDINATE_REAL_AUTHOR_GOVERNING_PLAN_MERGED_MAIN_SHA=d32658a5652b8ccd3e75d85fbeb125d223a932ea
 OUTPUT_COORDINATE_REAL_AUTHOR_GOVERNING_PLAN_CURRENT_MAIN_SHA=d105c5e702264e93b9ff84e7cd2776455718f6ce
 OUTPUT_COORDINATE_REAL_AUTHOR_GRANT_STATUS=CONSUMED_NON_REUSABLE
-OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+OUTPUT_COORDINATE_REAL_AUTHOR_RESULT_BINDING_STATUS=MERGED_EXACT_MAIN_PASS
 OUTPUT_COORDINATE_REAL_AUTHOR_AUTHORIZED=false
 
 OUTPUT_COORDINATE_REAL_AUTHOR_PROCESS_COUNT=1
@@ -11371,6 +11374,190 @@ cleanup, deletion, diagnostic read, acquisition, build, publication, implementat
 PR creation/update, merge, deployment, real OpenClaw, live data, watch activation,
 promotion or Gate D/W/D-V/E/F action.
 
+### 18.53 W001 manifest-aggregate diagnosis and requalification boundary
+
+PR `#380` squash-merged the exact §§18.52/10.50 stopped-result binding at
+`269929a90567d79fb7d6985a7afd799c06d8a552`, byte-identical to reviewed tip
+`a5f4dc55d2d6ed8e195ed3aad935e5ca9268b71c`; all six required checks passed and
+Kiro returned exact-tip and exact-main PASS. The merge records one consumed
+real-author grant and no output transaction. It does not identify which member of the
+accepted source's six-part manifest-aggregate predicate failed.
+
+This section defines a route, not an operation. Diagnosis and requalification are
+different failure domains and may not share a process, artifact, review, acceptance
+decision or Ryan grant. A diagnostic result may identify a mismatch; it may not choose
+or apply a correction. A later correction may use only an independently bound and
+accepted diagnostic result.
+
+#### 18.53.1 Immutable start and reserved fresh coordinates
+
+```text
+W001_MANIFEST_DIAGNOSTIC_PLAN_BASE_MAIN_SHA=269929a90567d79fb7d6985a7afd799c06d8a552
+W001_MANIFEST_DIAGNOSTIC_PLAN_SEMANTIC_PARENT_SHA=MILESTONE_OVERLAY_BINDING_REQUIRED
+W001_MANIFEST_DIAGNOSTIC_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
+W001_MANIFEST_DIAGNOSTIC_PLAN_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+W001_MANIFEST_DIAGNOSTIC_CAPABILITY_FREEZE_AUTHORIZED=false
+W001_MANIFEST_DIAGNOSTIC_READ_AUTHORIZED=false
+W001_MANIFEST_REQUALIFICATION_FREEZE_AUTHORIZED=false
+W001_MANIFEST_REAL_AUTHOR_AUTHORIZED=false
+
+W001_MANIFEST_GOVERNING_RESULT_BINDING_MERGED_MAIN_SHA=269929a90567d79fb7d6985a7afd799c06d8a552
+W001_MANIFEST_GOVERNING_RESULT_BINDING_REVIEWED_TIP_SHA=a5f4dc55d2d6ed8e195ed3aad935e5ca9268b71c
+W001_MANIFEST_GOVERNING_RESULT_BINDING_EXTERNAL_RESULT_SHA256=3fbf20779b2c29f0bdeb09761a7dda00ae886fe7b820113badc7288fc92edcde
+W001_MANIFEST_GOVERNING_RESULT_BINDING_EXTERNAL_RESULT_BYTES=1393
+W001_MANIFEST_CONSUMED_GRANT_STATUS=CONSUMED_NON_REUSABLE
+W001_MANIFEST_ACCEPTED_CAPABILITY_TREE_SHA256=e685ee056772c2c8831c4eb65ee23f5719c293bffd796501ff8e68029ccbc32f
+W001_MANIFEST_ACCEPTED_CAPABILITY_SOURCE_SHA256=e53b5d70cd6cf0a5c4cdd2cfbb782234ebab0353d15ee078a3ae55990df42c23
+W001_MANIFEST_ACCEPTED_CAPABILITY_STATUS=IMMUTABLE_ACCEPTED_DIAGNOSTIC_BASE_ONLY_NOT_RETRY_AUTHORITY
+W001_MANIFEST_INPUT_PACKET_TREE_SHA256=491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5
+W001_MANIFEST_INPUT_PACKET_MANIFEST_SHA256=6791d33a82bd0f1e3fdbda072ae50aa296953b6a365194564090085541784fa4
+W001_MANIFEST_INPUT_PACKET_BYTES=654147403
+W001_MANIFEST_DIAGNOSTIC_MAX_READ_BYTES=54052776
+W001_MANIFEST_DIAGNOSTIC_MAX_STDOUT_BYTES=16384
+W001_MANIFEST_DIAGNOSTIC_MAX_PEAK_RSS_BYTES=2147483648
+
+W001_MANIFEST_DIAGNOSTIC_CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1.partial
+W001_MANIFEST_DIAGNOSTIC_CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1
+W001_MANIFEST_DIAGNOSTIC_CAPABILITY_COORDINATE_STATUS=UNOBSERVED_REQUIRES_FUTURE_METADATA_ONLY_PREFLIGHT
+W001_MANIFEST_SUCCESSOR_CAPABILITY_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v5.partial
+W001_MANIFEST_SUCCESSOR_CAPABILITY_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-work-item-author-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v5
+W001_MANIFEST_SUCCESSOR_CAPABILITY_COORDINATE_STATUS=RESERVED_UNOBSERVED_REQUIRES_LATER_PLAN
+W001_MANIFEST_FUTURE_STAGING_PARTIAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/269929a90567d79fb7d6985a7afd799c06d8a552/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v4.partial
+W001_MANIFEST_FUTURE_STAGING_FINAL_ROOT=/home/lauer/.cache/convmem-switchboard-provenance-work-items/269929a90567d79fb7d6985a7afd799c06d8a552/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v4
+W001_MANIFEST_FUTURE_DURABLE_PARTIAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/269929a90567d79fb7d6985a7afd799c06d8a552/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v4.partial
+W001_MANIFEST_FUTURE_DURABLE_FINAL_ROOT=/home/lauer/.local/share/convmem-openclaw-evidence/provenance-work-items/269929a90567d79fb7d6985a7afd799c06d8a552/491ae60bf98a831a1ee09c2ca207b1d9f24bb329ac6d5af79acce3379b5d93a5/v4
+W001_MANIFEST_FUTURE_OUTPUT_COORDINATE_STATUS=RESERVED_UNOBSERVED_REQUIRES_LATER_PLAN
+```
+
+`UNOBSERVED` is deliberate: authoring this plan performs no filesystem probe. A
+future metadata-only preflight must prove every selected coordinate absent, ordinary
+and single-assignment before it may create anything. A pre-existing, aliased, linked
+or mismatched coordinate returns `PAUSE`; it is never cleaned, renamed or reused.
+
+The accepted `e685ee05…` tree, historical process `accepted=false`, Ryan's separate
+acceptance and the process-attested 80% durability/RSS boundary remain distinct. The
+accepted tree may supply immutable comparison bytes to a later synthetic-only
+diagnostic-capability construction, but it may not be patched, executed against real
+input or rebound to new output coordinates.
+
+#### 18.53.2 Diagnostic capability and one bounded observation
+
+The first future operation is a synthetic-only diagnostic-capability freeze at the
+fresh `v1(.partial)` coordinates. It requires its own reviewed execution packet and
+Ryan grant. The final must contain exactly six single-link mode-`0444` members beneath
+a mode-`0555` root and mode-`0700` coordinate parent: diagnostic source, command
+contract, dependency manifest, synthetic fixture, freeze manifest and self-test
+receipt. The source is derived from accepted source SHA-256 `e53b5d70…` by one
+reviewed observation seam around the existing manifest-aggregate predicate. It may
+not change parsing, canonicalization, input identities, author behavior, W001's
+decision, schemas, roles, grammar, transaction, ceilings or the existing 52 author
+controls.
+
+Synthetic qualification includes one matching fixture plus one single-fault fixture
+for each predicate member. Diagnostic labels `A001`–`A006` are receipt-local proof
+labels, not new author controls; they do not create `F011`, `W043` or a 53rd author
+control. The diagnostic capability result remains `accepted=false` until a separate
+plan-only binding, exact-tip review, merge, exact-main confirmation and Ryan
+acceptance decision.
+
+Only after that acceptance may a separate Ryan grant authorize one stdout-only
+diagnostic process. Its command is the accepted fourteen-member vector:
+
+```json
+[
+  "/home/lauer/miniforge3/bin/python3",
+  "-S",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1/manifest-aggregate-diagnostic-v1.py",
+  "diagnose-manifest-aggregate",
+  "--input-packet-root",
+  "/home/lauer/.local/share/convmem-openclaw-evidence/provenance-lock/3402e62a8479011814bfa76ce9e1c3269dc34350/74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b/schema-v3/packet",
+  "--command-contract",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1/command-contract.json",
+  "--dependency-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1/dependency-manifest.json",
+  "--receipt",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1/self-test-receipt.json",
+  "--freeze-manifest",
+  "/home/lauer/.cache/convmem-switchboard-work-item-author-manifest-diagnostic-freeze/269929a90567d79fb7d6985a7afd799c06d8a552/v1/freeze-manifest.json"
+]
+```
+
+The cwd is the diagnostic final root. The environment is exactly `LANG=C.UTF-8`,
+`LC_ALL=C.UTF-8`, `PYTHONDONTWRITEBYTECODE=1`, `PYTHONHASHSEED=0` and
+`PYTHONNOUSERSITE=1`. Launch is one same-PID direct-`execve` transition with one
+process, zero subprocesses and no inherited descriptor beyond stdin/stdout/stderr.
+
+The process may open exactly the immutable packet manifest plus these eleven top-level
+JSONL ledgers named by that manifest, in raw-UTF-8 path order and each at most once:
+`authority-observations.jsonl`, `binary-artifacts.jsonl`, `component-lock.jsonl`,
+`file-ownership.jsonl`, `license-notices.jsonl`, `nested-components.jsonl`,
+`objects.jsonl`, `source-artifacts.jsonl`, `source-delivery.jsonl`,
+`transformations.jsonl` and `unresolved.jsonl`. It may not open
+`review-disposition.json`, descend into `objects/`, read object payloads, use the
+network, repository, runtime, retained source, credentials or acquisition, or create
+any file, directory, partial, final, log or sidecar. It must consume exactly the
+closed top-level stream or return `PAUSE`, never exceed `54,052,776` input bytes or
+`2,147,483,648` peak RSS, write only one canonical compact JSON line plus LF to
+stdout, and keep that line at or below `16,384` bytes.
+
+The diagnostic result has schema
+`convmem.switchboard.work-item-author-manifest-diagnostic-result.v1`. It binds the
+capability and input identities, argv/environment, exact read-role order and bytes,
+access/RSS counters, `author_eligible=false`, `correction_authorized=false`, and an
+ordered six-row `checks` array:
+
+| ID | Existing predicate member reproduced exactly |
+|---|---|
+| `A001` | manifest `object_count` equals parsed `objects.jsonl` row count and required `651` |
+| `A002` | manifest `object_bytes` equals the sum of parsed object-row sizes and required `600094627` |
+| `A003` | manifest `object_tree_sha256` equals SHA-256 of the canonical sorted compact object inventory |
+| `A004` | manifest `runtime_regular_file_count` equals required `30421` |
+| `A005` | manifest `unresolved_count` equals parsed unresolved-row count and required `98608` |
+| `A006` | manifest `input_runtime_tree_sha256` equals the canonical file-ownership runtime hash and required `74a12c725ac3bad4fc09ef9bf9f15ce06d42c75484a6a62f4912426b2cba507b` |
+
+Each row contains only `id`, `operands`, `relation` and `passed`; operands retain
+their names and exact integer or lowercase-hex values. `failed_check_ids` is the raw-
+UTF-8-sorted set of rows whose `passed` value is false. A valid diagnosis requires
+the result to reproduce the prior W001 stop with a nonempty set. Empty, missing,
+extra or contradictory failures return `PAUSE`; they do not prove the author valid.
+The process self-accepts nothing. Its externally captured result must be bound in a
+later plan-only section and independently reviewed before it becomes diagnostic
+authority.
+
+#### 18.53.3 Requalification only after an accepted diagnosis
+
+Requalification cannot begin from this plan. After the exact diagnostic result is
+bound, reviewed, merged, exact-main-confirmed and separately accepted by Ryan, a new
+plan may define one minimal successor source change. That plan must name the accepted
+diagnostic tree/result hashes and every failed `A` row; it may change only the
+constant, comparison or canonical derivation proven wrong. It may not reinterpret a
+passing row or choose a correction from narrative inference.
+
+The successor must freeze at the reserved fresh `v5(.partial)` capability coordinate
+under a separate Ryan grant. Its synthetic qualification retains exactly the
+fourteen-member synthetic and twenty-member real argv shapes, five-key environment,
+six-member capability, production `unresolved_sha256:` grammar, existing W001 old-
+spelling negative, exact `F001`–`F010` then `W001`–`W042` author controls, schemas,
+roles, cardinalities, transaction, barriers and ceilings. The exact diagnosed case is
+added inside existing W001 as a positive/negative regression pair; no alias,
+normalization, `F011`, `W043` or 53rd control is permitted.
+
+Any resulting capability requires its own result binding, exact-tip review, merge,
+exact-main confirmation and separate Ryan acceptance. Only then may another plan bind
+the four reserved fresh `v4(.partial)` real-output coordinates. That real-author plan,
+its review/merge/exact-main confirmation and its Ryan two-SHA grant remain separate.
+No diagnostic, capability-freeze and real-author operation may share a grant.
+
+#### 18.53.4 Present authority boundary
+
+This section authorizes only edits to the four Switchboard planning documents and
+read-only exact-tip review. It authorizes no filesystem probe, diagnostic-capability
+construction, source write, root or file creation, packet/disposition content read,
+diagnostic process, correction, requalification freeze, author execution, retry,
+repair, resume, cleanup, deletion, acquisition, build, publication, implementation,
+PR creation/update, merge, deployment, real OpenClaw, live data, watch activation,
+promotion or Gate D/W/D-V/E/F action. Every authorization flag above remains false.
+
 ## Jargon TL;DR
 
 | Term | Meaning |
@@ -11488,3 +11675,12 @@ closure after `54,052,776` authorized input bytes, peak RSS `1,515,155,456`, zer
 subprocess/forbidden access and no output transaction. All four output roots and both
 namespace parents remain absent. The failed aggregate conjunct is unresolved; no
 diagnosis, correction, retry, content read, root creation or later authority exists.
+
+Section 18.53 separates that unresolved diagnosis from every correction. A future
+six-member synthetic-only diagnostic capability must pass independent binding and
+acceptance before one stdout-only fourteen-member process may read only the packet's
+top-level manifest and ledgers. Its six `A001`–`A006` rows reproduce the existing
+aggregate predicate without changing the 52 author controls. Only a separately bound
+and accepted nonempty failure set may support a later fresh `v5` capability plan and,
+after that capability is independently accepted, a separate `v4` real-output plan.
+All present authorization flags are false.
