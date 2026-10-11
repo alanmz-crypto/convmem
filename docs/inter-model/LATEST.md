@@ -9,9 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor (provisional name) — RYAN DECISION / E4 OPEN (2026-10-11):**
-  Codex recorded the completed Opus and Kiro direction reviews. Ryan's direction
-  decision and the E4 backup-interface prerequisite remain before execution planning.
+- **Arc Safe Harbor — DIRECTION APPROVED / E4 REVIEW NEXT (2026-10-11):**
+  Ryan approved the direction at `5ea16a6` and confirmed the name. Kiro's targeted
+  read-only backup-interface review is next; execution planning remains pending.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
   for review scope. No execution plan or live action is authorized.
