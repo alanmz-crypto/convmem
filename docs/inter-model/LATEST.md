@@ -9,15 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor (provisional name) — DIRECTION DRAFT (2026-10-11):** Ryan
-  resumed the durability planning work after the GitHub checkpoint. Codex
-  authored a bounded direction using existing backups and incident containment;
-  Opus review, Kiro sign-off and Ryan direction approval are next. No execution
-  plan, deployment, watch start, live restore or indexing is authorized.
-  Backup access checks now pass, including the matching offline password copy;
-  new Rescuezilla image completion and loss-window policy remain unconfirmed.
-  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md), then the
-  [architecture and reviewer assignment](../plans/ARCHITECTURE-safe-harbor.md).
+- **Arc Safe Harbor (provisional name) — CORRECTED DIRECTION (2026-10-11):** Codex
+  prepared corrections to Opus's first review of `4d6faf2`; the next lane is
+  Opus's bounded delta review, then Kiro sign-off and Ryan's direction decision.
+  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
+  state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
+  for review scope. No execution plan or live action is authorized.
   Branch: `plan/2026-10-11-safe-harbor`. No generated agent surfaces were
   regenerated or deployed; propagate the arc pointer at a later authorized
   protocol generation/deployment.

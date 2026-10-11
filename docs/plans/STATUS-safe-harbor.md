@@ -28,14 +28,14 @@ exact recovery artifact + scoped qualification + Ryan operation grant
                             explicit authorized release
 
 doctor / audit result / events = observations and history
-QUARANTINE.json = incident authority for guarded Chroma writes
+QUARANTINE.json = all unresolved incidents for guarded Chroma writes
 ```
 
 The scope is application cooperation, not same-user security. Read clients can perform incidental writes; direct clients, other durable-state publishers and shell/service tools do not all pass this guard.
 
 ## 3. What Exists Right Now (file map)
 
-- `ARCHITECTURE-safe-harbor.md`: authored direction draft on `plan/2026-10-11-safe-harbor`; Opus and Kiro have not reviewed this artifact.
+- `ARCHITECTURE-safe-harbor.md`: corrected direction draft on `plan/2026-10-11-safe-harbor`; Opus's first review of `4d6faf22171525ab917a0f3773a14cfd08e56440` accepted the direction but failed the text on gate-scope authority and incident replacement. Both are corrected for delta review; no PASS is inferred.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
@@ -48,18 +48,18 @@ The scope is application cooperation, not same-user security. Read clients can p
 ## 4. Completion State
 
 - Review synthesis and pre-reboot checkpoint: preserved at `bc3a6fd34bc594024d53fb86c9ca6b312cb64bd1` on the separate checkpoint branch.
-- Architecture direction: **DRAFT**, one recommended option, review and approval pending.
+- Architecture direction: **DRAFT / CORRECTED**, one recommended option; standing index/plain-add gate exemptions retained explicitly, all unresolved incidents retained in the existing authority. Seven planning obligations are recorded in architecture section 8.
 - Arc name: **PROVISIONAL**; Ryan was asked to confirm or rename it.
-- Opus review/delta: **NOT STARTED for this artifact**.
+- Opus review/delta: **FIRST REVIEW FAIL at `4d6faf2`; CORRECTIONS AWAIT DELTA REVIEW** on the exact new revision. Review scope: the two blockers, E1–E7 and correction-induced regressions.
 - Kiro governing design sign-off: **NOT STARTED for this artifact**.
 - Ryan direction approval: **PENDING**.
 - Execution Planning, implementation, verification and deployment: **NOT AUTHORIZED by this brief**.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Author/revise the architecture from concrete findings. Stop before execution planning until Ryan accepts the direction. Do not convert a proposed mechanism or backup report into verified evidence.
+**Codex:** Corrections are prepared for independent delta review. Revise only remaining findings; stop before execution planning until Ryan accepts the direction and the backup-interface ownership prerequisite is satisfied. Do not convert proposed contracts or backup reports into verified evidence.
 
-**Opus:** Independently review the exact direction using architecture section 10. Identify blockers and counterexamples; subsequent review focuses on corrections and new evidence.
+**Opus:** Delta-review the exact correction against `4d6faf22171525ab917a0f3773a14cfd08e56440`, using architecture section 10: the two blockers, E1–E7 and regressions caused by those edits. Do not repeat the original full review without a new contract or new evidence requiring it.
 
 **Kiro:** Provide governing design review/sign-off. Opus review does not replace your gate.
 
@@ -69,10 +69,10 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Resolve draft comments and owner inputs without inferring image usability or a loss window.
-2. Opus reviews the exact architecture; Codex corrects it; Opus checks the delta; Kiro supplies governing sign-off.
-3. Ryan accepts or rejects the architecture direction, including its cross-arc boundary.
-4. Only after acceptance: execution/verification planning and the applicable review/approval gates.
+1. Opus delta-reviews the corrected architecture; Codex addresses any remaining blockers; Kiro supplies governing sign-off.
+2. Resolve owner inputs without inferring image usability or a loss window; Ryan accepts or rejects the direction, including operator disposition after every automatic restore.
+3. Before execution planning, obtain Complete-data Backup v2 interface review or Ryan's explicit transfer for resolver/eligibility/gate changes.
+4. Only after acceptance and that ownership prerequisite: execution/verification planning must resolve E1–E7 before the plan can be accepted, under the applicable review/approval gates.
 5. Only after a separate grant: bounded implementation and isolated evidence gathering.
 6. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
 
@@ -87,7 +87,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 8. Relationship to ConvMem (the bigger picture)
 
-Safe Harbor proposes stricter contracts around existing local guard and approval-recovery paths. Complete-data Backup v2 still owns its snapshot/restore profile and open Hybrid consistency audit; Recovery Authority still owns provenance-aware recovery and its T4/V4k dependencies. Other run-ledger, generation and permission surfaces retain their own owners.
+Safe Harbor proposes stricter contracts around existing local guard and approval-recovery paths. Complete-data Backup v2 still owns its resolver, eligibility/gate interfaces, snapshot/restore profile and open Hybrid consistency audit; Recovery Authority still owns provenance-aware recovery and its T4/V4k dependencies. Other run-ledger, generation and permission surfaces retain their own owners.
 
 The architecture records these interfaces and refuses to claim a global freeze. It does not change those other arcs' statuses or silently finish their deferred work.
 
@@ -107,7 +107,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 ## Update Log
 
 - 2026-10-11 — Codex: resumed from the GitHub checkpoint and authored the provisional Safe Harbor direction/brief; independent review and Ryan approval remain pending.
+- 2026-10-11 — Codex: corrected Opus's two first-review blockers and recorded E1–E7; exact-revision delta review is next, with Kiro sign-off and Ryan approval still pending.
 
 ## TL;DR
 
-Safe Harbor is a planning draft using existing recovery and quarantine mechanisms. The next lane is independent review, followed by Kiro sign-off and Ryan's direction decision. No implementation or live action is authorized; fresh-image completion and the loss window remain open.
+[Arc Safe Harbor, provisional] The draft now explicitly retains the standing gate exemptions and requires retention of every unresolved incident. Opus's bounded delta review is next, followed by Kiro sign-off and Ryan's direction decision. E1–E7 are planning obligations; no implementation or live action is authorized. Fresh-image completion and the loss window remain open.

@@ -1,6 +1,6 @@
 # Architecture Direction — Safe Harbor
 
-> **Arc: Safe Harbor (provisional name). Status: DRAFT, awaiting independent review and Ryan's direction approval.** This document grants no implementation, deployment, restore, indexing, or service action.
+> **Arc: Safe Harbor (provisional name). Status: DRAFT, corrected after Opus's first review; delta review, Kiro sign-off and Ryan's direction approval pending.** This document grants no implementation, deployment, restore, indexing, or service action.
 
 ## 1. Source, problem and planning phase
 
@@ -35,7 +35,7 @@ The active [Architecture Planning guide](../planning/ARCHITECTURE-PLANNING.md) c
 - A global `ChromaStore` constructor change, mass retirement of entrypoints, broad runtime catch-up, permission deployment or backup-unit reconfiguration.
 - Deployment of the detector, starting watch, changing backup retention, mounting/restoring images, or running recovery drills. Each is an operational action under its own grant.
 
-**Cross-arc boundary:** This direction may propose stricter refusal and preservation around the already existing local segment guard and governed approval-recovery path. It does not add generalized recovery capability or alter Recovery Authority's provenance/serving contracts. Kiro and Ryan must accept that boundary before execution planning. If a proposed corrective requires T4/V4k or changes the complete-data restore-state matrix, route that portion to its owning arc; do not implement it under this title.
+**Cross-arc boundary:** This direction may propose stricter refusal and preservation around the already existing local segment guard and governed approval-recovery path. It does not add generalized recovery capability or alter Recovery Authority's provenance/serving contracts. Kiro and Ryan must accept that boundary before execution planning. Complete-data Backup v2 owns the resolver, snapshot-eligibility and gate interfaces as well as its restore-state matrix: section 6.2 requires review under that arc or an explicit Ryan-approved ownership transfer before execution planning. If a corrective requires T4/V4k or changes the complete-data restore-state matrix, route that portion to its owning arc; do not implement it under this title.
 
 ## 3. Evidence baseline and limits
 
@@ -43,9 +43,11 @@ Evidence labels: **D** = deployed runtime at `a92a74eb326b3eaa59087b707de10153c7
 
 - **O — deployment:** the installed launcher names `.worktrees/runtime-main/convmem.py` and the conda interpreter. That worktree still reports D on resume. B is not the deployed release.
 - **D — gate coverage:** [restic_gate.py:12](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/restic_gate.py#L12) takes no write target, loads a separate backup context, and accepts the skip environment variable. [convmem.py:1320](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/convmem.py#L1320) dispatches approval recovery without that gate. Existing indexed approval and upsert gates do not establish universal write coverage.
+- **D/B — adopted scope and its limited premise:** D [ROADMAP.md:46](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/docs/ROADMAP.md#L46), [RECOVER.md:48](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/docs/RECOVER.md#L48) and [role-mapping.md:66](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/docs/role-mapping.md#L66) document the adopted July 7 index/plain-add exemption; the ledger record itself was not queried in this static revision. B [ingest.py:1238](https://github.com/alanmz-crypto/convmem/blob/6a23aa93184460ed853996608bb28190c61f8d89/ingest.py#L1238) supersedes existing units or deletes them during replacement, so not every index operation is append-only. D [convmem.py:1733](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/convmem.py#L1733) also exposes tombstoning through `forget`, which those scope statements do not name.
 - **D — snapshot eligibility:** [restic_snapshot.py:756](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/restic_snapshot.py#L756) selects by tag, normalized root and time; [line 923](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/restic_snapshot.py#L923) applies the qualifying tag while capturing. The freshness predicate at line 544 accepts future local dates. These checks do not demonstrate restored usability.
 - **D/B — unknown recovery state:** [propose_decision.py:157](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/propose_decision.py#L157) converts several failures to empty values; line 220 discards the tombstone flag. Empty hashes can classify as `retry_chroma` at line 104. The relevant code is unchanged at B.
 - **D — containment and repair:** [chroma_write_guard.py:597](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/chroma_write_guard.py#L597) clears quarantine without the native lock; native admission checks quarantine before and inside that lock at line 632. Restore replaces live files at line 751 and treats census-unavailable differently from confirmed loss only implicitly at line 771; later refresh can prune older local generations at line 728.
+- **D — incident replacement:** [chroma_write_guard.py:605](https://github.com/alanmz-crypto/convmem/blob/a92a74eb326b3eaa59087b707de10153c7cc0c63/chroma_write_guard.py#L605) unconditionally replaces the marker with one segment's finding; reconciliation walks multiple segments at line 667. Publishing a later finding must not erase an earlier unresolved one. Existing `events.jsonl` appends at line 622 have no explicit fsync and are not sufficient durable release evidence as written.
 - **R/B — detector:** [audit at line 796](https://github.com/alanmz-crypto/convmem/blob/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/chroma_write_guard.py#L796) reads under the lock and publishes after leaving it. A skipped/error result can replace an earlier FAIL. [doctor.py:699](https://github.com/alanmz-crypto/convmem/blob/5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d/doctor.py#L699) reports the latest result; it does not create a durable containment incident. This detector is present at B but not deployed at D.
 - **D — incidental writes:** `open_chroma_for_read` uses a constructor that can create collections (`chroma_store.py:77,131`). The existing verify factory disables collection creation, but that is not proof of physically read-only Chroma access. No stronger read-only claim is assumed here.
 - **O — current access checks:** the resumed `convmem doctor` exited 0. Local snapshot `f8d69dc1199636f66d6216f0325cf4218c566c829907dd205c244d00115c324b`, external lineage copy `a38bd4c7bfac4aa5c44634674138fa9c65f83cf37d7b3025c952b5368786f449`, and matching offline password copy all passed. These supersede the checkpoint's temporary mount/password warnings as access observations, not as restore proof. No secrets are stored in this draft.
@@ -58,7 +60,7 @@ The [Complete-data Backup v2 brief](STATUS-complete-data-backup-correction-v2.md
 1. **No verified recovery point, no risky change.** A recovery claim names the affected state, exact artifact, demonstrated scope and accepted loss interval. Today's tag, a matching key, a completed capture, or an old drill alone cannot satisfy that claim.
 2. **Unexpected result, stop and investigate.** A failed mutation, confirmed corruption, or uncertainty after a repair must not be silently converted into absence, successful repair, or permission to continue the original risky operation.
 3. **Never repair production blindly.** Establish the recovery source and authority, preserve the damaged evidence, and define validation and interruption behavior before the first replacement.
-4. **One incident authority for the guarded target.** Reuse `QUARANTINE.json`; audit results and events are observations/history. They must not independently release writers or overwrite the meaning of an unresolved incident.
+4. **One incident authority for the guarded target.** Reuse `QUARANTINE.json` to retain every unresolved incident and its findings; publishing cannot replace or narrow unresolved scope. Audit results and events are observations/history and cannot independently release writers. Remove the marker only when no unresolved incident remains.
 5. **One target identity throughout an admitted operation.** The resolved target used by the writer, recovery preflight and native lock must agree. A path alias or independent config load must not create a different protection claim or lock domain silently.
 6. **Publication under the relevant lock.** A finding and its containment must become authoritative before that lock is released. A blocked write cannot be admitted in a gap between detection and marker publication.
 7. **An in-flight write cannot be retroactively cancelled.** Audit/containment waits for the same guarded writer lock; once the incident is published, subsequent guarded admission refuses. This is not revocation of arbitrary already-running external code.
@@ -94,9 +96,11 @@ A qualification is scoped to one artifact and stated recovery use. For whole-wor
 
 Rescuezilla is the preferred existing candidate for planned corpus-affecting maintenance when its scope, usability and loss window are sufficient. Preserve the reported pre-incident image while arranging newer images; image recency is not proof that an older candidate is obsolete. Routine live Restic snapshots retain their demonstrated, narrower claims until the consistency question is separately resolved.
 
-Documentation changes and the inspected detector-only release do not inherit every prerequisite of a destructive corpus operation. Conversely, routine indexing, approval events and pointer changes are not declared harmless merely because they are common. Unproven source completeness must not be used to classify a mutation as freely rebuildable.
+**Standing gate scope retained:** the July 7 boundary documented in section 3 intentionally exempts `index` and plain `add` from Restic preflight. This draft retains that exemption; it adds no per-invocation qualification, owner grant or loss-window prerequisite to those commands. Existing guarded HNSW saves supply structurally validated local segment recovery points alongside scheduled Restic, not proof of recovery of all logical state or workstation-loss protection. Documentation changes and the inspected detector-only release likewise do not inherit every prerequisite of a destructive corpus operation.
 
-**Honest enforcement boundary:** this direction does not propose that the existing CLI can mechanically verify an offline whole-machine recovery drill. The qualification/operation grant is an explicit human-controlled admission for planned risky work; existing automatic gates enforce only the narrower conditions they actually inspect. No universal per-write recovery guarantee may be reported. Ryan must set the acceptable loss window before routine protection is declared sufficient.
+Retention of that scope is not endorsement of its blanket "append-only and reindexable" premise: replacement indexing can supersede/delete units, and unproven source completeness cannot establish rebuildability. `forget` is currently ungated but is not a named exemption in the cited decision; this draft changes neither its gate behavior nor its authority. A broader gate-scope change requires a separate Ryan decision and coordinated updates to ROADMAP, RECOVER and role-mapping. Approval recovery in section 6.2 is the one explicit, proposed addition, subject to the same owner decision and documentation synchronization before activation. This unapproved draft supersedes no standing command policy.
+
+**Honest enforcement boundary:** this direction does not propose that the existing CLI can mechanically verify an offline whole-machine recovery drill. The qualification/operation grant is an explicit human-controlled admission for planned risky work; existing automatic gates enforce only the narrower conditions they actually inspect. No universal per-write recovery guarantee may be reported. Assessing routine protection against Ryan's loss window is an assurance decision, not a new admission rule for the exempt commands.
 
 ### 6.2 Target-bound preflight in existing call paths
 
@@ -127,6 +131,8 @@ If storage failure prevents durable incident publication, fail the current opera
 
 Later PASS, skipped, timeout or error observations may update telemetry, but do not release an unresolved incident. A diagnostic error with no known incident is not automatically classified as corruption; uncertainty after a live repair is different and requires containment.
 
+Publishing another finding retains all unresolved incidents in the same `QUARANTINE.json` authority, including additional findings in an already affected segment. Release must account for every remaining incident's current scope. An incident cannot disappear merely because a later finding, repair attempt or diagnostic result became current; storing the displaced finding only in event history does not satisfy this contract.
+
 Canonical target identity must select a single intended lock/incident location. Existing aliases or markers cannot be silently abandoned by switching path normalization. Any adoption/migration of an existing guard location is a separately reviewed deployment concern. Invalid marker contents, including semantically invalid JSON, must not represent an absent incident.
 
 The coverage remains guarded native writes. Existing read clients may perform internal database writes; direct clients and external processes can bypass this application boundary. Doctor must report that scope, and operational maintenance must account for those processes rather than assume quarantine stops them.
@@ -135,17 +141,17 @@ The coverage remains guarded native writes. Existing read clients may perform in
 
 Before an existing authorized local repair replaces or unlinks live segment files, durable evidence must identify the incident, target, observed files/missing files, failures and selected recovery generation. Preservation must complete before the first destructive replacement. Failure or insufficient space stops repair; do not delete evidence to make the repair fit.
 
-Persist the unresolved incident under the native lock before the first live replacement, so interrupted repair remains an incident across restart. An explicitly admitted, bounded repair may act on its quarantined target while holding that lock; this is not release for ordinary writers. The original caller must not continue its requested mutation after an uncertain repair. This direction adds refusals/preservation to existing bounded recovery; it grants no new automatic repair capability and no Recovery Authority live-restore route.
+Persist the unresolved incident under the native lock before the first live replacement, so interrupted repair remains an incident across restart. Only the guard's existing bounded repair routine, bound to the incident identity and target, may act on that quarantined target while holding the lock; no ordinary-write flag or environment bypass is introduced. The original caller must not continue its requested mutation after an uncertain repair. This direction adds refusals/preservation to existing bounded recovery; it grants no new automatic repair capability and no Recovery Authority live-restore route.
 
 After replacement, validate the restored segment and the relevant census. A bounded diagnostic retry may be defined later, but persistent unavailability cannot become success. Zero lost IDs proves the stated ID-coverage condition only; other repair reasons need their own relevant evidence. Preserve the damaged files and necessary prior recovery generation while the incident is unresolved; ordinary snapshot refresh/pruning must not destroy that evidence.
 
-Keeping containment across a repair interruption and releasing it only through the contract below may change current automatic continuation behavior. That availability cost is intentional and requires review; it must not be hidden as a cosmetic fix.
+Every automatic segment restore becomes an incident requiring Ryan-authorized disposition, including a restore whose structural validation and census pass. The original mutation cannot automatically resume after that restore. This changes current automatic continuation behavior; the availability and operator-work cost is intentional and must be accepted as part of direction approval (see E5 below).
 
 ### 6.6 Release is a validated operation
 
-Quarantine release uses the same target identity and native lock as admission. It rechecks the current incident and validates evidence tied to that incident after the repair, so old successful checks or a concurrent clear cannot authorize release. Diagnostic/audit results alone never clear it.
+Quarantine release uses the same target identity and native lock as admission. It rechecks the complete unresolved set and validates post-repair evidence against each incident's current findings, so old successful checks, a concurrent clear or proof for only the newest incident cannot authorize release. Validating B never disposes of unresolved A; added findings for the same segment also require coverage. The marker is removed only when none remain. Diagnostic/audit results alone never clear it.
 
-Release requires Ryan-authorized disposition plus evidence sufficient for the incident's actual scope. Persist the disposition before durable marker removal; failure must remain conservative. The ordinary clear command must not silently unlink an unvalidated incident. A request to continue despite unresolved uncertainty is a separate owner exception requiring its own bounded operation and recovery evidence; no generic bypass is added by this draft.
+Release requires Ryan-authorized disposition plus evidence sufficient for each incident's actual scope. Persist the incident-bound disposition in the guard's existing `events.jsonl` before durably removing resolved incident state; failure must remain conservative. That history does not become admission authority or allow replay of an old release over new findings. The ordinary clear command must not silently unlink an unvalidated incident. A request to continue despite unresolved uncertainty is a separate owner exception requiring its own bounded operation and recovery evidence; no generic bypass is added by this draft.
 
 Neither a restart nor a detector rollback clears an incident. Evidence cleanup is a separate, explicit retention decision after resolution and preservation elsewhere; no automatic cleanup policy is introduced here.
 
@@ -159,6 +165,7 @@ That future design must account for SQLite, HNSW and non-Chroma durable state wi
 
 - **Human recovery evidence can go stale.** Bind it to an operation and exact artifact, with explicit invalidators such as changed scope/profile, key loss, inaccessible media or unacceptable age. This is an existing grant artifact, not a new permanent green registry.
 - **Stricter refusals reduce availability.** Missing state or an unresolved incident may require operator attention. Do not silently restore the previous fail-open behavior to restore convenience. This is the principal chosen trade-off.
+- **A qualified image does not bypass Restic.** A Rescuezilla-qualified operation on a gated path still refuses while Restic is unhealthy; the production skip remains rejected. This availability cost is part of the proposed direction, not permission for another bypass.
 - **Preservation consumes storage.** Failure to preserve blocks replacement; unresolved evidence is retained. Retention sizing and destination are operational inputs, not permission to remove the only recovery copy.
 - **Locks cover cooperating code.** In-flight and direct-client behavior remain bounded explicitly. This draft does not promise that a same-user adversary cannot edit a marker or bypass the application.
 - **Canonicalization can strand existing markers.** Require reviewed adoption before rollout; preserve old state rather than treating a new path as an empty guard.
@@ -177,11 +184,23 @@ These are outcome requirements for later execution/verification planning, not te
 - An audit FAIL followed by a skipped/PASS observation or process restart cannot admit a guarded write before explicit release.
 - A competing writer cannot enter between incident detection and authoritative containment publication.
 - Interruption after durable incident publication leaves a diagnosable contained incident until validated release; no torn evidence or needed recovery generation is silently pruned. Failure to publish the incident prevents repair mutation and reports containment unavailable rather than claiming persistence that failed.
-- A stale or mismatched release proof cannot clear the current incident; malformed incident state fails closed.
+- Publishing B while A remains unresolved preserves both across restart; proof for B alone cannot clear A or admit writers. A stale or mismatched proof, including one predating new findings in the same segment, cannot clear the current unresolved scope; malformed incident state fails closed.
 - Coverage demonstrations name the actual callers and resolved target, rather than only asserting helper invocation. Negative controls must show the relevant failure is detectable.
 - Recovery qualification identifies exact artifacts and scope. Sample success does not certify future captures; a zero-lost-ID census does not certify all vector values.
 
-No qualification drill, concurrency experiment, live corpus probe beyond required doctor, or test suite was performed in this drafting phase. These are proposed obligations, not completed evidence.
+The initial drafting phase ran doctor as reported in section 3. This correction used static source and Git reads only; no CLI/MCP probes, indexing, qualification drills, concurrency experiments or tests were run.
+
+### Obligations carried into execution planning (E1–E7)
+
+These are required contracts/evidence obligations from Opus's first review, not implementation designs or completed verification; after direction approval they must be resolved before the execution plan can be accepted. E4's ownership prerequisite applies before execution planning starts.
+
+- **E1 — Stale vectors:** release evidence must establish document/vector correctness for IDs changed after the restore source's watermark, or prove that set empty; unsupported or unavailable proof keeps containment, without assuming persisted per-ID sequence IDs or authorizing re-embedding here.
+- **E2 — Interrupted preservation:** original evidence is write-once per incident, with durable preservation-complete evidence before the first replacement; retries cannot overwrite originals with partially repaired files.
+- **E3 — Actual serialization:** bind approval recovery's live-state recheck and re-upsert to the same guarded critical section used by competing `forget`/refine mutations, proving caller coverage and lock order; `governed_lock` alone does not establish it.
+- **E4 — Backup ownership:** obtain Complete-data Backup v2 review of the resolver/eligibility/gate contract or Ryan's explicit ownership transfer before execution planning; no implicit transfer accompanies this draft.
+- **E5 — Operator cost:** every automatic restore requires disposition; the earlier reported zero restores since September 24 is a historical observation, not a forecast, and recurrent restores or watch/OOM exposure (reported issue #268) trigger owner reassessment before such clears become routine.
+- **E6 — Repair admission:** quarantine-crossing repair is limited to the existing guard repair routine with an incident-bound target, never a general write-path flag, environment variable or new repair route.
+- **E7 — Durable disposition:** use existing guard `events.jsonl` for the incident-bound release disposition, with durable append/interruption handling before removing resolved authority; current `_event()` durability is insufficient and event history never independently releases admission.
 
 ## 9. Owner inputs and confidence
 
@@ -198,9 +217,11 @@ Confidence in conclusions, not incident probabilities:
 
 ## 10. Downstream handoff and independent review brief
 
-**Next:** Opus reviews this exact architecture and [STATUS brief](STATUS-safe-harbor.md); Codex corrects findings; Opus performs a delta review; Kiro provides governing design sign-off; Ryan accepts/rejects the direction. Only then may Codex shape an execution plan. No Cursor implementation grant follows from publishing or merging this draft.
+**Review state:** Opus's first review of `4d6faf22171525ab917a0f3773a14cfd08e56440` accepted option B's direction (85%) and issued FAIL on that artifact (80%): a silent gate-scope conflict and loss of earlier unresolved incidents. Codex accepts both blockers and has corrected sections 4/6/8 above; E1–E7 record the required planning obligations. This is the author's correction, not a reviewer PASS. Confidence in this bounded resolution: 90%; no runtime behavior is claimed changed.
 
-**Reviewer assignment:** Challenge the selected direction, not the earlier chat's credibility. Read the pinned D/B/R evidence before adopting a claim. Prioritize these possible failures in this draft:
+**Next:** Opus checks the delta from `4d6faf22171525ab917a0f3773a14cfd08e56440`, limited to the two blockers, E1–E7 and regressions introduced by those corrections; Kiro then supplies governing sign-off; Ryan accepts/rejects the direction and ownership boundary. Only then may Codex shape an execution plan, subject to E4. No Cursor implementation grant follows from publishing or merging this draft.
+
+**Original reviewer assignment (reference; delta scope above governs the next review):** Challenge the selected direction, not the earlier chat's credibility. Read the pinned D/B/R evidence before adopting a claim. Prioritize these possible failures in this draft:
 
 1. Is the distinction between operator-qualified maintenance and narrower automatic gates honest enough to prevent a false universal safety claim? Name any operation incorrectly admitted by the proposed boundary.
 2. Does reusing quarantine for interrupted repair overload it, especially when `_quarantine()` raises and release must be serialized? Identify a concrete crash/concurrency counterexample.
@@ -214,13 +235,13 @@ Return one overall verdict, concrete blockers with file/section evidence, confid
 
 **Draft publication PR title:** Define scoped recovery and incident containment for Safe Harbor
 
-**Draft PR description:** Ryan can review one bounded direction for recovery evidence and incident handling, with explicit limits on what the existing controls prove. Codex authored this 2026-10-11 planning draft after the durability reviews and reboot checkpoint; Opus reviews independently and Kiro supplies governing sign-off. The draft uses existing backups/quarantine, records the deployed-versus-planning revisions, and links one STATUS source from the required orientation surfaces. It authorizes no implementation or live action. No tests or restore drills were run. **Merge reading:** [architecture](ARCHITECTURE-safe-harbor.md), [STATUS](STATUS-safe-harbor.md). **TL;DR:** Review direction first; execution planning awaits Ryan's approval.
+**Draft PR description:** Ryan can review one bounded direction for recovery evidence and incident handling, with explicit limits on what the existing controls prove. Codex authored this 2026-10-11 planning draft and corrected Opus's two blockers: retain the standing gate exemptions explicitly and preserve all unresolved incidents. Seven obligations remain for execution planning; Opus's delta review, Kiro sign-off and Ryan's direction decision are pending. The draft uses existing backups/quarantine, records the deployed-versus-planning revisions, and links one STATUS source from the required orientation surfaces. It authorizes no implementation or live action. This revision used static inspection; no tests or restore drills were run. **Merge reading:** [architecture](ARCHITECTURE-safe-harbor.md), [STATUS](STATUS-safe-harbor.md). **TL;DR:** Review the corrected direction; execution planning awaits the governing gates.
 
 Active phase lane must stop here. Await HITL.
 
 ## TL;DR
 
-- Choose existing backups and stronger existing admission/incident contracts, with explicit coverage limits.
+- [Arc Safe Harbor, provisional] Choose existing backups and stronger existing admission/incident contracts, with explicit coverage limits.
 - Preserve evidence before replacement; keep incidents authoritative through interruption and release them only through validated, serialized disposition.
-- Defer a generic HOLD, identity registry and live-backup freeze. Keep detector deployment and all live recovery separately authorized.
-- This is an unapproved direction draft under a provisional arc name; fresh-image completion and the loss window remain unconfirmed.
+- Retain the documented index/plain-add gate exemption explicitly; new findings never erase unresolved incidents. E1–E7 remain planning obligations, not completed proof.
+- Defer a generic HOLD, identity registry and live-backup freeze. This direction awaits approval; detector deployment/live recovery need separate grants, and fresh-image completion and the loss window remain unconfirmed.
