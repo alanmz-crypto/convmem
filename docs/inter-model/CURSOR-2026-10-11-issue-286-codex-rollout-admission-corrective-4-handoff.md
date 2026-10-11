@@ -260,11 +260,11 @@ checked it in a clean scratch worktree with a fresh CI-style config:
 - Pylint regression gate: PASS against base `db8aebb` (465 findings, 240
   fingerprints, nothing new or increased).
 - The 70-file Codex, watcher, breaker, doctor, config and inventory set,
-  which now also picks up #385's diagnosis tests: 771 passed, 8 skipped,
-  0 failed. 28 of those results (1 failed, 27 errors) first came from my
-  checkout being on tmpfs, which the #385 harness refuses
-  (`scratch_not_disk_backed`). Rerun from a disk-backed checkout, the two
-  diagnosis files pass: 46 passed, 2 skipped.
+  which now also picks up #385's diagnosis tests: 759 tests, 753 passed,
+  6 skipped (opt-in tests), 0 failed. The first run, from a checkout on
+  tmpfs, gave 1 failure and 27 errors in two #385 diagnosis files, because
+  that harness refuses tmpfs scratch (`scratch_not_disk_backed`). Rerun
+  from a disk-backed checkout, those two files pass: 46 passed, 2 skipped.
 - The merge keeps both sides:
   - `watch.py` has #385's hermetic inner scope and diagnosis marks, plus
     this branch's exit-91 refusal path, piped stderr and
