@@ -607,9 +607,12 @@ def _check_index_gate() -> DoctorCheck:
 
 
 def _check_incremental_refusals(cfg: dict) -> DoctorCheck:
-    from watch import _circuit_breaker_state_path_from_config, CircuitBreakerState
+    from watch_circuit_breaker import (
+        CircuitBreakerState,
+        circuit_breaker_state_path_from_config,
+    )
 
-    state_path = _circuit_breaker_state_path_from_config(cfg)
+    state_path = circuit_breaker_state_path_from_config(cfg)
     breaker = CircuitBreakerState(state_path)
     rows = breaker.list_refusal_quarantines()
     if not rows:

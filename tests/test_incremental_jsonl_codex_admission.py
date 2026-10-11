@@ -12,7 +12,6 @@ import pytest
 
 import config
 from incremental_jsonl_codex_admission import (
-    ADMISSION_SKEW_SECONDS,
     CodexRolloutAdmissionSettings,
     admits_path_checks_1_4,
     make_uuid7,
@@ -155,13 +154,30 @@ def test_session_meta_mismatch_refuses(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "table_patch,match",
     [
-        ({"codex_rollout_admission": {"root": "/tmp/x", "admitted_after": "2026-01-01T00:00:00Z"}}, "embed_dimension"),
-        ({"enabled": False, "codex_rollout_admission": {"root": "/tmp/x", "admitted_after": "2026-01-01T00:00:00Z"}}, "enabled"),
+        (
+            {
+                "codex_rollout_admission": {
+                    "root": "/tmp/x",
+                    "admitted_after": "2026-01-01T00:00:00Z",
+                }
+            },
+            "embed_dimension",
+        ),
+        (
+            {
+                "enabled": False,
+                "codex_rollout_admission": {
+                    "root": "/tmp/x",
+                    "admitted_after": "2026-01-01T00:00:00Z",
+                },
+            },
+            "enabled",
+        ),
         ({"codex_rollout_admission": {"root": "relative", "admitted_after": "2026-01-01T00:00:00Z"}}, "root"),
         ({"codex_rollout_admission": {"root": "/tmp/x", "admitted_after": "2026-01-01T00:00:00"}}, "naive"),
     ],
 )
-def test_config_validation_fail_closed(tmp_path: Path, table_patch: dict, match: str) -> None:
+def test_config_validation_fail_closed(table_patch: dict, match: str) -> None:
     base_table = {
         "enabled": True,
         "live_sources": [],

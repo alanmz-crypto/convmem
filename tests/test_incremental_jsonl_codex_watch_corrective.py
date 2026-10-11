@@ -1,6 +1,6 @@
 """Watch refusal quarantine corrective tests for Codex rollout admission."""
 
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,protected-access
 
 from __future__ import annotations
 
@@ -62,7 +62,11 @@ def test_record_refusal_prefers_child_marker_digest(
     )
     watch._record_ready_path_failure(
         path,
-        RuntimeError(f"live_route_refused:bootstrap_required:{marker_digest}"),
+        watch.IndexSubprocessError(
+            f"live_route_refused:bootstrap_required:{marker_digest}",
+            returncode=91,
+            stderr=f"live_route_refused:bootstrap_required:{marker_digest}\n",
+        ),
         breaker=breaker,
         verbose=False,
     )
@@ -86,7 +90,7 @@ def test_refusal_quarantine_terminal_path_skips_digest_after_appends(
     )
     flush_calls: list[str] = []
 
-    def track_flush(path: str, **kwargs):  # noqa: ANN003
+    def track_flush(path: str, **_kwargs):  # noqa: ANN003
         flush_calls.append(path)
 
     def boom(*_args, **_kwargs):
@@ -101,4 +105,4 @@ def test_refusal_quarantine_terminal_path_skips_digest_after_appends(
         with source.open("ab") as handle:
             handle.write(codex_rollout_record(40 + index))
         watch._process_ready_path(str(source), cfg={}, breaker=breaker, verbose=False)
-    assert flush_calls == []
+    assert not flush_calls

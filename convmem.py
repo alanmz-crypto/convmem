@@ -321,8 +321,9 @@ def index(
             from incremental_jsonl import format_live_route_refused
 
             detail = str(exc.detail or "")
-            if ":" in detail and len(detail.split(":")[-1]) == 64:
-                outcome, digest = detail.rsplit(":", 1)
+            tail = detail.rsplit(":", maxsplit=1)[-1]
+            if ":" in detail and len(tail) == 64:
+                outcome, digest = detail.rsplit(":", maxsplit=1)
             else:
                 outcome, digest = detail, ""
             print(format_live_route_refused(outcome, digest), file=sys.stderr)

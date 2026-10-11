@@ -62,13 +62,25 @@ class IncrementalJsonlSettings:
 
 
 def _canonical_config_path(raw: str, *, label: str) -> Path:
-    path = Path(raw).expanduser()
+    text = raw.strip()
+    path = Path(text).expanduser()
     if not path.is_absolute():
         raise IncrementalJsonlConfigError(
             "noncanonical_path",
             f"{label} must be an absolute path",
         )
-    path = path.absolute()
+    for part in path.parts[1:]:
+        if part in {".", ".."}:
+            raise IncrementalJsonlConfigError(
+                "noncanonical_path",
+                f"{label} must not contain '.' or '..' components",
+            )
+    normalized = os.path.normpath(text)
+    if normalized != text:
+        raise IncrementalJsonlConfigError(
+            "noncanonical_path",
+            f"{label} must already be canonical",
+        )
     current = Path(path.anchor)
     for part in path.parts[1:]:
         current = current / part

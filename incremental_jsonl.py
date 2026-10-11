@@ -806,11 +806,21 @@ class IncrementalJsonlCoordinator:
         return snapshot
 
     def _revalidate_live_prefix(self, snapshot: dict) -> None:
+        admission = (
+            self.settings.codex_rollout_admission if self.codex_admitted_live else None
+        )
+
         def revalidate() -> None:
             fd = open_source_readonly(self.source)
             try:
                 info = validate_regular_source(fd)
-                raw = os.read(fd, max(snapshot["complete_boundary"], info.st_size))
+                if (
+                    admission is not None
+                    and int(info.st_size) > admission.max_source_bytes
+                ):
+                    raise IncrementalJsonlError("source_too_large")
+                boundary = int(snapshot["complete_boundary"])
+                raw = os.read(fd, boundary)
             finally:
                 os.close(fd)
             current = {
@@ -1098,6 +1108,59 @@ class IncrementalJsonlCoordinator:
         if len(planned) > admission.max_transform_chunks_per_run:
             return "transform_chunk_cap"
         return None
+
+    def _codex_roll_forward_refusal(
+        self,
+        snapshot: dict,
+        *,
+        transaction: dict,
+        phase: str,
+    ) -> str | None:
+        if not self.codex_admitted_live:
+            return None
+        identity_refusal = verify_session_meta_identity(
+            self.source, snapshot.get("raw") or b""
+        )
+        if identity_refusal:
+            return identity_refusal
+        admission = self.settings.codex_rollout_admission
+        if admission is not None:
+            try:
+                fd = open_source_readonly(self.source)
+                try:
+                    info = validate_regular_source(fd)
+                finally:
+                    os.close(fd)
+            except OSError:
+                return "source_too_large"
+            if int(info.st_size) > admission.max_source_bytes:
+                return "source_too_large"
+            snapshot = {**snapshot, "size": int(info.st_size)}
+        checkpoint = None
+        try:
+            checkpoint = self.checkpoint()
+        except IncrementalJsonlError:
+            return "invalid_state"
+        projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
+        if projection_mismatch:
+            return f"rebuild_required:{projection_mismatch}"
+        continuity = _continuity_reason(
+            checkpoint, snapshot, self.transform_fingerprint
+        )
+        prior_count = int(checkpoint.get("record_count") or 0) if checkpoint else 0
+        prepared_keys = list(transaction.get("prepared_keys") or [])
+        if phase == "APPLYING" and prepared_keys:
+            cache_required_before = 0
+        else:
+            cache_required_before = frontier_start(
+                prior_count, self.chunk_size, self.overlap
+            )
+        return self._codex_admission_guard_code(
+            snapshot,
+            checkpoint=checkpoint,
+            continuity=continuity,
+            cache_required_before=cache_required_before,
+        )
 
     def _emit_codex_admitted_log(
         self,
@@ -2114,6 +2177,26 @@ class IncrementalJsonlCoordinator:
             "snapshot_path": snapshot_path,
             "snapshot_dir": snapshot_dir,
         }
+        roll_refusal = self._codex_roll_forward_refusal(
+            snapshot, transaction=transaction, phase=phase
+        )
+        if roll_refusal:
+            if rollback is None:
+                self._cleanup(snapshot_dir)
+                result = self._refusal(roll_refusal, snapshot=snapshot)
+                self._emit_codex_admitted_log(
+                    result,
+                    snapshot=snapshot,
+                    elapsed_seconds=time.monotonic() - self._run_started,
+                )
+                return result
+            assert rollback_sha256 is not None
+            self._restore_replay_before_images(
+                rollback,
+                rollback_sha256,
+                snapshot_dir,
+            )
+            return self._refusal("rolled_back", snapshot=snapshot)
         try:
             self._revalidate_live_prefix(snapshot)
             prepared = []

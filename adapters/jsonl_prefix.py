@@ -66,6 +66,22 @@ def streaming_complete_prefix_digest_for_path(
     return hasher.hexdigest()
 
 
+def streaming_byte_digest_for_path(
+    path: str | Path,
+    *,
+    bufsize: int = 65536,
+) -> str:
+    """SHA-256 over all file bytes with O(1) retained memory."""
+    hasher = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        while True:
+            block = handle.read(bufsize)
+            if not block:
+                break
+            hasher.update(block)
+    return hasher.hexdigest()
+
+
 def complete_prefix_digest_for_path(path: str | Path) -> str:
     """SHA-256 of the complete-line prefix for one on-disk JSONL source."""
     return streaming_complete_prefix_digest_for_path(path)

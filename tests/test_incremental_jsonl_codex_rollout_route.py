@@ -4,23 +4,15 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 import incremental_jsonl
 from incremental_jsonl_codex_admission import make_uuid7
 from incremental_jsonl_production import ProductionBoundary
-from tests.incremental_jsonl_helpers import (
-    apply_env,
-    codex_rollout_record,
-    install_fakes,
-    install_build_chunk_tracker,
-    isolated_env,
-)
+from tests.incremental_jsonl_helpers import codex_rollout_record, install_fakes
 from tests.test_incremental_jsonl_codex_admission import _meta_for, _write_rollout
 import watch
 from watch import CircuitBreakerState, parse_live_route_refused
@@ -225,7 +217,7 @@ def test_bootstrap_required_refusal_quarantines_once(tmp_path: Path, monkeypatch
             detected_format="jsonl_codex_rollout",
         )
     breaker = CircuitBreakerState(tmp_path / "breaker.json")
-    refused = parse_live_route_refused("live_route_refused:bootstrap_required:abc")
+    refused = parse_live_route_refused("live_route_refused:bootstrap_required\n")
     assert refused is not None
     from adapters.jsonl_prefix import complete_prefix_digest_for_path
 
@@ -233,7 +225,7 @@ def test_bootstrap_required_refusal_quarantines_once(tmp_path: Path, monkeypatch
     breaker.record_refusal(str(source), outcome="bootstrap_required", prefix_digest=prefix_digest)
     calls: list[str] = []
 
-    def fake_flush(path: str, **kwargs):  # noqa: ANN003
+    def fake_flush(path: str, **_kwargs):  # noqa: ANN003
         calls.append(path)
         raise RuntimeError(f"live_route_refused:bootstrap_required:{prefix_digest}")
 

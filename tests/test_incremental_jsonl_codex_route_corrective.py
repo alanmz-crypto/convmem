@@ -136,7 +136,7 @@ def test_source_too_large_refuses_before_full_read(
     boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
     result = _coordinator(boundary, source, cfg).run()
     assert result.outcome == "source_too_large"
-    assert reads == []
+    assert not reads
     assert result.counters.total == 0
 
 

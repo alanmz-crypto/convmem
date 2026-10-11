@@ -22,6 +22,30 @@ from pathlib import Path
 
 from adapters.detect import get_parser
 from process_lock import acquire_pid_lock, release_lock
+from watch_circuit_breaker import (
+    CircuitBreakerState,
+    circuit_breaker_state_path_from_config as _circuit_breaker_state_path_from_config,
+    parse_live_route_refused,
+)
+
+_LIVE_ROUTE_REFUSED_EXIT = 91
+
+
+class IndexSubprocessError(RuntimeError):
+    """Index child failure with structured return code and captured streams."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        returncode: int,
+        stderr: str = "",
+        stdout: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.returncode = returncode
+        self.stderr_text = stderr
+        self.stdout_text = stdout
 
 _DEFAULT_INDEX_MEM_MAX = "2G"
 _DEFAULT_INDEX_MEM_HIGH = "1500M"
@@ -240,8 +264,8 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
     with subprocess.Popen(
         cmd,
         text=True,
-        stdout=subprocess.PIPE if not verbose else None,
-        stderr=subprocess.PIPE if not verbose else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         start_new_session=True,
     ) as proc:
         try:
@@ -263,8 +287,20 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
                 f"index subprocess timed out after {timeout:g} seconds"
             ) from exc
         if proc.returncode != 0:
-            err = (stderr or stdout or "").strip()
-            raise RuntimeError(err or f"index subprocess exit {proc.returncode}")
+            out_text = stdout or ""
+            err_text = stderr or ""
+            if verbose:
+                for line in out_text.splitlines():
+                    print(line, file=sys.stderr)
+                for line in err_text.splitlines():
+                    print(line, file=sys.stderr)
+            err = err_text.strip() or out_text.strip()
+            raise IndexSubprocessError(
+                err or f"index subprocess exit {proc.returncode}",
+                returncode=int(proc.returncode),
+                stderr=err_text,
+                stdout=out_text,
+            )
         if verbose and stdout:
             for line in stdout.splitlines():
                 print(line, file=sys.stderr)
@@ -291,30 +327,6 @@ def is_native_fault_returncode(returncode: int | None) -> bool:
 
 def is_timeout_message(message: str) -> bool:
     return "index subprocess timed out after" in message
-
-
-_LIVE_ROUTE_REFUSED_RE = re.compile(
-    r"live_route_refused:([^:\s]+)(?::([0-9a-f]{64}))?"
-)
-
-
-def parse_live_route_refused(message: str) -> tuple[str, str] | None:
-    match = _LIVE_ROUTE_REFUSED_RE.search(message)
-    if not match:
-        return None
-    return match.group(1), match.group(2) or ""
-
-
-def _refusal_quarantine_key(path: str, prefix_digest: str) -> str:
-    return f"{path}\0{prefix_digest}"
-
-
-def _circuit_breaker_state_path_from_config(cfg: dict) -> Path:
-    watch_cfg = cfg.get("watch") or {}
-    if watch_cfg.get("circuit_breaker_state_file"):
-        return Path(watch_cfg["circuit_breaker_state_file"]).expanduser()
-    chroma = Path(cfg["index"]["chroma_dir"]).expanduser()
-    return chroma.parent / "watch_circuit_breaker.json"
 
 
 def log_native_crash(path: str, message: str, *, log_path: Path | None = None) -> None:
@@ -355,157 +367,6 @@ def recover_chroma_after_abrupt_exit(cfg: dict | None = None) -> list[dict]:
             file=sys.stderr,
         )
     return events
-
-
-class CircuitBreakerState:
-    """Per-path native-fault/timeout quarantine plus a global breaker.
-
-    Persisted atomically (temp file + os.replace) so a process death mid-write
-    cannot leave the state file partially written — the exact failure class this
-    feature exists to survive.
-    """
-
-    def __init__(self, state_path: Path):
-        self.state_path = state_path
-        self._data = self._load()
-
-    def _load(self) -> dict:
-        try:
-            raw = self.state_path.read_text(encoding="utf-8")
-        except OSError:
-            return {"paths": {}, "global_events": [], "refusals": {}}
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            return {"paths": {}, "global_events": [], "refusals": {}}
-        if not isinstance(data, dict):
-            return {"paths": {}, "global_events": [], "refusals": {}}
-        data.setdefault("paths", {})
-        data.setdefault("global_events", [])
-        data.setdefault("refusals", {})
-        return data
-
-    def _save(self) -> None:
-        self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.state_path.with_name(self.state_path.name + f".tmp{os.getpid()}")
-        tmp.write_text(json.dumps(self._data, indent=2) + "\n", encoding="utf-8")
-        os.replace(tmp, self.state_path)
-
-    def is_quarantined(self, path: str) -> bool:
-        entry = self._data["paths"].get(path)
-        return bool(entry and entry.get("quarantined"))
-
-    def is_refusal_quarantined(self, path: str, prefix_digest: str) -> bool:
-        key = _refusal_quarantine_key(path, prefix_digest)
-        entry = self._data["refusals"].get(key)
-        return bool(entry and entry.get("quarantined"))
-
-    def has_refusal_quarantine_for_path(self, path: str) -> bool:
-        prefix = f"{path}\0"
-        for key, entry in self._data.get("refusals", {}).items():
-            if key.startswith(prefix) and entry.get("quarantined"):
-                return True
-        return False
-
-    def record_refusal(
-        self,
-        path: str,
-        *,
-        outcome: str,
-        prefix_digest: str,
-        now: float | None = None,
-    ) -> bool:
-        """Record a live-route refusal; threshold 1 quarantine keyed by (path, digest)."""
-        if now is None:
-            now = time.time()
-        key = _refusal_quarantine_key(path, prefix_digest)
-        entry = self._data["refusals"].setdefault(
-            key,
-            {
-                "path": path,
-                "prefix_sha256": prefix_digest,
-                "outcome": outcome,
-                "first_refused_at": now,
-                "quarantined": False,
-            },
-        )
-        entry["outcome"] = outcome
-        entry["prefix_sha256"] = prefix_digest
-        entry.setdefault("first_refused_at", now)
-        entry["quarantined"] = True
-        self._save()
-        return True
-
-    def list_refusal_quarantines(self) -> list[dict]:
-        rows: list[dict] = []
-        for entry in self._data.get("refusals", {}).values():
-            if entry.get("quarantined"):
-                rows.append(dict(entry))
-        rows.sort(key=lambda item: item.get("first_refused_at", 0))
-        return rows
-
-    def record_success(self, path: str) -> None:
-        """Reset a path's counters after a clean index. Does not clear quarantine."""
-        entry = self._data["paths"].get(path)
-        if entry and not entry.get("quarantined"):
-            del self._data["paths"][path]
-            self._save()
-
-    def record_failure(
-        self,
-        path: str,
-        *,
-        native_fault: bool,
-        timeout: bool,
-        now: float | None = None,
-        crash_threshold: int = _DEFAULT_CB_FILE_CRASH_THRESHOLD,
-        timeout_threshold: int = _DEFAULT_CB_TIMEOUT_THRESHOLD,
-    ) -> bool:
-        """Record a failure for path. Returns True if path is now quarantined."""
-        if now is None:
-            now = time.time()
-        entry = self._data["paths"].setdefault(
-            path, {"native_crash_count": 0, "timeout_count": 0, "quarantined": False}
-        )
-        if native_fault:
-            entry["native_crash_count"] += 1
-            self._data["global_events"].append(now)
-            if entry["native_crash_count"] >= crash_threshold:
-                entry["quarantined"] = True
-        elif timeout:
-            entry["timeout_count"] += 1
-            if entry["timeout_count"] >= timeout_threshold:
-                entry["quarantined"] = True
-        self._save()
-        return bool(entry["quarantined"])
-
-    def global_breaker_tripped(
-        self,
-        *,
-        now: float | None = None,
-        global_threshold: int = _DEFAULT_CB_GLOBAL_THRESHOLD,
-        global_window_seconds: float = _DEFAULT_CB_GLOBAL_WINDOW_SECONDS,
-    ) -> bool:
-        """True when >= global_threshold native faults (any path) hit within the window."""
-        if now is None:
-            now = time.time()
-        cutoff = now - global_window_seconds
-        recent = [t for t in self._data["global_events"] if t >= cutoff]
-        if len(recent) != len(self._data["global_events"]):
-            self._data["global_events"] = recent
-            self._save()
-        return len(recent) >= global_threshold
-
-    def clear(self, path: str | None = None) -> None:
-        if path is None:
-            self._data = {"paths": {}, "global_events": [], "refusals": {}}
-        else:
-            self._data["paths"].pop(path, None)
-            prefix = f"{path}\0"
-            for key in list(self._data.get("refusals", {})):
-                if key.startswith(prefix):
-                    self._data["refusals"].pop(key, None)
-        self._save()
 
 
 def flush_path(
@@ -656,16 +517,19 @@ def _record_ready_path_failure(
     from repository_knowledge_sync import is_reconcile_token
 
     message = str(exc)
-    refused = parse_live_route_refused(message)
+    subprocess_rc = (
+        exc.returncode if isinstance(exc, IndexSubprocessError) else None
+    )
+    refusal_text = (
+        exc.stderr_text if isinstance(exc, IndexSubprocessError) else message
+    )
+    refused = (
+        parse_live_route_refused(refusal_text)
+        if subprocess_rc == _LIVE_ROUTE_REFUSED_EXIT
+        else None
+    )
     if refused and not is_reconcile_token(path):
         outcome, digest = refused
-        if not digest:
-            try:
-                from adapters.jsonl_prefix import streaming_complete_prefix_digest_for_path
-
-                digest = streaming_complete_prefix_digest_for_path(path)
-            except OSError:
-                digest = ""
         breaker.record_refusal(path, outcome=outcome, prefix_digest=digest)
         if verbose:
             print(
@@ -674,7 +538,11 @@ def _record_ready_path_failure(
             )
         print(f"[watch] error processing {path}: {exc}", file=sys.stderr)
         return
-    returncode = parse_native_fault_returncode(message)
+    returncode = (
+        subprocess_rc
+        if subprocess_rc is not None
+        else parse_native_fault_returncode(message)
+    )
     timeout = is_timeout_message(message)
     if timeout or (returncode is not None and returncode < 0):
         # Any abrupt death -- native fault, OOM kill, our own timeout teardown -- can
