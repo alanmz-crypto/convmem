@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. KIRO PLAN PASS at `00c69d2` (85%); A1/A2 CLARIFIED AFTER REVIEW; OWNER DISPOSITION/ACCEPTANCE PENDING.** Ryan authorized Codex to draft this plan on 2026-10-11. Implementation, isolated execution, deployment and live operations remain pending. A task below is a proposed deliverable, not an executable grant. The recorded PASS applies to its exact revision, not automatically to subsequent edits.
+> **Arc: Safe Harbor. KIRO DELTA PASS at `dca13a5` (88%); PLAN REVIEW COMPLETE; OWNER DISPOSITION/ACCEPTANCE PENDING.** Ryan authorized Codex to draft this plan on 2026-10-11. Implementation, isolated execution, deployment and live operations remain pending. A task below is a proposed deliverable, not an executable grant. Review verdicts remain pinned to their exact revisions; this update records the verdict and routing without changing the reviewed task contracts.
 
 ## 1. Source, authority and goal
 
@@ -208,11 +208,11 @@ Before any separately authorized live rollout or corpus-affecting operation:
 
 These are operational prerequisites to be completed later, not additional implementation tasks or granted actions. The Hybrid capture-consistency audit remains open. A recent Rescuezilla image can support planned maintenance; it does not establish live Restic capture consistency or continuous recovery coverage.
 
-## 7. VERIFY companion and next review
+## 7. VERIFY companion and review record
 
 Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), **stub, evidence not run**, based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It names V0–V6 and must be filled against the actual implementation revision under later execution/verification authorization.
 
-Next: confirm the A1/A2-only delta below, obtain the still-open v2-owner disposition of T2, then Ryan accepts/rejects the exact plan and separately names any task grant. O-E4.e's existing-gate wording is satisfied plan-side in Kiro's review. Section 2 still requires B-E4.1 before plan acceptance; this record does not defer that gate until T2 implementation. No review agent is invoked by this document.
+Next: obtain the still-open v2-owner disposition of T2, then Ryan accepts/rejects the reviewed plan at `dca13a5` and separately names any task grant. The first review and A1/A2 delta are complete; this status-only record does not create another review round. O-E4.e's existing-gate wording is satisfied plan-side. Section 2 still requires B-E4.1 before plan acceptance; this record does not defer that gate until T2 implementation. No review agent is invoked by this document.
 
 ### Kiro execution review and advisory disposition
 
@@ -222,17 +222,19 @@ Ryan relayed Kiro's first governing execution-plan **PASS (85%)** at `00c69d2272
 - **A2 incorporated:** T4 explicitly requires file fsync plus directory durability on creation, and V4/V5 name parent-directory publication/failure assertions. This clarifies the existing durability contract.
 - **A3 retained:** VERIFY remains NOT RUN; exact implementation-tip external review stays required. No evidence is manufactured by this planning update.
 
+**Delta verdict:** Ryan relayed Kiro's bounded **PASS (88%)** for successor `dca13a59a2edf649ac6a19777f572645bea8674e`, compared with `00c69d2`. A1 and A2 are satisfied (90% each), all gates/NOT-RUN labels remain intact (95%), and Kiro confirmed the source qualification below (92%). No regression or required correction was found. The optional implementation-time reminder about malformed event tails is already covered by T4/V5's fail-closed reader/retry requirements; it adds no plan change or review gate. Backend and power-loss semantics remain unproven. Kiro again explicitly left B-E4.1 open and claimed no v2-owner authority.
+
 **Source qualification (Codex, static):** the review's opening describes deployed/planning `audit()` publication as under the lock. At P, `chroma_write_guard.py:806-808` holds the lock for validation/census, but result classification/publication at `:813-827` is outside it. D has no `audit()` method; this is detector code present in P. The `recover()` pre-lock check at P `:847-849` is correctly identified. T1 already requires under-lock incident publication/rechecking. It need not turn `audit.json` into incident history: that file may remain latest-observation telemetry while `QUARANTINE.json` retains every unresolved finding. These factual qualifications preserve Kiro's reported verdict without adopting inaccurate evidence claims or changing direction.
 
-### Next review: advisory delta and v2 decision
+### Next: v2 owner decision
 
-Use the same Kiro context for a delta limited to A1/A2 and their VERIFY/routing changes, comparing `00c69d2` to the exact successor revision supplied by Ryan. Confirm that the two clarifications faithfully implement the advisories and introduce no conflicting contract; report any concrete regression, with confidence and smallest correction. Do not repeat the full execution or architecture review.
+The A1/A2 delta assignment is complete. Do not rerun either completed review for this metadata-only verdict record. A substantive later contract change or concrete new evidence would need appropriately scoped review.
 
 Separately, the Complete-data Backup v2 owner must disposition **the unchanged T2 B-E4.1 proposal**: in-resolver exact-time future rejection, code 25 plus machine-readable reason, no concealment through ensure's auto-backup/dry-run/fallback, refreshed post-backup evaluation time, all five consumer outcomes, and unchanged profile/path/lineage/restore semantics. If reviewer authority is absent, return the named outstanding owner decision; do not repeat compatibility review and call it owner approval. Ryan must identify/grant the authorized v2 decision-maker or explicitly make the decision. No ownership transfer is inferred. Static files/Git only; no ConvMem CLI/MCP, indexing, tests, probes, implementation or live operations.
 
 ### Review focus for this new artifact
 
-**Completed assignment; reference only — do not rerun.** The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. The following first execution-review prompt produced Kiro's PASS at `00c69d2`; the next bounded review is specified above.
+**Completed assignment; reference only — do not rerun.** The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. The following first execution-review prompt produced Kiro's PASS at `00c69d2`; the A1/A2 delta also passed at `dca13a5`. Only the owner decision and acceptance/grants remain, as specified above.
 
 ```text
 Arc: Safe Harbor. Kiro governing execution-plan review, static/read-only.
@@ -294,4 +296,4 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 ## TL;DR
 
-[Arc Safe Harbor] Kiro passed the execution plan at `00c69d2` (85%). A1/A2 now explicitly order backend proof first and specify event-directory durability; their delta, v2-owner disposition and Ryan's plan acceptance remain pending. All evidence is unrun. The additional drive is capacity only; implementation and every live operation remain separately gated.
+[Arc Safe Harbor] Kiro passed the successor plan at `dca13a5` (88%); first review and A1/A2 delta are complete. The unchanged T2 proposal still needs v2-owner disposition before Ryan accepts the plan. All evidence is unrun; implementation and live operations remain separately gated. This verdict/routing update changes no reviewed task contract.
