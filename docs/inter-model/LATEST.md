@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-10
+**Updated:** 2026-10-11
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,18 +9,21 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Codex rollout admission AUTHORIZED (not yet
-  implemented) (2026-10-10):** Kiro passed
-  [`DESIGN-issue-286-codex-rollout-admission.md`](../plans/DESIGN-issue-286-codex-rollout-admission.md)
-  at `9e91973` with six binding conditions (§13). Ryan granted hermetic
-  implementation to Cursor. Resume state `NOT_STARTED`; start from the
-  [Cursor Execute handoff](CURSOR-2026-10-10-issue-286-codex-rollout-admission-execute-handoff.md)
-  on `docs/2026-10-10-issue-286-codex-rollout-admission-design`. New rollouts
-  created after an explicit cutoff use the incremental route; older ones stay
-  legacy; refusals quarantine terminally. Separately, the Kiro bootstrap
-  failed-operation supersession merged (PR #381, `e798bba`); Sol's fresh
-  successor packet and Ryan's grant come next. No live bootstrap, provider
-  call, config, runtime or watcher action is authorized. See the
+- **Arc Codex / issue #286 — Codex rollout admission: corrective 4
+  `NOT_STARTED` (2026-10-11):** Cursor implemented the
+  [design](../plans/DESIGN-issue-286-codex-rollout-admission.md) on
+  `feat/2026-10-10-issue-286-codex-rollout-admission` (tip `905ad40`). Kiro
+  amended §13: refusals now quarantine terminally by path. At gate 3 both
+  reviews failed that tip: Kiro on the Pylint gate only, Copilot audit on six
+  safety findings (recovery bypasses the guards, verbose-mode respawn,
+  unbounded parent hash buffer, size ceiling skipped on growth, spoofable
+  refusal marker, noncanonical root accepted). Start from the
+  [corrective-4 handoff](CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md),
+  then Copilot audit and Kiro recheck the new exact tip, then Ryan's PR
+  decision. Separately, the Kiro bootstrap failed-operation supersession
+  merged (PR #381, `e798bba`); Sol's fresh successor packet and Ryan's grant
+  come next. No live bootstrap, provider call, config, runtime or watcher
+  action is authorized. See the
   [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
