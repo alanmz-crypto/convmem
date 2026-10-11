@@ -539,10 +539,23 @@ def _run_configured_net_probe(role: str) -> None:
         raise LiveDiagnosisRefused(str(exc)) from exc
 
 
+def _require_denial_path() -> None:
+    if os.environ.get(_HERMETIC_ENV) != "1":
+        return
+    raw = os.environ.get(_DENIAL_PATH_ENV, "").strip()
+    if not raw:
+        raise LiveDiagnosisRefused("denial_path_missing")
+    path = Path(raw).expanduser()
+    roots = _scratch_roots()
+    if roots is None or not _under_scratch(path, roots):
+        raise LiveDiagnosisRefused("denial_path_outside_scratch")
+
+
 def bootstrap_index_child() -> None:
     """Entry hook for `convmem index` subprocess under the D1 harness."""
     if os.environ.get(_HERMETIC_ENV) != "1":
         return
+    _require_denial_path()
     _require_nonempty_source_sha()
     _assert_config_under_scratch()
     _assert_frozen_source_contract()
@@ -560,6 +573,7 @@ def bootstrap_watch_worker() -> None:
     """Entry hook for the parent-side watch flush worker."""
     if os.environ.get(_HERMETIC_ENV) != "1":
         return
+    _require_denial_path()
     _require_nonempty_source_sha()
     _assert_config_under_scratch()
     _redirect_brief_path()

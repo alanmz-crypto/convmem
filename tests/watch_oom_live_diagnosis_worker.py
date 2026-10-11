@@ -39,6 +39,9 @@ def _dispatch(args: argparse.Namespace) -> int:
         mark,
     )
     from tests.watch_oom_live_diagnosis_support import (
+        BACKUP_MANIFEST_SHA256_ENV,
+        assert_backup_manifest_external,
+        assert_backup_manifest_file_identity,
         assert_source_readonly,
         load_external_backup_manifest,
         verify_backup_manifest,
@@ -51,7 +54,6 @@ def _dispatch(args: argparse.Namespace) -> int:
     writer_root = Path(args.writer_root).resolve()
     register_path = Path(args.register_path).resolve()
     phase_path = Path(args.phase_path).resolve()
-    incident_canary = Path(args.incident_source_canary_path).resolve()
     manifest_path = Path(args.backup_manifest_path).resolve()
 
     for role in (
@@ -61,10 +63,20 @@ def _dispatch(args: argparse.Namespace) -> int:
         writer_root,
         register_path,
         phase_path,
-        incident_canary,
-        manifest_path,
     ):
         _require_scratch(role, scratch_root)
+
+    scratch_roots_json = os.environ.get("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", "").strip()
+    if not scratch_roots_json:
+        raise RuntimeError("scratch_roots_missing")
+    assert_backup_manifest_external(manifest_path, scratch_roots_json)
+    expected_manifest_sha = os.environ.get(BACKUP_MANIFEST_SHA256_ENV, "").strip()
+    if not expected_manifest_sha:
+        raise RuntimeError("backup_manifest_expected_sha_missing")
+    assert_backup_manifest_file_identity(
+        manifest_path,
+        expected_sha256=expected_manifest_sha,
+    )
 
     os.environ["CONVMEM_CONFIG"] = str(config_path)
     # Config must be set in main() before bwrap re-exec and any config import.
@@ -88,6 +100,7 @@ def _dispatch(args: argparse.Namespace) -> int:
             original_popen = subprocess_mod.Popen
 
             def killing_popen(cmd, **kwargs):
+                mark("injected_kill_before_index_spawn")
                 proc = original_popen(cmd, **kwargs)
                 if args.kill_delay_ms > 0:
                     time.sleep(args.kill_delay_ms / 1000.0)
@@ -95,6 +108,7 @@ def _dispatch(args: argparse.Namespace) -> int:
                     os.killpg(proc.pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+                mark("injected_kill_index_sigkill")
                 return proc
 
             stack.enter_context(patch("subprocess.Popen", side_effect=killing_popen))
@@ -116,6 +130,8 @@ def _dispatch(args: argparse.Namespace) -> int:
             mark("watch_route_error", error=type(exc).__name__)
             payload = {
                 "status": "blocked" if args.mode == "injected_kill" else "failed",
+                "mode": args.mode,
+                "kill_marker": "worker_popen_sigkill" if args.mode == "injected_kill" else None,
                 "error": type(exc).__name__,
                 "error_detail": str(exc)[:500],
                 "elapsed_seconds": round(time.monotonic() - started, 3),
@@ -157,7 +173,6 @@ def main() -> int:
     parser.add_argument("--source-sha256", required=True)
     parser.add_argument("--source-size", type=int, required=True)
     parser.add_argument("--source-mtime-ns", type=int, required=True)
-    parser.add_argument("--incident-source-canary-path", required=True)
     parser.add_argument("--backup-manifest-path", required=True)
     parser.add_argument("--chroma-dir", required=True)
     parser.add_argument("--brief-path", required=True)
@@ -175,11 +190,13 @@ def main() -> int:
     os.environ["CONVMEM_CONFIG"] = str(Path(args.config_path).resolve())
     from tests.watch_oom_live_diagnosis_support import d1_worker_enter_bwrap_or_exit
 
+    manifest_ro = Path(args.backup_manifest_path).expanduser().resolve()
     d1_worker_enter_bwrap_or_exit(
         argv=sys.argv,
         scratch_root=Path(args.scratch_root),
         source_path=Path(args.source),
         repo_root=root,
+        external_ro_binds=[manifest_ro],
     )
 
     if args.cgroup_enforced:

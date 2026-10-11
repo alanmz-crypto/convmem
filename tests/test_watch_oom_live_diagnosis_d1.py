@@ -35,24 +35,13 @@ from tests.watch_oom_live_diagnosis_parent import (
     run_d1_capped_worker,
     sanitize_d1_worker_stream,
 )
-from tests.watch_oom_live_diagnosis_bwrap import (
-    BWRAP_RO_ROOT_ARGS,
-    bwrap_available,
-    run_bwrap_capability_check,
-)
-from tests.watch_oom_live_diagnosis_net_probe import (
-    NetProbeVerificationError,
-    parent_can_connect_loopback,
-    parent_loopback_listener,
-    parent_net_namespace_id,
-    verify_dual_net_probe_artifacts,
-)
 from tests.watch_oom_live_diagnosis_support import (
     PHASE_ORDER,
     ScratchCanary,
     arm_diagnosis_env,
     assert_no_production_writer_collision,
     assert_scratch_canaries_unchanged,
+    bind_backup_manifest_digest,
     build_prefix_transcript,
     d1_parent_teardown_postcheck,
     load_external_backup_manifest,
@@ -62,6 +51,9 @@ from tests.watch_oom_live_diagnosis_support import (
     read_d1_harness_limits,
     read_phases,
     snapshot_production_canaries_for_parent,
+    backup_manifest_entries_fingerprint,
+    backup_manifest_file_sha256,
+    parent_verify_backup_manifest_supply,
     supply_external_backup_manifest_file,
     verify_backup_manifest,
 )
@@ -90,8 +82,6 @@ def _worker_command(layout: dict) -> list[str]:
         str(layout["source_size"]),
         "--source-mtime-ns",
         str(layout["source_mtime_ns"]),
-        "--incident-source-canary-path",
-        str(layout["incident_source_canary"]),
         "--backup-manifest-path",
         str(layout["backup_manifest_path"]),
         "--chroma-dir",
@@ -166,15 +156,23 @@ def _run_worker(
         config_path=layout["config_path"],
         gate_auto_go=not cgroup,
     )
+    bind_backup_manifest_digest(env, layout["backup_manifest_file_sha256"])
     env["CONVMEM_LIVE_DIAG_SOURCE_PATH"] = str(layout["source"])
     if extra_env:
         env.update(extra_env)
     command = _worker_command(layout)
     command[command.index("prefix_route")] = mode
-    canaries_before = snapshot_production_canaries_for_parent(
-        layout["incident_source_canary"]
-    )
     denial_path = Path(env["CONVMEM_LIVE_DIAG_DENIAL_PATH"])
+    parent_verify_backup_manifest_supply(
+        manifest_path=layout["backup_manifest_path"],
+        scratch_roots_json=env["CONVMEM_LIVE_DIAG_SCRATCH_ROOTS"],
+        expected_file_sha256=layout["backup_manifest_file_sha256"],
+        corpus_root=layout["arm"] / "seed",
+        expected_fingerprint=layout.get("backup_manifest_fingerprint"),
+    )
+    canaries_before = snapshot_production_canaries_for_parent(
+        layout["incident_source_path"]
+    )
     worker_payload: dict = {}
     cgroup_result = None
     error: Exception | None = None
@@ -220,8 +218,10 @@ def _run_worker(
                 env=env,
                 source_path=layout["source"],
                 denial_path=denial_path,
-                incident_source_canary=layout["incident_source_canary"],
+                incident_source=layout["incident_source_path"],
                 canaries_before=canaries_before,
+                manifest_path=layout["backup_manifest_path"],
+                manifest_sha256=layout["backup_manifest_file_sha256"],
             )
         except RuntimeError as drift_exc:
             if error is None:
@@ -241,22 +241,34 @@ def _cleanup_d1_scratch_base() -> None:
 def layout() -> dict:
     scratch = SCRATCH_BASE / uuid.uuid4().hex
     scratch.mkdir(parents=True, exist_ok=True)
+    external_supply: Path | None = None
     try:
         layout = prepare_scratch_arm(scratch, corpus_n=8, prefix_lines=2)
         seed = layout["arm"] / "seed"
-        supply_external_backup_manifest_file(
-            layout["backup_manifest_path"],
-            entries={
-                "processed.json": hashlib.sha256(
-                    (seed / "processed.json").read_bytes()
-                ).hexdigest(),
-                "chroma/chroma.sqlite3": hashlib.sha256(
-                    (layout["chroma_dir"] / "chroma.sqlite3").read_bytes()
-                ).hexdigest(),
-            },
+        external_supply = SCRATCH_BASE.parent / "d1-parent-supply" / uuid.uuid4().hex
+        external_supply.mkdir(parents=True, exist_ok=True)
+        manifest_entries = {
+            "processed.json": hashlib.sha256(
+                (seed / "processed.json").read_bytes()
+            ).hexdigest(),
+            "chroma/chroma.sqlite3": hashlib.sha256(
+                (layout["chroma_dir"] / "chroma.sqlite3").read_bytes()
+            ).hexdigest(),
+        }
+        manifest_path = external_supply / "backup_manifest.json"
+        supply_external_backup_manifest_file(manifest_path, entries=manifest_entries)
+        layout["backup_manifest_path"] = manifest_path
+        layout["backup_manifest_file_sha256"] = backup_manifest_file_sha256(manifest_path)
+        layout["backup_manifest_fingerprint"] = backup_manifest_entries_fingerprint(
+            manifest_entries
         )
+        original_source = external_supply / "original-source.jsonl"
+        original_source.write_bytes(layout["source"].read_bytes())
+        layout["incident_source_path"] = original_source
         yield layout
     finally:
+        if external_supply is not None:
+            shutil.rmtree(external_supply, ignore_errors=True)
         shutil.rmtree(scratch, ignore_errors=True)
 
 
@@ -329,6 +341,7 @@ def test_index_child_source_contract_fail_closed(
         "CONVMEM_LIVE_DIAG_INDEX_PID_PATH",
         str(layout["index_pid_path"]),
     )
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(layout["denial_path"]))
     monkeypatch.delenv("CONVMEM_LIVE_DIAG_SOURCE_PATH", raising=False)
     with pytest.raises(LiveDiagnosisRefused, match="source_contract_missing"):
         bootstrap_index_child()
@@ -356,6 +369,7 @@ def test_missing_source_sha_fail_closed(layout: dict, monkeypatch: pytest.Monkey
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", json.dumps([str(layout["scratch_root"])]))
     monkeypatch.setenv("CONVMEM_CONFIG", str(layout["config_path"]))
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(layout["denial_path"]))
     monkeypatch.delenv("CONVMEM_LIVE_DIAG_SOURCE_SHA256", raising=False)
     with pytest.raises(LiveDiagnosisRefused, match="source_sha_missing"):
         bootstrap_watch_worker()
@@ -365,20 +379,26 @@ def test_scratch_root_ancestor_of_production_fail_closed(
     layout: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     ancestor = str(Path.home())
-    monkeypatch.setenv("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", json.dumps([ancestor]))
+    monkeypatch.setenv(
+        "CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", json.dumps([str(layout["scratch_root"]), ancestor])
+    )
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SOURCE_SHA256", layout["source_sha256"])
     monkeypatch.setenv("CONVMEM_CONFIG", str(layout["config_path"]))
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(layout["denial_path"]))
     with pytest.raises(LiveDiagnosisRefused, match="scratch_is_ancestor_of_production"):
         bootstrap_watch_worker()
 
 
 def test_scratch_root_production_fail_closed(layout: dict, monkeypatch: pytest.MonkeyPatch) -> None:
     prod = str(Path.home() / ".local/share/convmem")
-    monkeypatch.setenv("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", json.dumps([prod]))
+    monkeypatch.setenv(
+        "CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", json.dumps([str(layout["scratch_root"]), prod])
+    )
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SOURCE_SHA256", layout["source_sha256"])
     monkeypatch.setenv("CONVMEM_CONFIG", str(layout["config_path"]))
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(layout["denial_path"]))
     with pytest.raises(LiveDiagnosisRefused, match="scratch_root_is_production"):
         bootstrap_watch_worker()
 
@@ -388,7 +408,8 @@ def test_config_outside_scratch_fail_closed(layout: dict, monkeypatch: pytest.Mo
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SOURCE_SHA256", layout["source_sha256"])
     monkeypatch.setenv("CONVMEM_CONFIG", str(Path.home() / ".config/convmem/config.toml"))
-    with pytest.raises(LiveDiagnosisRefused, match="outside_scratch"):
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(layout["denial_path"]))
+    with pytest.raises(LiveDiagnosisRefused, match="config_path_outside_scratch"):
         bootstrap_watch_worker()
 
 
@@ -401,6 +422,7 @@ def test_network_denied_under_hermetic(layout: dict, monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_BRIEF_PATH", str(layout["brief_path"]))
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_REGISTER_PATH", str(layout["register_path"]))
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SOURCE_PATH", str(layout["source"]))
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(layout["denial_path"]))
     monkeypatch.setenv(
         "CONVMEM_LIVE_DIAG_INDEX_PID_PATH",
         str(layout["index_pid_path"]),
@@ -423,7 +445,117 @@ def test_canary_drift_fail_closed() -> None:
     }
     drift = production_canary_drift_lines(before, after)
     assert len(drift) == 1
+    assert "modified" in drift[0]
     assert "brief" in drift[0]
+
+
+def test_canary_created_fail_closed() -> None:
+    key = "/tmp/new-canary"
+    before = {
+        key: PathCanary(key, "export", False, None, None, None, None, None, None)
+    }
+    after = {
+        key: PathCanary(key, "export", True, 1, 0o644, 1, "c" * 64, 0, 0)
+    }
+    drift = production_canary_drift_lines(before, after)
+    assert len(drift) == 1
+    assert drift[0].startswith("created ")
+
+
+def test_worker_never_receives_incident_source(layout: dict) -> None:
+    original = layout["incident_source_path"]
+    assert not original.resolve().is_relative_to(layout["scratch_root"].resolve())
+    assert str(original) not in _worker_command(layout)
+    env = arm_diagnosis_env(
+        scratch_root=layout["scratch_root"],
+        phase_path=layout["phase_path"],
+        telemetry_path=layout["telemetry_path"],
+        source_sha256=layout["source_sha256"],
+        source_size=layout["source_size"],
+        source_mtime_ns=layout["source_mtime_ns"],
+        config_path=layout["config_path"],
+    )
+    bind_backup_manifest_digest(env, layout["backup_manifest_file_sha256"])
+    assert not any(str(original) in value for value in env.values())
+
+
+def _incident_only(snapshot: dict, key: str) -> dict:
+    return {k: v for k, v in snapshot.items() if k == key}
+
+
+def test_d1_ledger_canary_paths_match_canonical_writers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import conflict_events
+    import propose_decision
+    from tests import watch_oom_live_diagnosis_support as support
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(support, "production_canary_paths", lambda: [])
+    share = tmp_path / ".local/share/convmem"
+    cfg = {"index": {"chroma_dir": str(share / "chroma")}}
+    incident = tmp_path / "original-source.jsonl"
+    census = dict((str(path), surface) for surface, path in support.d1_mandatory_canary_paths(incident))
+
+    expected = {
+        propose_decision.queue_path(cfg): "ledger_jsonl",
+        propose_decision.approved_path(cfg): "ledger_jsonl",
+        conflict_events.event_path(cfg): "ledger_jsonl",
+        share / "shadow" / "ledger.jsonl": "ledger_jsonl",
+        conflict_events.lock_path(cfg): "governed_lock",
+    }
+    for path, surface in expected.items():
+        assert census.get(str(path)) == surface, path
+    assert not any(Path(key).name == "approved_decisions.jsonl" for key in census)
+
+    shadow_ledger = str(share / "shadow" / "ledger.jsonl")
+    before = _incident_only(support.snapshot_d1_parent_canaries(incident), shadow_ledger)
+    assert before[shadow_ledger].exists is False
+    (share / "shadow").mkdir(parents=True)
+    (share / "shadow" / "ledger.jsonl").write_text("{}\n", encoding="utf-8")
+    after = _incident_only(support.snapshot_d1_parent_canaries(incident), shadow_ledger)
+    assert production_canary_drift_lines(before, after) == [f"created ledger_jsonl {shadow_ledger}"]
+
+
+def test_parent_detects_external_incident_source_drift(layout: dict) -> None:
+    original = layout["incident_source_path"]
+    key = str(original)
+    before = _incident_only(snapshot_production_canaries_for_parent(original), key)
+    assert before[key].exists is True
+
+    original.write_bytes(original.read_bytes() + b'{"role":"user"}\n')
+    modified = _incident_only(snapshot_production_canaries_for_parent(original), key)
+    assert production_canary_drift_lines(before, modified) == [f"modified incident_source {key}"]
+
+    original.unlink()
+    deleted = _incident_only(snapshot_production_canaries_for_parent(original), key)
+    assert production_canary_drift_lines(modified, deleted) == [f"deleted incident_source {key}"]
+
+    original.write_bytes(b"{}\n")
+    created = _incident_only(snapshot_production_canaries_for_parent(original), key)
+    assert production_canary_drift_lines(deleted, created) == [f"created incident_source {key}"]
+
+
+def test_denial_path_missing_fail_closed(layout: dict, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", json.dumps([str(layout["scratch_root"])]))
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_SOURCE_SHA256", layout["source_sha256"])
+    monkeypatch.setenv("CONVMEM_CONFIG", str(layout["config_path"]))
+    monkeypatch.delenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", raising=False)
+    with pytest.raises(LiveDiagnosisRefused, match="denial_path_missing"):
+        bootstrap_watch_worker()
+
+
+def test_backup_manifest_in_scratch_rejected(layout: dict) -> None:
+    inside = layout["arm"] / "internal_manifest.json"
+    inside.write_text('{"processed.json": "' + "a" * 64 + '"}', encoding="utf-8")
+    with pytest.raises(RuntimeError, match="backup_manifest_must_be_external_to_scratch"):
+        parent_verify_backup_manifest_supply(
+            manifest_path=inside,
+            scratch_roots_json=json.dumps([str(layout["scratch_root"])]),
+            expected_file_sha256=backup_manifest_file_sha256(inside),
+            corpus_root=layout["arm"] / "seed",
+        )
 
 
 def test_missing_telemetry_fail_closed(tmp_path: Path) -> None:
@@ -448,12 +580,18 @@ def test_prefix_route_isolation_hermetic(layout: dict) -> None:
     assert "brief_refresh_done" in phases or "export_compaction_done" in phases
 
 
-def test_injected_kill_preserves_phase_log(layout: dict) -> None:
+def test_injected_kill_blocked_with_phase_evidence(layout: dict) -> None:
     out = _run_worker(layout, mode="injected_kill")
     worker = out["worker"]
-    assert worker.get("status") in {"blocked", "failed", "succeeded"}
+    assert worker.get("status") == "blocked"
+    assert worker.get("mode") == "injected_kill"
+    assert worker.get("kill_marker") == "worker_popen_sigkill"
     phases = read_phases(layout["phase_path"])
     assert "watch_route_start" in phases
+    assert "injected_kill_before_index_spawn" in phases
+    assert "injected_kill_index_sigkill" in phases
+    assert "watch_route_error" in phases
+    assert "index_hash_done" not in phases
 
 
 @pytest.mark.skipif(not RUN_CGROUP, reason="set CONVMEM_D1_CGROUP=1 for cgroup integration")
@@ -482,6 +620,7 @@ def test_cgroup_dual_boundary_injected_kill_stages(layout: dict) -> None:
         config_path=layout["config_path"],
         gate_auto_go=False,
     )
+    bind_backup_manifest_digest(env, layout["backup_manifest_file_sha256"])
     env["CONVMEM_LIVE_DIAG_SOURCE_PATH"] = str(layout["source"])
     gate_path = Path(env["CONVMEM_LIVE_DIAG_INDEX_GATE_PATH"])
     command = _worker_command(layout)
@@ -489,7 +628,7 @@ def test_cgroup_dual_boundary_injected_kill_stages(layout: dict) -> None:
     ready = layout["arm"] / f"cgroup-kill-{uuid.uuid4().hex}.ready"
     command.extend(("--cgroup-enforced", "--cgroup-ready", str(ready)))
     canaries_before = snapshot_production_canaries_for_parent(
-        layout["incident_source_canary"]
+        layout["incident_source_path"]
     )
     try:
         result = _run_cgroup_dual_boundary(
@@ -505,8 +644,10 @@ def test_cgroup_dual_boundary_injected_kill_stages(layout: dict) -> None:
             env=env,
             source_path=layout["source"],
             denial_path=Path(env["CONVMEM_LIVE_DIAG_DENIAL_PATH"]),
-            incident_source_canary=layout["incident_source_canary"],
+            incident_source=layout["incident_source_path"],
             canaries_before=canaries_before,
+            manifest_path=layout["backup_manifest_path"],
+            manifest_sha256=layout["backup_manifest_file_sha256"],
         )
     assert result["index_killed_at_gate"] is True
     assert result["dual_boundary_verified"] is True
@@ -735,146 +876,6 @@ def test_arm_diagnosis_env_rejects_missing_config(layout: dict) -> None:
 def test_backup_manifest_unavailable_fail_closed(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="backup_manifest_unavailable"):
         load_external_backup_manifest(tmp_path / "missing.json")
-
-
-def test_net_probe_parent_positive_control() -> None:
-    with parent_loopback_listener() as port:
-        assert parent_can_connect_loopback(port) is True
-
-
-def test_net_probe_verify_dual_artifacts(tmp_path: Path) -> None:
-    parent_ns = parent_net_namespace_id() or "net:[parent]"
-    outer_path = tmp_path / "outer.json"
-    inner_path = tmp_path / "inner.json"
-    outer_path.write_text(
-        json.dumps(
-            {
-                "role": "outer",
-                "pid": 100,
-                "port": 12345,
-                "netns_id": "net:[child]",
-                "connected": False,
-                "status": "connect_failed",
-                "errno": 111,
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    inner_path.write_text(
-        json.dumps(
-            {
-                "role": "inner",
-                "pid": 200,
-                "port": 12345,
-                "netns_id": "net:[child]",
-                "connected": False,
-                "status": "connect_failed",
-                "errno": 111,
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    verify_dual_net_probe_artifacts(
-        outer_path=outer_path,
-        inner_path=inner_path,
-        port=12345,
-        parent_netns=parent_ns,
-        parent_positive_control=True,
-        outer_pid=100,
-        inner_pid=200,
-    )
-    bad_outer = tmp_path / "bad_outer.json"
-    bad_inner = tmp_path / "bad_inner.json"
-    for path, role, pid in (
-        (bad_outer, "outer", 1),
-        (bad_inner, "inner", 2),
-    ):
-        path.write_text(
-            json.dumps(
-                {
-                    "role": role,
-                    "pid": pid,
-                    "port": 12345,
-                    "netns_id": parent_ns,
-                    "connected": False,
-                    "status": "connect_failed",
-                }
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-    with pytest.raises(NetProbeVerificationError, match="net_probe_target_netns_equals_parent"):
-        verify_dual_net_probe_artifacts(
-            outer_path=bad_outer,
-            inner_path=bad_inner,
-            port=12345,
-            parent_netns=parent_ns,
-            parent_positive_control=True,
-        )
-
-
-def test_net_probe_self_artifact_in_isolated_net(tmp_path: Path) -> None:
-    if not bwrap_available():
-        pytest.skip("bwrap unavailable")
-    import subprocess
-
-    outer_artifact = tmp_path / "outer.json"
-    port_holder: list[int] = []
-
-    def run_in_bwrap() -> None:
-        with parent_loopback_listener() as port:
-            port_holder.append(port)
-            cmd = [
-                "bwrap",
-                "--unshare-net",
-                *BWRAP_RO_ROOT_ARGS,
-                "--bind",
-                str(tmp_path),
-                str(tmp_path),
-                "--",
-                sys.executable,
-                "-c",
-                (
-                    "import sys\n"
-                    f"sys.path.insert(0, {str(ROOT)!r})\n"
-                    "from pathlib import Path\n"
-                    "from tests.watch_oom_live_diagnosis_net_probe import write_self_loopback_probe\n"
-                    f"write_self_loopback_probe(port={port}, result_path=Path({str(outer_artifact)!r}), role='outer')\n"
-                ),
-            ]
-            result = subprocess.run(
-                cmd, cwd=ROOT, capture_output=True, text=True, timeout=30, check=False
-            )
-            assert result.returncode == 0, result.stderr
-
-    run_in_bwrap()
-    payload = json.loads(outer_artifact.read_text(encoding="utf-8"))
-    assert payload["connected"] is False
-    assert payload["port"] == port_holder[0]
-    parent_ns = parent_net_namespace_id()
-    assert parent_ns
-    assert payload["netns_id"] != parent_ns
-
-
-def test_bwrap_filesystem_capabilities(tmp_path: Path) -> None:
-    if not bwrap_available():
-        pytest.skip("bwrap unavailable")
-    scratch = tmp_path / "scratch"
-    scratch.mkdir()
-    source = tmp_path / "source.jsonl"
-    source.write_text("{}\n", encoding="utf-8")
-    repo_probe = ROOT / "tests" / "watch_oom_live_diagnosis_bwrap.py"
-    caps = run_bwrap_capability_check(
-        scratch_root=scratch,
-        source_path=source,
-        repo_root=ROOT,
-        repo_probe_file=repo_probe,
-    )
-    assert caps["scratch_writable"] is True
-    assert caps["source_readonly"] is True
-    assert caps["repo_readonly"] is True
 
 
 def test_d2_kernel_isolation_documented() -> None:

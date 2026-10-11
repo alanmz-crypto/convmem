@@ -60,6 +60,7 @@ def d1_worker_enter_bwrap_or_exit(
     scratch_root: Path,
     source_path: Path,
     repo_root: Path,
+    external_ro_binds: list[Path] | None = None,
 ) -> None:
     """Hermetic D1 worker routes must run under bwrap (RO root, writable scratch, unshared net)."""
     if os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") != "1":
@@ -85,6 +86,7 @@ def d1_worker_enter_bwrap_or_exit(
         scratch_root=scratch_root.resolve(),
         source_path=source_path.resolve(),
         repo_root=repo_root.resolve(),
+        external_ro_binds=external_ro_binds,
     )
     env = os.environ.copy()
     env[D1_BWRAP_ACTIVE_ENV] = "1"
@@ -142,10 +144,17 @@ def d1_parent_teardown_postcheck(
     env: dict[str, str],
     source_path: Path,
     denial_path: Path,
-    incident_source_canary: Path,
+    incident_source: Path,
     canaries_before: dict,
+    manifest_path: Path | None = None,
+    manifest_sha256: str | None = None,
 ) -> None:
     """Fail-closed parent postchecks (denials, frozen source, production canaries)."""
+    if manifest_path is not None and manifest_sha256:
+        assert_backup_manifest_external(manifest_path, env["CONVMEM_LIVE_DIAG_SCRATCH_ROOTS"])
+        assert_backup_manifest_file_identity(manifest_path, expected_sha256=manifest_sha256)
+        # Corpus bytes may change during a successful index; post-check binds manifest file
+        # identity only (independent parent-supplied digest), not D2 restic validation.
     assert_denial_events_empty(denial_path)
     inner_ack = Path(env["CONVMEM_LIVE_DIAG_INNER_ACK_PATH"])
     inner_final = Path(env["CONVMEM_LIVE_DIAG_INNER_FINAL_PATH"])
@@ -157,7 +166,7 @@ def d1_parent_teardown_postcheck(
         assert_source_identity_postcheck(source_path)
     assert_parent_production_canaries_unchanged(
         canaries_before,
-        incident_source=incident_source_canary,
+        incident_source=incident_source,
     )
 
 
@@ -198,6 +207,56 @@ def assert_scratch_canaries_unchanged(
 ) -> None:
     if before != after:
         raise RuntimeError(f"scratch canary drift: before={before} after={after}")
+
+
+BACKUP_MANIFEST_SHA256_ENV = "CONVMEM_LIVE_DIAG_BACKUP_MANIFEST_SHA256"
+
+def backup_manifest_file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def backup_manifest_entries_fingerprint(entries: dict[str, str]) -> str:
+    """Independent digest of supplied manifest entries (synthetic control only)."""
+    payload = json.dumps(entries, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def assert_backup_manifest_external(manifest_path: Path, scratch_roots_json: str) -> None:
+    roots = json.loads(scratch_roots_json)
+    scratch_paths = [Path(str(item)).expanduser().resolve() for item in roots]
+    resolved = manifest_path.expanduser().resolve()
+    for root in scratch_paths:
+        if resolved == root or resolved.is_relative_to(root):
+            raise RuntimeError("backup_manifest_must_be_external_to_scratch")
+
+
+def assert_backup_manifest_file_identity(
+    manifest_path: Path,
+    *,
+    expected_sha256: str,
+) -> None:
+    observed = backup_manifest_file_sha256(manifest_path)
+    if observed != expected_sha256:
+        raise RuntimeError("backup_manifest_identity_drift")
+
+
+def parent_verify_backup_manifest_supply(
+    *,
+    manifest_path: Path,
+    scratch_roots_json: str,
+    expected_file_sha256: str,
+    corpus_root: Path,
+    expected_fingerprint: str | None = None,
+) -> None:
+    """Parent-side pre/post: manifest outside scratch with stable file identity."""
+    assert_backup_manifest_external(manifest_path, scratch_roots_json)
+    assert_backup_manifest_file_identity(manifest_path, expected_sha256=expected_file_sha256)
+    manifest = load_external_backup_manifest(manifest_path)
+    verify_backup_manifest(
+        manifest=manifest,
+        corpus_root=corpus_root,
+        expected_fingerprint=expected_fingerprint,
+    )
 
 
 def verify_backup_manifest(
@@ -267,6 +326,15 @@ def d1_mandatory_canary_paths(incident_source: Path) -> list[tuple[str, Path]]:
         "synthesis_failures.jsonl",
     ):
         add("failure_log", share / rel)
+    for rel in (
+        "pending_decisions.jsonl",
+        "decisions-approved.jsonl",
+        "pending_decision_events.jsonl",
+        "observations.jsonl",
+        "shadow/ledger.jsonl",
+    ):
+        add("ledger_jsonl", share / rel)
+    add("governed_lock", share / "governed-ledger.lock")
     add("writer_gate", share / "locks/chroma_writer_gate.lock")
     chroma_root = share / "chroma"
     if chroma_root.is_dir():
@@ -354,10 +422,25 @@ def refresh_d1_parent_canaries(before: dict[str, PathCanary]) -> dict[str, PathC
 
 def production_canary_drift_lines(before: dict, after: dict) -> list[str]:
     drift: list[str] = []
-    for key, left in before.items():
+    for key in sorted(set(before) | set(after)):
+        left = before.get(key)
         right = after.get(key)
-        if right != left:
-            drift.append(f"{left.surface} {key}")
+        if left is None and right is not None:
+            drift.append(f"created {right.surface} {key}")
+            continue
+        if right is None and left is not None:
+            drift.append(f"removed {left.surface} {key}")
+            continue
+        if left is None or right is None:
+            continue
+        if left == right:
+            continue
+        if not left.exists and right.exists:
+            drift.append(f"created {right.surface} {key}")
+        elif left.exists and not right.exists:
+            drift.append(f"deleted {left.surface} {key}")
+        else:
+            drift.append(f"modified {left.surface} {key}")
     return drift
 
 
@@ -472,6 +555,7 @@ def arm_diagnosis_env(
         {
             "CONVMEM_CONFIG": str(cfg.resolve()),
             "CONVMEM_LIVE_DIAG_SCRATCH_ROOTS": roots,
+            "CONVMEM_LIVE_DIAG_DENIAL_PATH": str(denial_path),
             "CONVMEM_LIVE_DIAG_PHASE_PATH": str(phase_path),
             "CONVMEM_LIVE_DIAG_HERMETIC": "1",
             "CONVMEM_LIVE_DIAG_SOURCE_SHA256": source_sha256,
@@ -481,7 +565,6 @@ def arm_diagnosis_env(
             "CONVMEM_LIVE_DIAG_WORKER_PID_PATH": str(worker_pid_path),
             "CONVMEM_LIVE_DIAG_INNER_SCOPE_MARKER": str(inner_scope_marker),
             "CONVMEM_LIVE_DIAG_INDEX_PID_PATH": str(index_pid_path),
-            "CONVMEM_LIVE_DIAG_DENIAL_PATH": str(denial_path),
             "CONVMEM_LIVE_DIAG_INDEX_GATE_PATH": str(gate_path),
             "CONVMEM_LIVE_DIAG_INNER_FINAL_PATH": str(inner_final_path),
             "CONVMEM_LIVE_DIAG_INNER_ACK_PATH": str(inner_ack_path),
@@ -508,6 +591,14 @@ def arm_diagnosis_env(
     register = scratch_root / "arm" / "seed" / "standing-checks-register.json"
     if register.is_file():
         env["CONVMEM_LIVE_DIAG_REGISTER_PATH"] = str(register)
+    return env
+
+
+def bind_backup_manifest_digest(env: dict[str, str], manifest_sha256: str) -> dict[str, str]:
+    """Pass the parent-computed external manifest digest to the worker."""
+    if len(manifest_sha256) != 64:
+        raise ValueError("manifest_sha256 must be a 64-char hex digest")
+    env[BACKUP_MANIFEST_SHA256_ENV] = manifest_sha256
     return env
 
 
@@ -565,11 +656,8 @@ def prepare_scratch_arm(tmp_root: Path, *, corpus_n: int = 8, prefix_lines: int 
     phase_path = arm / "phases.jsonl"
     telemetry_path = arm / "telemetry.jsonl"
     source_stat = source.stat()
-    incident_source_canary = arm / "incident_source_canary.jsonl"
-    incident_source_canary.write_text("", encoding="utf-8")
     inner_scope_marker = arm / "inner_scope_unit.txt"
     index_pid_path = arm / "index.pid"
-    backup_manifest_path = arm / "external_backup_manifest.json"
     return {
         "arm": arm,
         "scratch_root": tmp_root,
@@ -578,8 +666,6 @@ def prepare_scratch_arm(tmp_root: Path, *, corpus_n: int = 8, prefix_lines: int 
         "source_sha256": source_sha,
         "source_size": source_stat.st_size,
         "source_mtime_ns": source_stat.st_mtime_ns,
-        "incident_source_canary": incident_source_canary,
-        "backup_manifest_path": backup_manifest_path,
         "chroma_dir": chroma_dir,
         "processed": processed,
         "units_export": units_export,
