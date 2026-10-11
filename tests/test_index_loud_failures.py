@@ -91,18 +91,21 @@ class AbortOnProviderRefusalTests(unittest.TestCase):
     }
 
     def _build(self):
-        return build_chunk_artifact(
-            chunk=self.CHUNK,
-            path="/tmp/session.jsonl",
-            path_key="/tmp/session.jsonl",
-            models=self.MODELS,
-            tool="codex",
-            chunk_size=60,
-            overlap=10,
-            min_confidence=0.6,
-            verbose=False,
-            retry_sleep=False,
-        )
+        with tempfile.TemporaryDirectory() as tmp, mock.patch(
+            "ingest._SYNTHESIS_FAIL_LOG", Path(tmp) / "synthesis_failures.jsonl"
+        ):
+            return build_chunk_artifact(
+                chunk=self.CHUNK,
+                path="/tmp/session.jsonl",
+                path_key="/tmp/session.jsonl",
+                models=self.MODELS,
+                tool="codex",
+                chunk_size=60,
+                overlap=10,
+                min_confidence=0.6,
+                verbose=False,
+                retry_sleep=False,
+            )
 
     def test_billing_refusal_aborts_immediately(self):
         with mock.patch(
