@@ -9,9 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor (provisional name) — KIRO REVIEW NEXT (2026-10-11):** Codex
-  recorded Opus's completed delta review and added its requested E7 clarification;
-  the next lane is Kiro governing sign-off, then Ryan's direction decision.
+- **Arc Safe Harbor (provisional name) — RYAN DECISION / E4 OPEN (2026-10-11):**
+  Codex recorded the completed Opus and Kiro direction reviews. Ryan's direction
+  decision and the E4 backup-interface prerequisite remain before execution planning.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
   for review scope. No execution plan or live action is authorized.

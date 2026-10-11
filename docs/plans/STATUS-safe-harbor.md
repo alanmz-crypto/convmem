@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor (provisional name). DRAFT / NOT APPROVED.** Current planning state; no implementation or operational authority. Read the architecture for normative proposed contracts; this brief is the orientation source.
+> **Arc: Safe Harbor (provisional name). REVIEWED DIRECTION / RYAN APPROVAL PENDING; E4 OPEN.** Current planning state; no implementation or operational authority. Read the architecture for normative proposed contracts; this brief is the orientation source.
 
 ## 1. What This Is For (product goal)
 
@@ -35,7 +35,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- `ARCHITECTURE-safe-harbor.md`: direction draft on `plan/2026-10-11-safe-harbor`; Opus's delta review passed at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%). Its exact non-blocking E7 disposition clause has been added; no other contract change followed that review. Kiro reviews the current revision; Opus's PASS remains pinned to the revision it reviewed.
+- `ARCHITECTURE-safe-harbor.md`: reviewed direction on `plan/2026-10-11-safe-harbor`; Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at `5ea16a6c7af7900b981d19eb03b168d77f611718` (88%). Kiro reviewed the E7 clarification and required no corrections. This follow-up records review status/routing only; verdicts remain pinned to their reviewed revisions.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
@@ -48,33 +48,33 @@ The scope is application cooperation, not same-user security. Read clients can p
 ## 4. Completion State
 
 - Review synthesis and pre-reboot checkpoint: preserved at `bc3a6fd34bc594024d53fb86c9ca6b312cb64bd1` on the separate checkpoint branch.
-- Architecture direction: **DRAFT / CORRECTED**, one recommended option; standing index/plain-add gate exemptions retained explicitly, all unresolved incidents retained in the existing authority. Seven planning obligations are recorded in architecture section 8.
+- Architecture direction: **REVIEWED / AWAITING RYAN**, one recommended option; standing index/plain-add gate exemptions retained explicitly, all unresolved incidents retained in the existing authority. Seven planning obligations are recorded in architecture section 8.
 - Arc name: **PROVISIONAL**; Ryan was asked to confirm or rename it.
 - Opus review/delta: **COMPLETE — DELTA PASS at `505a422` (85%)**. Both blockers resolved; E1–E7 accepted as planning obligations. Opus explicitly required no further round for its exact E7 clarification, now included.
-- Kiro governing design sign-off: **NOT STARTED for this artifact**.
+- Kiro governing design sign-off: **PASS at `5ea16a6` (88%)**, no direction blockers; relayed by Ryan in this conversation.
+- E4 backup-interface review / ownership transfer: **OPEN**. Kiro explicitly did not satisfy E4 or infer a transfer; it remains a prerequisite before execution planning.
 - Ryan direction approval: **PENDING**.
 - Execution Planning, implementation, verification and deployment: **NOT AUTHORIZED by this brief**.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** The Opus corrections and requested E7 clarification are complete; await Kiro's governing review. Stop before execution planning until Ryan accepts the direction and the backup-interface ownership prerequisite is satisfied. Do not convert proposed contracts or backup reports into verified evidence.
+**Codex:** Direction reviews are complete; await Ryan's decision and satisfaction of E4 before execution planning. Do not treat a design PASS as a phase grant, completed evidence or backup qualification.
 
 **Opus:** The first review and delta cadence is complete. No further review for the requested E7 clause; return only if new contracts beyond that clarification are introduced.
 
-**Kiro:** Review the exact current direction and provide governing design sign-off. Opus's PASS at `505a422` and the subsequent E7 clarification are documented in architecture section 10; neither replaces your gate.
+**Kiro:** Governing direction review is complete at `5ea16a6`. Its scope excludes E4; any targeted Complete-data Backup v2 interface review needs a separate, explicit scope and verdict.
 
-**Ryan:** Confirm the title, provide the recovery/loss-window inputs, and decide whether to approve the reviewed direction. Operational grants remain distinct.
+**Ryan:** Accept/reject the direction, including disposition after every automatic restore; confirm the title and provide recovery/loss-window inputs. Arrange the targeted E4 review or explicitly transfer its ownership before execution planning. Operational grants remain distinct.
 
 **Cursor / ops:** Do not implement or deploy from this brief. Wait for the accepted downstream plan and a named phase/operation grant.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Kiro reviews the exact current architecture and supplies governing sign-off; any findings return through the applicable review/approval process.
-2. Resolve owner inputs without inferring image usability or a loss window; Ryan accepts or rejects the direction, including operator disposition after every automatic restore.
-3. Before execution planning, obtain Complete-data Backup v2 interface review or Ryan's explicit transfer for resolver/eligibility/gate changes.
-4. Only after acceptance and that ownership prerequisite: execution/verification planning must resolve E1–E7 before the plan can be accepted, under the applicable review/approval gates.
-5. Only after a separate grant: bounded implementation and isolated evidence gathering.
-6. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
+1. Ryan accepts or rejects the reviewed direction, including operator disposition after every automatic restore, and confirms or renames the arc.
+2. Before execution planning, obtain Complete-data Backup v2 interface review or Ryan's explicit transfer for resolver/eligibility/gate changes; the Safe Harbor design PASS does not satisfy this prerequisite.
+3. Under the subsequent planning grant, execution/verification planning must resolve E1–E7 before the plan can be accepted, under the applicable review/approval gates. Resolve recovery/loss-window inputs without inferring image usability or owner acceptance.
+4. Only after a separate grant: bounded implementation and isolated evidence gathering.
+5. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
 
 ## 7. Hard Stops (models cannot cross)
 
@@ -109,7 +109,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Codex: resumed from the GitHub checkpoint and authored the provisional Safe Harbor direction/brief; independent review and Ryan approval remain pending.
 - 2026-10-11 — Codex: corrected Opus's two first-review blockers and recorded E1–E7; exact-revision delta review is next, with Kiro sign-off and Ryan approval still pending.
 - 2026-10-11 — Codex: recorded Opus delta PASS at `505a422` and added its exact E7 disposition clause; Kiro governing review is next, with Ryan approval pending.
+- 2026-10-11 — Codex: recorded Kiro governing PASS at `5ea16a6` (88%); Ryan's direction decision and E4 remain open, with no execution-planning or live-action grant.
 
 ## TL;DR
 
-[Arc Safe Harbor, provisional] Opus's delta passed at `505a422` (85%); its exact E7 clarification now invalidates human disposition when later findings appear. Kiro governing sign-off is next, then Ryan's direction decision. E1–E7 remain planning obligations; no implementation or live action is authorized. Fresh-image completion and the loss window remain open.
+[Arc Safe Harbor, provisional] Opus delta PASS (85%) and Kiro governing PASS (88%) are recorded at their exact revisions. Ryan's direction decision and E4's backup-interface review or explicit ownership transfer remain open before execution planning. E1–E7 are obligations, not proven implementation; fresh-image completion and the loss window remain unconfirmed. No live action is authorized.
