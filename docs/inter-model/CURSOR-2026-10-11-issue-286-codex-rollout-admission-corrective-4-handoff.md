@@ -53,6 +53,27 @@ If one path can bypass them, the protection doesn't hold.
 
 ---
 
+## Sync with `main` first (added 2026-10-11)
+
+`main` moved to `6a23aa9` (PR #384, the Kiro bootstrap test-isolation fix)
+after this branch was cut. That PR rewrote §4–§6, the Update Log and the
+TL;DR of `docs/plans/STATUS-codex-jsonl-production-integration.md` for the
+Kiro bootstrap track, so the branch now conflicts with `main` in that one
+file. Code doesn't conflict.
+
+- Bring `main` in with `git merge origin/main`. Don't rebase: that would
+  need a force-push, which agents never do.
+- Resolve the STATUS file by taking `main`'s version, then re-adding only
+  the Codex-rollout parts from this branch:
+  - the "Codex rollout admission design" row in §4;
+  - the Codex-rollouts sentences in the §5 role text;
+  - the "Codex rollouts" list in §6;
+  - this arc's 2026-10-10/11 Update Log lines.
+- Don't edit `main`'s Kiro bootstrap text, even where it's out of date.
+  Report anything you think is stale instead.
+
+---
+
 ## Findings and required fixes
 
 | # | Sev | Finding (reviewer) | Location at `905ad40` | Required fix |
@@ -123,6 +144,8 @@ and passes after the fix:
       (mirror `.github/workflows` for how the report is produced).
 - [ ] The secret scan, critical invariants, writer inventories and canary
       baselines pass; refresh any of them that drift.
+- [ ] `origin/main` (at least `6a23aa9`) is merged in, and the branch merges
+      cleanly with `main`.
 - [ ] No live resource is touched.
 
 ---
@@ -130,7 +153,10 @@ and passes after the fix:
 ## Branch convention
 
 Same branch: `feat/2026-10-10-issue-286-codex-rollout-admission`. First
-cherry-pick the docs commit that adds this file. It carries the D8 prose
+cherry-pick, in order, every commit on
+`origin/docs/2026-10-10-issue-286-codex-rollout-admission-design` after
+`cf74166`: the one that adds this file and the one that adds the sync step.
+Then merge `origin/main` (see Sync with `main`). It carries the D8 prose
 update and the §13 record of Kiro's rulings, and both are normative. Push
 after every commit with an explicit refspec. Ryan squash-merges.
 
