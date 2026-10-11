@@ -1,4 +1,4 @@
-# pylint: disable=protected-access,too-many-locals,too-many-branches,too-many-statements
+# pylint: disable=protected-access,too-many-locals,too-many-branches,too-many-statements,too-many-lines,too-many-instance-attributes,too-many-arguments,too-many-nested-blocks
 """Parent-side cgroup/process sampler for issue #268 D1 (outside worker cgroup)."""
 
 from __future__ import annotations
@@ -23,6 +23,13 @@ from live_diagnosis import (
     GATE_SPAWN_GRANTED,
 )
 
+from tests.watch_oom_cgroup_common import (
+    assert_fresh_cgroup_ready_path,
+    register_popen_streams,
+    run_popen_supervised_drain,
+    stop_unit_and_kill_proc,
+    systemd_run_memory_properties,
+)
 from tests.watch_oom_cgroup_runner import (
     CGROUP_ROOT,
     _assert_limits,
@@ -703,11 +710,7 @@ def run_d1_capped_worker(
         if worker_env and worker_env.get("CONVMEM_LIVE_DIAG_INNER_ACK_PATH")
         else None
     )
-    if ready_path.exists() or not ready_path.parent.is_dir():
-        raise RuntimeError("cgroup-ready path must be fresh under an existing arm")
-    temp_ready = ready_path.with_name(ready_path.name + ".tmp")
-    if temp_ready.exists():
-        raise RuntimeError("temporary cgroup-ready path already exists")
+    temp_ready = assert_fresh_cgroup_ready_path(ready_path)
     if expected_inner_bytes is not None:
         assert_memory_headroom(outer_bytes=expected_bytes, inner_bytes=expected_inner_bytes)
     worker_env_mutable = dict(worker_env) if worker_env else {}
@@ -763,11 +766,7 @@ def run_d1_capped_worker(
             "--quiet",
             "--same-dir",
             f"--unit={unit}",
-            "--property=MemoryAccounting=yes",
-            f"--property=MemoryMax={expected_bytes}",
-            "--property=MemorySwapMax=0",
-            "--property=OOMPolicy=continue",
-            f"--property=RuntimeMaxSec={int(timeout + 30)}s",
+            *systemd_run_memory_properties(expected_bytes=expected_bytes, timeout=timeout),
         ]
         command.extend(
             d1_systemd_network_properties(
@@ -798,25 +797,20 @@ def run_d1_capped_worker(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        assert proc.stdout is not None and proc.stderr is not None
-        selector.register(proc.stdout, selectors.EVENT_READ)
-        selector.register(proc.stderr, selectors.EVENT_READ)
-        output = {proc.stdout: bytearray(), proc.stderr: bytearray()}
+        output = register_popen_streams(selector, proc)
         deadline = time.monotonic() + timeout
-        while selector.get_map() or proc.poll() is None:
-            if time.monotonic() >= deadline:
-                timed_out = True
-                if not _own_unit_action("stop", unit):
-                    _own_unit_action("kill", unit)
-                proc.terminate()
-                break
+
+        def _between_polls() -> None:
+            nonlocal dual, outer_sampler, group, group_path, limit_claim
+            nonlocal oom_policy_verified, phase_watch, dual_boundary_verified
+            nonlocal inner_final_ack_done
             if dual is None and proc.poll() is None:
                 try:
                     group_path = _unit_property(unit, "ControlGroup")
                     if group_path:
                         oom_policy = _unit_property(unit, "OOMPolicy")
                         if oom_policy != "continue":
-                            continue
+                            return
                         oom_policy_verified = True
                         group = cgroup_root / group_path.lstrip("/")
                         limit_claim = _assert_limits(
@@ -841,7 +835,9 @@ def run_d1_capped_worker(
                             )
                             gate_path = index_gate_path
                             if gate_path is None:
-                                raw_gate = worker_env_mutable.get("CONVMEM_LIVE_DIAG_INDEX_GATE_PATH", "")
+                                raw_gate = worker_env_mutable.get(
+                                    "CONVMEM_LIVE_DIAG_INDEX_GATE_PATH", ""
+                                )
                                 if raw_gate.strip():
                                     gate_path = Path(raw_gate)
                             dual = DualBoundaryController(
@@ -874,9 +870,8 @@ def run_d1_capped_worker(
                             outer_sampler.sample(force=True, reason="cgroup_attached")
                             if outer_sampler.samples == 0:
                                 raise RuntimeError("parent telemetry unreadable before worker start")
-                        if dual is not None:
-                            if dual.outer.samples == 0:
-                                raise RuntimeError("parent telemetry unreadable before worker start")
+                        if dual is not None and dual.outer.samples == 0:
+                            raise RuntimeError("parent telemetry unreadable before worker start")
                         temp_ready.write_text("ready\n", encoding="ascii")
                         temp_ready.replace(ready_path)
                 except (OSError, subprocess.SubprocessError):
@@ -909,18 +904,16 @@ def run_d1_capped_worker(
                     if phase_watch is not None:
                         for phase in phase_watch.poll_new_phases():
                             outer_sampler.sample(reason=f"phase:{phase}", force=True)
-            for key, _ in selector.select(timeout=0.02):
-                chunk = os.read(key.fd, 65536)
-                if chunk:
-                    output[key.fileobj].extend(chunk)
-                else:
-                    selector.unregister(key.fileobj)
-            if proc.poll() is not None and not selector.get_map():
-                break
-        if timed_out:
-            proc.wait(timeout=5)
-        else:
-            proc.wait(timeout=max(1, deadline - time.monotonic()))
+
+        timed_out = run_popen_supervised_drain(
+            selector,
+            proc,
+            output,
+            deadline,
+            unit=unit,
+            own_unit_action=_own_unit_action,
+            between_polls=_between_polls,
+        )
         if dual is not None and group is not None:
             if phase_watch is not None:
                 for phase in phase_watch.poll_new_phases():
@@ -1012,14 +1005,8 @@ def run_d1_capped_worker(
         selector.close()
         temp_ready.unlink(missing_ok=True)
         try:
-            if proc is not None and proc.poll() is None:
-                if not _own_unit_action("stop", unit):
-                    _own_unit_action("kill", unit)
-                try:
-                    proc.kill()
-                except ProcessLookupError:
-                    pass
-                proc.wait(timeout=5)
+            if proc is not None:
+                stop_unit_and_kill_proc(unit=unit, proc=proc, own_unit_action=_own_unit_action)
         finally:
             _own_unit_action("reset-failed", unit)
 

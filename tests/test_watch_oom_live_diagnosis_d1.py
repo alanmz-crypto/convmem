@@ -24,7 +24,7 @@ from live_diagnosis import (
     bootstrap_watch_worker,
     teardown_hermetic_guards,
 )
-from tests.watch_oom_exposure_index_e2e_support import PathCanary, snapshot_canaries
+from tests.watch_oom_exposure_index_e2e_support import PathCanary
 from tests.watch_oom_live_diagnosis_parent import (
     D2_KERNEL_ISOLATION_BLOCKER,
     _raise_d1_worker_run_failure,
@@ -36,6 +36,7 @@ from tests.watch_oom_live_diagnosis_parent import (
     sanitize_d1_worker_stream,
 )
 from tests.watch_oom_live_diagnosis_bwrap import (
+    BWRAP_RO_ROOT_ARGS,
     bwrap_available,
     run_bwrap_capability_check,
 )
@@ -45,13 +46,11 @@ from tests.watch_oom_live_diagnosis_net_probe import (
     parent_loopback_listener,
     parent_net_namespace_id,
     verify_dual_net_probe_artifacts,
-    write_self_loopback_probe,
 )
 from tests.watch_oom_live_diagnosis_support import (
     PHASE_ORDER,
     ScratchCanary,
     arm_diagnosis_env,
-    assert_denial_events_empty,
     assert_no_production_writer_collision,
     assert_scratch_canaries_unchanged,
     build_prefix_transcript,
@@ -348,7 +347,7 @@ def test_inner_scope_unit_missing_fail_closed(
     with patch.object(watch, "_user_systemd_session_available", return_value=True):
         with patch("watch.shutil.which", return_value="/usr/bin/systemd-run"):
             with pytest.raises(LiveDiagnosisRefused, match="inner_scope_unit_missing"):
-                watch._scoped_index_cmd(
+                watch._scoped_index_cmd(  # pylint: disable=protected-access
                     ["convmem", "index", "--file", "/tmp/x"], {}, verbose=False
                 )
 
@@ -830,13 +829,7 @@ def test_net_probe_self_artifact_in_isolated_net(tmp_path: Path) -> None:
             cmd = [
                 "bwrap",
                 "--unshare-net",
-                "--ro-bind",
-                "/",
-                "/",
-                "--proc",
-                "/proc",
-                "--dev",
-                "/dev",
+                *BWRAP_RO_ROOT_ARGS,
                 "--bind",
                 str(tmp_path),
                 str(tmp_path),
@@ -851,7 +844,9 @@ def test_net_probe_self_artifact_in_isolated_net(tmp_path: Path) -> None:
                     f"write_self_loopback_probe(port={port}, result_path=Path({str(outer_artifact)!r}), role='outer')\n"
                 ),
             ]
-            result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                cmd, cwd=ROOT, capture_output=True, text=True, timeout=30, check=False
+            )
             assert result.returncode == 0, result.stderr
 
     run_in_bwrap()

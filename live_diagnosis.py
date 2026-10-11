@@ -7,15 +7,15 @@ CONVMEM_LIVE_DIAG_HERMETIC=1.
 
 from __future__ import annotations
 
-import builtins
 import hashlib
 import json
 import os
-import socket
-import sqlite3
 import time
 from pathlib import Path
 from typing import Any
+
+from hermetic_open_guards import install_open_guards, restore_open_guards
+from hermetic_path_guard import PRODUCTION_PREFIXES
 
 _PHASE_ENV = "CONVMEM_LIVE_DIAG_PHASE_PATH"
 _ROOTS_ENV = "CONVMEM_LIVE_DIAG_SCRATCH_ROOTS"
@@ -35,12 +35,6 @@ _HANDSHAKE_WAIT_SECONDS = 900.0
 _PHASE_LINES_ENV = "CONVMEM_LIVE_DIAG_PHASE_LINES"
 _MAX_PHASE_LINES = 4096
 _MAX_DENIAL_EVENTS = 256
-
-PRODUCTION_PREFIXES = (
-    str((Path.home() / ".local/share/convmem").resolve()),
-    str((Path.home() / ".config/convmem").resolve()),
-)
-DEFAULT_BRIEF = str((Path.home() / ".local/share/convmem/brief.md").expanduser())
 
 _HERMETIC_INSTALLED = False
 _DENIED: list[str] = []
@@ -126,7 +120,8 @@ def emit_denial_event(kind: str, detail: str) -> None:
     if path.is_file() and path.stat().st_size > 512 * 1024:
         raise LiveDiagnosisRefused("denial_log_full")
     if path.is_file():
-        existing = sum(1 for _ in path.open("r", encoding="utf-8"))
+        with path.open("r", encoding="utf-8") as handle:
+            existing = sum(1 for _ in handle)
         if existing >= _MAX_DENIAL_EVENTS:
             raise LiveDiagnosisRefused("denial_log_full")
     row = {
@@ -257,120 +252,37 @@ def assert_source_unchanged(path: str | Path) -> None:
         raise LiveDiagnosisRefused("source_identity_drift")
 
 
-def _production_denied(path: object) -> bool:
-    try:
-        raw = os.fspath(path)
-    except TypeError:
-        return False
-    expanded = str(Path(raw).expanduser())
-    try:
-        resolved = str(Path(expanded).resolve())
-    except OSError:
-        resolved = expanded
-    if DEFAULT_BRIEF in (expanded, resolved):
-        return True
-    for prefix in PRODUCTION_PREFIXES:
-        if resolved.startswith(prefix) or expanded.startswith(prefix):
-            return True
-    return False
+def _on_production_path_denied(target: object) -> None:
+    _DENIED.append(str(target))
+    emit_denial_event("production_path", str(target))
+    raise LiveDiagnosisRefused(f"production_path_denied:{target}")
+
+
+def _on_network_denied() -> None:
+    _NETWORK_DENIED.append("outbound")
+    emit_denial_event("network", "outbound")
+    raise LiveDiagnosisRefused("network_denied")
 
 
 def _install_hermetic_guards() -> None:
-    global _HERMETIC_INSTALLED  # noqa: PLW0603
+    global _HERMETIC_INSTALLED  # pylint: disable=global-statement
     if _HERMETIC_INSTALLED:
         return
-    import io
-
-    real_open = builtins.open
-    real_os_open = os.open
-    real_connect = sqlite3.connect
-    real_io_open = io.open
-    real_path_open = Path.open
-
-    def guarded_open(file, *args, **kwargs):
-        if _production_denied(file):
-            _DENIED.append(str(file))
-            emit_denial_event("production_path", str(file))
-            raise LiveDiagnosisRefused(f"production_path_denied:{file}")
-        return real_open(file, *args, **kwargs)
-
-    def guarded_os_open(path, *args, **kwargs):
-        if _production_denied(path):
-            _DENIED.append(str(path))
-            emit_denial_event("production_path", str(path))
-            raise LiveDiagnosisRefused(f"production_path_denied:{path}")
-        return real_os_open(path, *args, **kwargs)
-
-    def guarded_io_open(file, *args, **kwargs):
-        if _production_denied(file):
-            _DENIED.append(str(file))
-            emit_denial_event("production_path", str(file))
-            raise LiveDiagnosisRefused(f"production_path_denied:{file}")
-        return real_io_open(file, *args, **kwargs)
-
-    def guarded_path_open(self, *args, **kwargs):
-        if _production_denied(self):
-            _DENIED.append(str(self))
-            emit_denial_event("production_path", str(self))
-            raise LiveDiagnosisRefused(f"production_path_denied:{self}")
-        return real_path_open(self, *args, **kwargs)
-
-    def guarded_connect(database, *args, **kwargs):
-        target = database
-        if isinstance(database, str) and database.startswith("file:"):
-            target = database[5:].split("?", 1)[0]
-        if _production_denied(target):
-            _DENIED.append(str(database))
-            emit_denial_event("production_path", str(database))
-            raise LiveDiagnosisRefused(f"production_path_denied:{database}")
-        return real_connect(database, *args, **kwargs)
-
-    def denied(*_args, **_kwargs):
-        _NETWORK_DENIED.append("outbound")
-        emit_denial_event("network", "outbound")
-        raise LiveDiagnosisRefused("network_denied")
-
     _RESTORE_HOOKS.update(
-        {
-            "builtins.open": real_open,
-            "os.open": real_os_open,
-            "io.open": real_io_open,
-            "Path.open": real_path_open,
-            "sqlite3.connect": real_connect,
-            "socket.create_connection": socket.create_connection,
-            "socket.getaddrinfo": socket.getaddrinfo,
-            "socket.socket.connect": socket.socket.connect,
-            "socket.socket.connect_ex": socket.socket.connect_ex,
-        }
+        install_open_guards(
+            on_path_denied=_on_production_path_denied,
+            on_network_denied=_on_network_denied,
+        )
     )
-    builtins.open = guarded_open  # type: ignore[assignment]
-    os.open = guarded_os_open  # type: ignore[assignment]
-    io.open = guarded_io_open  # type: ignore[assignment]
-    Path.open = guarded_path_open  # type: ignore[assignment]
-    sqlite3.connect = guarded_connect  # type: ignore[assignment]
-    socket.create_connection = denied  # type: ignore[assignment]
-    socket.getaddrinfo = denied  # type: ignore[assignment]
-    socket.socket.connect = denied  # type: ignore[assignment]
-    socket.socket.connect_ex = denied  # type: ignore[assignment]
     _HERMETIC_INSTALLED = True
 
 
 def teardown_hermetic_guards() -> None:
     """Test-only restore so parent canary snapshots stay read-only outside workers."""
-    global _HERMETIC_INSTALLED  # noqa: PLW0603
+    global _HERMETIC_INSTALLED  # pylint: disable=global-statement
     if not _HERMETIC_INSTALLED:
         return
-    import io
-
-    builtins.open = _RESTORE_HOOKS["builtins.open"]  # type: ignore[assignment]
-    os.open = _RESTORE_HOOKS["os.open"]  # type: ignore[assignment]
-    io.open = _RESTORE_HOOKS["io.open"]  # type: ignore[assignment]
-    Path.open = _RESTORE_HOOKS["Path.open"]  # type: ignore[assignment]
-    sqlite3.connect = _RESTORE_HOOKS["sqlite3.connect"]  # type: ignore[assignment]
-    socket.create_connection = _RESTORE_HOOKS["socket.create_connection"]  # type: ignore[assignment]
-    socket.getaddrinfo = _RESTORE_HOOKS["socket.getaddrinfo"]  # type: ignore[assignment]
-    socket.socket.connect = _RESTORE_HOOKS["socket.socket.connect"]  # type: ignore[assignment]
-    socket.socket.connect_ex = _RESTORE_HOOKS["socket.socket.connect_ex"]  # type: ignore[assignment]
+    restore_open_guards(_RESTORE_HOOKS)
     _HERMETIC_INSTALLED = False
     _DENIED.clear()
     _NETWORK_DENIED.clear()
@@ -598,7 +510,7 @@ def _install_fake_providers() -> None:
     patch("llm.ollama_embed", return_value=vector).start()
     patch("distill.distill_with_response", side_effect=distill_stub).start()
     patch("ingest.time.sleep").start()
-    ingest._LIVE_DIAG_PATCHED = True  # type: ignore[attr-defined]
+    setattr(ingest, "_LIVE_DIAG_PATCHED", True)
 
 
 def _redirect_brief_path() -> None:

@@ -1593,6 +1593,53 @@ def index(
         )
 
 
+def _refresh_brief_after_index_if_needed(cfg: dict, *, needs_brief_refresh: bool) -> None:
+    if not needs_brief_refresh:
+        return
+    try:
+        from brief import refresh_brief_after_change
+    except ImportError:
+        refresh_brief_after_change = None
+    if refresh_brief_after_change is None:
+        return
+    try:
+        from live_diagnosis import LiveDiagnosisRefused, mark
+
+        mark("brief_refresh_begin")
+    except ImportError:
+        LiveDiagnosisRefused = None  # type: ignore[misc, assignment]
+
+        def mark(*_args, **_kwargs):  # type: ignore[no-redef]
+            return None
+
+    try:
+        refresh_brief_after_change(cfg)
+        mark("brief_refresh_done")
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+        if LiveDiagnosisRefused is not None and isinstance(exc, LiveDiagnosisRefused):
+            raise
+
+
+def _compact_units_export_after_index(units_export: Path | None, stats: dict) -> None:
+    if not units_export or not units_export.is_file():
+        return
+    try:
+        from live_diagnosis import mark
+
+        mark("export_compaction_begin")
+    except ImportError:
+        pass
+    removed = _deduplicate_units_export(units_export)
+    if removed:
+        stats["export_duplicates_removed"] = removed
+    try:
+        from live_diagnosis import mark
+
+        mark("export_compaction_done", duplicates_removed=int(removed or 0))
+    except ImportError:
+        pass
+
+
 def _index_impl(
     force_file: str | None = None,
     limit_files: int | None = None,
@@ -1682,46 +1729,7 @@ def _index_impl(
             stats["files_skipped"] += 1
         # status == "ignored": unreadable / parse-failed — prior behavior: no files_skipped
 
-    if needs_brief_refresh:
-        try:
-            from brief import refresh_brief_after_change
-        except ImportError:
-            refresh_brief_after_change = None
-        if refresh_brief_after_change is not None:
-            try:
-                from live_diagnosis import LiveDiagnosisRefused, mark
-
-                mark("brief_refresh_begin")
-            except ImportError:
-                LiveDiagnosisRefused = None  # type: ignore[misc, assignment]
-
-                def mark(*_args, **_kwargs):  # type: ignore[no-redef]
-                    return None
-
-            try:
-                refresh_brief_after_change(cfg)
-                mark("brief_refresh_done")
-            except Exception as exc:
-                if LiveDiagnosisRefused is not None and isinstance(exc, LiveDiagnosisRefused):
-                    raise
-                pass
-
-    # Compact the JSONL export to remove duplicate unit IDs from re-indexing.
-    if units_export and units_export.is_file():
-        try:
-            from live_diagnosis import mark
-
-            mark("export_compaction_begin")
-        except ImportError:
-            pass
-        removed = _deduplicate_units_export(units_export)
-        if removed:
-            stats["export_duplicates_removed"] = removed
-        try:
-            from live_diagnosis import mark
-
-            mark("export_compaction_done", duplicates_removed=int(removed or 0))
-        except ImportError:
-            pass
+    _refresh_brief_after_index_if_needed(cfg, needs_brief_refresh=needs_brief_refresh)
+    _compact_units_export_after_index(units_export, stats)
 
     return stats

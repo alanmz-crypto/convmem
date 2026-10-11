@@ -1,3 +1,4 @@
+# pylint: disable=redefined-outer-name
 """Hermetic unit tests for live_diagnosis phase and scratch guards."""
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from tests.watch_oom_live_diagnosis_support import assert_denial_events_empty
 
 
 @pytest.fixture()
-def scratch_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def diag_scratch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     roots = json.dumps([str(tmp_path)])
     phase = tmp_path / "phases.jsonl"
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", roots)
@@ -28,8 +29,8 @@ def test_inactive_without_roots(monkeypatch: pytest.MonkeyPatch) -> None:
     mark("noop")
 
 
-def test_mark_appends_under_scratch(scratch_env) -> None:
-    tmp_path, phase = scratch_env
+def test_mark_appends_under_scratch(diag_scratch) -> None:
+    tmp_path, phase = diag_scratch
     mark("index_hash_done", file_hash="abc")
     lines = phase.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
@@ -51,8 +52,8 @@ def test_phase_path_outside_scratch_fails_closed(
         mark("index_hash")
 
 
-def test_denial_event_visible_to_parent(scratch_env, monkeypatch: pytest.MonkeyPatch) -> None:
-    tmp_path, _phase = scratch_env
+def test_denial_event_visible_to_parent(diag_scratch, monkeypatch: pytest.MonkeyPatch) -> None:
+    tmp_path, _phase = diag_scratch
     denial = tmp_path / "denials.jsonl"
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(denial))
@@ -62,7 +63,8 @@ def test_denial_event_visible_to_parent(scratch_env, monkeypatch: pytest.MonkeyP
         assert_denial_events_empty(denial)
 
 
-def test_phase_mark_uses_o1_counter(scratch_env, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_phase_mark_uses_o1_counter(diag_scratch, monkeypatch: pytest.MonkeyPatch) -> None:
+    _ = diag_scratch
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_PHASE_LINES", "0")
     mark("one")
@@ -70,8 +72,8 @@ def test_phase_mark_uses_o1_counter(scratch_env, monkeypatch: pytest.MonkeyPatch
     assert os.environ["CONVMEM_LIVE_DIAG_PHASE_LINES"] == "2"
 
 
-def test_source_drift_fail_closed(scratch_env, monkeypatch: pytest.MonkeyPatch) -> None:
-    _, phase = scratch_env
+def test_source_drift_fail_closed(diag_scratch, monkeypatch: pytest.MonkeyPatch) -> None:
+    _, phase = diag_scratch
     source = phase.parent / "source.jsonl"
     source.write_text('{"role":"user"}\n', encoding="utf-8")
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SOURCE_SHA256", "0" * 64)

@@ -14,6 +14,17 @@ def bwrap_available() -> bool:
     return shutil.which("bwrap") is not None
 
 
+BWRAP_RO_ROOT_ARGS: tuple[str, ...] = (
+    "--ro-bind",
+    "/",
+    "/",
+    "--proc",
+    "/proc",
+    "--dev",
+    "/dev",
+)
+
+
 def build_bwrap_command(
     inner_argv: list[str],
     *,
@@ -34,13 +45,7 @@ def build_bwrap_command(
         "--unshare-user",
         "--unshare-net",
         "--die-with-parent",
-        "--ro-bind",
-        "/",
-        "/",
-        "--proc",
-        "/proc",
-        "--dev",
-        "/dev",
+        *BWRAP_RO_ROOT_ARGS,
         "--tmpfs",
         "/tmp",
         "--bind",

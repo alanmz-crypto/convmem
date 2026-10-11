@@ -112,7 +112,7 @@ def _dispatch(args: argparse.Namespace) -> int:
         started = time.monotonic()
         try:
             result = watch.flush_path(str(source), verbose=False, use_subprocess=True)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             mark("watch_route_error", error=type(exc).__name__)
             payload = {
                 "status": "blocked" if args.mode == "injected_kill" else "failed",

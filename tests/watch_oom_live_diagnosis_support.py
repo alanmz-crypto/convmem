@@ -22,8 +22,8 @@ from tests.watch_oom_exposure_index_e2e_support import (
     refresh_canary_stats,
     snapshot_canaries,
     write_e2e_config,
-    write_synthetic_transcript,
 )
+from tests.watch_oom_mount_probe import scratch_filesystem_type
 
 PHASE_ORDER = (
     "watch_skip_hash_begin",
@@ -427,14 +427,7 @@ def assert_no_production_writer_collision() -> None:
 
 def assert_scratch_disk_backed(scratch_dir: Path) -> None:
     try:
-        mount = subprocess.run(
-            ["findmnt", "-n", "-o", "FSTYPE", "-T", str(scratch_dir)],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        fstype = mount.stdout.strip()
+        fstype = scratch_filesystem_type(scratch_dir, timeout=10.0)
     except (OSError, subprocess.SubprocessError) as exc:
         raise RuntimeError("scratch_mount_unknown") from exc
     if not fstype or fstype == "tmpfs":
@@ -502,7 +495,7 @@ def arm_diagnosis_env(
     if parent_ns:
         env[D1_PARENT_NETNS_ENV] = parent_ns
     if gate_auto_go:
-        from live_diagnosis import GATE_RUN_GRANTED, GATE_SPAWN_GRANTED
+        from live_diagnosis import GATE_SPAWN_GRANTED
 
         env["CONVMEM_LIVE_DIAG_SYNTHETIC_FAST"] = "1"
         gate_path.write_text(f"{GATE_SPAWN_GRANTED}\n", encoding="ascii")
