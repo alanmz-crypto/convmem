@@ -85,38 +85,49 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` via PR #381 (`e798bba`, 2026-10-10); Kiro and Copilot PASS at `a6169a5`. No live retry yet. | Sol successor packet, then Ryan successor-bootstrap grant |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
 | Codex rollout admission design | Kiro PASS at `9e91973` with six binding conditions (design §13), on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; terminal refusal quarantine by path (§13 amended 2026-10-11). Implemented on `feat/2026-10-10-issue-286-codex-rollout-admission` (tip `905ad40`); gate 3 FAIL from Kiro (Pylint gate) and Copilot audit (six safety findings). | Cursor corrective 4 (`docs/inter-model/CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md`) |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Two independent tracks. **Kiro bootstrap:** the failed-operation supersession
-merged via PR #381; Sol prepares the fresh exact-resource successor packet,
-then Ryan decides the grant and the retry budget (six additional DeepSeek
-attempts may not cover the worst case of eight). **Codex rollouts:** Kiro
-passed the admission design at `9e91973` (§13 amended 2026-10-11). Cursor's
-implementation at `905ad40` failed gate 3: Kiro on the Pylint gate, Copilot
-audit on six safety findings. Cursor starts corrective 4 from its handoff. Neither track
-authorizes live bootstrap, config, runtime, or watcher action.
+Two independent tracks. **Kiro bootstrap:** proposal `c5fec18c…79c81` is
+unconsumed but stale and cannot be reused. The sole inventory drift was two
+mocked 402/503 rows that `tests/test_index_loud_failures.py` appended to live
+`synthesis_failures.jsonl`; all other mutation surfaces, including the Kiro
+source's two summary rows and 17 knowledge units, remained exact. Cursor
+corrected the isolation leak at code commit `eaae6e9` on
+`fix/2026-10-10-pytest-synthesis-failure-isolation`; Copilot's targeted
+safety/isolation audit PASSed that exact code commit with no blockers. Ryan
+decides PR creation and merge; fresh backups, proposal, packet review, and live
+execution remain later separate gates. **Codex rollouts:** Kiro passed the
+admission design at `9e91973` (§13 amended 2026-10-11). Cursor's implementation
+at `905ad40` failed gate 3: Kiro on the Pylint gate, Copilot audit on six safety
+findings. Cursor applies corrective 4 from its handoff. Neither track authorizes
+live bootstrap, config, runtime, or watcher action.
 
 ## 6. What Remains Before Live (sequential per track)
 
 Kiro bootstrap:
 
-1. Sol prepares a fresh exact-resource successor packet (revalidated source,
-   backup, dimension 768, six additional DeepSeek attempts with lifetime total
-   eight, one same-grant recovery); Ryan grants one successor bootstrap.
-2. Obtain a later separate Ryan grant before any runtime/config/restart or
+1. Ryan decides whether to create and merge the test-isolation PR.
+2. After the fix lands, capture current mutation state, refresh backup
+   coverage, and prepare a new exact proposal and review packet.
+3. Immediately before any later authorized retry, revalidate the exact
+   local/offsite pair, source/runtime/config/binding/dimension, and establish a
+   no-other-writer window through final evidence capture.
+4. If granted, execute only the exact source/runtime/config/budget operation and
+   return measured call, coverage, lineage, and isolation evidence.
+5. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 Codex rollouts:
 
-1. Cursor applies corrective 4 under Ryan's 2026-10-10 grant (findings
-   C1–C6, K1 in the corrective-4 handoff); then Copilot audit and Kiro
-   recheck the new exact tip; then Ryan's PR decision.
-2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
-   watcher canary, which also needs the #308 fix and the watch memory drop-in
+1. Cursor applies corrective 4 under Ryan's 2026-10-10 grant (findings C1–C6,
+   K1 in the corrective-4 handoff); then Copilot audit and Kiro recheck the new
+   exact tip; then Ryan's PR decision.
+2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h watcher
+   canary, which also needs the #308 fix and the watch memory drop-in
    reconciliation); activation is a separate Ryan grant.
 
 ## 7. Hard Stops
@@ -228,6 +239,23 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Cursor | Live bootstrap exposed paid-cap mis-accounting (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); runtime fix `32fae68`, 12 focused passes at evidence commit `2b7228b`, Copilot scoped PASS on runtime, Kiro PASS on evidence; next gate Ryan PR/merge decision |
 | 2026-10-10 | Cursor / Sol | Failed-operation supersession implementation complete on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession` (manifest-bound carried accounting, 34 focused pytest cases, pylint clean); exact-tip Kiro/Copilot review next; no live retry/config/watcher authority |
 | 2026-10-10 | Sol / Kiro / Copilot | Exact-tip review complete at `a6169a5`: both lanes PASS after contained exclusive lineage-temp creation closed the final blocker; 178 affected production-Python tests pass; Ryan PR/merge decision next |
+| 2026-10-10 | Ryan / Sol | Ryan merged PR #381 as `e798bba`; source remains unchanged and fresh successor packet preparation began with live execution still `NO-GO` |
+| 2026-10-10 | Kiro / Copilot | Both lanes PASS the exact successor packet at `c7c12e8`, digest `b7dc9bfc…b980`; Ryan's backup-disposition and execution-grant decisions remain |
+| 2026-10-10 | Sol | Mounted the designated offsite drive and verified snapshot `653a8198…f7ac4` as the exact Restic copy of local snapshot `ac1087c8…a3954`; refreshed packet awaits same-revision Kiro/Copilot review |
+| 2026-10-10 | Kiro / Copilot | Both lanes PASS packet `f9418bf`, digest `f8ca5df1…ceb3d`, with no blockers; Ryan's separate exact-grant decision is next, with Restic recheck and writer-window advisories to include |
+| 2026-10-10 | Sol | Authorized successor grant safely refused before activation or calls: packet used pre-overlay fingerprint `7fda8eef…f8528`; corrected post-overlay fingerprint is `d2ecd101…473f5`; exact corrected-packet review is next |
+| 2026-10-10 | Kiro / Copilot | Both lanes PASS corrected packet `b380a43`, digest `3b9d1138…b21ff`, with no blockers; Ryan's new exact-grant decision is next, with fresh backup and named writer-isolation conditions |
+| 2026-10-10 | Sol | Created fresh local snapshot `19201163…340a5` and exact offsite copy `bfa9ac35…16da1`, sharing tree `eb4cd065…575a`; refreshed packet awaits narrow same-revision review |
+| 2026-10-10 | Kiro / Copilot / Sol | Both lanes PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers; Sol prepared non-executed replacement proposal operation `c5fec18c…79c81`; Ryan's exact-grant decision is next |
+| 2026-10-10 | Ryan / Sol | Ryan authorized replacement proposal `c5fec18c…79c81`; exact local Restic resolution timed out before writer pause or transport, so execution stopped with zero new calls or corpus mutation and the proposal remains unconsumed |
+| 2026-10-10 | Sol | Diagnosed the local Restic timeout as a workspace-sandbox boundary: the same exact-ID read completed with the expected tree in 0.728 seconds under scoped host access; the proposal remains unconsumed pending Ryan's retry decision |
+| 2026-10-10 | Ryan / Sol | Ryan authorized the retry; local exact validation succeeded under scoped host access, but offsite snapshot `bfa9ac35…16da1` timed out after 120 seconds, so execution again stopped before transport or mutation and the proposal remains unconsumed |
+| 2026-10-10 | Sol | Diagnosed the offsite timeout as Restic's normal lock path against the read-only mount; explicit `--no-lock` opened the repository and returned the exact expected snapshot/tree in about 0.55 seconds without mutation |
+| 2026-10-10 | Sol | Corrected the temporary validator to use `--no-lock` only offsite; the exact local/offsite IDs, shared tree, copy lineage, paths, timestamp, and tags all PASSed, with the proposal still unconsumed |
+| 2026-10-10 | Ryan / Sol | Ryan authorized another exact retry; after backup PASS and writer-window establishment, supersession admission refused the stale proposal on predecessor mutation-inventory mismatch before grant materialization, dimension probing, transport, or mutation |
+| 2026-10-10 | Sol | Proved the sole drift was a 310-byte append to live `synthesis_failures.jsonl`: two mocked HTTP-failure rows from `tests/test_index_loud_failures.py`; all other mutation surfaces, including Kiro Chroma rows, remained exact |
+| 2026-10-10 | Cursor / Copilot / Sol | Cursor isolated the mocked failure logger to temporary test storage at `eaae6e9`; Copilot's targeted safety/isolation audit PASSed that exact code commit with no blockers; tests and linters remain unrun pending Ryan's decision |
+| 2026-10-10 | Sol | Focused pytest passed both provider-refusal cases in 0.50 seconds while the live failure ledger's SHA-256, size, and nanosecond mtime remained identical; all paused timers were restored active and Ryan's PR decision is next |
 | 2026-10-10 | Claude | Recorded PR #381 merge (`e798bba`); drafted Codex rollout admission design for Kiro review on `docs/2026-10-10-issue-286-codex-rollout-admission-design`; no live authority |
 | 2026-10-10 | Kiro | Design PASS at `9e91973` with six binding conditions (design §13); next gate Ryan implementation grant |
 | 2026-10-10 | Ryan / Claude | Ryan granted hermetic Cursor implementation; Execute handoff written; resume state `NOT_STARTED` |
@@ -236,11 +264,20 @@ Keep this document a current-state snapshot, not a session diary.
 
 ## TL;DR
 
-- The Kiro JSONL coordinator, guarded live route, bootstrap accounting fix, and
-  failed-operation supersession (PR #381) are on `main`, default off; the
-  watcher stays stopped and disabled.
-- Kiro track: Sol's fresh successor packet and Ryan's grant come next.
+- The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
+  stopped and disabled with no restart authority.
+- Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
+  first successor grant safely refused with zero new calls or corpus mutation;
+  Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
+  `5e29ae13…90bb`, with no blockers.
+- Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
+  `c5fec18c…79c81` is unconsumed but stale because the live predecessor
+  mutation inventory no longer matches its bound digest. The sole drift is two
+  mocked test failures appended to the live synthesis-failure ledger. The retry
+  stopped before grant materialization or paid calls. The isolation fix is
+  implemented and Copilot-audited at `eaae6e9`; its two focused tests pass with
+  the live failure ledger unchanged. Ryan's PR decision is next. Config and
+  watcher promotion remain separately gated.
 - Codex track: Kiro passed the rollout admission design with six conditions;
-  Cursor implementation is granted. It admits only rollouts created after an explicit cutoff and needs no bulk
-  bootstrap.
-- No live bootstrap, config change, or watcher promotion is authorized.
+  Cursor corrective 4 closes gate-3 findings on `feat/2026-10-10-issue-286-codex-rollout-admission`.
+  No live bootstrap, config change, or watcher promotion is authorized.
