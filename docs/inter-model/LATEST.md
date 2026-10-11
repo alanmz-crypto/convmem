@@ -9,16 +9,18 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — PLAN ACCEPTED / IMPLEMENTATION GRANT PENDING (2026-10-11):**
+- **Arc Safe Harbor — T1 GRANTED / CURSOR PICKUP (2026-10-11):**
   Ryan accepted the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
   at `dca13a5` after Kiro delta PASS (88%) and explicitly approved B-E4.1,
   including all five consumer outcomes. See the [owner approval](../plans/EXECUTION-safe-harbor.md#owner-approval-and-next-authorized-step).
   Ownership is unchanged; [VERIFY](../plans/VERIFY-safe-harbor.md) remains unrun.
-  Next is a separate Ryan implementation grant; T1 is proposed first, not granted.
-  No new review for metadata-only recording; no implementation/live operations.
+  Ryan then granted T1 only. Cursor should read the [bounded Execute handoff](../plans/EXECUTION-safe-harbor.md#8-cursor-t1-execute-handoff)
+  and use `fix/2026-10-11-safe-harbor-t1` in its dedicated worktree.
+  Implementation has not started; no evidence was run. T2–T5, PR/comment
+  actions and live operations remain outside this grant.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
-  for direction-review provenance. Implementation and live operations remain pending.
+  for direction-review provenance. Cursor's T1 implementation is the next action.
   Branch: `plan/2026-10-11-safe-harbor`. No generated agent surfaces were
   regenerated or deployed; propagate the arc pointer at a later authorized
   protocol generation/deployment.

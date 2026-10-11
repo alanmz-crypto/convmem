@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. PLAN ACCEPTED by Ryan at `dca13a5`; B-E4.1 APPROVED by Ryan as owner, including all five consumer outcomes.** Kiro delta PASS is pinned to `dca13a5` (88%). Ownership remains unchanged. Implementation, isolated execution, deployment and live operations remain pending. A task below is a scoped deliverable, not an executable grant. This update records approval and routing without changing the accepted task contracts.
+> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; T1 GRANTED to Cursor in isolation — NOT STARTED.** Kiro delta PASS is pinned to `dca13a5` (88%). Ownership remains unchanged. The bounded T1 grant and handoff are in section 8. T2–T5, deployment and live operations remain pending. This record changes no accepted task contract.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        Execution Planning complete; awaiting separate Execute grant
+Phase:        Execution Planning complete; T1 Execute granted / not started
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
 Lanes:        Codex authors; Kiro reviews; Cursor implements after a separate grant
-Authority:    Plan and B-E4.1 accepted at dca13a5; Execute pending Ryan
+Authority:    Plan/B-E4.1 accepted; T1 granted in isolation (section 8)
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-All tasks are **NOT STARTED**. Execution lane: Cursor, following later authorization. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. Review of T2's interface proposal can occur alongside review of T1; this does not grant parallel working-tree edits.
+All tasks are **NOT STARTED**. Execution lane: Cursor. Ryan granted T1 only, as recorded in section 8; T2–T5 require later authorization. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -212,7 +212,7 @@ These are operational prerequisites to be completed later, not additional implem
 
 Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), **stub, evidence not run**, based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It names V0–V6 and must be filled against the actual implementation revision under later execution/verification authorization.
 
-Next: await Ryan's separate, named implementation grant; the first proposed task remains T1 in an isolated worktree. Ryan approved B-E4.1 and accepted the reviewed plan at `dca13a5`, keeping implementation/live operations pending. The first review and A1/A2 delta are complete; this status-only record does not create another review round. O-E4.e's existing-gate wording is satisfied plan-side. The section 2 owner/acceptance gates are satisfied by explicit approval, not waived or postponed. No implementation or review agent is invoked by this document.
+Next: Cursor picks up the bounded T1 grant in section 8. Ryan's earlier acceptance kept implementation pending; his subsequent “granted” authorizes only the proposed T1 step. The first review and A1/A2 delta are complete; this routing update does not create another review round. O-E4.e's existing-gate wording is satisfied plan-side. The section 2 owner/acceptance gates are satisfied by explicit approval. Recording the grant does not itself start an implementation agent or grant live operations.
 
 ### Kiro execution review and advisory disposition
 
@@ -236,11 +236,11 @@ The A1/A2 delta assignment is complete. Do not rerun either completed review for
 
 This closes B-E4.1's owner-decision prerequisite and accepts the exact reviewed plan. Complete-data Backup v2 retains its interfaces; no ownership transfer, Hybrid-audit closure or Recovery Authority grant follows. T2's future-time policy and all five consumer outcomes are unchanged. All tasks remain NOT STARTED; VERIFY remains NOT RUN.
 
-**Next authorized step:** preserve this approval record and await a separate Ryan grant naming the implementation task and lane. T1 is the plan's proposed first task, not a grant made here. No implementation, execution experiment, indexing, backup/restore, drive/service change, deployment or merge is authorized by this acceptance. Operational recovery qualification and the lost-work interval remain open before live rollout.
+**Acceptance scope:** that acceptance alone granted no implementation or operation. Ryan subsequently granted the proposed T1 implementation; section 8 records its exact limits. Operational recovery qualification and the lost-work interval remain open before live rollout.
 
 ### Review focus for this new artifact
 
-**Completed assignment; reference only — do not rerun.** The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. The following first execution-review prompt produced Kiro's PASS at `00c69d2`; the A1/A2 delta also passed at `dca13a5`. Ryan subsequently approved B-E4.1 and accepted that exact plan. Separate implementation/live grants remain pending.
+**Completed assignment; reference only — do not rerun.** The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. The following first execution-review prompt produced Kiro's PASS at `00c69d2`; the A1/A2 delta also passed at `dca13a5`. Ryan subsequently approved B-E4.1, accepted that plan and granted only T1 below. Other implementation/live grants remain pending.
 
 ```text
 Arc: Safe Harbor. Kiro governing execution-plan review, static/read-only.
@@ -300,6 +300,53 @@ routes to Ryan before Codex revises. Any follow-up review should be a delta
 on findings and changed contracts, preserving unresolved safety gates.
 ```
 
+## 8. Cursor T1 Execute handoff
+
+**Date / author / recipient:** 2026-10-11; Codex planning lane; Cursor implementation lane. This section is the bounded handoff in the existing plan, not a new handoff ledger.
+
+**Authority:** Ryan replied “granted” to the proposed next step, “A separate implementation grant, with T1 proposed first,” with Cursor named as the downstream lane. That authorizes **T1 only: isolated implementation and its specified V1 evidence**, against the accepted plan at `dca13a59a2edf649ac6a19777f572645bea8674e`. It does not grant T2–T5, production operations, merge, PR creation/commenting or the PR Steward role. No further T1 approval is needed merely to begin the granted scope.
+
+### Resume state and workspace
+
+- State: **AUTHORIZED / NOT STARTED**. No implementation agent has been started by this handoff.
+- Implementation branch: `fix/2026-10-11-safe-harbor-t1`.
+- Dedicated worktree: `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`.
+- Base: the exact commit containing this grant, supplied by Codex in the handoff. It descends from approval-record `83a096ab874643c622ef0e6048bf795fc5a0966b`; code remains the reviewed B/P baseline. Confirm branch, clean state, parentage and the grant before editing. A pre-existing dirty or diverged worktree is not permission to overwrite another writer.
+- The planning branch remains `plan/2026-10-11-safe-harbor`. Use the dedicated implementation branch; do not switch the shared checkout, touch `runtime-main`, or silently rebase onto a different code baseline.
+- No PR exists for this task. Push each commit immediately with the explicit refspec `fix/2026-10-11-safe-harbor-t1:refs/heads/fix/2026-10-11-safe-harbor-t1`.
+
+### Build only the accepted T1 deliverable
+
+Read STATUS, sections 2–3/T1 of this plan, VERIFY V0/V1, the approved architecture's incident contract, `docs/planning/EXECUTE-TASK.md`, and the applicable lane/builder guidance. State Goal / role / system / next action and the Execute phase before editing.
+
+Implement the T1 contract in section 3 without redesigning it: complete unresolved incident retention in the existing authority; malformed/unknown/legacy state refusal; canonical guard identity and alias-conflict refusal; under-lock audit incident publication; post-lock quarantine rechecks; honest containment-publication failures; ordinary clear refusal until T3 exists. Keep `audit.json` as observation telemetry, not a second admission authority. T1 is intentionally not a deployable validated-release workflow.
+
+Production-source scope is `chroma_write_guard.py`, T1 guard/audit checks in `doctor.py`, and status/clear handling in `scripts/chroma_guard.py`. Focused tests may extend `tests/test_chroma_write_guard.py`, `tests/_chroma_write_guard_worker.py`, the relevant isolated doctor tests and a narrowly scoped T1 test module if needed. Evidence/status updates belong in the existing Safe Harbor VERIFY/STATUS and routing files. If canonical store/cache binding needs production changes outside T1's accepted surface list, return the concrete dependency to Codex/Ryan before expanding scope.
+
+No T2 gate/freshness changes, T3 preservation/restore/release implementation or backend campaign, T4 approval recovery, T5-wide campaign, generic HOLD/registry, live migration or cleanup. Do not use the task to update shared permissions, generated surfaces, installed config, backup units or unrelated branches.
+
+### Isolation and evidence
+
+The grant permits the accepted T1 fixture tests, subprocess/restart/concurrency cases and fault/negative controls. Before importing project code, isolate all configuration, data roots, user-directory lookups, providers and subprocess paths; refuse production paths. Read the harness and fixtures before running them. Use the worktree interpreter/source explicitly, not the installed ConvMem launcher. No production CLI/MCP startup ritual, doctor, session indexing, Restic command, provider call or drive/service action is authorized; routine protocol defaults cannot enlarge this isolated task.
+
+Required V1 evidence:
+
+1. Incident A then B, including two findings in one segment: fresh-process admission remains refused and all findings survive. The old overwrite implementation must fail the assertion.
+2. Missing marker versus null/scalar/empty/unknown-schema/invalid/legacy marker and read failure: only genuinely missing is absent; preserve recognized legacy bytes, refuse unknown state.
+3. Canonical aliases select one guard identity; competing legacy locations refuse rather than create a fresh empty authority.
+4. Audit FAIL followed by PASS/skipped/error cannot erase incidents. Gather all findings before raising; barriers demonstrate publication is serialized with guarded admission.
+5. `recover()` and every T1 guard entry recheck after lock acquisition. Use process barriers, not timing sleeps, to publish an incident between the early check and acquired lock.
+6. Short write, publication/fsync/IO failure aborts the affected operation and reports containment unavailable without falsely promising a persistent stop. Assert fixture bytes/mutations as well as status.
+7. The ordinary clear surface cannot release unresolved incidents; doctor exposes unresolved or malformed authority without mutating production state.
+
+Record exact commands, exit status, backend/interpreter identity, subject SHA, fixture effects and negative controls in VERIFY V1. Required cases that cannot run remain explicit failures/gaps; never fill them from static review or a production health check. V2–V6 remain NOT RUN unless a case is strictly necessary T1 regression evidence, and that does not grant those tasks. Broader default tests/doctor may run only after their entire execution is shown isolated; otherwise record the limitation rather than invoking production.
+
+### Delivery and stop
+
+Complete the authorized implementation/evidence, commit and push, then return the exact tip/diff, V1 results, residuals and copy-ready PR description. Runtime code makes the Execute external-review gate **required**: record its fields at the implementation tip. PR-native BugBot evidence must match that tip before merge readiness; no PR/comment authority or exemption is inferred from this grant. If that next step needs Ryan's PR authorization, finish the authorized local work first, publish the candidate, then request that concrete decision. Do not post review-trigger comments without their required authority.
+
+Stop after the bounded T1 handoff. No automatic transition to T2, broader Verify, deployment or live rollout. T1 alone cannot be deployed while old writers can overwrite its marker or clear incidents. A material scope/authority mismatch or unexpected production access stops the affected work and returns the specific evidence; do not repair production or silently amend this plan.
+
 ## TL;DR
 
-[Arc Safe Harbor] Ryan approved B-E4.1 and accepted the exact reviewed plan at `dca13a5`, including all five consumer outcomes, with ownership unchanged. Review and acceptance are complete. All tasks/evidence remain unstarted/unrun; implementation and live operations need separate grants. This approval record changes no accepted task contract.
+[Arc Safe Harbor] Ryan accepted the plan/B-E4.1 at `dca13a5` and subsequently granted T1 to Cursor in isolation. Section 8 is the bounded Execute handoff. Implementation has not started and evidence remains unrun; T2–T5 and all live operations remain pending. Accepted task contracts are unchanged.

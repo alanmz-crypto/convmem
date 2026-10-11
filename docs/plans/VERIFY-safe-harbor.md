@@ -8,7 +8,7 @@ Phase:        Execution Planning (future Verify companion only)
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
 Lanes:        Cursor collects later evidence; Kiro signs off; Ryan owns gates
-Authority:    Plan/B-E4.1 accepted at dca13a5; Execute/verification pending
+Authority:    Plan accepted; T1/V1 isolated work granted, evidence NOT RUN
 ```
 
 **Subject / implementation tip:** not yet assigned.
@@ -42,7 +42,9 @@ In scope: execution T1–T5 and their named production entrypoints under isolate
 
 **Plan prerequisites satisfied:** Ryan accepted the plan and explicitly approved v2 B-E4.1 at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, with ownership unchanged. This is approval metadata, not runtime evidence.
 
-Still **PENDING / NOT RUN**: exact implementation subject SHA; separate Ryan task grant; isolated roots/providers/repositories; relevant backend/interpreter versions; runtime external-review applicability and evidence copied from Execute.
+**T1 grant satisfied:** Ryan subsequently granted the proposed T1/Cursor isolated implementation and its specified V1 evidence; execution section 8 records the boundary. T2–T5 have no grant.
+
+Still **PENDING / NOT RUN**: exact implementation subject SHA; demonstrated isolated roots/providers/repositories; relevant backend/interpreter versions; runtime external-review evidence at the candidate tip. No implementation or tests have run for T1. PR creation/commenting authority is not implied by the task grant.
 
 Execute supplies `gate_applicability`, `reason`, `subject_tip_sha`, `bugbot_reviewed_sha`, `result`, `finding_disposition` and `authority_reference` under the existing Execute gate. Runtime work requires exact-tip evidence; this planning-only stub is not such evidence. An applicable SHA mismatch is FAIL, never silently skipped.
 
