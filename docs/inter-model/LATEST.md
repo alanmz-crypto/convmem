@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-09
+**Updated:** 2026-10-11
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,17 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **[Arc none] Durability planning — REBOOT CHECKPOINT (2026-10-11):** Ryan
+  requested a GitHub checkpoint before making a fresh Rescuezilla backup.
+  Codex authors the future plan, Opus reviews, Kiro signs off, and Ryan grants
+  each phase. Arc name and planning-only drafting grant remain pending;
+  `Safe Harbor` is proposed. No implementation, detector deployment, watch
+  start, live restore or indexing is authorized. Resume from the
+  [durability reboot checkpoint](CODEX-2026-10-11-durability-reboot-checkpoint.md)
+  on `plan/2026-10-11-durability-reboot-checkpoint` after Ryan reports backup
+  completion. The checkpoint records time-bound backup evidence and the
+  unresolved containment/capture contracts; it is not an approved architecture.
 
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING
