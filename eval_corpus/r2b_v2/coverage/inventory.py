@@ -90,7 +90,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         # Line pin refreshed 2026-09-23: unchanged ChromaStore ctor call site,
         # shifted by the Arc Poison Pill --clear-quarantine CLI flags added
         # above it in convmem.py's watch() command.
-        "governed_mutation_sinks": ("convmem.py:694",),
+        "governed_mutation_sinks": ("convmem.py:695",),
     },
     {
         "route_id": "cg2_file_generation_pointer",

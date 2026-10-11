@@ -13,7 +13,7 @@ BASELINE_HASHES = {
     # watch.py restores torn HNSW saves after an abrupt index-child exit; see
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
     # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4).
-    "watch.py": "656b53509c4345ed934fe52c1219df381203db4b1abfd6eb891bbb2f6807a858",
+    "watch.py": "e941f9106e04c7ec5ee1a6a6c7c7d65559cd3a55349b71fd6e87572bea654bf0",
     # Refreshed for Codex D8 processed incremental_jsonl_lineage on commit_processed_index_entry.
     "ingest.py": "18b5df7a10eb35989ea97a8cedaabed71cfcb880353160abd2604ebb275b33c1",
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
@@ -21,7 +21,7 @@ BASELINE_HASHES = {
     # CLI and watcher.
     # Refreshed for issue #286 Codex rollout admission route, guards, and
     # structured admitted-run logging.
-    "incremental_jsonl.py": "3f8c242dc164888b92514f270b4df6c70b5d1cd46b1a3c3a2d032b31c1b9ff03",
+    "incremental_jsonl.py": "b06aa772d820e4563d30a1af98b45fca2329d39efc92ba79ce19859a8ceedafe",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

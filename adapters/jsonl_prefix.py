@@ -49,37 +49,28 @@ def streaming_complete_prefix_digest_for_path(
     *,
     bufsize: int = 65536,
 ) -> str:
-    """Hash complete JSONL lines only, reading the file in bounded chunks."""
+    """Hash complete JSONL lines only, reading the file in bounded chunks.
+
+    Retained memory stays O(1): stream bytes through one hasher and snapshot
+    ``hasher.copy()`` after each newline (complete-prefix boundary).
+    """
     hasher = hashlib.sha256()
-    incomplete = b""
+    boundary_hasher = hasher.copy()
     with Path(path).open("rb") as handle:
         while True:
             block = handle.read(bufsize)
             if not block:
                 break
-            data = incomplete + block
-            if b"\n" not in data:
-                incomplete = data
-                continue
-            head, incomplete = data.rsplit(b"\n", 1)
-            hasher.update(head + b"\n")
-    return hasher.hexdigest()
-
-
-def streaming_byte_digest_for_path(
-    path: str | Path,
-    *,
-    bufsize: int = 65536,
-) -> str:
-    """SHA-256 over all file bytes with O(1) retained memory."""
-    hasher = hashlib.sha256()
-    with Path(path).open("rb") as handle:
-        while True:
-            block = handle.read(bufsize)
-            if not block:
-                break
-            hasher.update(block)
-    return hasher.hexdigest()
+            start = 0
+            while start < len(block):
+                newline = block.find(b"\n", start)
+                if newline < 0:
+                    hasher.update(block[start:])
+                    break
+                hasher.update(block[start : newline + 1])
+                boundary_hasher = hasher.copy()
+                start = newline + 1
+    return boundary_hasher.hexdigest()
 
 
 def complete_prefix_digest_for_path(path: str | Path) -> str:

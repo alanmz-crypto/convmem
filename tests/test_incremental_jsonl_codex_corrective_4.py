@@ -7,7 +7,6 @@ from __future__ import annotations
 import copy
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest import mock
 
 import pytest
 
@@ -149,7 +148,7 @@ def test_c2_verbose_mode_quarantines_refusal_without_respawn(
     marker = f"live_route_refused:bootstrap_required:{'a' * 64}"
     spawn_calls = 0
 
-    def fake_flush(path: str, **kwargs):  # noqa: ANN003
+    def fake_flush(_path: str, **_kwargs: object) -> None:
         nonlocal spawn_calls
         spawn_calls += 1
         raise IndexSubprocessError(marker, returncode=91, stderr=marker + "\n")
@@ -191,13 +190,13 @@ def test_c3_parent_never_computes_refusal_digest(
 def test_c3_streaming_digest_bounded_memory_for_long_line(tmp_path: Path) -> None:
     import tracemalloc
 
-    from adapters.jsonl_prefix import streaming_byte_digest_for_path
+    from adapters.jsonl_prefix import streaming_complete_prefix_digest_for_path
 
     path = tmp_path / "huge.jsonl"
     bufsize = 65536
     path.write_bytes(b"x" * (8 * 1024 * 1024))
     tracemalloc.start()
-    streaming_byte_digest_for_path(path, bufsize=bufsize)
+    streaming_complete_prefix_digest_for_path(path, bufsize=bufsize)
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
     assert peak < 4 * bufsize
