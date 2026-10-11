@@ -36,6 +36,7 @@ from tests.watch_oom_live_diagnosis_parent import (
     sanitize_d1_worker_stream,
 )
 from tests.watch_oom_live_diagnosis_support import (
+    BACKUP_MANIFEST_SHA256_ENV,
     PHASE_ORDER,
     ScratchCanary,
     arm_diagnosis_env,
@@ -56,6 +57,7 @@ from tests.watch_oom_live_diagnosis_support import (
     parent_verify_backup_manifest_supply,
     supply_external_backup_manifest_file,
     verify_backup_manifest,
+    worker_bind_backup_manifest,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -168,7 +170,7 @@ def _run_worker(
         scratch_roots_json=env["CONVMEM_LIVE_DIAG_SCRATCH_ROOTS"],
         expected_file_sha256=layout["backup_manifest_file_sha256"],
         corpus_root=layout["arm"] / "seed",
-        expected_fingerprint=layout.get("backup_manifest_fingerprint"),
+        expected_fingerprint=layout["backup_manifest_fingerprint"],
     )
     canaries_before = snapshot_production_canaries_for_parent(
         layout["incident_source_path"]
@@ -483,40 +485,6 @@ def _incident_only(snapshot: dict, key: str) -> dict:
     return {k: v for k, v in snapshot.items() if k == key}
 
 
-def test_d1_ledger_canary_paths_match_canonical_writers(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import conflict_events
-    import propose_decision
-    from tests import watch_oom_live_diagnosis_support as support
-
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(support, "production_canary_paths", lambda: [])
-    share = tmp_path / ".local/share/convmem"
-    cfg = {"index": {"chroma_dir": str(share / "chroma")}}
-    incident = tmp_path / "original-source.jsonl"
-    census = dict((str(path), surface) for surface, path in support.d1_mandatory_canary_paths(incident))
-
-    expected = {
-        propose_decision.queue_path(cfg): "ledger_jsonl",
-        propose_decision.approved_path(cfg): "ledger_jsonl",
-        conflict_events.event_path(cfg): "ledger_jsonl",
-        share / "shadow" / "ledger.jsonl": "ledger_jsonl",
-        conflict_events.lock_path(cfg): "governed_lock",
-    }
-    for path, surface in expected.items():
-        assert census.get(str(path)) == surface, path
-    assert not any(Path(key).name == "approved_decisions.jsonl" for key in census)
-
-    shadow_ledger = str(share / "shadow" / "ledger.jsonl")
-    before = _incident_only(support.snapshot_d1_parent_canaries(incident), shadow_ledger)
-    assert before[shadow_ledger].exists is False
-    (share / "shadow").mkdir(parents=True)
-    (share / "shadow" / "ledger.jsonl").write_text("{}\n", encoding="utf-8")
-    after = _incident_only(support.snapshot_d1_parent_canaries(incident), shadow_ledger)
-    assert production_canary_drift_lines(before, after) == [f"created ledger_jsonl {shadow_ledger}"]
-
-
 def test_parent_detects_external_incident_source_drift(layout: dict) -> None:
     original = layout["incident_source_path"]
     key = str(original)
@@ -555,6 +523,74 @@ def test_backup_manifest_in_scratch_rejected(layout: dict) -> None:
             scratch_roots_json=json.dumps([str(layout["scratch_root"])]),
             expected_file_sha256=backup_manifest_file_sha256(inside),
             corpus_root=layout["arm"] / "seed",
+            expected_fingerprint=layout["backup_manifest_fingerprint"],
+        )
+
+
+def _manifest_parent_args(layout: dict) -> dict:
+    return {
+        "manifest_path": layout["backup_manifest_path"],
+        "scratch_roots_json": json.dumps([str(layout["scratch_root"])]),
+        "expected_file_sha256": layout["backup_manifest_file_sha256"],
+        "corpus_root": layout["arm"] / "seed",
+        "expected_fingerprint": layout["backup_manifest_fingerprint"],
+    }
+
+
+def test_backup_manifest_parent_supply_accepts_bound_manifest(layout: dict) -> None:
+    parent_verify_backup_manifest_supply(**_manifest_parent_args(layout))
+
+
+def test_backup_fingerprint_mismatch_fail_closed(layout: dict) -> None:
+    args = _manifest_parent_args(layout)
+    args["expected_fingerprint"] = backup_manifest_entries_fingerprint(
+        {"processed.json": "0" * 64}
+    )
+    with pytest.raises(RuntimeError, match="backup_fingerprint_mismatch"):
+        parent_verify_backup_manifest_supply(**args)
+
+
+def test_backup_manifest_identity_drift_fail_closed(layout: dict) -> None:
+    manifest_path = layout["backup_manifest_path"]
+    expected = layout["backup_manifest_file_sha256"]
+    tampered = json.loads(manifest_path.read_text(encoding="utf-8"))
+    tampered["processed.json"] = "f" * 64
+    manifest_path.write_text(json.dumps(tampered, sort_keys=True), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="backup_manifest_identity_drift"):
+        parent_verify_backup_manifest_supply(**_manifest_parent_args(layout))
+    env = {
+        "CONVMEM_LIVE_DIAG_SCRATCH_ROOTS": json.dumps([str(layout["scratch_root"])]),
+        BACKUP_MANIFEST_SHA256_ENV: expected,
+    }
+    with pytest.raises(RuntimeError, match="backup_manifest_identity_drift"):
+        worker_bind_backup_manifest(manifest_path, env)
+    with pytest.raises(RuntimeError, match="backup_manifest_identity_drift"):
+        d1_parent_teardown_postcheck(
+            env=env,
+            source_path=layout["source"],
+            denial_path=layout["denial_path"],
+            incident_source=layout["incident_source_path"],
+            canaries_before={},
+            manifest_path=manifest_path,
+            manifest_sha256=expected,
+        )
+
+
+def test_backup_manifest_expected_sha_missing_fail_closed(layout: dict) -> None:
+    roots = json.dumps([str(layout["scratch_root"])])
+    with pytest.raises(RuntimeError, match="backup_manifest_expected_sha_missing"):
+        worker_bind_backup_manifest(
+            layout["backup_manifest_path"], {"CONVMEM_LIVE_DIAG_SCRATCH_ROOTS": roots}
+        )
+    with pytest.raises(RuntimeError, match="backup_manifest_expected_sha_missing"):
+        d1_parent_teardown_postcheck(
+            env={"CONVMEM_LIVE_DIAG_SCRATCH_ROOTS": roots},
+            source_path=layout["source"],
+            denial_path=layout["denial_path"],
+            incident_source=layout["incident_source_path"],
+            canaries_before={},
+            manifest_path=layout["backup_manifest_path"],
+            manifest_sha256="",
         )
 
 

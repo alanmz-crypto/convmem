@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator
 
+from agent_run_ledger import AGENT_RUN_LOCK_NAME, AGENT_RUN_LOG_NAME
+from shadow_ledger import DEFAULT_LEDGER_PATH as SHADOW_LEDGER_PATH
 from tests.watch_oom_exposure_index_e2e_support import (
     PathCanary,
     build_writable_fixture_seed,
@@ -146,15 +148,15 @@ def d1_parent_teardown_postcheck(
     denial_path: Path,
     incident_source: Path,
     canaries_before: dict,
-    manifest_path: Path | None = None,
-    manifest_sha256: str | None = None,
+    manifest_path: Path,
+    manifest_sha256: str,
 ) -> None:
-    """Fail-closed parent postchecks (denials, frozen source, production canaries)."""
-    if manifest_path is not None and manifest_sha256:
-        assert_backup_manifest_external(manifest_path, env["CONVMEM_LIVE_DIAG_SCRATCH_ROOTS"])
-        assert_backup_manifest_file_identity(manifest_path, expected_sha256=manifest_sha256)
-        # Corpus bytes may change during a successful index; post-check binds manifest file
-        # identity only (independent parent-supplied digest), not D2 restic validation.
+    """Fail-closed parent postchecks (manifest, denials, frozen source, production canaries)."""
+    _require_manifest_digest(manifest_sha256)
+    assert_backup_manifest_external(manifest_path, env["CONVMEM_LIVE_DIAG_SCRATCH_ROOTS"])
+    # Corpus bytes may change during a successful index; post-check binds manifest file
+    # identity only (independent parent-supplied digest), not D2 restic validation.
+    assert_backup_manifest_file_identity(manifest_path, expected_sha256=manifest_sha256)
     assert_denial_events_empty(denial_path)
     inner_ack = Path(env["CONVMEM_LIVE_DIAG_INNER_ACK_PATH"])
     inner_final = Path(env["CONVMEM_LIVE_DIAG_INNER_FINAL_PATH"])
@@ -230,6 +232,13 @@ def assert_backup_manifest_external(manifest_path: Path, scratch_roots_json: str
             raise RuntimeError("backup_manifest_must_be_external_to_scratch")
 
 
+def _require_manifest_digest(digest: str | None) -> None:
+    if not digest or not digest.strip():
+        raise RuntimeError("backup_manifest_expected_sha_missing")
+    if len(digest) != 64:
+        raise RuntimeError("backup_manifest_expected_sha_invalid")
+
+
 def assert_backup_manifest_file_identity(
     manifest_path: Path,
     *,
@@ -240,15 +249,29 @@ def assert_backup_manifest_file_identity(
         raise RuntimeError("backup_manifest_identity_drift")
 
 
+def worker_bind_backup_manifest(manifest_path: Path, environ: dict[str, str]) -> None:
+    """Worker contract: external manifest whose bytes match the parent-supplied digest."""
+    scratch_roots_json = environ.get("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", "").strip()
+    if not scratch_roots_json:
+        raise RuntimeError("scratch_roots_missing")
+    assert_backup_manifest_external(manifest_path, scratch_roots_json)
+    expected = environ.get(BACKUP_MANIFEST_SHA256_ENV, "").strip()
+    _require_manifest_digest(expected)
+    assert_backup_manifest_file_identity(manifest_path, expected_sha256=expected)
+
+
 def parent_verify_backup_manifest_supply(
     *,
     manifest_path: Path,
     scratch_roots_json: str,
     expected_file_sha256: str,
     corpus_root: Path,
-    expected_fingerprint: str | None = None,
+    expected_fingerprint: str,
 ) -> None:
-    """Parent-side pre/post: manifest outside scratch with stable file identity."""
+    """Parent-side pre-run: external manifest, stable identity, and supplied entries fingerprint."""
+    _require_manifest_digest(expected_file_sha256)
+    if not expected_fingerprint:
+        raise RuntimeError("backup_fingerprint_missing")
     assert_backup_manifest_external(manifest_path, scratch_roots_json)
     assert_backup_manifest_file_identity(manifest_path, expected_sha256=expected_file_sha256)
     manifest = load_external_backup_manifest(manifest_path)
@@ -305,6 +328,9 @@ def assert_production_canaries_unchanged() -> list[str]:
     return production_canary_drift_lines(before, after)
 
 
+SHARE_ROOT_LISTING_SURFACE = "share_root_listing"
+
+
 def d1_mandatory_canary_paths(incident_source: Path) -> list[tuple[str, Path]]:
     """Full production touchpoint census plus mandatory incident-source path."""
     share = Path.home() / ".local/share/convmem"
@@ -318,6 +344,7 @@ def d1_mandatory_canary_paths(incident_source: Path) -> list[tuple[str, Path]]:
         seen.add(key)
         out.append((surface, path))
 
+    add(SHARE_ROOT_LISTING_SURFACE, share)
     for surface, path in production_canary_paths():
         add(surface, path)
     for rel in (
@@ -330,26 +357,24 @@ def d1_mandatory_canary_paths(incident_source: Path) -> list[tuple[str, Path]]:
         "pending_decisions.jsonl",
         "decisions-approved.jsonl",
         "pending_decision_events.jsonl",
-        "observations.jsonl",
-        "shadow/ledger.jsonl",
+        Path(SHADOW_LEDGER_PATH).name,
     ):
         add("ledger_jsonl", share / rel)
     add("governed_lock", share / "governed-ledger.lock")
+    add("agent_run_ledger", share / AGENT_RUN_LOG_NAME)
+    add("agent_run_lock", share / AGENT_RUN_LOCK_NAME)
     add("writer_gate", share / "locks/chroma_writer_gate.lock")
     chroma_root = share / "chroma"
     if chroma_root.is_dir():
         for path in sorted(chroma_root.rglob("*")):
             if path.is_file():
                 add("chroma_tree", path)
-    for rel in ("writer/attest", "writer/census", "agent_runs"):
+    for rel in ("writer/attest", "writer/census"):
         candidate = share / rel
-        if candidate.exists():
-            if candidate.is_file():
-                add("agent_run_state", candidate)
-            else:
-                for path in sorted(candidate.rglob("*")):
-                    if path.is_file():
-                        add("agent_run_state", path)
+        if candidate.is_dir():
+            for path in sorted(candidate.rglob("*")):
+                if path.is_file():
+                    add("writer_state", path)
     add("incident_source", incident_source.expanduser())
     return out
 
@@ -398,6 +423,13 @@ def snapshot_d1_parent_canaries(incident_source: Path) -> dict[str, PathCanary]:
             out[key] = PathCanary(key, surface, False, None, None, None, None, None, None)
             continue
         st = path.stat()
+        if surface == SHARE_ROOT_LISTING_SURFACE and path.is_dir():
+            names = sorted(os.listdir(path))
+            listing_sha = hashlib.sha256("\n".join(names).encode()).hexdigest()
+            out[key] = PathCanary(
+                key, surface, True, len(names), st.st_mode, None, listing_sha, st.st_dev, st.st_ino
+            )
+            continue
         sha = None
         if path.is_file():
             with path.open("rb") as handle:

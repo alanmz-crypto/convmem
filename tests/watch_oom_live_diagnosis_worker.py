@@ -39,12 +39,10 @@ def _dispatch(args: argparse.Namespace) -> int:
         mark,
     )
     from tests.watch_oom_live_diagnosis_support import (
-        BACKUP_MANIFEST_SHA256_ENV,
-        assert_backup_manifest_external,
-        assert_backup_manifest_file_identity,
         assert_source_readonly,
         load_external_backup_manifest,
         verify_backup_manifest,
+        worker_bind_backup_manifest,
     )
 
     scratch_root = Path(args.scratch_root).resolve()
@@ -66,17 +64,7 @@ def _dispatch(args: argparse.Namespace) -> int:
     ):
         _require_scratch(role, scratch_root)
 
-    scratch_roots_json = os.environ.get("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", "").strip()
-    if not scratch_roots_json:
-        raise RuntimeError("scratch_roots_missing")
-    assert_backup_manifest_external(manifest_path, scratch_roots_json)
-    expected_manifest_sha = os.environ.get(BACKUP_MANIFEST_SHA256_ENV, "").strip()
-    if not expected_manifest_sha:
-        raise RuntimeError("backup_manifest_expected_sha_missing")
-    assert_backup_manifest_file_identity(
-        manifest_path,
-        expected_sha256=expected_manifest_sha,
-    )
+    worker_bind_backup_manifest(manifest_path, dict(os.environ))
 
     os.environ["CONVMEM_CONFIG"] = str(config_path)
     # Config must be set in main() before bwrap re-exec and any config import.
