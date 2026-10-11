@@ -14,7 +14,7 @@ BASELINE_HASHES = {
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
     # Refreshed for issue #286 Codex rollout admission: terminal live-route
     # refusal quarantine keyed by (path, prefix digest).
-    "watch.py": "c390854cfe599b61a4586d12a4154d34f4e805528d413d8ba42db143347bc59a",
+    "watch.py": "5c98a3503123045db3f06166d7e09fbacb9d13a429000cd0b4f38c7749e15b13",
     # Refreshed for issue #286's authorized bootstrap safety corrective:
     # bootstrap-only accounting and immutable replay authority cross these
     # bytes; the canary remains unreachable from the CLI and watcher.
@@ -24,7 +24,7 @@ BASELINE_HASHES = {
     # CLI and watcher.
     # Refreshed for issue #286 Codex rollout admission route, guards, and
     # structured admitted-run logging.
-    "incremental_jsonl.py": "72d3d8d2e558550ec494a916a17bd8b0630e358731d727c0dfa89ed79ba12ea0",
+    "incremental_jsonl.py": "6314ac447817ff7b8afa04c32209150fd18abefee3385ba9c08a8a7806a62a7b",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
