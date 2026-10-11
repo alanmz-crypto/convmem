@@ -40,7 +40,7 @@ OLD_LOCAL = "f8d69dc1199636f66d6216f0325cf4218c566c829907dd205c244d00115c324b"
 OLD_OFFSITE = "a38bd4c7bfac4aa5c44634674138fa9c65f83cf37d7b3025c952b5368786f449"
 RUN_DATE = "2026-10-11"
 REQUIRED_TAGS = {"convmem-data-v2", "convmem-2026-10-11", "kiro-successor-preflight"}
-RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261011-r2.json")
+RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261011-r3.json")
 BACKUP_EVIDENCE = DATA_ROOT / ".convmem-backup-evidence.json"
 LOCK = DATA_ROOT / "locks/chroma_writer_gate.lock"
 TIMERS = (
@@ -130,6 +130,18 @@ def run(argv: list[str], *, check: bool = True) -> subprocess.CompletedProcess[s
 def unit_state(unit: str, verb: str) -> str:
     proc = run(["systemctl", "--user", verb, unit], check=False)
     return (proc.stdout or proc.stderr).strip()
+
+
+def require_service_quiescent(service: str) -> dict[str, str]:
+    active = unit_state(service, "is-active")
+    main_pid = run(
+        ["systemctl", "--user", "show", "-p", "MainPID", "--value", service]
+    ).stdout.strip()
+    if active not in {"inactive", "failed"} or main_pid != "0":
+        raise RuntimeError(
+            f"service did not quiesce: {service} ({active}, MainPID={main_pid})"
+        )
+    return {"active": active, "main_pid": main_pid}
 
 
 def current_inventory(cfg: dict[str, Any]) -> tuple[dict[str, Any], str]:
@@ -339,9 +351,9 @@ def main() -> int:
 
         for timer in TIMERS:
             run(["systemctl", "--user", "stop", timer])
-        for service in SERVICES:
-            if unit_state(service, "is-active") != "inactive":
-                raise RuntimeError(f"service did not quiesce: {service}")
+        result["service_quiescence"] = {
+            service: require_service_quiescent(service) for service in SERVICES
+        }
         assert_no_uncontrolled_writer()
 
         preexisting_mount = run(

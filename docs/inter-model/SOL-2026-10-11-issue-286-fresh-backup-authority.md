@@ -44,6 +44,23 @@ The exact Kiro projection remains 2 summaries and 17 knowledge units; the
 failure ledger, queues, checkpoint, rollback, and prepared cache also remain
 unchanged from the prior authority.
 
+Kiro and Copilot PASSed the current-inventory correction at exact commit
+`4fd5ef37d8079891b5470b09770092ce286b4ea1`. Ryan's r2 grant then safely
+refused before inventory measurement or backup creation because
+`convmem-restic-external.service` was in systemd state `failed`. Journal and
+unit evidence show that service had exited 17 minutes earlier with
+`MainPID=0`; no process was active. The runner had incorrectly treated the
+persistent `failed` state as non-quiescent. The r2 result is
+`/tmp/convmem-kiro-replacement-backup-result-20261011-r2.json`, SHA-256
+`537ed562edc45d97482d64104e288f9d7fe4cabecfe4d85abf2990639a817950`.
+It reports no local or offsite snapshot and successful cleanup. The r2 grant
+is consumed and must never be reused.
+
+This revision accepts only systemd service states `inactive` or `failed` and
+separately requires `MainPID=0`. Active, activating, reloading, deactivating,
+or any nonzero PID still refuses. The observed state and PID for every
+governed service are retained in the result.
+
 Kiro PASSed the earlier proposal at exact commit
 `4d7741a58c242bac0b0cdac91e093405c6a2feb9`. Copilot FAILed that same
 revision because it did not bind a concrete governed command that creates a
@@ -85,9 +102,9 @@ the runner enforce its bound interpreter plus `-I -B` flags.
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `1364cfa7b4e5b95b6b9e7bb1e39a0c4b323372a13f8cc60fb52687e0cf622d5a` |
-| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py` |
-| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011-r2.json` |
+| Attachment SHA-256 | `8c87799a39e394e4495af2dfc2d4828e0282d669683ef7e3573553266e0e001b` |
+| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011-r3.py` |
+| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011-r3.json` |
 | Valid local date | `2026-10-11` in `America/Chicago` |
 
 After Ryan grants the exact reviewed revision and attachment digest, the
@@ -98,10 +115,10 @@ set -e
 if findmnt -rn -S /dev/sda1 -o TARGET; then
     exit 1
 fi
-cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py
-chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py
-printf '%s  %s\n' '1364cfa7b4e5b95b6b9e7bb1e39a0c4b323372a13f8cc60fb52687e0cf622d5a' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py' | sha256sum --check --strict -
-/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011-r2.py --execute
+cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011-r3.py
+chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011-r3.py
+printf '%s  %s\n' '8c87799a39e394e4495af2dfc2d4828e0282d669683ef7e3573553266e0e001b' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r3.py' | sha256sum --check --strict -
+/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011-r3.py --execute
 ```
 
 `set -e` makes a digest mismatch stop before the runner. The detached runtime
@@ -131,7 +148,9 @@ The runner performs this closed sequence:
    final evidence run; signals during cleanup cannot interrupt restoration.
 3. Require the watcher to be inactive, disabled, and have `MainPID=0`.
    Record and stop every installed ConvMem timer, then require each matching
-   service to be inactive. Restore only timers that were active beforehand.
+   service to be quiescent: state `inactive` or `failed`, with `MainPID=0`.
+   Record every observed service state/PID and restore only timers that were
+   active beforehand.
 4. Reject active stale failure tests, ConvMem pytest processes, known
    `convmem`/`convmem.py` mutation commands (including `ask`, agent-run,
    Shadow, and writer-census commands), the direct source-reconciler form,
@@ -181,7 +200,7 @@ is introduced; all Restic I/O remains in `restic_snapshot.py`.
 | Mutable data root | `/home/lauer/.local/share/convmem` |
 | Detached runtime | clean `/tmp/convmem-kiro-bootstrap-e798bba` at `e798bba284c96642fc31229e6375eadc26986493` |
 | Current inventory digest | `0ecb33ea8a62be7fd4d0faeee30929cefbca04d001b59be8459b2a1616a9b27b` |
-| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261011-r2.json` |
+| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261011-r3.json` |
 | Inventory evidence SHA-256 | `e3ec2f1c5badae2307e2ef3abedec259ea4fb0bf0171ef96a0ca0a7b287faeb0` |
 | Inventory procedure | `bootstrap_mutation_inventory` + `convmem-bootstrap-mutation-proof-v1` at runtime `e798bba…` |
 | Local Restic repository | `/home/lauer/.local/share/convmem-restic` |
@@ -231,9 +250,10 @@ successor packet. It does not authorize bootstrap execution.
 
 ## TL;DR
 
-The old pair is valid but stale. The first reviewed replacement runner then
-safely refused because later session indexing changed two global
-projection roles before execution; it created no snapshots and its grant is
-consumed. This revision binds the current inventory and a fresh one-shot
-marker while preserving the reviewed operation. It remains `NO-GO` until
-same-revision Kiro/Copilot PASS and Ryan's new exact grant.
+The old pair is valid but stale. The first reviewed runner safely refused on
+later session indexing; r2 then safely refused because an already-exited
+systemd service retained state `failed`. Neither run created a snapshot, and
+both grants are consumed. This revision requires every governed service to be
+`inactive` or `failed` with `MainPID=0`, records that evidence, and binds a
+fresh r3 marker. It remains `NO-GO` until same-revision Kiro/Copilot PASS and
+Ryan's new exact grant.
