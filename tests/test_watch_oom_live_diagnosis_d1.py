@@ -25,6 +25,7 @@ from live_diagnosis import (
     teardown_hermetic_guards,
 )
 from tests.watch_oom_exposure_index_e2e_support import PathCanary
+from tests.watch_oom_live_diagnosis_bwrap import d1_bwrap_integration_available
 from tests.watch_oom_live_diagnosis_parent import (
     D2_KERNEL_ISOLATION_BLOCKER,
     _raise_d1_worker_run_failure,
@@ -63,6 +64,10 @@ from tests.watch_oom_live_diagnosis_support import (
 ROOT = Path(__file__).resolve().parents[1]
 WORKER = Path(__file__).resolve().parent / "watch_oom_live_diagnosis_worker.py"
 RUN_CGROUP = os.environ.get("CONVMEM_D1_CGROUP") == "1"
+requires_bwrap_userns = pytest.mark.skipif(
+    not d1_bwrap_integration_available(),
+    reason="bwrap user-ns integration unavailable on this host",
+)
 SCRATCH_BASE = ROOT / "tests" / ".d1-scratch-arms"
 
 
@@ -409,7 +414,10 @@ def test_config_outside_scratch_fail_closed(layout: dict, monkeypatch: pytest.Mo
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SCRATCH_ROOTS", json.dumps([str(layout["scratch_root"])]))
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_SOURCE_SHA256", layout["source_sha256"])
-    monkeypatch.setenv("CONVMEM_CONFIG", str(Path.home() / ".config/convmem/config.toml"))
+    outside_config = layout["backup_manifest_path"].parent / "config-outside-scratch.toml"
+    shutil.copyfile(layout["config_path"], outside_config)
+    assert not outside_config.resolve().is_relative_to(layout["scratch_root"].resolve())
+    monkeypatch.setenv("CONVMEM_CONFIG", str(outside_config))
     monkeypatch.setenv("CONVMEM_LIVE_DIAG_DENIAL_PATH", str(layout["denial_path"]))
     with pytest.raises(LiveDiagnosisRefused, match="config_path_outside_scratch"):
         bootstrap_watch_worker()
@@ -600,6 +608,7 @@ def test_missing_telemetry_fail_closed(tmp_path: Path) -> None:
         require_telemetry_after_kill(missing)
 
 
+@requires_bwrap_userns
 def test_prefix_route_isolation_hermetic(layout: dict) -> None:
     out = _run_worker(layout, mode="prefix_route")
     worker = out["worker"]
@@ -616,6 +625,7 @@ def test_prefix_route_isolation_hermetic(layout: dict) -> None:
     assert "brief_refresh_done" in phases or "export_compaction_done" in phases
 
 
+@requires_bwrap_userns
 def test_injected_kill_blocked_with_phase_evidence(layout: dict) -> None:
     out = _run_worker(layout, mode="injected_kill")
     worker = out["worker"]
@@ -877,6 +887,7 @@ def test_early_exit_diagnostic_includes_returncode_and_stderr_tail(layout: dict)
     assert env["CONVMEM_LIVE_DIAG_SOURCE_SHA256"] not in str(exc.value)
 
 
+@requires_bwrap_userns
 def test_phase_order_subset(layout: dict) -> None:
     _run_worker(layout, mode="prefix_route")
     phases = read_phases(layout["phase_path"])

@@ -23,8 +23,48 @@ from tests.watch_oom_live_diagnosis_net_probe import (
     parent_net_namespace_id,
     verify_dual_net_probe_artifacts,
 )
+from tests.watch_oom_live_diagnosis_support import (
+    D1_BWRAP_ACTIVE_ENV,
+    d1_worker_enter_bwrap_or_exit,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_worker_without_bwrap_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import tests.watch_oom_live_diagnosis_bwrap as bwrap_mod
+
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
+    monkeypatch.delenv(D1_BWRAP_ACTIVE_ENV, raising=False)
+    monkeypatch.setattr(bwrap_mod, "bwrap_available", lambda: False)
+    with pytest.raises(RuntimeError, match="d1_bwrap_unavailable"):
+        d1_worker_enter_bwrap_or_exit(
+            argv=["unused"],
+            scratch_root=tmp_path,
+            source_path=tmp_path / "source.jsonl",
+            repo_root=ROOT,
+        )
+
+
+def test_worker_bwrap_launch_failure_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import tests.watch_oom_live_diagnosis_bwrap as bwrap_mod
+
+    monkeypatch.setenv("CONVMEM_LIVE_DIAG_HERMETIC", "1")
+    monkeypatch.delenv(D1_BWRAP_ACTIVE_ENV, raising=False)
+    monkeypatch.setattr(bwrap_mod, "bwrap_available", lambda: True)
+    monkeypatch.setattr(bwrap_mod, "build_bwrap_command", lambda *_a, **_k: ["false"])
+    with pytest.raises(SystemExit) as exc:
+        d1_worker_enter_bwrap_or_exit(
+            argv=["unused"],
+            scratch_root=tmp_path,
+            source_path=tmp_path / "source.jsonl",
+            repo_root=ROOT,
+        )
+    assert exc.value.code != 0
 
 
 def test_write_probe_never_mutates_when_isolation_broken(tmp_path: Path) -> None:
