@@ -85,22 +85,21 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Implementation complete on the tip of `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`: hermetic `transform_failed` predecessor-preserving supersession (`bootstrap_supersession.py`, `supersede_failed_bootstrap`, manifest-bound supersession accounting, lifetime paid-cap carry-forward). Thirty-four focused pytest cases across `tests/test_incremental_jsonl_bootstrap_supersession.py`, `tests/test_incremental_jsonl_bootstrap_safety.py`, and `tests/test_incremental_jsonl_bootstrap_command.py`; implementation pylint clean on `bootstrap_safety.py`, `bootstrap_supersession.py`, and `scripts/bootstrap-incremental-jsonl.py`. No live retry, config change, watcher restart, or runtime promotion. | Exact-tip Kiro and Copilot review, then Ryan PR/merge decision |
+| Failed-operation supersession | Implementation and review complete at `a6169a5` on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`: hermetic `transform_failed` predecessor-preserving supersession, manifest-bound accounting, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained predecessor evidence. Production Python 3.11 affected suite: 178 passed; pylint 10.00/10. Kiro and Copilot both PASS on the exact implementation tip. No live retry, config change, watcher restart, or runtime promotion. | Ryan PR/merge decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
 On `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`, the hermetic
-failed-operation supersession implementation is complete pending independent
-review. Next lane: exact-tip Kiro and Copilot review, then Ryan PR/merge
-decision. No lane may execute a live bootstrap retry, successor grant, runtime
+failed-operation supersession implementation passed exact-tip Kiro design review
+and Copilot safety audit at `a6169a5`. Next lane: Ryan PR/merge decision. No lane
+may execute a live bootstrap retry, successor grant, runtime
 promotion, config change, or watcher restart without separate Ryan authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro and Copilot review the exact tip of
-   `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`; Ryan then decides
-   whether to merge the failed-operation supersession PR.
+1. Ryan decides whether to open and merge the failed-operation supersession PR
+   from `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`.
 2. After merge, Sol prepares a fresh exact-resource successor packet (revalidated
    source, backup, dimension 768, six additional DeepSeek attempts with lifetime
    total eight, one same-grant recovery) and Ryan grants one successor bootstrap.
@@ -215,15 +214,15 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-09 | Kiro / Copilot | Both lanes issued complete PASS verdicts with no blockers on exact corrected revision 318c2f9; CI-equivalent full suite and Ryan's PR decision remain |
 | 2026-10-10 | Cursor | Live bootstrap exposed paid-cap mis-accounting (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); runtime fix `32fae68`, 12 focused passes at evidence commit `2b7228b`, Copilot scoped PASS on runtime, Kiro PASS on evidence; next gate Ryan PR/merge decision |
 | 2026-10-10 | Cursor / Sol | Failed-operation supersession implementation complete on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession` (manifest-bound carried accounting, 34 focused pytest cases, pylint clean); exact-tip Kiro/Copilot review next; no live retry/config/watcher authority |
+| 2026-10-10 | Sol / Kiro / Copilot | Exact-tip review complete at `a6169a5`: both lanes PASS after contained exclusive lineage-temp creation closed the final blocker; 178 affected production-Python tests pass; Ryan PR/merge decision next |
 
 ## TL;DR
 
-- Arc Codex coordinator and canary remain on `main`, default off; watcher stays
+- The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
   stopped and disabled with no restart authority.
-- Failed-operation supersession is implementation-complete on
-  `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession` (34 focused
-  pytest cases, pylint clean on the three implementation modules); exact-tip
-  Kiro/Copilot review is next, then Ryan PR/merge decision.
+- Failed-operation supersession is implementation- and review-complete at
+  `a6169a5` (178 affected production-Python tests, pylint 10.00/10, Kiro and
+  Copilot PASS); Ryan's PR/merge decision is next.
 - No live bootstrap retry, successor grant execution, config change, or watcher
   promotion exists; those remain separately Ryan-gated after merge and a fresh
   Sol successor packet.
