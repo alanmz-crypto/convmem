@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-09
+**Updated:** 2026-10-11
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Recovery, detection and containment review — BLOCKED_ON_RYAN (2026-10-11):**
+  Four Opus↔Codex review rounds converged. Codex will architect (Opus reviews once
+  plus one delta, Kiro signs off). Ryan first takes a fresh Rescuezilla image,
+  names the arc, and separately decides the exact #341 detector deploy
+  (`5c6a4a8`, watch stays stopped). No implementation, deploy, or live write is
+  authorized. Resume from the
+  [Opus review handoff](CLAUDE-2026-10-11-recovery-containment-review-handoff.md).
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING
   (2026-10-09):** Sol resolved the first exact-packet Kiro/Copilot conflict in
