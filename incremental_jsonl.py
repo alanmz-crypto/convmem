@@ -754,6 +754,13 @@ class IncrementalJsonlCoordinator:
         fd = open_source_readonly(self.source)
         try:
             info = validate_regular_source(fd)
+            admission = self.settings.codex_rollout_admission
+            if (
+                self.codex_admitted_live
+                and admission is not None
+                and info.st_size > admission.max_source_bytes
+            ):
+                raise IncrementalJsonlError("source_too_large")
             raw = os.read(fd, info.st_size)
             after = os.fstat(fd)
         finally:

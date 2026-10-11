@@ -400,6 +400,13 @@ class CircuitBreakerState:
         entry = self._data["refusals"].get(key)
         return bool(entry and entry.get("quarantined"))
 
+    def has_refusal_quarantine_for_path(self, path: str) -> bool:
+        prefix = f"{path}\0"
+        for key, entry in self._data.get("refusals", {}).items():
+            if key.startswith(prefix) and entry.get("quarantined"):
+                return True
+        return False
+
     def record_refusal(
         self,
         path: str,
@@ -629,16 +636,17 @@ def _process_ready_path(
             if verbose:
                 print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
             return
-        try:
-            from adapters.jsonl_prefix import complete_prefix_digest_for_path
+        if breaker.has_refusal_quarantine_for_path(path):
+            try:
+                from adapters.jsonl_prefix import streaming_complete_prefix_digest_for_path
 
-            prefix_digest = complete_prefix_digest_for_path(path)
-        except OSError:
-            prefix_digest = ""
-        if prefix_digest and breaker.is_refusal_quarantined(path, prefix_digest):
-            if verbose:
-                print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
-            return
+                prefix_digest = streaming_complete_prefix_digest_for_path(path)
+            except OSError:
+                prefix_digest = ""
+            if prefix_digest and breaker.is_refusal_quarantined(path, prefix_digest):
+                if verbose:
+                    print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
+                return
         flush_path(path, verbose=verbose, use_subprocess=True)
         breaker.record_success(path)
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -660,9 +668,9 @@ def _record_ready_path_failure(
         outcome, digest = refused
         if not digest:
             try:
-                from adapters.jsonl_prefix import complete_prefix_digest_for_path
+                from adapters.jsonl_prefix import streaming_complete_prefix_digest_for_path
 
-                digest = complete_prefix_digest_for_path(path)
+                digest = streaming_complete_prefix_digest_for_path(path)
             except OSError:
                 digest = ""
         breaker.record_refusal(path, outcome=outcome, prefix_digest=digest)
