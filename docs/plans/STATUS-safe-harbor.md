@@ -35,7 +35,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- `ARCHITECTURE-safe-harbor.md`: corrected direction draft on `plan/2026-10-11-safe-harbor`; Opus's first review of `4d6faf22171525ab917a0f3773a14cfd08e56440` accepted the direction but failed the text on gate-scope authority and incident replacement. Both are corrected for delta review; no PASS is inferred.
+- `ARCHITECTURE-safe-harbor.md`: direction draft on `plan/2026-10-11-safe-harbor`; Opus's delta review passed at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%). Its exact non-blocking E7 disposition clause has been added; no other contract change followed that review. Kiro reviews the current revision; Opus's PASS remains pinned to the revision it reviewed.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
@@ -50,18 +50,18 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Review synthesis and pre-reboot checkpoint: preserved at `bc3a6fd34bc594024d53fb86c9ca6b312cb64bd1` on the separate checkpoint branch.
 - Architecture direction: **DRAFT / CORRECTED**, one recommended option; standing index/plain-add gate exemptions retained explicitly, all unresolved incidents retained in the existing authority. Seven planning obligations are recorded in architecture section 8.
 - Arc name: **PROVISIONAL**; Ryan was asked to confirm or rename it.
-- Opus review/delta: **FIRST REVIEW FAIL at `4d6faf2`; CORRECTIONS AWAIT DELTA REVIEW** on the exact new revision. Review scope: the two blockers, E1–E7 and correction-induced regressions.
+- Opus review/delta: **COMPLETE — DELTA PASS at `505a422` (85%)**. Both blockers resolved; E1–E7 accepted as planning obligations. Opus explicitly required no further round for its exact E7 clarification, now included.
 - Kiro governing design sign-off: **NOT STARTED for this artifact**.
 - Ryan direction approval: **PENDING**.
 - Execution Planning, implementation, verification and deployment: **NOT AUTHORIZED by this brief**.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Corrections are prepared for independent delta review. Revise only remaining findings; stop before execution planning until Ryan accepts the direction and the backup-interface ownership prerequisite is satisfied. Do not convert proposed contracts or backup reports into verified evidence.
+**Codex:** The Opus corrections and requested E7 clarification are complete; await Kiro's governing review. Stop before execution planning until Ryan accepts the direction and the backup-interface ownership prerequisite is satisfied. Do not convert proposed contracts or backup reports into verified evidence.
 
-**Opus:** Delta-review the exact correction against `4d6faf22171525ab917a0f3773a14cfd08e56440`, using architecture section 10: the two blockers, E1–E7 and regressions caused by those edits. Do not repeat the original full review without a new contract or new evidence requiring it.
+**Opus:** The first review and delta cadence is complete. No further review for the requested E7 clause; return only if new contracts beyond that clarification are introduced.
 
-**Kiro:** Provide governing design review/sign-off. Opus review does not replace your gate.
+**Kiro:** Review the exact current direction and provide governing design sign-off. Opus's PASS at `505a422` and the subsequent E7 clarification are documented in architecture section 10; neither replaces your gate.
 
 **Ryan:** Confirm the title, provide the recovery/loss-window inputs, and decide whether to approve the reviewed direction. Operational grants remain distinct.
 
@@ -69,7 +69,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Opus delta-reviews the corrected architecture; Codex addresses any remaining blockers; Kiro supplies governing sign-off.
+1. Kiro reviews the exact current architecture and supplies governing sign-off; any findings return through the applicable review/approval process.
 2. Resolve owner inputs without inferring image usability or a loss window; Ryan accepts or rejects the direction, including operator disposition after every automatic restore.
 3. Before execution planning, obtain Complete-data Backup v2 interface review or Ryan's explicit transfer for resolver/eligibility/gate changes.
 4. Only after acceptance and that ownership prerequisite: execution/verification planning must resolve E1–E7 before the plan can be accepted, under the applicable review/approval gates.
@@ -108,7 +108,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 - 2026-10-11 — Codex: resumed from the GitHub checkpoint and authored the provisional Safe Harbor direction/brief; independent review and Ryan approval remain pending.
 - 2026-10-11 — Codex: corrected Opus's two first-review blockers and recorded E1–E7; exact-revision delta review is next, with Kiro sign-off and Ryan approval still pending.
+- 2026-10-11 — Codex: recorded Opus delta PASS at `505a422` and added its exact E7 disposition clause; Kiro governing review is next, with Ryan approval pending.
 
 ## TL;DR
 
-[Arc Safe Harbor, provisional] The draft now explicitly retains the standing gate exemptions and requires retention of every unresolved incident. Opus's bounded delta review is next, followed by Kiro sign-off and Ryan's direction decision. E1–E7 are planning obligations; no implementation or live action is authorized. Fresh-image completion and the loss window remain open.
+[Arc Safe Harbor, provisional] Opus's delta passed at `505a422` (85%); its exact E7 clarification now invalidates human disposition when later findings appear. Kiro governing sign-off is next, then Ryan's direction decision. E1–E7 remain planning obligations; no implementation or live action is authorized. Fresh-image completion and the loss window remain open.

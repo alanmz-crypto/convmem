@@ -1,6 +1,6 @@
 # Architecture Direction — Safe Harbor
 
-> **Arc: Safe Harbor (provisional name). Status: DRAFT, corrected after Opus's first review; delta review, Kiro sign-off and Ryan's direction approval pending.** This document grants no implementation, deployment, restore, indexing, or service action.
+> **Arc: Safe Harbor (provisional name). Status: DRAFT, Opus delta PASS at `505a422`; requested E7 clarification added; Kiro sign-off and Ryan's direction approval pending.** This document grants no implementation, deployment, restore, indexing, or service action.
 
 ## 1. Source, problem and planning phase
 
@@ -200,7 +200,7 @@ These are required contracts/evidence obligations from Opus's first review, not 
 - **E4 — Backup ownership:** obtain Complete-data Backup v2 review of the resolver/eligibility/gate contract or Ryan's explicit ownership transfer before execution planning; no implicit transfer accompanies this draft.
 - **E5 — Operator cost:** every automatic restore requires disposition; the earlier reported zero restores since September 24 is a historical observation, not a forecast, and recurrent restores or watch/OOM exposure (reported issue #268) trigger owner reassessment before such clears become routine.
 - **E6 — Repair admission:** quarantine-crossing repair is limited to the existing guard repair routine with an incident-bound target, never a general write-path flag, environment variable or new repair route.
-- **E7 — Durable disposition:** use existing guard `events.jsonl` for the incident-bound release disposition, with durable append/interruption handling before removing resolved authority; current `_event()` durability is insufficient and event history never independently releases admission.
+- **E7 — Durable disposition:** use existing guard `events.jsonl` for the incident-bound release disposition, with durable append/interruption handling before removing resolved authority; current `_event()` durability is insufficient and event history never independently releases admission. A disposition binds to the incident's findings as authorized; any later finding invalidates it and requires a fresh disposition.
 
 ## 9. Owner inputs and confidence
 
@@ -217,11 +217,11 @@ Confidence in conclusions, not incident probabilities:
 
 ## 10. Downstream handoff and independent review brief
 
-**Review state:** Opus's first review of `4d6faf22171525ab917a0f3773a14cfd08e56440` accepted option B's direction (85%) and issued FAIL on that artifact (80%): a silent gate-scope conflict and loss of earlier unresolved incidents. Codex accepts both blockers and has corrected sections 4/6/8 above; E1–E7 record the required planning obligations. This is the author's correction, not a reviewer PASS. Confidence in this bounded resolution: 90%; no runtime behavior is claimed changed.
+**Review state:** Opus's first review failed `4d6faf22171525ab917a0f3773a14cfd08e56440` on gate-scope authority and incident replacement. Its delta review of `505a4224b5c078a2379ebe16444ca757cc69b7db` issued **PASS (85% confidence)** with no remaining architecture blockers. Codex added Opus's exact non-blocking E7 clause binding human disposition to the authorized findings. That clause is the only contract clarification after the reviewed revision; the other changes record review state/routing. Opus explicitly required no further round for this clause. The PASS remains attributed to `505a422`, not silently transferred to a new revision; Kiro reviews the current artifact. No runtime behavior is claimed changed.
 
-**Next:** Opus checks the delta from `4d6faf22171525ab917a0f3773a14cfd08e56440`, limited to the two blockers, E1–E7 and regressions introduced by those corrections; Kiro then supplies governing sign-off; Ryan accepts/rejects the direction and ownership boundary. Only then may Codex shape an execution plan, subject to E4. No Cursor implementation grant follows from publishing or merging this draft.
+**Next:** Kiro supplies governing design review/sign-off on the exact current revision; Ryan then accepts/rejects the direction and ownership boundary. Only then may Codex shape an execution plan, subject to E4. The Opus first-review-plus-delta cadence is complete; another Opus round is needed only if new contracts beyond the requested E7 clause are introduced. No Cursor implementation grant follows from publishing or merging this draft.
 
-**Original reviewer assignment (reference; delta scope above governs the next review):** Challenge the selected direction, not the earlier chat's credibility. Read the pinned D/B/R evidence before adopting a claim. Prioritize these possible failures in this draft:
+**Reviewer assignment (retained for Kiro's governing review):** Challenge the selected direction, not the earlier chat's credibility. Read the pinned D/B/R evidence before adopting a claim. Prioritize these possible failures in this draft:
 
 1. Is the distinction between operator-qualified maintenance and narrower automatic gates honest enough to prevent a false universal safety claim? Name any operation incorrectly admitted by the proposed boundary.
 2. Does reusing quarantine for interrupted repair overload it, especially when `_quarantine()` raises and release must be serialized? Identify a concrete crash/concurrency counterexample.
@@ -235,7 +235,7 @@ Return one overall verdict, concrete blockers with file/section evidence, confid
 
 **Draft publication PR title:** Define scoped recovery and incident containment for Safe Harbor
 
-**Draft PR description:** Ryan can review one bounded direction for recovery evidence and incident handling, with explicit limits on what the existing controls prove. Codex authored this 2026-10-11 planning draft and corrected Opus's two blockers: retain the standing gate exemptions explicitly and preserve all unresolved incidents. Seven obligations remain for execution planning; Opus's delta review, Kiro sign-off and Ryan's direction decision are pending. The draft uses existing backups/quarantine, records the deployed-versus-planning revisions, and links one STATUS source from the required orientation surfaces. It authorizes no implementation or live action. This revision used static inspection; no tests or restore drills were run. **Merge reading:** [architecture](ARCHITECTURE-safe-harbor.md), [STATUS](STATUS-safe-harbor.md). **TL;DR:** Review the corrected direction; execution planning awaits the governing gates.
+**Draft PR description:** Ryan can review one bounded direction for recovery evidence and incident handling, with explicit limits on what the existing controls prove. Codex authored this 2026-10-11 planning draft and corrected Opus's two blockers: retain the standing gate exemptions explicitly and preserve all unresolved incidents. Opus's delta review passed at `505a422`; its requested E7 disposition clarification is now included. Seven obligations remain for execution planning; Kiro sign-off and Ryan's direction decision are pending. The draft uses existing backups/quarantine, records the deployed-versus-planning revisions, and links one STATUS source from the required orientation surfaces. It authorizes no implementation or live action. This revision used static inspection; no tests or restore drills were run. **Merge reading:** [architecture](ARCHITECTURE-safe-harbor.md), [STATUS](STATUS-safe-harbor.md). **TL;DR:** Kiro reviews next; execution planning awaits the governing gates.
 
 Active phase lane must stop here. Await HITL.
 

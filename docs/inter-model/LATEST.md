@@ -9,9 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor (provisional name) — CORRECTED DIRECTION (2026-10-11):** Codex
-  prepared corrections to Opus's first review of `4d6faf2`; the next lane is
-  Opus's bounded delta review, then Kiro sign-off and Ryan's direction decision.
+- **Arc Safe Harbor (provisional name) — KIRO REVIEW NEXT (2026-10-11):** Codex
+  recorded Opus's completed delta review and added its requested E7 clarification;
+  the next lane is Kiro governing sign-off, then Ryan's direction decision.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
   for review scope. No execution plan or live action is authorized.
