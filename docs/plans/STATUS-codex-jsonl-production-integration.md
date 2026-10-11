@@ -85,7 +85,7 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. The corrected temporary backup validator PASSed every exact-ID, tree, lineage, path, timestamp, and tag check. Ryan then authorized another exact retry. After the timers were paused and backups revalidated, live supersession admission refused the proposal because the current predecessor mutation inventory no longer matched the proposal-bound digest `92d87e65…caac`. Execution stopped before grant materialization, dimension probing, transport, or mutation. The proposal is unconsumed but stale for current state. | Diagnose the mutation-inventory drift without regenerating the stopped proposal |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. The corrected temporary backup validator PASSed every exact-ID, tree, lineage, path, timestamp, and tag check. Ryan then authorized another exact retry. After the timers were paused and backups revalidated, live supersession admission refused the proposal because the current predecessor mutation inventory no longer matched the proposal-bound digest `92d87e65…caac`. Read-only diagnosis proved that only `synthesis_failures.jsonl` changed: two mocked HTTP-failure rows from `tests/test_index_loud_failures.py` appended 310 bytes to the live production ledger after proposal creation. Execution stopped before grant materialization, dimension probing, transport, or mutation. The proposal is unconsumed but stale for current state. | Fix the pytest isolation leak before creating fresh backup/proposal authority |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -119,22 +119,29 @@ materialization because the current predecessor mutation inventory did not
 match the proposal-bound digest `92d87e65…caac`. The source, config, runtime,
 and proposal digests remained exact. No dimension probe, successor operation,
 provider call, or corpus mutation occurred. The drive was unmounted and all
-four timers were restored active/enabled. Diagnose the inventory drift without
-regenerating the proposal. No lane may promote config/runtime or restart the
+four timers were restored active/enabled. Read-only inventory comparison then
+proved that every surface except `synthesis_failures.jsonl` remained exact,
+including the Kiro source's two summary rows and 17 knowledge units. The
+proposal-bound ledger prefix was 633,529 bytes; the current ledger was 633,839
+bytes. The 310-byte append contains the mocked 402 and 503 summarize failures
+for `/tmp/session.jsonl` emitted by `tests/test_index_loud_failures.py`. This is
+a pytest isolation leak into the live production ledger. Fix that leak before
+fresh backup/proposal work. No lane may promote config/runtime or restart the
 watcher without separate Ryan authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Diagnose which predecessor mutation-inventory surface drifted after proposal
-   creation; do not regenerate or reuse the stopped proposal.
-2. If Ryan authorizes a replacement, capture current mutation state, refresh
+1. Correct `tests/test_index_loud_failures.py` so mocked failures write only to
+   temporary test state, never the live `synthesis_failures.jsonl` ledger.
+2. Verify the isolation correction without mutating production state.
+3. If Ryan authorizes a replacement, capture current mutation state, refresh
    backup coverage, and prepare a new exact proposal and review packet.
-3. Immediately before any later authorized retry, revalidate the exact
+4. Immediately before any later authorized retry, revalidate the exact
    local/offsite pair, source/runtime/config/binding/dimension, and establish a
    no-other-writer window through final evidence capture.
-4. If granted, execute only the exact source/runtime/config/budget operation and
+5. If granted, execute only the exact source/runtime/config/budget operation and
    return measured call, coverage, lineage, and isolation evidence.
-5. Obtain a later separate Ryan grant before any runtime/config/restart or
+6. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -260,6 +267,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Sol | Diagnosed the offsite timeout as Restic's normal lock path against the read-only mount; explicit `--no-lock` opened the repository and returned the exact expected snapshot/tree in about 0.55 seconds without mutation |
 | 2026-10-10 | Sol | Corrected the temporary validator to use `--no-lock` only offsite; the exact local/offsite IDs, shared tree, copy lineage, paths, timestamp, and tags all PASSed, with the proposal still unconsumed |
 | 2026-10-10 | Ryan / Sol | Ryan authorized another exact retry; after backup PASS and writer-window establishment, supersession admission refused the stale proposal on predecessor mutation-inventory mismatch before grant materialization, dimension probing, transport, or mutation |
+| 2026-10-10 | Sol | Proved the sole drift was a 310-byte append to live `synthesis_failures.jsonl`: two mocked HTTP-failure rows from `tests/test_index_loud_failures.py`; all other mutation surfaces, including Kiro Chroma rows, remained exact |
 
 ## TL;DR
 
@@ -271,6 +279,8 @@ Keep this document a current-state snapshot, not a session diary.
   `5e29ae13…90bb`, with no blockers.
 - Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
   `c5fec18c…79c81` is unconsumed but stale because the live predecessor
-  mutation inventory no longer matches its bound digest. The retry stopped
-  before grant materialization or paid calls. Drift diagnosis is next; config
-  and watcher promotion remain separately gated.
+  mutation inventory no longer matches its bound digest. The sole drift is two
+  mocked test failures appended to the live synthesis-failure ledger. The retry
+  stopped before grant materialization or paid calls. Pytest isolation must be
+  fixed before fresh authority; config and watcher promotion remain separately
+  gated.
