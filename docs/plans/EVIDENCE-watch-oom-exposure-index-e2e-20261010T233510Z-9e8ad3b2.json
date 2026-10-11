@@ -1,0 +1,68 @@
+{
+  "run_id": "20261010T233510Z-9e8ad3b2",
+  "hostname": "archlinux",
+  "arc": "Trapdoor Hunt",
+  "issue": 268,
+  "grant": "Ryan's new one-shot 64-row cgroup smoke followed, only on success, by one serial 5,000/20,000/58,825 paired curve; no retry or cap increase",
+  "execution_lane": "Codex",
+  "candidate_main_sha": "269929a90567d79fb7d6985a7afd799c06d8a552",
+  "harness_branch_tip": "7fc243ed56878aa243010933fc4c1c3c7b842925",
+  "baseline_sha": "5c103aa2f11f54de74be3a7eab90c433c0c019cd",
+  "harness_hash": "99f7646164793fbd3b4a1b615d5b9b8b29fa8bbf4579a055bd9fd4ea30dec35b",
+  "scratch_dir": "/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch/cgroup-smoke-9e8ad3b2695f442295ae76f6282ab5c1",
+  "worker_cgroup_memory_max_bytes": 6442450944,
+  "worker_cgroup_swap_max_bytes": 0,
+  "worker_limit_provenance": "Harness constants and the systemd launch command; the smoke stopped before a validated arm outcome or effective-limit telemetry was retained in evidence",
+  "pytest_result": {
+    "exit_code": 1,
+    "duration_seconds": 15.64,
+    "failed_test": "tests/test_watch_oom_exposure_index_e2e.py::test_e2e_paired_ingest_index_measurement",
+    "failure": "64-row baseline arm production Chroma canary changed; assert_canaries_unchanged failed in the smoke before any candidate arm or full-curve fixture",
+    "failure_location": "tests/watch_oom_exposure_index_e2e_support.py:140"
+  },
+  "production_chroma_canary": {
+    "path": "/home/lauer/.local/share/convmem/chroma/chroma.sqlite3",
+    "before": {
+      "size_bytes": 6277861376,
+      "mtime_ns": 1791674242751056985,
+      "sha256_reported_by_harness": "4d5d029fc782bf989905ac011e46f0b8a24b2f454df84168b09229c5681821ac",
+      "inode": 21628379
+    },
+    "after": {
+      "size_bytes": 6277861376,
+      "mtime_ns": 1791675314969024636,
+      "sha256_reported_by_harness": "b2244a9fa3431cc36225699d088b5ac9a1489b3cdc40003846111d7d13fd7cf4",
+      "inode": 21628379
+    },
+    "after_mtime_local": "2026-10-10T18:35:14.969024636-05:00",
+    "hash_limitation": "The harness stats a canary and then hashes it; a concurrent write can make a reported hash a torn snapshot. The mtime and digest difference prove canary drift, not a consistent before/after database snapshot."
+  },
+  "timing": {
+    "cgroup_capability_probes_started_local": "2026-10-10T18:35:10-05:00",
+    "baseline_worker_unit_started_local": "2026-10-10T18:35:19-05:00",
+    "baseline_worker_unit": "convmem-oom-measure-ba19fcb0911744fda1875db3ef1f844d.service",
+    "baseline_worker_unit_peak_journal": "111.2M",
+    "concurrent_activity": "Copilot's read-only audit found a separate Kiro CLI session and runtime-main MCP server starting at about 18:34:28-18:34:29 CDT. This shows the host was not fully quiet; it does not identify the Chroma writer.",
+    "observation": "The production Chroma mtime preceded the baseline worker unit start by about four seconds. The writer was not identified. The pytest harness process itself was not excluded. No attribution to the inactive watcher or the later baseline worker is supported by this evidence."
+  },
+  "completion": {
+    "capability_probes_advanced_to_baseline": true,
+    "baseline_worker_launched": true,
+    "baseline_arm_admissible": false,
+    "other_canaries_evaluated_after_chroma_drift": false,
+    "smoke_post_arm_watcher_check_executed": false,
+    "candidate_arm_launched": false,
+    "large_curve_started": false,
+    "complete_pairs": 0,
+    "measurement_blocked": true,
+    "one_shot_spent": true,
+    "retry_authorized": false
+  },
+  "post_run": {
+    "watcher_active_state": "inactive",
+    "remaining_measurement_units": 0,
+    "harness_worktree_clean_before_evidence_commit": true,
+    "review_provenance": "Copilot and Kiro gave written PASS on harness tip 7fc243e in CLI sessions during this conversation; those verdicts are not stored in the repository"
+  },
+  "verdict": "The smoke failed closed on production Chroma canary drift. No 5,000/20,000/58,825 paired curve ran, no memory-floor claim is accepted, and issue #268 remains open. A separate grant would be required for any rerun."
+}

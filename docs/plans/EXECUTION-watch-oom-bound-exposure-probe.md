@@ -590,6 +590,99 @@ failure and measured cgroup events for a new Ryan budget/design decision;
 do not raise the cap during that run. The live 12.5 GiB watcher OOM remains
 unexplained and issue #268 remains open.
 
+### Proposed §9.7b bound after the 2 GiB baseline OOM (2026-10-10)
+
+**State: 6 GiB paired curve complete; evidence review pending.** Kiro passed the earlier
+4 GiB design at `512ef34`, then Copilot and Kiro passed its harness at
+`cc68b9e`. Copilot noted that 4 GiB may be too close to the expected
+58,825-row baseline peak. The current-main
+one-shot at `d105c5e702264e93b9ff84e7cd2776455718f6ce` completed clean
+5,000- and 20,000-row baseline/candidate pairs under the reviewed 2 GiB
+cgroup. At 58,825 rows the baseline worker hit `memory.max=2 GiB`, reported
+`oom=1` and `oom_kill=1`, and exited 137 before the candidate arm ran. The
+run-unique evidence file
+`EVIDENCE-watch-oom-exposure-index-e2e-20261010T210439Z-31f4ffc5.json`
+therefore has `complete_pairs=2` and `measurement_blocked=true`. Copilot and
+Kiro passed that evidence at branch tip `9cfa594`; neither accepted a full
+curve or an explanation for the live 12.5 GiB watcher OOM.
+
+The next diagnostic should use the same frozen production and baseline trees,
+fixture shape, serial pair order, hermetic guards, canary contract, and
+disk-backed scratch, with a **6 GiB cgroup `memory.max` and zero swap for each
+worker**. The 2 GiB run's baseline cgroup peaks were about 0.42 GiB at 5,000
+rows and 1.41 GiB at 20,000 rows. A simple linear extrapolation reaches about
+3.96 GiB at 58,825 rows, leaving roughly 1% margin under the reviewed 4 GiB
+cap. Extrapolation is only a sizing heuristic, not a memory-floor claim or a
+promise that 6 GiB will suffice. A 6 GiB worker cap is still contained well
+below the observed 12.5 GiB live watcher OOM. Do not raise the cap during a
+run.
+
+Remote `main` later advanced to `269929a90567d79fb7d6985a7afd799c06d8a552`
+through PR #380, which changed only four ConvMem Switchboard planning files.
+The measured production Python sources are unchanged. The successor harness
+binds to this new `main` tip; the earlier 2 GiB evidence remains bound to
+`d105c5e702264e93b9ff84e7cd2776455718f6ce`. Copilot and Kiro must
+review the successor tip before any fresh one-shot grant.
+
+Ryan granted one one-shot at the reviewed successor tip `7fc243e`. The run on
+`archlinux` stopped during the 64-row baseline smoke because the production
+Chroma canary changed. Its mtime was 18:35:14 CDT, before the baseline worker
+unit started at 18:35:19 CDT. The watcher stayed inactive, but the writer is
+unknown. A separate Kiro CLI/MCP session had started shortly before the run,
+so the host was not fully quiet; no causal link to the Chroma write is proven.
+The candidate smoke arm and all large pairs were not run. That grant
+was spent; `EVIDENCE-watch-oom-exposure-index-e2e-20261010T233510Z-9e8ad3b2.json`
+records the blocked result. Copilot and Kiro passed the corrected blocked
+evidence at `0ba1f1f`; no floor claim or §9.8 advance followed from that run.
+
+Ryan then granted a separate one-shot at `0ba1f1f` on `archlinux`. Its 64-row
+cgroup smoke and all three serial 5,000/20,000/58,825-row baseline/candidate
+pairs completed under 6 GiB `memory.max` and zero swap. The run-unique file
+`EVIDENCE-watch-oom-exposure-index-e2e-20261011T004945Z-e0bd34c6.json`
+records `complete_pairs=3`, `measurement_blocked=false`, six successful full
+arms, no canary ambiguity, denials, hard failures, or cgroup OOM events. At
+58,825 rows, baseline peak RSS was 2,244.5 MiB and candidate peak RSS was
+323.8 MiB. The delta is descriptive across multiple production changes, not
+a causal estimate of the merged exposure-probe fix. Copilot audits this
+evidence, Kiro reviews it, and Ryan decides the §9.8 follow-up. The live
+12.5 GiB watcher OOM remains unexplained and issue #268 remains open.
+
+Preparation and acceptance order:
+
+1. On a new branch, change only the measurement harness and this plan. Bind
+   the 6 GiB value consistently in the systemd launcher, worker self-claim,
+   parent verification, import-order evidence, smoke, and full-curve output;
+   preserve the separate small-cap OOM telemetry control. Reject any actual
+   cgroup limit other than exactly 6 GiB/zero swap. Keep the prior 2 GiB
+   evidence immutable and label each new result with its own cap and exact
+   harness/target hashes.
+2. Run only the default hermetic tests and a 64-row baseline/candidate cgroup
+   smoke. Do not start large fixtures as part of preparation. Copilot audits
+   the revised isolation/evidence boundary; Kiro reviews the exact tip and
+   disposition. Any FAIL blocks the measurement.
+3. After both reviews pass, Ryan may issue a *new* one-shot grant naming
+   `archlinux`, Codex as execution lane, the exact reviewed tip, and scratch
+   `/home/lauer/Projects/convmem/.worktrees/issue-268-e2e-scratch`. Immediately
+   before execution, confirm remote `main` still matches the frozen target,
+   both worktrees are clean, no indexing writer is active, production canaries
+   are quiet, watcher remains inactive/disabled, host RAM and ext4 scratch
+   meet a raised 16 GiB available-RAM preflight and the existing 8 GiB ext4
+   scratch preflight, and no measurement unit is left over.
+   Ryan need only hold other agents' indexing for the brief measurement window,
+   not while this amendment is prepared.
+4. Under that grant, run exactly one serial 5,000/20,000/58,825 paired curve.
+   Stop between arms below 8 GiB host-available RAM; retain the 16 GiB active
+   host preflight and all per-arm canary,
+   denial, status, semantic, RSS, and cgroup-event checks remain mandatory.
+   A cgroup OOM, missing telemetry, drift, denial, timeout, incomplete pair, or
+   changed main stops the run with a blocked verdict. Do not retry, raise the
+   bound, combine 2, 4, and 6 GiB rows into one accepted curve, or advance
+   §9.8 from partial evidence.
+
+This is a diagnostic bound, not a watcher memory limit or live-activation
+proposal. No production source, runtime configuration, watcher service,
+current PR, or #286 work is changed by this amendment.
+
 References: [Linux cgroup v2 memory controller](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html),
 [systemd resource control](https://github.com/systemd/systemd/blob/main/man/systemd.resource-control.xml),
 and [systemd-run](https://github.com/systemd/systemd/blob/main/man/systemd-run.xml).
