@@ -218,29 +218,63 @@ a second recovery request stops the operation without changing the grant.
 5. Keep the watcher disabled. Success does not authorize config promotion,
    watcher restart, append testing, or another transcript source.
 
+## Sealed non-executed proposal
+
+After Kiro and Copilot both PASSed packet commit
+`730962afcf906b28afe7d0ed2c54878b03d6855c`, packet SHA-256
+`8311c525b19a6c0ad0b2bc78f78eb17a4238299c8f846535e4c8b83f07a7b054`,
+Sol used the detached runtime to validate the source bytes and metadata, exact
+runtime/config/transform/provider binding, local snapshot, r3 result, watcher
+state, and current mutation inventory. Sol then sealed one mode-0400 proposal:
+
+| Field | Exact value |
+|---|---|
+| Proposal path | `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.json` |
+| Proposal SHA-256 | `3208b05b2177918ec1926805f936a0eaaf9d60961388e51c074fe44c0affe5ef` |
+| Metadata path | `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.meta.json` |
+| Metadata SHA-256 | `be738bd1e03a1790f99a9f444992ca5cf48522fcb30f145677360ca7be12871f` |
+| Operation id | `14535580b8098787bd063ae59eee48ee5fbab2d47c2df3e17bcdf19010fafb2c` |
+| Grant fingerprint | `821e6b1d5e77dfaf3690759730836bb57e712858b279923334775f14f6b41f47` |
+| Authority fingerprint | `89ec7e4cfd9f17ca0b273e38e5754fb0fa3d45d69428594b4368027b7b1bf6d4` |
+| Mutation inventory | `0ecb33ea8a62be7fd4d0faeee30929cefbca04d001b59be8459b2a1616a9b27b` |
+
+The proposal binds local snapshot `89aaf9ef…3ecc`; its metadata also binds
+offsite snapshot `99510210…4a8`, shared tree `de8888c7…24c6`, r3 result SHA
+`61c71ccc…5a9`, evidence SHA `347582c2…09c9`, and the reviewed packet revision
+above. Generation resolved to DeepSeek `deepseek-v4-flash`; embedding resolved
+to local Ollama `nomic-embed-text:latest`; no provider transport occurred.
+
+This sealed file is a proposal, not execution authority. It must not be moved
+to an authorization directory, passed to `--execute`, edited, or regenerated
+under the same identifiers. A later Ryan grant must name its exact path, SHA,
+operation id, grant fingerprint, and authority fingerprint. Any intervening
+source, backup, runtime, config, binding, dimension, inventory, writer, watcher,
+or proposal-byte mismatch stops without regeneration.
+
 ## Review contract
 
 Kiro and GitHub Copilot must review this same file revision and digest.
 
 - **Kiro:** confirm the source/bootstrap assumptions, detached merged runtime,
   corrected post-overlay transform fingerprint, supersession model, verified
-  backup disposition, budget, and measurement plan.
+  backup disposition, budget, measurement plan, and that the sealed proposal
+  matches the reviewed packet.
 - **Copilot:** audit evidence preservation, filesystem containment, authority
   binding, the zero-call refusal claim, budget carry-forward,
-  fail-before-mutation ordering, and isolation.
+  fail-before-mutation ordering, isolation, and the proposal/metadata identity.
 
 Each reviewer returns written `PASS` or `FAIL`, with blockers separate from
 advisories. A deferral or missing review is not a conflict.
 
 ## Recommendation
 
-`NO-GO` for a live successor bootstrap. Kiro and Copilot must first PASS this
-fresh-backup exact revision. Sol may then seal the already-authorized
-non-executed successor proposal against this reviewed packet. Ryan may later
-issue a new exact execution grant naming the corrected post-overlay transform
-fingerprint and verified backup disposition, with all execution-day
-measurements repeated. Runtime/config promotion and watcher restart remain
-later, separate grants.
+`NO-GO` for a live successor bootstrap. Kiro and Copilot must narrowly confirm
+the proposal identifiers and binding on this exact revision. If both PASS,
+Ryan may later issue a new exact execution grant naming the proposal path and
+SHA, operation id, grant fingerprint, authority fingerprint, corrected
+post-overlay transform fingerprint, and verified backup disposition, with all
+execution-day measurements repeated. Runtime/config promotion and watcher
+restart remain later, separate grants.
 
 ## TL;DR
 
@@ -249,5 +283,7 @@ is unchanged. The fresh backup-only preflight created local snapshot
 `89aaf9ef…3ecc` and exact offsite copy `99510210…4a8`, sharing tree
 `de8888c7…24c6`, while inventory `0ecb33ea…9b27b` stayed exact. The two carried
 paid attempts, six-additional/eight-lifetime cap, and accepted read-only source
-disposition remain explicit. Execution is `NO-GO` until same-revision review,
-a newly sealed proposal, and a separate exact Ryan grant.
+disposition remain explicit. The sealed proposal has operation id
+`14535580…fb2c` and SHA `3208b05b…e5ef`; it is not execution authority.
+Execution is `NO-GO` until same-revision narrow confirmation and a separate
+exact Ryan grant.
