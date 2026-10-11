@@ -85,13 +85,14 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. After two safe pre-snapshot refusals, r3 created local snapshot `89aaf9ef…3ecc`, exact offsite copy `99510210…4a8`, shared tree `de8888c7…24c6`, and unchanged inventory `0ecb33ea…9b27b`. Kiro and Copilot PASSed packet `730962a`; Sol sealed non-executed proposal operation `14535580…fb2c`, SHA `3208b05b…e5ef`. | Kiro and Copilot narrowly confirm the sealed proposal binding on one exact revision; execution remains Ryan-gated |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. After two safe pre-snapshot refusals, r3 created local snapshot `89aaf9ef…3ecc`, exact offsite copy `99510210…4a8`, shared tree `de8888c7…24c6`, and unchanged inventory `0ecb33ea…9b27b`. Kiro and Copilot PASSed packet `730962a`, then both PASSed the sealed proposal binding at `9d249d0`; proposal operation `14535580…fb2c`, SHA `3208b05b…e5ef`. | Ryan decides whether to issue the exact successor-bootstrap execution grant |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Narrowly confirm the sealed proposal and metadata against the Kiro/Copilot-
-PASSed packet revision `730962a`. The proposal is mode 0400 at
+Preserve the same-revision Kiro/Copilot PASS on the sealed proposal and present
+the exact copyable execution grant for Ryan's decision. The proposal is mode
+0400 at
 `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.json`, SHA-256
 `3208b05b2177918ec1926805f936a0eaaf9d60961388e51c074fe44c0affe5ef`,
 operation id `14535580…fb2c`, grant fingerprint `821e6b1d…1f47`, and authority
@@ -104,17 +105,14 @@ the watcher without a later separate Ryan grant.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro and Copilot narrowly confirm the sealed proposal identity and binding
-   on the same exact revision.
-2. If both PASS, Ryan decides whether to issue a separate exact
-   successor-bootstrap grant.
-3. Immediately before any later authorized execution, revalidate the exact
+1. Ryan decides whether to issue the separate exact successor-bootstrap grant.
+2. Immediately before any later authorized execution, revalidate the exact
    local/offsite pair, source/runtime/config/binding/dimension, and establish a
    no-other-writer window through final evidence capture.
-4. If separately granted, execute only the exact
+3. If separately granted, execute only the exact
    source/runtime/config/budget operation and return measured call, coverage,
    lineage, and isolation evidence.
-5. Obtain a later separate Ryan grant before any runtime/config/restart or
+4. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -252,6 +250,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Ryan / Sol | Kiro and Copilot PASSed r2 `4fd5ef3`; its grant safely refused on a quiescent service's persistent `failed` state with `MainPID=0`, so r3 now requires both a quiescent state and zero PID and awaits re-review |
 | 2026-10-11 | Ryan / Sol | Kiro and Copilot PASSed r3 `bf50c62`; its one-shot grant created current matching local/offsite coverage with unchanged inventory, and Ryan authorized preparation of a new non-executed successor proposal after packet review |
 | 2026-10-11 | Sol / Kiro / Copilot | Both lanes PASSed packet `730962a`; Sol sealed non-executed proposal `14535580…fb2c` against the current backups and inventory, with narrow proposal-binding confirmation next |
+| 2026-10-11 | Kiro / Copilot / Sol | Both lanes PASSed the sealed proposal binding at exact revision `9d249d0` with no blockers; Ryan's separate exact execution-grant decision is next |
 
 ## TL;DR
 
@@ -261,6 +260,6 @@ Keep this document a current-state snapshot, not a session diary.
   the test-isolation correction is on `main` through PR #384 (`6a23aa9`).
 - R3 created current matching local/offsite coverage while the mutation
   inventory remained exact. Kiro and Copilot PASSed the successor packet; Sol
-  sealed a non-executed proposal that now awaits narrow same-revision binding
-  confirmation. Bootstrap, paid calls, config promotion, and watcher restart
-  remain separately gated.
+  sealed a non-executed proposal, and both lanes PASSed its exact binding.
+  Ryan's execution-grant decision is next. Bootstrap, paid calls, config
+  promotion, and watcher restart remain separately gated.
