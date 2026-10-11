@@ -55,6 +55,9 @@ TIMERS = (
 SERVICES = tuple(name.removesuffix(".timer") + ".service" for name in TIMERS)
 CONVMEM_WRITE_COMMANDS = {
     "add",
+    "agent-run",
+    "agent_run",
+    "ask",
     "exclude",
     "forget",
     "index",
@@ -63,9 +66,14 @@ CONVMEM_WRITE_COMMANDS = {
     "reconcile",
     "record",
     "refine",
+    "shadow-activate",
+    "shadow-canary",
+    "shadow-rollback",
     "verify",
     "watch",
+    "writer-census-start",
 }
+DIRECT_WRITER_MARKERS = ("source_reconciler",)
 
 # Validate the detached runtime before importing any code from it.
 _runtime_probe = subprocess.run(
@@ -153,16 +161,23 @@ def assert_no_uncontrolled_writer() -> None:
                 if item
             ]
             command = " ".join(argv)
-            cwd = (entry / "cwd").resolve()
         except (FileNotFoundError, PermissionError):
             continue
+        try:
+            cwd = (entry / "cwd").resolve()
+        except (FileNotFoundError, PermissionError):
+            cwd = None
         if "test_index_loud_failures.py" in command:
             raise RuntimeError(f"stale failure test active: pid={entry.name}")
         if any(Path(item).name.startswith("pytest") for item in argv) and (
-            "convmem" in str(cwd)
+            (cwd is not None and "convmem" in str(cwd)) or "convmem" in command
         ):
             raise RuntimeError(f"convmem pytest active: pid={entry.name}")
-        if invokes_convmem_writer(argv) or "convmem-watch" in command:
+        if (
+            invokes_convmem_writer(argv)
+            or "convmem-watch" in command
+            or any(marker in command for marker in DIRECT_WRITER_MARKERS)
+        ):
             raise RuntimeError(f"corpus writer active: pid={entry.name}")
         if any(Path(item).name == "restic" for item in argv) and (
             LOCAL_REPOSITORY in command or OFFSITE_REPOSITORY in command
@@ -246,7 +261,15 @@ def main() -> int:
         if not in_cleanup:
             raise RuntimeError(f"received termination signal: {name}")
 
-    handled_signals = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
+    handled_signals = (
+        signal.SIGHUP,
+        signal.SIGINT,
+        signal.SIGQUIT,
+        signal.SIGTERM,
+        signal.SIGALRM,
+        signal.SIGUSR1,
+        signal.SIGUSR2,
+    )
     previous_handlers = {
         signum: signal.getsignal(signum) for signum in handled_signals
     }
@@ -323,8 +346,8 @@ def main() -> int:
         uuid = run(["lsblk", "-no", "UUID", OFFSITE_DEVICE]).stdout.strip()
         if uuid != OFFSITE_UUID:
             raise RuntimeError(f"offsite UUID mismatch before mount: {uuid}")
-        run(["udisksctl", "mount", "-b", OFFSITE_DEVICE])
         mounted = True
+        run(["udisksctl", "mount", "-b", OFFSITE_DEVICE])
         mounted_at = run(
             ["findmnt", "-rn", "-S", OFFSITE_DEVICE, "-o", "TARGET"]
         ).stdout.strip()

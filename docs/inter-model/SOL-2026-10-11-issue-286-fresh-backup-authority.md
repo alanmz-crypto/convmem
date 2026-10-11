@@ -49,12 +49,20 @@ revision corrects both gaps. It also revalidates a clean runtime tree before
 import, pauses every installed ConvMem timer, checks device identity before
 mount, and binds isolated Python execution.
 
+Copilot FAILed the next exact revision,
+`270705a1f9dd65054f1d3625be8c44d861d1c495`, solely because the bound
+`/usr/bin/python3 -I` lacks `chromadb` and cannot import the reviewed runtime.
+That audit confirmed the writer-census and early-reservation blockers were
+closed. This revision binds the ConvMem environment's Python interpreter and
+extends the census to the remaining known mutation commands and direct
+reconciler form.
+
 ## Exact reviewed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `cb68804d77c34839d0c8f7908294e154bd3f3ba2baecf7cf45ef8d8252d4f3f5` |
+| Attachment SHA-256 | `7102aac705da3626a8d0f0d1167facda0f76a1c9f95149dd9b1e98e405d11c2c` |
 | Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011.py` |
 | Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011.json` |
 | Valid local date | `2026-10-11` in `America/Chicago` |
@@ -64,10 +72,11 @@ named one-shot operation consists of these commands from that exact checkout:
 
 ```bash
 set -e
+! findmnt -rn -S /dev/sda1 -o TARGET
 cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011.py
 chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011.py
-printf '%s  %s\n' 'cb68804d77c34839d0c8f7908294e154bd3f3ba2baecf7cf45ef8d8252d4f3f5' '/tmp/convmem-kiro-replacement-backup-runner-20261011.py' | sha256sum --check --strict -
-/usr/bin/python3 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011.py --execute
+printf '%s  %s\n' '7102aac705da3626a8d0f0d1167facda0f76a1c9f95149dd9b1e98e405d11c2c' '/tmp/convmem-kiro-replacement-backup-runner-20261011.py' | sha256sum --check --strict -
+/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011.py --execute
 ```
 
 `set -e` makes a digest mismatch stop before the runner. The detached runtime
@@ -90,16 +99,19 @@ The runner performs this closed sequence:
    source state ID, and the local authority date.
 2. Before any timer, mount, corpus, or backup mutation, reserve the result path
    with `O_EXCL`, reject symlinks, set mode `0600`, and fsync a `RESERVED`
-   one-shot marker. Convert `SIGHUP`, `SIGINT`, and `SIGTERM` into controlled
-   failure so cleanup and final evidence run; signals during cleanup cannot
-   interrupt restoration.
+   one-shot marker. Convert `SIGHUP`, `SIGINT`, `SIGQUIT`, `SIGTERM`,
+   `SIGALRM`, `SIGUSR1`, and `SIGUSR2` into controlled failure so cleanup and
+   final evidence run; signals during cleanup cannot interrupt restoration.
 3. Require the watcher to be inactive, disabled, and have `MainPID=0`.
    Record and stop every installed ConvMem timer, then require each matching
    service to be inactive. Restore only timers that were active beforehand.
-4. Reject active stale failure tests, ConvMem pytest processes, actual
-   `convmem`/`convmem.py` mutating command forms, watcher processes, and Restic
-   operations against either governed repository. Repeat the census inside
-   the writer gate before the first inventory and before final inventory.
+4. Reject active stale failure tests, ConvMem pytest processes, known
+   `convmem`/`convmem.py` mutation commands (including `ask`, agent-run,
+   Shadow, and writer-census commands), the direct source-reconciler form,
+   watcher processes, and Restic operations against either governed
+   repository. Repeat the census inside the writer gate before the first
+   inventory and before final inventory. A denied `/proc/<pid>/cwd` read does
+   not suppress command-line classification.
 5. Require `/dev/sda1` to be initially unmounted and require UUID
    `f1bd69b4-e567-4ef3-89ec-13faff0602e9` before mounting it at
    `/run/media/lauer/rxBUlauer-128Gfs`.
@@ -126,7 +138,9 @@ The runner performs this closed sequence:
     offsite device, restore the timers to their exact prior active/enabled
     states, recheck the watcher state, and overwrite the reserved marker with
     one fsynced final result. Any failure leaves the reserved path in place so
-    a second snapshot/copy invocation cannot start under the same grant.
+    a second snapshot/copy invocation cannot start during the current boot.
+    Once the runner starts, the external grant is consumed even if a later
+    reboot clears `/tmp`; it must never be reused.
 
 The attachment contains the complete invocation. Neither
 `backup_workflows.py ensure` nor `backup_workflows.py copy-offsite` is used,
@@ -149,7 +163,7 @@ is introduced; all Restic I/O remains in `restic_snapshot.py`.
 | Required coverage path | `/home/lauer/.local/share/convmem` |
 | Required tags | `convmem-data-v2`, `convmem-2026-10-11`, `kiro-successor-preflight` |
 | Paused timers | reconcile, external/local/ensure Restic, cross-project digest, monitor, watcher restart, CG-2 soak check |
-| Maximum writes | one local snapshot; one offsite copy; no prune/delete |
+| Maximum writes | one `/tmp` marker/result; one complete-data evidence update; one local snapshot; one offsite copy; no prune/delete |
 
 Any source, runtime, config, date, inventory, watcher, device, mountpoint,
 repository, writer-census, lineage, cleanup, or timer-state mismatch produces
