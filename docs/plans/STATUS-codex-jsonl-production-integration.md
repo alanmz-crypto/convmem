@@ -85,7 +85,7 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. Tests and linters have not been run. | Ryan decides focused verification and PR creation; fresh backup/proposal authority follows only after the fix lands |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -100,27 +100,26 @@ source's two summary rows and 17 knowledge units, remained exact.
 Cursor corrected the isolation leak at code commit `eaae6e9` on
 `fix/2026-10-10-pytest-synthesis-failure-isolation`. Each affected `_build`
 call now patches `ingest._SYNTHESIS_FAIL_LOG` to a temporary path while keeping
-the real failure-logging code under exercise. Production code and the live
-ledger were unchanged. Copilot's targeted safety/isolation audit PASSed that
-exact code commit with no blockers. Tests and linters were not run because the
-implementation grant did not include test execution. Ryan decides focused
-verification and PR creation. Fresh backups, proposal, packet review, and live
-execution remain later separate gates. No lane may promote config/runtime or
-restart the watcher without separate Ryan authority.
+the real failure-logging code under exercise. Production code is unchanged.
+Copilot's targeted safety/isolation audit PASSed that exact code commit with no
+blockers. The two focused refusal tests pass in 0.50 seconds. The live ledger's
+SHA-256 (`31e8d29e…9672`), 633839-byte size, and nanosecond mtime were identical
+before and after; all four paused timers were restored active. Ryan decides PR
+creation and merge. Fresh backups, proposal, packet review, and live execution
+remain later separate gates. No lane may promote config/runtime or restart the
+watcher without separate Ryan authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. If Ryan authorizes it, run focused verification while measuring the live
-   ledger before and after to prove zero production-state mutation.
-2. Ryan decides whether to create and merge the test-isolation PR.
-3. After the fix lands, capture current mutation state, refresh
+1. Ryan decides whether to create and merge the test-isolation PR.
+2. After the fix lands, capture current mutation state, refresh
    backup coverage, and prepare a new exact proposal and review packet.
-4. Immediately before any later authorized retry, revalidate the exact
+3. Immediately before any later authorized retry, revalidate the exact
    local/offsite pair, source/runtime/config/binding/dimension, and establish a
    no-other-writer window through final evidence capture.
-5. If granted, execute only the exact source/runtime/config/budget operation and
+4. If granted, execute only the exact source/runtime/config/budget operation and
    return measured call, coverage, lineage, and isolation evidence.
-6. Obtain a later separate Ryan grant before any runtime/config/restart or
+5. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -248,6 +247,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Ryan / Sol | Ryan authorized another exact retry; after backup PASS and writer-window establishment, supersession admission refused the stale proposal on predecessor mutation-inventory mismatch before grant materialization, dimension probing, transport, or mutation |
 | 2026-10-10 | Sol | Proved the sole drift was a 310-byte append to live `synthesis_failures.jsonl`: two mocked HTTP-failure rows from `tests/test_index_loud_failures.py`; all other mutation surfaces, including Kiro Chroma rows, remained exact |
 | 2026-10-10 | Cursor / Copilot / Sol | Cursor isolated the mocked failure logger to temporary test storage at `eaae6e9`; Copilot's targeted safety/isolation audit PASSed that exact code commit with no blockers; tests and linters remain unrun pending Ryan's decision |
+| 2026-10-10 | Sol | Focused pytest passed both provider-refusal cases in 0.50 seconds while the live failure ledger's SHA-256, size, and nanosecond mtime remained identical; all paused timers were restored active and Ryan's PR decision is next |
 
 ## TL;DR
 
@@ -262,5 +262,6 @@ Keep this document a current-state snapshot, not a session diary.
   mutation inventory no longer matches its bound digest. The sole drift is two
   mocked test failures appended to the live synthesis-failure ledger. The retry
   stopped before grant materialization or paid calls. The isolation fix is
-  implemented and Copilot-audited at `eaae6e9`; focused verification and Ryan's
-  PR decision are next. Config and watcher promotion remain separately gated.
+  implemented and Copilot-audited at `eaae6e9`; its two focused tests pass with
+  the live failure ledger unchanged. Ryan's PR decision is next. Config and
+  watcher promotion remain separately gated.
