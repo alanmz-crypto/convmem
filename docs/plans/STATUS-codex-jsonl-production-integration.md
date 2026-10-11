@@ -85,26 +85,37 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Implementation and review complete at `a6169a5` on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`: hermetic `transform_failed` predecessor-preserving supersession, manifest-bound accounting, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained predecessor evidence. Production Python 3.11 affected suite: 178 passed; pylint 10.00/10. Kiro and Copilot both PASS on the exact implementation tip. No live retry, config change, watcher restart, or runtime promotion. | Ryan PR/merge decision |
+| Failed-operation supersession | Merged on `main` via PR #381 (`e798bba`, 2026-10-10); Kiro and Copilot PASS at `a6169a5`. No live retry yet. | Sol successor packet, then Ryan successor-bootstrap grant |
+| Codex rollout admission design | DRAFT on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; watcher refusal quarantine required. | Kiro design review |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-On `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`, the hermetic
-failed-operation supersession implementation passed exact-tip Kiro design review
-and Copilot safety audit at `a6169a5`. Next lane: Ryan PR/merge decision. No lane
-may execute a live bootstrap retry, successor grant, runtime
-promotion, config change, or watcher restart without separate Ryan authority.
+Two independent tracks. **Kiro bootstrap:** the failed-operation supersession
+merged via PR #381; Sol prepares the fresh exact-resource successor packet,
+then Ryan decides the grant and the retry budget (six additional DeepSeek
+attempts may not cover the worst case of eight). **Codex rollouts:** Kiro
+reviews the admission design draft at its exact revision. Neither track
+authorizes live bootstrap, config, runtime, or watcher action.
 
-## 6. What Remains Before Live (sequential)
+## 6. What Remains Before Live (sequential per track)
 
-1. Ryan decides whether to open and merge the failed-operation supersession PR
-   from `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession`.
-2. After merge, Sol prepares a fresh exact-resource successor packet (revalidated
-   source, backup, dimension 768, six additional DeepSeek attempts with lifetime
-   total eight, one same-grant recovery) and Ryan grants one successor bootstrap.
-3. Obtain a later separate Ryan grant before any runtime/config/restart or
+Kiro bootstrap:
+
+1. Sol prepares a fresh exact-resource successor packet (revalidated source,
+   backup, dimension 768, six additional DeepSeek attempts with lifetime total
+   eight, one same-grant recovery); Ryan grants one successor bootstrap.
+2. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
+
+Codex rollouts:
+
+1. Kiro reviews `DESIGN-issue-286-codex-rollout-admission.md`.
+2. Ryan implementation grant; Cursor implements; Copilot targeted audit and
+   Kiro exact-tip recheck.
+3. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
+   watcher canary, which also needs the #308 fix and the watch memory drop-in
+   reconciliation); activation is a separate Ryan grant.
 
 ## 7. Hard Stops
 
@@ -215,14 +226,15 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Cursor | Live bootstrap exposed paid-cap mis-accounting (Ollama embeds counted against DeepSeek `max_provider_http_attempts`); runtime fix `32fae68`, 12 focused passes at evidence commit `2b7228b`, Copilot scoped PASS on runtime, Kiro PASS on evidence; next gate Ryan PR/merge decision |
 | 2026-10-10 | Cursor / Sol | Failed-operation supersession implementation complete on `fix/2026-10-10-kiro-bootstrap-failed-operation-supersession` (manifest-bound carried accounting, 34 focused pytest cases, pylint clean); exact-tip Kiro/Copilot review next; no live retry/config/watcher authority |
 | 2026-10-10 | Sol / Kiro / Copilot | Exact-tip review complete at `a6169a5`: both lanes PASS after contained exclusive lineage-temp creation closed the final blocker; 178 affected production-Python tests pass; Ryan PR/merge decision next |
+| 2026-10-10 | Claude | Recorded PR #381 merge (`e798bba`); drafted Codex rollout admission design for Kiro review on `docs/2026-10-10-issue-286-codex-rollout-admission-design`; no live authority |
 
 ## TL;DR
 
-- The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
-  stopped and disabled with no restart authority.
-- Failed-operation supersession is implementation- and review-complete at
-  `a6169a5` (178 affected production-Python tests, pylint 10.00/10, Kiro and
-  Copilot PASS); Ryan's PR/merge decision is next.
-- No live bootstrap retry, successor grant execution, config change, or watcher
-  promotion exists; those remain separately Ryan-gated after merge and a fresh
-  Sol successor packet.
+- The Kiro JSONL coordinator, guarded live route, bootstrap accounting fix, and
+  failed-operation supersession (PR #381) are on `main`, default off; the
+  watcher stays stopped and disabled.
+- Kiro track: Sol's fresh successor packet and Ryan's grant come next.
+- Codex track: the rollout admission design is a draft awaiting Kiro review;
+  it admits only rollouts created after an explicit cutoff and needs no bulk
+  bootstrap.
+- No live bootstrap, config change, or watcher promotion is authorized.
