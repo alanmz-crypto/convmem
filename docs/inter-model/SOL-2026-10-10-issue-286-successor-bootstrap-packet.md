@@ -4,8 +4,8 @@
 **Issue:** #286 — changed-file indexing at chunk/append level  
 **Prepared:** 2026-10-10 by Sol  
 **Review lanes:** Kiro design review; GitHub Copilot safety/isolation audit  
-**State:** corrected review packet only; `NO-GO` absent new same-revision review
-and a separate Ryan execution grant
+**State:** corrected packet refreshed with a fresh backup pair; `NO-GO` absent
+new same-revision review and a separate Ryan execution grant
 
 ## Decision consequence
 
@@ -81,31 +81,32 @@ absent; the carried paid count remains `2`; and the additional paid count is
 
 ## Backup disposition
 
-Local Restic snapshot
-`ac1087c862cae7e43b72ca4978379d4c07a0550b9cf2964557dfed9601da3954`
-still passes the complete-data-v2 gate and covers the mutable ConvMem corpus at
-`/home/lauer/.local/share/convmem`.
+On 2026-10-10 Sol paused the four scheduled ConvMem writers, confirmed their
+services were inactive, acquired the exclusive ConvMem writer gate, and created
+fresh local Restic snapshot
+`19201163774ff614481a56a44ce02a82a8a66ca5f00ed9410dccfa8eaf0340a5`.
+It covers the mutable ConvMem corpus at `/home/lauer/.local/share/convmem`.
 
-On 2026-10-10 Sol mounted the designated `rxBUlauer-128Gfs` drive at
-`/run/media/lauer/rxBUlauer-128Gfs` and opened its configured Restic repository
-read only. Offsite snapshot
-`653a8198a8b5b540cb029801efd72ced0b9156daccbceb5c6f93ab732b4f7ac4`
-was verified as the exact copy of local snapshot
-`ac1087c862cae7e43b72ca4978379d4c07a0550b9cf2964557dfed9601da3954`:
-both have tree
-`4838c4071162e67aa44e457fd7ec583776ec0aed75233b748ffb66e63eeb2127`,
-timestamp `2026-10-10T00:10:43.236381111-05:00`, path
-`/home/lauer/.local/share/convmem`, and tags `convmem-data-v2` and
-`convmem-2026-10-10`. The offsite snapshot's Restic `original` field is the
-full local snapshot id. A post-mount `convmem doctor --json` reported both
-`restic_gate` and `restic_external` as `pass` with these exact ids.
+Sol mounted the designated `rxBUlauer-128Gfs` drive (UUID
+`f1bd69b4-e567-4ef3-89ec-13faff0602e9`) at
+`/run/media/lauer/rxBUlauer-128Gfs` and copied that exact immutable snapshot to
+the configured offsite Restic repository. Offsite snapshot
+`bfa9ac359a60796a4566f69a7ae4ef0f9f0f07b5f314bc39ca97ab9bb7f16da1`
+was then resolved by exact lineage. Both snapshots have tree
+`eb4cd0650c37a6fe6b9236cf925d49bc33c12793865d3f082dedfa5568a7575a`,
+timestamp `2026-10-10T22:17:12.365663-05:00`, path
+`/home/lauer/.local/share/convmem`, and tags `convmem-data-v2`,
+`convmem-2026-10-10`, and `kiro-successor-preflight`. The offsite snapshot's
+Restic `original` field is the full local snapshot id. Exact tree equality and
+the `original` binding both passed. Sol restored all four timers and unmounted
+the drive after verification.
 
-The backup disposition is therefore: matching local and offsite coverage for
-the mutable ConvMem corpus, with no backup of the read-only Kiro source. Ryan
-has accepted that the source is outside the backup sets. The bootstrap must
-never write it. Execution preflight must revalidate both exact snapshots and
-fail before provider transport or corpus mutation if either is unavailable or
-does not match.
+The backup disposition is therefore: fresh matching local and offsite coverage
+for the mutable ConvMem corpus, with no backup of the read-only Kiro source.
+Ryan has accepted that the source is outside the backup sets. The bootstrap
+must never write it. Execution preflight must remount the designated drive,
+revalidate both exact snapshots, and fail before provider transport or corpus
+mutation if either is unavailable or does not match.
 
 ## Predecessor evidence and supersession
 
@@ -218,6 +219,6 @@ The reviewed supersession implementation is merged and the exact Kiro source
 is unchanged. The first successor grant refused before activation or calls
 because its pre-overlay transform fingerprint was stale; the corrected
 post-overlay fingerprint is `d2ecd101…473f5`. The two carried paid attempts,
-six-additional/eight-lifetime cap, matching local/offsite backups, and accepted
-read-only source disposition remain unchanged. Execution is `NO-GO` until
-same-revision review and a new exact Ryan grant.
+six-additional/eight-lifetime cap, fresh matching local/offsite backups, and
+accepted read-only source disposition are explicit. Execution is `NO-GO`
+until same-revision review and a new exact Ryan grant.
