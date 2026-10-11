@@ -4,7 +4,7 @@
 **Issue:** #286 — changed-file indexing at chunk/append level  
 **Prepared:** 2026-10-10 by Sol  
 **Review lanes:** Kiro design review; GitHub Copilot safety/isolation audit  
-**State:** review packet only; `NO-GO` for execution
+**State:** review packet only; `NO-GO` absent a separate Ryan execution grant
 
 ## Decision consequence
 
@@ -64,20 +64,26 @@ Local Restic snapshot
 still passes the complete-data-v2 gate and covers the mutable ConvMem corpus at
 `/home/lauer/.local/share/convmem`.
 
-The previously matching offsite snapshot was
-`653a8198a8b5b540cb029801efd72ced0b9156daccbceb5c6f93ab732b4f7ac4`.
-On 2026-10-10 the external repository could not be opened because its mounted
-path was absent, so current offsite coverage is **not verified**.
+On 2026-10-10 Sol mounted the designated `rxBUlauer-128Gfs` drive at
+`/run/media/lauer/rxBUlauer-128Gfs` and opened its configured Restic repository
+read only. Offsite snapshot
+`653a8198a8b5b540cb029801efd72ced0b9156daccbceb5c6f93ab732b4f7ac4`
+was verified as the exact copy of local snapshot
+`ac1087c862cae7e43b72ca4978379d4c07a0550b9cf2964557dfed9601da3954`:
+both have tree
+`4838c4071162e67aa44e457fd7ec583776ec0aed75233b748ffb66e63eeb2127`,
+timestamp `2026-10-10T00:10:43.236381111-05:00`, path
+`/home/lauer/.local/share/convmem`, and tags `convmem-data-v2` and
+`convmem-2026-10-10`. The offsite snapshot's Restic `original` field is the
+full local snapshot id. A post-mount `convmem doctor --json` reported both
+`restic_gate` and `restic_external` as `pass` with these exact ids.
 
-The read-only Kiro source is outside both backup sets. The bootstrap must never
-write it. Ryan's later live grant must choose one of these exact dispositions:
-
-1. mount the offsite repository and verify the matching snapshot before grant;
-   or
-2. explicitly accept the valid local-only mutable-corpus backup and the absence
-   of a source-file backup.
-
-Until one disposition is named, backup preflight is `NO-GO`.
+The backup disposition is therefore: matching local and offsite coverage for
+the mutable ConvMem corpus, with no backup of the read-only Kiro source. Ryan
+has accepted that the source is outside the backup sets. The bootstrap must
+never write it. Execution preflight must revalidate both exact snapshots and
+fail before provider transport or corpus mutation if either is unavailable or
+does not match.
 
 ## Predecessor evidence and supersession
 
@@ -167,7 +173,8 @@ a second recovery request stops the operation without changing the grant.
 Kiro and GitHub Copilot must review this same file revision and digest.
 
 - **Kiro:** confirm the source/bootstrap assumptions, detached merged runtime,
-  supersession model, backup decision gate, budget, and measurement plan.
+  supersession model, verified backup disposition, budget, and measurement
+  plan.
 - **Copilot:** audit evidence preservation, filesystem containment, authority
   binding, budget carry-forward, fail-before-mutation ordering, and isolation.
 
@@ -176,15 +183,17 @@ advisories. A deferral or missing review is not a conflict.
 
 ## Recommendation
 
-`NO-GO` for a live successor bootstrap now. After same-revision Kiro and
-Copilot PASS, Ryan may issue a separate exact grant only if it names the backup
-disposition and repeats all execution-day measurements. Runtime/config
-promotion and watcher restart remain later, separate grants.
+`NO-GO` for a live successor bootstrap absent a separate Ryan grant. If Kiro
+and Copilot PASS this exact revision, Ryan may issue an exact grant naming the
+verified backup disposition and requiring all execution-day measurements to
+pass again. Runtime/config promotion and watcher restart remain later,
+separate grants.
 
 ## TL;DR
 
 The reviewed supersession implementation is merged and the exact Kiro source
 is unchanged. A successor may spend at most six additional DeepSeek attempts,
-eight lifetime, across one invocation and one recovery. The local corpus backup
-is valid; current offsite availability is unverified and must be restored or
-explicitly accepted before Ryan grants execution.
+eight lifetime, across one invocation and one recovery. The exact local and
+offsite mutable-corpus snapshots now match; the read-only source remains
+outside both backup sets by Ryan's accepted disposition. Execution remains
+`NO-GO` until same-revision review and a separate exact Ryan grant.
