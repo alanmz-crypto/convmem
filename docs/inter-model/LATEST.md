@@ -9,12 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — E4 COMPLETE / PLANNING DECISION PENDING (2026-10-11):**
-  Codex recorded Kiro's full-scope E4 PASS addendum and remaining obligations,
-  with two source/contract qualifications; execution planning awaits Ryan.
+- **Arc Safe Harbor — EXECUTION DRAFT / REVIEW PENDING (2026-10-11):**
+  Ryan authorized drafting. Read the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
+  and [unrun VERIFY stub](../plans/VERIFY-safe-harbor.md). Kiro plan review and
+  v2-owner disposition precede Ryan's plan acceptance and any task grant.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
-  for review scope. No execution plan or live action is authorized.
+  for direction-review provenance. Implementation and live operations remain pending.
   Branch: `plan/2026-10-11-safe-harbor`. No generated agent surfaces were
   regenerated or deployed; propagate the arc pointer at a later authorized
   protocol generation/deployment.

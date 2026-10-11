@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. DIRECTION APPROVED at `5ea16a6`; name confirmed; E4 FULL-SCOPE PASS; EXECUTION PLANNING PENDING.** Current planning state; no implementation or operational authority. Read the architecture for the approved direction contracts; this brief is the orientation source.
+> **Arc: Safe Harbor. DIRECTION APPROVED at `5ea16a6`; E4 FULL-SCOPE PASS; EXECUTION PLAN DRAFTED, REVIEW/ACCEPTANCE PENDING.** Ryan authorized drafting on 2026-10-11; implementation and live operations remain pending. This brief is the current orientation source.
 
 ## 1. What This Is For (product goal)
 
@@ -38,13 +38,16 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
+- `EXECUTION-safe-harbor.md`: first execution-plan draft, five serial tasks with E1–E7 and O-E4.a–e coverage, a concrete B-E4.1 proposal for v2-owner disposition, crash/concurrency evidence requirements and separate operational entry conditions. Not accepted or executed.
+- `VERIFY-safe-harbor.md`: V0–V6 stub accompanying the draft; all evidence NOT RUN. No runtime PASS or completed recovery claim.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
 - Existing code: `restic_gate.py`, `backup_workflows.py`, `restic_snapshot.py`, `chroma_write_guard.py`, `propose_decision.py` and `doctor.py`. Known contract gaps and pinned source evidence are in architecture section 3.
 - Detector candidate: CPU/vector-loss PR #341, exact `5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`. Deployment is a separate Ryan decision; no watch start or broad catch-up is implied.
-- Backup access on resume: doctor exited 0; local snapshot, external lineage copy and matching offline password copy passed. This is access/freshness evidence, not demonstrated restoration.
+- Backup access during execution-plan drafting on 2026-10-11: required doctor exited 0; local snapshot, external lineage copy and matching offline password copy passed. This is access/freshness evidence, not demonstrated restoration; CLI read paths may perform bookkeeping writes.
 - Fresh Rescuezilla image: completion, identifier, scope and destination not yet confirmed. The reported September 16 pre-incident image should be preserved.
-- No Safe Harbor implementation, execution plan, VERIFY companion or operational activation exists. A VERIFY artifact is required later before arc closure; it is not a reason to fabricate completed evidence now.
+- Additional backup destination: Ryan supplied `/run/media/lauer/ext-ex4-1T-NVMe/`; read-only mount/capacity inspection confirmed ext4 and available space. Execution section 6 records UUID/capacity and proposes a fresh-image destination. No drive write, backup allocation or qualification was performed.
+- No Safe Harbor implementation or operational activation exists. The execution draft and VERIFY stub do not fabricate completed evidence or grant a task.
 
 ## 4. Completion State
 
@@ -55,26 +58,28 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Kiro governing design sign-off: **PASS at `5ea16a6` (88%)**, no direction blockers; relayed by Ryan in this conversation.
 - E4 backup-interface review: **COMPLETE — FULL-SCOPE PASS (85%)**, confirmed by Kiro's addendum at `1268a50`. No ownership transfer. B-E4.1 and O-E4.a–e remain downstream planning obligations, with the source/contract qualifications recorded in architecture section 10; no implementation approach is selected by this review record.
 - Ryan direction approval: **APPROVED at `5ea16a6`**, explicitly including disposition after every automatic segment restore.
-- Execution Planning, implementation, verification and deployment: **NOT AUTHORIZED by this brief**.
+- Execution Planning: **DRAFTING AUTHORIZED by Ryan on 2026-10-11; FIRST DRAFT COMPLETE**. Kiro plan review, v2-owner disposition of B-E4.1 and Ryan plan acceptance remain pending.
+- Implementation, isolated execution/verification and deployment: **NOT AUTHORIZED by this brief**; Ryan explicitly kept implementation and live operations pending.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** E4 coverage is complete. Await Ryan's execution-planning decision; under a later grant, carry E1–E7, B-E4.1/O-E4.a–e and the two qualifications in architecture section 10 into the plan and its review. Do not treat approval as completed evidence or backup qualification.
+**Codex:** The authorized execution draft and VERIFY stub are complete. Hand the exact revision to Kiro for review; do not implement or self-transition. Under the planning guide, a Kiro rejection routes to Ryan before revision. Do not infer backup usability from the added drive.
 
 **Opus:** The first review and delta cadence is complete. No further review for the requested E7 clause; return only if new contracts beyond that clarification are introduced.
 
-**Kiro:** Governing direction and full-scope E4 reviews are complete. Review the later execution plan when authorized, including reconciliation of O-E4.e's wording with the approved existing-preflight contract; no new direction review is requested by this status update.
+**Kiro:** Review the new execution artifact, not the settled architecture again. Check E1's conservative release oracle, E2/E3/E7 crash and serialization mechanics, T2's concrete v2 consumer outcomes and O-E4.e's existing-gate coverage. Obtain or clearly separate the v2 owner's B-E4.1 disposition; the earlier E4 direction PASS does not grant that change.
 
-**Ryan:** Direction and name are confirmed, and E4 is satisfied. Decide whether to authorize execution planning. Recovery/loss-window inputs remain outstanding before operational protection can be declared adequate; operational grants remain distinct.
+**Ryan:** Drafting is authorized and the first plan is ready for review. After the required verdicts, accept/reject the exact plan and separately name any implementation task. Recovery/loss-window inputs remain open before live operational protection can be declared adequate; providing the new drive did not authorize a backup or restore.
 
 **Cursor / ops:** Do not implement or deploy from this brief. Wait for the accepted downstream plan and a named phase/operation grant.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Ryan makes the pending execution-planning decision; no phase transition is implied by the completed E4 review.
-2. Under a subsequent planning grant, execution/verification planning must resolve E1–E7 and B-E4.1/O-E4.a–e before plan acceptance, under the applicable review/approval gates. Account for the probe's distinct semantics and reconcile O-E4.e against the approved contract. Obtain v2-owner disposition for any resolver-contract change; resolve recovery/loss-window inputs without inferring image usability or owner acceptance.
-3. Only after a separate grant: bounded implementation and isolated evidence gathering.
-4. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
+1. Kiro reviews the exact execution draft; v2's owner dispositions B-E4.1's specified future-time and consumer behavior. Resolve the O-E4.e wording without changing the approved existing-gate direction silently.
+2. Ryan accepts/rejects the reviewed execution plan and separately authorizes a bounded task; proposed first task is T1. E1–E7 are mapped to concrete tasks and required evidence, not declared proven.
+3. Cursor implements only the granted tasks in isolation; fill V0–V6 at the actual implementation revision, obtain required independent review and return to Ryan. Unproven backend, crash or lock behavior blocks acceptance.
+4. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
+5. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
 
 ## 7. Hard Stops (models cannot cross)
 
@@ -94,11 +99,13 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 ## 9. Key Design Files (for deep dives)
 
 - [Safe Harbor architecture](ARCHITECTURE-safe-harbor.md): proposed direction, evidence, risks and reviewer assignment.
+- [Execution plan](EXECUTION-safe-harbor.md): five bounded tasks, interface proposal, proof requirements and new-drive operational limits.
+- [VERIFY companion](VERIFY-safe-harbor.md): unexecuted V0–V6 evidence map.
 - [Reboot checkpoint](https://github.com/alanmz-crypto/convmem/blob/bc3a6fd34bc594024d53fb86c9ca6b312cb64bd1/docs/inter-model/CODEX-2026-10-11-durability-reboot-checkpoint.md): review provenance and saved pre-reboot state.
 - [Recovery Authority STATUS](STATUS-recovery-authority.md): ownership and hard stops.
 - [Complete-data Backup v2 STATUS](STATUS-complete-data-backup-correction-v2.md): existing profile/restore contract and open consistency audit.
 - [Team charter](../inter-model/TEAM-CHARTER-2026-07-06.md) and [decision/review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md): authority and review discipline.
-- [Architecture Planning guide](../planning/ARCHITECTURE-PLANNING.md): active phase and stop condition.
+- [Execution Planning guide](../planning/EXECUTION-PLANNING.md): active phase and stop condition.
 
 ## 10. How to Update This Brief (departure protocol)
 
@@ -113,7 +120,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Codex: recorded Ryan's approval at `5ea16a6` and confirmed Safe Harbor; targeted Kiro E4 prompt prepared, with execution planning explicitly pending.
 - 2026-10-11 — Codex: recorded Kiro E4 PASS at `20283bd` (85%) and carried its obligations; truncated-prompt coverage clarification requested, execution planning still pending.
 - 2026-10-11 — Codex: recorded Kiro's full-scope E4 PASS addendum at `1268a50` (85%), O-E4.d/e and two source/contract qualifications; Ryan's execution-planning decision is next.
+- 2026-10-11 — Codex: recorded Ryan's drafting grant, authored five-task EXECUTION and unrun VERIFY stub, and inspected the added ext4 destination; plan/v2 review and acceptance are next, implementation/live operations pending.
 
 ## TL;DR
 
-[Arc Safe Harbor] Direction is approved; Kiro's full-scope E4 PASS (85%) is recorded and coverage is complete. Ownership is unchanged; B-E4.1/O-E4.a–e and the two qualifications in architecture section 10 carry into planning. Execution planning still awaits Ryan; fresh-image completion and the loss window remain unconfirmed. No live action is authorized.
+[Arc Safe Harbor] Ryan authorized drafting; the five-task execution plan and unrun VERIFY stub are ready for Kiro/v2 review, then Ryan's plan decision. The new ext4 drive is a candidate fresh-image destination. Implementation, live operations, image qualification and the loss-window decision remain pending.
