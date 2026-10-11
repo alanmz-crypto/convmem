@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. KIRO DELTA PASS at `dca13a5` (88%); PLAN REVIEW COMPLETE; OWNER DISPOSITION/ACCEPTANCE PENDING.** Ryan authorized Codex to draft this plan on 2026-10-11. Implementation, isolated execution, deployment and live operations remain pending. A task below is a proposed deliverable, not an executable grant. Review verdicts remain pinned to their exact revisions; this update records the verdict and routing without changing the reviewed task contracts.
+> **Arc: Safe Harbor. PLAN ACCEPTED by Ryan at `dca13a5`; B-E4.1 APPROVED by Ryan as owner, including all five consumer outcomes.** Kiro delta PASS is pinned to `dca13a5` (88%). Ownership remains unchanged. Implementation, isolated execution, deployment and live operations remain pending. A task below is a scoped deliverable, not an executable grant. This update records approval and routing without changing the accepted task contracts.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        Execution Planning
+Phase:        Execution Planning complete; awaiting separate Execute grant
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
 Lanes:        Codex authors; Kiro reviews; Cursor implements after a separate grant
-Authority:    Drafting authorized; plan acceptance and Execute pending Ryan
+Authority:    Plan and B-E4.1 accepted at dca13a5; Execute pending Ryan
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -44,7 +44,7 @@ The adopted `index` and plain `add` Restic exemption remains. `forget`, refine a
 
 Deferred: generic HOLD, identity registry, live-backup freeze/staging, global read-constructor change, permission deployment changes, backup-service migration, detector deployment, cleanup/retention automation and new write endpoints. Recovery Authority T4/V4k, complete-data-v3 activation, selected-generation/serving publication and its restore-state matrix stay outside this grant.
 
-Before this plan can be accepted:
+Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a separate task grant remains required):
 
 1. Kiro reviews this exact plan and its E1–E7 mapping. A rejection routes to Ryan under the planning guide; Codex does not self-authorize revision or execution.
 2. Complete-data Backup v2's owner explicitly dispositions the concrete B-E4.1 proposal in T2, including consumer outcomes and profile compatibility. E4 direction PASS is already complete; it is not approval of this detailed change.
@@ -87,7 +87,7 @@ Admission:
 - On these production paths, `CONVMEM_SKIP_RESTIC_GATE=1` is rejected. A lab/test exception requires canonical isolation from production and an explicit test/lab context; cwd, a name containing `convmem-lab`, confirm variables or `CONVMEM_ROOT` alone are insufficient. Unknown classification refuses. This remains a cooperative safeguard, not authorization against a same-user actor.
 - The same gate protects approval recovery before any logical mutation, including an event-only completion. A genuinely already-completed read-only return may remain a no-op; prove it writes neither events nor corpus. This does not change the `--no-index` approval exemption status.
 
-**B-E4.1 selected proposal for v2-owner review — not yet accepted:** keep freshness policy inside v2's resolver. Current-day eligibility requires today's local date; a snapshot timestamp later than the captured evaluation instant is reported as suspicious future time, not accepted or silently corrected by taking another backup. Carry a machine-readable freshness reason through the existing `ResolverError`/`WorkflowOutcome`, using existing `EXIT_STALE=25`; no new numeric exit namespace. Old stale dates retain the current snapshot-if-stale behavior. Future-time errors are excluded from ensure's backupable cases at `backup_workflows.py:197-228`, including dry-run success. No fallback to an older/legacy candidate hides the suspicious result.
+**B-E4.1 contract — approved by Ryan as owner at `dca13a5`; implementation pending:** keep freshness policy inside v2's resolver. Current-day eligibility requires today's local date; a snapshot timestamp later than the captured evaluation instant is reported as suspicious future time, not accepted or silently corrected by taking another backup. Carry a machine-readable freshness reason through the existing `ResolverError`/`WorkflowOutcome`, using existing `EXIT_STALE=25`; no new numeric exit namespace. Old stale dates retain the current snapshot-if-stale behavior. Future-time errors are excluded from ensure's backupable cases at `backup_workflows.py:197-228`, including dry-run success. No fallback to an older/legacy candidate hides the suspicious result.
 
 Capture one evaluation instant/timezone per resolution. The post-backup resolution takes a fresh instant so a newly created snapshot is not rejected against the pre-backup clock. Crossing a day boundary requires fresh resolution before admission. Profile/tag selection, exact-path rules and external `destination.original == source.id` remain intact. Regression evidence includes supported legacy/v2/v3 resolver consumers; this change activates no v3 profile and reinterprets no restore state. Any additional owning-arc conflict returns to its owner rather than expanding scope.
 
@@ -212,11 +212,11 @@ These are operational prerequisites to be completed later, not additional implem
 
 Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), **stub, evidence not run**, based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It names V0–V6 and must be filled against the actual implementation revision under later execution/verification authorization.
 
-Next: obtain the still-open v2-owner disposition of T2, then Ryan accepts/rejects the reviewed plan at `dca13a5` and separately names any task grant. The first review and A1/A2 delta are complete; this status-only record does not create another review round. O-E4.e's existing-gate wording is satisfied plan-side. Section 2 still requires B-E4.1 before plan acceptance; this record does not defer that gate until T2 implementation. No review agent is invoked by this document.
+Next: await Ryan's separate, named implementation grant; the first proposed task remains T1 in an isolated worktree. Ryan approved B-E4.1 and accepted the reviewed plan at `dca13a5`, keeping implementation/live operations pending. The first review and A1/A2 delta are complete; this status-only record does not create another review round. O-E4.e's existing-gate wording is satisfied plan-side. The section 2 owner/acceptance gates are satisfied by explicit approval, not waived or postponed. No implementation or review agent is invoked by this document.
 
 ### Kiro execution review and advisory disposition
 
-Ryan relayed Kiro's first governing execution-plan **PASS (85%)** at `00c69d2272e027b51bc1939d2817904ca14d653d`. Kiro accepted T3's conservatively gated release approach (80%), T4's uncertain-completion contract (85%), T2's plan-side interface proposal (82%) and E1–E7 coverage (85%). **O-E4.e is satisfied plan-side (90%)**: approval recovery is a named consumer of the existing gate, not a parallel mechanism. No plan defect blocked that PASS. Backend demonstration, runtime evidence and every operational grant remain unperformed. B-E4.1 remains open: Kiro explicitly lacked v2-owner authority and granted no detailed resolver change.
+Ryan relayed Kiro's first governing execution-plan **PASS (85%)** at `00c69d2272e027b51bc1939d2817904ca14d653d`. Kiro accepted T3's conservatively gated release approach (80%), T4's uncertain-completion contract (85%), T2's plan-side interface proposal (82%) and E1–E7 coverage (85%). **O-E4.e is satisfied plan-side (90%)**: approval recovery is a named consumer of the existing gate, not a parallel mechanism. No plan defect blocked that PASS. Backend demonstration, runtime evidence and every operational grant remain unperformed. At that review, B-E4.1 stayed open: Kiro explicitly lacked v2-owner authority and granted no detailed resolver change; Ryan's subsequent approval is recorded below.
 
 - **A1 incorporated:** T3 now has an explicit proof-before-remaining-implementation ordering gate, with refusal and releasable controls. The earlier acceptance stop alone did not unambiguously establish that order.
 - **A2 incorporated:** T4 explicitly requires file fsync plus directory durability on creation, and V4/V5 name parent-directory publication/failure assertions. This clarifies the existing durability contract.
@@ -226,15 +226,21 @@ Ryan relayed Kiro's first governing execution-plan **PASS (85%)** at `00c69d2272
 
 **Source qualification (Codex, static):** the review's opening describes deployed/planning `audit()` publication as under the lock. At P, `chroma_write_guard.py:806-808` holds the lock for validation/census, but result classification/publication at `:813-827` is outside it. D has no `audit()` method; this is detector code present in P. The `recover()` pre-lock check at P `:847-849` is correctly identified. T1 already requires under-lock incident publication/rechecking. It need not turn `audit.json` into incident history: that file may remain latest-observation telemetry while `QUARANTINE.json` retains every unresolved finding. These factual qualifications preserve Kiro's reported verdict without adopting inaccurate evidence claims or changing direction.
 
-### Next: v2 owner decision
+### Owner approval and next authorized step
 
 The A1/A2 delta assignment is complete. Do not rerun either completed review for this metadata-only verdict record. A substantive later contract change or concrete new evidence would need appropriately scoped review.
 
-Separately, the Complete-data Backup v2 owner must disposition **the unchanged T2 B-E4.1 proposal**: in-resolver exact-time future rejection, code 25 plus machine-readable reason, no concealment through ensure's auto-backup/dry-run/fallback, refreshed post-backup evaluation time, all five consumer outcomes, and unchanged profile/path/lineage/restore semantics. If reviewer authority is absent, return the named outstanding owner decision; do not repeat compatibility review and call it owner approval. Ryan must identify/grant the authorized v2 decision-maker or explicitly make the decision. No ownership transfer is inferred. Static files/Git only; no ConvMem CLI/MCP, indexing, tests, probes, implementation or live operations.
+**Ryan's explicit approval, 2026-10-11:**
+
+> As owner, I approve B-E4.1 exactly as specified in T2 of the Safe Harbor execution plan at dca13a59a2edf649ac6a19777f572645bea8674e, including all five consumer outcomes. I accept that execution plan. Ownership remains unchanged. Implementation and live operations remain pending.
+
+This closes B-E4.1's owner-decision prerequisite and accepts the exact reviewed plan. Complete-data Backup v2 retains its interfaces; no ownership transfer, Hybrid-audit closure or Recovery Authority grant follows. T2's future-time policy and all five consumer outcomes are unchanged. All tasks remain NOT STARTED; VERIFY remains NOT RUN.
+
+**Next authorized step:** preserve this approval record and await a separate Ryan grant naming the implementation task and lane. T1 is the plan's proposed first task, not a grant made here. No implementation, execution experiment, indexing, backup/restore, drive/service change, deployment or merge is authorized by this acceptance. Operational recovery qualification and the lost-work interval remain open before live rollout.
 
 ### Review focus for this new artifact
 
-**Completed assignment; reference only — do not rerun.** The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. The following first execution-review prompt produced Kiro's PASS at `00c69d2`; the A1/A2 delta also passed at `dca13a5`. Only the owner decision and acceptance/grants remain, as specified above.
+**Completed assignment; reference only — do not rerun.** The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. The following first execution-review prompt produced Kiro's PASS at `00c69d2`; the A1/A2 delta also passed at `dca13a5`. Ryan subsequently approved B-E4.1 and accepted that exact plan. Separate implementation/live grants remain pending.
 
 ```text
 Arc: Safe Harbor. Kiro governing execution-plan review, static/read-only.
@@ -296,4 +302,4 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 ## TL;DR
 
-[Arc Safe Harbor] Kiro passed the successor plan at `dca13a5` (88%); first review and A1/A2 delta are complete. The unchanged T2 proposal still needs v2-owner disposition before Ryan accepts the plan. All evidence is unrun; implementation and live operations remain separately gated. This verdict/routing update changes no reviewed task contract.
+[Arc Safe Harbor] Ryan approved B-E4.1 and accepted the exact reviewed plan at `dca13a5`, including all five consumer outcomes, with ownership unchanged. Review and acceptance are complete. All tasks/evidence remain unstarted/unrun; implementation and live operations need separate grants. This approval record changes no accepted task contract.

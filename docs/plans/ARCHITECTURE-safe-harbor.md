@@ -10,7 +10,7 @@
 
 **Priority:** Durability of the code and governance first; usability and speed second.
 
-**Phase:** Architecture direction approved; E4 interface review and coverage addendum complete; downstream Execution Planning authorized. **Characters:** Architect, Systems Thinker, Risk Reviewer (this direction artifact). **Function:** Planner. **Lanes:** Codex authors; Opus independently reviews; Kiro owns governing design sign-off; Ryan approves direction. **Authority:** Ryan approved the direction at `5ea16a6`, confirmed Safe Harbor, and subsequently authorized execution-plan drafting on 2026-10-11. **Stop:** The [reviewed execution plan](EXECUTION-safe-harbor.md) awaits v2-owner disposition and Ryan acceptance; implementation and live operations remain pending.
+**Phase:** Architecture direction approved; E4 and downstream Execution Planning complete. **Characters:** Architect, Systems Thinker, Risk Reviewer (this direction artifact). **Function:** Planner. **Lanes:** Codex authors; Opus independently reviews; Kiro owns governing design sign-off; Ryan approves direction. **Authority:** Ryan approved the direction at `5ea16a6`, confirmed Safe Harbor, and subsequently accepted the execution plan at `dca13a5`, including B-E4.1 as owner. **Stop:** The [accepted execution plan](EXECUTION-safe-harbor.md) awaits a separate named implementation grant; live operations also remain pending.
 
 Ryan confirmed the name Safe Harbor. The fresh Rescuezilla image's completion, identity and destination have not yet been supplied; direction approval does not establish those operational facts.
 
@@ -223,7 +223,7 @@ Confidence in conclusions, not incident probabilities:
 
 **E4 verdict and coverage:** Ryan relayed Kiro's targeted interface **PASS (85% confidence)** at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61`, reviewing the approved contract at `5ea16a6` against pinned D source and v2 documents. Kiro's coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342` preserves that verdict and confirms **E4 satisfied for the full intended scope (85%) without ownership transfer**. It covers shared ensure/health/copy consumers, retained exemptions/policy-document synchronization, and capture-evidence/health-claim limits. Prompt coverage is complete. The addendum retains B-E4.1 and O-E4.a/b/c, adds O-E4.d/e, and leaves the Hybrid audit and downstream grants open. This records Kiro's verdict, not a new independent PASS or completed execution evidence.
 
-**Obligations carried from that review (unresolved; no implementation approach selected):**
+**Obligations as carried from the E4 review (historical review state; subsequent execution/owner dispositions are recorded below):**
 
 - **B-E4.1:** Future-date tightening touches v2-owned freshness/exit semantics. Obtain v2-owner disposition during execution planning for any resolver-contract change; the review also identifies a compatible caller-side check as a candidate, not an adopted implementation.
 - **O-E4.a:** Approval recovery is a new consumer of the existing backup boundary; design and prove target/context binding and caller coverage alongside E3.
@@ -238,7 +238,7 @@ Confidence in conclusions, not incident probabilities:
 
 **Subsequent planning grant:** Ryan authorized Codex to draft the Safe Harbor execution plan on 2026-10-11, explicitly keeping implementation and live operations pending. He also supplied an additional ext4 destination; its observed identity/capacity and proposed use are recorded in execution section 6, without claiming a new backup exists.
 
-**Next:** Follow the [completed execution review record](EXECUTION-safe-harbor.md#kiro-execution-review-and-advisory-disposition) and [current STATUS](STATUS-safe-harbor.md). Kiro's first review and advisory delta are complete, with PASS at `dca13a5` (88%) and O-E4.e satisfied plan-side. The v2-owner B-E4.1 decision remains open. Ryan retains plan acceptance and separate task grants. The [VERIFY companion](VERIFY-safe-harbor.md) is an unrun stub. Recording these verdicts changes no contract and requires no repeat review.
+**Execution acceptance and next step:** Ryan explicitly approved B-E4.1 exactly as specified in T2 at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, and accepted that execution plan. Ownership remains unchanged; implementation and live operations remain pending. Read the [verbatim owner approval](EXECUTION-safe-harbor.md#owner-approval-and-next-authorized-step) and [current STATUS](STATUS-safe-harbor.md). Kiro's first review/delta are complete, with PASS at `dca13a5` (88%) and O-E4.e satisfied plan-side. Next is a separate named Ryan task grant. The [VERIFY companion](VERIFY-safe-harbor.md) remains unrun; recording approval changes no accepted contract and requires no repeat review.
 
 **Completed direction-review assignment (reference):** Challenge the selected direction, not the earlier chat's credibility. Read the pinned D/B/R evidence before adopting a claim. Prioritize these possible failures in this draft:
 
@@ -254,13 +254,13 @@ Return one overall verdict, concrete blockers with file/section evidence, confid
 
 **Draft publication PR title:** Define scoped recovery and incident containment for Safe Harbor
 
-**Draft PR description:** Ryan can decide whether to accept the reviewed implementation plan for durable recovery admission and incident containment. Codex authored the approved architecture and five execution tasks after Ryan's 2026-10-11 drafting grant. Kiro passed the first plan at `00c69d2` (85%) and its A1/A2 successor at `dca13a5` (88%); review is complete. B-E4.1 owner disposition and Ryan's plan acceptance remain pending. Verdicts stay pinned to reviewed revisions; the VERIFY companion is unrun. The plan uses existing backups/quarantine, carries E1–E7 and E4 obligations, and records the additional ext4 drive as capacity only. No implementation, backup/restore drill or deployment was performed. **Merge reading:** [execution](EXECUTION-safe-harbor.md), [VERIFY](VERIFY-safe-harbor.md), [architecture](ARCHITECTURE-safe-harbor.md), [STATUS](STATUS-safe-harbor.md), [routing](../inter-model/LATEST.md). **TL;DR:** Plan review complete; owner decisions and all execution remain pending.
+**Draft PR description:** Preserve Ryan's accepted plan for durable recovery admission and incident containment so the next implementation lane has an exact scope and stop conditions. Codex authored the architecture and five execution tasks; Kiro passed the first plan and its `dca13a5` successor (88%). Ryan accepted that exact plan and approved T2's B-E4.1 contract/all five consumer outcomes as owner on 2026-10-11, keeping ownership unchanged. This documentation package records approvals without activating any behavior; the VERIFY companion is unrun. No implementation, backup/restore drill or deployment was performed. **Merge reading:** [execution](EXECUTION-safe-harbor.md), [VERIFY](VERIFY-safe-harbor.md), [architecture](ARCHITECTURE-safe-harbor.md), [STATUS](STATUS-safe-harbor.md), [routing](../inter-model/LATEST.md). **TL;DR:** Plan accepted; implementation and live operations require separate grants.
 
-Stop before Execute. E4 and execution-plan review are complete; B-E4.1 owner disposition, Ryan's plan acceptance and task grants remain pending.
+Stop before Execute. E4, execution-plan review, B-E4.1 owner approval and Ryan's plan acceptance are complete; separate task and live-operation grants remain pending.
 
 ## TL;DR
 
 - [Arc Safe Harbor] Ryan approved existing backups and stronger existing admission/incident contracts at `5ea16a6`, with explicit coverage limits.
 - Preserve evidence before replacement; keep incidents authoritative through interruption and release them only through validated, serialized disposition.
 - Retain the documented index/plain-add gate exemption explicitly; new findings never erase unresolved incidents. E1–E7 remain planning obligations, not completed proof.
-- Defer a generic HOLD, identity registry and live-backup freeze. Full-scope E4 and execution-plan review are complete; v2-owner disposition and Ryan acceptance remain open. Detector deployment/live recovery need separate grants; fresh-image completion and the loss window remain unconfirmed.
+- Defer a generic HOLD, identity registry and live-backup freeze. Full-scope E4, execution-plan review and Ryan's B-E4.1/plan approval are complete. Implementation, detector deployment and live recovery need separate grants; fresh-image completion and the loss window remain unconfirmed.

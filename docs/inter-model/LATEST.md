@@ -9,14 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — KIRO EXECUTION PASS / OWNER DECISION PENDING (2026-10-11):**
-  Kiro passed the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
-  at `00c69d2` (85%) and its successor at `dca13a5` (delta PASS, 88%).
-  [VERIFY](../plans/VERIFY-safe-harbor.md) remains unrun. Next is the
-  [v2 owner decision](../plans/EXECUTION-safe-harbor.md#next-v2-owner-decision),
-  then Ryan's acceptance of the reviewed plan and any separate task grant.
-  Both reviews are complete; no new review for metadata-only recording.
-  Kiro did not claim v2-owner authority.
+- **Arc Safe Harbor — PLAN ACCEPTED / IMPLEMENTATION GRANT PENDING (2026-10-11):**
+  Ryan accepted the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
+  at `dca13a5` after Kiro delta PASS (88%) and explicitly approved B-E4.1,
+  including all five consumer outcomes. See the [owner approval](../plans/EXECUTION-safe-harbor.md#owner-approval-and-next-authorized-step).
+  Ownership is unchanged; [VERIFY](../plans/VERIFY-safe-harbor.md) remains unrun.
+  Next is a separate Ryan implementation grant; T1 is proposed first, not granted.
+  No new review for metadata-only recording; no implementation/live operations.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
   for direction-review provenance. Implementation and live operations remain pending.

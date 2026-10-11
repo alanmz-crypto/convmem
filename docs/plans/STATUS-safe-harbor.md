@@ -1,12 +1,12 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. DIRECTION APPROVED at `5ea16a6`; E4 FULL-SCOPE PASS; KIRO EXECUTION DELTA PASS at `dca13a5` (88%).** Plan review is complete; v2-owner disposition and Ryan plan acceptance remain pending. Ryan authorized drafting only; implementation and live operations remain pending. This brief is the current orientation source.
+> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED by Ryan as owner, including all five consumer outcomes.** Direction approval and E4/Kiro reviews are complete. Ownership remains unchanged. Implementation and live operations remain pending; this brief is the current orientation source.
 
 ## 1. What This Is For (product goal)
 
 Make ConvMem's recovery and incident handling remain dependable across agents, processes and time. Durability is first; convenience is second. The requirements are: no verified recovery point before risky change means no change; unexpected results stop the affected operation for investigation; production is never repaired blindly.
 
-The proposed direction uses existing Rescuezilla/Restic backups and the existing guarded Chroma quarantine, with stronger target binding, unknown-state handling, evidence preservation and validated release. It does not promise universal write prevention.
+The accepted direction uses existing Rescuezilla/Restic backups and the existing guarded Chroma quarantine, with stronger target binding, unknown-state handling, evidence preservation and validated release. It does not promise universal write prevention.
 
 ## 2. System Design (how the pieces connect)
 
@@ -38,7 +38,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
-- `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%). A1/A2 and the source qualification are accepted; section 7 records both verdicts and the remaining owner decision. This metadata-only update leaves reviewed contracts unchanged. Not accepted by Ryan or executed.
+- `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that exact successor. Section 7 records Ryan's explicit B-E4.1 approval for T2/all five consumer outcomes, with ownership unchanged. This approval/routing update changes no accepted task contract. Nothing has been implemented or executed.
 - `VERIFY-safe-harbor.md`: V0–V6 stub accompanying the draft; all evidence NOT RUN. No runtime PASS or completed recovery claim.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
@@ -56,30 +56,30 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Arc name: **CONFIRMED — Safe Harbor** by Ryan.
 - Opus review/delta: **COMPLETE — DELTA PASS at `505a422` (85%)**. Both blockers resolved; E1–E7 accepted as planning obligations. Opus explicitly required no further round for its exact E7 clarification, now included.
 - Kiro governing design sign-off: **PASS at `5ea16a6` (88%)**, no direction blockers; relayed by Ryan in this conversation.
-- E4 backup-interface review: **COMPLETE — FULL-SCOPE PASS (85%)**, confirmed by Kiro's addendum at `1268a50`. No ownership transfer. B-E4.1 and O-E4.a–e remain downstream planning obligations, with the source/contract qualifications recorded in architecture section 10; no implementation approach is selected by this review record.
+- E4 backup-interface review: **COMPLETE — FULL-SCOPE PASS (85%)**, confirmed by Kiro's addendum at `1268a50`. No ownership transfer. Its B-E4.1/O-E4.a–e obligations were carried into the now-accepted execution plan; source/contract qualifications remain in architecture section 10. E4 compatibility alone did not approve the detailed change; Ryan's later owner approval is recorded separately below.
 - Ryan direction approval: **APPROVED at `5ea16a6`**, explicitly including disposition after every automatic segment restore.
-- Execution Planning: **KIRO DELTA PASS at `dca13a59a2edf649ac6a19777f572645bea8674e` (88%)**, relayed by Ryan; initial PASS remains pinned to `00c69d2` (85%). A1/A2 and O-E4.e are satisfied plan-side. Review is complete, with no required corrections. v2-owner B-E4.1 disposition and Ryan plan acceptance remain pending.
+- Execution Planning: **COMPLETE — RYAN ACCEPTED `dca13a59a2edf649ac6a19777f572645bea8674e`** after Kiro delta PASS (88%); initial PASS remains pinned to `00c69d2` (85%). A1/A2 and O-E4.e are satisfied plan-side. No required review correction remains.
+- **B-E4.1 owner disposition: APPROVED**, by Ryan explicitly as owner, exactly T2 at the accepted revision including all five consumer outcomes. Ownership is unchanged; this is contract approval, not implementation or live activation.
 - Implementation, isolated execution/verification and deployment: **NOT AUTHORIZED by this brief**; Ryan explicitly kept implementation and live operations pending.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Preserve the exact-revision review records; no further review for metadata-only recording. Present the unchanged T2 proposal for owner disposition, then Ryan's acceptance of the reviewed `dca13a5` plan. Do not silently resolve B-E4.1, weaken its pre-acceptance gate, implement or self-transition. Do not infer backup usability from the added drive.
+**Codex:** Preserve Ryan's exact-revision approval and the review records; no further review for this metadata-only recording. Await a separate named implementation grant; do not self-transition or infer backup usability from the added drive. The plan proposes T1 first, but no task is granted.
 
 **Opus:** The first review and delta cadence is complete. No further review for the requested E7 clause; return only if new contracts beyond that clarification are introduced.
 
-**Kiro:** First execution review and delta are complete, with successor PASS at `dca13a5` (88%). No further review is requested for this status-only update. Your explicit lack of v2-owner authority is preserved: B-E4.1 needs a separately authorized owner decision, not another compatibility PASS.
+**Kiro:** First execution review and delta are complete, with successor PASS at `dca13a5` (88%). Ryan supplied the B-E4.1 owner decision and accepted that revision. No further review is requested for this status-only update, and no ownership was transferred to you.
 
-**Ryan:** Identify/grant the v2 decision-maker or explicitly decide the unchanged T2 proposal; no owner transfer is inferred. After B-E4.1 disposition, accept/reject the reviewed plan at `dca13a5` and separately name any implementation task. Recovery/loss-window inputs remain open before live operational protection can be declared adequate; providing the new drive did not authorize a backup or restore.
+**Ryan:** B-E4.1 and plan acceptance are complete. If proceeding, separately name a bounded implementation task/lane; T1 in an isolated worktree is the proposed first grant. Recovery/loss-window inputs remain open before live operational protection can be declared adequate; neither plan acceptance nor the new drive authorizes backup/restore or deployment.
 
-**Cursor / ops:** Do not implement or deploy from this brief. Wait for the accepted downstream plan and a named phase/operation grant.
+**Cursor / ops:** The plan is accepted, but do not implement or deploy from this brief. Wait for a separate named task/operation grant.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Obtain the v2 owner's separate B-E4.1 disposition; the first execution review and A1/A2 delta are complete. O-E4.e is satisfied plan-side. Section 2 still requires B-E4.1 before plan acceptance, not merely before T2 code is written.
-2. Ryan accepts/rejects the reviewed execution plan and separately authorizes a bounded task; proposed first task is T1. E1–E7 are mapped to concrete tasks and required evidence, not declared proven.
-3. Cursor implements only the granted tasks in isolation; fill V0–V6 at the actual implementation revision, obtain required independent review and return to Ryan. Unproven backend, crash or lock behavior blocks acceptance.
-4. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
-5. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
+1. Ryan separately authorizes a bounded implementation task and lane; proposed first task is T1 in isolation. E1–E7 are mapped to concrete tasks and required evidence, not declared proven. Plan acceptance is not that grant.
+2. Cursor implements only granted tasks in isolation; fill V0–V6 at the actual implementation revision, obtain required independent review and return to Ryan. Unproven backend, crash or lock behavior blocks acceptance.
+3. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
+4. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
 
 ## 7. Hard Stops (models cannot cross)
 
@@ -124,7 +124,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Codex: at Ryan's request, clarified uncertain approval-event completion and its unrun evidence cases; saved Kiro's focused execution-review prompt. Review/acceptance and all execution remain pending.
 - 2026-10-11 — Codex: recorded Kiro's execution PASS at `00c69d2` (85%) and O-E4.e satisfaction; incorporated A1/A2, qualified the audit source claim, and retained the v2-owner/acceptance gates with no execution grant.
 - 2026-10-11 — Codex: recorded Kiro delta PASS at `dca13a5` (88%), closed the review cadence without contract changes, and routed B-E4.1 to owner disposition before Ryan's plan acceptance; execution remains pending.
+- 2026-10-11 — Codex: recorded Ryan's explicit B-E4.1 owner approval and acceptance of the plan at `dca13a5`, including all five consumer outcomes; ownership unchanged, implementation/live operations pending.
 
 ## TL;DR
 
-[Arc Safe Harbor] Kiro passed the successor at `dca13a5` (88%); plan review is complete. B-E4.1 still needs the v2 owner's decision before Ryan accepts that reviewed plan. No evidence was run; implementation, live operations, image qualification and the loss-window decision remain pending.
+[Arc Safe Harbor] Ryan approved B-E4.1 and accepted the plan at `dca13a5`, including all five consumer outcomes, with ownership unchanged. The next gate is a separate named implementation grant. No evidence was run; live operations, image qualification and the loss-window decision remain pending.
