@@ -85,7 +85,7 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. Ryan authorized replacement proposal `c5fec18c…79c81` and then its retry after local timeout diagnosis. The retry stopped when Restic attempted its normal lock path against the read-only offsite mount. The corrected temporary validator now uses `--no-lock` only for that offsite read and PASSed every exact-ID, tree, lineage, path, timestamp, and tag check. Execution remained before writer pause or transport and the proposal remains unconsumed. | Ryan decides whether to retry the still-unconsumed exact proposal after the corrected backup preflight PASS |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. The corrected temporary backup validator PASSed every exact-ID, tree, lineage, path, timestamp, and tag check. Ryan then authorized another exact retry. After the timers were paused and backups revalidated, live supersession admission refused the proposal because the current predecessor mutation inventory no longer matched the proposal-bound digest `92d87e65…caac`. Execution stopped before grant materialization, dimension probing, transport, or mutation. The proposal is unconsumed but stale for current state. | Diagnose the mutation-inventory drift without regenerating the stopped proposal |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -112,23 +112,29 @@ operation/lineage remain unchanged. The temporary exact-pair validator now
 uses normal locking locally and `--no-lock` only for the read-only offsite
 repository. It PASSed the exact local ID `19201163…340a5`, exact offsite ID
 `bfa9ac35…16da1`, shared tree `eb4cd065…575a`, copy lineage, paths, timestamp,
-and tags. The drive was unmounted afterward. Ryan's retry decision is next. No
-lane may promote config/runtime or restart the watcher without separate Ryan
-authority.
+and tags. Ryan then authorized another retry. Sol paused the four ConvMem
+timers, confirmed the watcher remained inactive/disabled, and revalidated the
+backup pair. The live supersession admission then refused before grant
+materialization because the current predecessor mutation inventory did not
+match the proposal-bound digest `92d87e65…caac`. The source, config, runtime,
+and proposal digests remained exact. No dimension probe, successor operation,
+provider call, or corpus mutation occurred. The drive was unmounted and all
+four timers were restored active/enabled. Diagnose the inventory drift without
+regenerating the proposal. No lane may promote config/runtime or restart the
+watcher without separate Ryan authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Ryan decides whether to retry the still-unconsumed proposal after the
-   corrected exact-pair preflight PASS.
-2. Immediately before any authorized retry, revalidate the exact local/offsite
-   pair and then revalidate
-   source/runtime/config/binding,
-   archive the void stale grant, and establish a no-other-writer window through
-   final evidence capture, including the reconcile and Restic timers plus any
-   process holding the Chroma database.
-3. If granted, execute only the exact source/runtime/config/budget operation and
+1. Diagnose which predecessor mutation-inventory surface drifted after proposal
+   creation; do not regenerate or reuse the stopped proposal.
+2. If Ryan authorizes a replacement, capture current mutation state, refresh
+   backup coverage, and prepare a new exact proposal and review packet.
+3. Immediately before any later authorized retry, revalidate the exact
+   local/offsite pair, source/runtime/config/binding/dimension, and establish a
+   no-other-writer window through final evidence capture.
+4. If granted, execute only the exact source/runtime/config/budget operation and
    return measured call, coverage, lineage, and isolation evidence.
-4. Obtain a later separate Ryan grant before any runtime/config/restart or
+5. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -253,6 +259,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Ryan / Sol | Ryan authorized the retry; local exact validation succeeded under scoped host access, but offsite snapshot `bfa9ac35…16da1` timed out after 120 seconds, so execution again stopped before transport or mutation and the proposal remains unconsumed |
 | 2026-10-10 | Sol | Diagnosed the offsite timeout as Restic's normal lock path against the read-only mount; explicit `--no-lock` opened the repository and returned the exact expected snapshot/tree in about 0.55 seconds without mutation |
 | 2026-10-10 | Sol | Corrected the temporary validator to use `--no-lock` only offsite; the exact local/offsite IDs, shared tree, copy lineage, paths, timestamp, and tags all PASSed, with the proposal still unconsumed |
+| 2026-10-10 | Ryan / Sol | Ryan authorized another exact retry; after backup PASS and writer-window establishment, supersession admission refused the stale proposal on predecessor mutation-inventory mismatch before grant materialization, dimension probing, transport, or mutation |
 
 ## TL;DR
 
@@ -263,8 +270,7 @@ Keep this document a current-state snapshot, not a session diary.
   Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
   `5e29ae13…90bb`, with no blockers.
 - Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
-  `c5fec18c…79c81` remains unconsumed. Offsite reads timed out because Restic's
-  normal lock path met a read-only mount; `--no-lock` returned the exact
-  snapshot and expected tree in about 0.55 seconds. The corrected exact-pair
-  validator now PASSes all required backup fields. Ryan's retry decision is
-  next; config and watcher promotion remain separately gated.
+  `c5fec18c…79c81` is unconsumed but stale because the live predecessor
+  mutation inventory no longer matches its bound digest. The retry stopped
+  before grant materialization or paid calls. Drift diagnosis is next; config
+  and watcher promotion remain separately gated.
