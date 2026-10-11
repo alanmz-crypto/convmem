@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. DIRECTION APPROVED at `5ea16a6`; E4 FULL-SCOPE PASS; EXECUTION PLAN DRAFTED, REVIEW/ACCEPTANCE PENDING.** Ryan authorized drafting on 2026-10-11; implementation and live operations remain pending. This brief is the current orientation source.
+> **Arc: Safe Harbor. DIRECTION APPROVED at `5ea16a6`; E4 FULL-SCOPE PASS; KIRO EXECUTION PASS at `00c69d2` (85%).** A1/A2 clarifications await a bounded delta; v2-owner disposition and Ryan plan acceptance remain pending. Ryan authorized drafting only; implementation and live operations remain pending. This brief is the current orientation source.
 
 ## 1. What This Is For (product goal)
 
@@ -38,7 +38,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
-- `EXECUTION-safe-harbor.md`: five-task execution draft with E1–E7/O-E4.a–e coverage and a concrete B-E4.1 proposal. T4 now distinguishes uncertain event completion from rollback, with reread/durability/retry requirements. Section 7 contains Kiro's focused first execution-review prompt. Not accepted or executed.
+- `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS by Kiro at `00c69d2` (85%). A1/A2 now explicitly order backend proof before the rest of T3 and name T4 directory durability. Section 7 records the verdict, source qualifications and the bounded next review; the initial review prompt is reference-only. Not accepted or executed.
 - `VERIFY-safe-harbor.md`: V0–V6 stub accompanying the draft; all evidence NOT RUN. No runtime PASS or completed recovery claim.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
@@ -58,24 +58,24 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Kiro governing design sign-off: **PASS at `5ea16a6` (88%)**, no direction blockers; relayed by Ryan in this conversation.
 - E4 backup-interface review: **COMPLETE — FULL-SCOPE PASS (85%)**, confirmed by Kiro's addendum at `1268a50`. No ownership transfer. B-E4.1 and O-E4.a–e remain downstream planning obligations, with the source/contract qualifications recorded in architecture section 10; no implementation approach is selected by this review record.
 - Ryan direction approval: **APPROVED at `5ea16a6`**, explicitly including disposition after every automatic segment restore.
-- Execution Planning: **DRAFTING AUTHORIZED by Ryan on 2026-10-11; FIRST DRAFT COMPLETE**. Kiro plan review, v2-owner disposition of B-E4.1 and Ryan plan acceptance remain pending.
+- Execution Planning: **KIRO PLAN PASS at `00c69d2272e027b51bc1939d2817904ca14d653d` (85%)**, relayed by Ryan. O-E4.e is satisfied plan-side. Subsequent A1/A2 clarifications are not automatically covered by that PASS; bounded delta confirmation, v2-owner B-E4.1 disposition and Ryan plan acceptance remain pending.
 - Implementation, isolated execution/verification and deployment: **NOT AUTHORIZED by this brief**; Ryan explicitly kept implementation and live operations pending.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** The authorized execution draft and VERIFY stub are complete. Hand the exact revision to Kiro for review; do not implement or self-transition. Under the planning guide, a Kiro rejection routes to Ryan before revision. Do not infer backup usability from the added drive.
+**Codex:** Preserve the exact-revision Kiro PASS and hand off only the A1/A2 clarification delta. Do not silently resolve B-E4.1, weaken section 2's pre-acceptance gate, implement or self-transition. A Kiro rejection routes to Ryan before revision. Do not infer backup usability from the added drive.
 
 **Opus:** The first review and delta cadence is complete. No further review for the requested E7 clause; return only if new contracts beyond that clarification are introduced.
 
-**Kiro:** Use the execution section 7 prompt at the supplied exact revision. Review release correctness, uncertain approval-event completion and v2 interface decisions first, then remaining task/obligation coverage. Obtain or clearly separate the v2 owner's B-E4.1 disposition; the earlier E4 direction PASS does not grant that change. No review has yet been invoked or recorded for this execution artifact.
+**Kiro:** First execution review is complete at `00c69d2` (85%). Check only the A1/A2 clarifications and regressions at the supplied successor revision; do not repeat the full review. Your explicit lack of v2-owner authority is preserved: B-E4.1 needs a separately authorized owner decision, not another compatibility PASS.
 
-**Ryan:** Drafting is authorized and the first plan is ready for review. After the required verdicts, accept/reject the exact plan and separately name any implementation task. Recovery/loss-window inputs remain open before live operational protection can be declared adequate; providing the new drive did not authorize a backup or restore.
+**Ryan:** Identify/grant the v2 decision-maker or explicitly decide the unchanged T2 proposal; no owner transfer is inferred. After the advisory delta and B-E4.1 disposition, accept/reject the exact plan and separately name any implementation task. Recovery/loss-window inputs remain open before live operational protection can be declared adequate; providing the new drive did not authorize a backup or restore.
 
 **Cursor / ops:** Do not implement or deploy from this brief. Wait for the accepted downstream plan and a named phase/operation grant.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Kiro reviews the exact execution draft; v2's owner dispositions B-E4.1's specified future-time and consumer behavior. Resolve the O-E4.e wording without changing the approved existing-gate direction silently.
+1. Confirm only the A1/A2 clarification delta after Kiro's PASS at `00c69d2`; obtain the v2 owner's separate B-E4.1 disposition. O-E4.e is satisfied plan-side. Section 2 still requires B-E4.1 before plan acceptance, not merely before T2 code is written.
 2. Ryan accepts/rejects the reviewed execution plan and separately authorizes a bounded task; proposed first task is T1. E1–E7 are mapped to concrete tasks and required evidence, not declared proven.
 3. Cursor implements only the granted tasks in isolation; fill V0–V6 at the actual implementation revision, obtain required independent review and return to Ryan. Unproven backend, crash or lock behavior blocks acceptance.
 4. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
@@ -122,7 +122,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Codex: recorded Kiro's full-scope E4 PASS addendum at `1268a50` (85%), O-E4.d/e and two source/contract qualifications; Ryan's execution-planning decision is next.
 - 2026-10-11 — Codex: recorded Ryan's drafting grant, authored five-task EXECUTION and unrun VERIFY stub, and inspected the added ext4 destination; plan/v2 review and acceptance are next, implementation/live operations pending.
 - 2026-10-11 — Codex: at Ryan's request, clarified uncertain approval-event completion and its unrun evidence cases; saved Kiro's focused execution-review prompt. Review/acceptance and all execution remain pending.
+- 2026-10-11 — Codex: recorded Kiro's execution PASS at `00c69d2` (85%) and O-E4.e satisfaction; incorporated A1/A2, qualified the audit source claim, and retained the v2-owner/acceptance gates with no execution grant.
 
 ## TL;DR
 
-[Arc Safe Harbor] Ryan authorized drafting; the five-task execution plan and unrun VERIFY stub are ready for Kiro/v2 review, then Ryan's plan decision. The new ext4 drive is a candidate fresh-image destination. Implementation, live operations, image qualification and the loss-window decision remain pending.
+[Arc Safe Harbor] Kiro passed the plan at `00c69d2` (85%). A1/A2 clarifications need only a bounded delta; B-E4.1 still needs the v2 owner's decision before Ryan accepts the plan. No evidence was run; implementation, live operations, image qualification and the loss-window decision remain pending.

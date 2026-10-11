@@ -9,12 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — EXECUTION DRAFT / REVIEW PENDING (2026-10-11):**
-  Ryan authorized drafting. Read the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
-  and [unrun VERIFY stub](../plans/VERIFY-safe-harbor.md). Kiro plan review and
-  v2-owner disposition precede Ryan's plan acceptance and any task grant.
-  The [review prompt](../plans/EXECUTION-safe-harbor.md#review-focus-for-this-new-artifact)
-  prioritizes release correctness, uncertain approval completion and v2 decisions.
+- **Arc Safe Harbor — KIRO EXECUTION PASS / OWNER DECISION PENDING (2026-10-11):**
+  Kiro passed the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
+  at `00c69d2` (85%); [VERIFY](../plans/VERIFY-safe-harbor.md) remains unrun.
+  Next is the [A1/A2-only delta and separate v2 decision](../plans/EXECUTION-safe-harbor.md#next-review-advisory-delta-and-v2-decision),
+  then Ryan's exact-plan acceptance and any task grant. Kiro did not claim
+  v2-owner authority. The completed first-review prompt must not be rerun.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
   for direction-review provenance. Implementation and live operations remain pending.

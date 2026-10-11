@@ -1,6 +1,6 @@
 # Architecture Direction — Safe Harbor
 
-> **Arc: Safe Harbor. Status: DIRECTION APPROVED by Ryan at `5ea16a6`; name confirmed. Opus delta PASS at `505a422`; Kiro governing PASS at `5ea16a6`; E4 full-scope PASS confirmed by the coverage addendum at `1268a50`. Execution drafting authorized; first draft awaits review/acceptance.** This document grants no implementation, deployment, restore, indexing, or service action.
+> **Arc: Safe Harbor. Status: DIRECTION APPROVED by Ryan at `5ea16a6`; name confirmed. Opus delta PASS at `505a422`; Kiro governing PASS at `5ea16a6`; E4 full-scope PASS confirmed by the coverage addendum at `1268a50`. Execution-plan review and pending decisions are recorded in [STATUS-safe-harbor.md](STATUS-safe-harbor.md).** This document grants no implementation, deployment, restore, indexing, or service action.
 
 ## 1. Source, problem and planning phase
 
@@ -238,7 +238,7 @@ Confidence in conclusions, not incident probabilities:
 
 **Subsequent planning grant:** Ryan authorized Codex to draft the Safe Harbor execution plan on 2026-10-11, explicitly keeping implementation and live operations pending. He also supplied an additional ext4 destination; its observed identity/capacity and proposed use are recorded in execution section 6, without claiming a new backup exists.
 
-**Next:** Kiro reviews the [first execution draft](EXECUTION-safe-harbor.md), with explicit v2-owner disposition of its B-E4.1 proposal, then Ryan decides plan acceptance and any task grant. The [VERIFY companion](VERIFY-safe-harbor.md) is an unrun stub. The Opus direction cadence, Kiro governing architecture review and full-scope E4 review remain complete; their PASS verdicts are not silently transferred to the new execution artifact.
+**Next:** Follow the [execution review record and bounded next review](EXECUTION-safe-harbor.md#kiro-execution-review-and-advisory-disposition) and [current STATUS](STATUS-safe-harbor.md). The first Kiro execution review is complete; its exact-revision PASS and O-E4.e resolution are recorded there, with the subsequent advisory delta and v2-owner B-E4.1 decision still distinct. Ryan retains plan acceptance and task grants. The [VERIFY companion](VERIFY-safe-harbor.md) is an unrun stub. Earlier architecture/E4 approvals do not imply runtime evidence or authorize execution.
 
 **Completed direction-review assignment (reference):** Challenge the selected direction, not the earlier chat's credibility. Read the pinned D/B/R evidence before adopting a claim. Prioritize these possible failures in this draft:
 
@@ -254,7 +254,7 @@ Return one overall verdict, concrete blockers with file/section evidence, confid
 
 **Draft publication PR title:** Define scoped recovery and incident containment for Safe Harbor
 
-**Draft PR description:** Ryan can review a bounded implementation plan for durable recovery admission and incident containment. Codex authored the approved architecture and, after Ryan's 2026-10-11 planning grant, added five execution tasks and an unrun VERIFY companion. Opus/Kiro direction and E4 verdicts remain pinned to their reviewed revisions; the new execution draft awaits Kiro review, v2-owner disposition and Ryan acceptance. The plan uses existing backups/quarantine, carries all E1–E7 and E4 obligations, and records the additional ext4 drive as a candidate image destination. No implementation, backup/restore drill or deployment was performed. **Merge reading:** [execution](EXECUTION-safe-harbor.md), [VERIFY](VERIFY-safe-harbor.md), [architecture](ARCHITECTURE-safe-harbor.md), [STATUS](STATUS-safe-harbor.md), [routing](../inter-model/LATEST.md). **TL;DR:** Execution draft ready for review; implementation and live operations remain pending.
+**Draft PR description:** Ryan can review a bounded implementation plan for durable recovery admission and incident containment. Codex authored the approved architecture and, after Ryan's 2026-10-11 planning grant, added five execution tasks and an unrun VERIFY companion. Kiro passed the execution plan at `00c69d2` (85%); A1/A2 clarify proof-first ordering and event-directory durability afterward. The bounded delta, v2-owner disposition and Ryan acceptance remain pending. Earlier verdicts remain pinned to their reviewed revisions. The plan uses existing backups/quarantine, carries E1–E7 and E4 obligations, and records the additional ext4 drive as a candidate image destination. No implementation, backup/restore drill or deployment was performed. **Merge reading:** [execution](EXECUTION-safe-harbor.md), [VERIFY](VERIFY-safe-harbor.md), [architecture](ARCHITECTURE-safe-harbor.md), [STATUS](STATUS-safe-harbor.md), [routing](../inter-model/LATEST.md). **TL;DR:** Kiro plan PASS recorded; remaining review/owner decisions and all execution remain pending.
 
 Stop before Execute. E4 is complete and drafting is authorized; the execution plan's review, acceptance and task grants remain pending.
 

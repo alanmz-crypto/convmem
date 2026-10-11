@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. DRAFT FOR REVIEW.** Ryan authorized Codex to draft this plan on 2026-10-11. Implementation, isolated execution, deployment and live operations remain pending. A task below is a proposed deliverable, not an executable grant.
+> **Arc: Safe Harbor. KIRO PLAN PASS at `00c69d2` (85%); A1/A2 CLARIFIED AFTER REVIEW; OWNER DISPOSITION/ACCEPTANCE PENDING.** Ryan authorized Codex to draft this plan on 2026-10-11. Implementation, isolated execution, deployment and live operations remain pending. A task below is a proposed deliverable, not an executable grant. The recorded PASS applies to its exact revision, not automatically to subsequent edits.
 
 ## 1. Source, authority and goal
 
@@ -111,6 +111,8 @@ Capture one evaluation instant/timezone per resolution. The post-backup resoluti
 
 **Depends on:** T1; use T2's operation/recovery boundary where applicable. **Files:** `chroma_write_guard.py`, `scripts/chroma_guard.py`, focused watch recovery reporting in `watch.py`, doctor display and existing guard/worker tests. Do not add a general repair engine.
 
+**Ordering gate (Kiro A1):** T3 begins with the isolated, pinned-backend demonstration specified below and in V4. Record passing evidence for monotonic update/delete/re-upsert, queue purge and restart, plus a valid releasable control and the stale-vector refusal control, before implementing the remainder of T3's preservation/repair/release changes. Only the bounded scratch proof/harness work may precede this gate, under a later T3 grant. If the oracle cannot be demonstrated, stop T3 and return the gap to Codex/Ryan; do not build the rest against presumed backend semantics or weaken release. This orders work within T3, not a new task or current experiment grant.
+
 Preservation and repair:
 
 1. Under the native lock, record the incident and pin the selected recovery generation before any replacement. The incident binds canonical target, collection/segment identities, source generation and findings revision.
@@ -151,6 +153,7 @@ Contract:
 - Hold the native critical section from final state recheck through the recovered mutation and its completion event/export effects; `forget`/refine compete at that same native lock. Complete post-native validation/guard maintenance before publishing a successful approval event; do not append APPROVED inside an outer context whose exit can still discover a torn save. This serializes admitted operations but does not forbid a separately authorized mutation that occurs after recovery finishes.
 - Preserve recoverability of partial Chroma/export/event completion; no cross-file atomicity claim. On failure, stop the affected recovery and report incomplete recovery or **completion outcome unknown**, never command success. An append/flush/fsync error or interrupted return can occur after a complete APPROVED record became visible or durable. Do not promise APPROVAL_STARTED remains, rewrite history to make it so, or infer rollback from the exception.
 - Before retrying an uncertain completion, reload and reduce the authoritative event log under the governed lock; recheck the bound intent, current Chroma state and required export effects inside T4's native critical section. A valid APPROVED record prohibits duplicate approval append or blind re-upsert; return success only after the required effects and publication durability are established. A valid APPROVAL_STARTED state with no completion record permits only the already-defined state-aware recovery. A malformed/truncated/unreadable log or contradictory effects stop for review, without automatic truncation or speculative append. Rereading visible bytes alone does not cure failed fsync or prove power-loss durability; the event publication's required file/directory durability must succeed before completion is reported. No new lifecycle state or parallel ledger is introduced by the diagnostic outcome.
+- **Publication durability (Kiro A2):** flush/fsync the completed APPROVED event's file. When the log is created, fsync its parent directory before reporting completion; if this path creates directories, make the newly created directory entries durable as well. Appending to an already durably named file still requires file fsync, not a claim that every append creates a new directory entry. Any required directory-fsync failure follows the same uncertain-outcome contract. V5 must assert these publication boundaries explicitly, as V4 does for release dispositions.
 - On retry, verify/complete missing export effects rather than letting an unchanged-Chroma shortcut skip them. Do not reapply a tombstoned target merely to repair an export, and do not treat a terminal event alone as proof that every associated effect is complete.
 
 **Evidence / gate:** V5: CLI and direct recovery helper; cold/warm caches; unavailable, tombstone, true absence, stale base, matching/mismatched marker; config replacement; export/event failure after Chroma success; concurrent `forget` and refine. Inject completion failures before append, after a partial record, after a complete record but failed fsync, and after durable append but before return; restart and reconcile each from the log. Assert no premature command success, no duplicate APPROVED, no blind replay, and no discarded malformed tail; do not assert that every failed invocation leaves APPROVAL_STARTED. Assert document, vector, metadata/tombstone, export bytes and reduced proposal lifecycle. Use process barriers to force the race, not sleeps. Old unknown→empty classification, failure-assumed-rollback retry and moving the recheck outside the guard must fail the proof. Existing index/plain-add gate exemptions remain behaviorally unchanged.
@@ -173,7 +176,7 @@ Contract:
 
 ## 4. Obligation map and failure tests
 
-- **E1:** T3 strict empty-changed-set release oracle; V4 stale-vector negative control. Backend proof is required, not presumed from installed Python fields.
+- **E1:** T3 strict empty-changed-set release oracle; V4 stale-vector negative control and releasable control. Pinned-backend proof precedes the remainder of T3 implementation, not merely final acceptance; it is not presumed from installed Python fields.
 - **E2:** T3 immutable preservation manifest before replacement; V3 termination/retry and no-overwrite checks.
 - **E3:** T4 same admitted store and actual lock hierarchy; V5 forced competing mutations and multi-file completion.
 - **E4:** direction-level review complete; T2 is the concrete B-E4.1 owner-disposition request. O-E4.a/b/d land in T2/T4; O-E4.e in synchronized docs; O-E4.c remains outside the arc.
@@ -209,11 +212,27 @@ These are operational prerequisites to be completed later, not additional implem
 
 Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), **stub, evidence not run**, based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It names V0–V6 and must be filled against the actual implementation revision under later execution/verification authorization.
 
-Next: Kiro reviews this execution plan and the concrete v2-owned T2 proposal; Ryan resolves owner decisions and accepts/rejects the plan. If approved, the first proposed implementation grant is T1 in an isolated worktree, with its named evidence and no deployment. No review agent is invoked by this document.
+Next: confirm the A1/A2-only delta below, obtain the still-open v2-owner disposition of T2, then Ryan accepts/rejects the exact plan and separately names any task grant. O-E4.e's existing-gate wording is satisfied plan-side in Kiro's review. Section 2 still requires B-E4.1 before plan acceptance; this record does not defer that gate until T2 implementation. No review agent is invoked by this document.
+
+### Kiro execution review and advisory disposition
+
+Ryan relayed Kiro's first governing execution-plan **PASS (85%)** at `00c69d2272e027b51bc1939d2817904ca14d653d`. Kiro accepted T3's conservatively gated release approach (80%), T4's uncertain-completion contract (85%), T2's plan-side interface proposal (82%) and E1–E7 coverage (85%). **O-E4.e is satisfied plan-side (90%)**: approval recovery is a named consumer of the existing gate, not a parallel mechanism. No plan defect blocked that PASS. Backend demonstration, runtime evidence and every operational grant remain unperformed. B-E4.1 remains open: Kiro explicitly lacked v2-owner authority and granted no detailed resolver change.
+
+- **A1 incorporated:** T3 now has an explicit proof-before-remaining-implementation ordering gate, with refusal and releasable controls. The earlier acceptance stop alone did not unambiguously establish that order.
+- **A2 incorporated:** T4 explicitly requires file fsync plus directory durability on creation, and V4/V5 name parent-directory publication/failure assertions. This clarifies the existing durability contract.
+- **A3 retained:** VERIFY remains NOT RUN; exact implementation-tip external review stays required. No evidence is manufactured by this planning update.
+
+**Source qualification (Codex, static):** the review's opening describes deployed/planning `audit()` publication as under the lock. At P, `chroma_write_guard.py:806-808` holds the lock for validation/census, but result classification/publication at `:813-827` is outside it. D has no `audit()` method; this is detector code present in P. The `recover()` pre-lock check at P `:847-849` is correctly identified. T1 already requires under-lock incident publication/rechecking. It need not turn `audit.json` into incident history: that file may remain latest-observation telemetry while `QUARANTINE.json` retains every unresolved finding. These factual qualifications preserve Kiro's reported verdict without adopting inaccurate evidence claims or changing direction.
+
+### Next review: advisory delta and v2 decision
+
+Use the same Kiro context for a delta limited to A1/A2 and their VERIFY/routing changes, comparing `00c69d2` to the exact successor revision supplied by Ryan. Confirm that the two clarifications faithfully implement the advisories and introduce no conflicting contract; report any concrete regression, with confidence and smallest correction. Do not repeat the full execution or architecture review.
+
+Separately, the Complete-data Backup v2 owner must disposition **the unchanged T2 B-E4.1 proposal**: in-resolver exact-time future rejection, code 25 plus machine-readable reason, no concealment through ensure's auto-backup/dry-run/fallback, refreshed post-backup evaluation time, all five consumer outcomes, and unchanged profile/path/lineage/restore semantics. If reviewer authority is absent, return the named outstanding owner decision; do not repeat compatibility review and call it owner approval. Ryan must identify/grant the authorized v2 decision-maker or explicitly make the decision. No ownership transfer is inferred. Static files/Git only; no ConvMem CLI/MCP, indexing, tests, probes, implementation or live operations.
 
 ### Review focus for this new artifact
 
-The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. This is the **first Kiro review of the execution artifact**, not another direction-review round. Use the following prompt with the exact revision supplied in the handoff:
+**Completed assignment; reference only — do not rerun.** The author corrected T4's failure-implies-APPROVAL_STARTED promise after the first draft at `ee29075d0315f11286e330df58a470c19ed21dc8`. The following first execution-review prompt produced Kiro's PASS at `00c69d2`; the next bounded review is specified above.
 
 ```text
 Arc: Safe Harbor. Kiro governing execution-plan review, static/read-only.
@@ -275,4 +294,4 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 ## TL;DR
 
-[Arc Safe Harbor] Five proposed tasks strengthen existing admission, incident retention, preservation/release and approval recovery, then collect isolated evidence. The additional ext4 drive is a candidate fresh-image destination. Drafting is authorized; v2 disposition, plan acceptance, implementation and every live operation remain separately gated.
+[Arc Safe Harbor] Kiro passed the execution plan at `00c69d2` (85%). A1/A2 now explicitly order backend proof first and specify event-directory durability; their delta, v2-owner disposition and Ryan's plan acceptance remain pending. All evidence is unrun. The additional drive is capacity only; implementation and every live operation remain separately gated.
