@@ -85,14 +85,14 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. A validated 2026-10-11 backup pair predates two later mocked failure-ledger rows and is not current rollback authority. Sol-High accepted Copilot's first packet finding at `4d7741a`. Copilot FAILed `6037368` on writer detection and late reservation; both were corrected. Copilot then FAILed `270705a` solely because `/usr/bin/python3 -I` lacked `chromadb`; it confirmed the earlier blockers closed. The packet now binds the ConvMem environment interpreter and expands the known-writer census. | Kiro and Copilot review the new exact revision; if both PASS, Ryan decides whether to grant the backup-only operation |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. A validated 2026-10-11 backup pair predates two later mocked failure-ledger rows and is not current rollback authority. Sol-High accepted Copilot's first packet finding at `4d7741a`. Copilot FAILed `6037368` on writer detection and late reservation; both were corrected. Copilot FAILed `270705a` on the dependency-incomplete interpreter, then confirmed that correction at `524bb15` while finding its mounted-device shell guard ineffective under `set -e`. The packet now uses an explicit conditional exit and enforces its interpreter/isolation flags. | Kiro and Copilot review the new exact revision; if both PASS, Ryan decides whether to grant the backup-only operation |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
 Review the second corrected replacement-backup authority and attachment on the
 same exact revision. The attachment SHA-256 is
-`7102aac705da3626a8d0f0d1167facda0f76a1c9f95149dd9b1e98e405d11c2c`.
+`afb1d1a00718e211283156356af6c6bae162249f3a936576aeaf66cbc7419e47`.
 It recognizes the known ConvMem mutation commands and reserves/fsyncs its
 one-shot result marker before stopping timers, mounting, or touching the
 corpus. It binds the dependency-complete ConvMem Python interpreter, then uses
@@ -256,6 +256,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Sol / Sol-High | Sol-High accepted Copilot's exact-revision backup-authority FAIL over Kiro's PASS; corrected packet now binds a governed one-shot runner and awaits same-revision Kiro/Copilot recheck |
 | 2026-10-11 | Copilot / Sol | Copilot FAILed `6037368` on incomplete writer detection and late one-shot reservation; Sol corrected both boundaries and restored the reboot-cleared detached runtime for exact-tip review |
 | 2026-10-11 | Copilot / Sol | Copilot confirmed both `6037368` blockers closed but FAILed `270705a` because isolated system Python lacked `chromadb`; Sol bound the ConvMem interpreter and tightened the remaining known-writer and signal boundaries |
+| 2026-10-11 | Copilot / Sol | Copilot confirmed the interpreter and prior boundaries at `524bb15` but FAILed its `set -e`-exempt mounted-device guard; Sol replaced it with explicit refusal and bound runtime interpreter assertions |
 
 ## TL;DR
 

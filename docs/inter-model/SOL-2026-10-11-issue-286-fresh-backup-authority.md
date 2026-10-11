@@ -57,12 +57,19 @@ closed. This revision binds the ConvMem environment's Python interpreter and
 extends the census to the remaining known mutation commands and direct
 reconciler form.
 
+Copilot FAILed exact revision
+`524bb15598d94ef2d2c0a6c88fee3010309c55b2` on one shell guard: `! findmnt`
+is exempt from Bash `set -e`, so a mounted device did not stop the command
+block before runner invocation. That audit confirmed the interpreter and all
+prior corrections. This revision uses an explicit conditional exit and makes
+the runner enforce its bound interpreter plus `-I -B` flags.
+
 ## Exact reviewed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `7102aac705da3626a8d0f0d1167facda0f76a1c9f95149dd9b1e98e405d11c2c` |
+| Attachment SHA-256 | `afb1d1a00718e211283156356af6c6bae162249f3a936576aeaf66cbc7419e47` |
 | Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011.py` |
 | Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011.json` |
 | Valid local date | `2026-10-11` in `America/Chicago` |
@@ -72,10 +79,12 @@ named one-shot operation consists of these commands from that exact checkout:
 
 ```bash
 set -e
-! findmnt -rn -S /dev/sda1 -o TARGET
+if findmnt -rn -S /dev/sda1 -o TARGET; then
+    exit 1
+fi
 cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011.py
 chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011.py
-printf '%s  %s\n' '7102aac705da3626a8d0f0d1167facda0f76a1c9f95149dd9b1e98e405d11c2c' '/tmp/convmem-kiro-replacement-backup-runner-20261011.py' | sha256sum --check --strict -
+printf '%s  %s\n' 'afb1d1a00718e211283156356af6c6bae162249f3a936576aeaf66cbc7419e47' '/tmp/convmem-kiro-replacement-backup-runner-20261011.py' | sha256sum --check --strict -
 /home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011.py --execute
 ```
 
@@ -83,8 +92,10 @@ printf '%s  %s\n' '7102aac705da3626a8d0f0d1167facda0f76a1c9f95149dd9b1e98e405d11
 at `/tmp/convmem-kiro-bootstrap-e798bba` must already exist at exact commit
 `e798bba284c96642fc31229e6375eadc26986493`; runtime materialization is not
 part of this backup grant. The runner requires its worktree to be clean before
-importing from it. It refuses any existing result path, including a dangling
-symlink. It has not been executed during packet preparation.
+importing from it. It also requires the exact bound interpreter with isolated
+mode and bytecode writes disabled. It refuses any existing result path,
+including a dangling symlink. It has not been executed during packet
+preparation.
 
 ## One-shot behavior
 

@@ -20,6 +20,7 @@ from typing import Any
 
 RUNTIME = Path("/tmp/convmem-kiro-bootstrap-e798bba")
 RUNTIME_REVISION = "e798bba284c96642fc31229e6375eadc26986493"
+INTERPRETER = Path("/home/lauer/miniforge3/envs/convmem/bin/python3.11")
 CONFIG = Path("/home/lauer/.config/convmem/config.toml")
 CONFIG_SHA256 = "be9be9e963eade2a095d61fbda48a79db7e9fad4305d4af6e9c0ee68d7ce9413"
 SOURCE = Path(
@@ -74,6 +75,12 @@ CONVMEM_WRITE_COMMANDS = {
     "writer-census-start",
 }
 DIRECT_WRITER_MARKERS = ("source_reconciler",)
+
+# Enforce the interpreter and isolation flags bound by the reviewed command.
+if Path(sys.executable).resolve() != INTERPRETER.resolve():
+    raise SystemExit("interpreter mismatch")
+if not sys.flags.isolated or not sys.dont_write_bytecode:
+    raise SystemExit("runner requires Python -I -B")
 
 # Validate the detached runtime before importing any code from it.
 _runtime_probe = subprocess.run(
@@ -445,6 +452,7 @@ def main() -> int:
             )
     except Exception as exc:  # noqa: BLE001 - preserve evidence, then fail closed
         operation_error = exc
+        result["status"] = "FAIL"
         result["error_type"] = type(exc).__name__
         result["error"] = str(exc)
     finally:
