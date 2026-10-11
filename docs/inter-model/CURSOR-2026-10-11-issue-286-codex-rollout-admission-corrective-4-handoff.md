@@ -251,3 +251,42 @@ diagnostic markers to `ingest.py` and `convmem.py`, and it changes
 - Resolve the four files by regenerating them, not by hand-editing.
 - Rerun the full suite and the Pylint gate from a clean checkout.
 - Remove the leftover `.worktrees/ci-verify-286-4b-clean`.
+
+## Verification of `97a2951` (Claude, 2026-10-11) — clean; remove one stray file before review
+
+Corrective 4c merges `main` at `db8aebb` (PR #385) without rebasing. I
+checked it in a clean scratch worktree with a fresh CI-style config:
+
+- Pylint regression gate: PASS against base `db8aebb` (465 findings, 240
+  fingerprints, nothing new or increased).
+- The 70-file Codex, watcher, breaker, doctor, config and inventory set,
+  which now also picks up #385's diagnosis tests: 771 passed, 8 skipped,
+  0 failed. 28 of those results (1 failed, 27 errors) first came from my
+  checkout being on tmpfs, which the #385 harness refuses
+  (`scratch_not_disk_backed`). Rerun from a disk-backed checkout, the two
+  diagnosis files pass: 46 passed, 2 skipped.
+- The merge keeps both sides:
+  - `watch.py` has #385's hermetic inner scope and diagnosis marks, plus
+    this branch's exit-91 refusal path, piped stderr and
+    `IndexSubprocessError`.
+  - #385's inner supervisor returns the child's exit code and inherits its
+    stderr, so refusals still reach the watcher during diagnosis runs.
+  - The R2B sink pin `convmem.py:699` is the dry-run `ChromaStore`
+    constructor, and the canary hashes match the merged files.
+
+**Remaining step before review:** the merge commit adds a stray
+`pylint-report.json` (212 KB of generated Pylint output) at the repo root.
+Neither parent has this file. Remove it with `git rm`, then push. Also
+remove the new leftover `.worktrees/ci-verify-286-4c-clean`.
+
+**Reviewer notes (not blocking):**
+
+- `production_chroma_write_session_call_sites` in the regenerated shadow
+  inventory is now ordered as strings (`convmem.py:1777` before
+  `convmem.py:421`); both parents ordered it by line number. Tests compare
+  it as a set, so this is cosmetic.
+- The earlier notes still stand for Kiro and Copilot:
+  - Native-fault detection now uses the real exit code.
+  - Verbose mode hides child stderr when the child succeeds.
+  - In recovery, an `OSError` is labelled `source_too_large`.
+  - The STATUS merge condensed `main`'s Kiro-bootstrap paragraph.
