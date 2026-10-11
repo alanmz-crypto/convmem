@@ -85,7 +85,7 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. Ryan authorized replacement proposal `c5fec18c…79c81`, but execution stopped before writer pause or transport because exact local Restic resolution timed out. | Diagnose Restic read responsiveness, then Ryan decides whether to retry the still-unconsumed exact proposal |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, six-additional/eight-lifetime paid-attempt enforcement, contained lineage publication, and retained evidence are present. The first successor grant safely refused before activation or calls because the packet bound a pre-overlay transform fingerprint. Corrected post-overlay fingerprint: `d2ecd101…473f5`; carried paid attempts remain `2`. Fresh local/offsite backups share tree `eb4cd065…575a`; Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers. Ryan authorized replacement proposal `c5fec18c…79c81`; its first execution stopped before writer pause or transport when the local exact Restic read ran inside the workspace sandbox and timed out. The same exact-ID read completed with the expected tree in 0.728 seconds under scoped host read access, isolating the timeout to the execution sandbox rather than the repository. | Ryan decides whether to retry the still-unconsumed exact proposal with scoped host access for backup validation |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -97,27 +97,30 @@ overlay. The corrected packet binds `d2ecd101…473f5` after that overlay. Kiro
 and Copilot both PASS the refreshed packet at `2fa81eb`, digest
 `5e29ae13…90bb`, with no blockers. Ryan authorized replacement proposal
 operation `c5fec18c…79c81`, grant fingerprint `c860712f…8fb1`. Execution then
-stopped at the backup gate because both the governed resolver and an exact-ID
-local Restic read failed to complete; the latter timed out after 120 seconds.
-No writer pause, successor operation, provider call, or corpus mutation
-occurred. Diagnose Restic responsiveness before Ryan decides whether to retry
-the still-unconsumed proposal. No lane may promote config/runtime or restart
-the watcher without separate Ryan authority.
+stopped at the backup gate because its sandboxed exact-ID local Restic read
+timed out after 120 seconds. A read-only diagnostic reran that same exact-ID
+lookup with scoped host access: it completed in 0.728 seconds and returned the
+expected tree `eb4cd065…575a`. This isolates the failure to the workspace
+sandbox boundary rather than repository responsiveness. No writer pause,
+successor operation, provider call, or corpus mutation occurred. Ryan decides
+whether to retry the still-unconsumed proposal; any retry must revalidate the
+full authorized preflight and use scoped host access for the Restic reads. No
+lane may promote config/runtime or restart the watcher without separate Ryan
+authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Diagnose why exact reads from the local Restic repository do not complete,
-   without changing the grant or bootstrap state.
-2. Revalidate the exact local/offsite pair; then Ryan decides whether to retry
-   the still-unconsumed proposal.
-3. Immediately before any authorized retry, revalidate
+1. Ryan decides whether to retry the still-unconsumed proposal using scoped
+   host access for the exact local/offsite Restic reads.
+2. Immediately before any authorized retry, revalidate the exact local/offsite
+   pair and then revalidate
    source/runtime/config/binding,
    archive the void stale grant, and establish a no-other-writer window through
    final evidence capture, including the reconcile and Restic timers plus any
    process holding the Chroma database.
-4. If granted, execute only the exact source/runtime/config/budget operation and
+3. If granted, execute only the exact source/runtime/config/budget operation and
    return measured call, coverage, lineage, and isolation evidence.
-5. Obtain a later separate Ryan grant before any runtime/config/restart or
+4. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -238,6 +241,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Sol | Created fresh local snapshot `19201163…340a5` and exact offsite copy `bfa9ac35…16da1`, sharing tree `eb4cd065…575a`; refreshed packet awaits narrow same-revision review |
 | 2026-10-10 | Kiro / Copilot / Sol | Both lanes PASS refreshed packet `2fa81eb`, digest `5e29ae13…90bb`, with no blockers; Sol prepared non-executed replacement proposal operation `c5fec18c…79c81`; Ryan's exact-grant decision is next |
 | 2026-10-10 | Ryan / Sol | Ryan authorized replacement proposal `c5fec18c…79c81`; exact local Restic resolution timed out before writer pause or transport, so execution stopped with zero new calls or corpus mutation and the proposal remains unconsumed |
+| 2026-10-10 | Sol | Diagnosed the local Restic timeout as a workspace-sandbox boundary: the same exact-ID read completed with the expected tree in 0.728 seconds under scoped host access; the proposal remains unconsumed pending Ryan's retry decision |
 
 ## TL;DR
 
@@ -248,6 +252,7 @@ Keep this document a current-state snapshot, not a session diary.
   Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
   `5e29ae13…90bb`, with no blockers.
 - Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
-  `c5fec18c…79c81` remains unconsumed because exact local Restic reads timed out
-  before writer pause or transport. Restic diagnosis and a later Ryan retry
-  decision are next; config and watcher promotion remain separately gated.
+  `c5fec18c…79c81` remains unconsumed. Its sandboxed local exact read timed out,
+  while the same read completed with the expected tree in 0.728 seconds under
+  scoped host access. Ryan's retry decision is next; config and watcher
+  promotion remain separately gated.
