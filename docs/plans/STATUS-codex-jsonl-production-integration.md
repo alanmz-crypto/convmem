@@ -85,46 +85,42 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`; Copilot and Kiro PASSed the reviewed correction, all six GitHub checks passed, and the focused refusal tests left the live ledger unchanged. A 2026-10-11 local/offsite pair was created and independently validated, but two mocked 402/503 rows consistent with an older checkout reached the live failure ledger after its snapshot time. The current inventory digest is `104acbef…34b73`; the valid pair therefore is not current rollback authority for a successor proposal. | Ryan decides whether to authorize the exact replacement backup operation in `SOL-2026-10-11-issue-286-fresh-backup-authority.md` |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. A validated 2026-10-11 backup pair predates two later mocked failure-ledger rows and is not current rollback authority. Kiro PASSed and Copilot FAILed the first replacement-backup proposal at exact commit `4d7741a`; Sol-High accepted Copilot's finding that no concrete fresh-snapshot invocation was bound. The corrected proposal now binds an exact governed runner that creates one tagged snapshot and passes its returned full ID directly to one offsite copy. | Kiro and Copilot recheck the corrected exact revision; if both PASS, Ryan decides whether to grant the backup-only operation |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-PR #384 is merged on `main` as `6a23aa9`; the scoped pytest isolation defect is
-fixed and reviewed. The Kiro bootstrap remains stopped before grant
-materialization or paid calls. Proposal `c5fec18c…79c81` is unconsumed but
-stale and cannot be reused.
+Review the corrected replacement-backup authority and attachment on the same
+exact revision. The attachment SHA-256 is
+`2618e24302d547a311cc1459ef24ab4bdb0b853d6ba2febdbfcccd14be1821f8`.
+It uses existing governed APIs to create exactly one fresh tagged local
+snapshot and copy the returned full ID exactly once to the designated offsite
+repository. It has not been executed.
 
-Sol used Ryan's one-pair authorization to copy today's scheduled local snapshot
-`f8d69dc1…c324b` to offsite snapshot `a38bd4c7…6f449`. Exact-ID validation
-PASSed shared tree `84795d75…51084`, copy lineage, timestamp, paths, and tags.
-The local snapshot time was `00:18:59-05:00`. At `00:36:40-05:00`, an older
-checkout appended another mocked 402/503 pair to the live failure ledger. The
-current mutation-inventory digest is `104acbef…34b73`; all other measured
-surfaces remain exact, including 2 Kiro summary rows and 17 knowledge units.
-The validated pair is therefore evidence but not current rollback authority.
-
-Prepare no bootstrap proposal until Ryan authorizes and the operator completes
-the exact replacement backup operation in
-`docs/inter-model/SOL-2026-10-11-issue-286-fresh-backup-authority.md`. No lane
-may clean the live ledger, promote config/runtime, call a paid provider, or
-restart the watcher without separate Ryan authority.
+The Kiro bootstrap remains stopped before successor proposal preparation,
+grant materialization, or paid calls. The stale proposal
+`c5fec18c…79c81` must not be reused. No lane may run the backup attachment,
+clean the live ledger, prepare a successor bootstrap proposal, promote
+config/runtime, call a provider, or restart the watcher without the applicable
+separate Ryan grant.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Ryan decides whether to authorize the exact one-shot replacement backup
-   operation prepared on this branch.
-2. If authorized, capture an inventory-stable local snapshot and exact offsite
+1. Kiro and Copilot review the corrected replacement-backup packet and runner
+   on the same exact revision.
+2. If both PASS, Ryan decides whether to authorize the exact one-shot
+   backup-only operation.
+3. If authorized, capture an inventory-stable local snapshot and exact offsite
    copy, then publish their full IDs, shared tree, lineage, and evidence digest.
-3. Bind a new successor proposal and review packet to that current pair and
+4. Bind a new successor proposal and review packet to that current pair and
    mutation inventory; obtain Kiro and Copilot verdicts on the same revision.
-4. Immediately before any later authorized retry, revalidate the exact
+5. Immediately before any later authorized retry, revalidate the exact
    local/offsite pair, source/runtime/config/binding/dimension, and establish a
    no-other-writer window through final evidence capture.
-5. If separately granted, execute only the exact
+6. If separately granted, execute only the exact
    source/runtime/config/budget operation and return measured call, coverage,
    lineage, and isolation evidence.
-6. Obtain a later separate Ryan grant before any runtime/config/restart or
+7. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -254,6 +250,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Cursor / Copilot / Sol | Cursor isolated the mocked failure logger to temporary test storage at `eaae6e9`; Copilot's targeted safety/isolation audit PASSed that exact code commit with no blockers; tests and linters remain unrun pending Ryan's decision |
 | 2026-10-10 | Sol | Focused pytest passed both provider-refusal cases in 0.50 seconds while the live failure ledger's SHA-256, size, and nanosecond mtime remained identical; all paused timers were restored active and Ryan's PR decision is next |
 | 2026-10-11 | Sol | Recorded PR #384 on `main`; validated a fresh backup pair, then blocked its use after a later old-checkout test append changed the current inventory; prepared exact replacement backup authority |
+| 2026-10-11 | Sol / Sol-High | Sol-High accepted Copilot's exact-revision backup-authority FAIL over Kiro's PASS; corrected packet now binds a governed one-shot runner and awaits same-revision Kiro/Copilot recheck |
 
 ## TL;DR
 
