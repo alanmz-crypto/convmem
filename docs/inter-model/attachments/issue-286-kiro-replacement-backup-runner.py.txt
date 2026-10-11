@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 from datetime import datetime
@@ -46,8 +47,25 @@ TIMERS = (
     "convmem-restic-external.timer",
     "convmem-restic-local.timer",
     "convmem-cross-project-digest.timer",
+    "convmem-monitor.timer",
+    "convmem-restic-ensure.timer",
+    "convmem-watch-restart.timer",
+    "convmem-cg2-soak-check.timer",
 )
 SERVICES = tuple(name.removesuffix(".timer") + ".service" for name in TIMERS)
+CONVMEM_WRITE_COMMANDS = {
+    "add",
+    "exclude",
+    "forget",
+    "index",
+    "monitor",
+    "propose_decision",
+    "reconcile",
+    "record",
+    "refine",
+    "verify",
+    "watch",
+}
 
 # Validate the detached runtime before importing any code from it.
 _runtime_probe = subprocess.run(
@@ -61,6 +79,14 @@ if (
     or _runtime_probe.stdout.strip() != RUNTIME_REVISION
 ):
     raise SystemExit("runtime revision mismatch before import")
+_runtime_status = subprocess.run(
+    ["git", "-C", str(RUNTIME), "status", "--porcelain", "--untracked-files=all"],
+    check=False,
+    capture_output=True,
+    text=True,
+)
+if _runtime_status.returncode != 0 or _runtime_status.stdout:
+    raise SystemExit("runtime worktree is not clean before import")
 
 sys.path.insert(0, str(RUNTIME))
 
@@ -103,38 +129,74 @@ def current_inventory(cfg: dict[str, Any]) -> tuple[dict[str, Any], str]:
     return inventory, mutation_inventory_digest(inventory)
 
 
+def invokes_convmem_writer(argv: list[str]) -> bool:
+    """Recognize launcher, Python-script, and ``python -m`` CLI forms."""
+    for index, argument in enumerate(argv):
+        if Path(argument).name not in {"convmem", "convmem.py"}:
+            continue
+        if any(
+            candidate in CONVMEM_WRITE_COMMANDS for candidate in argv[index + 1 :]
+        ):
+            return True
+    return False
+
+
 def assert_no_uncontrolled_writer() -> None:
     current_pid = os.getpid()
     for entry in Path("/proc").iterdir():
         if not entry.name.isdigit() or int(entry.name) == current_pid:
             continue
         try:
-            argv = (entry / "cmdline").read_bytes().replace(b"\0", b" ").decode(
-                "utf-8", "replace"
-            )
+            argv = [
+                item.decode("utf-8", "replace")
+                for item in (entry / "cmdline").read_bytes().split(b"\0")
+                if item
+            ]
+            command = " ".join(argv)
             cwd = (entry / "cwd").resolve()
         except (FileNotFoundError, PermissionError):
             continue
-        if "test_index_loud_failures.py" in argv:
+        if "test_index_loud_failures.py" in command:
             raise RuntimeError(f"stale failure test active: pid={entry.name}")
-        if "pytest" in argv and "convmem" in str(cwd):
+        if any(Path(item).name.startswith("pytest") for item in argv) and (
+            "convmem" in str(cwd)
+        ):
             raise RuntimeError(f"convmem pytest active: pid={entry.name}")
-        if "convmem index" in argv or "convmem-watch" in argv:
+        if invokes_convmem_writer(argv) or "convmem-watch" in command:
             raise RuntimeError(f"corpus writer active: pid={entry.name}")
-        if "restic" in argv and (
-            LOCAL_REPOSITORY in argv or OFFSITE_REPOSITORY in argv
+        if any(Path(item).name == "restic" for item in argv) and (
+            LOCAL_REPOSITORY in command or OFFSITE_REPOSITORY in command
         ):
             raise RuntimeError(f"restic operation active: pid={entry.name}")
 
 
-def write_result(payload: dict[str, Any]) -> None:
-    encoded = (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode()
-    fd = os.open(RESULT, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+def reserve_result() -> int:
+    """Create the one-shot marker before any timer, mount, or corpus mutation."""
+    if os.path.lexists(RESULT):
+        raise FileExistsError(f"refusing existing result or symlink: {RESULT}")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(RESULT, flags, 0o600)
     try:
-        os.write(fd, encoded)
-        os.fsync(fd)
-    finally:
+        os.fchmod(fd, 0o600)
+    except Exception:
         os.close(fd)
+        raise
+    return fd
+
+
+def write_reserved_result(fd: int, payload: dict[str, Any]) -> None:
+    encoded = (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    os.lseek(fd, 0, os.SEEK_SET)
+    os.ftruncate(fd, 0)
+    remaining = memoryview(encoded)
+    while remaining:
+        written = os.write(fd, remaining)
+        if written <= 0:
+            raise OSError("failed to write reserved result")
+        remaining = remaining[written:]
+    os.fsync(fd)
 
 
 def main() -> int:
@@ -143,8 +205,22 @@ def main() -> int:
     args = parser.parse_args()
     if not args.execute:
         raise SystemExit("refusing without --execute")
-    if RESULT.exists():
-        raise SystemExit(f"refusing to overwrite evidence: {RESULT}")
+
+    # This is both the evidence destination and the durable one-shot marker.
+    # Reserve it before stopping timers, mounting, or touching the corpus.
+    result_fd = reserve_result()
+    try:
+        write_reserved_result(
+            result_fd,
+            {
+                "status": "RESERVED",
+                "runtime_revision": RUNTIME_REVISION,
+                "expected_inventory_sha256": EXPECTED_INVENTORY,
+            },
+        )
+    except Exception:
+        os.close(result_fd)
+        raise
 
     result: dict[str, Any] = {
         "status": "FAIL",
@@ -155,26 +231,56 @@ def main() -> int:
         "watcher_before": {},
         "cleanup": {},
     }
-    timer_before = {
-        timer: {
-            "active": unit_state(timer, "is-active"),
-            "enabled": unit_state(timer, "is-enabled"),
-        }
-        for timer in TIMERS
-    }
-    watcher_before = {
-        "active": unit_state("convmem-watch.service", "is-active"),
-        "enabled": unit_state("convmem-watch.service", "is-enabled"),
-    }
-    result["watcher_before"] = watcher_before
+    timer_before: dict[str, dict[str, str]] = {}
+    watcher_before: dict[str, str] = {}
     mounted = False
     operation_error: Exception | None = None
+    result_write_error: Exception | None = None
     cleanup_errors: list[str] = []
+    received_signals: list[str] = []
+    in_cleanup = False
+
+    def handle_signal(signum: int, _frame: object) -> None:
+        name = signal.Signals(signum).name
+        received_signals.append(name)
+        if not in_cleanup:
+            raise RuntimeError(f"received termination signal: {name}")
+
+    handled_signals = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
+    previous_handlers = {
+        signum: signal.getsignal(signum) for signum in handled_signals
+    }
+    for signum in handled_signals:
+        signal.signal(signum, handle_signal)
 
     try:
+        timer_before = {
+            timer: {
+                "active": unit_state(timer, "is-active"),
+                "enabled": unit_state(timer, "is-enabled"),
+            }
+            for timer in TIMERS
+        }
+        watcher_before = {
+            "active": unit_state("convmem-watch.service", "is-active"),
+            "enabled": unit_state("convmem-watch.service", "is-enabled"),
+        }
+        result["watcher_before"] = watcher_before
         runtime_head = run(["git", "-C", str(RUNTIME), "rev-parse", "HEAD"])
         if runtime_head.stdout.strip() != RUNTIME_REVISION:
             raise RuntimeError("runtime revision mismatch")
+        runtime_status = run(
+            [
+                "git",
+                "-C",
+                str(RUNTIME),
+                "status",
+                "--porcelain",
+                "--untracked-files=all",
+            ]
+        )
+        if runtime_status.stdout:
+            raise RuntimeError("runtime worktree is not clean")
         if sha256_file(CONFIG) != CONFIG_SHA256:
             raise RuntimeError("config digest mismatch")
         if sha256_file(SOURCE) != SOURCE_SHA256:
@@ -214,6 +320,9 @@ def main() -> int:
         ).stdout.strip()
         if preexisting_mount:
             raise RuntimeError(f"offsite device already mounted: {preexisting_mount}")
+        uuid = run(["lsblk", "-no", "UUID", OFFSITE_DEVICE]).stdout.strip()
+        if uuid != OFFSITE_UUID:
+            raise RuntimeError(f"offsite UUID mismatch before mount: {uuid}")
         run(["udisksctl", "mount", "-b", OFFSITE_DEVICE])
         mounted = True
         mounted_at = run(
@@ -221,9 +330,16 @@ def main() -> int:
         ).stdout.strip()
         if mounted_at != str(OFFSITE_MOUNT):
             raise RuntimeError(f"offsite mount mismatch: {mounted_at}")
-        uuid = run(["lsblk", "-no", "UUID", OFFSITE_DEVICE]).stdout.strip()
-        if uuid != OFFSITE_UUID:
-            raise RuntimeError(f"offsite UUID mismatch: {uuid}")
+        offsite_repository_path = Path(OFFSITE_REPOSITORY)
+        if not offsite_repository_path.is_dir() or not os.access(
+            offsite_repository_path, os.R_OK | os.W_OK
+        ):
+            raise RuntimeError("offsite repository is not readable and writable")
+        offsite_fs = os.statvfs(offsite_repository_path)
+        offsite_free_bytes = offsite_fs.f_bavail * offsite_fs.f_frsize
+        if offsite_free_bytes <= 0:
+            raise RuntimeError("offsite repository has no available space")
+        result["offsite_free_bytes_before"] = offsite_free_bytes
 
         ctx = BackupContext.from_env_file(Path("/home/lauer/.config/convmem/restic.env"))
         if ctx.data_root.resolve() != DATA_ROOT:
@@ -309,6 +425,7 @@ def main() -> int:
         result["error_type"] = type(exc).__name__
         result["error"] = str(exc)
     finally:
+        in_cleanup = True
         if mounted:
             proc = run(["udisksctl", "unmount", "-b", OFFSITE_DEVICE], check=False)
             if proc.returncode != 0:
@@ -349,11 +466,29 @@ def main() -> int:
             or watcher_after != result["watcher_before"]
         ):
             result["status"] = "FAIL"
-            result["error"] = "cleanup or timer-state restoration mismatch"
-        write_result(result)
+            result["cleanup_error"] = "cleanup or state restoration mismatch"
+        if received_signals:
+            result["status"] = "FAIL"
+            result["received_signals"] = received_signals
+        try:
+            write_reserved_result(result_fd, result)
+        except Exception as exc:  # noqa: BLE001 - marker remains reserved
+            result_write_error = exc
+            result["status"] = "FAIL"
+            result["result_write_error"] = f"{type(exc).__name__}: {exc}"
+        finally:
+            os.close(result_fd)
+            for signum, previous in previous_handlers.items():
+                signal.signal(signum, previous)
 
     print(json.dumps(result, sort_keys=True))
-    return 0 if result["status"] == "PASS" and operation_error is None else 1
+    return (
+        0
+        if result["status"] == "PASS"
+        and operation_error is None
+        and result_write_error is None
+        else 1
+    )
 
 
 if __name__ == "__main__":

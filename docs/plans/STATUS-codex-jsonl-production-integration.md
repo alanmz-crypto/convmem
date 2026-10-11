@@ -85,17 +85,19 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. A validated 2026-10-11 backup pair predates two later mocked failure-ledger rows and is not current rollback authority. Kiro PASSed and Copilot FAILed the first replacement-backup proposal at exact commit `4d7741a`; Sol-High accepted Copilot's finding that no concrete fresh-snapshot invocation was bound. The corrected proposal now binds an exact governed runner that creates one tagged snapshot and passes its returned full ID directly to one offsite copy. | Kiro and Copilot recheck the corrected exact revision; if both PASS, Ryan decides whether to grant the backup-only operation |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. A validated 2026-10-11 backup pair predates two later mocked failure-ledger rows and is not current rollback authority. Sol-High accepted Copilot's first packet finding at `4d7741a`. Copilot then FAILed correction `6037368` because its process census missed real `convmem.py` writer forms and its result marker was created after mutation. Both blockers are now corrected; the runner also binds isolated execution and the full installed ConvMem timer set. | Kiro and Copilot review the new exact revision; if both PASS, Ryan decides whether to grant the backup-only operation |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Review the corrected replacement-backup authority and attachment on the same
-exact revision. The attachment SHA-256 is
-`2618e24302d547a311cc1459ef24ab4bdb0b853d6ba2febdbfcccd14be1821f8`.
-It uses existing governed APIs to create exactly one fresh tagged local
-snapshot and copy the returned full ID exactly once to the designated offsite
-repository. It has not been executed.
+Review the second corrected replacement-backup authority and attachment on the
+same exact revision. The attachment SHA-256 is
+`cb68804d77c34839d0c8f7908294e154bd3f3ba2baecf7cf45ef8d8252d4f3f5`.
+It recognizes actual ConvMem writer processes and reserves/fsyncs its
+one-shot result marker before stopping timers, mounting, or touching the
+corpus. It uses existing governed APIs to create exactly one fresh tagged
+local snapshot and copy the returned full ID exactly once to the designated
+offsite repository. It has not been executed.
 
 The Kiro bootstrap remains stopped before successor proposal preparation,
 grant materialization, or paid calls. The stale proposal
@@ -251,6 +253,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Sol | Focused pytest passed both provider-refusal cases in 0.50 seconds while the live failure ledger's SHA-256, size, and nanosecond mtime remained identical; all paused timers were restored active and Ryan's PR decision is next |
 | 2026-10-11 | Sol | Recorded PR #384 on `main`; validated a fresh backup pair, then blocked its use after a later old-checkout test append changed the current inventory; prepared exact replacement backup authority |
 | 2026-10-11 | Sol / Sol-High | Sol-High accepted Copilot's exact-revision backup-authority FAIL over Kiro's PASS; corrected packet now binds a governed one-shot runner and awaits same-revision Kiro/Copilot recheck |
+| 2026-10-11 | Copilot / Sol | Copilot FAILed `6037368` on incomplete writer detection and late one-shot reservation; Sol corrected both boundaries and restored the reboot-cleared detached runtime for exact-tip review |
 
 ## TL;DR
 

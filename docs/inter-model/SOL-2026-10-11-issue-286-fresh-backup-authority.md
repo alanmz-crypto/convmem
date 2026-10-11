@@ -41,12 +41,20 @@ boundary.
 This correction binds those APIs in one reviewed runner. It authorizes
 nothing by itself.
 
+Copilot then FAILed exact commit
+`60373685883a5780e588e96b1da56211f7d0feb4` on two execution-boundary gaps:
+the process census did not recognize the real `convmem.py <command>` forms,
+and the result path was not reserved until after the backup/copy work. This
+revision corrects both gaps. It also revalidates a clean runtime tree before
+import, pauses every installed ConvMem timer, checks device identity before
+mount, and binds isolated Python execution.
+
 ## Exact reviewed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `2618e24302d547a311cc1459ef24ab4bdb0b853d6ba2febdbfcccd14be1821f8` |
+| Attachment SHA-256 | `cb68804d77c34839d0c8f7908294e154bd3f3ba2baecf7cf45ef8d8252d4f3f5` |
 | Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011.py` |
 | Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011.json` |
 | Valid local date | `2026-10-11` in `America/Chicago` |
@@ -55,55 +63,70 @@ After Ryan grants the exact reviewed revision and attachment digest, the
 named one-shot operation consists of these commands from that exact checkout:
 
 ```bash
+set -e
 cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011.py
 chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011.py
-sha256sum /tmp/convmem-kiro-replacement-backup-runner-20261011.py
-python /tmp/convmem-kiro-replacement-backup-runner-20261011.py --execute
+printf '%s  %s\n' 'cb68804d77c34839d0c8f7908294e154bd3f3ba2baecf7cf45ef8d8252d4f3f5' '/tmp/convmem-kiro-replacement-backup-runner-20261011.py' | sha256sum --check --strict -
+/usr/bin/python3 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011.py --execute
 ```
 
-The operator must stop unless `sha256sum` returns the bound attachment digest.
-The runner refuses to overwrite an existing result file. It has not been
-executed during packet preparation.
+`set -e` makes a digest mismatch stop before the runner. The detached runtime
+at `/tmp/convmem-kiro-bootstrap-e798bba` must already exist at exact commit
+`e798bba284c96642fc31229e6375eadc26986493`; runtime materialization is not
+part of this backup grant. The runner requires its worktree to be clean before
+importing from it. It refuses any existing result path, including a dangling
+symlink. It has not been executed during packet preparation.
 
 ## One-shot behavior
 
 The runner performs this closed sequence:
 
-1. Revalidate detached runtime revision
+1. Revalidate detached runtime revision and clean worktree before importing
+   any runtime code, then revalidate them inside the operation. Require
    `e798bba284c96642fc31229e6375eadc26986493`, config digest
    `be9be9e963eade2a095d61fbda48a79db7e9fad4305d4af6e9c0ee68d7ce9413`,
    exact Kiro source digest
    `dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741`,
    source state ID, and the local authority date.
-2. Require the watcher to be inactive, disabled, and have `MainPID=0`.
-   Record and stop only the four named ConvMem maintenance timers; require
-   their corresponding services to be inactive.
-3. Reject active stale failure tests, ConvMem pytest processes, known corpus
-   writers, watcher processes, and Restic operations against either governed
-   repository.
-4. Require `/dev/sda1` to be initially unmounted, mount it, and require UUID
-   `f1bd69b4-e567-4ef3-89ec-13faff0602e9` at
+2. Before any timer, mount, corpus, or backup mutation, reserve the result path
+   with `O_EXCL`, reject symlinks, set mode `0600`, and fsync a `RESERVED`
+   one-shot marker. Convert `SIGHUP`, `SIGINT`, and `SIGTERM` into controlled
+   failure so cleanup and final evidence run; signals during cleanup cannot
+   interrupt restoration.
+3. Require the watcher to be inactive, disabled, and have `MainPID=0`.
+   Record and stop every installed ConvMem timer, then require each matching
+   service to be inactive. Restore only timers that were active beforehand.
+4. Reject active stale failure tests, ConvMem pytest processes, actual
+   `convmem`/`convmem.py` mutating command forms, watcher processes, and Restic
+   operations against either governed repository. Repeat the census inside
+   the writer gate before the first inventory and before final inventory.
+5. Require `/dev/sda1` to be initially unmounted and require UUID
+   `f1bd69b4-e567-4ef3-89ec-13faff0602e9` before mounting it at
    `/run/media/lauer/rxBUlauer-128Gfs`.
-5. Rebuild `BackupContext` from the governed environment and require the exact
-   data root and both repository locators. Before the first write, resolve the
-   known valid old local/offsite pair by full ID and require its copy lineage.
-6. Acquire the exclusive corpus writer gate. Compute the predecessor mutation
+   Require the repository to be readable, writable, and have available space.
+6. Rebuild `BackupContext` from the governed environment and require the exact
+   data root and both repository locators. Before the first backup write,
+   resolve the known valid old local/offsite pair by full ID and require its
+   copy lineage.
+7. Acquire the exclusive corpus writer gate. Compute the predecessor mutation
    inventory with `bootstrap_mutation_inventory`; bind its digest using
    `convmem-bootstrap-mutation-proof-v1`; require exact digest
    `104acbef1f22f85c27380c0cda703dba051d4e0c8182f3608c64392d2e634b73`.
-7. Capture complete-data evidence, then call the governed
+8. Capture complete-data evidence, then call the governed
    `backup_data_root` API exactly once with extra tag
    `kiro-successor-preflight`. Require exact path and the complete tag set.
-8. Recompute the inventory while holding the writer gate. Any difference
+9. Recompute the inventory while holding the writer gate. Any difference
    stops before offsite copy and preserves the local snapshot as evidence.
-9. Pass the full ID returned by `backup_data_root` directly to the governed
+10. Pass the full ID returned by `backup_data_root` directly to the governed
    `copy_snapshot_to_external` API. There is no current/latest reselection.
-10. Resolve the destination through exact `original == local ID` lineage and
+11. Resolve the destination through exact `original == local ID` lineage and
     require equal tree, time, paths, and tags. Recompute the inventory again
     before releasing the writer gate.
-11. Require the operation to remain on the bound local date. Unmount the
+12. Require the operation to remain on the bound local date. Unmount the
     offsite device, restore the timers to their exact prior active/enabled
-    states, recheck the watcher state, and write one mode-`0600` result.
+    states, recheck the watcher state, and overwrite the reserved marker with
+    one fsynced final result. Any failure leaves the reserved path in place so
+    a second snapshot/copy invocation cannot start under the same grant.
 
 The attachment contains the complete invocation. Neither
 `backup_workflows.py ensure` nor `backup_workflows.py copy-offsite` is used,
@@ -115,6 +138,7 @@ is introduced; all Restic I/O remains in `restic_snapshot.py`.
 | Input | Required value |
 |---|---|
 | Mutable data root | `/home/lauer/.local/share/convmem` |
+| Detached runtime | clean `/tmp/convmem-kiro-bootstrap-e798bba` at `e798bba284c96642fc31229e6375eadc26986493` |
 | Current inventory digest | `104acbef1f22f85c27380c0cda703dba051d4e0c8182f3608c64392d2e634b73` |
 | Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261010.json` |
 | Inventory evidence SHA-256 | `558fbaf70da5c04a3e62d9800857f045ac9b55c508fe75b4438673c3d406d5b4` |
@@ -124,14 +148,16 @@ is introduced; all Restic I/O remains in `restic_snapshot.py`.
 | Offsite Restic repository | `/run/media/lauer/rxBUlauer-128Gfs/convmem-backups` |
 | Required coverage path | `/home/lauer/.local/share/convmem` |
 | Required tags | `convmem-data-v2`, `convmem-2026-10-11`, `kiro-successor-preflight` |
+| Paused timers | reconcile, external/local/ensure Restic, cross-project digest, monitor, watcher restart, CG-2 soak check |
 | Maximum writes | one local snapshot; one offsite copy; no prune/delete |
 
 Any source, runtime, config, date, inventory, watcher, device, mountpoint,
 repository, writer-census, lineage, cleanup, or timer-state mismatch produces
-a nonzero result. An inventory difference after local creation stops before
-the offsite copy. A final inventory difference invalidates the pair for this
-arc. Created snapshots remain evidence and are never deleted to hide a failed
-qualification.
+a nonzero result. An existing result path or symlink stops before any
+operational mutation. An inventory difference after local creation stops
+before the offsite copy. A final inventory difference invalidates the pair for
+this arc. Created snapshots remain evidence and are never deleted to hide a
+failed qualification.
 
 ## Explicit exclusions
 
