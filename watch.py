@@ -181,6 +181,24 @@ def _user_systemd_session_available() -> bool:
     return bool(runtime) and Path(runtime).is_dir()
 
 
+_LIVE_DIAG_ENV_KEYS = (
+    "CONVMEM_CONFIG",
+    "CONVMEM_LIVE_DIAG_SCRATCH_ROOTS",
+    "CONVMEM_LIVE_DIAG_PHASE_PATH",
+    "CONVMEM_LIVE_DIAG_HERMETIC",
+    "CONVMEM_LIVE_DIAG_SOURCE_SHA256",
+    "CONVMEM_LIVE_DIAG_TELEMETRY_PATH",
+    "CONVMEM_LIVE_DIAG_BRIEF_PATH",
+    "CONVMEM_LIVE_DIAG_WRITER_ROOT",
+    "CONVMEM_LIVE_DIAG_REGISTER_PATH",
+    "CONVMEM_LIVE_DIAG_WORKER_PID_PATH",
+    "CONVMEM_LIVE_DIAG_INNER_SCOPE_UNIT",
+    "CONVMEM_LIVE_DIAG_INNER_SCOPE_MARKER",
+    "CONVMEM_LIVE_DIAG_SOURCE_PATH",
+    "CONVMEM_LIVE_DIAG_INDEX_PID_PATH",
+)
+
+
 def _scoped_index_cmd(
     inner_cmd: list[str],
     cfg: dict,
@@ -188,6 +206,16 @@ def _scoped_index_cmd(
     verbose: bool = False,
 ) -> list[str]:
     """Wrap index argv in a memory-capped systemd user scope when available."""
+    hermetic = os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") == "1"
+    inner_unit = os.environ.get("CONVMEM_LIVE_DIAG_INNER_SCOPE_UNIT", "").strip()
+    if hermetic:
+        from live_diagnosis import LiveDiagnosisRefused
+
+        if not inner_unit:
+            raise LiveDiagnosisRefused("inner_scope_unit_missing")
+        if not shutil.which("systemd-run") or not _user_systemd_session_available():
+            raise LiveDiagnosisRefused("inner_scope_systemd_unavailable")
+
     if not shutil.which("systemd-run") or not _user_systemd_session_available():
         if verbose and not getattr(_scoped_index_cmd, "fallback_logged", False):
             print(
@@ -200,19 +228,34 @@ def _scoped_index_cmd(
     watch_cfg = cfg.get("watch") or {}
     mem_max = watch_cfg.get("subprocess_memory_max", _DEFAULT_INDEX_MEM_MAX)
     mem_high = watch_cfg.get("subprocess_memory_high", _DEFAULT_INDEX_MEM_HIGH)
-    return [
+    cmd = [
         "systemd-run",
         "--user",
         "--scope",
         "--quiet",
-        "-p",
-        f"MemoryMax={mem_max}",
-        "-p",
-        f"MemoryHigh={mem_high}",
-        "-p",
-        "MemorySwapMax=0",
-        "--",
-    ] + inner_cmd
+    ]
+    if inner_unit:
+        cmd.append(f"--unit={inner_unit}")
+    cmd.extend(
+        [
+            "-p",
+            f"MemoryMax={mem_max}",
+            "-p",
+            f"MemoryHigh={mem_high}",
+            "-p",
+            "MemorySwapMax=0",
+        ]
+    )
+    if hermetic:
+        # User scopes accept IPAddressDeny on this host; RestrictAddressFamilies is
+        # verified on the outer transient service, not on inner scopes.
+        cmd.extend(["-p", "IPAddressDeny=any"])
+        for key in _LIVE_DIAG_ENV_KEYS:
+            value = os.environ.get(key)
+            if value:
+                cmd.extend(["--setenv", f"{key}={value}"])
+    cmd.extend(["--", *inner_cmd])
+    return cmd
 
 
 def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
@@ -470,11 +513,32 @@ def flush_path(
             print(f"[watch] skip (excluded): {p.name}", file=sys.stderr)
         return None
 
+    try:
+        from live_diagnosis import assert_source_unchanged, mark
+
+        mark("watch_skip_hash_begin", path=str(p))
+    except ImportError:
+        pass
     skip = watch_skip_reason(p, processed=processed)
+    try:
+        from live_diagnosis import mark
+
+        if skip:
+            mark("watch_skip_hash_skip", reason=skip)
+        else:
+            mark("watch_skip_hash_admit")
+    except ImportError:
+        pass
     if skip:
         if verbose:
             print(f"[watch] skip ({skip}): {p.name}", file=sys.stderr)
         return None
+    try:
+        from live_diagnosis import assert_source_unchanged
+
+        assert_source_unchanged(p)
+    except ImportError:
+        pass
     if use_subprocess:
         if verbose:
             print(f"[watch] indexing {p.name}", file=sys.stderr)

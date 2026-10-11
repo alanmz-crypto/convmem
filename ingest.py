@@ -1119,12 +1119,30 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
     verbose: bool,
 ) -> _ChunkBuildResult:
     """Build a file unlocked and return its complete replacement manifest."""
+    try:
+        from live_diagnosis import mark
+
+        mark("parse_chunks_begin", messages=len(messages))
+    except ImportError:
+        pass
     chunks = chunk_messages(messages, chunk_size, overlap)
     if verbose:
         print(f"  [index] {Path(path).name}  ({len(messages)} msgs, {len(chunks)} chunks)")
+    try:
+        from live_diagnosis import mark
+
+        mark("parse_chunks_done", chunks=len(chunks))
+    except ImportError:
+        pass
 
     result = _ChunkBuildResult()
     for ch in chunks:
+        try:
+            from live_diagnosis import mark
+
+            mark("per_chunk_build_begin", start_offset=ch["start_offset"])
+        except ImportError:
+            pass
         artifact = build_chunk_artifact(
             chunk=ch,
             path=path,
@@ -1170,6 +1188,16 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
         result.units += d_units
         result.exact_suppressed += d_exact
         result.semantic_queued += d_semantic
+        try:
+            from live_diagnosis import mark
+
+            mark(
+                "per_chunk_chroma_write",
+                start_offset=ch["start_offset"],
+                chunks_done=result.chunks,
+            )
+        except ImportError:
+            pass
     return result
 
 
@@ -1291,11 +1319,25 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
       - ``processed`` — durable commit succeeded
     """
     try:
+        from live_diagnosis import mark
+
+        mark("index_hash_begin")
+    except ImportError:
+        pass
+    try:
         file_hash = sha256_file(path)
     except OSError as e:
         if verbose:
             print(f"  [skip] cannot read {path}: {e}")
         return "ignored", 0, 0, 0, 0
+
+    try:
+        from live_diagnosis import assert_source_unchanged, mark
+
+        mark("index_hash_done", file_hash=file_hash[:16])
+        assert_source_unchanged(path)
+    except ImportError:
+        pass
 
     path_key = str(Path(path).expanduser().resolve())
 
@@ -1347,6 +1389,17 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         if force_file
         else None
     )
+    if snapshot is not None:
+        try:
+            from live_diagnosis import mark
+
+            mark(
+                "source_row_snapshot",
+                unit_paths=len(snapshot.unit_ids),
+                summary_paths=len(snapshot.summary_ids),
+            )
+        except ImportError:
+            pass
 
     try:
         messages = parser(path)
@@ -1506,6 +1559,12 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             result.exact_suppressed,
             result.semantic_queued,
         )
+    try:
+        from live_diagnosis import mark
+
+        mark("processed_commit", chunks=result.chunks, units=result.units)
+    except ImportError:
+        pass
     return (
         "processed",
         result.chunks,
@@ -1627,14 +1686,38 @@ def _index_impl(
         try:
             from brief import refresh_brief_after_change
 
+            try:
+                from live_diagnosis import mark
+
+                mark("brief_refresh_begin")
+            except ImportError:
+                pass
             refresh_brief_after_change(cfg)
+            try:
+                from live_diagnosis import mark
+
+                mark("brief_refresh_done")
+            except ImportError:
+                pass
         except Exception:
             pass
 
     # Compact the JSONL export to remove duplicate unit IDs from re-indexing.
     if units_export and units_export.is_file():
+        try:
+            from live_diagnosis import mark
+
+            mark("export_compaction_begin")
+        except ImportError:
+            pass
         removed = _deduplicate_units_export(units_export)
         if removed:
             stats["export_duplicates_removed"] = removed
+        try:
+            from live_diagnosis import mark
+
+            mark("export_compaction_done", duplicates_removed=int(removed or 0))
+        except ImportError:
+            pass
 
     return stats
