@@ -87,7 +87,7 @@ def test_grant_file_binds_exact_source_budget_and_transform(tmp_path: Path) -> N
     grant_path = tmp_path / "grant.json"
     grant_path.write_text(json.dumps(grant), encoding="utf-8")
     grant_path.chmod(0o600)
-    assert _namespace()["_read_grant"](grant_path) == grant
+    assert _namespace()["_read_grant"](grant_path) == (grant, None)
     grant_path.chmod(0o644)
     with pytest.raises(ValueError, match="0600"):
         _namespace()["_read_grant"](grant_path)

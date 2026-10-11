@@ -17,7 +17,10 @@ BASELINE_HASHES = {
     # bootstrap-only accounting and immutable replay authority cross these
     # bytes; the canary remains unreachable from the CLI and watcher.
     "ingest.py": "8d3062f262b3888ebaebd86fe2bc2f6d3311c7e964f5c446394ba9bef3d6014d",
-    "incremental_jsonl.py": "57cc484b0633bbf1e8b547070f8e89272208746c169d150a13b45f4c1c0b0c17",
+    # Baseline refreshed for failed-bootstrap supersession/recovery authority
+    # and lifetime attempt accounting; the canary remains unreachable from the
+    # CLI and watcher.
+    "incremental_jsonl.py": "0cbcd03fdfdd3feda7c38604fda6ce30f40aae656ee5101cc76388143409ed7e",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
