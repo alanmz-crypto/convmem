@@ -511,12 +511,16 @@ def watch_skip_reason(
     *,
     processed: dict | None = None,
     file_hash: str | None = None,
+    processed_log: str | None = None,
 ) -> str | None:
     """Why watch should skip this file without opening Chroma. None = may ingest."""
     p = Path(path).expanduser().resolve()
+    cfg = None
     if processed is None:
         cfg = load_config()
         processed = load_processed(cfg["index"]["processed_log"])
+    if processed_log is None and cfg is not None:
+        processed_log = cfg["index"]["processed_log"]
     path_str = str(p)
 
     for entry in processed.values():
@@ -525,6 +529,21 @@ def watch_skip_reason(
         ep = entry.get("path")
         if ep and _processed_path_str(ep) == path_str:
             return "excluded"
+
+    if processed_log is None:
+        cfg = load_config()
+        processed_log = cfg["index"]["processed_log"]
+
+    if file_hash is None:
+        try:
+            file_hash = sha256_file(str(p))
+        except OSError:
+            return "unreadable"
+
+    from inter_model_rejections import inter_model_rejection_matches
+
+    if inter_model_rejection_matches(processed_log, path_str, file_hash):
+        return "inter_model_rejected"
 
     path_known_hash = _stored_hash_for_path(path_str, processed)
     if path_known_hash is not None:
@@ -726,7 +745,10 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     fmt: str = "inter_model_doc",
 ) -> tuple[bool, int, set[str]]:
     """Build one inter-model or Kiro steering file without pruning old rows."""
-    from inter_model_index import index_inter_model_messages
+    from inter_model_index import (
+        InterModelSupersessionRequired,
+        index_inter_model_messages,
+    )
 
     tool, source_type, author_model = {
         "kiro_steering": ("kiro", "kiro_steering", "kiro-steering-index"),
@@ -749,6 +771,8 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
             author_model=author_model,
             unit_ids_out=unit_ids,
         )
+    except InterModelSupersessionRequired:
+        raise
     except Exception as e:
         if verbose:
             print(f"  [skip] inter-model index failed {path}: {e}")
@@ -1413,17 +1437,35 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         return "ignored", 0, 0, 0, 0
 
     if fmt in ("inter_model_doc", "kiro_steering"):
-        completed, n_units, unit_ids = _index_inter_model_file(
-            cfg=cfg,
-            idx=idx,
-            path=path,
-            path_key=path_key,
-            messages=messages,
-            models=models,
-            units_export=units_export,
-            verbose=verbose,
-            fmt=fmt,
-        )
+        from inter_model_index import InterModelSupersessionRequired
+
+        try:
+            completed, n_units, unit_ids = _index_inter_model_file(
+                cfg=cfg,
+                idx=idx,
+                path=path,
+                path_key=path_key,
+                messages=messages,
+                models=models,
+                units_export=units_export,
+                verbose=verbose,
+                fmt=fmt,
+            )
+        except InterModelSupersessionRequired as exc:
+            from inter_model_rejections import record_provenance_supersession_rejection
+
+            record_provenance_supersession_rejection(
+                idx["processed_log"],
+                path_key=path_key,
+                file_hash=file_hash,
+                section_id=exc.section_id,
+            )
+            if verbose:
+                print(
+                    "  [skip] inter-model provenance supersession required "
+                    f"{Path(path).name}"
+                )
+            return "skipped", 0, 0, 0, 0
         if not completed:
             if verbose and n_units == 0:
                 print(

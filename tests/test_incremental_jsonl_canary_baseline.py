@@ -14,10 +14,12 @@ BASELINE_HASHES = {
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
     # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4) and
     # issue #268 D1 scratch diagnosis harness on the merged branch.
-    "watch.py": "dde8e84a13cb4f897b51b1a18688c5bdfd93b3a148342f59d369ff803bfd6e94",
+    "watch.py": "58ea1bccebe49b03a8023b4185614558dc7c0201c4837b21478e751a0c8227e9",
+    # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
-    "ingest.py": "b6454436cea7c561128c7beea3a885a67884da68dd8d1acfd4023aaa2314623b",
+    # Refreshed for issue #308 inter-model provenance rejection sidecar (2026-10-12).
+    "ingest.py": "f374c191b8a170725d4fd8d30d4ca3d838772f8981bdacaa896c093d4697a733",
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.
