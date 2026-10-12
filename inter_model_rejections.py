@@ -19,6 +19,7 @@ from atomic_files import atomic_write_text
 
 REJECTION_KIND_PROVENANCE_SUPERSESSION = "provenance_supersession_required"
 _FAIL_OPEN_EMITTED: list[bool] = []
+_WRITE_FAIL_EMITTED: list[bool] = []
 
 
 def rejections_path(processed_log: str) -> Path:
@@ -46,6 +47,18 @@ def _rejections_lock(processed_log: str):
 def clear_fail_open_diagnostic_emitted() -> None:
     """Reset one-shot stderr guard (for tests and recovery after corrupt read)."""
     _FAIL_OPEN_EMITTED.clear()
+
+
+def clear_write_fail_diagnostic_emitted() -> None:
+    """Reset one-shot write-failure stderr guard (tests only)."""
+    _WRITE_FAIL_EMITTED.clear()
+
+
+def _write_fail_once(message: str) -> None:
+    if _WRITE_FAIL_EMITTED:
+        return
+    _WRITE_FAIL_EMITTED.append(True)
+    print(message, file=sys.stderr)
 
 
 def _fail_open_once(message: str) -> None:
@@ -77,12 +90,7 @@ def load_inter_model_rejections(processed_log: str) -> dict[str, Any]:
 
 def save_inter_model_rejections(processed_log: str, data: dict[str, Any]) -> None:
     path = rejections_path(processed_log)
-    try:
-        atomic_write_text(path, json.dumps(data, indent=2), encoding="utf-8")
-    except OSError as exc:
-        _fail_open_once(
-            f"[convmem] inter_model_rejections.json unreadable, failing open: {exc}"
-        )
+    atomic_write_text(path, json.dumps(data, indent=2), encoding="utf-8")
 
 
 def mutate_inter_model_rejections(
@@ -118,7 +126,13 @@ def record_provenance_supersession_rejection(
             "section_id": str(section_id),
         }
 
-    mutate_inter_model_rejections(processed_log, mutator)
+    try:
+        mutate_inter_model_rejections(processed_log, mutator)
+    except OSError as exc:
+        _write_fail_once(
+            "[convmem] inter_model_rejections.json could not be written; "
+            f"the doc will be retried: {exc}"
+        )
 
 
 def clear_inter_model_rejection_for_path(processed_log: str, path: str | Path) -> bool:

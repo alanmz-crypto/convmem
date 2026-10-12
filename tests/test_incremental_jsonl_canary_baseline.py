@@ -15,6 +15,7 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4) and
     # issue #268 D1 scratch diagnosis harness on the merged branch.
     "watch.py": "58ea1bccebe49b03a8023b4185614558dc7c0201c4837b21478e751a0c8227e9",
+    # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
     # Refreshed for issue #308 inter-model provenance rejection sidecar (2026-10-12).

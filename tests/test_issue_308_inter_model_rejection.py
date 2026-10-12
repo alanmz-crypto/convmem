@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import errno
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -17,6 +18,7 @@ from inter_model_index import index_inter_model_messages
 from inter_model_rejections import (
     REJECTION_KIND_PROVENANCE_SUPERSESSION,
     clear_fail_open_diagnostic_emitted,
+    clear_write_fail_diagnostic_emitted,
     clear_inter_model_rejection_for_path,
     inter_model_rejection_matches,
     load_inter_model_rejections,
@@ -417,6 +419,115 @@ def test_corrupt_sidecar_concurrent_writes_preserve_records(tmp_path: Path) -> N
     data = load_inter_model_rejections(cfg["index"]["processed_log"])
     assert len(data) == len(paths)
     assert clear_inter_model_rejection_for_path(cfg["index"]["processed_log"], paths[0])
+
+
+def test_clear_inter_model_rejection_propagates_write_oserror(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C4-1 (a): clear propagates OSError; on-disk rejection record unchanged."""
+    path = _inter_model_path(tmp_path)
+    cfg = _cfg(tmp_path, path)
+    file_hash = ingest.sha256_file(str(path))
+    record_provenance_supersession_rejection(
+        cfg["index"]["processed_log"],
+        path_key=str(path.resolve()),
+        file_hash=file_hash,
+        section_id="0",
+    )
+
+    def fail_write(*_args, **_kwargs):
+        raise OSError(errno.ENOSPC, "no space left on device")
+
+    monkeypatch.setattr("inter_model_rejections.atomic_write_text", fail_write)
+    with pytest.raises(OSError):
+        clear_inter_model_rejection_for_path(cfg["index"]["processed_log"], path)
+    assert inter_model_rejection_matches(
+        cfg["index"]["processed_log"], str(path.resolve()), file_hash
+    )
+
+
+def test_record_provenance_supersession_rejection_best_effort_on_write_oserror(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """C4-1 (b): record is best-effort and prints write diagnostic after read diagnostic."""
+    cfg = _cfg(tmp_path, _inter_model_path(tmp_path))
+    side = rejections_path(cfg["index"]["processed_log"])
+    side.parent.mkdir(parents=True, exist_ok=True)
+    side.write_bytes(b"{not json")
+    clear_fail_open_diagnostic_emitted()
+    load_inter_model_rejections(cfg["index"]["processed_log"])
+    assert "failing open" in capsys.readouterr().err
+
+    path = _inter_model_path(tmp_path)
+    file_hash = ingest.sha256_file(str(path))
+
+    def fail_write(*_args, **_kwargs):
+        raise OSError(errno.EROFS, "read-only file system")
+
+    monkeypatch.setattr("inter_model_rejections.atomic_write_text", fail_write)
+    clear_write_fail_diagnostic_emitted()
+    record_provenance_supersession_rejection(
+        cfg["index"]["processed_log"],
+        path_key=str(path.resolve()),
+        file_hash=file_hash,
+        section_id="0",
+    )
+    err = capsys.readouterr().err
+    assert "could not be written" in err
+    assert "the doc will be retried" in err
+    assert not inter_model_rejection_matches(
+        cfg["index"]["processed_log"], str(path.resolve()), file_hash
+    )
+
+
+def test_record_provenance_supersession_rejection_best_effort_on_lock_oserror(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """C4-1 (c): record is best-effort when opening the sidecar lock raises OSError."""
+    path = _inter_model_path(tmp_path)
+    cfg = _cfg(tmp_path, path)
+    file_hash = ingest.sha256_file(str(path))
+    import inter_model_rejections as imr
+
+    def failing_lock(_processed_log: str):
+        raise OSError(errno.EROFS, "read-only file system")
+
+    monkeypatch.setattr(imr, "_rejections_lock", failing_lock)
+    clear_write_fail_diagnostic_emitted()
+    record_provenance_supersession_rejection(
+        cfg["index"]["processed_log"],
+        path_key=str(path.resolve()),
+        file_hash=file_hash,
+        section_id="0",
+    )
+    err = capsys.readouterr().err
+    assert "could not be written" in err
+    assert not inter_model_rejection_matches(
+        cfg["index"]["processed_log"], str(path.resolve()), file_hash
+    )
+
+
+def test_index_one_file_skipped_when_rejection_write_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C4-1 (d): guard rejection returns skipped and leaves no sidecar record on write fail."""
+    path = _inter_model_path(tmp_path)
+    cfg = _cfg(tmp_path, path)
+    Path(cfg["index"]["chroma_dir"]).mkdir(parents=True)
+    Path(cfg["index"]["processed_log"]).write_text("{}", encoding="utf-8")
+    _seed_indexed_section(cfg, path)
+
+    def fail_write(*_args, **_kwargs):
+        raise OSError(errno.ENOSPC, "no space left on device")
+
+    monkeypatch.setattr("inter_model_rejections.atomic_write_text", fail_write)
+    status = _run_index_one_supersession(cfg, path)
+    assert status[0] == "skipped"
+    assert load_inter_model_rejections(cfg["index"]["processed_log"]) == {}
 
 
 def test_reconciliation_suppresses_hash_mismatch_for_rejected_content(
