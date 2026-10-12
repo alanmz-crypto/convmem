@@ -9,14 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T2 target-binding correction delivered (2026-10-12):**
-  Cursor pushed correction tip `a18df48025cac77de8bda2db5a761f4744a9a963` on
-  `fix/2026-10-12-safe-harbor-t2` (draft PR #389). Isolated alias-retarget,
-  export-escape, factory-path and negative-control evidence is in
-  [VERIFY V2](../plans/VERIFY-safe-harbor.md#target-binding-correction-evidence--captured-cursor).
-  **Codex:** bounded static delta on that successor plus fresh CI. No paid
-  reviewer request; keep the PR draft. V2 acceptance and the external-review
-  gate remain pending. T3–T5, merge and live operations remain ungranted.
+- **Arc Safe Harbor — T2 correction requires follow-up (2026-10-12):**
+  Codex recovered and pushed Cursor's bundle; its bounded static delta found
+  a T1 quarantine-location regression and incomplete agreed evidence.
+  **Cursor:** continue the existing target-binding grant on draft PR #389;
+  [findings and continuation](../plans/VERIFY-safe-harbor.md#codex-target-binding-delta--correction-required),
+  [current state](../plans/STATUS-safe-harbor.md). No paid review; final-tip
+  acceptance, merge, T3–T5 and live operations remain pending/ungranted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
