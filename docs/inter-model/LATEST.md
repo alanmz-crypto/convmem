@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Kiro bootstrap / issue #286 — r6 CONSUMED / SAFE REFUSAL
+- **Arc Kiro bootstrap / issue #286 — r7 backup authority REVIEW PENDING
   (2026-10-12):** The guarded Kiro route and failed-operation supersession are
   merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
   bootstrap, corpus mutation, dimension probing, or provider transport because
@@ -48,8 +48,12 @@ cross-arc snapshot and the linked arc brief below.
   mount or backup on active unrelated `convmem index` PID `1201589`; result
   marker `7efd323b…f6f191` records null snapshot IDs, exact timer restoration,
   no cleanup errors, inactive/disabled watcher, and an unmounted device. R6 is
-  consumed; no successor authority exists. **Next:** Ryan decides whether to
-  authorize another backup-only authority cycle. Resume from the
+  consumed. Ryan authorized another cycle. Two bounded writer censuses around
+  a 30-second quiet window found no active writer, and Sol captured fresh
+  inventory `9b759981…bca12` under the exclusive writer lease; Kiro remains
+  unchanged and no backup has run. **Next:** Kiro and Copilot review the same
+  exact pushed r7 revision, then Ryan decides whether to grant it. Resume from
+  the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 

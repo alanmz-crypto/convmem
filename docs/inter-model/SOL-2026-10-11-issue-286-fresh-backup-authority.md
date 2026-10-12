@@ -1,10 +1,9 @@
 # Sol Backup Authority Proposal — Issue #286 Kiro Bootstrap
 
 **Arc:** Kiro bootstrap  
-**Prepared:** 2026-10-11 by Sol  
-**State:** r6 consumed; `NO-GO`. Kiro and Copilot PASSed exact reviewed
-revision `33f7a9e`, Ryan granted it, and the one-shot runner safely refused on
-an active unrelated index writer before mount or backup
+**Prepared:** 2026-10-12 by Sol
+**State:** r7 proposal only; `NO-GO` until Kiro and Copilot PASS the same
+exact pushed revision and Ryan grants that reviewed revision
 **Scope:** one new local complete-data Restic snapshot and one exact offsite
 copy; no bootstrap, provider transport, source operation, proposal generation,
 or watcher change
@@ -23,7 +22,7 @@ inventory binding is stale. It must not be executed, edited, regenerated, or
 reused. A new successor bootstrap proposal can be prepared only after this
 separate backup-only operation returns a valid matching local/offsite pair.
 
-This r6 authority proposal binds the current inventory and the most recent
+This r7 authority proposal binds the current inventory and the most recent
 valid pair as a readiness anchor:
 
 - local snapshot
@@ -110,14 +109,22 @@ inactive/disabled watcher state, and an unmounted offsite device. The r6 grant
 is consumed and must never be retried. No successor authority has been
 prepared.
 
+Ryan then authorized another backup-only cycle. A bounded writer census found
+no active writer. Sol captured inventory
+`9b7599818c1eaad927c07f46e1b9de2a175abc7cd152eba441868842ddebca12`
+under the exclusive writer lease and held a 30-second quiet window. A second
+bounded census also found no writer, and the drift-sensitive `processed` and
+export sizes and mtimes remained unchanged. The Kiro projection remains two
+conversation summaries and 17 knowledge units with the same entry digests.
+
 ## Exact proposed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `e2747fa169015050203bf6ff8830444aa70fa021294e5af0365412bb87e3e307` |
-| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261012-r6.py` |
-| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261012-r6.json` |
+| Attachment SHA-256 | `313864db0faac9f311868f51eb58869edb7f58399d23a158ef2177c5b5ed99f5` |
+| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py` |
+| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261012-r7.json` |
 | Valid local date | `2026-10-12` in `America/Chicago` |
 
 After same-revision Kiro/Copilot PASS and Ryan's exact grant, the one-shot
@@ -128,10 +135,10 @@ set -e
 if findmnt -rn -S /dev/sda1 -o TARGET; then
     exit 1
 fi
-cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261012-r6.py
-chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261012-r6.py
-printf '%s  %s\n' 'e2747fa169015050203bf6ff8830444aa70fa021294e5af0365412bb87e3e307' '/tmp/convmem-kiro-replacement-backup-runner-20261012-r6.py' | sha256sum --check --strict -
-/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261012-r6.py --execute
+cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py
+chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py
+printf '%s  %s\n' '313864db0faac9f311868f51eb58869edb7f58399d23a158ef2177c5b5ed99f5' '/tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py' | sha256sum --check --strict -
+/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py --execute
 ```
 
 The runner refuses an existing result path, including a dangling symlink. Its
@@ -177,7 +184,7 @@ The runner performs this closed sequence:
 7. Acquire the exclusive corpus writer gate. Compute the mutation inventory
    with `bootstrap_mutation_inventory` and
    `convmem-bootstrap-mutation-proof-v1`; require
-   `d7208408827927f8c0ee2b24874eb4d3b69f6c469fdaa28bfbaf66b15a3a532b`.
+   `9b7599818c1eaad927c07f46e1b9de2a175abc7cd152eba441868842ddebca12`.
 8. Recheck the Chicago date before the evidence update and immediately before
    snapshot creation. Recheck the profile and executable, then call governed
    `backup_data_root` exactly once with tag `kiro-successor-preflight`.
@@ -207,9 +214,9 @@ remain evidence and are never deleted to hide a failed qualification.
 |---|---|
 | Mutable data root | `/home/lauer/.local/share/convmem` |
 | Detached runtime | clean `/tmp/convmem-kiro-bootstrap-e798bba` at `e798bba284c96642fc31229e6375eadc26986493` |
-| Current inventory digest | `d7208408827927f8c0ee2b24874eb4d3b69f6c469fdaa28bfbaf66b15a3a532b` |
-| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261012-r6.json` |
-| Inventory evidence SHA-256 | `4b1cfba3cd79fcaa9f4a97c4cda7c10bf8834be85542fc412afbda6e6bf1b876` |
+| Current inventory digest | `9b7599818c1eaad927c07f46e1b9de2a175abc7cd152eba441868842ddebca12` |
+| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261012-r7.json` |
+| Inventory evidence SHA-256 | `12d585f11becc06defedee562f5719ff30ff4738a9305d32d7411151f8a3e189` |
 | Inventory procedure | `bootstrap_mutation_inventory` + `convmem-bootstrap-mutation-proof-v1` at runtime `e798bba…` |
 | Exact source | `/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_2628159e-d039-4646-a208-0a10a1b3e450/messages.jsonl` |
 | Source SHA-256 | `dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741` |
@@ -275,5 +282,6 @@ authorize that preparation or any bootstrap execution.
 
 The r4, r5, and r6 backup grants are consumed. R6 safely refused before mount
 or backup on an active unrelated `convmem index` writer, restored all governed
-state, and created no snapshot. No successor authority or bootstrap operation
-is authorized.
+state, and created no snapshot. R7 binds a fresh writer-lease capture after a
+quiet writer window. It remains `NO-GO` pending same-revision Kiro/Copilot PASS
+and Ryan's separate exact execution grant.
