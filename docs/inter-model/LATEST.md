@@ -43,9 +43,10 @@ cross-arc snapshot and the linked arc brief below.
   came only from unrelated Claude and Codex session indexing in the global
   processed/export roles; the exact Kiro projection remained unchanged. R6
   binds the later writer-lease capture `d7208408…a532b` and Chicago date
-  `2026-10-12`; no backup has run. **Next:** Kiro and Copilot review the same
-  exact pushed r6 revision, then Ryan decides whether to grant it. Resume from
-  the
+  `2026-10-12`. Kiro and Copilot both PASSed exact r6 revision `33f7a9e` with
+  no blockers, and the drift-sensitive file sizes/mtimes remained unchanged
+  through review; no backup has run. **Next:** Ryan decides whether to grant
+  that exact reviewed runner. Resume from the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
