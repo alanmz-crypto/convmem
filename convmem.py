@@ -1350,7 +1350,6 @@ def propose_decision_command(
             raise typer.Exit(1) from e
         typer.echo(f"Recovered {recover}: {action}")
         return
-
     if isinstance(rebase, str) and rebase:
         _guard_write()
         try:
@@ -1394,9 +1393,8 @@ def propose_decision_command(
                 proposal, ledger = do_approve(cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id)
             else:
                 with _admitted_operation("propose_decision.write", governed=True, expected_cfg=cfg) as op:
-                    proposal, ledger, ingest_result = approve_and_ingest(
-                        op.config(), approve_id, signer=resolved_signer, ledger_id=ledger_id
-                    )
+                    proposal, ledger, ingest_result = approve_and_ingest(op.config(), approve_id,
+                                                                         signer=resolved_signer, ledger_id=ledger_id)
         except ValueError as e:
             render_error(str(e))
             raise typer.Exit(1) from e
