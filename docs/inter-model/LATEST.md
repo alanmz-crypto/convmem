@@ -9,15 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — B1 delta PASS, V2 acceptance pending (2026-10-12):**
-  Copilot closed the armed-census recovery blocker at exact candidate
-  `82f25ef` (88%, static delta; runtime/tests `964c1de`). The original FAIL
-  remains historical at `05c7706`. The bounded event-only success exclusion
-  is accepted; T4 still owes that proof. See the
-  [review and prepared PR text](../plans/VERIFY-safe-harbor.md#independent-b1-delta-review--pass)
-  and [arc brief](../plans/STATUS-safe-harbor.md).
-  Next: Ryan decides V2 acceptance and PR/review authority. The separate
-  BugBot gate is unsatisfied; no PR/comment, merge, T3–T5 or live grant.
+- **Arc Safe Harbor — T2 target-binding correction granted (2026-10-12):**
+  Cursor resumes the existing T2 branch/worktree and draft PR #389 under the
+  [bounded correction handoff](../plans/EXECUTION-safe-harbor.md#target-binding-correction--owner-authorized).
+  Reproduce/fix post-preflight alias drift and collect isolated effect/control
+  evidence, then return for a Codex delta. Current evidence, CodeQL disposition
+  and the remaining exact-tip review/acceptance limits are in the
+  [arc brief](../plans/STATUS-safe-harbor.md). No further paid review request;
+  keep the PR draft. T3–T5, merge and live operations remain ungranted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

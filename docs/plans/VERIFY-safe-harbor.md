@@ -229,7 +229,7 @@ Ryan then reported “squash merge done”; GitHub confirmed MERGED with the hea
 
 ## V2 — Target binding and freshness (T2)
 
-**T2 IMPLEMENTATION DELIVERED; V2 NOT ACCEPTED (bounded evidence exclusion accepted; PR review gate open).** Cursor implemented T2 under execution section 9 on `fix/2026-10-12-safe-harbor-t2`. Captured final runs passed at runtime source `44e29f6` and at test/fixture tip `2459acd` (below). Gate refusal and the real human-review outcome are proven for event-only recovery; **successful event-only completion is NOT proven**. That stays an OPEN limitation and existing T4 prerequisite. Copilot subsequently reviewed exact tip `05c7706` and returned narrow FAIL (below). The granted B1 correction is implemented at `964c1de` with captured armed-census evidence; Copilot delta PASS (88%) at exact candidate `82f25ef` closes B1. Ryan acceptance remains pending; T1's tip-specific outage acceptance does not transfer.
+**T2 TARGET-BINDING CORRECTION GRANTED; V2 NOT ACCEPTED.** The current draft PR #389 was reviewed at `0cff1578b881d890234adad6b9cb93a110ec1d48`. Codex identified an alias-retarget gap (90%, static), and Ryan authorized the bounded correction and isolated evidence. That reproduction/correction evidence is **NOT RUN**. CodeQL alert #6 is dismissed as false positive; the separate exact-tip review gate remains open. The earlier implementation/evidence and reviews below remain pinned to their actual subjects. Copilot delta PASS at `82f25ef` closes B1 only. Successful event-only completion is still **NOT proven**, as explicitly excluded by Ryan from V2 and retained as a T4 prerequisite.
 
 **Required evidence:** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
 
@@ -416,7 +416,21 @@ No default full suite, no `test_safe_harbor_t1`/`test_restic_snapshot`/`test_bac
 
 **Next:** Ryan decides overall V2 acceptance and PR/review authority. The required PR-native BugBot gate remains unsatisfied. No further Copilot delta is requested for this documentation-only review record. Merge, T3–T5 and live operations remain unauthorized.
 
-### Prepared T2 draft PR — not opened
+### Draft PR, direct review and target-binding correction grant
+
+**[Arc Safe Harbor] Exact subject:** `0cff1578b881d890234adad6b9cb93a110ec1d48`, runtime/tests `964c1de`, draft [PR #389](https://github.com/alanmz-crypto/convmem/pull/389). Local/remote/PR identity and draft state were checked before this documentation-only grant update. Ryan authorized PR creation and one BugBot trigger. That [trigger](https://github.com/alanmz-crypto/convmem/pull/389#issuecomment-6121632772) received a [usage-limit reply](https://github.com/alanmz-crypto/convmem/pull/389#issuecomment-6121635935), request `462c15e8-21c8-4c73-a59c-f8626f0b2340`; **no SHA was reviewed**. No PR-native Copilot request was submitted. Ryan then requested a budget-conscious review without Copilot.
+
+**Codex static assessment: correction required, 90% confidence in the alias finding.** Source at `0cff157` shows `config.py:467-482,610-628` retains alias spellings; `chroma_write_store.py:863-881` checks resolved preflight paths but saves the original config. `verify_admitted_operation_unchanged` at `789-814` checks file bytes, not alias targets, and the factory at `932-942` consumes the original path again. `chroma_store.py:146` resolves it on open. `convmem.py:425-426` likewise forwards the configured export path. A symlink retarget between preflight and use can leave config/env hashes unchanged while redirecting the destination. This is static reasoning, **not a reproduced incident or measured likelihood**. Existing tests at `tests/test_safe_harbor_t2.py:983-1002` alter config/env bytes and do not establish alias-retarget refusal. The bounded grant requires an actual workflow reproduction/control before declaring the correction proven; counter-evidence returns to Codex/Ryan.
+
+**Owner authorization:** “authorized: Next step: Authorize the bounded target-binding correction and CodeQL disposition.” The [execution handoff](EXECUTION-safe-harbor.md#target-binding-correction--owner-authorized) contains the exact source boundary, effect/control requirements and stop. Cursor's correction is **NOT_STARTED / GRANTED**; no new runtime or regression result is supplied by this record. The earlier independent reviews are not automatically a PASS for changed code, and Codex's assessment is not independent third-party review.
+
+**CodeQL #6 disposition — COMPLETE:** GitHub reported `py/clear-text-storage-sensitive-data` at `tests/test_safe_harbor_t2.py:226`, source at `217`. At this tip, `self.password` is a `pathlib.Path` assigned at `205`; the environment writer persists that scratch filename as `RESTIC_PASSWORD_FILE`. It does not serialize password contents. The fixture separately creates a fixed synthetic test password and chmods it 0600 (`206-207`). Codex assessed the reported flow as a false positive (95% confidence). Under Ryan's authorization, Codex dismissed [alert #6](https://github.com/alanmz-crypto/convmem/security/code-scanning/6) with reason `false positive` and a source-based comment. GitHub confirmed both alert and PR instance `dismissed` at `2026-10-12T10:34:24Z`. No code change, query suppression or scanning-policy change was used.
+
+**CI at the reviewed source:** GitHub pytest (3.12), pylint (3.12), secret-scan and Analyze (Python/actions) passed. After dismissal, the CodeQL check also reports SUCCESS. Cursor Bugbot remains neutral/no review. These are read-back results for `0cff157`, not tests rerun by Codex and not evidence for the pending correction. Normal branch CI must evaluate the correction successor.
+
+**Next / limits:** Cursor delivers the bounded correction and isolated evidence, then Codex performs a static delta on that successor and reports CI. Keep draft #389 open. No further paid reviewer request, overall V2 acceptance, external-gate waiver, merge, T3–T5 or live operation is implied. Successful event-only completion and direct-helper coverage remain at the ungranted T4 seam.
+
+### Historical prepared T2 draft PR text — now opened as #389
 
 Title: **Bind risky writes to their backup target and reject future snapshots**
 
@@ -492,7 +506,7 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Cursor, same | same | affected T2/caller/census/inventory pytest (12 files) | PASS, pytest exit 0, `153 passed, 2 warnings in 339.06s` | V2 B1 correction |
 | 2026-10-12 | Cursor, same | same | pylint + regression gate vs `9664878` | pylint raw 30; gate exit 0 PASS, 466 findings / 239 fingerprints, none new | V2 B1 correction |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 is closed by Copilot delta PASS (88%) at `82f25ef`, with runtime/tests and captured isolated evidence at `964c1de`. Overall owner acceptance and the separate BugBot gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 is closed historically, but the newly authorized alias target-binding correction and its evidence are pending. CodeQL #6 is dismissed as false positive. Overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
 
 ## Merge reading
 
@@ -507,4 +521,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 - Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.
 - Event-only recovery: refusal and the human-review outcome are proven. Successful completion is not, because the current hash views disagree (an open T4 prerequisite).
 - Copilot review at `05c7706`: narrow FAIL (75%), B1 census-entrypoint regression. The B1 correction is implemented at `964c1de`: recovery reuses `propose_decision.write`, and armed-census positive, future and old-label controls behave as intended. Uid-1000 runs: 3 new and 153 affected cases passed (exit 0), lint gate exit 0.
-- Copilot delta PASS (88%) at `82f25ef` closes B1; original FAIL stays historical at `05c7706`. The evidence-limit exclusion is accepted. Next: Ryan decides V2 acceptance and PR/review authority. The BugBot gate remains open, and T3–T5/live operations remain ungranted.
+- Copilot delta PASS (88%) at `82f25ef` closes B1; original FAIL stays historical at `05c7706`. Draft #389 is open; BugBot reviewed no SHA. Codex's alias target-binding finding at `0cff157` has a bounded Cursor correction grant, with evidence not yet run. CodeQL #6 is dismissed as false positive. No further paid review request. V2 acceptance and final-tip external-review disposition remain pending; T3–T5/live operations remain ungranted.
