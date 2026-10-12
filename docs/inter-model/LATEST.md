@@ -9,11 +9,10 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Issue #308 — inter-model rejection retry loop: corrective 4
-  (2026-10-12):** `bbf09d1` closes the fail-open bug, and Kiro passed it.
-  Copilot failed it on a new defect, which Claude confirmed: the optional
-  best-effort write makes an operator's clear report success without
-  saving. Cursor scopes that to the record path only. This is a Stage 2
+- **Issue #308 — inter-model rejection retry loop: READY_FOR_PR at
+  `3e1e691` (2026-10-12):** Claude verified it, and Copilot and Kiro both
+  passed the exact tip. Next is Ryan's PR decision, then the Stage 2 watcher
+  canary grant. This is a Stage 2
   prerequisite of the Codex burn work. A provenance-supersession rejection is never recorded, so the
   same doc is retried on every watcher event. Cursor records a terminal
   rejection keyed by path and content hash, and the watcher and the

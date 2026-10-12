@@ -13,9 +13,9 @@ work.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 4 (Copilot FAIL at `bbf09d1`, clear path) |
+| **State** | `READY_FOR_PR`: Copilot PASS and Kiro PASS at `3e1e691` |
 | **Branch** | `fix/2026-10-12-issue-308-inter-model-rejection` (create from `origin/main`) |
-| **Tip SHA** | `bbf09d1` (merge base `138e3aa`) |
+| **Tip SHA** | `3e1e691` (merge base `138e3aa`) |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-308-inter-model-rejection-handoff` |
 | **PR** | not opened |
 | **Ryan GATE** | none for hermetic implementation; Ryan alone merges |
@@ -402,3 +402,52 @@ R2B. Run the Pylint gate with `--base-ref` set to the merge base. Push with
 an explicit refspec. After that, Claude verifies, and then a targeted
 Copilot re-check of this item and a Kiro delta confirmation run on the new
 tip.
+
+## Verification and reviews of `3e1e691` (2026-10-12) — PASS, READY_FOR_PR
+
+**Claude's checks:**
+- **The new tests prove the fix.** With a shim for the new test helper,
+  the tip's #308 test file run against the `bbf09d1` code gives "3 failed,
+  12 passed". The failures are tests (a), (b) and (c). Test (d) passes there
+  too, which is expected: `bbf09d1` already swallowed the error on that
+  path, so (d) guards against regressing to the `74e193f` crash.
+- **Targeted tests** (63 files): "468 passed, 6 skipped".
+- **Pylint gate PASS:** base `138e3aa`, "462 findings, 240 fingerprints".
+- **R2B:** identity-only (`d5f5e2d0` to `4f4ed47b`).
+- **Full suite:** clean at `bbf09d1`, with 3047 passed. Since then only the
+  sidecar module, its tests, the R2B JSON and a comment have changed, and
+  CI reruns the full suite on the PR.
+
+**Copilot: PASS at `3e1e691`.** Copilot ran an 80-check hermetic probe with
+both mocked and real filesystem failures.
+- With a failing write, clear raises and the record stays. The same probe
+  reproduces the original finding at `bbf09d1`.
+- The record path never raises, and prints the write line under its own
+  guard.
+- Through `_index_one_file`, a failing write returns `"skipped"` and records
+  nothing.
+- Items 1–6 hold, and the targeted suites gave 311 passed.
+
+**Kiro: PASS at `3e1e691`.** The delta is confined to C4-1, all earlier
+rulings stand, and the clear path is now sound.
+
+**Non-blocking notes for the PR:**
+- **Canary comment.** The new #308 `watch.py` pin comment sits below the
+  `watch.py` entry, so it heads the `ingest.py` block. It is comment-only.
+- **Reconciler spacing.** There are four blank lines before
+  `_skip_recorded_inter_model_rejection` and one after it.
+- **fsync failure** (Copilot). A post-publication fsync failure prints
+  "could not be written" even though the file was published. This is
+  harmless, because the record then stops the retry loop.
+- **Follow-ups, not in #308:**
+  - Classify `inter_model_rejections.json` and the existing
+    `source_reconciliation.json` in `complete_data_restore.STATE_SPECS`
+    (Recovery Authority).
+  - Add a separate lock file before any rejection is recorded while
+    `_processed_lock` is held.
+  - Clear and prune have no production callers yet.
+
+**Next:** Ryan's PR decision on
+`fix/2026-10-12-issue-308-inter-model-rejection` @ `3e1e691`. After the
+merge come the `runtime-main` promotion and the Stage 2 24 h watcher canary,
+which needs its own Ryan grant.
