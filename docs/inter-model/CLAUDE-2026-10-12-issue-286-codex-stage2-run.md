@@ -251,3 +251,31 @@ CI guard.
   those sessions are resumed. The fix is to retire them rather than
   resume them.
 - 3,710 `skip (unchanged)`, 0 refusals, 0 errors and 0 restarts.
+
+**Afternoon (T0′ + 6 h to 6.6 h): catch-up wave, ceiling raise, false stop.**
+- **Catch-up wave.** From 14:19, the watcher re-indexed old Codex sessions
+  on the legacy route: 11 runs, about 124 paid calls estimated. Each was a
+  session that changed while the watcher was off (Oct 5–12). The trigger
+  is any file event, including a plain open. The Codex app (one
+  app-server process) keeps 8 rollouts open. One old thread was written
+  by a Codex compaction with no user turn. It was indexed twice: the
+  compaction ran about 100 s silently, longer than the 90 s debounce, so
+  the first run paid and was then discarded ("changed during index").
+  These are one-time costs per session, and they capture real work that
+  was never indexed.
+- **Codex itself uses OpenAI** (`gpt-6-astra`), not DeepSeek. The DeepSeek
+  usage Ryan saw rising was convmem's catch-up.
+- **Ceiling raised from 200 to 400 (Ryan, 2026-10-12, "use your
+  judgement").** It was sized from about 160 calls of remaining backlog
+  plus 40–80 calls for two new admitted sessions.
+- **False stop at 15:07:04.** The stop check counted an in-progress
+  admitted run of the new session as legacy, because the admitted-run log
+  line is emitted only at run end. The guard disabled the watcher. The
+  orphaned child (its own `systemd-run` scope) kept running with no log
+  sink. The check was fixed to consider only finished runs. Backup gate
+  OK (`b9a8977a…`). Restarted at **15:09:54** under Ryan's "restart".
+- **Agent-launched runs are outside the journal.** At 14:42, Codex ran
+  `convmem index --file` on its own session, following the Track A
+  protocol. That run stopped with its transaction in `PREPARING`, which
+  the next run should recover without re-paying (`preparing_recovery`).
+  The burn counter does not see these runs.
