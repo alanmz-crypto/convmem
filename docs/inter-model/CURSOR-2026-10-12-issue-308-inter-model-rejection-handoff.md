@@ -225,6 +225,14 @@ isn't on the burn path, so it isn't part of #308.
   helper would do.
 - The new K2 test is missing the second blank line before it.
 
-**Full suite:** Claude's clean disk-backed run on `1e76650` is in progress.
-Its result will be appended here. Cursor's handoff-back reported 10 failures
-it called environmental, so that claim will be checked by name.
+**Full suite (Claude, clean disk-backed worktree, fresh CI config, tip
+`1e76650`):** "3044 passed, 9 skipped, 2 warnings, 252 subtests passed in
+1890.90s", with **no failures**. That is the 3034 that passed at `b689df6`,
+plus the nine fixed pins and the new K2 test. The 10 failures in Cursor's
+run don't reproduce on a clean checkout, so they came from Cursor's run
+environment and not from the branch.
+
+Corrective 2 changes only JSON, plus a docs-only `main` merge. So the
+targeted tests named in the K3 fix are enough; there is no need for another
+full run. If Cursor takes the reconciler nit, the Pylint gate must also be
+rerun.
