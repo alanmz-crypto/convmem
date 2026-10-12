@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Kiro bootstrap / issue #286 — r8 REVIEWED / GRANT PENDING
+- **Arc Kiro bootstrap / issue #286 — r8 CONSUMED / FOREIGN PYTEST REFUSAL
   (2026-10-12):** The guarded Kiro route and failed-operation supersession are
   merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
   bootstrap, corpus mutation, dimension probing, or provider transport because
@@ -67,10 +67,17 @@ cross-arc snapshot and the linked arc brief below.
   `9b759981…bca12`, reserves fresh paths, and explicitly refuses unclassifiable
   systemd observations before mutation. It also requires execution with host
   user-bus access. Kiro and Copilot both PASSed exact pushed r8 revision
-  `de9b98a` with no blockers. Their nonblocking notes preserve the need to
-  recheck config/inventory immediately before grant and to execute with host
-  user-bus access; a sandboxed launch would consume and refuse. **Next:** Ryan
-  decides whether to grant the exact reviewed r8 runner. Resume from the
+  `de9b98a` with no blockers. Ryan granted it. The first host preflight stopped
+  before runner materialization because an unrelated Safe Harbor pytest was
+  active, so that check did not consume r8. After the process ended and a
+  standalone census found zero writers, the exact runner started once. The
+  foreign suite restarted pytest during that gap, and the runner safely
+  refused before mount or backup on PID `1370562`. Result marker
+  `c376c9be…4098f` records null snapshot IDs, exact timer restoration, no
+  cleanup errors, inactive/disabled watcher state, and an unmounted device.
+  R8 is consumed. **Next:** after the Safe Harbor suite is fully quiet, Ryan
+  decides whether to authorize preparation of a new backup-only cycle. Resume
+  from the
   [backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
