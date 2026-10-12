@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-09
+**Updated:** 2026-10-11
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,34 +9,21 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
-  PENDING
-  (2026-10-09):** Sol resolved the first exact-packet Kiro/Copilot conflict in
-  Copilot's favor, corrected the packet, and obtained same-revision `PASS` from
-  both lanes at packet commit `4aecb96`. Ryan then authorized Cursor's bounded
-  hermetic corrective. On exact implementation revision `b68daea`, Kiro issued
-  `PASS` while Copilot issued `FAIL`. Sol-High adjudicated the material conflict
-  in Copilot's favor: APPLYING replay re-snapshots partially applied state and
-  can overwrite the original rollback/isolation authority; embedding dimension
-  is also not independently checked before paid work. After Switchboard PR #370
-  merged, the existing work was replayed without conflict onto current `main`
-  `956d74e` on
-  `fix/2026-10-09-issue-286-bootstrap-replay-authority-corrective`. Cursor's
-  corrected implementation is pushed at `b108ab6`: replay preserves original
-  rollback authority, dimension is proven from existing source rows before
-  provider work, and redirects are disabled. The selected 273-test focused set
-  passes across the main run plus three isolated environment reruns; 25 governed
-  inventory tests, secret scan, critical invariants, and the Pylint regression
-  gate also pass. Kiro and Copilot both issued complete `PASS` verdicts with no
-  blockers on exact revision `318c2f9`. Remaining advisories are fail-closed or
-  separately gated: v1 canary rollback compatibility, replay-time foreign
-  dedupe/export evidence limits, clearer 3xx taxonomy, existing-row dimension
-  scope, and the pending CI-equivalent full suite. The packet remains `NO-GO`
-  until merge and a new exact live grant. No live bootstrap,
-  provider call, config/runtime change, watcher action, PR, or merge is
-  authorized. Resume from the
-  [Cursor Execute handoff](SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md)
-  and [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
+- **Arc Kiro bootstrap / issue #286 — r4 backup authority REVIEW PENDING
+  (2026-10-11):** The guarded Kiro route and failed-operation supersession are
+  merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
+  bootstrap, corpus mutation, dimension probing, or provider transport because
+  unrelated Cursor indexing changed the predecessor mutation inventory after
+  the bound backup pair was created. That sealed proposal is unconsumed but
+  stale and must not be reused. Ryan authorized preparation of a new
+  backup-only cycle. Sol captured stable inventory `85566aed…e6a` under the
+  exclusive writer lease and prepared an r4 runner limited to one local
+  complete-data snapshot plus one exact offsite copy. No backup has run.
+  **Next:** Kiro reviews design/source assumptions and Copilot audits
+  safety/isolation on the same exact pushed revision; only then may Ryan decide
+  whether to grant that one-shot backup operation. Resume from the
+  [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
+  and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its

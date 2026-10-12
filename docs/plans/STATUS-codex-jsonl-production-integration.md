@@ -85,40 +85,39 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Ryan authorized sealed proposal operation `14535580…fb2c`, but every execution preflight stopped before bootstrap or provider transport. The final stop proved current inventory `85566aed…e6a` differs from bound inventory `0ecb33ea…9b27b`: another lane indexed one Cursor transcript after the r3 backup, adding one processed entry, one chunk, and nine units. The grant remains unconsumed, but its backup/inventory binding is stale and must not be reused. | Ryan decides whether to authorize a new fresh-backup cycle and replacement proposal |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. The sealed r3 bootstrap grant stopped before bootstrap or provider transport after unrelated Cursor indexing changed the bound inventory. Ryan authorized preparation of a new backup-only cycle. Sol captured current inventory `85566aed…e6a` under the writer lease and prepared an r4 one-shot backup runner; no backup has run. | Same-revision Kiro design review and Copilot safety/isolation audit of the r4 authority packet, then Ryan's exact execution-grant decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Report the safe execution refusal and preserve its evidence. The reviewed r3
-proposal at
+Obtain Kiro design review and Copilot safety/isolation audit on the same exact
+pushed r4 backup-authority revision. If both PASS, present Ryan with one exact
+copyable grant for that reviewed backup-only runner. Do not execute the runner
+without that separate grant.
+
+The r3 bootstrap proposal at
 `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.json`, SHA-256
 `3208b05b2177918ec1926805f936a0eaaf9d60961388e51c074fe44c0affe5ef`,
-operation id `14535580…fb2c`, is now stale because the live mutation inventory
-changed after its backup. Do not execute, edit, regenerate, or reuse it.
-
-Ryan decides whether to authorize a new backup-only preflight. If granted, bind
-the then-current corpus to a new local/offsite pair, packet revision, sealed
-proposal, same-revision Kiro/Copilot review, and later exact execution grant.
-Do not call a provider, index another source, promote config/runtime, or restart
-the watcher under the stale r3 authority.
+operation id `14535580…fb2c`, is sealed but stale. Do not execute, edit,
+regenerate, or reuse it. Do not call a provider, index another source, promote
+config/runtime, or restart the watcher.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Ryan decides whether to authorize a new one-shot backup-only preflight after
-   the unrelated Cursor transcript changed the mutable corpus.
-2. If granted, create one new local complete-data snapshot and one exact
-   offsite copy, then bind a replacement packet and non-executed proposal to
-   the current inventory.
-3. Obtain same-revision Kiro and Copilot confirmation and a later exact Ryan
-   execution grant.
-4. Immediately before that execution, revalidate the exact backup pair,
-   source/runtime/config/binding/dimension, and establish a no-other-writer
-   window through final evidence capture.
-5. Execute only the exact source/runtime/config/budget operation and return
+1. Obtain same-revision Kiro and Copilot PASS on the r4 backup-only authority.
+2. Ryan decides whether to grant that exact one-shot runner.
+3. If granted, create one new local complete-data snapshot and one exact
+   offsite copy while the writer gate is held; return all qualification
+   evidence. Do not prepare a successor proposal during the operation.
+4. Under separate authorization, prepare and review a new non-executed
+   successor bootstrap proposal bound to the returned pair and inventory.
+5. Ryan separately grants any exact bootstrap execution. Immediately before
+   transport, revalidate backups, source/runtime/config/binding/dimension, and
+   maintain the no-other-writer window through final evidence capture.
+6. Execute only the exact source/runtime/config/budget operation and return
    measured call, coverage, lineage, and isolation evidence.
-6. Obtain a later separate Ryan grant before any runtime/config/restart or
-   watcher promotion; measure calls and coverage by source class.
+7. Obtain a later separate Ryan grant before runtime/config promotion or
+   watcher activation; measure calls and coverage by source class.
 
 ## 7. Hard Stops
 
@@ -257,6 +256,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Sol / Kiro / Copilot | Both lanes PASSed packet `730962a`; Sol sealed non-executed proposal `14535580…fb2c` against the current backups and inventory, with narrow proposal-binding confirmation next |
 | 2026-10-11 | Kiro / Copilot / Sol | Both lanes PASSed the sealed proposal binding at exact revision `9d249d0` with no blockers; Ryan's separate exact execution-grant decision is next |
 | 2026-10-11 | Ryan / Sol | Ryan's exact r3 execution grant stopped before bootstrap or calls after a newly indexed Cursor transcript changed inventory from `0ecb33ea…9b27b` to `85566aed…e6a`; the unconsumed proposal is stale and a new backup cycle requires separate authority |
+| 2026-10-11 | Ryan / Sol | Ryan authorized preparation of a new backup-only authority cycle; Sol captured stable inventory `85566aed…e6a` under the writer lease and prepared an r4 one-shot runner for same-revision Kiro/Copilot review, without executing backups |
 
 ## TL;DR
 
@@ -264,9 +264,10 @@ Keep this document a current-state snapshot, not a session diary.
   stopped and disabled with no restart authority.
 - Failed-operation supersession is on `main` through PR #381 (`e798bba`), and
   the test-isolation correction is on `main` through PR #384 (`6a23aa9`).
-- Ryan's r3 execution grant stopped safely before bootstrap or paid calls. One
-  unrelated Cursor transcript was indexed after the backup, so the live
-  mutation inventory no longer matches the reviewed proposal. The unconsumed
-  r3 proposal is stale; a new backup cycle and replacement authority require
-  separate Ryan authorization. Config promotion and watcher restart remain
-  separately gated.
+- Ryan's r3 execution grant stopped safely before bootstrap or paid calls. The
+  unconsumed proposal is stale after unrelated Cursor indexing and must not be
+  reused.
+- Ryan authorized preparation of a new backup-only authority cycle. The r4
+  packet binds current inventory `85566aed…e6a` and awaits same-revision Kiro
+  and Copilot review; no backup has run. Config promotion and watcher restart
+  remain separately gated.
