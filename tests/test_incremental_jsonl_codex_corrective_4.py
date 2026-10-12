@@ -34,7 +34,7 @@ def _leave_preparing_transaction(
     real_build = incremental_jsonl.IncrementalJsonlCoordinator._build_frontier
 
     def halt_build(self, *args, **kwargs):  # noqa: ANN001, ARG002
-        raise incremental_jsonl.IncrementalJsonlError("halt", "halt")
+        raise RuntimeError("halt")
 
     monkeypatch.setattr(
         incremental_jsonl.IncrementalJsonlCoordinator,
@@ -42,8 +42,9 @@ def _leave_preparing_transaction(
         halt_build,
     )
     coord = _coordinator(boundary, source, cfg)
-    result = coord.run()
-    assert result.outcome == "halt"
+    with pytest.raises(RuntimeError, match="halt"):
+        coord.run()
+    assert incremental_jsonl._read_json(coord.paths["transaction"])["phase"] == "PREPARING"
     monkeypatch.setattr(
         incremental_jsonl.IncrementalJsonlCoordinator,
         "_build_frontier",
