@@ -1,14 +1,14 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 REVIEW FAIL, V2 NOT ACCEPTED.** Copilot's read-only audit at `05c7706e54b77f9ef5b41a1c206b29bec012e405` found one local census-entrypoint regression (75% overall confidence; 90% on the defect). The captured T2 tests passed, but that configuration was absent. The event-only success limitation remains open for Ryan's explicit acceptance decision and T4. V3–V6 remain NOT RUN; no live grant is implied.
+> **Arc: Safe Harbor. T1 MERGED; T2 REVIEW FAIL, V2 NOT ACCEPTED.** Copilot's read-only audit at `05c7706e54b77f9ef5b41a1c206b29bec012e405` found one local census-entrypoint regression (75% overall confidence; 90% on the defect). The captured T2 tests passed, but that configuration was absent. Ryan accepted the event-only success evidence exclusion; T4 must still prove it. The bounded B1 correction is granted, with results pending. V3–V6 remain NOT RUN; no live grant is implied.
 
 ```text
 Planning Status
-Phase:        T2 independent review complete; correction and acceptance pending
+Phase:        T2 B1 correction granted; successor evidence and acceptance pending
 Characters:   Reviewer
 Function:     Preserve exact-tip findings and evidence limits
 Lanes:        Copilot audited; Codex checked the blocker and records the result
-Authority:    Ryan authorized final-tip review including the documented limitation
+Authority:    Ryan authorized review, then bounded B1 correction/evidence exclusion
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -349,7 +349,9 @@ Codex independently checked this source chain and agrees. No production census i
 
 **Documentation correction (Codex):** the opening of this file and V0 still said V2 NOT RUN / no candidate, contradicting V2's captured results. The current-state wording is corrected with this review record; historical T1 evidence is retained.
 
-**Next:** Ryan may grant the bounded B1 correction and decide the explicit event-only evidence exclusion. Cursor then supplies isolated regression evidence; one independent delta checks the correction at its successor. PR creation/commenting, the required BugBot gate, merge, T3–T5 and live operations remain separate and unauthorized. The current implementation is not accepted or merge-ready.
+**Subsequent owner decision:** Ryan authorized the proposed bounded correction and evidence exclusion: “authoized: Next step: Authorize the bounded correction and decide the evidence exclusion.” Execution section 9 records the exact scope. Successful event-only completion is excluded from T2 acceptance evidence, with hash-view alignment plus real success proof retained as a T4 prerequisite. This is not overall V2 acceptance or a claim of successful completion. The review's preceding owner-decision request is historical; the missing evidence itself remains missing.
+
+**Next:** Cursor executes B1 under that grant and supplies isolated census-present positive/refusal/old-label-control evidence. Codex coordinates one independent Copilot delta on its successor under the standing final-tip review authorization. PR creation/commenting, the required BugBot gate, merge, T3–T5 and live operations remain separate and unauthorized. The current implementation is not accepted or merge-ready.
 
 ## V3 — Preservation and bounded restore (T3)
 
@@ -393,7 +395,7 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Codex, uid 1000, clean-allowlist env | test/fixture `2459acd` (runtime = `44e29f6`) | refresh pytest (4 files, overlaps focused batch) | PASS, pytest exit 0, `64 passed in 284.85s` | V2 refresh |
 | 2026-10-12 | Codex, same | same | pylint + regression gate vs `9664878` | pylint raw 30; gate exit 0 PASS, 465 findings / 239 fingerprints, none new | V2 refresh |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: Copilot found B1 at `05c7706`; its bounded correction, explicit disposition of the event-only evidence limitation, and owner acceptance remain pending. The separate BugBot gate is unsatisfied. V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: Copilot found B1 at `05c7706`; its now-granted bounded correction and overall owner acceptance remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. The separate BugBot gate is unsatisfied. V3–V6 stay NOT RUN.
 
 ## Merge reading
 
@@ -407,4 +409,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 [Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation is delivered: runtime `44e29f6`, tests `2459acd`.
 - Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.
 - Event-only recovery: refusal and the human-review outcome are proven. Successful completion is not, because the current hash views disagree (an open T4 prerequisite).
-- Copilot review at `05c7706`: narrow FAIL (75%), B1 census-entrypoint regression. Correction, explicit evidence-limit acceptance and the separate BugBot gate remain open; T3–T5/live operations remain ungranted.
+- Copilot review at `05c7706`: narrow FAIL (75%), B1 census-entrypoint regression. Correction is granted, evidence-limit exclusion accepted, and the separate BugBot gate remains open; T3–T5/live operations remain ungranted.

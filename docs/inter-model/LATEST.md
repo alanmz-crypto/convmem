@@ -9,14 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T2 REVIEW FAIL; bounded correction next (2026-10-12):**
-  Copilot's authorized static review of `05c7706` found a local census-entrypoint
-  regression (75% overall confidence); Codex confirmed it. The event-only
-  completion limitation requires Ryan's explicit evidence-limit decision and
-  remains a T4 prerequisite. See [VERIFY V2](../plans/VERIFY-safe-harbor.md#independent-final-tip-review--correction-required)
-  and [Safe Harbor STATUS](../plans/STATUS-safe-harbor.md) for the correction,
-  evidence and remaining gates. No runtime correction, PR/comment, merge,
-  T3–T5 or live action is newly granted.
+- **Arc Safe Harbor — B1 correction GRANTED (2026-10-12):**
+  Ryan authorized the bounded census-entrypoint correction and accepted the
+  documented event-only success evidence exclusion (T4 proof remains required).
+  Cursor continues in the existing T2 worktree under
+  [execution section 9](../plans/EXECUTION-safe-harbor.md#b1-correction-and-bounded-evidence-exclusion--owner-authorized).
+  [STATUS](../plans/STATUS-safe-harbor.md) and [VERIFY V2](../plans/VERIFY-safe-harbor.md#independent-final-tip-review--correction-required)
+  preserve Copilot's FAIL at `05c7706`, evidence and successor-review stop.
+  No PR/comment, merge, T3–T5 or live action is granted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

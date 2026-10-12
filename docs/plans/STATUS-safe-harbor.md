@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 REVIEW FAIL, V2 NOT ACCEPTED.** Copilot reviewed exact candidate `05c7706` (75% overall confidence) and found one local census-entrypoint regression. Isolated evidence remains recorded, but a bounded correction and Ryan's explicit event-only evidence-limit decision are next. T3–T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1 MERGED; T2 REVIEW FAIL, V2 NOT ACCEPTED.** Copilot reviewed exact candidate `05c7706` (75% overall confidence) and found one local census-entrypoint regression. Ryan authorized the bounded B1 correction and accepted the stated event-only evidence exclusion; Cursor implementation/evidence are next. V2 is not yet accepted. T3–T5 and live operations remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -40,13 +40,13 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
 - `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 preserves the completed T1 grants; section 9 records the separate T2 grant and pinned Cursor handoff. T2 is implemented on its task branch; T3–T5 are not implemented.
 - T2 implementation: **on branch** `fix/2026-10-12-safe-harbor-t2` (worktree `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`), start `9664878`, final source `44e29f6d943c98a2425c21901c310c52ca5c5b1a`. `add --upsert`, indexed `record --approve-last`/`--approve` and `propose_decision --recover` now pass one operation-bound preflight (`chroma_write_store.admitted_write_operation` → `restic_gate.preflight_operation`): explicit v2 profile, target/affected-path containment, post-admission edit refusal, refused production skip, and B-E4.1 future-time 25 across all five consumers. ROADMAP/RECOVER/role-mapping and the v2 exit-25 row are updated. Shadow inventory unchanged; R2b inventory regenerated (derived only). Not merged, not deployed.
-- T2 review: Copilot static **FAIL, narrow (75%)** at `05c7706e54b77f9ef5b41a1c206b29bec012e405`. B1: the new `propose_decision.recover` admission label is absent from the writer-census allowlist; a valid census therefore refuses recovery before preflight. Codex confirmed the source chain. Proposed correction: reuse the existing allowlisted label, add isolated armed-census evidence and regenerate derived R2b identity if needed. Details and advisories are in VERIFY V2. No correction is implemented or newly granted.
+- T2 review: Copilot static **FAIL, narrow (75%)** at `05c7706e54b77f9ef5b41a1c206b29bec012e405`. B1: the new `propose_decision.recover` admission label is absent from the writer-census allowlist; a valid census therefore refuses recovery before preflight. Codex confirmed the source chain. Proposed correction: reuse the existing allowlisted label, add isolated armed-census evidence and regenerate derived R2b identity if needed. Details and advisories are in VERIFY V2. The bounded B1 correction is now granted in execution section 9, not yet implemented.
 - T2 evidence (VERIFY V2):
   - Codex's captured uid-1000 runs at runtime `44e29f6`: 236 distinct cases (focused `133 passed` + regression `103 passed`), pytest exit 0 for both; lint gate exit 0 (pylint raw 30).
   - Refresh at tests `2459acd`: the 64 affected T2/caller cases passed again (pytest exit 0; overlapping, not additional); lint gate exit 0 (465 findings, none new).
   - Fixture `2459acd` (tests only) builds the event-only recovery state by interrupting a real indexed approval. It proves future refusal with state unchanged and the existing human-review outcome after admission.
   - Also recorded: AST equality `262573e`→`44e29f6`, inventory proofs, and earlier failed or uncaptured runs as history.
-- Event-only evidence gap: no event-only completion success control. The current ingestion hash view (summary-derived `title`, empty `notes`/`result`) disagrees with the proposal hash view (those fields absent), so the `approve` recovery branch is not reachable on this path. Copilot classifies this as a pre-existing T4 prerequisite, not its T2 runtime blocker. Ryan has not yet accepted V2 with successful event-only completion excluded; T4 must align the views and prove that success. Sources are cited in VERIFY V2. Direct helper callers also remain ungated (T4 seam).
+- Event-only evidence gap: no event-only completion success control. The current ingestion hash view (summary-derived `title`, empty `notes`/`result`) disagrees with the proposal hash view (those fields absent), so the `approve` recovery branch is not reachable on this path. Copilot classifies this as a pre-existing T4 prerequisite, not its T2 runtime blocker. Ryan accepted that V2 evidence excludes successful event-only completion; this is not overall V2 acceptance. T4 must align the views and prove that success under its later grant. Sources are cited in VERIFY V2. Direct helper callers also remain ungated (T4 seam).
 - T1 implementation: **on `main` via PR #387**, squash commit `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Its tree is identical to the reviewed candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. The former implementation branch/worktree is historical; do not resume its completed grant or switch the shared checkout/runtime-main.
 - `VERIFY-safe-harbor.md`: records the T1 evidence chain, final-tip CI/review, Ryan's exact-tip outage acceptance and squash mapping (GitHub pytest at the T1 candidate: 2970 passed, 75 skipped). V2 holds T2 source identity, captured final evidence and the open event-only limitation; V3–V6 remain NOT RUN.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
@@ -74,18 +74,18 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **PR #387: MERGED**, 2026-10-12 05:13:16 UTC. No open T1 correction or review action remains from this delivery.
 - **T2: REVIEW FAIL; V2 NOT ACCEPTED.**
   - Runtime `44e29f6` and tests `2459acd` passed their captured final runs.
-  - Copilot's authorized final-tip audit at `05c7706` found B1 (local census-label regression); the correction needs a bounded grant and successor evidence/delta review.
-  - The event-only success exclusion needs Ryan's explicit acceptance; T4 hash normalization/success and direct-caller proof remain unperformed.
+  - Copilot's authorized final-tip audit at `05c7706` found B1 (local census-label regression); Ryan granted its bounded correction; successor evidence/delta review remain pending.
+  - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
   - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
 - T3–T5 implementation, T2 PR creation/commenting, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** The authorized independent review is complete and B1 is source-confirmed. Preserve the pinned verdict and obtain the bounded correction/evidence-limit decisions; do not turn review authorization into acceptance or implementation.
+**Codex:** Dispatch and coordinate the owner-authorized B1 correction, preserving the pinned review and evidence exclusion. Hand the corrected candidate back for a narrow delta; do not self-clear B1 or infer overall acceptance.
 
-**Cursor:** Await a bounded B1 correction grant: reuse the allowlisted writer label, prove recovery with the census present, and refresh derived identity if required. No hash/classifier repair, census policy expansion, T3/T4 or production work is granted.
+**Cursor:** Implement the granted B1 correction in execution section 9: reuse the allowlisted writer label, prove recovery with a valid census present and the old-label negative control, and refresh derived identity if required. No hash/classifier repair, census policy expansion, T3/T4 or production work is granted.
 
-**Ryan:** Decide the bounded correction and whether V2 may exclude event-only success until T4 normalization plus a real success control. PR/comment authority and the separate BugBot gate remain pending; T1's outage acceptance does not carry over.
+**Ryan:** The correction and bounded evidence exclusion are authorized. Overall V2 acceptance, successor review completion, PR/comment authority and the separate BugBot gate remain pending; T1's outage acceptance does not carry over.
 
 **Kiro / Opus / Copilot:** Existing approvals remain pinned. Copilot's first T2 implementation review is FAIL at `05c7706`; after an authorized correction, review only that delta and regressions. No unchanged architecture re-review is requested.
 
@@ -93,7 +93,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Resolve T2 B1 through an owner-granted bounded correction, isolated census-present regression and successor delta review. Obtain Ryan's explicit event-only evidence-limit decision, then remaining T2 PR-native review/acceptance/merge authority; none is implied by this audit.
+1. Execute the granted T2 B1 correction and isolated census-present regression/control, then obtain successor delta review and remaining T2 PR-native review/acceptance/merge authority. The bounded event-only evidence exclusion is accepted; no unperformed success is claimed.
 2. Complete T3–T5 only under their task grants, including:
    - T3's backend-proof ordering gate and preservation/validated release;
    - T4 approval recovery: gating or binding direct helper callers, aligning the proposal and ingestion hash views so an event-only completion can be proven, and unknown/tombstone/race/uncertain-completion handling;
@@ -135,6 +135,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-12 — Codex: recorded Ryan's bounded B1 correction grant and event-only evidence exclusion; prepared Cursor's scoped continuation with isolated census-present positive/refusal/control evidence.
 
 - 2026-10-12 — Codex: recorded Copilot's exact-tip T2 narrow FAIL at `05c7706`, confirmed B1 and routed the bounded correction plus explicit event-only evidence-limit decision; runtime unchanged.
 
