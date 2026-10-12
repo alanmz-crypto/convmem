@@ -9,15 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T2 DELIVERED; V2 NOT YET ACCEPTED (2026-10-12):**
-  The live-write backup gate is bound to each write's actual target on
-  `fix/2026-10-12-safe-harbor-t2`. Runtime `44e29f6` and tests `2459acd` passed
-  Codex's captured uid-1000 runs (236 distinct cases, plus 64 re-run at
-  `2459acd`; all exit 0) and the lint gate. OPEN limitation: successful
-  event-only recovery completion is unproven until T4 aligns the hash views. See
-  [VERIFY V2](../plans/VERIFY-safe-harbor.md#v2--target-binding-and-freshness-t2)
-  and [Safe Harbor STATUS](../plans/STATUS-safe-harbor.md). External review and
-  Ryan acceptance are next; no T3–T5, PR/review action or live grant.
+- **Arc Safe Harbor — T2 REVIEW FAIL; bounded correction next (2026-10-12):**
+  Copilot's authorized static review of `05c7706` found a local census-entrypoint
+  regression (75% overall confidence); Codex confirmed it. The event-only
+  completion limitation requires Ryan's explicit evidence-limit decision and
+  remains a T4 prerequisite. See [VERIFY V2](../plans/VERIFY-safe-harbor.md#independent-final-tip-review--correction-required)
+  and [Safe Harbor STATUS](../plans/STATUS-safe-harbor.md) for the correction,
+  evidence and remaining gates. No runtime correction, PR/comment, merge,
+  T3–T5 or live action is newly granted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

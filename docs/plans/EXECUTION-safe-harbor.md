@@ -431,6 +431,10 @@ Commit and push the scoped implementation/evidence, leaving the shared checkout 
 
 The required final-tip external review is separate from implementation evidence. Ryan's Copilot/BugBot outage exception covered T1 candidate `0c7b4e2` only; it does not automatically cover T2. No PR creation, trigger/comment or reviewer invocation is granted here. Hand off the concrete candidate for that step; do not label it merge-ready before the required review/acceptance. Stop after T2—no T3 backend experiment, repair/release work, T4 state-machine change or live action.
 
+### Subsequent T2 review authorization and outcome
+
+Ryan authorized **“final-tip review, including the documented evidence limitation.”** Copilot's independent static review at `05c7706e54b77f9ef5b41a1c206b29bec012e405` returned narrow FAIL (75%) for B1, the recovery admission label missing from the census allowlist; Codex confirmed the source chain. [VERIFY V2](VERIFY-safe-harbor.md#independent-final-tip-review--correction-required) records the findings and the proposed correction. Copilot classifies the event-only success gap as a bounded T4 prerequisite, with an explicit Ryan decision needed before accepting that exclusion from V2. Neither a correction grant nor that acceptance is inferred. The reviewed contracts are unchanged. PR/comment authority, the separate BugBot gate, merge and live operations remain pending.
+
 ## TL;DR
 
-[Arc Safe Harbor] T2 implementation and isolated evidence are delivered on the task branch; V2 acceptance and external final-tip review remain pending, with the event-only completion limitation explicit in STATUS/VERIFY. The approved plan and five-consumer B-E4.1 contract are unchanged. Section 9 preserves the grant, pinned dispatch workspace, scope, tests and stop. T3–T5, PR/review actions and live operations remain ungranted.
+[Arc Safe Harbor] T2 implementation and isolated evidence are delivered. Copilot's authorized review at `05c7706` is narrow FAIL: bounded B1 correction and Ryan's explicit event-only evidence-limit decision are next. The approved plan and five-consumer B-E4.1 contract are unchanged. Section 9 preserves the grant and stop. T3–T5, PR/comment/merge and live operations remain ungranted; the separate BugBot gate is unsatisfied.
