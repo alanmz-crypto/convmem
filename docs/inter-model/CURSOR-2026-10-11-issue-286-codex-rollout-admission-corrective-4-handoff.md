@@ -295,3 +295,23 @@ remove the new leftover `.worktrees/ci-verify-286-4c-clean`.
 changes nothing else. The tree equals `97a2951` minus that file, and `main` at
 `db8aebb` is an ancestor. Cursor removed both leftover test checkouts. Resume
 state: ready for Copilot audit and Kiro recheck of exact tip `a5f1756`.
+
+## Kiro recheck of `a5f1756` (2026-10-11) — PASS
+
+Kiro reran the Pylint gate (PASS against base `db8aebb`) and 74 focused
+tests, and confirmed that C1–C6, K1 and all six §13 conditions hold. Its
+rulings on the reviewer notes:
+
+- (a) Native-fault detection on the real exit code: accepted.
+- (b) Verbose mode hiding a successful child's stderr: accepted.
+- (c) Recovery labels an `OSError` as `source_too_large`: accepted. It still
+  fails closed. A follow-up could map it to a distinct code such as
+  `source_unavailable`; not required for this PR.
+- (d) The branch STATUS condensed `main`'s Kiro-bootstrap paragraph: accepted,
+  but flagged because the sync instruction said not to edit that text. Claude
+  confirmed the dropped text includes `main`'s opening line, "The Kiro
+  bootstrap remains stopped before grant materialization or paid calls."
+  Restore `main`'s paragraph verbatim in a docs-only commit before the PR.
+- (e) Shadow inventory in string order: accepted (cosmetic).
+
+The Copilot audit of the same tip is next.
