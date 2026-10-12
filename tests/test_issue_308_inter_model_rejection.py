@@ -362,6 +362,7 @@ def test_corrupt_sidecar_fails_open_and_concurrent_writes_preserve_records(
     assert len(data) == len(paths)
     assert clear_inter_model_rejection_for_path(cfg["index"]["processed_log"], paths[0])
 
+
 def test_reconciliation_suppresses_hash_mismatch_for_rejected_content(
     tmp_path: Path,
 ) -> None:

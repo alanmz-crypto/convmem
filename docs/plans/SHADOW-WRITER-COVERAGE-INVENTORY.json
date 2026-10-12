@@ -95,7 +95,7 @@
       "file": "ingest.py",
       "line": 1239,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
-      "class": "mutates_units",
+      "class": "reads_reindex_snapshot_under_writer_gate",
       "required_routing": "production_chroma_write_session",
       "uses_open_chroma_for_write": false,
       "uses_production_session": true
@@ -311,6 +311,15 @@
       "required_routing": "allowlisted_direct",
       "uses_open_chroma_for_write": false,
       "note": "Hermetic _seed_minimal_legacy_corpus seeds an isolated tmp_path Chroma root for Design A rehearsal only."
+    },
+    {
+      "file": "cg2_rehearsal.py",
+      "line": 951,
+      "snippet": "store = ChromaStore(str(chroma))",
+      "class": "cg2_rehearsal_scratch",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false,
+      "note": "Legacy-only rehearsal creates and mutates only an isolated tmp_path Chroma root."
     },
     {
       "file": "mixed_mode_control.py",
