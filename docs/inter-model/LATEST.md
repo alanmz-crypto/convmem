@@ -9,6 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Repository-manifest watcher leak: AUTHORIZED, not yet implemented
+  (2026-10-12):** a Stage 2 prerequisite for the Codex burn work, and
+  cross-arc with OpenClaw Watch Coverage. The watch-scope manifest is
+  invalid on `main`, and an invalid manifest is re-validated on every
+  filesystem event, leaking memory. Cursor caches the failure, reclassifies
+  the 63 paths and adds a CI guard. The manifest stays out of the live
+  config until this merges. Start from the
+  [Cursor handoff](CURSOR-2026-10-12-repository-manifest-failure-cache-handoff.md).
+
 - **Arc Safe Harbor — BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW
   NEXT (2026-10-11):** The two-test correction passed its focused Copilot delta
   review at `2977c45` (85%). Cursor merged main `5550def` into the T1 branch

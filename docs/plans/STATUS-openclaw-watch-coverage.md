@@ -149,6 +149,7 @@ milestone-level line below. A fresh model should orient from this file alone.
 | 2026-09-21 | Ryan / Codex | PR `#322` merged at `dc79eeb`; exact-grant live activation indexed all 70 admitted paths, passed retrieval/exclusion/non-bypass checks, and left only absent OpenClaw T0–T5 bytes blocking complete coverage. |
 | 2026-09-24 | Codex | Post-activation review kept the manifest exact across PRs `#327`–`#330`, restored the cleanly stopped service after Switchboard verification finished, and documented the separate merge, runtime-promotion, and T0–T5 gates. |
 | 2026-09-24 | Ryan / Codex | PR `#331` merged as `2e50ec3`; the exact inventory/planning closure is on `main`, while the live runtime intentionally remains pinned at `dc79eeb`. |
+| 2026-10-12 | Claude / Ryan | **Watch scope manifest is invalid on `main`** (63 unclassified tracked paths, 14 stale include hashes). On every event, the invalid manifest was re-validated and leaked about 144 MB/min, which stopped the Arc Codex Stage 2 canary. Ryan removed `watch.repository_knowledge_manifests` from the live config (repository-knowledge capture was already failing) and authorized a Cursor fix covering failure caching, reclassification and a CI guard: [handoff](../inter-model/CURSOR-2026-10-12-repository-manifest-failure-cache-handoff.md). |
 
 **TL;DR [Arc OpenClaw Watch Coverage]:** W0–W6 is merged and live at the
 deployed `dc79eeb` boundary. This closure classifies the five later reviewed
