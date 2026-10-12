@@ -1,4 +1,4 @@
-# pylint: disable=protected-access,consider-using-with
+# pylint: disable=protected-access,consider-using-with,too-many-lines
 """Isolated Safe Harbor T1 evidence: incident authority at the existing guard.
 
 Each test creates its own home, config, and data directories before it imports
@@ -818,6 +818,197 @@ def test_guarded_write_rechecks_after_the_lock(tmp_path: Path) -> None:
     assert "published in the gap" in err
 
 
+# Test-only probe: the writer child reports its own flock calls on the guard lock
+# file through an inherited pipe. Runtime code has no hook for this.
+PROBED_WRITE = """
+import fcntl, os, sys
+import chroma_write_guard
+from chroma_store import ChromaStore
+from chroma_write_guard import ChromaWriteGuard
+from tests._chroma_write_guard_worker import embedding
+
+guard = ChromaWriteGuard(sys.argv[1])
+events = int(sys.argv[3])
+reported = set()
+
+def in_native_write():
+    frame = sys._getframe()
+    while frame is not None:
+        if frame.f_code.co_name == "native_write" and frame.f_globals.get("__name__") == "chroma_write_guard":
+            return 1
+        frame = frame.f_back
+    return 0
+
+def report(kind, fd):
+    if kind in reported:
+        return
+    reported.add(kind)
+    st = os.fstat(fd)
+    marker = int(guard.quarantine_path.exists())
+    os.write(events, f"{kind} {st.st_dev} {st.st_ino} {in_native_write()} {marker}\\n".encode())
+
+class ProbedFcntl:
+    def __getattr__(self, name):
+        return getattr(fcntl, name)
+
+    @staticmethod
+    def flock(fd, operation):
+        same = os.path.samestat(os.fstat(fd), os.stat(guard.lock_path))
+        try:
+            fcntl.flock(fd, operation)
+        except BlockingIOError:
+            if same and operation & fcntl.LOCK_NB:
+                report("contended", fd)
+            raise
+        if same and operation & fcntl.LOCK_EX:
+            report("acquired", fd)
+
+chroma_write_guard.fcntl = ProbedFcntl()
+store = ChromaStore(sys.argv[1], write_guard=guard)
+try:
+    store.add_summary(sys.argv[2], "doc", embedding(sys.argv[2]), {"source_path": "/fixture"})
+    print("admitted")
+finally:
+    store.close()
+"""
+
+# Negative control: pause before taking the native lock (missing lock / wrong order).
+UNLOCKED_PAUSE_AUDIT = """
+import json, os, sys
+from chroma_write_guard import ChromaWriteGuard, _exclusive_flock, _wait_barrier
+guard = ChromaWriteGuard(sys.argv[1])
+_wait_barrier(os.environ["SAFE_HARBOR_UNLOCKED_AUDIT_BARRIER"])
+result = {}
+with _exclusive_flock(guard.lock_path, 60):
+    guard._audit_locked(result)
+print(json.dumps(result))
+"""
+
+LOCK_EVENT_TIMEOUT = 60.0
+
+
+def _read_lock_event(fd: int, buffer: bytearray, writer: subprocess.Popen[str]) -> dict | None:
+    """Block on the writer's event pipe, bounded; return None at EOF."""
+    import select
+
+    deadline = time.monotonic() + LOCK_EVENT_TIMEOUT
+    while b"\n" not in buffer:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise AssertionError(f"no writer lock event within {LOCK_EVENT_TIMEOUT:g}s (writer rc={writer.poll()})")
+        readable, _, _ = select.select([fd], [], [], remaining)
+        if not readable:
+            continue
+        chunk = os.read(fd, 4096)
+        if not chunk:
+            return None
+        buffer.extend(chunk)
+    line, _, rest = bytes(buffer).partition(b"\n")
+    buffer[:] = rest
+    kind, dev, ino, native, marker = line.decode().split()
+    return {
+        "kind": kind,
+        "lock": (int(dev), int(ino)),
+        "native_write": native == "1",
+        "marker_present": marker == "1",
+    }
+
+
+def _parent_probe_blocked(lock_path: Path) -> bool:
+    import fcntl
+
+    fd = os.open(lock_path, os.O_RDWR)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return True
+    finally:
+        os.close(fd)
+    return False
+
+
+def _run_audit_writer_contention(tmp_path: Path, chroma: Path, *, unlocked_pause: bool) -> dict:
+    """Pause the audit, start a probed writer, observe its first lock event, then release."""
+    _refuse_production(tmp_path)
+    _require_isolated_process()
+    guard = ChromaWriteGuard(chroma)
+    ready = tmp_path / "audit-ready"
+    release = tmp_path / "audit-release"
+    barrier = f"{ready}:{release}"
+    if unlocked_pause:
+        audit_code, audit_env = UNLOCKED_PAUSE_AUDIT, {"SAFE_HARBOR_UNLOCKED_AUDIT_BARRIER": barrier}
+    else:
+        audit_code, audit_env = AUDIT, {"CONVMEM_GUARD_LOCK_BARRIER": barrier}
+    observed: dict = {"events": []}
+    audit = subprocess.Popen(
+        [sys.executable, "-c", audit_code, str(chroma)],
+        cwd=ROOT,
+        env={**os.environ, **audit_env},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    writer: subprocess.Popen[str] | None = None
+    read_fd, write_fd = os.pipe()
+    try:
+        _wait_until(ready, audit, "audit did not reach its pause")
+        writer = subprocess.Popen(
+            [sys.executable, "-c", PROBED_WRITE, str(chroma), "during-audit", str(write_fd)],
+            cwd=ROOT,
+            env=os.environ.copy(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            pass_fds=(write_fd,),
+        )
+        os.close(write_fd)
+        write_fd = -1
+        buffer = bytearray()
+        first = _read_lock_event(read_fd, buffer, writer)
+        if first is None:
+            out, err = writer.communicate(timeout=60)
+            raise AssertionError(f"writer exited without a lock event: rc={writer.returncode}\n{out}\n{err[-2000:]}")
+        observed["events"].append(first)
+        observed["lock_identity"] = (os.stat(guard.lock_path).st_dev, os.stat(guard.lock_path).st_ino)
+        observed["audit_paused"] = audit.poll() is None
+        observed["marker_absent_while_paused"] = not guard.quarantine_path.exists()
+        observed["parent_probe_blocked"] = _parent_probe_blocked(guard.lock_path)
+        release.write_text("go", encoding="utf-8")
+        observed["audit_out"], observed["audit_err"] = audit.communicate(timeout=120)
+        observed["audit_rc"] = audit.returncode
+        observed["write_out"], observed["write_err"] = writer.communicate(timeout=180)
+        observed["write_rc"] = writer.returncode
+        while (event := _read_lock_event(read_fd, buffer, writer)) is not None:
+            observed["events"].append(event)
+    finally:
+        if write_fd >= 0:
+            os.close(write_fd)
+        os.close(read_fd)
+        for proc in (audit, writer):
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+                proc.communicate()
+    return observed
+
+
+def assert_writer_contended_while_audit_paused(observed: dict) -> None:
+    """Independent proof: the writer failed a nonblocking acquire of the same lock the paused audit held."""
+    first = observed["events"][0]
+    assert first["kind"] == "contended", (
+        f"writer {first['kind']} the native lock while the audit was paused; no contention"
+    )
+    assert first["native_write"], "contended acquisition was not the guarded-write admission"
+    assert first["lock"] == observed["lock_identity"], "writer contended on a different lock file"
+    assert observed["audit_paused"], "audit was not paused when the writer contended"
+    assert observed["marker_absent_while_paused"], "incident was published before the release"
+    assert observed["parent_probe_blocked"], "native lock was not held during the pause"
+    kinds = [event["kind"] for event in observed["events"]]
+    assert kinds == ["contended", "acquired"], f"unexpected lock order {kinds}"
+    acquired = observed["events"][1]
+    assert acquired["lock"] == observed["lock_identity"]
+    assert acquired["marker_present"], "writer acquired the lock before the audit published"
+
+
 def test_audit_publication_excludes_a_concurrent_writer(tmp_path: Path) -> None:
     _require_isolated_process()
     from chroma_write_guard import segment_dirs
@@ -828,45 +1019,38 @@ def test_audit_publication_excludes_a_concurrent_writer(tmp_path: Path) -> None:
     _write_records(chroma, 0, 120)
     _seg_id, seg = next(iter(segment_dirs(chroma).items()))
     _set_header_count(seg / "header.bin", 3)
-    ready = tmp_path / "audit-ready"
-    release = tmp_path / "audit-release"
-    audit = subprocess.Popen(
-        [sys.executable, "-c", AUDIT, str(chroma)],
-        cwd=ROOT,
-        env={**os.environ, "CONVMEM_GUARD_LOCK_BARRIER": f"{ready}:{release}"},
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    writer: subprocess.Popen[str] | None = None
-    try:
-        _wait_until(ready, audit, "audit did not reach the lock barrier")
-        writer = subprocess.Popen(
-            [sys.executable, "-c", WRITE, str(chroma), "during-audit"],
-            cwd=ROOT,
-            env=os.environ.copy(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        release.write_text("go", encoding="utf-8")
-        audit_out, audit_err = audit.communicate(timeout=120)
-        write_out, write_err = writer.communicate(timeout=120)
-    finally:
-        if audit.poll() is None:
-            audit.kill()
-            audit.communicate()
-        if writer is not None and writer.poll() is None:
-            writer.kill()
-            writer.communicate()
-    assert audit.returncode == 0, audit_err[-2000:]
-    result = json.loads(audit_out)
-    assert result["status"] == "fail"
-    assert writer.returncode != 0
-    assert "admitted" not in write_out
+    observed = _run_audit_writer_contention(tmp_path, chroma, unlocked_pause=False)
+    assert_writer_contended_while_audit_paused(observed)
+    assert observed["audit_rc"] == 0, observed["audit_err"][-2000:]
+    assert json.loads(observed["audit_out"])["status"] == "fail"
+    assert observed["write_rc"] != 0
+    assert "admitted" not in observed["write_out"]
+    assert "quarantine" in observed["write_err"].lower()
     assert not _embedding_id_present(chroma, "during-audit")
     assert "structural" in {finding["kind"] for finding in _findings(_marker(ChromaWriteGuard(chroma)))}
-    assert write_err
+
+
+def test_unlocked_audit_pause_fails_the_contention_proof(tmp_path: Path) -> None:
+    """Control: an audit that pauses before its lock lets the writer in; the proof assertion must fail."""
+    _require_isolated_process()
+    from chroma_write_guard import segment_dirs
+
+    from tests.test_chroma_write_guard import _set_header_count
+
+    chroma = _make_store(tmp_path)
+    _write_records(chroma, 0, 120)
+    _seg_id, seg = next(iter(segment_dirs(chroma).items()))
+    _set_header_count(seg / "header.bin", 3)
+    observed = _run_audit_writer_contention(tmp_path, chroma, unlocked_pause=True)
+    with pytest.raises(AssertionError, match="writer acquired the native lock while the audit was paused"):
+        assert_writer_contended_while_audit_paused(observed)
+    first = observed["events"][0]
+    assert first["kind"] == "acquired" and first["native_write"]
+    assert first["lock"] == observed["lock_identity"]
+    assert observed["audit_paused"] and not first["marker_present"]
+    # The writer's own under-lock reconcile, not the paused audit, supplies its refusal.
+    assert observed["write_rc"] != 0
+    assert "no validated save exists" in observed["write_err"]
 
 
 _ISOLATION_KEYS = (
