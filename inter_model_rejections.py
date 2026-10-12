@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Terminal rejection records for inter-model provenance guard failures.
 
 Operator clear when supersession is resolved without byte changes:
@@ -17,7 +18,7 @@ from typing import Any, Callable
 from atomic_files import atomic_write_text
 
 REJECTION_KIND_PROVENANCE_SUPERSESSION = "provenance_supersession_required"
-_FAIL_OPEN_PRINTED = False
+_FAIL_OPEN_EMITTED: list[bool] = []
 
 
 def rejections_path(processed_log: str) -> Path:
@@ -43,10 +44,9 @@ def _rejections_lock(processed_log: str):
 
 
 def _fail_open_once(message: str) -> None:
-    global _FAIL_OPEN_PRINTED
-    if _FAIL_OPEN_PRINTED:
+    if _FAIL_OPEN_EMITTED:
         return
-    _FAIL_OPEN_PRINTED = True
+    _FAIL_OPEN_EMITTED.append(True)
     print(message, file=sys.stderr)
 
 

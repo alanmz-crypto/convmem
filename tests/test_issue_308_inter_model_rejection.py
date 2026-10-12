@@ -1,8 +1,8 @@
+# pylint: disable=duplicate-code
 """Hermetic tests for issue #308 inter-model provenance rejection sidecar."""
 
 from __future__ import annotations
 
-import json
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -13,7 +13,7 @@ import pytest
 import ingest
 from chroma_store import ChromaStore
 from distill import make_unit_id
-from inter_model_index import InterModelSupersessionRequired, index_inter_model_messages
+from inter_model_index import index_inter_model_messages
 from inter_model_rejections import (
     REJECTION_KIND_PROVENANCE_SUPERSESSION,
     clear_inter_model_rejection_for_path,
@@ -64,7 +64,7 @@ def _seed_indexed_section(cfg: dict, path: Path, body: str = "## Packet\n\nOrigi
         from adapters.inter_model_doc import parse
 
         messages = parse(str(path))
-        unit_id = make_unit_id(
+        _ = make_unit_id(
             str(path.resolve()), int(messages[0]["section_index"]), "Packet", 0
         )
 
@@ -211,7 +211,7 @@ def test_reconciliation_ignores_rejected_hash_until_content_changes(tmp_path: Pa
         file_hash=observed,
         section_id="0",
     )
-    assert discover_legacy_source_drift(cfg) == []
+    assert not discover_legacy_source_drift(cfg)
     path.write_text("## Packet\n\nChanged for reconciliation.\n", encoding="utf-8")
     findings = discover_legacy_source_drift(cfg)
     assert len(findings) == 1
@@ -381,7 +381,7 @@ def test_reconciliation_suppresses_hash_mismatch_for_rejected_content(
         file_hash=rejected_hash,
         section_id="0",
     )
-    assert discover_legacy_source_drift(cfg) == []
+    assert not discover_legacy_source_drift(cfg)
 
     path.write_text("## Packet\n\nChanged twice.\n", encoding="utf-8")
     findings = discover_legacy_source_drift(cfg)
