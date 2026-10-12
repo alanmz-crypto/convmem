@@ -9,14 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T2 IMPLEMENTED; FINAL EVIDENCE PENDING (2026-10-12):**
-  Cursor bound the live-write backup gate to each write's actual target on
-  `fix/2026-10-12-safe-harbor-t2` (final source `44e29f6`). Codex runs the final
-  uid-1000 pytest/pylint selections; results go in
-  [VERIFY V2](../plans/VERIFY-safe-harbor.md#v2--target-binding-and-freshness-t2).
-  Then T2 needs its own review and Ryan acceptance. State:
-  [Safe Harbor STATUS](../plans/STATUS-safe-harbor.md). T4 direct-caller proof
-  outstanding; no T3–T5, PR/review action or live grant.
+- **Arc Safe Harbor — T2 DELIVERED; V2 NOT YET ACCEPTED (2026-10-12):**
+  The live-write backup gate is bound to each write's actual target on
+  `fix/2026-10-12-safe-harbor-t2`. Source `44e29f6` passed Codex's captured
+  uid-1000 runs (133 + 103 passed, exit 0) and the lint gate. The event-only
+  fixture (`2459acd`) awaits a refresh run. It shows that no event-only
+  completion success control is possible until T4 aligns the hash views. See
+  [VERIFY V2](../plans/VERIFY-safe-harbor.md#v2--target-binding-and-freshness-t2)
+  and [Safe Harbor STATUS](../plans/STATUS-safe-harbor.md). External review and
+  Ryan acceptance are next; no T3–T5, PR/review action or live grant.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

@@ -229,7 +229,7 @@ Ryan then reported “squash merge done”; GitHub confirmed MERGED with the hea
 
 ## V2 — Target binding and freshness (T2)
 
-**IMPLEMENTED; final-source pytest/pylint evidence PENDING (Codex run).** Cursor implemented T2 under execution section 9 on `fix/2026-10-12-safe-harbor-t2`. External review and Ryan acceptance are not started; T1's tip-specific outage acceptance does not transfer.
+**T2 IMPLEMENTATION DELIVERED; V2 NOT YET ACCEPTED.** Cursor implemented T2 under execution section 9 on `fix/2026-10-12-safe-harbor-t2`. Codex's captured final-source runs at `44e29f6` passed (below). The corrected event-only fixture at `2459acd` awaits Codex's refresh run. The event-only completion success control is an explicit evidence gap (existing T4 prerequisite). External review and Ryan acceptance are not started; T1's tip-specific outage acceptance does not transfer.
 
 **Required evidence:** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
 
@@ -241,6 +241,10 @@ Ryan then reported “squash merge done”; GitHub confirmed MERGED with the hea
 | Implementation | `77a590bed4a24ab5e84eec3e943c95e8179d3111` | gate binding, resolver freshness, five consumers, tests |
 | Lint/structure | `262573ec10adf525a0e6f0eb3a554b87b43ac452` | pylint-neutral layout of admission helpers |
 | **Final source** | `44e29f6d943c98a2425c21901c310c52ca5c5b1a` | layout-only `convmem.py` change + derived R2b inventory |
+| Docs | `39cfccb` | policy docs, VERIFY/STATUS/LATEST |
+| **Final fixture** | `2459acd2a6c12b0833ce67c85c80558ab9e00334` | event-only recovery fixture via real interrupted approval; tests only |
+
+`2459acd` changes only `tests/_safe_harbor_t2_cli.py` and `tests/test_safe_harbor_t2.py`; production `.py` files are identical to `44e29f6`. The R2b implementation identity still resolves to `ff34015873d86e2f9e8849c6b58c8e8b850db0a4` (equal to every inventory route), and the shadow inventory still matches `9664878` byte-for-byte (`cmp` exit 0).
 
 Source files changed from start: `restic_snapshot.py`, `backup_workflows.py`, `restic_gate.py`, `runtime_guard.py`, admission parts of `chroma_write_store.py` and `convmem.py`; tests `tests/test_safe_harbor_t2.py`, `tests/_safe_harbor_t2_cli.py` (new), `tests/test_write_gate_effect.py`, `tests/test_record_review_cli.py` (patched to the bound preflight; no assertion removed, no skip). Policy docs: ROADMAP, RECOVER, role-mapping and the v2 exit-25 row.
 
@@ -270,17 +274,44 @@ All runs used `/home/lauer/miniforge3/bin/python` 3.13.12, scratch `restic 0.19.
 | `262573e` tree (twice) | Cursor sandbox (uid 0) | R2b/shadow coverage scans + T2 + caller tests + `test_restic_gate` + `test_runtime_guard` | `133 passed` | not captured (tail) |
 | `262573e` tree | Cursor sandbox | `pylint $(git ls-files '*.py')` → `scripts/pylint_regression_gate.py ci --base-ref 9664878` | gate PASS, 460 findings, no new | `gate_exit=0` captured directly |
 
-The four uid-0 `lchown` failures are **not waived**: the uid-1000 run above passed the same restore class, but without a captured exit status. Final ordinary-user evidence must close them.
+The four uid-0 `lchown` failures stay recorded as history. They were closed by Codex's captured ordinary-user regression run below, not by an environment waiver.
 
 **Controls observed in those runs:** refusals (wrong profile, target B vs backup A, export symlink escape, config swap and `restic.env` edit after admission, spoofed skip, future same-day and next-day, day crossing, missing Restic) left fixture Chroma, events, approved rows and export unchanged. Success controls reached the intended mutation (old snapshot → backup → write; isolated exception). **No-op-gate negative control:** with the real preflight replaced on the same workflow, the future-snapshot write mutates and the unchanged-state assertion fails as intended.
 
-### Final evidence at `44e29f6` — PENDING
+### Final evidence at `44e29f6` — captured (Codex)
 
-Codex runs the uid-1000 isolated pytest selections and the pylint gate against `44e29f6`, capturing each command's own return code. Results will be recorded here; until then V2 has **no final-source pytest status**. Because `44e29f6` is AST-equal to `262573e`, the observations above remain semantically attributable, but they do not substitute for a captured status.
+Runner `/tmp/safe_harbor_t2_collect.py` started each command as a direct subprocess and recorded its own return code (no pipelines). Every run used uid 1000, an environment built from a clean allowlist, and fresh isolated HOME/XDG/ConvMem/Restic/cache roots under the run directory; no production configuration, service or data. Interpreter `/home/lauer/miniforge3/bin/python` 3.13.12; pytest 9.1.1, chromadb 1.5.9, numpy 2.4.4, pylint 4.0.6, astroid 4.0.4. Source fingerprint `fecee6bc…3297` was identical before and after each run. These results supersede the uncaptured statuses above.
+
+| Batch | Selection | Result | Exit | Evidence |
+|---|---|---|---|---|
+| Focused | `test_r2b_v2_coverage`, `test_shadow_writer_coverage_scan`, `test_shadow_writer_gate_c3`, `test_t3_residual_closure`, `test_r2b_v2_corrective_viii`, `test_safe_harbor_t2`, `test_write_gate_effect`, `test_record_review_cli`, `test_restic_gate`, `test_runtime_guard` | `133 passed, 2 warnings in 288.86s` (multiprocessing fork deprecation) | pytest **0** | `/tmp/safe-harbor-t2-final-focused-if1yg4e5/{result.json,pytest.log,pytest.xml}` |
+| Regression | `test_safe_harbor_t1`, `test_chroma_write_guard`, `test_restic_snapshot`, `test_backup_workflows`, `test_restic_offsite` (includes the four former `lchown` cases) | `103 passed, 1 warning in 444.68s` (expected `WARN_LEGACY_ONLY`) | pytest **0** | `/tmp/safe-harbor-t2-final-regression-yra4l3ig/{result.json,pytest.log,pytest.xml}` |
+| Lint | `python -m pylint <all tracked .py> --output-format=json`, then `scripts/pylint_regression_gate.py ci` vs `9664878` | `Pylint regression gate PASS (461 findings, 239 fingerprints; no new/increased vs baseline)` | pylint raw **30** (findings present, expected); gate **0** | `/tmp/safe-harbor-t2-final-lint-2_kqd6r_/{result.json,gate.log,pylint-report.json}` |
+
+That focused run executed the previous direct-ingest version of the event-only test. The corrected fixture at `2459acd` needs Codex's refresh of `tests/test_safe_harbor_t2.py` and lint; its result is **PENDING**.
+
+### Event-only recovery: corrected fixture and evidence gap
+
+**Fixture (`2459acd`, tests only):** test hook `fail_after_chroma_ingest` replaces `propose_decision._mark_approved_unlocked` with a raise. The real CLI `record --approve <pid>` therefore runs admission, APPROVAL_STARTED, the approved row and the real Chroma ingest, then stops before publishing APPROVED (exit 1, "Approval apply deferred for recovery"). The test then proves:
+
+1. the event log has APPROVAL_STARTED and no APPROVED for the proposal; the approved row exists; exactly one live Chroma unit carries the proposal marker;
+2. that unit's `content_hash` differs from the PROPOSED event's `proposed_content_hash`;
+3. `propose_decision --recover <pid>` on a future snapshot refuses with 25 `future_snapshot_time`, leaving Chroma and all governed files unchanged;
+4. with the clock past that snapshot, admission passes (no BLOCKED), and the unchanged classifier returns its existing "needs human review" outcome (exit 1) with state unchanged.
+
+The CLI, event writer, classifier and Chroma are real; only embeddings are faked. The obsolete direct-ingest helper mode was removed.
+
+**Gap — no event-only completion success control.** Under current code, a governed decision ingested through this path cannot satisfy the classifier's `approve` branch. Reason: the two hash views over the same record disagree.
+
+- `recovery_action()` returns `approve` only when the live marker equals the proposal and `live_hash == proposed_hash` (`propose_decision.py:97-100`).
+- `proposed_content_hash` is `ledger_content_hash(proposal_to_ledger(...))` (`propose_decision.py:477-478`; row shape `:366-390`). That dict has no `title`, `notes` or `result`, so they canonicalize as `null` (`ledger_content_hash.py:21-33`). The recovery fallback hashes the approved row, which has the same shape (`propose_decision.py:254-256`).
+- The live `content_hash` is computed during ingestion from the normalized unit. There, `title` defaults to a summary-derived string and `notes`/`result` to `""` (`ledger.py:183-186`, `:249-250`, `:294-315`).
+
+The finding is limited to records produced by these current paths; it makes no claim about arbitrary historical data. Aligning the views is a T4 prerequisite, e.g. comparing against the approved row's ingestion-side hash. It is neither implemented nor authorized here; classifier behavior is unchanged. The existing `approve` coverage (`test_n9_marker_and_hash_append_approved`) mocks `live_decision_snapshot`. Recovery with actual effects through the gate is covered by the `retry_chroma` path (`test_cli_recover_succeeds_on_current_snapshot`).
 
 ### Unrun / residual
 
-- **T4 proof outstanding:** direct Python callers of `propose_decision.recover_approval()` / `approve_and_ingest()` are not gated (chain: helper → `ingest_approved_ledger` → `open_production_write_store`). Unknown/absent/tombstone classification, serialized recheck, completion uncertainty, export completion and retry stay with T4. The event-only recovery success path was exercised only to admission (T4 classifier then returned "needs human review" with state unchanged); no faithful event-only completion success was produced.
+- **T4 proof outstanding:** direct Python callers of `propose_decision.recover_approval()` / `approve_and_ingest()` are not gated (chain: helper → `ingest_approved_ledger` → `open_production_write_store`). Unknown/absent/tombstone classification, serialized recheck, races, completion uncertainty, export completion, retry and the hash-view normalization above stay with T4, ungranted.
 - Canary consumers (`incremental_jsonl_canary*`) inherit the future-time refusal; not separately exercised.
 - Production rollout requires an explicit v2 profile and data root in `restic.env`; none was inspected or changed.
 - No production CLI/MCP/doctor, corpus, config, key, backup repository, provider, service or drive was touched. Snapshot eligibility is not demonstrated recoverability.
@@ -320,9 +351,13 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Cursor, miniforge 3.13.12, restic 0.19.0 scratch | T2 trees `77a590b` / `262573e` | scoped isolated pytest selections (V2 table) | observed `64` / `86 passed, 4 failed (uid 0 lchown)` / `60` (uid 1000) / `133` passed; **pytest exit not captured** (piped to `tail`) | V2 isolated evidence |
 | 2026-10-12 | Cursor | `262573e` tree | pylint regression gate vs `9664878` | PASS, `gate_exit=0` captured | V2 isolated evidence |
 | 2026-10-12 | Cursor | final source `44e29f6` | AST equality vs `262573e`; shadow `cmp`; `write_v2_inventory_file()` + both verifiers | `ast_equal True`; `cmp` exit 0; verifiers `[]`, exit 0 | V2 source identity |
-| pending | Codex, uid 1000 | final source `44e29f6` | isolated pytest selections + pylint gate with captured return codes | PENDING | V2 final evidence |
+| 2026-10-12 | Codex, uid 1000, clean-allowlist env | final source `44e29f6` | focused pytest (10 files) | PASS, pytest exit 0, `133 passed, 2 warnings in 288.86s` | V2 final evidence |
+| 2026-10-12 | Codex, same | same | regression pytest (5 files, incl. former `lchown` cases) | PASS, pytest exit 0, `103 passed, 1 warning in 444.68s` | V2 final evidence |
+| 2026-10-12 | Codex, same | same | pylint + regression gate vs `9664878` | pylint raw 30; gate exit 0 PASS, 461 findings / 239 fingerprints, none new | V2 final evidence |
+| 2026-10-12 | Cursor | fixture `2459acd` | `py_compile` + pylint on the two changed test files; R2b identity and shadow `cmp` | compile 0; pylint 0, no messages; identity `ff340158…` unchanged; `cmp` 0 | V2 event-only section |
+| pending | Codex, uid 1000 | fixture `2459acd` | refresh `tests/test_safe_harbor_t2.py` + lint gate | PENDING | V2 event-only section |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 final-source status is pending; V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: the fixture refresh, the event-only success gap and external review remain. V3–V6 stay NOT RUN.
 
 ## Merge reading
 
@@ -333,4 +368,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 is implemented at final source `44e29f6` (AST-equal to `262573e`; shadow inventory byte-identical to grant). Prior isolated runs show passing counts but no captured pytest exit; final uid-1000 pytest/pylint status is pending Codex's run. T4 direct-caller proof, external review, V3–V6 and live operations remain open.
+[Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation is delivered at source `44e29f6`. Codex's captured uid-1000 runs passed (133 and 103 passed, pytest exit 0), and the lint gate passed. The event-only fixture at `2459acd` now uses a real interrupted approval; its refresh run is pending. It shows the current hash views disagree, so no event-only completion success control exists (T4 prerequisite). V2 acceptance, external review, T4, V3–V6 and live operations remain open.
