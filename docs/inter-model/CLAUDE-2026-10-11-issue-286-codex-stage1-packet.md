@@ -247,3 +247,63 @@ no processed entry beforehand.
 run through the Stage 1 runtime, took the legacy route ("No files changed").
 It produced no incremental log line, made 0 paid calls, and left
 `processed.json` byte-identical.
+
+**Run 2 (after more turns; 00:07 CDT 2026-10-12):** the source grew from
+1,077,790 to 2,385,272 bytes.
+
+- **Result:** `committed`, with 1 chunk transformed: the still-open chunk 0,
+  redone with the new turns.
+- **Provider requests:** summarize 1 and distill 1 (**2 paid calls**), plus
+  embeds 1+7 (local). It produced 7 units.
+- 215.7 s elapsed, with a scope memory peak of 6.7G.
+- **Coverage agrees, with no duplicates.** The checkpoint, `processed.json`,
+  the export and Chroma all show 1 summary and 7 units, and the lineage
+  matches. The 8 units from run 1 were replaced.
+
+**Run 3 (no change):** `[skip] unchanged`, with **0 provider calls**, 18.5 s
+elapsed, a 112M memory peak, and coverage unchanged.
+
+### Stage 1 result: PASS
+
+| Criterion (design §9) | Result |
+|---|---|
+| Run 2 transforms at most frontier + 1 chunks | 1 chunk (frontier 0) |
+| Run 3 makes zero provider calls | 0 |
+| Checkpoint, both Chroma collections, `processed.json` and export agree | Yes, after runs 1, 2 and 3 |
+| A pre-activation rollout still routes legacy | Yes, with 0 calls and processed unchanged |
+| Child peak memory recorded | 6.3G, 6.7G and 0.1G |
+
+**Total paid calls: 4**, against the 40-call ceiling.
+
+**What this does and doesn't show about the burn:**
+
+- This session is still a single open chunk, so a legacy re-index would also
+  have cost 2 paid calls. Stage 1 shows that the route is correct and bounded;
+  it doesn't show savings yet.
+- Savings grow with the number of chunks. A legacy re-index redoes every
+  chunk, while the incremental route redoes only the open frontier chunk and
+  any new ones. The 590.7 MiB pre-activation rollout has 26 chunks.
+- Each indexing run still costs about 4 CPU-minutes and over 6 GiB of memory,
+  whichever route it takes. Admission doesn't change that, and in Stage 2 it
+  scales with how often the watcher indexes.
+
+**Stage 2 notes:**
+
+- Promote the runtime and install the live config with the **same**
+  `admitted_after = 2026-10-12T04:04:00Z`, so the Stage 1 session stays
+  admitted.
+- Until then, the hazard rule above still applies.
+
+**Correction to the #308 diagnosis (Codex, read-only review of `main`):**
+
+- On `main`, the watcher never reads the reconciler's queued work.
+  `run_startup_reconciliation` runs only at startup, and child launches come
+  from filesystem events.
+- So my "reconciliation timer every 2 minutes, then respawn" link is
+  unproven, and it may be deployment behavior.
+- The defect itself is confirmed: a deterministic provenance rejection
+  returns `skipped` and is never recorded, so every later event retries it.
+- Codex recommends a separate rejection record, keyed by canonical path and
+  full-file SHA-256. The reconciler and `watch_skip_reason` would both consult
+  it, and it would be released when the content changes. Only the
+  provenance guard writes it; other exceptions stay retryable.
