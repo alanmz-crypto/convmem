@@ -86,33 +86,41 @@ Key invariants:
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
 | Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
-| Codex rollout admission design | Kiro PASS at `9e91973` with six binding conditions (design §13), on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; terminal refusal quarantine by path (§13 amended 2026-10-11). Implemented on `feat/2026-10-10-issue-286-codex-rollout-admission` (tip `905ad40`); gate 3 FAIL from Kiro (Pylint gate) and Copilot audit (six safety findings). | Cursor corrective 4 (`docs/inter-model/CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md`) |
+| Codex rollout admission design | Kiro PASS at `9e91973` with six binding conditions (design §13), on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; terminal refusal quarantine by path (§13 amended 2026-10-11). Implemented on `feat/2026-10-10-issue-286-codex-rollout-admission`. At `a5f1756`, Kiro PASS and Copilot FAIL (three residual blockers); Cursor corrective 5 (C5b, C1b, C6b, D1) is on the branch after `a5f1756`. | Copilot and Kiro recheck of the new exact tip, then Ryan's PR decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Two independent tracks. **Kiro bootstrap:** proposal `c5fec18c…79c81` is
-unconsumed but stale and cannot be reused. The sole inventory drift was two
-mocked 402/503 rows that `tests/test_index_loud_failures.py` appended to live
+The Kiro bootstrap remains stopped before grant materialization or paid calls.
+Proposal `c5fec18c…79c81` is unconsumed but stale and cannot be reused. The sole
+inventory drift was two mocked 402/503 rows that
+`tests/test_index_loud_failures.py` appended to live
 `synthesis_failures.jsonl`; all other mutation surfaces, including the Kiro
-source's two summary rows and 17 knowledge units, remained exact. Cursor
-corrected the isolation leak at code commit `eaae6e9` on
-`fix/2026-10-10-pytest-synthesis-failure-isolation`; Copilot's targeted
-safety/isolation audit PASSed that exact code commit with no blockers. Ryan
-decides PR creation and merge; fresh backups, proposal, packet review, and live
-execution remain later separate gates. **Codex rollouts:** Kiro passed the
-admission design at `9e91973` (§13 amended 2026-10-11). Cursor's implementation
-at `905ad40` failed gate 3: Kiro on the Pylint gate, Copilot audit on six safety
-findings. Cursor applies corrective 4 from its handoff. Neither track authorizes
+source's two summary rows and 17 knowledge units, remained exact.
+
+Cursor corrected the isolation leak at code commit `eaae6e9` on
+`fix/2026-10-10-pytest-synthesis-failure-isolation`. Each affected `_build`
+call now patches `ingest._SYNTHESIS_FAIL_LOG` to a temporary path while keeping
+the real failure-logging code under exercise. Production code is unchanged.
+Copilot's targeted safety/isolation audit PASSed that exact code commit with no
+blockers. The two focused refusal tests pass in 0.50 seconds. The live ledger's
+SHA-256 (`31e8d29e…9672`), 633839-byte size, and nanosecond mtime were identical
+before and after; all four paused timers were restored active. Ryan decides PR
+creation and merge. Fresh backups, proposal, packet review, and live execution
+remain later separate gates. No lane may promote config/runtime or restart the
+watcher without separate Ryan authority.
+
+**Codex rollouts (separate track):** Kiro passed the admission design at
+`9e91973` (§13 amended 2026-10-11). Cursor's implementation at `a5f1756` got
+Kiro PASS and Copilot FAIL; Cursor applied corrective 5 from the corrective-4
+handoff. Copilot and Kiro recheck the new exact tip. This track authorizes no
 live bootstrap, config, runtime, or watcher action.
 
-## 6. What Remains Before Live (sequential per track)
-
-Kiro bootstrap:
+## 6. What Remains Before Live (sequential)
 
 1. Ryan decides whether to create and merge the test-isolation PR.
-2. After the fix lands, capture current mutation state, refresh backup
-   coverage, and prepare a new exact proposal and review packet.
+2. After the fix lands, capture current mutation state, refresh
+   backup coverage, and prepare a new exact proposal and review packet.
 3. Immediately before any later authorized retry, revalidate the exact
    local/offsite pair, source/runtime/config/binding/dimension, and establish a
    no-other-writer window through final evidence capture.
@@ -121,13 +129,11 @@ Kiro bootstrap:
 5. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
 
-Codex rollouts:
+Codex rollouts (separate track):
 
-1. Cursor applies corrective 4 under Ryan's 2026-10-10 grant (findings C1–C6,
-   K1 in the corrective-4 handoff); then Copilot audit and Kiro recheck the new
-   exact tip; then Ryan's PR decision.
-2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h watcher
-   canary, which also needs the #308 fix and the watch memory drop-in
+1. Copilot and Kiro recheck the corrective-5 tip; then Ryan's PR decision.
+2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
+   watcher canary, which also needs the #308 fix and the watch memory drop-in
    reconciliation); activation is a separate Ryan grant.
 
 ## 7. Hard Stops
@@ -261,6 +267,8 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Ryan / Claude | Ryan granted hermetic Cursor implementation; Execute handoff written; resume state `NOT_STARTED` |
 | 2026-10-11 | Kiro / Claude | Kiro amended design §13 conditions 3–4: refusal quarantine is terminal by path (digest is evidence only); implementation on `feat/2026-10-10-issue-286-codex-rollout-admission` needs one more corrective |
 | 2026-10-11 | Kiro / Copilot / Claude | Gate 3 FAIL at `905ad40` (Kiro: Pylint gate; Copilot: six safety findings); Kiro accepted the D8 lineage fields and generic quarantine; corrective-4 handoff written, `NOT_STARTED` |
+| 2026-10-11 | Kiro / Copilot / Claude | At `a5f1756`, Kiro PASS and Copilot FAIL (D8 refusal quarantine, checkpointless recovery, `~` root); Claude confirmed all three |
+| 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
 
 ## TL;DR
 
@@ -279,5 +287,6 @@ Keep this document a current-state snapshot, not a session diary.
   the live failure ledger unchanged. Ryan's PR decision is next. Config and
   watcher promotion remain separately gated.
 - Codex track: Kiro passed the rollout admission design with six conditions;
-  Cursor corrective 4 closes gate-3 findings on `feat/2026-10-10-issue-286-codex-rollout-admission`.
-  No live bootstrap, config change, or watcher promotion is authorized.
+  Cursor corrective 5 closes the `a5f1756` Copilot findings on
+  `feat/2026-10-10-issue-286-codex-rollout-admission`. No live bootstrap,
+  config change, or watcher promotion is authorized.
