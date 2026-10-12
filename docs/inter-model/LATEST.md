@@ -57,10 +57,12 @@ cross-arc snapshot and the linked arc brief below.
   Ryan granted and Sol ran it once. R7 safely refused before mount or backup
   because the live config changed from authorized digest `be9be9e9…9413` to
   `a0f88897…c3528`. Result marker `ea117edd…c092` records null snapshot IDs,
-  no cleanup errors, and an unmounted device. Independent checks confirmed the
+  no cleanup errors, and an unmounted device. The runner's systemd observations
+  returned user-bus connection errors; independent host checks confirmed the
   watcher remains inactive/disabled and the governed timer pattern is
-  unchanged. R7 is consumed. **Next:** diagnose the config drift before any
-  new backup-only authority cycle. Resume from the
+  unchanged. R7 is consumed. **Next:** diagnose the config drift and require
+  explicit refusal on unavailable systemd state before any new backup-only
+  authority cycle. Resume from the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
