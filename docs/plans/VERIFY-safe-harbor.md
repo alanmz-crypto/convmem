@@ -1,10 +1,10 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. Corrected V1 RECORDED at runtime `496792f`; exact-tip review pending.** The initial 41-test run stays historical. Exact-tip BugBot remains pending; V2–V6 remain NOT RUN.
+> **Arc: Safe Harbor. Corrected V1 RECORDED at runtime `496792f`; CI correction follows.** Draft PR #387 is open. Exact-tip BugBot did not review `0bcf50e` and was not re-triggered. V2–V6 remain NOT RUN.
 
 ```text
 Planning Status
-Phase:        Execute Task — T1 correction evidence recorded; review pending
+Phase:        Execute Task — T1 CI correction recorded; exact-tip review not satisfied
 Characters:   Implementer, Test-First Reviewer
 Function:     Implementer
 Lanes:        Cursor collected isolated V1; Kiro signs off later; Ryan owns gates
@@ -13,7 +13,7 @@ Authority:    Bounded T1 correction recorded; BugBot pending; T2–T5 not grante
 
 **Subject / implementation tip:** corrected runtime behavior is `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`. The initial candidate `b5d6edcc0040a665f40c2118b15aedefe9fb24ff` and runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` remain historical. The evidence commit does not change the corrected code. External review uses the branch tip after that evidence commit, and that tip is not BugBot-reviewed.
 
-**PRs:** none.
+**PRs:** draft #387. Not merge-ready.
 
 **Direction:** [ARCHITECTURE-safe-harbor.md](ARCHITECTURE-safe-harbor.md), approved at `5ea16a6`.
 
@@ -52,7 +52,7 @@ Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, servi
 | `reason` | T1 changes quarantine persistence, admission control flow, and lock ordering |
 | `subject_tip_sha` | branch tip that contains this corrected evidence; runtime parent `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` |
 | `bugbot_reviewed_sha` | `n/a` |
-| `result` | pending — no pull request exists, and this grant does not authorize opening one or posting a review comment |
+| `result` | not satisfied — the one `bugbot run` on draft #387 hit a usage limit and reviewed no SHA; this CI correction was not submitted to BugBot |
 | `finding_disposition` | `none` |
 | `authority_reference` | execution section 8; Ryan granted isolated T1/V1 only |
 
@@ -95,7 +95,22 @@ Gaps, not passes:
 - Process barriers and injected fsync failures are not hardware power-loss proof.
 - A directory fsync failure can leave marker bytes visible while the operation reports containment unavailable. Callers must not treat that file as a durable stop.
 - Successful segment restore can still continue the caller's write. Making every restore stick as an incident is T3, and it was not implemented.
-- The full default pytest suite and production doctor were not run. They are not isolated from service and corpus entrypoints.
+- The full default pytest suite and production doctor were not run locally. GitHub CI runs `python -m pytest -q` with `CONVMEM_CONFIG` pointed at an empty CI config.
+
+## CI correction
+
+PR #387’s pytest job on `0bcf50e` failed in two ways. The T1 tests required `CONVMEM_T1_ISOLATED=1`, which standard pytest does not set. The committed writer-coverage inventory did not match the identity of this branch merged with main `db8aebb` (watch-diagnosis #385).
+
+The tests now create a fresh home, config, and data directory for each test and its children, then still refuse production corpus, production home, and runtime-main paths. They do not skip. `write_v2_inventory_file()` regenerated `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` after merging main. Route policy and the identity algorithm were not edited. The regenerated `code_revision` is `43a3944df8d6264dfc3a25016ab9b48111f69688`.
+
+Local command, with `HOME=/home/lauer` and `CONVMEM_T1_ISOLATED` unset:
+
+```bash
+python -m pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py \
+  tests/test_r2b_v2_corrective_viii.py tests/test_r2b_v2_implementation_revision.py -q --tb=line
+```
+
+Result: exit 0, `61 passed in 50.90s`. Interpreter `/home/lauer/miniforge3/bin/python` 3.13.12.
 
 ## V2 — Target binding and freshness (T2)
 
@@ -125,7 +140,9 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 |---|---|---|---|---|---|
 | 2026-10-11 | Cursor, isolated miniforge Python 3.13.12 | runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` | `pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py -q --tb=line` under temporary HOME/XDG/CONVMEM_CONFIG | historical PASS, exit 0, `41 passed in 40.45s`; does not close the three correction gaps | V1 historical paragraph |
 | 2026-10-11 | Cursor, isolated miniforge Python 3.13.12; chromadb 1.5.9; numpy 2.4.4 | runtime `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` | same pytest command under `/tmp/safe-harbor-t1-2J2Z` | PASS, exit 0, `43 passed in 43.56s`. Expected control failure: overwrite publisher dropped finding A | V1 corrected table |
-| 2026-10-11 | Cursor | corrected runtime parent; review tip is the evidence commit | BugBot exact-tip review | pending | V0 gate row; no PR authority |
+| 2026-10-11 | Cursor | corrected runtime parent; review tip is the evidence commit | BugBot exact-tip review | not satisfied — usage limit, no reviewed SHA | draft #387 |
+| 2026-10-11 | Cursor, miniforge Python 3.13.12 | CI correction after merging `db8aebb` | standard pytest of T1, guard, and R2b identity tests; `CONVMEM_T1_ISOLATED` unset; `HOME=/home/lauer` | PASS, exit 0, `61 passed in 50.90s` | CI correction section |
+| 2026-10-11 | Cursor | same tree | `write_v2_inventory_file()` | regenerated `code_revision` `43a3944df8d6264dfc3a25016ab9b48111f69688`; route policy unchanged | inventory artifact |
 
 SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2–V6 stay NOT RUN.
 
@@ -138,4 +155,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] Corrected isolated V1 passed at runtime `496792f`: one client identity, empty incident sets refuse admission, and the real overwrite publisher fails retention while the real publisher keeps both findings. Exact-tip BugBot remains pending. V2–V6, deployment and arc closure stay ungranted.
+[Arc Safe Harbor] T1 tests now isolate themselves under standard pytest, and the writer-coverage inventory was regenerated to `43a3944d` without a policy change. Exact-tip BugBot is still not satisfied. V2–V6, deployment and arc closure stay ungranted.

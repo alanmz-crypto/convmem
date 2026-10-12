@@ -9,16 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T1 CORRECTION PUSHED / REVIEW PENDING (2026-10-11):**
-  Cursor corrected T1 on `fix/2026-10-11-safe-harbor-t1`. Runtime behavior is
-  `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`: canonical client/cache identity,
-  persisted-empty incident refusal, and the actual overwrite control. Isolated
-  V1 is recorded in [VERIFY](../plans/VERIFY-safe-harbor.md) (43 tests passed;
-  the initial 41-test run stays historical). Exact-tip BugBot review is pending
-  because PR creation and review comments were not granted. T2–T5, merge,
-  deployment and live operations remain outside this grant. Read the
-  [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md). The accepted
-  correction contract is still execution section 8.
+- **Arc Safe Harbor — T1 CI CORRECTION / REVIEW NOT SATISFIED (2026-10-11):**
+  Draft PR #387 is open. Runtime behavior remains
+  `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`. The pytest job on `0bcf50e` failed
+  because the incident tests required an external isolation flag and the
+  writer-coverage inventory did not match this branch merged with main
+  `db8aebb`. The correction makes those tests isolate themselves under standard
+  pytest and regenerates the inventory with `write_v2_inventory_file()` to
+  `43a3944df8d6264dfc3a25016ab9b48111f69688`. BugBot was not re-triggered; the
+  earlier run reviewed no SHA. T2–T5, merge, deployment and live operations
+  remain outside this grant. Read [VERIFY](../plans/VERIFY-safe-harbor.md) and
+  the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md).
 
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING

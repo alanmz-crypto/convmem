@@ -1,8 +1,10 @@
 # pylint: disable=protected-access,consider-using-with
 """Isolated Safe Harbor T1 evidence: incident authority at the existing guard.
 
-These tests refuse production corpus paths. Run the pytest process with HOME,
-XDG_* and CONVMEM_CONFIG pointed at an empty temporary root.
+Each test creates its own home, config, and data directories before it imports
+or runs project code that could touch a user directory. Production corpus and
+runtime-main paths are still refused. Standard pytest does not need an
+external isolation flag.
 """
 
 from __future__ import annotations
@@ -43,21 +45,66 @@ def _refuse_production(path: Path) -> Path:
     return resolved
 
 
+def _banned(path: Path) -> bool:
+    resolved = path.expanduser().resolve()
+    for banned in (PROD_DATA, RUNTIME_MAIN, PROD_HOME):
+        if resolved == banned or banned in resolved.parents:
+            return True
+    return False
+
+
 def _require_isolated_process() -> None:
-    if os.environ.get("CONVMEM_T1_ISOLATED") != "1":
-        raise RuntimeError("CONVMEM_T1_ISOLATED=1 is required before project imports run tests")
+    """Refuse a process whose home, config, or data roots can reach production."""
     home = Path.home().resolve()
-    if home == PROD_HOME or PROD_DATA in home.parents or home == PROD_DATA:
+    if (
+        home == PROD_HOME
+        or home == PROD_DATA
+        or PROD_DATA in home.parents
+        or RUNTIME_MAIN in home.parents
+    ):
         raise RuntimeError(f"refusing production HOME {home}")
-    config = Path(os.environ.get("CONVMEM_CONFIG", "")).expanduser()
-    if not config.is_absolute() or PROD_DATA in config.resolve().parents:
-        raise RuntimeError(f"refusing CONVMEM_CONFIG {config}")
+    required = {
+        "CONVMEM_CONFIG": os.environ.get("CONVMEM_CONFIG", ""),
+        "XDG_CONFIG_HOME": os.environ.get("XDG_CONFIG_HOME", ""),
+        "XDG_DATA_HOME": os.environ.get("XDG_DATA_HOME", ""),
+        "XDG_CACHE_HOME": os.environ.get("XDG_CACHE_HOME", ""),
+        "CONVMEM_ROOT": os.environ.get("CONVMEM_ROOT", ""),
+    }
+    for key, raw in required.items():
+        path = Path(raw).expanduser()
+        if not raw or not path.is_absolute() or _banned(path):
+            raise RuntimeError(f"refusing {key} {raw}")
+
+
+@pytest.fixture(autouse=True)
+def _isolate_t1_process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point this test and its children at a fresh directory before project imports."""
+    root = tmp_path / "process-isolation"
+    home = root / "home"
+    config_dir = root / "config"
+    data = root / "data"
+    cache = root / "cache"
+    for path in (home, config_dir, data, cache, root / "root"):
+        path.mkdir(parents=True)
+    config_file = config_dir / "config.toml"
+    config_file.write_text("", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(config_dir))
+    monkeypatch.setenv("XDG_DATA_HOME", str(data))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    monkeypatch.setenv("CONVMEM_CONFIG", str(config_file))
+    monkeypatch.setenv("CONVMEM_ROOT", str(root / "root"))
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("CONVMEM_T1_ISOLATED", raising=False)
+    _require_isolated_process()
 
 
 def _run(tmp: Path, code: str, *args: str, env_extra: dict[str, str] | None = None, timeout: float = 180):
     _refuse_production(tmp)
+    _require_isolated_process()
     env = os.environ.copy()
-    env["CONVMEM_T1_ISOLATED"] = "1"
+    env.pop("CONVMEM_T1_ISOLATED", None)
     if env_extra:
         env.update(env_extra)
     return subprocess.run(
@@ -125,9 +172,26 @@ finally:
 """
 
 
-def test_process_isolation(tmp_path: Path) -> None:
+def test_process_isolation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _require_isolated_process()
     _refuse_production(tmp_path)
+    isolated_home = os.environ["HOME"]
+    isolated_config = os.environ["CONVMEM_CONFIG"]
+    assert Path(isolated_home).resolve() != PROD_HOME
+    assert os.environ.get("CONVMEM_T1_ISOLATED") is None
+    with pytest.raises(RuntimeError, match="refusing production path"):
+        _refuse_production(PROD_DATA)
+    with pytest.raises(RuntimeError, match="refusing production path"):
+        _refuse_production(RUNTIME_MAIN / "chroma")
+    monkeypatch.setenv("HOME", str(PROD_HOME))
+    with pytest.raises(RuntimeError, match="refusing production HOME"):
+        _require_isolated_process()
+    monkeypatch.setenv("HOME", isolated_home)
+    monkeypatch.setenv("CONVMEM_CONFIG", str(PROD_DATA / "config.toml"))
+    with pytest.raises(RuntimeError, match="refusing CONVMEM_CONFIG"):
+        _require_isolated_process()
+    monkeypatch.setenv("CONVMEM_CONFIG", isolated_config)
+    _require_isolated_process()
 
 
 def test_only_a_missing_marker_is_absent(tmp_path: Path) -> None:

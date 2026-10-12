@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; bounded T1 correction IMPLEMENTED at runtime `496792f`, exact-tip review pending.** The initial candidate is unaccepted. Ownership, later-task and live-operation limits are unchanged.
+> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; T1 CI correction in progress on draft #387.** Runtime behavior remains `496792f`. Exact-tip review is not satisfied. Ownership, later-task and live-operation limits are unchanged.
 
 ## 1. What This Is For (product goal)
 
@@ -134,7 +134,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 - 2026-10-11 — Codex: recorded Ryan's bounded T1 correction grant; store-file scope addition, persisted-empty refusal and actual overwrite control are authorized, with correction evidence/review pending.
 - 2026-10-11 — Cursor: corrected T1 on `fix/2026-10-11-safe-harbor-t1` at runtime `496792f` and recorded isolated V1 (43 passed); exact-tip review, T2–T5, and live operations remain pending.
+- 2026-10-11 — Cursor: merged main `db8aebb`, made T1 tests self-isolating under standard pytest, and regenerated the writer-coverage inventory to `43a3944d`; BugBot was not re-triggered.
 
 ## TL;DR
 
-[Arc Safe Harbor] The three authorized T1 corrections are implemented at runtime `496792f`, and isolated V1 passed. Exact-tip review still needs a pull request Ryan has not authorized. T2–T5 and live operations remain ungranted.
+[Arc Safe Harbor] T1’s CI failures are corrected on draft #387: tests isolate themselves, and the writer-coverage inventory matches the merged tree. Exact-tip BugBot is not satisfied. T2–T5 and live operations remain ungranted.
