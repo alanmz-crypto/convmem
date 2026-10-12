@@ -9,13 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — B1 correction GRANTED (2026-10-12):**
-  Ryan authorized the bounded census-entrypoint correction and accepted the
-  documented event-only success evidence exclusion (T4 proof remains required).
-  Cursor continues in the existing T2 worktree under
-  [execution section 9](../plans/EXECUTION-safe-harbor.md#b1-correction-and-bounded-evidence-exclusion--owner-authorized).
-  [STATUS](../plans/STATUS-safe-harbor.md) and [VERIFY V2](../plans/VERIFY-safe-harbor.md#independent-final-tip-review--correction-required)
-  preserve Copilot's FAIL at `05c7706`, evidence and successor-review stop.
+- **Arc Safe Harbor — B1 correction IMPLEMENTED, delta review pending (2026-10-12):**
+  Cursor fixed the census-entrypoint regression at `964c1de`: recovery now
+  reuses the allowlisted `propose_decision.write` label. Only `convmem.py`
+  changed in production, and the R2b identity was regenerated (derived only).
+  Isolated uid-1000 evidence was captured with an armed census. The positive
+  and future-snapshot controls behaved as intended, and the old-label control
+  is refused. Results: 3 new and 153 affected cases passed (exit 0); lint gate
+  exit 0. See
+  [VERIFY V2](../plans/VERIFY-safe-harbor.md#b1-correction--implemented-delta-review-pending).
+  Copilot's FAIL stays pinned at `05c7706`, and the event-only success exclusion
+  stands (T4 proof required). Next: Codex coordinates one narrow Copilot delta.
   No PR/comment, merge, T3–T5 or live action is granted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;

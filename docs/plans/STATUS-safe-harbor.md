@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 REVIEW FAIL, V2 NOT ACCEPTED.** Copilot reviewed exact candidate `05c7706` (75% overall confidence) and found one local census-entrypoint regression. Ryan authorized the bounded B1 correction and accepted the stated event-only evidence exclusion; Cursor implementation/evidence are next. V2 is not yet accepted. T3–T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1 MERGED; T2 REVIEW FAIL, V2 NOT ACCEPTED.** Copilot reviewed exact candidate `05c7706` (75% overall confidence) and found one local census-entrypoint regression. Ryan authorized the bounded B1 correction and accepted the stated event-only evidence exclusion. Cursor implemented B1 at `964c1de` with captured armed-census evidence; one narrow Copilot delta review is next. V2 is not yet accepted. T3–T5 and live operations remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -40,7 +40,12 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
 - `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 preserves the completed T1 grants; section 9 records the separate T2 grant and pinned Cursor handoff. T2 is implemented on its task branch; T3–T5 are not implemented.
 - T2 implementation: **on branch** `fix/2026-10-12-safe-harbor-t2` (worktree `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`), start `9664878`, final source `44e29f6d943c98a2425c21901c310c52ca5c5b1a`. `add --upsert`, indexed `record --approve-last`/`--approve` and `propose_decision --recover` now pass one operation-bound preflight (`chroma_write_store.admitted_write_operation` → `restic_gate.preflight_operation`): explicit v2 profile, target/affected-path containment, post-admission edit refusal, refused production skip, and B-E4.1 future-time 25 across all five consumers. ROADMAP/RECOVER/role-mapping and the v2 exit-25 row are updated. Shadow inventory unchanged; R2b inventory regenerated (derived only). Not merged, not deployed.
-- T2 review: Copilot static **FAIL, narrow (75%)** at `05c7706e54b77f9ef5b41a1c206b29bec012e405`. B1: the new `propose_decision.recover` admission label is absent from the writer-census allowlist; a valid census therefore refuses recovery before preflight. Codex confirmed the source chain. Proposed correction: reuse the existing allowlisted label, add isolated armed-census evidence and regenerate derived R2b identity if needed. Details and advisories are in VERIFY V2. The bounded B1 correction is now granted in execution section 9, not yet implemented.
+- T2 review: Copilot static **FAIL, narrow (75%)** at `05c7706e54b77f9ef5b41a1c206b29bec012e405`. B1: the new `propose_decision.recover` admission label is absent from the writer-census allowlist; a valid census therefore refuses recovery before preflight. Codex confirmed the source chain. Proposed correction: reuse the existing allowlisted label, add isolated armed-census evidence and regenerate derived R2b identity if needed. Details and advisories are in VERIFY V2.
+- T2 B1 correction: **implemented at `964c1decb1a8366226ad45345ae26ed909542569`** (not yet reviewed).
+  - Change: recovery admission reuses `propose_decision.write`. The only production edit is `convmem.py`; the census allowlist, routes and hashing are unchanged.
+  - Derived R2b identity: `05362dba…`; the shadow inventory is byte-unchanged.
+  - Tests: armed-census positive (new unit plus matching APPROVED, census open/close recorded), future snapshot (25; census telemetry recorded, logical state unchanged), and a test-only old-label control (actual census refusal; the positive assertions fail).
+  - Uid-1000 isolated runs: 3 new and 153 affected cases passed with pytest exit 0; lint gate exit 0 (466 findings, none new).
 - T2 evidence (VERIFY V2):
   - Codex's captured uid-1000 runs at runtime `44e29f6`: 236 distinct cases (focused `133 passed` + regression `103 passed`), pytest exit 0 for both; lint gate exit 0 (pylint raw 30).
   - Refresh at tests `2459acd`: the 64 affected T2/caller cases passed again (pytest exit 0; overlapping, not additional); lint gate exit 0 (465 findings, none new).
@@ -74,18 +79,18 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **PR #387: MERGED**, 2026-10-12 05:13:16 UTC. No open T1 correction or review action remains from this delivery.
 - **T2: REVIEW FAIL; V2 NOT ACCEPTED.**
   - Runtime `44e29f6` and tests `2459acd` passed their captured final runs.
-  - Copilot's authorized final-tip audit at `05c7706` found B1 (local census-label regression); Ryan granted its bounded correction; successor evidence/delta review remain pending.
+  - Copilot's authorized final-tip audit at `05c7706` found B1 (local census-label regression). Ryan granted its bounded correction, now implemented with captured evidence at `964c1de`; the narrow delta review is pending, and the FAIL stays pinned to `05c7706`.
   - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
   - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
 - T3–T5 implementation, T2 PR creation/commenting, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Dispatch and coordinate the owner-authorized B1 correction, preserving the pinned review and evidence exclusion. Hand the corrected candidate back for a narrow delta; do not self-clear B1 or infer overall acceptance.
+**Codex:** Coordinate one narrow Copilot delta review of `964c1de` (B1 correction plus regressions), preserving the pinned FAIL and evidence exclusion. Do not self-clear B1 or infer overall acceptance.
 
-**Cursor:** Implement the granted B1 correction in execution section 9: reuse the allowlisted writer label, prove recovery with a valid census present and the old-label negative control, and refresh derived identity if required. No hash/classifier repair, census policy expansion, T3/T4 or production work is granted.
+**Cursor:** B1 is delivered; stop. No hash/classifier repair, census policy expansion, other advisories, T3/T4 or production work is granted.
 
-**Ryan:** The correction and bounded evidence exclusion are authorized. Overall V2 acceptance, successor review completion, PR/comment authority and the separate BugBot gate remain pending; T1's outage acceptance does not carry over.
+**Ryan:** The correction and bounded evidence exclusion are authorized, and the correction is delivered. Overall V2 acceptance, successor review completion, PR/comment authority and the separate BugBot gate remain pending; T1's outage acceptance does not carry over.
 
 **Kiro / Opus / Copilot:** Existing approvals remain pinned. Copilot's first T2 implementation review is FAIL at `05c7706`; after an authorized correction, review only that delta and regressions. No unchanged architecture re-review is requested.
 
@@ -93,7 +98,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Execute the granted T2 B1 correction and isolated census-present regression/control, then obtain successor delta review and remaining T2 PR-native review/acceptance/merge authority. The bounded event-only evidence exclusion is accepted; no unperformed success is claimed.
+1. Obtain the narrow Copilot delta review of the B1 correction at `964c1de`, then the remaining T2 PR-native review, acceptance and merge authority. The bounded event-only evidence exclusion is accepted; no unperformed success is claimed.
 2. Complete T3–T5 only under their task grants, including:
    - T3's backend-proof ordering gate and preservation/validated release;
    - T4 approval recovery: gating or binding direct helper callers, aligning the proposal and ingestion hash views so an event-only completion can be proven, and unknown/tombstone/race/uncertain-completion handling;
@@ -136,6 +141,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
+- 2026-10-12 — Cursor: implemented B1 at `964c1de` (recovery reuses the allowlisted writer label; R2b identity derived-only) and recorded armed-census uid-1000 evidence (3 new and 153 affected passed, lint gate PASS). Narrow Copilot delta is next; V2 not accepted.
 - 2026-10-12 — Codex: recorded Ryan's bounded B1 correction grant and event-only evidence exclusion; prepared Cursor's scoped continuation with isolated census-present positive/refusal/control evidence.
 
 - 2026-10-12 — Codex: recorded Copilot's exact-tip T2 narrow FAIL at `05c7706`, confirmed B1 and routed the bounded correction plus explicit event-only evidence-limit decision; runtime unchanged.
@@ -174,4 +180,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 is merged. T2 implementation is delivered (runtime `44e29f6`, tests `2459acd`), and all captured runs passed. V2 is not accepted, and external review and Ryan acceptance are next; the event-only success gap and direct-caller proof belong to ungranted T4. T3–T5 and live operations remain ungranted.
+[Arc Safe Harbor] T1 is merged. T2 was delivered at runtime `44e29f6` and tests `2459acd`; Copilot found B1 at `05c7706`. The B1 census-label correction is implemented at `964c1de` with captured armed-census evidence. One narrow Copilot delta review, then Ryan's V2 acceptance, are next. The excluded event-only success proof and the direct-caller proof belong to ungranted T4. T3–T5 and live operations remain ungranted.
