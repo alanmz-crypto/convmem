@@ -1,4 +1,4 @@
-# pylint: disable=cyclic-import,duplicate-code,too-many-locals,too-many-arguments
+# pylint: disable=cyclic-import,duplicate-code,too-many-locals,too-many-arguments,too-many-lines
 """Authoritative production write-store factory and C3 writer gate.
 
 Production sessions take a shared writer lease, then load live config. Sink
@@ -8,7 +8,9 @@ production session API.
 
 from __future__ import annotations
 
+import copy
 import fcntl
+import hashlib
 import json
 import os
 import tempfile
@@ -19,10 +21,10 @@ from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator, Literal, Mapping
+from typing import Any, Callable, Iterable, Iterator, Literal, Mapping
 
 from chroma_store import ChromaStore
-from chroma_write_guard import ChromaWriteGuard, write_guard_enabled
+from chroma_write_guard import GUARD_DIR_SUFFIX, ChromaWriteGuard, write_guard_enabled
 import config as config_mod
 from shadow_ledger import (
     SinkInjectionDecision,
@@ -703,6 +705,206 @@ def chroma_write_session(
             store.close()
 
 
+@dataclass(frozen=True)
+class AdmittedWriteOperation:  # pylint: disable=too-many-instance-attributes
+    """One operation's configuration, resolved once under the shared lease.
+
+    Nested production sessions in the same thread reuse this configuration
+    instead of reloading it, and refuse if its inputs changed.
+    """
+
+    entrypoint: str
+    config_path: Path
+    config_digest: str
+    chroma_dir: Path
+    affected_paths: tuple[Path, ...]
+    preflight: Any
+    _cfg: dict[str, Any]
+
+    def config(self) -> dict[str, Any]:
+        """A private copy of the admitted configuration."""
+        return copy.deepcopy(self._cfg)
+
+
+def _bound_operation() -> AdmittedWriteOperation | None:
+    return getattr(_writer_tls, "bound_operation", None)
+
+
+def _config_digest(path: Path) -> str:
+    from restic_gate import OperationAdmissionRefused
+    from restic_snapshot import EXIT_INVALID_CONFIG
+
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise OperationAdmissionRefused(
+            f"operation config unreadable: {path}: {exc}",
+            EXIT_INVALID_CONFIG,
+            "operation_config_unreadable",
+        ) from exc
+
+
+def _canonical_path(path: str | Path) -> Path:
+    return Path(path).expanduser().resolve(strict=False)
+
+
+def operation_affected_paths(cfg: Mapping[str, Any]) -> list[Path]:
+    """Durable paths every guarded Chroma write session can touch."""
+    index = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
+    chroma = _canonical_path(index["chroma_dir"])
+    paths = [chroma, chroma.parent / f"{chroma.name}{GUARD_DIR_SUFFIX}"]
+    if index.get("units_export"):
+        paths.append(_canonical_path(index["units_export"]))
+    settings = resolve_shadow_settings(cfg)
+    if settings.injection_eligible_config:
+        paths.extend(
+            _canonical_path(p) for p in (settings.ledger_path, settings.health_path)
+        )
+    return paths
+
+
+def _resolve_operation_target(
+    cfg: Mapping[str, Any],
+    extra_affected_paths: Callable[[Mapping[str, Any]], Iterable[str | Path]] | None,
+) -> tuple[Path, tuple[Path, ...]]:
+    from restic_gate import OperationAdmissionRefused
+    from restic_snapshot import EXIT_INVALID_CONFIG
+
+    index = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
+    if not index.get("chroma_dir"):
+        raise OperationAdmissionRefused(
+            "live config missing index.chroma_dir",
+            EXIT_INVALID_CONFIG,
+            "operation_config_invalid",
+        )
+    paths = operation_affected_paths(cfg)
+    if extra_affected_paths is not None:
+        paths.extend(_canonical_path(p) for p in extra_affected_paths(cfg))
+    unique = tuple(dict.fromkeys(paths))
+    return _canonical_path(index["chroma_dir"]), unique
+
+
+def verify_admitted_operation_unchanged(op: AdmittedWriteOperation) -> None:
+    """Refuse when the admitted config or backup profile inputs changed."""
+    from restic_gate import (
+        REASON_OPERATION_CONFIG_CHANGED,
+        OperationAdmissionRefused,
+        verify_preflight_inputs_unchanged,
+    )
+    from restic_snapshot import EXIT_INVALID_CONFIG, EXIT_WRONG_PATH
+
+    if _config_digest(op.config_path) != op.config_digest:
+        code = EXIT_INVALID_CONFIG
+        try:
+            chroma, _paths = _resolve_operation_target(
+                config_mod.load_config(op.config_path), None
+            )
+            if chroma != op.chroma_dir:
+                code = EXIT_WRONG_PATH
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+        raise OperationAdmissionRefused(
+            f"{op.entrypoint}: operation config {op.config_path} changed after "
+            "admission; refusing to adopt it",
+            code,
+            REASON_OPERATION_CONFIG_CHANGED,
+        )
+    verify_preflight_inputs_unchanged(op.preflight)
+
+
+@contextmanager
+def admitted_write_operation(
+    *,
+    entrypoint: str,
+    extra_affected_paths: Callable[[Mapping[str, Any]], Iterable[str | Path]]
+    | None = None,
+    config_path: str | Path | None = None,
+    lock_path: Path | None = None,
+    attest_dir: Path | None = None,
+    census_dir: Path | None = None,
+) -> Iterator[AdmittedWriteOperation]:
+    """Shared lease → one config load → bound Restic preflight → admitted op.
+
+    Must be entered before opening Chroma or changing approval state. Raises
+    ``restic_gate.OperationAdmissionRefused`` instead of yielding when the
+    preflight refuses or the configuration changes during admission.
+    """
+    from restic_gate import (
+        REASON_OPERATION_CONFIG_CHANGED,
+        OperationAdmissionRefused,
+        OperationTarget,
+        preflight_operation,
+    )
+    from restic_snapshot import EXIT_INVALID_CONFIG
+
+    path = _canonical_path(config_path or config_mod.CONFIG_PATH)
+    with shared_writer_lease(
+        lock_path=lock_path,
+        attest_dir=attest_dir,
+        census_dir=census_dir,
+        entrypoint=entrypoint,
+    ):
+        if _bound_operation() is not None:
+            raise OperationAdmissionRefused(
+                f"{entrypoint}: nested admitted operation is not supported",
+                EXIT_INVALID_CONFIG,
+                "nested_admitted_operation",
+            )
+        digest = _config_digest(path)
+        live_cfg = config_mod.load_config(path)
+        if _config_digest(path) != digest:
+            raise OperationAdmissionRefused(
+                f"{entrypoint}: operation config {path} changed while loading",
+                EXIT_INVALID_CONFIG,
+                REASON_OPERATION_CONFIG_CHANGED,
+            )
+        chroma_dir, affected = _resolve_operation_target(
+            live_cfg, extra_affected_paths
+        )
+        preflight = preflight_operation(
+            OperationTarget(
+                entrypoint=entrypoint,
+                chroma_dir=chroma_dir,
+                affected_paths=affected,
+                config_path=path,
+            )
+        )
+        op = AdmittedWriteOperation(
+            entrypoint=entrypoint,
+            config_path=path,
+            config_digest=digest,
+            chroma_dir=chroma_dir,
+            affected_paths=affected,
+            preflight=preflight,
+            _cfg=copy.deepcopy(live_cfg),
+        )
+        verify_admitted_operation_unchanged(op)
+        _writer_tls.bound_operation = op
+        try:
+            yield op
+        finally:
+            _writer_tls.bound_operation = None
+
+
+def _session_config(path: Path) -> dict[str, Any]:
+    """Live config for a production session; the admitted one when bound."""
+    op = _bound_operation()
+    if op is None:
+        return config_mod.load_config(path)
+    from restic_gate import OperationAdmissionRefused
+    from restic_snapshot import EXIT_INVALID_CONFIG
+
+    if _canonical_path(path) != op.config_path:
+        raise OperationAdmissionRefused(
+            f"{op.entrypoint}: nested session requested config {path}, "
+            f"not the admitted {op.config_path}",
+            EXIT_INVALID_CONFIG,
+            "operation_config_substituted",
+        )
+    verify_admitted_operation_unchanged(op)
+    return op.config()
+
+
 @contextmanager
 def production_chroma_write_session(
     config_path: str | Path | None = None,
@@ -725,7 +927,7 @@ def production_chroma_write_session(
         census_dir=census_dir,
         entrypoint=entrypoint,
     ):
-        live_cfg = config_mod.load_config(path)
+        live_cfg = _session_config(path)
         index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
         chroma_dir = index.get("chroma_dir")
         if not chroma_dir:
@@ -777,7 +979,7 @@ def open_production_write_store(
         lease_cm.__exit__(None, None, None)
 
     try:
-        live_cfg = config_mod.load_config(path)
+        live_cfg = _session_config(path)
         index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
         chroma_dir = index.get("chroma_dir")
         if not chroma_dir:
