@@ -542,3 +542,43 @@ activates until Ryan grants Stage 1.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
+
+## Exact-tip reviews of `78b9295` (2026-10-11) — Copilot PASS, Kiro PASS
+
+Claude launched both reviews headless, at Ryan's request, with read-only tool
+permissions. Copilot could use only read-only git and inspection commands,
+with file writes and `convmem` denied. Kiro could only read files, and got
+pre-generated diffs.
+
+**Copilot: PASS.**
+
+- C5b, C1b and C6b are closed.
+- A sweep of every crash point found that each checkpointless `PREPARING` or
+  `APPLYING` crash still recovers to `committed`.
+- `bbe5bb8` exercises real roll-forward, and C2, C3 and C4 were not reopened.
+- 333 hermetic tests passed. The one failure was environmental: its
+  `git archive` copy had no `.git`, and the test passes in a real checkout.
+
+Copilot's non-blocking notes:
+
+1. When a rollback file is present, a C1b refusal restores the empty
+   first-run preimage. That deletes legacy rows written after the crash, and
+   the watcher then quarantines the path. This fails closed, but the source
+   loses its legacy projection until an operator steps in.
+2. This one predates corrective 5 (`a5f1756` behaves the same). A crash
+   after the checkpoint is published but before the processed entry is
+   recovers to `rolled_back`. The new processed entry has no lineage yet, so
+   the D8 check refuses, and the path is then quarantined for good. This
+   fails closed, but costs that source its capture. Watch for `rolled_back`
+   in Stage 1 and Stage 2.
+
+**Kiro: PASS.**
+
+- All three fixes satisfy D3, D8 and §13, with no new outcome codes, config
+  keys or rules.
+- The Kiro exact-path gap is a separate prerequisite before any Kiro
+  exact-path live run. It doesn't block this PR. The fix must cover the
+  checkpointless rule and a D8-equivalent continuity check.
+- The STATUS diff against `main` only adds lines (note (d) satisfied).
+
+Next: Ryan's PR decision, using the PR draft above.
