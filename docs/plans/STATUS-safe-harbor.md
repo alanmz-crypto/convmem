@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 F1/F2 CORRECTION DELIVERED (PENDING CODEX DELTA).** Draft PR #389 carries the F1/F2 fix on `fix/2026-10-12-safe-harbor-t2` with outer-isolated evidence in VERIFY V2 (grant start `3c6f728`). Canonical target pinning is preserved; competing alias guard validation runs before client open. PR is **CONFLICTING** with `main` (integration out of grant). Codex bounded delta and fresh CI on the pushed successor are next. CodeQL #6 dismissed as false positive. No paid reviewer, T2 acceptance, merge, T3–T5 or live operation is granted.
+> **Arc: Safe Harbor. T1 MERGED; T2 F1/F2 DELTA PASS, INTEGRATION PENDING.** Cursor runtime/tests `cdebf64` pass Codex's bounded delta at candidate `721fd17` (90%), with 85 distinct isolated cases and lint regression gate PASS. Draft PR #389 conflicts with main. A separate bounded branch-update grant, fresh integrated CI, final-tip review disposition and Ryan acceptance remain pending. No paid reviewer, merge, T3–T5 or live operation is granted.
 
 ## 1. What This Is For (product goal)
 
@@ -35,8 +35,9 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- **Current T2 delivery:** draft [PR #389](https://github.com/alanmz-crypto/convmem/pull/389), recovered candidate `255c040308b41c41af0b40a3af8c290794052523` (runtime/tests `a18df480`), imported from Cursor's verified bundle and pushed by Codex. Earlier green CI at `0cff157` is historical; fresh CI does not resolve the source/evidence findings below.
-- **Target-binding correction: F1/F2 IMPLEMENTED; CODEX DELTA NEXT.** Cursor delivered canonical pinning plus pre-open competing-guard validation, after-store export retarget evidence, scope cleanup and outer-isolated pytest/lint on the task branch (see [F1/F2 evidence](VERIFY-safe-harbor.md#f1f2-target-binding-correction--captured-cursor)). Derived R2b `code_revision` `638cf8d3…` (inventory-only). Draft #389 is **CONFLICTING** with `main` at last GitHub read; merge/rebase not authorized in this grant.
+- **Current T2 delivery:** Cursor runtime/tests `cdebf64b487ffa27d61955df9739204829864fe0`, reviewed at docs successor `721fd17fcc6b454a6bd435c1ece13da14b77f7fb`, on draft [PR #389](https://github.com/alanmz-crypto/convmem/pull/389). Both are pushed. Prior recovered bundle and CI results remain historical.
+- **Target-binding correction: F1/F2 CLOSED BY BOUNDED CODEX DELTA (90%).** Canonical client/export pinning is retained; alias-local quarantine is checked before either factory opens a client; late export retarget refuses. The 42-case Cursor regression and disjoint 43-case Codex supplement pass on unchanged source, with the full lint regression gate PASS. See [the correction delta/evidence](VERIFY-safe-harbor.md#codex-f1f2-correction-delta-and-complete-isolated-evidence--pass). This is not independent external review or V2 acceptance. Derived R2b identity `638cf8d3…`; route policy and shadow inventory unchanged.
+- **Integration blocker:** draft #389 is CONFLICTING with main. A read-only preview against `8a7cdab16420893fe26a2648d1d03f2b84d8589d` identifies the generated R2b inventory conflict; the integrated tree is unqualified. No main integration is authorized under this correction grant.
 - **External review:** the single authorized BugBot request on #389 hit a usage limit and reviewed no SHA. No PR-native Copilot review was requested; Ryan subsequently asked to avoid Copilot for budget reasons. Earlier full/delta reviews remain historical evidence. No T2 tip-specific outage acceptance is recorded.
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
@@ -80,22 +81,22 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T1: MERGED** by Ryan in PR #387 at `05aa2c8`. The final candidate `0c7b4e2` passed fresh CI; the initial full Copilot audit and successive correction/integration reviews cover the delivered candidate. Final integration delta: PASS 82%, static.
 - **External review gate: SATISFIED BY RYAN'S EXACT-TIP OUTAGE ACCEPTANCE** for `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. BugBot reviewed no SHA; this is not a BugBot PASS. Exact owner wording and evidence are in VERIFY V0/final acceptance.
 - **PR #387: MERGED**, 2026-10-12 05:13:16 UTC. No open T1 correction or review action remains from this delivery.
-- **T2: B1 CLOSED; F1/F2 CORRECTION DELIVERED; V2 NOT ACCEPTED.**
+- **T2: B1 CLOSED; F1/F2 BOUNDED DELTA PASS; V2 NOT ACCEPTED.**
   - Runtime/tests `964c1de` have captured isolated evidence: 153 affected cases passed, including 3 new census controls; lint regression gate PASS.
   - Copilot delta **PASS (88%)** at final candidate `82f25ef` closes B1. Original FAIL remains pinned to `05c7706`; the review is static and supplies no new runtime or CI evidence. This documentation record does not transfer exact-tip review to a later successor.
   - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
   - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
 - **PR #389: OPEN / DRAFT.** The authorized one-shot BugBot trigger returned a usage-limit reply, with no reviewed SHA. CodeQL alert #6 was owner-authorized and dismissed as false positive at `2026-10-12T10:34:24Z`; GitHub then reported CodeQL SUCCESS at `0cff157`. No paid retry/reviewer is requested.
-- **Current grant:** Cursor completed F1/F2 correction and isolated evidence; **Codex** runs a bounded static delta on the pushed successor plus fresh CI. Neither substitutes for final-tip external-review acceptance or overall V2 acceptance.
+- **Current grant: COMPLETE.** Cursor corrected F1/F2 and Codex completed the bounded delta and supplemental isolated evidence. Main integration, fresh integrated CI and final-tip acceptance remain next; the current grant does not authorize integration.
 - T3–T5 implementation, new review triggers/comments, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** F1/F2 and the continuation are recorded in VERIFY; review only the corrected successor and its regressions when Cursor returns. CodeQL #6 is dispositioned. No paid reviewer request or automatic external-gate waiver.
+**Codex:** Correction delta and isolated evidence are complete. Await Ryan's bounded main-integration grant before coordinating the next branch update; preserve the explicit final-tip review boundary. CodeQL #6 remains dispositioned.
 
-**Cursor:** Stop after push; hand off to Codex for bounded delta on the F1/F2 successor. Keep #389 draft.
+**Cursor:** Correction delivered and reviewed. No further implementation is active; resume only under the separately scoped integration grant. Keep #389 draft.
 
-**Ryan:** F1/F2 correction evidence is filed; after Codex delta and fresh CI, decide final-tip external-review disposition and overall V2 acceptance. PR/main conflict is a separate integration decision outside this grant. Event-only exclusion remains accepted; T1 outage acceptance does not carry over.
+**Ryan:** Decide the bounded branch update to integrate current main, regenerate only derived inventory, and qualify the integrated candidate. Fresh CI and final-tip review disposition precede V2 acceptance/merge. Event-only exclusion remains accepted; T1 outage acceptance does not carry over.
 
 **Kiro / Opus / Copilot:** Existing approvals remain pinned. Copilot closed B1 at `82f25ef` (88%, static delta), following its full review at `05c7706`. No new paid round is authorized or requested, including after this correction.
 
@@ -103,7 +104,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Codex bounded delta on the F1/F2 successor, fresh CI on draft #389, then final-tip external-review disposition and owner acceptance/merge decision (including whether/when to integrate `main`). B1 closed historically; event-only exclusion accepted; CodeQL #6 dispositioned.
+1. Separately authorize the bounded main integration/derived-inventory update for draft #389, collect affected isolated evidence and fresh integrated CI, then resolve final-tip external-review disposition and Ryan's V2 acceptance/merge decision. F1/F2 are closed for `cdebf64`; integration creates a new review subject. B1 remains closed historically; event-only exclusion accepted; CodeQL #6 dispositioned.
 2. Complete T3–T5 only under their task grants, including:
    - T3's backend-proof ordering gate and preservation/validated release;
    - T4 approval recovery: gating or binding direct helper callers, aligning the proposal and ingestion hash views so an event-only completion can be proven, and unknown/tombstone/race/uncertain-completion handling;
@@ -145,6 +146,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-12 — Codex: F1/F2 delta PASS at `721fd17` / runtime `cdebf64`, 85 distinct isolated cases and lint gate PASS; main conflict identified, bounded integration and final-tip acceptance remain pending.
 
 - 2026-10-12 — Cursor: delivered F1/F2 target-binding correction and outer-isolated evidence on `fix/2026-10-12-safe-harbor-t2`; Codex bounded delta next.
 - 2026-10-12 — Codex: recovered and pushed Cursor's bundle at `255c040`; static delta requires the T1 competing-location correction and completion of export/regression evidence. Cursor continues within the existing grant; runtime unchanged by review.
@@ -193,4 +196,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 is merged; T2 target-binding correction is delivered at `a18df480` on draft #389. B1 remains closed historically. Codex static delta and fresh CI are next; V2 acceptance and the external-review gate stay pending. CodeQL #6 is dismissed as false positive. No paid reviewer request. T3–T5, merge and live operations remain ungranted.
+[Arc Safe Harbor] T1 is merged. T2 correction at `cdebf64` passes the bounded Codex delta (90%) with 85 distinct isolated cases and lint gate PASS. Draft #389 conflicts with main; bounded integration, fresh CI and final-tip acceptance are next. No paid reviewer, merge, deployment or T3–T5 grant.

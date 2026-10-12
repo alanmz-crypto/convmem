@@ -9,13 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — F1/F2 correction delivered; Codex delta next (2026-10-12):**
-  Cursor pushed F1/F2 fix + outer-isolated evidence on draft PR #389
-  (`fix/2026-10-12-safe-harbor-t2`; grant start `3c6f728`). PR is
-  **CONFLICTING** with `main` (not in grant). **Codex:** bounded static delta
-  on the successor; [evidence](../plans/VERIFY-safe-harbor.md#f1f2-target-binding-correction--captured-cursor),
-  [STATUS](../plans/STATUS-safe-harbor.md). No paid review; V2 acceptance,
-  merge, T3–T5 and live ops remain pending/ungranted.
+- **Arc Safe Harbor — F1/F2 delta PASS; bounded integration grant next (2026-10-12):**
+  Cursor's correction on draft PR #389 passes Codex's bounded delta with complete
+  isolated evidence. Main conflicts remain; **Ryan:** decide the bounded branch
+  update before fresh integrated CI and final-tip review/acceptance. See
+  [current STATUS](../plans/STATUS-safe-harbor.md) and
+  [correction evidence](../plans/VERIFY-safe-harbor.md#codex-f1f2-correction-delta-and-complete-isolated-evidence--pass).
+  No paid review, merge, T3–T5 or live operation is granted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

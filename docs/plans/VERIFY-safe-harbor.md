@@ -1,6 +1,6 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 B1 DELTA PASS, V2 ACCEPTANCE PENDING.** Copilot's static delta at exact candidate `82f25efb4696325afa83298fae0e1ca698f1d7fe` closes the census-entrypoint blocker (88%). Original FAIL remains pinned to `05c7706`. Corrected runtime/tests `964c1de` have 153 affected cases passing (including 3 new census controls), pytest exit 0 and lint regression gate PASS. Ryan accepted the event-only success evidence exclusion; T4 still owes that proof. The separate BugBot gate is unsatisfied; V3–V6 remain NOT RUN.
+> **Arc: Safe Harbor. T1 MERGED; T2 F1/F2 CORRECTION DELTA PASS, V2 ACCEPTANCE PENDING.** Cursor runtime/tests `cdebf64` pass Codex's bounded delta at candidate `721fd17` (90%); 85 distinct isolated cases and the lint regression gate pass. PR #389 remains draft and conflicts with main. Fresh integrated CI, final-tip external-review disposition and Ryan acceptance remain pending. The accepted event-only success exclusion remains; V3–V6 are NOT RUN.
 
 ```text
 Planning Status
@@ -482,7 +482,7 @@ Log: `/opt/cursor/artifacts/t2-target-binding-pytest.log` (10-case batch). No pr
 
 **Grant start:** `3c6f728d56a2cd99a191d86e5d2f75c1c41cb3f0`. **Runtime/tests subject:** `cdebf64b487ffa27d61955df9739204829864fe0` on `fix/2026-10-12-safe-harbor-t2`.
 
-**What changed:** admitted operations keep **canonical** `chroma_dir` / `units_export` in pinned config and open production stores on `op.chroma_dir`. Original configured spellings are carried only as `configured_chroma_dir` / `configured_units_export` for `verify_competing_guard_locations()` (existing `ChromaWriteGuard.require_not_quarantined()` on the alias spelling) before either production factory opens a client. Export retarget after store construction is covered via `retarget_export_alias_after_store` on the real `add --upsert` export consumer. Scope cleanup: monitor bound path reverted to configured expanduser; unused `admitted_units_export_path` imports removed from verify/forget; unused `admitted` flag removed from `_admission_steps`.
+**What changed:** admitted operations keep **canonical** `chroma_dir` / `units_export` in pinned config and open production stores on `op.chroma_dir`. The original Chroma spelling is carried as `configured_chroma_dir` for `verify_competing_guard_locations()` (existing `ChromaWriteGuard.require_not_quarantined()` on the alias spelling) before either production factory opens a client. Export retarget after store construction is covered via `retarget_export_alias_after_store` on the real `add --upsert` export consumer. `configured_units_export` is also recorded but unused; export consumers receive the canonical pinned path. Scope cleanup: unrelated unbound monitor path reverted to configured expanduser; unused `admitted_units_export_path` imports removed from verify/forget; unused `admitted` flag removed from `_admission_steps`.
 
 **Invalid development runs (not accepted evidence):** early shell pytest without outer-isolated subprocess env; first target-binding batch had **1 failed** (`test_open_production_write_store_refuses_competing_alias_guard` before fix) and **invalid exit capture** (`| tee` masked pytest exit 0). An eight-case pass in the same mode does not satisfy the grant isolation contract.
 
@@ -492,12 +492,117 @@ Log: `/opt/cursor/artifacts/t2-target-binding-pytest.log` (10-case batch). No pr
 |---|---|---|---|
 | Inventory | `write_v2_inventory_file()` then regression | derived `code_revision` `638cf8d3…`, digest `0479842d…`; `route_sink_evidence_errors` `[]` | **0** |
 | Target binding | `tests/test_safe_harbor_t2.py -k "alias or export_alias or competing or open_production"` | **9 passed**, 48 deselected | pytest **0** |
-| Regression | 24 explicit nodes (T2 alias/export/competing/caller, `test_write_gate_effect`, `test_record_review_cli`, four T1 alias/contention cases, `test_r2b_v2_implementation_revision`) | **42 passed** | pytest **0** |
+| Regression | 24 explicit nodes (T2 alias/export/competing/caller, `test_write_gate_effect`, `test_record_review_cli`, four T1 alias/competing-location cases, `test_r2b_v2_implementation_revision`) | **42 passed** | pytest **0** |
 | Lint | full pylint JSON + `scripts/pylint_regression_gate.py ci` vs `9664878` | gate **PASS** (459 findings, 239 fingerprints) | pylint raw **30**; gate **0** |
 
-**Controls:** competing alias-local quarantine refuses before `PersistentClient` (spy) on CLI and both factories; stable alias still mutates A; export retarget after preflight and after store open refuses with 24 / unchanged fixtures; unbound negative control still redirects write into B; preflight retarget and factory alias-drift cases retained.
+**Controls:** competing alias-local quarantine refuses on the CLI with unchanged logical state; both factories additionally assert refusal before `PersistentClient` using a spy; stable alias still mutates A; export retarget after preflight and after store open refuses with 24 / unchanged fixtures; unbound negative control still redirects write into B; preflight retarget and factory alias-drift cases retained.
 
-**CI / integration:** draft **#389** reports **CONFLICTING** with `main` (`mergeStateStatus` **DIRTY** at grant tip `3c6f728`); resolving or merging `main` is **not** in this grant. Fresh CI on the pushed correction successor is expected after push.
+**CI / integration:** draft **#389** reports **CONFLICTING** with `main` (`mergeStateStatus` **DIRTY** at grant tip `3c6f728`); resolving or merging `main` is **not** in this grant. Only CodeQL has been observed on the conflicted branch; fresh merge-result pytest CI is pending a separately authorized integration.
+
+### Codex F1/F2 correction delta and complete isolated evidence — PASS
+
+**[Arc Safe Harbor] Scope / subject:** bounded delta from `3c6f728d56a2cd99a191d86e5d2f75c1c41cb3f0` to Cursor runtime/tests `cdebf64b487ffa27d61955df9739204829864fe0`, reviewed at docs successor `721fd17fcc6b454a6bd435c1ece13da14b77f7fb`, on 2026-10-12. **PASS (90% confidence in the bounded conclusion).** This closes F1/F2 and the named cleanup; it is neither independent external review nor overall V2 acceptance. Subsequent edits in this record change documentation only.
+
+- **F1 closed:** `chroma_write_store.py:715-742,847-863,984-1001,1026-1044,1083-1101` retains the original Chroma spelling for the existing quarantine/competing-location check before either production factory opens its client, while config and actual store arguments stay canonical. CLI effects prove the marker and logical state unchanged and no new canonical authority; both factory spies prove no client opened. A stable alias without conflicting guard state still succeeds. This reuses the guard rather than adding a release mechanism.
+- **F2 closed:** `admitted_units_export_path` rechecks the admitted inputs before yielding the pinned export path (`chroma_write_store.py:835-844`). The test-only after-store hook (`tests/_safe_harbor_t2_cli.py:159-170`) retargets after real factory construction. The real add path refuses with 24 / `operation_config_changed`, unchanged logical fixtures and no outside export. No physical read-only or rollback claim is made. The actual unbound negative control still writes B while A stays unchanged.
+- **Cleanup / inventory:** unrelated monitor export behavior and unused imports/flag are restored or removed. R2b JSON differs from the grant only in identity fields; policy, routes, shadow inventory and identity algorithm are unchanged. Its source-location allowlist still requires the unchanged dry-run constructor at `convmem.py:699`; two comments preserve that coordinate. The comment's “read-only client” describes dry-run intent, not physical immutability. The source-line coupling remains an existing maintenance cost; no inventory redesign is part of this correction.
+
+**Qualified results (85 distinct cases, zero failures/skips):** Cursor's final 42-case regression passed in 175.04 s, and Codex's disjoint supplemental 43-case batch passed in 215.91 s, both exit 0. Together they cover the entire 57-case T2 file, write-gate effect tests, record-review CLI tests, four T1 alias/competing-location cases, three native stale-client cases and the full R2b implementation-revision file. The 9-case focused pass overlaps the 42 and is not added again. Full default pytest was not run.
+
+The supplement was selected by AST-reading T2's top-level test names, excluding the 17 explicit T2 names already in the 42-case batch, then adding the two native-guard function selectors (one is parametrized). The captured earlier and final 42-case argv lists are identical. Exact executed selectors follow; both were launched as direct subprocesses in the task worktree, not pasted into an ambient shell.
+
+<details>
+<summary>Exact 42-case argv</summary>
+
+```text
+/home/lauer/miniforge3/bin/python \
+  -m \
+  pytest \
+  tests/test_safe_harbor_t2.py::test_cli_add_succeeds_with_unchanged_chroma_alias \
+  tests/test_safe_harbor_t2.py::test_cli_chroma_alias_retarget_refused_after_preflight \
+  tests/test_safe_harbor_t2.py::test_control_unbound_target_lets_alias_retarget_mutate \
+  tests/test_safe_harbor_t2.py::test_cli_export_alias_retarget_refused_after_preflight \
+  tests/test_safe_harbor_t2.py::test_cli_export_alias_retarget_refused_after_store_open \
+  tests/test_safe_harbor_t2.py::test_cli_add_refuses_competing_alias_guard_location \
+  tests/test_safe_harbor_t2.py::test_open_production_write_store_refuses_retargeted_alias \
+  tests/test_safe_harbor_t2.py::test_open_production_write_store_refuses_competing_alias_guard \
+  tests/test_safe_harbor_t2.py::test_production_chroma_write_session_refuses_competing_alias_guard \
+  tests/test_safe_harbor_t2.py::test_cli_approve_refused_before_any_approval_state \
+  tests/test_safe_harbor_t2.py::test_cli_approve_succeeds_on_current_snapshot \
+  tests/test_safe_harbor_t2.py::test_cli_recover_refused_on_future_snapshot \
+  tests/test_safe_harbor_t2.py::test_cli_recover_succeeds_on_current_snapshot \
+  tests/test_safe_harbor_t2.py::test_cli_recover_with_armed_census_succeeds_on_current_snapshot \
+  tests/test_safe_harbor_t2.py::test_cli_recover_with_armed_census_refused_on_future_snapshot \
+  tests/test_safe_harbor_t2.py::test_control_old_recover_label_refused_by_armed_census \
+  tests/test_safe_harbor_t2.py::test_cli_event_only_recovery_refused_before_approved_event \
+  tests/test_write_gate_effect.py \
+  tests/test_record_review_cli.py \
+  tests/test_safe_harbor_t1.py::test_canonical_alias_shares_one_guard_and_competing_legacy_refuses \
+  tests/test_safe_harbor_t1.py::test_competing_legacy_guard_location_refuses_adoption \
+  tests/test_safe_harbor_t1.py::test_alias_store_shares_the_canonical_client_cache \
+  tests/test_safe_harbor_t1.py::test_competing_legacy_location_refuses_an_alias_store \
+  tests/test_r2b_v2_implementation_revision.py \
+  -q \
+  --tb=line
+```
+</details>
+
+<details>
+<summary>Exact disjoint 43-case argv</summary>
+
+```text
+/home/lauer/miniforge3/bin/python \
+  -m \
+  pytest \
+  tests/test_safe_harbor_t2.py::test_snapshot_freshness_one_instant_timezone_and_rollover \
+  tests/test_safe_harbor_t2.py::test_resolver_refuses_future_newest_and_requested \
+  tests/test_safe_harbor_t2.py::test_resolver_never_falls_back_to_older_current_snapshot \
+  tests/test_safe_harbor_t2.py::test_resolver_stale_reason \
+  tests/test_safe_harbor_t2.py::test_five_consumers_under_future_snapshot \
+  tests/test_safe_harbor_t2.py::test_five_consumers_same_day_current_pass \
+  tests/test_safe_harbor_t2.py::test_old_snapshot_backs_up_then_fresh_post_backup_resolution \
+  tests/test_safe_harbor_t2.py::test_control_reusing_pre_backup_clock_fails_post_backup_resolution \
+  tests/test_safe_harbor_t2.py::test_legacy_warn_and_v3_resolution_stay_compatible \
+  tests/test_safe_harbor_t2.py::test_gate_admits_bound_current_v2_target \
+  tests/test_safe_harbor_t2.py::test_gate_requires_explicit_v2_profile \
+  tests/test_safe_harbor_t2.py::test_gate_refuses_chroma_target_mismatch \
+  tests/test_safe_harbor_t2.py::test_gate_refuses_symlinked_export_escaping_data_root \
+  tests/test_safe_harbor_t2.py::test_gate_refuses_future_snapshot_without_backup \
+  tests/test_safe_harbor_t2.py::test_gate_missing_restic_is_21 \
+  tests/test_safe_harbor_t2.py::test_gate_day_boundary_forces_one_fresh_resolution \
+  tests/test_safe_harbor_t2.py::test_skip_without_isolated_context_is_refused \
+  tests/test_safe_harbor_t2.py::test_skip_unrecognized_value_is_refused \
+  tests/test_safe_harbor_t2.py::test_skip_with_unknown_context_is_refused \
+  tests/test_safe_harbor_t2.py::test_skip_refused_when_target_is_production_shaped_under_home \
+  tests/test_safe_harbor_t2.py::test_skip_refused_for_passwd_home_production_root \
+  tests/test_safe_harbor_t2.py::test_isolated_lab_requires_lab_data_root \
+  tests/test_safe_harbor_t2.py::test_isolated_test_exception_admits_without_restic \
+  tests/test_safe_harbor_t2.py::test_cli_add_upsert_refused_on_future_snapshot \
+  tests/test_safe_harbor_t2.py::test_cli_add_upsert_succeeds_on_current_snapshot \
+  tests/test_safe_harbor_t2.py::test_control_noop_preflight_lets_mutation_through \
+  tests/test_safe_harbor_t2.py::test_cli_plain_add_stays_ungated \
+  tests/test_safe_harbor_t2.py::test_cli_no_index_approve_stays_ungated \
+  tests/test_safe_harbor_t2.py::test_cli_config_swap_after_preflight_refused_on_both_targets \
+  tests/test_safe_harbor_t2.py::test_cli_profile_edit_after_preflight_refused \
+  tests/test_safe_harbor_t2.py::test_cli_profile_target_mismatch_refused \
+  tests/test_safe_harbor_t2.py::test_cli_skip_spoof_refused_and_isolated_exception_allowed \
+  tests/test_safe_harbor_t2.py::test_cli_missing_restic_is_21 \
+  tests/test_chroma_write_guard.py::test_stale_writer_and_a_newer_save_from_another_process \
+  tests/test_chroma_write_guard.py::test_write_is_refused_when_another_client_pins_a_stale_system \
+  -q \
+  --tb=short
+```
+</details>
+
+**Isolation and identity:** uid 1000; Python 3.13.12, Chroma 1.5.9, numpy 2.4.4, pytest 9.1.1, Restic 0.19.0, pylint 4.0.6 / astroid 4.0.4. Each qualified run constructed an environment allowlist (PATH, locale/timezone, temporary HOME/XDG/CONVMEM/Restic/cache/TMPDIR, task PYTHONPATH, PYTHONNOUSERSITE and PYTHONDONTWRITEBYTECODE) before collection/project imports. No inherited provider keys or production config. The supplemental run also set a temporary XDG_RUNTIME_DIR. Each captured its actual subprocess return code.
+
+Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915756697566200b67935853e19a296ca5efdf1`. Codex supplement fingerprint before/after and sealed commit checkout: `0cdfa12aaf4769b82b3d7b20ba899c1982ea9b8b68ca776d39ec96df277138c4`. The latter hashes 565 selected files (all tracked Python plus the inventory/baseline entries), in git ls-files order, as path + NUL + bytes + NUL. Documentation-only successors do not change those bytes.
+
+**Captured local records:** `/tmp/safe-harbor-t2-f1f2-20261012T130410Z/{summary,regression,target_binding,lint_gate}.json` and associated logs; `/tmp/safe-harbor-t2-supplement-z7rz4cwo/{result.json,pytest.log}`. These are local scratch records, not uploaded CI artifacts; this tracked section preserves subjects, commands, outcomes and limits. Final lint regression gate: exit 0, 459 findings / 239 fingerprints, no new/increased findings versus `9664878`; raw pylint 30 is not itself a clean lint result.
+
+**Failed/diagnostic runs retained:** earlier non-allowlisted collection runs are not accepted isolation evidence, including the failed factory case whose pipeline obscured the exit. Intermediate isolated runs failed inventory/lint due to stale generated identity, missing lint-gate arguments, new lint warnings, and the unchanged constructor moving from line 699 to 697 after unused-import cleanup. The broader 84-pass/1-fail diagnostic also encountered that inventory coordinate mismatch while source was still changing; it is not the final proof. The final qualified 42+43 batches above follow the coordinate correction/regeneration and unchanged-source check. No production probe was used to investigate those development runs.
+
+**Next boundary:** PR #389 is still draft and CONFLICTING. Read-only three-way preview against fetched main `8a7cdab16420893fe26a2648d1d03f2b84d8589d` identifies the generated R2b inventory as the conflict; it does not qualify an integrated tree. Main integration/regeneration and affected evidence require Ryan's separate bounded branch-update grant, then fresh CI and final-tip review/disposition. No paid reviewer, trigger/comment, main integration, merge, deployment, T3–T5 or production operation was performed. The event-only completion-success exclusion remains accepted; its proof belongs to T4.
 
 ### Historical prepared T2 draft PR text — now opened as #389
 
@@ -578,7 +683,7 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Cursor, uid 1000, `/tmp/safe_harbor_t2_collect.py` | F1/F2 `cdebf64b487ffa27d61955df9739204829864fe0` | inventory + 9 target-binding + 42 regression + lint gate | all batch exits **0** | F1/F2 correction section |
 | 2026-10-12 | Cursor, isolated generator env | same | `write_v2_inventory_file()` + `test_r2b_v2_implementation_revision` | `dc714d0a…`, digest `5cbc5a99…`; verifier `[]` | Target-binding correction section |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 is closed historically; F1/F2 correction evidence is captured pending Codex bounded delta and fresh CI on the pushed successor. Overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 remains closed historically; F1/F2 correction at `cdebf64` passes Codex's bounded delta at `721fd17` with 85 distinct isolated cases. Main integration/fresh CI, overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
 
 ## Merge reading
 
