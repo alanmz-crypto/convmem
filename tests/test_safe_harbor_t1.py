@@ -240,18 +240,39 @@ def test_reobservation_is_stable_and_a_change_bumps_revision(tmp_path: Path) -> 
     assert len(_findings(_marker(guard))) == 1
 
 
-def test_empty_valid_set_is_not_absence_and_does_not_block(tmp_path: Path) -> None:
+def test_persisted_empty_incident_set_refuses_fresh_admission(tmp_path: Path) -> None:
+    """A schema-valid empty set is present state. Missing remains the admit control."""
     _require_isolated_process()
-    chroma = _refuse_production(tmp_path / "chroma")
-    chroma.mkdir()
+    from doctor import _check_chroma_write_guard
+
+    chroma = _make_store(tmp_path)
     guard = ChromaWriteGuard(chroma)
-    guard._publish_marker(_empty_document(guard))
-    view = guard.read_authority()
-    assert view.state == "clear" and view.blocking is False
+    assert guard.read_authority().state == "absent"
     guard.require_not_quarantined()
-    with pytest.raises(ChromaWriteGuardError, match="ordinary clear refuses"):
-        guard.clear_quarantine()
-    assert guard.quarantine_path.is_file()
+    payload = (json.dumps(_empty_document(guard), indent=2, sort_keys=True) + "\n").encode()
+    guard.root.mkdir(parents=True, exist_ok=True)
+    guard.quarantine_path.write_bytes(payload)
+    view = guard.read_authority()
+    assert view.state == "unresolved" and view.blocking
+    assert "persisted empty incident set" in view.summary
+    admission = _run(tmp_path, ADMIT, str(chroma))
+    assert admission.returncode != 0, admission.stderr
+    assert "admitted" not in admission.stdout
+    assert "quarantine" in admission.stderr.lower()
+    writer = _run(tmp_path, WRITE, str(chroma), "empty-set-write")
+    assert writer.returncode != 0, writer.stderr
+    assert "admitted" not in writer.stdout
+    assert not _embedding_id_present(chroma, "empty-set-write")
+    assert guard.quarantine_path.read_bytes() == payload
+    cfg = {"index": {"chroma_dir": str(chroma)}}
+    assert _check_chroma_write_guard(cfg).effective_status() == "fail"
+    assert guard.quarantine_path.read_bytes() == payload
+    _publish(guard, _finding_spec("seg", "structural", "merged onto empty", ("kept",)))
+    retained = _marker(guard)
+    assert_findings_retained(retained, {finding["id"] for finding in _findings(retained)})
+    still_refused = _run(tmp_path, ADMIT, str(chroma))
+    assert still_refused.returncode != 0
+    assert "admitted" not in still_refused.stdout
 
 
 def test_canonical_alias_shares_one_guard_and_competing_legacy_refuses(tmp_path: Path) -> None:
@@ -305,6 +326,74 @@ def test_competing_legacy_guard_location_refuses_adoption(tmp_path: Path) -> Non
     text = str(raised.value)
     assert str(lexical) in text and str(canonical_root) in text
     assert not canonical_root.exists()
+
+
+def test_alias_store_shares_the_canonical_client_cache(tmp_path: Path) -> None:
+    """An alias store must not refresh bookkeeping for a different stale client."""
+    _require_isolated_process()
+    from chromadb.api.shared_system_client import SharedSystemClient
+
+    from chroma_store import ChromaStore
+    from chroma_write_guard import _SYSTEM_VIEWS
+    from tests._chroma_write_guard_worker import embedding
+
+    real = _refuse_production(tmp_path / "chroma")
+    real.mkdir()
+    link = tmp_path / "alias-chroma"
+    link.symlink_to(real, target_is_directory=True)
+    older = ChromaStore(str(real))
+    alias = ChromaStore(str(link))
+    guarded = None
+    try:
+        assert older.count_summaries() == 0
+        canonical = str(canonical_target(real))
+        assert older.chroma_dir == alias.chroma_dir == canonical
+        assert str(link.resolve()) == canonical
+        identifiers = SharedSystemClient._identifier_to_system
+        assert canonical in identifiers
+        assert str(link) not in identifiers
+        assert len([key for key in identifiers if key in {canonical, str(link)}]) == 1
+        alias.add_summary("alias-row", "doc", embedding("alias-row"), {"source_path": "/fixture"})
+        assert older.count_summaries() == 1
+        assert str(link) not in _SYSTEM_VIEWS
+        assert canonical in _SYSTEM_VIEWS
+        guarded = ChromaStore(str(real), write_guard=ChromaWriteGuard(link))
+        guarded.add_summary("guarded-row", "doc", embedding("guarded-row"), {"source_path": "/fixture"})
+        assert older.count_summaries() == 2
+    finally:
+        if guarded is not None:
+            guarded.close()
+        alias.close()
+        older.close()
+
+
+def test_competing_legacy_location_refuses_an_alias_store(tmp_path: Path) -> None:
+    _require_isolated_process()
+    from chroma_store import ChromaStore
+    from tests._chroma_write_guard_worker import embedding
+
+    real = _refuse_production(tmp_path / "real-store")
+    real.mkdir()
+    link = tmp_path / "alias-store"
+    link.symlink_to(real, target_is_directory=True)
+    lexical = tmp_path / "alias-store.write-guard"
+    lexical.mkdir()
+    (lexical / "QUARANTINE.json").write_bytes(b'{"reason":"old","segment":"seg"}\n')
+    original = (lexical / "QUARANTINE.json").read_bytes()
+    canonical_root = real.parent / "real-store.write-guard"
+    store = ChromaStore(str(link), write_guard=ChromaWriteGuard(link))
+    try:
+        with pytest.raises(ChromaWriteGuardError, match="competing guard locations"):
+            store.add_summary(
+                "should-not-land",
+                "doc",
+                embedding("should-not-land"),
+                {"source_path": "/fixture"},
+            )
+    finally:
+        store.close()
+    assert not canonical_root.exists()
+    assert (lexical / "QUARANTINE.json").read_bytes() == original
 
 
 def test_ordinary_clear_and_doctor_do_not_mutate(tmp_path: Path) -> None:
@@ -364,11 +453,72 @@ def test_ordinary_clear_and_doctor_do_not_mutate(tmp_path: Path) -> None:
     assert guard.quarantine_path.read_bytes() == malformed
 
 
-def test_overwrite_marker_fails_the_retention_assertion() -> None:
+OVERWRITE_PUBLISH = """
+import sys
+from chroma_write_guard import (
+    ChromaWriteGuard,
+    _empty_incident_document,
+    _exclusive_flock,
+    _finding_spec,
+    _upsert_finding,
+)
+guard = ChromaWriteGuard(sys.argv[1])
+finding_a = _finding_spec("seg-a", "structural", "finding A", ("a",))
+finding_b = _finding_spec("seg-b", "structural", "finding B", ("b",))
+with _exclusive_flock(guard.lock_path, 5):
+    guard._publish_findings([finding_a])
+# Deliberately faulty publisher: replace the unresolved set with only B.
+replacement = _empty_incident_document(str(guard.chroma_dir))
+_upsert_finding(replacement, finding_b)
+with _exclusive_flock(guard.lock_path, 5):
+    guard._publish_marker(replacement)
+print("overwritten")
+"""
+
+REAL_PUBLISH = """
+import sys
+from chroma_write_guard import ChromaWriteGuard, _exclusive_flock, _finding_spec
+guard = ChromaWriteGuard(sys.argv[1])
+specs = (
+    _finding_spec("seg-a", "structural", "finding A", ("a",)),
+    _finding_spec("seg-b", "structural", "finding B", ("b",)),
+)
+for spec in specs:
+    with _exclusive_flock(guard.lock_path, 5):
+        guard._publish_findings([spec])
+print("published")
+"""
+
+
+def test_overwrite_publisher_fails_retention_and_real_publisher_keeps_both(tmp_path: Path) -> None:
+    """The faulty A-then-B publisher must fail retention; the real one must pass."""
     _require_isolated_process()
-    overwritten = {"incidents": [{"id": "B", "findings": [{"id": "only-b"}]}]}
+    from chroma_write_guard import _finding_id
+
+    faulty_root = _refuse_production(tmp_path / "faulty")
+    faulty_root.mkdir()
+    overwritten = _run(tmp_path, OVERWRITE_PUBLISH, str(faulty_root))
+    assert overwritten.returncode == 0, overwritten.stderr
+    assert "overwritten" in overwritten.stdout
+    faulty_marker = _marker(ChromaWriteGuard(faulty_root))
+    id_a = _finding_id("seg-a", "structural", "finding A")
+    id_b = _finding_id("seg-b", "structural", "finding B")
+    assert {finding["id"] for finding in _findings(faulty_marker)} == {id_b}
     with pytest.raises(AssertionError, match="missing findings"):
-        assert_findings_retained(overwritten, {"only-a", "only-b"})
+        assert_findings_retained(faulty_marker, {id_a, id_b})
+
+    real_root = _refuse_production(tmp_path / "real")
+    real_root.mkdir()
+    published = _run(tmp_path, REAL_PUBLISH, str(real_root))
+    assert published.returncode == 0, published.stderr
+    assert "published" in published.stdout
+    retained = _marker(ChromaWriteGuard(real_root))
+    assert_findings_retained(retained, {id_a, id_b})
+    admission = _run(tmp_path, ADMIT, str(real_root))
+    assert admission.returncode != 0
+    assert "admitted" not in admission.stdout
+    assert "quarantine" in admission.stderr.lower()
+    assert_findings_retained(_marker(ChromaWriteGuard(real_root)), {id_a, id_b})
 
 
 def _empty_document(guard: ChromaWriteGuard) -> dict:
@@ -458,12 +608,6 @@ def test_audit_retains_sequential_incidents_and_two_findings(tmp_path: Path) -> 
     assert_findings_retained(combined, first_ids)
     segments = {incident["segment"] for incident in combined["incidents"]}
     assert seg_id in segments and "second-segment" in segments
-    with pytest.raises(AssertionError):
-        assert_findings_retained(
-            {"incidents": [combined["incidents"][-1]]},
-            {finding["id"] for finding in _findings(combined)},
-        )
-
     import pickle
 
     from chroma_write_guard import load_segment_id_map

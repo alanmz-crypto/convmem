@@ -465,7 +465,8 @@ def chroma_system_cached(identifier: str) -> bool:
     """True when this process already holds a Chroma system for ``identifier``.
 
     Chroma keys that table by the exact path string given to PersistentClient.
-    The guard's own load record uses the canonical target (see ``_view_key``).
+    Store construction passes the canonical target, and the guard's load record
+    uses that same target (see ``_view_key``).
     """
     from chromadb.api.shared_system_client import SharedSystemClient
 
@@ -834,10 +835,11 @@ def _interpret_current(parsed: Mapping[str, Any], expected_target: str) -> Autho
     legacy_hash = parsed.get("legacy_original_sha256")
     if isinstance(legacy_hash, str):
         document["legacy_original_sha256"] = legacy_hash
-    blocking = bool(incidents)
-    summary = _summary(incidents) if blocking else "no unresolved incidents"
-    state = "unresolved" if blocking else "clear"
-    return AuthorityView(state, blocking, summary, tuple(incidents), document, None, False)
+    # A present marker is never a release. An empty incident list is still
+    # unresolved: only a missing file admits writers. The document stays
+    # recognizable so a later finding can be merged into it.
+    summary = _summary(incidents) if incidents else "persisted empty incident set refuses admission"
+    return AuthorityView("unresolved", True, summary, tuple(incidents), document, None, False)
 
 
 def _document_from_legacy(parsed: Mapping[str, Any], target: str, raw: bytes) -> dict[str, Any]:
@@ -1061,7 +1063,7 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         )
 
     def read_authority(self) -> AuthorityView:
-        """Interpret the marker. Missing is the only non-blocking state besides a valid empty set."""
+        """Interpret the marker. A missing file is the only non-blocking state."""
         if self.identity_conflict:
             lexical, canonical = self.identity_conflict
             return _blocked(f"competing guard locations {lexical} and {canonical}")
