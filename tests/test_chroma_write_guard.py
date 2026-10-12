@@ -27,6 +27,7 @@ from chroma_store import SUMMARIES, UNITS, ChromaStore
 from chroma_write_guard import (
     ChromaStaleSystemError,
     ChromaWriteGuard,
+    ChromaWriteGuardError,
     ChromaWriteQuarantinedError,
     load_segment_id_map,
     recover,
@@ -234,7 +235,8 @@ def test_torn_segment_with_no_validated_save_quarantines(tmp_path: Path) -> None
     with pytest.raises(ChromaWriteQuarantinedError):
         recover(chroma)
     state = ChromaWriteGuard(chroma).quarantine_state()
-    assert state["reason"].startswith("live segment failed validation")
+    reasons = [finding["reason"] for incident in state["incidents"] for finding in incident["findings"]]
+    assert any(reason.startswith("live segment failed validation") for reason in reasons)
 
 
 def test_quarantine_stops_guarded_writes_but_not_reads(tmp_path: Path) -> None:
@@ -271,7 +273,12 @@ def test_invalid_own_save_quarantines_instead_of_restoring(tmp_path: Path, monke
             store.add_summary("s199", "doc", embedding("s199"), {"source_path": "/fixture"})  # 200th: saves
     finally:
         store.close()
-    assert ChromaWriteGuard(chroma).quarantine_state()["reason"].startswith("this process's own save")
+    reasons = [
+        finding["reason"]
+        for incident in ChromaWriteGuard(chroma).quarantine_state()["incidents"]
+        for finding in incident["findings"]
+    ]
+    assert any(reason.startswith("this process's own save") for reason in reasons)
     # Restoring the older copy here would silently drop records 100..199: it must not happen.
     assert (seg / "data_level0.bin").stat().st_ino == inode
     assert segment_signature(seg) != snapshot_sig
@@ -459,8 +466,14 @@ def test_doctor_reports_quarantine_restores_and_off_switch(tmp_path: Path) -> No
     guard._event("segment_restored", segment="seg")
     assert _check_chroma_write_guard(cfg).effective_status() == "warn"
     guard.quarantine_path.write_text(json.dumps({"reason": "test", "segment": "seg"}), encoding="utf-8")
+    marker = guard.quarantine_path.read_bytes()
     assert _check_chroma_write_guard(cfg).effective_status() == "fail"
-    assert guard.clear_quarantine() and not guard.clear_quarantine()
+    assert guard.quarantine_path.read_bytes() == marker
+    with pytest.raises(ChromaWriteGuardError):
+        guard.clear_quarantine()
+    assert guard.quarantine_path.read_bytes() == marker
+    guard.quarantine_path.unlink()
+    assert guard.clear_quarantine() is False
     off = {"index": {"chroma_dir": str(chroma), "chroma_write_guard": False}}
     assert _check_chroma_write_guard(off).effective_status() == "warn"
 

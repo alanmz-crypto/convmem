@@ -9,6 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Safe Harbor — BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW
+  NEXT (2026-10-11):** The two-test correction passed its focused Copilot delta
+  review at `2977c45` (85%). Cursor merged main `5550def` into the T1 branch
+  at `c624e2f`, regenerated the derived inventory and recorded isolated
+  integration evidence. Codex coordinates fresh CI and the final-tip review.
+  Bounded grant:
+  [execution section 8 grant](../plans/EXECUTION-safe-harbor.md#bounded-branch-update--owner-authorized).
+  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
+  candidate, CI, review and authority state. Merge, deployment and T2–T5 remain
+  ungranted; the alternative audit is not an automatic BugBot-gate exemption.
+
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
   guarded incremental route instead of re-indexing the whole file on every
