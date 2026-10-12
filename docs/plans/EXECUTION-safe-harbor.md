@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 GRANTED to Cursor.** Ryan accepted the plan/B-E4.1 at `dca13a5`, including all five consumer outcomes. T1 landed via PR #387 (`05aa2c8`). Section 9 records the separate T2 implementation/isolated-evidence grant and workspace; implementation has not started. Ownership and reviewed contracts are unchanged. T3–T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1 MERGED; T2 IMPLEMENTATION DELIVERED, V2 NOT ACCEPTED.** Ryan accepted the plan/B-E4.1 at `dca13a5`, including all five consumer outcomes. T1 landed via PR #387 (`05aa2c8`). Section 9 preserves the T2 grant and dispatch workspace; [STATUS](STATUS-safe-harbor.md) and [VERIFY V2](VERIFY-safe-harbor.md#v2--target-binding-and-freshness-t2) hold the delivered candidate, captured isolated evidence and open event-only completion limitation. External final-tip review and Ryan acceptance remain pending. Ownership and reviewed contracts are unchanged. T3–T5 and live operations remain ungranted.
 
 ## 1. Source, authority and goal
 
@@ -10,10 +10,10 @@
 
 ```text
 Planning Status
-Phase:        T2 Execute handoff ready; implementation not started
+Phase:        T2 implementation/evidence delivered; V2 acceptance pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Codex prepares the handoff; Cursor implements granted T2
+Lanes:        Cursor implemented T2; Codex collected evidence; Ryan routes review
 Authority:    Plan/B-E4.1 accepted; T1 completed; Ryan granted isolated T2 (section 9)
 ```
 
@@ -393,7 +393,7 @@ Stop after the bounded T1 handoff. No automatic transition to T2, broader Verify
 
 ### Resume state
 
-- State: **NOT_STARTED / GRANTED**. Codex has prepared only this handoff and current-state records; V2 is NOT RUN.
+- State **at dispatch `9664878`: NOT_STARTED / GRANTED**. Codex had prepared only this handoff and current-state records. This is historical grant context; current implementation/evidence and remaining acceptance limits are in [STATUS](STATUS-safe-harbor.md) and [VERIFY V2](VERIFY-safe-harbor.md#v2--target-binding-and-freshness-t2).
 - Branch: `fix/2026-10-12-safe-harbor-t2`.
 - Worktree: `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`.
 - Code baseline: T1 squash `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`, also remote `main` when prepared. The immediate branch base `1e55af03d38c77ba5d1d405933eb2588cf597529` adds only T1 closeout documentation. The next documentation commit records this grant and is the start SHA supplied in Codex's dispatch; confirm that parentage and clean state before editing.
@@ -433,4 +433,4 @@ The required final-tip external review is separate from implementation evidence.
 
 ## TL;DR
 
-[Arc Safe Harbor] Ryan granted T2 implementation and isolated V2 evidence to Cursor; the approved plan and five-consumer B-E4.1 contract are unchanged. Section 9 supplies the pinned workspace, scope, tests and stop. T2 is not started; T3–T5, PR/review actions and live operations remain ungranted.
+[Arc Safe Harbor] T2 implementation and isolated evidence are delivered on the task branch; V2 acceptance and external final-tip review remain pending, with the event-only completion limitation explicit in STATUS/VERIFY. The approved plan and five-consumer B-E4.1 contract are unchanged. Section 9 preserves the grant, pinned dispatch workspace, scope, tests and stop. T3–T5, PR/review actions and live operations remain ungranted.
