@@ -9,16 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Issue #308 — inter-model rejection retry loop: READY_FOR_PR at
-  `3e1e691` (2026-10-12):** Claude verified it, and Copilot and Kiro both
-  passed the exact tip. It's open as
-  [PR #390](https://github.com/alanmz-crypto/convmem/pull/390) for Ryan to
-  merge; then the Stage 2 watcher canary grant. This is a Stage 2
-  prerequisite of the Codex burn work. A provenance-supersession rejection is never recorded, so the
-  same doc is retried on every watcher event. Cursor records a terminal
-  rejection keyed by path and content hash, and the watcher and the
-  reconciler consult it. Start from the
-  [Cursor handoff](CURSOR-2026-10-12-issue-308-inter-model-rejection-handoff.md).
+- **Issue #308 — inter-model rejection retry loop: MERGED (2026-10-12):**
+  PR #390, squash-merged as `8a7cdab`, after Claude's verification and
+  Copilot and Kiro PASS at `3e1e691`. A doc that the provenance guard rejects
+  is no longer retried until its bytes change. Next for the Codex burn is
+  Ryan's Stage 2 grant, the 24 h watcher canary (the "Stage 2 packet" on
+  `docs/2026-10-11-issue-286-codex-stage1-run`).
+  [Handoff](CURSOR-2026-10-12-issue-308-inter-model-rejection-handoff.md).
 
 - **Arc Safe Harbor — BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW
   NEXT (2026-10-11):** The two-test correction passed its focused Copilot delta
