@@ -144,6 +144,11 @@ def discover_legacy_source_drift(
                 )
             continue
         if recorded is None:
+            from inter_model_rejections import inter_model_rejection_matches
+
+            processed_log = str(cfg["index"]["processed_log"])
+            if inter_model_rejection_matches(processed_log, canonical, observed):
+                continue
             findings.append(
                 SourceDriftFinding(
                     canonical_path=canonical,
