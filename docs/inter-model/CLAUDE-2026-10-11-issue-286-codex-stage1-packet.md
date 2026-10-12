@@ -134,3 +134,43 @@ None of these options needs code:
 
 Stage 2 is a 24 h watcher canary under a separate grant. It also needs the
 #308 fix and the 4G watch drop-in reconciliation (design §9).
+
+### #308 diagnosis (Claude, 2026-10-11, read-only; CPU churn, not paid calls)
+
+**The loop, on current `main`:**
+
+1. Any exception during inter-model indexing returns `skipped`
+   (`ingest.py:748–751` and `:1423–1429`) and leaves `processed.json`
+   unchanged. That includes the provenance-supersession guard
+   (`inter_model_index.py:118`).
+2. The reconciliation timer, every 2 minutes, reports a doc with no
+   processed record as `new_eligible_source` (`source_reconciler.py:169`).
+3. The watcher spawns a child, the guard rejects the doc again, and the
+   cycle repeats while the content stays the same.
+
+**Exposure now:** the watcher reads `~/Projects/convmem/docs/inter-model`
+(172 docs), which follows whatever branch that shared checkout has checked
+out. Of those docs:
+
+- 6 have never been recorded;
+- about 15 have changed since their last record.
+
+Any that trip the guard will loop once the watcher starts.
+
+**Fix shape (needs a Ryan grant and a Cursor handoff):**
+
+- Make a provenance rejection terminal for that content: record the
+  rejected hash, then skip in both the reconciler and the watcher until the
+  content changes.
+- This mirrors the Codex refusal quarantine, but it releases when the
+  content changes instead of being terminal by path.
+- No paid calls are involved. The inter-model path does no summarizing or
+  distilling.
+
+### 4G watch drop-in (Ryan-gated host config; owned by OpenClaw Watch Coverage)
+
+`~/.config/systemd/user/convmem-watch.service.d/zz-openclaw-watch-limits.conf`
+sorts after `oom-mitigation.drop-in.conf`, and still re-imposes
+`MemoryMax=4G` and `MemoryHigh=3G` over the 8G mitigation. That pair is
+documented as the cause of the service OOM kills on Sep 28 and 29.
+Reconcile it before the Stage 2 watcher start.
