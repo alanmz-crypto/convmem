@@ -63,7 +63,7 @@ class IncrementalJsonlSettings:
 
 def _canonical_config_path(raw: str, *, label: str) -> Path:
     text = raw.strip()
-    path = Path(text).expanduser()
+    path = Path(text)
     if not path.is_absolute():
         raise IncrementalJsonlConfigError(
             "noncanonical_path",

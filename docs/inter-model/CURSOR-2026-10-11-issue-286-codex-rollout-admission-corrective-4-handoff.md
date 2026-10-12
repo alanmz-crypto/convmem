@@ -185,3 +185,213 @@ after every commit with an explicit refspec. Ryan squash-merges.
 
 - [ ] Cherry-pick the docs commit; read §13 and this file
 - [ ] State Goal / role / system state / next action; Arc: Codex
+
+---
+
+## Verification of `fc8ea2a` (Claude, 2026-10-11) — not ready for review
+
+Cursor's corrective-4 tip fixes C1–C6 in code, and the branch merges
+cleanly with `main`. Two mechanical blockers remain, checked in clean
+scratch worktrees with a fresh CI-style config:
+
+1. **The Pylint regression gate fails** with 3 new findings in
+   `tests/test_incremental_jsonl_codex_corrective_4.py`: an unused `mock`
+   import (line 10) and unused arguments `path` and `kwargs` (line 152).
+   This happens with the exact CI command, against either `905ad40` or
+   `main`'s merge base (`6a23aa9`). The baseline file is identical on both,
+   so the base ref is not the cause.
+2. **51 tests fail on the tip; `main` passes the same 70-file set (665
+   passed, 0 failed).**
+   - The `convmem.py` C0207 fix shifted that file's lines by one, so the
+     shadow and R2B writer inventories are stale (`convmem.py:416/520/694/
+     710/1772` → `+1`). That cascades through the R2B v2 authority and
+     revision tests.
+   - The `watch.py` canary baseline hash was not refreshed; three baseline
+     tests fail.
+
+Notes for the reviewers, which don't block review:
+
+- **Native-fault detection now uses the real exit code.** Before, a
+  crashing child that printed anything to stderr was never counted as a
+  native fault. This is a behavior change for every watched path, and Kiro
+  should rule on it.
+- **C3:** the parent no longer hashes (good). But `streaming_byte_digest_for_path`
+  is used only by its test, and the old `streaming_complete_prefix_digest_for_path`
+  still has the unbounded buffer. Remove both, or fix and use them. Refusals
+  for `source_too_large` carry no digest, which is allowed.
+- **Verbose mode now hides child stderr when the child succeeds.**
+- **C1 recovery:** an `OSError` on `fstat` is reported as
+  `source_too_large`. It fails closed, but the label is wrong.
+- **STATUS merge:** the resolution condensed `main`'s Kiro-bootstrap §5
+  paragraph instead of keeping it verbatim.
+
+---
+
+## Verification of `86597d8` (Claude, 2026-10-11) — clean; merge `main` before review
+
+Corrective 4b clears both `fc8ea2a` blockers, checked in a clean scratch
+worktree with a fresh CI-style config:
+
+- Pylint regression gate: PASS against `main`'s merge base.
+- The 70-file Codex, watcher, breaker, doctor, config and inventory set: 705
+  passed, 0 failed.
+- `streaming_complete_prefix_digest_for_path` matches the reference digest
+  on 4,000 random files with buffer sizes 1–16, and peaks at about 136 KB on
+  a 16 MiB unterminated line. The unused byte-digest helper is gone.
+
+**Remaining step before review:** `main` moved to `db8aebb` (PR #385, the
+#268 watch-memory diagnosis harness). The branch now conflicts with `main` in
+four generated files: the shadow and R2B writer inventories,
+`eval_corpus/r2b_v2/coverage/inventory.py`, and the canary baseline test.
+`convmem.py`, `ingest.py` and `watch.py` auto-merge, but #385 adds
+diagnostic markers to `ingest.py` and `convmem.py`, and it changes
+`scripts/pylint_regression_gate.py`.
+
+- Merge `origin/main`. Don't rebase.
+- Resolve the four files by regenerating them, not by hand-editing.
+- Rerun the full suite and the Pylint gate from a clean checkout.
+- Remove the leftover `.worktrees/ci-verify-286-4b-clean`.
+
+## Verification of `97a2951` (Claude, 2026-10-11) — clean; remove one stray file before review
+
+Corrective 4c merges `main` at `db8aebb` (PR #385) without rebasing. I
+checked it in a clean scratch worktree with a fresh CI-style config:
+
+- Pylint regression gate: PASS against base `db8aebb` (465 findings, 240
+  fingerprints, nothing new or increased).
+- The 70-file Codex, watcher, breaker, doctor, config and inventory set,
+  which now also picks up #385's diagnosis tests: 759 tests, 753 passed,
+  6 skipped (opt-in tests), 0 failed. The first run, from a checkout on
+  tmpfs, gave 1 failure and 27 errors in two #385 diagnosis files, because
+  that harness refuses tmpfs scratch (`scratch_not_disk_backed`). Rerun
+  from a disk-backed checkout, those two files pass: 46 passed, 2 skipped.
+- The merge keeps both sides:
+  - `watch.py` has #385's hermetic inner scope and diagnosis marks, plus
+    this branch's exit-91 refusal path, piped stderr and
+    `IndexSubprocessError`.
+  - #385's inner supervisor returns the child's exit code and inherits its
+    stderr, so refusals still reach the watcher during diagnosis runs.
+  - The R2B sink pin `convmem.py:699` is the dry-run `ChromaStore`
+    constructor, and the canary hashes match the merged files.
+
+**Remaining step before review:** the merge commit adds a stray
+`pylint-report.json` (212 KB of generated Pylint output) at the repo root.
+Neither parent has this file. Remove it with `git rm`, then push. Also
+remove the new leftover `.worktrees/ci-verify-286-4c-clean`.
+
+**Reviewer notes (not blocking):**
+
+- `production_chroma_write_session_call_sites` in the regenerated shadow
+  inventory is now ordered as strings (`convmem.py:1777` before
+  `convmem.py:421`); both parents ordered it by line number. Tests compare
+  it as a set, so this is cosmetic.
+- The earlier notes still stand for Kiro and Copilot:
+  - Native-fault detection now uses the real exit code.
+  - Verbose mode hides child stderr when the child succeeds.
+  - In recovery, an `OSError` is labelled `source_too_large`.
+  - The STATUS merge condensed `main`'s Kiro-bootstrap paragraph.
+
+**Corrective 4d (`a5f1756`):** removes the stray `pylint-report.json` and
+changes nothing else. The tree equals `97a2951` minus that file, and `main` at
+`db8aebb` is an ancestor. Cursor removed both leftover test checkouts. Resume
+state: ready for Copilot audit and Kiro recheck of exact tip `a5f1756`.
+
+## Kiro recheck of `a5f1756` (2026-10-11) — PASS
+
+Kiro reran the Pylint gate (PASS against base `db8aebb`) and 74 focused
+tests, and confirmed that C1–C6, K1 and all six §13 conditions hold. Its
+rulings on the reviewer notes:
+
+- (a) Native-fault detection on the real exit code: accepted.
+- (b) Verbose mode hiding a successful child's stderr: accepted.
+- (c) Recovery labels an `OSError` as `source_too_large`: accepted. It still
+  fails closed. A follow-up could map it to a distinct code such as
+  `source_unavailable`; not required for this PR.
+- (d) The branch STATUS condensed `main`'s Kiro-bootstrap paragraph: accepted,
+  but flagged because the sync instruction said not to edit that text. Claude
+  confirmed the dropped text includes `main`'s opening line, "The Kiro
+  bootstrap remains stopped before grant materialization or paid calls."
+  Restore `main`'s paragraph verbatim in a docs-only commit before the PR.
+- (e) Shadow inventory in string order: accepted (cosmetic).
+
+The Copilot audit of the same tip is next.
+
+## Copilot re-audit of `a5f1756` (2026-10-11) — FAIL; corrective 5
+
+Copilot closed C2, C3 and C4, and found the #385 merge grants no new
+live-route authority. It FAILed the tip on three residual blockers. Claude
+confirmed all three in the code at `a5f1756`:
+
+- **C5b** was confirmed by a probe of the parser itself.
+- **C1b** and **C6b** were confirmed by reading the code.
+- Claude's earlier verifications missed C5b. So did the C5 pattern in this
+  handoff: it didn't say that outcomes can contain a colon.
+
+Kiro PASSed the same tip, so this is a same-revision PASS/FAIL conflict. The
+findings are reproducible, so a new tip replaces both verdicts. Ryan decides
+whether Sol-High adjudicates `a5f1756` anyway.
+
+### Resume state
+
+| Field | Value |
+|-------|--------|
+| **State** | `NOT_STARTED` |
+| **Branch** | `feat/2026-10-10-issue-286-codex-rollout-admission` |
+| **Tip SHA** | `a5f1756` (Kiro PASS, Copilot FAIL) |
+| **Authorization** | Ryan's 2026-10-10 hermetic grant (unchanged) |
+
+### Findings and required fixes
+
+| # | Sev | Finding at `a5f1756` | Location | Required fix |
+|---|---|---|---|---|
+| C5b | High | The refusal parser accepts only a colon-free outcome (`[^:\s]+`). Every `rebuild_required:<reason>` refusal is emitted with exit 91, but parses as `None`. That includes D8's `rebuild_required:projection_checkpoint_mismatch`, and the continuity refusals Kiro exact-path sources also emit. Those refusals are never quarantined, and each later append respawns a child. This breaks D3, §13 conditions 3–4 and Kiro ruling (b). | `watch_circuit_breaker.py:16–27` | Accept an outcome of one or more `:`-separated lowercase tokens (`[a-z0-9_]+`), followed by an optional final `:<64 hex>` digest. Strip the trailing digest before matching the outcome; a single greedy regex would swallow the digest into the outcome. Keep the exit-91 and whole-line requirements. The parsed outcome and digest must equal what `format_live_route_refused` was given. |
+| C1b | High | When no checkpoint exists, recovery skips fresh-run eligibility. `_codex_projection_checkpoint_mismatch` returns `None`, and `_codex_roll_forward_refusal` never applies the fresh path's `bootstrap_required` rule (a processed entry or Chroma rows with no checkpoint). Scenario: the first admitted run crashes in `PREPARING`. Legacy indexing then indexes the source, and admission is restored after another append. Recovery then transforms and commits over the legacy projection. | `incremental_jsonl.py:1068–1071`, `:1112–1163`; the fresh rule at `:427–430` | In `_codex_roll_forward_refusal`, with no checkpoint, refuse `bootstrap_required` whenever the fresh path would. That means a processed entry for the path, or Chroma rows that this transaction did not write. Use the existing refusal flow: clean up, or restore the before-images and return `rolled_back`. Add no new outcome code. |
+| C6b | Medium | `expanduser()` runs before the absolute-path check, so a raw `root = "~/.codex/sessions"` is accepted. C6 requires the raw value to be absolute already. | `config.py:64–70` | Check `Path(raw).is_absolute()` on the stripped raw text before any expansion. Reject `~` and `~user` forms as `noncanonical_path`. Any config example or doc for this root uses the absolute form. |
+| D1 | Docs | Kiro note (d): the branch STATUS dropped `main`'s Kiro-bootstrap paragraph, including its opening line "The Kiro bootstrap remains stopped before grant materialization or paid calls." | `docs/plans/STATUS-codex-jsonl-production-integration.md` §5–§6 | Restore `main`'s Kiro-bootstrap text in §5 and §6 word for word from `origin/main`. Keep the Codex track as separate added text. Also replace the branch copy of this handoff with the docs-branch version: `git checkout origin/docs/2026-10-10-issue-286-codex-rollout-admission-design -- docs/inter-model/CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md`. |
+
+**Report, don't fix:** say whether recovery for Kiro exact-path sources has the
+same no-checkpoint gap as C1b.
+
+### What NOT to build
+
+- No new outcome codes, config keys or admission rules. `OSError` →
+  `source_too_large` stays as it is (Kiro ruling (c)).
+- No change to C2, C3, C4 or the #385 diagnosis code.
+- Everything in this handoff's and the Execute handoff's "What NOT to build"
+  still applies. In particular: no live config, watcher, provider call or PR.
+
+### Test expectations
+
+Each test must fail at `a5f1756` and pass after the fix.
+
+1. **C5b:** every refusal outcome the route can emit round-trips through
+   `format_live_route_refused` → CLI stderr → `parse_live_route_refused`, with
+   and without a digest. That includes `rebuild_required:projection_checkpoint_mismatch`
+   and each `rebuild_required:<continuity>` reason. Also:
+   - a watcher test where the child exits 91 with the D8 marker quarantines on
+     the first event, and later appends spawn zero children, in both verbose
+     and quiet mode;
+   - the C5 negative tests (exit 1 with a quoted marker; exit 91 without a
+     whole-line marker) still don't quarantine.
+2. **C1b:** Copilot's scenario refuses `bootstrap_required` with zero provider
+   calls and no Chroma or processed change. The scenario: a crashed first
+   admitted run in `PREPARING`, then a legacy index, then admission restored
+   after an append. A first-run `PREPARING` recovery and a first-run `APPLYING`
+   recovery with no legacy run still commit (no regression).
+3. **C6b:** `~/.codex/sessions` and `~user/.codex/sessions` fail validation as
+   `noncanonical_path`; an absolute canonical root passes.
+4. **D1:** `git diff origin/main -- docs/plans/STATUS-codex-jsonl-production-integration.md`
+   shows only added Codex text, with no removed or reworded `main` lines.
+
+### Acceptance
+
+- [ ] C5b, C1b, C6b and D1 are fixed, and each is mapped to its test name in
+      the handoff-back.
+- [ ] From a clean checkout of the pushed tip on disk-backed storage (not
+      tmpfs), with a fresh CI config: the full-suite summary line (only the
+      known #320 golden-eval failure allowed) and the exact Pylint gate
+      command with `--base-ref` set to the merge base, plus its final line.
+- [ ] No leftover worktrees, no generated reports committed, and
+      `git show --stat` for each new commit.
+- [ ] Pushed with an explicit refspec. No force-push, and no rebase; if `main`
+      moves, merge it.

@@ -1082,6 +1082,46 @@ class IncrementalJsonlCoordinator:
                 return None
         return "projection_checkpoint_mismatch"
 
+    def _transaction_written_row_ids(self, transaction: dict) -> tuple[set, set]:
+        summaries: set[str] = set()
+        units: set[str] = set()
+        for key in transaction.get("prepared_keys") or []:
+            payload = _read_json(self._prepared_path(str(key)))
+            if not isinstance(payload, dict):
+                continue
+            summaries.add(str(payload.get("doc_id")))
+            for unit in payload.get("units") or []:
+                if isinstance(unit, dict):
+                    units.add(str(unit.get("id")))
+        return summaries, units
+
+    def _codex_recovery_bootstrap_required(
+        self, transaction: dict, rollback: dict | None
+    ) -> bool:
+        """C1b: checkpointless recovery applies the fresh-run bootstrap rule."""
+        if self.bootstrap_existing:
+            return False
+        processed = load_processed(str(self.cfg["index"]["processed_log"]))
+        if _path_has_processed_entry(processed, self.path_key):
+            return True
+        if rollback is None:
+            return self._chroma_row_count() > 0
+        if (
+            rollback.get("processed_preimage")
+            or rollback.get("summaries")
+            or rollback.get("units")
+        ):
+            return True
+        written_summaries, written_units = self._transaction_written_row_ids(transaction)
+        with self._session() as session:
+            foreign_summaries = (
+                session.store.ids_for_source(SUMMARIES, self.path_key) - written_summaries
+            )
+            foreign_units = (
+                session.store.ids_for_source(UNITS, self.path_key) - written_units
+            )
+        return bool(foreign_summaries or foreign_units)
+
     def _codex_admission_guard_code(
         self,
         snapshot: dict,
@@ -1115,6 +1155,7 @@ class IncrementalJsonlCoordinator:
         *,
         transaction: dict,
         phase: str,
+        rollback: dict | None,
     ) -> str | None:
         if not self.codex_admitted_live:
             return None
@@ -1144,6 +1185,10 @@ class IncrementalJsonlCoordinator:
         projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
         if projection_mismatch:
             return f"rebuild_required:{projection_mismatch}"
+        if checkpoint is None and self._codex_recovery_bootstrap_required(
+            transaction, rollback
+        ):
+            return "bootstrap_required"
         continuity = _continuity_reason(
             checkpoint, snapshot, self.transform_fingerprint
         )
@@ -2178,7 +2223,7 @@ class IncrementalJsonlCoordinator:
             "snapshot_dir": snapshot_dir,
         }
         roll_refusal = self._codex_roll_forward_refusal(
-            snapshot, transaction=transaction, phase=phase
+            snapshot, transaction=transaction, phase=phase, rollback=rollback
         )
         if roll_refusal:
             if rollback is None:

@@ -13,17 +13,32 @@ _DEFAULT_CB_TIMEOUT_THRESHOLD = 3
 _DEFAULT_CB_GLOBAL_THRESHOLD = 5
 _DEFAULT_CB_GLOBAL_WINDOW_SECONDS = 30 * 60
 
-_LIVE_ROUTE_REFUSED_LINE_RE = re.compile(
-    r"^live_route_refused:([^:\s]+)(?::([0-9a-f]{64}))?$"
-)
+_LIVE_ROUTE_REFUSED_PREFIX = "live_route_refused:"
+_REFUSAL_OUTCOME_RE = re.compile(r"[a-z0-9_]+(?::[a-z0-9_]+)*")
+_REFUSAL_DIGEST_RE = re.compile(r"[0-9a-f]{64}")
+
+
+def _parse_refusal_line(line: str) -> tuple[str, str] | None:
+    if not line.startswith(_LIVE_ROUTE_REFUSED_PREFIX):
+        return None
+    body = line[len(_LIVE_ROUTE_REFUSED_PREFIX):]
+    # A greedy outcome pattern would swallow the digest, so strip it first.
+    head, sep, tail = body.rpartition(":")
+    if sep and _REFUSAL_DIGEST_RE.fullmatch(tail):
+        outcome, digest = head, tail
+    else:
+        outcome, digest = body, ""
+    if not _REFUSAL_OUTCOME_RE.fullmatch(outcome):
+        return None
+    return outcome, digest
 
 
 def parse_live_route_refused(message: str) -> tuple[str, str] | None:
     """Return (outcome, digest) when a whole stderr line is a refusal marker."""
     for line in message.splitlines():
-        match = _LIVE_ROUTE_REFUSED_LINE_RE.match(line.strip())
-        if match:
-            return match.group(1), match.group(2) or ""
+        parsed = _parse_refusal_line(line.strip())
+        if parsed:
+            return parsed
     return None
 
 

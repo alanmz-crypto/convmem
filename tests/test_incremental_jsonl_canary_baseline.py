@@ -22,8 +22,9 @@ BASELINE_HASHES = {
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.
     # Refreshed for issue #286 Codex rollout admission route, guards, and
-    # structured admitted-run logging.
-    "incremental_jsonl.py": "b06aa772d820e4563d30a1af98b45fca2329d39efc92ba79ce19859a8ceedafe",
+    # structured admitted-run logging; refreshed for corrective 5 checkpointless
+    # recovery bootstrap_required refusal.
+    "incremental_jsonl.py": "88eb40a6a57542ca3000cc8152c64a338e0883837ae241ca90421cb0127d189e",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
