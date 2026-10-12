@@ -13,9 +13,9 @@ work.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 2 (see the end of this file) |
+| **State** | `IN_PROGRESS`: corrective 2 verified; Copilot and Kiro review at `74e193f` |
 | **Branch** | `fix/2026-10-12-issue-308-inter-model-rejection` (create from `origin/main`) |
-| **Tip SHA** | `1e76650` (base `05aa2c8`) |
+| **Tip SHA** | `74e193f` (merge base `138e3aa`) |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-308-inter-model-rejection-handoff` |
 | **PR** | not opened |
 | **Ryan GATE** | none for hermetic implementation; Ryan alone merges |
@@ -236,3 +236,35 @@ Corrective 2 changes only JSON, plus a docs-only `main` merge. So the
 targeted tests named in the K3 fix are enough; there is no need for another
 full run. If Cursor takes the reconciler nit, the Pylint gate must also be
 rerun.
+
+## Verification of `74e193f` (Claude, 2026-10-12) — PASS, ready for review
+
+Corrective 2 is two commits:
+- the merge of `origin/main` at `138e3aa`, docs-only #386 (K4);
+- `74e193f`, the K3 fix plus the reconciler helper.
+
+- **K3 closed.** The shadow inventory's `sites` now equals `main`'s 33
+  entries, ignoring line numbers. `ingest.py:1239` is
+  `reads_reindex_snapshot_under_writer_gate`, and `cg2_rehearsal.py:951`
+  is restored. The only other change from `main` is the corrected call-site
+  line numbers.
+- **R2B.** It was regenerated because `source_reconciler.py` changed. Only
+  `code_revision` and `inventory_digest` differ (`3b6685af` to `e196ccd4`).
+- **Reconciler helper.** `_skip_recorded_inter_model_rejection` is a pure
+  refactor of the two duplicated lookups, and behavior is unchanged.
+  Cosmetic only: there are four blank lines before the helper and one after
+  it. This is non-blocking, and no linter in CI checks it.
+- **Targeted tests,** clean disk-backed worktree, fresh CI config: 63
+  files (#308, shadow, R2B v2, reconciler, canary, watch, inter-model and
+  T3 residual), giving "461 passed, 6 skipped".
+- **Pylint gate PASS:** base `138e3aa`, "463 findings, 240 fingerprints; no
+  new/increased vs baseline". The two extra findings against `1e76650` are
+  `cyclic-import` reports attributed to `writer_census.py`. The branch only
+  moved an existing local import into a helper.
+- **Full suite:** `1e76650` was clean (0 failures, above). Since then, only
+  JSON and a behavior-neutral refactor have changed, and CI reruns the full
+  suite on the PR.
+
+**Next:** the headless Copilot audit (fail-open, writer narrowness,
+suppression, isolation, lock, writer boundary) and the Kiro conformance
+review, both at `74e193f`. Then Ryan's PR decision.
