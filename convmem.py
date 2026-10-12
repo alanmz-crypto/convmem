@@ -1339,7 +1339,7 @@ def propose_decision_command(
     if isinstance(recover, str) and recover:
         _guard_write()
         try:
-            with _admitted_operation("propose_decision.recover", governed=True, expected_cfg=cfg) as op:
+            with _admitted_operation("propose_decision.write", governed=True, expected_cfg=cfg) as op:
                 action = recover_approval(op.config(), recover)
         except ValueError as e:
             render_error(str(e))

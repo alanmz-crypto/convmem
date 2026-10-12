@@ -722,6 +722,23 @@ class Cli:
                 (self.s.data / "pending_decisions.jsonl").read_text().splitlines() if line.strip()]
         return rows[-1]["id"]
 
+    @property
+    def census_dir(self) -> Path:
+        return _refuse_production(Path.home() / ".local/share/convmem/writer-census")
+
+    def arm_census(self) -> dict:
+        """Arm the real writer census bound to this home's writer gate."""
+        proc = self.convmem("writer-census-start", "--chroma-root", str(self.s.chroma))
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        armed = json.loads(proc.stdout.strip().splitlines()[-1])
+        assert armed["verdict"] == "ARMED"
+        assert self.census_events() == []
+        return armed
+
+    def census_events(self) -> list[dict]:
+        path = self.census_dir / "session-events.jsonl"
+        return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
 
 NOW_ENV_KEY = "SAFE_HARBOR_T2_NOW"
 
@@ -868,6 +885,71 @@ def _event_only_state(cli: Cli) -> str:
     assert "BLOCKED" not in proc.stderr
     assert "Approval apply deferred for recovery" in proc.stdout
     return pid
+
+
+def _assert_census_admitted(events: list[dict], armed: dict) -> None:
+    """Telemetry: the outer admission opened and closed in the armed census."""
+    opens = [e for e in events if e["event"] == "open"]
+    closes = [e for e in events if e["event"] == "close"]
+    assert opens, events
+    assert {e["entrypoint"] for e in opens} == {"propose_decision.write"}
+    assert {e["census_id"] for e in events} == {armed["census_id"]}
+    assert sorted(e["nonce"] for e in closes) == sorted(e["nonce"] for e in opens)
+
+
+def _assert_recovered(proc, cli: Cli, pid: str, before: dict) -> None:
+    """Logical effect: one new marked unit and exactly one APPROVED event."""
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert f"Recovered {pid}: retry_chroma" in proc.stdout
+    after = cli.dump()
+    assert len(after["chroma"]["units"]) == len(before["chroma"]["units"]) + 1
+    assert [u for u in after["chroma"]["units"] if u["metadata"].get("proposal_id") == pid]
+    assert [e["event_type"] for e in _pid_events(cli, pid)].count("APPROVED") == 1
+
+
+def test_cli_recover_with_armed_census_succeeds_on_current_snapshot(cli: Cli):
+    pid = _approval_started(cli)
+    env = _current(cli)
+    armed = cli.arm_census()
+    before = cli.dump()
+    proc = cli.convmem("propose_decision", "--recover", pid, env=env)
+    _assert_recovered(proc, cli, pid, before)
+    _assert_census_admitted(cli.census_events(), armed)
+
+
+def test_cli_recover_with_armed_census_refused_on_future_snapshot(cli: Cli):
+    pid = _approval_started(cli)
+    env = _future(cli)
+    armed = cli.arm_census()
+    before = cli.dump()
+    proc = cli.convmem("propose_decision", "--recover", pid, env=env)
+    _assert_refused(proc, EXIT_STALE, REASON_FUTURE_SNAPSHOT_TIME)
+    # Census telemetry records the admitted session; logical state is unchanged.
+    _assert_census_admitted(cli.census_events(), armed)
+    assert cli.dump() == before
+    assert "APPROVED" not in [e["event_type"] for e in _pid_events(cli, pid)]
+
+
+def test_control_old_recover_label_refused_by_armed_census(cli: Cli):
+    """Negative control: the pre-correction label fails the same workflow."""
+    pid = _approval_started(cli)
+    env = _current(cli)
+    armed = cli.arm_census()
+    before = cli.dump()
+    old = cli.convmem("propose_decision", "--recover", pid,
+                      env={**env, "SAFE_HARBOR_T2_HOOK": "recover_old_label"})
+    assert old.returncode == 1, old.stdout + old.stderr
+    assert "writer entrypoint is not allowlisted" in old.stdout + old.stderr
+    assert cli.census_events() == []
+    assert cli.dump() == before
+    with pytest.raises(AssertionError):
+        _assert_recovered(old, cli, pid, before)
+    with pytest.raises(AssertionError):
+        _assert_census_admitted(cli.census_events(), armed)
+
+    fixed = cli.convmem("propose_decision", "--recover", pid, env=env)
+    _assert_recovered(fixed, cli, pid, before)
+    _assert_census_admitted(cli.census_events(), armed)
 
 
 def test_cli_event_only_recovery_refused_before_approved_event(cli: Cli):

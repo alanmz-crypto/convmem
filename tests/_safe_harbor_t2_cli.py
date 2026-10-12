@@ -15,6 +15,8 @@ Usage:
   touch_env_after_preflight   edit the Restic profile file after preflight
   fail_after_chroma_ingest    interrupt an indexed approval after its Chroma
                               write, before the APPROVED event is appended
+  recover_old_label           admit the operation under the pre-correction
+                              ``propose_decision.recover`` census label
 ``SAFE_HARBOR_T2_NOW`` (ISO-8601 with offset) pins the evaluation instant.
 """
 
@@ -92,6 +94,15 @@ def _install_hook() -> None:
             raise RuntimeError(f"injected interruption before APPROVED for {proposal_id}")
 
         propose_decision._mark_approved_unlocked = _interrupt  # pylint: disable=protected-access
+    elif hook == "recover_old_label":
+        import chroma_write_store
+
+        real_admit = chroma_write_store.admitted_write_operation
+
+        def _old_label(*, entrypoint, **kwargs):  # pylint: disable=unused-argument
+            return real_admit(entrypoint="propose_decision.recover", **kwargs)
+
+        chroma_write_store.admitted_write_operation = _old_label
     else:
         raise SystemExit(f"unknown hook {hook!r}")
 
