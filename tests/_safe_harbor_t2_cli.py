@@ -17,6 +17,12 @@ Usage:
                               write, before the APPROVED event is appended
   recover_old_label           admit the operation under the pre-correction
                               ``propose_decision.recover`` census label
+  retarget_chroma_alias_after_preflight  repoint the config's Chroma symlink to
+                              SAFE_HARBOR_T2_ALT_CHROMA after admission
+  retarget_export_alias_after_preflight  repoint the export symlink to
+                              SAFE_HARBOR_T2_ALT_EXPORT after admission
+  unbound_targets_after_preflight restore pre-correction config/store binding
+  unbound_retarget_chroma_alias     retarget plus unbound binding (negative control)
 ``SAFE_HARBOR_T2_NOW`` (ISO-8601 with offset) pins the evaluation instant.
 """
 
@@ -25,7 +31,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import sys
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -103,6 +111,143 @@ def _install_hook() -> None:
             return real_admit(entrypoint="propose_decision.recover", **kwargs)
 
         chroma_write_store.admitted_write_operation = _old_label
+    elif hook == "retarget_chroma_alias_after_preflight":
+        import chroma_write_store
+
+        real_admit = chroma_write_store.admitted_write_operation
+
+        @contextmanager
+        def _retarget_chroma(**kwargs):
+            with real_admit(**kwargs) as op:
+                alias = Path(os.environ["SAFE_HARBOR_T2_CHROMA_ALIAS"])
+                alt = Path(os.environ["SAFE_HARBOR_T2_ALT_CHROMA"])
+                if alias.is_symlink():
+                    alias.unlink()
+                elif alias.exists():
+                    shutil.rmtree(alias)
+                alias.symlink_to(alt, target_is_directory=True)
+                yield op
+
+        chroma_write_store.admitted_write_operation = _retarget_chroma
+    elif hook == "retarget_export_alias_after_preflight":
+        import chroma_write_store
+
+        real_admit = chroma_write_store.admitted_write_operation
+
+        @contextmanager
+        def _retarget_export(**kwargs):
+            with real_admit(**kwargs) as op:
+                alias = Path(os.environ["SAFE_HARBOR_T2_EXPORT_ALIAS"])
+                alt = Path(os.environ["SAFE_HARBOR_T2_ALT_EXPORT"])
+                if alias.is_symlink():
+                    alias.unlink()
+                elif alias.exists():
+                    alias.unlink(missing_ok=True)
+                alt.parent.mkdir(parents=True, exist_ok=True)
+                alt.write_text("", encoding="utf-8")
+                alias.symlink_to(alt)
+                yield op
+
+        chroma_write_store.admitted_write_operation = _retarget_export
+    elif hook == "unbound_targets_after_preflight":
+        import copy
+
+        import chroma_write_store
+
+        chroma_write_store.verify_admitted_targets_unchanged = lambda _op: None
+
+        def _unpinned_config(self):
+            return copy.deepcopy(self._cfg)
+
+        chroma_write_store.AdmittedWriteOperation.config = _unpinned_config
+
+        real_session = chroma_write_store.production_chroma_write_session
+
+        @contextmanager
+        def _legacy_session(**kwargs):
+            path = Path(kwargs.get("config_path") or os.environ.get("CONVMEM_CONFIG", ""))
+            with real_session(**kwargs) as session:
+                op = chroma_write_store._bound_operation()
+                if op is None:
+                    yield session
+                    return
+                live = chroma_write_store.config_mod.load_config(path)
+                index = live.get("index") if isinstance(live.get("index"), dict) else {}
+                chroma_raw = index.get("chroma_dir")
+                if not chroma_raw:
+                    yield session
+                    return
+                session.store.close()
+                store, decision = chroma_write_store.open_chroma_for_write(
+                    session.live_cfg,
+                    chroma_raw,
+                    purpose="production",
+                    create_collections=True,
+                    use_strict_validator=True,
+                )
+                yield chroma_write_store.ProductionWriteSession(
+                    store=store, live_cfg=session.live_cfg, decision=decision
+                )
+                store.close()
+
+        chroma_write_store.production_chroma_write_session = _legacy_session
+    elif hook == "unbound_retarget_chroma_alias":
+        import copy
+
+        import chroma_write_store
+
+        chroma_write_store.verify_admitted_targets_unchanged = lambda _op: None
+        chroma_write_store.AdmittedWriteOperation.config = lambda self: copy.deepcopy(
+            self._cfg
+        )
+        real_session = chroma_write_store.production_chroma_write_session
+
+        @contextmanager
+        def _legacy_session(**kwargs):
+            path = Path(
+                kwargs.get("config_path")
+                or os.environ.get("CONVMEM_CONFIG", "")
+            )
+            with real_session(**kwargs) as session:
+                op = chroma_write_store._bound_operation()
+                if op is None:
+                    yield session
+                    return
+                live = chroma_write_store.config_mod.load_config(path)
+                index = live.get("index") if isinstance(live.get("index"), dict) else {}
+                chroma_raw = index.get("chroma_dir")
+                if not chroma_raw:
+                    yield session
+                    return
+                session.store.close()
+                store, decision = chroma_write_store.open_chroma_for_write(
+                    session.live_cfg,
+                    chroma_raw,
+                    purpose="production",
+                    create_collections=True,
+                    use_strict_validator=True,
+                )
+                yield chroma_write_store.ProductionWriteSession(
+                    store=store, live_cfg=session.live_cfg, decision=decision
+                )
+                store.close()
+
+        chroma_write_store.production_chroma_write_session = _legacy_session
+        real_admit = chroma_write_store.admitted_write_operation
+
+        @contextmanager
+        def _combo(**kwargs):
+            alias = Path(os.environ["SAFE_HARBOR_T2_CHROMA_ALIAS"])
+            alt = Path(os.environ["SAFE_HARBOR_T2_ALT_CHROMA"])
+            with real_admit(**kwargs) as op:
+                if alias.is_symlink():
+                    alias.unlink()
+                elif alias.exists():
+                    shutil.rmtree(alias)
+                alias.symlink_to(alt, target_is_directory=True)
+                yield op
+
+        chroma_write_store.admitted_write_operation = _combo
     else:
         raise SystemExit(f"unknown hook {hook!r}")
 

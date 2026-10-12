@@ -41,6 +41,7 @@ from complete_data_restore import EVIDENCE_FILENAME
 from restic_gate import (
     REASON_CHROMA_TARGET_MISMATCH,
     REASON_DAY_BOUNDARY,
+    REASON_OPERATION_CONFIG_CHANGED,
     REASON_PATH_OUTSIDE_DATA_ROOT,
     REASON_PROFILE_INPUTS_CHANGED,
     REASON_PROFILE_NOT_V2,
@@ -1032,3 +1033,135 @@ def test_cli_missing_restic_is_21(cli: Cli):
     proc = cli.convmem("add", "--file", cli.obs_file(), "--upsert")
     assert proc.returncode == EXIT_RESTIC_UNAVAILABLE, proc.stdout + proc.stderr
     assert cli.dump() == before
+
+
+def _chroma_alias_setup(cli: Cli) -> tuple[Path, Path, Path]:
+    """Config names a symlink; target A is backed up, target B is the redirect."""
+    chroma_b = cli.s.data / "chroma-b"
+    chroma_b.mkdir()
+    view_b = cli.write_config(cli.s.root / "view-b.toml", chroma_b)
+    cli.seed(view_b)
+    alias = cli.s.data / "chroma-link"
+    if alias.exists() or alias.is_symlink():
+        alias.unlink()
+    alias.symlink_to(cli.s.chroma, target_is_directory=True)
+    cli.s.write_env(chroma=alias, external=False)
+    cli.write_config(cli.config, alias)
+    cli.seed()
+    return alias, cli.s.chroma, chroma_b
+
+
+def test_cli_add_succeeds_with_unchanged_chroma_alias(cli: Cli):
+    alias, _real_a, chroma_b = _chroma_alias_setup(cli)
+    assert alias.resolve() == cli.s.chroma.resolve()
+    env = _current(cli)
+    before_a, before_b = cli.dump(), cli.dump(cli.write_config(cli.s.root / "view-b.toml", chroma_b))
+    proc = cli.convmem("add", "--file", cli.obs_file(), "--upsert", env=env)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert cli.dump() != before_a
+    after_b = cli.dump(cli.write_config(cli.s.root / "view-b.toml", chroma_b))
+    assert after_b["chroma"] == before_b["chroma"]
+
+
+def test_cli_chroma_alias_retarget_refused_after_preflight(cli: Cli):
+    alias, _real_a, chroma_b = _chroma_alias_setup(cli)
+    view_b = cli.write_config(cli.s.root / "view-b.toml", chroma_b)
+    env = {
+        **_current(cli),
+        "SAFE_HARBOR_T2_HOOK": "retarget_chroma_alias_after_preflight",
+        "SAFE_HARBOR_T2_CHROMA_ALIAS": str(alias),
+        "SAFE_HARBOR_T2_ALT_CHROMA": str(chroma_b),
+    }
+    before_a, before_b = cli.dump(), cli.dump(view_b)
+    proc = cli.convmem("add", "--file", cli.obs_file(), "--upsert", env=env)
+    _assert_refused(proc, EXIT_WRONG_PATH, REASON_OPERATION_CONFIG_CHANGED)
+    assert cli.dump() == before_a
+    assert cli.dump(view_b) == before_b
+
+
+def test_control_unbound_target_lets_alias_retarget_mutate(cli: Cli):
+    """Negative control: without target binding, retargeting redirects the write."""
+    alias, _real_a, chroma_b = _chroma_alias_setup(cli)
+    view_b = cli.write_config(cli.s.root / "view-b.toml", chroma_b)
+    env = {
+        **_current(cli),
+        "SAFE_HARBOR_T2_HOOK": "unbound_retarget_chroma_alias",
+        "SAFE_HARBOR_T2_CHROMA_ALIAS": str(alias),
+        "SAFE_HARBOR_T2_ALT_CHROMA": str(chroma_b),
+    }
+    before_a, before_b = cli.dump(), cli.dump(view_b)
+    proc = cli.convmem("add", "--file", cli.obs_file(), "--upsert", env=env)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    after_a = cli.dump()
+    after_b = cli.dump(view_b)
+    assert after_a["chroma"] == before_a["chroma"]
+    assert after_b["chroma"] != before_b["chroma"]
+
+
+def test_cli_export_alias_retarget_refused_after_preflight(cli: Cli):
+    outside = cli.s.root / "outside.jsonl"
+    outside.parent.mkdir(parents=True, exist_ok=True)
+    outside.write_text("", encoding="utf-8")
+    export_link = cli.s.data / "export-link.jsonl"
+    inside = cli.s.data / "knowledge_units.jsonl"
+    if export_link.exists():
+        export_link.unlink()
+    export_link.symlink_to(inside)
+    cli.config.write_text(
+        "[index]\n"
+        f'chroma_dir = "{cli.s.chroma}"\n'
+        f'units_export = "{export_link}"\n'
+        "[models]\n"
+        'embed_model = "nomic-embed-text"\n'
+        'ollama_host = "http://127.0.0.1:9"\n',
+        encoding="utf-8",
+    )
+    cli.s.write_env(external=False)
+    cli.seed()
+    env = {
+        **_current(cli),
+        "SAFE_HARBOR_T2_HOOK": "retarget_export_alias_after_preflight",
+        "SAFE_HARBOR_T2_EXPORT_ALIAS": str(export_link),
+        "SAFE_HARBOR_T2_ALT_EXPORT": str(outside),
+    }
+    before = cli.dump()
+    proc = cli.convmem("add", "--file", cli.obs_file(), "--upsert", env=env)
+    _assert_refused(proc, EXIT_WRONG_PATH, REASON_OPERATION_CONFIG_CHANGED)
+    assert cli.dump() == before
+    assert not outside.read_text().strip()
+
+
+@needs_restic
+def test_open_production_write_store_refuses_retargeted_alias(scratch: Scratch):
+    """Alternate production-store factory uses the same bound target check."""
+    from chroma_write_store import (
+        admitted_write_operation,
+        open_production_write_store,
+    )
+    from restic_gate import OperationAdmissionRefused
+
+    scratch.write_env(external=False)
+    scratch.init(external=False)
+    noon = local_noon()
+    scratch.snapshot(noon - timedelta(hours=1))
+    alias = scratch.data / "chroma-link"
+    other = scratch.data / "chroma-other"
+    other.mkdir()
+    alias.symlink_to(scratch.chroma, target_is_directory=True)
+    cfg_path = Path(os.environ["CONVMEM_CONFIG"])
+    cfg_path.write_text(
+        "[index]\n"
+        f'chroma_dir = "{alias}"\n'
+        f'units_export = "{scratch.data / "knowledge_units.jsonl"}"\n'
+        "[models]\n"
+        'embed_model = "nomic-embed-text"\n'
+        'ollama_host = "http://127.0.0.1:9"\n',
+        encoding="utf-8",
+    )
+    with pinned_clock(noon):
+        with admitted_write_operation(entrypoint="test.factory", config_path=cfg_path):
+            alias.unlink()
+            alias.symlink_to(other, target_is_directory=True)
+            with pytest.raises(OperationAdmissionRefused) as exc:
+                open_production_write_store(config_path=cfg_path, entrypoint="test.factory")
+    assert exc.value.exit_code == EXIT_WRONG_PATH

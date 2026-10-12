@@ -409,7 +409,7 @@ def add(
     """
     _guard_write()
     from contextlib import nullcontext
-    from chroma_write_store import production_chroma_write_session
+    from chroma_write_store import admitted_units_export_path, production_chroma_write_session
     from observe import ingest_observation, ingest_observation_file
     from query import render_error
     from pathlib import Path
@@ -423,7 +423,7 @@ def add(
         cfg = session.live_cfg
         models = cfg["models"]
         units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
+        units_export_path = admitted_units_export_path(cfg) if units_export else None
 
         if file:
             result = ingest_observation_file(
@@ -518,7 +518,7 @@ def verify_command(
     import json
     from pathlib import Path
 
-    from chroma_write_store import production_chroma_write_session
+    from chroma_write_store import admitted_units_export_path, production_chroma_write_session
     from query import render_error
     from verify import verify_unit
 
@@ -687,7 +687,7 @@ def monitor_command(
     from pathlib import Path
 
     from config import load_config
-    from chroma_write_store import production_chroma_write_session
+    from chroma_write_store import admitted_units_export_path, production_chroma_write_session
     from chroma_store import ChromaStore
     from monitor import run_monitor
 
@@ -717,7 +717,7 @@ def monitor_command(
         cfg = session.live_cfg
         models = cfg["models"]
         units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
+        units_export_path = admitted_units_export_path(cfg) if units_export else None
         stats = run_monitor(
             store,
             site=site,
@@ -1772,7 +1772,7 @@ def forget_command(
         raise typer.Exit(1)
 
     _guard_write()
-    from chroma_write_store import production_chroma_write_session
+    from chroma_write_store import admitted_units_export_path, production_chroma_write_session
 
     with production_chroma_write_session(entrypoint="convmem.forget") as session:
         store = session.store
@@ -2106,8 +2106,6 @@ def _admission_steps(entrypoint: str, governed: bool, expected_cfg):
             admitted = True
             yield op
     except OperationAdmissionRefused as exc:
-        if admitted:
-            raise
         report_refusal(exc)
         raise SystemExit(exc.exit_code or 1) from exc
 

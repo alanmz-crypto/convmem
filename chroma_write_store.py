@@ -718,12 +718,24 @@ class AdmittedWriteOperation:  # pylint: disable=too-many-instance-attributes
     affected_paths: tuple[Path, ...]
     preflight: Any
     _cfg: dict[str, Any]
+    units_export: Path | None = None
+    _extra_affected_paths: (
+        Callable[[Mapping[str, Any]], Iterable[str | Path]] | None
+    ) = None
 
     def config(self) -> dict[str, Any]:
-        """A private copy of the admitted configuration."""
+        """A private copy of the admitted configuration with pinned targets."""
         import copy
 
-        return copy.deepcopy(self._cfg)
+        cfg = copy.deepcopy(self._cfg)
+        index = cfg.get("index")
+        if not isinstance(index, dict):
+            index = {}
+            cfg["index"] = index
+        index["chroma_dir"] = str(self.chroma_dir)
+        if self.units_export is not None:
+            index["units_export"] = str(self.units_export)
+        return cfg
 
 
 def _bound_operation() -> AdmittedWriteOperation | None:
@@ -786,6 +798,46 @@ def _resolve_operation_target(
     return _canonical_path(index["chroma_dir"]), unique
 
 
+def verify_admitted_targets_unchanged(op: AdmittedWriteOperation) -> None:
+    """Refuse when config bytes are unchanged but a bound alias now resolves elsewhere."""
+    from restic_gate import (
+        REASON_OPERATION_CONFIG_CHANGED,
+        OperationAdmissionRefused,
+    )
+    from restic_snapshot import EXIT_WRONG_PATH
+
+    live_cfg = config_mod.load_config(op.config_path)
+    chroma_now, affected_now = _resolve_operation_target(
+        live_cfg, op._extra_affected_paths
+    )
+    if chroma_now != op.chroma_dir or affected_now != op.affected_paths:
+        raise OperationAdmissionRefused(
+            f"{op.entrypoint}: operation target or affected paths changed after "
+            "admission without editing config/env",
+            EXIT_WRONG_PATH,
+            REASON_OPERATION_CONFIG_CHANGED,
+        )
+    if op.units_export is not None:
+        index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
+        raw_export = index.get("units_export")
+        if raw_export and _canonical_path(raw_export) != op.units_export:
+            raise OperationAdmissionRefused(
+                f"{op.entrypoint}: export path {raw_export!r} now resolves outside "
+                "the admitted target",
+                EXIT_WRONG_PATH,
+                REASON_OPERATION_CONFIG_CHANGED,
+            )
+
+
+def admitted_units_export_path(cfg: Mapping[str, Any]) -> Path | None:
+    """Canonical export path from a (possibly admitted) configuration mapping."""
+    index = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
+    raw = index.get("units_export")
+    if not raw:
+        return None
+    return _canonical_path(raw)
+
+
 def verify_admitted_operation_unchanged(op: AdmittedWriteOperation) -> None:
     """Refuse when the admitted config or backup profile inputs changed."""
     from restic_gate import (
@@ -812,6 +864,7 @@ def verify_admitted_operation_unchanged(op: AdmittedWriteOperation) -> None:
             REASON_OPERATION_CONFIG_CHANGED,
         )
     verify_preflight_inputs_unchanged(op.preflight)
+    verify_admitted_targets_unchanged(op)
 
 
 @contextmanager
@@ -863,6 +916,12 @@ def admitted_write_operation(
         chroma_dir, affected = _resolve_operation_target(
             live_cfg, extra_affected_paths
         )
+        index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
+        units_export = (
+            _canonical_path(index["units_export"])
+            if index.get("units_export")
+            else None
+        )
         preflight = preflight_operation(
             OperationTarget(
                 entrypoint=entrypoint,
@@ -879,6 +938,8 @@ def admitted_write_operation(
             affected_paths=affected,
             preflight=preflight,
             _cfg=live_cfg,
+            units_export=units_export,
+            _extra_affected_paths=extra_affected_paths,
         )
         verify_admitted_operation_unchanged(op)
         _writer_tls.bound_operation = op
@@ -930,8 +991,12 @@ def production_chroma_write_session(
         entrypoint=entrypoint,
     ):
         live_cfg = _session_config(path)
-        index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
-        chroma_dir = index.get("chroma_dir")
+        op = _bound_operation()
+        if op is not None:
+            chroma_dir = op.chroma_dir
+        else:
+            index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
+            chroma_dir = index.get("chroma_dir")
         if not chroma_dir:
             raise ValueError("live config missing index.chroma_dir")
         store, decision = open_chroma_for_write(
@@ -982,8 +1047,12 @@ def open_production_write_store(
 
     try:
         live_cfg = _session_config(path)
-        index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
-        chroma_dir = index.get("chroma_dir")
+        op = _bound_operation()
+        if op is not None:
+            chroma_dir = op.chroma_dir
+        else:
+            index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
+            chroma_dir = index.get("chroma_dir")
         if not chroma_dir:
             _release()
             raise ValueError("live config missing index.chroma_dir")
