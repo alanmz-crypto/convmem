@@ -361,3 +361,31 @@ def test_corrupt_sidecar_fails_open_and_concurrent_writes_preserve_records(
     data = load_inter_model_rejections(cfg["index"]["processed_log"])
     assert len(data) == len(paths)
     assert clear_inter_model_rejection_for_path(cfg["index"]["processed_log"], paths[0])
+
+def test_reconciliation_suppresses_hash_mismatch_for_rejected_content(
+    tmp_path: Path,
+) -> None:
+    """Handoff K2: indexed path + rejection suppresses hash mismatch until bytes change again."""
+    path = _inter_model_path(tmp_path)
+    cfg = _cfg(tmp_path, path)
+    old_hash = ingest.sha256_file(str(path))
+    ingest.save_processed(
+        str(cfg["index"]["processed_log"]),
+        {old_hash: {"path": str(path.resolve()), "chunks": 0, "units": 1}},
+    )
+    path.write_text("## Packet\n\nChanged once.\n", encoding="utf-8")
+    rejected_hash = ingest.sha256_file(str(path))
+    record_provenance_supersession_rejection(
+        cfg["index"]["processed_log"],
+        path_key=str(path.resolve()),
+        file_hash=rejected_hash,
+        section_id="0",
+    )
+    assert discover_legacy_source_drift(cfg) == []
+
+    path.write_text("## Packet\n\nChanged twice.\n", encoding="utf-8")
+    findings = discover_legacy_source_drift(cfg)
+    assert len(findings) == 1
+    assert findings[0].reason == "source_hash_mismatch"
+    assert findings[0].recorded_hash == old_hash
+    assert findings[0].observed_hash == ingest.sha256_file(str(path))
