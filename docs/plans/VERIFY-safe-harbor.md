@@ -1,17 +1,17 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. TWO REVIEW-EVIDENCE CORRECTIONS IMPLEMENTED; SUCCESSOR REVIEW PENDING.** Cursor corrected fixture-isolation cleanup and audit/writer contention evidence at test code `8b410445ac55f3a5dafede030a40f26c318ae784`. Runtime code is unchanged. Isolated local evidence passes, and the contention negative control fails its proof assertion as expected. GitHub CI and a focused independent delta review must cover the successor; Copilot's PASS at `677c8a0` is historical. Both BugBot attempts failed on quota; V2–V6 remain NOT RUN.
+> **Arc: Safe Harbor. BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW PENDING.** The two test corrections passed Copilot's static delta review at `2977c45` (85%). Cursor then merged pinned main `5550def` (PR #388) into the T1 branch at `c624e2f` and regenerated the derived inventory with its existing generator. Isolated integration evidence passes. The documentation commit after `c624e2f` is the frozen final-tip review subject. Fresh GitHub CI and Copilot's integration delta review are pending. Both BugBot attempts failed on quota and reviewed no SHA; V2–V6 remain NOT RUN.
 
 ```text
 Planning Status
-Phase:        Execute Task — two T1 test corrections implemented; successor review pending
+Phase:        Execute Task — bounded branch update integrated; fresh CI and final-tip review pending
 Characters:   Implementer, Test-First Reviewer
 Function:     Implementer
-Lanes:        Cursor collected isolated V1; focused delta review next; Ryan owns gates
-Authority:    Ryan: correct both before merging; execution section 8; T2–T5 not granted
+Lanes:        Cursor collected isolated integration evidence; Codex coordinates CI/review; Ryan owns gates
+Authority:    Ryan: bounded branch update, fresh CI, final-tip review gate; execution section 8; T2–T5 not granted
 ```
 
-**Reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). It has not been independently reviewed; no prior PASS automatically transfers.
+**Reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. It is not yet reviewed; no prior PASS automatically transfers to it.
 
 **PRs:** draft #387. Not merge-ready.
 
@@ -50,11 +50,11 @@ Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, servi
 |---|---|
 | `gate_applicability` | `required` |
 | `reason` | T1 changes quarantine persistence, admission control flow, and lock ordering |
-| `subject_tip_sha` | prior reviewed candidate `677c8a0d17618166c454b4523d6767e48cfa330a`; successor test code `8b410445ac55f3a5dafede030a40f26c318ae784`, unreviewed (the evidence commit that follows it is the branch tip) |
+| `subject_tip_sha` | final tip: the documentation commit after integration merge `c624e2f39a2f76a18eacca76d9affb7f7dff6f50` (reported in the handoff; frozen for review). Historical: `677c8a0` (Copilot PASS 72%), `2977c45` (Copilot delta PASS 85%) |
 | `bugbot_reviewed_sha` | `n/a` |
-| `result` | not satisfied — authorized attempts at `0bcf50e` and `677c8a0` both hit quota and reviewed no SHA |
-| `finding_disposition` | BugBot: none (no review); Copilot: two test advisories directed to correction by Ryan |
-| `authority_reference` | execution section 8; Ryan granted the two-test correction, not a BugBot outage acceptance |
+| `result` | not satisfied — authorized attempts at `0bcf50e` and `677c8a0` both hit quota and reviewed no SHA. Copilot verdicts are independent evidence, not BugBot. No owner outage acceptance for the final tip exists |
+| `finding_disposition` | BugBot: none (no review); Copilot: two test advisories corrected and delta-PASSed at `2977c45`; integration delta review pending |
+| `authority_reference` | execution section 8; Ryan granted the two-test correction and the bounded branch update, not a BugBot outage acceptance |
 
 An applicable SHA mismatch remains FAIL. This row does not make the branch merge-ready.
 
@@ -169,6 +169,50 @@ The real-`HOME` run is the primary evidence, because an outer temporary home wou
 
 **Remote evidence at the prior subject:** GitHub pytest, pylint, secret scan and CodeQL passed at `677c8a0`; [pytest job](https://github.com/alanmz-crypto/convmem/actions/runs/38196201314/job/114639276462). Codex read the check state; this was not a local rerun. The second authorized [BugBot attempt](https://github.com/alanmz-crypto/convmem/pull/387#issuecomment-6117256790) failed on quota (request `ea440898-d96f-4d3e-b3c3-a7c2d1c6a0a5`), reviewed no SHA and authorizes no further retry. Scope remains T1; no other Copilot advisory is silently added to this correction grant.
 
+### Copilot delta review of the corrections
+
+GitHub Copilot audit lane: **PASS, 85% confidence, static**, at exact subject `2977c4531cf446974b0c86994dbca757715dca76`. Codex relayed the verdict and recorded it in execution section 8. It covers the two test corrections only. It is not BugBot, not a review of the integration below, and not owner acceptance.
+
+## Bounded branch update — integration evidence
+
+**Why:** PR #387 conflicted with main `5550def` (PR #388, Codex rollout admission, off by default), so pull-request CI did not run on successors after `677c8a0`. Ryan authorized this bounded update (execution section 8).
+
+**Merge:** `git merge --no-ff 5550def70c72bc7a60f0c5216b46cd4cf629f5d2` into `fix/2026-10-11-safe-harbor-t1` at `5d0209033c50adb48d7d39f107aa84504514f29e`. Result: merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`. Merge base `db8aebb`; main's delta is the single PR #388 commit. Remote main and branch were rechecked before merging; no rebase or force-push.
+
+| File | Resolution |
+|---|---|
+| `docs/inter-model/LATEST.md` | Conflict. Kept the Safe Harbor entry, then main's current Arc Codex PR #388 entry. Main had itself replaced the superseded 2026-10-09 Codex entry, so that entry was dropped. Versus main, the only difference is the added Safe Harbor entry |
+| `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` | Conflict, generated. Took main's file, then ran the existing `write_v2_inventory_file()` on the merged tree. Versus main, only the 37 `code_revision` values and `inventory_digest` changed; routes and policy are identical |
+| `doctor.py` | Auto-merged; the only source file both sides changed. The T1 diff (`db8aebb`→`5d02090`) and main's diff (`db8aebb`→`5550def`) each reappear unchanged when the merged file is compared with the other parent. Main adds `_check_incremental_refusals` and its registration; T1 changes the bodies of `_check_chroma_write_guard` and `_check_chroma_audit`. All three remain registered in `run_doctor`; `py_compile` passes. No semantic conflict |
+| Other files | Changed on one side only; taken from that side. No Safe Harbor test or runtime file changed in the merge. The two corrected tests are intact |
+
+**Inventory generator:** `eval_corpus/r2b_v2/coverage/inventory.py:write_v2_inventory_file()`, unmodified. Its identity is `compute_implementation_revision()`, a content manifest of governed source, not git HEAD. Its import closure (`chroma_write_store`, `config`, shadow modules) defines only unexpanded path constants at import time. It ran with `HOME`, XDG, `CONVMEM_CONFIG` and `CONVMEM_ROOT` under a fresh `/tmp/safe-harbor-inv-fJZC` (empty config; no files created under its home or data directories) and provider keys unset.
+
+| Value | Main `5550def` | T1 `5d02090` | Integrated |
+|---|---|---|---|
+| `code_revision` | `6d7f85c93eae8858a2b0fc8f6df1389680360c95` | `43a3944df8d6264dfc3a25016ab9b48111f69688` | `87b8144dff3a6ec45fad5ef8a82e332d17bb4698` |
+| `inventory_digest` | `85719da4…8f03e` | `55c7ae2e…3b8a` | `e7f544a0cc2c0bb985c8f67a1942d84f15542c8597070ca06c0d5d991f6862b0` |
+
+On the merged tree, `verify_inventory_matches_tip()` and `verify_shadow_inventory_unchanged()` both returned `[]`. Missing categories, unlisted ctor/generation sites, undocumented sinks and route-sink errors are all empty.
+
+**Regression at `c624e2f`** (worktree source, `/home/lauer/miniforge3/bin/python` 3.13.12, chromadb 1.5.9, numpy 2.4.4, uid 1000, `CONVMEM_T1_ISOLATED` unset):
+
+```bash
+env -u CONVMEM_T1_ISOLATED -u DEEPSEEK_API_KEY -u OPENAI_API_KEY HOME=/home/lauer \
+  /home/lauer/miniforge3/bin/python -m pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py \
+  tests/test_r2b_v2_corrective_viii.py tests/test_r2b_v2_implementation_revision.py -q --tb=line -p no:cacheprovider
+```
+
+| Run | Result |
+|---|---|
+| Standard pytest, real `HOME`, T1 + guard + R2b identity | exit 0, `63 passed in 58.22s` |
+| Defense in depth: T1 + guard with outer roots under `/tmp/safe-harbor-t1-Hao3` | exit 0, `45 passed in 41.47s` |
+| `pylint` 4.0.6 `doctor.py` merged vs main's `doctor.py` | 14 findings each; same set except the `too-many-lines` count text (pre-existing message) |
+| `pylint tests/test_safe_harbor_t1.py` | 0 findings |
+| Leftover test children after runs | none |
+
+The real-home run keeps uid 1000, so the chmod read-failure test keeps its meaning; the uid-0 sandbox was not used for recorded results. `tests/test_doctor.py` and PR #388's tests were not run locally because they are not shown fully isolated. GitHub CI runs the default suite. The disabled PR #388 feature was not activated. No production CLI, MCP, doctor, indexing, provider, Restic, service or drive operation ran.
+
 ## V2 — Target binding and freshness (T2)
 
 **NOT RUN.** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
@@ -202,6 +246,9 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-11 | Cursor | same tree | `write_v2_inventory_file()` | regenerated `code_revision` `43a3944df8d6264dfc3a25016ab9b48111f69688`; route policy unchanged | inventory artifact |
 | 2026-10-11 | Cursor, miniforge Python 3.13.12; uid 1000 | test code `8b410445ac55f3a5dafede030a40f26c318ae784` | standard pytest of T1, guard, and R2b identity tests; `CONVMEM_T1_ISOLATED` unset; `HOME=/home/lauer` | PASS, exit 0, `63 passed in 50.57s`. Expected control failures: old shared undo loses isolation; pre-lock audit pause yields `acquired`, not `contended` | Review-evidence correction section |
 | 2026-10-11 | Cursor, same interpreter | same | T1 + guard with outer roots under `/tmp/safe-harbor-t1-bnMa` | PASS, exit 0, `45 passed in 49.69s` | Review-evidence correction section |
+| 2026-10-11 | GitHub Copilot audit lane (relayed by Codex) | `2977c4531cf446974b0c86994dbca757715dca76` | static delta review of the two corrections | PASS, 85%; not BugBot | Copilot delta review section |
+| 2026-10-11 | Cursor, same interpreter, uid 1000 | integration merge `c624e2f39a2f76a18eacca76d9affb7f7dff6f50` (main `5550def`) | `write_v2_inventory_file()` isolated; tip verification | `code_revision` `87b8144dff3a6ec45fad5ef8a82e332d17bb4698`, digest `e7f544a0…62b0`; verify `[]` | Integration evidence section |
+| 2026-10-11 | Cursor, same interpreter, uid 1000 | same | standard pytest T1 + guard + R2b identity, real `HOME`; outer-isolated T1 + guard | PASS, `63 passed in 58.22s`; PASS, `45 passed in 41.47s` | Integration evidence section |
 
 SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2–V6 stay NOT RUN.
 
@@ -214,4 +261,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] The two authorized test-evidence corrections are implemented at test code `8b41044` (runtime unchanged). Isolated runs pass: 63 as standard pytest with the real home, 45 with outer isolation. The contention negative control fails its proof assertion as expected. Successor CI and a focused delta review are pending; Copilot's PASS at `677c8a0` is historical. BugBot reviewed no SHA. V2–V6, merge, deployment and arc closure stay ungranted.
+[Arc Safe Harbor] The two test corrections (`8b41044`) passed Copilot's static delta review at `2977c45` (85%). Main `5550def` is now merged into the T1 branch at `c624e2f`, and the inventory is regenerated (`87b8144d…`, verify clean). Isolated integration runs pass: 63 standard-pytest, 45 outer-isolated. Fresh CI and the final-tip integration review are pending. BugBot reviewed no SHA, and no owner outage acceptance exists. V2–V6, PR merge, deployment and arc closure stay ungranted.

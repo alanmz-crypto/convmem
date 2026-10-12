@@ -9,11 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — BOUNDED BRANCH UPDATE AUTHORIZED (2026-10-11):**
-  The two-test correction passed its focused Copilot delta review. Ryan now
-  authorizes Cursor to integrate the pinned main base, reconcile routing and
-  regenerate the derived inventory, followed by fresh CI and final-tip review.
-  Resume from the bounded
+- **Arc Safe Harbor — BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW
+  NEXT (2026-10-11):** The two-test correction passed its focused Copilot delta
+  review at `2977c45` (85%). Cursor merged main `5550def` into the T1 branch
+  at `c624e2f`, regenerated the derived inventory and recorded isolated
+  integration evidence. Codex coordinates fresh CI and the final-tip review.
+  Bounded grant:
   [execution section 8 grant](../plans/EXECUTION-safe-harbor.md#bounded-branch-update--owner-authorized).
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   candidate, CI, review and authority state. Merge, deployment and T2–T5 remain

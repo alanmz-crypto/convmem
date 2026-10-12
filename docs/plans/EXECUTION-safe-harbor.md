@@ -308,7 +308,7 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 ### Resume state and workspace
 
-- State: **BOUNDED BRANCH UPDATE AUTHORIZED / NOT STARTED**. The two test corrections are complete at `2977c4531cf446974b0c86994dbca757715dca76`, with Copilot delta PASS (85%). Ryan now authorizes the base-branch integration below, fresh CI and final-tip review.
+- State: **BOUNDED BRANCH UPDATE IMPLEMENTED / FRESH CI AND FINAL-TIP REVIEW PENDING**. The two test corrections are complete at `2977c4531cf446974b0c86994dbca757715dca76`, with Copilot delta PASS (85%, static). Cursor merged pinned main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2` into the branch at merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`; the documentation commit after it is the frozen review subject. VERIFY records the integration evidence. Codex coordinates fresh CI and the final-tip review.
 - Implementation branch: `fix/2026-10-11-safe-harbor-t1`.
 - Dedicated worktree: `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`.
 - Original grant base: `b4c0e73b60befcbc9c0fab02e42fd012c6b6adb3`. Current review-evidence correction starts from `677c8a0d17618166c454b4523d6767e48cfa330a`, with T1 runtime changes at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` and merged main at `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. Resume from the documentation commit recording this grant, supplied in Codex's dispatch; it changes no implementation. Confirm branch, clean state, parentage and the grant before editing. A pre-existing dirty or diverged worktree is not permission to overwrite another writer.
