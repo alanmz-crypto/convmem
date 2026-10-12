@@ -9,18 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — B1 correction IMPLEMENTED, delta review pending (2026-10-12):**
-  Cursor fixed the census-entrypoint regression at `964c1de`: recovery now
-  reuses the allowlisted `propose_decision.write` label. Only `convmem.py`
-  changed in production, and the R2b identity was regenerated (derived only).
-  Isolated uid-1000 evidence was captured with an armed census. The positive
-  and future-snapshot controls behaved as intended, and the old-label control
-  is refused. Results: 3 new and 153 affected cases passed (exit 0); lint gate
-  exit 0. See
-  [VERIFY V2](../plans/VERIFY-safe-harbor.md#b1-correction--implemented-delta-review-pending).
-  Copilot's FAIL stays pinned at `05c7706`, and the event-only success exclusion
-  stands (T4 proof required). Next: Codex coordinates one narrow Copilot delta.
-  No PR/comment, merge, T3–T5 or live action is granted.
+- **Arc Safe Harbor — B1 delta PASS, V2 acceptance pending (2026-10-12):**
+  Copilot closed the armed-census recovery blocker at exact candidate
+  `82f25ef` (88%, static delta; runtime/tests `964c1de`). The original FAIL
+  remains historical at `05c7706`. The bounded event-only success exclusion
+  is accepted; T4 still owes that proof. See the
+  [review and prepared PR text](../plans/VERIFY-safe-harbor.md#independent-b1-delta-review--pass)
+  and [arc brief](../plans/STATUS-safe-harbor.md).
+  Next: Ryan decides V2 acceptance and PR/review authority. The separate
+  BugBot gate is unsatisfied; no PR/comment, merge, T3–T5 or live grant.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
