@@ -363,3 +363,86 @@ the live config, and the residual-burn plan.
 **Remaining before the Stage 2 grant:** #308 merged (Cursor, then reviews,
 then Ryan). The tripwire deploy's chroma-audit timer is optional for Stage 2
 and is still a WARN.
+
+## Stage 2 packet: 24 h watcher canary (DRAFT, needs a Ryan grant)
+
+**Purpose:** bring automatic capture back, and measure the burn with the
+admission fix and the #308 fix both live. Activation, meaning leaving the
+watcher on after the canary, is a separate grant.
+
+**State at drafting (Claude, 2026-10-12, read-only):**
+
+- #308 is merged on `main` as `8a7cdab` (PR #390).
+- `runtime-main` is at `05aa2c8` with a clean tree, so it doesn't yet have
+  #308.
+- `convmem-watch.service` is inactive and disabled, with `MemoryMax=8G` and
+  `MemoryHigh=infinity`.
+- The live config admits Codex rollouts started after
+  `2026-10-12T04:04:00Z`.
+- The current-day complete-data snapshot is `b9a8977a…` (00:17).
+
+**Steps (one grant; Claude runs them):**
+
+1. **Backup gate:** `backup_workflows.py ensure` through
+   `convmem-restic-local.service`. Today's snapshot should make this a
+   no-op.
+2. **Doctor preview:** run doctor on `8a7cdab` with the live config, from a
+   scratch worktree (read-only). Expect no new FAIL compared with
+   `05aa2c8`.
+3. **Promote:** fast-forward `runtime-main` from `05aa2c8` to `8a7cdab`, then
+   run `convmem doctor` and expect exit 0.
+4. **Start:** `systemctl --user enable --now convmem-watch.service` (T0).
+   Watch the journal live for the first 15 minutes.
+
+**Measure (read-only):** the service journal since T0, `systemctl show`,
+cgroup `memory.events`, the rejection sidecar and `processed.json`
+metadata.
+
+- **Paid calls, admitted Codex runs:** the sum of `summarize + distill` from
+  the `incremental_codex_admitted_run` stderr lines.
+- **Paid calls, legacy runs:** about 2 × the re-indexed source's chunk count.
+  This is an estimate, because legacy runs don't log provider calls, and the
+  report labels it that way.
+- **Spawns per source family,** against the Sep 26–Oct 5 daily baseline:
+  Codex 13.3 per day, Kiro 3.5, Cursor JSONL 2.9 and inter-model docs 331.5.
+- **#308:** the `[watch] skip (inter_model_rejected)` count, the sidecar
+  records, and no repeat spawn for a (path, hash) pair already recorded.
+- **Health:** the service `MemoryPeak`, OOM kills, native crashes and
+  circuit-breaker trips, refusal markers (`live_route_refused:`), and doctor
+  at the end.
+
+**Stop conditions.** On any of these, Claude runs
+`systemctl --user disable --now convmem-watch.service` at once, reports, and
+changes nothing else:
+
+- a Codex rollout started after `admitted_after` is indexed on the legacy
+  route;
+- an admitted run makes provider calls beyond its frontier + new chunks, or
+  hits the 20-chunk cap;
+- a repeat inter-model spawn happens for a (path, hash) pair that is already
+  in the sidecar;
+- an OOM kill (a cgroup `oom_kill` increment), a native crash or a
+  circuit-breaker trip. For reference, each index child peaked at
+  6.3–6.7 GiB in Stage 1, against the service's 8G;
+- any refusal other than an expected one. A pre-activation rollout is
+  simply not admitted and takes the legacy route, which is not a refusal;
+- paid calls over the 24 h ceiling. Claude proposes 200, and Ryan sets the
+  number.
+
+**Expected residual burn:**
+
+- Kiro transcripts and Cursor JSONL stay on the legacy route, at about 6.4
+  runs a day at the baseline rate.
+- The three long-lived pre-activation Codex sessions add burn only if they
+  are resumed. Start fresh sessions instead.
+
+**Checkpoints:** T0 + 15 min (live), T0 + 2 h and T0 + 24 h. Each reports
+burn first.
+
+**Rollback:** `systemctl --user disable --now convmem-watch.service`.
+- The runtime promotion can stay: #308 only adds a skip path and a sidecar.
+- The config backup is
+  `~/.config/convmem/backups/config.toml.pre-codex-admission-2026-10-12`.
+
+**PASS:** no stop condition fires in 24 h. Claude then writes the burn
+report, and Ryan decides activation.

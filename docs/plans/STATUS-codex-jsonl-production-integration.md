@@ -86,8 +86,8 @@ Key invariants:
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
 | Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
-| Codex rollout admission | Merged on `main` via PR #388; default off, with no admission config. Design: `docs/plans/DESIGN-issue-286-codex-rollout-admission.md` (Kiro PASS at `9e91973`, §13 amended 2026-10-11). It admits new rollouts after an explicit, identity-checked `admitted_after` time; pre-activation rollouts stay legacy; refusals quarantine terminally by path. Copilot PASS and Kiro PASS at `78b9295`. | Ryan Stage 1 grant (`docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`) |
-| Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
+| Codex rollout admission | **Live for new Codex sessions since 2026-10-12.** PR #388 merged; `runtime-main` promoted to `05aa2c8`; the live config admits rollouts started after `2026-10-12T04:04:00Z`. Stage 1 PASS: 4 paid calls in total, and an unchanged run costs 0. The #308 retry-loop fix is merged via PR #390 (`8a7cdab`). Pre-activation rollouts, Kiro transcripts and Cursor JSONL stay on the legacy route. | Ryan Stage 2 grant: the 24 h watcher canary (packet in `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`, section "Stage 2 packet") |
+| Watcher activation | Watcher inactive and disabled; effective `MemoryMax=8G` (the 4G drop-in was removed on 2026-10-12) | Stage 2 grant; then a separate activation grant |
 
 ## 5. Your Role
 
@@ -110,14 +110,19 @@ creation and merge. Fresh backups, proposal, packet review, and live execution
 remain later separate gates. No lane may promote config/runtime or restart the
 watcher without separate Ryan authority.
 
-**Codex rollouts (separate track):** Codex rollout admission is on `main`
-(PR #388), default off. Its purpose is to stop the paid re-index burn for
-new Codex sessions; nothing in production is reduced until Stage 1 and
-Stage 2 run. Prepare or run Stage 1 only under Ryan's grant, following the
-Stage 1 packet. Active pre-activation rollouts, including a 590.7 MiB
-session started Sep 21, stay on the legacy route and need the packet's
-residual-burn decision before Stage 2. This track authorizes no live
-bootstrap, config, runtime, or watcher action.
+**Codex rollouts (separate track):** the burn fix is live for new Codex
+sessions, and the #308 retry-loop fix is merged (PR #390, `8a7cdab`). The
+watcher is still off. The next action is **Stage 2**, under Ryan's grant and
+following the "Stage 2 packet" section of the Stage 1 packet:
+
+- promote `runtime-main` to `8a7cdab`;
+- run the watcher for 24 h;
+- report the paid calls, spawns and memory against the packet's stop
+  conditions.
+
+Start fresh Codex sessions; don't resume the long-lived pre-activation ones.
+Without Ryan's grant, this track authorizes no runtime, config or watcher
+action.
 
 ## 6. What Remains Before Live (sequential)
 
@@ -134,14 +139,13 @@ bootstrap, config, runtime, or watcher action.
 
 Codex rollouts (separate track):
 
-1. Ryan grants Stage 1 (manual, watcher stopped), per
+1. Ryan grants Stage 2, the 24 h watcher canary, per the "Stage 2 packet" in
    `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
-   Don't add the incremental table to the shared live config while
-   `runtime-main` is still on `a92a74e`.
-2. Before Stage 2, decide the residual burn (retire or exclude active
-   pre-activation rollouts), fix #308 (the inter-model rejection loop) and
-   reconcile the 4G watch drop-in. Then Ryan grants Stage 2 (a 24 h watcher
-   canary); activation is a separate grant.
+   The steps are the backup gate, the doctor preview, the `runtime-main`
+   promotion to `8a7cdab`, and the watcher start, followed by measurement
+   and stop conditions.
+2. On a Stage 2 PASS, a separate Ryan grant leaves the watcher enabled
+   (activation).
 3. Before any Kiro exact-path live incremental run, land the exact-path
    recovery parity fix. Its design is on
    `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
@@ -281,6 +285,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Kiro / Copilot / Claude | At `a5f1756`, Kiro PASS and Copilot FAIL (D8 refusal quarantine, checkpointless recovery, `~` root); Claude confirmed all three |
 | 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
+| 2026-10-12 | Claude / Cursor / Copilot / Kiro | Stage 1 PASS; Stage 2 prerequisites done (drop-in removed, runtime `05aa2c8`, live admission config); #308 fixed via PR #390 (`8a7cdab`) after four correctives; Stage 2 packet drafted; next gate Ryan Stage 2 grant |
 
 ## TL;DR
 
@@ -298,6 +303,6 @@ Keep this document a current-state snapshot, not a session diary.
   implemented and Copilot-audited at `eaae6e9`; its two focused tests pass with
   the live failure ledger unchanged. Ryan's PR decision is next. Config and
   watcher promotion remain separately gated.
-- Codex track: rollout admission merged via PR #388, default off. The burn
-  isn't reduced until Stage 1 and Stage 2 run under Ryan's grants. No live
-  bootstrap, config change, or watcher promotion is authorized.
+- Codex track: the burn fix is live for new Codex sessions (PR #388, Stage 1
+  PASS), and the #308 retry fix is merged (PR #390). The watcher is still
+  off. Next is Ryan's grant for Stage 2, a 24 h watcher canary.
