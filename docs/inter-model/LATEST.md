@@ -33,10 +33,11 @@ cross-arc snapshot and the linked arc brief below.
   Copilot FAILed raw caller-controlled `argv[0]` retention; Sol-High accepted
   Copilot's privacy finding. The corrected r5 evidence keeps only closed
   classifier values, process metadata, resolved executable, argument count,
-  and a command-line digest. It binds current inventory `9321f51a…56a1` after
-  unrelated Claude indexing; no backup has run. **Next:** Kiro and Copilot
-  recheck the same exact corrected r5 revision, then Ryan decides whether to
-  grant that runner. Resume from the
+  and a command-line digest. Kiro and Copilot both PASSed exact corrected r5
+  revision `a3c5a9e` with no blockers. It binds current inventory
+  `9321f51a…56a1` after unrelated Claude indexing; no backup has run.
+  **Next:** Ryan decides whether to grant that exact reviewed runner. Resume
+  from the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
