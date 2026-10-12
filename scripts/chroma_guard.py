@@ -7,7 +7,7 @@
   audit             validate + census under the write lock; saves the result for doctor
                     (exit 1 on a finding; run daily by convmem-chroma-audit.timer)
   reconcile         create or refresh restore points now; restores a torn segment if found
-  clear-quarantine  remove QUARANTINE.json once the index has been repaired
+  clear-quarantine  refuse while an unresolved or unrecognized marker is present
 
 status, validate, census and audit never modify the store: no Chroma client is opened and SQLite is
 opened read-only. Run reconcile at deploy time with the watcher stopped, so the first
@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from chroma_write_guard import (  # pylint: disable=wrong-import-position
     ChromaWriteGuard,
+    ChromaWriteGuardError,
     recover,
     segment_dirs,
     segment_signature,
@@ -47,7 +48,20 @@ def _status(guard: ChromaWriteGuard) -> int:
     quarantine = guard.quarantine_state()
     print(f"store:       {guard.chroma_dir}")
     print(f"guard state: {guard.root}")
-    print(f"quarantine:  {json.dumps(quarantine) if quarantine else 'none'}")
+    if not quarantine:
+        print("quarantine:  none")
+    else:
+        print(
+            f"quarantine:  {quarantine.get('state')} "
+            f"blocking={quarantine.get('blocking')} {quarantine.get('summary')}"
+        )
+        for incident in quarantine.get("incidents") or []:
+            print(f"  incident {incident.get('id')} segment {incident.get('segment')}")
+            for finding in incident.get("findings") or []:
+                print(
+                    f"    {finding.get('id')} rev {finding.get('revision')} "
+                    f"{finding.get('kind')}: {finding.get('reason')}"
+                )
     for seg_id, seg in segment_dirs(guard.chroma_dir).items():
         snapshot = guard.current_snapshot(seg_id)
         if snapshot is None:
@@ -61,7 +75,7 @@ def _status(guard: ChromaWriteGuard) -> int:
         print("recent events:")
         for line in guard.events_path.read_text(encoding="utf-8").splitlines()[-10:]:
             print(f"  {line}")
-    return 1 if quarantine else 0
+    return 1 if quarantine and quarantine.get("blocking", True) else 0
 
 
 def _validate(chroma_dir: Path) -> int:
@@ -129,7 +143,12 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(event, sort_keys=True))
         print(f"reconciled: {len(events)} change(s); run status for the current restore points")
         return 0
-    print(f"cleared {guard.quarantine_path}" if guard.clear_quarantine() else "no quarantine to clear")
+    try:
+        cleared = guard.clear_quarantine()
+    except ChromaWriteGuardError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(f"cleared {guard.quarantine_path}" if cleared else "no quarantine to clear")
     return 0
 
 

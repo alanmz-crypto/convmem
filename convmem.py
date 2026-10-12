@@ -291,12 +291,17 @@ def index(
     ),
 ):
     """Ingest all sources (skip unchanged), or one file (--file; add --force to re-ingest)."""
+    if os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") == "1":
+        from live_diagnosis import bootstrap_index_child
+
+        bootstrap_index_child()
     _guard_write()
     from ingest import (
         ProviderUnavailableError,
         UnsupportedSourceError,
         index as run_index,
     )
+    from incremental_jsonl import IncrementalJsonlError, LIVE_ROUTE_REFUSED_EXIT
     from query import render_error
 
     try:
@@ -314,6 +319,20 @@ def index(
             f"{exc}\nCheck the provider balance/credential, then re-run. "
             "Nothing was marked processed, so the file re-indexes cleanly."
         )
+        raise typer.Exit(1) from exc
+    except IncrementalJsonlError as exc:
+        if exc.code == "live_route_refused":
+            from incremental_jsonl import format_live_route_refused
+
+            detail = str(exc.detail or "")
+            tail = detail.rsplit(":", maxsplit=1)[-1]
+            if ":" in detail and len(tail) == 64:
+                outcome, digest = detail.rsplit(":", maxsplit=1)
+            else:
+                outcome, digest = detail, ""
+            print(format_live_route_refused(outcome, digest), file=sys.stderr)
+            raise typer.Exit(LIVE_ROUTE_REFUSED_EXIT) from exc
+        render_error(str(exc))
         raise typer.Exit(1) from exc
     typer.echo("")
     typer.echo(

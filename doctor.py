@@ -606,6 +606,32 @@ def _check_index_gate() -> DoctorCheck:
     return DoctorCheck("index_gate", True, "0 index failures in 7d")
 
 
+def _check_incremental_refusals(cfg: dict) -> DoctorCheck:
+    from watch_circuit_breaker import (
+        CircuitBreakerState,
+        circuit_breaker_state_path_from_config,
+    )
+
+    state_path = circuit_breaker_state_path_from_config(cfg)
+    breaker = CircuitBreakerState(state_path)
+    rows = breaker.list_refusal_quarantines()
+    if not rows:
+        return DoctorCheck("incremental_refusals", True, "0 quarantined live-route refusals")
+    detail = "; ".join(
+        f"{row.get('path')} outcome={row.get('outcome')} "
+        f"digest={str(row.get('prefix_sha256', ''))[:12]}…"
+        for row in rows[:5]
+    )
+    if len(rows) > 5:
+        detail += f"; +{len(rows) - 5} more"
+    return DoctorCheck(
+        "incremental_refusals",
+        True,
+        f"{len(rows)} quarantined refusal(s): {detail}",
+        status="warn",
+    )
+
+
 def _check_native_crash_gate() -> DoctorCheck:
     """Count watch-spawned index children killed by a native fault in the last 7d.
 
@@ -664,12 +690,16 @@ def _check_chroma_write_guard(cfg: dict) -> DoctorCheck:
         return DoctorCheck(name, True, "disabled by [index] chroma_write_guard = false", status="warn")
     guard = ChromaWriteGuard(chroma_dir)
     quarantine = guard.quarantine_state()
-    if quarantine is not None:
+    if quarantine is not None and quarantine.get("blocking", True):
+        incidents = quarantine.get("incidents") or []
+        finding_count = sum(len(incident.get("findings") or []) for incident in incidents)
         return DoctorCheck(
             name,
             False,
-            f"writes QUARANTINED: {quarantine.get('reason')} (segment {quarantine.get('segment')}); "
-            "repair, then: python scripts/chroma_guard.py clear-quarantine",
+            f"writes QUARANTINED ({quarantine.get('state')}): {quarantine.get('summary')}; "
+            f"{len(incidents)} incident(s), {finding_count} finding(s); "
+            "ordinary clear will not release them; "
+            f"see {guard.quarantine_path}",
         )
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     restored = 0
@@ -690,7 +720,8 @@ def _check_chroma_write_guard(cfg: dict) -> DoctorCheck:
             status="warn",
         )
     points = len(list(guard.snapshots.glob("*/CURRENT"))) if guard.snapshots.is_dir() else 0
-    return DoctorCheck(name, True, f"no quarantine; {points} segment restore point(s)")
+    label = "no unresolved incidents" if quarantine is not None else "no quarantine"
+    return DoctorCheck(name, True, f"{label}; {points} segment restore point(s)")
 
 
 CHROMA_AUDIT_MAX_AGE_HOURS = 36
@@ -721,6 +752,12 @@ def _check_chroma_audit(cfg: dict) -> DoctorCheck:
             status="warn",
         )
     status = audit.get("status")
+    if audit.get("containment") == "unavailable" or "containment unavailable" in str(audit.get("reason") or ""):
+        return DoctorCheck(
+            name,
+            False,
+            f"containment unavailable at {audit.get('ts')}: {audit.get('reason')}; see {guard.audit_path}",
+        )
     if status == "fail":
         invalid = ", ".join(audit.get("invalid_segments") or {}) or "none"
         return DoctorCheck(
@@ -1646,6 +1683,7 @@ def run_doctor(
         _check_synthesis_gate(),
         _check_index_gate(),
         _check_native_crash_gate(),
+        _check_incremental_refusals(cfg),
         _check_chroma_write_guard(cfg),
         _check_chroma_audit(cfg),
         _check_cpu_tripwire(cfg),

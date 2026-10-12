@@ -16,6 +16,9 @@ chroma/
 config.toml
 !.codex/config.toml.example
 
+# Issue #268 D1 harness ephemeral scratch (never commit)
+tests/.d1-scratch-arms/
+
 # Python
 __pycache__/
 *.py[cod]

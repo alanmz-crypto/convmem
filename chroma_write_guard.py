@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Contain native Chroma write crashes so they cannot corrupt the shared HNSW index.
 
 chromadb 1.5.9 saves each collection's HNSW segment in place, from inside ordinary
@@ -28,7 +29,9 @@ atomic across a crash.
 
 from __future__ import annotations
 
+import copy
 import fcntl
+import hashlib
 import json
 import os
 import pickle
@@ -57,6 +60,20 @@ HEADER_BYTES = 100
 DEFAULT_LOCK_TIMEOUT_SECONDS = 120.0
 AUDIT_LOCK_TIMEOUT_SECONDS = 60.0
 GUARD_DIR_SUFFIX = ".write-guard"
+INCIDENT_SCHEMA = "convmem.safe_harbor.incident_set"
+INCIDENT_VERSION = 1
+LEGACY_BYTES_NAME = "QUARANTINE.legacy-bytes"
+_ADMISSION_BARRIER_ENV = "CONVMEM_GUARD_ADMISSION_BARRIER"
+_LOCK_HOLD_BARRIER_ENV = "CONVMEM_GUARD_LOCK_BARRIER"
+_GUARD_STATE_NAMES = frozenset(
+    {
+        "QUARANTINE.json",
+        LEGACY_BYTES_NAME,
+        "events.jsonl",
+        "audit.json",
+        "native-write.lock",
+    }
+)
 _DELETE_MARK = 0x10000
 _MAX_LEVELS = 64
 _ROWS_PER_CHUNK = 8192
@@ -74,6 +91,10 @@ class ChromaWriteQuarantinedError(ChromaWriteGuardError):
 
 class ChromaStaleSystemError(ChromaWriteGuardError):
     """This process holds a Chroma system older than the on-disk save and cannot reload it."""
+
+
+class ChromaContainmentUnavailableError(ChromaWriteGuardError):
+    """Incident publication failed; no durable stop was established."""
 
 
 def _utc_now() -> str:
@@ -430,8 +451,23 @@ _VIEWS_LOCK = threading.Lock()
 _SYSTEM_VIEWS: dict[str, dict[str, Signature]] = {}
 
 
+def canonical_target(path: str | Path) -> Path:
+    """Absolute symlink-resolved identity of a Chroma store directory."""
+    return Path(path).expanduser().resolve(strict=False)
+
+
+def _view_key(identifier: str | Path) -> str:
+    """Cache identity for the guard's record of what a system has loaded."""
+    return str(canonical_target(identifier))
+
+
 def chroma_system_cached(identifier: str) -> bool:
-    """True when this process already holds a Chroma system for ``identifier``."""
+    """True when this process already holds a Chroma system for ``identifier``.
+
+    Chroma keys that table by the exact path string given to PersistentClient.
+    Store construction passes the canonical target, and the guard's load record
+    uses that same target (see ``_view_key``).
+    """
     from chromadb.api.shared_system_client import SharedSystemClient
 
     return identifier in SharedSystemClient._identifier_to_system  # pylint: disable=protected-access
@@ -441,10 +477,12 @@ def note_system_created(identifier: str) -> None:
     """Record the on-disk saves a Chroma system about to be created will load.
 
     Call *before* constructing the client: Chroma loads segments lazily, so the
-    system can only be newer than this record, never older.
+    system can only be newer than this record, never older. The record is stored
+    under the canonical target so path aliases share one guard view.
     """
+    key = _view_key(identifier)
     with _VIEWS_LOCK:
-        _SYSTEM_VIEWS[identifier] = store_signature(identifier)
+        _SYSTEM_VIEWS[key] = store_signature(key)
 
 
 def note_unguarded_write(identifier: str, before: dict[str, Signature]) -> None:
@@ -454,9 +492,10 @@ def note_unguarded_write(identifier: str, before: dict[str, Signature]) -> None:
     not stale. If it did not save, leave the recorded view alone: any save another
     process made earlier is still unseen.
     """
-    after = store_signature(identifier)
+    key = _view_key(identifier)
+    after = store_signature(key)
     if after != before:
-        _set_system_view(identifier, after)
+        _set_system_view(key, after)
 
 
 def _synced_only(view: dict[str, Signature] | None) -> dict[str, Signature] | None:
@@ -551,16 +590,441 @@ def _exclusive_flock(path: Path, timeout_seconds: float) -> Iterator[None]:
 
 
 # --------------------------------------------------------------------------------------
+# Incident authority (QUARANTINE.json)
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class AuthorityView:
+    """Read-only interpretation of the quarantine marker. Never a reason to rewrite it."""
+
+    state: str
+    blocking: bool
+    summary: str
+    incidents: tuple[dict[str, Any], ...]
+    document: dict[str, Any] | None
+    error: str | None
+    legacy: bool
+
+
+def _same_location(left: Path, right: Path) -> bool:
+    return left.expanduser().resolve(strict=False) == right.expanduser().resolve(strict=False)
+
+
+def _guard_location_occupied(path: Path) -> bool:
+    if not path.exists():
+        return False
+    if not path.is_dir():
+        return True
+    try:
+        children = list(path.iterdir())
+    except OSError:
+        return True
+    return any(child.name in _GUARD_STATE_NAMES or child.name == "snapshots" for child in children)
+
+
+def _containment_text(exc: BaseException) -> str:
+    return (
+        "containment unavailable: durable incident publication failed "
+        f"({exc}). Request owner process-level containment; this is not a durable stop."
+    )
+
+
+def _wait_barrier(spec: str) -> None:
+    """Block until another process releases a ready/release file pair.
+
+    The specification is ``ready_path:release_path``. It only orders tests.
+    It does not skip quarantine or admit a write.
+    """
+    ready_s, sep, release_s = spec.partition(":")
+    if sep != ":" or not ready_s or not release_s:
+        raise ChromaWriteGuardError("invalid guard barrier specification")
+    ready = Path(ready_s)
+    ready.parent.mkdir(parents=True, exist_ok=True)
+    ready.write_text("ready", encoding="utf-8")
+    release = Path(release_s)
+    while not release.is_file():
+        time.sleep(0.01)
+
+
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _json_object(value: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not value:
+        return {}
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    parsed = json.loads(encoded)
+    if not isinstance(parsed, dict):
+        raise ChromaWriteGuardError("incident detail must be a JSON object")
+    return parsed
+
+
+def _finding_digest(kind: str, reason: str, failures: list[str], detail: Mapping[str, Any] | None) -> str:
+    payload = {"detail": _json_object(detail), "failures": list(failures), "kind": kind, "reason": reason}
+    return _sha256_text(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+
+
+def _finding_id(segment: str, kind: str, reason: str) -> str:
+    return "find_" + _sha256_text(f"{segment}\0{kind}\0{reason}")[:24]
+
+
+def _incident_id(target: str, segment: str) -> str:
+    return "inc_" + _sha256_text(f"{target}\0{segment}")[:24]
+
+
+def _finding_spec(
+    segment: str,
+    kind: str,
+    reason: str,
+    failures: tuple[str, ...] | list[str],
+    detail: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    failure_list = [str(item) for item in failures]
+    return {
+        "segment": segment,
+        "kind": kind,
+        "reason": reason,
+        "failures": failure_list,
+        "detail": _json_object(detail),
+    }
+
+
+def _empty_incident_document(target: str) -> dict[str, Any]:
+    return {"schema": INCIDENT_SCHEMA, "version": INCIDENT_VERSION, "target": target, "incidents": []}
+
+
+def _sort_incidents(document: dict[str, Any]) -> None:
+    document["incidents"].sort(key=lambda item: item["id"])
+    for incident in document["incidents"]:
+        incident["findings"].sort(key=lambda item: item["id"])
+
+
+def _summary(incidents: list[dict[str, Any]] | tuple[dict[str, Any], ...]) -> str:
+    parts = [
+        f"{incident['segment']}: {finding['reason']}"
+        for incident in incidents
+        for finding in incident["findings"]
+    ]
+    if not parts:
+        return "unresolved quarantine"
+    shown = "; ".join(parts[:4])
+    extra = len(parts) - 4
+    if extra > 0:
+        shown += f"; +{extra} more"
+    return shown
+
+
+def _blocked(summary: str) -> AuthorityView:
+    return AuthorityView("blocked", True, summary, (), None, summary, False)
+
+
+def _absent() -> AuthorityView:
+    return AuthorityView("absent", False, "no quarantine marker", (), None, None, False)
+
+
+def _is_recognized_legacy(parsed: Mapping[str, Any]) -> bool:
+    if any(key in parsed for key in ("schema", "version", "incidents")):
+        return False
+    if not isinstance(parsed.get("segment"), str) or not parsed.get("segment"):
+        return False
+    if not isinstance(parsed.get("reason"), str) or not parsed.get("reason"):
+        return False
+    failures = parsed.get("failures", [])
+    return isinstance(failures, list) and all(isinstance(item, str) for item in failures)
+
+
+def _legacy_spec(parsed: Mapping[str, Any]) -> dict[str, Any]:
+    extra = {key: value for key, value in parsed.items() if key not in {"segment", "reason", "failures"}}
+    detail = {"legacy": extra} if extra else {}
+    return _finding_spec(
+        str(parsed["segment"]),
+        "legacy",
+        str(parsed["reason"]),
+        list(parsed.get("failures") or []),
+        detail,
+    )
+
+
+def _coerce_finding(finding: Any) -> dict[str, Any] | None:
+    if not isinstance(finding, dict):
+        return None
+    finding_id = finding.get("id")
+    kind = finding.get("kind")
+    reason = finding.get("reason")
+    revision = finding.get("revision")
+    digest = finding.get("digest")
+    failures = finding.get("failures")
+    observed_at = finding.get("observed_at")
+    if not all(isinstance(item, str) and item for item in (finding_id, kind, reason, observed_at)):
+        return None
+    if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
+        return None
+    if not isinstance(digest, str) or len(digest) != 64:
+        return None
+    if not isinstance(failures, list) or not all(isinstance(item, str) for item in failures):
+        return None
+    detail = finding.get("detail", {})
+    if not isinstance(detail, dict):
+        return None
+    if digest != _finding_digest(kind, reason, list(failures), detail):
+        return None
+    if finding_id != _finding_id(str(finding.get("segment") or ""), kind, reason) and "segment" in finding:
+        return None
+    return {
+        "id": finding_id,
+        "kind": kind,
+        "reason": reason,
+        "failures": list(failures),
+        "detail": detail,
+        "revision": revision,
+        "digest": digest,
+        "observed_at": observed_at,
+    }
+
+
+def _coerce_incident(incident: Any, target: str) -> dict[str, Any] | None:
+    if not isinstance(incident, dict):
+        return None
+    incident_id = incident.get("id")
+    segment = incident.get("segment")
+    findings = incident.get("findings")
+    if not isinstance(incident_id, str) or not isinstance(segment, str) or not isinstance(findings, list):
+        return None
+    if incident_id != _incident_id(target, segment) or not findings:
+        return None
+    coerced: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in findings:
+        if isinstance(item, dict):
+            item = {**item, "segment": segment}
+        finding = _coerce_finding(item)
+        if finding is None or finding["id"] in seen:
+            return None
+        if finding["id"] != _finding_id(segment, finding["kind"], finding["reason"]):
+            return None
+        seen.add(finding["id"])
+        coerced.append(finding)
+    return {"id": incident_id, "segment": segment, "findings": coerced}
+
+
+def _interpret_current(parsed: Mapping[str, Any], expected_target: str) -> AuthorityView:
+    if parsed.get("version") != INCIDENT_VERSION:
+        return _blocked("unknown incident schema version")
+    target = parsed.get("target")
+    if not isinstance(target, str) or target != expected_target:
+        return _blocked(f"quarantine target {target!r} does not match canonical target {expected_target}")
+    raw_incidents = parsed.get("incidents")
+    if not isinstance(raw_incidents, list):
+        return _blocked("invalid incident set")
+    incidents: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in raw_incidents:
+        coerced = _coerce_incident(item, expected_target)
+        if coerced is None or coerced["id"] in seen:
+            return _blocked("invalid incident set")
+        seen.add(coerced["id"])
+        incidents.append(coerced)
+    document: dict[str, Any] = {
+        "schema": INCIDENT_SCHEMA,
+        "version": INCIDENT_VERSION,
+        "target": expected_target,
+        "incidents": incidents,
+    }
+    legacy_hash = parsed.get("legacy_original_sha256")
+    if isinstance(legacy_hash, str):
+        document["legacy_original_sha256"] = legacy_hash
+    # A present marker is never a release. An empty incident list is still
+    # unresolved: only a missing file admits writers. The document stays
+    # recognizable so a later finding can be merged into it.
+    summary = _summary(incidents) if incidents else "persisted empty incident set refuses admission"
+    return AuthorityView("unresolved", True, summary, tuple(incidents), document, None, False)
+
+
+def _document_from_legacy(parsed: Mapping[str, Any], target: str, raw: bytes) -> dict[str, Any]:
+    document = _empty_incident_document(target)
+    document["legacy_original_sha256"] = hashlib.sha256(raw).hexdigest()
+    _upsert_finding(document, _legacy_spec(parsed))
+    return document
+
+
+def _interpret_marker(raw: bytes, expected_target: str) -> AuthorityView:
+    try:
+        parsed = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return _blocked(f"unreadable quarantine record: {exc}")
+    if parsed is None or not isinstance(parsed, dict):
+        return _blocked("quarantine marker is not an object")
+    if not parsed:
+        return _blocked("quarantine marker is empty")
+    if parsed.get("schema") == INCIDENT_SCHEMA:
+        return _interpret_current(parsed, expected_target)
+    if _is_recognized_legacy(parsed):
+        document = _document_from_legacy(parsed, expected_target, raw)
+        return AuthorityView(
+            "unresolved",
+            True,
+            _summary(document["incidents"]),
+            tuple(document["incidents"]),
+            None,
+            None,
+            True,
+        )
+    return _blocked("unrecognized quarantine marker")
+
+
+def _upsert_finding(document: dict[str, Any], spec: Mapping[str, Any]) -> bool:
+    """Insert or revise one finding. Return whether the unresolved set changed."""
+    segment = str(spec["segment"])
+    kind = str(spec["kind"])
+    reason = str(spec["reason"])
+    failures = [str(item) for item in spec["failures"]]
+    detail = _json_object(spec.get("detail") if isinstance(spec.get("detail"), Mapping) else {})
+    digest = _finding_digest(kind, reason, failures, detail)
+    finding_id = _finding_id(segment, kind, reason)
+    incident_id = _incident_id(str(document["target"]), segment)
+    incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+    if incident is None:
+        incident = {"id": incident_id, "segment": segment, "findings": []}
+        document["incidents"].append(incident)
+    current = next((item for item in incident["findings"] if item["id"] == finding_id), None)
+    if current is None:
+        incident["findings"].append(
+            {
+                "id": finding_id,
+                "kind": kind,
+                "reason": reason,
+                "failures": failures,
+                "detail": detail,
+                "revision": 1,
+                "digest": digest,
+                "observed_at": _utc_now(),
+            }
+        )
+        _sort_incidents(document)
+        return True
+    if current["digest"] == digest:
+        return False
+    current.update(
+        kind=kind,
+        reason=reason,
+        failures=failures,
+        detail=detail,
+        digest=digest,
+        revision=int(current["revision"]) + 1,
+        observed_at=_utc_now(),
+    )
+    _sort_incidents(document)
+    return True
+
+
+def _collect_reports(chroma_dir: Path) -> tuple[list[SegmentReport], BaseException | None]:
+    try:
+        return [validate_segment(seg) for seg in segment_dirs(chroma_dir).values()], None
+    except OSError as exc:
+        return [], exc
+
+
+def _collect_census(chroma_dir: Path) -> tuple[dict[str, dict[str, Any]] | None, BaseException | None]:
+    try:
+        return vector_census(chroma_dir), None
+    except (sqlite3.Error, OSError, pickle.UnpicklingError, EOFError) as exc:
+        return None, exc
+
+
+def _audit_findings(
+    reports: list[SegmentReport],
+    report_error: BaseException | None,
+    census: dict[str, dict[str, Any]] | None,
+    census_error: BaseException | None,
+) -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+    if report_error is None:
+        for report in reports:
+            if report.ok:
+                continue
+            specs.append(
+                _finding_spec(report.segment, "structural", "segment failed structural validation", report.failures)
+            )
+    if census_error is None and census is not None:
+        for name, row in census.items():
+            if int(row.get("lost") or 0) <= 0:
+                continue
+            segment = str(row.get("vector_segment") or name)
+            specs.append(
+                _finding_spec(
+                    segment,
+                    "lost_vectors",
+                    "records without vectors",
+                    (),
+                    {
+                        "collection": name,
+                        "lost": int(row["lost"]),
+                        "lost_sample": list(row.get("lost_sample") or []),
+                    },
+                )
+            )
+    return specs
+
+
+def _fill_audit_result(
+    result: dict[str, Any],
+    gathered: Mapping[str, Any],
+    specs: list[dict[str, Any]],
+    publication_error: BaseException | None,
+) -> None:
+    reports: list[SegmentReport] = gathered["reports"]
+    report_error: BaseException | None = gathered["report_error"]
+    census: dict[str, dict[str, Any]] | None = gathered["census"]
+    census_error: BaseException | None = gathered["census_error"]
+    if isinstance(publication_error, ChromaContainmentUnavailableError):
+        result.update(status="error", reason=str(publication_error), containment="unavailable")
+        return
+    if publication_error is not None:
+        result.update(status="error", reason=str(publication_error))
+        return
+    invalid = [report for report in reports if not report.ok] if report_error is None else []
+    lost = None if census is None else sum(int(row["lost"]) for row in census.values())
+    vectors = None if census is None else sum(int(row["hnsw_ids"]) for row in census.values())
+    if specs:
+        result.update(
+            status="fail",
+            segments=len(reports),
+            invalid_segments={report.segment: list(report.failures)[:5] for report in invalid},
+            lost=lost,
+            vectors=vectors,
+            census=census,
+        )
+        if census_error is not None:
+            result["census_error"] = f"{type(census_error).__name__}: {census_error}"
+        return
+    if report_error is not None or census_error is not None:
+        err = report_error or census_error
+        result.update(status="error", reason=f"{type(err).__name__}: {err}")
+        return
+    result.update(
+        status="pass",
+        segments=len(reports),
+        invalid_segments={},
+        lost=lost,
+        vectors=vectors,
+        census=census,
+    )
+
+
+# --------------------------------------------------------------------------------------
 # The guard
 # --------------------------------------------------------------------------------------
 
 
-class ChromaWriteGuard:
+class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
     """Keeps a validated copy of each segment's last save and serialises native writes.
 
-    State lives beside the store in ``<chroma_dir>.write-guard/``: the lock file,
-    ``snapshots/<segment>/`` (the copies), ``events.jsonl`` and, when writes have been
-    stopped, ``QUARANTINE.json``.
+    State lives beside the canonical store in ``<chroma_dir>.write-guard/``: the lock
+    file, ``snapshots/<segment>/`` (the copies), ``events.jsonl`` and ``QUARANTINE.json``.
+    ``QUARANTINE.json`` is the only admission authority. ``audit.json`` is the latest
+    observation and cannot release writers.
     """
 
     def __init__(
@@ -569,12 +1033,18 @@ class ChromaWriteGuard:
         *,
         lock_timeout_seconds: float = DEFAULT_LOCK_TIMEOUT_SECONDS,
     ) -> None:
-        self.chroma_dir = Path(chroma_dir).expanduser()
+        requested = Path(chroma_dir).expanduser()
+        self.chroma_dir = canonical_target(requested)
         self.root = self.chroma_dir.parent / f"{self.chroma_dir.name}{GUARD_DIR_SUFFIX}"
+        lexical_root = requested.parent / f"{requested.name}{GUARD_DIR_SUFFIX}"
+        self.identity_conflict: tuple[str, str] | None = None
+        if not _same_location(lexical_root, self.root) and _guard_location_occupied(lexical_root):
+            self.identity_conflict = (str(lexical_root), str(self.root))
         self.lock_path = self.root / "native-write.lock"
         self.snapshots = self.root / "snapshots"
         self.events_path = self.root / "events.jsonl"
         self.quarantine_path = self.root / "QUARANTINE.json"
+        self.legacy_bytes_path = self.root / LEGACY_BYTES_NAME
         self.lock_timeout_seconds = lock_timeout_seconds
 
     @property
@@ -583,45 +1053,170 @@ class ChromaWriteGuard:
 
     # -- quarantine -------------------------------------------------------------------
 
-    def quarantine_state(self) -> dict[str, Any] | None:
+    def _reject_identity_conflict(self) -> None:
+        if not self.identity_conflict:
+            return
+        lexical, canonical = self.identity_conflict
+        raise ChromaWriteGuardError(
+            "refusing competing guard locations "
+            f"{lexical} and {canonical}; not creating an empty authority"
+        )
+
+    def read_authority(self) -> AuthorityView:
+        """Interpret the marker. A missing file is the only non-blocking state."""
+        if self.identity_conflict:
+            lexical, canonical = self.identity_conflict
+            return _blocked(f"competing guard locations {lexical} and {canonical}")
         try:
-            return json.loads(self.quarantine_path.read_text(encoding="utf-8"))
+            raw = self.quarantine_path.read_bytes()
         except FileNotFoundError:
+            return _absent()
+        except OSError as exc:
+            return _blocked(f"unreadable quarantine record: {exc}")
+        return _interpret_marker(raw, str(self.chroma_dir))
+
+    def quarantine_state(self) -> dict[str, Any] | None:
+        """Return the admission view, or None when the marker is genuinely absent."""
+        view = self.read_authority()
+        if view.state == "absent":
             return None
-        except (OSError, json.JSONDecodeError) as exc:
-            return {"reason": f"unreadable quarantine record: {exc}"}
+        return {
+            "state": view.state,
+            "blocking": view.blocking,
+            "summary": view.summary,
+            "reason": view.summary,
+            "incidents": [copy.deepcopy(item) for item in view.incidents],
+            "target": str(self.chroma_dir),
+            "error": view.error,
+            "legacy": view.legacy,
+        }
 
     def require_not_quarantined(self) -> None:
-        state = self.quarantine_state()
-        if state is not None:
+        self._reject_identity_conflict()
+        view = self.read_authority()
+        if view.blocking:
             raise ChromaWriteQuarantinedError(
-                f"chroma writes are quarantined: {state.get('reason')} "
-                f"(segment {state.get('segment')}); see {self.quarantine_path}"
+                f"chroma writes are quarantined: {view.summary}; see {self.quarantine_path}"
             )
 
     def clear_quarantine(self) -> bool:
-        """Re-allow writes after a human repaired the index; False when none was set."""
-        if self.quarantine_state() is None:
-            return False
-        self.quarantine_path.unlink(missing_ok=True)
-        self._event("quarantine_cleared")
-        return True
+        """Refuse every present marker. Validated release is not part of this task.
 
-    def _quarantine(self, segment: str, reason: str, failures: tuple[str, ...], **extra: Any) -> NoReturn:
+        Returns False only when the marker is absent. Any unresolved, legacy, or
+        unrecognized marker stays on disk.
+        """
+        self._reject_identity_conflict()
+        if self.read_authority().state == "absent":
+            return False
+        with _exclusive_flock(self.lock_path, self.lock_timeout_seconds):
+            if self.read_authority().state == "absent":
+                return False
+            raise ChromaWriteGuardError(
+                "ordinary clear refuses unresolved incidents; "
+                "validated release is not available; "
+                f"see {self.quarantine_path}"
+            )
+
+    def _write_bytes(self, path: Path, payload: bytes) -> None:
+        path.write_bytes(payload)
+
+    def _fsync_published(self, path: Path, *, directory: bool = False) -> None:
+        _fsync(path, directory=directory)
+
+    def _write_exact(self, path: Path, payload: bytes) -> None:
+        """Publish exact bytes durably. Refuse to replace a different preserved payload."""
         self.root.mkdir(parents=True, exist_ok=True)
-        record = {
-            "ts": _utc_now(),
-            "segment": segment,
-            "reason": reason,
-            "failures": list(failures)[:20],
-            "pid": os.getpid(),
-            "to_clear": "repair the index, then run: python scripts/chroma_guard.py clear-quarantine",
-            **extra,
-        }
-        _write_json_durable(self.quarantine_path, record)
-        self._event("quarantined", segment=segment, reason=reason)
+        if path.exists():
+            try:
+                existing = path.read_bytes()
+            except OSError as exc:
+                raise ChromaContainmentUnavailableError(_containment_text(exc)) from exc
+            if existing != payload:
+                raise ChromaWriteGuardError(
+                    f"preserved quarantine bytes at {path} differ; refusing to overwrite them"
+                )
+            return
+        tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        try:
+            self._write_bytes(tmp, payload)
+            self._fsync_published(tmp)
+            if tmp.read_bytes() != payload:
+                raise OSError(f"short write of {path.name}")
+            os.replace(tmp, path)
+            self._fsync_published(path.parent, directory=True)
+        except OSError as exc:
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
+            raise ChromaContainmentUnavailableError(_containment_text(exc)) from exc
+
+    def _publish_marker(self, document: Mapping[str, Any]) -> None:
+        payload = (json.dumps(document, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        self.root.mkdir(parents=True, exist_ok=True)
+        tmp = self.quarantine_path.with_name(f".{self.quarantine_path.name}.{os.getpid()}.tmp")
+        replaced = False
+        try:
+            self._write_bytes(tmp, payload)
+            self._fsync_published(tmp)
+            if tmp.read_bytes() != payload:
+                raise OSError("short write of quarantine marker")
+            os.replace(tmp, self.quarantine_path)
+            replaced = True
+            self._fsync_published(self.quarantine_path.parent, directory=True)
+        except OSError as exc:
+            if tmp.exists() and not replaced:
+                tmp.unlink(missing_ok=True)
+            raise ChromaContainmentUnavailableError(_containment_text(exc)) from exc
+
+    def _load_incident_document(self) -> tuple[dict[str, Any], bytes | None]:
+        """Return the document to update, plus original legacy bytes when adopting."""
+        try:
+            raw = self.quarantine_path.read_bytes()
+        except FileNotFoundError:
+            return _empty_incident_document(str(self.chroma_dir)), None
+        except OSError as exc:
+            raise ChromaContainmentUnavailableError(_containment_text(exc)) from exc
+        try:
+            parsed = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ChromaWriteGuardError(f"refusing to replace unrecognized quarantine marker: {exc}") from exc
+        if isinstance(parsed, dict) and parsed.get("schema") == INCIDENT_SCHEMA:
+            view = _interpret_current(parsed, str(self.chroma_dir))
+            if view.state == "blocked" or view.document is None:
+                raise ChromaWriteGuardError(
+                    f"refusing to replace unrecognized quarantine marker: {view.summary}"
+                )
+            return copy.deepcopy(view.document), None
+        if isinstance(parsed, dict) and _is_recognized_legacy(parsed):
+            return _document_from_legacy(parsed, str(self.chroma_dir), raw), raw
+        raise ChromaWriteGuardError("refusing to replace unrecognized quarantine marker")
+
+    def _publish_findings(self, specs: list[dict[str, Any]]) -> dict[str, Any]:
+        """Merge findings into the marker. Caller holds the native lock."""
+        self._reject_identity_conflict()
+        document, legacy_raw = self._load_incident_document()
+        changed = legacy_raw is not None
+        for spec in specs:
+            changed = _upsert_finding(document, spec) or changed
+        if not changed:
+            return document
+        if legacy_raw is not None:
+            self._write_exact(self.legacy_bytes_path, legacy_raw)
+        self._publish_marker(document)
+        return document
+
+    def _contain(self, specs: list[dict[str, Any]]) -> NoReturn:
+        """Publish every finding, then refuse the operation. Publication failure is not a stop."""
+        document = self._publish_findings(specs)
+        try:
+            self._event(
+                "quarantined",
+                incidents=[item["id"] for item in document["incidents"]],
+                findings=sum(len(item["findings"]) for item in document["incidents"]),
+            )
+        except OSError:
+            pass
         raise ChromaWriteQuarantinedError(
-            f"chroma writes quarantined: {reason} (segment {segment}); see {self.quarantine_path}"
+            f"chroma writes quarantined: {_summary(document['incidents'])}; see {self.quarantine_path}"
         )
 
     def _event(self, event: str, **detail: Any) -> dict[str, Any]:
@@ -636,25 +1231,35 @@ class ChromaWriteGuard:
     @contextmanager
     def native_write(self, *, identifier: str, reload_client: Callable[[], None]) -> Iterator[None]:
         """Run one native Chroma mutation under the containment invariants."""
+        self._reject_identity_conflict()
+        if canonical_target(identifier) != self.chroma_dir:
+            raise ChromaWriteGuardError(
+                f"write identifier {identifier} is not the canonical target {self.chroma_dir}"
+            )
+        key = _view_key(identifier)
         self.require_not_quarantined()
+        barrier = os.environ.get(_ADMISSION_BARRIER_ENV)
+        if barrier:
+            _wait_barrier(barrier)
         with _exclusive_flock(self.lock_path, self.lock_timeout_seconds):
             self.require_not_quarantined()
             self.reconcile()
             before = store_signature(self.chroma_dir)
-            if _synced_only(_system_view(identifier)) != _synced_only(before):
+            if _synced_only(_system_view(key)) != _synced_only(before):
                 reload_client()
-                _set_system_view(identifier, before)
+                _set_system_view(key, before)
             try:
                 yield
             except BaseException:
-                self._after_write(identifier, before, system_trusted=False)
+                self._after_write(key, before, system_trusted=False)
                 raise
-            self._after_write(identifier, before, system_trusted=True)
+            self._after_write(key, before, system_trusted=True)
 
     def _after_write(self, identifier: str, before: dict[str, Signature], *, system_trusted: bool) -> None:
         after = store_signature(self.chroma_dir)
         # A failed native call leaves the in-process system's state unknown: reload next time.
         _set_system_view(identifier, after if system_trusted else None)
+        pending: list[dict[str, Any]] = []
         for seg_id, seg in segment_dirs(self.chroma_dir).items():
             if before.get(seg_id) == after.get(seg_id):
                 continue
@@ -662,16 +1267,24 @@ class ChromaWriteGuard:
             if report.ok:
                 self._refresh_snapshot(seg_id, seg, after[seg_id])  # logs only a first copy
                 continue
-            self._quarantine(
-                seg_id,
-                "this process's own save failed validation; not restoring the previous save "
-                "because Chroma has already purged the records written since it",
-                report.failures,
+            pending.append(
+                _finding_spec(
+                    seg_id,
+                    "structural",
+                    "this process's own save failed validation; not restoring the previous save "
+                    "because Chroma has already purged the records written since it",
+                    report.failures,
+                )
             )
+        if pending:
+            self._contain(pending)
 
     def reconcile(self) -> list[dict[str, Any]]:
         """Bring every live segment back to a validated save; the caller holds the lock."""
+        self.require_not_quarantined()
         events: list[dict[str, Any]] = []
+        pending: list[dict[str, Any]] = []
+        restores: list[tuple[str, Path, tuple[Path, dict[str, Any]], SegmentReport]] = []
         for seg_id, seg in segment_dirs(self.chroma_dir).items():
             live_sig = segment_signature(seg)
             snapshot = self.current_snapshot(seg_id)
@@ -685,8 +1298,38 @@ class ChromaWriteGuard:
                 events.append(created or self._event("snapshot_adopted", segment=seg_id))
                 continue
             if snapshot is None:
-                self._quarantine(seg_id, "live segment failed validation and no validated save exists", report.failures)
-            events.append(self._restore(seg_id, seg, snapshot, report))
+                pending.append(
+                    _finding_spec(
+                        seg_id,
+                        "structural",
+                        "live segment failed validation and no validated save exists",
+                        report.failures,
+                    )
+                )
+                continue
+            snap_report = validate_segment(snapshot[0])
+            if not snap_report.ok:
+                pending.append(
+                    _finding_spec(
+                        seg_id,
+                        "structural",
+                        "live segment failed validation and its saved copy failed too",
+                        report.failures,
+                        {"snapshot_failures": list(snap_report.failures)},
+                    )
+                )
+                continue
+            restores.append((seg_id, seg, snapshot, report))
+        if pending:
+            self._contain(pending)
+        post: list[dict[str, Any]] = []
+        for seg_id, seg, snapshot, report in restores:
+            event, extra = self._restore(seg_id, seg, snapshot, report)
+            if event is not None:
+                events.append(event)
+            post.extend(extra)
+        if post:
+            self._contain(post)
         return events
 
     # -- snapshots ------------------------------------------------------------------------
@@ -743,16 +1386,19 @@ class ChromaWriteGuard:
         seg: Path,
         snapshot: tuple[Path, dict[str, Any]],
         live_report: SegmentReport,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
         snap_dir, meta = snapshot
         snap_report = validate_segment(snap_dir)
         if not snap_report.ok:
-            self._quarantine(
-                seg_id,
-                "live segment failed validation and its saved copy failed too",
-                live_report.failures,
-                snapshot_failures=list(snap_report.failures),
-            )
+            return None, [
+                _finding_spec(
+                    seg_id,
+                    "structural",
+                    "live segment failed validation and its saved copy failed too",
+                    live_report.failures,
+                    {"snapshot_failures": list(snap_report.failures)},
+                )
+            ]
         for name in SEGMENT_FILES:
             target = seg / name
             if (snap_dir / name).exists():
@@ -764,7 +1410,9 @@ class ChromaWriteGuard:
         _fsync(seg, directory=True)
         restored = validate_segment(seg)
         if not restored.ok:
-            self._quarantine(seg_id, "restored segment failed validation", restored.failures)
+            return None, [
+                _finding_spec(seg_id, "structural", "restored segment failed validation", restored.failures)
+            ]
         _write_json_durable(snap_dir / "SNAPSHOT.json", {**meta, "live_signature": segment_signature(seg)})
         census = self._census_for_segment(seg_id)
         event = self._event(
@@ -774,13 +1422,16 @@ class ChromaWriteGuard:
             census=census,
         )
         if census.get("lost"):
-            self._quarantine(
-                seg_id,
-                "restoring the last save left records without vectors",
-                live_report.failures,
-                census=census,
-            )
-        return event
+            return event, [
+                _finding_spec(
+                    seg_id,
+                    "lost_vectors",
+                    "restoring the last save left records without vectors",
+                    live_report.failures,
+                    {"census": census},
+                )
+            ]
+        return event, []
 
     def _census_for_segment(self, seg_id: str) -> dict[str, Any]:
         try:
@@ -797,35 +1448,70 @@ class ChromaWriteGuard:
         """Validate every live segment and count lost vectors; never modifies the store.
 
         Holds the native-write lock so no save is read half-written: writers wait for
-        the audit (well under a second on the live store) instead of the audit
-        reporting a torn read as corruption.  A busy lock records ``skipped``.  The
-        result goes to ``audit.json`` for ``convmem doctor``.
+        the audit instead of the audit reporting a torn read as corruption. Findings
+        are published to ``QUARANTINE.json`` before the lock is released. A later
+        pass, skip, or error updates ``audit.json`` only and cannot clear incidents.
+        A busy lock records ``skipped``. A diagnostic error alone is not corruption.
         """
         result: dict[str, Any] = {"started": _utc_now(), "pid": os.getpid()}
+        if self.identity_conflict:
+            lexical, canonical = self.identity_conflict
+            result.update(
+                status="error",
+                reason=f"competing guard locations {lexical} and {canonical}",
+                ts=_utc_now(),
+            )
+            return result
         try:
             with _exclusive_flock(self.lock_path, lock_timeout_seconds):
-                reports = [validate_segment(seg) for seg in segment_dirs(self.chroma_dir).values()]
-                census = vector_census(self.chroma_dir)
+                self._audit_locked(result)
         except TimeoutError as exc:
-            result.update(status="skipped", reason=str(exc))
-        except (sqlite3.Error, OSError, pickle.UnpicklingError, EOFError) as exc:
-            result.update(status="error", reason=f"{type(exc).__name__}: {exc}")
-        else:
-            invalid = [r for r in reports if not r.ok]
-            lost = sum(int(row["lost"]) for row in census.values())
-            result.update(
-                status="fail" if invalid or lost else "pass",
-                segments=len(reports),
-                invalid_segments={r.segment: list(r.failures)[:5] for r in invalid},
-                lost=lost,
-                vectors=sum(int(row["hnsw_ids"]) for row in census.values()),
-                census=census,
-            )
+            result.update(status="skipped", reason=str(exc), ts=_utc_now())
+            self.root.mkdir(parents=True, exist_ok=True)
+            _write_json_durable(self.audit_path, result)
+            self._event("audit", status="skipped", lost=result.get("lost"))
+        return result
+
+    def _audit_locked(self, result: dict[str, Any]) -> None:
+        barrier = os.environ.get(_LOCK_HOLD_BARRIER_ENV)
+        if barrier:
+            _wait_barrier(barrier)
+        reports, report_error = _collect_reports(self.chroma_dir)
+        census, census_error = _collect_census(self.chroma_dir)
+        specs = _audit_findings(reports, report_error, census, census_error)
+        publication_error = self._publish_audit_findings(specs)
+        _fill_audit_result(
+            result,
+            {
+                "reports": reports,
+                "report_error": report_error,
+                "census": census,
+                "census_error": census_error,
+            },
+            specs,
+            publication_error,
+        )
         result["ts"] = _utc_now()
         self.root.mkdir(parents=True, exist_ok=True)
         _write_json_durable(self.audit_path, result)
         self._event("audit", status=result["status"], lost=result.get("lost"))
-        return result
+
+    def _publish_audit_findings(self, specs: list[dict[str, Any]]) -> BaseException | None:
+        if not specs:
+            return None
+        try:
+            document = self._publish_findings(specs)
+        except (ChromaContainmentUnavailableError, ChromaWriteGuardError) as exc:
+            return exc
+        try:
+            self._event(
+                "quarantined",
+                incidents=[item["id"] for item in document["incidents"]],
+                findings=sum(len(item["findings"]) for item in document["incidents"]),
+            )
+        except OSError:
+            return None
+        return None
 
     def last_audit(self) -> dict[str, Any] | None:
         try:
@@ -844,8 +1530,13 @@ def recover(
 ) -> list[dict[str, Any]]:
     """Restore torn segments now -- e.g. right after a writer died from a native fault."""
     guard = ChromaWriteGuard(chroma_dir, lock_timeout_seconds=lock_timeout_seconds)
+    guard._reject_identity_conflict()  # pylint: disable=protected-access
     guard.require_not_quarantined()
+    barrier = os.environ.get(_ADMISSION_BARRIER_ENV)
+    if barrier:
+        _wait_barrier(barrier)
     with _exclusive_flock(guard.lock_path, lock_timeout_seconds):
+        guard.require_not_quarantined()
         return guard.reconcile()
 
 

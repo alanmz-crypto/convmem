@@ -175,14 +175,9 @@ def preflight_host(scratch_dir: Path) -> dict[str, Any]:
     scratch = scratch_free_gib(scratch_dir)
     watcher = watcher_state()
     try:
-        mount = subprocess.run(
-            ["findmnt", "-n", "-o", "FSTYPE", "-T", str(scratch_dir)],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        fstype = mount.stdout.strip()
+        from tests.watch_oom_mount_probe import scratch_filesystem_type
+
+        fstype = scratch_filesystem_type(scratch_dir, timeout=15.0)
     except (OSError, subprocess.SubprocessError):
         fstype = ""
     ok = (

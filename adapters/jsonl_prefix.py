@@ -44,6 +44,40 @@ def prefix_sha256(prefix: bytes) -> str:
     return hashlib.sha256(prefix).hexdigest()
 
 
+def streaming_complete_prefix_digest_for_path(
+    path: str | Path,
+    *,
+    bufsize: int = 65536,
+) -> str:
+    """Hash complete JSONL lines only, reading the file in bounded chunks.
+
+    Retained memory stays O(1): stream bytes through one hasher and snapshot
+    ``hasher.copy()`` after each newline (complete-prefix boundary).
+    """
+    hasher = hashlib.sha256()
+    boundary_hasher = hasher.copy()
+    with Path(path).open("rb") as handle:
+        while True:
+            block = handle.read(bufsize)
+            if not block:
+                break
+            start = 0
+            while start < len(block):
+                newline = block.find(b"\n", start)
+                if newline < 0:
+                    hasher.update(block[start:])
+                    break
+                hasher.update(block[start : newline + 1])
+                boundary_hasher = hasher.copy()
+                start = newline + 1
+    return boundary_hasher.hexdigest()
+
+
+def complete_prefix_digest_for_path(path: str | Path) -> str:
+    """SHA-256 of the complete-line prefix for one on-disk JSONL source."""
+    return streaming_complete_prefix_digest_for_path(path)
+
+
 def scan_complete_jsonl_lines(
     prefix: bytes,
     message_from_record: Callable[[object], dict | None],
