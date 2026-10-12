@@ -9,11 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T1 TWO-TEST CORRECTION AUTHORIZED (2026-10-11):**
-  Ryan authorized fixture-isolation cleanup and deterministic audit/writer
-  contention evidence after the independent Copilot review. Cursor resumes the
-  existing worktree for draft #387 under the bounded
+- **Arc Safe Harbor — T1 TWO-TEST CORRECTION IMPLEMENTED; DELTA REVIEW NEXT (2026-10-11):**
+  Cursor implemented the fixture-isolation cleanup and deterministic
+  audit/writer contention evidence on draft #387 at test code `8b41044`
+  (runtime unchanged), under the bounded
   [execution section 8 grant](../plans/EXECUTION-safe-harbor.md#bounded-review-evidence-correction--owner-authorized).
+  Successor CI and a focused independent delta review are next.
   Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
   candidate, CI, review and authority state. Merge, deployment and T2–T5 remain
   ungranted; the alternative audit is not an automatic BugBot-gate exemption.
