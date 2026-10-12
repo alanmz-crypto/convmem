@@ -229,7 +229,7 @@ Ryan then reported “squash merge done”; GitHub confirmed MERGED with the hea
 
 ## V2 — Target binding and freshness (T2)
 
-**T2 IMPLEMENTATION DELIVERED; V2 NOT YET ACCEPTED.** Cursor implemented T2 under execution section 9 on `fix/2026-10-12-safe-harbor-t2`. Codex's captured final-source runs at `44e29f6` passed (below). The corrected event-only fixture at `2459acd` awaits Codex's refresh run. The event-only completion success control is an explicit evidence gap (existing T4 prerequisite). External review and Ryan acceptance are not started; T1's tip-specific outage acceptance does not transfer.
+**T2 IMPLEMENTATION DELIVERED; V2 NOT ACCEPTED (open evidence limitation; review required).** Cursor implemented T2 under execution section 9 on `fix/2026-10-12-safe-harbor-t2`. Captured final runs passed at runtime source `44e29f6` and at test/fixture tip `2459acd` (below). Gate refusal and the real human-review outcome are proven for event-only recovery; **successful event-only completion is NOT proven**. That stays an OPEN limitation and existing T4 prerequisite. External final-tip review and Ryan acceptance are not started; T1's tip-specific outage acceptance does not transfer.
 
 **Required evidence:** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
 
@@ -288,7 +288,18 @@ Runner `/tmp/safe_harbor_t2_collect.py` started each command as a direct subproc
 | Regression | `test_safe_harbor_t1`, `test_chroma_write_guard`, `test_restic_snapshot`, `test_backup_workflows`, `test_restic_offsite` (includes the four former `lchown` cases) | `103 passed, 1 warning in 444.68s` (expected `WARN_LEGACY_ONLY`) | pytest **0** | `/tmp/safe-harbor-t2-final-regression-yra4l3ig/{result.json,pytest.log,pytest.xml}` |
 | Lint | `python -m pylint <all tracked .py> --output-format=json`, then `scripts/pylint_regression_gate.py ci` vs `9664878` | `Pylint regression gate PASS (461 findings, 239 fingerprints; no new/increased vs baseline)` | pylint raw **30** (findings present, expected); gate **0** | `/tmp/safe-harbor-t2-final-lint-2_kqd6r_/{result.json,gate.log,pylint-report.json}` |
 
-That focused run executed the previous direct-ingest version of the event-only test. The corrected fixture at `2459acd` needs Codex's refresh of `tests/test_safe_harbor_t2.py` and lint; its result is **PENDING**.
+Together the two initial batches selected **236 distinct cases**. That focused run executed the previous direct-ingest version of the event-only test, which is kept as history.
+
+### Refresh at test/fixture tip `2459acd` — captured (Codex)
+
+Same runner, uid 1000, clean-allowlist environment and isolated roots. Source fingerprint `5ac369de…` was unchanged during both runs. Production files are identical to `44e29f6`, so the 133 + 103 results above remain attributable to the runtime source.
+
+| Batch | Selection | Result | Exit | Evidence |
+|---|---|---|---|---|
+| Refresh | `test_safe_harbor_t2`, `test_write_gate_effect`, `test_record_review_cli`, `test_restic_gate` (includes the interrupted-approval fixture) | `64 passed in 284.85s`, no warnings | pytest **0** | `/tmp/safe-harbor-t2-final-refresh-4kpdiqod/{result.json,pytest.log,pytest.xml}` |
+| Lint | full pylint, then regression gate vs `9664878` | `Pylint regression gate PASS (465 findings, 239 fingerprints; no new/increased vs baseline)` | pylint raw **30**; gate **0** | `/tmp/safe-harbor-t2-final-lint-pw4yih6o/{result.json,gate.log}` |
+
+The 64 refreshed cases overlap the focused batch. They re-confirm the affected T2/caller cases at `2459acd` and are **not** additional unique tests. No default full suite and no live operation was run.
 
 ### Event-only recovery: corrected fixture and evidence gap
 
@@ -301,7 +312,7 @@ That focused run executed the previous direct-ingest version of the event-only t
 
 The CLI, event writer, classifier and Chroma are real; only embeddings are faked. The obsolete direct-ingest helper mode was removed.
 
-**Gap — no event-only completion success control.** Under current code, a governed decision ingested through this path cannot satisfy the classifier's `approve` branch. Reason: the two hash views over the same record disagree.
+**OPEN evidence limitation — no event-only completion success control.** Under current code, a governed decision ingested through this path cannot satisfy the classifier's `approve` branch. Reason: the two hash views over the same record disagree.
 
 - `recovery_action()` returns `approve` only when the live marker equals the proposal and `live_hash == proposed_hash` (`propose_decision.py:97-100`).
 - `proposed_content_hash` is `ledger_content_hash(proposal_to_ledger(...))` (`propose_decision.py:477-478`; row shape `:366-390`). That dict has no `title`, `notes` or `result`, so they canonicalize as `null` (`ledger_content_hash.py:21-33`). The recovery fallback hashes the approved row, which has the same shape (`propose_decision.py:254-256`).
@@ -355,9 +366,10 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Codex, same | same | regression pytest (5 files, incl. former `lchown` cases) | PASS, pytest exit 0, `103 passed, 1 warning in 444.68s` | V2 final evidence |
 | 2026-10-12 | Codex, same | same | pylint + regression gate vs `9664878` | pylint raw 30; gate exit 0 PASS, 461 findings / 239 fingerprints, none new | V2 final evidence |
 | 2026-10-12 | Cursor | fixture `2459acd` | `py_compile` + pylint on the two changed test files; R2b identity and shadow `cmp` | compile 0; pylint 0, no messages; identity `ff340158…` unchanged; `cmp` 0 | V2 event-only section |
-| pending | Codex, uid 1000 | fixture `2459acd` | refresh `tests/test_safe_harbor_t2.py` + lint gate | PENDING | V2 event-only section |
+| 2026-10-12 | Codex, uid 1000, clean-allowlist env | test/fixture `2459acd` (runtime = `44e29f6`) | refresh pytest (4 files, overlaps focused batch) | PASS, pytest exit 0, `64 passed in 284.85s` | V2 refresh |
+| 2026-10-12 | Codex, same | same | pylint + regression gate vs `9664878` | pylint raw 30; gate exit 0 PASS, 465 findings / 239 fingerprints, none new | V2 refresh |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: the fixture refresh, the event-only success gap and external review remain. V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: the event-only completion limitation stays open (T4 prerequisite), and external final-tip review and owner acceptance are pending. V3–V6 stay NOT RUN.
 
 ## Merge reading
 
@@ -368,4 +380,7 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation is delivered at source `44e29f6`. Codex's captured uid-1000 runs passed (133 and 103 passed, pytest exit 0), and the lint gate passed. The event-only fixture at `2459acd` now uses a real interrupted approval; its refresh run is pending. It shows the current hash views disagree, so no event-only completion success control exists (T4 prerequisite). V2 acceptance, external review, T4, V3–V6 and live operations remain open.
+[Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation is delivered: runtime `44e29f6`, tests `2459acd`.
+- Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.
+- Event-only recovery: refusal and the human-review outcome are proven. Successful completion is not, because the current hash views disagree (an open T4 prerequisite).
+- V2 acceptance, external review, T4, V3–V6 and live operations remain open.

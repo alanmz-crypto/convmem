@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 IMPLEMENTATION DELIVERED, V2 NOT YET ACCEPTED.** T1 landed via PR #387 (`05aa2c8`). T2 source `44e29f6` passed Codex's captured uid-1000 runs and lint gate. The corrected event-only fixture (`2459acd`) awaits a refresh run. External review and Ryan acceptance follow. T3–T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1 MERGED; T2 IMPLEMENTATION DELIVERED, V2 NOT YET ACCEPTED.** T1 landed via PR #387 (`05aa2c8`). Runtime `44e29f6` and tests `2459acd` passed Codex's captured uid-1000 runs and lint gate. Successful event-only recovery completion remains an OPEN evidence limitation (T4 prerequisite). External final-tip review and Ryan acceptance are next. T3–T5 and live operations remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -41,12 +41,13 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 preserves the completed T1 grants; section 9 records the separate T2 grant and pinned Cursor handoff. T2–T5 are not implemented.
 - T2 implementation: **on branch** `fix/2026-10-12-safe-harbor-t2` (worktree `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`), start `9664878`, final source `44e29f6d943c98a2425c21901c310c52ca5c5b1a`. `add --upsert`, indexed `record --approve-last`/`--approve` and `propose_decision --recover` now pass one operation-bound preflight (`chroma_write_store.admitted_write_operation` → `restic_gate.preflight_operation`): explicit v2 profile, target/affected-path containment, post-admission edit refusal, refused production skip, and B-E4.1 future-time 25 across all five consumers. ROADMAP/RECOVER/role-mapping and the v2 exit-25 row are updated. Shadow inventory unchanged; R2b inventory regenerated (derived only). Not merged, not deployed.
 - T2 evidence (VERIFY V2):
-  - Codex's captured uid-1000 runs at `44e29f6`: focused `133 passed` and regression `103 passed`, both pytest exit 0; lint gate exit 0 (pylint raw 30).
-  - Also recorded: AST equality `262573e`→`44e29f6`, inventory proofs, and earlier uncaptured runs as history.
-  - Fixture `2459acd` (tests only) builds the event-only recovery state by interrupting a real indexed approval. It proves future refusal with state unchanged and the existing human-review outcome after admission; its refresh run is **pending**.
+  - Codex's captured uid-1000 runs at runtime `44e29f6`: 236 distinct cases (focused `133 passed` + regression `103 passed`), pytest exit 0 for both; lint gate exit 0 (pylint raw 30).
+  - Refresh at tests `2459acd`: the 64 affected T2/caller cases passed again (pytest exit 0; overlapping, not additional); lint gate exit 0 (465 findings, none new).
+  - Fixture `2459acd` (tests only) builds the event-only recovery state by interrupting a real indexed approval. It proves future refusal with state unchanged and the existing human-review outcome after admission.
+  - Also recorded: AST equality `262573e`→`44e29f6`, inventory proofs, and earlier failed or uncaptured runs as history.
 - Event-only evidence gap: no event-only completion success control. The current ingestion hash view (summary-derived `title`, empty `notes`/`result`) disagrees with the proposal hash view (those fields absent), so the `approve` recovery branch is not reachable on this path. Fixing that is an ungranted T4 prerequisite; sources are cited in VERIFY V2. Direct helper callers also remain ungated (T4 seam).
 - T1 implementation: **on `main` via PR #387**, squash commit `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Its tree is identical to the reviewed candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. The former implementation branch/worktree is historical; do not resume its completed grant or switch the shared checkout/runtime-main.
-- `VERIFY-safe-harbor.md`: records the T1 evidence chain, final-tip CI/review, Ryan's exact-tip outage acceptance and squash mapping (GitHub pytest at the T1 candidate: 2970 passed, 75 skipped). V2 holds T2 source identity, prior evidence and the pending final run; V3–V6 remain NOT RUN.
+- `VERIFY-safe-harbor.md`: records the T1 evidence chain, final-tip CI/review, Ryan's exact-tip outage acceptance and squash mapping (GitHub pytest at the T1 candidate: 2970 passed, 75 skipped). V2 holds T2 source identity, captured final evidence and the open event-only limitation; V3–V6 remain NOT RUN.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
 - Existing code: `restic_gate.py`, `backup_workflows.py`, `restic_snapshot.py`, `chroma_write_guard.py`, `propose_decision.py` and `doctor.py`. Known contract gaps and pinned source evidence are in architecture section 3.
@@ -71,17 +72,16 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **External review gate: SATISFIED BY RYAN'S EXACT-TIP OUTAGE ACCEPTANCE** for `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. BugBot reviewed no SHA; this is not a BugBot PASS. Exact owner wording and evidence are in VERIFY V0/final acceptance.
 - **PR #387: MERGED**, 2026-10-12 05:13:16 UTC. No open T1 correction or review action remains from this delivery.
 - **T2: IMPLEMENTATION DELIVERED; V2 NOT ACCEPTED.**
-  - Source `44e29f6` passed its captured final runs.
-  - Fixture `2459acd` awaits Codex's refresh of `tests/test_safe_harbor_t2.py` and lint.
-  - Then T2 needs its own external final-tip review and Ryan acceptance; T1's outage exception does not transfer.
+  - Runtime `44e29f6` and tests `2459acd` passed their captured final runs.
+  - Next, T2 needs its own external final-tip review and Ryan acceptance; T1's outage exception does not transfer.
   - The event-only success control and the direct-caller proof remain T4 gaps.
 - T3–T5 implementation, PR/review actions for T2 and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Refresh `tests/test_safe_harbor_t2.py` and the lint gate at fixture tip `2459acd` with captured exit codes, and return the results.
+**Codex:** T2 evidence collection is complete. Route the external final-tip review only when Ryan asks.
 
-**Cursor:** Record that refresh in VERIFY V2 / STATUS / LATEST. If it fails, fix only the fixture within T2 scope and request a fresh run. Do not patch the recovery classifier, implement T3/T4 or infer a production grant.
+**Cursor:** No T2 work remains unless a review finding requires a bounded fix. Do not patch the recovery classifier, implement T3/T4 or infer a production grant.
 
 **Ryan:** After final evidence, decide PR creation and the T2 external review route; T1's outage acceptance does not carry over. Subsequent tasks/live operations remain separate decisions. Before rollout, `restic.env` must name an explicit v2 profile and data root.
 
@@ -91,7 +91,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Record Codex's refresh at fixture tip `2459acd`, then T2 external final-tip review and Ryan acceptance/merge under their own authority.
+1. T2 external final-tip review and Ryan acceptance/merge under their own authority. The open event-only limitation must stay visible to reviewers.
 2. Complete T3–T5 only under their task grants, including:
    - T3's backend-proof ordering gate and preservation/validated release;
    - T4 approval recovery: gating or binding direct helper callers, aligning the proposal and ingestion hash views so an event-only completion can be proven, and unknown/tombstone/race/uncertain-completion handling;
@@ -134,6 +134,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
+- 2026-10-12 — Cursor: recorded Codex's refresh at tests `2459acd` (64 affected cases re-passed, exit 0; lint gate PASS). T2 implementation and evidence are delivered; event-only completion stays an open T4 limitation. Review and acceptance are next.
 - 2026-10-12 — Cursor: recorded Codex's captured final runs at `44e29f6` (133/103 passed, exit 0; lint gate PASS). The event-only fixture now uses a real interrupted approval (`2459acd`), exposing the hash-view mismatch as a T4 prerequisite. Fixture refresh, V2 acceptance and review are pending.
 - 2026-10-12 — Cursor: implemented T2 (final source `44e29f6`), updated policy docs and recorded isolated V2 evidence; final uid-1000 pytest/pylint status pending Codex, then external review/Ryan acceptance. T4 direct-caller proof outstanding.
 - 2026-10-12 — Codex: recorded Ryan's separate T2 grant and prepared the pinned Cursor handoff/worktree; implementation and V2 not started, T3–T5/live work ungranted.
@@ -166,4 +167,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 is merged. T2 implementation is delivered (source `44e29f6`, captured runs green) and the corrected fixture is at `2459acd` awaiting refresh. V2 is not yet accepted; the event-only success gap and direct-caller proof belong to ungranted T4. T3–T5 and live operations remain ungranted.
+[Arc Safe Harbor] T1 is merged. T2 implementation is delivered (runtime `44e29f6`, tests `2459acd`), and all captured runs passed. V2 is not accepted, and external review and Ryan acceptance are next; the event-only success gap and direct-caller proof belong to ungranted T4. T3–T5 and live operations remain ungranted.
