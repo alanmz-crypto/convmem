@@ -1,19 +1,19 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW PENDING.** The two test corrections passed Copilot's static delta review at `2977c45` (85%). Cursor then merged pinned main `5550def` (PR #388) into the T1 branch at `c624e2f` and regenerated the derived inventory with its existing generator. Isolated integration evidence passes. The documentation commit after `c624e2f` is the frozen final-tip review subject. Fresh GitHub CI and Copilot's integration delta review are pending. Both BugBot attempts failed on quota and reviewed no SHA; V2–V6 remain NOT RUN.
+> **Arc: Safe Harbor. T1 MERGED; FINAL-TIP EVIDENCE RECORDED.** Candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66` passed CI and Copilot's integration delta review (82%, static). Ryan accepted that review as the BugBot outage exception for that exact candidate, then squash-merged PR #387 as `05aa2c8`. BugBot reviewed no SHA. V2–V6 remain NOT RUN; no live grant is implied.
 
 ```text
 Planning Status
-Phase:        Execute Task — bounded branch update integrated; fresh CI and final-tip review pending
+Phase:        T1 delivery complete; next task grant pending
 Characters:   Implementer, Test-First Reviewer
-Function:     Implementer
-Lanes:        Cursor collected isolated integration evidence; Codex coordinates CI/review; Ryan owns gates
-Authority:    Ryan: bounded branch update, fresh CI, final-tip review gate; execution section 8; T2–T5 not granted
+Function:     T1 evidence and acceptance record
+Lanes:        Cursor implemented; Copilot audited; Ryan accepted exception and merged
+Authority:    Completed T1 grants only; T2–T5 and live operations not granted
 ```
 
-**Reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. It is not yet reviewed; no prior PASS automatically transfers to it.
+**Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
 
-**PRs:** draft #387. Not merge-ready.
+**PR:** [#387](https://github.com/alanmz-crypto/convmem/pull/387), squash-merged by Ryan at `05aa2c86e2d01c9a9f5259b1f505833d7f28563d` on 2026-10-12 05:13:16 UTC. The squash and final candidate have identical trees.
 
 **Direction:** [ARCHITECTURE-safe-harbor.md](ARCHITECTURE-safe-harbor.md), approved at `5ea16a6`.
 
@@ -23,9 +23,9 @@ Authority:    Ryan: bounded branch update, fresh CI, final-tip review gate; exec
 
 ## Human consequence
 
-If implemented and accepted, guarded failures remain contained with evidence until validated owner disposition; unavailable/tombstoned approval state cannot silently become a retry. This is a planned consequence, not shipped behavior. Rollout, actual recovery qualification and closure remain separate.
+T1's incident retention and admission changes are landed source. Evidence preservation, validated owner release and unavailable/tombstoned approval-recovery handling remain later planned tasks. Rollout, actual recovery qualification and arc closure remain separate.
 
-Who: Codex authored this stub; Cursor supplies implementation evidence later. What/when: verification map for the first execution-plan draft. Why/how: bind each safety claim to fixture effects, fault cases and an exact reviewed revision before acceptance.
+Who: Cursor supplied isolated T1 evidence; GitHub supplied final-tip CI; Copilot supplied independent static reviews; Ryan accepted the outage exception and merged. Codex records the results here, preserving the distinction between evidence for T1 and unrun later tasks.
 
 ## Scope lock
 
@@ -50,13 +50,13 @@ Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, servi
 |---|---|
 | `gate_applicability` | `required` |
 | `reason` | T1 changes quarantine persistence, admission control flow, and lock ordering |
-| `subject_tip_sha` | final tip: the documentation commit after integration merge `c624e2f39a2f76a18eacca76d9affb7f7dff6f50` (reported in the handoff; frozen for review). Historical: `677c8a0` (Copilot PASS 72%), `2977c45` (Copilot delta PASS 85%) |
-| `bugbot_reviewed_sha` | `n/a` |
-| `result` | not satisfied — authorized attempts at `0bcf50e` and `677c8a0` both hit quota and reviewed no SHA. Copilot verdicts are independent evidence, not BugBot. No owner outage acceptance for the final tip exists |
-| `finding_disposition` | BugBot: none (no review); Copilot: two test advisories corrected and delta-PASSed at `2977c45`; integration delta review pending |
-| `authority_reference` | execution section 8; Ryan granted the two-test correction and the bounded branch update, not a BugBot outage acceptance |
+| `subject_tip_sha` | `0c7b4e263dff12f8e1a6b2d485616153ed096b66` |
+| `bugbot_reviewed_sha` | `n/a` — both attempts hit quota and reviewed no SHA |
+| `result` | satisfied by Ryan's written exact-tip acceptance of Copilot as the BugBot outage exception; not a BugBot PASS |
+| `finding_disposition` | two test advisories corrected and delta-PASSed at `2977c45`; final integration delta PASS at `0c7b4e2` (82%, static), no blocking/new actionable regression |
+| `authority_reference` | Ryan's exact acceptance quoted in Final-tip CI, review and owner acceptance below; subsequently Ryan merged PR #387 |
 
-An applicable SHA mismatch remains FAIL. This row does not make the branch merge-ready.
+Acceptance is bound to the named candidate. Codex confirmed the squash commit has the same tree; this does not transfer evidence to future edits or authorize deployment.
 
 ## V1 — Incident authority (T1)
 
@@ -213,6 +213,20 @@ env -u CONVMEM_T1_ISOLATED -u DEEPSEEK_API_KEY -u OPENAI_API_KEY HOME=/home/laue
 
 The real-home run keeps uid 1000, so the chmod read-failure test keeps its meaning; the uid-0 sandbox was not used for recorded results. `tests/test_doctor.py` and PR #388's tests were not run locally because they are not shown fully isolated. GitHub CI runs the default suite. The disabled PR #388 feature was not activated. No production CLI, MCP, doctor, indexing, provider, Restic, service or drive operation ran.
 
+## Final-tip CI, review and owner acceptance
+
+**Final candidate:** `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. **Landed source:** squash `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`, PR #387, 2026-10-12 05:13:16 UTC. Codex checked GitHub's merged head/commit and compared the two trees: no diff.
+
+**CI:** [pytest/pylint/secret-scan run](https://github.com/alanmz-crypto/convmem/actions/runs/38204173954) succeeded on the final candidate. [Pytest job](https://github.com/alanmz-crypto/convmem/actions/runs/38204173954/job/114663870324): `2970 passed, 75 skipped, 8 warnings, 252 subtests passed in 1989.89s`. Analyze (Python/actions) and CodeQL also succeeded. Codex read completed checks and the pytest log; no additional local suite was run for this record.
+
+**Independent review:** Copilot audit lane, final-tip integration delta **PASS, 82% confidence**, static only. The review found no blocking/new actionable integration regression: `doctor.py` retains both parents' changes; derived inventory preserves routes/policy; main's incremental caller still uses the guarded writer path; routing retains both arcs. It builds on the full T1 audit at `677c8a0` and the two-test corrective delta PASS at `2977c45`. It does not re-audit PR #388's upstream design or prove hardware/power-loss durability. Codex separately confirmed the T1 guard/store/script/test files were unchanged by integration and the inventory differs from main only in derived identity/digest. The CLI review is not PR-native BugBot; BugBot reviewed no SHA.
+
+**Ryan's exact-tip outage acceptance, supplied in this conversation:**
+
+> I accept Copilot’s review as the BugBot outage exception for PR #387 at 0c7b4e263dff12f8e1a6b2d485616153ed096b66.
+
+Ryan then reported “squash merge done”; GitHub confirmed MERGED with the head/commit above. This closes T1's delivery/review gate. It grants no T2–T5 implementation, production activation or live recovery. Older writers remain incompatible with the new authority, and T1 has no validated release workflow.
+
 ## V2 — Target binding and freshness (T2)
 
 **NOT RUN.** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
@@ -261,4 +275,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] The two test corrections (`8b41044`) passed Copilot's static delta review at `2977c45` (85%). Main `5550def` is now merged into the T1 branch at `c624e2f`, and the inventory is regenerated (`87b8144d…`, verify clean). Isolated integration runs pass: 63 standard-pytest, 45 outer-isolated. Fresh CI and the final-tip integration review are pending. BugBot reviewed no SHA, and no owner outage acceptance exists. V2–V6, PR merge, deployment and arc closure stay ungranted.
+[Arc Safe Harbor] T1 final candidate `0c7b4e2` passed CI and Copilot's integration review (82%, static). Ryan accepted the exact-tip BugBot outage exception and squash-merged PR #387 as `05aa2c8` with an identical tree. BugBot itself reviewed no SHA. V2–V6 remain NOT RUN; deployment and later implementation remain ungranted.

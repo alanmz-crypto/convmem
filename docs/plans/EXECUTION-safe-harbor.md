@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; bounded T1 CORRECTION GRANTED to Cursor.** Kiro delta PASS remains pinned to `dca13a5` (88%). Ownership is unchanged. Section 8 records the original grant and Ryan's subsequent correction, including the narrowly added store file. T1 acceptance/review, T2–T5 and live operations remain pending.
+> **Arc: Safe Harbor. PLAN/B-E4.1 ACCEPTED at `dca13a5`; T1 MERGED via PR #387 (`05aa2c8`).** Final candidate `0c7b4e2` passed CI and Copilot integration review; Ryan accepted its exact-tip BugBot outage exception and performed the squash merge. Section 8 is the completed T1 grant record. T2–T5 and live operations require separate grants; approved contracts and ownership are unchanged.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        Execution Planning complete; bounded T1 correction granted
+Phase:        T1 delivery complete; T2 grant pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
 Lanes:        Codex authors; Kiro reviews; Cursor implements after a separate grant
-Authority:    Plan/B-E4.1 accepted; T1 granted in isolation (section 8)
+Authority:    Plan/B-E4.1 accepted; T1 grant completed (section 8); no later task grant
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -210,9 +210,9 @@ These are operational prerequisites to be completed later, not additional implem
 
 ## 7. VERIFY companion and review record
 
-Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It retains the initial V1 results, marks the authorized correction evidence incomplete, and keeps V2–V6 unrun. Evidence must identify its actual implementation revision.
+Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It retains historical V1 results and records final T1 correction/integration evidence, CI, review, owner acceptance and merge; V2–V6 remain unrun. Evidence must identify its actual implementation revision.
 
-Next: Cursor resumes the bounded T1 correction in section 8. Ryan's plan acceptance, original T1 grant and subsequent correction are distinct authority records. The first review and A1/A2 delta are complete; O-E4.e is satisfied plan-side. The correction does not approve the initial candidate, satisfy independent runtime review or grant live operations.
+Next: Ryan decides the separate T2 implementation grant; Codex then prepares its bounded Cursor handoff. Section 8 preserves the completed T1 grants. The first plan review and A1/A2 delta are complete; O-E4.e is satisfied plan-side. T1's review and exact-tip outage acceptance are recorded in VERIFY; they grant no live operations.
 
 ### Kiro execution review and advisory disposition
 
@@ -302,18 +302,17 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 ## 8. Cursor T1 Execute handoff
 
+**Completed — historical grant, not a new dispatch.** T1 is merged. See [STATUS](STATUS-safe-harbor.md) for the next authorized boundary and [final evidence](VERIFY-safe-harbor.md#final-tip-ci-review-and-owner-acceptance) for the review/merge mapping.
+
 **Date / author / recipient:** 2026-10-11; Codex planning lane; Cursor implementation lane. This section is the bounded handoff in the existing plan, not a new handoff ledger.
 
 **Authority:** Ryan replied “granted” to the proposed next step, “A separate implementation grant, with T1 proposed first,” with Cursor named as the downstream lane. That authorizes **T1 only: isolated implementation and its specified V1 evidence**, against the accepted plan at `dca13a59a2edf649ac6a19777f572645bea8674e`. It does not grant T2–T5, production operations, merge, PR creation/commenting or the PR Steward role. No further T1 approval is needed merely to begin the granted scope.
 
-### Resume state and workspace
+### Delivery state and historical workspace
 
-- State: **BOUNDED BRANCH UPDATE IMPLEMENTED / FRESH CI AND FINAL-TIP REVIEW PENDING**. The two test corrections are complete at `2977c4531cf446974b0c86994dbca757715dca76`, with Copilot delta PASS (85%, static). Cursor merged pinned main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2` into the branch at merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`; the documentation commit after it is the frozen review subject. VERIFY records the integration evidence. Codex coordinates fresh CI and the final-tip review.
-- Implementation branch: `fix/2026-10-11-safe-harbor-t1`.
-- Dedicated worktree: `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`.
-- Original grant base: `b4c0e73b60befcbc9c0fab02e42fd012c6b6adb3`. Current review-evidence correction starts from `677c8a0d17618166c454b4523d6767e48cfa330a`, with T1 runtime changes at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` and merged main at `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. Resume from the documentation commit recording this grant, supplied in Codex's dispatch; it changes no implementation. Confirm branch, clean state, parentage and the grant before editing. A pre-existing dirty or diverged worktree is not permission to overwrite another writer.
-- The planning branch remains `plan/2026-10-11-safe-harbor`. Use the dedicated implementation branch; do not switch the shared checkout, touch `runtime-main`, or silently rebase onto a different code baseline.
-- Draft [PR #387](https://github.com/alanmz-crypto/convmem/pull/387) already exists. Push each commit immediately with the explicit refspec `fix/2026-10-11-safe-harbor-t1:refs/heads/fix/2026-10-11-safe-harbor-t1`. This correction grants no new PR comment, review trigger, ready-for-review transition or merge.
+- State: **MERGED**, PR #387 at `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Final candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66` passed fresh CI and Copilot's integration delta (82%, static); Ryan accepted the exact-tip BugBot outage exception. The squash tree is identical to the candidate.
+- Historical branch/worktree: `fix/2026-10-11-safe-harbor-t1`, `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`. Original grant base: `b4c0e73`; T1 runtime corrections: `496792f`; test corrections: `8b41044`; main `5550def` integration: `c624e2f`. These are provenance, not a resume instruction.
+- The original grant and bounded extensions below are complete. Do not resume them to start T2, switch the shared checkout, alter runtime-main, publish PR comments or deploy. The next task needs Ryan's separate grant.
 
 ### Build only the accepted T1 deliverable
 
@@ -388,4 +387,4 @@ Stop after the bounded T1 handoff. No automatic transition to T2, broader Verify
 
 ## TL;DR
 
-[Arc Safe Harbor] Ryan granted a bounded correction to T1: canonical client/cache identity, rejecting persisted empty incident sets, and the actual overwrite negative control. Section 8 records the exact grant and narrowly adds `chroma_store.py`. Cursor resumes the existing branch; correction evidence, exact-tip review and acceptance remain pending. T2–T5 and live operations stay ungranted.
+[Arc Safe Harbor] The accepted plan is unchanged. T1 landed through PR #387 (`05aa2c8`) after final-tip CI, Copilot review and Ryan's exact-tip BugBot outage acceptance. Section 8 is a completed grant record. T2–T5 and live operations remain ungranted.

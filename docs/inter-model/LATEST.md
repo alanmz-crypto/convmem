@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-11
+**Updated:** 2026-10-12
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,16 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW
-  NEXT (2026-10-11):** The two-test correction passed its focused Copilot delta
-  review at `2977c45` (85%). Cursor merged main `5550def` into the T1 branch
-  at `c624e2f`, regenerated the derived inventory and recorded isolated
-  integration evidence. Codex coordinates fresh CI and the final-tip review.
-  Bounded grant:
-  [execution section 8 grant](../plans/EXECUTION-safe-harbor.md#bounded-branch-update--owner-authorized).
-  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
-  candidate, CI, review and authority state. Merge, deployment and T2–T5 remain
-  ungranted; the alternative audit is not an automatic BugBot-gate exemption.
+- **Arc Safe Harbor — T1 MERGED; T2 GRANT NEXT (2026-10-12):** Ryan
+  squash-merged [PR #387](https://github.com/alanmz-crypto/convmem/pull/387).
+  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for the
+  exact candidate/merge, final CI/review evidence and accepted outage exception.
+  T1 is not independently deployable. T2–T5 and live operations remain ungranted;
+  no further T1 review or correction is pending from this delivery.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
