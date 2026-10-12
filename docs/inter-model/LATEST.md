@@ -9,21 +9,19 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T1 GRANTED / CURSOR PICKUP (2026-10-11):**
+- **Arc Safe Harbor — T1 IMPLEMENTED / REVIEW PENDING (2026-10-11):**
   Ryan accepted the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
-  at `dca13a5` after Kiro delta PASS (88%) and explicitly approved B-E4.1,
-  including all five consumer outcomes. See the [owner approval](../plans/EXECUTION-safe-harbor.md#owner-approval-and-next-authorized-step).
-  Ownership is unchanged; [VERIFY](../plans/VERIFY-safe-harbor.md) remains unrun.
-  Ryan then granted T1 only. Cursor should read the [bounded Execute handoff](../plans/EXECUTION-safe-harbor.md#8-cursor-t1-execute-handoff)
-  and use `fix/2026-10-11-safe-harbor-t1` in its dedicated worktree.
-  Implementation has not started; no evidence was run. T2–T5, PR/comment
-  actions and live operations remain outside this grant.
-  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
-  state and the [architecture section 10](../plans/ARCHITECTURE-safe-harbor.md#10-downstream-handoff-and-independent-review-brief)
-  for direction-review provenance. Cursor's T1 implementation is the next action.
-  Branch: `plan/2026-10-11-safe-harbor`. No generated agent surfaces were
-  regenerated or deployed; propagate the arc pointer at a later authorized
-  protocol generation/deployment.
+  at `dca13a5` after Kiro delta PASS (88%) and explicitly approved B-E4.1.
+  Ownership is unchanged. Cursor implemented T1 only on
+  `fix/2026-10-11-safe-harbor-t1`; runtime behavior is
+  `fa82028b762e5564eed9f2884336ccfb0e3caf73`. Isolated V1 is recorded in
+  [VERIFY](../plans/VERIFY-safe-harbor.md) (41 tests passed). Exact-tip BugBot
+  review is pending because PR creation and review comments were not granted.
+  T2–T5, merge, deployment and live operations remain outside this grant.
+  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md). The
+  accepted task contract is still execution section 8. Branch for this work:
+  `fix/2026-10-11-safe-harbor-t1`. No generated agent surfaces were regenerated
+  or deployed.
 
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING

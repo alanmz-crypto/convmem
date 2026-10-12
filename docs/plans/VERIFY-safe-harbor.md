@@ -1,17 +1,17 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. STUB — NOT RUN.** Created with the execution-plan draft; no implementation, experiment, restore or live-operation authority follows. No check below is a PASS.
+> **Arc: Safe Harbor. V1 RECORDED at runtime `fa82028`; exact-tip review pending.** V0 records the T1 grant and the unsatisfied BugBot gate. V2–V6 remain NOT RUN. No deployment, restore drill, or arc closure follows.
 
 ```text
 Planning Status
-Phase:        Execution Planning (future Verify companion only)
-Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
-Function:     Planner
-Lanes:        Cursor collects later evidence; Kiro signs off; Ryan owns gates
-Authority:    Plan accepted; T1/V1 isolated work granted, evidence NOT RUN
+Phase:        Execute Task — T1 evidence recorded; review pending
+Characters:   Implementer, Test-First Reviewer
+Function:     Implementer
+Lanes:        Cursor collected isolated V1; Kiro signs off later; Ryan owns gates
+Authority:    T1/V1 granted and recorded; exact-tip BugBot not obtained; T2–T5 not granted
 ```
 
-**Subject / implementation tip:** not yet assigned.
+**Subject / implementation tip:** runtime behavior is `fa82028b762e5564eed9f2884336ccfb0e3caf73`. The commit that adds this evidence does not change that code. External review uses the branch tip after this evidence commit, and that tip is not BugBot-reviewed.
 
 **PRs:** none.
 
@@ -44,13 +44,56 @@ In scope: execution T1–T5 and their named production entrypoints under isolate
 
 **T1 grant satisfied:** Ryan subsequently granted the proposed T1/Cursor isolated implementation and its specified V1 evidence; execution section 8 records the boundary. T2–T5 have no grant.
 
-Still **PENDING / NOT RUN**: exact implementation subject SHA; demonstrated isolated roots/providers/repositories; relevant backend/interpreter versions; runtime external-review evidence at the candidate tip. No implementation or tests have run for T1. PR creation/commenting authority is not implied by the task grant.
+Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, services and external drives were not invoked.
 
-Execute supplies `gate_applicability`, `reason`, `subject_tip_sha`, `bugbot_reviewed_sha`, `result`, `finding_disposition` and `authority_reference` under the existing Execute gate. Runtime work requires exact-tip evidence; this planning-only stub is not such evidence. An applicable SHA mismatch is FAIL, never silently skipped.
+| Field | Value |
+|---|---|
+| `gate_applicability` | `required` |
+| `reason` | T1 changes quarantine persistence, admission control flow, and lock ordering |
+| `subject_tip_sha` | branch tip that contains this evidence; runtime parent `fa82028b762e5564eed9f2884336ccfb0e3caf73` |
+| `bugbot_reviewed_sha` | `n/a` |
+| `result` | pending — no pull request exists, and this grant does not authorize opening one or posting a review comment |
+| `finding_disposition` | `none` |
+| `authority_reference` | execution section 8; Ryan granted isolated T1/V1 only |
+
+An applicable SHA mismatch remains FAIL. This row does not make the branch merge-ready.
 
 ## V1 — Incident authority (T1)
 
-**NOT RUN.** Full unresolved-set retention, same-segment additions, legacy/malformed markers, canonical alias conflict, lock/restart admission, audit FAIL followed by PASS/skipped, and failed publication. Evidence must distinguish successful containment from containment unavailable.
+**RECORDED for runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73`.** Isolated pytest exit 0: `41 passed in 40.45s`. Interpreter `/home/lauer/miniforge3/bin/python` 3.13.12; chromadb 1.5.9; numpy 2.4.4. Fixture roots were pytest temporary directories under `/tmp`, with `HOME`, `XDG_*`, `CONVMEM_CONFIG` and `CONVMEM_ROOT` pointed at a fresh `/tmp/safe-harbor-t1-*` directory and `CONVMEM_T1_ISOLATED=1`. The suite refuses `/home/lauer/.local/share/convmem` and `runtime-main`.
+
+Command:
+
+```bash
+iso=$(mktemp -d /tmp/safe-harbor-t1-XXXX)
+mkdir -p "$iso/home" "$iso/config" "$iso/data" "$iso/cache"
+export HOME="$iso/home" XDG_CONFIG_HOME="$iso/config" XDG_DATA_HOME="$iso/data" \
+  XDG_CACHE_HOME="$iso/cache" CONVMEM_CONFIG="$iso/config/config.toml" \
+  CONVMEM_ROOT="$iso/root" CONVMEM_T1_ISOLATED=1
+unset DEEPSEEK_API_KEY OPENAI_API_KEY
+python -m pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py -q --tb=line
+```
+
+| Case | Result |
+|---|---|
+| Incident A then B, including two findings on one segment; fresh-process admission refused; overwrite of the marker fails the retention assertion | PASS |
+| Missing marker versus null, scalar, empty object, unknown schema, invalid set, wrong target, unreadable file, and recognized legacy bytes preserved on adoption | PASS |
+| Canonical aliases share one guard and lock; a competing legacy guard directory is reported and no empty canonical authority is created | PASS |
+| Audit failure, then pass, skipped, and diagnostic error, leaves the marker in place | PASS |
+| `recover()` and guarded write recheck after the lock, using a ready/release barrier rather than a timed guess | PASS |
+| Audit holds the native lock across publication while a concurrent guarded write does not land | PASS |
+| Short write, file fsync failure, and directory fsync failure raise containment unavailable, do not claim a durable stop, and do not apply the requested mutation | PASS |
+| Ordinary clear and the guard/audit doctor checks do not rewrite a present or malformed marker | PASS |
+| Existing guard regression file, including restore, quarantine, and audit behavior that T1 still allows | PASS (`tests/test_chroma_write_guard.py`, included in the 41) |
+
+Gaps, not passes:
+
+- Process barriers and injected fsync failures are not hardware power-loss proof.
+- A directory fsync failure can leave marker bytes visible while the operation reports containment unavailable. Callers must not treat that file as a durable stop.
+- A well-formed incident document with zero incidents is not absence and does not block admission. Unrecognized and empty objects still block. Ordinary clear still refuses to delete any present marker.
+- Chroma's own client cache remains keyed by the path string passed to the client. The guard's lock, marker, and load record use the canonical path. Unifying the client string would require `chroma_store.py`, which is outside T1's accepted file list.
+- Successful segment restore can still continue the caller's write. Making every restore stick as an incident is T3, and it was not implemented.
+- The full default pytest suite and production doctor were not run. They are not isolated from service and corpus entrypoints.
 
 ## V2 — Target binding and freshness (T2)
 
@@ -76,7 +119,12 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 
 ## Evidence log
 
-Empty. Later record subject SHA, runner, timestamp, command/case, PASS/FAIL/SKIP and a short evidence pointer for each row. SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row.
+| When | Runner | Subject | Command / case | Result | Pointer |
+|---|---|---|---|---|---|
+| 2026-10-11 | Cursor, isolated miniforge Python 3.13.12 | runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` | `pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py -q --tb=line` under temporary HOME/XDG/CONVMEM_CONFIG | PASS, exit 0, `41 passed in 40.45s` | V1 table above |
+| 2026-10-11 | Cursor | same runtime parent; review tip is the evidence commit | BugBot exact-tip review | pending | V0 gate row; no PR authority |
+
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2–V6 stay NOT RUN.
 
 ## Merge reading
 
@@ -87,4 +135,4 @@ Empty. Later record subject SHA, runner, timestamp, command/case, PASS/FAIL/SKIP
 
 ## TL;DR
 
-[Arc Safe Harbor] This is the unexecuted V0–V6 evidence map for the proposed implementation. It contains no PASS, completed drill, deployment grant or arc-closure claim.
+[Arc Safe Harbor] Isolated V1 passed at runtime `fa82028` (41 tests). Exact-tip BugBot review is still pending, and V2–V6, deployment, and arc closure are not granted.

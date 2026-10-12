@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; T1 GRANTED to Cursor in isolation — NOT STARTED.** Direction and plan reviews are complete. Ownership remains unchanged. T2–T5 and live operations remain pending; this brief is the current orientation source.
+> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; T1 IMPLEMENTED in isolation at runtime `fa82028`, exact-tip review pending.** Ownership remains unchanged. T2–T5 and live operations remain pending; this brief is the current orientation source.
 
 ## 1. What This Is For (product goal)
 
@@ -38,9 +38,9 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
-- `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 is the bounded Cursor T1 Execute handoff, following Ryan's “granted” response to the proposed first implementation step. Accepted task contracts are unchanged; nothing has been implemented or executed.
-- T1 workspace: `fix/2026-10-11-safe-harbor-t1` at `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`, based on the pushed grant/handoff commit. Confirm clean state and exact base from the dispatch before pickup; do not switch the shared checkout or runtime-main.
-- `VERIFY-safe-harbor.md`: V0–V6 stub accompanying the draft; all evidence NOT RUN. No runtime PASS or completed recovery claim.
+- `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 remains the bounded T1 contract. Accepted task contracts are unchanged. T1's code is implemented on the branch below; T2–T5 are not.
+- T1 workspace: `fix/2026-10-11-safe-harbor-t1` at `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`. Runtime implementation is `fa82028b762e5564eed9f2884336ccfb0e3caf73`, pushed. The evidence commit that follows does not change that code. Do not switch the shared checkout or runtime-main.
+- `VERIFY-safe-harbor.md`: V1 recorded against that runtime (41 isolated tests passed). V2–V6 remain NOT RUN. Exact-tip BugBot review is pending because no pull request is authorized. No deployment or completed recovery claim.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
 - Existing code: `restic_gate.py`, `backup_workflows.py`, `restic_snapshot.py`, `chroma_write_guard.py`, `propose_decision.py` and `doctor.py`. Known contract gaps and pinned source evidence are in architecture section 3.
@@ -48,7 +48,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Backup access during execution-plan drafting on 2026-10-11: required doctor exited 0; local snapshot, external lineage copy and matching offline password copy passed. This is access/freshness evidence, not demonstrated restoration; CLI read paths may perform bookkeeping writes.
 - Fresh Rescuezilla image: completion, identifier, scope and destination not yet confirmed. The reported September 16 pre-incident image should be preserved.
 - Additional backup destination: Ryan supplied `/run/media/lauer/ext-ex4-1T-NVMe/`; read-only mount/capacity inspection confirmed ext4 and available space. Execution section 6 records UUID/capacity and proposes a fresh-image destination. No drive write, backup allocation or qualification was performed.
-- No Safe Harbor implementation or operational activation exists. Execution section 8 records the T1 grant; the VERIFY stub contains no completed evidence.
+- Safe Harbor T1 is implemented only on `fix/2026-10-11-safe-harbor-t1` at runtime `fa82028`. It is not merged, deployed, or an operator release. Ordinary clear still cannot release incidents. Old writers that predate this marker can still overwrite or clear it, so this task cannot be deployed alone.
 
 ## 4. Completion State
 
@@ -61,8 +61,8 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Ryan direction approval: **APPROVED at `5ea16a6`**, explicitly including disposition after every automatic segment restore.
 - Execution Planning: **COMPLETE — RYAN ACCEPTED `dca13a59a2edf649ac6a19777f572645bea8674e`** after Kiro delta PASS (88%); initial PASS remains pinned to `00c69d2` (85%). A1/A2 and O-E4.e are satisfied plan-side. No required review correction remains.
 - **B-E4.1 owner disposition: APPROVED**, by Ryan explicitly as owner, exactly T2 at the accepted revision including all five consumer outcomes. Ownership is unchanged; this is contract approval, not implementation or live activation.
-- **T1 implementation and specified isolated V1 evidence: AUTHORIZED / NOT STARTED**, by Ryan's “granted” response to the proposed T1/Cursor step. The grant is recorded with limits in execution section 8. No implementation agent has been started by this handoff.
-- T2–T5 implementation, live operations, PR creation/commenting, merge and deployment: **NOT AUTHORIZED by this grant**. No phase auto-advance.
+- **T1 implementation and specified isolated V1 evidence: IMPLEMENTED, review pending.** Runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` on `fix/2026-10-11-safe-harbor-t1`. Isolated V1 passed (41 tests). Exact-tip BugBot evidence is not obtained. Ryan has not accepted T1.
+- T2–T5 implementation, live operations, PR creation/commenting, merge and deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
@@ -72,16 +72,16 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 **Kiro:** First execution review and delta are complete, with successor PASS at `dca13a5` (88%). Ryan supplied the B-E4.1 owner decision and accepted that revision. No further review is requested for this status-only update, and no ownership was transferred to you.
 
-**Ryan:** B-E4.1, plan acceptance and the T1 implementation grant are complete. Cursor may perform the bounded isolated work without another start approval. Later PR/comment decisions, task grants and any live operation remain separate. Recovery/loss-window inputs remain open before live rollout; the new drive is not a backup/restore grant.
+**Ryan:** B-E4.1, plan acceptance and the T1 implementation grant are complete. The next decision is whether to authorize a pull request so exact-tip BugBot review can run, then whether to accept T1. Later task grants and any live operation remain separate. Recovery/loss-window inputs remain open before live rollout; the new drive is not a backup/restore grant.
 
-**Cursor:** Start from execution section 8 and the isolated T1 worktree/branch. Implement only T1 and its specified isolated evidence, push the exact candidate and stop for review. No production startup ritual/indexing; no T2–T5 or live work.
+**Cursor:** T1 implementation and isolated V1 are pushed. Stop for exact-tip review. Do not open a PR, comment, or start T2. No production startup ritual or live work.
 
 **Ops:** No live grant; keep services, deployed code, backups and drives unchanged.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Cursor picks up the granted T1 handoff, implements in isolation and records V0/V1 at the candidate tip. All evidence remains unrun until that work occurs.
-2. Obtain the task's applicable exact-tip external review under separately authorized PR/comment actions, then return to Ryan for T1 acceptance and any next task. T1 is not independently deployable. T2–T5 stay ungranted.
+1. Exact-tip external review of the pushed T1 candidate, after Ryan authorizes the pull request and any review comment. T1 is not independently deployable: old writers can still overwrite the marker or clear incidents. T2–T5 stay ungranted.
+2. Ryan accepts or returns T1 after that review. Acceptance is not deployment.
 3. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
 4. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
 
@@ -130,7 +130,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Codex: recorded Kiro delta PASS at `dca13a5` (88%), closed the review cadence without contract changes, and routed B-E4.1 to owner disposition before Ryan's plan acceptance; execution remains pending.
 - 2026-10-11 — Codex: recorded Ryan's explicit B-E4.1 owner approval and acceptance of the plan at `dca13a5`, including all five consumer outcomes; ownership unchanged, implementation/live operations pending.
 - 2026-10-11 — Codex: recorded Ryan's T1-only grant and prepared the bounded Cursor Execute handoff/isolated branch; implementation not started, evidence unrun, later tasks/live operations pending.
+- 2026-10-11 — Cursor: implemented T1 on `fix/2026-10-11-safe-harbor-t1` at runtime `fa82028` and recorded isolated V1; exact-tip review, T2–T5, and live operations remain pending.
 
 ## TL;DR
 
-[Arc Safe Harbor] Ryan granted T1 to Cursor in isolation after accepting the plan/B-E4.1 at `dca13a5`. The section 8 handoff is ready; implementation has not started and evidence is unrun. T2–T5, PR/comment actions and live operations remain pending; ownership is unchanged.
+[Arc Safe Harbor] T1 is implemented at runtime `fa82028` and isolated V1 passed. Exact-tip review still needs a pull request Ryan has not authorized. T2–T5 and live operations remain pending; ownership is unchanged.
