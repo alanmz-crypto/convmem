@@ -869,13 +869,42 @@ def test_audit_publication_excludes_a_concurrent_writer(tmp_path: Path) -> None:
     assert write_err
 
 
-def test_publication_failure_aborts_before_mutation(tmp_path: Path, monkeypatch) -> None:
+_ISOLATION_KEYS = (
+    "HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_CACHE_HOME",
+    "CONVMEM_CONFIG",
+    "CONVMEM_ROOT",
+)
+_REMOVED_KEYS = ("DEEPSEEK_API_KEY", "OPENAI_API_KEY", "CONVMEM_T1_ISOLATED")
+
+
+def _isolation_snapshot() -> dict[str, str]:
     _require_isolated_process()
-    from chroma_write_guard import segment_dirs
+    return {key: os.environ[key] for key in _ISOLATION_KEYS}
+
+
+def assert_isolation_intact(expected: dict[str, str]) -> None:
+    """The autouse fixture's roots and key removal must survive every fault cleanup."""
+    current = {key: os.environ.get(key) for key in _ISOLATION_KEYS}
+    assert current == expected, f"fixture isolation changed: {current} != {expected}"
+    present = [key for key in _REMOVED_KEYS if key in os.environ]
+    assert not present, f"fixture removed keys came back: {present}"
+    assert Path.home() == Path(expected["HOME"])
+    _require_isolated_process()
+
+
+def test_publication_failure_aborts_before_mutation(tmp_path: Path, monkeypatch) -> None:
+    from chroma_write_guard import _fsync, recover, segment_dirs
 
     from tests.test_chroma_write_guard import _set_header_count
 
+    isolation = _isolation_snapshot()
+    original_fsync = ChromaWriteGuard._fsync_published
+    original_write = ChromaWriteGuard._write_bytes
     chroma = _make_store(tmp_path)
+    assert_isolation_intact(isolation)
     _write_records(chroma, 0, 150)
     _seg_id, seg = next(iter(segment_dirs(chroma).items()))
     before = (seg / "header.bin").read_bytes()
@@ -886,21 +915,19 @@ def test_publication_failure_aborts_before_mutation(tmp_path: Path, monkeypatch)
         del self
         if not directory and ".QUARANTINE.json." in path.name:
             raise OSError("injected fsync failure")
-        from chroma_write_guard import _fsync
-
         _fsync(path, directory=directory)
 
-    monkeypatch.setattr(ChromaWriteGuard, "_fsync_published", fail_file_fsync)
-    with pytest.raises(ChromaContainmentUnavailableError, match="containment unavailable") as raised:
-        from chroma_write_guard import recover
-
-        recover(chroma)
+    with monkeypatch.context() as patch:
+        patch.setattr(ChromaWriteGuard, "_fsync_published", fail_file_fsync)
+        assert_isolation_intact(isolation)
+        with pytest.raises(ChromaContainmentUnavailableError, match="containment unavailable") as raised:
+            recover(chroma)
+    assert ChromaWriteGuard._fsync_published is original_fsync
     assert "process-level containment" in str(raised.value)
     assert "not a durable stop" in str(raised.value)
     assert (seg / "header.bin").read_bytes() == torn
+    assert_isolation_intact(isolation)
     assert not ChromaWriteGuard(chroma).quarantine_path.exists()
-
-    monkeypatch.undo()
 
     def short_write(self, path: Path, payload: bytes) -> None:
         del self
@@ -908,30 +935,40 @@ def test_publication_failure_aborts_before_mutation(tmp_path: Path, monkeypatch)
             payload = payload[:8]
         path.write_bytes(payload)
 
-    monkeypatch.setattr(ChromaWriteGuard, "_write_bytes", short_write)
-    with pytest.raises(ChromaContainmentUnavailableError, match="containment unavailable"):
-        from chroma_write_guard import recover
-
-        recover(chroma)
+    with monkeypatch.context() as patch:
+        patch.setattr(ChromaWriteGuard, "_write_bytes", short_write)
+        assert_isolation_intact(isolation)
+        with pytest.raises(ChromaContainmentUnavailableError, match="containment unavailable"):
+            recover(chroma)
+    assert ChromaWriteGuard._write_bytes is original_write
     assert (seg / "header.bin").read_bytes() == torn
+    assert_isolation_intact(isolation)
     assert not ChromaWriteGuard(chroma).quarantine_path.exists()
-    monkeypatch.undo()
 
     def fail_dir_fsync(self, path: Path, *, directory: bool = False) -> None:
         del self
         if directory and path.name.endswith(".write-guard"):
             raise OSError("injected directory fsync failure")
-        from chroma_write_guard import _fsync
-
         _fsync(path, directory=directory)
 
-    monkeypatch.setattr(ChromaWriteGuard, "_fsync_published", fail_dir_fsync)
-    with pytest.raises(ChromaContainmentUnavailableError, match="not a durable stop"):
-        from chroma_write_guard import recover
-
-        recover(chroma)
+    with monkeypatch.context() as patch:
+        patch.setattr(ChromaWriteGuard, "_fsync_published", fail_dir_fsync)
+        assert_isolation_intact(isolation)
+        with pytest.raises(ChromaContainmentUnavailableError, match="not a durable stop"):
+            recover(chroma)
+    assert ChromaWriteGuard._fsync_published is original_fsync
     assert (seg / "header.bin").read_bytes() == torn
     assert before != torn
+    assert_isolation_intact(isolation)
+
+
+def test_shared_undo_is_detected_as_lost_isolation(monkeypatch) -> None:
+    """Control: the old shared ``undo()`` also reverts the autouse fixture. No project call follows."""
+    isolation = _isolation_snapshot()
+    monkeypatch.setattr(ChromaWriteGuard, "_write_bytes", ChromaWriteGuard._write_bytes)
+    monkeypatch.undo()
+    with pytest.raises(AssertionError, match="fixture isolation changed"):
+        assert_isolation_intact(isolation)
 
 
 def test_child_publication_failure_does_not_admit_the_write(tmp_path: Path) -> None:
