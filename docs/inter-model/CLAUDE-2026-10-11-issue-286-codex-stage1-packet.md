@@ -217,3 +217,33 @@ refuses it as `bootstrap_required`, and it stays legacy for good.
 - Until the runtime is promoted for Stage 2, no lane may index a Codex
   rollout created after 23:04 CDT, except Stage 1 itself through the scratch
   runtime.
+
+**Canary source:** the fresh Codex session started 23:24:18 CDT
+(`rollout-2026-10-11T23-24-18-01a12e5a-…`). Its first message told it not to
+index itself. The pure admission check returns ADMITTED, and the source had
+no processed entry beforehand.
+
+**Run 1 (after creation; 23:3x CDT):**
+
+- Backup gate passed (current day). No other index process was running, and
+  the watcher was inactive.
+- The run used the scratch runtime under a `systemd-run --user --scope`
+  capped at 12G.
+- **Result:** `committed`, with 1 chunk transformed out of 1,077,790 source
+  bytes.
+- **Provider requests:** summarize 1 and distill 1 (**2 paid calls**), plus
+  summary_embed 1 and unit_embed 8 (local). It produced 8 units.
+- 222.6 s elapsed, and a scope **memory peak of 6.3G**. That peak is far
+  above what this source needs, so it is probably the Chroma load. Watch it
+  against the 4G watch drop-in before Stage 2.
+- **Coverage agrees across all five records:**
+  - the checkpoint has 1 summary and 8 units, with its lineage digest set;
+  - `processed.json` has 1 chunk and 8 units, and its lineage matches the
+    checkpoint;
+  - the export has the same 8 unit IDs;
+  - Chroma has 1 summary row and 8 unit rows.
+
+**Legacy routing check:** an unchanged pre-activation rollout from Aug 20,
+run through the Stage 1 runtime, took the legacy route ("No files changed").
+It produced no incremental log line, made 0 paid calls, and left
+`processed.json` byte-identical.
