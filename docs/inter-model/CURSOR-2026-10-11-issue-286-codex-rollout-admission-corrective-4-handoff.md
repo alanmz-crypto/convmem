@@ -395,3 +395,57 @@ Each test must fail at `a5f1756` and pass after the fix.
       `git show --stat` for each new commit.
 - [ ] Pushed with an explicit refspec. No force-push, and no rebase; if `main`
       moves, merge it.
+
+## Verification of `78b9295` (Claude, 2026-10-11) — clean; ready for exact-tip review
+
+Corrective 5 is three commits:
+
+- `d1534b0`: the fixes.
+- `bbe5bb8`: the corrective-4 recovery tests now crash for real.
+- `78b9295`: restores the STATUS text.
+
+I checked it from disk-backed scratch worktrees with a fresh CI-style config:
+
+- **Pylint regression gate:** PASS against base `db8aebb` (463 findings, 240
+  fingerprints, nothing new or increased).
+- **Focused test set** (Codex, watcher, breaker, doctor, config, inventory,
+  and the #385 diagnosis tests): 787 passed, 6 skipped, 2 failed. The two
+  failures are `tests/test_watch.py` debounce-timer tests:
+  - they allow 10 ms of slack and ran while Pylint loaded the CPU;
+  - neither the tests nor `watch.py` changed in corrective 5;
+  - rerun on an idle machine, they pass 3 of 3 times.
+- **The new tests do test the fixes.** With only `config.py`,
+  `incremental_jsonl.py` and `watch_circuit_breaker.py` restored to
+  `a5f1756`, the corrective-5 file gives 17 failed, 19 passed, which matches
+  Cursor's figure. The failures cover all 12 `rebuild_required:*` round
+  trips, both D8 watcher cases, the C1b scenario and both `~` roots.
+- **C5b:** the parser strips a trailing 64-hex digest, then requires a
+  `:`-separated `[a-z0-9_]+` outcome, keeping the exit-91 and whole-line
+  rules.
+- **C1b:** recovery with no checkpoint refuses `bootstrap_required` when the
+  source has a processed entry or has Chroma rows this transaction didn't
+  write.
+  - A crashed transaction can't trip this check with its own processed
+    entry: `_commit_generation` writes the checkpoint before it publishes
+    the processed entry.
+  - The test is end to end: a real crash, a real legacy reindex, and then
+    recovery.
+- **C6b:** the absolute-path check now runs on the raw text, before any
+  expansion. `_canonical_config_path` is used only for the admission root,
+  so no other config path loses `~` support.
+- **D1:** `git diff origin/main` on the STATUS file removes 0 lines.
+- **`bbe5bb8` is sound.** The old helper raised a route error, and cleanup
+  deleted the transaction, so the corrective-4 "roll-forward" tests had been
+  exercising the fresh path. Neither Claude, Kiro nor Copilot had caught
+  this.
+
+**Reported gap, outside this fix:** Cursor reports, from reading the code,
+that recovery for Kiro exact-path sources has the same gap.
+`_codex_roll_forward_refusal` returns at once for a source that isn't
+Codex-admitted, and the D8 lineage check is Codex-only. Claude confirmed both
+early returns. The gap can't be reached today, because no Kiro exact-path
+live source is granted. It needs its own fix before any Kiro exact-path live
+incremental run. For Kiro sources the fix isn't a one-liner: they carry no
+D8 lineage, so the checkpointed rollback-then-re-enable case needs a design
+decision too. Ryan decides whether it's a separate follow-up (recommended)
+or part of this PR.
