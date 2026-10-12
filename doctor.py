@@ -606,6 +606,32 @@ def _check_index_gate() -> DoctorCheck:
     return DoctorCheck("index_gate", True, "0 index failures in 7d")
 
 
+def _check_incremental_refusals(cfg: dict) -> DoctorCheck:
+    from watch_circuit_breaker import (
+        CircuitBreakerState,
+        circuit_breaker_state_path_from_config,
+    )
+
+    state_path = circuit_breaker_state_path_from_config(cfg)
+    breaker = CircuitBreakerState(state_path)
+    rows = breaker.list_refusal_quarantines()
+    if not rows:
+        return DoctorCheck("incremental_refusals", True, "0 quarantined live-route refusals")
+    detail = "; ".join(
+        f"{row.get('path')} outcome={row.get('outcome')} "
+        f"digest={str(row.get('prefix_sha256', ''))[:12]}…"
+        for row in rows[:5]
+    )
+    if len(rows) > 5:
+        detail += f"; +{len(rows) - 5} more"
+    return DoctorCheck(
+        "incremental_refusals",
+        True,
+        f"{len(rows)} quarantined refusal(s): {detail}",
+        status="warn",
+    )
+
+
 def _check_native_crash_gate() -> DoctorCheck:
     """Count watch-spawned index children killed by a native fault in the last 7d.
 
@@ -1646,6 +1672,7 @@ def run_doctor(
         _check_synthesis_gate(),
         _check_index_gate(),
         _check_native_crash_gate(),
+        _check_incremental_refusals(cfg),
         _check_chroma_write_guard(cfg),
         _check_chroma_audit(cfg),
         _check_cpu_tripwire(cfg),

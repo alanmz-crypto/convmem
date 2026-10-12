@@ -9,8 +9,15 @@ import re
 import stat
 import tomllib
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
+
+from incremental_jsonl_codex_admission import (
+    DEFAULT_MAX_SOURCE_BYTES,
+    DEFAULT_MAX_TRANSFORM_CHUNKS_PER_RUN,
+    CodexRolloutAdmissionSettings,
+)
 
 from shadow_authorization import open_directory_nofollow
 
@@ -51,6 +58,107 @@ class IncrementalJsonlSettings:
     table_present: bool
     live_sources: tuple[str, ...] = ()
     embed_dimension: int | None = None
+    codex_rollout_admission: CodexRolloutAdmissionSettings | None = None
+
+
+def _canonical_config_path(raw: str, *, label: str) -> Path:
+    text = raw.strip()
+    path = Path(text)
+    if not path.is_absolute():
+        raise IncrementalJsonlConfigError(
+            "noncanonical_path",
+            f"{label} must be an absolute path",
+        )
+    for part in path.parts[1:]:
+        if part in {".", ".."}:
+            raise IncrementalJsonlConfigError(
+                "noncanonical_path",
+                f"{label} must not contain '.' or '..' components",
+            )
+    normalized = os.path.normpath(text)
+    if normalized != text:
+        raise IncrementalJsonlConfigError(
+            "noncanonical_path",
+            f"{label} must already be canonical",
+        )
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current = current / part
+        if current.is_symlink():
+            raise IncrementalJsonlConfigError(
+                "noncanonical_path",
+                f"{label} contains a symlink component",
+            )
+    return path.resolve(strict=False)
+
+
+def _parse_codex_rollout_admission_table(
+    raw_codex: object,
+    *,
+    enabled: bool,
+) -> CodexRolloutAdmissionSettings | None:
+    if raw_codex is None:
+        return None
+    if not isinstance(raw_codex, dict):
+        raise IncrementalJsonlConfigError(
+            "invalid_codex_rollout_admission",
+            "index.incremental_jsonl.codex_rollout_admission must be a table",
+        )
+    if not enabled:
+        raise IncrementalJsonlConfigError(
+            "codex_admission_requires_enabled",
+            "codex_rollout_admission requires index.incremental_jsonl.enabled = true",
+        )
+    root_raw = raw_codex.get("root")
+    if not isinstance(root_raw, str) or not root_raw.strip():
+        raise IncrementalJsonlConfigError(
+            "invalid_codex_root",
+            "codex_rollout_admission.root must be a non-empty string",
+        )
+    root = _canonical_config_path(root_raw, label="codex_rollout_admission.root")
+    admitted_raw = raw_codex.get("admitted_after")
+    if not isinstance(admitted_raw, str) or not admitted_raw.strip():
+        raise IncrementalJsonlConfigError(
+            "invalid_admitted_after",
+            "codex_rollout_admission.admitted_after must be a UTC timestamp",
+        )
+    admitted_text = admitted_raw.strip()
+    if admitted_text.endswith("Z"):
+        admitted_text = admitted_text[:-1] + "+00:00"
+    try:
+        admitted_dt = datetime.fromisoformat(admitted_text)
+    except ValueError as exc:
+        raise IncrementalJsonlConfigError(
+            "invalid_admitted_after",
+            "codex_rollout_admission.admitted_after is not ISO-8601",
+        ) from exc
+    if admitted_dt.tzinfo is None:
+        raise IncrementalJsonlConfigError(
+            "naive_admitted_after",
+            "codex_rollout_admission.admitted_after must be timezone-aware UTC",
+        )
+    admitted_after = admitted_dt.astimezone(timezone.utc)
+    max_chunks = raw_codex.get(
+        "max_transform_chunks_per_run", DEFAULT_MAX_TRANSFORM_CHUNKS_PER_RUN
+    )
+    if type(max_chunks) is not int or max_chunks < 1:  # pylint: disable=unidiomatic-typecheck
+        raise IncrementalJsonlConfigError(
+            "invalid_max_transform_chunks",
+            "max_transform_chunks_per_run must be a positive integer",
+        )
+    max_bytes = raw_codex.get("max_source_bytes", DEFAULT_MAX_SOURCE_BYTES)
+    if type(max_bytes) is not int or max_bytes < 1:  # pylint: disable=unidiomatic-typecheck
+        raise IncrementalJsonlConfigError(
+            "invalid_max_source_bytes",
+            "max_source_bytes must be a positive integer",
+        )
+    return CodexRolloutAdmissionSettings(
+        root=root,
+        admitted_after=admitted_after,
+        max_transform_chunks_per_run=max_chunks,
+        max_source_bytes=max_bytes,
+    )
+
 
 SUPPORTED_SHADOW_CONFIG_FILESYSTEMS = frozenset({"ext4", "xfs", "btrfs", "tmpfs"})
 _SHADOW_HEADER_RE = re.compile(r"^\s*\[shadow_ledger\]\s*(?:#.*)?$")
@@ -445,6 +553,15 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
             "invalid_embed_dimension",
             "index.incremental_jsonl.embed_dimension must be a positive integer",
         )
+    codex_admission = _parse_codex_rollout_admission_table(
+        table.get("codex_rollout_admission"),
+        enabled=bool(enabled),
+    )
+    if codex_admission is not None and embed_dimension is None:
+        raise IncrementalJsonlConfigError(
+            "live_embed_dimension_required",
+            "codex_rollout_admission requires an explicit embed_dimension",
+        )
     return IncrementalJsonlSettings(
         enabled=bool(enabled),
         state_dir=str(Path(state_dir).expanduser()),
@@ -452,6 +569,7 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
         table_present=True,
         live_sources=live_sources,
         embed_dimension=embed_dimension,
+        codex_rollout_admission=codex_admission,
     )
 
 

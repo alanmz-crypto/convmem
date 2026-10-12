@@ -86,6 +86,7 @@ Key invariants:
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
 | Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
+| Codex rollout admission | Merged on `main` via PR #388; default off, with no admission config. Design: `docs/plans/DESIGN-issue-286-codex-rollout-admission.md` (Kiro PASS at `9e91973`, §13 amended 2026-10-11). It admits new rollouts after an explicit, identity-checked `admitted_after` time; pre-activation rollouts stay legacy; refusals quarantine terminally by path. Copilot PASS and Kiro PASS at `78b9295`. | Ryan Stage 1 grant (`docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`) |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -109,6 +110,15 @@ creation and merge. Fresh backups, proposal, packet review, and live execution
 remain later separate gates. No lane may promote config/runtime or restart the
 watcher without separate Ryan authority.
 
+**Codex rollouts (separate track):** Codex rollout admission is on `main`
+(PR #388), default off. Its purpose is to stop the paid re-index burn for
+new Codex sessions; nothing in production is reduced until Stage 1 and
+Stage 2 run. Prepare or run Stage 1 only under Ryan's grant, following the
+Stage 1 packet. Active pre-activation rollouts, including a 590.7 MiB
+session started Sep 21, stay on the legacy route and need the packet's
+residual-burn decision before Stage 2. This track authorizes no live
+bootstrap, config, runtime, or watcher action.
+
 ## 6. What Remains Before Live (sequential)
 
 1. Ryan decides whether to create and merge the test-isolation PR.
@@ -121,6 +131,21 @@ watcher without separate Ryan authority.
    return measured call, coverage, lineage, and isolation evidence.
 5. Obtain a later separate Ryan grant before any runtime/config/restart or
    watcher promotion; measure calls and coverage by source class.
+
+Codex rollouts (separate track):
+
+1. Ryan grants Stage 1 (manual, watcher stopped), per
+   `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
+   Don't add the incremental table to the shared live config while
+   `runtime-main` is still on `a92a74e`.
+2. Before Stage 2, decide the residual burn (retire or exclude active
+   pre-activation rollouts), fix #308 (the inter-model rejection loop) and
+   reconcile the 4G watch drop-in. Then Ryan grants Stage 2 (a 24 h watcher
+   canary); activation is a separate grant.
+3. Before any Kiro exact-path live incremental run, land the exact-path
+   recovery parity fix. Its design is on
+   `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
+   separate prerequisite.
 
 ## 7. Hard Stops
 
@@ -248,6 +273,14 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-10 | Sol | Proved the sole drift was a 310-byte append to live `synthesis_failures.jsonl`: two mocked HTTP-failure rows from `tests/test_index_loud_failures.py`; all other mutation surfaces, including Kiro Chroma rows, remained exact |
 | 2026-10-10 | Cursor / Copilot / Sol | Cursor isolated the mocked failure logger to temporary test storage at `eaae6e9`; Copilot's targeted safety/isolation audit PASSed that exact code commit with no blockers; tests and linters remain unrun pending Ryan's decision |
 | 2026-10-10 | Sol | Focused pytest passed both provider-refusal cases in 0.50 seconds while the live failure ledger's SHA-256, size, and nanosecond mtime remained identical; all paused timers were restored active and Ryan's PR decision is next |
+| 2026-10-10 | Claude | Recorded PR #381 merge (`e798bba`); drafted Codex rollout admission design for Kiro review on `docs/2026-10-10-issue-286-codex-rollout-admission-design`; no live authority |
+| 2026-10-10 | Kiro | Design PASS at `9e91973` with six binding conditions (design §13); next gate Ryan implementation grant |
+| 2026-10-10 | Ryan / Claude | Ryan granted hermetic Cursor implementation; Execute handoff written; resume state `NOT_STARTED` |
+| 2026-10-11 | Kiro / Claude | Kiro amended design §13 conditions 3–4: refusal quarantine is terminal by path (digest is evidence only); implementation on `feat/2026-10-10-issue-286-codex-rollout-admission` needs one more corrective |
+| 2026-10-11 | Kiro / Copilot / Claude | Gate 3 FAIL at `905ad40` (Kiro: Pylint gate; Copilot: six safety findings); Kiro accepted the D8 lineage fields and generic quarantine; corrective-4 handoff written, `NOT_STARTED` |
+| 2026-10-11 | Kiro / Copilot / Claude | At `a5f1756`, Kiro PASS and Copilot FAIL (D8 refusal quarantine, checkpointless recovery, `~` root); Claude confirmed all three |
+| 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
+| 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 
 ## TL;DR
 
@@ -265,3 +298,6 @@ Keep this document a current-state snapshot, not a session diary.
   implemented and Copilot-audited at `eaae6e9`; its two focused tests pass with
   the live failure ledger unchanged. Ryan's PR decision is next. Config and
   watcher promotion remain separately gated.
+- Codex track: rollout admission merged via PR #388, default off. The burn
+  isn't reduced until Stage 1 and Stage 2 run under Ryan's grants. No live
+  bootstrap, config change, or watcher promotion is authorized.
