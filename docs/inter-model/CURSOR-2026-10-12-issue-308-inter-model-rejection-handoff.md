@@ -13,9 +13,9 @@ work.
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` |
+| **State** | `IN_PROGRESS`: corrective 2 (see the end of this file) |
 | **Branch** | `fix/2026-10-12-issue-308-inter-model-rejection` (create from `origin/main`) |
-| **Tip SHA** | base `origin/main` `05aa2c8` |
+| **Tip SHA** | `1e76650` (base `05aa2c8`) |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-308-inter-model-rejection-handoff` |
 | **PR** | not opened |
 | **Ryan GATE** | none for hermetic implementation; Ryan alone merges |
@@ -187,3 +187,44 @@ get its grant.
 without a clean disk-backed run, and four of them are real. The acceptance
 run must use a clean, disk-backed checkout (not tmpfs or a sandbox) with a
 fresh CI config.
+
+## Verification of `1e76650` (Claude, 2026-10-12) — corrective 2 needed (small)
+
+**Fixed since `b689df6`:**
+
+- **K1.** All nine pin regressions are fixed.
+  - The three canary tests import one shared `BASELINE_HASHES` table, so the
+    one refreshed `ingest.py` hash covers all three.
+  - The R2B v2 inventory changes only its revision identity
+    (`code_revision` and `inventory_digest`), as expected.
+  - The shadow call-site lists match the static scan.
+- **K2.** The reconciler now skips `source_hash_mismatch` on a path-and-hash
+  rejection match. The tip's test file run against the `b689df6` code gives
+  `1 failed, 7 passed`. The failure is
+  `test_reconciliation_suppresses_hash_mismatch_for_rejected_content`, so the
+  test proves the fix.
+- **Pylint gate PASS** on a clean disk-backed worktree, with base `05aa2c8`:
+  "461 findings, 240 fingerprints; no new/increased vs baseline".
+
+**Blocking:**
+
+| # | Finding | Fix |
+|---|---|---|
+| K3 | The rewrite of `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json` lost two facts from its `sites` detail that `main` had right. No test reads `sites`, which is why it passed. (1) The `cg2_rehearsal.py:951` entry (class `cg2_rehearsal_scratch`, allowlisted direct, with the note "Legacy-only rehearsal creates and mutates only an isolated tmp_path Chroma root.") is gone, although `allowlisted_direct_sites` still lists `cg2_rehearsal.py:951`. (2) `ingest.py:1239` is the reindex-snapshot read (`_ReindexSnapshot`, "Snapshot only the rows a completed replacement may later prune"). `main` classed that site `reads_reindex_snapshot_under_writer_gate`, but the tip classes it `mutates_units`. | Restore the 951 entry exactly as on `main`, after the `cg2_rehearsal.py:199` entry. Set `ingest.py:1239`'s class to `reads_reindex_snapshot_under_writer_gate`. Keep the corrected line numbers (661, 1239, 1277 and 310). The R2B generator reads only the call-site lists, not `sites`, so the R2B artifact needs no regeneration. Confirm with the shadow and R2B tests. |
+| K4 | `main` moved to `138e3aa` (#386, OpenClaw planning docs only; no file overlap). | Merge `origin/main` (no rebase). |
+
+**Out of scope:** `sites` was already stale on `main`. Five allowlisted
+sites have no `sites` entry there (`cg2_legacy_vector_attestation.py:930`,
+`chroma_store.py:83` and `:108`, `chroma_write_store.py:666` and
+`incremental_jsonl_canary.py:1234`). That gap pre-dates this branch and
+isn't on the burn path, so it isn't part of #308.
+
+**Nits (optional):**
+
+- The two reconciler branches repeat the same import and lookup; one small
+  helper would do.
+- The new K2 test is missing the second blank line before it.
+
+**Full suite:** Claude's clean disk-backed run on `1e76650` is in progress.
+Its result will be appended here. Cursor's handoff-back reported 10 failures
+it called environmental, so that claim will be checked by name.
