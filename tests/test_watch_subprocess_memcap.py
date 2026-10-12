@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import signal
 import subprocess
 import unittest
@@ -12,6 +13,11 @@ from watch import _flush_path_subprocess, _scoped_index_cmd
 
 class ScopedIndexCmdTests(unittest.TestCase):
     _INNER = ["/usr/bin/python", "convmem.py", "index", "--file", "/tmp/x.jsonl"]
+
+    def setUp(self) -> None:
+        for key in list(os.environ):
+            if key.startswith("CONVMEM_LIVE_DIAG_"):
+                os.environ.pop(key, None)
 
     def test_scoped_cmd_when_systemd_run_present(self):
         cfg = {"watch": {}}

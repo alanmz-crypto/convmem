@@ -1,10 +1,9 @@
-# pylint: disable=too-many-nested-blocks
+# pylint: disable=too-many-nested-blocks,duplicate-code
 """Fail-closed transient user-service boundary for the gated §9.7a worker."""
 
 from __future__ import annotations
 
 import json
-import os
 import selectors
 import subprocess
 import sys
@@ -12,6 +11,14 @@ import time
 import uuid
 from pathlib import Path
 from typing import Callable
+
+from tests.watch_oom_cgroup_common import (
+    assert_fresh_cgroup_ready_path,
+    register_popen_streams,
+    run_popen_supervised_drain,
+    stop_unit_and_kill_proc,
+    systemd_run_memory_properties,
+)
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 MEMORY_LIMIT_BYTES = 6 * 1024**3
@@ -196,21 +203,13 @@ def run_capped_worker(
     while_active: Callable[[], dict] | None = None,
 ) -> dict:
     """Run one worker under a checked cap; return evidence, never fall back."""
-    if ready_path.exists() or not ready_path.parent.is_dir():
-        raise RuntimeError("cgroup-ready path must be fresh under an existing arm")
-    temp_ready = ready_path.with_name(ready_path.name + ".tmp")
-    if temp_ready.exists():
-        raise RuntimeError("temporary cgroup-ready path already exists")
+    temp_ready = assert_fresh_cgroup_ready_path(ready_path)
     unit = f"convmem-oom-measure-{uuid.uuid4().hex}.service"
     supervisor = Path(__file__).with_name("watch_oom_cgroup_supervisor.py")
     command = [
         "systemd-run", "--user", "--service-type=exec", "--pipe", "--wait",
         "--quiet", "--same-dir", f"--unit={unit}",
-        "--property=MemoryAccounting=yes",
-        f"--property=MemoryMax={expected_bytes}",
-        "--property=MemorySwapMax=0",
-        "--property=OOMPolicy=continue",
-        f"--property=RuntimeMaxSec={int(timeout + 30)}s",
+        *systemd_run_memory_properties(expected_bytes=expected_bytes, timeout=timeout),
         sys.executable, str(supervisor), str(expected_bytes), *worker_argv,
     ]
     proc = subprocess.Popen(  # pylint: disable=consider-using-with
@@ -221,10 +220,7 @@ def run_capped_worker(
         stderr=subprocess.PIPE,
     )
     selector = selectors.DefaultSelector()
-    assert proc.stdout is not None and proc.stderr is not None
-    selector.register(proc.stdout, selectors.EVENT_READ)
-    selector.register(proc.stderr, selectors.EVENT_READ)
-    output = {proc.stdout: bytearray(), proc.stderr: bytearray()}
+    output = register_popen_streams(selector, proc)
     deadline = time.monotonic() + timeout
     sampler: _Sampler | None = None
     group_path = ""
@@ -232,49 +228,42 @@ def run_capped_worker(
     oom_policy_verified = False
     active_host: dict | None = None
     timed_out = False
+    def _between_polls() -> None:
+        nonlocal sampler, group_path, limit_claim, oom_policy_verified, active_host
+        if sampler is None and proc.poll() is None:
+            try:
+                group_path = _unit_property(unit, "ControlGroup")
+                if group_path:
+                    if _unit_property(unit, "OOMPolicy") != "continue":
+                        raise RuntimeError("transient service did not retain OOMPolicy=continue")
+                    oom_policy_verified = True
+                    group = cgroup_root / group_path.lstrip("/")
+                    limit_claim = _assert_limits(
+                        group, expected_bytes=expected_bytes, root=cgroup_root
+                    )
+                    sampler = _Sampler(group)
+                    sampler.sample()
+                    if sampler.samples == 0:
+                        raise RuntimeError("cgroup telemetry unreadable before worker start")
+                    if while_active is not None:
+                        active_host = while_active()
+                    temp_ready.write_text("ready\n", encoding="ascii")
+                    temp_ready.replace(ready_path)
+            except (OSError, subprocess.SubprocessError):
+                pass
+        if sampler is not None:
+            sampler.sample()
+
     try:
-        while selector.get_map() or proc.poll() is None:
-            if time.monotonic() >= deadline:
-                timed_out = True
-                if not _own_unit_action("stop", unit):
-                    _own_unit_action("kill", unit)
-                proc.terminate()
-                break
-            if sampler is None and proc.poll() is None:
-                try:
-                    group_path = _unit_property(unit, "ControlGroup")
-                    if group_path:
-                        if _unit_property(unit, "OOMPolicy") != "continue":
-                            raise RuntimeError("transient service did not retain OOMPolicy=continue")
-                        oom_policy_verified = True
-                        group = cgroup_root / group_path.lstrip("/")
-                        limit_claim = _assert_limits(
-                            group, expected_bytes=expected_bytes, root=cgroup_root
-                        )
-                        sampler = _Sampler(group)
-                        sampler.sample()
-                        if sampler.samples == 0:
-                            raise RuntimeError("cgroup telemetry unreadable before worker start")
-                        if while_active is not None:
-                            active_host = while_active()
-                        temp_ready.write_text("ready\n", encoding="ascii")
-                        temp_ready.replace(ready_path)
-                except (OSError, subprocess.SubprocessError):
-                    pass
-            if sampler is not None:
-                sampler.sample()
-            for key, _ in selector.select(timeout=0.02):
-                chunk = os.read(key.fd, 65536)
-                if chunk:
-                    output[key.fileobj].extend(chunk)
-                else:
-                    selector.unregister(key.fileobj)
-            if proc.poll() is not None and not selector.get_map():
-                break
-        if timed_out:
-            proc.wait(timeout=5)
-        else:
-            proc.wait(timeout=max(1, deadline - time.monotonic()))
+        timed_out = run_popen_supervised_drain(
+            selector,
+            proc,
+            output,
+            deadline,
+            unit=unit,
+            own_unit_action=_own_unit_action,
+            between_polls=_between_polls,
+        )
         if sampler is not None:
             sampler.sample()
         stderr = bytes(output[proc.stderr]).decode("utf-8", errors="replace")
@@ -302,14 +291,7 @@ def run_capped_worker(
         if sampler is not None:
             sampler.close()
         try:
-            if proc.poll() is None:
-                if not _own_unit_action("stop", unit):
-                    _own_unit_action("kill", unit)
-                try:
-                    proc.kill()
-                except ProcessLookupError:
-                    pass
-                proc.wait(timeout=5)
+            stop_unit_and_kill_proc(unit=unit, proc=proc, own_unit_action=_own_unit_action)
         finally:
             _own_unit_action("reset-failed", unit)
 

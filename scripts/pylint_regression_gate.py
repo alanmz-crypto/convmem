@@ -97,6 +97,12 @@ _ALLOWED_CYCLIC_PAIRS = frozenset(
         ("backup_workflows", "doctor"),
         ("brief", "doctor"),
         ("brief", "ingest"),
+        # Issue #268 D1: live_diagnosis imports brief/doctor/ingest only inside
+        # bootstrap helpers after env gates; those modules do not import live_diagnosis
+        # at import time (ingest uses lazy import for mark/refusal only).
+        ("brief", "live_diagnosis"),
+        ("doctor", "live_diagnosis"),
+        ("ingest", "live_diagnosis"),
         ("brief", "mcp_server"),
         ("brief", "propose_decision"),
         ("brief", "query"),
