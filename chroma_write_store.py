@@ -715,10 +715,12 @@ class AdmittedWriteOperation:  # pylint: disable=too-many-instance-attributes
     config_path: Path
     config_digest: str
     chroma_dir: Path
+    configured_chroma_dir: Path
     affected_paths: tuple[Path, ...]
     preflight: Any
     _cfg: dict[str, Any]
     units_export: Path | None = None
+    configured_units_export: Path | None = None
     _extra_affected_paths: (
         Callable[[Mapping[str, Any]], Iterable[str | Path]] | None
     ) = None
@@ -808,7 +810,8 @@ def verify_admitted_targets_unchanged(op: AdmittedWriteOperation) -> None:
 
     live_cfg = config_mod.load_config(op.config_path)
     chroma_now, affected_now = _resolve_operation_target(
-        live_cfg, op._extra_affected_paths
+        live_cfg,
+        op._extra_affected_paths,  # pylint: disable=protected-access
     )
     if chroma_now != op.chroma_dir or affected_now != op.affected_paths:
         raise OperationAdmissionRefused(
@@ -830,12 +833,33 @@ def verify_admitted_targets_unchanged(op: AdmittedWriteOperation) -> None:
 
 
 def admitted_units_export_path(cfg: Mapping[str, Any]) -> Path | None:
-    """Canonical export path from a (possibly admitted) configuration mapping."""
+    """Export path from admitted pinned config, verifying binding when bound."""
+    op = _bound_operation()
+    if op is not None:
+        verify_admitted_operation_unchanged(op)
     index = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
     raw = index.get("units_export")
     if not raw:
         return None
     return _canonical_path(raw)
+
+
+def verify_competing_guard_locations(
+    op: AdmittedWriteOperation | None,
+    live_cfg: Mapping[str, Any] | None = None,
+) -> None:
+    """Refuse alias/canonical guard-location conflicts before opening a client."""
+    if op is not None:
+        requested = op.configured_chroma_dir
+    elif live_cfg is not None:
+        index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
+        raw = index.get("chroma_dir")
+        if not raw:
+            return
+        requested = Path(raw).expanduser()
+    else:
+        return
+    ChromaWriteGuard(requested).require_not_quarantined()
 
 
 def verify_admitted_operation_unchanged(op: AdmittedWriteOperation) -> None:
@@ -917,6 +941,12 @@ def admitted_write_operation(
             live_cfg, extra_affected_paths
         )
         index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
+        configured_chroma_dir = Path(index["chroma_dir"]).expanduser()
+        configured_units_export = (
+            Path(index["units_export"]).expanduser()
+            if index.get("units_export")
+            else None
+        )
         units_export = (
             _canonical_path(index["units_export"])
             if index.get("units_export")
@@ -935,10 +965,12 @@ def admitted_write_operation(
             config_path=path,
             config_digest=digest,
             chroma_dir=chroma_dir,
+            configured_chroma_dir=configured_chroma_dir,
             affected_paths=affected,
             preflight=preflight,
             _cfg=live_cfg,
             units_export=units_export,
+            configured_units_export=configured_units_export,
             _extra_affected_paths=extra_affected_paths,
         )
         verify_admitted_operation_unchanged(op)
@@ -965,6 +997,7 @@ def _session_config(path: Path) -> dict[str, Any]:
             "operation_config_substituted",
         )
     verify_admitted_operation_unchanged(op)
+    verify_competing_guard_locations(op)
     return op.config()
 
 
@@ -997,6 +1030,7 @@ def production_chroma_write_session(
         else:
             index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
             chroma_dir = index.get("chroma_dir")
+            verify_competing_guard_locations(None, live_cfg)
         if not chroma_dir:
             raise ValueError("live config missing index.chroma_dir")
         store, decision = open_chroma_for_write(
@@ -1053,6 +1087,7 @@ def open_production_write_store(
         else:
             index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
             chroma_dir = index.get("chroma_dir")
+            verify_competing_guard_locations(None, live_cfg)
         if not chroma_dir:
             _release()
             raise ValueError("live config missing index.chroma_dir")

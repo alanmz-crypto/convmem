@@ -412,7 +412,6 @@ def add(
     from chroma_write_store import admitted_units_export_path, production_chroma_write_session
     from observe import ingest_observation, ingest_observation_file
     from query import render_error
-    from pathlib import Path
 
     admission = (
         _admitted_operation("convmem.add") if upsert else nullcontext()
@@ -516,9 +515,8 @@ def verify_command(
     """Record a verifier's check on an existing observation (metadata + ledger record)."""
     _guard_write()
     import json
-    from pathlib import Path
 
-    from chroma_write_store import admitted_units_export_path, production_chroma_write_session
+    from chroma_write_store import production_chroma_write_session
     from query import render_error
     from verify import verify_unit
 
@@ -687,7 +685,7 @@ def monitor_command(
     from pathlib import Path
 
     from config import load_config
-    from chroma_write_store import admitted_units_export_path, production_chroma_write_session
+    from chroma_write_store import production_chroma_write_session
     from chroma_store import ChromaStore
     from monitor import run_monitor
 
@@ -696,6 +694,8 @@ def monitor_command(
         models = cfg["models"]
         units_export = cfg["index"].get("units_export")
         units_export_path = Path(units_export).expanduser() if units_export else None
+        # Dry-run monitor keeps a read-only client outside the production factory.
+        # Shadow inventory allowlist pins this direct ctor site at a stable line.
         store = ChromaStore(str(cfg["index"]["chroma_dir"]), mutation_sink=None)
         try:
             stats = run_monitor(
@@ -717,7 +717,7 @@ def monitor_command(
         cfg = session.live_cfg
         models = cfg["models"]
         units_export = cfg["index"].get("units_export")
-        units_export_path = admitted_units_export_path(cfg) if units_export else None
+        units_export_path = Path(units_export).expanduser() if units_export else None
         stats = run_monitor(
             store,
             site=site,
@@ -1772,7 +1772,7 @@ def forget_command(
         raise typer.Exit(1)
 
     _guard_write()
-    from chroma_write_store import admitted_units_export_path, production_chroma_write_session
+    from chroma_write_store import production_chroma_write_session
 
     with production_chroma_write_session(entrypoint="convmem.forget") as session:
         store = session.store
@@ -2088,7 +2088,6 @@ def _admission_steps(entrypoint: str, governed: bool, expected_cfg):
     from restic_gate import OperationAdmissionRefused, report_refusal
     from restic_snapshot import EXIT_WRONG_PATH
 
-    admitted = False
     try:
         with admitted_write_operation(
             entrypoint=entrypoint,
@@ -2103,7 +2102,6 @@ def _admission_steps(entrypoint: str, governed: bool, expected_cfg):
                         EXIT_WRONG_PATH,
                         "operation_config_changed",
                     )
-            admitted = True
             yield op
     except OperationAdmissionRefused as exc:
         report_refusal(exc)

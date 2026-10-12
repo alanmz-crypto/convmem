@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 """Subprocess entry for Safe Harbor T2 caller evidence (test-only).
 
 Runs in a fresh interpreter whose HOME/XDG/CONVMEM_CONFIG/Restic settings were
@@ -21,6 +22,8 @@ Usage:
                               SAFE_HARBOR_T2_ALT_CHROMA after admission
   retarget_export_alias_after_preflight  repoint the export symlink to
                               SAFE_HARBOR_T2_ALT_EXPORT after admission
+  retarget_export_alias_after_store     same retarget after the production store
+                              is constructed (real export consumer path)
   unbound_targets_after_preflight restore pre-correction config/store binding
   unbound_retarget_chroma_alias     retarget plus unbound binding (negative control)
 ``SAFE_HARBOR_T2_NOW`` (ISO-8601 with offset) pins the evaluation instant.
@@ -44,6 +47,18 @@ sys.path.insert(0, str(ROOT))
 def _fake_embed(text, model=None, host=None):  # pylint: disable=unused-argument
     base = (sum(ord(c) for c in text) % 997) / 997.0
     return [base] * 768
+
+
+def _repoint_export_alias_symlink() -> None:
+    alias = Path(os.environ["SAFE_HARBOR_T2_EXPORT_ALIAS"])
+    alt = Path(os.environ["SAFE_HARBOR_T2_ALT_EXPORT"])
+    if alias.is_symlink():
+        alias.unlink()
+    elif alias.exists():
+        alias.unlink(missing_ok=True)
+    alt.parent.mkdir(parents=True, exist_ok=True)
+    alt.write_text("", encoding="utf-8")
+    alias.symlink_to(alt)
 
 
 def _install_fakes() -> None:
@@ -137,18 +152,22 @@ def _install_hook() -> None:
         @contextmanager
         def _retarget_export(**kwargs):
             with real_admit(**kwargs) as op:
-                alias = Path(os.environ["SAFE_HARBOR_T2_EXPORT_ALIAS"])
-                alt = Path(os.environ["SAFE_HARBOR_T2_ALT_EXPORT"])
-                if alias.is_symlink():
-                    alias.unlink()
-                elif alias.exists():
-                    alias.unlink(missing_ok=True)
-                alt.parent.mkdir(parents=True, exist_ok=True)
-                alt.write_text("", encoding="utf-8")
-                alias.symlink_to(alt)
+                _repoint_export_alias_symlink()
                 yield op
 
         chroma_write_store.admitted_write_operation = _retarget_export
+    elif hook == "retarget_export_alias_after_store":
+        import chroma_write_store
+
+        real_session = chroma_write_store.production_chroma_write_session
+
+        @contextmanager
+        def _retarget_export_late(**kwargs):
+            with real_session(**kwargs) as session:
+                _repoint_export_alias_symlink()
+                yield session
+
+        chroma_write_store.production_chroma_write_session = _retarget_export_late
     elif hook == "unbound_targets_after_preflight":
         import copy
 

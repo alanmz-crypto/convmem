@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
+import chromadb
 import pytest
 
 import backup_workflows
@@ -1080,7 +1081,7 @@ def test_cli_chroma_alias_retarget_refused_after_preflight(cli: Cli):
 
 
 def test_control_unbound_target_lets_alias_retarget_mutate(cli: Cli):
-    """Negative control: without target binding, retargeting redirects the write."""
+    """Negative control: unbound binding lets retarget write corpus B while A stays put."""
     alias, _real_a, chroma_b = _chroma_alias_setup(cli)
     view_b = cli.write_config(cli.s.root / "view-b.toml", chroma_b)
     env = {
@@ -1096,6 +1097,117 @@ def test_control_unbound_target_lets_alias_retarget_mutate(cli: Cli):
     after_b = cli.dump(view_b)
     assert after_a["chroma"] == before_a["chroma"]
     assert after_b["chroma"] != before_b["chroma"]
+
+
+def _client_open_spy() -> tuple[dict[str, bool], mock.MagicMock]:
+    state = {"opened": False}
+    real_client = chromadb.PersistentClient
+
+    def _spy_client(*args, **kwargs):
+        state["opened"] = True
+        return real_client(*args, **kwargs)
+
+    return state, mock.patch.object(chromadb, "PersistentClient", _spy_client)
+
+
+def _competing_alias_guard_setup(scratch: Scratch) -> tuple[Path, Path, bytes]:
+    alias = scratch.data / "chroma-link"
+    if alias.exists() or alias.is_symlink():
+        alias.unlink()
+    alias.symlink_to(scratch.chroma, target_is_directory=True)
+    lexical_guard = scratch.data / "chroma-link.write-guard"
+    lexical_guard.mkdir()
+    marker = b'{"reason":"old","segment":"seg"}\n'
+    (lexical_guard / "QUARANTINE.json").write_bytes(marker)
+    canonical_guard = scratch.chroma.parent / f"{scratch.chroma.name}.write-guard"
+    return alias, canonical_guard, marker
+
+
+@needs_restic
+def test_cli_add_refuses_competing_alias_guard_location(cli: Cli):
+    alias, canonical_guard, marker = _competing_alias_guard_setup(cli.s)
+    lexical_guard = cli.s.data / "chroma-link.write-guard"
+    cli.s.write_env(chroma=alias, external=False)
+    cli.write_config(cli.config, alias)
+    cli.seed()
+    before = cli.dump()
+    proc = cli.convmem("add", "--file", cli.obs_file(), "--upsert")
+    assert proc.returncode != 0
+    assert "competing guard locations" in (proc.stderr + proc.stdout).lower()
+    assert cli.dump() == before
+    assert not canonical_guard.exists()
+    assert (lexical_guard / "QUARANTINE.json").read_bytes() == marker
+
+
+@needs_restic
+def test_open_production_write_store_refuses_competing_alias_guard(scratch: Scratch):
+    from chroma_write_store import (
+        admitted_write_operation,
+        open_production_write_store,
+    )
+    from chroma_write_guard import ChromaWriteGuardError
+
+    scratch.write_env(external=False)
+    scratch.init(external=False)
+    noon = local_noon()
+    scratch.snapshot(noon - timedelta(hours=1))
+    alias, canonical_guard, marker = _competing_alias_guard_setup(scratch)
+    lexical_guard = scratch.data / "chroma-link.write-guard"
+    cfg_path = Path(os.environ["CONVMEM_CONFIG"])
+    cfg_path.write_text(
+        "[index]\n"
+        f'chroma_dir = "{alias}"\n'
+        f'units_export = "{scratch.data / "knowledge_units.jsonl"}"\n'
+        "[models]\n"
+        'embed_model = "nomic-embed-text"\n'
+        'ollama_host = "http://127.0.0.1:9"\n',
+        encoding="utf-8",
+    )
+    client_state, client_patch = _client_open_spy()
+    with pinned_clock(noon), client_patch:
+        with admitted_write_operation(entrypoint="test.factory", config_path=cfg_path):
+            with pytest.raises(ChromaWriteGuardError, match="competing guard locations"):
+                open_production_write_store(config_path=cfg_path, entrypoint="test.factory")
+    assert client_state["opened"] is False
+    assert not canonical_guard.exists()
+    assert (lexical_guard / "QUARANTINE.json").read_bytes() == marker
+
+
+@needs_restic
+def test_production_chroma_write_session_refuses_competing_alias_guard(scratch: Scratch):
+    from chroma_write_store import (
+        admitted_write_operation,
+        production_chroma_write_session,
+    )
+    from chroma_write_guard import ChromaWriteGuardError
+
+    scratch.write_env(external=False)
+    scratch.init(external=False)
+    noon = local_noon()
+    scratch.snapshot(noon - timedelta(hours=1))
+    alias, canonical_guard, marker = _competing_alias_guard_setup(scratch)
+    lexical_guard = scratch.data / "chroma-link.write-guard"
+    cfg_path = Path(os.environ["CONVMEM_CONFIG"])
+    cfg_path.write_text(
+        "[index]\n"
+        f'chroma_dir = "{alias}"\n'
+        f'units_export = "{scratch.data / "knowledge_units.jsonl"}"\n'
+        "[models]\n"
+        'embed_model = "nomic-embed-text"\n'
+        'ollama_host = "http://127.0.0.1:9"\n',
+        encoding="utf-8",
+    )
+    client_state, client_patch = _client_open_spy()
+    with pinned_clock(noon), client_patch:
+        with admitted_write_operation(entrypoint="test.factory", config_path=cfg_path):
+            with pytest.raises(ChromaWriteGuardError, match="competing guard locations"):
+                with production_chroma_write_session(
+                    config_path=cfg_path, entrypoint="test.factory"
+                ):
+                    pass
+    assert client_state["opened"] is False
+    assert not canonical_guard.exists()
+    assert (lexical_guard / "QUARANTINE.json").read_bytes() == marker
 
 
 def test_cli_export_alias_retarget_refused_after_preflight(cli: Cli):
@@ -1131,6 +1243,39 @@ def test_cli_export_alias_retarget_refused_after_preflight(cli: Cli):
     assert not outside.read_text().strip()
 
 
+def test_cli_export_alias_retarget_refused_after_store_open(cli: Cli):
+    outside = cli.s.root / "outside.jsonl"
+    outside.parent.mkdir(parents=True, exist_ok=True)
+    outside.write_text("", encoding="utf-8")
+    export_link = cli.s.data / "export-link.jsonl"
+    inside = cli.s.data / "knowledge_units.jsonl"
+    if export_link.exists():
+        export_link.unlink()
+    export_link.symlink_to(inside)
+    cli.config.write_text(
+        "[index]\n"
+        f'chroma_dir = "{cli.s.chroma}"\n'
+        f'units_export = "{export_link}"\n'
+        "[models]\n"
+        'embed_model = "nomic-embed-text"\n'
+        'ollama_host = "http://127.0.0.1:9"\n',
+        encoding="utf-8",
+    )
+    cli.s.write_env(external=False)
+    cli.seed()
+    env = {
+        **_current(cli),
+        "SAFE_HARBOR_T2_HOOK": "retarget_export_alias_after_store",
+        "SAFE_HARBOR_T2_EXPORT_ALIAS": str(export_link),
+        "SAFE_HARBOR_T2_ALT_EXPORT": str(outside),
+    }
+    before = cli.dump()
+    proc = cli.convmem("add", "--file", cli.obs_file(), "--upsert", env=env)
+    _assert_refused(proc, EXIT_WRONG_PATH, REASON_OPERATION_CONFIG_CHANGED)
+    assert cli.dump() == before
+    assert not outside.read_text().strip()
+
+
 @needs_restic
 def test_open_production_write_store_refuses_retargeted_alias(scratch: Scratch):
     """Alternate production-store factory uses the same bound target check."""
@@ -1138,7 +1283,6 @@ def test_open_production_write_store_refuses_retargeted_alias(scratch: Scratch):
         admitted_write_operation,
         open_production_write_store,
     )
-    from restic_gate import OperationAdmissionRefused
 
     scratch.write_env(external=False)
     scratch.init(external=False)

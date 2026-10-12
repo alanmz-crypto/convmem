@@ -478,6 +478,27 @@ Log: `/opt/cursor/artifacts/t2-target-binding-pytest.log` (10-case batch). No pr
 
 **Cursor continuation:** resume the existing T2 branch at the documentation commit containing this review, with a clean worktree and matching remote. Address F1/F2 and the scope cleanup under the unchanged section 9 target-binding grant; do not reopen B1, the accepted event-only exclusion or T3–T5. Update existing evidence/routing, regenerate only derived inventory if affected, commit/push each commit and return the successor for a bounded Codex delta plus fresh CI. No paid review, trigger/comment, merge or live operation. If the correction requires a production file outside the existing grant, return that exact dependency before editing it.
 
+### F1/F2 target-binding correction — captured (Cursor)
+
+**Grant start:** `3c6f728d56a2cd99a191d86e5d2f75c1c41cb3f0`. **Runtime/tests subject:** commit on `fix/2026-10-12-safe-harbor-t2` after this section (see evidence log row). Parent grant docs unchanged at `3c6f728`.
+
+**What changed:** admitted operations keep **canonical** `chroma_dir` / `units_export` in pinned config and open production stores on `op.chroma_dir`. Original configured spellings are carried only as `configured_chroma_dir` / `configured_units_export` for `verify_competing_guard_locations()` (existing `ChromaWriteGuard.require_not_quarantined()` on the alias spelling) before either production factory opens a client. Export retarget after store construction is covered via `retarget_export_alias_after_store` on the real `add --upsert` export consumer. Scope cleanup: monitor bound path reverted to configured expanduser; unused `admitted_units_export_path` imports removed from verify/forget; unused `admitted` flag removed from `_admission_steps`.
+
+**Invalid development runs (not accepted evidence):** early shell pytest without outer-isolated subprocess env; first target-binding batch had **1 failed** (`test_open_production_write_store_refuses_competing_alias_guard` before fix) and **invalid exit capture** (`| tee` masked pytest exit 0). An eight-case pass in the same mode does not satisfy the grant isolation contract.
+
+**Accepted runner:** `/tmp/safe_harbor_t2_collect.py` — direct subprocess per batch, `subprocess.returncode` only (no pipelines), uid **1000**, clean allowlist env and fresh HOME/XDG/CONVMEM/Restic/cache roots under each run directory before any project import. Interpreter `/home/lauer/miniforge3/bin/python` **3.13.12**; restic **0.19.0**; pytest **9.1.1** (from env). Evidence directory **`/tmp/safe-harbor-t2-f1f2-20261012T130410Z`** (`summary.json`, per-batch logs).
+
+| Batch | Selection | Result | Exit |
+|---|---|---|---|
+| Inventory | `write_v2_inventory_file()` then regression | derived `code_revision` `638cf8d3…`, digest `0479842d…`; `route_sink_evidence_errors` `[]` | **0** |
+| Target binding | `tests/test_safe_harbor_t2.py -k "alias or export_alias or competing or open_production"` | **9 passed**, 48 deselected | pytest **0** |
+| Regression | 24 explicit nodes (T2 alias/export/competing/caller, `test_write_gate_effect`, `test_record_review_cli`, four T1 alias/contention cases, `test_r2b_v2_implementation_revision`) | **42 passed** | pytest **0** |
+| Lint | full pylint JSON + `scripts/pylint_regression_gate.py ci` vs `9664878` | gate **PASS** (459 findings, 239 fingerprints) | pylint raw **30**; gate **0** |
+
+**Controls:** competing alias-local quarantine refuses before `PersistentClient` (spy) on CLI and both factories; stable alias still mutates A; export retarget after preflight and after store open refuses with 24 / unchanged fixtures; unbound negative control still redirects write into B; preflight retarget and factory alias-drift cases retained.
+
+**CI / integration:** draft **#389** reports **CONFLICTING** with `main` (`mergeStateStatus` **DIRTY** at grant tip `3c6f728`); resolving or merging `main` is **not** in this grant. Fresh CI on the pushed correction successor is expected after push.
+
 ### Historical prepared T2 draft PR text — now opened as #389
 
 Title: **Bind risky writes to their backup target and reject future snapshots**
@@ -554,9 +575,10 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Cursor, same | same | affected T2/caller/census/inventory pytest (12 files) | PASS, pytest exit 0, `153 passed, 2 warnings in 339.06s` | V2 B1 correction |
 | 2026-10-12 | Cursor, same | same | pylint + regression gate vs `9664878` | pylint raw 30; gate exit 0 PASS, 466 findings / 239 fingerprints, none new | V2 B1 correction |
 | 2026-10-12 | Cursor, cloud VM uid 1000 | target-binding `a18df48025cac77de8bda2db5a761f4744a9a963` | pytest selections above | PASS, pytest exit 0, `5` + `10` cases | Target-binding correction section |
+| 2026-10-12 | Cursor, uid 1000, `/tmp/safe_harbor_t2_collect.py` | F1/F2 correction (see row SHA after push) | inventory + 9 target-binding + 42 regression + lint gate | all batch exits **0** | F1/F2 correction section |
 | 2026-10-12 | Cursor, isolated generator env | same | `write_v2_inventory_file()` + `test_r2b_v2_implementation_revision` | `dc714d0a…`, digest `5cbc5a99…`; verifier `[]` | Target-binding correction section |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 is closed historically; Codex's static delta of the alias correction at `a18df480` requires F1/F2 corrections above. Overall owner acceptance and the final-tip external-review gate remain pending for a corrected successor. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 is closed historically; F1/F2 correction evidence is captured pending Codex bounded delta and fresh CI on the pushed successor. Overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
 
 ## Merge reading
 
