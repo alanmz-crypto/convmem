@@ -9,9 +9,10 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Issue #308 — inter-model rejection retry loop: IN REVIEW at `74e193f`
-  (2026-10-12):** Claude verified Cursor's corrective 2; the Copilot audit
-  and the Kiro review are running on the exact tip. This is a Stage 2
+- **Issue #308 — inter-model rejection retry loop: corrective 3
+  (2026-10-12):** Kiro passed `74e193f`, but Copilot failed it, and Claude
+  reproduced the failure: a sidecar with invalid UTF-8 or deep nesting
+  crashes the watcher's skip check. Cursor has a one-function fix. This is a Stage 2
   prerequisite of the Codex burn work. A provenance-supersession rejection is never recorded, so the
   same doc is retried on every watcher event. Cursor records a terminal
   rejection keyed by path and content hash, and the watcher and the

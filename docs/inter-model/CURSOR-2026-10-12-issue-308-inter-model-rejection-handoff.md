@@ -13,7 +13,7 @@ work.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 2 verified; Copilot and Kiro review at `74e193f` |
+| **State** | `IN_PROGRESS`: corrective 3 (Copilot FAIL at `74e193f`, item 1) |
 | **Branch** | `fix/2026-10-12-issue-308-inter-model-rejection` (create from `origin/main`) |
 | **Tip SHA** | `74e193f` (merge base `138e3aa`) |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-308-inter-model-rejection-handoff` |
@@ -268,3 +268,79 @@ Corrective 2 is two commits:
 **Next:** the headless Copilot audit (fail-open, writer narrowness,
 suppression, isolation, lock, writer boundary) and the Kiro conformance
 review, both at `74e193f`. Then Ryan's PR decision.
+
+## Reviews of `74e193f` (2026-10-12) — Kiro PASS, Copilot FAIL; corrective 3
+
+Both reviews ran headless, launched by Claude, on the exact tip.
+
+- **Kiro: PASS.**
+  - The change conforms to integration points 1–4, the Specification and
+    "What NOT to build".
+  - The retry loop is closed for both the never-recorded and the
+    previously indexed case.
+  - The shared lock is safe today. Advisory condition: use a separate lock
+    file if a rejection is ever recorded while `_processed_lock` is held.
+  - Writer-boundary registration isn't required, and the clear path is
+    sufficient.
+  - Kiro based its fail-open ruling on test 7, which uses `"{not json"`
+    only.
+- **Copilot: FAIL on item 1 (fail-open).** Items 2–6 are closed.
+  - `load_inter_model_rejections` (`inter_model_rejections.py:53–70`)
+    catches only `OSError` and `JSONDecodeError`.
+  - A sidecar with invalid UTF-8 or a partial multibyte tail raises
+    `UnicodeDecodeError`, and deep nesting (`[` × 200000) raises
+    `RecursionError`.
+  - Both escape `watch_skip_reason`, which `watch.py:476` calls for every
+    path with no guard. They also escape `discover_legacy_source_drift`.
+  - `record_provenance_supersession_rejection` loads the file first, so it
+    can't heal the corruption.
+  - Expected effect: every watcher index attempt fails, and startup
+    reconciliation (`watch.py:~699`, which catches only `OSError` and
+    `RuntimeError`) aborts.
+
+**Claude's reproduction (hermetic, tip `74e193f`):**
+`inter_model_rejection_matches` raises `UnicodeDecodeError` for
+`b"\xff\xfe\x00"` and for a partial multibyte tail, and `RecursionError` for
+`b"[" * 200000`. It returns `False` with one diagnostic for `b"{not json"`.
+The finding stands. It is a spec violation ("never crashes the watcher or
+the reconciler"), not a factual conflict between reviewers, so it's not a
+Sol-High case.
+
+**Corrective 3, binding:**
+
+| # | Fix | Test (must fail at `74e193f`) |
+|---|---|---|
+| C3-1 | In `load_inter_model_rejections`, fail open on `ValueError` (which covers `UnicodeDecodeError` and `JSONDecodeError`) and on `RecursionError`, with the same one-line diagnostic. A record written onto a corrupt sidecar then replaces it instead of raising. | Parametrize the corrupt-sidecar test over invalid UTF-8, a partial multibyte tail and deep nesting. For each case, `watch_skip_reason` and `discover_legacy_source_drift` suppress nothing and don't raise, and `record_provenance_supersession_rejection` succeeds and leaves a readable sidecar. |
+
+**Optional (Copilot advisories; take only if cheap):**
+
+- Make the record write best-effort. An `OSError` from the sidecar write
+  (ENOSPC or EROFS) prints one diagnostic and `_index_one_file` still
+  returns `"skipped"`. Today `index()` aborts; it stays retryable either way.
+- Pass `processed_log` from `cfg` at the `flush_path` call
+  (`watch.py:476`), so the call doesn't fall back to `load_config()`.
+  `watch.py` is pinned in the canary `BASELINE_HASHES`, so this also needs a
+  pin refresh with a comment.
+
+**Not in #308; follow-ups for Ryan:**
+
+- **The restore classifier.** `complete_data_restore.STATE_SPECS` doesn't
+  classify `inter_model_rejections.json`, so restore validation would report
+  `BLOCKED_UNCLASSIFIED_STATE` once the file exists. The live data root
+  already has the same gap on `main` with `source_reconciliation.json`.
+  Recovery Authority owns `STATE_SPECS`, so both files belong in one
+  follow-up there.
+- **Unused cleanup functions.**
+  `clear_inter_model_rejection_for_path` and
+  `prune_stale_inter_model_rejections` have no production callers. Stale
+  records are harmless, because a match needs the current hash.
+- **Symlinks.** A symlinked `processed.json` would split the sidecar lock
+  from the processed lock. The live `processed.json` is a regular file, so
+  this doesn't apply.
+
+**Acceptance for corrective 3:** run the #308, shadow, R2B v2 and canary
+tests. Regenerate the R2B inventory, because `inter_model_rejections.py` is
+in its authority manifest. Rerun the Pylint gate with `--base-ref` set to
+the merge base. Push with an explicit refspec. After that, Claude verifies,
+then a targeted Copilot re-check of item 1 and a Kiro delta confirmation run
+on the new tip.
