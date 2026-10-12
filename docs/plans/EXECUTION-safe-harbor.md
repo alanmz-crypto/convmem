@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; T1 GRANTED to Cursor in isolation — NOT STARTED.** Kiro delta PASS is pinned to `dca13a5` (88%). Ownership remains unchanged. The bounded T1 grant and handoff are in section 8. T2–T5, deployment and live operations remain pending. This record changes no accepted task contract.
+> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; bounded T1 CORRECTION GRANTED to Cursor.** Kiro delta PASS remains pinned to `dca13a5` (88%). Ownership is unchanged. Section 8 records the original grant and Ryan's subsequent correction, including the narrowly added store file. T1 acceptance/review, T2–T5 and live operations remain pending.
 
 ## 1. Source, authority and goal
 
@@ -10,7 +10,7 @@
 
 ```text
 Planning Status
-Phase:        Execution Planning complete; T1 Execute granted / not started
+Phase:        Execution Planning complete; bounded T1 correction granted
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
 Lanes:        Codex authors; Kiro reviews; Cursor implements after a separate grant
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-All tasks are **NOT STARTED**. Execution lane: Cursor. Ryan granted T1 only, as recorded in section 8; T2–T5 require later authorization. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits.
+T1 has an unaccepted candidate and a bounded correction grant in section 8; T2–T5 are **NOT STARTED / NOT GRANTED**. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; section 8 records the subsequent owner-approved T1 scope correction explicitly.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -210,9 +210,9 @@ These are operational prerequisites to be completed later, not additional implem
 
 ## 7. VERIFY companion and review record
 
-Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), **stub, evidence not run**, based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It names V0–V6 and must be filled against the actual implementation revision under later execution/verification authorization.
+Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It retains the initial V1 results, marks the authorized correction evidence incomplete, and keeps V2–V6 unrun. Evidence must identify its actual implementation revision.
 
-Next: Cursor picks up the bounded T1 grant in section 8. Ryan's earlier acceptance kept implementation pending; his subsequent “granted” authorizes only the proposed T1 step. The first review and A1/A2 delta are complete; this routing update does not create another review round. O-E4.e's existing-gate wording is satisfied plan-side. The section 2 owner/acceptance gates are satisfied by explicit approval. Recording the grant does not itself start an implementation agent or grant live operations.
+Next: Cursor resumes the bounded T1 correction in section 8. Ryan's plan acceptance, original T1 grant and subsequent correction are distinct authority records. The first review and A1/A2 delta are complete; O-E4.e is satisfied plan-side. The correction does not approve the initial candidate, satisfy independent runtime review or grant live operations.
 
 ### Kiro execution review and advisory disposition
 
@@ -234,7 +234,7 @@ The A1/A2 delta assignment is complete. Do not rerun either completed review for
 
 > As owner, I approve B-E4.1 exactly as specified in T2 of the Safe Harbor execution plan at dca13a59a2edf649ac6a19777f572645bea8674e, including all five consumer outcomes. I accept that execution plan. Ownership remains unchanged. Implementation and live operations remain pending.
 
-This closes B-E4.1's owner-decision prerequisite and accepts the exact reviewed plan. Complete-data Backup v2 retains its interfaces; no ownership transfer, Hybrid-audit closure or Recovery Authority grant follows. T2's future-time policy and all five consumer outcomes are unchanged. All tasks remain NOT STARTED; VERIFY remains NOT RUN.
+This closed B-E4.1's owner-decision prerequisite and accepted the exact reviewed plan. Complete-data Backup v2 retains its interfaces; no ownership transfer, Hybrid-audit closure or Recovery Authority grant follows. T2's future-time policy and all five consumer outcomes are unchanged. At that approval, all tasks were NOT STARTED and VERIFY was NOT RUN; section 8 and STATUS describe the subsequent T1 candidate and correction grant.
 
 **Acceptance scope:** that acceptance alone granted no implementation or operation. Ryan subsequently granted the proposed T1 implementation; section 8 records its exact limits. Operational recovery qualification and the lost-work interval remain open before live rollout.
 
@@ -308,10 +308,10 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 ### Resume state and workspace
 
-- State: **AUTHORIZED / NOT STARTED**. No implementation agent has been started by this handoff.
+- State: **CORRECTION AUTHORIZED / NOT STARTED**. The initial candidate and its evidence are pushed; see the owner-approved correction below before resuming.
 - Implementation branch: `fix/2026-10-11-safe-harbor-t1`.
 - Dedicated worktree: `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`.
-- Base: the exact commit containing this grant, supplied by Codex in the handoff. It descends from approval-record `83a096ab874643c622ef0e6048bf795fc5a0966b`; code remains the reviewed B/P baseline. Confirm branch, clean state, parentage and the grant before editing. A pre-existing dirty or diverged worktree is not permission to overwrite another writer.
+- Original grant base: `b4c0e73b60befcbc9c0fab02e42fd012c6b6adb3`. Correction starting candidate: `b5d6edcc0040a665f40c2118b15aedefe9fb24ff`, with runtime code at `fa82028b762e5564eed9f2884336ccfb0e3caf73`. Resume from the documentation commit recording this correction, supplied in Codex's dispatch; it changes no runtime code. Confirm branch, clean state, parentage and the grant before editing. A pre-existing dirty or diverged worktree is not permission to overwrite another writer.
 - The planning branch remains `plan/2026-10-11-safe-harbor`. Use the dedicated implementation branch; do not switch the shared checkout, touch `runtime-main`, or silently rebase onto a different code baseline.
 - No PR exists for this task. Push each commit immediately with the explicit refspec `fix/2026-10-11-safe-harbor-t1:refs/heads/fix/2026-10-11-safe-harbor-t1`.
 
@@ -321,9 +321,23 @@ Read STATUS, sections 2–3/T1 of this plan, VERIFY V0/V1, the approved architec
 
 Implement the T1 contract in section 3 without redesigning it: complete unresolved incident retention in the existing authority; malformed/unknown/legacy state refusal; canonical guard identity and alias-conflict refusal; under-lock audit incident publication; post-lock quarantine rechecks; honest containment-publication failures; ordinary clear refusal until T3 exists. Keep `audit.json` as observation telemetry, not a second admission authority. T1 is intentionally not a deployable validated-release workflow.
 
-Production-source scope is `chroma_write_guard.py`, T1 guard/audit checks in `doctor.py`, and status/clear handling in `scripts/chroma_guard.py`. Focused tests may extend `tests/test_chroma_write_guard.py`, `tests/_chroma_write_guard_worker.py`, the relevant isolated doctor tests and a narrowly scoped T1 test module if needed. Evidence/status updates belong in the existing Safe Harbor VERIFY/STATUS and routing files. If canonical store/cache binding needs production changes outside T1's accepted surface list, return the concrete dependency to Codex/Ryan before expanding scope.
+Production-source scope is `chroma_write_guard.py`, T1 guard/audit checks in `doctor.py`, and status/clear handling in `scripts/chroma_guard.py`, plus `chroma_store.py` solely for canonical client/cache identity under Ryan's correction below. Focused tests may extend `tests/test_chroma_write_guard.py`, `tests/_chroma_write_guard_worker.py`, the relevant isolated doctor tests and `tests/test_safe_harbor_t1.py`. Evidence/status updates belong in the existing Safe Harbor VERIFY/STATUS and routing files. Return any further production-file dependency to Codex/Ryan before expanding scope.
 
 No T2 gate/freshness changes, T3 preservation/restore/release implementation or backend campaign, T4 approval recovery, T5-wide campaign, generic HOLD/registry, live migration or cleanup. Do not use the task to update shared permissions, generated surfaces, installed config, backup units or unrelated branches.
+
+### Bounded T1 correction — owner authorized
+
+Ryan's subsequent instruction, recorded verbatim:
+
+> Authorize a bounded T1 correction, including chroma_store.py solely for canonical client/cache identity and its isolated regression evidence. Reject persisted empty incident sets and exercise the actual overwrite negative control. All other scope limits remain unchanged.
+
+This closes the file-list mismatch in the original handoff: Codex required canonical store/cache identity but omitted the store construction surface. Cursor may now make that narrowly scoped change without another start approval. This is a T1 correction, not acceptance of the initial candidate or a grant for a later task.
+
+1. **Canonical client/cache identity:** align the actual Chroma client/store identity with the canonical guard/load-record identity. Exercise real store construction through canonical and alias paths in isolation. Include the regression in which an alias client could refresh shared bookkeeping while an older client remains stale; prove coherent client identity or the existing conservative reload/refusal behavior. Preserve competing-legacy-location refusal. No global collection-creation/default change, new identity registry or live migration.
+2. **Persisted empty incident sets:** reject a present, correctly shaped marker whose incident set is empty. Replace the current test that requires non-blocking `clear` with fresh-process admission refusal and no requested fixture mutation. Keep the missing-marker control valid. No release path is added.
+3. **Actual overwrite negative control:** use the same A-then-B publication/admission workflow with an isolated deliberately faulty publisher that replaces the unresolved set with only the newer finding. The retention assertion must fail for the intended loss of A, while the corrected implementation passes. Feeding a fabricated/truncated result directly into an assertion is insufficient. Restore the real implementation; no faulty runtime behavior may remain in the candidate.
+
+Correct and rerun the relevant isolated V1 evidence. Preserve the initial 41-test run as historical evidence, not acceptance of these gaps; record the corrected subject SHA, commands, outcomes and expected failing control separately. Stop for the existing exact-tip review/owner acceptance gate after pushing the correction. All original isolation and authority limits below remain in force.
 
 ### Isolation and evidence
 
@@ -349,4 +363,4 @@ Stop after the bounded T1 handoff. No automatic transition to T2, broader Verify
 
 ## TL;DR
 
-[Arc Safe Harbor] Ryan accepted the plan/B-E4.1 at `dca13a5` and subsequently granted T1 to Cursor in isolation. Section 8 is the bounded Execute handoff. Implementation has not started and evidence remains unrun; T2–T5 and all live operations remain pending. Accepted task contracts are unchanged.
+[Arc Safe Harbor] Ryan granted a bounded correction to T1: canonical client/cache identity, rejecting persisted empty incident sets, and the actual overwrite negative control. Section 8 records the exact grant and narrowly adds `chroma_store.py`. Cursor resumes the existing branch; correction evidence, exact-tip review and acceptance remain pending. T2–T5 and live operations stay ungranted.

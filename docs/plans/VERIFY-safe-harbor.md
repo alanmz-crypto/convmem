@@ -1,17 +1,17 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. V1 RECORDED at runtime `fa82028`; exact-tip review pending.** V0 records the T1 grant and the unsatisfied BugBot gate. V2–V6 remain NOT RUN. No deployment, restore drill, or arc closure follows.
+> **Arc: Safe Harbor. Initial V1 RECORDED at runtime `fa82028`; correction evidence INCOMPLETE.** Ryan granted the bounded correction in execution section 8. The historical 41-test result does not satisfy its three outstanding checks. Exact-tip BugBot remains pending; V2–V6 remain NOT RUN.
 
 ```text
 Planning Status
-Phase:        Execute Task — T1 evidence recorded; review pending
+Phase:        Execute Task — T1 correction granted; evidence incomplete
 Characters:   Implementer, Test-First Reviewer
 Function:     Implementer
 Lanes:        Cursor collected isolated V1; Kiro signs off later; Ryan owns gates
-Authority:    T1/V1 granted and recorded; exact-tip BugBot not obtained; T2–T5 not granted
+Authority:    Bounded T1 correction granted; BugBot pending; T2–T5 not granted
 ```
 
-**Subject / implementation tip:** runtime behavior is `fa82028b762e5564eed9f2884336ccfb0e3caf73`. The commit that adds this evidence does not change that code. External review uses the branch tip after this evidence commit, and that tip is not BugBot-reviewed.
+**Subject / implementation tip:** historical runtime behavior is `fa82028b762e5564eed9f2884336ccfb0e3caf73`, with the initial evidence candidate at `b5d6edcc0040a665f40c2118b15aedefe9fb24ff`. The correction-grant commit changes only documentation. Corrected runtime/evidence are not yet available; external review must bind to the eventual successor candidate.
 
 **PRs:** none.
 
@@ -50,7 +50,7 @@ Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, servi
 |---|---|
 | `gate_applicability` | `required` |
 | `reason` | T1 changes quarantine persistence, admission control flow, and lock ordering |
-| `subject_tip_sha` | branch tip that contains this evidence; runtime parent `fa82028b762e5564eed9f2884336ccfb0e3caf73` |
+| `subject_tip_sha` | pending corrected candidate; initial subject `b5d6edcc0040a665f40c2118b15aedefe9fb24ff`, runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` |
 | `bugbot_reviewed_sha` | `n/a` |
 | `result` | pending — no pull request exists, and this grant does not authorize opening one or posting a review comment |
 | `finding_disposition` | `none` |
@@ -60,7 +60,15 @@ An applicable SHA mismatch remains FAIL. This row does not make the branch merge
 
 ## V1 — Incident authority (T1)
 
-**RECORDED for runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73`.** Isolated pytest exit 0: `41 passed in 40.45s`. Interpreter `/home/lauer/miniforge3/bin/python` 3.13.12; chromadb 1.5.9; numpy 2.4.4. Fixture roots were pytest temporary directories under `/tmp`, with `HOME`, `XDG_*`, `CONVMEM_CONFIG` and `CONVMEM_ROOT` pointed at a fresh `/tmp/safe-harbor-t1-*` directory and `CONVMEM_T1_ISOLATED=1`. The suite refuses `/home/lauer/.local/share/convmem` and `runtime-main`.
+**Historical run RECORDED by Cursor for runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73`.** Isolated pytest exit 0: `41 passed in 40.45s`. Interpreter `/home/lauer/miniforge3/bin/python` 3.13.12; chromadb 1.5.9; numpy 2.4.4. Fixture roots were pytest temporary directories under `/tmp`, with `HOME`, `XDG_*`, `CONVMEM_CONFIG` and `CONVMEM_ROOT` pointed at a fresh `/tmp/safe-harbor-t1-*` directory and `CONVMEM_T1_ISOLATED=1`. The suite refuses `/home/lauer/.local/share/convmem` and `runtime-main`. Codex did not rerun these tests during the static handoff check.
+
+**Correction acceptance remains INCOMPLETE.** Ryan authorized the following under execution section 8; none has corrected runtime evidence yet:
+
+- Canonical client/store/cache identity, including real alias-client construction and stale-client reload/refusal regression.
+- A persisted, schema-valid empty incident set must refuse admission in a fresh process without the requested mutation; genuinely missing remains the control.
+- The actual A-then-B publication workflow must fail its retention assertion under an isolated overwrite-only publisher, then pass with the real implementation. The existing fabricated/truncated-marker assertions do not satisfy this control.
+
+Record the successor subject, isolated commands/results and expected failing control before changing these obligations to PASS. The initial run remains historical and does not imply T1 acceptance.
 
 Command:
 
@@ -76,7 +84,7 @@ python -m pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py -
 
 | Case | Result |
 |---|---|
-| Incident A then B, including two findings on one segment; fresh-process admission refused; overwrite of the marker fails the retention assertion | PASS |
+| Incident A then B, including two findings on one segment; fresh-process admission refused | Reported PASS in initial run; actual overwrite-publication negative control INCOMPLETE |
 | Missing marker versus null, scalar, empty object, unknown schema, invalid set, wrong target, unreadable file, and recognized legacy bytes preserved on adoption | PASS |
 | Canonical aliases share one guard and lock; a competing legacy guard directory is reported and no empty canonical authority is created | PASS |
 | Audit failure, then pass, skipped, and diagnostic error, leaves the marker in place | PASS |
@@ -90,8 +98,8 @@ Gaps, not passes:
 
 - Process barriers and injected fsync failures are not hardware power-loss proof.
 - A directory fsync failure can leave marker bytes visible while the operation reports containment unavailable. Callers must not treat that file as a durable stop.
-- A well-formed incident document with zero incidents is not absence and does not block admission. Unrecognized and empty objects still block. Ordinary clear still refuses to delete any present marker.
-- Chroma's own client cache remains keyed by the path string passed to the client. The guard's lock, marker, and load record use the canonical path. Unifying the client string would require `chroma_store.py`, which is outside T1's accepted file list.
+- Initial candidate permits a well-formed incident document with zero incidents. Ryan's correction requires persisted-empty refusal; the permissive test is not accepted evidence.
+- Initial candidate leaves Chroma's client cache keyed by the original path string while guard/load records are canonical. Ryan has now authorized `chroma_store.py` solely to close this identity gap and collect its isolated regression evidence.
 - Successful segment restore can still continue the caller's write. Making every restore stick as an incident is T3, and it was not implemented.
 - The full default pytest suite and production doctor were not run. They are not isolated from service and corpus entrypoints.
 
@@ -135,4 +143,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] Isolated V1 passed at runtime `fa82028` (41 tests). Exact-tip BugBot review is still pending, and V2–V6, deployment, and arc closure are not granted.
+[Arc Safe Harbor] The initial 41-test run remains historical evidence. Ryan granted three T1 corrections; their runtime evidence is incomplete and exact-tip BugBot remains pending. V2–V6, deployment and arc closure stay ungranted.

@@ -9,19 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T1 IMPLEMENTED / REVIEW PENDING (2026-10-11):**
-  Ryan accepted the [five-task execution plan](../plans/EXECUTION-safe-harbor.md)
-  at `dca13a5` after Kiro delta PASS (88%) and explicitly approved B-E4.1.
-  Ownership is unchanged. Cursor implemented T1 only on
-  `fix/2026-10-11-safe-harbor-t1`; runtime behavior is
-  `fa82028b762e5564eed9f2884336ccfb0e3caf73`. Isolated V1 is recorded in
-  [VERIFY](../plans/VERIFY-safe-harbor.md) (41 tests passed). Exact-tip BugBot
-  review is pending because PR creation and review comments were not granted.
-  T2–T5, merge, deployment and live operations remain outside this grant.
-  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md). The
-  accepted task contract is still execution section 8. Branch for this work:
-  `fix/2026-10-11-safe-harbor-t1`. No generated agent surfaces were regenerated
-  or deployed.
+- **Arc Safe Harbor — BOUNDED T1 CORRECTION GRANTED (2026-10-11):**
+  Cursor resumes `fix/2026-10-11-safe-harbor-t1` using the
+  [owner-approved correction handoff](../plans/EXECUTION-safe-harbor.md#bounded-t1-correction--owner-authorized).
+  The three corrections cover canonical client/cache identity (narrowly adding
+  `chroma_store.py`), persisted-empty incident refusal, and the actual overwrite
+  negative control. [STATUS](../plans/STATUS-safe-harbor.md) is the current
+  orientation source; [VERIFY](../plans/VERIFY-safe-harbor.md) preserves the initial
+  run as historical evidence and marks correction evidence incomplete.
+  Push the corrected candidate, then stop for exact-tip review and acceptance.
+  T2–T5, PR/comments, merge and live operations remain ungranted.
 
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING
