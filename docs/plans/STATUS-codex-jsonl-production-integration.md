@@ -85,17 +85,14 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. The sealed r3 bootstrap grant stopped before bootstrap or provider transport after unrelated Cursor indexing changed the bound inventory. Ryan authorized preparation of a new backup-only cycle. Sol captured current inventory `85566aed…e6a` under the writer lease. Kiro PASSed first r4 tip `a9c75f1`; Copilot FAILed the same tip on executable, mounted-filesystem, and timezone binding. Sol-High accepted those blockers, and the runner is corrected; no backup has run. | Same-revision Kiro design review and Copilot safety/isolation audit of the corrected r4 authority, then Ryan's exact execution-grant decision |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. The sealed r3 bootstrap grant stopped before bootstrap or provider transport after unrelated Cursor indexing changed the bound inventory. Ryan authorized preparation of a new backup-only cycle. Sol captured current inventory `85566aed…e6a` under the writer lease. Kiro PASSed first r4 tip `a9c75f1`; Copilot FAILed the same tip on executable, mounted-filesystem, and timezone binding. Sol-High accepted those blockers. Kiro and Copilot both PASSed corrected exact revision `5e9d3d4`; no backup has run. | Ryan's exact one-shot backup execution-grant decision for reviewed revision `5e9d3d4` |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Obtain Kiro design review and Copilot safety/isolation audit on the same exact
-pushed corrected r4 backup-authority revision. Confirm that the runner now
-binds the Restic executable/profile, mounted repository filesystem, and
-`America/Chicago` date at both writes. If both PASS, present Ryan with one
-exact copyable grant for that reviewed backup-only runner. Do not execute the
-runner without that separate grant.
+Present Ryan with one exact copyable grant for corrected r4 revision
+`5e9d3d4571161269a9a0b42f0394fa419635e13d`, which Kiro and Copilot both
+PASSed. Do not execute the runner without that separate grant.
 
 The r3 bootstrap proposal at
 `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.json`, SHA-256
@@ -260,6 +257,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Ryan / Sol | Ryan's exact r3 execution grant stopped before bootstrap or calls after a newly indexed Cursor transcript changed inventory from `0ecb33ea…9b27b` to `85566aed…e6a`; the unconsumed proposal is stale and a new backup cycle requires separate authority |
 | 2026-10-11 | Ryan / Sol | Ryan authorized preparation of a new backup-only authority cycle; Sol captured stable inventory `85566aed…e6a` under the writer lease and prepared an r4 one-shot runner for same-revision Kiro/Copilot review, without executing backups |
 | 2026-10-11 | Kiro / Copilot / Sol-High / Sol | Kiro PASSed and Copilot FAILed first r4 tip `a9c75f1`; Sol-High accepted executable, mounted-filesystem, and Chicago-date blockers, and Sol corrected those bindings for same-revision re-review |
+| 2026-10-11 | Kiro / Copilot / Sol | Both lanes PASSed corrected r4 revision `5e9d3d4` with no blockers; Ryan's exact one-shot backup grant decision is next, and no backup has run |
 
 ## TL;DR
 
@@ -271,8 +269,8 @@ Keep this document a current-state snapshot, not a session diary.
   unconsumed proposal is stale after unrelated Cursor indexing and must not be
   reused.
 - Ryan authorized preparation of a new backup-only authority cycle. Sol-High
-  accepted Copilot's first-r4 FAIL over Kiro's PASS; the corrected packet now
-  binds current inventory `85566aed…e6a`, Restic executable/profile, mounted
-  repository filesystem, and Chicago date. It awaits same-revision Kiro and
-  Copilot review; no backup has run. Config promotion and watcher restart
-  remain separately gated.
+  accepted Copilot's first-r4 FAIL over Kiro's PASS; the corrected packet binds
+  current inventory `85566aed…e6a`, Restic executable/profile, mounted
+  repository filesystem, and Chicago date. Kiro and Copilot both PASSed exact
+  revision `5e9d3d4`; no backup has run. Ryan's exact one-shot grant decision
+  is next. Config promotion and watcher restart remain separately gated.

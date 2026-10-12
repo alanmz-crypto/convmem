@@ -22,10 +22,10 @@ cross-arc snapshot and the linked arc brief below.
   `a9c75f1`, Kiro PASSed while Copilot FAILed executable, mounted-filesystem,
   and timezone binding. Sol-High accepted Copilot's blockers. Sol corrected
   the runner to pin the Restic binary/profile, prove repository filesystem
-  residence, and enforce `America/Chicago` immediately before both writes. No
-  backup has run. **Next:** Kiro and Copilot review the same corrected pushed
-  revision; only then may Ryan decide whether to grant that one-shot backup
-  operation. Resume from the
+  residence, and enforce `America/Chicago` immediately before both writes.
+  Kiro and Copilot both PASSed corrected exact revision `5e9d3d4` with no
+  blockers. No backup has run. **Next:** Ryan decides whether to grant that
+  exact one-shot backup operation. Resume from the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
