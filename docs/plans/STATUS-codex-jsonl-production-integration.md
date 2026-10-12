@@ -119,7 +119,8 @@ Codex rollouts:
    `docs/plans/DESIGN-issue-286-exact-path-recovery-parity.md` on
    `docs/2026-10-11-issue-286-exact-path-recovery-parity`; it recommends
    landing the fix before the successor Kiro bootstrap.
-2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
+2. Ryan grants Stage 1 (manual, watcher stopped; packet:
+   `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`) and later Stage 2 (24 h
    watcher canary, which also needs the #308 fix and the watch memory drop-in
    reconciliation); activation is a separate Ryan grant.
 
