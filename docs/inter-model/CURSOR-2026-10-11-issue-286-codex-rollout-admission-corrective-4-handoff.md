@@ -395,3 +395,190 @@ Each test must fail at `a5f1756` and pass after the fix.
       `git show --stat` for each new commit.
 - [ ] Pushed with an explicit refspec. No force-push, and no rebase; if `main`
       moves, merge it.
+
+## Verification of `78b9295` (Claude, 2026-10-11) — clean; ready for exact-tip review
+
+Corrective 5 is three commits:
+
+- `d1534b0`: the fixes.
+- `bbe5bb8`: the corrective-4 recovery tests now crash for real.
+- `78b9295`: restores the STATUS text.
+
+I checked it from disk-backed scratch worktrees with a fresh CI-style config:
+
+- **Pylint regression gate:** PASS against base `db8aebb` (463 findings, 240
+  fingerprints, nothing new or increased).
+- **Focused test set** (Codex, watcher, breaker, doctor, config, inventory,
+  and the #385 diagnosis tests): 787 passed, 6 skipped, 2 failed. The two
+  failures are `tests/test_watch.py` debounce-timer tests:
+  - they allow 10 ms of slack and ran while Pylint loaded the CPU;
+  - neither the tests nor `watch.py` changed in corrective 5;
+  - rerun on an idle machine, they pass 3 of 3 times.
+- **The new tests do test the fixes.** With only `config.py`,
+  `incremental_jsonl.py` and `watch_circuit_breaker.py` restored to
+  `a5f1756`, the corrective-5 file gives 17 failed, 19 passed, which matches
+  Cursor's figure. The failures cover all 12 `rebuild_required:*` round
+  trips, both D8 watcher cases, the C1b scenario and both `~` roots.
+- **C5b:** the parser strips a trailing 64-hex digest, then requires a
+  `:`-separated `[a-z0-9_]+` outcome, keeping the exit-91 and whole-line
+  rules.
+- **C1b:** recovery with no checkpoint refuses `bootstrap_required` when the
+  source has a processed entry or has Chroma rows this transaction didn't
+  write.
+  - A crashed transaction can't trip this check with its own processed
+    entry: `_commit_generation` writes the checkpoint before it publishes
+    the processed entry.
+  - The test is end to end: a real crash, a real legacy reindex, and then
+    recovery.
+- **C6b:** the absolute-path check now runs on the raw text, before any
+  expansion. `_canonical_config_path` is used only for the admission root,
+  so no other config path loses `~` support.
+- **D1:** `git diff origin/main` on the STATUS file removes 0 lines.
+- **`bbe5bb8` is sound.** The old helper raised a route error, and cleanup
+  deleted the transaction, so the corrective-4 "roll-forward" tests had been
+  exercising the fresh path. Neither Claude, Kiro nor Copilot had caught
+  this.
+
+**Reported gap, outside this fix:** Cursor reports, from reading the code,
+that recovery for Kiro exact-path sources has the same gap.
+`_codex_roll_forward_refusal` returns at once for a source that isn't
+Codex-admitted, and the D8 lineage check is Codex-only. Claude confirmed both
+early returns. The gap can't be reached today, because no Kiro exact-path
+live source is granted. It needs its own fix before any Kiro exact-path live
+incremental run. For Kiro sources the fix isn't a one-liner: they carry no
+D8 lineage, so the checkpointed rollback-then-re-enable case needs a design
+decision too. Ryan decides whether it's a separate follow-up (recommended)
+or part of this PR.
+
+## PR draft (use once Copilot and Kiro both PASS `78b9295`)
+
+**Before merge:** add one docs-only commit to the branch, after the PR is
+opened, so the number exists. It does three things:
+
+- states the post-merge reality in the Codex STATUS and LATEST lines: on
+  `main`, default off, with Stage 1 as the next gate;
+- adds the PR number;
+- links the follow-up
+  [exact-path recovery parity design](https://github.com/alanmz-crypto/convmem/blob/docs/2026-10-11-issue-286-exact-path-recovery-parity/docs/plans/DESIGN-issue-286-exact-path-recovery-parity.md).
+
+Claude confirms `git diff <reviewed tip>..HEAD -- ':!docs'` is empty, so both
+verdicts carry.
+
+**Title:** Admit new Codex rollouts to the guarded incremental index route (off by default)
+
+**Body:**
+
+```markdown
+## What changes for Ryan
+
+After this merges, the guarded incremental route can index **new** Codex
+rollout transcripts incrementally from their first index, instead of
+re-indexing the whole file on every append. Whole-file re-indexing is the
+main source of repeated paid re-indexing and of the largest watcher index
+children. Nothing turns on by itself. The route stays off until you add an
+explicit `codex_rollout_admission` config and grant Stage 1. Rollouts that
+existed before activation stay on the legacy route exactly as today.
+
+## Who / What / When / Why / How
+
+- **Who:** Claude designed it (Kiro PASS at `9e91973`; §13 amended
+  2026-10-11). Cursor implemented it through five correctives. Copilot
+  audited and Kiro reviewed each exact tip, and Claude verified each tip
+  before review.
+- **What:**
+  - time-bounded, identity-checked admission of new rollouts under
+    `/home/<user>/.codex/sessions` (D1);
+  - a terminal refusal quarantine, keyed by path (D3, §13);
+  - a per-run transform cap and frontier-subset rule (D4);
+  - a 256 MiB source ceiling (D5);
+  - one-way route rollback, detected by lineage (D8);
+  - the same guards on crash recovery;
+  - watcher refusal handling (exit 91 plus a whole-line marker);
+  - strict validation of the admission root path.
+- **When:** Copilot audit and Kiro recheck PASSed exact tip `78b9295`.
+  `main` is merged in at `db8aebb` (#385).
+- **Why:** from Sep 26 to Oct 5 the watcher spawned 133 Codex rollout index
+  children. One rollout was re-indexed 44 times, and all three children that
+  hit the 12 GiB cap were Codex rollouts.
+- **How:** a new admission module, plus coordinator guards on both fresh
+  runs and recovery. The watcher circuit breaker moves into its own module.
+  This PR changes no live config, systemd unit, runtime worktree or
+  watcher.
+
+## Not in this PR
+
+- **Activation.** Stage 1 (manual, watcher stopped) and Stage 2 (a 24 h
+  watcher canary, which also needs #308 and the watch-memory drop-in
+  reconciliation) are separate Ryan grants.
+- **Kiro exact-path sources.** They keep two recovery gaps that this PR
+  closes only for Codex. Neither is reachable while the route is off. They
+  are tracked in `DESIGN-issue-286-exact-path-recovery-parity.md` (follow-up
+  branch).
+
+## Verification
+
+- Pylint regression gate PASS against the `main` merge base.
+- Full suite (Cursor, clean clone): 3015 passed, plus the 1 known #320
+  golden-eval failure, which depends on the live corpus.
+- Focused set (Claude): 787 passed. Two debounce-timer tests failed only
+  under CPU load and pass on rerun.
+- Copilot audit PASS and Kiro PASS at `78b9295`.
+
+## Merge reading
+
+- [Design](docs/plans/DESIGN-issue-286-codex-rollout-admission.md)
+- [Execute handoff](docs/inter-model/CURSOR-2026-10-10-issue-286-codex-rollout-admission-execute-handoff.md)
+- [Corrective-4 handoff and verification record](docs/inter-model/CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md)
+- [Arc Codex status brief](docs/plans/STATUS-codex-jsonl-production-integration.md)
+- [LATEST](docs/inter-model/LATEST.md)
+
+Refs #286. Squash merge is fine.
+
+## TL;DR
+
+New Codex rollouts can use the guarded incremental route, off by default,
+with the same fail-closed guards on fresh runs and crash recovery. Nothing
+activates until Ryan grants Stage 1.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+```
+
+## Exact-tip reviews of `78b9295` (2026-10-11) — Copilot PASS, Kiro PASS
+
+Claude launched both reviews headless, at Ryan's request, with read-only tool
+permissions. Copilot could use only read-only git and inspection commands,
+with file writes and `convmem` denied. Kiro could only read files, and got
+pre-generated diffs.
+
+**Copilot: PASS.**
+
+- C5b, C1b and C6b are closed.
+- A sweep of every crash point found that each checkpointless `PREPARING` or
+  `APPLYING` crash still recovers to `committed`.
+- `bbe5bb8` exercises real roll-forward, and C2, C3 and C4 were not reopened.
+- 333 hermetic tests passed. The one failure was environmental: its
+  `git archive` copy had no `.git`, and the test passes in a real checkout.
+
+Copilot's non-blocking notes:
+
+1. When a rollback file is present, a C1b refusal restores the empty
+   first-run preimage. That deletes legacy rows written after the crash, and
+   the watcher then quarantines the path. This fails closed, but the source
+   loses its legacy projection until an operator steps in.
+2. This one predates corrective 5 (`a5f1756` behaves the same). A crash
+   after the checkpoint is published but before the processed entry is
+   recovers to `rolled_back`. The new processed entry has no lineage yet, so
+   the D8 check refuses, and the path is then quarantined for good. This
+   fails closed, but costs that source its capture. Watch for `rolled_back`
+   in Stage 1 and Stage 2.
+
+**Kiro: PASS.**
+
+- All three fixes satisfy D3, D8 and §13, with no new outcome codes, config
+  keys or rules.
+- The Kiro exact-path gap is a separate prerequisite before any Kiro
+  exact-path live run. It doesn't block this PR. The fix must cover the
+  checkpointless rule and a D8-equivalent continuity check.
+- The STATUS diff against `main` only adds lines (note (d) satisfied).
+
+Next: Ryan's PR decision, using the PR draft above.

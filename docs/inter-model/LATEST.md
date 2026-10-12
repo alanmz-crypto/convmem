@@ -9,21 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Codex rollout admission: corrective 4
-  `NOT_STARTED` (2026-10-11):** Cursor implemented the
-  [design](../plans/DESIGN-issue-286-codex-rollout-admission.md) on
-  `feat/2026-10-10-issue-286-codex-rollout-admission` (tip `905ad40`). Kiro
-  amended §13: refusals now quarantine terminally by path. At gate 3 both
-  reviews failed that tip: Kiro on the Pylint gate only, Copilot audit on six
-  safety findings (recovery bypasses the guards, verbose-mode respawn,
-  unbounded parent hash buffer, size ceiling skipped on growth, spoofable
-  refusal marker, noncanonical root accepted). Start from the
-  [corrective-4 handoff](CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md),
-  then Copilot audit and Kiro recheck the new exact tip, then Ryan's PR
-  decision. Separately, the Kiro bootstrap failed-operation supersession
-  merged (PR #381, `e798bba`); Sol's fresh successor packet and Ryan's grant
-  come next. No live bootstrap, provider call, config, runtime or watcher
-  action is authorized. See the
+- **Arc Codex / issue #286 — Codex rollout admission merged, default off;
+  Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
+  guarded incremental route instead of re-indexing the whole file on every
+  append, which is the paid "Codex burn". Copilot and Kiro both PASSed exact
+  tip `78b9295`. Production burn is unchanged until Ryan grants Stage 1 (see
+  the [Stage 1 packet](CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md))
+  and later Stage 2. Stage 2 also needs the residual-burn decision, the #308
+  fix and the 4G drop-in reconciliation. The Kiro bootstrap is a separate
+  track. No live config, runtime or watcher action is authorized. See the
   [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
