@@ -307,3 +307,59 @@ elapsed, a 112M memory peak, and coverage unchanged.
   full-file SHA-256. The reconciler and `watch_skip_reason` would both consult
   it, and it would be released when the content changes. Only the
   provenance guard writes it; other exceptions stay retryable.
+
+## Stage 2 prerequisites (Ryan grant 2026-10-12; done by Claude 00:15–00:40 CDT)
+
+Ryan granted all four: the #308 handoff, the drop-in, runtime promotion with
+the live config, and the residual-burn plan.
+
+1. **Backup:** the daily timer took the current-day complete-data snapshot
+   `b9a8977a…` at 00:17, before any change below.
+2. **4G drop-in reconciled.**
+   - Removed `zz-openclaw-watch-limits.conf`. Its backup is
+     `~/.config/convmem/backups/zz-openclaw-watch-limits.conf.removed-2026-10-12`.
+   - After `daemon-reload` the effective limits are `MemoryMax=8G`, no
+     `MemoryHigh`, `MemorySwapMax=0`, from `oom-mitigation.drop-in.conf`.
+   - The watcher is still inactive and disabled.
+3. **Runtime promoted.** `.worktrees/runtime-main` was fast-forwarded from
+   `a92a74e` to `05aa2c8` (44 commits, including #341, #365, #388 and #387).
+   - Before promoting, a doctor preview on `05aa2c8` with the live config
+     showed no new FAIL. It added two PASSes (`cpu_tripwire`,
+     `incremental_refusals`) and one WARN (`chroma_audit`: the audit timer
+     isn't installed).
+   - After promoting, doctor exits 0.
+4. **Live config.** The backup is
+   `~/.config/convmem/backups/config.toml.pre-codex-admission-2026-10-12`
+   (mode 600). The appended `[index.incremental_jsonl]` and
+   `codex_rollout_admission` tables use the **same**
+   `admitted_after = 2026-10-12T04:04:00Z`.
+   - Route decisions under the new runtime: the Stage 1 session is
+     **incremental**. The 590.7 MiB Sep 21 rollout, today's 18:59
+     pre-activation rollout and the latest Kiro session are all **legacy**.
+     Sources that aren't granted return `None` and take the legacy route
+     (`incremental_jsonl.py` `maybe_route_incremental`).
+   - **The legacy-index hazard is lifted.** The normal CLI, including any
+     lane's Track A, now routes admitted Codex sessions incrementally.
+5. **#308:** the Cursor handoff is on
+   `docs/2026-10-12-issue-308-inter-model-rejection-handoff`.
+
+**Corrections:**
+
+- **Legacy check.** `ingest.py` checks for "unchanged" (line 1362) *before*
+  routing (line 1368). So the zero-cost legacy check proved only that
+  nothing was written. Legacy routing for pre-activation rollouts is proved
+  by the pure admission check (NOT admitted) together with the
+  `return None` path above.
+- **There is no catch-up wave.** Only accounting and proof modules read the
+  reconciler's queued owner work. The reconcile timer just writes a report,
+  and the watcher indexes only on filesystem events. A stale pre-activation
+  rollout that stops growing is never re-indexed. So retiring the three
+  long-lived sessions takes their residual burn to about zero.
+- **What stays on the legacy route in Stage 2:** Kiro transcripts (35
+  spawns, Sep 26–Oct 5) and Cursor JSONL (29), against Codex's 133. Kiro's
+  fix is the exact-path route (the bootstrap track, plus the recovery-parity
+  follow-up). Cursor JSONL isn't eligible for the incremental route.
+
+**Remaining before the Stage 2 grant:** #308 merged (Cursor, then reviews,
+then Ryan). The tripwire deploy's chroma-audit timer is optional for Stage 2
+and is still a WARN.
