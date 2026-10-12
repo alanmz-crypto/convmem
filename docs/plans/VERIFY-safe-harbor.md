@@ -480,7 +480,7 @@ Log: `/opt/cursor/artifacts/t2-target-binding-pytest.log` (10-case batch). No pr
 
 ### F1/F2 target-binding correction — captured (Cursor)
 
-**Grant start:** `3c6f728d56a2cd99a191d86e5d2f75c1c41cb3f0`. **Runtime/tests subject:** commit on `fix/2026-10-12-safe-harbor-t2` after this section (see evidence log row). Parent grant docs unchanged at `3c6f728`.
+**Grant start:** `3c6f728d56a2cd99a191d86e5d2f75c1c41cb3f0`. **Runtime/tests subject:** `cdebf64b487ffa27d61955df9739204829864fe0` on `fix/2026-10-12-safe-harbor-t2`.
 
 **What changed:** admitted operations keep **canonical** `chroma_dir` / `units_export` in pinned config and open production stores on `op.chroma_dir`. Original configured spellings are carried only as `configured_chroma_dir` / `configured_units_export` for `verify_competing_guard_locations()` (existing `ChromaWriteGuard.require_not_quarantined()` on the alias spelling) before either production factory opens a client. Export retarget after store construction is covered via `retarget_export_alias_after_store` on the real `add --upsert` export consumer. Scope cleanup: monitor bound path reverted to configured expanduser; unused `admitted_units_export_path` imports removed from verify/forget; unused `admitted` flag removed from `_admission_steps`.
 
@@ -575,7 +575,7 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Cursor, same | same | affected T2/caller/census/inventory pytest (12 files) | PASS, pytest exit 0, `153 passed, 2 warnings in 339.06s` | V2 B1 correction |
 | 2026-10-12 | Cursor, same | same | pylint + regression gate vs `9664878` | pylint raw 30; gate exit 0 PASS, 466 findings / 239 fingerprints, none new | V2 B1 correction |
 | 2026-10-12 | Cursor, cloud VM uid 1000 | target-binding `a18df48025cac77de8bda2db5a761f4744a9a963` | pytest selections above | PASS, pytest exit 0, `5` + `10` cases | Target-binding correction section |
-| 2026-10-12 | Cursor, uid 1000, `/tmp/safe_harbor_t2_collect.py` | F1/F2 correction (see row SHA after push) | inventory + 9 target-binding + 42 regression + lint gate | all batch exits **0** | F1/F2 correction section |
+| 2026-10-12 | Cursor, uid 1000, `/tmp/safe_harbor_t2_collect.py` | F1/F2 `cdebf64b487ffa27d61955df9739204829864fe0` | inventory + 9 target-binding + 42 regression + lint gate | all batch exits **0** | F1/F2 correction section |
 | 2026-10-12 | Cursor, isolated generator env | same | `write_v2_inventory_file()` + `test_r2b_v2_implementation_revision` | `dc714d0a…`, digest `5cbc5a99…`; verifier `[]` | Target-binding correction section |
 
 SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 is closed historically; F1/F2 correction evidence is captured pending Codex bounded delta and fresh CI on the pushed successor. Overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
