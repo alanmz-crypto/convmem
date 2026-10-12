@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Kiro bootstrap / issue #286 — r5 backup authority REVIEW PENDING
+- **Arc Kiro bootstrap / issue #286 — r6 backup authority REVIEW PENDING
   (2026-10-11):** The guarded Kiro route and failed-operation supersession are
   merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
   bootstrap, corpus mutation, dimension probing, or provider transport because
@@ -39,9 +39,13 @@ cross-arc snapshot and the linked arc brief below.
   changed from `9321f51a…56a1` to `781269da…e018c`. Result marker
   `79ef6d4a…29fc7` records null snapshot IDs, exact timer restoration, no
   cleanup errors, inactive/disabled watcher state, and an unmounted device.
-  R5 is consumed; its drift is undiagnosed and no successor authority exists.
-  **Next:** Ryan decides whether to authorize narrow drift diagnosis and a new
-  backup-only authority cycle. Resume from the
+  R5 is consumed. Ryan authorized narrow diagnosis and a new cycle. The drift
+  came only from unrelated Claude and Codex session indexing in the global
+  processed/export roles; the exact Kiro projection remained unchanged. R6
+  binds the later writer-lease capture `d7208408…a532b` and Chicago date
+  `2026-10-12`; no backup has run. **Next:** Kiro and Copilot review the same
+  exact pushed r6 revision, then Ryan decides whether to grant it. Resume from
+  the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
