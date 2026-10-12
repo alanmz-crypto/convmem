@@ -153,6 +153,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-12 — Cursor: implemented B1 at `964c1de` (recovery reuses the allowlisted writer label; R2b identity derived-only) and recorded armed-census uid-1000 evidence (3 new and 153 affected passed, lint gate PASS). Narrow Copilot delta is next; V2 not accepted.
 - 2026-10-12 — Codex: recorded Ryan's bounded B1 correction grant and event-only evidence exclusion; prepared Cursor's scoped continuation with isolated census-present positive/refusal/control evidence.
 
+- 2026-10-12 — Cursor: implemented alias target-binding correction at `a18df480` with isolated effect/negative-control evidence; Codex delta and fresh CI follow; V2 acceptance and merge remain pending.
 - 2026-10-12 — Codex: recorded Copilot's exact-tip T2 narrow FAIL at `05c7706`, confirmed B1 and routed the bounded correction plus explicit event-only evidence-limit decision; runtime unchanged.
 
 - 2026-10-12 — Codex: reconciled execution-plan current-state pointers with the delivered T2 candidate; isolated evidence is recorded, with the event-only completion limitation and review/acceptance still open.
@@ -189,4 +190,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 is merged; T2 is on draft #389. B1 is closed by historical Copilot delta PASS. Ryan authorized Cursor's new alias target-binding correction and isolated evidence; resume from the pushed handoff successor. CodeQL #6 is dismissed as a false positive. No further paid reviewer request. Correction evidence/CI, final-tip review disposition and V2 acceptance are pending; T3–T5, merge and live operations remain ungranted.
+[Arc Safe Harbor] T1 is merged; T2 target-binding correction is delivered at `a18df480` on draft #389. B1 remains closed historically. Codex static delta and fresh CI are next; V2 acceptance and the external-review gate stay pending. CodeQL #6 is dismissed as false positive. No paid reviewer request. T3–T5, merge and live operations remain ungranted.
