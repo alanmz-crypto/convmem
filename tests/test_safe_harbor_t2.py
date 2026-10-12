@@ -852,18 +852,44 @@ def test_cli_recover_succeeds_on_current_snapshot(cli: Cli):
     assert after["files"] != before["files"]
 
 
+def _pid_events(cli: Cli, pid: str) -> list[dict]:
+    path = cli.s.data / "pending_decision_events.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    return [row for row in rows if row.get("proposal_id") == pid]
+
+
+def _event_only_state(cli: Cli) -> str:
+    """Interrupt a real indexed approval after its Chroma write, before APPROVED."""
+    cli.propose()
+    pid = cli.pending_id()
+    env = {**_current(cli), "SAFE_HARBOR_T2_HOOK": "fail_after_chroma_ingest"}
+    proc = cli.convmem("record", "--approve", pid, env=env, stdin="y\n")
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "BLOCKED" not in proc.stderr
+    assert "Approval apply deferred for recovery" in proc.stdout
+    return pid
+
+
 def test_cli_event_only_recovery_refused_before_approved_event(cli: Cli):
-    pid = _approval_started(cli)
-    proc = cli.run("ingest-approved", pid)
-    assert proc.returncode == 0, proc.stdout + proc.stderr
+    pid = _event_only_state(cli)
+    types = [e["event_type"] for e in _pid_events(cli, pid)]
+    assert "APPROVAL_STARTED" in types and "APPROVED" not in types
+    approved = (cli.s.data / "decisions-approved.jsonl").read_text().splitlines()
+    assert any(json.loads(line).get("proposal_id") == pid for line in approved if line.strip())
+    live = [u["metadata"] for u in cli.dump()["chroma"]["units"]
+            if u["metadata"].get("proposal_id") == pid]
+    assert len(live) == 1
+    proposed = next(e for e in _pid_events(cli, pid) if e["event_type"] == "PROPOSED")
+    # Current views disagree: the proposal hash omits the title/notes/result that
+    # ingestion derives, so the classifier cannot match marker and hash (T4).
+    assert live[0]["content_hash"] != proposed["proposal"]["proposed_content_hash"]
+
     env = _future(cli)
     before = cli.dump()
     proc = cli.convmem("propose_decision", "--recover", pid, env=env)
     _assert_refused(proc, EXIT_STALE, REASON_FUTURE_SNAPSHOT_TIME)
     assert cli.dump() == before
-    # Control: once the clock passes the same snapshot, admission succeeds and the
-    # unchanged recovery classifier (T4 scope) decides. This synthetic direct-ingest
-    # setup classifies as human review, so it must still write nothing.
+
     later = {NOW_ENV_KEY: (local_noon() + timedelta(hours=2)).isoformat()}
     proc = cli.convmem("propose_decision", "--recover", pid, env=later)
     assert "BLOCKED" not in proc.stderr

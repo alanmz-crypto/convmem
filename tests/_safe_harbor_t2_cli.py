@@ -8,12 +8,13 @@ Usage:
   python _safe_harbor_t2_cli.py cli <convmem args...>
   python _safe_harbor_t2_cli.py dump <file> [<file> ...]
   python _safe_harbor_t2_cli.py seed
-  python _safe_harbor_t2_cli.py ingest-approved <proposal_id>
 
 ``SAFE_HARBOR_T2_HOOK`` selects one test-only fault injection for ``cli``:
   noop_preflight              replace the real preflight with an admitting no-op
   swap_config_after_preflight point the config at SAFE_HARBOR_T2_ALT_CHROMA
   touch_env_after_preflight   edit the Restic profile file after preflight
+  fail_after_chroma_ingest    interrupt an indexed approval after its Chroma
+                              write, before the APPROVED event is appended
 ``SAFE_HARBOR_T2_NOW`` (ISO-8601 with offset) pins the evaluation instant.
 """
 
@@ -84,6 +85,13 @@ def _install_hook() -> None:
             return result
 
         restic_gate.preflight_operation = _touch
+    elif hook == "fail_after_chroma_ingest":
+        import propose_decision
+
+        def _interrupt(_cfg, proposal_id):
+            raise RuntimeError(f"injected interruption before APPROVED for {proposal_id}")
+
+        propose_decision._mark_approved_unlocked = _interrupt  # pylint: disable=protected-access
     else:
         raise SystemExit(f"unknown hook {hook!r}")
 
@@ -157,16 +165,6 @@ def main(argv: list[str]) -> int:
             )
         finally:
             store.close()
-        return 0
-    if mode == "ingest-approved":
-        import config
-        from propose_decision import approved_for_proposal, ingest_approved_ledger
-
-        cfg = config.load_config()
-        row = approved_for_proposal(cfg, rest[0])
-        if row is None:
-            raise SystemExit("no approved row")
-        ingest_approved_ledger(cfg, {**row, "_governed_protocol": True})
         return 0
     if mode == "cli":
         _install_hook()
