@@ -9,11 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T2 GRANTED; CURSOR IMPLEMENTS NEXT (2026-10-12):**
-  T1 is merged. Ryan separately granted T2 implementation and isolated evidence.
-  Start with the [bounded T2 handoff](../plans/EXECUTION-safe-harbor.md#9-cursor-t2-execute-handoff--owner-granted)
-  and [Safe Harbor STATUS](../plans/STATUS-safe-harbor.md) for the prepared worktree,
-  baseline and stop. T2 is not started; no T3–T5, PR/review action or live grant.
+- **Arc Safe Harbor — T2 IMPLEMENTED; FINAL EVIDENCE PENDING (2026-10-12):**
+  Cursor bound the live-write backup gate to each write's actual target on
+  `fix/2026-10-12-safe-harbor-t2` (final source `44e29f6`). Codex runs the final
+  uid-1000 pytest/pylint selections; results go in
+  [VERIFY V2](../plans/VERIFY-safe-harbor.md#v2--target-binding-and-freshness-t2).
+  Then T2 needs its own review and Ryan acceptance. State:
+  [Safe Harbor STATUS](../plans/STATUS-safe-harbor.md). T4 direct-caller proof
+  outstanding; no T3–T5, PR/review action or live grant.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

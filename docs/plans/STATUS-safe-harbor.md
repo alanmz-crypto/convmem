@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 GRANTED / NOT STARTED.** T1 landed via PR #387 (`05aa2c8`), with final-tip CI and Ryan's exact-tip Copilot/BugBot outage acceptance recorded in VERIFY. Ryan separately granted T2 implementation and isolated V2 evidence; [execution section 9](EXECUTION-safe-harbor.md#9-cursor-t2-execute-handoff--owner-granted) is Cursor's bounded handoff. T3–T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1 MERGED; T2 IMPLEMENTED, final evidence PENDING.** T1 landed via PR #387 (`05aa2c8`). Cursor implemented T2 on `fix/2026-10-12-safe-harbor-t2` (final source `44e29f6`); Codex is running the final uid-1000 pytest/pylint selections, then external review and Ryan acceptance follow. T3–T5 and live operations remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -39,9 +39,10 @@ The scope is application cooperation, not same-user security. Read clients can p
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
 - `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 preserves the completed T1 grants; section 9 records the separate T2 grant and pinned Cursor handoff. T2–T5 are not implemented.
-- T2 workspace: `fix/2026-10-12-safe-harbor-t2` at `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`, based on merged source `05aa2c8` plus documentation-only closeout `1e55af0` and the handoff commit. Cursor implementation has not started; V2 is NOT RUN. The grant permits no shared-checkout switch or deployment.
+- T2 implementation: **on branch** `fix/2026-10-12-safe-harbor-t2` (worktree `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`), start `9664878`, final source `44e29f6d943c98a2425c21901c310c52ca5c5b1a`. `add --upsert`, indexed `record --approve-last`/`--approve` and `propose_decision --recover` now pass one operation-bound preflight (`chroma_write_store.admitted_write_operation` → `restic_gate.preflight_operation`): explicit v2 profile, target/affected-path containment, post-admission edit refusal, refused production skip, and B-E4.1 future-time 25 across all five consumers. ROADMAP/RECOVER/role-mapping and the v2 exit-25 row are updated. Shadow inventory unchanged; R2b inventory regenerated (derived only). Not merged, not deployed.
+- T2 evidence: VERIFY V2 records isolated runs on earlier trees (passing counts, pytest exit not captured), the pylint gate PASS, AST equality `262573e`→`44e29f6` and inventory proofs. Final uid-1000 pytest/pylint status at `44e29f6` is **pending** (Codex). Direct Python callers of the approval/recovery helpers remain ungated — T4 seam.
 - T1 implementation: **on `main` via PR #387**, squash commit `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Its tree is identical to the reviewed candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. The former implementation branch/worktree is historical; do not resume its completed grant or switch the shared checkout/runtime-main.
-- `VERIFY-safe-harbor.md`: records the original T1 evidence, both test corrections, integration evidence, final-tip CI and Copilot review, Ryan's exact-tip outage acceptance, and the squash-merge mapping. GitHub pytest at the final candidate passed: 2970 passed, 75 skipped, 8 warnings, 252 subtests passed. V2–V6 remain NOT RUN.
+- `VERIFY-safe-harbor.md`: records the T1 evidence chain, final-tip CI/review, Ryan's exact-tip outage acceptance and squash mapping (GitHub pytest at the T1 candidate: 2970 passed, 75 skipped). V2 holds T2 source identity, prior evidence and the pending final run; V3–V6 remain NOT RUN.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
 - Existing code: `restic_gate.py`, `backup_workflows.py`, `restic_snapshot.py`, `chroma_write_guard.py`, `propose_decision.py` and `doctor.py`. Known contract gaps and pinned source evidence are in architecture section 3.
@@ -65,27 +66,28 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T1: MERGED** by Ryan in PR #387 at `05aa2c8`. The final candidate `0c7b4e2` passed fresh CI; the initial full Copilot audit and successive correction/integration reviews cover the delivered candidate. Final integration delta: PASS 82%, static.
 - **External review gate: SATISFIED BY RYAN'S EXACT-TIP OUTAGE ACCEPTANCE** for `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. BugBot reviewed no SHA; this is not a BugBot PASS. Exact owner wording and evidence are in VERIFY V0/final acceptance.
 - **PR #387: MERGED**, 2026-10-12 05:13:16 UTC. No open T1 correction or review action remains from this delivery.
-- **T2: GRANTED / NOT STARTED**, Cursor implementation and isolated V2 evidence under execution section 9. B-E4.1 owner approval is already satisfied. T2 needs its own final-tip review/acceptance; T1's outage exception does not transfer.
+- **T2: IMPLEMENTED at `44e29f6`; final evidence PENDING.** Codex runs the uid-1000 isolated pytest selections and pylint gate with captured exit codes; Cursor then records them in VERIFY V2. Afterwards T2 needs its own external final-tip review and Ryan acceptance; T1's outage exception does not transfer. The T4 direct-caller proof is outstanding by design.
 - T3–T5 implementation, PR/review actions for T2 and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Cursor:** Implement T2 in the prepared worktree under execution section 9; inspect import/caller isolation before running tests. Bind the existing preflight to actual operation targets and implement the approved resolver semantics. Record isolated V2 evidence, push and return the candidate. Do not implement T3/T4 or infer a production grant.
+**Codex:** Run the final isolated uid-1000 pytest selections and the pylint gate against `44e29f6` (commands in Cursor's handoff), capturing each command's own exit code, and return the results.
 
-**Codex:** The T2 grant/handoff is prepared. Resolve concrete planning/interface dependencies raised by Cursor within the approved contract; do not re-review unchanged T1 or silently broaden the file/authority boundary.
+**Cursor:** Record Codex's exact results in VERIFY V2 / STATUS / LATEST without changing source. If a test fails, fix only within T2 scope, re-prove inventory/AST identity and request a fresh run. Do not implement T3/T4 or infer a production grant.
 
-**Ryan:** No further permission is needed for Cursor to begin T2's granted scope. PR/review actions, final candidate acceptance and subsequent tasks/live operations remain separate decisions. Recovery/loss-window inputs remain open before live rollout.
+**Ryan:** After final evidence, decide PR creation and the T2 external review route; T1's outage acceptance does not carry over. Subsequent tasks/live operations remain separate decisions. Before rollout, `restic.env` must name an explicit v2 profile and data root.
 
-**Kiro / Opus / Copilot:** Existing architecture/plan approvals remain pinned. T2 will need its own implementation-tip review; no new review is dispatched by this handoff.
+**Kiro / Opus / Copilot:** Existing approvals remain pinned. T2 needs its own implementation-tip review; none is dispatched yet.
 
 **Ops:** No live grant from this arc; T1 is not independently deployable.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Cursor implements T2 and collects isolated V2 evidence per execution section 9; report any concrete admission/T4 dependency instead of weakening target binding. Final-tip review/acceptance follows under its own authority.
-2. Complete T3–T5 only under their task grants, including T3's backend-proof ordering gate, preservation/validated release, approval recovery and integrated evidence. V2–V6 remain NOT RUN at handoff.
-3. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
-4. Any deployment or corpus-affecting operation requires its own scope, recovery evidence and Ryan grant. T1 alone is not a release workflow; the standalone detector remains a separate decision.
+1. Record Codex's final uid-1000 pytest/pylint statuses for `44e29f6` in VERIFY V2; then T2 external final-tip review and Ryan acceptance/merge under their own authority.
+2. Complete T3–T5 only under their task grants, including T3's backend-proof ordering gate, preservation/validated release, T4 approval recovery (including gating or binding direct helper callers) and integrated evidence. V3–V6 remain NOT RUN.
+3. Rollout prerequisite added by T2: production `restic.env` must declare an explicit `complete-data-v2` profile and data root covering every affected path, or gated writes refuse with 20/24.
+4. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
+5. Any deployment or corpus-affecting operation requires its own scope, recovery evidence and Ryan grant. T1 alone is not a release workflow; the standalone detector remains a separate decision.
 
 ## 7. Hard Stops (models cannot cross)
 
@@ -119,6 +121,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
+- 2026-10-12 — Cursor: implemented T2 (final source `44e29f6`), updated policy docs and recorded isolated V2 evidence; final uid-1000 pytest/pylint status pending Codex, then external review/Ryan acceptance. T4 direct-caller proof outstanding.
 - 2026-10-12 — Codex: recorded Ryan's separate T2 grant and prepared the pinned Cursor handoff/worktree; implementation and V2 not started, T3–T5/live work ungranted.
 
 - 2026-10-12 — Codex: recorded final-tip CI/Copilot evidence, Ryan's exact-tip BugBot outage acceptance and T1 squash merge #387 at `05aa2c8`; T2 grant and all live work remain pending.
@@ -149,4 +152,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 is merged. Ryan granted T2 implementation and isolated evidence; Cursor resumes execution section 9 on the prepared T2 branch. V2 is NOT RUN, and T2 needs its own final-tip review/acceptance. T3–T5 and live operations remain ungranted.
+[Arc Safe Harbor] T1 is merged. T2 is implemented at `44e29f6` on its branch; final uid-1000 pytest/pylint status is pending Codex, then T2 needs its own review/acceptance. T4 direct-caller proof, T3–T5 and live operations remain open/ungranted.
