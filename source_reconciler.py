@@ -118,6 +118,19 @@ def _indexed_processed_paths(processed: Mapping[str, Any]) -> dict[str, str]:
     return by_path
 
 
+
+
+def _skip_recorded_inter_model_rejection(
+    cfg: Mapping[str, Any],
+    canonical_path: str,
+    observed_hash: str,
+) -> bool:
+    """True when a terminal inter-model rejection suppresses drift for this hash."""
+    from inter_model_rejections import inter_model_rejection_matches
+
+    processed_log = str(cfg["index"]["processed_log"])
+    return inter_model_rejection_matches(processed_log, canonical_path, observed_hash)
+
 def discover_legacy_source_drift(
     cfg: Mapping[str, Any],
     *,
@@ -144,6 +157,8 @@ def discover_legacy_source_drift(
                 )
             continue
         if recorded is None:
+            if _skip_recorded_inter_model_rejection(cfg, canonical, observed):
+                continue
             findings.append(
                 SourceDriftFinding(
                     canonical_path=canonical,
@@ -154,6 +169,8 @@ def discover_legacy_source_drift(
                 )
             )
         elif recorded != observed:
+            if _skip_recorded_inter_model_rejection(cfg, canonical, observed):
+                continue
             findings.append(
                 SourceDriftFinding(
                     canonical_path=canonical,

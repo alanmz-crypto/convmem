@@ -14,7 +14,10 @@ from adapters.detect import detect_format, get_parser
 from adapters.inter_model_doc import is_inter_model_doc, parse
 from chroma_store import ChromaStore
 from distill import make_unit_id
-from inter_model_index import InterModelIndexError, index_inter_model_messages
+from inter_model_index import (
+    InterModelSupersessionRequired,
+    index_inter_model_messages,
+)
 
 
 class _FakeProductionWrite:
@@ -213,7 +216,7 @@ def test_reindex_changed_section_fails_closed(tmp_path: Path) -> None:
     try:
         assert _run_inter_model_index(cfg, path, store) == 1
         path.write_text("## Packet\n\nReplacement body.\n", encoding="utf-8")
-        with pytest.raises(InterModelIndexError, match="supersession"):
+        with pytest.raises(InterModelSupersessionRequired, match="supersession"):
             _run_inter_model_index(cfg, path, store)
     finally:
         store.close()

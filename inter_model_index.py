@@ -31,6 +31,14 @@ class InterModelIndexError(RuntimeError):
     """A direct-section index could not complete safely."""
 
 
+class InterModelSupersessionRequired(InterModelIndexError):
+    """Section content changed; provenance supersession is required before replace."""
+
+    def __init__(self, section_id: str | int, message: str) -> None:
+        self.section_id = str(section_id)
+        super().__init__(message)
+
+
 def _existing_section_content_unchanged(
     existing: dict,
     existing_meta: dict,
@@ -115,9 +123,10 @@ def _guard_changed_inter_model_replace(
         return
 
     section = meta.get("start_offset", "?")
-    raise InterModelIndexError(
+    raise InterModelSupersessionRequired(
+        section,
         f"section {section} content changed; provenance supersession is required "
-        "before replacing an existing inter-model projection"
+        "before replacing an existing inter-model projection",
     )
 
 

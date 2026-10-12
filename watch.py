@@ -473,7 +473,12 @@ def flush_path(
         mark("watch_skip_hash_begin", path=str(p))
     except ImportError:
         pass
-    skip = watch_skip_reason(p, processed=processed)
+    # Pass processed_log from cfg so inter-model rejection lookup does not reload config.
+    skip = watch_skip_reason(
+        p,
+        processed=processed,
+        processed_log=cfg["index"]["processed_log"],
+    )
     try:
         from live_diagnosis import mark
 

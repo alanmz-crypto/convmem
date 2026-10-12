@@ -9,10 +9,10 @@
     "convmem.py:525",
     "convmem.py:715",
     "incremental_jsonl.py:663",
-    "ingest.py:1215",
-    "ingest.py:1253",
-    "ingest.py:642",
-    "inter_model_index.py:301",
+    "ingest.py:1239",
+    "ingest.py:1277",
+    "ingest.py:661",
+    "inter_model_index.py:310",
     "repository_knowledge_index.py:272",
     "repository_knowledge_sync.py:247",
     "scratch_jsonl_prototype/chroma_projection.py:66"
@@ -45,6 +45,170 @@
     "shadow_replay.py:177"
   ],
   "sites": [
+    {
+      "file": "convmem.py",
+      "line": 1777,
+      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "convmem.py",
+      "line": 421,
+      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.add\") as session:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "convmem.py",
+      "line": 525,
+      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.verify\") as session:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "convmem.py",
+      "line": 715,
+      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.monitor\") as session:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "incremental_jsonl.py",
+      "line": 663,
+      "snippet": "return production_chroma_write_session(",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true,
+      "note": "Default-off Kiro JSONL incremental apply; hermetic isolated config and paths only in this Execute."
+    },
+    {
+      "file": "ingest.py",
+      "line": 1239,
+      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
+      "class": "reads_reindex_snapshot_under_writer_gate",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "ingest.py",
+      "line": 1277,
+      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "ingest.py",
+      "line": 661,
+      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "inter_model_index.py",
+      "line": 310,
+      "snippet": "with production_chroma_write_session(entrypoint=\"inter_model_index\") as _pw:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "observe.py",
+      "line": 234,
+      "snippet": "_pw = open_production_write_store(",
+      "class": "mutates_units",
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
+    },
+    {
+      "file": "propose_decision.py",
+      "line": 549,
+      "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
+      "class": "mutates_units",
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
+    },
+    {
+      "file": "propose_decision.py",
+      "line": 581,
+      "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
+      "class": "mutates_units",
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
+    },
+    {
+      "file": "refine.py",
+      "line": 291,
+      "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
+      "class": "mutates_units",
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
+    },
+    {
+      "file": "refine.py",
+      "line": 764,
+      "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
+      "class": "mutates_units",
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
+    },
+    {
+      "file": "repository_knowledge_index.py",
+      "line": 272,
+      "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_index\") as session:",
+      "class": "mutates_repository_knowledge_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "repository_knowledge_sync.py",
+      "line": 247,
+      "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_retire\") as session:",
+      "class": "retires_repository_knowledge_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "scratch_jsonl_prototype/chroma_projection.py",
+      "line": 66,
+      "snippet": "return production_chroma_write_session(",
+      "class": "scratch_hermetic_writer_session",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true,
+      "note": "Bounded JSONL prototype passes an explicit temporary config, Chroma root, writer lock, attestation directory, and census directory after ScratchBoundary containment; it never opens production state."
+    },
+    {
+      "file": "source_purge.py",
+      "line": 338,
+      "snippet": "_pw = open_production_write_store(entrypoint=\"source_purge.execute\")",
+      "class": "mutates_units",
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
+    },
     {
       "file": "chroma_store.py",
       "line": 75,
@@ -138,170 +302,6 @@
       "class": "read_only",
       "required_routing": "open_chroma_for_read",
       "uses_open_chroma_for_write": false
-    },
-    {
-      "file": "convmem.py",
-      "line": 1777,
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
-      "class": "mutates_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "convmem.py",
-      "line": 421,
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.add\") as session:",
-      "class": "mutates_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "convmem.py",
-      "line": 525,
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.verify\") as session:",
-      "class": "mutates_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "convmem.py",
-      "line": 715,
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.monitor\") as session:",
-      "class": "mutates_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "ingest.py",
-      "line": 642,
-      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
-      "class": "mutates_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "ingest.py",
-      "line": 642,
-      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
-      "class": "reads_reindex_snapshot_under_writer_gate",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "ingest.py",
-      "line": 642,
-      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
-      "class": "mutates_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "incremental_jsonl.py",
-      "line": 663,
-      "snippet": "return production_chroma_write_session(",
-      "class": "mutates_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true,
-      "note": "Default-off Kiro JSONL incremental apply; hermetic isolated config and paths only in this Execute."
-    },
-    {
-      "file": "repository_knowledge_index.py",
-      "line": 272,
-      "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_index\") as session:",
-      "class": "mutates_repository_knowledge_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "repository_knowledge_sync.py",
-      "line": 247,
-      "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_retire\") as session:",
-      "class": "retires_repository_knowledge_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "inter_model_index.py",
-      "line": 301,
-      "snippet": "with production_chroma_write_session(entrypoint=\"inter_model_index\") as _pw:",
-      "class": "mutates_units",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "file": "scratch_jsonl_prototype/chroma_projection.py",
-      "line": 66,
-      "snippet": "return production_chroma_write_session(",
-      "class": "scratch_hermetic_writer_session",
-      "required_routing": "production_chroma_write_session",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true,
-      "note": "Bounded JSONL prototype passes an explicit temporary config, Chroma root, writer lock, attestation directory, and census directory after ScratchBoundary containment; it never opens production state."
-    },
-    {
-      "file": "observe.py",
-      "line": 234,
-      "snippet": "_pw = open_production_write_store(",
-      "class": "mutates_units",
-      "required_routing": "open_production_write_store",
-      "uses_open_chroma_for_write": false,
-      "uses_production_open": true
-    },
-    {
-      "file": "propose_decision.py",
-      "line": 549,
-      "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
-      "class": "mutates_units",
-      "required_routing": "open_production_write_store",
-      "uses_open_chroma_for_write": false,
-      "uses_production_open": true
-    },
-    {
-      "file": "propose_decision.py",
-      "line": 581,
-      "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
-      "class": "mutates_units",
-      "required_routing": "open_production_write_store",
-      "uses_open_chroma_for_write": false,
-      "uses_production_open": true
-    },
-    {
-      "file": "refine.py",
-      "line": 291,
-      "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
-      "class": "mutates_units",
-      "required_routing": "open_production_write_store",
-      "uses_open_chroma_for_write": false,
-      "uses_production_open": true
-    },
-    {
-      "file": "refine.py",
-      "line": 764,
-      "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
-      "class": "mutates_units",
-      "required_routing": "open_production_write_store",
-      "uses_open_chroma_for_write": false,
-      "uses_production_open": true
-    },
-    {
-      "file": "source_purge.py",
-      "line": 338,
-      "snippet": "_pw = open_production_write_store(entrypoint=\"source_purge.execute\")",
-      "class": "mutates_units",
-      "required_routing": "open_production_write_store",
-      "uses_open_chroma_for_write": false,
-      "uses_production_open": true
     },
     {
       "file": "cg2_rehearsal.py",

@@ -54,7 +54,7 @@ class R2bV2ImplementationRevisionTests(unittest.TestCase):
         self.assertIsNotNone(inventory)
         assert inventory is not None
         entrypoints = {route.get("entrypoint") for route in inventory.get("routes", [])}
-        self.assertIn("inter_model_index.py:301", entrypoints)
+        self.assertIn("inter_model_index.py:310", entrypoints)
 
     def test_production_coverage_uses_committed_inventory_without_dual_mock(self) -> None:
         inventory = load_committed_v2_inventory()

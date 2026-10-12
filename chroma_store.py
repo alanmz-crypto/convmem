@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import logging
 import time
-from pathlib import Path
 from typing import Any
 
 import chromadb
 
 from chroma_write_guard import (
     ChromaStaleSystemError,
+    canonical_target,
     chroma_system_cached,
     note_system_created,
     note_unguarded_write,
@@ -139,7 +139,11 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         require_writer_boundary: bool = False,
         write_guard: Any | None = None,
     ):
-        self.chroma_dir = str(Path(chroma_dir).expanduser())
+        # Chroma's process cache keys the exact string given to PersistentClient.
+        # Resolve aliases here so that cache, this store, and the guard load
+        # record share one identity. The caller still builds the guard from the
+        # requested path, which is what detects a competing legacy location.
+        self.chroma_dir = str(canonical_target(chroma_dir))
         # SegmentAPI + hnswlib compat shim can count() but fails upsert on
         # existing persistent HNSW ("Index seems to be corrupted or unsupported").
         self.client_mode = "PersistentClient"

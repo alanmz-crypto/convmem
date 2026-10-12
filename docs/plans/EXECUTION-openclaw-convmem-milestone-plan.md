@@ -411,7 +411,13 @@ OUTPUT_COORDINATE_REAL_AUTHOR_DURABLE_NAMESPACE_PARENT_STATUS=ABSENT
 W001_MANIFEST_DIAGNOSTIC_PLAN_BASE_MAIN_SHA=269929a90567d79fb7d6985a7afd799c06d8a552
 W001_MANIFEST_DIAGNOSTIC_PLAN_SEMANTIC_PARENT_SHA=bf58a3ff43dc5c8a9e7dd24fd51e6c4a0422dfea
 W001_MANIFEST_DIAGNOSTIC_PLAN_REVIEWED_OVERLAY_SHA=EXTERNAL_EXACT_TIP_REQUIRED
-W001_MANIFEST_DIAGNOSTIC_PLAN_STATUS=PLAN_ONLY_PENDING_EXACT_TIP_KIRO_REVIEW
+W001_MANIFEST_DIAGNOSTIC_PLAN_EXACT_REVIEWED_OVERLAY_SHA=b17d70e4b56bd99991410e543f11261f73335c7c
+W001_MANIFEST_DIAGNOSTIC_PLAN_EXACT_TIP_REVIEW=PASS
+W001_MANIFEST_DIAGNOSTIC_PLAN_MERGED_MAIN_SHA=348ec0b3ac07c79bee81d6954af10db805e6b25d
+W001_MANIFEST_DIAGNOSTIC_PLAN_MERGE_PARENT_SHA=e798bba284c96642fc31229e6375eadc26986493
+W001_MANIFEST_DIAGNOSTIC_PLAN_MERGE_TREE_OID=35f18518ecd680a42a9c9a82b467b6060be89034
+W001_MANIFEST_DIAGNOSTIC_PLAN_EXACT_MAIN_REVIEW=PASS
+W001_MANIFEST_DIAGNOSTIC_PLAN_STATUS=MERGED_EXACT_MAIN_PASS_PENDING_RYAN_DIAGNOSTIC_CAPABILITY_FREEZE_GRANT_DECISION
 W001_MANIFEST_DIAGNOSTIC_CAPABILITY_FREEZE_AUTHORIZED=false
 W001_MANIFEST_DIAGNOSTIC_READ_AUTHORIZED=false
 W001_MANIFEST_REQUALIFICATION_FREEZE_AUTHORIZED=false
@@ -1680,9 +1686,9 @@ Review and authority order is mandatory:
 |---|---|
 | **Specified** | Semantic parent Architecture §§18.22–18.53 and Execution §§10.20–10.51; the accepted T0–T5 contract; exact doctor containment; fenced publication/recovery semantics; complete ordinary/qualified pytest partition; rejected first runtime archive; three-role replacement delivery set; canonical provenance-lock schema; exact-object absent-member projection; immutable v3 P0 result and disposition; lossless pre-acquisition coverage; clean replacement for host-path-bearing ELFs; complete component/ownership work-item design; closed schema-v3 candidate-gap/locator/freeze contract; preserved failed freeze; successful synthetic retry binding; four rejected v4 attempts; exact six-file candidate capability binding; corrected synthetic write budget, exact synthetic predecessor identities, closed no-site two-command argv contract, exact 902-member input packet-tree identity, canonical-origin stdlib dependency reader, complete raw-ID aggregate receipt validator, consumed real-author W001 evidence, exact unresolved-ID grammar correction, accepted corrected synthetic result binding, consumed F002 real-author evidence, exact output-coordinate binding correction, immutable successor capability result binding, consumed output-coordinate-corrected real-author attempt, W001 manifest-aggregate result binding and the split diagnostic/requalification boundary; static 120-member R2b convergence; held file sets; supervision; and final evidence. |
 | **Implemented** | Historical bounded M0–M8 and M11 implementation/evidence are preserved. PR `#342` is open at `PRESERVED_PR342_HEAD_SHA`. No §18.22/§10.20 corrective product, test, CI, inventory or runtime-distribution change has been implemented. |
-| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design, provenance schemas v1/v2/v3, result binding, merged work-item model and every v4 corrective through §§18.50/10.48. Four earlier v4 attempts remain immutable rejected evidence: `f6936649…`, `a9ceaa06…`, `99e4939d…` and `d399e356…`. The fifth attempt sealed candidate tree `291cf777…`; its baseline, 52 controls, ledger, durability and access counters passed, and §§18.44/10.42 accepted it for the later decision. PR `#361` merged the one-shot grant plan and Kiro returned exact-main PASS. Two later real-author grants are consumed: the first stopped before effects, and the corrected successor launched once but failed W001 after 54,052,776 input bytes with zero forbidden access and no output. PR `#363` merged the exact W001 grammar correction at `0a250b1`, all six checks passed and Kiro returned exact-main PASS. The separately granted corrected synthetic freeze sealed tree `939b8849…`; its clean baseline, 52 controls, exact F-before-W receipt, ledger, nine durability counters, zero-access counters and ceilings pass. PR `#366` merged the exact binding at `dd4dd39`; Kiro exact-tip and exact-main PASS established the sole accepted corrected-v4 candidate. PR `#369` merged the corrected real-author plan, but its later sole process failed closed at STARTUP/F002 with zero governed effects. PR `#370` merged the exact output-coordinate correction at `956d74e`; all six checks passed and Kiro returned exact-main PASS. The later one-shot synthetic freeze sealed tree `e685ee05…` with a clean baseline, 52/52 controls, exact 14/20-member vectors, receipt `f15b15f3…`, ledger `419a107b…`, equal 323,537,343-byte forecast/observed writes, zero forbidden access and all future real outputs absent. PR `#374` merged the exact binding at `43b5121`; Kiro exact-tip and exact-main PASS preceded Ryan's separate acceptance of the successor as the sole output-coordinate-corrected v4 candidate. Historical `accepted=false` remains non-self-acceptance. Its durability counters and peak RSS remain process-attested at 80% confidence. PR `#379` merged the reviewed real-author plan; the later granted process stopped on W001 manifest aggregate closure after 54,052,776 input bytes with zero forbidden access and no output transaction. No real work-item packet exists. |
+| **Tested** | Historical isolated M8, MCP, Pylint and Kiro conformance evidence passed at the exact preserved source. On PR `#342`, CodeQL, secret scan and Pylint pass; required GitHub `pytest (3.12)` fails with 83 nodes across the frozen 22/56/5 families. Focused ultrareview confirmed the doctor and publisher defects. The first runtime archive passed exact source/content/mode, header, closed extraction and post-read mutation checks, while independent provenance/licensing reviews returned publication FAIL/PAUSE. Kiro passed the replacement-plan design, provenance schemas v1/v2/v3, result binding, merged work-item model and every v4 corrective through §§18.50/10.48. Four earlier v4 attempts remain immutable rejected evidence: `f6936649…`, `a9ceaa06…`, `99e4939d…` and `d399e356…`. The fifth attempt sealed candidate tree `291cf777…`; its baseline, 52 controls, ledger, durability and access counters passed, and §§18.44/10.42 accepted it for the later decision. PR `#361` merged the one-shot grant plan and Kiro returned exact-main PASS. Two later real-author grants are consumed: the first stopped before effects, and the corrected successor launched once but failed W001 after 54,052,776 input bytes with zero forbidden access and no output. PR `#363` merged the exact W001 grammar correction at `0a250b1`, all six checks passed and Kiro returned exact-main PASS. The separately granted corrected synthetic freeze sealed tree `939b8849…`; its clean baseline, 52 controls, exact F-before-W receipt, ledger, nine durability counters, zero-access counters and ceilings pass. PR `#366` merged the exact binding at `dd4dd39`; Kiro exact-tip and exact-main PASS established the sole accepted corrected-v4 candidate. PR `#369` merged the corrected real-author plan, but its later sole process failed closed at STARTUP/F002 with zero governed effects. PR `#370` merged the exact output-coordinate correction at `956d74e`; all six checks passed and Kiro returned exact-main PASS. The later one-shot synthetic freeze sealed tree `e685ee05…` with a clean baseline, 52/52 controls, exact 14/20-member vectors, receipt `f15b15f3…`, ledger `419a107b…`, equal 323,537,343-byte forecast/observed writes, zero forbidden access and all future real outputs absent. PR `#374` merged the exact binding at `43b5121`; Kiro exact-tip and exact-main PASS preceded Ryan's separate acceptance of the successor as the sole output-coordinate-corrected v4 candidate. Historical `accepted=false` remains non-self-acceptance. Its durability counters and peak RSS remain process-attested at 80% confidence. PR `#379` merged the reviewed real-author plan; the later granted process stopped on W001 manifest aggregate closure after 54,052,776 input bytes with zero forbidden access and no output transaction. PR `#383` merged the reviewed diagnostic/requalification boundary at `348ec0b`; all six checks passed, Kiro returned exact-tip and exact-main PASS, and later main `6a23aa9` preserved its four blobs. No real work-item packet exists. |
 | **Assumed** | Nothing unavailable is accepted as working. Hosted-runner compatibility remains a fail-closed future preflight. Local byte qualification does not imply public redistribution clearance. |
-| **Unresolved** | Exact-tip Kiro review, Ryan PR/merge decision and exact-main confirmation of §§18.53/10.51; separate diagnostic-capability freeze planning/grant; separate result binding/review/acceptance; separate bounded diagnostic-read grant; separate diagnostic-result binding/review/acceptance; separately planned and granted successor requalification at fresh coordinates; independent work-item packet review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; later publication/implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
+| **Unresolved** | Ryan's separate decision whether to grant one fresh-`v1` synthetic diagnostic-capability freeze governed by `bf58a3f…` + `b17d70e…`; separate freeze result binding/review/acceptance; separate bounded diagnostic-read grant; separate diagnostic-result binding/review/acceptance; separately planned and granted successor requalification at fresh coordinates; independent work-item packet review; complete cited origin operations; separately reviewed and Ryan-granted metadata/acquisition operations; zero-unresolved lock closure; clean replacement build and qualification; final packet and licensing review; later publication/implementation grants; held doctor, publisher/recovery, CI and R2b inventory corrections; fresh evidence; focused safety review; Kiro integrated-tip PASS; and Ryan merge decision. Real OpenClaw and Gates D/W/D-V/E/F remain independently blocked. |
 
 ## 2. Dependency order
 
@@ -1851,8 +1857,8 @@ M0 baseline/runtime input
   → plan-only §18.52/§10.50 exact stopped-result binding
   → exact-tip Kiro PASS → PR #380 merged at 269929a → exact-main PASS
   → plan-only §18.53/§10.51 diagnostic/requalification boundary
-  → exact-tip Kiro review → Ryan PR/merge decision → exact-main confirmation
-  → separate diagnostic-capability plan/review/merge/exact-main/two-SHA grant
+  → exact-tip Kiro PASS → PR #383 merged at 348ec0b → exact-main PASS
+  → separate Ryan two-SHA diagnostic-capability-freeze grant decision
   → one synthetic-only freeze at fresh 269929a…/v1(.partial) coordinates
   → diagnostic-capability result binding/review/merge/exact-main/acceptance
   → separate one-shot stdout-only diagnostic-read grant
@@ -1889,12 +1895,13 @@ complete-system review remain decision gates, not implementation work. Candidate
 tree `291cf777…` is sealed immutable evidence, but the later W001 failure makes its
 source ineligible for real input. The earlier real-author grants and the §§18.51/10.49
 grant are consumed. PR `#380` merged the §§18.52/10.50 result binding and Kiro returned
-exact-main `PASS`. The next possible activity is Kiro's exact-tip review of the
-§§18.53/10.51 plan-only boundary. Only its later merge and exact-main confirmation can
-advance the route to a separately planned diagnostic-capability freeze; every freeze,
-diagnostic read, result acceptance, requalification and real-author operation still
-requires its own fresh plan/review/merge/exact-main decision and Ryan grant. No prior
-grant, candidate or PASS is reusable as execution authority.
+exact-main `PASS`. PR `#383` merged the exact-tip-reviewed §§18.53/10.51 boundary at
+`348ec0b`; Kiro returned exact-main PASS and later main `6a23aa9` preserved all four
+reviewed blobs. The next possible activity is Ryan's separate decision whether to
+grant one synthetic diagnostic-capability freeze governed by `bf58a3f…` +
+`b17d70e…`. Every diagnostic read, result acceptance, requalification and real-author
+operation still requires its own fresh plan/review/merge/exact-main decision and Ryan
+grant. No prior grant, candidate or PASS is reusable as execution authority.
 Because the replacement freezes `REPLACEMENT_PROVENANCE_CLOSURE=UNRESOLVED`,
 `REPLACEMENT_LICENSING_DISPOSITION=PAUSE` and
 `REPLACEMENT_PUBLICATION_ELIGIBLE=false`, Kiro PASS cannot
@@ -2401,8 +2408,10 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    revision binds, without diagnosing or authorizing another operation, the consumed
    output-coordinate-corrected real-author attempt that stopped at W001 manifest
    aggregate closure with every output coordinate still absent, records PR `#380`'s
-   reviewed merge of that result, and defines the plan-only split between manifest
-   diagnosis and any later successor requalification.
+   reviewed merge of that result, and records PR `#383`'s merge plus Kiro exact-main
+   PASS for the plan-only split between manifest diagnosis and any later successor
+   requalification. The next possible operation is only Ryan's separate decision
+   whether to grant one fresh-`v1` synthetic diagnostic-capability freeze.
 2. **Architectural outcome:** Doctor contains fail-closed MCP import refusal;
    fenced publication/recovery cannot manufacture an exact retry; every pytest
    node belongs to exactly one ordinary/qualified authority partition; the first
@@ -2499,11 +2508,14 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    that stopped evidence and do not identify a particular failed aggregate conjunct.
    PR `#380` merged the exact binding at `269929a…`, byte-identical to reviewed tip
    `a5f4dc55…`; all six checks passed and Kiro returned exact-tip and exact-main PASS.
-   Sections 18.53/10.51 now define only a separated future route: synthetic-only
+   Sections 18.53/10.51 define only a separated future route: synthetic-only
    diagnostic capability, separately accepted one-shot stdout diagnosis, separately
    accepted nonempty `A001`–`A006` failed-check set, then a separately planned `v5`
    successor requalification before any new real-author plan at fresh `v4` outputs.
-   All diagnostic, freeze, author and later-gate authorization flags remain false.
+   PR `#383` merged that boundary at `348ec0b…`, byte-identical to reviewed tip
+   `b17d70e…`; all six checks passed, Kiro returned exact-tip and exact-main PASS,
+   and later main `6a23aa9…` preserved the four reviewed blobs. All diagnostic,
+   freeze, author and later-gate authorization flags remain false.
 3. **Affected surfaces:** Five reviewed control documents; three closed
    authority/scope files defining a separate exact ten-path M11 corrective set;
    doctor pair `doctor.py` / `tests/test_doctor.py`;
@@ -3067,11 +3079,14 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
    two-SHA grant is consumed by one W001 manifest-aggregate PAUSE after `54,052,776`
    input bytes with no output transaction. Result-binding-review-ready was reached
    when PR `#380` merged §§18.52/10.50 at `269929a…` and Kiro returned exact-main
-   PASS. Diagnostic-boundary-review-ready is not reached until Kiro passes this exact
-   two-commit §§18.53/10.51 plan. Diagnostic-capability-freeze-ready, diagnostic-read-
-   ready, requalification-freeze-ready and real-author-execution-ready all remain
-   false pending their own plans, reviews, merges, exact-main confirmations, fresh
-   coordinate preflights and Ryan grants. Work-
+   PASS. Diagnostic-boundary-review-ready was reached when PR `#383` merged the exact
+   two-commit §§18.53/10.51 plan at `348ec0b…` and Kiro returned exact-main PASS.
+   Diagnostic-capability-freeze-grant-decision-ready is reached, but
+   `W001_MANIFEST_DIAGNOSTIC_CAPABILITY_FREEZE_AUTHORIZED=false` remains controlling
+   until Ryan names the exact governing pair and fresh `v1(.partial)` coordinates.
+   Diagnostic-read-ready, requalification-freeze-ready and real-author-execution-
+   ready remain false pending their own result bindings, reviews, merges, exact-main
+   confirmations, fresh coordinate preflights and Ryan grants. Work-
    item-packet-ready,
    complete-origin-planning, operation-packet-ready,
    acquisition-ready, provenance-closed, lock-ready,
@@ -3089,11 +3104,13 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
     `#376` records them on main. PR `#379` and Kiro exact-merge PASS established the
     real-author boundary; its later exact two-SHA grant is consumed by the W001
     manifest-aggregate PAUSE. PR `#380` and Kiro exact-main PASS established only the
-    stopped-result binding. No retry is eligible. Sections 18.53/10.51 are plan-only;
-    each diagnostic capability, diagnostic read, accepted result, successor freeze and
-    later real-author operation requires its own reviewed plan, exact-main confirmation,
-    fresh single-assignment coordinate preflight and separate Ryan grant naming exact
-    SHAs and scope,
+    stopped-result binding. No retry is eligible. PR `#383` and Kiro exact-main PASS
+    establish §§18.53/10.51 as the reviewed diagnostic/requalification boundary only.
+    Ryan now owns the separate decision whether to grant one synthetic diagnostic-
+    capability freeze governed by `bf58a3f…` + `b17d70e…`. Each diagnostic read,
+    accepted result, successor freeze and later real-author operation still requires
+    its own reviewed plan, exact-main confirmation, fresh single-assignment coordinate
+    preflight and separate Ryan grant naming exact SHAs and scope,
     independent work-item review, complete cited origin planning and each later schema-
     bound metadata/acquisition operation, including exact roots, origins,
     operations, redirects, byte ceilings, parser/tool versions and checkpoints;
@@ -3207,11 +3224,13 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
     `#379`, Kiro exact-merge PASS and current-main preservation established
     §§18.51/10.49; the later exact grant is consumed by one W001 manifest-aggregate
     PAUSE with every output absent. PR `#380` and Kiro exact-main PASS establish the
-    §§18.52/10.50 stopped-result binding only. Sections 18.53/10.51 are plan-only
-    pending exact-tip Kiro review. Any diagnostic capability, diagnostic read, result
-    acceptance, requalification freeze or future real-author execution still requires
-    its own separate plan, review, merge, exact-main confirmation, fresh coordinates
-    and Ryan grant.
+    §§18.52/10.50 stopped-result binding only. PR `#383` merged §§18.53/10.51 at
+    `348ec0b…`, byte-identical to reviewed tip `b17d70e…`; Kiro exact-tip and exact-
+    main PASS establish only the separated diagnostic/requalification boundary.
+    Ryan's fresh-`v1` synthetic-freeze grant decision is next. Any diagnostic read,
+    result acceptance, requalification freeze or future real-author execution still
+    requires its own separate plan, review, merge, exact-main confirmation, fresh
+    coordinates and Ryan grant.
     Historical PASSes
     remain evidence, not acceptance transfer.
 
@@ -3467,10 +3486,12 @@ No earlier grant, evidence result, branch, plan range or `CONTINUE` can be reuse
       result binding; PR `#380` squash-merged it at `269929a`, byte-identical to
       reviewed tip `a5f4dc55`; all six checks passed and Kiro returned exact-main
       PASS. No retry, diagnosis, correction or execution followed.
-- [ ] Kiro exact-tip PASS on this two-commit §§18.53/10.51 W001 manifest diagnostic
-      and successor-requalification boundary; then Ryan PR/merge decision and exact-
-      main review. No filesystem probe, diagnostic freeze/read, correction,
-      requalification or author execution follows without its own later gate.
+- [x] Kiro exact-tip PASS on the two-commit §§18.53/10.51 W001 manifest diagnostic
+      and successor-requalification boundary; PR `#383` squash-merged it at
+      `348ec0b`, byte-identical to reviewed tip `b17d70e`; all six checks passed and
+      Kiro returned exact-main PASS. No filesystem probe, diagnostic freeze/read,
+      correction, requalification or author execution followed. Ryan's separate
+      fresh-`v1` synthetic-freeze grant decision is next.
 - [ ] Separately granted offline authoring and independent review of the exact
       seven-file work-item packet with 1,240-item/98,608-ID/1,384-edge disjoint-union
       proof; unknown origins and all 19 ownership disputes remain unresolved unless
@@ -3597,9 +3618,11 @@ is consumed by one W001 manifest-aggregate PAUSE after `54,052,776` input bytes,
 no output transaction and every output absent. PR `#380` merged the reviewed
 §§18.52/10.50 binding at `269929a`; Kiro returned exact-main PASS and
 `OUTPUT_COORDINATE_REAL_AUTHOR_AUTHORIZED=false` remains controlling. Sections
-18.53/10.51 now define only the separated diagnostic/requalification route. Their
-fresh coordinates are reserved but unobserved, and all diagnostic, freeze, author and
-later-gate authorization flags are false. Exact-tip review of this boundary is next.
+18.53/10.51 define only the separated diagnostic/requalification route. PR `#383`
+merged them at `348ec0b`; Kiro returned exact-main PASS and later main `6a23aa9`
+preserved all four reviewed blobs. Their fresh coordinates remain reserved but
+unobserved, and all diagnostic, freeze, author and later-gate authorization flags are
+false. Ryan's separate fresh-`v1` synthetic-freeze grant decision is next.
 Sealed
 final tree `d399e356…` remains immutable rejected evidence. The first archive is rejected for publication; exact-tip
 Kiro review of the v4 interpreter startup-isolation correction passed at `fdf0901`;
@@ -4082,7 +4105,8 @@ PR `#376` ACCEPTANCE SNAPSHOT MERGED AT `2c72c197`; §§18.51/10.49 REAL-AUTHOR
 PLAN MERGED IN PR `#379` AT `d32658a`; KIRO EXACT-MERGE PASS; LATER GRANT CONSUMED
 BY W001 MANIFEST-AGGREGATE PAUSE; §§18.52/10.50 RESULT BINDING MERGED IN PR `#380`
 AT `269929a`; KIRO EXACT-MAIN PASS; §§18.53/10.51 DIAGNOSTIC/REQUALIFICATION
-BOUNDARY PLAN-ONLY / KIRO EXACT-TIP REVIEW REQUIRED; ALL OPERATION FLAGS=FALSE;
+BOUNDARY MERGED IN PR `#383` AT `348ec0b`; KIRO EXACT-TIP + EXACT-MAIN PASS;
+RYAN FRESH-`v1` SYNTHETIC-FREEZE GRANT DECISION NEXT; ALL OPERATION FLAGS=FALSE;
 CURSOR REMAINS PAUSED.** The first runtime packet already passed Kiro but failed
 independent publication provenance/licensing review. The replacement delivery-set
 plan passed at `3402e62a`; schema v1 passed at `5f397852`, then its offline P0 stopped
@@ -4161,9 +4185,10 @@ the fresh output-coordinate correction. The successor synthetic freeze, result
 binding and acceptance are complete; PR `#376` records that state. Sections
 18.51/10.49 were reviewed and merged in PR `#379`; their later exact grant is consumed
 by one W001 manifest-aggregate PAUSE. PR `#380` merged the reviewed §§18.52/10.50
-stopped-result binding and Kiro returned exact-main PASS. Sections 18.53/10.51 define
-only the split future diagnostic/requalification route and still require exact-tip
-review, merge and exact-main confirmation. Every later
+stopped-result binding and Kiro returned exact-main PASS. PR `#383` merged the
+reviewed §§18.53/10.51 split diagnostic/requalification boundary at `348ec0b`; Kiro
+returned exact-main PASS. Ryan's separate fresh-`v1` synthetic-freeze grant decision
+is next. Every later
 §§18.24–18.53/§§10.22–10.51 diagnostic or operational stage still requires its own
 plan, exact Ryan grant and review.
 This overlay authorizes no
