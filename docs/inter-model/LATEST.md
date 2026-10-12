@@ -9,14 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T2 target-binding correction granted (2026-10-12):**
-  Cursor resumes the existing T2 branch/worktree and draft PR #389 under the
-  [bounded correction handoff](../plans/EXECUTION-safe-harbor.md#target-binding-correction--owner-authorized).
-  Reproduce/fix post-preflight alias drift and collect isolated effect/control
-  evidence, then return for a Codex delta. Current evidence, CodeQL disposition
-  and the remaining exact-tip review/acceptance limits are in the
-  [arc brief](../plans/STATUS-safe-harbor.md). No further paid review request;
-  keep the PR draft. T3–T5, merge and live operations remain ungranted.
+- **Arc Safe Harbor — T2 target-binding correction delivered (2026-10-12):**
+  Cursor pushed correction tip `a18df48025cac77de8bda2db5a761f4744a9a963` on
+  `fix/2026-10-12-safe-harbor-t2` (draft PR #389). Isolated alias-retarget,
+  export-escape, factory-path and negative-control evidence is in
+  [VERIFY V2](../plans/VERIFY-safe-harbor.md#target-binding-correction-evidence--captured-cursor).
+  **Codex:** bounded static delta on that successor plus fresh CI. No paid
+  reviewer request; keep the PR draft. V2 acceptance and the external-review
+  gate remain pending. T3–T5, merge and live operations remain ungranted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

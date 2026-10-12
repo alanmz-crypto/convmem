@@ -229,7 +229,7 @@ Ryan then reported “squash merge done”; GitHub confirmed MERGED with the hea
 
 ## V2 — Target binding and freshness (T2)
 
-**T2 TARGET-BINDING CORRECTION GRANTED; V2 NOT ACCEPTED.** The current draft PR #389 was reviewed at `0cff1578b881d890234adad6b9cb93a110ec1d48`. Codex identified an alias-retarget gap (90%, static), and Ryan authorized the bounded correction and isolated evidence. That reproduction/correction evidence is **NOT RUN**. CodeQL alert #6 is dismissed as false positive; the separate exact-tip review gate remains open. The earlier implementation/evidence and reviews below remain pinned to their actual subjects. Copilot delta PASS at `82f25ef` closes B1 only. Successful event-only completion is still **NOT proven**, as explicitly excluded by Ryan from V2 and retained as a T4 prerequisite.
+**T2 TARGET-BINDING CORRECTION IMPLEMENTED; V2 NOT ACCEPTED.** Draft PR #389 was reviewed at `0cff1578b881d890234adad6b9cb93a110ec1d48`. Codex's alias-retarget finding (90%, static) is now exercised and closed by isolated evidence at runtime/tests **`a18df48025cac77de8bda2db5a761f4744a9a963`**. CodeQL alert #6 remains dismissed as false positive. The separate exact-tip external-review gate is open for this successor; historical Copilot delta PASS at `82f25ef` closes B1 only and does not transfer. Successful event-only completion is still **NOT proven** (Ryan's V2 exclusion; T4 prerequisite).
 
 **Required evidence:** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
 
@@ -428,7 +428,37 @@ No default full suite, no `test_safe_harbor_t1`/`test_restic_snapshot`/`test_bac
 
 **CI at the reviewed source:** GitHub pytest (3.12), pylint (3.12), secret-scan and Analyze (Python/actions) passed. After dismissal, the CodeQL check also reports SUCCESS. Cursor Bugbot remains neutral/no review. These are read-back results for `0cff157`, not tests rerun by Codex and not evidence for the pending correction. Normal branch CI must evaluate the correction successor.
 
-**Next / limits:** Cursor delivers the bounded correction and isolated evidence, then Codex performs a static delta on that successor and reports CI. Keep draft #389 open. No further paid reviewer request, overall V2 acceptance, external-gate waiver, merge, T3–T5 or live operation is implied. Successful event-only completion and direct-helper coverage remain at the ungranted T4 seam.
+**Next / limits:** Cursor delivered the bounded correction and isolated evidence below. Codex performs a static delta on successor **`a18df48025cac77de8bda2db5a761f4744a9a963`** and reports CI. Keep draft #389 open. No paid reviewer request, overall V2 acceptance, external-gate waiver, merge, T3–T5 or live operation is implied.
+
+### Target-binding correction evidence — captured (Cursor)
+
+**Runtime/tests subject:** `a18df48025cac77de8bda2db5a761f4744a9a963` on `fix/2026-10-12-safe-harbor-t2`, parent grant docs `1cc24a4ccd42addeee48a96d518c04775070040c`. Reviewed pre-correction source remains pinned at `0cff1578b881d890234adad6b9cb93a110ec1d48` / runtime `964c1de`.
+
+**What changed:** admitted operations now pin canonical `chroma_dir` and `units_export` in the configuration handed to consumers, recheck resolved targets after preflight (including unchanged config/env bytes), open production stores on the admitted Chroma path, and report post-admission refusals through the existing gate exit path in `_admitted_operation`. Scope: `chroma_write_store.py`, `convmem.py` export plumbing, isolated T2 CLI fixtures/tests only.
+
+**Reproduction (alias retarget):** config names a Chroma symlink with target A eligible in Restic; after successful preflight the symlink is repointed to corpus B without editing config/env. Real `add --upsert` refuses with exit **24** / `operation_config_changed`; logical Chroma in A and B, events/approved rows and exports stay unchanged. **Positive control:** stable alias reaches a real mutation in A while B's Chroma view stays unchanged (shared export file may update; Chroma oracle used). **Export control:** export symlink retargeted outside the protected root after preflight refuses before writing outside. **Factory path:** `open_production_write_store` refuses the same drift under an active admitted operation. **Negative control:** test-only `unbound_retarget_chroma_alias` hook restores pre-correction binding; the retarget redirects the write into B and fails the unchanged-A oracle.
+
+**Commands (cloud VM, uid 1000, isolated HOME/XDG/CONVMEM/Restic roots; `RESTIC_TEST_BIN=/tmp/restic` restic 0.19.0; Python 3.12 + user site packages):**
+
+```bash
+export RESTIC_TEST_BIN=/tmp/restic PYTHONPATH="$HOME/.local/lib/python3.12/site-packages"
+python3 -m pytest tests/test_safe_harbor_t2.py -k "alias or export_alias or open_production" -q --tb=line
+python3 -m pytest tests/test_safe_harbor_t2.py tests/test_write_gate_effect.py \
+  tests/test_record_review_cli.py tests/test_safe_harbor_t1.py \
+  -k "alias or canonical or contention" tests/test_r2b_v2_implementation_revision.py -q --tb=line
+```
+
+| Batch | Result | Exit |
+|---|---|---|
+| New target-binding cases (5) | `5 passed` | pytest **0** |
+| Binding + T1 alias/contention + R2b identity (10 selected) | `10 passed` | pytest **0** |
+| `test_r2b_v2_implementation_revision` committed inventory | `1 passed` | pytest **0** |
+
+Log: `/opt/cursor/artifacts/t2-target-binding-pytest.log` (10-case batch). No production CLI/MCP/doctor, corpus, provider, service, drive or real backup repository access. Process barriers are not power-loss proof.
+
+**Derived R2b inventory:** regenerated under isolated HOME/XDG/CONVMEM; `code_revision` `dc714d0ac40fffdb90f7aed5f7a42148bbbcca8a`, `inventory_digest` `5cbc5a9931a1924bd3f2064f5a9a4f8477a94aa1f74035f408937f47f5163589`; `route_sink_evidence_errors` `[]`; shadow inventory byte-unchanged vs grant tip.
+
+**CI:** pending on pushed successor (normal draft #389 workflow). BugBot reviewed no SHA on prior tips; no new trigger requested.
 
 ### Historical prepared T2 draft PR text — now opened as #389
 
@@ -505,8 +535,10 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Cursor, uid 1000, clean-allowlist env | B1 `964c1de` | new armed-census positive/future/old-label cases | PASS, pytest exit 0, `3 passed, 45 deselected in 37.79s` | V2 B1 correction |
 | 2026-10-12 | Cursor, same | same | affected T2/caller/census/inventory pytest (12 files) | PASS, pytest exit 0, `153 passed, 2 warnings in 339.06s` | V2 B1 correction |
 | 2026-10-12 | Cursor, same | same | pylint + regression gate vs `9664878` | pylint raw 30; gate exit 0 PASS, 466 findings / 239 fingerprints, none new | V2 B1 correction |
+| 2026-10-12 | Cursor, cloud VM uid 1000 | target-binding `a18df48025cac77de8bda2db5a761f4744a9a963` | pytest selections above | PASS, pytest exit 0, `5` + `10` cases | Target-binding correction section |
+| 2026-10-12 | Cursor, isolated generator env | same | `write_v2_inventory_file()` + `test_r2b_v2_implementation_revision` | `dc714d0a…`, digest `5cbc5a99…`; verifier `[]` | Target-binding correction section |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 is closed historically, but the newly authorized alias target-binding correction and its evidence are pending. CodeQL #6 is dismissed as false positive. Overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 is closed historically; alias target-binding correction evidence is captured at `a18df480`. Overall owner acceptance and the final-tip external-review gate remain pending for this successor. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
 
 ## Merge reading
 
@@ -521,4 +553,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 - Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.
 - Event-only recovery: refusal and the human-review outcome are proven. Successful completion is not, because the current hash views disagree (an open T4 prerequisite).
 - Copilot review at `05c7706`: narrow FAIL (75%), B1 census-entrypoint regression. The B1 correction is implemented at `964c1de`: recovery reuses `propose_decision.write`, and armed-census positive, future and old-label controls behave as intended. Uid-1000 runs: 3 new and 153 affected cases passed (exit 0), lint gate exit 0.
-- Copilot delta PASS (88%) at `82f25ef` closes B1; original FAIL stays historical at `05c7706`. Draft #389 is open; BugBot reviewed no SHA. Codex's alias target-binding finding at `0cff157` has a bounded Cursor correction grant, with evidence not yet run. CodeQL #6 is dismissed as false positive. No further paid review request. V2 acceptance and final-tip external-review disposition remain pending; T3–T5/live operations remain ungranted.
+- Copilot delta PASS (88%) at `82f25ef` closes B1; original FAIL stays historical at `05c7706`. Draft #389 is open; BugBot reviewed no SHA. Alias target-binding correction evidence is captured at `a18df480`. CodeQL #6 is dismissed as false positive. No paid review request. V2 acceptance and final-tip external-review disposition remain pending for the correction successor; T3–T5/live operations remain ungranted.

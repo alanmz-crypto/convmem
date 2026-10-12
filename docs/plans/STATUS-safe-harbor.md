@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 TARGET-BINDING CORRECTION GRANTED.** Draft PR #389 was reviewed at `0cff1578b881d890234adad6b9cb93a110ec1d48`. Codex found a post-preflight alias-retarget gap (90%, static); Ryan authorized its bounded correction and isolated evidence. CodeQL alert #6 is dismissed as a false positive. The correction is NOT_STARTED; Cursor's current handoff is in execution section 9. No further paid reviewer request, T2 acceptance, merge, T3–T5 or live operation is granted.
+> **Arc: Safe Harbor. T1 MERGED; T2 TARGET-BINDING CORRECTION DELIVERED.** Draft PR #389 correction tip **`a18df48025cac77de8bda2db5a761f4744a9a963`** implements post-preflight alias binding with isolated effect/negative-control evidence in VERIFY V2. Codex static delta and fresh CI on that successor are next. CodeQL #6 remains dismissed as false positive. No paid reviewer request, T2 acceptance, merge, T3–T5 or live operation is granted.
 
 ## 1. What This Is For (product goal)
 
@@ -36,7 +36,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 ## 3. What Exists Right Now (file map)
 
 - **Current T2 delivery:** draft [PR #389](https://github.com/alanmz-crypto/convmem/pull/389), reviewed source `0cff1578b881d890234adad6b9cb93a110ec1d48` (runtime/tests `964c1de`), on the existing T2 branch/worktree below. Its pytest/pylint/secret-scan/CodeQL checks passed after the authorized dismissal of alert #6. These checks belong to that source, not to the unimplemented correction.
-- **Active correction:** [Target-binding correction — owner authorized](EXECUTION-safe-harbor.md#target-binding-correction--owner-authorized). Preflight canonicalizes targets, but the retained config still contains alias spellings and the writer resolves them again. Config/env byte-edit refusal does not detect alias retargeting; initial path containment does not establish immutable target binding. Codex's static finding is recorded in VERIFY; reproduction and correction evidence are not yet run.
+- **Target-binding correction:** **IMPLEMENTED** at `a18df48025cac77de8bda2db5a761f4744a9a963` (parent grant `1cc24a4`). Admitted operations pin canonical Chroma/export paths, recheck resolved targets before store open/export, and refuse alias retarget after preflight without config/env edits. Isolated CLI/factory evidence and negative control are in [VERIFY V2](VERIFY-safe-harbor.md#target-binding-correction-evidence--captured-cursor). Derived R2b `code_revision` `dc714d0a…`; shadow inventory unchanged.
 - **External review:** the single authorized BugBot request on #389 hit a usage limit and reviewed no SHA. No PR-native Copilot review was requested; Ryan subsequently asked to avoid Copilot for budget reasons. Earlier full/delta reviews remain historical evidence. No T2 tip-specific outage acceptance is recorded.
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
@@ -80,20 +80,20 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T1: MERGED** by Ryan in PR #387 at `05aa2c8`. The final candidate `0c7b4e2` passed fresh CI; the initial full Copilot audit and successive correction/integration reviews cover the delivered candidate. Final integration delta: PASS 82%, static.
 - **External review gate: SATISFIED BY RYAN'S EXACT-TIP OUTAGE ACCEPTANCE** for `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. BugBot reviewed no SHA; this is not a BugBot PASS. Exact owner wording and evidence are in VERIFY V0/final acceptance.
 - **PR #387: MERGED**, 2026-10-12 05:13:16 UTC. No open T1 correction or review action remains from this delivery.
-- **T2: B1 CLOSED; ALIAS TARGET-BINDING CORRECTION GRANTED / NOT_STARTED; V2 NOT ACCEPTED.**
+- **T2: B1 CLOSED; TARGET-BINDING CORRECTION DELIVERED; V2 NOT ACCEPTED.**
   - Runtime/tests `964c1de` have captured isolated evidence: 153 affected cases passed, including 3 new census controls; lint regression gate PASS.
   - Copilot delta **PASS (88%)** at final candidate `82f25ef` closes B1. Original FAIL remains pinned to `05c7706`; the review is static and supplies no new runtime or CI evidence. This documentation record does not transfer exact-tip review to a later successor.
   - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
   - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
 - **PR #389: OPEN / DRAFT.** The authorized one-shot BugBot trigger returned a usage-limit reply, with no reviewed SHA. CodeQL alert #6 was owner-authorized and dismissed as false positive at `2026-10-12T10:34:24Z`; GitHub then reported CodeQL SUCCESS at `0cff157`. No paid retry/reviewer is requested.
-- **Current grant:** Cursor may implement only the bounded target-binding correction and isolated evidence in execution section 9, updating the existing draft via normal branch pushes. Fresh CI and a Codex delta follow; neither substitutes automatically for final-tip external-review acceptance.
+- **Current grant:** Cursor delivered the bounded target-binding correction; **Codex** performs the static delta on `a18df480` and tracks fresh CI. Neither substitutes automatically for final-tip external-review acceptance or overall V2 acceptance.
 - T3–T5 implementation, new review triggers/comments, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
 **Codex:** The alias-retarget finding and Ryan's correction grant are recorded; CodeQL alert #6 is dispositioned. Hand Cursor the pushed grant successor, then review only the delivered correction and regressions. No paid reviewer request and no automatic external-gate waiver.
 
-**Cursor:** Resume the existing T2 worktree at Codex's pushed grant successor. Reproduce and correct post-preflight alias target drift, capture isolated regression/control evidence, update the existing records and push. Keep #389 draft. No hash/classifier repair, census policy expansion, unrelated advisories, T3/T4 or production work.
+**Cursor:** Target-binding correction is delivered at `a18df480`. Return only if Codex's delta or CI finds a real defect. Keep #389 draft. No further scope without a new grant.
 
 **Ryan:** The correction and CodeQL disposition are authorized. After correction evidence and the bounded Codex delta, decide final-tip external-review disposition and overall V2 acceptance. The existing event-only evidence exclusion is already accepted; T1's outage acceptance does not carry over.
 

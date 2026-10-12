@@ -456,7 +456,7 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 ### Target-binding correction — owner authorized
 
-**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12; Codex planning lane; Cursor implementation lane. State: **NOT_STARTED / GRANTED**. This is a local correction to the accepted T2 contract, not a new architecture or T3/T4 grant.
+**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12; Codex planning lane; Cursor implementation lane. State: **IMPLEMENTED** at runtime/tests `a18df48025cac77de8bda2db5a761f4744a9a963`; **Codex delta / CI pending**. This is a local correction to the accepted T2 contract, not a new architecture or T3/T4 grant.
 
 **Authority:** Ryan authorized: **“Next step: Authorize the bounded target-binding correction and CodeQL disposition.”** This grants the correction and isolated regression evidence below. Ryan also requested avoiding further Copilot spending. Do not invoke Copilot, BugBot or another paid reviewer. Existing historical reviews remain pinned; a Codex delta does not by itself satisfy the outstanding external-review gate or grant merge.
 
