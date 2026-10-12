@@ -2,7 +2,7 @@
 
 **Arc:** Kiro bootstrap  
 **Prepared:** 2026-10-12 by Sol
-**State:** r7 proposal only; `NO-GO` until Kiro and Copilot PASS the same
+**State:** r8 proposal only; `NO-GO` until Kiro and Copilot PASS the same
 exact pushed revision and Ryan grants that reviewed revision
 **Scope:** one new local complete-data Restic snapshot and one exact offsite
 copy; no bootstrap, provider transport, source operation, proposal generation,
@@ -22,7 +22,7 @@ inventory binding is stale. It must not be executed, edited, regenerated, or
 reused. A new successor bootstrap proposal can be prepared only after this
 separate backup-only operation returns a valid matching local/offsite pair.
 
-This r7 authority proposal binds the current inventory and the most recent
+This r8 authority proposal binds the current inventory and the most recent
 valid pair as a readiness anchor:
 
 - local snapshot
@@ -106,8 +106,7 @@ post-run inspection. Result
 `7efd323bcef1f07efdf6ab095cc28cd926bdcfc9a925f48c1224b1f405f6f191`,
 records null snapshot IDs, exact timer restoration, no cleanup errors,
 inactive/disabled watcher state, and an unmounted offsite device. The r6 grant
-is consumed and must never be retried. No successor authority has been
-prepared.
+is consumed and must never be retried.
 
 Ryan then authorized another backup-only cycle. A bounded writer census found
 no active writer. Sol captured inventory
@@ -117,14 +116,45 @@ bounded census also found no writer, and the drift-sensitive `processed` and
 export sizes and mtimes remained unchanged. The Kiro projection remains two
 conversation summaries and 17 knowledge units with the same entry digests.
 
+Kiro and Copilot PASSed exact r7 revision
+`17460c218bb38ea89025d56866dd5de9f8c0521f`. Ryan granted that reviewed
+packet, and the runner started once. It safely refused before mount or backup
+because the live config digest was
+`a0f88897f1c1b4b1da2f7027d4d1e0673e168cdb7c7d3ea6a40457bef39c3528`
+instead of the bound `be9be9e9…9413`. Result
+`/tmp/convmem-kiro-replacement-backup-result-20261012-r7.json`, SHA-256
+`ea117edd8244170eddad11a8a26d85fcd25c2977bfb2a55de5993a5d85f9c092`,
+records null snapshot IDs and an unmounted device. The runner's systemd
+observations also returned user-bus connection errors; independent host
+checks confirmed that the watcher remained inactive/disabled with
+`MainPID=0` and that every governed timer retained its prior state. R7 is
+consumed and must never be retried.
+
+The config change is attributable and narrow. The exact old config remains at
+`/home/lauer/.config/convmem/backups/config.toml.pre-codex-admission-2026-10-12`
+with the former digest. The live config adds only the merged Codex rollout
+admission block, enables incremental JSONL with an empty live-source list,
+and retains embedding dimension `768`; all 29 prior leaf settings are
+unchanged. R8 binds that live digest rather than reverting another lane's
+configuration. Its runner validates every systemd observation against closed
+state sets before any operational mutation, so unavailable user-bus state is
+an explicit consuming refusal. Execution must provide host user-bus access;
+launching it in the restricted workspace sandbox cannot succeed.
+
+For r8, two more bounded writer censuses around a 30-second quiet window found
+no writer. A new writer-lease capture is byte-identical to r7: inventory
+`9b759981…bca12`, evidence SHA-256 `12d585f1…e189`, two Kiro conversation
+summaries, and 17 Kiro knowledge units. The drift-sensitive file sizes and
+mtimes remained unchanged.
+
 ## Exact proposed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `313864db0faac9f311868f51eb58869edb7f58399d23a158ef2177c5b5ed99f5` |
-| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py` |
-| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261012-r7.json` |
+| Attachment SHA-256 | `b07df36e6030de4cb918d5bc50393284306d86af63c4f8ab8dded8421bb28eee` |
+| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py` |
+| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261012-r8.json` |
 | Valid local date | `2026-10-12` in `America/Chicago` |
 
 After same-revision Kiro/Copilot PASS and Ryan's exact grant, the one-shot
@@ -135,10 +165,10 @@ set -e
 if findmnt -rn -S /dev/sda1 -o TARGET; then
     exit 1
 fi
-cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py
-chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py
-printf '%s  %s\n' '313864db0faac9f311868f51eb58869edb7f58399d23a158ef2177c5b5ed99f5' '/tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py' | sha256sum --check --strict -
-/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261012-r7.py --execute
+cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py
+chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py
+printf '%s  %s\n' 'b07df36e6030de4cb918d5bc50393284306d86af63c4f8ab8dded8421bb28eee' '/tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py' | sha256sum --check --strict -
+/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py --execute
 ```
 
 The runner refuses an existing result path, including a dangling symlink. Its
@@ -159,10 +189,12 @@ The runner performs this closed sequence:
 2. Before any operational mutation, reserve the result path with `O_EXCL`,
    mode `0600`, and a fsynced `RESERVED` marker. Convert termination signals
    into controlled failure so cleanup and final evidence complete.
-3. Require the watcher to be inactive, disabled, and `MainPID=0`. Record and
-   stop every installed governed ConvMem timer. Require each corresponding
-   service to be `inactive` or `failed` with `MainPID=0`; restore only timers
-   that were active before the operation.
+3. Require every watcher and timer observation to match a closed set of valid
+   systemd active/enabled states; unavailable user-bus state refuses before
+   mutation. Require the watcher to be inactive, disabled, and `MainPID=0`.
+   Record and stop every installed governed ConvMem timer. Require each
+   corresponding service to be `inactive` or `failed` with `MainPID=0`;
+   restore only timers that were active before the operation.
 4. Reject active pytest/failure-test processes, ConvMem mutation commands,
    direct source reconciliation, watcher processes, and Restic operations
    against either governed repository. Before raising, retain bounded process
@@ -215,13 +247,13 @@ remain evidence and are never deleted to hide a failed qualification.
 | Mutable data root | `/home/lauer/.local/share/convmem` |
 | Detached runtime | clean `/tmp/convmem-kiro-bootstrap-e798bba` at `e798bba284c96642fc31229e6375eadc26986493` |
 | Current inventory digest | `9b7599818c1eaad927c07f46e1b9de2a175abc7cd152eba441868842ddebca12` |
-| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261012-r7.json` |
+| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261012-r8.json` |
 | Inventory evidence SHA-256 | `12d585f11becc06defedee562f5719ff30ff4738a9305d32d7411151f8a3e189` |
 | Inventory procedure | `bootstrap_mutation_inventory` + `convmem-bootstrap-mutation-proof-v1` at runtime `e798bba…` |
 | Exact source | `/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_2628159e-d039-4646-a208-0a10a1b3e450/messages.jsonl` |
 | Source SHA-256 | `dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741` |
 | Source state ID | `13c4c30c5c644a1771f0372e1b16fde35ab8cd283c26f594b96f800aad3976d2` |
-| Config SHA-256 | `be9be9e963eade2a095d61fbda48a79db7e9fad4305d4af6e9c0ee68d7ce9413` |
+| Config SHA-256 | `a0f88897f1c1b4b1da2f7027d4d1e0673e168cdb7c7d3ea6a40457bef39c3528` |
 | Authority timezone/date | `America/Chicago`; `2026-10-12` |
 | Backup profile | `complete-data-v2` |
 | Restic executable | `/home/lauer/miniforge3/envs/convmem/bin/restic` |
@@ -264,6 +296,8 @@ be retried. The r5 backup-only grant at revision
 `a3c5a9e40875999dfd2575ea8d4749025f37c277` is also consumed and must never
 be retried. The r6 backup-only grant at revision
 `33f7a9e15daa5f6e5eba515128bf7722f5822ea4` is also consumed and must never
+be retried. The r7 backup-only grant at revision
+`17460c218bb38ea89025d56866dd5de9f8c0521f` is also consumed and must never
 be retried. The sealed r3 bootstrap proposal at revision
 `9d249d0c36dcf791ebc95e2516f94c5844b2b845` is unconsumed but stale and must
 never be executed or reused.
@@ -280,8 +314,9 @@ authorize that preparation or any bootstrap execution.
 
 ## TL;DR
 
-The r4, r5, and r6 backup grants are consumed. R6 safely refused before mount
-or backup on an active unrelated `convmem index` writer, restored all governed
-state, and created no snapshot. R7 binds a fresh writer-lease capture after a
-quiet writer window. It remains `NO-GO` pending same-revision Kiro/Copilot PASS
-and Ryan's separate exact execution grant.
+The r4 through r7 backup grants are consumed. R7 safely refused before mount
+or backup after detecting live config drift; it created no snapshot. R8 binds
+the attributable current config and the unchanged writer-lease inventory, and
+adds explicit refusal for unavailable systemd state. It remains `NO-GO`
+pending same-revision Kiro/Copilot PASS and Ryan's separate exact execution
+grant.

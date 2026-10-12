@@ -85,15 +85,16 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed r4 authority `5e9d3d4`; its exact grant safely refused before mount or backup on transient writer PID `1089804`, then was consumed. R5 safely refused before backup creation on unrelated inventory drift and was consumed. Diagnosis found only unrelated Claude/Codex indexing in the global processed/export roles; Kiro remained unchanged. Kiro and Copilot PASSed r6 revision `33f7a9e`; Ryan granted and Sol ran it once. It safely refused before mount or backup on active unrelated `convmem index` PID `1201589`. Result `7efd323b…f6f191` records complete cleanup and no snapshots. R6 is consumed. Ryan authorized another cycle; two bounded censuses around a quiet window found no writer, and r7 bound fresh inventory `9b759981…bca12`. Kiro and Copilot both PASSed exact r7 revision `17460c2` with no blockers. Ryan granted and Sol ran it once; it safely refused before mount or backup because the live config digest changed to `a0f88897…c3528`. Result `ea117edd…c092` records no snapshots and an unmounted device. Its systemd observations returned user-bus errors, while independent host checks confirmed unchanged watcher and timer state. R7 is consumed. | Diagnose config drift and make unavailable systemd state an explicit refusal before any new cycle |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed r4 authority `5e9d3d4`; its exact grant safely refused before mount or backup on transient writer PID `1089804`, then was consumed. R5 safely refused before backup creation on unrelated inventory drift and was consumed. Diagnosis found only unrelated Claude/Codex indexing in the global processed/export roles; Kiro remained unchanged. Kiro and Copilot PASSed r6 revision `33f7a9e`; Ryan granted and Sol ran it once. It safely refused before mount or backup on active unrelated `convmem index` PID `1201589`. Result `7efd323b…f6f191` records complete cleanup and no snapshots. R6 is consumed. Ryan authorized another cycle; two bounded censuses around a quiet window found no writer, and r7 bound fresh inventory `9b759981…bca12`. Kiro and Copilot both PASSed exact r7 revision `17460c2` with no blockers. Ryan granted and Sol ran it once; it safely refused before mount or backup because the live config digest changed to `a0f88897…c3528`. Result `ea117edd…c092` records no snapshots and an unmounted device. Its systemd observations returned user-bus errors, while independent host checks confirmed unchanged watcher and timer state. R7 is consumed. The config change is a narrow Codex rollout admission addition with no live sources; r8 binds it and unchanged inventory, and explicitly refuses unclassifiable systemd observations before mutation. | Same-revision Kiro design review and Copilot safety/isolation audit of r8, then Ryan's exact execution-grant decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Diagnose why the live config changed from authorized digest `be9be9e9…9413`
-to `a0f88897…c3528`, and correct the runner to refuse unavailable systemd
-state, before preparing any new backup-only authority cycle. Do not retry the
-consumed r7 runner.
+Obtain Kiro design review and Copilot safety/isolation audit on the same exact
+pushed r8 revision. Confirm the new config binding, fresh r8 paths, explicit
+systemd-visibility refusal, and host user-bus execution requirement. If both
+PASS, present Ryan with one exact copyable grant. Do not retry r7 or execute
+r8 without that separate grant.
 
 The r3 bootstrap proposal at
 `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.json`, SHA-256
@@ -104,21 +105,20 @@ config/runtime, or restart the watcher.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Establish the source and intended status of the live config change and
-   correct fail-closed handling of unavailable systemd state, then obtain
-   separate authority before preparing another backup-only cycle.
-2. Under a new reviewed and granted cycle, create one new local complete-data
+1. Obtain same-revision Kiro and Copilot PASS on r8.
+2. Ryan decides whether to grant the exact reviewed r8 runner.
+3. Under that reviewed and granted cycle, create one new local complete-data
    snapshot and one exact offsite copy while the writer gate is held; return
    all qualification evidence. Do not prepare a successor proposal during the
    operation.
-3. Under separate authorization, prepare and review a new non-executed
+4. Under separate authorization, prepare and review a new non-executed
    successor bootstrap proposal bound to the returned pair and inventory.
-4. Ryan separately grants any exact bootstrap execution. Immediately before
+5. Ryan separately grants any exact bootstrap execution. Immediately before
    transport, revalidate backups, source/runtime/config/binding/dimension, and
    maintain the no-other-writer window through final evidence capture.
-5. Execute only the exact source/runtime/config/budget operation and return
+6. Execute only the exact source/runtime/config/budget operation and return
    measured call, coverage, lineage, and isolation evidence.
-6. Obtain a later separate Ryan grant before runtime/config promotion or
+7. Obtain a later separate Ryan grant before runtime/config promotion or
    watcher activation; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -272,6 +272,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-12 | Ryan / Sol | Ryan authorized another cycle; two bounded writer censuses around a 30-second quiet window found no writer, and r7 binds fresh writer-lease inventory `9b759981…bca12` without executing backups |
 | 2026-10-12 | Kiro / Copilot / Sol | Both lanes PASSed exact r7 revision `17460c2` with no blockers; Ryan's separate exact execution-grant decision is next |
 | 2026-10-12 | Ryan / Sol | Ryan's exact r7 grant was consumed; the runner safely refused before mount or backup because config changed from `be9be9e9…9413` to `a0f88897…c3528`. Result `ea117edd…c092` records no snapshots and an unmounted device; systemd observations returned user-bus errors, while independent checks confirmed unchanged watcher/timer state |
+| 2026-10-12 | Sol | Diagnosis found a narrow Codex rollout admission config addition and sandbox-only user-bus denial; r8 binds the current config and unchanged inventory and adds explicit pre-mutation systemd visibility refusal, pending same-revision review |
 
 ## TL;DR
 
@@ -298,5 +299,7 @@ Keep this document a current-state snapshot, not a session diary.
   PASSed exact revision `17460c2` with no blockers. Ryan granted and Sol ran it
   once. It safely refused before mount or backup after detecting live config
   drift to `a0f88897…c3528`, and created no snapshot. R7 is consumed. Config
-  drift and systemd-visibility diagnosis is next; promotion and watcher
-  restart remain separately gated.
+  drift is an attributable Codex rollout admission addition with no live
+  sources. R8 binds the current config and unchanged inventory, and adds
+  explicit refusal for unavailable systemd state. Same-revision Kiro/Copilot
+  review is next; promotion and watcher restart remain separately gated.

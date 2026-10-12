@@ -27,7 +27,7 @@ INTERPRETER = Path("/home/lauer/miniforge3/envs/convmem/bin/python3.11")
 RESTIC_BIN = Path("/home/lauer/miniforge3/envs/convmem/bin/restic")
 RESTIC_BIN_SHA256 = "20683e7746b70e99dd0538cc2740abd222dbb6b3a6851071be9880e3fe02694c"
 CONFIG = Path("/home/lauer/.config/convmem/config.toml")
-CONFIG_SHA256 = "be9be9e963eade2a095d61fbda48a79db7e9fad4305d4af6e9c0ee68d7ce9413"
+CONFIG_SHA256 = "a0f88897f1c1b4b1da2f7027d4d1e0673e168cdb7c7d3ea6a40457bef39c3528"
 SOURCE = Path(
     "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/"
     "sess_2628159e-d039-4646-a208-0a10a1b3e450/messages.jsonl"
@@ -46,7 +46,7 @@ OLD_OFFSITE = "995102108a10ad222f615e7cf130feb7c56ebceac19c5eeb0ebdd0562b31a4a8"
 RUN_DATE = "2026-10-12"
 AUTHORITY_TIMEZONE = "America/Chicago"
 REQUIRED_TAGS = {"convmem-data-v2", "convmem-2026-10-12", "kiro-successor-preflight"}
-RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261012-r7.json")
+RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261012-r8.json")
 BACKUP_EVIDENCE = DATA_ROOT / ".convmem-backup-evidence.json"
 LOCK = DATA_ROOT / "locks/chroma_writer_gate.lock"
 TIMERS = (
@@ -209,6 +209,45 @@ def require_offsite_mount_identity() -> dict[str, Any]:
 def unit_state(unit: str, verb: str) -> str:
     proc = run(["systemctl", "--user", verb, unit], check=False)
     return (proc.stdout or proc.stderr).strip()
+
+
+def require_systemd_visibility(
+    timer_state: dict[str, dict[str, str]],
+    watcher_state: dict[str, str],
+) -> None:
+    """Refuse before mutation when user-unit state cannot be classified."""
+    active_states = {
+        "active",
+        "inactive",
+        "failed",
+        "activating",
+        "deactivating",
+        "reloading",
+        "maintenance",
+        "refreshing",
+    }
+    enabled_states = {
+        "enabled",
+        "enabled-runtime",
+        "linked",
+        "linked-runtime",
+        "alias",
+        "masked",
+        "masked-runtime",
+        "static",
+        "indirect",
+        "disabled",
+        "generated",
+        "transient",
+        "bad",
+    }
+    observations = {**timer_state, "convmem-watch.service": watcher_state}
+    for unit, state in observations.items():
+        if (
+            state.get("active") not in active_states
+            or state.get("enabled") not in enabled_states
+        ):
+            raise RuntimeError(f"systemd user state unavailable: {unit}")
 
 
 def require_service_quiescent(service: str) -> dict[str, str]:
@@ -495,6 +534,7 @@ def main() -> int:
             "enabled": unit_state("convmem-watch.service", "is-enabled"),
         }
         result["watcher_before"] = watcher_before
+        require_systemd_visibility(timer_before, watcher_before)
         runtime_head = run(["git", "-C", str(RUNTIME), "rev-parse", "HEAD"])
         if runtime_head.stdout.strip() != RUNTIME_REVISION:
             raise RuntimeError("runtime revision mismatch")
