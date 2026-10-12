@@ -14,13 +14,17 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 RUNTIME = Path("/tmp/convmem-kiro-bootstrap-e798bba")
 RUNTIME_REVISION = "e798bba284c96642fc31229e6375eadc26986493"
 INTERPRETER = Path("/home/lauer/miniforge3/envs/convmem/bin/python3.11")
+RESTIC_BIN = Path("/home/lauer/miniforge3/envs/convmem/bin/restic")
+RESTIC_BIN_SHA256 = "20683e7746b70e99dd0538cc2740abd222dbb6b3a6851071be9880e3fe02694c"
 CONFIG = Path("/home/lauer/.config/convmem/config.toml")
 CONFIG_SHA256 = "be9be9e963eade2a095d61fbda48a79db7e9fad4305d4af6e9c0ee68d7ce9413"
 SOURCE = Path(
@@ -39,6 +43,7 @@ OFFSITE_REPOSITORY = str(OFFSITE_MOUNT / "convmem-backups")
 OLD_LOCAL = "89aaf9ef40a1b07e95af09d0227382ce7333a4c897fd3f0da8c6382d62d63ecc"
 OLD_OFFSITE = "995102108a10ad222f615e7cf130feb7c56ebceac19c5eeb0ebdd0562b31a4a8"
 RUN_DATE = "2026-10-11"
+AUTHORITY_TIMEZONE = "America/Chicago"
 REQUIRED_TAGS = {"convmem-data-v2", "convmem-2026-10-11", "kiro-successor-preflight"}
 RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261011-r4.json")
 BACKUP_EVIDENCE = DATA_ROOT / ".convmem-backup-evidence.json"
@@ -81,6 +86,11 @@ if Path(sys.executable).resolve() != INTERPRETER.resolve():
     raise SystemExit("interpreter mismatch")
 if not sys.flags.isolated or not sys.dont_write_bytecode:
     raise SystemExit("runner requires Python -I -B")
+if not hasattr(time, "tzset"):
+    raise SystemExit("runner requires time.tzset")
+os.environ["TZ"] = AUTHORITY_TIMEZONE
+time.tzset()
+AUTHORITY_ZONE = ZoneInfo(AUTHORITY_TIMEZONE)
 
 # Validate the detached runtime before importing any code from it.
 _runtime_probe = subprocess.run(
@@ -116,6 +126,7 @@ from config import load_config  # noqa: E402
 from incremental_jsonl import source_state_id  # noqa: E402
 from restic_snapshot import (  # noqa: E402
     BackupContext,
+    BackupProfile,
     backup_data_root,
     copy_snapshot_to_external,
     resolve_copy_destination,
@@ -125,6 +136,73 @@ from restic_snapshot import (  # noqa: E402
 
 def run(argv: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(argv, check=check, capture_output=True, text=True)
+
+
+def require_authority_date(stage: str) -> str:
+    """Bind both runner checks and governed date-tag generation to Chicago."""
+    if os.environ.get("TZ") != AUTHORITY_TIMEZONE:
+        raise RuntimeError(f"authority timezone changed before {stage}")
+    time.tzset()
+    chicago_date = datetime.now(AUTHORITY_ZONE).date().isoformat()
+    effective_local_date = datetime.now().astimezone().date().isoformat()
+    if chicago_date != RUN_DATE or effective_local_date != RUN_DATE:
+        raise RuntimeError(
+            f"authority date expired before {stage}: "
+            f"Chicago={chicago_date}, effective={effective_local_date}"
+        )
+    return chicago_date
+
+
+def require_backup_context_identity(ctx: BackupContext) -> None:
+    """Require the reviewed profile, executable, roots, and repositories."""
+    if ctx.profile is not BackupProfile.COMPLETE_DATA_V2:
+        raise RuntimeError(f"backup profile mismatch: {ctx.profile.value}")
+    if ctx.restic_bin.resolve() != RESTIC_BIN:
+        raise RuntimeError(f"Restic executable mismatch: {ctx.restic_bin}")
+    if sha256_file(ctx.restic_bin) != RESTIC_BIN_SHA256:
+        raise RuntimeError("Restic executable digest mismatch")
+    if ctx.data_root.resolve() != DATA_ROOT:
+        raise RuntimeError("data root mismatch")
+    if ctx.local_repository.locator != LOCAL_REPOSITORY:
+        raise RuntimeError("local repository mismatch")
+    if (
+        ctx.external_repository is None
+        or ctx.external_repository.locator != OFFSITE_REPOSITORY
+    ):
+        raise RuntimeError("offsite repository mismatch")
+
+
+def require_offsite_mount_identity() -> dict[str, Any]:
+    """Prove the repository is on the authorized mounted block device."""
+    repository = Path(OFFSITE_REPOSITORY)
+    source = run(
+        ["findmnt", "-rn", "-T", str(repository), "-o", "SOURCE"]
+    ).stdout.strip()
+    target = run(
+        ["findmnt", "-rn", "-T", str(repository), "-o", "TARGET"]
+    ).stdout.strip()
+    if not source or Path(source).resolve() != Path(OFFSITE_DEVICE).resolve():
+        raise RuntimeError(f"offsite repository source mismatch: {source}")
+    if target != str(OFFSITE_MOUNT):
+        raise RuntimeError(f"offsite repository mount mismatch: {target}")
+    mounted_uuid = run(["lsblk", "-no", "UUID", source]).stdout.strip()
+    if mounted_uuid != OFFSITE_UUID:
+        raise RuntimeError(f"offsite UUID mismatch after mount: {mounted_uuid}")
+    if repository.resolve() != repository or not repository.is_dir():
+        raise RuntimeError("offsite repository path is missing or redirected")
+    repository_device = os.stat(repository).st_dev
+    block_device = os.stat(OFFSITE_DEVICE).st_rdev
+    if repository_device != block_device:
+        raise RuntimeError(
+            "offsite repository is not resident on the authorized device"
+        )
+    return {
+        "source": source,
+        "target": target,
+        "uuid": mounted_uuid,
+        "repository_st_dev": repository_device,
+        "block_device_st_rdev": block_device,
+    }
 
 
 def unit_state(unit: str, verb: str) -> str:
@@ -267,7 +345,8 @@ def main() -> int:
     }
     timer_before: dict[str, dict[str, str]] = {}
     watcher_before: dict[str, str] = {}
-    mounted = False
+    mount_command_succeeded = False
+    mount_identity: dict[str, Any] | None = None
     operation_error: Exception | None = None
     result_write_error: Exception | None = None
     cleanup_errors: list[str] = []
@@ -329,8 +408,8 @@ def main() -> int:
             raise RuntimeError("source digest mismatch")
         if source_state_id(str(SOURCE)) != SOURCE_STATE_ID:
             raise RuntimeError("source identity mismatch")
-        if datetime.now().astimezone().date().isoformat() != RUN_DATE:
-            raise RuntimeError("authority date expired")
+        result["authority_date"] = require_authority_date("preflight")
+        result["authority_timezone"] = AUTHORITY_TIMEZONE
         if watcher_before["active"] != "inactive":
             raise RuntimeError("watcher is not inactive")
         if watcher_before["enabled"] != "disabled":
@@ -365,13 +444,10 @@ def main() -> int:
         uuid = run(["lsblk", "-no", "UUID", OFFSITE_DEVICE]).stdout.strip()
         if uuid != OFFSITE_UUID:
             raise RuntimeError(f"offsite UUID mismatch before mount: {uuid}")
-        mounted = True
         run(["udisksctl", "mount", "-b", OFFSITE_DEVICE])
-        mounted_at = run(
-            ["findmnt", "-rn", "-S", OFFSITE_DEVICE, "-o", "TARGET"]
-        ).stdout.strip()
-        if mounted_at != str(OFFSITE_MOUNT):
-            raise RuntimeError(f"offsite mount mismatch: {mounted_at}")
+        mount_command_succeeded = True
+        mount_identity = require_offsite_mount_identity()
+        result["offsite_mount_identity"] = mount_identity
         offsite_repository_path = Path(OFFSITE_REPOSITORY)
         if not offsite_repository_path.is_dir() or not os.access(
             offsite_repository_path, os.R_OK | os.W_OK
@@ -384,17 +460,14 @@ def main() -> int:
         result["offsite_free_bytes_before"] = offsite_free_bytes
 
         ctx = BackupContext.from_env_file(Path("/home/lauer/.config/convmem/restic.env"))
-        if ctx.data_root.resolve() != DATA_ROOT:
-            raise RuntimeError("data root mismatch")
-        if ctx.local_repository.locator != LOCAL_REPOSITORY:
-            raise RuntimeError("local repository mismatch")
-        if (
-            ctx.external_repository is None
-            or ctx.external_repository.locator != OFFSITE_REPOSITORY
-        ):
-            raise RuntimeError("offsite repository mismatch")
+        require_backup_context_identity(ctx)
+        result["backup_profile"] = ctx.profile.value
+        result["restic_bin"] = str(ctx.restic_bin)
+        result["restic_bin_sha256"] = RESTIC_BIN_SHA256
 
         # Read-only offsite readiness before the first write.
+        require_backup_context_identity(ctx)
+        require_offsite_mount_identity()
         old_source = resolve_snapshot(ctx, requested_id=OLD_LOCAL)
         old_destination = resolve_copy_destination(ctx, old_source)
         if old_destination.id != OLD_OFFSITE:
@@ -407,7 +480,10 @@ def main() -> int:
             if pre_digest != EXPECTED_INVENTORY:
                 raise RuntimeError(f"mutation inventory mismatch: {pre_digest}")
 
+            require_authority_date("backup evidence")
             backup_evidence = capture_backup_evidence(DATA_ROOT)
+            require_authority_date("local snapshot")
+            require_backup_context_identity(ctx)
             source, backup_argv = backup_data_root(
                 ctx, extra_tags=("kiro-successor-preflight",)
             )
@@ -425,6 +501,10 @@ def main() -> int:
             # Full-ID handoff: the ID returned by backup_data_root is passed
             # directly into the governed copy primitive. No current/latest
             # reselection occurs between creation and copy.
+            require_authority_date("offsite copy")
+            require_backup_context_identity(ctx)
+            mount_identity = require_offsite_mount_identity()
+            result["offsite_mount_identity_before_copy"] = mount_identity
             copy_argv = copy_snapshot_to_external(ctx, source.id)
             destination = resolve_copy_destination(ctx, source)
             result["offsite_snapshot_id"] = destination.id
@@ -437,8 +517,7 @@ def main() -> int:
             final_inventory, final_digest = current_inventory(cfg)
             if final_inventory != pre_inventory or final_digest != pre_digest:
                 raise RuntimeError("mutation inventory changed before final evidence")
-            if datetime.now().astimezone().date().isoformat() != RUN_DATE:
-                raise RuntimeError("operation crossed the authority date")
+            require_authority_date("final evidence")
 
             result.update(
                 {
@@ -469,10 +548,19 @@ def main() -> int:
         result["error"] = str(exc)
     finally:
         in_cleanup = True
-        if mounted:
-            proc = run(["udisksctl", "unmount", "-b", OFFSITE_DEVICE], check=False)
-            if proc.returncode != 0:
-                cleanup_errors.append("offsite unmount failed")
+        if mount_command_succeeded:
+            try:
+                result["offsite_mount_identity_before_unmount"] = (
+                    require_offsite_mount_identity()
+                )
+            except Exception as exc:  # noqa: BLE001 - refuse wrong-device cleanup
+                cleanup_errors.append(f"offsite identity blocks unmount: {exc}")
+            else:
+                proc = run(
+                    ["udisksctl", "unmount", "-b", OFFSITE_DEVICE], check=False
+                )
+                if proc.returncode != 0:
+                    cleanup_errors.append("offsite unmount failed")
         for timer, before in timer_before.items():
             if before["active"] == "active":
                 proc = run(["systemctl", "--user", "start", timer], check=False)

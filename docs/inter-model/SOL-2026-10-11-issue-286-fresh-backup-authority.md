@@ -2,7 +2,7 @@
 
 **Arc:** Kiro bootstrap  
 **Prepared:** 2026-10-11 by Sol  
-**State:** r4 proposal only; `NO-GO` until Kiro and Copilot PASS the same
+**State:** corrected r4 proposal only; `NO-GO` until Kiro and Copilot PASS the same
 exact pushed revision and Ryan grants that reviewed revision
 **Scope:** one new local complete-data Restic snapshot and one exact offsite
 copy; no bootstrap, provider transport, source operation, proposal generation,
@@ -38,12 +38,22 @@ as r3: two conversation summaries and 17 knowledge units. The additional
 Cursor transcript accounts for the changed global `processed.json` and
 `knowledge_units.jsonl` roles. This proposal authorizes nothing by itself.
 
+Kiro PASSed the first r4 revision at exact commit `a9c75f1d20bb1109a229fbbdcc4be19bfa5dc87a`.
+Copilot FAILed that same revision because its effective Restic executable,
+mounted repository filesystem, and `America/Chicago` date boundary were not
+fully bound. Sol-High adjudicated the material conflict in Copilot's favor.
+This correction pins the executable by path and digest, requires the
+complete-data-v2 profile, proves the repository's backing device and UUID
+after mount and immediately before copy, verifies mount identity before
+cleanup, and fixes both authority checks and governed date-tag generation to
+`America/Chicago`.
+
 ## Exact proposed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `e8cbf8827632c75f4fda58edf9d1d79f30a4002ed025668f84dcdc8580f6b6fe` |
+| Attachment SHA-256 | `05076b8bff4d820a63b46382308d1a6668028d37b5319dc739b151b26e0f421d` |
 | Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py` |
 | Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011-r4.json` |
 | Valid local date | `2026-10-11` in `America/Chicago` |
@@ -58,7 +68,7 @@ if findmnt -rn -S /dev/sda1 -o TARGET; then
 fi
 cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py
 chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py
-printf '%s  %s\n' 'e8cbf8827632c75f4fda58edf9d1d79f30a4002ed025668f84dcdc8580f6b6fe' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py' | sha256sum --check --strict -
+printf '%s  %s\n' '05076b8bff4d820a63b46382308d1a6668028d37b5319dc739b151b26e0f421d' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py' | sha256sum --check --strict -
 /home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py --execute
 ```
 
@@ -74,7 +84,9 @@ preparation.
 The runner performs this closed sequence:
 
 1. Revalidate the detached runtime, configuration, exact Kiro source, source
-   state ID, local authority date, interpreter, and isolated `-I -B` flags.
+   state ID, `America/Chicago` authority date, interpreter, and isolated
+   `-I -B` flags. Set the process timezone to `America/Chicago` before
+   importing the governed backup runtime so its date-tag generation is bound.
 2. Before any operational mutation, reserve the result path with `O_EXCL`,
    mode `0600`, and a fsynced `RESERVED` marker. Convert termination signals
    into controlled failure so cleanup and final evidence complete.
@@ -88,30 +100,38 @@ The runner performs this closed sequence:
    gate before the initial and final inventory measurements.
 5. Require `/dev/sda1` initially unmounted and UUID
    `f1bd69b4-e567-4ef3-89ec-13faff0602e9` before temporarily mounting it at
-   `/run/media/lauer/rxBUlauer-128Gfs`. Require the offsite repository to be
-   readable, writable, and have available space.
-6. Rebuild the governed `BackupContext`; require the exact data root and both
-   repository locators. Resolve the bound readiness-anchor pair by full IDs
-   and require its exact copy lineage.
+   `/run/media/lauer/rxBUlauer-128Gfs`. After mount, require the repository's
+   effective source, target, UUID, real path, and filesystem device number to
+   match that block device. Require it to be readable, writable, and have
+   available space.
+6. Rebuild the governed `BackupContext`; require complete-data-v2, the exact
+   data root and both repository locators, and Restic executable
+   `/home/lauer/miniforge3/envs/convmem/bin/restic` with SHA-256
+   `20683e7746b70e99dd0538cc2740abd222dbb6b3a6851071be9880e3fe02694c`.
+   Resolve the bound readiness-anchor pair by full IDs and require its exact
+   copy lineage.
 7. Acquire the exclusive corpus writer gate. Compute the mutation inventory
    with `bootstrap_mutation_inventory` and
    `convmem-bootstrap-mutation-proof-v1`; require
    `85566aed12281c21867eef033016e5292e31f994157fa0559f18dc2363641e6a`.
-8. Capture complete-data evidence, then call governed `backup_data_root`
-   exactly once with tag `kiro-successor-preflight`. Require the exact data
-   path and complete tag set.
+8. Recheck the Chicago date before the evidence update and immediately before
+   snapshot creation. Recheck the profile and executable, then call governed
+   `backup_data_root` exactly once with tag `kiro-successor-preflight`.
+   Require the exact data path and complete tag set.
 9. Recompute the inventory while holding the writer gate. Any difference
    stops before offsite copy and preserves the local snapshot as evidence.
-10. Pass the full local ID returned by `backup_data_root` directly to
-    governed `copy_snapshot_to_external`. There is no current/latest
-    reselection.
+10. Immediately before copying, recheck the Chicago date, executable/profile,
+    and mounted repository filesystem identity. Pass the full local ID
+    returned by `backup_data_root` directly to governed
+    `copy_snapshot_to_external`. There is no current/latest reselection.
 11. Resolve the destination by exact `original == local ID` lineage; require
     equal tree, timestamp, paths, and tags. Recompute inventory before
     releasing the writer gate.
-12. Require the bound local date, unmount the offsite device, restore timer
-    state, recheck the watcher, and fsync the final result. Once the runner
-    starts, the external grant is consumed even if it refuses or later reboots
-    clear `/tmp`.
+12. Require the bound Chicago date, verify device/UUID/target/repository
+    identity before unmounting, restore timer state, recheck the watcher, and
+    fsync the final result. Cleanup refuses to unmount an unverified device.
+    Once the runner starts, the external grant is consumed even if it refuses
+    or later reboots clear `/tmp`.
 
 The attachment contains the complete proposed invocation. It uses the
 governed backup APIs and introduces no raw Restic command. Created snapshots
@@ -131,6 +151,10 @@ remain evidence and are never deleted to hide a failed qualification.
 | Source SHA-256 | `dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741` |
 | Source state ID | `13c4c30c5c644a1771f0372e1b16fde35ab8cd283c26f594b96f800aad3976d2` |
 | Config SHA-256 | `be9be9e963eade2a095d61fbda48a79db7e9fad4305d4af6e9c0ee68d7ce9413` |
+| Authority timezone/date | `America/Chicago`; `2026-10-11` |
+| Backup profile | `complete-data-v2` |
+| Restic executable | `/home/lauer/miniforge3/envs/convmem/bin/restic` |
+| Restic executable SHA-256 | `20683e7746b70e99dd0538cc2740abd222dbb6b3a6851071be9880e3fe02694c` |
 | Local Restic repository | `/home/lauer/.local/share/convmem-restic` |
 | Offsite block device | `/dev/sda1`, UUID `f1bd69b4-e567-4ef3-89ec-13faff0602e9` |
 | Offsite Restic repository | `/run/media/lauer/rxBUlauer-128Gfs/convmem-backups` |
@@ -138,11 +162,11 @@ remain evidence and are never deleted to hide a failed qualification.
 | Required tags | `convmem-data-v2`, `convmem-2026-10-11`, `kiro-successor-preflight` |
 | Maximum writes | one `/tmp` marker/result; one complete-data evidence update; one local snapshot; one offsite copy; no prune/delete |
 
-Any source, runtime, config, date, inventory, watcher, device, mountpoint,
-repository, writer-census, lineage, cleanup, or timer-state mismatch produces
-a nonzero result. An inventory difference after local creation stops before
-the offsite copy. A final inventory difference invalidates the pair for this
-arc.
+Any source, runtime, config, Chicago date, profile, executable, inventory,
+watcher, block device, mounted filesystem residence, mountpoint, repository,
+writer-census, lineage, cleanup, or timer-state mismatch produces a nonzero
+result. An inventory difference after local creation stops before the offsite
+copy. A final inventory difference invalidates the pair for this arc.
 
 ## Explicit exclusions
 
@@ -171,15 +195,17 @@ never be executed or reused.
 
 The bound result must report PASS plus full local and offsite snapshot IDs,
 shared tree, timestamp, paths, tags, offsite `original`, pre/post/final
-inventory digests, backup-evidence digest, timer restoration, watcher state,
-and unmounted offsite state. PASS permits only later preparation of a new
-successor bootstrap packet. It does not authorize that preparation or any
-bootstrap execution.
+inventory digests, backup-evidence digest, pinned profile/executable identity,
+Chicago date/timezone, mounted filesystem identity before copy and unmount,
+timer restoration, watcher state, and unmounted offsite state. PASS permits
+only later preparation of a new successor bootstrap packet. It does not
+authorize that preparation or any bootstrap execution.
 
 ## TL;DR
 
 The prior bootstrap authority stopped before bootstrap or paid calls and is
-now stale because unrelated Cursor indexing changed the mutable corpus. This
-r4 proposal binds the current inventory to one guarded local snapshot and one
-exact offsite copy. It remains `NO-GO` pending same-revision Kiro/Copilot PASS
-and Ryan's separate exact execution grant.
+now stale because unrelated Cursor indexing changed the mutable corpus. After
+Sol-High accepted Copilot's r4 boundary findings, this correction binds the
+Restic binary/profile, mounted repository filesystem, and Chicago date as well
+as the current inventory. It remains `NO-GO` pending same-revision
+Kiro/Copilot PASS and Ryan's separate exact execution grant.

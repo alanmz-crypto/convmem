@@ -18,10 +18,14 @@ cross-arc snapshot and the linked arc brief below.
   stale and must not be reused. Ryan authorized preparation of a new
   backup-only cycle. Sol captured stable inventory `85566aed…e6a` under the
   exclusive writer lease and prepared an r4 runner limited to one local
-  complete-data snapshot plus one exact offsite copy. No backup has run.
-  **Next:** Kiro reviews design/source assumptions and Copilot audits
-  safety/isolation on the same exact pushed revision; only then may Ryan decide
-  whether to grant that one-shot backup operation. Resume from the
+  complete-data snapshot plus one exact offsite copy. At first r4 tip
+  `a9c75f1`, Kiro PASSed while Copilot FAILed executable, mounted-filesystem,
+  and timezone binding. Sol-High accepted Copilot's blockers. Sol corrected
+  the runner to pin the Restic binary/profile, prove repository filesystem
+  residence, and enforce `America/Chicago` immediately before both writes. No
+  backup has run. **Next:** Kiro and Copilot review the same corrected pushed
+  revision; only then may Ryan decide whether to grant that one-shot backup
+  operation. Resume from the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
