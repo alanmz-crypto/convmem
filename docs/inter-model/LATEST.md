@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-09
+**Updated:** 2026-10-11
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,16 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **Arc Codex / issue #286 — exact-path recovery parity: design DRAFT, Kiro
+  review next (2026-10-11):** the Codex admission branch closed two recovery
+  gaps for Codex sources only. The same gaps remain for Kiro exact-path live
+  sources: recovery without a checkpoint, and legacy indexing after a
+  checkpoint. They can't be reached today: the route is off and the watcher
+  is disabled. The [design](../plans/DESIGN-issue-286-exact-path-recovery-parity.md)
+  proposes applying both guards to every production source, and recommends
+  landing that before the successor Kiro bootstrap. No implementation is
+  authorized.
 
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING
