@@ -8,9 +8,7 @@ production session API.
 
 from __future__ import annotations
 
-import copy
 import fcntl
-import hashlib
 import json
 import os
 import tempfile
@@ -723,6 +721,8 @@ class AdmittedWriteOperation:  # pylint: disable=too-many-instance-attributes
 
     def config(self) -> dict[str, Any]:
         """A private copy of the admitted configuration."""
+        import copy
+
         return copy.deepcopy(self._cfg)
 
 
@@ -731,6 +731,8 @@ def _bound_operation() -> AdmittedWriteOperation | None:
 
 
 def _config_digest(path: Path) -> str:
+    import hashlib
+
     from restic_gate import OperationAdmissionRefused
     from restic_snapshot import EXIT_INVALID_CONFIG
 
@@ -876,7 +878,7 @@ def admitted_write_operation(
             chroma_dir=chroma_dir,
             affected_paths=affected,
             preflight=preflight,
-            _cfg=copy.deepcopy(live_cfg),
+            _cfg=live_cfg,
         )
         verify_admitted_operation_unchanged(op)
         _writer_tls.bound_operation = op

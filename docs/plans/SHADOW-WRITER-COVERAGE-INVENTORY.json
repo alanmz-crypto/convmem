@@ -4,7 +4,7 @@
   "open_chroma_for_write_production_call_sites": [],
   "chroma_write_session_production_call_sites": [],
   "production_chroma_write_session_call_sites": [
-    "convmem.py:1777",
+    "convmem.py:1779",
     "convmem.py:421",
     "convmem.py:525",
     "convmem.py:715",

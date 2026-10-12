@@ -41,7 +41,6 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from contextlib import contextmanager
 
 import typer
 
@@ -104,60 +103,6 @@ def _guard_write() -> None:
     except RuntimeError as exc:
         render_error(str(exc))
         raise typer.Exit(2) from exc
-
-
-def _governed_affected_paths(cfg) -> list:
-    """Approval/recovery durable outputs beyond the Chroma session's own set."""
-    from conflict_events import event_path, lock_path
-    from hash_schema_gate import deploy_path, migration_report_path
-    from propose_decision import approved_path, queue_path
-
-    return [
-        event_path(cfg),
-        lock_path(cfg),
-        queue_path(cfg),
-        approved_path(cfg),
-        deploy_path(cfg),
-        migration_report_path(cfg),
-    ]
-
-
-@contextmanager
-def _admitted_operation(entrypoint: str, *, governed: bool = False, expected_cfg=None):
-    """Bound Restic preflight for a gated write; exit nonzero on refusal.
-
-    ``expected_cfg`` is a config read before admission (e.g. for a preview);
-    its Chroma target must match the admitted one. Refusals raised after
-    admission propagate to the caller's own failure handling. A refusal before
-    admission exits with SystemExit so broad ``except Exception`` handlers in
-    callers cannot turn it into a deferred-recovery message.
-    """
-    from chroma_write_store import admitted_write_operation
-    from restic_gate import OperationAdmissionRefused, report_refusal
-    from restic_snapshot import EXIT_WRONG_PATH
-
-    admitted = False
-    try:
-        with admitted_write_operation(
-            entrypoint=entrypoint,
-            extra_affected_paths=_governed_affected_paths if governed else None,
-        ) as op:
-            if expected_cfg is not None:
-                seen = Path(expected_cfg["index"]["chroma_dir"]).expanduser().resolve()
-                if seen != op.chroma_dir:
-                    raise OperationAdmissionRefused(
-                        f"{entrypoint}: target changed from {seen} to "
-                        f"{op.chroma_dir} before admission",
-                        EXIT_WRONG_PATH,
-                        "operation_config_changed",
-                    )
-            admitted = True
-            yield op
-    except OperationAdmissionRefused as exc:
-        if admitted:
-            raise
-        report_refusal(exc)
-        raise SystemExit(exc.exit_code or 1) from exc
 
 
 @app.command()
@@ -469,7 +414,10 @@ def add(
     from query import render_error
     from pathlib import Path
 
-    admission = _admitted_operation("convmem.add") if upsert else nullcontext()
+    admission = (
+        _admitted_operation("convmem.add") if upsert else nullcontext()
+    )
+
     with admission, production_chroma_write_session(entrypoint="convmem.add") as session:
         store = session.store
         cfg = session.live_cfg
@@ -1391,9 +1339,7 @@ def propose_decision_command(
     if isinstance(recover, str) and recover:
         _guard_write()
         try:
-            with _admitted_operation(
-                "propose_decision.recover", governed=True, expected_cfg=cfg
-            ) as op:
+            with _admitted_operation("propose_decision.recover", governed=True, expected_cfg=cfg) as op:
                 action = recover_approval(op.config(), recover)
         except ValueError as e:
             render_error(str(e))
@@ -1447,9 +1393,7 @@ def propose_decision_command(
             if no_index:
                 proposal, ledger = do_approve(cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id)
             else:
-                with _admitted_operation(
-                    "propose_decision.write", governed=True, expected_cfg=cfg
-                ) as op:
+                with _admitted_operation("propose_decision.write", governed=True, expected_cfg=cfg) as op:
                     proposal, ledger, ingest_result = approve_and_ingest(
                         op.config(), approve_id, signer=resolved_signer, ledger_id=ledger_id
                     )
@@ -2115,6 +2059,66 @@ def writer_census_report_command(
         typer.echo(json.dumps({"verdict": "REFUSED", "refusal_code": exc.code}, sort_keys=True))
         raise typer.Exit(2) from exc
     typer.echo(json.dumps({"verdict": "PASS", **report}, sort_keys=True))
+
+
+def _governed_affected_paths(cfg) -> list:
+    """Approval/recovery durable outputs beyond the Chroma session's own set."""
+    from conflict_events import event_path, lock_path
+    from hash_schema_gate import deploy_path, migration_report_path
+    from propose_decision import approved_path, queue_path
+
+    return [
+        event_path(cfg),
+        lock_path(cfg),
+        queue_path(cfg),
+        approved_path(cfg),
+        deploy_path(cfg),
+        migration_report_path(cfg),
+    ]
+
+
+def _admission_steps(entrypoint: str, governed: bool, expected_cfg):
+    """Generator body of ``_admitted_operation``.
+
+    ``expected_cfg`` is a config read before admission (e.g. for a preview);
+    its Chroma target must match the admitted one. Refusals raised after
+    admission propagate to the caller's own failure handling. A refusal before
+    admission exits with SystemExit so broad ``except Exception`` handlers in
+    callers cannot turn it into a deferred-recovery message.
+    """
+    from chroma_write_store import admitted_write_operation
+    from restic_gate import OperationAdmissionRefused, report_refusal
+    from restic_snapshot import EXIT_WRONG_PATH
+
+    admitted = False
+    try:
+        with admitted_write_operation(
+            entrypoint=entrypoint,
+            extra_affected_paths=_governed_affected_paths if governed else None,
+        ) as op:
+            if expected_cfg is not None:
+                seen = Path(expected_cfg["index"]["chroma_dir"]).expanduser().resolve()
+                if seen != op.chroma_dir:
+                    raise OperationAdmissionRefused(
+                        f"{entrypoint}: target changed from {seen} to "
+                        f"{op.chroma_dir} before admission",
+                        EXIT_WRONG_PATH,
+                        "operation_config_changed",
+                    )
+            admitted = True
+            yield op
+    except OperationAdmissionRefused as exc:
+        if admitted:
+            raise
+        report_refusal(exc)
+        raise SystemExit(exc.exit_code or 1) from exc
+
+
+def _admitted_operation(entrypoint: str, *, governed: bool = False, expected_cfg=None):
+    """Bound Restic preflight for a gated write; exit nonzero on refusal."""
+    from contextlib import contextmanager
+
+    return contextmanager(_admission_steps)(entrypoint, governed, expected_cfg)
 
 
 def main():
