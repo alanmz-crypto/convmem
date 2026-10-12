@@ -88,3 +88,40 @@ disabled.
 **Next:** a hermetic diagnosis of the idle-loop growth: compare `a92a74e`
 with `8a7cdab` against a scratch config and scratch roots, with no provider
 access. A Stage 2 restart needs the fix and a new Ryan grant.
+
+## Hermetic diagnosis, round 1 (Claude, 2026-10-12, no grant needed)
+
+**Harness.** The watcher ran from a scratch checkout under `env -i` (no
+provider keys), with `HOME` set to a scratch dir, so every `~` path
+resolved inside scratch. Each run had a fresh data root, a scratch config
+and a 90 s debounce, and nothing was indexed (0 spawns in every run). RSS
+was sampled every 5 s.
+
+| Run (runtime `8a7cdab`, incremental on) | What it reproduces | RSS |
+|---|---|---|
+| A 54 MiB pre-activation rollout appended every 0.28 s | The busiest live source (≈ 3.6 events/s) | 95 MB flat for 3 min |
+| `kiro-cli` churn | Inserts into `data.sqlite3` with journal events, plus `.refresh.lock`, `publish.cursor`, `run-receipts/*.json` and heartbeat writes | 95 MB flat for 3 min |
+| The invalid repository-knowledge manifest, polled every 30 s | The same `manifest_invalid: 63 unclassified` failure as live | 95 MB flat for 4 min (8 polls) |
+
+**Also established:**
+
+- **Startup was fast.** It finished in 3 s (06:57:25 → :28), so the growth
+  and almost all of the 4 min 19 s of CPU came from the idle loop.
+- **The per-event code didn't change.** Between `a92a74e` and `8a7cdab`,
+  the drain, `is_watchable` and `scheduler` code is the same. The circuit
+  breaker moved to its own module, and #308 only passes `processed_log`.
+- **What the live roots produce** (read-only watchdog probe, 60 s): 782
+  events across 17 paths. Most are `opened` and `closed_no_write`. The two
+  busiest paths are both **pre-activation Codex rollouts in active use**:
+  `2026-10-10T23-16-55-…` and `2026-10-11T21-30-12-…`, at 213 and 283
+  events/min.
+
+**Conclusion so far:** the leak depends on the real environment and didn't
+reproduce on synthetic data. Next would be a production-faithful run that
+indexes nothing: real watch roots (read-only), a scratch data root, an
+effectively infinite debounce (no spawns), no provider keys, and
+`tracemalloc` snapshots, comparing `a92a74e` with `8a7cdab`. Because it
+reads live source trees, it waits for Ryan's go.
+
+**Burn note:** the two active pre-activation Codex sessions above would
+each get a full legacy re-index once the watcher runs and they go quiet.
