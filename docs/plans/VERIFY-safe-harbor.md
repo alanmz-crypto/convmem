@@ -1,6 +1,6 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 F1/F2 CORRECTION DELTA PASS, V2 ACCEPTANCE PENDING.** Cursor runtime/tests `cdebf64` pass Codex's bounded delta at candidate `721fd17` (90%); 85 distinct isolated cases and the lint regression gate pass. PR #389 remains draft and conflicts with main. Fresh integrated CI, final-tip external-review disposition and Ryan acceptance remain pending. The accepted event-only success exclusion remains; V3–V6 are NOT RUN.
+> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED WITH PINNED MAIN; V2 ACCEPTANCE PENDING.** Merge commit `551b16c13b66c8e3133402bdf6c0370d3efd35a5` (parents grant `181dfd18` + main `8a7cdab`) preserves Safe Harbor runtime `cdebf64` and passes 85 affected isolated cases at pre-merge tree fingerprint `20e4850b…`. PR #389 is draft and mergeable with main at handoff; GitHub CI on the docs successor is point-in-time only. Final-tip external-review disposition and Ryan acceptance remain pending. The accepted event-only success exclusion remains; V3–V6 are NOT RUN.
 
 ```text
 Planning Status
@@ -602,7 +602,33 @@ Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915
 
 **Failed/diagnostic runs retained:** earlier non-allowlisted collection runs are not accepted isolation evidence, including the failed factory case whose pipeline obscured the exit. Intermediate isolated runs failed inventory/lint due to stale generated identity, missing lint-gate arguments, new lint warnings, and the unchanged constructor moving from line 699 to 697 after unused-import cleanup. The broader 84-pass/1-fail diagnostic also encountered that inventory coordinate mismatch while source was still changing; it is not the final proof. The final qualified 42+43 batches above follow the coordinate correction/regeneration and unchanged-source check. No production probe was used to investigate those development runs.
 
-**Next boundary:** PR #389 is still draft and CONFLICTING. Read-only three-way preview against fetched main `8a7cdab16420893fe26a2648d1d03f2b84d8589d` identifies the generated R2b inventory as the conflict; it does not qualify an integrated tree. Main integration/regeneration and affected evidence require Ryan's separate bounded branch-update grant, then fresh CI and final-tip review/disposition. No paid reviewer, trigger/comment, main integration, merge, deployment, T3–T5 or production operation was performed. The event-only completion-success exclusion remains accepted; its proof belongs to T4.
+**Next boundary (superseded for integration):** the pre-integration preview at grant tip identified only the generated R2b inventory as conflicting with main `8a7cdab`; the bounded integration grant below closed that gap.
+
+### T2 branch integration with pinned main — captured isolated evidence (pre-merge tree)
+
+**[Arc Safe Harbor] Scope / subject:** bounded integration from grant parent `181dfd18a2c0dc50745d74b45cc12fa37e916a82` with pinned main `8a7cdab16420893fe26a2648d1d03f2b84d8589d`, evidenced on the pending-merge tree before merge commit `551b16c13b66c8e3133402bdf6c0370d3efd35a5`. **Isolated batches PASS** (inventory regen exit 0, pytest exit 0, lint regression gate exit 0). This is not independent external review, not overall V2 acceptance, and does not transfer earlier review PASS to the integrated tip.
+
+**Coordinator identity (static):** of 31 files changed on one parent only, Codex confirmed 19 task-only and 12 main-only paths are byte-identical to their respective pinned parents; `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` is the sole file differing on both sides. Main's merged `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json` update is retained (not byte-identical to the pre-integration task parent). No new route or identity policy was introduced.
+
+**Non-qualified development run (not accepted evidence):** an early inventory regeneration used a login shell with inherited ambient environment (`/tmp/safe-harbor-t2-integration-20261012T234506Z`); Ryan interrupted it before treating it as evidence.
+
+**Qualified evidence root:** `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z/` (`summary.json`, `inventory_regen.json`/`.log`, `affected_pytest.json`/`.log`, `pylint-raw.json`, `lint_gate.json`/`.log`). Coordinator: Codex, uid 1000, clean allowlist before every project import/subprocess via corrected `/tmp/safe_harbor_t2_integration_collect.py` (temporary runner only; not tracked).
+
+**Inventory (regenerated, idempotent):** `code_revision` `46801f24cfc626bef5403b386ab45a2ce1733cf6`, `inventory_digest` `6bee348681128b78ce544dcbd7025db94fa12c92d8329e18bc64a913f67eaff7`, file sha256 `b80587a9fc6d5d173ba6fb93d73953dfc2dd11b34354d25c01b4415e5406eaab`; `route_sink_evidence_errors` and `missing_categories` empty before and after regen.
+
+**Source fingerprint (sealed pre-merge bytes):** `20e4850be3c8fda4cd69cbd4deab721b66024120655961b9ec207483948ea825` before and after (`source_stable: true`). Safe Harbor implementation bytes remain at reviewed runtime `cdebf64b487ffa27d61955df9739204829864fe0` on the task side of the merge.
+
+**Affected pytest (85 cases, one combined selection):** exit 0, `85 passed in 391.54s`. Full argv in `summary.json` / `affected_pytest.json` — entire `tests/test_safe_harbor_t2.py`, `tests/test_write_gate_effect.py`, `tests/test_record_review_cli.py`, `tests/test_r2b_v2_implementation_revision.py`, four T1 alias/competing-location nodes, two native stale-client nodes; `-q --tb=line`.
+
+**Lint:** full pylint JSON exit **30** (not a clean lint result); `scripts/pylint_regression_gate.py ci` exit **0** against pinned main baseline `8a7cdab` with `--pylint-status 30`.
+
+**Versions:** Python 3.13.12, pytest 9.1.1, numpy 2.4.4, Chroma 1.5.9, Restic 0.19.0 (see `summary.json`).
+
+**Merge commit (integration source SHA):** `551b16c13b66c8e3133402bdf6c0370d3efd35a5`, parents `181dfd18a2c0dc50745d74b45cc12fa37e916a82` and `8a7cdab16420893fe26a2648d1d03f2b84d8589d`. Pushed to `fix/2026-10-12-safe-harbor-t2`.
+
+**CI routing:** checks publish on [draft PR #389](https://github.com/alanmz-crypto/convmem/pull/389) for its current head; status recorded in STATUS/LATEST at docs handoff is a point-in-time observation only — GitHub check runs are the mutable authority. Codex monitors remaining CI and performs the bounded integration delta without moving the sealed tip solely to transcribe live status.
+
+**Next boundary:** final-tip external-review disposition, Ryan V2 acceptance/PR merge, deployment and T3–T5 remain ungranted. Event-only completion-success exclusion remains accepted; proof belongs to T4.
 
 ### Historical prepared T2 draft PR text — now opened as #389
 
@@ -682,8 +708,10 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Cursor, cloud VM uid 1000 | target-binding `a18df48025cac77de8bda2db5a761f4744a9a963` | pytest selections above | PASS, pytest exit 0, `5` + `10` cases | Target-binding correction section |
 | 2026-10-12 | Cursor, uid 1000, `/tmp/safe_harbor_t2_collect.py` | F1/F2 `cdebf64b487ffa27d61955df9739204829864fe0` | inventory + 9 target-binding + 42 regression + lint gate | all batch exits **0** | F1/F2 correction section |
 | 2026-10-12 | Cursor, isolated generator env | same | `write_v2_inventory_file()` + `test_r2b_v2_implementation_revision` | `dc714d0a…`, digest `5cbc5a99…`; verifier `[]` | Target-binding correction section |
+| 2026-10-12 | Codex coordinator, uid 1000, `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z` | pre-merge integrated tree; runtime `cdebf64`; merge `551b16c` | inventory regen + 85-case combined pytest + pylint raw 30 + gate vs `8a7cdab` | inventory **0**, pytest **0** (`85 passed in 391.54s`), gate **0**; fingerprint `20e4850b…` stable | T2 branch integration section |
+| 2026-10-12 | — | early dev inventory attempt | login-shell regen `/tmp/safe-harbor-t2-integration-20261012T234506Z` | **not accepted** — inherited ambient env | T2 branch integration section |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 remains closed historically; F1/F2 correction at `cdebf64` passes Codex's bounded delta at `721fd17` with 85 distinct isolated cases. Main integration/fresh CI, overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 remains closed historically; F1/F2 correction at `cdebf64` passes Codex's bounded delta at `721fd17` with 85 distinct isolated cases; pinned-main integration at merge `551b16c` passes the same 85-case isolated selection on sealed pre-merge bytes. Fresh GitHub CI on the integrated/docs tip, overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
 
 ## Merge reading
 

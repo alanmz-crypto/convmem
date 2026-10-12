@@ -9,13 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — bounded T2 integration authorized (2026-10-12):**
-  Ryan granted integration of pinned main, generated-inventory regeneration,
-  affected isolated evidence and fresh CI on draft #389. **Cursor:** execute
-  the [bounded handoff](../plans/EXECUTION-safe-harbor.md#t2-branch-integration--owner-authorized).
-  **Codex:** coordinate integration delta and fresh CI; [STATUS](../plans/STATUS-safe-harbor.md)
-  carries current state. PR stays draft; no paid reviewer, PR merge,
-  deployment or T3–T5 grant. No manual session indexing today.
+- **Arc Safe Harbor — T2 pinned-main integration delivered (2026-10-12):**
+  Merge `551b16c13b66c8e3133402bdf6c0370d3efd35a5` (parents `181dfd18` +
+  main `8a7cdab`) on `fix/2026-10-12-safe-harbor-t2`; runtime `cdebf64`
+  unchanged. Isolated evidence PASS at
+  `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z` (85 cases, lint
+  gate 0). **Codex:** bounded integration delta and monitor GitHub CI on
+  [draft #389](https://github.com/alanmz-crypto/convmem/pull/389) — check
+  runs are authoritative; STATUS/VERIFY record point-in-time handoff only.
+  [STATUS](../plans/STATUS-safe-harbor.md) · [VERIFY](../plans/VERIFY-safe-harbor.md).
+  PR stays draft; no paid reviewer, PR merge, deployment or T3–T5 grant.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

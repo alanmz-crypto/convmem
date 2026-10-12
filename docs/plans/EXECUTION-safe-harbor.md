@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1 is merged and its grants in section 8 are complete. T2 is **GRANTED / NOT STARTED** under section 9; T3–T5 remain **NOT STARTED / NOT GRANTED**. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; the owner grants and bounded handoffs are recorded separately.
+T1 is merged and its grants in section 8 are complete. T2 branch integration under section 9 is **DELIVERED** at merge `551b16c13b66c8e3133402bdf6c0370d3efd35a5`; Codex bounded delta and fresh CI on draft #389 are next. T3–T5 remain **NOT STARTED / NOT GRANTED**. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; the owner grants and bounded handoffs are recorded separately.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -485,7 +485,7 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 ### T2 branch integration — owner authorized
 
-**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12; Codex coordinator; Cursor implementation lane. **State: GRANTED / NOT STARTED.** Ryan explicitly authorized: “Authorize the bounded T2 branch integration with current main, generated-inventory regeneration, affected isolated evidence and fresh CI. Keep PR #389 draft. Merge, deployment and T3–T5 remain unauthorized.” “Merge” in the exclusion means merging the PR into main; the named branch integration below is expressly granted.
+**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12; Codex coordinator; Cursor implementation lane. **State: DELIVERED — merge `551b16c`, isolated evidence recorded; Codex delta/CI next.** Ryan explicitly authorized: “Authorize the bounded T2 branch integration with current main, generated-inventory regeneration, affected isolated evidence and fresh CI. Keep PR #389 draft. Merge, deployment and T3–T5 remain unauthorized.” “Merge” in the exclusion means merging the PR into main; the named branch integration below is expressly granted.
 
 **Pinned inputs:** clean task/remote tip `c6e881b6742746f7d5f7469b36b43bb3ea4d7b27`; current main fetched and remotely confirmed at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`. Resume at the pushed documentation-only grant successor of `c6e881b`, in existing worktree `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`, branch `fix/2026-10-12-safe-harbor-t2`, draft PR #389. Preserve the reviewed F1/F2 runtime `cdebf64` and its evidence. Do not switch the shared checkout or runtime-main.
 
@@ -501,4 +501,4 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 ## TL;DR
 
-[Arc Safe Harbor] Ryan granted the bounded T2 branch integration with pinned main `8a7cdab`, inventory regeneration and affected isolated evidence/fresh CI. Cursor implements in the existing task worktree; Codex coordinates the final delta. PR #389 stays draft; external-review disposition, acceptance, merge, deployment and T3–T5 remain pending.
+[Arc Safe Harbor] Cursor delivered pinned-main integration at merge `551b16c` with qualified isolated evidence; Codex coordinates the bounded delta and GitHub CI on draft #389. External-review disposition, acceptance, merge, deployment and T3–T5 remain pending.
