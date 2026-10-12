@@ -85,14 +85,21 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. The sealed r3 bootstrap grant stopped before bootstrap or provider transport after unrelated Cursor indexing changed the bound inventory. Ryan authorized preparation of a new backup-only cycle. Sol captured current inventory `85566aed…e6a` under the writer lease. Kiro PASSed first r4 tip `a9c75f1`; Copilot FAILed the same tip on executable, mounted-filesystem, and timezone binding. Sol-High accepted those blockers. Kiro and Copilot both PASSed corrected exact revision `5e9d3d4`; no backup has run. | Ryan's exact one-shot backup execution-grant decision for reviewed revision `5e9d3d4` |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. The sealed r3 bootstrap grant stopped before bootstrap or provider transport after unrelated Cursor indexing changed the bound inventory. Kiro and Copilot PASSed corrected r4 backup authority `5e9d3d4`. Ryan's exact r4 grant was consumed when its runner started, then safely refused before mount or backup because writer census found PID `1089804`. The process exited before attribution. No snapshot or offsite copy was created; timers restored exactly, watcher stayed inactive/disabled, and the device stayed unmounted. | Ryan decides whether to authorize a narrow writer-census evidence correction and a new dated backup-only authority cycle |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Present Ryan with one exact copyable grant for corrected r4 revision
-`5e9d3d4571161269a9a0b42f0394fa419635e13d`, which Kiro and Copilot both
-PASSed. Do not execute the runner without that separate grant.
+Preserve the r4 safe-refusal evidence. Its result marker is
+`/tmp/convmem-kiro-replacement-backup-result-20261011-r4.json`, SHA-256
+`62fb8f9d08a301b0a68c10036671e70cdd38247998faa6af854b03f0dcf96546`.
+The grant is consumed and must not be retried. PID `1089804` exited before it
+could be inspected and has no journal or process-accounting record; do not
+speculate about its identity.
+
+Ryan decides whether to authorize a narrow correction that records the
+matched command/census reason before refusal and, separately, preparation of a
+new dated backup-only authority cycle.
 
 The r3 bootstrap proposal at
 `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.json`, SHA-256
@@ -103,19 +110,20 @@ config/runtime, or restart the watcher.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Obtain same-revision Kiro and Copilot PASS on the r4 backup-only authority.
-2. Ryan decides whether to grant that exact one-shot runner.
-3. If granted, create one new local complete-data snapshot and one exact
-   offsite copy while the writer gate is held; return all qualification
-   evidence. Do not prepare a successor proposal during the operation.
-4. Under separate authorization, prepare and review a new non-executed
+1. Ryan decides whether to authorize a narrow writer-census evidence
+   correction and a new dated backup-only authority cycle. Do not reuse r4.
+2. If separately authorized and reviewed, create one new local complete-data
+   snapshot and one exact offsite copy while the writer gate is held; return
+   all qualification evidence. Do not prepare a successor proposal during the
+   operation.
+3. Under separate authorization, prepare and review a new non-executed
    successor bootstrap proposal bound to the returned pair and inventory.
-5. Ryan separately grants any exact bootstrap execution. Immediately before
+4. Ryan separately grants any exact bootstrap execution. Immediately before
    transport, revalidate backups, source/runtime/config/binding/dimension, and
    maintain the no-other-writer window through final evidence capture.
-6. Execute only the exact source/runtime/config/budget operation and return
+5. Execute only the exact source/runtime/config/budget operation and return
    measured call, coverage, lineage, and isolation evidence.
-7. Obtain a later separate Ryan grant before runtime/config promotion or
+6. Obtain a later separate Ryan grant before runtime/config promotion or
    watcher activation; measure calls and coverage by source class.
 
 ## 7. Hard Stops
@@ -258,6 +266,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Ryan / Sol | Ryan authorized preparation of a new backup-only authority cycle; Sol captured stable inventory `85566aed…e6a` under the writer lease and prepared an r4 one-shot runner for same-revision Kiro/Copilot review, without executing backups |
 | 2026-10-11 | Kiro / Copilot / Sol-High / Sol | Kiro PASSed and Copilot FAILed first r4 tip `a9c75f1`; Sol-High accepted executable, mounted-filesystem, and Chicago-date blockers, and Sol corrected those bindings for same-revision re-review |
 | 2026-10-11 | Kiro / Copilot / Sol | Both lanes PASSed corrected r4 revision `5e9d3d4` with no blockers; Ryan's exact one-shot backup grant decision is next, and no backup has run |
+| 2026-10-11 | Ryan / Sol | Ryan's exact r4 grant was consumed; the runner safely refused before mount or backup on active writer PID `1089804`, which exited before attribution. Result `62fb8f9d…f96546` records exact cleanup with no snapshots, restored timers, inactive/disabled watcher, and unmounted device |
 
 ## TL;DR
 
@@ -268,9 +277,9 @@ Keep this document a current-state snapshot, not a session diary.
 - Ryan's r3 execution grant stopped safely before bootstrap or paid calls. The
   unconsumed proposal is stale after unrelated Cursor indexing and must not be
   reused.
-- Ryan authorized preparation of a new backup-only authority cycle. Sol-High
-  accepted Copilot's first-r4 FAIL over Kiro's PASS; the corrected packet binds
-  current inventory `85566aed…e6a`, Restic executable/profile, mounted
-  repository filesystem, and Chicago date. Kiro and Copilot both PASSed exact
-  revision `5e9d3d4`; no backup has run. Ryan's exact one-shot grant decision
-  is next. Config promotion and watcher restart remain separately gated.
+- Kiro and Copilot PASSed corrected r4 authority `5e9d3d4`. Ryan's exact grant
+  was consumed, but the runner safely refused before mount or backup on an
+  active writer PID that exited before attribution. No snapshots exist from
+  r4; timers restored, watcher stayed inactive/disabled, and the device stayed
+  unmounted. A new attempt requires a new dated authority. Config promotion
+  and watcher restart remain separately gated.
