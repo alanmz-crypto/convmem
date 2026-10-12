@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. PLAN/B-E4.1 ACCEPTED at `dca13a5`; T1 MERGED via PR #387 (`05aa2c8`).** Final candidate `0c7b4e2` passed CI and Copilot integration review; Ryan accepted its exact-tip BugBot outage exception and performed the squash merge. Section 8 is the completed T1 grant record. T2–T5 and live operations require separate grants; approved contracts and ownership are unchanged.
+> **Arc: Safe Harbor. T1 MERGED; T2 GRANTED to Cursor.** Ryan accepted the plan/B-E4.1 at `dca13a5`, including all five consumer outcomes. T1 landed via PR #387 (`05aa2c8`). Section 9 records the separate T2 implementation/isolated-evidence grant and workspace; implementation has not started. Ownership and reviewed contracts are unchanged. T3–T5 and live operations remain ungranted.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        T1 delivery complete; T2 grant pending
+Phase:        T2 Execute handoff ready; implementation not started
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Codex authors; Kiro reviews; Cursor implements after a separate grant
-Authority:    Plan/B-E4.1 accepted; T1 grant completed (section 8); no later task grant
+Lanes:        Codex prepares the handoff; Cursor implements granted T2
+Authority:    Plan/B-E4.1 accepted; T1 completed; Ryan granted isolated T2 (section 9)
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1 has an unaccepted candidate and a bounded correction grant in section 8; T2–T5 are **NOT STARTED / NOT GRANTED**. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; section 8 records the subsequent owner-approved T1 scope correction explicitly.
+T1 is merged and its grants in section 8 are complete. T2 is **GRANTED / NOT STARTED** under section 9; T3–T5 remain **NOT STARTED / NOT GRANTED**. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; the owner grants and bounded handoffs are recorded separately.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -212,7 +212,7 @@ These are operational prerequisites to be completed later, not additional implem
 
 Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It retains historical V1 results and records final T1 correction/integration evidence, CI, review, owner acceptance and merge; V2–V6 remain unrun. Evidence must identify its actual implementation revision.
 
-Next: Ryan decides the separate T2 implementation grant; Codex then prepares its bounded Cursor handoff. Section 8 preserves the completed T1 grants. The first plan review and A1/A2 delta are complete; O-E4.e is satisfied plan-side. T1's review and exact-tip outage acceptance are recorded in VERIFY; they grant no live operations.
+Next: Cursor implements T2 under section 9 and records isolated V2 evidence. The plan reviews and B-E4.1 owner disposition are already complete; do not request them again. Section 8 preserves completed T1 grants and VERIFY preserves its exact-tip outage acceptance. That acceptance does not waive T2's own final-tip review gate or authorize live operations.
 
 ### Kiro execution review and advisory disposition
 
@@ -312,7 +312,7 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 - State: **MERGED**, PR #387 at `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Final candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66` passed fresh CI and Copilot's integration delta (82%, static); Ryan accepted the exact-tip BugBot outage exception. The squash tree is identical to the candidate.
 - Historical branch/worktree: `fix/2026-10-11-safe-harbor-t1`, `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`. Original grant base: `b4c0e73`; T1 runtime corrections: `496792f`; test corrections: `8b41044`; main `5550def` integration: `c624e2f`. These are provenance, not a resume instruction.
-- The original grant and bounded extensions below are complete. Do not resume them to start T2, switch the shared checkout, alter runtime-main, publish PR comments or deploy. The next task needs Ryan's separate grant.
+- The original grant and bounded extensions below are complete. Do not resume them to start T2, switch the shared checkout, alter runtime-main, publish PR comments or deploy. The separate T2 grant is now recorded in section 9; this historical T1 grant is not its authority.
 
 ### Build only the accepted T1 deliverable
 
@@ -385,6 +385,52 @@ Complete the authorized implementation/evidence, commit and push, then return th
 
 Stop after the bounded T1 handoff. No automatic transition to T2, broader Verify, deployment or live rollout. T1 alone cannot be deployed while old writers can overwrite its marker or clear incidents. A material scope/authority mismatch or unexpected production access stops the affected work and returns the specific evidence; do not repair production or silently amend this plan.
 
+## 9. Cursor T2 Execute handoff — owner granted
+
+**Date / author / recipient:** 2026-10-12; Codex planning lane; Cursor implementation lane. This is the next bounded task in the accepted plan, not a revised architecture.
+
+**Authority:** Ryan replied **“granted”** to Codex's next step, **“Ryan's separate T2 grant, then Codex prepares Cursor's handoff.”** This grants **T2 only: implementation and isolated V2 evidence**. Ryan's earlier owner approval of B-E4.1 exactly at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, already resolves the T2 contract prerequisite. No ownership transfer, T3–T5 implementation, PR creation/comment/review trigger, merge, deployment or live operation is granted by this handoff. Do not re-request approval merely to begin the named T2 work.
+
+### Resume state
+
+- State: **NOT_STARTED / GRANTED**. Codex has prepared only this handoff and current-state records; V2 is NOT RUN.
+- Branch: `fix/2026-10-12-safe-harbor-t2`.
+- Worktree: `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`.
+- Code baseline: T1 squash `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`, also remote `main` when prepared. The immediate branch base `1e55af03d38c77ba5d1d405933eb2588cf597529` adds only T1 closeout documentation. The next documentation commit records this grant and is the start SHA supplied in Codex's dispatch; confirm that parentage and clean state before editing.
+- The closeout docs travel with this branch; merging the separate docs branch first is not a prerequisite. Do not switch the shared checkout, reuse the completed T1 branch, or alter runtime-main. No silent rebase/merge to a later main: report a concrete integration dependency first.
+- Push every commit immediately with `git push -u origin fix/2026-10-12-safe-harbor-t2:refs/heads/fix/2026-10-12-safe-harbor-t2`. No force-push or main push.
+
+### Read and implement
+
+Read this brief, STATUS, section 3/T2, VERIFY V2, the v2 STATUS/interface contract, `docs/planning/EXECUTE-TASK.md`, and the Ousterhout builder digest. State the arc, Goal / role / system / next action and Cursor Execute phase. The task is to make the existing preflight bind to the admitted operation, and make future-time eligibility fail honestly across its shared consumers.
+
+**Source scope:** T2's named files: `restic_gate.py`, `restic_snapshot.py`, `backup_workflows.py`, admission portions of `chroma_write_store.py` and `convmem.py`, narrowly required lane classification in `runtime_guard.py`; focused existing tests or a self-isolating `tests/test_safe_harbor_t2.py`; the three named policy docs and narrowly relevant v2 interface documentation; existing Safe Harbor evidence/status/routing. If authorized source changes alter the committed R2b implementation identity, regenerate only its derived inventory through the existing generator under isolated configuration. Do not hand-edit hashes, change the identity algorithm/route policy or add a new writer route. A further production-file dependency must be returned with its concrete call chain before editing outside this scope.
+
+Keep the reviewed section 3/T2 contract authoritative rather than inventing a second policy. In particular:
+
+1. Bind one resolved operation configuration under the shared writer lease to one immutable `BackupContext` before opening Chroma or logically mutating approval state. Include the actual approved-row, event and export paths; canonical Chroma equality alone is insufficient. Refuse changed inputs, mismatched profile/target or an output escaping the complete protected root. Do not treat a shared lease as protection against arbitrary same-user edits.
+2. Reject the production skip even under lab-looking cwd/config/env or confirm variables. Test/lab allowance requires explicit context and canonical isolation; unknown classification refuses. Keep the existing index/plain-add exemption and `--no-index`/forget/refine scope unchanged.
+3. Implement the approved future-time rule inside the existing resolver, using code 25 plus a reason; no caller-only alternative rule. One evaluation instant per resolution, fresh post-backup resolution and day-boundary handling are required. Future errors cannot become a backup, successful dry-run or fallback to an older/legacy source.
+4. Cover all five outcomes exactly as section 3 specifies: live ensure/write refusal; probe eligibility unchecked (retain its existing reachability semantics); local health FAIL; offsite health WARN; offsite copy refusal before copy. Preserve existing numeric errors, exact-path/profile/tag rules, destination lineage and legacy/v2/v3 consumer compatibility; activate no profile and alter no restore-state classification.
+5. Wire the existing gate for the named CLI consumers, including approval recovery before logical mutation and event-only completion. Preserve binding through the downstream helpers. Do not add a parallel recovery gate, or silently exempt a recovery branch. Only a demonstrated nonmutating already-complete return can omit it. Update ROADMAP/RECOVER/role-mapping consistently.
+
+**T2/T4 seam:** T2 supplies the bound preflight and admission integration above; T4 remains responsible for unknown/absent/tombstone classification, serialized state recheck, completion uncertainty, export completion and retry. At the pinned baseline, `recover_approval()` is in `propose_decision.py` and its ingestion helper reopens the production store; inspect this existing chain rather than declaring CLI wiring sufficient. Do not rewrite T4's recovery state machine under T2. If T2's configuration/caller binding cannot be achieved within the listed admission surfaces, return the smallest demonstrated file/interface dependency to Codex/Ryan; do not weaken the binding or claim the direct-caller/T4 proof complete. T4's remaining evidence must stay explicitly outstanding.
+
+### Isolated evidence, not production experiments
+
+- No production CLI/MCP/doctor/session-start ritual or session indexing. No real corpus, config, password, Restic repo/cache, external drive, service, provider or installed-runtime access. This task restriction overrides the general session-start/Track A instructions. Fixtures may use a fake Restic boundary, or a local scratch Restic repository/password/cache confined to the test's temporary root; never inherit a live destination or credential.
+- Inspect import-time path constants and subprocess environments before running any project code. Establish temporary HOME/XDG/CONVMEM_CONFIG/CONVMEM_ROOT and Restic settings before imports; scrub provider credentials. Child processes inherit the isolation. Tests must isolate themselves under ordinary pytest without requiring a pre-set escape flag or skipping when it is absent. Do not copy T1's former shared `monkeypatch.undo()` defect.
+- V2 must exercise actual named caller effects: failed admission leaves fixture Chroma logical content, approved rows, events and exports unchanged; successful controls reach the intended fixture mutation. For the no-op-gate negative control, disable the real preflight on the same workflow and demonstrate that a forbidden mutation causes the unchanged-state assertion to fail. Invocation-only mocks are not that proof.
+- Cover wrong corpus/profile, exported symlink escape, config substitution, prod skip spoofing and allowed isolated exception; same-day future and next-day future; old/missing source; timezone/day rollover and post-backup time refresh; all five consumer severities/reasons and no future-triggered backup/copy/dry-run success. Preserve supported resolver profiles/lineage and unrelated gate exemptions.
+- Start with the relevant Restic/workflow/gate/runtime-guard tests and focused fixture caller coverage; inspect their isolation before running them. Re-run relevant T1 regressions if admission changes can affect it. Use ordinary-user permissions for chmod-based cases. Do not run the full default local suite unless its isolation is established and separately authorized; do not weaken an unrelated test or change CI to hide a failure.
+- Record commands, interpreter/backend versions, exit codes, positive and intentionally failing controls, code SHA and final evidence SHA in VERIFY V2. Distinguish mocked boundary evidence, scratch Restic evidence and unrun T4 proof. Process restart tests are not power-loss proof; snapshot eligibility is not demonstrated recoverability.
+
+### Delivery and stop
+
+Commit and push the scoped implementation/evidence, leaving the shared checkout and deployed runtime untouched. Update STATUS sections 3–6 to the actual result, VERIFY V2 and the LATEST pointer; retain T1 provenance and leave V3–V6 unrun. Report the branch, clean/push state, `git log origin/main..HEAD --oneline`, runtime/final SHA, residuals, and a copy-ready PR title/body.
+
+The required final-tip external review is separate from implementation evidence. Ryan's Copilot/BugBot outage exception covered T1 candidate `0c7b4e2` only; it does not automatically cover T2. No PR creation, trigger/comment or reviewer invocation is granted here. Hand off the concrete candidate for that step; do not label it merge-ready before the required review/acceptance. Stop after T2—no T3 backend experiment, repair/release work, T4 state-machine change or live action.
+
 ## TL;DR
 
-[Arc Safe Harbor] The accepted plan is unchanged. T1 landed through PR #387 (`05aa2c8`) after final-tip CI, Copilot review and Ryan's exact-tip BugBot outage acceptance. Section 8 is a completed grant record. T2–T5 and live operations remain ungranted.
+[Arc Safe Harbor] Ryan granted T2 implementation and isolated V2 evidence to Cursor; the approved plan and five-consumer B-E4.1 contract are unchanged. Section 9 supplies the pinned workspace, scope, tests and stop. T2 is not started; T3–T5, PR/review actions and live operations remain ungranted.

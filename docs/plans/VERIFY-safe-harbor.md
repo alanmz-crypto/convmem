@@ -4,11 +4,11 @@
 
 ```text
 Planning Status
-Phase:        T1 delivery complete; next task grant pending
+Phase:        T1 delivery complete; T2 granted, V2 NOT RUN
 Characters:   Implementer, Test-First Reviewer
 Function:     T1 evidence and acceptance record
 Lanes:        Cursor implemented; Copilot audited; Ryan accepted exception and merged
-Authority:    Completed T1 grants only; T2–T5 and live operations not granted
+Authority:    T1 completed; T2 isolated implementation/evidence granted in execution section 9
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -42,7 +42,7 @@ In scope: execution T1–T5 and their named production entrypoints under isolate
 
 **Plan prerequisites satisfied:** Ryan accepted the plan and explicitly approved v2 B-E4.1 at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, with ownership unchanged. This is approval metadata, not runtime evidence.
 
-**T1 grant satisfied:** Ryan subsequently granted the proposed T1/Cursor isolated implementation and its specified V1 evidence; execution section 8 records the boundary. T2–T5 have no grant.
+**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3–T5 have no grant. The external-review row below describes T1 only; T2's candidate/review does not yet exist and remains required.
 
 Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, services and external drives were not invoked.
 
@@ -229,7 +229,9 @@ Ryan then reported “squash merge done”; GitHub confirmed MERGED with the hea
 
 ## V2 — Target binding and freshness (T2)
 
-**NOT RUN.** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
+**GRANTED, implementation NOT STARTED; evidence NOT RUN.** Cursor's pinned workspace, isolation rules and effect/negative-control requirements are in execution section 9. Final T2 candidate SHA and external-review result: pending; T1's tip-specific outage acceptance does not transfer.
+
+**Required evidence:** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
 
 ## V3 — Preservation and bounded restore (T3)
 
@@ -275,4 +277,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 final candidate `0c7b4e2` passed CI and Copilot's integration review (82%, static). Ryan accepted the exact-tip BugBot outage exception and squash-merged PR #387 as `05aa2c8` with an identical tree. BugBot itself reviewed no SHA. V2–V6 remain NOT RUN; deployment and later implementation remain ungranted.
+[Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation and isolated V2 evidence are granted under execution section 9, but V2 is NOT RUN and has no reviewed candidate. V3–V6, later implementation and live operations remain ungranted.

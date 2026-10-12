@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 GRANT PENDING.** Ryan squash-merged [PR #387](https://github.com/alanmz-crypto/convmem/pull/387) as `05aa2c86e2d01c9a9f5259b1f505833d7f28563d` on 2026-10-12 UTC. Final candidate `0c7b4e2` passed CI and Copilot's integration delta review (82%, static); Ryan explicitly accepted that review as the exact-tip BugBot outage exception. T1 is landed source, not a deployment. T2–T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1 MERGED; T2 GRANTED / NOT STARTED.** T1 landed via PR #387 (`05aa2c8`), with final-tip CI and Ryan's exact-tip Copilot/BugBot outage acceptance recorded in VERIFY. Ryan separately granted T2 implementation and isolated V2 evidence; [execution section 9](EXECUTION-safe-harbor.md#9-cursor-t2-execute-handoff--owner-granted) is Cursor's bounded handoff. T3–T5 and live operations remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -38,7 +38,8 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
-- `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 now records Ryan's subsequent bounded T1 correction verbatim; its narrow store-file scope addition is explicit. T2–T5 are not implemented.
+- `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 preserves the completed T1 grants; section 9 records the separate T2 grant and pinned Cursor handoff. T2–T5 are not implemented.
+- T2 workspace: `fix/2026-10-12-safe-harbor-t2` at `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`, based on merged source `05aa2c8` plus documentation-only closeout `1e55af0` and the handoff commit. Cursor implementation has not started; V2 is NOT RUN. The grant permits no shared-checkout switch or deployment.
 - T1 implementation: **on `main` via PR #387**, squash commit `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Its tree is identical to the reviewed candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. The former implementation branch/worktree is historical; do not resume its completed grant or switch the shared checkout/runtime-main.
 - `VERIFY-safe-harbor.md`: records the original T1 evidence, both test corrections, integration evidence, final-tip CI and Copilot review, Ryan's exact-tip outage acceptance, and the squash-merge mapping. GitHub pytest at the final candidate passed: 2970 passed, 75 skipped, 8 warnings, 252 subtests passed. V2–V6 remain NOT RUN.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
@@ -64,30 +65,31 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T1: MERGED** by Ryan in PR #387 at `05aa2c8`. The final candidate `0c7b4e2` passed fresh CI; the initial full Copilot audit and successive correction/integration reviews cover the delivered candidate. Final integration delta: PASS 82%, static.
 - **External review gate: SATISFIED BY RYAN'S EXACT-TIP OUTAGE ACCEPTANCE** for `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. BugBot reviewed no SHA; this is not a BugBot PASS. Exact owner wording and evidence are in VERIFY V0/final acceptance.
 - **PR #387: MERGED**, 2026-10-12 05:13:16 UTC. No open T1 correction or review action remains from this delivery.
-- T2–T5 implementation and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
+- **T2: GRANTED / NOT STARTED**, Cursor implementation and isolated V2 evidence under execution section 9. B-E4.1 owner approval is already satisfied. T2 needs its own final-tip review/acceptance; T1's outage exception does not transfer.
+- T3–T5 implementation, PR/review actions for T2 and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** T1 delivery and its review gate are complete. Keep the merged state and evidence discoverable. The next implementation task in the accepted plan is T2; prepare a bounded Cursor handoff only after Ryan grants that task. Do not reopen unchanged reviews.
+**Cursor:** Implement T2 in the prepared worktree under execution section 9; inspect import/caller isolation before running tests. Bind the existing preflight to actual operation targets and implement the approved resolver semantics. Record isolated V2 evidence, push and return the candidate. Do not implement T3/T4 or infer a production grant.
 
-**Ryan:** Decide whether to grant T2's isolated implementation/evidence. B-E4.1's five-consumer contract is already approved; a T2 grant would authorize implementation, not production activation. Recovery/loss-window inputs remain open before live rollout.
+**Codex:** The T2 grant/handoff is prepared. Resolve concrete planning/interface dependencies raised by Cursor within the approved contract; do not re-review unchanged T1 or silently broaden the file/authority boundary.
 
-**Cursor:** T1 and its correction/integration grants are complete. Await a separate T2 grant and handoff; do not resume the historical T1 branch as authority for new work.
+**Ryan:** No further permission is needed for Cursor to begin T2's granted scope. PR/review actions, final candidate acceptance and subsequent tasks/live operations remain separate decisions. Recovery/loss-window inputs remain open before live rollout.
 
-**Kiro / Opus / Copilot:** Recorded reviews remain pinned to their subjects. No further review of unchanged T1 is requested. Later artifacts follow their own accepted gates.
+**Kiro / Opus / Copilot:** Existing architecture/plan approvals remain pinned. T2 will need its own implementation-tip review; no new review is dispatched by this handoff.
 
 **Ops:** No live grant from this arc; T1 is not independently deployable.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Ryan decides the separate T2 grant; Codex then supplies the bounded Cursor handoff against a pinned baseline. T2's contract/B-E4.1 approval already exists and is not a new review prerequisite.
-2. Complete T2–T5 only under their task grants, including T3's backend-proof ordering gate, preservation/validated release, approval recovery and integrated evidence. V2–V6 are still NOT RUN.
+1. Cursor implements T2 and collects isolated V2 evidence per execution section 9; report any concrete admission/T4 dependency instead of weakening target binding. Final-tip review/acceptance follows under its own authority.
+2. Complete T3–T5 only under their task grants, including T3's backend-proof ordering gate, preservation/validated release, approval recovery and integrated evidence. V2–V6 remain NOT RUN at handoff.
 3. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
 4. Any deployment or corpus-affecting operation requires its own scope, recovery evidence and Ryan grant. T1 alone is not a release workflow; the standalone detector remains a separate decision.
 
 ## 7. Hard Stops (models cannot cross)
 
-- T1 permits only scoped implementation source and isolated fixtures/evidence in its worktree. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
+- The active T2 grant permits only its scoped implementation source and isolated fixtures/evidence in its worktree. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
 - No restore drills, production experiments, indexing, ledger record or merge from this brief.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration or generalized repair. Read that arc's current STATUS hard stops.
 - No generic HOLD, identity registry, freeze, broad constructor change or automatic cleanup subsystem under this direction.
@@ -117,6 +119,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
+- 2026-10-12 — Codex: recorded Ryan's separate T2 grant and prepared the pinned Cursor handoff/worktree; implementation and V2 not started, T3–T5/live work ungranted.
+
 - 2026-10-12 — Codex: recorded final-tip CI/Copilot evidence, Ryan's exact-tip BugBot outage acceptance and T1 squash merge #387 at `05aa2c8`; T2 grant and all live work remain pending.
 
 - 2026-10-11 — Codex: recorded Copilot delta PASS at `2977c45` and Ryan's bounded main-integration/inventory-refresh grant; fresh CI and final-tip review follow, with no PR merge or live grant.
@@ -145,4 +149,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 is on `main` through PR #387 (`05aa2c8`). Final candidate `0c7b4e2` passed CI and Copilot review, and Ryan accepted the exact-tip BugBot outage exception before merging. T2 is next in the plan but needs its own grant. T1 is not independently deployable; V2–V6 and live operations remain pending.
+[Arc Safe Harbor] T1 is merged. Ryan granted T2 implementation and isolated evidence; Cursor resumes execution section 9 on the prepared T2 branch. V2 is NOT RUN, and T2 needs its own final-tip review/acceptance. T3–T5 and live operations remain ungranted.

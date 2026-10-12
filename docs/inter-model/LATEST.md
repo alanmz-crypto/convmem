@@ -9,12 +9,11 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T1 MERGED; T2 GRANT NEXT (2026-10-12):** Ryan
-  squash-merged [PR #387](https://github.com/alanmz-crypto/convmem/pull/387).
-  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for the
-  exact candidate/merge, final CI/review evidence and accepted outage exception.
-  T1 is not independently deployable. T2–T5 and live operations remain ungranted;
-  no further T1 review or correction is pending from this delivery.
+- **Arc Safe Harbor — T2 GRANTED; CURSOR IMPLEMENTS NEXT (2026-10-12):**
+  T1 is merged. Ryan separately granted T2 implementation and isolated evidence.
+  Start with the [bounded T2 handoff](../plans/EXECUTION-safe-harbor.md#9-cursor-t2-execute-handoff--owner-granted)
+  and [Safe Harbor STATUS](../plans/STATUS-safe-harbor.md) for the prepared worktree,
+  baseline and stop. T2 is not started; no T3–T5, PR/review action or live grant.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
