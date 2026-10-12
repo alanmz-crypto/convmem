@@ -2,8 +2,9 @@
 
 **Arc:** Kiro bootstrap  
 **Prepared:** 2026-10-11 by Sol  
-**State:** r6 proposal only; `NO-GO` until Kiro and Copilot PASS the same
-exact pushed revision and Ryan grants that reviewed revision
+**State:** r6 consumed; `NO-GO`. Kiro and Copilot PASSed exact reviewed
+revision `33f7a9e`, Ryan granted it, and the one-shot runner safely refused on
+an active unrelated index writer before mount or backup
 **Scope:** one new local complete-data Restic snapshot and one exact offsite
 copy; no bootstrap, provider transport, source operation, proposal generation,
 or watcher change
@@ -95,6 +96,19 @@ made under the exclusive writer lease, is the r6 binding:
 `d7208408827927f8c0ee2b24874eb4d3b69f6c469fdaa28bfbaf66b15a3a532b`.
 The unrelated sessions remain a drift risk; the runner will refuse without a
 snapshot if either is indexed again before execution.
+
+Kiro and Copilot PASSed exact r6 revision `33f7a9e`. Ryan granted that
+reviewed packet, and the runner started once. The privacy-safe writer census
+refused before mount or backup on PID `1201589`, classified as the closed
+`convmem_write_command` / `convmem.py` / `index` form, with cwd
+`/home/lauer/.cache/convmem-stage1-5550def`. The process exited before the
+post-run inspection. Result
+`/tmp/convmem-kiro-replacement-backup-result-20261012-r6.json`, SHA-256
+`7efd323bcef1f07efdf6ab095cc28cd926bdcfc9a925f48c1224b1f405f6f191`,
+records null snapshot IDs, exact timer restoration, no cleanup errors,
+inactive/disabled watcher state, and an unmounted offsite device. The r6 grant
+is consumed and must never be retried. No successor authority has been
+prepared.
 
 ## Exact proposed runner
 
@@ -241,6 +255,8 @@ reused. The r4 backup-only grant at revision
 `5e9d3d4571161269a9a0b42f0394fa419635e13d` is also consumed and must never
 be retried. The r5 backup-only grant at revision
 `a3c5a9e40875999dfd2575ea8d4749025f37c277` is also consumed and must never
+be retried. The r6 backup-only grant at revision
+`33f7a9e15daa5f6e5eba515128bf7722f5822ea4` is also consumed and must never
 be retried. The sealed r3 bootstrap proposal at revision
 `9d249d0c36dcf791ebc95e2516f94c5844b2b845` is unconsumed but stale and must
 never be executed or reused.
@@ -257,8 +273,7 @@ authorize that preparation or any bootstrap execution.
 
 ## TL;DR
 
-The r4 and r5 backup grants are consumed. R5 safely refused before backup
-creation on unrelated Claude/Codex indexing, restored all governed state, and
-created no snapshot. R6 binds the latest writer-lease capture and the next
-Chicago date. It remains `NO-GO` pending same-revision Kiro/Copilot PASS and
-Ryan's separate exact execution grant.
+The r4, r5, and r6 backup grants are consumed. R6 safely refused before mount
+or backup on an active unrelated `convmem index` writer, restored all governed
+state, and created no snapshot. No successor authority or bootstrap operation
+is authorized.
