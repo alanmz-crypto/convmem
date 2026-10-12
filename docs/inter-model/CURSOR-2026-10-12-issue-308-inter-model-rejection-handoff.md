@@ -13,9 +13,9 @@ work.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 3 (Copilot FAIL at `74e193f`, item 1) |
+| **State** | `IN_PROGRESS`: corrective 4 (Copilot FAIL at `bbf09d1`, clear path) |
 | **Branch** | `fix/2026-10-12-issue-308-inter-model-rejection` (create from `origin/main`) |
-| **Tip SHA** | `74e193f` (merge base `138e3aa`) |
+| **Tip SHA** | `bbf09d1` (merge base `138e3aa`) |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-308-inter-model-rejection-handoff` |
 | **PR** | not opened |
 | **Ryan GATE** | none for hermetic implementation; Ryan alone merges |
@@ -344,3 +344,55 @@ in its authority manifest. Rerun the Pylint gate with `--base-ref` set to
 the merge base. Push with an explicit refspec. After that, Claude verifies,
 then a targeted Copilot re-check of item 1 and a Kiro delta confirmation run
 on the new tip.
+
+## Verification and reviews of `bbf09d1` (2026-10-12) — corrective 4
+
+**Claude's checks:**
+- **The new tests prove the fix.** With a one-line shim for the new test
+  helper, the tip's #308 test file run against the `74e193f` code gives "3
+  failed, 8 passed". The failures are the three `test_corrupt_sidecar_fails_open`
+  cases.
+- **Pylint gate PASS:** base `138e3aa`, "459 findings, 240 fingerprints".
+- **R2B:** identity-only (`e196ccd4` to `d5f5e2d0`). The shadow inventory is
+  unchanged.
+- **`watch.py`:** `flush_path` already loads `cfg` and passes that same
+  `processed_log`. `rejections_path` calls `expanduser()`, so a `~` path is
+  safe.
+- **Cosmetic:** the refreshed `watch.py` pin has no #308 comment.
+
+**Kiro: PASS at `bbf09d1`.** The delta stays within corrective 3, and the
+`74e193f` rulings stand.
+
+**Copilot: FAIL at `bbf09d1`.**
+- **Item 1 is closed.** Copilot ran 24 hermetic corrupt-sidecar cases.
+  None raised, none suppressed anything, and a record healed the file.
+- **The new failure** comes from the optional best-effort write:
+  `save_inter_model_rejections` now swallows `OSError` for every caller.
+  `clear_inter_model_rejection_for_path` therefore returns `True` when the
+  write fails, while the record stays on disk and `watch_skip_reason` keeps
+  returning `inter_model_rejected`. At `74e193f` this raised.
+- **Diagnostics:** write failures share the read one-shot guard, so after
+  any earlier read diagnostic they print nothing. The wording also says
+  "unreadable".
+- **Lock:** a failure opening the lock (EROFS) still raises out of the
+  record path.
+
+Claude confirmed this by reading the code: `clear` returns `found["ok"]`
+whatever the save did. Kiro passed the tip but didn't examine the clear
+path. As before, this is a checkable fact, not a reviewer conflict, so it
+isn't a Sol-High case.
+
+**Corrective 4, binding:**
+
+| # | Fix | Test (must fail at `bbf09d1`) |
+|---|---|---|
+| C4-1 | Revert `save_inter_model_rejections` to raise on `OSError`, as at `74e193f`. Make only the **record** path best-effort: `record_provenance_supersession_rejection` catches `OSError` from the whole mutation, including opening the lock, and prints a write-specific line such as "`inter_model_rejections.json` could not be written; the doc will be retried: {exc}". That line uses its own one-shot guard, not the read guard. `clear_inter_model_rejection_for_path` and `prune_stale_inter_model_rejections` propagate `OSError` again. | Use `monkeypatch` to make `atomic_write_text` raise `OSError` (no chmod). (a) `clear_inter_model_rejection_for_path` raises, and the record still matches. (b) `record_provenance_supersession_rejection` doesn't raise, and prints the write line even after a read diagnostic was already printed. (c) The same holds when opening the lock raises `OSError`. (d) Through `_index_one_file`, a guard rejection with a failing write returns `"skipped"` and records nothing. |
+
+**Also:** add a one-line #308 comment to the refreshed `watch.py` canary
+pin.
+
+**Acceptance:** run the #308, shadow, R2B v2 and canary tests. Regenerate
+R2B. Run the Pylint gate with `--base-ref` set to the merge base. Push with
+an explicit refspec. After that, Claude verifies, and then a targeted
+Copilot re-check of this item and a Kiro delta confirmation run on the new
+tip.
