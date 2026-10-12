@@ -17,7 +17,7 @@ work.
 | **Branch** | `fix/2026-10-12-issue-308-inter-model-rejection` (create from `origin/main`) |
 | **Tip SHA** | `3e1e691` (merge base `138e3aa`) |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-308-inter-model-rejection-handoff` |
-| **PR** | not opened |
+| **PR** | [#390](https://github.com/alanmz-crypto/convmem/pull/390), opened 2026-10-12 at `3e1e691`; Ryan merges |
 | **Ryan GATE** | none for hermetic implementation; Ryan alone merges |
 | **Track A ingest** | your Cursor transcript, at handoff |
 
