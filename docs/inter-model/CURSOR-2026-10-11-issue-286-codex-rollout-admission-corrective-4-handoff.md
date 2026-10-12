@@ -290,3 +290,8 @@ remove the new leftover `.worktrees/ci-verify-286-4c-clean`.
   - Verbose mode hides child stderr when the child succeeds.
   - In recovery, an `OSError` is labelled `source_too_large`.
   - The STATUS merge condensed `main`'s Kiro-bootstrap paragraph.
+
+**Corrective 4d (`a5f1756`):** removes the stray `pylint-report.json` and
+changes nothing else. The tree equals `97a2951` minus that file, and `main` at
+`db8aebb` is an ancestor. Cursor removed both leftover test checkouts. Resume
+state: ready for Copilot audit and Kiro recheck of exact tip `a5f1756`.

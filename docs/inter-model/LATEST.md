@@ -9,18 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Codex rollout admission: corrective 4
-  `NOT_STARTED` (2026-10-11):** Cursor implemented the
+- **Arc Codex / issue #286 — Codex rollout admission: awaiting Copilot
+  audit and Kiro recheck at `a5f1756` (2026-10-11):** Cursor implemented the
   [design](../plans/DESIGN-issue-286-codex-rollout-admission.md) on
-  `feat/2026-10-10-issue-286-codex-rollout-admission` (tip `905ad40`). Kiro
-  amended §13: refusals now quarantine terminally by path. At gate 3 both
-  reviews failed that tip: Kiro on the Pylint gate only, Copilot audit on six
-  safety findings (recovery bypasses the guards, verbose-mode respawn,
-  unbounded parent hash buffer, size ceiling skipped on growth, spoofable
-  refusal marker, noncanonical root accepted). Start from the
-  [corrective-4 handoff](CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md),
-  then Copilot audit and Kiro recheck the new exact tip, then Ryan's PR
-  decision. Separately, the Kiro bootstrap failed-operation supersession
+  `feat/2026-10-10-issue-286-codex-rollout-admission`. Corrective 4 fixed the
+  six gate-3 safety findings and the Pylint failure, then merged `main` at
+  `db8aebb` (#385). Claude verified the tip: Pylint gate PASS, focused tests
+  0 failed. Next: Copilot audit and Kiro recheck of exact tip `a5f1756`, then
+  Ryan's PR decision. Evidence is in the
+  [corrective-4 handoff](CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md)
+  verification sections. Separately, the Kiro bootstrap failed-operation supersession
   merged (PR #381, `e798bba`); Sol's fresh successor packet and Ryan's grant
   come next. No live bootstrap, provider call, config, runtime or watcher
   action is authorized. See the
