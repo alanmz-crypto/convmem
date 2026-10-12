@@ -9,17 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T1 CI CORRECTION / REVIEW NOT SATISFIED (2026-10-11):**
-  Draft PR #387 is open. Runtime behavior remains
-  `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`. The pytest job on `0bcf50e` failed
-  because the incident tests required an external isolation flag and the
-  writer-coverage inventory did not match this branch merged with main
-  `db8aebb`. The correction makes those tests isolate themselves under standard
-  pytest and regenerates the inventory with `write_v2_inventory_file()` to
-  `43a3944df8d6264dfc3a25016ab9b48111f69688`. BugBot was not re-triggered; the
-  earlier run reviewed no SHA. T2–T5, merge, deployment and live operations
-  remain outside this grant. Read [VERIFY](../plans/VERIFY-safe-harbor.md) and
-  the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md).
+- **Arc Safe Harbor — T1 TWO-TEST CORRECTION AUTHORIZED (2026-10-11):**
+  Ryan authorized fixture-isolation cleanup and deterministic audit/writer
+  contention evidence after the independent Copilot review. Cursor resumes the
+  existing worktree for draft #387 under the bounded
+  [execution section 8 grant](../plans/EXECUTION-safe-harbor.md#bounded-review-evidence-correction--owner-authorized).
+  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
+  candidate, CI, review and authority state. Merge, deployment and T2–T5 remain
+  ungranted; the alternative audit is not an automatic BugBot-gate exemption.
 
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING

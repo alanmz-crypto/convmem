@@ -1,17 +1,17 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. Corrected V1 RECORDED at runtime `496792f`; CI correction follows.** Draft PR #387 is open. Exact-tip BugBot did not review `0bcf50e` and was not re-triggered. V2–V6 remain NOT RUN.
+> **Arc: Safe Harbor. TWO REVIEW-EVIDENCE CORRECTIONS AUTHORIZED; NOT RUN.** Draft PR #387 has green CI at `677c8a0` and Copilot static PASS (72%) with advisories. Ryan directed the isolation-cleanup and audit/writer-contention corrections before merging. Historical results below do not close those gaps. Both BugBot attempts failed on quota; V2–V6 remain NOT RUN.
 
 ```text
 Planning Status
-Phase:        Execute Task — T1 CI correction recorded; exact-tip review not satisfied
+Phase:        Execute Task — two T1 test corrections authorized; evidence pending
 Characters:   Implementer, Test-First Reviewer
 Function:     Implementer
 Lanes:        Cursor collected isolated V1; Kiro signs off later; Ryan owns gates
-Authority:    Bounded T1 correction recorded; BugBot pending; T2–T5 not granted
+Authority:    Ryan: correct both before merging; execution section 8; T2–T5 not granted
 ```
 
-**Subject / implementation tip:** corrected runtime behavior is `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`. The initial candidate `b5d6edcc0040a665f40c2118b15aedefe9fb24ff` and runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` remain historical. The evidence commit does not change the corrected code. External review uses the branch tip after that evidence commit, and that tip is not BugBot-reviewed.
+**Reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. The newly authorized correction must record its own code revision, evidence and successor review; no prior PASS automatically transfers.
 
 **PRs:** draft #387. Not merge-ready.
 
@@ -50,11 +50,11 @@ Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, servi
 |---|---|
 | `gate_applicability` | `required` |
 | `reason` | T1 changes quarantine persistence, admission control flow, and lock ordering |
-| `subject_tip_sha` | branch tip that contains this corrected evidence; runtime parent `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` |
+| `subject_tip_sha` | prior reviewed candidate `677c8a0d17618166c454b4523d6767e48cfa330a`; successor correction pending |
 | `bugbot_reviewed_sha` | `n/a` |
-| `result` | not satisfied — the one `bugbot run` on draft #387 hit a usage limit and reviewed no SHA; this CI correction was not submitted to BugBot |
-| `finding_disposition` | `none` |
-| `authority_reference` | execution section 8; Ryan granted isolated T1/V1 only |
+| `result` | not satisfied — authorized attempts at `0bcf50e` and `677c8a0` both hit quota and reviewed no SHA |
+| `finding_disposition` | BugBot: none (no review); Copilot: two test advisories directed to correction by Ryan |
+| `authority_reference` | execution section 8; Ryan granted the two-test correction, not a BugBot outage acceptance |
 
 An applicable SHA mismatch remains FAIL. This row does not make the branch merge-ready.
 
@@ -83,7 +83,7 @@ python -m pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py -
 | Canonical aliases share one guard and lock; a competing legacy guard directory is reported and no empty canonical authority is created | PASS, including real `ChromaStore` construction through the alias |
 | Audit failure, then pass, skipped, and diagnostic error, leaves the marker in place | PASS |
 | `recover()` and guarded write recheck after the lock, using a ready/release barrier rather than a timed guess | PASS |
-| Audit holds the native lock across publication while a concurrent guarded write does not land | PASS |
+| Audit holds the native lock across publication while a concurrent guarded write does not land | Historical run PASS; contention proof INCOMPLETE: writer readiness was not established before releasing the audit. Authorized correction pending |
 | Short write, file fsync failure, and directory fsync failure raise containment unavailable, do not claim a durable stop, and do not apply the requested mutation | PASS |
 | Ordinary clear and the guard/audit doctor checks do not rewrite a present or malformed marker | PASS |
 | Existing guard regression file, including restore, quarantine, and audit behavior that T1 still allows | PASS (`tests/test_chroma_write_guard.py`, included in the 43) |
@@ -111,6 +111,17 @@ python -m pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py \
 ```
 
 Result: exit 0, `61 passed in 50.90s`. Interpreter `/home/lauer/miniforge3/bin/python` 3.13.12.
+
+## Copilot review and authorized evidence correction
+
+**Static review:** GitHub Copilot audit lane, exact subject `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`; PASS at 72% confidence with advisories. No tests were executed by the reviewer. This is independent audit evidence, not Cursor BugBot or automatic satisfaction of its gate. The review identified two concrete test-evidence gaps that Codex checked and Ryan directed Cursor to correct:
+
+- **Isolation cleanup:** `monkeypatch.undo()` in `test_publication_failure_aborts_before_mutation` also undoes the autouse fixture's environment isolation. The affected calls use scratch paths; no production mutation was demonstrated. The 61-pass report remains a test outcome, not proof that the fixture isolation stayed in force throughout every fault case.
+- **Concurrency proof:** `test_audit_publication_excludes_a_concurrent_writer` releases the audit immediately after launching the writer. It does not establish that the writer reached and contended on the actual native lock before publication.
+
+Ryan's instruction: **"correct both before merging"**. The bounded grant and acceptance requirements are in execution section 8. Both corrections, their positive assertions and the contention negative control are **NOT RUN / NOT IMPLEMENTED** at this grant record. Preserve the historical rows; record successor evidence before closing either gap.
+
+**Remote evidence at the prior subject:** GitHub pytest, pylint, secret scan and CodeQL passed at `677c8a0`; [pytest job](https://github.com/alanmz-crypto/convmem/actions/runs/38196201314/job/114639276462). Codex read the check state; this was not a local rerun. The second authorized [BugBot attempt](https://github.com/alanmz-crypto/convmem/pull/387#issuecomment-6117256790) failed on quota (request `ea440898-d96f-4d3e-b3c3-a7c2d1c6a0a5`), reviewed no SHA and authorizes no further retry. Scope remains T1; no other Copilot advisory is silently added to this correction grant.
 
 ## V2 — Target binding and freshness (T2)
 
@@ -155,4 +166,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] T1 tests now isolate themselves under standard pytest, and the writer-coverage inventory was regenerated to `43a3944d` without a policy change. Exact-tip BugBot is still not satisfied. V2–V6, deployment and arc closure stay ungranted.
+[Arc Safe Harbor] Candidate `677c8a0` has green CI and Copilot's static PASS with advisories. Ryan authorized two test-evidence corrections; successor assertions, CI and focused review are pending. BugBot reviewed no SHA. V2–V6, merge, deployment and arc closure stay ungranted.

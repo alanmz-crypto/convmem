@@ -308,12 +308,12 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 ### Resume state and workspace
 
-- State: **CORRECTION AUTHORIZED / NOT STARTED**. The initial candidate and its evidence are pushed; see the owner-approved correction below before resuming.
+- State: **REVIEW-EVIDENCE CORRECTION AUTHORIZED / NOT STARTED**. Ryan authorized the two test corrections below after Copilot reviewed `677c8a0d17618166c454b4523d6767e48cfa330a`.
 - Implementation branch: `fix/2026-10-11-safe-harbor-t1`.
 - Dedicated worktree: `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`.
-- Original grant base: `b4c0e73b60befcbc9c0fab02e42fd012c6b6adb3`. Correction starting candidate: `b5d6edcc0040a665f40c2118b15aedefe9fb24ff`, with runtime code at `fa82028b762e5564eed9f2884336ccfb0e3caf73`. Resume from the documentation commit recording this correction, supplied in Codex's dispatch; it changes no runtime code. Confirm branch, clean state, parentage and the grant before editing. A pre-existing dirty or diverged worktree is not permission to overwrite another writer.
+- Original grant base: `b4c0e73b60befcbc9c0fab02e42fd012c6b6adb3`. Current review-evidence correction starts from `677c8a0d17618166c454b4523d6767e48cfa330a`, with T1 runtime changes at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` and merged main at `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. Resume from the documentation commit recording this grant, supplied in Codex's dispatch; it changes no implementation. Confirm branch, clean state, parentage and the grant before editing. A pre-existing dirty or diverged worktree is not permission to overwrite another writer.
 - The planning branch remains `plan/2026-10-11-safe-harbor`. Use the dedicated implementation branch; do not switch the shared checkout, touch `runtime-main`, or silently rebase onto a different code baseline.
-- No PR exists for this task. Push each commit immediately with the explicit refspec `fix/2026-10-11-safe-harbor-t1:refs/heads/fix/2026-10-11-safe-harbor-t1`.
+- Draft [PR #387](https://github.com/alanmz-crypto/convmem/pull/387) already exists. Push each commit immediately with the explicit refspec `fix/2026-10-11-safe-harbor-t1:refs/heads/fix/2026-10-11-safe-harbor-t1`. This correction grants no new PR comment, review trigger, ready-for-review transition or merge.
 
 ### Build only the accepted T1 deliverable
 
@@ -338,6 +338,19 @@ This closes the file-list mismatch in the original handoff: Codex required canon
 3. **Actual overwrite negative control:** use the same A-then-B publication/admission workflow with an isolated deliberately faulty publisher that replaces the unresolved set with only the newer finding. The retention assertion must fail for the intended loss of A, while the corrected implementation passes. Feeding a fabricated/truncated result directly into an assertion is insufficient. Restore the real implementation; no faulty runtime behavior may remain in the candidate.
 
 Correct and rerun the relevant isolated V1 evidence. Preserve the initial 41-test run as historical evidence, not acceptance of these gaps; record the corrected subject SHA, commands, outcomes and expected failing control separately. Stop for the existing exact-tip review/owner acceptance gate after pushing the correction. All original isolation and authority limits below remain in force.
+
+### Bounded review-evidence correction — owner authorized
+
+Ryan instructed **"correct both before merging"** after Codex identified the two concrete test-evidence gaps in Copilot's static review of `677c8a0d17618166c454b4523d6767e48cfa330a`. Copilot's verdict was PASS at 72% confidence with advisories; Codex recommended these two corrections before merge, and Ryan accepted that recommendation. This grants Cursor the corrections and their isolated regression evidence. It grants no merge and does not accept the alternative review in place of the BugBot gate.
+
+**Allowed edits:** `tests/test_safe_harbor_t1.py`; `tests/_chroma_write_guard_worker.py` only if needed for isolated process synchronization; the existing Safe Harbor VERIFY/STATUS and LATEST routing. No production code, CI workflow, inventory algorithm/artifact or additional review finding is in this correction's scope. Return a genuine dependency outside this list before expanding it.
+
+1. **Keep fixture isolation across fault-injection cleanup.** The shared `monkeypatch.undo()` calls in `test_publication_failure_aborts_before_mutation` also undo the autouse fixture's HOME/XDG/CONVMEM settings and provider-key removal. Give each injection its own patch context or restore only the affected method. Assert that the fixture's isolated environment remains intact before every subsequent project call, including the short-write and directory-fsync cases. Keep standard-pytest operation with no external isolation flag and preserve production-path refusal. Do not weaken or skip the fault cases.
+2. **Prove audit/writer lock contention deterministically.** The existing test launches the writer and immediately releases the audit; it does not establish that the writer reached the native lock while the audit held it. Use bounded process synchronization and test-only instrumentation to demonstrate an actual failed nonblocking acquisition of that same lock while the audit is paused. Only then release the audit to publish. Assert that the writer subsequently refuses admission and its requested record is absent. Include an isolated missing-lock/order negative control that fails the relevant proof assertion, not merely a process-start timeout. No sleep-based inference, unbounded waits, or new production barrier hooks. Clean up child processes on every outcome.
+
+**Evidence:** inspect the fixture first, then run the affected tests plus the existing isolated T1/guard regressions under the dedicated worktree interpreter. A standard-pytest check must not require a pre-set `CONVMEM_T1_ISOLATED`. Record commands, exit codes, the observed contention signal, expected negative-control failure and the exact code revision; preserve earlier results as historical. Ordinary GitHub CI will run on the pushed successor. Do not launch the production/default local suite, doctor, MCP, indexing, Restic, providers, services or external-drive operations.
+
+**Finish:** commit and push the bounded correction, keep the PR a draft, and report the successor SHA and evidence. A focused independent delta review checks these two corrections and regressions at that successor; historical CI/review results do not transfer automatically. The BugBot outage gate remains unsatisfied until matching review evidence or Ryan's written exact-tip outage acceptance. No review comment, merge, deployment or T2–T5 work is authorized by this grant.
 
 ### Isolation and evidence
 

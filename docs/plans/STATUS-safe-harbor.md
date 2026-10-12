@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. PLAN ACCEPTED at `dca13a5`; B-E4.1 APPROVED; T1 CI correction in progress on draft #387.** Runtime behavior remains `496792f`. Exact-tip review is not satisfied. Ownership, later-task and live-operation limits are unchanged.
+> **Arc: Safe Harbor. T1 REVIEW-EVIDENCE CORRECTION AUTHORIZED.** Ryan accepted the plan at `dca13a5` and approved B-E4.1. Candidate `677c8a0` has green CI and Copilot's static PASS (72%) with advisories. Ryan authorized the two test corrections in execution section 8. BugBot reviewed no SHA; its gate and T1 acceptance remain open. Ownership, later-task and live-operation limits are unchanged.
 
 ## 1. What This Is For (product goal)
 
@@ -40,7 +40,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
 - `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 now records Ryan's subsequent bounded T1 correction verbatim; its narrow store-file scope addition is explicit. T2–T5 are not implemented.
 - T1 workspace: `fix/2026-10-11-safe-harbor-t1` at `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`. Corrected runtime is `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`, pushed. The evidence commit that follows does not change that code. Do not switch the shared checkout or runtime-main.
-- `VERIFY-safe-harbor.md`: the initial 41-test run stays historical. Corrected isolated V1 is recorded at the runtime above (43 tests passed), including canonical store identity, persisted-empty refusal, and the overwrite publisher control. V2–V6 remain NOT RUN. Exact-tip BugBot review is pending; no PR is authorized.
+- `VERIFY-safe-harbor.md`: historical 41/43-test results and the 61-test CI correction are preserved. GitHub CI is green at `677c8a0d17618166c454b4523d6767e48cfa330a`. The two review-identified test-evidence gaps remain open until the authorized correction is verified. Copilot's static review is separate from the unsatisfied BugBot gate. V2–V6 remain NOT RUN.
 - Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
 - Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
 - Existing code: `restic_gate.py`, `backup_workflows.py`, `restic_snapshot.py`, `chroma_write_guard.py`, `propose_decision.py` and `doctor.py`. Known contract gaps and pinned source evidence are in architecture section 3.
@@ -61,27 +61,28 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Ryan direction approval: **APPROVED at `5ea16a6`**, explicitly including disposition after every automatic segment restore.
 - Execution Planning: **COMPLETE — RYAN ACCEPTED `dca13a59a2edf649ac6a19777f572645bea8674e`** after Kiro delta PASS (88%); initial PASS remains pinned to `00c69d2` (85%). A1/A2 and O-E4.e are satisfied plan-side. No required review correction remains.
 - **B-E4.1 owner disposition: APPROVED**, by Ryan explicitly as owner, exactly T2 at the accepted revision including all five consumer outcomes. Ownership is unchanged; this is contract approval, not implementation or live activation.
-- **T1: CORRECTION IMPLEMENTED, review pending.** Initial candidate `b5d6edc` remains historical. Corrected runtime `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` on `fix/2026-10-11-safe-harbor-t1` covers canonical client/cache identity, persisted-empty refusal, and the actual overwrite control. Isolated V1 passed (43 tests). Exact-tip BugBot evidence is not obtained. Ryan has not accepted T1.
-- T2–T5 implementation, live operations, PR creation/commenting, merge and deployment: **NOT AUTHORIZED**. No phase auto-advance.
+- **T1: TWO TEST CORRECTIONS AUTHORIZED / NOT STARTED.** Canonical client/cache identity, persisted-empty refusal and the overwrite control are implemented. Candidate `677c8a0` also includes the standard-pytest/derived-inventory correction and has green GitHub CI. Copilot's independent static PASS (72%) includes advisories; Ryan directed correction of fixture isolation cleanup and deterministic audit/writer contention evidence before merging. The exact bounded grant is in execution section 8. Ryan has not accepted T1.
+- **Draft PR #387: OPEN.** The two authorized BugBot attempts failed on quota and reviewed no SHA. No further trigger, PR state change or comment is granted here. Copilot's review does not automatically satisfy the separate BugBot gate.
+- T2–T5 implementation, live operations, merge and deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** The bounded correction grant is already recorded and Cursor has pushed the corrected candidate. Do not implement further runtime code or treat this brief as the required exact-tip review.
+**Codex:** Record Ryan's two-test correction grant and route it to Cursor. Coordinate a focused independent delta review of the corrected successor; do not implement production code or treat the earlier PASS as review of a new tip.
 
 **Opus:** The first review and delta cadence is complete. No further review for the requested E7 clause; return only if new contracts beyond that clarification are introduced.
 
 **Kiro:** First execution review and delta are complete, with successor PASS at `dca13a5` (88%). Ryan supplied the B-E4.1 owner decision and accepted that revision. No further review is requested for this status-only update, and no ownership was transferred to you.
 
-**Ryan:** B-E4.1, plan acceptance, and the bounded T1 correction grant are complete. The corrected candidate is pushed. The next decision is whether to authorize a pull request so exact-tip BugBot review can run, then whether to accept T1. Later task grants and any live operation remain separate. Recovery/loss-window inputs remain open before live rollout; the new drive is not a backup/restore grant.
+**Ryan:** The two test corrections are authorized. After corrected evidence and successor review, decide T1 acceptance and any exact-tip outage acceptance for the missing BugBot review. Merge and later/live grants remain separate. Recovery/loss-window inputs remain open before live rollout; the new drive is not a backup/restore grant.
 
-**Cursor:** The bounded T1 correction and its isolated evidence are pushed. Stop for exact-tip review. Do not open a PR, comment, start T2, or perform production startup, indexing, or live work.
+**Cursor:** Resume the dedicated T1 worktree from the grant-recording documentation commit. Correct only the isolation cleanup and audit/writer contention tests and their isolated evidence, as specified in execution section 8. Push each commit, keep #387 a draft and report the successor. No production startup/indexing, runtime change, PR comment, merge or later-task work.
 
 **Ops:** No live grant; keep services, deployed code, backups and drives unchanged.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Exact-tip external review of the corrected T1 candidate, after Ryan authorizes the pull request and any review comment. The initial 41-test run is historical. T1 is not independently deployable: old writers can still overwrite the marker or clear incidents. T2–T5 stay ungranted.
-2. Ryan accepts or returns T1 after that review. Acceptance is not deployment.
+1. Cursor completes the authorized two-test correction and isolated evidence; GitHub CI and a focused independent delta review must cover the successor. Historical green results do not transfer automatically. T1 is not independently deployable: old writers can still overwrite the marker or clear incidents. T2–T5 stay ungranted.
+2. Resolve the separate BugBot outage gate through matching evidence or Ryan's written exact-tip acceptance, then Ryan accepts or returns T1. Acceptance is not deployment.
 3. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
 4. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
 
@@ -135,7 +136,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Codex: recorded Ryan's bounded T1 correction grant; store-file scope addition, persisted-empty refusal and actual overwrite control are authorized, with correction evidence/review pending.
 - 2026-10-11 — Cursor: corrected T1 on `fix/2026-10-11-safe-harbor-t1` at runtime `496792f` and recorded isolated V1 (43 passed); exact-tip review, T2–T5, and live operations remain pending.
 - 2026-10-11 — Cursor: merged main `db8aebb`, made T1 tests self-isolating under standard pytest, and regenerated the writer-coverage inventory to `43a3944d`; BugBot was not re-triggered.
+- 2026-10-11 — Codex: recorded green CI and Copilot static PASS at `677c8a0`, both quota-blocked BugBot attempts, and Ryan's two-test correction grant; Cursor correction and successor evidence/review are next.
 
 ## TL;DR
 
-[Arc Safe Harbor] T1’s CI failures are corrected on draft #387: tests isolate themselves, and the writer-coverage inventory matches the merged tree. Exact-tip BugBot is not satisfied. T2–T5 and live operations remain ungranted.
+[Arc Safe Harbor] Ryan authorized two test corrections after Copilot's review of green-CI candidate `677c8a0`: retain fixture isolation during patch cleanup and prove actual audit/writer lock contention. Cursor implements in the existing worktree; successor evidence/review and the BugBot outage gate remain open. No merge, deployment or T2–T5 grant.
