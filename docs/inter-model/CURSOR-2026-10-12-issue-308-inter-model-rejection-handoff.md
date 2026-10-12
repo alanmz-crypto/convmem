@@ -359,6 +359,12 @@ on the new tip.
   `processed_log`. `rejections_path` calls `expanduser()`, so a `~` path is
   safe.
 - **Cosmetic:** the refreshed `watch.py` pin has no #308 comment.
+- **Full suite** (clean disk-backed worktree, fresh CI config, tip
+  `bbf09d1`): "3047 passed, 9 skipped, 2 warnings, 252 subtests passed in
+  1827.14s", with **no failures**. That is the 3044 that passed at
+  `1e76650`, plus the three new corrupt-sidecar cases. It covers the
+  `watch.py` change. Corrective 4 touches only `inter_model_rejections.py`,
+  its tests and the canary pin comment, so targeted tests are enough there.
 
 **Kiro: PASS at `bbf09d1`.** The delta stays within corrective 3, and the
 `74e193f` rulings stand.
