@@ -2,7 +2,7 @@
 
 **Arc:** Kiro bootstrap  
 **Prepared:** 2026-10-11 by Sol  
-**State:** corrected r4 proposal only; `NO-GO` until Kiro and Copilot PASS the same
+**State:** r5 proposal only; `NO-GO` until Kiro and Copilot PASS the same
 exact pushed revision and Ryan grants that reviewed revision
 **Scope:** one new local complete-data Restic snapshot and one exact offsite
 copy; no bootstrap, provider transport, source operation, proposal generation,
@@ -22,7 +22,7 @@ inventory binding is stale. It must not be executed, edited, regenerated, or
 reused. A new successor bootstrap proposal can be prepared only after this
 separate backup-only operation returns a valid matching local/offsite pair.
 
-This r4 authority proposal binds the current inventory and the most recent
+This r5 authority proposal binds the current inventory and the most recent
 valid pair as a readiness anchor:
 
 - local snapshot
@@ -32,11 +32,14 @@ valid pair as a readiness anchor:
 - shared tree
   `de8888c7236881c81cfc16de67c51fe9f0168ce365f60079f0b6cb1280e524c6`.
 
-The r4 inventory evidence was captured under ConvMem's exclusive writer lease
-after the unrelated pytest run finished. It reports the same Kiro projection
-as r3: two conversation summaries and 17 knowledge units. The additional
-Cursor transcript accounts for the changed global `processed.json` and
-`knowledge_units.jsonl` roles. This proposal authorizes nothing by itself.
+The r5 inventory evidence was captured under ConvMem's exclusive writer lease.
+It reports the same Kiro projection as r3: two conversation summaries and 17
+knowledge units. After r4, an unrelated Claude transcript from
+`ButsabaJobScout` was indexed as processed key
+`3d87d302cb37059d89ce1fe116281badde54b339874a561f14fe85de407dc26c`,
+adding one chunk and 10 units to the global processed/export roles. The current
+inventory is therefore `9321f51a…56a1`. This proposal authorizes nothing by
+itself.
 
 Kiro PASSed the first r4 revision at exact commit `a9c75f1d20bb1109a229fbbdcc4be19bfa5dc87a`.
 Copilot FAILed that same revision because its effective Restic executable,
@@ -48,14 +51,28 @@ after mount and immediately before copy, verifies mount identity before
 cleanup, and fixes both authority checks and governed date-tag generation to
 `America/Chicago`.
 
+Kiro and Copilot then PASSed corrected r4 revision `5e9d3d4`. Ryan's exact r4
+grant was consumed when the runner started. It safely refused before mount or
+backup because writer census detected PID `1089804`; the process exited before
+it could be inspected and left no journal or process-accounting record. Result
+`/tmp/convmem-kiro-replacement-backup-result-20261011-r4.json`, SHA-256
+`62fb8f9d08a301b0a68c10036671e70cdd38247998faa6af854b03f0dcf96546`,
+records no snapshots, exact timer restoration, inactive/disabled watcher, and
+an unmounted device.
+
+The r5 correction preserves the same refusal classes while retaining bounded
+process evidence before raising: classifier, matched launcher/subcommand or
+marker, PID/PPID/start ticks/UID, cwd, executable, argv0/count, and SHA-256 of
+the raw command line. It does not store free-form command arguments.
+
 ## Exact proposed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `05076b8bff4d820a63b46382308d1a6668028d37b5319dc739b151b26e0f421d` |
-| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py` |
-| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011-r4.json` |
+| Attachment SHA-256 | `0f5789aa82cb0fcd598acf961a4564eb629565edf39d90769f7cdd7d16293af3` |
+| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py` |
+| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011-r5.json` |
 | Valid local date | `2026-10-11` in `America/Chicago` |
 
 After same-revision Kiro/Copilot PASS and Ryan's exact grant, the one-shot
@@ -66,10 +83,10 @@ set -e
 if findmnt -rn -S /dev/sda1 -o TARGET; then
     exit 1
 fi
-cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py
-chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py
-printf '%s  %s\n' '05076b8bff4d820a63b46382308d1a6668028d37b5319dc739b151b26e0f421d' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py' | sha256sum --check --strict -
-/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011-r4.py --execute
+cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py
+chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py
+printf '%s  %s\n' '0f5789aa82cb0fcd598acf961a4564eb629565edf39d90769f7cdd7d16293af3' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py' | sha256sum --check --strict -
+/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py --execute
 ```
 
 The runner refuses an existing result path, including a dangling symlink. Its
@@ -96,8 +113,10 @@ The runner performs this closed sequence:
    that were active before the operation.
 4. Reject active pytest/failure-test processes, ConvMem mutation commands,
    direct source reconciliation, watcher processes, and Restic operations
-   against either governed repository. Repeat the census inside the writer
-   gate before the initial and final inventory measurements.
+   against either governed repository. Before raising, retain bounded process
+   identity and matched-classification evidence without free-form arguments.
+   Repeat the census inside the writer gate before the initial and final
+   inventory measurements.
 5. Require `/dev/sda1` initially unmounted and UUID
    `f1bd69b4-e567-4ef3-89ec-13faff0602e9` before temporarily mounting it at
    `/run/media/lauer/rxBUlauer-128Gfs`. After mount, require the repository's
@@ -113,7 +132,7 @@ The runner performs this closed sequence:
 7. Acquire the exclusive corpus writer gate. Compute the mutation inventory
    with `bootstrap_mutation_inventory` and
    `convmem-bootstrap-mutation-proof-v1`; require
-   `85566aed12281c21867eef033016e5292e31f994157fa0559f18dc2363641e6a`.
+   `9321f51a0a25cbedaaa38c631b182f768b4ac4be66c8c15cd6246676e98156a1`.
 8. Recheck the Chicago date before the evidence update and immediately before
    snapshot creation. Recheck the profile and executable, then call governed
    `backup_data_root` exactly once with tag `kiro-successor-preflight`.
@@ -143,9 +162,9 @@ remain evidence and are never deleted to hide a failed qualification.
 |---|---|
 | Mutable data root | `/home/lauer/.local/share/convmem` |
 | Detached runtime | clean `/tmp/convmem-kiro-bootstrap-e798bba` at `e798bba284c96642fc31229e6375eadc26986493` |
-| Current inventory digest | `85566aed12281c21867eef033016e5292e31f994157fa0559f18dc2363641e6a` |
-| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261011-r4.json` |
-| Inventory evidence SHA-256 | `00b64821f258f1bfaece2696974a57d3a07630d45ea610f3eda3f1b848688b95` |
+| Current inventory digest | `9321f51a0a25cbedaaa38c631b182f768b4ac4be66c8c15cd6246676e98156a1` |
+| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261011-r5.json` |
+| Inventory evidence SHA-256 | `c3ee53724a060d329c4e1a9139d2ae9956db0fa0a17469b677b6cc10b87f7d9c` |
 | Inventory procedure | `bootstrap_mutation_inventory` + `convmem-bootstrap-mutation-proof-v1` at runtime `e798bba…` |
 | Exact source | `/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_2628159e-d039-4646-a208-0a10a1b3e450/messages.jsonl` |
 | Source SHA-256 | `dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741` |
@@ -187,7 +206,9 @@ it only to revalidate identity. The prior backup-only grants at revisions
 `a9f2acf753994fec078d80b39b34d387dc652fd4`,
 `4fd5ef37d8079891b5470b09770092ce286b4ea1`, and
 `bf50c6295b99e800b3438b1c4e6c3ead1936cf5b` are consumed and must never be
-reused. The sealed r3 bootstrap proposal at revision
+reused. The r4 backup-only grant at revision
+`5e9d3d4571161269a9a0b42f0394fa419635e13d` is also consumed and must never
+be retried. The sealed r3 bootstrap proposal at revision
 `9d249d0c36dcf791ebc95e2516f94c5844b2b845` is unconsumed but stale and must
 never be executed or reused.
 
@@ -203,9 +224,8 @@ authorize that preparation or any bootstrap execution.
 
 ## TL;DR
 
-The prior bootstrap authority stopped before bootstrap or paid calls and is
-now stale because unrelated Cursor indexing changed the mutable corpus. After
-Sol-High accepted Copilot's r4 boundary findings, this correction binds the
-Restic binary/profile, mounted repository filesystem, and Chicago date as well
-as the current inventory. It remains `NO-GO` pending same-revision
+The r4 backup grant safely refused before mount or backup on an unattributed
+transient writer and is consumed. R5 preserves every reviewed boundary, adds
+bounded post-exit writer attribution, and binds the current inventory after
+unrelated Claude indexing. It remains `NO-GO` pending same-revision
 Kiro/Copilot PASS and Ryan's separate exact execution grant.

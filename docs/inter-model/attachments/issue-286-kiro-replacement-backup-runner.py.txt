@@ -9,6 +9,7 @@ calls a model provider, edits config, or starts the watcher.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import signal
@@ -33,7 +34,7 @@ SOURCE = Path(
 )
 SOURCE_SHA256 = "dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741"
 SOURCE_STATE_ID = "13c4c30c5c644a1771f0372e1b16fde35ab8cd283c26f594b96f800aad3976d2"
-EXPECTED_INVENTORY = "85566aed12281c21867eef033016e5292e31f994157fa0559f18dc2363641e6a"
+EXPECTED_INVENTORY = "9321f51a0a25cbedaaa38c631b182f768b4ac4be66c8c15cd6246676e98156a1"
 DATA_ROOT = Path("/home/lauer/.local/share/convmem")
 LOCAL_REPOSITORY = "/home/lauer/.local/share/convmem-restic"
 OFFSITE_DEVICE = "/dev/sda1"
@@ -45,7 +46,7 @@ OLD_OFFSITE = "995102108a10ad222f615e7cf130feb7c56ebceac19c5eeb0ebdd0562b31a4a8"
 RUN_DATE = "2026-10-11"
 AUTHORITY_TIMEZONE = "America/Chicago"
 REQUIRED_TAGS = {"convmem-data-v2", "convmem-2026-10-11", "kiro-successor-preflight"}
-RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261011-r4.json")
+RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261011-r5.json")
 BACKUP_EVIDENCE = DATA_ROOT / ".convmem-backup-evidence.json"
 LOCK = DATA_ROOT / "locks/chroma_writer_gate.lock"
 TIMERS = (
@@ -234,16 +235,75 @@ def current_inventory(cfg: dict[str, Any]) -> tuple[dict[str, Any], str]:
     return inventory, mutation_inventory_digest(inventory)
 
 
-def invokes_convmem_writer(argv: list[str]) -> bool:
-    """Recognize launcher, Python-script, and ``python -m`` CLI forms."""
+class WriterCensusRefusal(RuntimeError):
+    """Refusal carrying bounded process evidence for post-exit attribution."""
+
+    def __init__(self, evidence: dict[str, Any]):
+        self.evidence = evidence
+        super().__init__(
+            "writer census refusal: "
+            f"classifier={evidence['classifier']} pid={evidence['pid']} "
+            f"argv0={evidence.get('argv0')} "
+            f"cmdline_sha256={evidence['cmdline_sha256']}"
+        )
+
+
+def convmem_writer_match(argv: list[str]) -> dict[str, Any] | None:
+    """Identify launcher, Python-script, and ``python -m`` CLI forms."""
     for index, argument in enumerate(argv):
         if Path(argument).name not in {"convmem", "convmem.py"}:
             continue
-        if any(
-            candidate in CONVMEM_WRITE_COMMANDS for candidate in argv[index + 1 :]
-        ):
-            return True
-    return False
+        for candidate in argv[index + 1 :]:
+            if candidate in CONVMEM_WRITE_COMMANDS:
+                return {
+                    "classifier": "convmem_write_command",
+                    "launcher": argument,
+                    "launcher_index": index,
+                    "subcommand": candidate,
+                }
+    return None
+
+
+def refuse_writer(
+    entry: Path,
+    *,
+    raw_cmdline: bytes,
+    argv: list[str],
+    cwd: Path | None,
+    match: dict[str, Any],
+) -> None:
+    """Raise with stable, bounded evidence even if the process exits next."""
+    stat_fields: list[str] = []
+    try:
+        stat_fields = (
+            (entry / "stat")
+            .read_text(encoding="utf-8")
+            .rsplit(")", 1)[1]
+            .split()
+        )
+    except (FileNotFoundError, PermissionError, IndexError):
+        pass
+    try:
+        executable = str((entry / "exe").resolve())
+    except (FileNotFoundError, PermissionError):
+        executable = None
+    try:
+        uid = entry.stat().st_uid
+    except (FileNotFoundError, PermissionError):
+        uid = None
+    evidence: dict[str, Any] = {
+        **match,
+        "pid": int(entry.name),
+        "ppid": int(stat_fields[1]) if len(stat_fields) > 1 else None,
+        "start_time_ticks": int(stat_fields[19]) if len(stat_fields) > 19 else None,
+        "uid": uid,
+        "cwd": str(cwd) if cwd is not None else None,
+        "executable": executable,
+        "argv0": argv[0] if argv else None,
+        "argv_count": len(argv),
+        "cmdline_sha256": hashlib.sha256(raw_cmdline).hexdigest(),
+    }
+    raise WriterCensusRefusal(evidence)
 
 
 def assert_no_uncontrolled_writer() -> None:
@@ -252,9 +312,10 @@ def assert_no_uncontrolled_writer() -> None:
         if not entry.name.isdigit() or int(entry.name) == current_pid:
             continue
         try:
+            raw_cmdline = (entry / "cmdline").read_bytes()
             argv = [
                 item.decode("utf-8", "replace")
-                for item in (entry / "cmdline").read_bytes().split(b"\0")
+                for item in raw_cmdline.split(b"\0")
                 if item
             ]
             command = " ".join(argv)
@@ -265,21 +326,70 @@ def assert_no_uncontrolled_writer() -> None:
         except (FileNotFoundError, PermissionError):
             cwd = None
         if "test_index_loud_failures.py" in command:
-            raise RuntimeError(f"stale failure test active: pid={entry.name}")
+            refuse_writer(
+                entry,
+                raw_cmdline=raw_cmdline,
+                argv=argv,
+                cwd=cwd,
+                match={
+                    "classifier": "stale_failure_test",
+                    "matched_marker": "test_index_loud_failures.py",
+                },
+            )
         if any(Path(item).name.startswith("pytest") for item in argv) and (
             (cwd is not None and "convmem" in str(cwd)) or "convmem" in command
         ):
-            raise RuntimeError(f"convmem pytest active: pid={entry.name}")
-        if (
-            invokes_convmem_writer(argv)
-            or "convmem-watch" in command
-            or any(marker in command for marker in DIRECT_WRITER_MARKERS)
-        ):
-            raise RuntimeError(f"corpus writer active: pid={entry.name}")
+            refuse_writer(
+                entry,
+                raw_cmdline=raw_cmdline,
+                argv=argv,
+                cwd=cwd,
+                match={"classifier": "convmem_pytest"},
+            )
+        convmem_match = convmem_writer_match(argv)
+        if convmem_match is not None:
+            refuse_writer(
+                entry,
+                raw_cmdline=raw_cmdline,
+                argv=argv,
+                cwd=cwd,
+                match=convmem_match,
+            )
+        if "convmem-watch" in command:
+            refuse_writer(
+                entry,
+                raw_cmdline=raw_cmdline,
+                argv=argv,
+                cwd=cwd,
+                match={
+                    "classifier": "convmem_watcher",
+                    "matched_marker": "convmem-watch",
+                },
+            )
+        direct_marker = next(
+            (marker for marker in DIRECT_WRITER_MARKERS if marker in command), None
+        )
+        if direct_marker is not None:
+            refuse_writer(
+                entry,
+                raw_cmdline=raw_cmdline,
+                argv=argv,
+                cwd=cwd,
+                match={
+                    "classifier": "direct_writer",
+                    "matched_marker": direct_marker,
+                },
+            )
         if any(Path(item).name == "restic" for item in argv) and (
             LOCAL_REPOSITORY in command or OFFSITE_REPOSITORY in command
         ):
-            raise RuntimeError(f"restic operation active: pid={entry.name}")
+            refuse_writer(
+                entry,
+                raw_cmdline=raw_cmdline,
+                argv=argv,
+                cwd=cwd,
+                match={"classifier": "governed_restic_operation"},
+            )
 
 
 def reserve_result() -> int:
@@ -546,6 +656,8 @@ def main() -> int:
         result["status"] = "FAIL"
         result["error_type"] = type(exc).__name__
         result["error"] = str(exc)
+        if isinstance(exc, WriterCensusRefusal):
+            result["writer_census_refusal"] = exc.evidence
     finally:
         in_cleanup = True
         if mount_command_succeeded:

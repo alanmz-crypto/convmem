@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Kiro bootstrap / issue #286 — r4 backup authority SAFE REFUSAL
+- **Arc Kiro bootstrap / issue #286 — r5 backup authority REVIEW PENDING
   (2026-10-11):** The guarded Kiro route and failed-operation supersession are
   merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
   bootstrap, corpus mutation, dimension probing, or provider transport because
@@ -28,9 +28,12 @@ cross-arc snapshot and the linked arc brief below.
   or backup because writer census found PID `1089804`. The process exited
   before attribution. Result marker SHA-256 `62fb8f9d…f96546` records no local
   or offsite snapshot, exact timer restoration, inactive/disabled watcher, and
-  an unmounted device. The r4 grant is consumed. **Next:** Ryan decides whether
-  to authorize a narrow writer-census evidence correction and a new dated
-  backup-only authority cycle. Resume from the
+  an unmounted device. The r4 grant is consumed. Ryan authorized the narrow
+  correction and a new cycle. R5 retains bounded post-exit writer identity
+  without free-form arguments and binds current inventory `9321f51a…56a1`
+  after unrelated Claude indexing; no backup has run. **Next:** Kiro and
+  Copilot review the same exact pushed r5 revision, then Ryan decides whether
+  to grant that runner. Resume from the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
