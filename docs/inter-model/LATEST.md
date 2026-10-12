@@ -34,10 +34,14 @@ cross-arc snapshot and the linked arc brief below.
   Copilot's privacy finding. The corrected r5 evidence keeps only closed
   classifier values, process metadata, resolved executable, argument count,
   and a command-line digest. Kiro and Copilot both PASSed exact corrected r5
-  revision `a3c5a9e` with no blockers. It binds current inventory
-  `9321f51a…56a1` after unrelated Claude indexing; no backup has run.
-  **Next:** Ryan decides whether to grant that exact reviewed runner. Resume
-  from the
+  revision `a3c5a9e` with no blockers. Ryan granted and Sol ran it once. R5
+  safely refused after mount and before backup because the live inventory had
+  changed from `9321f51a…56a1` to `781269da…e018c`. Result marker
+  `79ef6d4a…29fc7` records null snapshot IDs, exact timer restoration, no
+  cleanup errors, inactive/disabled watcher state, and an unmounted device.
+  R5 is consumed; its drift is undiagnosed and no successor authority exists.
+  **Next:** Ryan decides whether to authorize narrow drift diagnosis and a new
+  backup-only authority cycle. Resume from the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 

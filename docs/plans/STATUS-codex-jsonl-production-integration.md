@@ -85,13 +85,14 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed r4 authority `5e9d3d4`; its exact grant safely refused before mount or backup on transient writer PID `1089804`, then was consumed. Ryan authorized a narrow evidence correction and new cycle. On first r5 revision `09ae1c8`, Kiro PASSed while Copilot FAILed raw caller-controlled `argv[0]` retention; Sol-High accepted Copilot's privacy finding. Corrected r5 removes raw argument text, retains bounded process attribution, and binds current inventory `9321f51a…56a1` after unrelated Claude indexing. Kiro and Copilot both PASSed exact corrected revision `a3c5a9e` with no blockers; no backup has run. | Ryan's exact r5 execution-grant decision |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed r4 authority `5e9d3d4`; its exact grant safely refused before mount or backup on transient writer PID `1089804`, then was consumed. On first r5 revision `09ae1c8`, Kiro PASSed while Copilot FAILed raw caller-controlled `argv[0]` retention; Sol-High accepted Copilot's privacy finding. Corrected r5 removed raw argument text and both lanes PASSed exact revision `a3c5a9e`. Ryan granted and Sol ran it once; it safely refused before backup creation because live inventory had changed from `9321f51a…56a1` to `781269da…e018c`. Result `79ef6d4a…29fc7` records complete cleanup and no snapshots. R5 is consumed; no successor authority exists. | Ryan decision on narrow drift diagnosis and a new backup-only authority cycle |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Present Ryan with one exact copyable grant for Kiro/Copilot-PASSed corrected
-r5 revision `a3c5a9e`. Do not execute r5 without that separate grant.
+Await Ryan's decision on narrow diagnosis of the r5 inventory drift and
+preparation of a new backup-only authority cycle. Do not retry r5 or prepare a
+successor authority without that decision.
 
 The r3 bootstrap proposal at
 `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.json`, SHA-256
@@ -262,6 +263,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Ryan / Sol | Ryan authorized the narrow writer-evidence correction and a new authority cycle; r5 retains bounded post-exit process identity, binds inventory `9321f51a…56a1` after unrelated Claude indexing, and awaits same-revision Kiro/Copilot review without executing backups |
 | 2026-10-11 | Sol-High / Sol | Sol-High accepted Copilot's exact-r5 privacy FAIL over Kiro's PASS at `09ae1c8`; corrected r5 removes raw `argv[0]` and normalizes launcher evidence without changing classifier or refusal behavior, then returns to both lanes for same-revision recheck |
 | 2026-10-11 | Kiro / Copilot / Sol | Both lanes PASSed corrected r5 revision `a3c5a9e` with no blockers; Ryan's separate exact one-shot execution-grant decision is next |
+| 2026-10-11 | Ryan / Sol | Ryan's exact r5 grant was consumed; the runner safely refused before backup creation on inventory drift to `781269da…e018c`. Result `79ef6d4a…29fc7` records no snapshots, exact timer restoration, no cleanup errors, inactive/disabled watcher, and unmounted offsite storage |
 
 ## TL;DR
 
@@ -276,6 +278,7 @@ Keep this document a current-state snapshot, not a session diary.
   before mount or backup and is consumed. Corrected r5 adds bounded post-exit
   writer attribution without raw argument text and binds current inventory
   `9321f51a…56a1` after unrelated Claude indexing. Kiro and Copilot both
-  PASSed exact revision `a3c5a9e`; Ryan's execution-grant decision is next.
-  No backup has run. Config promotion and watcher restart remain separately
-  gated.
+  PASSed exact revision `a3c5a9e`; Ryan granted and Sol ran it once. It safely
+  refused before backup on drift to `781269da…e018c`, restored all governed
+  state, and created no snapshot. R5 is consumed; no successor authority has
+  been prepared. Config promotion and watcher restart remain separately gated.

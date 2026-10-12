@@ -2,8 +2,9 @@
 
 **Arc:** Kiro bootstrap  
 **Prepared:** 2026-10-11 by Sol  
-**State:** r5 proposal only; `NO-GO` until Kiro and Copilot PASS the same
-exact pushed revision and Ryan grants that reviewed revision
+**State:** r5 consumed; `NO-GO`. Kiro and Copilot PASSed exact reviewed
+revision `a3c5a9e`, Ryan granted it, and the one-shot runner safely refused on
+mutation-inventory drift before creating any snapshot
 **Scope:** one new local complete-data Restic snapshot and one exact offsite
 copy; no bootstrap, provider transport, source operation, proposal generation,
 or watcher change
@@ -72,6 +73,19 @@ evidence. Sol-High adjudicated the material conflict in Copilot's favor. This
 correction removes raw `argv[0]` from both channels and normalizes the launcher
 to the closed values `convmem` or `convmem.py`; classifier behavior and every
 refusal boundary remain unchanged.
+
+Kiro and Copilot then PASSed exact corrected revision `a3c5a9e`. Ryan granted
+that reviewed packet, and the runner started once. It safely refused after
+mount and before backup creation because the live mutation inventory was
+`781269daffebe6ae57b7a4bb70f90a93e8b0c1ef033013042f14f84df89e018c`
+instead of the granted
+`9321f51a0a25cbedaaa38c631b182f768b4ac4be66c8c15cd6246676e98156a1`.
+Result `/tmp/convmem-kiro-replacement-backup-result-20261011-r5.json`, SHA-256
+`79ef6d4a7d8abf2946865fcb645070f06a76327af09774b29de9170031429fc7`,
+records null snapshot IDs, exact timer restoration, no cleanup errors,
+inactive/disabled watcher state, and an unmounted offsite device. The r5 grant
+is consumed and must never be retried. The inventory drift has not been
+diagnosed, and no successor authority has been prepared.
 
 ## Exact proposed runner
 
@@ -232,8 +246,7 @@ authorize that preparation or any bootstrap execution.
 
 ## TL;DR
 
-The r4 backup grant safely refused before mount or backup on an unattributed
-transient writer and is consumed. R5 preserves every reviewed boundary, adds
-bounded post-exit writer attribution, and binds the current inventory after
-unrelated Claude indexing. It remains `NO-GO` pending same-revision
-Kiro/Copilot PASS and Ryan's separate exact execution grant.
+The r4 and r5 backup grants are consumed. R5 safely refused before backup
+creation on mutation-inventory drift, restored all governed state, and created
+no snapshot. Its drift remains undiagnosed; no successor authority or
+bootstrap operation is authorized.
