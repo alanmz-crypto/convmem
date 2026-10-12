@@ -664,12 +664,16 @@ def _check_chroma_write_guard(cfg: dict) -> DoctorCheck:
         return DoctorCheck(name, True, "disabled by [index] chroma_write_guard = false", status="warn")
     guard = ChromaWriteGuard(chroma_dir)
     quarantine = guard.quarantine_state()
-    if quarantine is not None:
+    if quarantine is not None and quarantine.get("blocking", True):
+        incidents = quarantine.get("incidents") or []
+        finding_count = sum(len(incident.get("findings") or []) for incident in incidents)
         return DoctorCheck(
             name,
             False,
-            f"writes QUARANTINED: {quarantine.get('reason')} (segment {quarantine.get('segment')}); "
-            "repair, then: python scripts/chroma_guard.py clear-quarantine",
+            f"writes QUARANTINED ({quarantine.get('state')}): {quarantine.get('summary')}; "
+            f"{len(incidents)} incident(s), {finding_count} finding(s); "
+            "ordinary clear will not release them; "
+            f"see {guard.quarantine_path}",
         )
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     restored = 0
@@ -690,7 +694,8 @@ def _check_chroma_write_guard(cfg: dict) -> DoctorCheck:
             status="warn",
         )
     points = len(list(guard.snapshots.glob("*/CURRENT"))) if guard.snapshots.is_dir() else 0
-    return DoctorCheck(name, True, f"no quarantine; {points} segment restore point(s)")
+    label = "no unresolved incidents" if quarantine is not None else "no quarantine"
+    return DoctorCheck(name, True, f"{label}; {points} segment restore point(s)")
 
 
 CHROMA_AUDIT_MAX_AGE_HOURS = 36
@@ -721,6 +726,12 @@ def _check_chroma_audit(cfg: dict) -> DoctorCheck:
             status="warn",
         )
     status = audit.get("status")
+    if audit.get("containment") == "unavailable" or "containment unavailable" in str(audit.get("reason") or ""):
+        return DoctorCheck(
+            name,
+            False,
+            f"containment unavailable at {audit.get('ts')}: {audit.get('reason')}; see {guard.audit_path}",
+        )
     if status == "fail":
         invalid = ", ".join(audit.get("invalid_segments") or {}) or "none"
         return DoctorCheck(
