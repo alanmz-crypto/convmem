@@ -153,3 +153,37 @@ Claude verifies the tip. Then the Copilot audit (targeted:
 isolation/fail-open) and the Kiro review run on the exact tip, and Ryan makes
 the PR decision. Only after that is merged does the Stage 2 watcher canary
 get its grant.
+
+## Verification of `b689df6` (Claude, 2026-10-12) — corrective 1 needed
+
+**What's right:**
+
+- The typed guard outcome, its re-raise, the rejection record and the
+  `"skipped"` return are as specified. The watcher-side skip returns before
+  the hash comparison, so watcher spawns are fixed.
+- The sidecar fails open on corrupt data with one line, writes atomically,
+  and serializes writes with `flock`.
+- The earlier full-file hash in `watch_skip_reason` is **not** a
+  regression. `main` already hashes every file that isn't excluded.
+
+**Blocking. Each needs a test that fails at `b689df6`:**
+
+| # | Finding | Fix |
+|---|---|---|
+| K1 | Four CI regressions, not environmental. Seen on a clean disk-backed checkout with a fresh CI config: `test_incremental_jsonl_canary_baseline.py::test_t0_baseline_hashes_unchanged` (the `ingest.py` hash), `test_shadow_writer_coverage_scan.py::test_static_scan_matches_inventory_routing` (pins shifted: `ingest.py:642→661`, `1215→1239`, `1253→1277`; `inter_model_index.py:301→310`), and two `test_r2b_v2_corrective_viii.py` inventory identity tests. | Refresh the canary hash, with a one-line comment as the existing entries have. Regenerate the shadow inventory and the R2B v2 inventory artifact with the generators, not by hand-editing. This is the corrective-4b pattern. |
+| K2 | The reconciler suppresses only `new_eligible_source` (`recorded is None`). The realistic #308 case is a doc that was **already indexed at this path**, since the guard fires only when a projection exists. Its old processed entry gives `recorded != observed`, so `source_hash_mismatch` is still reported (`source_reconciler.py:~160–168`). | Apply the same path-and-hash rejection match before emitting `source_hash_mismatch`. Test: a doc indexed, then changed, then rejected gives no reconciler finding; after a further content change, the finding comes back. |
+
+**Reviewer notes (not blocking; Copilot and Kiro to rule):**
+
+- The sidecar shares the `processed.json.lock` flock. That's safe today:
+  the rejection is recorded before the processed commit, and readers don't
+  lock. But `flock` is per open file, so any future call nested inside a
+  `processed.json` mutation would deadlock. Consider a separate lock file.
+- The sidecar is a new write in the production data root, outside
+  `production_writer_boundary`. Check it against the governed-writer and
+  writer-coverage policy.
+
+**Process:** the handoff-back called all 19 local failures environmental
+without a clean disk-backed run, and four of them are real. The acceptance
+run must use a clean, disk-backed checkout (not tmpfs or a sandbox) with a
+fresh CI config.
