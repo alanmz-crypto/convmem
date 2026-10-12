@@ -9,14 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Codex rollout admission: Kiro PASS at
-  `a5f1756`; awaiting Copilot audit (2026-10-11):** Cursor implemented the
+- **Arc Codex / issue #286 — Codex rollout admission: corrective 5
+  `NOT_STARTED` (2026-10-11):** Cursor implemented the
   [design](../plans/DESIGN-issue-286-codex-rollout-admission.md) on
   `feat/2026-10-10-issue-286-codex-rollout-admission`. Corrective 4 fixed the
   six gate-3 safety findings and the Pylint failure, then merged `main` at
   `db8aebb` (#385). Claude verified the tip: Pylint gate PASS, focused tests
-  0 failed. Kiro PASSed exact tip `a5f1756`. Next: Copilot audit of that
-  tip, then Ryan's PR decision. Evidence is in the
+  0 failed. At exact tip `a5f1756`, Kiro PASSed and Copilot FAILed on three
+  residual blockers, which Claude confirmed: D8 refusals escape the
+  quarantine, checkpointless recovery skips the fresh-run rule, and a `~`
+  root is accepted. Next: Cursor corrective 5, then both reviewers recheck
+  the new tip. Evidence is in the
   [corrective-4 handoff](CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md)
   verification sections. Separately, the Kiro bootstrap failed-operation supersession
   merged (PR #381, `e798bba`); Sol's fresh successor packet and Ryan's grant

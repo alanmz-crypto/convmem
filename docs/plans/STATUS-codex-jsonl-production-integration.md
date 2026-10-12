@@ -86,7 +86,7 @@ Key invariants:
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
 | Failed-operation supersession | Merged on `main` via PR #381 (`e798bba`, 2026-10-10); Kiro and Copilot PASS at `a6169a5`. No live retry yet. | Sol successor packet, then Ryan successor-bootstrap grant |
-| Codex rollout admission design | Kiro PASS at `9e91973` with six binding conditions (design §13), on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; terminal refusal quarantine by path (§13 amended 2026-10-11). Implemented on `feat/2026-10-10-issue-286-codex-rollout-admission`; corrective 4 fixed the gate-3 findings and merged `main` at `db8aebb`. Claude verified tip `a5f1756` (Pylint gate PASS, focused tests 0 failed); Kiro PASS at `a5f1756`. | Copilot audit of exact tip `a5f1756`, then Ryan PR decision |
+| Codex rollout admission design | Kiro PASS at `9e91973` with six binding conditions (design §13), on `docs/2026-10-10-issue-286-codex-rollout-admission-design` (`docs/plans/DESIGN-issue-286-codex-rollout-admission.md`): time-bounded, identity-checked admission of new rollouts; pre-activation rollouts stay legacy; terminal refusal quarantine by path (§13 amended 2026-10-11). Implemented on `feat/2026-10-10-issue-286-codex-rollout-admission`; corrective 4 fixed the gate-3 findings and merged `main` at `db8aebb`. At exact tip `a5f1756`, Kiro PASS and Copilot FAIL (three residual blockers, confirmed by Claude). | Cursor corrective 5 (corrective-4 handoff, "Copilot re-audit of `a5f1756`"), then Copilot and Kiro recheck of the new tip |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
@@ -96,8 +96,8 @@ merged via PR #381; Sol prepares the fresh exact-resource successor packet,
 then Ryan decides the grant and the retry budget (six additional DeepSeek
 attempts may not cover the worst case of eight). **Codex rollouts:** Kiro
 passed the admission design at `9e91973` (§13 amended 2026-10-11). Cursor's
-corrected implementation at `a5f1756` is verified; Kiro PASSed that exact tip,
-and the Copilot audit of the same tip is next. Neither track
+implementation at `a5f1756` got Kiro PASS and Copilot FAIL; Cursor applies
+corrective 5 from the corrective-4 handoff. Neither track
 authorizes live bootstrap, config, runtime, or watcher action.
 
 ## 6. What Remains Before Live (sequential per track)
@@ -112,8 +112,8 @@ Kiro bootstrap:
 
 Codex rollouts:
 
-1. Copilot audits exact tip `a5f1756` (Kiro PASSed it on 2026-10-11); then
-   Ryan's PR decision.
+1. Cursor applies corrective 5 (C5b, C1b, C6b and the D1 STATUS restore);
+   then Copilot and Kiro recheck the new exact tip; then Ryan's PR decision.
 2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
    watcher canary, which also needs the #308 fix and the watch memory drop-in
    reconciliation); activation is a separate Ryan grant.
@@ -234,6 +234,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Kiro / Copilot / Claude | Gate 3 FAIL at `905ad40` (Kiro: Pylint gate; Copilot: six safety findings); Kiro accepted the D8 lineage fields and generic quarantine; corrective-4 handoff written, `NOT_STARTED` |
 | 2026-10-11 | Cursor / Claude | Corrective 4 landed and merged `main` (`db8aebb`); Claude verified tip `a5f1756`; next Copilot audit and Kiro recheck |
 | 2026-10-11 | Kiro | PASS at `a5f1756`: gate-3 Pylint failure cleared, all six §13 conditions hold, five reviewer notes accepted (two with non-blocking notes); Copilot audit next |
+| 2026-10-11 | Copilot / Claude | Copilot FAIL at `a5f1756` (D8 refusal quarantine, checkpointless recovery, `~` root); Claude confirmed all three; corrective 5 `NOT_STARTED` |
 
 ## TL;DR
 
