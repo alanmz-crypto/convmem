@@ -198,3 +198,39 @@ knowledge.**
 3. **Data and CI guard.** Classify the 63 paths, and add a CI test that
    fails when a tracked path is unclassified, so the manifest can't drift
    silently again.
+
+## Fast unblock and restart (Ryan grant 2026-10-12: option 1; options 2–3 to Cursor)
+
+**Config.**
+- **Backup:**
+  `~/.config/convmem/backups/config.toml.pre-manifest-removal-2026-10-12`,
+  mode 600 and byte-identical to the original.
+- **Change:** removed only `watch.repository_knowledge_manifests` (three
+  lines). Every other key parses identically, as verified with `tomllib`,
+  and the file mode is unchanged.
+- **Doctor** exits 0, with no status differences.
+
+**Pre-check before the restart** (live-faithful and read-only, the same
+harness as above, 13 live roots, 0 spawns, no tracing):
+
+| Manifest | RSS |
+|---|---|
+| none configured | **99 → 100 MB over 4 min (+0.6 MB/min)** |
+| the invalid one (control) | **+140.6 MB/min**, matching production's 144 |
+
+**Restart.**
+- The backup gate is still current (`b9a8977a…`).
+- `systemctl --user enable --now convmem-watch.service` at **T0′ =
+  08:31:18**.
+- There's no startup-sync failure now that no manifest is configured.
+- The monitor gained a stop condition: the watcher's main RSS above
+  2048 MB.
+
+**Durable fix:** `CURSOR-2026-10-12-repository-manifest-failure-cache-handoff.md`
+on `docs/2026-10-12-repository-manifest-failure-cache-handoff`. It covers
+failure caching, the 63 classifications, the 14 stale include hashes and a
+CI guard.
+
+| Check | Time | Paid (admitted / legacy est.) | Spawns | Watcher RSS | Stop |
+|---|---|---|---|---|---|
+| T0′ + 1 min | 08:32 | 0 / 0 | 0 | 101 MB | none |
