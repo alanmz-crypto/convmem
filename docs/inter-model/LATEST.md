@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Kiro bootstrap / issue #286 — r9 REVIEW PENDING
+- **Arc Kiro bootstrap / issue #286 — r9 REVIEWED / GRANT PENDING
   (2026-10-12):** The guarded Kiro route and failed-operation supersession are
   merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
   bootstrap, corpus mutation, dimension probing, or provider transport because
@@ -81,8 +81,12 @@ cross-arc snapshot and the linked arc brief below.
   window found no ConvMem writer or Safe Harbor process and no inventory-file
   metadata change. R9 reserves fresh paths and changes the final launcher to
   `exec` so no parent shell remains visible to the runner census; all other
-  runner behavior is unchanged. **Next:** Kiro and Copilot review the same
-  exact pushed r9 revision, then Ryan decides whether to grant it. Resume from
+  runner behavior is unchanged. Kiro and Copilot both PASSed exact pushed
+  revision `a202d97` with no blockers. Copilot observed later foreign pytest
+  activity that would make the runner refuse safely and consume the grant, so
+  Sol must recheck the live writer census before presenting or executing it.
+  **Next:** Ryan decides whether to grant the exact reviewed r9 runner after a
+  clean non-consuming readiness check. Resume from
   the
   [backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).

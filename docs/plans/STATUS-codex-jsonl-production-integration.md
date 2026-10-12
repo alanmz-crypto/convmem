@@ -85,16 +85,16 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed r4 authority `5e9d3d4`; its exact grant safely refused before mount or backup on transient writer PID `1089804`, then was consumed. R5 safely refused before backup creation on unrelated inventory drift and was consumed. Diagnosis found only unrelated Claude/Codex indexing in the global processed/export roles; Kiro remained unchanged. Kiro and Copilot PASSed r6 revision `33f7a9e`; Ryan granted and Sol ran it once. It safely refused before mount or backup on active unrelated `convmem index` PID `1201589`. Result `7efd323b…f6f191` records complete cleanup and no snapshots. R6 is consumed. Ryan authorized another cycle; two bounded censuses around a quiet window found no writer, and r7 bound fresh inventory `9b759981…bca12`. Kiro and Copilot both PASSed exact r7 revision `17460c2` with no blockers. Ryan granted and Sol ran it once; it safely refused before mount or backup because the live config digest changed to `a0f88897…c3528`. Result `ea117edd…c092` records no snapshots and an unmounted device. Its systemd observations returned user-bus errors, while independent host checks confirmed unchanged watcher and timer state. R7 is consumed. The config change is a narrow Codex rollout admission addition with no live sources; r8 binds it and unchanged inventory, and explicitly refuses unclassifiable systemd observations before mutation. Kiro and Copilot both PASSed exact r8 revision `de9b98a` with no blockers. Ryan granted and Sol ran it once; it safely refused before mount or backup after an unrelated Safe Harbor pytest restarted. Result `c376c9be…4098f` records no snapshots, exact timer restoration, and an unmounted device. R8 is consumed. Ryan authorized replacement preparation; r9 binds the unchanged config/inventory after a 45-second writer- and Safe-Harbor-free window, reserves fresh paths, and uses `exec` for the final launcher. | Same-revision Kiro design review and Copilot safety/isolation audit of r9, then Ryan's exact execution-grant decision |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed r4 authority `5e9d3d4`; its exact grant safely refused before mount or backup on transient writer PID `1089804`, then was consumed. R5 safely refused before backup creation on unrelated inventory drift and was consumed. Diagnosis found only unrelated Claude/Codex indexing in the global processed/export roles; Kiro remained unchanged. Kiro and Copilot PASSed r6 revision `33f7a9e`; Ryan granted and Sol ran it once. It safely refused before mount or backup on active unrelated `convmem index` PID `1201589`. Result `7efd323b…f6f191` records complete cleanup and no snapshots. R6 is consumed. Ryan authorized another cycle; two bounded censuses around a quiet window found no writer, and r7 bound fresh inventory `9b759981…bca12`. Kiro and Copilot both PASSed exact r7 revision `17460c2` with no blockers. Ryan granted and Sol ran it once; it safely refused before mount or backup because the live config digest changed to `a0f88897…c3528`. Result `ea117edd…c092` records no snapshots and an unmounted device. Its systemd observations returned user-bus errors, while independent host checks confirmed unchanged watcher and timer state. R7 is consumed. The config change is a narrow Codex rollout admission addition with no live sources; r8 binds it and unchanged inventory, and explicitly refuses unclassifiable systemd observations before mutation. Kiro and Copilot both PASSed exact r8 revision `de9b98a` with no blockers. Ryan granted and Sol ran it once; it safely refused before mount or backup after an unrelated Safe Harbor pytest restarted. Result `c376c9be…4098f` records no snapshots, exact timer restoration, and an unmounted device. R8 is consumed. Ryan authorized replacement preparation; r9 binds the unchanged config/inventory after a 45-second writer- and Safe-Harbor-free window, reserves fresh paths, and uses `exec` for the final launcher. Kiro and Copilot both PASSed exact r9 revision `a202d97` with no blockers. Copilot observed later foreign pytest activity, so live readiness must be rechecked before grant or execution. | Ryan's exact r9 execution-grant decision after a clean non-consuming readiness check |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
-Obtain Kiro design review and Copilot safety/isolation audit on the same exact
-pushed r9 revision. Confirm the only runner delta is the fresh result path and
-the packet's only invocation delta is the final `exec`. If both PASS, present
-Ryan with one exact copyable grant. Do not retry r8 or execute r9 without that
-separate grant.
+Kiro and Copilot both PASSed exact pushed r9 revision `a202d97` with no
+blockers. Recheck the live writer census and Safe Harbor worktree immediately
+before presenting Ryan with one exact copyable grant; do not present or execute
+the grant while foreign pytest activity would consume it in a safe refusal.
+Do not retry r8 or execute r9 without Ryan's separate grant.
 
 The r3 bootstrap proposal at
 `/tmp/convmem-kiro-bootstrap-successor-proposal-20261011-r3.json`, SHA-256
@@ -105,7 +105,8 @@ config/runtime, or restart the watcher.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Obtain same-revision Kiro and Copilot PASS on r9.
+1. Revalidate r9 live readiness without materializing the runner or consuming
+   authority.
 2. Ryan decides whether to grant the exact reviewed r9 runner.
 3. Under that reviewed and granted cycle, create one new local complete-data
    snapshot and one exact offsite copy while the writer gate is held; return
@@ -276,6 +277,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-12 | Kiro / Copilot / Sol | Both lanes PASSed exact r8 revision `de9b98a` with no blockers; Ryan's separate exact execution-grant decision is next |
 | 2026-10-12 | Ryan / Sol | Ryan's exact r8 grant was consumed; the runner safely refused before mount or backup after unrelated Safe Harbor pytest PID `1370562` restarted. Result `c376c9be…4098f` records no snapshots, exact timer restoration, no cleanup errors, and an unmounted device |
 | 2026-10-12 | Ryan / Sol | Ryan authorized replacement preparation; the Safe Harbor worktree stayed process-free through a 45-second quiet window, and r9 binds unchanged config/inventory with fresh paths and an `exec` launcher, pending same-revision review |
+| 2026-10-12 | Kiro / Copilot / Sol | Both lanes PASSed exact r9 revision `a202d97` with no blockers; Copilot observed later foreign pytest activity, so Sol must recheck live readiness before Ryan's exact grant decision |
 
 ## TL;DR
 
@@ -309,6 +311,7 @@ Keep this document a current-state snapshot, not a session diary.
   once; it safely refused before mount or backup when an unrelated Safe Harbor
   pytest restarted, restored all governed state, and created no snapshot. R8
   is consumed. R9 binds unchanged config/inventory after the foreign suite
-  stayed quiet, reserves fresh paths, and uses an `exec` launcher. Same-revision
-  Kiro/Copilot review is next; promotion and watcher restart remain separately
-  gated.
+  stayed quiet, reserves fresh paths, and uses an `exec` launcher. Kiro and
+  Copilot both PASSed exact revision `a202d97` with no blockers; a fresh live
+  readiness check and Ryan's exact grant decision are next. Promotion and
+  watcher restart remain separately gated.
