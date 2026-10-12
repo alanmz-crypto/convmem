@@ -449,3 +449,96 @@ incremental run. For Kiro sources the fix isn't a one-liner: they carry no
 D8 lineage, so the checkpointed rollback-then-re-enable case needs a design
 decision too. Ryan decides whether it's a separate follow-up (recommended)
 or part of this PR.
+
+## PR draft (use once Copilot and Kiro both PASS `78b9295`)
+
+**Before merge:** add one docs-only commit to the branch, after the PR is
+opened, so the number exists. It does three things:
+
+- states the post-merge reality in the Codex STATUS and LATEST lines: on
+  `main`, default off, with Stage 1 as the next gate;
+- adds the PR number;
+- links the follow-up
+  [exact-path recovery parity design](https://github.com/alanmz-crypto/convmem/blob/docs/2026-10-11-issue-286-exact-path-recovery-parity/docs/plans/DESIGN-issue-286-exact-path-recovery-parity.md).
+
+Claude confirms `git diff <reviewed tip>..HEAD -- ':!docs'` is empty, so both
+verdicts carry.
+
+**Title:** Admit new Codex rollouts to the guarded incremental index route (off by default)
+
+**Body:**
+
+```markdown
+## What changes for Ryan
+
+After this merges, the guarded incremental route can index **new** Codex
+rollout transcripts incrementally from their first index, instead of
+re-indexing the whole file on every append. Whole-file re-indexing is the
+main source of repeated paid re-indexing and of the largest watcher index
+children. Nothing turns on by itself. The route stays off until you add an
+explicit `codex_rollout_admission` config and grant Stage 1. Rollouts that
+existed before activation stay on the legacy route exactly as today.
+
+## Who / What / When / Why / How
+
+- **Who:** Claude designed it (Kiro PASS at `9e91973`; §13 amended
+  2026-10-11). Cursor implemented it through five correctives. Copilot
+  audited and Kiro reviewed each exact tip, and Claude verified each tip
+  before review.
+- **What:**
+  - time-bounded, identity-checked admission of new rollouts under
+    `/home/<user>/.codex/sessions` (D1);
+  - a terminal refusal quarantine, keyed by path (D3, §13);
+  - a per-run transform cap and frontier-subset rule (D4);
+  - a 256 MiB source ceiling (D5);
+  - one-way route rollback, detected by lineage (D8);
+  - the same guards on crash recovery;
+  - watcher refusal handling (exit 91 plus a whole-line marker);
+  - strict validation of the admission root path.
+- **When:** Copilot audit and Kiro recheck PASSed exact tip `78b9295`.
+  `main` is merged in at `db8aebb` (#385).
+- **Why:** from Sep 26 to Oct 5 the watcher spawned 133 Codex rollout index
+  children. One rollout was re-indexed 44 times, and all three children that
+  hit the 12 GiB cap were Codex rollouts.
+- **How:** a new admission module, plus coordinator guards on both fresh
+  runs and recovery. The watcher circuit breaker moves into its own module.
+  This PR changes no live config, systemd unit, runtime worktree or
+  watcher.
+
+## Not in this PR
+
+- **Activation.** Stage 1 (manual, watcher stopped) and Stage 2 (a 24 h
+  watcher canary, which also needs #308 and the watch-memory drop-in
+  reconciliation) are separate Ryan grants.
+- **Kiro exact-path sources.** They keep two recovery gaps that this PR
+  closes only for Codex. Neither is reachable while the route is off. They
+  are tracked in `DESIGN-issue-286-exact-path-recovery-parity.md` (follow-up
+  branch).
+
+## Verification
+
+- Pylint regression gate PASS against the `main` merge base.
+- Full suite (Cursor, clean clone): 3015 passed, plus the 1 known #320
+  golden-eval failure, which depends on the live corpus.
+- Focused set (Claude): 787 passed. Two debounce-timer tests failed only
+  under CPU load and pass on rerun.
+- Copilot audit PASS and Kiro PASS at `78b9295`.
+
+## Merge reading
+
+- [Design](docs/plans/DESIGN-issue-286-codex-rollout-admission.md)
+- [Execute handoff](docs/inter-model/CURSOR-2026-10-10-issue-286-codex-rollout-admission-execute-handoff.md)
+- [Corrective-4 handoff and verification record](docs/inter-model/CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md)
+- [Arc Codex status brief](docs/plans/STATUS-codex-jsonl-production-integration.md)
+- [LATEST](docs/inter-model/LATEST.md)
+
+Refs #286. Squash merge is fine.
+
+## TL;DR
+
+New Codex rollouts can use the guarded incremental route, off by default,
+with the same fail-closed guards on fresh runs and crash recovery. Nothing
+activates until Ryan grants Stage 1.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+```

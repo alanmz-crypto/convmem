@@ -114,9 +114,11 @@ Codex rollouts:
 
 1. Copilot audit and Kiro recheck exact tip `78b9295`; then Ryan's PR
    decision.
-   Before any Kiro exact-path live incremental run, close the reported
-   no-checkpoint recovery gap for those sources (corrective-4 handoff,
-   "Verification of `78b9295`").
+   Before any Kiro exact-path live incremental run, close the matching
+   recovery gaps for those sources. The design draft, for Kiro review, is
+   `docs/plans/DESIGN-issue-286-exact-path-recovery-parity.md` on
+   `docs/2026-10-11-issue-286-exact-path-recovery-parity`; it recommends
+   landing the fix before the successor Kiro bootstrap.
 2. Ryan grants Stage 1 (manual, watcher stopped) and later Stage 2 (24 h
    watcher canary, which also needs the #308 fix and the watch memory drop-in
    reconciliation); activation is a separate Ryan grant.
