@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 REVIEW-EVIDENCE CORRECTION IMPLEMENTED; SUCCESSOR REVIEW PENDING.** Ryan accepted the plan at `dca13a5` and approved B-E4.1. Cursor implemented the two authorized test corrections at test code `8b41044`; runtime code is unchanged and isolated evidence passes. Successor CI and a focused delta review are pending; Copilot's PASS at `677c8a0` is historical. BugBot reviewed no SHA; its gate and T1 acceptance remain open. Ownership, later-task and live-operation limits are unchanged.
+> **Arc: Safe Harbor. BOUNDED BRANCH UPDATE AUTHORIZED.** Cursor's two test corrections passed isolated evidence and Copilot's delta review at `2977c45` (85%). PR #387 conflicts with main `5550def` in routing and generated inventory; successor pytest/pylint did not run. Ryan authorized integrating that base, regenerating the inventory, fresh CI and final-tip review. Execution section 8 defines the boundary. BugBot reviewed no SHA; its gate and T1 acceptance remain open. No PR merge, deployment or T2–T5 grant.
 
 ## 1. What This Is For (product goal)
 
@@ -67,7 +67,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Coordinate a focused independent delta review of the two corrections and their regressions at the pushed successor, scoped by execution section 8; do not implement production code or treat the earlier PASS as review of the new tip.
+**Codex:** Coordinate the authorized base integration, fresh CI and focused final-tip review under execution section 8. Copilot passed the two-test delta at `2977c45` (85%); review the new integration rather than repeating the unchanged architecture. Prepare any required exact-tip outage acceptance only after the candidate is concrete.
 
 **Opus:** The first review and delta cadence is complete. No further review for the requested E7 clause; return only if new contracts beyond that clarification are introduced.
 
@@ -75,13 +75,13 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 **Ryan:** The two test corrections are authorized. After corrected evidence and successor review, decide T1 acceptance and any exact-tip outage acceptance for the missing BugBot review. Merge and later/live grants remain separate. Recovery/loss-window inputs remain open before live rollout; the new drive is not a backup/restore grant.
 
-**Cursor:** The two-test correction is complete and pushed. Return only if the delta review or successor CI finds a defect in those corrections. No production startup/indexing, runtime change, PR comment, merge or later-task work.
+**Cursor:** Merge pinned main `5550def` into the dedicated T1 branch, preserve both routing entries, regenerate the derived inventory, inspect automatic source merges and collect isolated integration evidence as granted in execution section 8. A feature-branch merge is authorized; merging PR #387 into main remains ungranted.
 
 **Ops:** No live grant; keep services, deployed code, backups and drives unchanged.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. GitHub CI and a focused independent delta review must cover the corrected successor (test code `8b41044`). Historical green results do not transfer automatically. T1 is not independently deployable: old writers can still overwrite the marker or clear incidents. T2–T5 stay ungranted.
+1. Complete the authorized branch integration, then obtain fresh GitHub CI and a focused integration delta review at its final tip. The two-test delta already passed at `2977c45` (85%); historical green CI does not transfer. T1 is not independently deployable: old writers can still overwrite the marker or clear incidents. T2–T5 stay ungranted.
 2. Resolve the separate BugBot outage gate through matching evidence or Ryan's written exact-tip acceptance, then Ryan accepts or returns T1. Acceptance is not deployment.
 3. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
 4. Any deployment or corpus-affecting operation requires its own exact scope, recovery evidence and Ryan grant. The standalone detector remains a separate decision.
@@ -117,6 +117,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-11 — Codex: recorded Copilot delta PASS at `2977c45` and Ryan's bounded main-integration/inventory-refresh grant; fresh CI and final-tip review follow, with no PR merge or live grant.
 
 - 2026-10-11 — Codex: resumed from the GitHub checkpoint and authored the provisional Safe Harbor direction/brief; independent review and Ryan approval remain pending.
 - 2026-10-11 — Codex: corrected Opus's two first-review blockers and recorded E1–E7; exact-revision delta review is next, with Kiro sign-off and Ryan approval still pending.

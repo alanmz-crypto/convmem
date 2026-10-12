@@ -308,7 +308,7 @@ on findings and changed contracts, preserving unresolved safety gates.
 
 ### Resume state and workspace
 
-- State: **REVIEW-EVIDENCE CORRECTION AUTHORIZED / NOT STARTED**. Ryan authorized the two test corrections below after Copilot reviewed `677c8a0d17618166c454b4523d6767e48cfa330a`.
+- State: **BOUNDED BRANCH UPDATE AUTHORIZED / NOT STARTED**. The two test corrections are complete at `2977c4531cf446974b0c86994dbca757715dca76`, with Copilot delta PASS (85%). Ryan now authorizes the base-branch integration below, fresh CI and final-tip review.
 - Implementation branch: `fix/2026-10-11-safe-harbor-t1`.
 - Dedicated worktree: `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-11-safe-harbor-t1`.
 - Original grant base: `b4c0e73b60befcbc9c0fab02e42fd012c6b6adb3`. Current review-evidence correction starts from `677c8a0d17618166c454b4523d6767e48cfa330a`, with T1 runtime changes at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` and merged main at `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. Resume from the documentation commit recording this grant, supplied in Codex's dispatch; it changes no implementation. Confirm branch, clean state, parentage and the grant before editing. A pre-existing dirty or diverged worktree is not permission to overwrite another writer.
@@ -353,6 +353,18 @@ Ryan instructed **"correct both before merging"** after Codex identified the two
 **Finish:** commit and push the bounded correction, keep the PR a draft, and report the successor SHA and evidence. A focused independent delta review checks these two corrections and regressions at that successor; historical CI/review results do not transfer automatically. The BugBot outage gate remains unsatisfied until matching review evidence or Ryan's written exact-tip outage acceptance. No review comment, merge, deployment or T2–T5 work is authorized by this grant.
 
 ### Isolation and evidence
+
+#### Bounded branch update — owner authorized
+
+Ryan's subsequent instruction: **"authorized: Authorize the bounded branch update, then obtain fresh CI and resolve the final-tip review gate."** This supersedes the earlier correction's inventory-edit exclusion only for the mechanical integration described here. It does not authorize merging PR #387 into main, deployment or T2–T5.
+
+- Resume the clean, pushed T1 worktree from the documentation commit containing this grant. Prior implementation subject: `2977c4531cf446974b0c86994dbca757715dca76`. Merge pinned base `5550def70c72bc7a60f0c5216b46cd4cf629f5d2` (main's PR #388) into this feature branch, preserving history; no rebase or force-push. Recheck remote base and branch first; report a material new base change before expanding this integration.
+- Resolve `docs/inter-model/LATEST.md` by preserving both arcs' current routing. Regenerate `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` using its existing generator on the integrated tree. Do not hand-edit identity values, alter the identity algorithm or route policy, or activate PR #388's disabled feature. Inspect automatic source merges, especially `doctor.py`, against both parents for lost T1 or main behavior. Unexpected semantic conflict returns to Codex/Ryan.
+- Permitted accompanying edits: existing Safe Harbor EXECUTION/STATUS/VERIFY and LATEST, for this grant, prior delta verdict and integrated evidence. No new runtime behavior or unrelated finding fix. Keep the two corrected tests intact. Run the previously isolated T1/guard/R2b regression set and relevant lint/inventory checks after inspecting their isolation. No production CLI/MCP, indexing, provider, Restic, service, drive or full default local suite.
+- Commit/push the integrated candidate with the existing explicit branch refspec; record exact base/code tip, resolved files, generator identity and observed results. Correct the stale execution state. Complete evidence edits before handing the final tip to review; do not keep moving the reviewed subject merely to record review status.
+- Codex will watch fresh GitHub CI to completion, inspect any real failure and obtain a focused Copilot integration delta review at the final tip. No new PR comment or BugBot trigger is inferred. The two quota failures reviewed no SHA; Copilot remains independent evidence. If the BugBot outage persists, prepare the concrete final-SHA acceptance for Ryan under EXECUTE-TASK's outage rule rather than falsely marking the gate passed. Keep PR #387 a draft.
+
+This is a branch-maintenance and validation grant, not an architecture change, T1 acceptance, PR merge or live-operation grant.
 
 The grant permits the accepted T1 fixture tests, subprocess/restart/concurrency cases and fault/negative controls. Before importing project code, isolate all configuration, data roots, user-directory lookups, providers and subprocess paths; refuse production paths. Read the harness and fixtures before running them. Use the worktree interpreter/source explicitly, not the installed ConvMem launcher. No production CLI/MCP startup ritual, doctor, session indexing, Restic command, provider call or drive/service action is authorized; routine protocol defaults cannot enlarge this isolated task.
 
