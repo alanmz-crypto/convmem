@@ -234,3 +234,4 @@ CI guard.
 | Check | Time | Paid (admitted / legacy est.) | Spawns | Watcher RSS | Stop |
 |---|---|---|---|---|---|
 | T0′ + 1 min | 08:32 | 0 / 0 | 0 | 101 MB | none |
+| T0′ + 15 min | 08:46 | 0 / 0 | 0 | 101–102 MB, flat for all 15 samples; service peak 0.45 GiB; no OOM events | none (window clean) |
