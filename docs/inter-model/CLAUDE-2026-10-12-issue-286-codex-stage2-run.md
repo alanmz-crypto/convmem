@@ -235,3 +235,19 @@ CI guard.
 |---|---|---|---|---|---|
 | T0′ + 1 min | 08:32 | 0 / 0 | 0 | 101 MB | none |
 | T0′ + 15 min | 08:46 | 0 / 0 | 0 | 101–102 MB, flat for all 15 samples; service peak 0.45 GiB; no OOM events | none (window clean) |
+| T0′ + 2 h | 10:31 | 0 / 0 | 1 (inter-model `LATEST.md`, 0 chunks, rejected) | 108–109 MB, flat for all 60 samples; service peak 0.45 GiB; no OOM events | none (window clean) |
+
+**T0′ + 2 h notes.**
+- **#308 works live.** At 09:08 the watcher spawned one index of
+  `docs/inter-model/LATEST.md`. The child skipped it ("inter-model
+  provenance supersession required"), indexed 0 chunks and made no
+  provider calls. The sidecar recorded it. The next 52 re-checks were
+  `skip (inter_model_rejected)` with no spawn: before #308, each would
+  have been a spawn.
+- **Correction to the burn note above.** The two pre-activation Codex
+  rollouts stopped being written at 08:15–08:16, before the restart.
+  The watcher indexes only on file events and does no catch-up scan, so
+  they were not re-indexed. They cost a full legacy re-index only if
+  those sessions are resumed. The fix is to retire them rather than
+  resume them.
+- 3,710 `skip (unchanged)`, 0 refusals, 0 errors and 0 restarts.
