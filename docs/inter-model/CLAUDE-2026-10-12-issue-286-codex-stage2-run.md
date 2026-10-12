@@ -125,3 +125,76 @@ reads live source trees, it waits for Ryan's go.
 
 **Burn note:** the two active pre-activation Codex sessions above would
 each get a full legacy re-index once the watcher runs and they go quiet.
+
+## Root cause found (Claude, 2026-10-12, round 2 under Ryan's go)
+
+**Live-faithful run.** Runtime `8a7cdab`, the real watch roots observed
+read-only, a scratch `HOME` and data root, a 1e9 s debounce, `env -i`, and
+provider hosts pointing at `127.0.0.1:9`, with `tracemalloc` on. Result:
+**+279 MB/min, 0 spawns.** The live `processed.json` was written once
+during the run, at 07:47:22, by a separate `convmem index --file
+~/.crush/crush.db` that the interactive Crush session started (Crush's own
+Track A). That wasn't the harness.
+
+**The top growing allocations at minute 3** all come from
+`repository_knowledge_scope._cached_manifest` (line 759), through
+`load_and_validate_manifest`:
+
+| What | Growth by minute 3 |
+|---|---|
+| Parsed manifest JSON | +103 MiB |
+| Raw manifest text (137 copies of 299 KiB) | +40 MiB |
+| `git ls-files` path lists | +22 MiB |
+| Classification rows | +19 MiB |
+
+**Mechanism.**
+
+- `decide_path()` runs on every filesystem event and calls
+  `_cached_manifest()` for each configured manifest.
+- A **valid** manifest is cached, and each call only re-checks its sha256
+  and git HEAD.
+- An **invalid** manifest is "cached" as the last exception. So every event
+  triggers a full `load_and_validate_manifest`: it reads the 306 KB file,
+  parses the JSON, runs `git ls-files` and the cleanliness check, and builds
+  the classification table. That explains the CPU.
+- The stored exception's traceback references the frame holding that data,
+  and the frame references the exception. Only a full GC frees that cycle,
+  so memory grows with the event rate.
+
+**Why it began with the promotion.** `repository_knowledge_scope.py` is
+unchanged between `a92a74e` and `8a7cdab`. `a92a74e` is itself "Classify new
+tracked files so repository indexing runs again", so its manifest was valid.
+On `8a7cdab` the manifest
+(`config/repository-knowledge/openclaw-watch-scope-v1.json`, read from
+`runtime-main`) has **63 unclassified tracked paths**, from files added since
+then. Nothing in CI caught the drift.
+
+**Hermetic confirmation** (synthetic rollout appended 3.6 times a second):
+
+| Runtime | Manifest | RSS |
+|---|---|---|
+| `8a7cdab` | its own, invalid | **+84 MB/min** |
+| `a92a74e` | its own, valid (startup sync OK) | **flat at 96 MB** |
+| `8a7cdab` | none configured | flat at 95 MB (round 1) |
+
+**Fix options. All are cross-arc: OpenClaw Watch Coverage owns repository
+knowledge.**
+
+1. **Fast unblock (Ryan config grant).** Remove
+   `watch.repository_knowledge_manifests` from the live config, and keep a
+   backup.
+   - Repository-knowledge capture is already broken (`startup sync failed:
+     manifest_invalid`), so nothing that works today is lost.
+   - With no manifest, `decide_path` returns `outside_unconfigured` at once.
+   - Stage 2 can then restart.
+2. **Durable code fix (Cursor).**
+   - `_cached_manifest` caches failures keyed by the manifest sha256 and
+     git HEAD, the same way it caches success, so an invalid manifest
+     re-validates only when one of those changes.
+   - It stores the exception without its traceback, which breaks the
+     cycle.
+   - Test: many `decide_path` calls on an invalid manifest run exactly one
+     validation, and traced memory stays flat.
+3. **Data and CI guard.** Classify the 63 paths, and add a CI test that
+   fails when a tracked path is unclassified, so the manifest can't drift
+   silently again.
