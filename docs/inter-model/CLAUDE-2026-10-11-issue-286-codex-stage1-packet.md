@@ -174,3 +174,46 @@ sorts after `oom-mitigation.drop-in.conf`, and still re-imposes
 `MemoryMax=4G` and `MemoryHigh=3G` over the 8G mitigation. That pair is
 documented as the cause of the service OOM kills on Sep 28 and 29.
 Reconcile it before the Stage 2 watcher start.
+
+## Stage 1 run log
+
+**Grant:** Ryan, 2026-10-11, approving the options this packet recommends:
+
+- **Runtime:** option (A).
+- **Residual burn:** retire the three long-lived pre-activation sessions.
+  New Codex work starts in fresh sessions after `admitted_after`.
+
+**Preparation (Claude, 2026-10-11 22:50–23:00 CDT):**
+
+- **Runtime:** a scratch worktree at `main` `5550def`, in
+  `~/.cache/convmem-stage1-5550def` (disk-backed).
+- **Config:** `~/.config/convmem/stage1-codex-config.toml`, mode 0600. It is a
+  byte-exact copy of the live config, with the Stage 1 tables appended
+  (`admitted_after = 2026-10-12T04:04:00Z`, which is 23:04 CDT).
+  - It parses under `5550def`.
+  - Its data paths are the live production ones.
+  - The live config is unchanged, and `runtime-main` still sees the route as
+    off.
+- **Kiro ruling (headless, file reads only): option (A) is ACCEPTED.**
+  - `CONVMEM_CONFIG` only selects which config file loads. Live authority
+    comes from the config's own content.
+  - Binding condition: the data paths are the live ones, and
+    `CONVMEM_INCREMENTAL_ROOT` stays unset. Both hold.
+- **Backup gate:** `convmem-restic-local.service` reports a current-day
+  snapshot (`89aaf9ef…`, taken at 00:18). Other sessions wrote production
+  data at 22:48, so the gate is rerun right before run 1. After 00:15, the
+  daily timer takes a new snapshot.
+
+**Hazard (operational rule until Stage 2):** a rollout created after
+`admitted_after` must never be indexed through the legacy route. If it is,
+it gets a processed entry with no checkpoint, the incremental route then
+refuses it as `bootstrap_required`, and it stays legacy for good.
+
+- The normal `convmem` CLI still runs the legacy route (`runtime-main` is at
+  `a92a74e`). So does any lane's Track A (`convmem index --file <rollout>`).
+- At 22:48, another session legacy-indexed the 18:59 rollout. That was
+  allowed, because it predates `admitted_after`, but it is the same burn,
+  done by hand.
+- Until the runtime is promoted for Stage 2, no lane may index a Codex
+  rollout created after 23:04 CDT, except Stage 1 itself through the scratch
+  runtime.
