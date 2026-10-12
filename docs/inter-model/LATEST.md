@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-11
+**Updated:** 2026-10-12
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Kiro bootstrap / issue #286 — r7 backup authority REVIEW PENDING
+- **Arc Kiro bootstrap / issue #286 — r7 backup authority REVIEWED / GRANT PENDING
   (2026-10-12):** The guarded Kiro route and failed-operation supersession are
   merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
   bootstrap, corpus mutation, dimension probing, or provider transport because
@@ -51,9 +51,11 @@ cross-arc snapshot and the linked arc brief below.
   consumed. Ryan authorized another cycle. Two bounded writer censuses around
   a 30-second quiet window found no active writer, and Sol captured fresh
   inventory `9b759981…bca12` under the exclusive writer lease; Kiro remains
-  unchanged and no backup has run. **Next:** Kiro and Copilot review the same
-  exact pushed r7 revision, then Ryan decides whether to grant it. Resume from
-  the
+  unchanged and no backup has run. Kiro and Copilot both PASSed exact pushed
+  r7 revision `17460c2` with no blockers; they confirmed that the executable
+  delta from PASSed r6 changes only the inventory and result-path bindings.
+  **Next:** Ryan decides whether to grant the exact reviewed r7 runner. Resume
+  from the
   [r4 backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
