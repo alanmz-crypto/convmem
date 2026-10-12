@@ -16,6 +16,7 @@ from distill import make_unit_id
 from inter_model_index import index_inter_model_messages
 from inter_model_rejections import (
     REJECTION_KIND_PROVENANCE_SUPERSESSION,
+    clear_fail_open_diagnostic_emitted,
     clear_inter_model_rejection_for_path,
     inter_model_rejection_matches,
     load_inter_model_rejections,
@@ -325,19 +326,74 @@ def test_rejection_is_path_specific_not_content_global(tmp_path: Path) -> None:
     )
 
 
-def test_corrupt_sidecar_fails_open_and_concurrent_writes_preserve_records(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+CORRUPT_SIDECAR_PAYLOADS = (
+    pytest.param(b"\xff\xfe\x00", id="invalid_utf8"),
+    pytest.param(b"##\xc3", id="partial_multibyte_tail"),
+    pytest.param(b"[" * 200000, id="deep_nesting"),
+)
+
+
+@pytest.mark.parametrize("corrupt_bytes", CORRUPT_SIDECAR_PAYLOADS)
+def test_corrupt_sidecar_fails_open(
+    tmp_path: Path,
+    corrupt_bytes: bytes,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Handoff test 7: corrupt sidecar fails open; concurrent writes keep records."""
-    cfg = _cfg(tmp_path, tmp_path / "docs" / "inter-model" / "x.md")
-    side = rejections_path(cfg["index"]["processed_log"])
-    side.parent.mkdir(parents=True, exist_ok=True)
-    side.write_text("{not json", encoding="utf-8")
-    assert not inter_model_rejection_matches(
-        cfg["index"]["processed_log"], "/any/path.md", "deadbeef"
+    """Handoff test 7 (C3-1): corrupt sidecar fails open; record heals sidecar."""
+    path = _inter_model_path(tmp_path)
+    cfg = _cfg(tmp_path, path)
+    file_hash = ingest.sha256_file(str(path))
+    record_provenance_supersession_rejection(
+        cfg["index"]["processed_log"],
+        path_key=str(path.resolve()),
+        file_hash=file_hash,
+        section_id="0",
     )
+    assert (
+        ingest.watch_skip_reason(
+            path,
+            processed={},
+            processed_log=cfg["index"]["processed_log"],
+        )
+        == "inter_model_rejected"
+    )
+    assert not discover_legacy_source_drift(cfg)
+
+    side = rejections_path(cfg["index"]["processed_log"])
+    side.write_bytes(corrupt_bytes)
+    clear_fail_open_diagnostic_emitted()
+
+    assert not inter_model_rejection_matches(
+        cfg["index"]["processed_log"], str(path.resolve()), file_hash
+    )
+    assert (
+        ingest.watch_skip_reason(
+            path,
+            processed={},
+            processed_log=cfg["index"]["processed_log"],
+        )
+        != "inter_model_rejected"
+    )
+    findings = discover_legacy_source_drift(cfg)
+    assert len(findings) == 1
+    assert findings[0].reason == "new_eligible_source"
+
+    record_provenance_supersession_rejection(
+        cfg["index"]["processed_log"],
+        path_key=str(path.resolve()),
+        file_hash=file_hash,
+        section_id="0",
+    )
+    healed = load_inter_model_rejections(cfg["index"]["processed_log"])
+    assert healed[str(path.resolve())]["file_hash"] == file_hash
     err = capsys.readouterr().err
     assert "failing open" in err
+
+
+def test_corrupt_sidecar_concurrent_writes_preserve_records(tmp_path: Path) -> None:
+    """Handoff test 7b: concurrent rejection writes keep all records."""
+    cfg = _cfg(tmp_path, tmp_path / "docs" / "inter-model" / "x.md")
+    rejections_path(cfg["index"]["processed_log"]).parent.mkdir(parents=True, exist_ok=True)
 
     paths = [tmp_path / f"docs/inter-model/p{i}.md" for i in range(4)]
     for p in paths:

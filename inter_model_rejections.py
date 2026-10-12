@@ -43,6 +43,11 @@ def _rejections_lock(processed_log: str):
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
+def clear_fail_open_diagnostic_emitted() -> None:
+    """Reset one-shot stderr guard (for tests and recovery after corrupt read)."""
+    _FAIL_OPEN_EMITTED.clear()
+
+
 def _fail_open_once(message: str) -> None:
     if _FAIL_OPEN_EMITTED:
         return
@@ -57,7 +62,7 @@ def load_inter_model_rejections(processed_log: str) -> dict[str, Any]:
         return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, RecursionError) as exc:
         _fail_open_once(
             f"[convmem] inter_model_rejections.json unreadable, failing open: {exc}"
         )
@@ -72,7 +77,12 @@ def load_inter_model_rejections(processed_log: str) -> dict[str, Any]:
 
 def save_inter_model_rejections(processed_log: str, data: dict[str, Any]) -> None:
     path = rejections_path(processed_log)
-    atomic_write_text(path, json.dumps(data, indent=2), encoding="utf-8")
+    try:
+        atomic_write_text(path, json.dumps(data, indent=2), encoding="utf-8")
+    except OSError as exc:
+        _fail_open_once(
+            f"[convmem] inter_model_rejections.json unreadable, failing open: {exc}"
+        )
 
 
 def mutate_inter_model_rejections(
