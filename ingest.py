@@ -397,6 +397,7 @@ def commit_processed_index_entry(
     path_key: str,
     chunks: int,
     units: int,
+    incremental_jsonl_lineage: str | None = None,
 ) -> bool:
     """Merge one file's index metadata under the processed-state lock.
 
@@ -411,11 +412,14 @@ def commit_processed_index_entry(
         existing = data.get(file_hash)
         if isinstance(existing, dict) and existing.get("excluded"):
             return
-        data[file_hash] = {
+        entry = {
             "path": path_key,
             "chunks": chunks,
             "units": units,
         }
+        if incremental_jsonl_lineage:
+            entry["incremental_jsonl_lineage"] = incremental_jsonl_lineage
+        data[file_hash] = entry
         _purge_stale_same_path(data, path_key, file_hash, preserve_exclusions=True)
         result["committed"] = True
 

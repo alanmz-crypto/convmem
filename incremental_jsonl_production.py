@@ -15,7 +15,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from adapters.detect import detect_format
 from config import CONFIG_PATH, IncrementalJsonlConfigError, incremental_jsonl_settings
+from incremental_jsonl_codex_admission import is_production_source_granted
 from incremental_jsonl_isolation import (
     IsolationViolation,
     open_source_readonly,
@@ -54,7 +56,13 @@ class ProductionBoundary:
         if not settings.enabled:
             raise IsolationViolation("incremental production route is disabled")
         self.source = _checked_path(source, label="source")
-        if str(self.source) not in settings.live_sources:
+        detected = detect_format(self.source)
+        if not is_production_source_granted(
+            path_key=str(self.source),
+            live_sources=settings.live_sources,
+            admission=settings.codex_rollout_admission,
+            detected_format=detected,
+        ):
             raise IsolationViolation("source lacks an exact live grant")
         self.config_path = _checked_path(config_path, label="config")
         index = cfg.get("index")

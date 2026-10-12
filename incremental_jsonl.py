@@ -15,7 +15,9 @@ import hashlib
 import json
 import os
 import stat
+import sys
 import tempfile
+import time
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -44,6 +46,11 @@ from incremental_jsonl_isolation import (
     open_source_readonly,
     validate_regular_source,
 )
+from incremental_jsonl_codex_admission import (
+    admits_path_checks_1_4,
+    is_production_source_granted,
+    verify_session_meta_identity,
+)
 from incremental_jsonl_production import ProductionBoundary
 from ingest import (
     ChunkArtifact,
@@ -52,6 +59,15 @@ from ingest import (
     load_processed,
     render_chunk,
 )
+
+LIVE_ROUTE_REFUSED_EXIT = 91
+
+
+def format_live_route_refused(outcome: str, prefix_sha256: str = "") -> str:
+    if prefix_sha256:
+        return f"live_route_refused:{outcome}:{prefix_sha256}"
+    return f"live_route_refused:{outcome}"
+
 
 ELIGIBLE_FORMAT = "jsonl_kiro_session"
 ADAPTER_CONTRACT_VERSION = "kiro-complete-prefix-v1"
@@ -532,8 +548,19 @@ class IncrementalJsonlCoordinator:
         self.path_key = str(self.source)
         detected_format = detect_format(self.source)
         self.format_spec: IncrementalFormatSpec | None = get_format_spec(detected_format)
+        production_codex = (
+            isinstance(boundary, ProductionBoundary)
+            and settings.codex_rollout_admission is not None
+            and admits_path_checks_1_4(
+                settings.codex_rollout_admission,
+                self.path_key,
+                detected_format,
+            )
+        )
+        self.codex_admitted_live = production_codex
         self.routed_formats = routed_formats(
-            isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT"))
+            isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT")),
+            production_codex_rollout=production_codex,
         )
         if self.format_spec is None:
             self.format_spec = get_format_spec(ELIGIBLE_FORMAT)
@@ -584,6 +611,7 @@ class IncrementalJsonlCoordinator:
         )
         self.last_result: IncrementalRunResult | None = None
         self.last_evidence: dict[str, Any] = {}
+        self._run_started = 0.0
         self._lock: SourceAdvisoryLock | None = None
         self._max_units_in_flight = 0
 
@@ -726,6 +754,13 @@ class IncrementalJsonlCoordinator:
         fd = open_source_readonly(self.source)
         try:
             info = validate_regular_source(fd)
+            admission = self.settings.codex_rollout_admission
+            if (
+                self.codex_admitted_live
+                and admission is not None
+                and info.st_size > admission.max_source_bytes
+            ):
+                raise IncrementalJsonlError("source_too_large")
             raw = os.read(fd, info.st_size)
             after = os.fstat(fd)
         finally:
@@ -771,11 +806,21 @@ class IncrementalJsonlCoordinator:
         return snapshot
 
     def _revalidate_live_prefix(self, snapshot: dict) -> None:
+        admission = (
+            self.settings.codex_rollout_admission if self.codex_admitted_live else None
+        )
+
         def revalidate() -> None:
             fd = open_source_readonly(self.source)
             try:
                 info = validate_regular_source(fd)
-                raw = os.read(fd, max(snapshot["complete_boundary"], info.st_size))
+                if (
+                    admission is not None
+                    and int(info.st_size) > admission.max_source_bytes
+                ):
+                    raise IncrementalJsonlError("source_too_large")
+                boundary = int(snapshot["complete_boundary"])
+                raw = os.read(fd, boundary)
             finally:
                 os.close(fd)
             current = {
@@ -961,6 +1006,228 @@ class IncrementalJsonlCoordinator:
             prepared.append(loaded or artifact)
         _ = frontier  # retained for call-site evidence; cache hits encode stability
         return prepared, reused
+
+    def _allowed_transform_starts(
+        self, messages: list[dict], prior_record_count: int
+    ) -> frozenset[int]:
+        chunks = chunk_messages(messages, self.chunk_size, self.overlap)
+        if prior_record_count <= 0:
+            return frozenset(int(chunk["start_offset"]) for chunk in chunks)
+        frontier = frontier_start(prior_record_count, self.chunk_size, self.overlap)
+        return frozenset(
+            int(chunk["start_offset"])
+            for chunk in chunks
+            if int(chunk["start_offset"]) >= frontier
+        )
+
+    def _planned_transform_starts(
+        self,
+        messages: list[dict],
+        *,
+        cache_required_before: int,
+    ) -> set[int]:
+        chunks = chunk_messages(messages, self.chunk_size, self.overlap)
+        planned: set[int] = set()
+        for chunk in chunks:
+            expected = {
+                "chunk_start": int(chunk["start_offset"]),
+                "input_digest": self._chunk_input_digest(chunk),
+            }
+            key = self._prepared_key(expected["chunk_start"], expected["input_digest"])
+            if self._load_prepared(key, expected=expected) is not None:
+                continue
+            if int(chunk["start_offset"]) < cache_required_before:
+                continue
+            planned.add(int(chunk["start_offset"]))
+        return planned
+
+    def _codex_projection_fingerprint(self) -> str:
+        with self._session() as session:
+            summaries = session.store.snapshot_source_rows(SUMMARIES, self.path_key)
+            units = session.store.snapshot_source_rows(UNITS, self.path_key)
+        payload = {
+            "summaries": sorted(
+                (
+                    row["id"],
+                    row.get("document") or "",
+                    row.get("metadata") or {},
+                )
+                for row in summaries
+            ),
+            "units": sorted(
+                (
+                    row["id"],
+                    row.get("document") or "",
+                    row.get("metadata") or {},
+                )
+                for row in units
+            ),
+        }
+        return hashlib.sha256(_canonical_json(payload).encode()).hexdigest()
+
+    def _codex_projection_checkpoint_mismatch(self, checkpoint: dict | None) -> str | None:
+        """D8: legacy re-index drops incremental processed lineage for the path."""
+        if not self.codex_admitted_live or checkpoint is None:
+            return None
+        expected = checkpoint.get("processed_lineage_digest")
+        if not expected:
+            return None
+        processed = load_processed(str(self.cfg["index"]["processed_log"]))
+        for entry in processed.values():
+            if not isinstance(entry, dict) or entry.get("excluded"):
+                continue
+            if entry.get("path") != self.path_key:
+                continue
+            if entry.get("incremental_jsonl_lineage") == expected:
+                return None
+        return "projection_checkpoint_mismatch"
+
+    def _transaction_written_row_ids(self, transaction: dict) -> tuple[set, set]:
+        summaries: set[str] = set()
+        units: set[str] = set()
+        for key in transaction.get("prepared_keys") or []:
+            payload = _read_json(self._prepared_path(str(key)))
+            if not isinstance(payload, dict):
+                continue
+            summaries.add(str(payload.get("doc_id")))
+            for unit in payload.get("units") or []:
+                if isinstance(unit, dict):
+                    units.add(str(unit.get("id")))
+        return summaries, units
+
+    def _codex_recovery_bootstrap_required(
+        self, transaction: dict, rollback: dict | None
+    ) -> bool:
+        """C1b: checkpointless recovery applies the fresh-run bootstrap rule."""
+        if self.bootstrap_existing:
+            return False
+        processed = load_processed(str(self.cfg["index"]["processed_log"]))
+        if _path_has_processed_entry(processed, self.path_key):
+            return True
+        if rollback is None:
+            return self._chroma_row_count() > 0
+        if (
+            rollback.get("processed_preimage")
+            or rollback.get("summaries")
+            or rollback.get("units")
+        ):
+            return True
+        written_summaries, written_units = self._transaction_written_row_ids(transaction)
+        with self._session() as session:
+            foreign_summaries = (
+                session.store.ids_for_source(SUMMARIES, self.path_key) - written_summaries
+            )
+            foreign_units = (
+                session.store.ids_for_source(UNITS, self.path_key) - written_units
+            )
+        return bool(foreign_summaries or foreign_units)
+
+    def _codex_admission_guard_code(
+        self,
+        snapshot: dict,
+        *,
+        checkpoint: dict | None,
+        continuity: str | None,
+        cache_required_before: int,
+    ) -> str | None:
+        admission = self.settings.codex_rollout_admission
+        if not self.codex_admitted_live or admission is None:
+            return None
+        if int(snapshot.get("size") or 0) > admission.max_source_bytes:
+            return "source_too_large"
+        prior_count = int(checkpoint.get("record_count") or 0) if checkpoint else 0
+        if continuity == "initial_full":
+            prior_count = 0
+        allowed = self._allowed_transform_starts(snapshot["messages"], prior_count)
+        planned = self._planned_transform_starts(
+            snapshot["messages"],
+            cache_required_before=cache_required_before,
+        )
+        if not planned.issubset(allowed):
+            return "frontier_violation"
+        if len(planned) > admission.max_transform_chunks_per_run:
+            return "transform_chunk_cap"
+        return None
+
+    def _codex_roll_forward_refusal(
+        self,
+        snapshot: dict,
+        *,
+        transaction: dict,
+        phase: str,
+        rollback: dict | None,
+    ) -> str | None:
+        if not self.codex_admitted_live:
+            return None
+        identity_refusal = verify_session_meta_identity(
+            self.source, snapshot.get("raw") or b""
+        )
+        if identity_refusal:
+            return identity_refusal
+        admission = self.settings.codex_rollout_admission
+        if admission is not None:
+            try:
+                fd = open_source_readonly(self.source)
+                try:
+                    info = validate_regular_source(fd)
+                finally:
+                    os.close(fd)
+            except OSError:
+                return "source_too_large"
+            if int(info.st_size) > admission.max_source_bytes:
+                return "source_too_large"
+            snapshot = {**snapshot, "size": int(info.st_size)}
+        checkpoint = None
+        try:
+            checkpoint = self.checkpoint()
+        except IncrementalJsonlError:
+            return "invalid_state"
+        projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
+        if projection_mismatch:
+            return f"rebuild_required:{projection_mismatch}"
+        if checkpoint is None and self._codex_recovery_bootstrap_required(
+            transaction, rollback
+        ):
+            return "bootstrap_required"
+        continuity = _continuity_reason(
+            checkpoint, snapshot, self.transform_fingerprint
+        )
+        prior_count = int(checkpoint.get("record_count") or 0) if checkpoint else 0
+        prepared_keys = list(transaction.get("prepared_keys") or [])
+        if phase == "APPLYING" and prepared_keys:
+            cache_required_before = 0
+        else:
+            cache_required_before = frontier_start(
+                prior_count, self.chunk_size, self.overlap
+            )
+        return self._codex_admission_guard_code(
+            snapshot,
+            checkpoint=checkpoint,
+            continuity=continuity,
+            cache_required_before=cache_required_before,
+        )
+
+    def _emit_codex_admitted_log(
+        self,
+        result: IncrementalRunResult,
+        *,
+        snapshot: dict | None,
+        elapsed_seconds: float,
+    ) -> None:
+        if not self.codex_admitted_live:
+            return
+        payload = {
+            "event": "incremental_codex_admitted_run",
+            "format": result.adapter_format,
+            "outcome": result.outcome,
+            "chunks_reused": result.reused_artifacts,
+            "chunks_transformed": max(0, result.chunks - result.reused_artifacts),
+            "chunks_pruned": 0,
+            "provider_requests": result.counters.as_dict(),
+            "source_bytes": int(snapshot.get("size") or 0) if snapshot else 0,
+            "elapsed_seconds": round(elapsed_seconds, 3),
+        }
+        print(json.dumps(payload, sort_keys=True), file=sys.stderr)
 
     def _artifact_from_build(self, built: ChunkArtifact, chunk_start: int) -> dict:
         units = []
@@ -1649,6 +1916,11 @@ class IncrementalJsonlCoordinator:
         from ingest import commit_processed_index_entry, _path_is_excluded
 
         committed = {"ok": False}
+        lineage = (
+            self._codex_projection_fingerprint()
+            if self.codex_admitted_live
+            else None
+        )
 
         def publish() -> None:
             if _path_is_excluded(self._processed(), self.path_key):
@@ -1660,6 +1932,7 @@ class IncrementalJsonlCoordinator:
                 path_key=self.path_key,
                 chunks=chunks,
                 units=units,
+                incremental_jsonl_lineage=lineage,
             )
 
         self._transition("processed_publish", publish)
@@ -1703,6 +1976,8 @@ class IncrementalJsonlCoordinator:
             active_generation="",
             ingest_status=ingest_status,
         )
+        if snapshot and snapshot.get("prefix_sha256"):
+            self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
         self.last_result = result
         return result
 
@@ -1772,6 +2047,7 @@ class IncrementalJsonlCoordinator:
                 rollback.get("non_source_collections") or {}
             )
             self._revalidate_live_prefix(snapshot)
+            projection_fingerprint = self._codex_projection_fingerprint()
             checkpoint = {
                 "version": CHECKPOINT_VERSION,
                 "commit_state": "complete",
@@ -1787,6 +2063,10 @@ class IncrementalJsonlCoordinator:
                 "active_generation": generation,
                 "summary_ids": sorted(keep_summaries),
                 "unit_ids": sorted(keep_units),
+                "projection_fingerprint": projection_fingerprint,
+                "processed_lineage_digest": (
+                    projection_fingerprint if self.codex_admitted_live else None
+                ),
                 "processed_hash": snapshot["prefix_sha256"],
                 "raw_line_coverage": snapshot["raw_line_coverage"],
                 "fallback_reason": fallback,
@@ -1814,7 +2094,13 @@ class IncrementalJsonlCoordinator:
             semantic_queued=semantic,
             ingest_status="processed" if committed else "skipped",
         )
+        self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
         self.last_result = result
+        self._emit_codex_admitted_log(
+            result,
+            snapshot=snapshot,
+            elapsed_seconds=time.monotonic() - self._run_started,
+        )
         return result
 
     def _require_rollback_authority(self, expected_sha256: str) -> dict:
@@ -1936,6 +2222,26 @@ class IncrementalJsonlCoordinator:
             "snapshot_path": snapshot_path,
             "snapshot_dir": snapshot_dir,
         }
+        roll_refusal = self._codex_roll_forward_refusal(
+            snapshot, transaction=transaction, phase=phase, rollback=rollback
+        )
+        if roll_refusal:
+            if rollback is None:
+                self._cleanup(snapshot_dir)
+                result = self._refusal(roll_refusal, snapshot=snapshot)
+                self._emit_codex_admitted_log(
+                    result,
+                    snapshot=snapshot,
+                    elapsed_seconds=time.monotonic() - self._run_started,
+                )
+                return result
+            assert rollback_sha256 is not None
+            self._restore_replay_before_images(
+                rollback,
+                rollback_sha256,
+                snapshot_dir,
+            )
+            return self._refusal("rolled_back", snapshot=snapshot)
         try:
             self._revalidate_live_prefix(snapshot)
             prepared = []
@@ -2011,6 +2317,7 @@ class IncrementalJsonlCoordinator:
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
 
     def run(self) -> IncrementalRunResult:  # pylint: disable=too-many-return-statements
+        self._run_started = time.monotonic()
         if not self.enabled:
             return self._refusal("disabled")
         detected = detect_format(self.source)
@@ -2045,6 +2352,19 @@ class IncrementalJsonlCoordinator:
                 snapshot = self._capture(transaction_id)
             except IncrementalJsonlError as exc:
                 return self._refusal(exc.code, fallback=exc.detail or None)
+            if self.codex_admitted_live:
+                identity_refusal = verify_session_meta_identity(
+                    self.source, snapshot["raw"]
+                )
+                if identity_refusal:
+                    self._cleanup(snapshot["snapshot_dir"])
+                    result = self._refusal(identity_refusal, snapshot=snapshot)
+                    self._emit_codex_admitted_log(
+                        result,
+                        snapshot=snapshot,
+                        elapsed_seconds=time.monotonic() - self._run_started,
+                    )
+                    return result
             checkpoint = None
             try:
                 checkpoint = self.checkpoint()
@@ -2082,6 +2402,14 @@ class IncrementalJsonlCoordinator:
             if outcome in {"bootstrap_required", "invalid_state"}:
                 self._cleanup(snapshot["snapshot_dir"])
                 return self._refusal(outcome, snapshot=snapshot)
+            projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
+            if projection_mismatch:
+                self._cleanup(snapshot["snapshot_dir"])
+                return self._refusal(
+                    f"rebuild_required:{projection_mismatch}",
+                    fallback=projection_mismatch,
+                    snapshot=snapshot,
+                )
             continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
             if continuity and continuity != "initial_full" and not self.settings.allow_full_rebuild:
                 return self._refusal(
@@ -2112,12 +2440,38 @@ class IncrementalJsonlCoordinator:
                     ingest_status="skipped",
                 )
                 self.last_result = result
+                self._emit_codex_admitted_log(
+                    result,
+                    snapshot=snapshot,
+                    elapsed_seconds=time.monotonic() - self._run_started,
+                )
                 return result
             frontier = 0 if continuity else frontier_start(
                 int(checkpoint["record_count"]) if checkpoint else 0,
                 self.chunk_size,
                 self.overlap,
             )
+            mode = "bootstrap_existing" if self.bootstrap_existing else (
+                "full_rebuild_fallback" if continuity and continuity != "initial_full" else (
+                    "initial_full" if continuity == "initial_full" else "incremental"
+                )
+            )
+            cache_required_before = frontier if mode == "incremental" else 0
+            guard_code = self._codex_admission_guard_code(
+                snapshot,
+                checkpoint=checkpoint,
+                continuity=continuity,
+                cache_required_before=cache_required_before,
+            )
+            if guard_code:
+                self._cleanup(snapshot["snapshot_dir"])
+                result = self._refusal(guard_code, snapshot=snapshot)
+                self._emit_codex_admitted_log(
+                    result,
+                    snapshot=snapshot,
+                    elapsed_seconds=time.monotonic() - self._run_started,
+                )
+                return result
             self._write_transaction(
                 {
                     "version": TRANSACTION_VERSION,
@@ -2136,12 +2490,6 @@ class IncrementalJsonlCoordinator:
                     else None,
                 }
             )
-            mode = "bootstrap_existing" if self.bootstrap_existing else (
-                "full_rebuild_fallback" if continuity and continuity != "initial_full" else (
-                    "initial_full" if continuity == "initial_full" else "incremental"
-                )
-            )
-            cache_required_before = frontier if mode == "incremental" else 0
             try:
                 prepared, reused = self._build_frontier(
                     snapshot["messages"],
@@ -2244,9 +2592,19 @@ def maybe_route_incremental(
     else:
         # An enabled table alone does not select production sources. Unselected
         # files retain the legacy route, including formats without a spec.
-        if path_key not in settings.live_sources:
+        if not is_production_source_granted(
+            path_key=path_key,
+            live_sources=settings.live_sources,
+            admission=settings.codex_rollout_admission,
+            detected_format=detected_format,
+        ):
             return None
-        if detected_format not in routed_formats():
+        production_codex = (
+            settings.codex_rollout_admission is not None
+            and detected_format == "jsonl_codex_rollout"
+            and path_key not in settings.live_sources
+        )
+        if detected_format not in routed_formats(production_codex_rollout=production_codex):
             raise IncrementalJsonlError("live_format_not_eligible", str(detected_format))
         if force_reindex or supersede_on_reindex:
             raise IncrementalJsonlError("live_force_unsupported")
@@ -2273,5 +2631,9 @@ def maybe_route_incremental(
     )
     result = coordinator.run()
     if not isolated and result.outcome not in {"committed", "unchanged"}:
-        raise IncrementalJsonlError("live_route_refused", result.outcome)
+        digest = getattr(coordinator, "last_evidence", {}).get("prefix_sha256", "")
+        raise IncrementalJsonlError(
+            "live_route_refused",
+            f"{result.outcome}:{digest}" if digest else result.outcome,
+        )
     return result.ingest_tuple()

@@ -12,20 +12,19 @@ BASELINE_HASHES = {
     # Intentionally refreshed: Arc Poison Pill Part B write guard (2026-09-24) —
     # watch.py restores torn HNSW saves after an abrupt index-child exit; see
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
-    # Refreshed for issue #268 D1 scratch diagnosis harness: env-gated
-    # live-diagnosis phase marks and hermetic inner-scope wiring; the canary
-    # remains unreachable from the CLI and watcher.
-    "watch.py": "77dcbacd364473ab0b5c353b2fe7f953860a8db64442a1e3f94ef61484279f58",
-    # Refreshed for issue #286's authorized bootstrap safety corrective:
-    # bootstrap-only accounting and immutable replay authority cross these
-    # bytes; the canary remains unreachable from the CLI and watcher.
-    # Refreshed again for issue #268 D1: optional live-diagnosis phase marks
-    # and brief-refresh refusal hook; no canary route added.
-    "ingest.py": "79fcd3a64c405e759cc756a7770160997cd67729ecc4a3af479efa751fa42558",
+    # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4) and
+    # issue #268 D1 scratch diagnosis harness on the merged branch.
+    "watch.py": "dde8e84a13cb4f897b51b1a18688c5bdfd93b3a148342f59d369ff803bfd6e94",
+    # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
+    # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
+    "ingest.py": "b6454436cea7c561128c7beea3a885a67884da68dd8d1acfd4023aaa2314623b",
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.
-    "incremental_jsonl.py": "0cbcd03fdfdd3feda7c38604fda6ce30f40aae656ee5101cc76388143409ed7e",
+    # Refreshed for issue #286 Codex rollout admission route, guards, and
+    # structured admitted-run logging; refreshed for corrective 5 checkpointless
+    # recovery bootstrap_required refusal.
+    "incremental_jsonl.py": "88eb40a6a57542ca3000cc8152c64a338e0883837ae241ca90421cb0127d189e",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
