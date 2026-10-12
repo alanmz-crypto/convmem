@@ -2,7 +2,7 @@
 
 **Arc:** Kiro bootstrap  
 **Prepared:** 2026-10-12 by Sol
-**State:** r8 proposal only; `NO-GO` until Kiro and Copilot PASS the same
+**State:** r9 proposal only; `NO-GO` until Kiro and Copilot PASS the same
 exact pushed revision and Ryan grants that reviewed revision
 **Scope:** one new local complete-data Restic snapshot and one exact offsite
 copy; no bootstrap, provider transport, source operation, proposal generation,
@@ -22,7 +22,7 @@ inventory binding is stale. It must not be executed, edited, regenerated, or
 reused. A new successor bootstrap proposal can be prepared only after this
 separate backup-only operation returns a valid matching local/offsite pair.
 
-This r8 authority proposal binds the current inventory and the most recent
+This r9 authority proposal binds the current inventory and the most recent
 valid pair as a readiness anchor:
 
 - local snapshot
@@ -147,14 +147,35 @@ no writer. A new writer-lease capture is byte-identical to r7: inventory
 summaries, and 17 Kiro knowledge units. The drift-sensitive file sizes and
 mtimes remained unchanged.
 
+Kiro and Copilot PASSed exact r8 revision
+`de9b98a8fec1840a688bdec0f87cd879ea8d97b2`. Ryan granted that reviewed
+packet. A host preflight first stopped before materialization because an
+unrelated Safe Harbor pytest was active; the grant remained unconsumed. After
+that process exited and a standalone census found zero writers, the exact r8
+runner started once. The foreign suite restarted pytest during the gap, and
+the runner safely refused before mount or backup on PID `1370562`. Result
+`/tmp/convmem-kiro-replacement-backup-result-20261012-r8.json`, SHA-256
+`c376c9bed1f9f3a045edf55e504ba06a2f7fdc29b356ee27b9be92e03874098f`,
+records null snapshot IDs, exact timer restoration, no cleanup errors,
+inactive/disabled watcher state, and an unmounted device. R8 is consumed and
+must never be retried.
+
+For r9, the Safe Harbor worktree had no remaining process. A fresh inventory
+capture waited for and acquired the exclusive writer lease, then reproduced
+the same inventory and byte-identical evidence. A 45-second quiet window found
+no ConvMem writer and no Safe Harbor worktree process; the drift-sensitive
+file sizes and mtimes stayed unchanged. The runner changes only its result
+path from r8 to r9. The invocation uses `exec` for the final runner process so
+no parent launcher shell remains visible to its protected writer census.
+
 ## Exact proposed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `b07df36e6030de4cb918d5bc50393284306d86af63c4f8ab8dded8421bb28eee` |
-| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py` |
-| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261012-r8.json` |
+| Attachment SHA-256 | `4382b5fcc7442368ef120a13ce4ce6b5d75823b956ca400b5f28eaf310cf3eaf` |
+| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py` |
+| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261012-r9.json` |
 | Valid local date | `2026-10-12` in `America/Chicago` |
 
 After same-revision Kiro/Copilot PASS and Ryan's exact grant, the one-shot
@@ -165,10 +186,10 @@ set -e
 if findmnt -rn -S /dev/sda1 -o TARGET; then
     exit 1
 fi
-cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py
-chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py
-printf '%s  %s\n' 'b07df36e6030de4cb918d5bc50393284306d86af63c4f8ab8dded8421bb28eee' '/tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py' | sha256sum --check --strict -
-/home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261012-r8.py --execute
+cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py
+chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py
+printf '%s  %s\n' '4382b5fcc7442368ef120a13ce4ce6b5d75823b956ca400b5f28eaf310cf3eaf' '/tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py' | sha256sum --check --strict -
+exec /home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py --execute
 ```
 
 The runner refuses an existing result path, including a dangling symlink. Its
@@ -247,7 +268,7 @@ remain evidence and are never deleted to hide a failed qualification.
 | Mutable data root | `/home/lauer/.local/share/convmem` |
 | Detached runtime | clean `/tmp/convmem-kiro-bootstrap-e798bba` at `e798bba284c96642fc31229e6375eadc26986493` |
 | Current inventory digest | `9b7599818c1eaad927c07f46e1b9de2a175abc7cd152eba441868842ddebca12` |
-| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261012-r8.json` |
+| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261012-r9.json` |
 | Inventory evidence SHA-256 | `12d585f11becc06defedee562f5719ff30ff4738a9305d32d7411151f8a3e189` |
 | Inventory procedure | `bootstrap_mutation_inventory` + `convmem-bootstrap-mutation-proof-v1` at runtime `e798bba…` |
 | Exact source | `/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_2628159e-d039-4646-a208-0a10a1b3e450/messages.jsonl` |
@@ -298,6 +319,8 @@ be retried. The r6 backup-only grant at revision
 `33f7a9e15daa5f6e5eba515128bf7722f5822ea4` is also consumed and must never
 be retried. The r7 backup-only grant at revision
 `17460c218bb38ea89025d56866dd5de9f8c0521f` is also consumed and must never
+be retried. The r8 backup-only grant at revision
+`de9b98a8fec1840a688bdec0f87cd879ea8d97b2` is also consumed and must never
 be retried. The sealed r3 bootstrap proposal at revision
 `9d249d0c36dcf791ebc95e2516f94c5844b2b845` is unconsumed but stale and must
 never be executed or reused.
@@ -314,9 +337,9 @@ authorize that preparation or any bootstrap execution.
 
 ## TL;DR
 
-The r4 through r7 backup grants are consumed. R7 safely refused before mount
-or backup after detecting live config drift; it created no snapshot. R8 binds
-the attributable current config and the unchanged writer-lease inventory, and
-adds explicit refusal for unavailable systemd state. It remains `NO-GO`
-pending same-revision Kiro/Copilot PASS and Ryan's separate exact execution
-grant.
+The r4 through r8 backup grants are consumed. R8 safely refused before mount
+or backup when an unrelated Safe Harbor pytest restarted; it restored all
+governed state and created no snapshot. R9 binds the unchanged config and
+writer-lease inventory after a longer quiet window, reserves fresh paths, and
+uses `exec` for the final launcher. It remains `NO-GO` pending same-revision
+Kiro/Copilot PASS and Ryan's separate exact execution grant.

@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Kiro bootstrap / issue #286 — r8 CONSUMED / FOREIGN PYTEST REFUSAL
+- **Arc Kiro bootstrap / issue #286 — r9 REVIEW PENDING
   (2026-10-12):** The guarded Kiro route and failed-operation supersession are
   merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
   bootstrap, corpus mutation, dimension probing, or provider transport because
@@ -75,9 +75,15 @@ cross-arc snapshot and the linked arc brief below.
   refused before mount or backup on PID `1370562`. Result marker
   `c376c9be…4098f` records null snapshot IDs, exact timer restoration, no
   cleanup errors, inactive/disabled watcher state, and an unmounted device.
-  R8 is consumed. **Next:** after the Safe Harbor suite is fully quiet, Ryan
-  decides whether to authorize preparation of a new backup-only cycle. Resume
-  from the
+  R8 is consumed. Ryan authorized replacement preparation. The Safe Harbor
+  worktree then had no live process. A fresh writer-lease capture reproduced
+  inventory `9b759981…bca12` and evidence `12d585f1…e189`; a 45-second quiet
+  window found no ConvMem writer or Safe Harbor process and no inventory-file
+  metadata change. R9 reserves fresh paths and changes the final launcher to
+  `exec` so no parent shell remains visible to the runner census; all other
+  runner behavior is unchanged. **Next:** Kiro and Copilot review the same
+  exact pushed r9 revision, then Ryan decides whether to grant it. Resume from
+  the
   [backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
   and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
