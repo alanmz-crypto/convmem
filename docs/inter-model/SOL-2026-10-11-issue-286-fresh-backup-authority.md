@@ -61,16 +61,24 @@ records no snapshots, exact timer restoration, inactive/disabled watcher, and
 an unmounted device.
 
 The r5 correction preserves the same refusal classes while retaining bounded
-process evidence before raising: classifier, matched launcher/subcommand or
-marker, PID/PPID/start ticks/UID, cwd, executable, argv0/count, and SHA-256 of
-the raw command line. It does not store free-form command arguments.
+process evidence before raising: classifier, closed launcher/subcommand or
+marker, PID/PPID/start ticks/UID, cwd, resolved executable, argument count,
+and SHA-256 of the raw command line. It does not store raw argument text.
+
+Kiro PASSed the first r5 revision `09ae1c8`, while Copilot FAILed that same
+revision because raw caller-controlled `argv[0]` appeared in both the bounded
+evidence and error string, and a path-bearing launcher value remained in the
+evidence. Sol-High adjudicated the material conflict in Copilot's favor. This
+correction removes raw `argv[0]` from both channels and normalizes the launcher
+to the closed values `convmem` or `convmem.py`; classifier behavior and every
+refusal boundary remain unchanged.
 
 ## Exact proposed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `0f5789aa82cb0fcd598acf961a4564eb629565edf39d90769f7cdd7d16293af3` |
+| Attachment SHA-256 | `521fead0af08499b42ca402cd73c7510284155de339d8744c266d8c5fe51cc96` |
 | Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py` |
 | Result path | `/tmp/convmem-kiro-replacement-backup-result-20261011-r5.json` |
 | Valid local date | `2026-10-11` in `America/Chicago` |
@@ -85,7 +93,7 @@ if findmnt -rn -S /dev/sda1 -o TARGET; then
 fi
 cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py
 chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py
-printf '%s  %s\n' '0f5789aa82cb0fcd598acf961a4564eb629565edf39d90769f7cdd7d16293af3' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py' | sha256sum --check --strict -
+printf '%s  %s\n' '521fead0af08499b42ca402cd73c7510284155de339d8744c266d8c5fe51cc96' '/tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py' | sha256sum --check --strict -
 /home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261011-r5.py --execute
 ```
 

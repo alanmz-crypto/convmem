@@ -85,13 +85,13 @@ Key invariants:
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed r4 authority `5e9d3d4`; its exact grant safely refused before mount or backup on transient writer PID `1089804`, then was consumed. Ryan authorized a narrow evidence correction and new cycle. R5 now retains bounded process attribution before refusal and binds current inventory `9321f51a…56a1` after unrelated Claude indexing; no backup has run. | Same-revision Kiro design review and Copilot safety/isolation audit of r5, then Ryan's exact execution-grant decision |
+| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. PR #384 merged the pytest isolation fix as `6a23aa9`. Kiro and Copilot PASSed r4 authority `5e9d3d4`; its exact grant safely refused before mount or backup on transient writer PID `1089804`, then was consumed. Ryan authorized a narrow evidence correction and new cycle. On first r5 revision `09ae1c8`, Kiro PASSed while Copilot FAILed raw caller-controlled `argv[0]` retention; Sol-High accepted Copilot's privacy finding. Corrected r5 removes raw argument text, retains bounded process attribution, and binds current inventory `9321f51a…56a1` after unrelated Claude indexing; no backup has run. | Same-revision Kiro design review and Copilot safety/isolation audit of corrected r5, then Ryan's exact execution-grant decision |
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
 
 Obtain Kiro design review and Copilot safety/isolation audit on the same exact
-pushed r5 revision. Confirm that bounded writer evidence is sufficient for
+corrected r5 revision. Confirm that bounded writer evidence is sufficient for
 post-exit attribution without storing free-form arguments, and that every r4
 backup/isolation boundary remains intact. If both PASS, present Ryan with one
 exact copyable grant. Do not execute r5 without that separate grant.
@@ -263,6 +263,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Kiro / Copilot / Sol | Both lanes PASSed corrected r4 revision `5e9d3d4` with no blockers; Ryan's exact one-shot backup grant decision is next, and no backup has run |
 | 2026-10-11 | Ryan / Sol | Ryan's exact r4 grant was consumed; the runner safely refused before mount or backup on active writer PID `1089804`, which exited before attribution. Result `62fb8f9d…f96546` records exact cleanup with no snapshots, restored timers, inactive/disabled watcher, and unmounted device |
 | 2026-10-11 | Ryan / Sol | Ryan authorized the narrow writer-evidence correction and a new authority cycle; r5 retains bounded post-exit process identity, binds inventory `9321f51a…56a1` after unrelated Claude indexing, and awaits same-revision Kiro/Copilot review without executing backups |
+| 2026-10-11 | Sol-High / Sol | Sol-High accepted Copilot's exact-r5 privacy FAIL over Kiro's PASS at `09ae1c8`; corrected r5 removes raw `argv[0]` and normalizes launcher evidence without changing classifier or refusal behavior, then returns to both lanes for same-revision recheck |
 
 ## TL;DR
 
@@ -274,7 +275,8 @@ Keep this document a current-state snapshot, not a session diary.
   unconsumed proposal is stale after unrelated Cursor indexing and must not be
   reused.
 - Kiro and Copilot PASSed r4 authority `5e9d3d4`; its grant safely refused
-  before mount or backup and is consumed. R5 adds bounded post-exit writer
-  attribution and binds current inventory `9321f51a…56a1` after unrelated
-  Claude indexing. It awaits same-revision Kiro/Copilot review; no backup has
-  run. Config promotion and watcher restart remain separately gated.
+  before mount or backup and is consumed. Corrected r5 adds bounded post-exit
+  writer attribution without raw argument text and binds current inventory
+  `9321f51a…56a1` after unrelated Claude indexing. It awaits same-revision
+  Kiro/Copilot recheck; no backup has run. Config promotion and watcher restart
+  remain separately gated.

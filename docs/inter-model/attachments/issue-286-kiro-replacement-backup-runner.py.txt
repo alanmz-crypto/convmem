@@ -243,7 +243,6 @@ class WriterCensusRefusal(RuntimeError):
         super().__init__(
             "writer census refusal: "
             f"classifier={evidence['classifier']} pid={evidence['pid']} "
-            f"argv0={evidence.get('argv0')} "
             f"cmdline_sha256={evidence['cmdline_sha256']}"
         )
 
@@ -257,7 +256,7 @@ def convmem_writer_match(argv: list[str]) -> dict[str, Any] | None:
             if candidate in CONVMEM_WRITE_COMMANDS:
                 return {
                     "classifier": "convmem_write_command",
-                    "launcher": argument,
+                    "launcher": Path(argument).name,
                     "launcher_index": index,
                     "subcommand": candidate,
                 }
@@ -299,7 +298,6 @@ def refuse_writer(
         "uid": uid,
         "cwd": str(cwd) if cwd is not None else None,
         "executable": executable,
-        "argv0": argv[0] if argv else None,
         "argv_count": len(argv),
         "cmdline_sha256": hashlib.sha256(raw_cmdline).hexdigest(),
     }
