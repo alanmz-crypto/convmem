@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 IMPLEMENTATION DELIVERED, V2 NOT ACCEPTED.** Ryan accepted the plan/B-E4.1 at `dca13a5`, including all five consumer outcomes. T1 landed via PR #387 (`05aa2c8`). Section 9 preserves the T2 grant and dispatch workspace; [STATUS](STATUS-safe-harbor.md) and [VERIFY V2](VERIFY-safe-harbor.md#v2--target-binding-and-freshness-t2) hold the delivered candidate, captured isolated evidence and open event-only completion limitation. External final-tip review and Ryan acceptance remain pending. Ownership and reviewed contracts are unchanged. T3–T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED; T3–T5 NOT GRANTED.** Ryan accepted the plan/B-E4.1 at `dca13a5`, including all five consumer outcomes. T1 landed through #387; T2 through #389 as `458b9f6`. [VERIFY V2](VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping) records final-head CI, Ryan's exact-tip review exception/V2 acceptance and the squash mapping. Section 9 preserves completed grant history, not current execution authority. Reviewed task contracts and ownership are unchanged; live operations remain ungranted.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        T2 implementation/evidence delivered; V2 acceptance pending
+Phase:        T1/T2 accepted and merged; T3 grant pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Cursor implemented T2; Codex collected evidence; Ryan routes review
-Authority:    Plan/B-E4.1 accepted; T1 completed; Ryan granted isolated T2 (section 9)
+Lanes:        Codex records closeout; Ryan decides the next bounded grant
+Authority:    Plan/B-E4.1 and T1/T2 accepted; no T3–T5 or live grant
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1 is merged and its grants in section 8 are complete. T2 branch integration under section 9 is **DELIVERED** at merge `551b16c13b66c8e3133402bdf6c0370d3efd35a5`; Codex bounded delta and fresh CI on draft #389 are next. T3–T5 remain **NOT STARTED / NOT GRANTED**. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; the owner grants and bounded handoffs are recorded separately.
+T1 and T2 are accepted and merged; their grants in sections 8–9 are complete. T3–T5 remain **NOT STARTED / NOT GRANTED**. The next task, if granted, starts with T3's pinned-backend proof ordering gate. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; historical grants and later acceptance are recorded separately.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -87,7 +87,7 @@ Admission:
 - On these production paths, `CONVMEM_SKIP_RESTIC_GATE=1` is rejected. A lab/test exception requires canonical isolation from production and an explicit test/lab context; cwd, a name containing `convmem-lab`, confirm variables or `CONVMEM_ROOT` alone are insufficient. Unknown classification refuses. This remains a cooperative safeguard, not authorization against a same-user actor.
 - The same gate protects approval recovery before any logical mutation, including an event-only completion. A genuinely already-completed read-only return may remain a no-op; prove it writes neither events nor corpus. This does not change the `--no-index` approval exemption status.
 
-**B-E4.1 contract — approved by Ryan as owner at `dca13a5`; implementation pending:** keep freshness policy inside v2's resolver. Current-day eligibility requires today's local date; a snapshot timestamp later than the captured evaluation instant is reported as suspicious future time, not accepted or silently corrected by taking another backup. Carry a machine-readable freshness reason through the existing `ResolverError`/`WorkflowOutcome`, using existing `EXIT_STALE=25`; no new numeric exit namespace. Old stale dates retain the current snapshot-if-stale behavior. Future-time errors are excluded from ensure's backupable cases at `backup_workflows.py:197-228`, including dry-run success. No fallback to an older/legacy candidate hides the suspicious result.
+**B-E4.1 contract — approved by Ryan as owner at `dca13a5`; T2 implementation merged in #389:** keep freshness policy inside v2's resolver. Current-day eligibility requires today's local date; a snapshot timestamp later than the captured evaluation instant is reported as suspicious future time, not accepted or silently corrected by taking another backup. Carry a machine-readable freshness reason through the existing `ResolverError`/`WorkflowOutcome`, using existing `EXIT_STALE=25`; no new numeric exit namespace. Old stale dates retain the current snapshot-if-stale behavior. Future-time errors are excluded from ensure's backupable cases at `backup_workflows.py:197-228`, including dry-run success. No fallback to an older/legacy candidate hides the suspicious result.
 
 Capture one evaluation instant/timezone per resolution. The post-backup resolution takes a fresh instant so a newly created snapshot is not rejected against the pre-backup clock. Crossing a day boundary requires fresh resolution before admission. Profile/tag selection, exact-path rules and external `destination.original == source.id` remain intact. Regression evidence includes supported legacy/v2/v3 resolver consumers; this change activates no v3 profile and reinterprets no restore state. Any additional owning-arc conflict returns to its owner rather than expanding scope.
 
@@ -387,6 +387,8 @@ Stop after the bounded T1 handoff. No automatic transition to T2, broader Verify
 
 ## 9. Cursor T2 Execute handoff — owner granted
 
+**Completed grant history:** T2 was accepted at `eb06c97` and merged through #389 as `458b9f6`. Pending/draft instructions below describe their historical handoff states; they do not reopen the task. Current acceptance and evidence limitations are in [VERIFY V2](VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping). T3–T5 require separate grants.
+
 **Date / author / recipient:** 2026-10-12; Codex planning lane; Cursor implementation lane. This is the next bounded task in the accepted plan, not a revised architecture.
 
 **Authority:** Ryan replied **“granted”** to Codex's next step, **“Ryan's separate T2 grant, then Codex prepares Cursor's handoff.”** This grants **T2 only: implementation and isolated V2 evidence**. Ryan's earlier owner approval of B-E4.1 exactly at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, already resolves the T2 contract prerequisite. No ownership transfer, T3–T5 implementation, PR creation/comment/review trigger, merge, deployment or live operation is granted by this handoff. Do not re-request approval merely to begin the named T2 work.
@@ -520,4 +522,4 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 ## TL;DR
 
-[Arc Safe Harbor] Final CI passed at `45a1f00`, but a fresh static review found cross-parent alias canonicalization relocates governed-file lookups. The bounded correction and 98-case isolated/lint evidence are complete; bounded delta PASS is pinned to `dac925f`; fresh CI follows. PR #389 stays draft; final acceptance, merge and live work remain pending.
+[Arc Safe Harbor] T1/T2 are accepted and merged; final T2 acceptance and squash provenance are recorded in VERIFY V2. The approved task contracts are unchanged. T3 begins, only after a separate grant, with the isolated pinned-backend proof before remaining implementation. T3–T5 and live operations remain ungranted.

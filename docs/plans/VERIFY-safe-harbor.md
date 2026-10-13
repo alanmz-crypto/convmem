@@ -1,14 +1,14 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 GOVERNED-PATH CORRECTION IMPLEMENTED; 98-CASE EVIDENCE AND BOUNDED DELTA PASS; CI PENDING.** Original-runtime failures and corrected focused/affected/lint evidence are captured below; final affected rerun passed 98 cases. The original review FAIL remains pinned to `45a1f00`. PR #389 stays draft; successor CI, external-review disposition and V2 acceptance remain pending. Event-only success exclusion remains; V3–V6 are NOT RUN.
+> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED.** The final T2 candidate passed GitHub CI; Ryan accepted its documented limitations and Codex review as the tip-specific BugBot outage exception, then merged #389. The acceptance/squash record is under V2. Historical reviews and failed/unqualified attempts retain their scopes. V3–V6 are NOT RUN.
 
 ```text
 Planning Status
-Phase:        T2 correction/evidence/delta complete; successor CI pending
+Phase:        T2 accepted and merged; T3 grant pending
 Characters:   Implementer, Reviewer
-Function:     Correct the scoped identity mismatch and preserve evidence limits
-Lanes:        Cursor implements; Codex coordinates and reviews the delta
-Authority:    Ryan authorized bounded correction; acceptance/merge remain pending
+Function:     Record acceptance and merge while preserving evidence limits
+Lanes:        Codex records closeout; Ryan decides the next grant
+Authority:    Ryan accepted final-tip T2/V2 and merged; no T3–T5 or live grant
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -23,7 +23,7 @@ Authority:    Ryan authorized bounded correction; acceptance/merge remain pendin
 
 ## Human consequence
 
-T1's incident retention and admission changes are landed source. Evidence preservation, validated owner release and unavailable/tombstoned approval-recovery handling remain later planned tasks. Rollout, actual recovery qualification and arc closure remain separate.
+T1's incident retention and T2's operation-bound preflight are landed source. Evidence preservation, validated owner release and unavailable/tombstoned approval-recovery handling remain later planned tasks. Rollout, actual recovery qualification and arc closure remain separate.
 
 Who: Cursor supplied isolated T1 evidence; GitHub supplied final-tip CI; Copilot supplied independent static reviews; Ryan accepted the outage exception and merged. Codex records the results here. T2 has captured isolated evidence and the independent review below; V3–V6 remain unrun.
 
@@ -42,7 +42,7 @@ In scope: execution T1–T5 and their named production entrypoints under isolate
 
 **Plan prerequisites satisfied:** Ryan accepted the plan and explicitly approved v2 B-E4.1 at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, with ownership unchanged. This is approval metadata, not runtime evidence.
 
-**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3–T5 have no grant. The external-review row below describes T1 only. T2's Copilot audit is recorded in V2; its separate PR-native BugBot gate has no review or outage acceptance.
+**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3–T5 have no grant. The external-review row below describes T1 only. T2's historical Copilot audits and final Codex review are recorded in V2; Ryan resolved its separate BugBot gate with the final-tip exception recorded below.
 
 Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, services and external drives were not invoked.
 
@@ -229,7 +229,18 @@ Ryan then reported “squash merge done”; GitHub confirmed MERGED with the hea
 
 ## V2 — Target binding and freshness (T2)
 
-**T2 TARGET-BINDING CORRECTION IMPLEMENTED; V2 NOT ACCEPTED.** Draft PR #389 was reviewed at `0cff1578b881d890234adad6b9cb93a110ec1d48`. Codex's alias-retarget finding (90%, static) is now exercised and closed by isolated evidence at runtime/tests **`a18df48025cac77de8bda2db5a761f4744a9a963`**. CodeQL alert #6 remains dismissed as false positive. The separate exact-tip external-review gate is open for this successor; historical Copilot delta PASS at `82f25ef` closes B1 only and does not transfer. Successful event-only completion is still **NOT proven** (Ryan's V2 exclusion; T4 prerequisite).
+**T2 / V2 ACCEPTED AND MERGED.** The acceptance record below supersedes historical pending/draft routing in the evidence chronology. B1, F1/F2 and the governed-path blocker are closed in their pinned scopes. Successful event-only completion remains **NOT proven** (accepted V2 exclusion; T4 prerequisite).
+
+### T2 final-tip CI, owner acceptance and squash mapping
+
+- **Accepted subject:** `eb06c97df2cfe9de3627fd8672b9e3b7c277c963`, the final head of [PR #389](https://github.com/alanmz-crypto/convmem/pull/389). Runtime/evidence and bounded Codex delta PASS (95%) are pinned to `dac925f33d4ebd7482c0536408b9be12f51d6106`; the successor adds documentation only. This records an owner exception, not a claim that BugBot or the reviewer reviewed another SHA.
+- **Final-head GitHub CI:** all six reported checks SUCCESS: pytest (3.12), pylint (3.12), secret-scan, Analyze (actions), Analyze (python) and CodeQL. [Test/lint run 38338522890](https://github.com/alanmz-crypto/convmem/actions/runs/38338522890) completed pytest at 2026-10-13 03:20:17 UTC; [CodeQL run 38338518783](https://github.com/alanmz-crypto/convmem/actions/runs/38338518783) also passed. No local tests were rerun for this documentation closeout.
+- **Ryan's written acceptance:** “I accept the Codex review and T2/V2 at eb06c97df2cfe9de3627fd8672b9e3b7c277c963, including its documented evidence limitations, as the BugBot outage exception.”
+- **External-review fields:** `gate_applicability=required`; `subject_tip_sha=eb06c97df2cfe9de3627fd8672b9e3b7c277c963`; `bugbot_reviewed_sha=n/a`; `result=satisfied by Ryan's written exact-tip outage exception`; `finding_disposition=B1/F1/F2 and final governed-path blocker closed in their recorded scopes; evidence exclusions retained`. BugBot hit quota and reviewed no SHA. No paid retry or PR-native Copilot request was made for this final candidate.
+- **Observed merge:** GitHub reports MERGED at 2026-10-13 03:43:09 UTC (2026-10-12 local), squash `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`. `git diff --stat eb06c97df2cfe9de3627fd8672b9e3b7c277c963 458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3` is empty: identical trees. This maps the accepted candidate to main, not to any later runtime deployment.
+- **Limits retained:** event-only completion success excluded; initial ambient/interrupted attempts remain unqualified; process/failure-injection evidence is not hardware power-loss proof. T3–T5, V3–V6 and all live operations remain ungranted/unperformed by this delivery.
+
+### Historical T2 delivery and correction evidence
 
 **Required evidence:** Target/profile/affected-path equality and coverage; prod/lab bypass behavior; changed config; all five consumer outcomes; old versus future snapshots; no future-triggered backup/fallback; unchanged exemptions. Require effect assertions through actual callers and existing numeric error mapping.
 
@@ -674,7 +685,7 @@ Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915
 
 **Independent in-session Codex bounded delta — PASS (95%) at `dac925f33d4ebd7482c0536408b9be12f51d6106`:** same reviewer who found the blocker at `45a1f00`; static correction review, no new tests or production probes. HEAD matched the subject and worktree was clean. Preserving configured spelling at `chroma_write_store.py:743` aligns governed consumers with admission; factories still explicitly use canonical `op.chroma_dir` at `:1035,1092`, export pin and all earlier rechecks remain. Four new cases (`tests/test_safe_harbor_t2.py:1257` onward), real faulty-substitution controls, final captured 98-case/lint results and derived-only inventory delta support closure. No actionable correction regression found. Initial ambient attempts/interrupted run remain excluded; no assertion of their isolation or absence of incidental access. The PASS is pinned to its exact subject; this documentation successor is not an automatic transfer of an external-review gate.
 
-**Next boundary:** fresh final-tip GitHub CI; external-review disposition and Ryan V2 acceptance remain separate. Historical green CI at `45a1f00` is not successor CI. Draft PR #389, no paid review/comment, merge, deployment or T3–T5.
+**Boundary at that correction handoff (historical):** fresh final-tip CI and Ryan's review/V2 acceptance were pending. They are now resolved in the V2 acceptance record above; the old `45a1f00` CI never substituted for final-head CI. T3–T5 and live operations remain ungranted.
 
 ### Historical prepared T2 draft PR text — now opened as #389
 
@@ -771,10 +782,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] Current: the cross-parent alias/governed-file correction is implemented; original-runtime reproduction and corrected focused/lint evidence are captured above. Final affected evidence passed (98 cases); bounded delta PASS is recorded at `dac925f`; successor CI and owner acceptance remain pending. The older evidence chain below is historical, not final acceptance.
-
-[Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation is delivered: runtime `44e29f6`, tests `2459acd`.
-- Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.
-- Event-only recovery: refusal and the human-review outcome are proven. Successful completion is not, because the current hash views disagree (an open T4 prerequisite).
-- Copilot review at `05c7706`: narrow FAIL (75%), B1 census-entrypoint regression. The B1 correction is implemented at `964c1de`: recovery reuses `propose_decision.write`, and armed-census positive, future and old-label controls behave as intended. Uid-1000 runs: 3 new and 153 affected cases passed (exit 0), lint gate exit 0.
-- Copilot delta PASS (88%) at `82f25ef` closes B1; original FAIL stays historical at `05c7706`. Draft #389 is open; BugBot reviewed no SHA. F1/F2 are closed at `cdebf64`, and pinned-main integration `551b16c` passes the bounded Codex delta at candidate `0c3e6c7` (90%) with 85 isolated cases and lint-gate PASS. Live GitHub checks at the final current head determine CI readiness. CodeQL #6 is dismissed as false positive. No paid review request. V2 acceptance and final-tip external-review disposition remain pending; T3–T5/live operations remain ungranted.
+[Arc Safe Harbor] T1/T2 are accepted and merged. T2 final candidate `eb06c97` passed all six GitHub checks; Ryan accepted the Codex review and V2 evidence limitations as the BugBot outage exception, then squash-merged #389 as `458b9f6` (identical tree). The final isolated correction evidence remains 98 affected cases plus focused sensitivity and lint evidence; overlapping runs are not additional cases. Historical failed/unqualified attempts stay disclosed. Successful event-only completion is excluded and remains a T4 prerequisite. T3's pinned-backend proof is the next step only after a new grant; V3–V6 and live operations remain unperformed/ungranted.

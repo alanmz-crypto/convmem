@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 GOVERNED-PATH CORRECTION IMPLEMENTED — 98-CASE EVIDENCE AND BOUNDED DELTA PASS; CI PENDING.** Cursor preserves original governed-file identities while both clients/export remain canonically bound. Codex reproduced both original failures and captured four passing focused cases plus a passing lint gate; the final affected rerun passed 98 cases. Draft PR #389 remains unaccepted. Bounded delta PASS (95%) is pinned to `dac925f`; fresh CI, external-review disposition, V2 acceptance, merge, deployment and T3–T5 remain pending.
+> **Arc: Safe Harbor. T1 AND T2 MERGED; V2 ACCEPTED.** Ryan accepted the final T2 candidate and the Codex review as the tip-specific BugBot outage exception, then squash-merged PR #389. T3–T5 and live operations remain ungranted. The next implementation step, if granted, is T3's isolated pinned-backend proof before preservation/repair/release code.
 
 ## 1. What This Is For (product goal)
 
@@ -35,91 +35,43 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- **Current correction:** Cursor implemented the [owner-granted governed-path fix](EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized). Only production behavior change: admitted config preserves the configured Chroma spelling for governed-file derivation; factories retain explicit canonical targets and export remains pinned. New tests cover stable cross-parent aliases, actual admitted paths, exact proposal effects and real faulty-path controls. Tracked-Python fingerprint `3b9a72df…`; [qualified evidence and excluded attempts](VERIFY-safe-harbor.md#governed-path-identity-correction--isolated-evidence). Independent in-session Codex delta **PASS (95%) at `dac925f33d4ebd7482c0536408b9be12f51d6106`** closes the narrow FAIL at `45a1f00`; earlier B1/F1/F2 closures retain their scopes. That reviewed runtime/evidence commit is pushed; later review-record edits do not transfer the external-review gate.
-- **Latest completed CI:** all checks green at `45a1f00`; [run `38329309684`](https://github.com/alanmz-crypto/convmem/actions/runs/38329309684) pytest: 2996 passed, 121 skipped, 252 subtests; pylint/secret-scan and CodeQL pass. This does not cover the newly identified cross-parent case or a correction successor.
-- **Current T2 delivery:** integration merge `551b16c13b66c8e3133402bdf6c0370d3efd35a5` on draft [PR #389](https://github.com/alanmz-crypto/convmem/pull/389); Safe Harbor runtime/tests remain `cdebf64b487ffa27d61955df9739204829864fe0` (F1/F2 docs at `721fd17`). Pinned main `8a7cdab` brought inter-model rejection and updated shadow inventory; sole merge conflict was regenerated R2b inventory (`46801f24…` / digest `6bee3486…`). Prior pre-integration CI and conflict state remain historical.
-- **Target-binding correction: F1/F2 CLOSED BY BOUNDED CODEX DELTA (90%).** Canonical client/export pinning is retained; alias-local quarantine is checked before either factory opens a client; late export retarget refuses. The 42-case Cursor regression and disjoint 43-case Codex supplement pass on unchanged source, with the full lint regression gate PASS. See [the correction delta/evidence](VERIFY-safe-harbor.md#codex-f1f2-correction-delta-and-complete-isolated-evidence--pass). This is not independent external review or V2 acceptance. Derived R2b identity `638cf8d3…`; route policy and shadow inventory unchanged.
-- **Integration:** merge `551b16c` (parents `181dfd18` + main `8a7cdab`); 85-case isolated evidence at `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z` (historical on unchanged Python; omitted shadow scan). **CI `38325044536` at `080b5f8`:** one pytest failure on shadow inventory routing metadata. **Correction:** shadow call-site lines `420`/`523` for add/verify + R2b regen (`84a9c83…` / `ff1e5f11…`); proof `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z`. Fresh CI authorized on successor push.
-- **External review:** the single authorized BugBot request on #389 hit a usage limit and reviewed no SHA. No PR-native Copilot review was requested; Ryan subsequently asked to avoid Copilot for budget reasons. Earlier full/delta reviews remain historical evidence. No T2 tip-specific outage acceptance is recorded.
-- `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
-- E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
-- `STATUS-safe-harbor.md`: this current-state brief; required arc lists and routing point here.
-- `EXECUTION-safe-harbor.md`: five-task plan reviewed PASS at `00c69d2` (85%), followed by Kiro delta PASS at `dca13a5` (88%), and accepted by Ryan at that successor. Section 7 records B-E4.1/all five consumer outcomes. Section 8 preserves the completed T1 grants; section 9 records the separate T2 grant and pinned Cursor handoff. T2 is implemented on its task branch; T3–T5 are not implemented.
-- T2 implementation: **on branch** `fix/2026-10-12-safe-harbor-t2` (worktree `/home/lauer/Projects/convmem/.worktrees/fix-2026-10-12-safe-harbor-t2`), start `9664878`, initial source `44e29f6d943c98a2425c21901c310c52ca5c5b1a`, corrected runtime/tests `964c1decb1a8366226ad45345ae26ed909542569`. `add --upsert`, indexed `record --approve-last`/`--approve` and `propose_decision --recover` now pass one operation-bound preflight (`chroma_write_store.admitted_write_operation` → `restic_gate.preflight_operation`): explicit v2 profile, target/affected-path containment, post-admission edit refusal, refused production skip, and B-E4.1 future-time 25 across all five consumers. ROADMAP/RECOVER/role-mapping and the v2 exit-25 row are updated. Shadow inventory unchanged; R2b inventory regenerated (derived only). Not merged, not deployed.
-- T2 review: original Copilot static **FAIL, narrow (75%)** remains pinned to `05c7706e54b77f9ef5b41a1c206b29bec012e405`. The only blocker, B1 (recovery label rejected by an armed census), is **closed by Copilot delta PASS (88%) at `82f25efb4696325afa83298fae0e1ca698f1d7fe`**. No new blocker; no tests rerun by the reviewer. Non-blocking advisories and the evidence exclusion remain in VERIFY V2. This is not BugBot evidence or overall V2 acceptance.
-- T2 B1 correction: **implemented at `964c1decb1a8366226ad45345ae26ed909542569`** (code/tests; reviewed in the docs-only successor `82f25ef`).
-  - Change: recovery admission reuses `propose_decision.write`. The only production edit is `convmem.py`; the census allowlist, routes and hashing are unchanged.
-  - Derived R2b identity: `05362dba…`; the shadow inventory is byte-unchanged.
-  - Tests: armed-census positive (new unit plus matching APPROVED, census open/close recorded), future snapshot (25; census telemetry recorded, logical state unchanged), and a test-only old-label control (actual census refusal; the positive assertions fail).
-  - Uid-1000 isolated runs: 153 affected cases passed (including the 3 new cases) with pytest exit 0; lint gate exit 0 (466 findings, none new).
-- T2 evidence (VERIFY V2):
-  - Codex's captured uid-1000 runs at runtime `44e29f6`: 236 distinct cases (focused `133 passed` + regression `103 passed`), pytest exit 0 for both; lint gate exit 0 (pylint raw 30).
-  - Refresh at tests `2459acd`: the 64 affected T2/caller cases passed again (pytest exit 0; overlapping, not additional); lint gate exit 0 (465 findings, none new).
-  - Fixture `2459acd` (tests only) builds the event-only recovery state by interrupting a real indexed approval. It proves future refusal with state unchanged and the existing human-review outcome after admission.
-  - Also recorded: AST equality `262573e`→`44e29f6`, inventory proofs, and earlier failed or uncaptured runs as history.
-- Event-only evidence gap: no event-only completion success control. The current ingestion hash view (summary-derived `title`, empty `notes`/`result`) disagrees with the proposal hash view (those fields absent), so the `approve` recovery branch is not reachable on this path. Copilot classifies this as a pre-existing T4 prerequisite, not its T2 runtime blocker. Ryan accepted that V2 evidence excludes successful event-only completion; this is not overall V2 acceptance. T4 must align the views and prove that success under its later grant. Sources are cited in VERIFY V2. Direct helper callers also remain ungated (T4 seam).
-- T1 implementation: **on `main` via PR #387**, squash commit `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Its tree is identical to the reviewed candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. The former implementation branch/worktree is historical; do not resume its completed grant or switch the shared checkout/runtime-main.
-- `VERIFY-safe-harbor.md`: records the T1 evidence chain, final-tip CI/review, Ryan's exact-tip outage acceptance and squash mapping (GitHub pytest at the T1 candidate: 2970 passed, 75 skipped). V2 holds T2 source identity, captured final evidence and the open event-only limitation; V3–V6 remain NOT RUN.
-- Deployed runtime: `.worktrees/runtime-main` at `a92a74eb326b3eaa59087b707de10153c7cc0c63` when checked on resume. Installed launcher still points there.
-- Planning base: `6a23aa93184460ed853996608bb28190c61f8d89`. It contains the detector; it is not the deployed release.
-- Existing code: `restic_gate.py`, `backup_workflows.py`, `restic_snapshot.py`, `chroma_write_guard.py`, `propose_decision.py` and `doctor.py`. Known contract gaps and pinned source evidence are in architecture section 3.
-- Detector candidate: CPU/vector-loss PR #341, exact `5c6a4a8ad51c968a27afc1c8726fc78c4801cb6d`. Deployment is a separate Ryan decision; no watch start or broad catch-up is implied.
-- Backup access during execution-plan drafting on 2026-10-11: required doctor exited 0; local snapshot, external lineage copy and matching offline password copy passed. This is access/freshness evidence, not demonstrated restoration; CLI read paths may perform bookkeeping writes.
-- Fresh Rescuezilla image: completion, identifier, scope and destination not yet confirmed. The reported September 16 pre-incident image should be preserved.
-- Additional backup destination: Ryan supplied `/run/media/lauer/ext-ex4-1T-NVMe/`; read-only mount/capacity inspection confirmed ext4 and available space. Execution section 6 records UUID/capacity and proposes a fresh-image destination. No drive write, backup allocation or qualification was performed.
-- Safe Harbor T1 retains unresolved incidents, aligns canonical client/cache identity and refuses persisted-empty authority. Ordinary clear cannot release incidents; the validated-release workflow is still T3. Old writers can overwrite or clear the marker, so the T1 merge does not make it independently deployable. No deployment was performed by this work.
+- **T1 on main:** incident retention, canonical client/cache identity and refusal of persisted-empty authority landed through [PR #387](https://github.com/alanmz-crypto/convmem/pull/387), squash `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Ordinary clear still cannot provide validated release; that is T3.
+- **T2 on main:** operation-bound backup preflight, production-skip refusal and future-time rejection across all five consumers landed through [PR #389](https://github.com/alanmz-crypto/convmem/pull/389), squash `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3` at 2026-10-13 03:43:09 UTC (2026-10-12 local). Its tree is identical to Ryan's accepted candidate `eb06c97df2cfe9de3627fd8672b9e3b7c277c963`. Canonical client/export binding preserves the configured governed-file identities. The completed task branch is historical, not an active grant.
+- **Evidence and acceptance:** [VERIFY V2 acceptance record](VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping) holds the six successful final-head GitHub checks, the pinned Codex review, Ryan's exact acceptance and the squash mapping. The final affected isolated suite passed 98 cases; this is not an additional full-suite claim. Earlier failed/unqualified attempts remain disclosed. BugBot reviewed no SHA; its gate was resolved by Ryan's written exception, not a BugBot PASS.
+- **Open T4 limitation:** successful event-only approval completion is not proven. The ingestion/proposal hash views disagree; T4 must align them and demonstrate real completion. Direct-helper caller coverage and uncertain completion remain later T4 work. Ryan's V2 acceptance includes this documented evidence exclusion, not a claim that those paths work.
+- `ARCHITECTURE-safe-harbor.md`: approved direction and E1–E7 obligations. `EXECUTION-safe-harbor.md`: accepted five-task contracts and completed T1/T2 grant history. `VERIFY-safe-harbor.md`: historical evidence plus final acceptance; V3–V6 remain NOT RUN.
+- **Deployment is separate:** this closeout did not move runtime-main, restart processes or inspect production health. Git worktree metadata observed at closeout places runtime-main at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`; it does not establish running-process identity. Drafting-time D/P/B source labels in the architecture/plan remain historical citations.
+- **Recovery inputs remain open:** the loss window and exact usable recovery artifact require qualification before rollout. Preserve the reported pre-incident Rescuezilla image. The extra drive `/run/media/lauer/ext-ex4-1T-NVMe/` is a candidate resource, not completed protection; no drive access or new backup qualification occurred during closeout. Historical access checks are not standing recovery proof.
 
 ## 4. Completion State
 
-- Review synthesis and pre-reboot checkpoint: preserved at `bc3a6fd34bc594024d53fb86c9ca6b312cb64bd1` on the separate checkpoint branch.
-- Architecture direction: **APPROVED at `5ea16a6`**, existing backups and strengthened admission/incident contracts; seven planning obligations remain in architecture section 8.
-- Arc name: **CONFIRMED — Safe Harbor** by Ryan.
-- Opus review/delta: **COMPLETE — DELTA PASS at `505a422` (85%)**. Both blockers resolved; E1–E7 accepted as planning obligations. Opus explicitly required no further round for its exact E7 clarification, now included.
-- Kiro governing design sign-off: **PASS at `5ea16a6` (88%)**, no direction blockers; relayed by Ryan in this conversation.
-- E4 backup-interface review: **COMPLETE — FULL-SCOPE PASS (85%)**, confirmed by Kiro's addendum at `1268a50`. No ownership transfer. Its B-E4.1/O-E4.a–e obligations were carried into the now-accepted execution plan; source/contract qualifications remain in architecture section 10. E4 compatibility alone did not approve the detailed change; Ryan's later owner approval is recorded separately below.
-- Ryan direction approval: **APPROVED at `5ea16a6`**, explicitly including disposition after every automatic segment restore.
-- Execution Planning: **COMPLETE — RYAN ACCEPTED `dca13a59a2edf649ac6a19777f572645bea8674e`** after Kiro delta PASS (88%); initial PASS remains pinned to `00c69d2` (85%). A1/A2 and O-E4.e are satisfied plan-side. No required review correction remains.
-- **B-E4.1 owner disposition: APPROVED**, by Ryan explicitly as owner, exactly T2 at the accepted revision including all five consumer outcomes. Ownership is unchanged; this is contract approval, not implementation or live activation.
-- **T1: MERGED** by Ryan in PR #387 at `05aa2c8`. The final candidate `0c7b4e2` passed fresh CI; the initial full Copilot audit and successive correction/integration reviews cover the delivered candidate. Final integration delta: PASS 82%, static.
-- **External review gate: SATISFIED BY RYAN'S EXACT-TIP OUTAGE ACCEPTANCE** for `0c7b4e263dff12f8e1a6b2d485616153ed096b66`. BugBot reviewed no SHA; this is not a BugBot PASS. Exact owner wording and evidence are in VERIFY V0/final acceptance.
-- **PR #387: MERGED**, 2026-10-12 05:13:16 UTC. No open T1 correction or review action remains from this delivery.
-- **T2: B1 CLOSED; F1/F2 BOUNDED DELTA PASS; V2 NOT ACCEPTED.**
-  - Runtime/tests `964c1de` have captured isolated evidence: 153 affected cases passed, including 3 new census controls; lint regression gate PASS.
-  - Copilot delta **PASS (88%)** at final candidate `82f25ef` closes B1. Original FAIL remains pinned to `05c7706`; the review is static and supplies no new runtime or CI evidence. This documentation record does not transfer exact-tip review to a later successor.
-  - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
-  - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
-- **PR #389: OPEN / DRAFT.** The authorized one-shot BugBot trigger returned a usage-limit reply, with no reviewed SHA. CodeQL alert #6 was owner-authorized and dismissed as false positive at `2026-10-12T10:34:24Z`; GitHub then reported CodeQL SUCCESS at `0cff157`. No paid retry/reviewer is requested.
-- **Current grant: GOVERNED-PATH IDENTITY CORRECTION IMPLEMENTED; ISOLATED EVIDENCE AND BOUNDED DELTA COMPLETE; CI NEXT.** The original runtime fails the two new positive workflows in an isolated source copy; corrected focused tests pass, lint regression gate passes without a baseline change. Final affected rerun passed 98 cases; bounded delta PASS is pinned to `dac925f`; fresh final-tip CI is pending. The earlier shadow correction's green CI at `45a1f00` remains historical. No V2 acceptance, PR merge or live grant is inferred.
-- T3–T5 implementation, new review triggers/comments, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
+- **Direction/name approved:** Ryan approved `5ea16a6`, confirmed Safe Harbor, and accepted owner disposition after every automatic segment restore. Opus delta PASS at `505a422` (85%) and Kiro governing PASS at `5ea16a6` (88%) remain pinned to those artifacts.
+- **Plan and ownership:** Kiro delta PASS at `dca13a5` (88%); Ryan accepted that execution plan and B-E4.1 exactly as T2 specifies, including all five consumer outcomes. E4 full-scope compatibility PASS at `1268a50` (85%) remains complete; ownership is unchanged. No Recovery Authority T4/V4k authority was granted.
+- **T1 / V1: ACCEPTED AND MERGED** via #387. Its exact-tip exception remains T1-specific.
+- **T2 / V2: ACCEPTED AND MERGED** via #389. Ryan separately accepted the Codex review and documented evidence limitations at `eb06c97` as the T2 BugBot outage exception. The bounded delta PASS remains pinned to runtime/evidence `dac925f`; the owner exception names the documentation successor. Final-head CI passed before merge. CodeQL #6 remains previously dispositioned as a false positive.
+- **T3–T5: NOT STARTED / NOT GRANTED. V3–V6: NOT RUN.** No task auto-advance or paid review request. Implementation of T3's remaining preservation/repair/release logic must wait for its pinned-backend proof even after a T3 grant.
+- **Live operations/deployment: NOT AUTHORIZED.** Merged source does not activate the release workflow or prove backup usability.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Qualified evidence and bounded delta are complete at `dac925f`; observe fresh final-tip CI. Keep the sealed candidate unchanged solely to transcribe CI status. Preserve the external-review/owner-acceptance boundary. CodeQL #6 remains dispositioned.
+**Codex:** T2 closeout only. Keep this brief, VERIFY and routing aligned with the observed merge. Do not resume the completed T2 branch or infer T3 authority. After Ryan grants the next slice, bind its handoff to an isolated worktree and exact source.
 
-**Cursor:** Bounded source/test correction delivered to Codex; no further edits while evidence/review runs. Do not reopen T4 semantics or earlier settled policies.
+**Ryan:** Decide whether to authorize T3's isolated pinned-backend proof/harness first. The existing plan requires monotonic update/delete/re-upsert, queue-purge and restart evidence, with a valid releasable control and the stale-vector refusal control, before the rest of T3 implementation.
 
-**Ryan:** After Codex's bounded delta and observed CI, decide final-tip external-review disposition and V2 acceptance/PR merge. Event-only exclusion remains accepted; T1 outage acceptance does not carry over.
+**Cursor:** No active implementation grant. T2 is complete. Under a later T3 grant, begin with the proof ordering gate; if it fails, stop and return the concrete gap without weakening release.
 
-**Kiro / Opus / Copilot:** Existing approvals remain pinned. Copilot closed B1 at `82f25ef` (88%, static delta), following its full review at `05c7706`. No new paid round is authorized or requested, including after this correction.
-
-**Ops:** No live grant from this arc; T1 is not independently deployable.
+**Review / ops lanes:** Prior reviews keep their exact scopes. No new reviewer invocation, production operation, rollout or service change is authorized by this merge.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Complete fresh final-tip CI on draft #389; then Ryan resolves external-review disposition and V2 acceptance/merge. The cross-parent identity fix is implemented; B1/F1/F2 remain closed in their recorded scopes. Event-only exclusion accepted; CodeQL #6 dispositioned.
-2. Complete T3–T5 only under their task grants, including:
-   - T3's backend-proof ordering gate and preservation/validated release;
-   - T4 approval recovery: gating or binding direct helper callers, aligning the proposal and ingestion hash views so an event-only completion can be proven, and unknown/tombstone/race/uncertain-completion handling;
-   - integrated evidence.
-
-   V3–V6 remain NOT RUN.
-3. Rollout prerequisite added by T2: production `restic.env` must declare an explicit `complete-data-v2` profile and data root covering every affected path, or gated writes refuse with 20/24.
-4. Before live rollout, resolve the loss window and exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. The additional drive is a candidate resource, not completed protection.
-5. Any deployment or corpus-affecting operation requires its own scope, recovery evidence and Ryan grant. T1 alone is not a release workflow; the standalone detector remains a separate decision.
+1. Ryan grants the next bounded T3 work. First demonstrate the pinned backend's release-oracle semantics in isolation; no preservation/repair/release implementation before that ordering gate passes. Failure returns to Codex/Ryan, never to a census-only release.
+2. Complete T3–T5 only under their task grants: evidence preservation and validated release; T4's direct-helper binding, hash-view alignment, event-only success and unknown/tombstone/race/uncertain-completion behavior; then integrated evidence and review. V3–V6 remain NOT RUN.
+3. Before live rollout, resolve the loss window, exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. Production `restic.env` must explicitly select `complete-data-v2` and a data root covering all affected paths, or the new gated paths refuse with 20/24.
+4. Any deployment or corpus-affecting operation needs its own scope, recovery evidence and Ryan grant. T1/T2 being merged does not provide T3's validated release or authorize detector/watch activation.
 
 ## 7. Hard Stops (models cannot cross)
 
-- The active T2 grant permits only its scoped implementation source and isolated fixtures/evidence in its worktree. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
+- T1/T2 grants are complete. No T3–T5 implementation or experiment grant is active. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
 - No restore drills, production experiments, indexing, ledger record or merge from this brief.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration or generalized repair. Read that arc's current STATUS hard stops.
 - No generic HOLD, identity registry, freeze, broad constructor change or automatic cleanup subsystem under this direction.
@@ -136,7 +88,7 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 
 - [Safe Harbor architecture](ARCHITECTURE-safe-harbor.md): proposed direction, evidence, risks and reviewer assignment.
 - [Execution plan](EXECUTION-safe-harbor.md): five bounded tasks, interface proposal, proof requirements and new-drive operational limits.
-- [VERIFY companion](VERIFY-safe-harbor.md): T1 acceptance, T2 captured evidence/review findings and pending V3–V6.
+- [VERIFY companion](VERIFY-safe-harbor.md): T1/T2 acceptance and merge records, captured evidence/limitations and pending V3–V6.
 - [Reboot checkpoint](https://github.com/alanmz-crypto/convmem/blob/bc3a6fd34bc594024d53fb86c9ca6b312cb64bd1/docs/inter-model/CODEX-2026-10-11-durability-reboot-checkpoint.md): review provenance and saved pre-reboot state.
 - [Recovery Authority STATUS](STATUS-recovery-authority.md): ownership and hard stops.
 - [Complete-data Backup v2 STATUS](STATUS-complete-data-backup-correction-v2.md): existing profile/restore contract and open consistency audit.
@@ -148,6 +100,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-12 — Codex: confirmed Ryan's final-tip T2/V2 acceptance and BugBot outage exception, six green final-head checks and #389 squash mapping; T1/T2 merged, T3 proof grant next, no live authority.
 
 - 2026-10-12 — Codex: recorded Cursor governed-path correction with original-runtime failures, 98-case final isolated PASS and lint-gate PASS; excluded initial ambient attempts; bounded delta PASS is pinned to `dac925f`; fresh CI and acceptance remain pending.
 
