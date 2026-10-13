@@ -30,9 +30,19 @@ review. I have no open findings.**
   - s1, s2, s4, r2 and the direct tamper test still pass.
 - **All probes pass:** 41 tests, covering rounds 2 to 5 and Cursor's probe
   and wedge-fix files.
-- **Full suite:** still running when I pushed this; I'll add the result in a
-  follow-up commit. At `62fe3a2` it matched main exactly (round 5), and this
-  diff only touches the rollback comparison.
+- **Full suite:** main `458b9f6` fails the same 151 known tests as in rounds
+  3 and 5, and so does the tip. The tip passes 22 more tests: the branch's
+  own. One test failed once, only at the tip:
+  `test_chroma_write_guard.py::test_native_crash_mid_write_leaves_the_shared_index_clean`.
+  It's a timing flake, not a regression:
+  - it passed 5 of 5 at both main and the tip when re-run alone;
+  - this branch doesn't touch `chroma_write_guard.py` or its test;
+  - no core dumps were recorded during the run;
+  - the cause: `vector_census` opens SQLite read-only (`chroma_write_guard.py`
+    ~397–410). When the test's SIGKILL lands mid-write, it leaves a journal
+    that a read-only connection can't recover, so the census raises
+    `attempt to write a readonly database`. That robustness gap belongs to
+    the write-guard work, not this arc.
 - **Code left behind:** none. Nothing references the removed byte-matching
   helpers any more.
 
@@ -87,7 +97,9 @@ as design.
 
 | Run | Result |
 |---|---|
-| Full suite, main `458b9f6` against `c7072fc` | running; result to follow |
+| Full suite, main `458b9f6` (hermetic) | 93 failed, 2896 passed, 66 skipped, 58 errors |
+| Full suite, `c7072fc` (hermetic) | 94 failed, 2918 passed, 66 skipped, 58 errors; the extra failure is the write-guard crash-test flake above |
+| That crash test re-run alone, 5 times each at main and `c7072fc` | 10 of 10 pass |
 | Probes from rounds 2–5, Cursor's probe and wedge-fix tests | 41 passed |
 
 ## Next
