@@ -1,4 +1,189 @@
-# Verify: Stage 2 wedge fixes, round 5 at `62fe3a2`: id check works; one false-alarm fix remains
+# Verify: Stage 2 wedge fixes, round 6 at `c7072fc`: ready for the Copilot audit and Kiro's review
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-13
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `c7072fc`, Cursor
+Composer's corrective 5. It answers round 5 (below).
+**Method:**
+- I read the diff `62fe3a2..c7072fc`.
+- I ran every probe from rounds 2 to 5, plus Cursor's probe and wedge-fix
+  tests.
+- I ran the full suite hermetically at main `458b9f6` and at `c7072fc`, at the
+  same time and on the same disk: `env -i`, a scratch `HOME`, no API keys, and
+  `tests/test_index_loud_failures.py` skipped.
+- My runs touched nothing live. I compared mtimes and sizes across the live
+  data root before and after.
+
+## Verdict (round 6)
+
+**Ready for the Copilot safety and isolation audit and for Kiro's design
+review. I have no open findings.**
+
+- **O1, fixed:** a line whose id is in the before-image is now compared by
+  its parsed content, not its bytes. Cursor's code matches the fix I tested
+  in round 5.
+  - s3: a clean rollback of a grown session restores the export exactly and
+    prints nothing, at both crash points.
+  - s5: one line edited while the transaction is wedged is reported as
+    exactly 1.
+  - s1, s2, s4, r2 and the direct tamper test still pass.
+- **All probes pass:** 41 tests, covering rounds 2 to 5 and Cursor's probe
+  and wedge-fix files.
+- **Full suite:** still running when I pushed this; I'll add the result in a
+  follow-up commit. At `62fe3a2` it matched main exactly (round 5), and this
+  diff only touches the rollback comparison.
+- **Code left behind:** none. Nothing references the removed byte-matching
+  helpers any more.
+
+## Review focus: the decisions reviewers must judge
+
+These are the places where the branch relaxes a reviewed invariant or makes a
+judgment call. Copilot audits them for safety and isolation. Kiro reviews them
+as design.
+
+1. **C2, foreign state between attempts.**
+   - **What changed:** replay and rollback no longer require foreign store
+     rows or foreign export lines to equal their state at transaction start.
+   - **What isolation now means:** it is checked against a digest taken
+     under the C1 index write lock at the start of *this* attempt.
+   - **What still holds:** foreign export lines pass through byte-identical
+     and in order.
+   - **The argument:** C1 makes foreign writes impossible during an apply,
+     so foreign changes *between* attempts are legitimate.
+2. **Source-owned export tamper is dropped, not refused (G3).**
+   - **What the rollback does:** it always rewrites this source's lines back
+     to the before-image.
+   - **What the message counts** (`[incremental] rollback dropped N
+     unexpected export lines for <source>`):
+     - source-owned lines whose id is neither in the before-image nor in
+       this source's store rows;
+     - before-image lines whose parsed content changed.
+   - **Not counted, but still removed:** a line whose id the store also
+     holds.
+   - **Why drop:** refusing in the export, after the store is already
+     restored, would leave a half-rolled-back transaction that never
+     recovers. The store rollback already deletes this source's unknown rows
+     without a tamper check.
+3. **G5: a clean rollback holds the session until someone clears it.**
+   - **What happens:** after `rolled_back`, the watcher holds the path until
+     `convmem watch --clear-quarantine`. Doctor lists it under
+     `incremental_refusals`.
+   - **Why it's acceptable for now:** it's burn-safe.
+   - **Decision deferred:** decide after canary 2 whether a prefix change
+     should release it.
+4. **G7: another arc's guard changed.** `review-bundles/` was added to the
+   R2b writer-scan skip list (`eval_corpus/r2b_v2/coverage/inventory.py`).
+   It's an untracked folder in Ryan's checkout.
+5. **K1 edge (a note):**
+   - a raised error with no prefix digest records an empty digest, and the
+     watcher never holds it, so it re-spawns on each event;
+   - these errors fire before any paid work, and the CLI exits 91.
+6. **Not in this branch:** `_reconcile_export` writes metadata keys in
+   Chroma's read order, which varies from read to read. So the export file
+   changes byte by byte on every commit. That's a separate issue.
+
+## Test results (round 6)
+
+| Run | Result |
+|---|---|
+| Full suite, main `458b9f6` against `c7072fc` | running; result to follow |
+| Probes from rounds 2–5, Cursor's probe and wedge-fix tests | 41 passed |
+
+## Next
+
+1. **Copilot audit lane:** a targeted safety and isolation audit of the
+   branch, focused on the list above.
+2. **Kiro:** a design review of C1, C2 and the relaxed invariants above.
+   Copilot and Kiro can run in parallel on `c7072fc`.
+3. **Ryan:** opens the PR (draft below) and merges. The docs branch
+   `docs/2026-10-12-issue-286-stage2-fixes-handoff` lands in its own small
+   PR.
+4. **Separate Ryan grants after the merge:**
+   - promote `runtime-main`;
+   - deploy the protocol surfaces;
+   - run canary 2. Doctor's new WARN will list the 3 stale `APPLYING` Stage
+     2 transactions, and canary 2 should watch them clear.
+
+## PR draft (for Ryan, after the audit and review)
+
+**Title:** Unwedge incremental indexing after concurrent writes and stop agent
+self-indexing
+
+**Body:**
+
+> **What changes for you:**
+> - Codex and Kiro sessions stuck in a wedged incremental transaction recover
+>   on their next run, by replaying forward or rolling back cleanly.
+> - A repeated failure now stops after two tries instead of retrying, and paying,
+>   on every file event.
+> - Agents stop paying to index their own transcripts while the watcher runs.
+> - Opening an old session no longer queues a paid catch-up index.
+>
+> **Who:** Cursor Composer implemented it; Claude verified it over six rounds;
+> Copilot audited it; Kiro reviewed it. Ryan merges.
+> **What:**
+> - one store-wide index write lock (C1);
+> - source-scoped replay and rollback (C2);
+> - bounded retries surfaced to the watcher and doctor (C3);
+> - a watcher that ignores opens, and `index --file` deferring to a running
+>   watcher (C4).
+>
+> **When:** follows the Stage 2 canary stop on 2026-10-12. Deploying it is a
+> separate grant.
+> **Why:** issue #286 Stage 2.
+> - Another writer indexing during an apply wedged two sessions for good.
+>   Every retry failed, because recovery demanded that foreign state match
+>   the transaction start.
+> - Agents' Track A self-indexing caused the second wedge.
+> - Plain file opens queued paid index waves.
+>
+> **How:**
+> - **Lock order:** `source_flock` → index write lock → Chroma writer →
+>   `export_flock`. No lock is held across paid provider calls.
+> - **C2:** recovery proves only what this source owns.
+> - **C3:** a second identical failure on the same prefix exits with
+>   `live_route_refused` (exit 91). The watcher then holds the path until its
+>   prefix changes.
+>
+> **Relaxed invariants (reviewed by Kiro):**
+> 1. Foreign export bytes and store rows no longer have to match the
+>    transaction start between attempts.
+> 2. Source-owned export tamper is dropped with a stderr diagnostic instead
+>    of refused.
+>
+> **Notes:**
+> - G5: a clean rollback holds the session until `convmem watch
+>   --clear-quarantine`; decide after canary 2.
+> - G7: `review-bundles/` was added to the R2b writer-scan skip list.
+>
+> **Tests:**
+> - The hermetic full suite at main `458b9f6` and at the tip fails the same
+>   151 known local tests, with 0 failing only at the tip.
+> - The new wedge-fix and probe tests are in
+>   `tests/test_issue_286_stage2_wedge_fixes.py` and
+>   `tests/test_issue_286_stage2_wedge_probes.py`.
+>
+> **Merge reading:**
+> - [Handoff (spec)](https://github.com/alanmz-crypto/convmem/blob/docs/2026-10-12-issue-286-stage2-fixes-handoff/docs/inter-model/CURSOR-2026-10-12-issue-286-stage2-fixes-handoff.md)
+> - [Verify, rounds 1–6](https://github.com/alanmz-crypto/convmem/blob/docs/2026-10-12-issue-286-stage2-fixes-handoff/docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md)
+> - [Arc STATUS](https://github.com/alanmz-crypto/convmem/blob/docs/2026-10-12-issue-286-stage2-fixes-handoff/docs/plans/STATUS-codex-jsonl-production-integration.md)
+>
+> These are on branch `docs/2026-10-12-issue-286-stage2-fixes-handoff`,
+> which lands in its own docs PR.
+>
+> **After merge, separate grants:** the `runtime-main` promotion, the
+> protocol-surface deploy and canary 2.
+>
+> Refs #286.
+>
+> **TL;DR:** the fixes for the Stage 2 wedge, retry loop, self-indexing and
+> open storm, verified hermetically with no paid calls. Deploying stays
+> Ryan-gated.
+
+---
+
+# Round 5: `62fe3a2`, not ready yet (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -21,7 +206,7 @@ Composer's corrective 4. It answers round 4 (below).
   - It appended 5 units for one of that session's rollouts.
   - The watcher stayed inactive and disabled.
 
-## Verdict (round 5)
+### Verdict (round 5)
 
 **Not ready for review yet. One small fix remains, and none of it involves
 paid calls.**
@@ -44,7 +229,7 @@ paid calls.**
 **Still open:** the message fires on a clean rollback of a session that was
 already committed and then grew. That's the most common real shape (P1).
 
-## Findings (round 5)
+### Findings (round 5)
 
 **P1 (medium): a clean rollback of a grown session reports "dropped N".**
 - **Where:** `_restore_export` (`incremental_jsonl.py` ~1752–1760). For a
@@ -95,7 +280,7 @@ Sorting keys in `_reconcile_export` would fix it, but it would also rewrite
 every source's export lines on their next commit. That belongs in a separate
 issue.
 
-## Test results (round 5)
+### Test results (round 5)
 
 | Run | Result |
 |---|---|
@@ -108,7 +293,7 @@ issue.
 | s5: one preimage-id line edited while wedged | export restored; fail, reports 2 instead of 1 (P1) |
 | Same probe set with the proposed fix (scratch, reverted) | 38 passed |
 
-## Corrective 5 for Cursor
+### Corrective 5 for Cursor
 
 - **O1 (P1):** in `_restore_export`, compare a preimage-id line by its
   parsed JSON object, not its bytes. Add s3 (both crash points) and s5 from

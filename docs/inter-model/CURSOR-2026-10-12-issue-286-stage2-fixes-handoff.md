@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 4 at `62fe3a2` made the rollback check id-based; corrective 5 (O1: compare before-image lines by parsed content, not bytes) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md` |
+| **State** | `READY_FOR_REVIEW`: corrective 5 at `c7072fc` passed Claude's round-6 verify; next are the Copilot audit and Kiro's design review (see `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 6) |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

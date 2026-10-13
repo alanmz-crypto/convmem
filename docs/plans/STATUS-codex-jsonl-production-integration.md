@@ -286,6 +286,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-13 | Claude | Wedge-fix corrective 2 (`c8436b1`): 0 tests fail only at the tip against main; short corrective 3 (doctor crash on a real wedge, false rollback tamper message) to Cursor |
 | 2026-10-13 | Claude | Wedge-fix corrective 3 (`8a8c03a`) fixed the doctor crash; one-item corrective 4 (rollback tamper message compares unit ids, not bytes) to Cursor |
 | 2026-10-13 | Claude | Wedge-fix corrective 4 (`62fe3a2`) made the rollback check id-based; one-item corrective 5 (stop false tamper reports on clean rollbacks of grown sessions) to Cursor |
+| 2026-10-13 | Claude | Wedge-fix corrective 5 (`c7072fc`) passed round-6 verify; branch ready for Copilot audit and Kiro design review |
 
 ## TL;DR
 
