@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 MERGED; CORRECTED T3 PROOF RETURNED, OWNER DECISION NEXT.** R1–R3 corrections at `93d4e34` pass nine qualified isolated cases and focused pylint. The ordering-gate demonstration is bounded to pinned synthetic fixtures (90%); Cursor/Codex jointly corrected the harness, so this is not an independent review. Remaining T3 preservation/repair/release, T4/T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1/T2 MERGED; ISOLATED T3 IMPLEMENTATION GRANTED.** The bounded isolation investigation is complete and Kiro independently PASSed proof `e08100ff` (82%). Ryan’s conditional continuation is satisfied. Cursor implements accepted T3 on its separate worktree; Codex supervises isolated execution. V3/remainder-V4 are not yet run; T4/T5 and live work remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -39,7 +39,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T2 on main:** operation-bound backup preflight, production-skip refusal and future-time rejection across all five consumers landed through [PR #389](https://github.com/alanmz-crypto/convmem/pull/389), squash `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3` at 2026-10-13 03:43:09 UTC (2026-10-12 local). Its tree is identical to Ryan's accepted candidate `eb06c97df2cfe9de3627fd8672b9e3b7c277c963`. Canonical client/export binding preserves the configured governed-file identities. The completed task branch is historical, not an active grant.
 - **Evidence and acceptance:** [VERIFY V2 acceptance record](VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping) holds the six successful final-head GitHub checks, the pinned Codex review, Ryan's exact acceptance and the squash mapping. The final affected isolated suite passed 98 cases; this is not an additional full-suite claim. Earlier failed/unqualified attempts remain disclosed. BugBot reviewed no SHA; its gate was resolved by Ryan's written exception, not a BugBot PASS.
 - **Open T4 limitation:** successful event-only approval completion is not proven. The ingestion/proposal hash views disagree; T4 must align them and demonstrate real completion. Direct-helper caller coverage and uncertain completion remain later T4 work. Ryan's V2 acceptance includes this documented evidence exclusion, not a claim that those paths work.
-- `ARCHITECTURE-safe-harbor.md`: approved direction and E1–E7 obligations. `EXECUTION-safe-harbor.md`: accepted five-task contracts, completed T1/T2 grant history and proof-only T3 grant. `VERIFY-safe-harbor.md`: T1/T2 acceptance plus the [corrected T3 proof](VERIFY-safe-harbor.md#t3-r1r3-corrected-proof--qualified-evidence); V3, remainder of V4, V5/V6 remain NOT RUN.
+- `ARCHITECTURE-safe-harbor.md`: approved direction and E1–E7 obligations. `EXECUTION-safe-harbor.md`: accepted five-task contracts, completed T1/T2 grant history and completed proof plus section 11’s remaining T3 grant. `VERIFY-safe-harbor.md`: T1/T2 acceptance plus the [corrected T3 proof](VERIFY-safe-harbor.md#t3-r1r3-corrected-proof--qualified-evidence); V3, remainder of V4, V5/V6 remain NOT RUN.
 - **T3 proof on its branch:** `tests/test_safe_harbor_t3_backend_proof.py` and `tests/_safe_harbor_t3_backend_worker.py` at `93d4e344c8959ed0176b3a9b39af7be3f638f148`. Client-free persisted-state predicate; independent stale-vector sensitivity; real mutation/purge/restart; collection-specific binding and pre-import isolation. Qualified run `/tmp/safe-harbor-t3-s9ejarj3`: nine passes, pytest/pylint exit 0, stable source hashes. Production runtime is unchanged. Earlier unqualified Cursor probes were stopped/excluded; full disclosure and qualified failed development runs remain in VERIFY.
 - **Deployment is separate:** this closeout did not move runtime-main, restart processes or inspect production health. Git worktree metadata observed at closeout places runtime-main at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`; it does not establish running-process identity. Drafting-time D/P/B source labels in the architecture/plan remain historical citations.
 - **Recovery inputs remain open:** the loss window and exact usable recovery artifact require qualification before rollout. Preserve the reported pre-incident Rescuezilla image. The extra drive `/run/media/lauer/ext-ex4-1T-NVMe/` is a candidate resource, not completed protection; no drive access or new backup qualification occurred during closeout. Historical access checks are not standing recovery proof.
@@ -50,29 +50,28 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Plan and ownership:** Kiro delta PASS at `dca13a5` (88%); Ryan accepted that execution plan and B-E4.1 exactly as T2 specifies, including all five consumer outcomes. E4 full-scope compatibility PASS at `1268a50` (85%) remains complete; ownership is unchanged. No Recovery Authority T4/V4k authority was granted.
 - **T1 / V1: ACCEPTED AND MERGED** via #387. Its exact-tip exception remains T1-specific.
 - **T2 / V2: ACCEPTED AND MERGED** via #389. Ryan separately accepted the Codex review and documented evidence limitations at `eb06c97` as the T2 BugBot outage exception. The bounded delta PASS remains pinned to runtime/evidence `dac925f`; the owner exception names the documentation successor. Final-head CI passed before merge. CodeQL #6 remains previously dispositioned as a false positive.
-- **T3 backend ordering gate: CORRECTED EVIDENCE DELIVERED; OWNER ACCEPTANCE PENDING.** R1–R3 are addressed in the qualified proof at `93d4e34`, with valid replacement-generation admission and stale-vector refusal. Original Cursor report and Codex review stay historical at `8c4ad91`. The native small-store preallocation case still fails the unchanged structural validator; standard-suite/CI integration is unproven because unsafe ordinary entry intentionally refuses. These limits do not become runtime fixes under a proof grant. V3 and the remainder of V4–V6 remain NOT RUN.
+- **T3 backend ordering gate: INDEPENDENT PASS (82%)** at `e08100ff`, source `93d4e34`; corrected nine-case evidence remains pinned. Bounded lapse investigation found no explicit production-directed operation, but ambient side effects cannot be excluded. See VERIFY for limits and failed attempts.
+- **Remaining T3: GRANTED, implementation next** on `feat/2026-10-13-safe-harbor-t3`, from reviewed proof tip `e08100ff`. No preservation/release runtime changes yet. Native small-store validation and ordinary-suite/CI integration limitations remain open. V3/remainder-V4/V5/V6 remain NOT RUN.
 - **Live operations/deployment: NOT AUTHORIZED.** Merged source does not activate the release workflow or prove backup usability.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** return the qualified result and its limits to Ryan. Codex contributed harness corrections and supervised verification, so do not represent this delivery as an independent review. No new runtime grant or release-policy change is implied.
+**Cursor:** implement the accepted T3 preservation/repair/release contract under EXECUTION section 11. Text-only authoring; no runtime/probe/test commands from the agent. Do not start T4/T5 or weaken validation to obtain a pass.
 
-**Cursor:** proof correction is delivered. Stop pending the next named grant; do not restart T1/T2, implement preservation/repair/release, or treat the passing harness as permission to change the small-store validator or CI.
+**Codex:** coordinate and inspect isolation before running explicitly selected fixture tests/lint through a clean stdlib bootstrap. Preserve failed attempts, then return implementation/evidence for separate review and acceptance.
 
-**Ryan:** accept or reject the returned ordering-gate evidence, including its native small-store and verification limits, then decide any remaining T3 grant. Proof acceptance is not full V4 acceptance, PR/merge permission or live authority.
-
-**Review / ops lanes:** previous verdicts remain pinned. No paid review request or live-operation grant.
+**Ryan / review lanes:** Kiro’s proof PASS is complete; final implementation acceptance and any PR/live authority remain separate. No further unchanged-proof review is required.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Ryan receives the corrected R1–R3 proof and decides ordering-gate acceptance and any remaining T3 grant. The result is jointly corrected, not independently reviewed. Keep the small-store validation and standard-suite integration limits visible; no implementation auto-advance.
-2. Complete T3–T5 only under their task grants: evidence preservation and validated release; T4's direct-helper binding, hash-view alignment, event-only success and unknown/tombstone/race/uncertain-completion behavior; then integrated evidence and review. V3, the remainder of V4, V5/V6 remain NOT RUN.
-3. Before live rollout, resolve the loss window, exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. Production `restic.env` must explicitly select `complete-data-v2` and a data root covering all affected paths, or the new gated paths refuse with 20/24.
-4. Any deployment or corpus-affecting operation needs its own scope, recovery evidence and Ryan grant. T1/T2 being merged does not provide T3's validated release or authorize detector/watch activation.
+1. Implement T3 and collect V3/remainder-V4 evidence in the separate worktree under the satisfied conditional grant. Keep the small-store/CI limits visible and stop on an unsupported release contract.
+2. Obtain final implementation review and owner acceptance; T4/T5 still need separate grants. T4 must address direct-helper binding, hash alignment, event-only completion and uncertain outcomes.
+3. Before rollout, resolve the loss window, exact usable recovery artifact, old-process/guard-state adoption and rollback compatibility in EXECUTION section 6. The added external ext4 resource is capacity only; no access is granted here.
+4. Deployment and corpus-affecting operations require separate scope, evidence and authorization. No production or session-indexing operations under this task.
 
 ## 7. Hard Stops (models cannot cross)
 
-- T1/T2 grants are complete. Only T3's bounded synthetic proof/harness/evidence is active; remaining T3 implementation and T4/T5 are ungranted. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
+- T1/T2 and the proof grant are complete. Only isolated remaining T3 under EXECUTION section 11 is active; T4/T5 are ungranted. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
 - No restore drills, production experiments, indexing, ledger record or merge from this brief.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration or generalized repair. Read that arc's current STATUS hard stops.
 - No generic HOLD, identity registry, freeze, broad constructor change or automatic cleanup subsystem under this direction.
@@ -101,6 +100,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-13 — Codex: recorded bounded lapse investigation, independent Kiro proof PASS (82%, `e08100ff`) and satisfied conditional T3 implementation grant; separate worktree, supervised isolated execution, no live authority.
 
 - 2026-10-13 — Cursor/Codex: corrected R1–R3 at `93d4e34`; qualified nine-case proof and focused lint pass, excluded early probes and validator/CI limitations recorded; returned results, no remaining T3 grant.
 
@@ -173,4 +174,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1/T2 are accepted and merged. R1–R3 proof corrections have nine qualified passes and focused lint exit 0; evidence and exclusions are recorded at source `93d4e34`. Ryan receives this jointly corrected result and decides acceptance and any remaining T3 grant. Native small-store validation and CI integration remain limits; preservation/repair/release and live operations remain ungranted.
+[Arc Safe Harbor] Investigation and independent proof review are complete. Ryan’s conditional grant now permits isolated T3 implementation and V3/V4 evidence on its separate branch. Cursor authors; Codex supervises execution. T4/T5, PR/merge and live operations remain ungranted.

@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED; T3 BACKEND PROOF ONLY GRANTED.** Ryan accepted the plan/B-E4.1 at `dca13a5`, including all five consumer outcomes. T1 landed through #387; T2 through #389 as `458b9f6`. [VERIFY V2](VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping) records final-head CI, Ryan's exact-tip review exception/V2 acceptance and the squash mapping. Section 9 preserves completed grant history, not current execution authority. Section 10 records the separate proof-only T3 grant. Reviewed task contracts and ownership are unchanged; the remaining T3 implementation, T4/T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1/T2 MERGED; ISOLATED T3 IMPLEMENTATION GRANTED.** Ryan’s conditional instruction is recorded in section 11. The bounded isolation investigation is complete and Kiro independently PASSed the proof at `e08100ff` (82%). Cursor may implement the accepted T3 contract in the separate worktree; Codex supervises isolated execution. T4/T5, PR creation/comments, merge, deployment and live operations remain ungranted.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        Corrected T3 proof returned; owner acceptance/remaining grant pending
+Phase:        Execute T3 in isolation; independent prerequisite passed
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Cursor/Codex corrected proof; Ryan receives qualified results
-Authority:    Ryan granted T3 proof/evidence only; no remaining implementation/live grant
+Lanes:        Cursor implementation; Codex supervised isolated evidence
+Authority:    Ryan conditional T3 grant (section 11); no T4/T5 or live grant
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1 and T2 are accepted and merged; their grants in sections 8–9 are complete. T3's isolated pinned-backend proof is **GRANTED / NOT STARTED** under section 10. Remaining T3 implementation and T4/T5 remain **NOT STARTED / NOT GRANTED**. Passing the proof does not authorize continuation; return results first. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; historical grants and later acceptance are recorded separately.
+T1 and T2 are accepted and merged. Section 10’s proof-only grant is complete; section 11 records the conditional remaining T3 grant, whose investigation/review prerequisites passed. T3 implementation is authorized only in isolation; T4/T5 remain NOT GRANTED. Shared files keep implementation serial. The reviewed task contracts below are unchanged.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -572,6 +572,22 @@ Report **DEMONSTRATED** only if every required observation and both valid/stale 
 
 **Hard stop after results:** no preservation, bounded-repair or validated-release implementation even if the proof passes; no T4/T5, no merge, no deployment or live operation. Codex/Ryan receive the evidence and decide the next grant. No production or policy repair to make this proof pass.
 
+## 11. Cursor remaining T3 — conditional owner grant satisfied
+
+**[Arc Safe Harbor] 2026-10-13.** Ryan instructed: “go: Investigate the isolation lapse once, get the bounded independent proof review, then proceed with isolated implementation.” This supersedes section 10’s historical stop after proof, only after those prerequisites. Both are complete: the bounded inspection found no explicit production-directed command but cannot establish zero ambient side effects; Kiro independently reviewed proof tip `e08100ff1c2fe8474f897d6ae3d3c55e5b1c7e5f` (source `93d4e344c8959ed0176b3a9b39af7be3f638f148`) and returned **PASS 82%**, no prerequisite blocker. See [the bounded record](VERIFY-safe-harbor.md#t3-isolation-investigation-and-independent-ordering-gate-review).
+
+**Scope:** implement precisely section 3 T3 and collect V3/remainder-V4 isolated evidence. Cursor authors; Codex supervises execution and records results. No T4/T5 implementation, Recovery Authority T4/V4k, PR creation/comments, merge, deployment or production operation. No production ConvMem CLI/MCP ritual, session indexing/Track A, corpus copies, backup/key/drive access, providers, services, dependency upgrades or installed-permission changes. No new release policy or structural-validator relaxation.
+
+**Pinned workspace:** branch `feat/2026-10-13-safe-harbor-t3`, worktree `/home/lauer/Projects/convmem/.worktrees/feat-2026-10-13-safe-harbor-t3`, created from the reviewed proof tip above. Dispatch names the clean, pushed documentation grant successor. Do not switch the shared checkout, update main or rebase. The proof branch remains intact.
+
+**Allowed source:** T3’s existing guard, guard CLI, focused doctor/watch recovery reporting, affected guard/worker tests and narrow T3 tests/stdlib launcher; existing Safe Harbor EXECUTION/VERIFY/STATUS and inter-model LATEST/STATUS for evidence. No broader schema, inventory-algorithm, CI-policy or constructor change. Carry the native small-store validator and ordinary-suite/CI limitations; do not silently repair them or claim merge readiness.
+
+**Execution discipline after the lapse:** Cursor performs text-only source/test authoring and static reads. Cursor must not invoke Python, pytest, lint, package imports, schema probes, ConvMem tools or any fixture/runtime command. Codex reads the launcher first, then runs only explicitly selected tests/lint through a stdlib `-I -S -B` outer bootstrap that builds a clean environment allowlist before imports, as uid 1000, with fresh HOME/XDG/CONVMEM/Restic/cache/TMPDIR paths. Every client/worker validates its synthetic path; no provider credentials, ambient config or production fallback. Isolated child processes are bounded and their real exits retained. This is a constraint on this dispatch, not a new repository-wide subsystem.
+
+**Implementation order:** retain existing T1 incident authority; add source identity/content/watermark evidence; implement durable write-once preservation and incident-bound repair; then all-current-findings release with durable event publication before durable marker removal. Every automatic restore aborts the initiating mutation and requires owner disposition. Unknown evidence remains contained. Test actual stale-vector and copy-over-original faulty alternatives against independent assertions, plus the specified interruption/IO/ENOSPC/fsync and disposition races. No client opening during release validation. Unlink/fsync ambiguity must report uncertainty rather than promise a marker still exists.
+
+**Return:** V3/V4 observed results and exclusions, source hashes, implementation/review tip and the smallest remaining limitations. A prerequisite proof PASS is not an implementation PASS. Stop on a concrete unsupported contract rather than weakening it. Commit bounded work and push immediately with `git push -u origin feat/2026-10-13-safe-harbor-t3:refs/heads/feat/2026-10-13-safe-harbor-t3`; keep final review/acceptance and all live actions pending.
+
 ## TL;DR
 
-[Arc Safe Harbor] T1/T2 are accepted and merged. Section 10's corrected T3 proof has been returned with nine qualified passes, focused lint exit 0 and explicit exclusions/limits. Ryan's acceptance and any remaining T3 grant are next. The approved contracts are unchanged; preservation/repair/release, T4/T5 and live operations remain ungranted.
+[Arc Safe Harbor] The bounded lapse investigation and independent Kiro proof PASS (82%, `e08100ff`) satisfy Ryan’s conditional grant. Section 11 authorizes isolated T3 implementation/evidence on a separate branch. The accepted contract is unchanged; T4/T5, PR/merge and live operations remain ungranted.

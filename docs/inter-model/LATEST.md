@@ -9,13 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — corrected T3 proof returned (2026-10-13):**
-  Cursor/Codex corrected R1–R3 at `93d4e34`; see the
-  [qualified evidence, exclusions and limits](../plans/VERIFY-safe-harbor.md#t3-r1r3-corrected-proof--qualified-evidence).
-  This is joint correction/verification, not independent review.
-  **Next lane: Ryan** for ordering-gate acceptance and any remaining T3 grant.
-  [STATUS](../plans/STATUS-safe-harbor.md) holds the current scope.
-  No preservation/repair/release implementation, T4/T5 or live operations.
+- **Arc Safe Harbor — isolated T3 implementation granted (2026-10-13):**
+  Bounded lapse investigation is complete; Kiro independently PASSed proof `e08100ff` (82%).
+  **Next lane: Cursor**, text-only implementation; Codex supervises isolated execution.
+  [EXECUTION section 11](../plans/EXECUTION-safe-harbor.md#11-cursor-remaining-t3--conditional-owner-grant-satisfied)
+  is the grant/handoff; [STATUS](../plans/STATUS-safe-harbor.md) holds current scope.
+  No T4/T5, PR/merge or live operations.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
