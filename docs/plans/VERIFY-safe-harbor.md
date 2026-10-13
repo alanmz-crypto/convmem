@@ -1030,6 +1030,76 @@ dd9a3810123c3769fcb2b59914ac3f332b5d479b0e84d6a1043e71225154c051  tests/_chroma_
 
 **Review provenance:** scratch `/tmp/safe-harbor-t3-implementation-review-nej8sv44`, Kiro session `sess_432813ca-d779-4339-bc99-ed6b4117d4f1`; consolidated `verdict.txt` SHA256 `d09bcdc2404562c573c9e80139d8aca5fd6bf93973d46c9d40462e949716489e`. The two completed review phases exited 0. Scratch transcript/log copies are supplementary; this pinned result, disposition and source qualification are the durable review record.
 
-**Current next step:** Ryan requested CI scoping; [EXECUTION section 12](EXECUTION-safe-harbor.md#12-bounded-t3-ci-integration--proposed-not-authorized) is now a proposed bounded harness/workflow/inventory integration, **NOT AUTHORIZED**. No new test result, CI run or runtime change is claimed by this documentation checkpoint. A feature-branch push alone does not start the current PR/main-triggered workflow.
+**Next step recorded at the review checkpoint (superseded below):** Ryan requested CI scoping; [EXECUTION section 12](EXECUTION-safe-harbor.md#12-bounded-t3-ci-integration--owner-authorized) is now a proposed bounded harness/workflow/inventory integration, **NOT AUTHORIZED**. No new test result, CI run or runtime change is claimed by this documentation checkpoint. A feature-branch push alone does not start the current PR/main-triggered workflow.
 
 **TL;DR:** [Arc Safe Harbor] Kiro returned implementation PASS (85%) at `a54357c`/`802d74d`, with the pre-replacement/release distinction qualified above. CI integration is scoped for approval; fresh CI, successor review and owner acceptance remain pending.
+
+
+### T3 bounded CI integration — isolated evidence returned
+
+**[Arc Safe Harbor] 2026-10-13.** Ryan authorized EXECUTION section 12 at `23041bd5f7352cdfd8a2626c19beb3e87a2bcde1`; grant record `cd394bd`. Cursor authored the named harness/workflow changes; Codex inspected them, regenerated the derived inventory and ran the isolated evidence. **Integration source: `34ff309e760ef3a8db756157e8faec5500cc05fd`.** Production runtime remains byte-identical to `802d74d`. This is author/coordinator evidence, not an independent delta PASS or owner acceptance.
+
+**What changed:** existing stdlib bootstrap now uses the invoking interpreter and an explicit non-root parent/child uid binding, rejecting missing/mismatched identity before project imports. Clean fixture environment and `-I -S -B` parent / `-s -B` child discipline remain. The outer launcher ignores ambient TMPDIR; nested temporary roots require the inherited isolation checks. `run-ci-collect` delegates to the unchanged critical-invariant checker; `run-ci` invokes full pytest with no test selection, a 90-minute child limit and 120-minute job limit. The existing workflow retains Python 3.12, dependency pins, triggers, check names, lint baseline and secret scan. Failure artifacts contain only logs and summaries. The three T3 core/matrix/backend-proof modules were added to the existing critical manifest. `run-integration` is the fixed local selection; it does not run the full workstation suite.
+
+**Final observed run:** `/tmp/safe-harbor-t3-suite-1ammoxfm`, launcher **exit 0**, **149 passed**, affected-file pylint regression gate **exit 0**. Raw pylint **8** (five duplicate-code findings, one fingerprint, no new/increased findings against pinned baseline `e08100ff`). No baseline edit, test skip or runtime fix was used to obtain this result.
+
+- Core T3: 14 passed, 31.84s.
+- T3 interruption/repair/release matrix: 33 passed, 62.45s.
+- Existing guard: 24 passed, 42.67s.
+- T1: 21 passed, 12.55s.
+- Pinned-backend proof: 9 passed, 7.62s.
+- CI contract: 22 passed, 0.45s.
+- New launcher contract: 18 passed, 0.25s.
+- R2b implementation identity: 8 passed, 1.39s.
+
+**Reproduce only the authorized local selection:**
+
+```bash
+cd /home/lauer/Projects/convmem/.worktrees/feat-2026-10-13-safe-harbor-t3
+/home/lauer/miniforge3/bin/python -I -S -B tests/_safe_harbor_t3_worker.py run-integration
+```
+
+The actual run used Python **3.13.12**, uid/euid **1000**, chromadb **1.5.9**, hnswlib **0.8.0**, numpy **2.4.4**. The backend identity case observed `chromadb.api.rust.RustBindingsAPI`; native binding SHA256 `a9794735847c3a78c15931d869cee8368fddbb10048c3d098bc09a14130075ad`; interpreter SHA256 `66c90902aba57b52abbe5e31e54fe65826c2046496f1656ef0f4e9d1ea26c8b0`. Python 3.12 hosted compatibility has **not** been demonstrated. A simulated matching uid 1500 exercises portability logic; it is not an actual second-user/host run.
+
+**What the new tests establish:** the real allowlist builder drops synthetic credential/config/PYTHONPATH canaries; missing/mismatched/root identity refuses; a real stdlib subprocess refuses absent identity; full-suite argv contains no selection and checker argv delegates unchanged. Mocked child outcomes drive the real handlers through nonzero exit, timeout, missing return code and source-hash change for both CI modes. Child launch is mocked in those plumbing tests, preventing recursive full-suite execution. The nine real backend cases and the existing preservation/stale-vector faulty alternatives remain separate evidence; no mock is presented as a native-backend proof.
+
+**Inventory:** regenerated using existing `write_v2_inventory_file()` in a clean child, after scans and JSON-normalized comparison. All **36 routes** and classifications are unchanged; shadow inventory and identity algorithm are unchanged. Derived revision changed from `0df4d7882822db4af1f1abda8d41cc26a3892b6f` to `f54b3762c2a513cc8a08d32207c98a48640ae7d3`, digest `87ac7393505a4a87e5c9f49027521f8875af6a4fce5c0ec59798e86b0b8da3cb`. Successful generation record: `/tmp/safe-harbor-t3-ci-inventory-oxqbvqsw/output.log`.
+
+**Failed/stopped attempts retained:**
+
+- Cursor's first CLI initialization stopped on sandbox read-only session-policy storage before authoring; the authorized retry started normally. Static review of early drafts found isolated-import, temporary-root, source-hash and test-assertion defects. They were corrected before fixture execution.
+- Codex's first inventory comparison stopped before writing (`...inventory-z2_zej8k`); a diagnostic repeat (`...inventory-1eelj9gg`) identified tuple-versus-JSON-list comparison, not a policy change. Normalizing generated data to JSON fixed the supervisor comparison; the runtime generator was unchanged.
+- First complete integration run `/tmp/safe-harbor-t3-suite-2ualf8ny`: all 149 tests passed and hashes were stable, but launcher **exit 1**, raw pylint **28**, regression gate **1** on nine new fingerprints. Chained exceptions, unused/import cleanup and narrowly documented test-helper access resolved them; explicit `getattr` preserves the existing Rust binding type assertion. The final run above supersedes only the acceptance result, not this history.
+
+**Execution provenance:** Cursor session `c8d706d7-c5ba-4f4e-80df-3d58cf7f8ccf`; dispatch/corrections in `/tmp/safe-harbor-t3-ci-author-8yf_e4gd`. Tool traces show source reads/searches/edits and one read-only `ls/head/tail` shell call to locate lint artifacts; no Cursor Python, tests, runtime probe, ConvMem or provider execution. Codex performed inventory/test execution only through inspected isolated parents. No production ritual, indexing, backup/key/drive/service action or ambient package probe was run. Scratch logs are supplementary; this record preserves the actual outcomes and pins.
+
+**Source binding:** all 22 measured inputs were identical before/after the final run and were checked again after the source commit. Canonical measured-path/hash map SHA256 `350188fe80d2dcb96c0787f920c625a272fab4012e9d8358fcbab8b17be4fd99`; complete summary file SHA256 `03b128f5d958fe699761757b61bf1c69b10673dc0c47d6a0a0b91d7316b47634`. The measured hashes are retained below; documentation-only successors do not change these tested bytes.
+
+```text
+a25d1d91df86017fb9d85b6d777fdc549af077a1d7fbb00bc48c25bffd2cdfe9  .github/workflows/pylint.yml
+efe66f4720d083835ab75eb0ea302aa30c8b7cb87ea2178060feb16b8e29d1b3  chroma_write_guard.py
+1ba1b04154de741a41199ee0538264889f64a71e40bc0a6a6aa15cd6b476b0ac  docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json
+ea10c8fa1bc37e51b081407b65dc33ce154b76197f5276bac9fb28e38a94ac05  docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json
+8588b581f6bbf048cabceb709dd46eb190a4933bb06ec7b486dd91dd138528eb  doctor.py
+e73a9470fdbc8828fc0bc180695921972a94e7fdeb0eda63a898a35b5b47578c  scripts/check_ci_critical_invariants.py
+ced2f1c629061f176bb445ce6bcb343713bcdcedcddcb92d5ffc2b464f9261e6  scripts/chroma_guard.py
+dd9a3810123c3769fcb2b59914ac3f332b5d479b0e84d6a1043e71225154c051  tests/_chroma_write_guard_worker.py
+2584044dc04f9d6f0560f7b78f561beb006986c5e14adf65ada234fa87d1af3e  tests/_safe_harbor_bootstrap.py
+ee2b58b46ccf9495c053b64fa17dc34acc6bbba4f06fbf279fa958ee09c1f03e  tests/_safe_harbor_t3_backend_worker.py
+d40097e697cf18ad073399aeba5ed10eddb158f4bdfad4954efc36dcad3cc0a2  tests/_safe_harbor_t3_fault_worker.py
+b15b3e5ae86abee740705f14700ce66e2c50745c2c8c190db67d689c64df1fcc  tests/_safe_harbor_t3_worker.py
+a36b2e2e5c2bdf115806be327aeff7bb54aa70125599285d968e7617b07ddf88  tests/ci-critical-invariants.txt
+6c31c090b5ba495a01bcede029e139ca016fa238f36f2c4de5e080c467160afa  tests/safe_harbor_t3_fixtures.py
+02ac177feafe49270048cc5d6c61e561c877bc1e5eb3e5963096d2258ce9f811  tests/test_chroma_write_guard.py
+b618a3c1346feec030ed88d907c05b29fe923584d0077336e47a313c8937dda5  tests/test_ci_contract.py
+362d58e084cf1a3787752e4a19021630a34c3026f50c9e2c6355de6a32dcad49  tests/test_r2b_v2_implementation_revision.py
+a41dfce391c41c30b8959c2da698c7ea16790c0478d0e985cf55c677ccd50fce  tests/test_safe_harbor_t3.py
+b1df431f3527ba8c86d07f2b12b8b68e0f092b009e68b3514eb1b836eb862255  tests/test_safe_harbor_t3_backend_proof.py
+35e25cad6aa1ffdfd759a0378b1e05579b72f6516322fdf5cff3408f601b73d0  tests/test_safe_harbor_t3_ci.py
+9eb62233a8f706583649d7ccd7164ae3b7e5c792cfa8bc0c7d8f6b9be0662b2b  tests/test_safe_harbor_t3_matrix.py
+c207555751b543dc8a6a48c9ff278ddf429cf665cfc0e9a71462e23e4e0b29fd  watch.py
+```
+
+**Remaining gates:** Kiro's previous implementation PASS remains at `a54357c`/`802d74d`; the changed harness/CI/inventory needs a bounded independent delta. No reviewer invoked by this result. Full hosted pytest/pylint/security checks, owner T3/V3/V4 acceptance, draft PR authority and merge remain pending. No real `run-ci` or complete `run-ci-collect` was run locally. The small-store availability limitation, conservative release policy and process-restart-versus-power-loss distinction remain. T4/T5 and deployment are ungranted.
+
+**TL;DR:** [Arc Safe Harbor] CI integration at `34ff309` has 149 isolated passes, stable measured inputs and lint regression gate PASS. Runtime and route policy are unchanged; independent delta and fresh hosted CI remain pending.

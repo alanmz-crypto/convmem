@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 MERGED; T3 STATIC REVIEW PASS, CI INTEGRATION GRANTED.** Kiro returned implementation PASS (85%) at `a54357c`, including runtime `802d74d` and recorded isolated evidence. Ryan granted bounded CI integration and isolated evidence in EXECUTION section 12 at `23041bd`. Successor review, fresh CI and owner acceptance remain pending; T4/T5 and live work remain ungranted.
+> **Arc: Safe Harbor. T1/T2 MERGED; T3 STATIC REVIEW PASS, CI INTEGRATION EVIDENCE RETURNED.** Kiro returned implementation PASS (85%) at `a54357c`, including runtime `802d74d` and recorded isolated evidence. The granted CI integration is returned at `34ff309` with 149 isolated passes and lint regression gate PASS. Successor review, fresh CI and owner acceptance remain pending; T4/T5 and live work remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -53,27 +53,27 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T2 / V2: ACCEPTED AND MERGED** via #389. Ryan separately accepted the Codex review and documented evidence limitations at `eb06c97` as the T2 BugBot outage exception. The bounded delta PASS remains pinned to runtime/evidence `dac925f`; the owner exception names the documentation successor. Final-head CI passed before merge. CodeQL #6 remains previously dispositioned as a false positive.
 - **T3 backend ordering gate: INDEPENDENT PASS (82%)** at `e08100ff`, source `93d4e34`; corrected nine-case evidence remains pinned. Bounded lapse investigation found no explicit production-directed operation, but ambient side effects cannot be excluded. See VERIFY for limits and failed attempts.
 - **T3 implementation/evidence: KIRO STATIC PASS, NOT OWNER-ACCEPTED.** Review at documentation tip `a54357c940327881239db98c89b965b1365efc84`, runtime/tests `802d74dc0525a8040e44408b891f83edc20df97f`, on `feat/2026-10-13-safe-harbor-t3`. Kiro returned **PASS 85%**, no implementation blocker, after completing omitted reads in the same authorized review. VERIFY records the source qualification without upgrading the verdict into CI or owner acceptance. Final isolated run remains **92 passed**, launcher exit 0, focused lint regression gate 0 (raw pylint 20, existing findings). Codex contributed code/verification and is not the independent reviewer. The native small-store limitation remains; V5/V6 remain NOT RUN.
-- **CI integration: GRANTED, IN PROGRESS.** Ryan approved section 12 at `23041bd`, including isolated evidence. Reuse the pre-import launcher for full-suite/critical collection, remove host-specific interpreter/uid assumptions while retaining non-root isolation, preserve existing CI checks and refresh derived inventory mechanically. Section 12 names allowed files, evidence and stops. No integration implementation, new tests or CI run occurred during scoping. Fresh GitHub CI requires a separately authorized draft PR; a feature push does not trigger this workflow.
+- **CI integration: IMPLEMENTATION/EVIDENCE RETURNED at `34ff309e760ef3a8db756157e8faec5500cc05fd`.** Portable pre-import bootstrap, full-suite/critical-collection workflow wiring, contract tests and derived inventory are complete on the task branch. [VERIFY](VERIFY-safe-harbor.md#t3-bounded-ci-integration--isolated-evidence-returned) records **149 passed**, launcher exit 0, focused lint gate 0 (raw 8), stable source hashes and failed attempts. Runtime and all 36 routes are unchanged. Full hosted CI is NOT RUN and needs a separately authorized draft PR; a feature push does not trigger this workflow. No integration delta verdict or T3/V3/V4 acceptance is inferred.
 - **Live operations/deployment: NOT AUTHORIZED.** Merged source does not activate the release workflow or prove backup usability.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** receive the bounded CI integration and evidence. Your section 12 grant is recorded; no further approval is needed for those named changes/tests. T3/V3/V4 acceptance, PR authority and deployment remain separate.
+**Ryan:** receive the completed bounded integration and authorize its independent delta review. Draft PR/hosted CI, T3/V3/V4 acceptance and deployment remain separate. No new full review of unchanged runtime is proposed.
 
-**Codex / Cursor:** under the approved section 12 grant, Cursor authors only the named harness/workflow/derived-artifact changes; Codex supervises selected isolated evidence. Preserve the reviewed runtime. Report unrelated failures rather than broadening the grant. No full default local pytest or production ritual.
+**Codex / Cursor:** section 12 implementation/evidence is returned. Preserve the clean pushed checkpoint and the unchanged runtime; route concrete review findings before further correction. No new task, full default local pytest or production ritual.
 
 **Next reviewer after integration:** review the changed bootstrap, CI contract and recorded evidence as a bounded delta. Kiro's prior PASS stays pinned; it does not silently transfer to changed harnesses. Invocation and final acceptance remain separate.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Implement the granted CI integration in EXECUTION section 12 and return isolated evidence; keep the current runtime and known limits unchanged.
-2. Obtain the integration delta review and separately authorized draft PR for fresh final-tip CI, then Ryan's T3/V3/V4 acceptance. Only section 12's bounded CI wiring is granted; no reviewer invocation or PR action is inferred. T4/T5 still need separate grants; T4 must address direct-helper binding, hash alignment, event-only completion and uncertain outcomes.
+1. Obtain a bounded independent delta on integration source `34ff309`, its recorded 149-case evidence and the documentation successor. Keep the previous runtime verdict pinned; no automatic review invocation.
+2. Obtain separately authorized draft PR/fresh final-tip CI, then Ryan's T3/V3/V4 acceptance. Only section 12's bounded CI wiring is granted; no reviewer invocation or PR action is inferred. T4/T5 still need separate grants; T4 must address direct-helper binding, hash alignment, event-only completion and uncertain outcomes.
 3. Before rollout, resolve the loss window, exact usable recovery artifact, old-process/guard-state adoption and rollback compatibility in EXECUTION section 6. The added external ext4 resource is capacity only; no access is granted here.
 4. Deployment and corpus-affecting operations require separate scope, evidence and authorization. No production or session-indexing operations under this task.
 
 ## 7. Hard Stops (models cannot cross)
 
-- T1/T2 and the proof grant are complete. Section 11's T3 implementation is returned and statically reviewed; section 12 CI integration and isolated evidence are granted at `23041bd`. No automatic continuation into T4/T5 or unrelated runtime fixes. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
+- T1/T2 and the proof grant are complete. Section 11's T3 implementation is returned and statically reviewed; section 12 integration/evidence granted at `23041bd` is returned at `34ff309`. No automatic continuation into T4/T5 or unrelated runtime fixes. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
 - No restore drills, production experiments, indexing, ledger record or merge from this brief.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration or generalized repair. Read that arc's current STATUS hard stops.
 - No generic HOLD, identity registry, freeze, broad constructor change or automatic cleanup subsystem under this direction.
@@ -102,6 +102,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-13 — Cursor/Codex: returned bounded CI integration at `34ff309`, 149 isolated passes and lint regression gate PASS; runtime/routes unchanged, independent delta and hosted CI pending.
 
 - 2026-10-13 — Codex: recorded Ryan's bounded CI integration/evidence grant at `23041bd`; Cursor authors and Codex supervises isolated execution, PR/later work remains ungranted.
 

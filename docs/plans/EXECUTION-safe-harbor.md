@@ -592,7 +592,7 @@ Report **DEMONSTRATED** only if every required observation and both valid/stale 
 
 ## 12. Bounded T3 CI integration — owner authorized
 
-**[Arc Safe Harbor] 2026-10-13, Codex handoff to Cursor.** Ryan approved the scope at `23041bd5f7352cdfd8a2626c19beb3e87a2bcde1`: “Authorize the bounded CI integration in EXECUTION section 12 at 23041bd, including isolated evidence. PR creation, merge, deployment and T4–T5 remain unauthorized.” Resume from its clean, pushed documentation-only grant successor on the section 11 branch/worktree. Runtime remains `802d74d`; do not update main, rebase or switch another checkout. State: IN_PROGRESS; no further owner gate for the named integration and isolated evidence. PR/hosted CI and final review/acceptance stay separate.
+**[Arc Safe Harbor] 2026-10-13, Codex handoff to Cursor.** Ryan approved the scope at `23041bd5f7352cdfd8a2626c19beb3e87a2bcde1`: “Authorize the bounded CI integration in EXECUTION section 12 at 23041bd, including isolated evidence. PR creation, merge, deployment and T4–T5 remain unauthorized.” Resume from its clean, pushed documentation-only grant successor on the section 11 branch/worktree. Runtime remains `802d74d`; do not update main, rebase or switch another checkout. State: IMPLEMENTATION/EVIDENCE RETURNED at `34ff309`; the named local work is complete. PR/hosted CI and final review/acceptance stay separate.
 
 ### Problem and selected approach
 
@@ -628,6 +628,8 @@ Keep pytest/pylint versions, backend pins, Python 3.12 CI matrix, existing job/c
 
 **Why this should drift less (85% confidence):** one existing bootstrap feeds both focused evidence and CI; one full-suite pytest job remains the acceptance surface. It removes host-specific assumptions without duplicating test bodies or replacing fail-closed entry with a flag-only exemption. Full-suite compatibility remains unproven until the authorized hosted run.
 
+**Delivery (2026-10-13):** Cursor's harness/workflow integration and Codex's derived-inventory refresh are committed at `34ff309e760ef3a8db756157e8faec5500cc05fd`. [Isolated evidence](VERIFY-safe-harbor.md#t3-bounded-ci-integration--isolated-evidence-returned): 149 passes, launcher exit 0, affected lint regression gate 0 (raw pylint 8, existing duplicate-code findings), 22 measured inputs stable. Production runtime remains `802d74d`; all 36 inventory routes and shadow policy are unchanged. Early static corrections, the supervisor comparison error and the initial failed lint run are retained in VERIFY. No full local suite or hosted CI was run. Next is a separately authorized bounded independent integration delta; draft PR/hosted CI and Ryan acceptance remain separate. This delivery does not auto-invoke a reviewer or start T4/T5.
+
 ## TL;DR
 
-[Arc Safe Harbor] Ryan granted section 12 at `23041bd`: Cursor authors bounded CI integration; Codex supervises isolated evidence. Final CI, successor review and owner acceptance remain pending; PR/merge, T4/T5 and live operations are ungranted.
+[Arc Safe Harbor] Section 12 integration/evidence is returned at `34ff309`: 149 isolated passes and lint regression gate PASS. Independent delta, hosted CI and owner acceptance remain pending; PR/merge, T4/T5 and live operations are ungranted.
