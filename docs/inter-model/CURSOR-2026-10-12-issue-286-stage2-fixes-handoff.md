@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `READY_FOR_REVIEW`: corrective 5 at `c7072fc` passed Claude's round-6 verify; next are the Copilot audit and Kiro's design review (see `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 6) |
+| **State** | `IN_PROGRESS`: the independent safety audit (Codex, standing in for Copilot) FAILed `c7072fc` with five blockers, which Claude reproduced; corrective 6 (Q1–Q8) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 7 |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

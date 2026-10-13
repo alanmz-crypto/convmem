@@ -1,4 +1,192 @@
-# Verify: Stage 2 wedge fixes, round 6 at `c7072fc`: ready for the Copilot audit and Kiro's review
+# Verify: Stage 2 wedge fixes, round 7 at `c7072fc`: the Codex audit's FAIL holds; corrective 6
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-13
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `c7072fc`. This
+round is my disposition of two reviews of that tip:
+- **Codex (Astra, high effort), standing in for the Copilot audit lane:**
+  FAIL, with five blockers and two observations. The report is
+  `docs/inter-model/CODEX-2026-10-13-issue-286-stage2-fixes-audit.md`, on
+  branch `docs/2026-10-13-issue-286-stage2-fixes-audit` (`e1cec55`).
+- **Kiro, design review:** PASS with conditions CO-1 to CO-5. The report is
+  `docs/inter-model/KIRO-2026-10-13-issue-286-stage2-fixes-design-review.md`,
+  on branch `docs/2026-10-13-issue-286-stage2-fixes-design-review`
+  (`b96fbb8`).
+
+**Method:**
+- I extracted Codex's 10 probes and its network and live-path guard from the
+  audit appendix, then ran them hermetically at `c7072fc`.
+- I read each probe to confirm it doesn't stub out the mechanism it says it
+  defeats.
+- I read the code each finding cites.
+- I checked three live config facts, printing booleans only.
+
+## Verdict (round 7)
+
+**The round-6 "ready" is withdrawn. Codex's FAIL holds, and corrective 6 is
+needed.**
+- **The probes:** all 10 reproduce at `c7072fc`, and each asserts the unsafe
+  behavior. They use the real coordinator, rollback, lock, breaker,
+  detection and scan code; only providers, stores or the subprocess transport
+  are faked.
+- **Sol-High isn't needed.** The two reviews don't contradict each other on
+  a fact:
+  - Kiro's PASS is explicitly conditional on C1 covering every writer (CO-1,
+    "the guarantee is only as strong as the census").
+  - Codex's F3 shows, with a reproduced probe, that it doesn't.
+  - Reproducible evidence settles the remaining propositions: F4 shows that
+    `add` embeds under the lock.
+  - Codex also declined to infer a conflict.
+- **My misses:** I missed all five blockers over six rounds.
+  - My rounds tested the paths I had specified: the wedge, rollback and the
+    export.
+  - I never took a census of writers, checked the dedupe files under C2's
+    relaxation, or followed errors other than `IncrementalJsonlError` out of
+    a run after paid work.
+  - My round-2 statement that raised provider refusals "don't make a billed
+    call" is wrong when the summary succeeded first.
+
+## Findings, confirmed
+
+| Codex | Severity | Confirmed? | What it means here |
+|---|---|---|---|
+| F1 | high | yes, in code and by probe | The rollback restores `dedupe_queue.jsonl` and `ingest_duplicate_suppressions.jsonl` *whole* from their before-images (`_restore_dedupe_files` → `_restore_file_preimage`, `incremental_jsonl.py` ~1632–1639). **Concrete for canary 2:** if the 3 stale `APPLYING` Stage 2 transactions roll back, both files go back to their 2026-10-12 contents, deleting every dedupe record other sources wrote since. |
+| F2 | high, burn | yes | Two holes. (a) Only `IncrementalJsonlError` is counted, so an `OSError` writing the prepared artifact (a full disk, say) or a `ProviderUnavailableError` after a successful summary makes the watcher re-run, and re-pay, on every event. (b) Retry state is checked only *after* `run()`, so each `index --file` on an unchanged prefix pays again before it refuses. The live summarize and distill models are the same (boolean check), so the 402-after-summary case is unlikely; the disk-error and post-summary failure paths don't depend on the provider. |
+| F3 | high | yes | Semantic-dedupe tombstones in `refine` write while another thread holds C1. Inter-model ingest writes a unit before its export lock pulls in C1. Repository-knowledge ingest and source purge have the same late-acquire shape. A cooperating writer can still trip `non_source_isolation_changed` mid-apply, which was the Stage 2 cause. |
+| F4 | medium | yes | `add` and `monitor` embed while holding C1. `forget` holds C1 through its interactive confirmation prompt, so a forgotten prompt stalls every writer, including the watcher. All three take the Chroma writer session *before* C1, against the spec's order. `assert_lock_ordering_ok` accepts C1 followed by `source_flock`. No production deadlock was shown. |
+| F5 | medium | yes; can't fire in production today | `should_defer_index_file` has no Claude exception. None of the 13 live watch roots covers `~/.claude/projects` (boolean check), so it's a spec violation rather than a live gap. |
+| O1 | low to medium | yes | The `review-bundles/` skip is an unconditional prefix, so a tracked writer there would be invisible. Nothing is tracked there today. This matches Kiro's CO-2. |
+| O2 | low | yes | An empty digest (the source can't be read) releases a wedge hold. |
+
+**Kiro's conditions:**
+- CO-1 is now F3; it is a code item, not only a list.
+- CO-2 is O1.
+- CO-3 is mine: the PR draft's suite line and its review wording. I've
+  corrected them below.
+- CO-4 (make the tamper record durable) goes into corrective 6, so canary 2
+  doesn't wait on another loop.
+- CO-5 (release a clean `rolled_back` on a prefix change) stays a canary-2
+  decision, as Kiro recommends.
+
+## Corrective 6 for Cursor
+
+All items are hermetic; none involve paid calls.
+
+**Q1 (F1): roll back dedupe records by transaction, not by file.**
+- Rollback removes only the lines this transaction wrote, identified by the
+  `transaction_id` that `_reconcile_dedupe` stamps on each event.
+- Every other line stays byte-identical and in order: foreign appends,
+  foreign edits, and anything written after the before-image.
+- If the file didn't exist before and nothing remains, remove it.
+- **Test:** flip Codex's F1 probe. Foreign records survive and this
+  transaction's records are gone. Add a case where the file already held
+  older records.
+
+**Q2 (F2): bound every failure that can follow paid work.**
+- **(a) Count every exception that escapes `coordinator.run()`,** not just
+  `IncrementalJsonlError`. Leave out `KeyboardInterrupt` and `SystemExit`.
+  - Codes: `provider_unavailable` for `ProviderUnavailableError`,
+    `artifact_write_failed` for `OSError`, `unexpected_<ClassName>` for
+    anything else.
+  - A second identical failure on the same prefix gives
+    `live_route_refused` (exit 91), the same as today.
+- **(b) Check before paying.** Before any transform work, compute the
+  source's prefix digest and read its retry state. If this exact prefix is
+  already refused, refuse at once with the same wedge refusal and do no
+  transform work. This covers `index --file`, `--now` and watcher children,
+  since all of them go through `maybe_route_incremental`.
+- **(c) Fail closed on retry state.** If the retry state can't be read or
+  written, refuse before any transform work with `retry_state_unavailable`
+  (exit 91). Doctor WARNs about it.
+- **(d) A bound across prefixes (my addition, beyond Codex's ask).** Three
+  consecutive failures with the same code for one source, whatever the
+  prefix, hold the path until `convmem watch --clear-quarantine`, and doctor
+  WARNs.
+  - **Why:** without this, an active session hitting a persistent
+    post-summary failure, such as a full disk, pays one or two summaries on
+    every append.
+  - **When the count resets:** a success.
+- **Tests:** flip Codex's three F2 probes. The third and later attempts make
+  0 summary calls, and the watcher holds the path. Add tests for (c) and (d).
+
+**Q3 (F3, Kiro CO-1): C1 covers every production writer of summaries, units
+and the export.**
+- **Wrap the mutation windows:**
+  - `refine`: `_tombstone_semantic_duplicate` and the `chroma_dedupe`
+    mutations;
+  - inter-model ingest (`inter_model_index.py` ~323): take C1 before
+    `add_unit`, and hold it through the export append;
+  - repository-knowledge ingest (`repository_knowledge_index.py` ~280);
+  - source purge (`source_purge.py` ~357 and ~386): take C1 before the
+    collection deletes.
+- **Enforce it at runtime.** In the production Chroma write session, every
+  mutating call on summaries and units must raise unless this thread holds
+  C1: add, upsert, metadata update and delete. That makes the census
+  permanent and catches writers nobody listed. If some writer can't take C1,
+  stop and report why; don't exempt it silently.
+- **Report the full writer list** (route, file:line, how it's covered). It
+  goes into the PR body.
+- **Tests:**
+  - flip Codex's refine probe, so the tombstone write waits until C1 is
+    released;
+  - add concurrent tests on real entrypoints;
+  - test that an unlocked mutation raises.
+
+**Q4 (F4): nothing slow or interactive under C1, and the specified lock
+order.**
+- `add` and `monitor` compute embeddings before taking C1. C1 covers only
+  the store and export writes.
+- `forget` asks for confirmation before it takes C1 or opens the writer
+  session.
+- **The order:** Safe Harbor's admission check stays outermost, then
+  `source_flock`, then C1, then the Chroma writer session, then
+  `export_flock`.
+- Extend `assert_lock_ordering_ok`:
+  - it refuses `source_flock` while C1 is held;
+  - it refuses C1 while a Chroma writer session is held. Track the session
+    depth to do this.
+- **Tests:** flip Codex's `add` probe (no embed at lock depth 1) and its
+  reversed-order probe (it now raises).
+
+**Q5 (F5): never defer a Claude transcript.**
+- `should_defer_index_file` returns False for `jsonl_claude_session`.
+- Test it with a real Claude transcript under a broad root, which is Codex's
+  probe flipped.
+
+**Q6 (O2): unknown isn't a change.** When the prefix digest can't be computed,
+keep a wedge hold.
+
+**Q7 (O1, Kiro CO-2): narrow the R2b skip.**
+- Skip `review-bundles/` only for files git doesn't track. Tracked files
+  there are still scanned.
+- Flip Codex's scan probe for a tracked file.
+- Ryan acknowledges this for the R2b arc.
+
+**Q8 (Kiro CO-4): make the tamper report durable.**
+- When a rollback drops unexpected export lines, also append a structured
+  record to the source's incremental state directory: time, source,
+  transaction id and count.
+- `convmem doctor` WARNs on records from the last 7 days.
+
+**Not in corrective 6:** CO-5 (G5: whether a clean `rolled_back` releases on
+a prefix change). Kiro recommends deciding it during canary 2.
+
+**Then:**
+- re-pin the baseline hashes and regenerate the writer inventories;
+- run the full suite hermetically in clean detached worktrees at main and at
+  your final tip;
+- list every tip-only failure with its cause.
+
+**After corrective 6:**
+1. I re-verify, including Codex's probes flipped and my round-2 to round-5
+   probes.
+2. A fresh Codex audit and a fresh Kiro review on the exact new tip.
+3. Ryan's PR and merge.
+
+---
+
+# Round 6: `c7072fc`, "ready" withdrawn in round 7 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -15,7 +203,7 @@ Composer's corrective 5. It answers round 5 (below).
 - My runs touched nothing live. I compared mtimes and sizes across the live
   data root before and after.
 
-## Verdict (round 6)
+### Verdict (round 6)
 
 **Ready for the Copilot safety and isolation audit and for Kiro's design
 review. I have no open findings.**
@@ -46,7 +234,7 @@ review. I have no open findings.**
 - **Code left behind:** none. Nothing references the removed byte-matching
   helpers any more.
 
-## Review focus: the decisions reviewers must judge
+### Review focus: the decisions reviewers must judge
 
 These are the places where the branch relaxes a reviewed invariant or makes a
 judgment call. Copilot audits them for safety and isolation. Kiro reviews them
@@ -93,7 +281,7 @@ as design.
    Chroma's read order, which varies from read to read. So the export file
    changes byte by byte on every commit. That's a separate issue.
 
-## Test results (round 6)
+### Test results (round 6)
 
 | Run | Result |
 |---|---|
@@ -102,7 +290,7 @@ as design.
 | That crash test re-run alone, 5 times each at main and `c7072fc` | 10 of 10 pass |
 | Probes from rounds 2–5, Cursor's probe and wedge-fix tests | 41 passed |
 
-## Next
+### Next
 
 1. **Copilot audit lane:** a targeted safety and isolation audit of the
    branch, focused on the list above.
@@ -117,7 +305,7 @@ as design.
    - run canary 2. Doctor's new WARN will list the 3 stale `APPLYING` Stage
      2 transactions, and canary 2 should watch them clear.
 
-## PR draft (for Ryan, after the audit and review)
+### PR draft (for Ryan; refresh after corrective 6 and the re-reviews)
 
 **Title:** Unwedge incremental indexing after concurrent writes and stop agent
 self-indexing
@@ -132,8 +320,9 @@ self-indexing
 > - Agents stop paying to index their own transcripts while the watcher runs.
 > - Opening an old session no longer queues a paid catch-up index.
 >
-> **Who:** Cursor Composer implemented it; Claude verified it over six rounds;
-> Copilot audited it; Kiro reviewed it. Ryan merges.
+> **Who:** Cursor Composer implemented it; Claude verified it; Codex, standing
+> in for the Copilot audit lane, audited it; Kiro reviewed it (PASS with
+> conditions). Ryan merges.
 > **What:**
 > - one store-wide index write lock (C1);
 > - source-scoped replay and rollback (C2);
@@ -158,7 +347,7 @@ self-indexing
 >   `live_route_refused` (exit 91). The watcher then holds the path until its
 >   prefix changes.
 >
-> **Relaxed invariants (reviewed by Kiro):**
+> **Relaxed invariants (Kiro accepted both; see its design review):**
 > 1. Foreign export bytes and store rows no longer have to match the
 >    transaction start between attempts.
 > 2. Source-owned export tamper is dropped with a stderr diagnostic instead
@@ -171,7 +360,8 @@ self-indexing
 >
 > **Tests:**
 > - The hermetic full suite at main `458b9f6` and at the tip fails the same
->   151 known local tests, with 0 failing only at the tip.
+>   151 known local tests. One unrelated write-guard crash test flaked once
+>   at the tip, and it passes when run alone at both SHAs.
 > - The new wedge-fix and probe tests are in
 >   `tests/test_issue_286_stage2_wedge_fixes.py` and
 >   `tests/test_issue_286_stage2_wedge_probes.py`.
