@@ -623,8 +623,12 @@ def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
     parts: list[str] = []
     for row in rows[:3]:
         parts.append(
-            "source={source} transaction={transaction_id} code={error_code} "
-            "remedy=wedged incremental transaction; see doctor".format(**row)
+            "source={source_path} transaction={transaction_id} code={error_code} "
+            "remedy=wedged incremental transaction; see doctor".format(
+                source_path=row.get("source_path", "?"),
+                transaction_id=row.get("transaction_id", "?"),
+                error_code=row.get("error_code", "?"),
+            )
         )
     if len(rows) > 3:
         parts.append(f"+{len(rows) - 3} more retry-state wedges")
@@ -632,7 +636,10 @@ def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
         parts.append(
             "source={source_path} transaction={transaction_id} phase={phase} "
             "age={age_seconds}s remedy=stale incremental transaction; see doctor".format(
-                **row
+                source_path=row.get("source_path", "?"),
+                transaction_id=row.get("transaction_id", "?"),
+                phase=row.get("phase", "?"),
+                age_seconds=row.get("age_seconds", "?"),
             )
         )
     if len(stale) > 3:

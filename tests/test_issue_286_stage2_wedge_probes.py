@@ -101,7 +101,9 @@ def _wedge_then_replay(tmp_path, monkeypatch, replay_point: str):
     return replay, export_path, foreign_line, source
 
 
-def test_p1_rollback_after_foreign_growth(tmp_path, monkeypatch) -> None:
+def test_p1_rollback_after_foreign_growth(
+    tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     replay, export_path, foreign_line, _src = _wedge_then_replay(
         tmp_path, monkeypatch, "after_summary_upsert"
     )
@@ -109,15 +111,19 @@ def test_p1_rollback_after_foreign_growth(tmp_path, monkeypatch) -> None:
     assert result.outcome == "rolled_back", result.outcome
     assert not replay.paths["transaction"].exists()
     assert foreign_line.encode() in export_path.read_bytes()
+    assert "rollback dropped" not in capsys.readouterr().err
 
 
-def test_p2_rollback_after_export_already_rewritten(tmp_path, monkeypatch) -> None:
+def test_p2_rollback_after_export_already_rewritten(
+    tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     replay, export_path, foreign_line, _src = _wedge_then_replay(
         tmp_path, monkeypatch, "before_dedupe_reconcile"
     )
     result = replay.run()
     assert result.outcome == "rolled_back", result.outcome
     assert foreign_line.encode() in export_path.read_bytes()
+    assert "rollback dropped" not in capsys.readouterr().err
 
 
 def _codex_env(tmp_path, monkeypatch):
@@ -223,24 +229,49 @@ def test_p4b_watcher_retries_plain_errors_forever(tmp_path, monkeypatch) -> None
 def test_p5_doctor_wedge_check_with_default_state_dir(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     from config import DEFAULT_INCREMENTAL_JSONL_STATE_DIR
-    from incremental_retry_state import iter_wedged_incremental_states
+    from doctor import _check_wedged_incremental_transactions
+    from incremental_retry_state import record_incremental_retry_failure
 
     state_root = Path(os.path.expanduser(DEFAULT_INCREMENTAL_JSONL_STATE_DIR))
-    (state_root / "src1").mkdir(parents=True)
-    (state_root / "src1" / "retry_state.json").write_text(
-        json.dumps(
-            {
-                "source": "/s",
-                "transaction_id": "t",
-                "error_code": "e",
-                "prefix_digest": "d",
-                "consecutive": 2,
-            }
-        ),
-        encoding="utf-8",
+    tx_dir = state_root / "src1"
+    tx_dir.mkdir(parents=True)
+    paths = {"transaction": tx_dir / "transaction.json"}
+    digest = "d" * 64
+    record_incremental_retry_failure(
+        paths,
+        path_key="/s",
+        prefix_digest=digest,
+        error_code="recovery_unproven",
+        transaction_id="t",
+    )
+    record_incremental_retry_failure(
+        paths,
+        path_key="/s",
+        prefix_digest=digest,
+        error_code="recovery_unproven",
+        transaction_id="t",
     )
     cfg = {"index": {"incremental_jsonl": {"enabled": True, "embed_dimension": 8}}}
-    assert iter_wedged_incremental_states(cfg), "doctor misses the default state dir"
+    check = _check_wedged_incremental_transactions(cfg)
+    assert check.status == "warn"
+
+
+def test_doctor_warns_after_two_incremental_raises_through_route(
+    tmp_path, monkeypatch
+) -> None:
+    from doctor import _check_wedged_incremental_transactions
+
+    source, cfg = _codex_env(tmp_path, monkeypatch)
+
+    def raising_run(self):
+        raise incremental_jsonl.IncrementalJsonlError("recovery_unproven", "rollback failed")
+
+    monkeypatch.setattr(incremental_jsonl.IncrementalJsonlCoordinator, "run", raising_run)
+    for _ in range(2):
+        with pytest.raises(incremental_jsonl.IncrementalJsonlError):
+            _route(cfg, source)
+    check = _check_wedged_incremental_transactions(cfg)
+    assert check.status == "warn"
 
 
 def test_p6_rolled_back_refusal_holds_forever(tmp_path) -> None:

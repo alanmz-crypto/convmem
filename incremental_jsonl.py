@@ -1638,7 +1638,19 @@ class IncrementalJsonlCoordinator:
             raise IncrementalJsonlError("recovery_unproven", "rollback version mismatch")
         if rollback.get("source_path") != self.path_key:
             raise IncrementalJsonlError("recovery_unproven", "rollback source mismatch")
+        export_bytes_before_store_restore: set[bytes] = set()
+        export_path = Path(self.cfg["index"]["units_export"])
         with self._session() as session:
+            for row in session.store.snapshot_source_rows(UNITS, self.path_key):
+                export_bytes_before_store_restore.add(
+                    (
+                        json.dumps(
+                            self._export_unit_payload(row),
+                            separators=(",", ":"),
+                        )
+                        + "\n"
+                    ).encode("utf-8")
+                )
             before_summary_ids = {row["id"] for row in rollback.get("summaries", [])}
             before_unit_ids = {row["id"] for row in rollback.get("units", [])}
             current_summaries = session.store.ids_for_source(SUMMARIES, self.path_key)
@@ -1659,7 +1671,15 @@ class IncrementalJsonlCoordinator:
                 )
             session.store.restore_source_rows(SUMMARIES, rollback.get("summaries") or [])
             session.store.restore_source_rows(UNITS, rollback.get("units") or [])
-        self._restore_export(rollback.get("export_preimage") or {})
+        if export_path.is_file():
+            with export_path.open("rb") as export_handle:
+                for raw in export_handle:
+                    if self._export_line_owned_by_source(raw, self.path_key):
+                        export_bytes_before_store_restore.add(raw)
+        self._restore_export(
+            rollback.get("export_preimage") or {},
+            expected_store_bytes=export_bytes_before_store_restore,
+        )
         self._restore_processed(rollback.get("processed_preimage") or {})
         self._restore_state_files(
             rollback.get("state_files"),
@@ -1681,7 +1701,12 @@ class IncrementalJsonlCoordinator:
         os.chmod(handle.name, 0o600)
         return handle
 
-    def _restore_export(self, preimage: dict) -> None:
+    def _restore_export(
+        self,
+        preimage: dict,
+        *,
+        expected_store_bytes: set[bytes] | None = None,
+    ) -> None:
         if preimage.get("version") != 1:
             raise IncrementalJsonlError("recovery_unproven", "export preimage invalid")
         export_path = Path(self.cfg["index"]["units_export"])
@@ -1692,17 +1717,20 @@ class IncrementalJsonlCoordinator:
             base64.b64decode(row["payload_base64"], validate=True)
             for row in source_lines
         }
-        with self._session() as session:
-            store_bytes = {
-                (
-                    json.dumps(
-                        self._export_unit_payload(row),
-                        separators=(",", ":"),
-                    )
-                    + "\n"
-                ).encode("utf-8")
-                for row in session.store.snapshot_source_rows(UNITS, self.path_key)
-            }
+        if expected_store_bytes is not None:
+            store_bytes = set(expected_store_bytes)
+        else:
+            with self._session() as session:
+                store_bytes = {
+                    (
+                        json.dumps(
+                            self._export_unit_payload(row),
+                            separators=(",", ":"),
+                        )
+                        + "\n"
+                    ).encode("utf-8")
+                    for row in session.store.snapshot_source_rows(UNITS, self.path_key)
+                }
         dropped_unexpected = 0
         with export_flock(self.cfg):
             temp = self._export_temp(export_path)
