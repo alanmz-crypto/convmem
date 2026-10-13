@@ -7,7 +7,8 @@
   audit             validate + census under the write lock; saves the result for doctor
                     (exit 1 on a finding; run daily by convmem-chroma-audit.timer)
   reconcile         create or refresh restore points now; restores a torn segment if found
-  clear-quarantine  refuse while an unresolved or unrecognized marker is present
+  clear-quarantine  refuse ordinary clear; use release-quarantine with disposition
+  release-quarantine  validated release after repair (disposition + finding digests)
 
 status, validate, census and audit never modify the store: no Chroma client is opened and SQLite is
 opened read-only. Run reconcile at deploy time with the watcher stopped, so the first
@@ -112,13 +113,37 @@ def _audit(guard: ChromaWriteGuard) -> int:
     return {"pass": 0, "skipped": 0, "fail": 1}.get(status, 2)
 
 
+def _parse_finding_digests(values: list[str]) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for item in values:
+        if "=" not in item:
+            raise argparse.ArgumentTypeError(f"finding digest must be id=hex, got {item!r}")
+        finding_id, digest = item.split("=", 1)
+        if not finding_id or len(digest) != 64:
+            raise argparse.ArgumentTypeError(f"invalid finding digest entry {item!r}")
+        out[finding_id] = digest
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run one subcommand; exit 0 on success, 1 on a finding, 2 when the store is missing."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
-        "command", choices=("status", "validate", "census", "audit", "reconcile", "clear-quarantine")
+        "command",
+        choices=("status", "validate", "census", "audit", "reconcile", "clear-quarantine", "release-quarantine"),
     )
     parser.add_argument("--chroma-dir", help="defaults to [index] chroma_dir from the convmem config")
+    parser.add_argument(
+        "--disposition",
+        help="owner disposition reference (required for release-quarantine)",
+    )
+    parser.add_argument(
+        "--finding-digest",
+        action="append",
+        default=[],
+        metavar="FINDING_ID=HEX",
+        help="repeat for every current finding digest (release-quarantine)",
+    )
     args = parser.parse_args(argv)
     chroma_dir = _chroma_dir(args.chroma_dir)
     if not chroma_dir.is_dir():
@@ -142,6 +167,18 @@ def main(argv: list[str] | None = None) -> int:
         for event in events:
             print(json.dumps(event, sort_keys=True))
         print(f"reconciled: {len(events)} change(s); run status for the current restore points")
+        return 0
+    if args.command == "release-quarantine":
+        if not args.disposition:
+            print("release-quarantine requires --disposition", file=sys.stderr)
+            return 2
+        try:
+            digests = _parse_finding_digests(args.finding_digest)
+            released = guard.release_quarantine(disposition_ref=args.disposition, finding_digests=digests)
+        except ChromaWriteGuardError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(f"released {guard.quarantine_path}" if released else "no quarantine to release")
         return 0
     try:
         cleared = guard.clear_quarantine()

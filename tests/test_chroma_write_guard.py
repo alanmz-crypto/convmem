@@ -80,6 +80,19 @@ def _events(chroma: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 
+def _release_if_quarantined(chroma: Path) -> None:
+    guard = ChromaWriteGuard(chroma)
+    state = guard.quarantine_state()
+    if state is None:
+        return
+    digests = {
+        finding["id"]: finding["digest"]
+        for incident in state["incidents"]
+        for finding in incident["findings"]
+    }
+    guard.release_quarantine(disposition_ref="test-release", finding_digests=digests)
+
+
 def _assert_every_record_has_its_vector(chroma: Path) -> int:
     census = vector_census(chroma)["conversation_summaries"]
     assert census["lost"] == 0, census
@@ -182,11 +195,14 @@ def test_torn_save_is_restored_before_the_next_write_without_losing_records(tmp_
     _set_header_count(seg / "header.bin", 50)
     assert not validate_segment(seg).ok
 
-    _worker("write", chroma, 250, 1, "--guard")  # reconciles before writing
+    with pytest.raises(ChromaWriteQuarantinedError):
+        _worker("write", chroma, 250, 1, "--guard")  # reconciles, preserves, then contains
 
     assert validate_segment(seg).ok
     restored = [e for e in _events(chroma) if e["event"] == "segment_restored"]
     assert len(restored) == 1 and restored[0]["census"]["lost"] == 0
+    assert ChromaWriteGuard(chroma).quarantine_state() is not None
+    _release_if_quarantined(chroma)
     assert _assert_every_record_has_its_vector(chroma) == 251
 
 
@@ -218,6 +234,7 @@ def test_native_crash_mid_write_leaves_the_shared_index_clean(tmp_path: Path) ->
         start = max(written) + 2 if written else start + 1
 
         recover(chroma)
+        _release_if_quarantined(chroma)
 
         assert validate_segment(seg).ok
         assert ChromaWriteGuard(chroma).quarantine_state() is None

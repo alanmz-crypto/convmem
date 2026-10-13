@@ -721,6 +721,10 @@ Who: Cursor implemented Safe Harbor T2; Codex coordinated evidence and Copilot's
 
 **NOT RUN.** Original bytes write-once; preservation complete before replacement; pinned source generations; all interruption/IO failure windows; restore aborts initiating mutation even after clean census; only incident-bound existing repair may cross quarantine; persistent census failure remains contained.
 
+### T3 initial authoring checkpoint — not accepted, not executed
+
+Cursor’s first text-only draft is retained for provenance. Static inspection found contract violations before test execution: repair sidecar instead of prior publication in the sole incident authority; reconstruction of missing snapshot evidence from live state; incomplete manifest/digest/path binding; inadequate stale-disposition binding; missing repair resumption and failure-window evidence. The new launcher also needs bootstrap/import and exit-status corrections. These are implementation defects under the existing T3 grant, not a new direction decision. No new tests/runtime probes were executed. Cursor correction is required before supervised evidence. This checkpoint is not a T3/V3/V4 PASS or merge candidate.
+
 ## V4 — Release and stale-vector proof (T3)
 
 ### Pinned-backend ordering gate — isolated proof (2026-10-13)
