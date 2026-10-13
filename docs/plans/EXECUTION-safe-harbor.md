@@ -10,7 +10,7 @@
 
 ```text
 Planning Status
-Phase:        T3 pinned-backend ordering gate DEMONSTRATED; remaining T3 ungranted
+Phase:        T3 proof correction required (R1–R3); remaining T3 ungranted
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
 Lanes:        Cursor proves in scratch; Codex coordinates; Ryan receives results
@@ -522,9 +522,11 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 ## 10. Cursor T3 pinned-backend proof — owner granted
 
-**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12 local; Codex planning lane; Cursor proof lane. **State: DELIVERED — DEMONSTRATED (proof and isolated evidence only).** This is the existing T3/Kiro A1 ordering gate, not a contract redesign or a grant for the remaining T3 implementation.
+**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12 local; Codex planning lane; Cursor proof lane. **State: DELIVERED at `8c4ad91`; Codex review NOT DEMONSTRATED (95%), proof correction required.** This is the existing T3/Kiro A1 ordering gate, not a contract redesign or a grant for the remaining T3 implementation.
 
 **Authority:** Ryan: “Authorize Cursor to perform T3’s isolated pinned-backend proof and collect evidence only. Return the results before implementing preservation, repair or release. Live operations remain unauthorized.” This overrides generic startup/indexing and automatic continuation requirements for this isolated task. No further approval is needed to perform this named proof.
+
+**Review return:** [Codex R1–R3](VERIFY-safe-harbor.md#codex-review-of-the-t3-proof--not-demonstrated) is the bounded correction scope. The original five passing examples are retained; they do not close this gate. Correct the proof within this existing grant and return fresh isolated evidence. No runtime edits or new authority are granted.
 
 ### Resume and pinned inputs
 

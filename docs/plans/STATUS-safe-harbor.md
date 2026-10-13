@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 MERGED; T3 BACKEND ORDERING GATE DEMONSTRATED.** Cursor completed the isolated pinned-backend proof (VERIFY V4 ordering-gate section). Remaining T3 preservation/repair/release implementation is still NOT GRANTED. T4/T5 and live operations remain ungranted.
+> **Arc: Safe Harbor. T1/T2 MERGED; T3 BACKEND GATE NOT YET DEMONSTRATED.** Cursor's five-pass proof at `8c4ad91` received Codex static review NOT DEMONSTRATED (95%): the harness needs bounded corrections R1–R3. Observed examples are retained; remaining T3 preservation/repair/release, T4/T5 and live operations remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -49,14 +49,14 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Plan and ownership:** Kiro delta PASS at `dca13a5` (88%); Ryan accepted that execution plan and B-E4.1 exactly as T2 specifies, including all five consumer outcomes. E4 full-scope compatibility PASS at `1268a50` (85%) remains complete; ownership is unchanged. No Recovery Authority T4/V4k authority was granted.
 - **T1 / V1: ACCEPTED AND MERGED** via #387. Its exact-tip exception remains T1-specific.
 - **T2 / V2: ACCEPTED AND MERGED** via #389. Ryan separately accepted the Codex review and documented evidence limitations at `eb06c97` as the T2 BugBot outage exception. The bounded delta PASS remains pinned to runtime/evidence `dac925f`; the owner exception names the documentation successor. Final-head CI passed before merge. CodeQL #6 remains previously dispositioned as a false positive.
-- **T3 backend ordering gate: DEMONSTRATED (proof-only).** Cursor ran the section 10 harness on `feat/2026-10-12-safe-harbor-t3-backend-proof`; [VERIFY V4](VERIFY-safe-harbor.md#pinned-backend-ordering-gate--isolated-proof-2026-10-13) records **DEMONSTRATED** with monotonic sequence, queue purge, restart, releasable and stale-vector controls on **chromadb 1.5.9**. V3 and the rest of V4–V6 remain NOT RUN. Remaining T3 implementation and T4/T5 are NOT GRANTED; the gate result does not auto-advance.
+- **T3 backend ordering gate: NOT DEMONSTRATED / CORRECTION REQUIRED.** Cursor's original DEMONSTRATED report remains pinned to `8c4ad91`; the [Codex review](VERIFY-safe-harbor.md#codex-review-of-the-t3-proof--not-demonstrated) identifies R1–R3 at that exact tip. This is proof/harness correction under the existing proof-only scope, not an architectural rejection or a grant for runtime implementation. V3 and the rest of V4–V6 remain NOT RUN.
 - **Live operations/deployment: NOT AUTHORIZED.** Merged source does not activate the release workflow or prove backup usability.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** prepare the pinned proof handoff and coordinate the evidence. Review results against the existing T3 ordering gate; do not weaken the oracle or convert proof success into implementation authority.
+**Codex:** review the corrected proof as a bounded R1–R3 delta. No new runtime grant or release-policy change is implied; preserve the useful original observations and all evidence limits.
 
-**Cursor:** proof delivery complete; return only if Codex/Ryan authorize remaining T3 implementation or find a defect in the recorded evidence.
+**Cursor:** correct R1–R3 in the two granted proof files and existing evidence/routing docs on the same isolated proof branch. Use the pushed review-record successor as the resume point. The existing proof-only grant covers these corrections; return results before preservation/repair/release implementation. Do not restart T1/T2 or alter the accepted contract.
 
 **Ryan:** receive proof results and decide the subsequent scope. No new approval is needed for this named proof; all preservation/repair/release implementation remains pending that return.
 
@@ -64,7 +64,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Codex/Ryan review the **DEMONSTRATED** ordering-gate evidence and decide the next T3 grant. No preservation/repair/release implementation without that grant; failure would have stopped at NOT DEMONSTRATED.
+1. Cursor corrects the proof under its existing bounded grant; Codex checks R1–R3 against fresh isolated evidence. The gate remains NOT DEMONSTRATED until those obligations are met. Ryan then decides any remaining T3 grant; no implementation auto-advance.
 2. Complete T3–T5 only under their task grants: evidence preservation and validated release; T4's direct-helper binding, hash-view alignment, event-only success and unknown/tombstone/race/uncertain-completion behavior; then integrated evidence and review. V3–V6 remain NOT RUN.
 3. Before live rollout, resolve the loss window, exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. Production `restic.env` must explicitly select `complete-data-v2` and a data root covering all affected paths, or the new gated paths refuse with 20/24.
 4. Any deployment or corpus-affecting operation needs its own scope, recovery evidence and Ryan grant. T1/T2 being merged does not provide T3's validated release or authorize detector/watch activation.
@@ -100,6 +100,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-12 — Codex: reviewed proof `8c4ad91` statically and retained its captured examples; full backend gate NOT DEMONSTRATED (95%) pending R1–R3 proof-only corrections, no runtime grant.
 
 - 2026-10-12 — Codex: recorded Ryan's T3 isolated pinned-backend proof-only grant and prepared the separate pinned worktree/handoff; results must return before preservation/repair/release implementation.
 

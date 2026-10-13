@@ -9,13 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T3 backend ordering gate DEMONSTRATED (2026-10-13 UTC):**
-  T1/T2 are accepted and merged. Cursor delivered the isolated pinned-backend
-  proof on `feat/2026-10-12-safe-harbor-t3-backend-proof` — see
-  [VERIFY V4 ordering gate](../plans/VERIFY-safe-harbor.md#pinned-backend-ordering-gate--isolated-proof-2026-10-13)
-  and [STATUS](../plans/STATUS-safe-harbor.md). **Next lane: Codex/Ryan** to
-  review evidence and decide the next T3 grant. Remaining T3
-  preservation/repair/release, T4/T5 and live operations remain ungranted.
+- **Arc Safe Harbor — T3 proof correction required (2026-10-13 UTC):**
+  Codex reviewed Cursor's `8c4ad91` proof: full ordering gate
+  **NOT DEMONSTRATED (95%)**. Captured examples remain evidence; see
+  [R1–R3 and the bounded stop rule](../plans/VERIFY-safe-harbor.md#codex-review-of-the-t3-proof--not-demonstrated).
+  **Next lane: Cursor** for corrections within the existing proof-only grant,
+  then a Codex delta. [STATUS](../plans/STATUS-safe-harbor.md) is current.
+  No preservation/repair/release implementation, T4/T5 or live operations.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
