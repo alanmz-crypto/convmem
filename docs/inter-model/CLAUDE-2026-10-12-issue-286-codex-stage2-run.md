@@ -279,3 +279,56 @@ CI guard.
   protocol. That run stopped with its transaction in `PREPARING`, which
   the next run should recover without re-paying (`preparing_recovery`).
   The burn counter does not see these runs.
+
+**Late afternoon and evening (T0′ + 6.9 h to 10.75 h): second false stop, a wedged session, a second catch-up wave.**
+- **Second false stop at 15:23:59.** The stop check looked for the
+  `incremental_codex_admitted_run` event to tell admitted runs from
+  legacy ones. That event is printed on the child's stderr, and the
+  watcher forwards only a successful child's stdout, so it never reaches
+  the journal. The check now routes by the stdout marker that every
+  legacy run prints (`[index] <name>  (N msgs, M chunks)`); admitted
+  runs never print it. Replayed over the whole day, the new check gives
+  no false stop. Restarted at **15:32:44** under Ryan's "restart".
+- **Wedged session (open defect, needs a code fix).** Codex session
+  `rollout-2026-10-12T14-21-47-…` (new, admitted) has had transaction
+  `d70a723d…` stuck in `APPLYING` since 15:59:40. At 15:59:07 another
+  Claude Code session ran `convmem index --file` on its own transcript
+  (Track A) while the watcher was applying. The watcher's run failed with
+  `non_source_isolation_changed` at 16:00:57. Every retry since then
+  fails with `rollback_export_foreign_changed`: 35 failed runs by 19:16.
+  Capture of that session is frozen at its 15:59 checkpoint. No paid
+  calls (nothing new is prepared), but each retry reads the 5.4 GB
+  knowledge-unit log for about 3 minutes. The retries keep going without
+  any new write: the file last changed at 18:22, and the watcher spawned
+  10 retries between 18:25 and 19:16. The failed run's own reads appear
+  to re-queue the file. No manual repair was attempted.
+- **Protocol change for the canary (Ryan, 2026-10-12).** Ryan told both
+  Codex sessions to stop running `convmem index --file` on themselves
+  while the watcher is on. Agent-launched runs bypass the burn counter
+  and can collide with the watcher, as above. Claude transcripts are not
+  watched, so Claude sessions still need Track A, ideally after the
+  canary.
+- **The 14:42 interrupted `PREPARING` transaction recovered** on a later
+  run without new prepared work.
+- **Second catch-up wave, 17:39–18:25.** The ChatGPT desktop app started
+  at 17:34:34 and opened the Sep 21 rollout 11 s later; the 10 s
+  sampler is too slow to see the small files. The watcher then walked old
+  sessions newest to oldest, Oct 10 back to Sep 25: 34 legacy runs, 53
+  chunks, about 106 paid calls estimated. Only 4 rollouts were modified
+  after T0′, so these old sessions had index state that was already
+  stale; the app's opens just queued them. Each is a one-time cost. The
+  593 MiB Sep 21 rollout was skipped (`quarantined`), so it cost
+  nothing.
+- **An old Codex thread is in active use.** `rollout-2026-10-10T23-16-55-…`
+  (62 MB, pre-admission) is held open by the Codex app and was still
+  written at 19:16. Each change is a full legacy re-index: 9 chunks
+  (about 18 calls) and about 6 minutes per run, 3 runs so far. This is
+  the largest repeating cost. Starting a new thread for that work moves it
+  to the incremental route.
+- **Cursor and Kiro on legacy, as expected.** One active Cursor
+  transcript and one Kiro `messages.jsonl`: 3 runs each, 1–2 chunks per
+  run.
+- **Burn at 19:16: about 300 of 400** (new route 10, legacy 290). About
+  52 calls were added between 18:25 and 19:16, roughly 60 per hour at
+  current activity. Memory is flat: watcher RSS 112 MB, cgroup peak
+  1.30 GiB, no OOM events, 0 restarts.
