@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-12
+**Updated:** 2026-10-13
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,13 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T2 integration delta PASS; fresh CI running (2026-10-12):**
-  Pinned-main integration is delivered on draft #389. Codex's bounded delta
-  passes (90%) with 85 isolated cases and lint-gate PASS; GitHub reports
-  MERGEABLE. **Codex:** report the sealed current-head GitHub checks, which
-  are the CI authority. **Ryan:** final-tip external-review disposition and
-  V2 acceptance remain pending. See [STATUS](../plans/STATUS-safe-harbor.md)
-  and [integration evidence](../plans/VERIFY-safe-harbor.md#t2-branch-integration-with-pinned-main--captured-isolated-evidence-pre-merge-tree).
+- **Arc Safe Harbor — shadow metadata fix after CI fail (2026-10-13):**
+  Run `38325044536` at `080b5f8` failed
+  `test_static_scan_matches_inventory_routing` (stale add/verify line coords).
+  Cursor corrected shadow inventory + regenerated R2b; proof
+  `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z` (17 cases, exit 0).
+  **Codex:** monitor fresh GitHub CI on [draft #389](https://github.com/alanmz-crypto/convmem/pull/389)
+  for the correction successor (checks are authoritative). See
+  [STATUS](../plans/STATUS-safe-harbor.md) and
+  [VERIFY shadow section](../plans/VERIFY-safe-harbor.md#shadow-session-call-site-coordinate-correction--captured-isolated-evidence).
   PR stays draft; no paid reviewer, PR merge, deployment or T3–T5 grant.
   No manual session indexing today.
 

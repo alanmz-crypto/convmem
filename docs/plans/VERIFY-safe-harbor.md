@@ -1,6 +1,6 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED WITH PINNED MAIN; V2 ACCEPTANCE PENDING.** Merge commit `551b16c13b66c8e3133402bdf6c0370d3efd35a5` (parents grant `181dfd18` + main `8a7cdab`) preserves Safe Harbor runtime `cdebf64` and passes 85 affected isolated cases at pre-merge tree fingerprint `20e4850b…`. PR #389 is draft and mergeable with main at handoff; GitHub CI on the docs successor is point-in-time only. Final-tip external-review disposition and Ryan acceptance remain pending. The accepted event-only success exclusion remains; V3–V6 are NOT RUN.
+> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED; SHADOW METADATA CORRECTED; V2 ACCEPTANCE PENDING.** Runtime `cdebf64` unchanged. CI `38325044536` at `080b5f8` failed one shadow static-scan test; coordinate correction + R2b regen with 17-case isolated proof recorded. Fresh CI pending on successor tip. PR #389 stays draft. Final-tip external-review disposition and Ryan acceptance remain pending. The accepted event-only success exclusion remains; V3–V6 are NOT RUN.
 
 ```text
 Planning Status
@@ -628,9 +628,23 @@ Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915
 
 **CI routing:** checks publish on [draft PR #389](https://github.com/alanmz-crypto/convmem/pull/389) for its current head; status recorded in STATUS/LATEST at docs handoff is a point-in-time observation only — GitHub check runs are the mutable authority. Codex has completed the bounded integration delta below and monitors remaining CI without moving the sealed tip solely to transcribe live status.
 
-**Codex bounded integration delta — PASS (90%):** reviewed candidate `0c3e6c7500fab1e2334ce4864e2521c5d1b506b1` (integration source `551b16c`) against both pinned parents. The only shared-file resolution is derived R2b JSON; task-only and main-only blobs match their respective parents, including main's shadow-policy update. The committed checkout reproduces the evidence fingerprint `20e4850b…` exactly; the docs successor changes only the four existing Safe Harbor evidence/routing files. Thus the qualified 85-case/lint results apply to the integrated source. The fresh GitHub checks are now running, and GitHub reports MERGEABLE, still DRAFT. No full local suite or live probe was run. This coordinator delta is not independent external-review evidence or an owner outage exception. Subsequent review-record edits are documentation-only; final CI is to be read at the sealed current head, not inferred from an earlier revision.
+**Codex bounded integration delta — PASS (90%) with limitation:** reviewed candidate `0c3e6c7500fab1e2334ce4864e2521c5d1b506b1` (integration source `551b16c`) against both pinned parents. The only shared-file resolution is derived R2b JSON; task-only and main-only blobs match their respective parents, including main's shadow-policy update. The committed checkout reproduces the evidence fingerprint `20e4850b…` exactly. The qualified **85-case** selection did **not** include `tests/test_shadow_writer_coverage_scan.py`; it is historical evidence on unchanged Python, not full integration CI acceptance.
 
-**Next boundary:** final-tip external-review disposition, Ryan V2 acceptance/PR merge, deployment and T3–T5 remain ungranted. Event-only completion-success exclusion remains accepted; proof belongs to T4.
+**GitHub CI failure at `080b5f88553bd0917eadc24d73e7967850aecec0` (run `38325044536`):** `pytest (3.12)` **1 failed**, 2995 passed, 121 skipped — sole failure `tests/test_shadow_writer_coverage_scan.py::test_static_scan_matches_inventory_routing`. Pylint, secret-scan and CodeQL passed. Log `/tmp/safe-harbor-t2-ci-38325044536-failed.log`. Cause: stale shadow inventory session call-site lines for `convmem.add` / `convmem.verify` (`421`/`525` in inventory vs actual `420`/`523`); metadata only, not runtime behavior.
+
+### Shadow session call-site coordinate correction — captured isolated evidence
+
+**[Arc Safe Harbor] Scope:** mechanical metadata fix on integration tip `080b5f8` before successor commit; Python fingerprint unchanged (`67b465b90b3c969a99e1d3ccced75ec7e90d9fd6a7e08fa2410591c400fd3678`).
+
+**Pre-correction proof:** `/tmp/safe-harbor-t2-shadow-coord-20261013T005040Z` — `test_static_scan_matches_inventory_routing` exit **1** under uid-1000 allowlist.
+
+**Correction:** `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json` only — `production_chroma_write_session_call_sites` and matching `sites` records for `convmem.add` and `convmem.verify` updated to `convmem.py:420` and `convmem.py:523` (snippets unchanged). Regenerated R2b via `write_v2_inventory_file()` (idempotent second regen exit 0).
+
+**Shadow → R2b identity:** shadow line-coordinate metadata **does** change derived R2b identity when regenerated: `code_revision` `84a9c83ff9592b60249068b7d035ebb42f329471`, `inventory_digest` `ff1e5f119339362bcf1929ea4fcd91c178fd14f96ce0313a2f0215ba6e1c7a97`, file sha256 `361690f04bb8895d160b733598659058f6727d73a7abbba4bb5412c4efad9cf5` (was `46801f24…` / `6bee3486…` / `b80587a9…`). Route count remains 36; route entries reflect updated shadow refs (location evidence, not routing-class changes).
+
+**Post-correction pytest:** `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z` — exit **0**, `17 passed in 1.63s` for `tests/test_shadow_writer_coverage_scan.py`, `tests/test_r2b_v2_implementation_revision.py`, `tests/test_shadow_writer_gate_c3.py::test_all_writer_session_sites_inventoried`, `tests/test_shadow_writer_gate_c3.py::test_static_scan_zero_legacy_production_factory_calls`. Full argv in `post_pytest.json`.
+
+**Next boundary:** fresh GitHub CI on the correction successor; final-tip external-review disposition, Ryan V2 acceptance/PR merge, deployment and T3–T5 remain ungranted. Event-only completion-success exclusion remains accepted; proof belongs to T4.
 
 ### Historical prepared T2 draft PR text — now opened as #389
 
@@ -712,6 +726,9 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-12 | Cursor, isolated generator env | same | `write_v2_inventory_file()` + `test_r2b_v2_implementation_revision` | `dc714d0a…`, digest `5cbc5a99…`; verifier `[]` | Target-binding correction section |
 | 2026-10-12 | Codex coordinator, uid 1000, `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z` | pre-merge integrated tree; runtime `cdebf64`; merge `551b16c` | inventory regen + 85-case combined pytest + pylint raw 30 + gate vs `8a7cdab` | inventory **0**, pytest **0** (`85 passed in 391.54s`), gate **0**; fingerprint `20e4850b…` stable | T2 branch integration section |
 | 2026-10-12 | — | early dev inventory attempt | login-shell regen `/tmp/safe-harbor-t2-integration-20261012T234506Z` | **not accepted** — inherited ambient env | T2 branch integration section |
+| 2026-10-13 | GitHub Actions `38325044536` | head `080b5f8` | full `pytest (3.12)` | **1 failed** — shadow static scan vs inventory routing | Shadow coordinate section |
+| 2026-10-13 | Cursor, uid 1000, `/tmp/safe-harbor-t2-shadow-coord-20261013T005040Z` | pre-fix `080b5f8` | `test_static_scan_matches_inventory_routing` | exit **1** (expected) | Shadow coordinate section |
+| 2026-10-13 | Cursor, uid 1000, `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z` | shadow metadata fix + R2b regen | 17-case scan/R2b/C3 selection | all exits **0** | Shadow coordinate section |
 
 SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 remains closed historically; F1/F2 correction at `cdebf64` passes Codex's bounded delta at `721fd17` with 85 distinct isolated cases; pinned-main integration at merge `551b16c` passes the same 85-case isolated selection on sealed pre-merge bytes. Fresh GitHub CI on the integrated/docs tip, overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
 

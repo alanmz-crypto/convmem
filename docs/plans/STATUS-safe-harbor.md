@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED WITH PINNED MAIN.** Merge `551b16c` (parents `181dfd18` + main `8a7cdab`) on `fix/2026-10-12-safe-harbor-t2`; Safe Harbor runtime unchanged at `cdebf64`. Isolated evidence PASS on sealed pre-merge bytes (85 cases, lint gate 0). PR #389 stays draft; GitHub CI on the docs tip is observed at handoff only. Codex integration delta PASS at `0c3e6c7` (90%); final current-head CI is published on GitHub. External-review disposition, V2 acceptance, PR merge, deployment and T3–T5 remain pending.
+> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED — SHADOW METADATA CORRECTION PUSHED.** Runtime `cdebf64` unchanged; CI run `38325044536` at `080b5f8` failed one shadow static-scan test (stale `convmem.add`/`verify` line coords). Mechanical shadow + R2b regen correction committed with 17-case isolated proof; fresh CI pending on successor tip. PR #389 stays draft. Prior 85-case pass did not include that scan. External-review disposition, V2 acceptance, PR merge, deployment and T3–T5 remain pending.
 
 ## 1. What This Is For (product goal)
 
@@ -37,7 +37,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 - **Current T2 delivery:** integration merge `551b16c13b66c8e3133402bdf6c0370d3efd35a5` on draft [PR #389](https://github.com/alanmz-crypto/convmem/pull/389); Safe Harbor runtime/tests remain `cdebf64b487ffa27d61955df9739204829864fe0` (F1/F2 docs at `721fd17`). Pinned main `8a7cdab` brought inter-model rejection and updated shadow inventory; sole merge conflict was regenerated R2b inventory (`46801f24…` / digest `6bee3486…`). Prior pre-integration CI and conflict state remain historical.
 - **Target-binding correction: F1/F2 CLOSED BY BOUNDED CODEX DELTA (90%).** Canonical client/export pinning is retained; alias-local quarantine is checked before either factory opens a client; late export retarget refuses. The 42-case Cursor regression and disjoint 43-case Codex supplement pass on unchanged source, with the full lint regression gate PASS. See [the correction delta/evidence](VERIFY-safe-harbor.md#codex-f1f2-correction-delta-and-complete-isolated-evidence--pass). This is not independent external review or V2 acceptance. Derived R2b identity `638cf8d3…`; route policy and shadow inventory unchanged.
-- **Integration: COMPLETE (bounded grant).** Merge commit `551b16c` with parents grant `181dfd18` and main `8a7cdab`. Codex static check: 19 task-only + 12 main-only single-parent files byte-match their parents; only R2b inventory differed on both sides. Qualified isolated evidence at `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z` (85 pytest pass, lint gate 0, fingerprint stable). Early login-shell inventory attempt not accepted. Details in VERIFY integration section.
+- **Integration:** merge `551b16c` (parents `181dfd18` + main `8a7cdab`); 85-case isolated evidence at `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z` (historical on unchanged Python; omitted shadow scan). **CI `38325044536` at `080b5f8`:** one pytest failure on shadow inventory routing metadata. **Correction:** shadow call-site lines `420`/`523` for add/verify + R2b regen (`84a9c83…` / `ff1e5f11…`); proof `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z`. Fresh CI authorized on successor push.
 - **External review:** the single authorized BugBot request on #389 hit a usage limit and reviewed no SHA. No PR-native Copilot review was requested; Ryan subsequently asked to avoid Copilot for budget reasons. Earlier full/delta reviews remain historical evidence. No T2 tip-specific outage acceptance is recorded.
 - `ARCHITECTURE-safe-harbor.md`: direction approved by Ryan at `5ea16a6c7af7900b981d19eb03b168d77f611718`, following Opus delta PASS at `505a4224b5c078a2379ebe16444ca757cc69b7db` (85%) and Kiro governing PASS at the approved revision (88%). Approval includes owner disposition after every automatic segment restore. Subsequent edits record approval, naming and review routing; the approved contracts are unchanged.
 - E4 review: Kiro's PASS (85%) at `20283bdc536f9f2d9ccf7c44a75a17f5a26e1d61` is confirmed for the full intended scope by its coverage addendum at `1268a500d7ac8f4a94f816d90817e21ad8e2c342`. Ownership is unchanged. Architecture section 10 preserves B-E4.1/O-E4.a–e and Codex's two qualifications: the probe disables current-day checking, and the approved contract adds approval recovery to the existing preflight rather than selecting a separate check.
@@ -87,7 +87,7 @@ The scope is application cooperation, not same-user security. Read clients can p
   - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
   - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
 - **PR #389: OPEN / DRAFT.** The authorized one-shot BugBot trigger returned a usage-limit reply, with no reviewed SHA. CodeQL alert #6 was owner-authorized and dismissed as false positive at `2026-10-12T10:34:24Z`; GitHub then reported CodeQL SUCCESS at `0cff157`. No paid retry/reviewer is requested.
-- **Current grant: T2 INTEGRATION AND BOUNDED DELTA COMPLETE; CI IN PROGRESS AT HANDOFF.** Cursor pushed merge `551b16c`; Codex delta PASS at candidate `0c3e6c7` (90%). GitHub now reports MERGEABLE; current-head checks on #389 are authoritative for CI. F1/F2 correction grant remains complete. No final-tip acceptance, PR merge or live grant is inferred.
+- **Current grant: SHADOW METADATA CORRECTION DELIVERED; FRESH CI NEXT.** CI run `38325044536` at `080b5f8` exposed stale shadow call-site lines; Cursor corrected metadata, regenerated R2b and recorded 17-case isolated proof. Codex monitors GitHub CI on #389 for the correction successor. Prior integration delta PASS did not cover the shadow scan. F1/F2 correction grant remains complete. No final-tip acceptance, PR merge or live grant is inferred.
 - T3–T5 implementation, new review triggers/comments, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
@@ -147,6 +147,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
+- 2026-10-13 — Cursor: shadow call-site coordinate correction after CI `38325044536`; R2b regen and 17-case isolated proof; fresh CI next, PR stays draft.
+
 - 2026-10-12 — Codex: integration delta PASS (90%) at `0c3e6c7`, source `551b16c`; GitHub conflict cleared and fresh CI running. Current-head checks remain the CI authority; final external-review/owner acceptance stays pending.
 
 - 2026-10-12 — Cursor: merged pinned main into T2 at `551b16c`, recorded qualified isolated evidence and docs routing; Codex integration delta and CI next, PR stays draft.
@@ -202,4 +204,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T2 branch integration landed at merge `551b16c` with isolated evidence PASS; runtime `cdebf64` unchanged. PR #389 remains draft; Codex delta, CI observation, final-tip review disposition, acceptance, merge, deployment and T3–T5 remain pending.
+[Arc Safe Harbor] Shadow inventory line metadata corrected after CI `38325044536`; R2b regen and 17-case scan proof recorded; runtime `cdebf64` unchanged. PR #389 draft; fresh CI on successor; final-tip review, acceptance, merge, deployment and T3–T5 remain pending.
