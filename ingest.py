@@ -647,89 +647,87 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
 ) -> tuple[bool, int, int, int, int]:
     """Source/export-locked batch write with ingestion dedup statistics."""
     from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
-    from purge_locks import export_flock, source_flock
+    from purge_locks import export_flock, index_write_flock, source_flock
 
     with source_flock(cfg, path_key):
-        processed = load_processed(idx["processed_log"])
-        if _path_is_excluded(processed, path_key) or (
-            file_hash in processed and processed[file_hash].get("excluded")
-        ):
+        with index_write_flock(cfg):
+            processed = load_processed(idx["processed_log"])
+            if _path_is_excluded(processed, path_key) or (
+                file_hash in processed and processed[file_hash].get("excluded")
+            ):
+                if verbose:
+                    print(f"  [skip] excluded during batch-write {Path(path).name}")
+                return False, 0, 0, 0, 0
+            n_units = 0
+            with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+                store = _pw.store
+                cfg = _pw.live_cfg
+                store.add_summary(doc_id, summary, summary_embedding, metadata)
+                dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
+                written_projection_ids: set[str] = set()
+                for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
+                    projection_unit = dict(unit)
+                    projection_meta = dict(unit_meta)
+                    existing = store.get_unit(unit["id"])
+                    existing_identity = (
+                        provenance_identity(existing.get("metadata") or {})
+                        if existing is not None
+                        else None
+                    )
+                    candidate_identity = provenance_identity(unit_meta)
+                    if (
+                        existing is not None
+                        and candidate_identity is not None
+                        and existing_identity != candidate_identity
+                        and (existing_identity is not None or candidate_identity is not None)
+                    ):
+                        projection_id = hashlib.sha256(
+                            (
+                                "convmem-p3-projection-v1:"
+                                f"{unit['id']}:{candidate_identity[0]}:{candidate_identity[1]}"
+                            ).encode("utf-8")
+                        ).hexdigest()
+                        projection_unit["id"] = projection_id
+                        projection_meta["id"] = projection_id
+                    store.add_unit(
+                        projection_unit["id"], doc, unit_embedding, projection_meta
+                    )
+                    written_projection_ids.add(projection_unit["id"])
+                    if units_export and write_export:
+                        units_export.parent.mkdir(parents=True, exist_ok=True)
+                        with export_flock(cfg):
+                            with open(units_export, "a", encoding="utf-8") as uf:
+                                uf.write(json.dumps(projection_unit) + "\n")
+                    n_units += 1
+                if written_unit_ids is not None:
+                    written_unit_ids.update(written_projection_ids)
+            if dedupe_events is not None:
+                dedupe_events.append(dedupe)
+            if persist_dedupe:
+                dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
+            else:
+                dedupe_stats = {
+                    "exact_suppressed": len(dedupe.exact_suppressions),
+                    "semantic_candidates_queued": len(dedupe.semantic_candidates),
+                }
             if verbose:
-                print(f"  [skip] excluded during batch-write {Path(path).name}")
-            return False, 0, 0, 0, 0
-        n_units = 0
-        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
-            store = _pw.store
-            cfg = _pw.live_cfg
-            store.add_summary(doc_id, summary, summary_embedding, metadata)
-            dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
-            written_projection_ids: set[str] = set()
-            for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
-                projection_unit = dict(unit)
-                projection_meta = dict(unit_meta)
-                existing = store.get_unit(unit["id"])
-                existing_identity = (
-                    provenance_identity(existing.get("metadata") or {})
-                    if existing is not None
-                    else None
-                )
-                candidate_identity = provenance_identity(unit_meta)
-                if (
-                    existing is not None
-                    and candidate_identity is not None
-                    and existing_identity != candidate_identity
-                    and (existing_identity is not None or candidate_identity is not None)
-                ):
-                    # A stable source/chunk id is a projection address, not
-                    # provenance authority. Keep the old assertion intact
-                    # while staging a distinct assertion for this generation.
-                    projection_id = hashlib.sha256(
-                        (
-                            "convmem-p3-projection-v1:"
-                            f"{unit['id']}:{candidate_identity[0]}:{candidate_identity[1]}"
-                        ).encode("utf-8")
-                    ).hexdigest()
-                    projection_unit["id"] = projection_id
-                    projection_meta["id"] = projection_id
-                store.add_unit(
-                    projection_unit["id"], doc, unit_embedding, projection_meta
-                )
-                written_projection_ids.add(projection_unit["id"])
-                if units_export and write_export:
-                    units_export.parent.mkdir(parents=True, exist_ok=True)
-                    with export_flock(cfg):
-                        with open(units_export, "a", encoding="utf-8") as uf:
-                            uf.write(json.dumps(projection_unit) + "\n")
-                n_units += 1
-            if written_unit_ids is not None:
-                written_unit_ids.update(written_projection_ids)
-        if dedupe_events is not None:
-            dedupe_events.append(dedupe)
-        if persist_dedupe:
-            dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
-        else:
-            dedupe_stats = {
-                "exact_suppressed": len(dedupe.exact_suppressions),
-                "semantic_candidates_queued": len(dedupe.semantic_candidates),
-            }
-        if verbose:
-            for row in dedupe.exact_suppressions:
-                print(
-                    f"    [dedupe] exact {row['suppressed_id'][:8]} "
-                    f"= {row['matched_id'][:8]} (suppressed)"
-                )
-            for row in dedupe.semantic_candidates:
-                print(
-                    f"    [dedupe?] {row['similarity']:.3f} "
-                    f"{row['id_a'][:8]} ~ {row['id_b'][:8]} (queued)"
-                )
-        return (
-            True,
-            1,
-            n_units,
-            dedupe_stats["exact_suppressed"],
-            dedupe_stats["semantic_candidates_queued"],
-        )
+                for row in dedupe.exact_suppressions:
+                    print(
+                        f"    [dedupe] exact {row['suppressed_id'][:8]} "
+                        f"= {row['matched_id'][:8]} (suppressed)"
+                    )
+                for row in dedupe.semantic_candidates:
+                    print(
+                        f"    [dedupe?] {row['similarity']:.3f} "
+                        f"{row['id_a'][:8]} ~ {row['id_b'][:8]} (queued)"
+                    )
+            return (
+                True,
+                1,
+                n_units,
+                dedupe_stats["exact_suppressed"],
+                dedupe_stats["semantic_candidates_queued"],
+            )
 
 
 def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-locals
@@ -1231,20 +1229,24 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
 
 def _snapshot_reindex_rows(
     *,
+    cfg: dict,
     path: str,
     path_key: str,
 ) -> _ReindexSnapshot:
     """Snapshot only the rows a completed replacement may later prune."""
+    from purge_locks import index_write_flock
+
     snapshot = _ReindexSnapshot()
-    with production_chroma_write_session(entrypoint="ingest.write") as _pw:
-        store = _pw.store
-        for source_path in dict.fromkeys([path, path_key]):
-            snapshot.unit_ids[source_path] = store.ids_for_source(
-                "knowledge_units", source_path
-            )
-            snapshot.summary_ids[source_path] = store.ids_for_source(
-                "conversation_summaries", source_path
-            )
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+            store = _pw.store
+            for source_path in dict.fromkeys([path, path_key]):
+                snapshot.unit_ids[source_path] = store.ids_for_source(
+                    "knowledge_units", source_path
+                )
+                snapshot.summary_ids[source_path] = store.ids_for_source(
+                    "conversation_summaries", source_path
+                )
     return snapshot
 
 
@@ -1262,61 +1264,62 @@ def _prune_completed_reindex(  # pylint: disable=too-many-arguments
     verbose: bool,
 ) -> bool:
     """Prune the snapshotted generation only after a complete replacement."""
-    from purge_locks import source_flock
+    from purge_locks import index_write_flock, source_flock
 
     with source_flock(cfg, path_key):
-        if sha256_file(path) != file_hash:
-            if verbose:
-                print(f"  [skip] changed during index {Path(path).name}")
-            return False
-        processed = load_processed(idx["processed_log"])
-        if _path_is_excluded(processed, path_key):
-            if verbose:
-                print(f"  [skip] excluded before reindex prune {Path(path).name}")
-            return False
-        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
-            store = _pw.store
-            n_units = 0
-            n_summaries = 0
-            tombstone_tag = f"{path_key}#{file_hash[:12]}"
-            if supersede_on_reindex:
-                merged: dict[str, dict] = {}
-                for source_path, candidate_ids in snapshot.unit_ids.items():
-                    for unit in store.preview_supersede_for_source(
-                        source_path,
-                        keep_ids=keep_unit_ids,
-                        candidate_ids=candidate_ids,
-                    ):
-                        merged.setdefault(unit["id"], unit)
-                _echo_neutralize_preview(
-                    list(merged.values()), Path(path).name, tombstone_tag, verbose
-                )
-            for source_path, candidate_ids in snapshot.unit_ids.items():
+        with index_write_flock(cfg):
+            if sha256_file(path) != file_hash:
+                if verbose:
+                    print(f"  [skip] changed during index {Path(path).name}")
+                return False
+            processed = load_processed(idx["processed_log"])
+            if _path_is_excluded(processed, path_key):
+                if verbose:
+                    print(f"  [skip] excluded before reindex prune {Path(path).name}")
+                return False
+            with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+                store = _pw.store
+                n_units = 0
+                n_summaries = 0
+                tombstone_tag = f"{path_key}#{file_hash[:12]}"
                 if supersede_on_reindex:
-                    n_units += store.supersede_units_for_source(
+                    merged: dict[str, dict] = {}
+                    for source_path, candidate_ids in snapshot.unit_ids.items():
+                        for unit in store.preview_supersede_for_source(
+                            source_path,
+                            keep_ids=keep_unit_ids,
+                            candidate_ids=candidate_ids,
+                        ):
+                            merged.setdefault(unit["id"], unit)
+                    _echo_neutralize_preview(
+                        list(merged.values()), Path(path).name, tombstone_tag, verbose
+                    )
+                for source_path, candidate_ids in snapshot.unit_ids.items():
+                    if supersede_on_reindex:
+                        n_units += store.supersede_units_for_source(
+                            source_path,
+                            superseded_by=tombstone_tag,
+                            keep_ids=keep_unit_ids,
+                            candidate_ids=candidate_ids,
+                        )
+                    else:
+                        n_units += store.delete_units_for_source(
+                            source_path,
+                            keep_ids=keep_unit_ids,
+                            candidate_ids=candidate_ids,
+                        )
+                for source_path, candidate_ids in snapshot.summary_ids.items():
+                    n_summaries += store.delete_summaries_for_source(
                         source_path,
-                        superseded_by=tombstone_tag,
-                        keep_ids=keep_unit_ids,
+                        keep_ids=keep_summary_ids,
                         candidate_ids=candidate_ids,
                     )
-                else:
-                    n_units += store.delete_units_for_source(
-                        source_path,
-                        keep_ids=keep_unit_ids,
-                        candidate_ids=candidate_ids,
+                if verbose and (n_units or n_summaries):
+                    verb = "superseded" if supersede_on_reindex else "pruned"
+                    print(
+                        f"  [reindex] {verb} {n_units} stale units, "
+                        f"{n_summaries} stale summaries for {Path(path).name}"
                     )
-            for source_path, candidate_ids in snapshot.summary_ids.items():
-                n_summaries += store.delete_summaries_for_source(
-                    source_path,
-                    keep_ids=keep_summary_ids,
-                    candidate_ids=candidate_ids,
-                )
-            if verbose and (n_units or n_summaries):
-                verb = "superseded" if supersede_on_reindex else "pruned"
-                print(
-                    f"  [reindex] {verb} {n_units} stale units, "
-                    f"{n_summaries} stale summaries for {Path(path).name}"
-                )
     return True
 
 
@@ -1413,7 +1416,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         return routed
 
     snapshot = (
-        _snapshot_reindex_rows(path=path, path_key=path_key)
+        _snapshot_reindex_rows(cfg=cfg, path=path, path_key=path_key)
         if force_file
         else None
     )

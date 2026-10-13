@@ -502,6 +502,7 @@ class IncrementalJsonlCoordinator:
         self.settings = settings
         self.enabled = bool(settings.enabled if cfg is not None else enabled)
         self.fault = fault or (lambda _point: None)
+        self.last_failure_code = ""
         self.counters = counters or CallCounters()
         self.retry_sleep = retry_sleep
         self.embed_dimension = embed_dimension
@@ -1484,12 +1485,15 @@ class IncrementalJsonlCoordinator:
             "non_source_collections": non_source_collections,
         }
 
-    def _verify_non_source_collections(self, expected: dict) -> None:
+    def _non_source_collection_digest(self) -> dict:
         with self._session() as session:
-            current = {
+            return {
                 name: session.store.non_source_inventory_digest(name, self.path_key)
                 for name in (SUMMARIES, UNITS)
             }
+
+    def _verify_non_source_collections(self, expected: dict) -> None:
+        current = self._non_source_collection_digest()
         self.last_evidence["non_source_collections_after"] = current
         if current != expected:
             raise IncrementalJsonlError(
@@ -1672,11 +1676,12 @@ class IncrementalJsonlCoordinator:
         source_lines = list(preimage.get("source_lines") or [])
         from purge_locks import export_flock
 
+        allowed_source_bytes = {
+            base64.b64decode(row["payload_base64"], validate=True) for row in source_lines
+        }
         with export_flock(self.cfg):
             temp = self._export_temp(export_path)
             temp_path = Path(temp.name)
-            foreign_digest = hashlib.sha256()
-            foreign_bytes = 0
             foreign_lines = 0
             source_index = 0
             try:
@@ -1689,6 +1694,11 @@ class IncrementalJsonlCoordinator:
                     if current is not None:
                         for raw in current:
                             if self._export_line_owned_by_source(raw, self.path_key):
+                                if raw not in allowed_source_bytes:
+                                    raise IncrementalJsonlError(
+                                        "rollback_export_foreign_changed",
+                                        "source export line is not rollback authority",
+                                    )
                                 continue
                             while (
                                 source_index < len(source_lines)
@@ -1703,34 +1713,18 @@ class IncrementalJsonlCoordinator:
                                 )
                                 source_index += 1
                             temp.write(raw)
-                            foreign_digest.update(raw)
-                            foreign_bytes += len(raw)
                             foreign_lines += 1
                 finally:
                     if current is not None:
                         current.close()
-                while (
-                    source_index < len(source_lines)
-                    and source_lines[source_index].get("foreign_lines_before")
-                    == foreign_lines
-                ):
+                while source_index < len(source_lines):
                     temp.write(
                         base64.b64decode(
-                            source_lines[source_index]["payload_base64"], validate=True
+                            source_lines[source_index]["payload_base64"],
+                            validate=True,
                         )
                     )
                     source_index += 1
-                authority = (
-                    foreign_digest.hexdigest() == preimage.get("foreign_sha256")
-                    and foreign_bytes == preimage.get("foreign_bytes")
-                    and foreign_lines == preimage.get("foreign_lines")
-                    and source_index == len(source_lines)
-                )
-                if not authority:
-                    raise IncrementalJsonlError(
-                        "rollback_export_foreign_changed",
-                        "unrelated export bytes differ from rollback authority",
-                    )
                 temp.flush()
                 os.fsync(temp.fileno())
                 temp.close()
@@ -1994,7 +1988,7 @@ class IncrementalJsonlCoordinator:
         rollback_authority_sha256: str | None = None,
     ) -> IncrementalRunResult:
         from ingest import _path_is_excluded
-        from purge_locks import source_flock
+        from purge_locks import index_write_flock, source_flock
 
         generation = _sha(
             "jsonl-incremental-generation-v1:"
@@ -2003,52 +1997,43 @@ class IncrementalJsonlCoordinator:
         )
         self._revalidate_live_prefix(snapshot)
         with source_flock(self.cfg, self.path_key):
-            if _path_is_excluded(self._processed(), self.path_key):
-                return self._refusal("excluded", snapshot=snapshot)
-            if rollback_authority_sha256 is None:
-                rollback = self._snapshot_before_images()
-                self._write_rollback(rollback)
-                rollback_authority_sha256 = hashlib.sha256(
-                    self.paths["rollback"].read_bytes()
-                ).hexdigest()
-                self._write_transaction(
-                    {
-                        "version": TRANSACTION_VERSION,
-                        "transaction_id": transaction_id,
-                        "phase": "APPLYING",
-                        "bootstrap_existing": self.bootstrap_existing,
-                        **self._bootstrap_transaction_binding(),
-                        "source_path": self.path_key,
-                        "source_identity": self.source_id,
-                        "generation": generation,
-                        "prepared_keys": [item["cache_key"] for item in prepared],
-                        "generation_identity": snapshot["generation_identity"],
-                        "complete_boundary": snapshot["complete_boundary"],
-                        "prefix_sha256": snapshot["prefix_sha256"],
-                        "session_meta_digest": snapshot["session_meta_digest"],
-                        "rollback_authority_sha256": rollback_authority_sha256,
-                    }
+            with index_write_flock(self.cfg):
+                if _path_is_excluded(self._processed(), self.path_key):
+                    return self._refusal("excluded", snapshot=snapshot)
+                attempt_non_source = self._non_source_collection_digest()
+                if rollback_authority_sha256 is None:
+                    rollback = self._snapshot_before_images()
+                    self._write_rollback(rollback)
+                    rollback_authority_sha256 = hashlib.sha256(
+                        self.paths["rollback"].read_bytes()
+                    ).hexdigest()
+                    self._write_transaction(
+                        {
+                            "version": TRANSACTION_VERSION,
+                            "transaction_id": transaction_id,
+                            "phase": "APPLYING",
+                            "bootstrap_existing": self.bootstrap_existing,
+                            **self._bootstrap_transaction_binding(),
+                            "source_path": self.path_key,
+                            "source_identity": self.source_id,
+                            "generation": generation,
+                            "prepared_keys": [item["cache_key"] for item in prepared],
+                            "generation_identity": snapshot["generation_identity"],
+                            "complete_boundary": snapshot["complete_boundary"],
+                            "prefix_sha256": snapshot["prefix_sha256"],
+                            "session_meta_digest": snapshot["session_meta_digest"],
+                            "rollback_authority_sha256": rollback_authority_sha256,
+                        }
+                    )
+                else:
+                    self._require_rollback_authority(rollback_authority_sha256)
+                chunks, units, events, keep_summaries, keep_units = self._apply_prepared(
+                    prepared
                 )
-            else:
-                rollback = self._require_rollback_authority(
-                    rollback_authority_sha256
-                )
-                self._verify_non_source_collections(
-                    rollback.get("non_source_collections") or {}
-                )
-            chunks, units, events, keep_summaries, keep_units = self._apply_prepared(
-                prepared
-            )
-            if rollback_authority_sha256 is not None:
-                rollback = self._require_rollback_authority(
-                    rollback_authority_sha256
-                )
-            self._verify_non_source_collections(
-                rollback.get("non_source_collections") or {}
-            )
-            self._revalidate_live_prefix(snapshot)
-            projection_fingerprint = self._codex_projection_fingerprint()
-            checkpoint = {
+                self._verify_non_source_collections(attempt_non_source)
+                self._revalidate_live_prefix(snapshot)
+                projection_fingerprint = self._codex_projection_fingerprint()
+                checkpoint = {
                 "version": CHECKPOINT_VERSION,
                 "commit_state": "complete",
                 "adapter_format": self.format_spec.format_id,
@@ -2070,10 +2055,10 @@ class IncrementalJsonlCoordinator:
                 "processed_hash": snapshot["prefix_sha256"],
                 "raw_line_coverage": snapshot["raw_line_coverage"],
                 "fallback_reason": fallback,
-            }
-            self._write_checkpoint(checkpoint)
-            self._reconcile_export()
-            exact, semantic = self._reconcile_dedupe(transaction_id, events)
+                }
+                self._write_checkpoint(checkpoint)
+                self._reconcile_export()
+                exact, semantic = self._reconcile_dedupe(transaction_id, events)
         committed = self._publish_processed(snapshot["prefix_sha256"], chunks, units)
         self._cleanup(snapshot["snapshot_dir"])
         result = IncrementalRunResult(
@@ -2304,6 +2289,7 @@ class IncrementalJsonlCoordinator:
             )
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
         except IncrementalJsonlError as exc:
+            self.last_failure_code = exc.code
             if rollback is None:
                 if not self.bootstrap_existing:
                     self._cleanup(snapshot_dir)
@@ -2630,8 +2616,36 @@ def maybe_route_incremental(
         processed=processed,
     )
     result = coordinator.run()
-    if not isolated and result.outcome not in {"committed", "unchanged"}:
+    if result.outcome in {"committed", "unchanged"}:
+        from incremental_retry_state import clear_incremental_retry_state
+
+        clear_incremental_retry_state(cfg, path_key)
+    elif not isolated:
         digest = getattr(coordinator, "last_evidence", {}).get("prefix_sha256", "")
+        failure_code = getattr(coordinator, "last_failure_code", "") or result.outcome
+        transaction_id = ""
+        tx_path = getattr(coordinator, "paths", {}).get("transaction")
+        if tx_path is not None and Path(tx_path).is_file():
+            tx_payload = _read_json(Path(tx_path))
+            if isinstance(tx_payload, dict):
+                transaction_id = str(tx_payload.get("transaction_id") or "")
+        from incremental_retry_state import record_incremental_retry_failure
+
+        if record_incremental_retry_failure(
+            cfg,
+            path_key=path_key,
+            prefix_digest=str(digest or ""),
+            error_code=failure_code,
+            transaction_id=transaction_id,
+        ):
+            detail = (
+                f"wedged_incremental_transaction:"
+                f"{failure_code}:"
+                f"transaction={transaction_id}:"
+                f"source={path_key}:"
+                f"wedged incremental transaction; see doctor"
+            )
+            raise IncrementalJsonlError("live_route_refused", detail)
         raise IncrementalJsonlError(
             "live_route_refused",
             f"{result.outcome}:{digest}" if digest else result.outcome,

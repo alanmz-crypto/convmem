@@ -32,14 +32,40 @@ def export_lock_depth() -> int:
     return _export_depth()
 
 
+def index_write_lock_depth() -> int:
+    """Current thread's store-wide index write lock nesting depth."""
+    return int(getattr(_tls, "index_write_depth", 0) or 0)
+
+
 def _source_depth() -> int:
     return int(getattr(_tls, "source_depth", 0) or 0)
+
+
+def _index_write_depth() -> int:
+    return int(getattr(_tls, "index_write_depth", 0) or 0)
+
+
+def index_write_lock_path(cfg: dict) -> Path:
+    return source_lock_dir(cfg).parent / "index_write.lock"
+
+
+def index_write_lock_path_for_export(export_path: Path | str) -> Path:
+    p = Path(export_path).expanduser().resolve()
+    return p.parent / "locks" / "index_write.lock"
 
 
 def assert_lock_ordering_ok(*, acquiring: str) -> None:
     if acquiring == "source" and _export_depth() > 0:
         raise RuntimeError(
             "lock ordering violation: cannot acquire source lock while holding export lock"
+        )
+    if acquiring == "index_write" and _export_depth() > 0:
+        raise RuntimeError(
+            "lock ordering violation: cannot acquire index write lock while holding export lock"
+        )
+    if acquiring == "export" and _index_write_depth() == 0:
+        raise RuntimeError(
+            "lock ordering violation: cannot acquire export lock without index write lock"
         )
 
 
@@ -95,7 +121,8 @@ def source_flock(cfg: dict, canonical_path: str) -> Iterator[Path]:
 
 
 @contextmanager
-def export_flock_path(export_path: Path | str) -> Iterator[Path]:
+def _export_flock_path_inner(export_path: Path | str) -> Iterator[Path]:
+    assert_lock_ordering_ok(acquiring="export")
     lock = export_lock_path_for_file(export_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
     with _open_private_lock(lock) as handle:
@@ -106,6 +133,57 @@ def export_flock_path(export_path: Path | str) -> Iterator[Path]:
         finally:
             _tls.export_depth = max(0, _export_depth() - 1)
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def index_write_flock(cfg: dict) -> Iterator[Path]:
+    assert_lock_ordering_ok(acquiring="index_write")
+    lock = index_write_lock_path(cfg)
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    depth_before = _index_write_depth()
+    handle: TextIO | None = None
+    if depth_before == 0:
+        handle = _open_private_lock(lock)
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+    _tls.index_write_depth = depth_before + 1
+    try:
+        yield lock
+    finally:
+        _tls.index_write_depth = max(0, _index_write_depth() - 1)
+        if depth_before == 0 and handle is not None:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            handle.close()
+
+
+@contextmanager
+def index_write_flock_for_export(export_path: Path | str) -> Iterator[Path]:
+    lock = index_write_lock_path_for_export(export_path)
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    depth_before = _index_write_depth()
+    handle: TextIO | None = None
+    if depth_before == 0:
+        assert_lock_ordering_ok(acquiring="index_write")
+        handle = _open_private_lock(lock)
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+    _tls.index_write_depth = depth_before + 1
+    try:
+        yield lock
+    finally:
+        _tls.index_write_depth = max(0, _index_write_depth() - 1)
+        if depth_before == 0 and handle is not None:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            handle.close()
+
+
+@contextmanager
+def export_flock_path(export_path: Path | str) -> Iterator[Path]:
+    if _index_write_depth() == 0:
+        with index_write_flock_for_export(export_path):
+            with _export_flock_path_inner(export_path) as lock:
+                yield lock
+        return
+    with _export_flock_path_inner(export_path) as lock:
+        yield lock
 
 
 @contextmanager

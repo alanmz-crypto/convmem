@@ -289,6 +289,11 @@ def index(
         "--supersede",
         help="With --file: tombstone prior units for this path instead of deleting",
     ),
+    now: bool = typer.Option(
+        False,
+        "--now",
+        help="With --file: index even when the watcher is running (serialized by index locks)",
+    ),
 ):
     """Ingest all sources (skip unchanged), or one file (--file; add --force to re-ingest)."""
     if os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") == "1":
@@ -303,6 +308,14 @@ def index(
     )
     from incremental_jsonl import IncrementalJsonlError, LIVE_ROUTE_REFUSED_EXIT
     from query import render_error
+
+    if file and not now:
+        from config import load_config
+        from watch import should_defer_index_file
+
+        if should_defer_index_file(load_config(), file):
+            typer.echo(f"[index] deferred: the convmem watcher captures {file}")
+            raise typer.Exit(0)
 
     try:
         stats = run_index(
@@ -410,7 +423,9 @@ def add(
     _guard_write()
     from chroma_write_store import production_chroma_write_session
     from observe import ingest_observation, ingest_observation_file
+    from purge_locks import index_write_flock
     from query import render_error
+    from config import load_config
     from pathlib import Path
 
     if upsert:
@@ -418,75 +433,76 @@ def add(
 
         ensure_chroma_snapshot_for_live_write()
 
-    with production_chroma_write_session(entrypoint="convmem.add") as session:
-        store = session.store
-        cfg = session.live_cfg
-        models = cfg["models"]
-        units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
+    with index_write_flock(load_config()):
+        with production_chroma_write_session(entrypoint="convmem.add") as session:
+            store = session.store
+            cfg = session.live_cfg
+            models = cfg["models"]
+            units_export = cfg["index"].get("units_export")
+            units_export_path = Path(units_export).expanduser() if units_export else None
 
-        if file:
-            result = ingest_observation_file(
-                file,
+            if file:
+                result = ingest_observation_file(
+                    file,
+                    store=store,
+                    embed_model=models["embed_model"],
+                    ollama_host=models["ollama_host"],
+                    units_export=units_export_path,
+                    upsert=upsert,
+                )
+                parts = [
+                    f"accepted={result['accepted']}",
+                    f"rejected={result['rejected']}",
+                ]
+                if upsert:
+                    parts.append(f"updated={result['updated']}")
+                typer.echo(f"\nDone. {' '.join(parts)}")
+                return
+
+            if not title or not summary or not author:
+                render_error(
+                    "Provide --title, --summary, and --author (or use --file for batch ingest)."
+                )
+                raise typer.Exit(1)
+            if len(keyword) < 3:
+                render_error("Need at least 3 --keyword values.")
+                raise typer.Exit(1)
+            if severity is not None:
+                from ledger import _SEVERITIES
+
+                severity = severity.strip().lower()
+                if severity not in _SEVERITIES:
+                    render_error(
+                        "--severity must be one of: " + ", ".join(sorted(_SEVERITIES)) + "."
+                    )
+                    raise typer.Exit(1)
+
+            record = {
+                "title": title,
+                "summary": summary,
+                "keywords": keyword,
+                "type": unit_type,
+                "domain": domain,
+                "author_model": author,
+                "confidence": confidence,
+                "tool": tool,
+                "source_path": source_path,
+                "severity": severity,
+            }
+            unit = ingest_observation(
+                record,
                 store=store,
                 embed_model=models["embed_model"],
                 ollama_host=models["ollama_host"],
                 units_export=units_export_path,
-                upsert=upsert,
             )
-            parts = [
-                f"accepted={result['accepted']}",
-                f"rejected={result['rejected']}",
-            ]
-            if upsert:
-                parts.append(f"updated={result['updated']}")
-            typer.echo(f"\nDone. {' '.join(parts)}")
-            return
-
-        if not title or not summary or not author:
-            render_error(
-                "Provide --title, --summary, and --author (or use --file for batch ingest)."
-            )
-            raise typer.Exit(1)
-        if len(keyword) < 3:
-            render_error("Need at least 3 --keyword values.")
-            raise typer.Exit(1)
-        if severity is not None:
-            from ledger import _SEVERITIES
-
-            severity = severity.strip().lower()
-            if severity not in _SEVERITIES:
-                render_error(
-                    "--severity must be one of: " + ", ".join(sorted(_SEVERITIES)) + "."
-                )
+            if unit is None:
+                render_error("Record rejected — check required fields.")
                 raise typer.Exit(1)
-
-        record = {
-            "title": title,
-            "summary": summary,
-            "keywords": keyword,
-            "type": unit_type,
-            "domain": domain,
-            "author_model": author,
-            "confidence": confidence,
-            "tool": tool,
-            "source_path": source_path,
-            "severity": severity,
-        }
-        unit = ingest_observation(
-            record,
-            store=store,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            units_export=units_export_path,
-        )
-        if unit is None:
-            render_error("Record rejected — check required fields.")
-            raise typer.Exit(1)
-        typer.echo(
-            f"Added [{unit['domain']}] {unit['title']}  "
-            f"(ledger: {unit.get('ledger_id', unit['id'])})"
-        )
+            typer.echo(
+                f"Added [{unit['domain']}] {unit['title']}  "
+                f"(ledger: {unit.get('ledger_id', unit['id'])})"
+            )
 
 
 @app.command("verify")
@@ -712,21 +728,25 @@ def monitor_command(
         typer.echo(json.dumps(stats, indent=2))
         return
 
-    with production_chroma_write_session(entrypoint="convmem.monitor") as session:
-        store = session.store
-        cfg = session.live_cfg
-        models = cfg["models"]
-        units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
-        stats = run_monitor(
-            store,
-            site=site,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            units_export=units_export_path,
-            dry_run=False,
-            verbose=True,
-        )
+    from purge_locks import index_write_flock
+
+    cfg = load_config()
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="convmem.monitor") as session:
+            store = session.store
+            live_cfg = session.live_cfg
+            models = live_cfg["models"]
+            units_export = live_cfg["index"].get("units_export")
+            units_export_path = Path(units_export).expanduser() if units_export else None
+            stats = run_monitor(
+                store,
+                site=site,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                units_export=units_export_path,
+                dry_run=False,
+                verbose=True,
+            )
     typer.echo(json.dumps(stats, indent=2))
     from brief import refresh_brief_after_change
 
@@ -1773,55 +1793,55 @@ def forget_command(
 
     _guard_write()
     from chroma_write_store import production_chroma_write_session
+    from config import load_config
+    from purge_locks import index_write_flock
 
-    with production_chroma_write_session(entrypoint="convmem.forget") as session:
-        store = session.store
-        unit = store.get_unit(unit_id)
-        if unit is None:
-            render_error(f"No unit found with id {unit_id}.")
-            raise typer.Exit(1)
+    with index_write_flock(load_config()):
+        with production_chroma_write_session(entrypoint="convmem.forget") as session:
+            store = session.store
+            unit = store.get_unit(unit_id)
+            if unit is None:
+                render_error(f"No unit found with id {unit_id}.")
+                raise typer.Exit(1)
 
-        meta = dict(unit["metadata"] or {})
-        doc = unit["document"] or ""
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            meta = dict(unit["metadata"] or {})
+            doc = unit["document"] or ""
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        typer.echo(f"unit:       {unit_id}")
-        typer.echo(f"source:     {meta.get('source_path')}")
-        typer.echo(f"type/title: {meta.get('type')} / {meta.get('title')}")
-        typer.echo(f"superseded: {meta.get('superseded')}")
-        typer.echo(f"document:   {doc[:280]}")
+            typer.echo(f"unit:       {unit_id}")
+            typer.echo(f"source:     {meta.get('source_path')}")
+            typer.echo(f"type/title: {meta.get('type')} / {meta.get('title')}")
+            typer.echo(f"superseded: {meta.get('superseded')}")
+            typer.echo(f"document:   {doc[:280]}")
 
-        if undo:
-            if not is_superseded(meta):
-                typer.echo("Unit is not superseded — nothing to undo.")
+            if undo:
+                if not is_superseded(meta):
+                    typer.echo("Unit is not superseded — nothing to undo.")
+                    return
+                meta["superseded"] = False
+                meta["superseded_by"] = ""
+                meta["updated_at"] = now
+                store.update_unit_metadata(unit_id, meta)
+                invalidate_superseded_cache(store.chroma_dir)
+                typer.echo("Restored: unit is active again (superseded cleared).")
                 return
-            # Chroma update() merges metadata keys rather than replacing the dict,
-            # so popping keys leaves the stored superseded=True intact. Overwrite
-            # with a not-superseded value instead (is_superseded checks `is True`).
-            meta["superseded"] = False
-            meta["superseded_by"] = ""
+
+            if is_superseded(meta):
+                typer.echo("Already superseded — nothing to do.")
+                return
+
+            if not yes and not typer.confirm("Tombstone this unit (exclude from search)?"):
+                typer.echo("Aborted.")
+                raise typer.Exit(1)
+
+            meta["superseded"] = True
+            meta["superseded_by"] = f"forget-cli:{reason or 'manual'}"
             meta["updated_at"] = now
             store.update_unit_metadata(unit_id, meta)
             invalidate_superseded_cache(store.chroma_dir)
-            typer.echo("Restored: unit is active again (superseded cleared).")
-            return
-
-        if is_superseded(meta):
-            typer.echo("Already superseded — nothing to do.")
-            return
-
-        if not yes and not typer.confirm("Tombstone this unit (exclude from search)?"):
-            typer.echo("Aborted.")
-            raise typer.Exit(1)
-
-        meta["superseded"] = True
-        meta["superseded_by"] = f"forget-cli:{reason or 'manual'}"
-        meta["updated_at"] = now
-        store.update_unit_metadata(unit_id, meta)
-        invalidate_superseded_cache(store.chroma_dir)
-        typer.echo(
-            f"Tombstoned {unit_id} — excluded from search results (reversible with --undo)."
-        )
+            typer.echo(
+                f"Tombstoned {unit_id} — excluded from search results (reversible with --undo)."
+            )
 
 
 @app.command("shadow-activate")

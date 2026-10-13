@@ -551,6 +551,42 @@ def acquire_lock(lock_path: Path) -> None:
     )
 
 
+def path_in_watch_roots(path: Path | str, watch_paths: list[str]) -> bool:
+    try:
+        resolved = Path(path).expanduser().resolve()
+    except OSError:
+        return False
+    for raw in watch_paths:
+        try:
+            root = Path(raw).expanduser().resolve()
+        except OSError:
+            continue
+        if resolved == root:
+            return True
+        if root.is_dir():
+            try:
+                if resolved.is_relative_to(root):
+                    return True
+            except AttributeError:
+                if str(resolved).startswith(str(root).rstrip("/") + "/"):
+                    return True
+    return False
+
+
+def should_defer_index_file(cfg: dict, path: str) -> bool:
+    """True when a live watcher owns indexing for this watchable path."""
+    candidate = Path(path).expanduser()
+    if not is_watchable(candidate):
+        return False
+    _, watch_paths, lock_path = load_watch_settings(cfg)
+    if not path_in_watch_roots(candidate, watch_paths):
+        return False
+    from process_lock import read_pid_lock
+
+    holder = read_pid_lock(lock_path)
+    return holder is not None and holder > 0 and _is_live_watch_pid(holder)
+
+
 def load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:
     watch_cfg = cfg.get("watch") or {}
     debounce = float(watch_cfg.get("debounce_seconds", 30))
@@ -730,13 +766,32 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
     _batch_lock = Lock()
     _batch: list[str] = []
 
+    from watchdog.events import (
+        FileClosedEvent,
+        FileClosedNoWriteEvent,
+        FileCreatedEvent,
+        FileModifiedEvent,
+        FileMovedEvent,
+        FileOpenedEvent,
+    )
+
     class Handler(FileSystemEventHandler):
         def on_any_event(self, event: FileSystemEvent) -> None:
             if event.is_directory:
                 return
-            # Fast: just record the path. Main loop does detection.
+            if isinstance(event, (FileOpenedEvent, FileClosedNoWriteEvent)):
+                return
+            queued: list[str] = []
+            if isinstance(event, FileMovedEvent):
+                queued.extend([event.dest_path, event.src_path])
+            elif isinstance(
+                event, (FileCreatedEvent, FileModifiedEvent, FileClosedEvent)
+            ):
+                queued.append(event.src_path)
+            else:
+                return
             with _batch_lock:
-                _batch.append(event.src_path)
+                _batch.extend(queued)
 
     def _drain_batch() -> None:
         with _batch_lock:

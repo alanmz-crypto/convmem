@@ -1,0 +1,70 @@
+"""Bounded retry state for wedged incremental transactions (issue #286 stage 2)."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+
+def _state_path(cfg: dict, path_key: str) -> Path:
+    root = Path(cfg["index"]["processed_log"]).expanduser().resolve().parent
+    digest = __import__("hashlib").sha256(path_key.encode()).hexdigest()
+    return root / "incremental_retry" / f"{digest}.json"
+
+
+def _read(path: Path) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def clear_incremental_retry_state(cfg: dict, path_key: str) -> None:
+    path = _state_path(cfg, path_key)
+    path.unlink(missing_ok=True)
+
+
+def record_incremental_retry_failure(
+    cfg: dict,
+    *,
+    path_key: str,
+    prefix_digest: str,
+    error_code: str,
+    transaction_id: str,
+) -> bool:
+    """Return True when the same error repeats on an unchanged prefix (refuse)."""
+    path = _state_path(cfg, path_key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    prior = _read(path) or {}
+    repeat = (
+        prior.get("error_code") == error_code
+        and prior.get("prefix_digest") == prefix_digest
+    )
+    payload = {
+        "source_path": path_key,
+        "transaction_id": transaction_id,
+        "error_code": error_code,
+        "prefix_digest": prefix_digest,
+        "consecutive": int(prior.get("consecutive") or 0) + 1 if repeat else 1,
+    }
+    path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    return repeat
+
+
+def iter_wedged_incremental_states(cfg: dict) -> list[dict[str, Any]]:
+    root = Path(cfg["index"]["processed_log"]).expanduser().resolve().parent
+    retry_dir = root / "incremental_retry"
+    if not retry_dir.is_dir():
+        return []
+    rows: list[dict[str, Any]] = []
+    for path in sorted(retry_dir.glob("*.json")):
+        payload = _read(path)
+        if not payload:
+            continue
+        if int(payload.get("consecutive") or 0) >= 2:
+            rows.append(payload)
+    return rows

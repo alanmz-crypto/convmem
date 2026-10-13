@@ -606,6 +606,31 @@ def _check_index_gate() -> DoctorCheck:
     return DoctorCheck("index_gate", True, "0 index failures in 7d")
 
 
+def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
+    from incremental_retry_state import iter_wedged_incremental_states
+
+    rows = iter_wedged_incremental_states(cfg)
+    if not rows:
+        return DoctorCheck(
+            "wedged_incremental_transaction",
+            True,
+            "0 wedged incremental transactions",
+        )
+    detail = "; ".join(
+        "source={source} transaction={transaction_id} code={error_code} "
+        "remedy=wedged incremental transaction; see doctor".format(**row)
+        for row in rows[:3]
+    )
+    if len(rows) > 3:
+        detail += f"; +{len(rows) - 3} more"
+    return DoctorCheck(
+        "wedged_incremental_transaction",
+        True,
+        detail,
+        status="warn",
+    )
+
+
 def _check_incremental_refusals(cfg: dict) -> DoctorCheck:
     from watch_circuit_breaker import (
         CircuitBreakerState,
@@ -1684,6 +1709,7 @@ def run_doctor(
         _check_index_gate(),
         _check_native_crash_gate(),
         _check_incremental_refusals(cfg),
+        _check_wedged_incremental_transactions(cfg),
         _check_chroma_write_guard(cfg),
         _check_chroma_audit(cfg),
         _check_cpu_tripwire(cfg),
