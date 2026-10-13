@@ -9,12 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — isolated T3 implementation granted (2026-10-13):**
-  Bounded lapse investigation is complete; Kiro independently PASSed proof `e08100ff` (82%).
-  **Next lane: Cursor**, text-only implementation; Codex supervises isolated execution.
-  [EXECUTION section 11](../plans/EXECUTION-safe-harbor.md#11-cursor-remaining-t3--conditional-owner-grant-satisfied)
-  is the grant/handoff; [STATUS](../plans/STATUS-safe-harbor.md) holds current scope.
-  No T4/T5, PR/merge or live operations.
+- **Arc Safe Harbor — T3 implementation evidence returned (2026-10-13):**
+  **Next lane: Ryan / independent implementation reviewer**; no review invocation inferred.
+  [STATUS](../plans/STATUS-safe-harbor.md) is the resume point and links the pinned
+  implementation, isolated results and remaining CI/acceptance limits.
+  Codex contributed code/tests and is not the independent reviewer. Kiro's earlier
+  PASS covers the prerequisite proof only. No T4/T5, PR/merge or live operations.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

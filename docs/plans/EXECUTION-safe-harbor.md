@@ -588,6 +588,8 @@ Report **DEMONSTRATED** only if every required observation and both valid/stale 
 
 **Return:** V3/V4 observed results and exclusions, source hashes, implementation/review tip and the smallest remaining limitations. A prerequisite proof PASS is not an implementation PASS. Stop on a concrete unsupported contract rather than weakening it. Commit bounded work and push immediately with `git push -u origin feat/2026-10-13-safe-harbor-t3:refs/heads/feat/2026-10-13-safe-harbor-t3`; keep final review/acceptance and all live actions pending.
 
+**Delivery checkpoint (2026-10-13):** implementation/tests `802d74dc0525a8040e44408b891f83edc20df97f` are pushed on this branch; [current V3/V4 evidence](VERIFY-safe-harbor.md#t3-implementation-checkpoint--isolated-v3v4-evidence) records 92 isolated passes, stable source hashes and focused lint regression gate PASS. Cursor/Codex are contributing authors. Independent implementation review, CI integration and Ryan acceptance remain pending; this record grants no reviewer invocation, PR, T4/T5 or live action.
+
 ## TL;DR
 
-[Arc Safe Harbor] The bounded lapse investigation and independent Kiro proof PASS (82%, `e08100ff`) satisfy Ryan’s conditional grant. Section 11 authorizes isolated T3 implementation/evidence on a separate branch. The accepted contract is unchanged; T4/T5, PR/merge and live operations remain ungranted.
+[Arc Safe Harbor] Section 11's isolated T3 implementation/evidence is returned for review. The accepted contract is unchanged; independent implementation review, CI integration and Ryan acceptance remain pending. T4/T5, PR/merge and live operations remain ungranted.
