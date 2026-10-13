@@ -503,7 +503,7 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 **[Arc Safe Harbor] Authority / scope:** Ryan authorized “go: Next step: Authorize that bounded T2 correction; the current review grant does not authorize fixes.” The antecedent is the fresh final-review finding below, not a general implementation grant. Codex coordinates; Cursor implements and supplies isolated evidence. Existing task branch/worktree and draft PR #389 remain in use. Reviewed source is `45a1f002239644371d4813f3f010ece72c6fb865`, pinned base `8a7cdab16420893fe26a2648d1d03f2b84d8589d`; begin at the pushed documentation-only grant successor identified in dispatch. No new main integration.
 
-**Delivery:** Cursor implemented the correction; Codex captured original-runtime failures, final 98-case isolated PASS and lint-gate PASS. See VERIFY's governed-path section, including excluded initial attempts. Exact-tip delta/CI and owner acceptance remain pending.
+**Delivery:** Cursor implemented the correction; Codex captured original-runtime failures, final 98-case isolated PASS and lint-gate PASS. See VERIFY's governed-path section, including excluded initial attempts. Independent Codex bounded delta PASS (95%) is pinned to `dac925f33d4ebd7482c0536408b9be12f51d6106`; fresh final-tip CI and owner acceptance remain pending.
 
 **Finding:** the fresh in-session Codex reviewer returned narrow FAIL (95%, static). With unchanged `/data/chroma-link -> /data/store/chroma`, preflight enumerates governed files from the original configuration's `/data` parent, but `AdmittedWriteOperation.config()` substitutes the canonical Chroma directory. Approval/recovery then derive their queue/event/lock/approved-row paths from `/data/store`. The preview can find the original proposal while the admitted operation reports it absent. This needs no retarget or configuration edit. It is an identity mismatch, not evidence of a reproduced outside-root mutation; VERIFY records exact source citations.
 
@@ -520,4 +520,4 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 ## TL;DR
 
-[Arc Safe Harbor] Final CI passed at `45a1f00`, but a fresh static review found cross-parent alias canonicalization relocates governed-file lookups. The bounded correction and 98-case isolated/lint evidence are complete; exact-tip delta and fresh CI follow. PR #389 stays draft; final acceptance, merge and live work remain pending.
+[Arc Safe Harbor] Final CI passed at `45a1f00`, but a fresh static review found cross-parent alias canonicalization relocates governed-file lookups. The bounded correction and 98-case isolated/lint evidence are complete; bounded delta PASS is pinned to `dac925f`; fresh CI follows. PR #389 stays draft; final acceptance, merge and live work remain pending.

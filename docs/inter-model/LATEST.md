@@ -12,9 +12,10 @@ cross-arc snapshot and the linked arc brief below.
 - **Arc Safe Harbor — governed-path correction implemented (2026-10-13 UTC):**
   Cursor preserves original governed files for cross-parent Chroma aliases;
   canonical client/export binding remains. Codex captured original failures
-  and passing final 98-case/lint evidence under the
+  and passing final 98-case/lint evidence. Independent Codex delta PASS (95%)
+  at `dac925f33d4ebd7482c0536408b9be12f51d6106` closes the blocker under the
   [bounded grant](../plans/EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized).
-  **Codex:** push, exact-tip bounded delta/fresh CI on
+  **Codex:** observe fresh final-tip CI on
   [draft #389](https://github.com/alanmz-crypto/convmem/pull/389). See
   [STATUS](../plans/STATUS-safe-harbor.md) and
   [correction evidence](../plans/VERIFY-safe-harbor.md#governed-path-identity-correction--isolated-evidence).

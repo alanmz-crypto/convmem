@@ -1,10 +1,10 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 GOVERNED-PATH CORRECTION IMPLEMENTED; 98-CASE EVIDENCE PASS; DELTA/CI PENDING.** Original-runtime failures and corrected focused/affected/lint evidence are captured below; final affected rerun passed 98 cases. The original review FAIL remains pinned to `45a1f00`. PR #389 stays draft; successor CI, external-review disposition and V2 acceptance remain pending. Event-only success exclusion remains; V3–V6 are NOT RUN.
+> **Arc: Safe Harbor. T1 MERGED; T2 GOVERNED-PATH CORRECTION IMPLEMENTED; 98-CASE EVIDENCE AND BOUNDED DELTA PASS; CI PENDING.** Original-runtime failures and corrected focused/affected/lint evidence are captured below; final affected rerun passed 98 cases. The original review FAIL remains pinned to `45a1f00`. PR #389 stays draft; successor CI, external-review disposition and V2 acceptance remain pending. Event-only success exclusion remains; V3–V6 are NOT RUN.
 
 ```text
 Planning Status
-Phase:        T2 governed-path correction/evidence complete; delta/CI pending
+Phase:        T2 correction/evidence/delta complete; successor CI pending
 Characters:   Implementer, Reviewer
 Function:     Correct the scoped identity mismatch and preserve evidence limits
 Lanes:        Cursor implements; Codex coordinates and reviews the delta
@@ -670,7 +670,11 @@ Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915
 - **Final lint:** `/tmp/safe-harbor-t2-governed-lint-c3ucw2_3`; raw pylint **30**, regression gate **0**, **456 findings / 239 fingerprints**, no new/increased findings versus pinned main `8a7cdab`. Baseline unchanged. Earlier lint `/tmp/safe-harbor-t2-governed-lint-283u2__x` failed on six test-helper findings; those were corrected without a waiver.
 - **Derived inventory:** `/tmp/safe-harbor-t2-governed-regen-xd3vsoqb`, both generator runs exit **0** and hashes equal. `code_revision=0df4d7882822db4af1f1abda8d41cc26a3892b6f`, `inventory_digest=dbe8d7dda7c6c1eb461a11e509195bd9f5a000ef88de5fdf86b947add92f5ae3`. All 36 route records are unchanged after removing their derived revision fields; shadow inventory is byte-identical to the grant tip. No identity algorithm/policy/allowlist change.
 
-**Next boundary:** bounded correction delta and fresh final-tip GitHub CI; external-review disposition and Ryan V2 acceptance remain separate. Historical green CI at `45a1f00` is not successor CI. Draft PR #389, no paid review/comment, merge, deployment or T3–T5.
+**Committed source/evidence:** `dac925f33d4ebd7482c0536408b9be12f51d6106`, pushed to the T2 task branch. All qualified final focused/affected/lint summaries match the committed Python fingerprint above.
+
+**Independent in-session Codex bounded delta — PASS (95%) at `dac925f33d4ebd7482c0536408b9be12f51d6106`:** same reviewer who found the blocker at `45a1f00`; static correction review, no new tests or production probes. HEAD matched the subject and worktree was clean. Preserving configured spelling at `chroma_write_store.py:743` aligns governed consumers with admission; factories still explicitly use canonical `op.chroma_dir` at `:1035,1092`, export pin and all earlier rechecks remain. Four new cases (`tests/test_safe_harbor_t2.py:1257` onward), real faulty-substitution controls, final captured 98-case/lint results and derived-only inventory delta support closure. No actionable correction regression found. Initial ambient attempts/interrupted run remain excluded; no assertion of their isolation or absence of incidental access. The PASS is pinned to its exact subject; this documentation successor is not an automatic transfer of an external-review gate.
+
+**Next boundary:** fresh final-tip GitHub CI; external-review disposition and Ryan V2 acceptance remain separate. Historical green CI at `45a1f00` is not successor CI. Draft PR #389, no paid review/comment, merge, deployment or T3–T5.
 
 ### Historical prepared T2 draft PR text — now opened as #389
 
@@ -767,7 +771,7 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] Current: the cross-parent alias/governed-file correction is implemented; original-runtime reproduction and corrected focused/lint evidence are captured above. Final affected evidence passed (98 cases); successor delta/CI and owner acceptance remain pending. The older evidence chain below is historical, not final acceptance.
+[Arc Safe Harbor] Current: the cross-parent alias/governed-file correction is implemented; original-runtime reproduction and corrected focused/lint evidence are captured above. Final affected evidence passed (98 cases); bounded delta PASS is recorded at `dac925f`; successor CI and owner acceptance remain pending. The older evidence chain below is historical, not final acceptance.
 
 [Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation is delivered: runtime `44e29f6`, tests `2459acd`.
 - Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.

@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 GOVERNED-PATH CORRECTION IMPLEMENTED — 98-CASE EVIDENCE PASS; DELTA/CI PENDING.** Cursor preserves original governed-file identities while both clients/export remain canonically bound. Codex reproduced both original failures and captured four passing focused cases plus a passing lint gate; the final affected rerun passed 98 cases. Draft PR #389 remains unaccepted. Fresh CI, bounded delta, external-review disposition, V2 acceptance, merge, deployment and T3–T5 remain pending.
+> **Arc: Safe Harbor. T1 MERGED; T2 GOVERNED-PATH CORRECTION IMPLEMENTED — 98-CASE EVIDENCE AND BOUNDED DELTA PASS; CI PENDING.** Cursor preserves original governed-file identities while both clients/export remain canonically bound. Codex reproduced both original failures and captured four passing focused cases plus a passing lint gate; the final affected rerun passed 98 cases. Draft PR #389 remains unaccepted. Bounded delta PASS (95%) is pinned to `dac925f`; fresh CI, external-review disposition, V2 acceptance, merge, deployment and T3–T5 remain pending.
 
 ## 1. What This Is For (product goal)
 
@@ -35,7 +35,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- **Current correction:** Cursor implemented the [owner-granted governed-path fix](EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized). Only production behavior change: admitted config preserves the configured Chroma spelling for governed-file derivation; factories retain explicit canonical targets and export remains pinned. New tests cover stable cross-parent aliases, actual admitted paths, exact proposal effects and real faulty-path controls. Tracked-Python fingerprint `3b9a72df…`; [qualified evidence and excluded attempts](VERIFY-safe-harbor.md#governed-path-identity-correction--isolated-evidence). Fresh delta must close the narrow FAIL at `45a1f00`; earlier B1/F1/F2 closures retain their scopes.
+- **Current correction:** Cursor implemented the [owner-granted governed-path fix](EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized). Only production behavior change: admitted config preserves the configured Chroma spelling for governed-file derivation; factories retain explicit canonical targets and export remains pinned. New tests cover stable cross-parent aliases, actual admitted paths, exact proposal effects and real faulty-path controls. Tracked-Python fingerprint `3b9a72df…`; [qualified evidence and excluded attempts](VERIFY-safe-harbor.md#governed-path-identity-correction--isolated-evidence). Independent in-session Codex delta **PASS (95%) at `dac925f33d4ebd7482c0536408b9be12f51d6106`** closes the narrow FAIL at `45a1f00`; earlier B1/F1/F2 closures retain their scopes. That reviewed runtime/evidence commit is pushed; later review-record edits do not transfer the external-review gate.
 - **Latest completed CI:** all checks green at `45a1f00`; [run `38329309684`](https://github.com/alanmz-crypto/convmem/actions/runs/38329309684) pytest: 2996 passed, 121 skipped, 252 subtests; pylint/secret-scan and CodeQL pass. This does not cover the newly identified cross-parent case or a correction successor.
 - **Current T2 delivery:** integration merge `551b16c13b66c8e3133402bdf6c0370d3efd35a5` on draft [PR #389](https://github.com/alanmz-crypto/convmem/pull/389); Safe Harbor runtime/tests remain `cdebf64b487ffa27d61955df9739204829864fe0` (F1/F2 docs at `721fd17`). Pinned main `8a7cdab` brought inter-model rejection and updated shadow inventory; sole merge conflict was regenerated R2b inventory (`46801f24…` / digest `6bee3486…`). Prior pre-integration CI and conflict state remain historical.
 - **Target-binding correction: F1/F2 CLOSED BY BOUNDED CODEX DELTA (90%).** Canonical client/export pinning is retained; alias-local quarantine is checked before either factory opens a client; late export retarget refuses. The 42-case Cursor regression and disjoint 43-case Codex supplement pass on unchanged source, with the full lint regression gate PASS. See [the correction delta/evidence](VERIFY-safe-harbor.md#codex-f1f2-correction-delta-and-complete-isolated-evidence--pass). This is not independent external review or V2 acceptance. Derived R2b identity `638cf8d3…`; route policy and shadow inventory unchanged.
@@ -89,12 +89,12 @@ The scope is application cooperation, not same-user security. Read clients can p
   - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
   - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
 - **PR #389: OPEN / DRAFT.** The authorized one-shot BugBot trigger returned a usage-limit reply, with no reviewed SHA. CodeQL alert #6 was owner-authorized and dismissed as false positive at `2026-10-12T10:34:24Z`; GitHub then reported CodeQL SUCCESS at `0cff157`. No paid retry/reviewer is requested.
-- **Current grant: GOVERNED-PATH IDENTITY CORRECTION IMPLEMENTED; ISOLATED EVIDENCE COMPLETE; DELTA/CI NEXT.** The original runtime fails the two new positive workflows in an isolated source copy; corrected focused tests pass, lint regression gate passes without a baseline change. Final affected rerun passed 98 cases; successor review/CI are pending. The earlier shadow correction's green CI at `45a1f00` remains historical. No V2 acceptance, PR merge or live grant is inferred.
+- **Current grant: GOVERNED-PATH IDENTITY CORRECTION IMPLEMENTED; ISOLATED EVIDENCE AND BOUNDED DELTA COMPLETE; CI NEXT.** The original runtime fails the two new positive workflows in an isolated source copy; corrected focused tests pass, lint regression gate passes without a baseline change. Final affected rerun passed 98 cases; bounded delta PASS is pinned to `dac925f`; fresh final-tip CI is pending. The earlier shadow correction's green CI at `45a1f00` remains historical. No V2 acceptance, PR merge or live grant is inferred.
 - T3–T5 implementation, new review triggers/comments, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Qualified evidence is complete; push the bounded correction, obtain the exact-tip delta and inspect successor CI. Preserve the external-review/owner-acceptance boundary. CodeQL #6 remains dispositioned.
+**Codex:** Qualified evidence and bounded delta are complete at `dac925f`; observe fresh final-tip CI. Keep the sealed candidate unchanged solely to transcribe CI status. Preserve the external-review/owner-acceptance boundary. CodeQL #6 remains dispositioned.
 
 **Cursor:** Bounded source/test correction delivered to Codex; no further edits while evidence/review runs. Do not reopen T4 semantics or earlier settled policies.
 
@@ -106,7 +106,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Complete the bounded correction delta/fresh final-tip CI on draft #389; then Ryan resolves external-review disposition and V2 acceptance/merge. The cross-parent identity fix is implemented; B1/F1/F2 remain closed in their recorded scopes. Event-only exclusion accepted; CodeQL #6 dispositioned.
+1. Complete fresh final-tip CI on draft #389; then Ryan resolves external-review disposition and V2 acceptance/merge. The cross-parent identity fix is implemented; B1/F1/F2 remain closed in their recorded scopes. Event-only exclusion accepted; CodeQL #6 dispositioned.
 2. Complete T3–T5 only under their task grants, including:
    - T3's backend-proof ordering gate and preservation/validated release;
    - T4 approval recovery: gating or binding direct helper callers, aligning the proposal and ingestion hash views so an event-only completion can be proven, and unknown/tombstone/race/uncertain-completion handling;
@@ -149,7 +149,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
-- 2026-10-12 — Codex: recorded Cursor governed-path correction with original-runtime failures, 98-case final isolated PASS and lint-gate PASS; excluded initial ambient attempts; successor delta/CI and acceptance remain pending.
+- 2026-10-12 — Codex: recorded Cursor governed-path correction with original-runtime failures, 98-case final isolated PASS and lint-gate PASS; excluded initial ambient attempts; bounded delta PASS is pinned to `dac925f`; fresh CI and acceptance remain pending.
 
 - 2026-10-12 — Codex: recorded green CI and fresh final-review FAIL at `45a1f00`; Ryan granted the bounded cross-parent alias/governed-file identity correction and isolated evidence; Cursor implementation next.
 
@@ -210,4 +210,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] Cursor implemented the governed-file identity correction. Codex reproduced the original failures and captured passing focused/lint evidence; 98 affected cases passed; successor delta/CI are next. Draft #389 remains unaccepted; merge and later tasks stay pending.
+[Arc Safe Harbor] Cursor implemented the governed-file identity correction. Codex reproduced the original failures and captured passing focused/lint evidence; 98 affected cases passed; bounded delta PASS is pinned to `dac925f`; fresh CI and owner dispositions are next. Draft #389 remains unaccepted; merge and later tasks stay pending.
