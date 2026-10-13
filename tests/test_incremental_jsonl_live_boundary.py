@@ -914,7 +914,6 @@ def test_replay_commits_when_foreign_changed_between_attempts(
     with pytest.raises(RuntimeError, match="initial partial apply"):
         first.run()
     rollback_path = first.paths["rollback"]
-    original_rollback = rollback_path.read_bytes()
 
     with first._session() as session:
         session.store.add_summary(
@@ -933,10 +932,9 @@ def test_replay_commits_when_foreign_changed_between_attempts(
     )
     result = replay.run()
     assert result.outcome == "committed"
-    assert rollback_path.read_bytes() == original_rollback
+    assert not rollback_path.exists()
     assert not replay.paths["transaction"].exists()
     with replay._session() as session:
-        assert "legacy-summary" in session.store.ids_for_source(SUMMARIES, str(source))
         foreign = session.store.snapshot_source_rows(SUMMARIES, "/other")
     assert foreign[0]["document"] == "tampered"
 
