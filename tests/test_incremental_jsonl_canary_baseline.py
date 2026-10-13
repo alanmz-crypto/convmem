@@ -15,7 +15,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4) and
     # issue #268 D1 scratch diagnosis harness on the merged branch.
     # Refreshed for issue #286 stage-2 wedge fixes corrective 2 (lazy wedge digest).
-    "watch.py": "e141ede80c3fbd8a479d96dca609ec9443d1bdf0a984b504992b6db2e55791d8",
+    # Refreshed for issue #286 stage-2 corrective 6 (Claude deferral, unknown digest hold).
+    "watch.py": "22d33df540a9519d6a7f4361ee4e05f25c94fbad032285c08976fe1ce7950ae0",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
@@ -32,7 +33,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 stage-2 wedge fixes corrective 3 (export rollback diagnostic).
     # Refreshed for issue #286 stage-2 wedge fixes corrective 4 (export rollback id check).
     # Refreshed for issue #286 stage-2 wedge fixes corrective 5 (preimage semantic match).
-    "incremental_jsonl.py": "b39bfb8b4210c1c9083ffa3f781af3fa0aa5a4c81d8a5e8e53010f2daedc3d59",
+    # Refreshed for issue #286 stage-2 corrective 6 (dedupe rollback, retry gates, tamper log).
+    "incremental_jsonl.py": "f4a8bc45d2b41a635581591b84d229eb5f57c2b18db7c14852a690ae7d17737c",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

@@ -288,46 +288,52 @@ def _apply_approved_dedupe_impl(
             raise ValueError(f"dedupe_queue line {line} out of range (1–{len(rows)})")
         indices = [line - 1]
 
-    _pw = open_production_write_store(entrypoint="refine.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    totals = {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
-    try:
-        for idx in indices:
-            rec = rows[idx]
-            row_stats = apply_dedupe_queue_record(store, cfg, rec, verbose=verbose)
-            totals["processed"] += 1
-            for k in ("tombstoned", "skipped", "errors"):
-                totals[k] += row_stats[k]
-            if row_stats["tombstoned"] or (
-                row_stats["skipped"] and rec.get("status") in APPROVED_DEDUPE_STATUSES
-            ):
-                if row_stats["tombstoned"]:
-                    rec["chroma_applied"] = True
-                    rec["chroma_applied_at"] = _now_iso()
-                elif rec.get("chroma_applied") is not True:
-                    unit = store.get_unit((rec.get("tombstone_id") or ""))
-                    if unit and is_superseded(unit.get("metadata") or {}):
-                        rec["chroma_applied"] = True
-                        rec["chroma_applied_at"] = rec.get("chroma_applied_at") or _now_iso()
-        save_dedupe_queue(cfg, rows)
+    from purge_locks import index_write_flock
 
-        all_stats = load_stats(cfg)
-        all_stats.setdefault("jobs", {})
-        all_stats["jobs"]["approve_dedupe"] = {
-            "last_run": _now_iso(),
-            **totals,
-        }
-        save_stats(cfg, all_stats)
+    cfg = load_config()
+    with index_write_flock(cfg):
+        _pw = open_production_write_store(entrypoint="refine.write")
+        store = _pw.store
+        cfg = _pw.live_cfg
+        totals = {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
         try:
-            from brief import refresh_brief_after_change
+            for idx in indices:
+                rec = rows[idx]
+                row_stats = apply_dedupe_queue_record(store, cfg, rec, verbose=verbose)
+                totals["processed"] += 1
+                for k in ("tombstoned", "skipped", "errors"):
+                    totals[k] += row_stats[k]
+                if row_stats["tombstoned"] or (
+                    row_stats["skipped"] and rec.get("status") in APPROVED_DEDUPE_STATUSES
+                ):
+                    if row_stats["tombstoned"]:
+                        rec["chroma_applied"] = True
+                        rec["chroma_applied_at"] = _now_iso()
+                    elif rec.get("chroma_applied") is not True:
+                        unit = store.get_unit((rec.get("tombstone_id") or ""))
+                        if unit and is_superseded(unit.get("metadata") or {}):
+                            rec["chroma_applied"] = True
+                            rec["chroma_applied_at"] = (
+                                rec.get("chroma_applied_at") or _now_iso()
+                            )
+            save_dedupe_queue(cfg, rows)
 
-            refresh_brief_after_change(cfg)
-        except Exception:
-            pass
-        return totals
-    finally:
-        store.close()
+            all_stats = load_stats(cfg)
+            all_stats.setdefault("jobs", {})
+            all_stats["jobs"]["approve_dedupe"] = {
+                "last_run": _now_iso(),
+                **totals,
+            }
+            save_stats(cfg, all_stats)
+            try:
+                from brief import refresh_brief_after_change
+
+                refresh_brief_after_change(cfg)
+            except Exception:
+                pass
+            return totals
+        finally:
+            store.close()
 
 
 def job_chroma_dedupe(
@@ -760,36 +766,39 @@ def _run_job_impl(
     if job not in _JOBS:
         raise ValueError(f"Unknown job {job!r}. Choose from: {', '.join(JOB_NAMES)}")
 
+    from purge_locks import index_write_flock
+
     cfg = load_config()
-    _pw = open_production_write_store(entrypoint="refine.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    limiter = CostLimiter(_cost_caps(cfg))
+    with index_write_flock(cfg):
+        _pw = open_production_write_store(entrypoint="refine.write")
+        store = _pw.store
+        cfg = _pw.live_cfg
+        limiter = CostLimiter(_cost_caps(cfg))
 
-    kwargs: dict[str, Any] = {"limit": limit, "verbose": verbose}
-    if job in ("backfill_domain", "semantic_dedupe"):
-        kwargs["limiter"] = limiter
+        kwargs: dict[str, Any] = {"limit": limit, "verbose": verbose}
+        if job in ("backfill_domain", "semantic_dedupe"):
+            kwargs["limiter"] = limiter
 
-    try:
-        result = _JOBS[job](store, cfg, **kwargs)
-        result.setdefault("llm_calls", 0)
-
-        all_stats = load_stats(cfg)
-        all_stats.setdefault("jobs", {})
-        all_stats["jobs"][job] = {
-            "last_run": _now_iso(),
-            **result,
-        }
-        save_stats(cfg, all_stats)
         try:
-            from brief import refresh_brief_after_change
+            result = _JOBS[job](store, cfg, **kwargs)
+            result.setdefault("llm_calls", 0)
 
-            refresh_brief_after_change(cfg)
-        except Exception:
-            pass
-        return result
-    finally:
-        store.close()
+            all_stats = load_stats(cfg)
+            all_stats.setdefault("jobs", {})
+            all_stats["jobs"][job] = {
+                "last_run": _now_iso(),
+                **result,
+            }
+            save_stats(cfg, all_stats)
+            try:
+                from brief import refresh_brief_after_change
+
+                refresh_brief_after_change(cfg)
+            except Exception:
+                pass
+            return result
+        finally:
+            store.close()
 
 
 def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:

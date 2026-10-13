@@ -606,14 +606,78 @@ def _check_index_gate() -> DoctorCheck:
     return DoctorCheck("index_gate", True, "0 index failures in 7d")
 
 
+def _check_incremental_rollback_tamper(cfg: dict) -> DoctorCheck:
+    from datetime import datetime, timedelta, timezone
+
+    from config import incremental_jsonl_settings
+
+    settings = incremental_jsonl_settings(cfg)
+    if not settings.enabled:
+        return DoctorCheck("incremental_rollback_tamper", True, "incremental disabled")
+    root = Path(settings.state_dir).expanduser()
+    if not root.is_dir():
+        return DoctorCheck("incremental_rollback_tamper", True, "0 rollback tamper records")
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    rows: list[str] = []
+    for path in sorted(root.glob("**/rollback_export_tamper.jsonl")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            recorded = str(payload.get("recorded_at") or "")
+            try:
+                when = datetime.strptime(recorded, "%Y-%m-%dT%H:%M:%SZ").replace(
+                    tzinfo=timezone.utc
+                )
+            except ValueError:
+                continue
+            if when >= cutoff:
+                rows.append(
+                    f"{payload.get('source_path')} tx={payload.get('transaction_id')} "
+                    f"dropped={payload.get('dropped_unexpected_export_lines')}"
+                )
+    if not rows:
+        return DoctorCheck("incremental_rollback_tamper", True, "0 rollback tamper records (7d)")
+    detail = "; ".join(rows[:5])
+    if len(rows) > 5:
+        detail += f"; +{len(rows) - 5} more"
+    return DoctorCheck(
+        "incremental_rollback_tamper",
+        True,
+        f"{len(rows)} rollback tamper record(s) in 7d: {detail}",
+        status="warn",
+    )
+
+
 def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
     from incremental_retry_state import (
+        iter_retry_state_unavailable,
         iter_stale_incremental_transactions,
         iter_wedged_incremental_states,
     )
 
     rows = iter_wedged_incremental_states(cfg)
     stale = iter_stale_incremental_transactions(cfg)
+    unavailable = iter_retry_state_unavailable(cfg)
+    if unavailable:
+        parts = [
+            f"retry_state_unavailable at {row.get('path', '?')}" for row in unavailable[:3]
+        ]
+        if len(unavailable) > 3:
+            parts.append(f"+{len(unavailable) - 3} more unavailable retry states")
+        return DoctorCheck(
+            "wedged_incremental_transaction",
+            True,
+            "; ".join(parts),
+            status="warn",
+        )
     if not rows and not stale:
         return DoctorCheck(
             "wedged_incremental_transaction",
@@ -1730,6 +1794,7 @@ def run_doctor(
         _check_index_gate(),
         _check_native_crash_gate(),
         _check_incremental_refusals(cfg),
+        _check_incremental_rollback_tamper(cfg),
         _check_wedged_incremental_transactions(cfg),
         _check_chroma_write_guard(cfg),
         _check_chroma_audit(cfg),

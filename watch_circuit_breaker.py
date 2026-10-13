@@ -119,7 +119,9 @@ class CircuitBreakerState:
             outcome = str(entry.get("outcome") or "")
             stored_prefix = str(entry.get("prefix_sha256") or "")
             if outcome.startswith("wedged_incremental_transaction_"):
-                if live_prefix_digest and stored_prefix == live_prefix_digest:
+                if not live_prefix_digest:
+                    return True
+                if stored_prefix == live_prefix_digest:
                     return True
                 continue
             return True

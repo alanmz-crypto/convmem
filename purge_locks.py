@@ -67,13 +67,32 @@ def assert_lock_ordering_ok(*, acquiring: str) -> None:
         raise RuntimeError(
             "lock ordering violation: cannot acquire source lock while holding export lock"
         )
+    if acquiring == "source" and _index_write_depth() > 0:
+        raise RuntimeError(
+            "lock ordering violation: cannot acquire source lock while holding index write lock"
+        )
     if acquiring == "index_write" and _export_depth() > 0:
         raise RuntimeError(
             "lock ordering violation: cannot acquire index write lock while holding export lock"
         )
+    if acquiring == "index_write":
+        from chroma_write_store import production_write_session_depth
+
+        if production_write_session_depth() > 0:
+            raise RuntimeError(
+                "lock ordering violation: cannot acquire index write lock "
+                "while holding a Chroma writer session"
+            )
     if acquiring == "export" and _index_write_depth() == 0:
         raise RuntimeError(
             "lock ordering violation: cannot acquire export lock without index write lock"
+        )
+
+
+def require_index_write_lock_held() -> None:
+    if index_write_lock_depth() == 0:
+        raise RuntimeError(
+            "production Chroma mutation requires the store-wide index write lock"
         )
 
 

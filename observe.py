@@ -89,6 +89,7 @@ def ingest_observation(
     units_export: Path | None = None,
     upsert: bool = False,
     by_ledger_id: dict[str, dict] | None = None,
+    precomputed_embedding: list[float] | None = None,
 ) -> dict | None:
     """Validate, embed, and store one ledger record. Returns the stored unit or None."""
     _reject_governed_bypass(record, upsert=upsert)
@@ -108,9 +109,12 @@ def ingest_observation(
                 unit["id"] = existing["id"]
                 unit["_skipped"] = True
                 return unit
-            from llm import ollama_embed
+            if precomputed_embedding is None:
+                from llm import ollama_embed
 
-            embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
+                embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
+            else:
+                embedding = precomputed_embedding
             meta = ledger_unit_metadata(unit)
             chroma_id = existing["id"]
             store.update_unit(chroma_id, doc, embedding, meta)
@@ -120,9 +124,12 @@ def ingest_observation(
                 _upsert_jsonl_line(units_export, lid, unit)
             return unit
 
-    from llm import ollama_embed
+    if precomputed_embedding is None:
+        from llm import ollama_embed
 
-    embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
+        embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
+    else:
+        embedding = precomputed_embedding
     meta = ledger_unit_metadata(unit)
 
     store.add_unit(unit["id"], doc, embedding, meta)

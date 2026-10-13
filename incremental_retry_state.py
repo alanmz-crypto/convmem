@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 
 
+SOURCE_HOLD_THRESHOLD = 3
+
+
 def _state_path(paths: dict | None) -> Path | None:
     if not paths:
         return None
@@ -26,10 +29,90 @@ def _read(path: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _write(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def clear_incremental_retry_state(paths: dict | None) -> None:
     path = _state_path(paths)
     if path is not None:
         path.unlink(missing_ok=True)
+
+
+def classify_incremental_escape(exc: BaseException) -> str:
+    from ingest import ProviderUnavailableError
+
+    if isinstance(exc, ProviderUnavailableError):
+        return "provider_unavailable"
+    if isinstance(exc, OSError):
+        return "artifact_write_failed"
+    return f"unexpected_{type(exc).__name__}"
+
+
+def load_incremental_retry_state(paths: dict | None) -> dict[str, Any] | None:
+    state_path = _state_path(paths)
+    if state_path is None:
+        return None
+    return _read(state_path)
+
+
+def _ensure_retry_state_available(state_path: Path) -> None:
+    import incremental_jsonl as inc
+
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        if state_path.is_file():
+            state_path.read_text(encoding="utf-8")
+        else:
+            state_path.write_text("{}\n", encoding="utf-8")
+            state_path.unlink(missing_ok=True)
+    except OSError as exc:
+        raise inc.IncrementalJsonlError(
+            "retry_state_unavailable",
+            "incremental retry state could not be read or written",
+        ) from exc
+
+
+def enforce_incremental_retry_gates(
+    paths: dict | None,
+    *,
+    path_key: str,
+    prefix_digest: str,
+) -> None:
+    """Refuse before paid transform work when retry state demands it."""
+    import incremental_jsonl as inc
+
+    state_path = _state_path(paths)
+    if state_path is None:
+        return
+    _ensure_retry_state_available(state_path)
+    prior = _read(state_path)
+    if not prior:
+        return
+    error_code = str(prior.get("error_code") or "")
+    stored_prefix = str(prior.get("prefix_digest") or "")
+    consecutive = int(prior.get("consecutive") or 0)
+    source_consecutive = int(prior.get("source_consecutive") or 0)
+    if source_consecutive >= SOURCE_HOLD_THRESHOLD and error_code:
+        outcome = inc.wedged_incremental_outcome(error_code)
+        head = f"{outcome}:{prefix_digest}" if prefix_digest else outcome
+        diagnostic = inc.wedged_incremental_diagnostic(
+            str(prior.get("transaction_id") or ""), path_key
+        )
+        raise inc.IncrementalJsonlError("live_route_refused", f"{head}\n{diagnostic}")
+    if (
+        consecutive >= 2
+        and error_code
+        and stored_prefix == prefix_digest
+        and prefix_digest
+    ):
+        outcome = inc.wedged_incremental_outcome(error_code)
+        head = f"{outcome}:{prefix_digest}"
+        diagnostic = inc.wedged_incremental_diagnostic(
+            str(prior.get("transaction_id") or ""), path_key
+        )
+        raise inc.IncrementalJsonlError("live_route_refused", f"{head}\n{diagnostic}")
 
 
 def record_incremental_retry_failure(
@@ -44,20 +127,27 @@ def record_incremental_retry_failure(
     state_path = _state_path(paths)
     if state_path is None:
         return False
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    prior = _read(state_path) or {}
-    repeat = (
-        prior.get("error_code") == error_code
-        and prior.get("prefix_digest") == prefix_digest
-    )
-    payload = {
-        "source_path": path_key,
-        "transaction_id": transaction_id,
-        "error_code": error_code,
-        "prefix_digest": prefix_digest,
-        "consecutive": int(prior.get("consecutive") or 0) + 1 if repeat else 1,
-    }
-    state_path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    try:
+        prior = _read(state_path) or {}
+        repeat = (
+            prior.get("error_code") == error_code
+            and prior.get("prefix_digest") == prefix_digest
+            and bool(prefix_digest)
+        )
+        source_repeat = prior.get("error_code") == error_code and bool(error_code)
+        payload = {
+            "source_path": path_key,
+            "transaction_id": transaction_id,
+            "error_code": error_code,
+            "prefix_digest": prefix_digest,
+            "consecutive": int(prior.get("consecutive") or 0) + 1 if repeat else 1,
+            "source_consecutive": int(prior.get("source_consecutive") or 0) + 1
+            if source_repeat
+            else 1,
+        }
+        _write(state_path, payload)
+    except OSError:
+        return False
     return repeat
 
 
@@ -80,8 +170,25 @@ def iter_wedged_incremental_states(cfg: dict) -> list[dict[str, Any]]:
         payload = _read(path)
         if not payload:
             continue
-        if int(payload.get("consecutive") or 0) >= 2:
+        consecutive = int(payload.get("consecutive") or 0)
+        source_consecutive = int(payload.get("source_consecutive") or 0)
+        if consecutive >= 2 or source_consecutive >= SOURCE_HOLD_THRESHOLD:
             rows.append(payload)
+    return rows
+
+
+def iter_retry_state_unavailable(cfg: dict) -> list[dict[str, Any]]:
+    """Directories where retry_state.json exists but is unreadable."""
+    root = _incremental_state_root(cfg)
+    if root is None:
+        return []
+    rows: list[dict[str, Any]] = []
+    for path in sorted(root.glob("**/retry_state.json")):
+        try:
+            raw = path.read_text(encoding="utf-8")
+            json.loads(raw)
+        except (OSError, json.JSONDecodeError):
+            rows.append({"path": str(path.parent), "retry_state": str(path)})
     return rows
 
 

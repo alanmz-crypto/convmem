@@ -623,6 +623,10 @@ def source_prefix_digest_for_watch(path: str) -> str:
 
 def should_defer_index_file(cfg: dict, path: str) -> bool:
     """True when a live watcher owns indexing for this watchable path."""
+    from adapters.detect import detect_format
+
+    if detect_format(path) == "jsonl_claude_session":
+        return False
     candidate = Path(path).expanduser()
     if not is_watchable(candidate):
         return False

@@ -11,6 +11,7 @@ cache plus source-scoped Chroma before-image rollback.
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -19,6 +20,7 @@ import sys
 import tempfile
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -670,16 +672,25 @@ class IncrementalJsonlCoordinator:
             adapter_format=self.format_spec.format_id,
         )
 
+    @contextmanager
     def _session(self):
         from chroma_write_store import production_chroma_write_session
+        from purge_locks import index_write_flock, index_write_lock_depth
 
-        return production_chroma_write_session(
+        lease = production_chroma_write_session(
             self.config_path,
             lock_path=self.writer_lock,
             attest_dir=self.attest_dir,
             census_dir=self.census_dir,
             entrypoint="incremental_jsonl.apply",
         )
+        if index_write_lock_depth() > 0:
+            with lease as session:
+                yield session
+            return
+        with index_write_flock(self.cfg):
+            with lease as session:
+                yield session
 
     @staticmethod
     def _validate_incremental_prefix_view(view) -> None:
@@ -1630,14 +1641,44 @@ class IncrementalJsonlCoordinator:
         for name, payload in (prepared_files or {}).items():
             self._restore_file_preimage(prepared_dir / name, payload)
 
-    def _restore_dedupe_files(self, dedupe_files: dict | None) -> None:
-        if not dedupe_files:
+    def _restore_dedupe_files(self, transaction_id: str) -> None:
+        if not transaction_id:
             return
         paths = self._dedupe_restore_paths()
         for name in DEDUPE_FILENAMES:
-            if name not in dedupe_files:
+            path = paths[name]
+            kept: list[bytes] = []
+            if path.is_file():
+                with path.open("rb") as handle:
+                    for raw in handle:
+                        line = raw.rstrip(b"\n")
+                        if not line:
+                            continue
+                        try:
+                            row = json.loads(line)
+                        except json.JSONDecodeError:
+                            kept.append(raw if raw.endswith(b"\n") else raw + b"\n")
+                            continue
+                        if str(row.get("transaction_id") or "") == transaction_id:
+                            continue
+                        kept.append(raw if raw.endswith(b"\n") else raw + b"\n")
+            if not kept:
+                path.unlink(missing_ok=True)
                 continue
-            self._restore_file_preimage(paths[name], dedupe_files[name])
+            temp = self._export_temp(path)
+            temp_path = Path(temp.name)
+            try:
+                for raw in kept:
+                    temp.write(raw)
+                temp.flush()
+                os.fsync(temp.fileno())
+                temp.close()
+                os.replace(temp_path, path)
+                _fsync_dir(path.parent)
+            finally:
+                if not temp.closed:
+                    temp.close()
+                temp_path.unlink(missing_ok=True)
 
     @staticmethod
     def _export_preimage_unit_ids(preimage: dict) -> set[str]:
@@ -1731,7 +1772,18 @@ class IncrementalJsonlCoordinator:
             preserve_recovery_authority=preserve_recovery_authority,
         )
         self._restore_prepared_files(rollback.get("prepared_files"))
-        self._restore_dedupe_files(rollback.get("dedupe_files"))
+        transaction_id = ""
+        tx_payload = _read_json(self.paths["transaction"])
+        if isinstance(tx_payload, dict):
+            transaction_id = str(tx_payload.get("transaction_id") or "")
+        if not transaction_id:
+            state_files = rollback.get("state_files") or {}
+            tx_text = state_files.get("transaction")
+            if isinstance(tx_text, str) and tx_text.strip():
+                parsed = json.loads(tx_text)
+                if isinstance(parsed, dict):
+                    transaction_id = str(parsed.get("transaction_id") or "")
+        self._restore_dedupe_files(transaction_id)
 
     @staticmethod
     def _export_temp(export_path: Path):  # pylint: disable=consider-using-with
@@ -1837,6 +1889,19 @@ class IncrementalJsonlCoordinator:
                 f"lines for {self.path_key}",
                 file=sys.stderr,
             )
+            transaction_id = ""
+            tx_payload = _read_json(self.paths["transaction"])
+            if isinstance(tx_payload, dict):
+                transaction_id = str(tx_payload.get("transaction_id") or "")
+            record = {
+                "recorded_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "source_path": self.path_key,
+                "transaction_id": transaction_id,
+                "dropped_unexpected_export_lines": dropped_unexpected,
+            }
+            tamper_path = self.state_dir / "rollback_export_tamper.jsonl"
+            with tamper_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, sort_keys=True) + "\n")
 
     def _reconcile_export(self) -> None:
         from purge_locks import export_flock
@@ -2718,8 +2783,23 @@ def maybe_route_incremental(
         file_hash=file_hash,
         processed=processed,
     )
+    from watch import source_prefix_digest_for_watch
+    from incremental_retry_state import (
+        classify_incremental_escape,
+        enforce_incremental_retry_gates,
+    )
+
+    prefix_digest = source_prefix_digest_for_watch(path)
+    coordinator.last_evidence["prefix_sha256"] = prefix_digest
+    enforce_incremental_retry_gates(
+        getattr(coordinator, "paths", None),
+        path_key=path_key,
+        prefix_digest=prefix_digest,
+    )
     try:
         result = coordinator.run()
+    except (KeyboardInterrupt, SystemExit):
+        raise
     except IncrementalJsonlError as exc:
         if exc.code == "live_route_refused" or isolated:
             raise
@@ -2728,6 +2808,14 @@ def maybe_route_incremental(
             path_key=path_key,
             failure_code=exc.code,
             re_raise=exc,
+        )
+    except Exception as exc:
+        failure_code = classify_incremental_escape(exc)
+        _raise_incremental_retry_refusal(
+            coordinator,
+            path_key=path_key,
+            failure_code=failure_code,
+            re_raise=IncrementalJsonlError(failure_code, str(exc)),
         )
     if result.outcome in {"committed", "unchanged"}:
         from incremental_retry_state import clear_incremental_retry_state
@@ -2755,6 +2843,12 @@ def _raise_incremental_retry_refusal(
     digest = str(
         (getattr(coordinator, "last_evidence", {}) or {}).get("prefix_sha256") or ""
     )
+    if not digest:
+        from watch import source_prefix_digest_for_watch
+
+        source = getattr(coordinator, "source", None)
+        if source is not None:
+            digest = source_prefix_digest_for_watch(str(source))
     transaction_id = ""
     tx_path = getattr(coordinator, "paths", {}).get("transaction")
     if tx_path is not None and Path(tx_path).is_file():

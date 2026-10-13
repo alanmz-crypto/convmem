@@ -317,6 +317,23 @@ _SKIP_SCAN_PREFIXES = (
 )
 
 
+def _skip_repo_scan_path(rel: str) -> bool:
+    if rel.startswith("review-bundles/"):
+        import subprocess
+
+        proc = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "--error-unmatch", rel],
+            capture_output=True,
+            check=False,
+        )
+        return proc.returncode != 0
+    return any(
+        rel.startswith(prefix)
+        for prefix in _SKIP_SCAN_PREFIXES
+        if prefix != "review-bundles/"
+    )
+
+
 def _scan_repo_pattern(
     pattern: re.Pattern[str],
     *,
@@ -325,7 +342,7 @@ def _scan_repo_pattern(
     hits: list[str] = []
     for path in sorted(ROOT.rglob("*.py")):
         rel = str(path.relative_to(ROOT))
-        if skip_tests and any(rel.startswith(prefix) for prefix in _SKIP_SCAN_PREFIXES):
+        if skip_tests and _skip_repo_scan_path(rel):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for i, line in enumerate(text.splitlines(), 1):
@@ -493,7 +510,7 @@ def _scan_chroma_ctor_uncached() -> list[str]:
     hits: list[str] = []
     for path in sorted(ROOT.rglob("*.py")):
         rel = str(path.relative_to(ROOT))
-        if any(rel.startswith(prefix) for prefix in _SKIP_SCAN_PREFIXES):
+        if _skip_repo_scan_path(rel):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for i, line in enumerate(text.splitlines(), 1):

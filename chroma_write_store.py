@@ -131,6 +131,12 @@ def _held_writer_lease() -> _HeldWriterLease | None:
     return getattr(_writer_tls, "held", None)
 
 
+def production_write_session_depth() -> int:
+    """Nested shared writer lease depth for lock-order enforcement."""
+    held = _held_writer_lease()
+    return int(held.depth) if held is not None else 0
+
+
 def require_writer_attestation() -> WriterAttestation:
     """Return the internal writer attestation for the current execution scope.
 
@@ -1007,6 +1013,40 @@ def _session_config(path: Path) -> dict[str, Any]:
     return op.config()
 
 
+class _IndexWriteGuardedChromaStore:
+    """Production store wrapper: Chroma mutations require the index write lock."""
+
+    _MUTATORS = frozenset(
+        {
+            "add_summary",
+            "add_unit",
+            "update_unit_metadata",
+            "update_unit",
+            "delete_units_for_source",
+            "tombstone_units_for_source",
+            "delete_summaries_for_source",
+            "restore_source_rows",
+        }
+    )
+
+    def __init__(self, inner: ChromaStore) -> None:
+        self._inner = inner
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self._MUTATORS:
+            from purge_locks import require_index_write_lock_held
+
+            def _guarded(*args: Any, **kwargs: Any) -> Any:
+                require_index_write_lock_held()
+                return getattr(self._inner, name)(*args, **kwargs)
+
+            return _guarded
+        return getattr(self._inner, name)
+
+    def close(self) -> None:
+        self._inner.close()
+
+
 @contextmanager
 def production_chroma_write_session(
     config_path: str | Path | None = None,
@@ -1046,9 +1086,10 @@ def production_chroma_write_session(
             create_collections=create_collections,
             use_strict_validator=True,
         )
+        guarded = _IndexWriteGuardedChromaStore(store)
         try:
             yield ProductionWriteSession(
-                store=store, live_cfg=live_cfg, decision=decision
+                store=guarded, live_cfg=live_cfg, decision=decision
             )
         finally:
             store.close()
@@ -1106,7 +1147,9 @@ def open_production_write_store(
             on_close=_release,
         )
         return ProductionWriteSession(
-            store=store, live_cfg=live_cfg, decision=decision
+            store=_IndexWriteGuardedChromaStore(store),
+            live_cfg=live_cfg,
+            decision=decision,
         )
     except Exception:
         _release()
