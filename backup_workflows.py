@@ -29,6 +29,7 @@ from restic_snapshot import (
     EXIT_OK,
     EXIT_STALE,
     EXIT_WRONG_PATH,
+    REASON_FUTURE_SNAPSHOT_TIME,
     RESTIC_RESERVED_EXITS,
     BackupContext,
     BackupProfile,
@@ -40,6 +41,7 @@ from restic_snapshot import (
     check_snapshot,
     copy_snapshot_to_external,
     ensure_repository_initialized,
+    evaluation_instant,
     resolve_copy_destination,
     resolve_snapshot,
     restore_snapshot,
@@ -56,7 +58,7 @@ STATUS_SKIP_DISABLED = "SKIP_DISABLED"
 
 
 @dataclass(frozen=True)
-class WorkflowOutcome:
+class WorkflowOutcome:  # pylint: disable=too-many-instance-attributes
     """Structured result shared by all backup workflows."""
 
     status: str
@@ -66,6 +68,7 @@ class WorkflowOutcome:
     destination: SnapshotRef | None = None
     argv: tuple[str, ...] = ()
     details: dict[str, Any] = field(default_factory=dict)
+    reason: str | None = None
 
     @property
     def ok(self) -> bool:
@@ -79,6 +82,8 @@ class WorkflowOutcome:
             "argv": list(self.argv),
             "details": dict(self.details),
         }
+        if self.reason is not None:
+            payload["reason"] = self.reason
         if self.source is not None:
             payload["source"] = self.source.to_dict()
         if self.destination is not None:
@@ -95,6 +100,7 @@ def _fail_from_resolver(exc: ResolverError, *, prefix: str = "") -> WorkflowOutc
         status=STATUS_FAIL,
         message=msg,
         exit_code=exc.exit_code,
+        reason=exc.reason,
     )
 
 
@@ -135,6 +141,9 @@ def ensure_current_snapshot(
     """Ensure a correct-path current-day snapshot exists (or report status).
 
     Never falls back to tag-only / ``--latest`` selection after resolver failure.
+    A future-time snapshot is never backupable: it fails with EXIT_STALE and its
+    reason, including under ``dry_run``. ``check_only`` is a reachability probe:
+    eligibility is unchecked and its PASS never licenses a write.
     """
     try:
         check_restic_available(ctx.restic_bin)
@@ -147,10 +156,15 @@ def ensure_current_snapshot(
                     status=STATUS_PASS,
                     message=(
                         f"toolchain OK (snapshot={ref.id[:12]}… "
-                        f"tag={ctx.default_tag()}, repo={ctx.local_repository})"
+                        f"tag={ctx.default_tag()}, repo={ctx.local_repository}; "
+                        f"eligibility unchecked)"
                     ),
                     source=ref,
-                    details={"freshness": "present", "check_only": True},
+                    details={
+                        "freshness": "present",
+                        "check_only": True,
+                        "eligibility": "unchecked",
+                    },
                 )
             except ResolverError as exc:
                 # Configured probe — surface as FAIL, never SKIP/PASS falsely.
@@ -161,21 +175,26 @@ def ensure_current_snapshot(
                         status=STATUS_PASS,
                         message=(
                             f"toolchain OK (freshness=stale, "
-                            f"repo={ctx.local_repository})"
+                            f"repo={ctx.local_repository}; eligibility unchecked)"
                         ),
                         exit_code=EXIT_OK,
-                        details={"freshness": "stale", "check_only": True},
+                        details={
+                            "freshness": "stale",
+                            "check_only": True,
+                            "eligibility": "unchecked",
+                        },
                     )
                 return WorkflowOutcome(
                     status=STATUS_PASS,
                     message=(
                         f"toolchain OK (freshness=none/error={exc.exit_code}, "
-                        f"repo={ctx.local_repository})"
+                        f"repo={ctx.local_repository}; eligibility unchecked)"
                     ),
                     exit_code=EXIT_OK,
                     details={
                         "freshness": "none",
                         "check_only": True,
+                        "eligibility": "unchecked",
                         "resolver_exit": exc.exit_code,
                         "resolver_message": str(exc),
                     },
@@ -183,8 +202,11 @@ def ensure_current_snapshot(
 
         ensure_repository_initialized(ctx)
 
+        instant = evaluation_instant()
         try:
-            ref = resolve_snapshot(ctx, require_current_local_day=True)
+            ref = resolve_snapshot(
+                ctx, require_current_local_day=True, evaluated_at=instant
+            )
             return WorkflowOutcome(
                 status=STATUS_PASS,
                 message=(
@@ -192,14 +214,18 @@ def ensure_current_snapshot(
                     f"(id={ref.id} tag={ctx.default_tag()})"
                 ),
                 source=ref,
-                details={"freshness": "current", "backed_up": False},
+                details={
+                    "freshness": "current",
+                    "backed_up": False,
+                    "evaluated_at": instant.isoformat(),
+                },
             )
         except ResolverError as first:
             backupable = first.exit_code in {
                 EXIT_STALE,
                 EXIT_NO_TAGGED_SNAPSHOT,
                 EXIT_WRONG_PATH,
-            }
+            } and first.reason != REASON_FUTURE_SNAPSHOT_TIME
             if require_current or dry_run or not backupable:
                 if dry_run and backupable and not require_current:
                     return WorkflowOutcome(
@@ -214,6 +240,7 @@ def ensure_current_snapshot(
                             "dry_run": True,
                             "resolver_exit": first.exit_code,
                         },
+                        reason=first.reason,
                     )
                 return WorkflowOutcome(
                     status=STATUS_FAIL,
@@ -223,6 +250,7 @@ def ensure_current_snapshot(
                     ),
                     exit_code=first.exit_code,
                     details={"resolver_exit": first.exit_code},
+                    reason=first.reason,
                 )
 
             # Snapshot-if-stale: backup then re-resolve. No legacy fallback.
@@ -238,9 +266,14 @@ def ensure_current_snapshot(
                     "evidence_captured_at": evidence.get("captured_at"),
                 }
             ref, argv = backup_data_root(ctx)
+            # Fresh instant: the new snapshot postdates the pre-backup clock.
+            post_instant = evaluation_instant()
             try:
                 current = resolve_snapshot(
-                    ctx, require_current_local_day=True, requested_id=ref.id
+                    ctx,
+                    require_current_local_day=True,
+                    requested_id=ref.id,
+                    evaluated_at=post_instant,
                 )
             except ResolverError as second:
                 return WorkflowOutcome(
@@ -252,8 +285,13 @@ def ensure_current_snapshot(
                     exit_code=second.exit_code,
                     source=ref,
                     argv=argv,
+                    reason=second.reason,
                 )
-            details = {"freshness": "current", "backed_up": True}
+            details = {
+                "freshness": "current",
+                "backed_up": True,
+                "evaluated_at": post_instant.isoformat(),
+            }
             details.update(evidence_meta)
             return WorkflowOutcome(
                 status=STATUS_PASS,
@@ -304,6 +342,7 @@ def copy_current_snapshot_offsite(ctx: BackupContext) -> WorkflowOutcome:
             status=STATUS_FAIL,
             message=str(exc),
             exit_code=exc.exit_code,
+            reason=exc.reason,
         )
 
 
@@ -329,6 +368,7 @@ def check_local_health(ctx: BackupContext) -> WorkflowOutcome:
             status=STATUS_FAIL,
             message=f"local restic health failed: {exc}",
             exit_code=exc.exit_code,
+            reason=exc.reason,
         )
 
 
@@ -371,6 +411,7 @@ def check_offsite_health(ctx: BackupContext) -> WorkflowOutcome:
             message=f"offsite health: {exc}",
             exit_code=exc.exit_code,
             details={"resolver_exit": exc.exit_code},
+            reason=exc.reason,
         )
 
 
@@ -479,6 +520,8 @@ def _print_outcome(outcome: WorkflowOutcome, *, as_json: bool = False) -> int:
             STATUS_SKIP_DISABLED: "SKIP",
         }.get(outcome.status, outcome.status)
         print(f"backup-workflows: {prefix}: {outcome.message}", file=stream)
+        if outcome.reason is not None:
+            print(f"backup-workflows: reason={outcome.reason}", file=stream)
         if outcome.source is not None:
             print(f"backup-workflows: source_id={outcome.source.id}", file=stream)
         if outcome.destination is not None:

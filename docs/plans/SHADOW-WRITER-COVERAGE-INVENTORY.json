@@ -5,8 +5,8 @@
   "chroma_write_session_production_call_sites": [],
   "production_chroma_write_session_call_sites": [
     "convmem.py:1777",
-    "convmem.py:421",
-    "convmem.py:525",
+    "convmem.py:420",
+    "convmem.py:523",
     "convmem.py:715",
     "incremental_jsonl.py:663",
     "ingest.py:1239",
@@ -56,7 +56,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 421,
+      "line": 420,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.add\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -65,7 +65,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 525,
+      "line": 523,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.verify\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",

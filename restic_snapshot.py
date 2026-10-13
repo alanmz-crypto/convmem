@@ -86,12 +86,23 @@ def captures_backup_evidence(profile: BackupProfile) -> bool:
     }
 
 
-class ResolverError(Exception):
-    """Checked failure with a numeric exit code."""
+# Machine-readable freshness reasons carried with EXIT_STALE.
+REASON_STALE_SNAPSHOT = "stale_snapshot"
+REASON_FUTURE_SNAPSHOT_TIME = "future_snapshot_time"
 
-    def __init__(self, message: str, exit_code: int = EXIT_ACTION_FAILURE):
+
+class ResolverError(Exception):
+    """Checked failure with a numeric exit code and optional machine reason."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: int = EXIT_ACTION_FAILURE,
+        reason: str | None = None,
+    ):
         super().__init__(message)
         self.exit_code = exit_code
+        self.reason = reason
 
 
 # ---------------------------------------------------------------------------
@@ -541,10 +552,45 @@ def normalize_snapshot_paths(snap_paths: Sequence[str], data_root: Path) -> list
     return normalized
 
 
-def _is_current_local_day(dt: datetime) -> bool:
-    local_dt = dt.astimezone()
-    today = datetime.now().astimezone().date()
-    return local_dt.date() >= today
+def evaluation_instant() -> datetime:
+    """One aware local instant (and its UTC offset) for a single resolution."""
+    return datetime.now().astimezone()
+
+
+def snapshot_freshness(dt: datetime, evaluated_at: datetime) -> str | None:
+    """Return None when current, else a freshness reason.
+
+    Current means the same local date as ``evaluated_at`` and not later than it.
+    A later timestamp is suspicious future time, never silently accepted.
+    """
+    if dt > evaluated_at:
+        return REASON_FUTURE_SNAPSHOT_TIME
+    if dt.astimezone(evaluated_at.tzinfo).date() != evaluated_at.date():
+        return REASON_STALE_SNAPSHOT
+    return None
+
+
+def _is_current_local_day(dt: datetime, evaluated_at: datetime | None = None) -> bool:
+    instant = evaluated_at if evaluated_at is not None else evaluation_instant()
+    return snapshot_freshness(dt, instant) is None
+
+
+def _require_fresh(ref: SnapshotRef, evaluated_at: datetime, label: str) -> None:
+    reason = snapshot_freshness(ref.time, evaluated_at)
+    if reason == REASON_FUTURE_SNAPSHOT_TIME:
+        raise ResolverError(
+            f"{label} {ref.id[:12]} has future time {ref.time.isoformat()} "
+            f"(evaluated at {evaluated_at.isoformat()}); refusing suspicious snapshot",
+            EXIT_STALE,
+            reason,
+        )
+    if reason == REASON_STALE_SNAPSHOT:
+        raise ResolverError(
+            f"{label} {ref.id[:12]} is stale (not current local day "
+            f"{evaluated_at.date().isoformat()})",
+            EXIT_STALE,
+            reason,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -760,13 +806,20 @@ def resolve_snapshot(
     requested_id: str | None = None,
     required_tag: str | None = None,
     repository: RepositoryRef | None = None,
+    evaluated_at: datetime | None = None,
 ) -> SnapshotRef:
     """Select a tagged snapshot by exact path filter — never ``--latest``.
 
     Defaults:
     - complete-data-v2 → tag ``convmem-data-v2``
     - legacy-chroma → tag ``convmem-chroma`` (compatibility only; never proves v2)
+
+    With ``require_current_local_day`` the newest correct-path snapshot must be
+    current at one evaluation instant (captured here unless supplied). A future
+    or stale newest snapshot fails with EXIT_STALE and a reason; an older
+    candidate is never substituted.
     """
+    instant = evaluated_at if evaluated_at is not None else evaluation_instant()
     check_restic_available(ctx.restic_bin)
     tag = required_tag if required_tag is not None else ctx.default_tag()
     repo = repository or ctx.local_repository
@@ -799,11 +852,8 @@ def resolve_snapshot(
             )
         ref = matches[0]
         normalize_snapshot_paths(list(ref.paths), expected_root)
-        if require_current_local_day and not _is_current_local_day(ref.time):
-            raise ResolverError(
-                f"requested snapshot {sid[:12]} is stale (not current local day)",
-                EXIT_STALE,
-            )
+        if require_current_local_day:
+            _require_fresh(ref, instant, "requested snapshot")
         return ref
 
     correct_path_refs: list[SnapshotRef] = []
@@ -822,11 +872,8 @@ def resolve_snapshot(
 
     correct_path_refs.sort(key=lambda r: r.time, reverse=True)
     best = correct_path_refs[0]
-    if require_current_local_day and not _is_current_local_day(best.time):
-        raise ResolverError(
-            "correct-path snapshot exists but is stale (not current local day)",
-            EXIT_STALE,
-        )
+    if require_current_local_day:
+        _require_fresh(best, instant, "correct-path snapshot")
     return best
 
 

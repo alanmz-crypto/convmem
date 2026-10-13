@@ -23,10 +23,16 @@ fast recovery without reindexing.
 ## Restic snapshot gate (live Chroma writes)
 
 **Policy:** fail-closed. If Restic cannot verify or create a current snapshot, **do not**
-run live `record --approve-last` or `add --upsert` on the production corpus.
+run live `record --approve-last`, `add --upsert` or `propose_decision --recover` on the
+production corpus. Since Safe Harbor T2 the CLI gate is bound to the operation: it needs an
+explicit `complete-data-v2` profile whose Chroma directory matches the write target and
+whose data root contains every affected path; `CONVMEM_SKIP_RESTIC_GATE=1` is refused
+outside an explicit, canonically isolated test/lab context (ROADMAP "Pre-live-write gate").
 
-**Stale threshold (pinned):** latest snapshot tagged `convmem-chroma` must be from the
-**current local calendar day** (snapshot time ≥ local midnight today).
+**Freshness (pinned):** the newest correct-path snapshot must be from the **current local
+calendar day** and not later than the evaluation instant. A future-dated snapshot fails with
+exit 25 and reason `future_snapshot_time` — no backup, no fallback to an older snapshot.
+Investigate the clock or snapshot rather than retrying.
 
 ### One-time setup
 
@@ -45,7 +51,7 @@ Back up this file offline; without it you cannot restore from the Restic repo.
 
 ### Live writes
 
-`convmem record --approve-last` and `convmem add --file … --upsert` run the Restic gate **fail-closed** before writing Chroma. **Scope:** only these overwrite/durable-merge paths gate; `convmem index` and plain `add` (no `--upsert`) are append-only and reindexable, so they are intentionally ungated (see ROADMAP "Pre-live-write gate"). Gating every mutation was declined by design.
+`convmem record --approve-last`, `convmem add --file … --upsert` and `convmem propose_decision --recover <id>` run the bound Restic gate **fail-closed** before opening Chroma or changing approval state. **Scope:** only these overwrite/durable-merge paths gate; `convmem index`, plain `add` (no `--upsert`) and `--no-index` approval are append-only or index-free and reindexable, so they are intentionally ungated (see ROADMAP "Pre-live-write gate"). Gating every mutation was declined by design. Direct Python callers of the approval/recovery helpers are not gated by T2; that remains with Safe Harbor T4.
 
 Optional wrapper (same gate, then `convmem`):
 

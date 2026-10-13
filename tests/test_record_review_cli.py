@@ -28,6 +28,8 @@ class RecordReviewCliTests(unittest.TestCase):
                 "ollama_host": "http://localhost:11434",
             },
         }
+        self.config_file = self.tmp / "config.toml"
+        self.config_file.write_text("", encoding="utf-8")
         self.runner = CliRunner()
 
     def tearDown(self):
@@ -35,6 +37,8 @@ class RecordReviewCliTests(unittest.TestCase):
 
     def _invoke(self, args, *, input_text=None):
         with patch("config.load_config", return_value=self.cfg), patch(
+            "config.CONFIG_PATH", self.config_file
+        ), patch(
             "runtime_guard.require_write_consent", return_value=None
         ):
             return self.runner.invoke(convmem.app, args, input=input_text)
@@ -115,7 +119,7 @@ class RecordReviewCliTests(unittest.TestCase):
     def test_approve_cancel_writes_nothing(self):
         rec = self._seed()
         q_before = queue_path(self.cfg).read_text(encoding="utf-8")
-        with patch("restic_gate.ensure_chroma_snapshot_for_live_write") as snap, patch(
+        with patch("restic_gate.preflight_operation") as snap, patch(
             "propose_decision.approve", wraps=approve
         ) as wrapped_approve, patch(
             "propose_decision.approve_and_ingest"
@@ -134,7 +138,7 @@ class RecordReviewCliTests(unittest.TestCase):
     def test_approve_eof_writes_nothing(self):
         rec = self._seed()
         q_before = queue_path(self.cfg).read_text(encoding="utf-8")
-        with patch("restic_gate.ensure_chroma_snapshot_for_live_write") as snap, patch(
+        with patch("restic_gate.preflight_operation") as snap, patch(
             "propose_decision.approve_and_ingest"
         ) as ingest:
             result = self._invoke(["record", "--approve-last"], input_text="")
@@ -150,7 +154,7 @@ class RecordReviewCliTests(unittest.TestCase):
         mock_ingest = MagicMock(
             return_value=(rec, ledger, {"accepted": 1, "updated": 0, "skipped": 0})
         )
-        with patch("restic_gate.ensure_chroma_snapshot_for_live_write") as snap, patch(
+        with patch("restic_gate.preflight_operation") as snap, patch(
             "propose_decision.approve_and_ingest", mock_ingest
         ):
             result = self._invoke(["record", "--approve", rec["id"]], input_text="y\n")
@@ -171,7 +175,7 @@ class RecordReviewCliTests(unittest.TestCase):
         mock_ingest = MagicMock(
             return_value=(newer, ledger, {"accepted": 1, "updated": 0, "skipped": 0})
         )
-        with patch("restic_gate.ensure_chroma_snapshot_for_live_write"), patch(
+        with patch("restic_gate.preflight_operation"), patch(
             "propose_decision.approve_and_ingest", mock_ingest
         ):
             result = self._invoke(["record", "--approve-last"], input_text="y\n")
@@ -188,7 +192,7 @@ class RecordReviewCliTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn("── Decision draft ──", result.output)
         self.assertIn(rec["id"], result.output)
-        with patch("restic_gate.ensure_chroma_snapshot_for_live_write") as snap:
+        with patch("restic_gate.preflight_operation") as snap:
             cancelled = self._invoke(
                 ["propose_decision", "--approve-last"], input_text="n\n"
             )
@@ -223,7 +227,7 @@ class RecordReviewCliTests(unittest.TestCase):
         q_before = queue_path(self.cfg).read_text(encoding="utf-8")
 
         for pid, status in ((approved["id"], "APPROVED"), (rejected["id"], "REJECTED")):
-            with patch("restic_gate.ensure_chroma_snapshot_for_live_write") as snap, patch(
+            with patch("restic_gate.preflight_operation") as snap, patch(
                 "propose_decision.approve_and_ingest"
             ) as ingest, patch("propose_decision.approve") as do_approve:
                 result = self._invoke(["record", "--approve", pid], input_text="y\n")
