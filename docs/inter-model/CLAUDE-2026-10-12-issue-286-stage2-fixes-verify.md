@@ -13,8 +13,13 @@ Composer's corrective 4. It answers round 4 (below).
 - I ran the full suite hermetically at main `458b9f6` and at `62fe3a2`, at the
   same time and on the same disk: `env -i`, a scratch `HOME`, no API keys, and
   `tests/test_index_loud_failures.py` skipped.
-- Nothing live was touched. I compared mtimes and sizes across the live data
-  root before and after.
+- My runs touched nothing live. I compared mtimes and sizes across the live
+  data root before and after.
+  - The root did change between 12:03 and 12:06, from a running Codex
+    session's own Track A `convmem index --file` on deployed main (writer
+    attestation `ingest.write`, parent the Codex app-server).
+  - It appended 5 units for one of that session's rollouts.
+  - The watcher stayed inactive and disabled.
 
 ## Verdict (round 5)
 
@@ -32,8 +37,9 @@ paid calls.**
   shape, where the export already holds legacy-writer lines (s4).
 - **Rollback is correct in every probe.** The export comes back
   byte-for-byte.
-- **Full suite:** still running when I pushed this; I'll add the result in a
-  follow-up commit.
+- **Full suite:** main `458b9f6` and `62fe3a2` fail the same 151 tests (93
+  failures, 58 errors), so 0 fail only at the tip. The tip passes 20 more
+  tests: the branch's own. This matches Cursor's report and my round-3 run.
 
 **Still open:** the message fires on a clean rollback of a session that was
 already committed and then grew. That's the most common real shape (P1).
@@ -93,7 +99,8 @@ issue.
 
 | Run | Result |
 |---|---|
-| Full suite, main `458b9f6` against `62fe3a2` | running; result to follow |
+| Full suite, main `458b9f6` (hermetic) | 93 failed, 2896 passed, 66 skipped, 58 errors |
+| Full suite, `62fe3a2` (hermetic) | 93 failed, 2916 passed, 66 skipped, 58 errors; same 151 ids, 0 only at the tip |
 | Round-2 and round-3 probes, round-4 s1, Cursor's probe and wedge-fix tests | pass |
 | s3 control: a grown session commits | pass |
 | s4: Kiro bootstrap shape with a legacy-writer line, clean rollback | pass, silent |
