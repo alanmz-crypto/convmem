@@ -1653,6 +1653,43 @@ class IncrementalJsonlCoordinator:
                 ids.add(unit_id)
         return ids
 
+    @staticmethod
+    def _export_preimage_parsed_rows_by_id(preimage: dict) -> dict[str, list[dict]]:
+        rows_by_id: dict[str, list[dict]] = {}
+        for row in preimage.get("source_lines") or []:
+            payload = row.get("payload_base64")
+            if not payload:
+                continue
+            raw = base64.b64decode(payload, validate=True)
+            unit_id = IncrementalJsonlCoordinator._export_line_unit_id(raw)
+            if not unit_id:
+                continue
+            try:
+                parsed = json.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            if isinstance(parsed, dict):
+                rows_by_id.setdefault(unit_id, []).append(parsed)
+        return rows_by_id
+
+    @staticmethod
+    def _export_line_matches_preimage_rows(
+        raw: bytes, preimage_rows_by_id: dict[str, list[dict]]
+    ) -> bool:
+        unit_id = IncrementalJsonlCoordinator._export_line_unit_id(raw)
+        if not unit_id:
+            return False
+        candidates = preimage_rows_by_id.get(unit_id)
+        if not candidates:
+            return False
+        try:
+            parsed = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return False
+        if not isinstance(parsed, dict):
+            return False
+        return any(parsed == candidate for candidate in candidates)
+
     def _restore_before_images(
         self,
         rollback: dict,
@@ -1721,11 +1758,8 @@ class IncrementalJsonlCoordinator:
         source_lines = list(preimage.get("source_lines") or [])
         from purge_locks import export_flock
 
-        preimage_bytes = {
-            base64.b64decode(row["payload_base64"], validate=True)
-            for row in source_lines
-        }
         preimage_unit_ids = self._export_preimage_unit_ids(preimage)
+        preimage_rows_by_id = self._export_preimage_parsed_rows_by_id(preimage)
         if expected_unit_ids is not None:
             allowed_unit_ids = preimage_unit_ids | set(expected_unit_ids)
         else:
@@ -1752,9 +1786,10 @@ class IncrementalJsonlCoordinator:
                                 unit_id = self._export_line_unit_id(raw)
                                 if unit_id not in allowed_unit_ids:
                                     dropped_unexpected += 1
-                                elif (
-                                    unit_id in preimage_unit_ids
-                                    and raw not in preimage_bytes
+                                elif unit_id in preimage_unit_ids and not (
+                                    self._export_line_matches_preimage_rows(
+                                        raw, preimage_rows_by_id
+                                    )
                                 ):
                                     dropped_unexpected += 1
                                 continue

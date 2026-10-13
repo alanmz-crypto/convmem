@@ -31,7 +31,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 stage-2 wedge fixes corrective 1 (rollback/export/retry).
     # Refreshed for issue #286 stage-2 wedge fixes corrective 3 (export rollback diagnostic).
     # Refreshed for issue #286 stage-2 wedge fixes corrective 4 (export rollback id check).
-    "incremental_jsonl.py": "0add6e3c232cd03a016d084b588583517f1eadd900074dfe781c1f58adb5c67c",
+    # Refreshed for issue #286 stage-2 wedge fixes corrective 5 (preimage semantic match).
+    "incremental_jsonl.py": "b39bfb8b4210c1c9083ffa3f781af3fa0aa5a4c81d8a5e8e53010f2daedc3d59",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

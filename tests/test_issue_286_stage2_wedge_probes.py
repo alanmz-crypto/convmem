@@ -21,6 +21,7 @@ from adapters.kiro_session_jsonl import parse_complete_prefix
 from incremental_jsonl_production import ProductionBoundary
 from tests.incremental_jsonl_helpers import (
     apply_env,
+    codex_rollout_record,
     enable_incremental,
     install_fakes,
     isolated_env,
@@ -133,6 +134,95 @@ def test_s2_clean_rollback_reports_no_dropped_lines(
     result = replay.run()
     assert result.outcome == "rolled_back", result.outcome
     assert "rollback dropped" not in capsys.readouterr().err
+
+
+def _owned_export_lines(export: Path, source: Path) -> list[bytes]:
+    owned: list[bytes] = []
+    for raw in export.read_bytes().splitlines(keepends=True):
+        row = json.loads(raw)
+        if row.get("source_path") == str(source):
+            owned.append(raw)
+    return owned
+
+
+def _commit_then_grow_codex_rollout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    crash_point: str | None,
+):
+    source, cfg = _codex_env(tmp_path, monkeypatch)
+    install_fakes(monkeypatch)
+    cfg_path = tmp_path / "config.toml"
+    _write_user_config(cfg_path, cfg)
+    boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
+    common = dict(
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+    )
+    first = incremental_jsonl.IncrementalJsonlCoordinator(boundary, source, **common)
+    assert first.run().outcome == "committed"
+    export = Path(cfg["index"]["units_export"])
+    before = export.read_bytes()
+    assert _owned_export_lines(export, source), "first commit wrote no export lines"
+    with source.open("ab") as handle:
+        for index in range(8, 16):
+            handle.write(codex_rollout_record(index))
+    if crash_point:
+
+        def crash(point: str) -> None:
+            if point == crash_point:
+                raise RuntimeError("partial apply")
+
+        second = incremental_jsonl.IncrementalJsonlCoordinator(
+            boundary, source, fault=crash, **common
+        )
+        with pytest.raises(RuntimeError, match="partial apply"):
+            second.run()
+    replay = incremental_jsonl.IncrementalJsonlCoordinator(boundary, source, **common)
+    return replay, export, before, source
+
+
+@pytest.mark.parametrize("crash", ["after_export_reconcile", "before_dedupe_reconcile"])
+def test_s3_grown_session_clean_rollback_is_silent(
+    tmp_path,
+    monkeypatch,
+    capsys: pytest.CaptureFixture[str],
+    crash: str,
+) -> None:
+    replay, export, before, _source = _commit_then_grow_codex_rollout(
+        tmp_path, monkeypatch, crash
+    )
+    assert export.read_bytes() != before
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    assert export.read_bytes() == before
+    assert "rollback dropped" not in capsys.readouterr().err
+
+
+def test_s5_preimage_line_edited_while_wedged_is_reported(
+    tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    replay, export, before, source = _commit_then_grow_codex_rollout(
+        tmp_path, monkeypatch, "after_export_reconcile"
+    )
+    target_id = json.loads(_owned_export_lines(export, source)[0])["id"]
+    data = export.read_bytes()
+    target = [
+        row
+        for row in data.splitlines(keepends=True)
+        if json.loads(row).get("id") == target_id
+    ][0]
+    edited = dict(json.loads(target), text_tampered=True)
+    export.write_bytes(data.replace(target, (json.dumps(edited) + "\n").encode()))
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    assert export.read_bytes() == before
+    err = capsys.readouterr().err
+    assert "rollback dropped 1 unexpected export lines" in err, err
 
 
 def test_p1_rollback_after_foreign_growth(
