@@ -310,12 +310,15 @@ def index(
     from query import render_error
 
     if file and not now:
-        from config import load_config
-        from watch import should_defer_index_file
+        try:
+            from config import load_config
+            from watch import should_defer_index_file
 
-        if should_defer_index_file(load_config(), file):
-            typer.echo(f"[index] deferred: the convmem watcher captures {file}")
-            raise typer.Exit(0)
+            if should_defer_index_file(load_config(), file):
+                typer.echo(f"[index] deferred: the convmem watcher captures {file}")
+                raise typer.Exit(0)
+        except (OSError, FileNotFoundError, KeyError, ValueError):
+            pass
 
     try:
         stats = run_index(
@@ -338,12 +341,16 @@ def index(
             from incremental_jsonl import format_live_route_refused
 
             detail = str(exc.detail or "")
-            tail = detail.rsplit(":", maxsplit=1)[-1]
-            if ":" in detail and len(tail) == 64:
-                outcome, digest = detail.rsplit(":", maxsplit=1)
+            lines = detail.splitlines()
+            head = lines[0]
+            tail = head.rsplit(":", maxsplit=1)[-1]
+            if ":" in head and len(tail) == 64:
+                outcome, digest = head.rsplit(":", maxsplit=1)
             else:
-                outcome, digest = detail, ""
+                outcome, digest = head, ""
             print(format_live_route_refused(outcome, digest), file=sys.stderr)
+            if len(lines) > 1:
+                print(lines[1], file=sys.stderr)
             raise typer.Exit(LIVE_ROUTE_REFUSED_EXIT) from exc
         render_error(str(exc))
         raise typer.Exit(1) from exc
@@ -425,7 +432,6 @@ def add(
     from observe import ingest_observation, ingest_observation_file
     from purge_locks import index_write_flock
     from query import render_error
-    from config import load_config
     from pathlib import Path
 
     if upsert:
@@ -433,12 +439,12 @@ def add(
 
         ensure_chroma_snapshot_for_live_write()
 
-    with index_write_flock(load_config()):
-        with production_chroma_write_session(entrypoint="convmem.add") as session:
+    with production_chroma_write_session(entrypoint="convmem.add") as session:
+        with index_write_flock(session.live_cfg):
             store = session.store
-            cfg = session.live_cfg
-            models = cfg["models"]
-            units_export = cfg["index"].get("units_export")
+            live_cfg = session.live_cfg
+            models = live_cfg["models"]
+            units_export = live_cfg["index"].get("units_export")
             units_export_path = Path(units_export).expanduser() if units_export else None
 
             if file:
@@ -728,25 +734,22 @@ def monitor_command(
         typer.echo(json.dumps(stats, indent=2))
         return
 
-    from purge_locks import index_write_flock
-
-    cfg = load_config()
-    with index_write_flock(cfg):
-        with production_chroma_write_session(entrypoint="convmem.monitor") as session:
-            store = session.store
-            live_cfg = session.live_cfg
-            models = live_cfg["models"]
-            units_export = live_cfg["index"].get("units_export")
-            units_export_path = Path(units_export).expanduser() if units_export else None
-            stats = run_monitor(
-                store,
-                site=site,
-                embed_model=models["embed_model"],
-                ollama_host=models["ollama_host"],
-                units_export=units_export_path,
-                dry_run=False,
-                verbose=True,
-            )
+    with production_chroma_write_session(entrypoint="convmem.monitor") as session:
+        store = session.store
+        live_cfg = session.live_cfg
+        models = live_cfg["models"]
+        units_export = live_cfg["index"].get("units_export")
+        units_export_path = Path(units_export).expanduser() if units_export else None
+        stats = run_monitor(
+            store,
+            site=site,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            units_export=units_export_path,
+            dry_run=False,
+            verbose=True,
+            live_cfg=live_cfg,
+        )
     typer.echo(json.dumps(stats, indent=2))
     from brief import refresh_brief_after_change
 
@@ -1793,11 +1796,10 @@ def forget_command(
 
     _guard_write()
     from chroma_write_store import production_chroma_write_session
-    from config import load_config
     from purge_locks import index_write_flock
 
-    with index_write_flock(load_config()):
-        with production_chroma_write_session(entrypoint="convmem.forget") as session:
+    with production_chroma_write_session(entrypoint="convmem.forget") as session:
+        with index_write_flock(session.live_cfg):
             store = session.store
             unit = store.get_unit(unit_id)
             if unit is None:
@@ -1818,6 +1820,9 @@ def forget_command(
                 if not is_superseded(meta):
                     typer.echo("Unit is not superseded — nothing to undo.")
                     return
+                # Chroma update() merges metadata keys rather than replacing the dict,
+                # so popping keys leaves the stored superseded=True intact. Overwrite
+                # with a not-superseded value instead (is_superseded checks `is True`).
                 meta["superseded"] = False
                 meta["superseded_by"] = ""
                 meta["updated_at"] = now

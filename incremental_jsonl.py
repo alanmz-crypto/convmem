@@ -69,6 +69,18 @@ def format_live_route_refused(outcome: str, prefix_sha256: str = "") -> str:
     return f"live_route_refused:{outcome}"
 
 
+def wedged_incremental_outcome(error_code: str) -> str:
+    safe = error_code.replace(":", "_").replace("-", "_")
+    return f"wedged_incremental_transaction_{safe}"
+
+
+def wedged_incremental_diagnostic(transaction_id: str, source_path: str) -> str:
+    return (
+        f"[incremental] wedged transaction id={transaction_id} "
+        f"source={source_path}; wedged incremental transaction; see doctor"
+    )
+
+
 ELIGIBLE_FORMAT = "jsonl_kiro_session"
 ADAPTER_CONTRACT_VERSION = "kiro-complete-prefix-v1"
 CHECKPOINT_VERSION = 1
@@ -1669,6 +1681,19 @@ class IncrementalJsonlCoordinator:
         os.chmod(handle.name, 0o600)
         return handle
 
+    def _allowed_source_export_bytes(self, preimage: dict) -> set[bytes]:
+        allowed = {
+            base64.b64decode(row["payload_base64"], validate=True)
+            for row in (preimage.get("source_lines") or [])
+        }
+        with self._session() as session:
+            for row in session.store.snapshot_source_rows(UNITS, self.path_key):
+                payload = self._export_unit_payload(row)
+                allowed.add(
+                    (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
+                )
+        return allowed
+
     def _restore_export(self, preimage: dict) -> None:
         if preimage.get("version") != 1:
             raise IncrementalJsonlError("recovery_unproven", "export preimage invalid")
@@ -1676,9 +1701,32 @@ class IncrementalJsonlCoordinator:
         source_lines = list(preimage.get("source_lines") or [])
         from purge_locks import export_flock
 
-        allowed_source_bytes = {
-            base64.b64decode(row["payload_base64"], validate=True) for row in source_lines
-        }
+        allowed_source_bytes = self._allowed_source_export_bytes(preimage)
+        with self._session() as session:
+            store_rows = {
+                row["id"]: row
+                for row in session.store.snapshot_source_rows(UNITS, self.path_key)
+            }
+        for row in source_lines:
+            payload = base64.b64decode(row["payload_base64"], validate=True)
+            try:
+                record = json.loads(payload.decode("utf-8").rstrip("\n"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                record = {}
+            unit_id = record.get("id")
+            if unit_id in store_rows:
+                canonical = (
+                    json.dumps(
+                        self._export_unit_payload(store_rows[unit_id]),
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                ).encode("utf-8")
+                if payload != canonical:
+                    raise IncrementalJsonlError(
+                        "rollback_export_foreign_changed",
+                        "source export line is not rollback authority",
+                    )
         with export_flock(self.cfg):
             temp = self._export_temp(export_path)
             temp_path = Path(temp.name)
@@ -1695,10 +1743,7 @@ class IncrementalJsonlCoordinator:
                         for raw in current:
                             if self._export_line_owned_by_source(raw, self.path_key):
                                 if raw not in allowed_source_bytes:
-                                    raise IncrementalJsonlError(
-                                        "rollback_export_foreign_changed",
-                                        "source export line is not rollback authority",
-                                    )
+                                    continue
                                 continue
                             while (
                                 source_index < len(source_lines)
@@ -2030,6 +2075,8 @@ class IncrementalJsonlCoordinator:
                 chunks, units, events, keep_summaries, keep_units = self._apply_prepared(
                     prepared
                 )
+                if rollback_authority_sha256 is not None:
+                    self._require_rollback_authority(rollback_authority_sha256)
                 self._verify_non_source_collections(attempt_non_source)
                 self._revalidate_live_prefix(snapshot)
                 projection_fingerprint = self._codex_projection_fingerprint()
@@ -2112,15 +2159,17 @@ class IncrementalJsonlCoordinator:
         rollback_sha256: str,
         snapshot_dir: Path,
     ) -> None:
-        self._restore_before_images(
-            rollback,
-            preserve_recovery_authority=True,
-        )
-        self._verify_non_source_collections(
-            rollback.get("non_source_collections") or {}
-        )
-        self._require_rollback_authority(rollback_sha256)
-        self._cleanup(snapshot_dir)
+        from purge_locks import index_write_flock
+
+        with index_write_flock(self.cfg):
+            attempt_non_source = self._non_source_collection_digest()
+            self._restore_before_images(
+                rollback,
+                preserve_recovery_authority=True,
+            )
+            self._verify_non_source_collections(attempt_non_source)
+            self._require_rollback_authority(rollback_sha256)
+            self._cleanup(snapshot_dir)
 
     def _roll_forward(self, transaction: dict) -> IncrementalRunResult:
         phase = str(transaction.get("phase") or "")
@@ -2619,7 +2668,7 @@ def maybe_route_incremental(
     if result.outcome in {"committed", "unchanged"}:
         from incremental_retry_state import clear_incremental_retry_state
 
-        clear_incremental_retry_state(cfg, path_key)
+        clear_incremental_retry_state(getattr(coordinator, "paths", None))
     elif not isolated:
         digest = getattr(coordinator, "last_evidence", {}).get("prefix_sha256", "")
         failure_code = getattr(coordinator, "last_failure_code", "") or result.outcome
@@ -2632,20 +2681,16 @@ def maybe_route_incremental(
         from incremental_retry_state import record_incremental_retry_failure
 
         if record_incremental_retry_failure(
-            cfg,
+            getattr(coordinator, "paths", None),
             path_key=path_key,
             prefix_digest=str(digest or ""),
             error_code=failure_code,
             transaction_id=transaction_id,
         ):
-            detail = (
-                f"wedged_incremental_transaction:"
-                f"{failure_code}:"
-                f"transaction={transaction_id}:"
-                f"source={path_key}:"
-                f"wedged incremental transaction; see doctor"
-            )
-            raise IncrementalJsonlError("live_route_refused", detail)
+            outcome = wedged_incremental_outcome(failure_code)
+            head = f"{outcome}:{digest}" if digest else outcome
+            diagnostic = wedged_incremental_diagnostic(transaction_id, path_key)
+            raise IncrementalJsonlError("live_route_refused", f"{head}\n{diagnostic}")
         raise IncrementalJsonlError(
             "live_route_refused",
             f"{result.outcome}:{digest}" if digest else result.outcome,

@@ -14,6 +14,7 @@ from unittest import mock
 import pytest
 from typer.testing import CliRunner
 
+import config
 import convmem
 import incremental_jsonl
 import ingest
@@ -34,7 +35,7 @@ from tests.test_incremental_jsonl_codex_rollout_route import (
     _write_user_config,
 )
 from tests.test_incremental_jsonl_live_boundary import _bootstrap_binding
-from watch import CircuitBreakerState, IndexSubprocessError
+from watch import CircuitBreakerState, IndexSubprocessError, queue_paths_from_fs_event
 from watch_circuit_breaker import parse_live_route_refused
 
 
@@ -114,6 +115,70 @@ def test_wedge_replay_commits_after_foreign_growth(
     assert not replay.paths["transaction"].exists()
 
 
+def test_replay_error_after_foreign_growth_rolls_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    source = write_source(isolated.root, 4)
+    boundary, cfg = _enable_incremental_kiro(isolated, source)
+    digest = parse_complete_prefix(str(source)).prefix_sha256
+
+    def first_crash(point: str) -> None:
+        if point == "after_summary_upsert":
+            raise RuntimeError("initial partial apply")
+
+    first = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        processed={"old-hash": {"path": str(source)}},
+        bootstrap_existing=True,
+        expected_prefix_sha256=digest,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        fault=first_crash,
+        **_bootstrap_binding(),
+    )
+    with first._session() as session:
+        session.store.add_summary(
+            "legacy-summary", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+        session.store.add_unit(
+            "legacy-unit", "old", [0.1] * 8, {"source_path": str(source)}
+        )
+    with pytest.raises(RuntimeError, match="initial partial apply"):
+        first.run()
+
+    with first._session() as session:
+        session.store.add_summary(
+            "foreign-summary",
+            "foreign",
+            [0.1] * 8,
+            {"source_path": "/other"},
+        )
+
+    def replay_fail(point: str) -> None:
+        if point == "before_summary_upsert":
+            raise incremental_jsonl.IncrementalJsonlError("dedupe_prefix_changed")
+
+    replay = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        bootstrap_existing=True,
+        expected_prefix_sha256=digest,
+        max_bootstrap_chunks=4,
+        chunk_size=2,
+        fault=replay_fail,
+        **_bootstrap_binding(),
+    )
+    result = replay.run()
+    assert result.outcome == "rolled_back"
+
+
 def test_legacy_write_blocks_during_index_write_lock(tmp_path: Path) -> None:
     from purge_locks import index_write_flock
     from tests.purge_test_util import purge_cfg as _cfg
@@ -157,25 +222,31 @@ def test_bounded_retries_exit_91_on_repeat(
     _write_user_config(tmp_path / "config.toml", cfg)
     monkeypatch.setenv("HOME", str(tmp_path))
     prefix = "d" * 64
+    paths = {
+        "transaction": tmp_path / "incremental-jsonl" / "tx" / "transaction.json",
+    }
+    paths["transaction"].parent.mkdir(parents=True, exist_ok=True)
     from incremental_retry_state import record_incremental_retry_failure
 
     record_incremental_retry_failure(
-        cfg,
+        paths,
         path_key=str(source),
         prefix_digest=prefix,
         error_code="rollback_export_foreign_changed",
         transaction_id="a" * 32,
     )
     assert record_incremental_retry_failure(
-        cfg,
+        paths,
         path_key=str(source),
         prefix_digest=prefix,
         error_code="rollback_export_foreign_changed",
         transaction_id="a" * 32,
     )
-    marker = incremental_jsonl.format_live_route_refused(
-        "wedged_incremental_transaction:rollback_export_foreign_changed", prefix
+    outcome = incremental_jsonl.wedged_incremental_outcome(
+        "rollback_export_foreign_changed"
     )
+    marker = incremental_jsonl.format_live_route_refused(outcome, prefix)
+    assert parse_live_route_refused(marker) == (outcome, prefix)
     breaker = CircuitBreakerState(tmp_path / "breaker.json")
     spawn_calls = 0
 
@@ -185,10 +256,22 @@ def test_bounded_retries_exit_91_on_repeat(
         raise IndexSubprocessError(marker, returncode=91, stderr=marker + "\n")
 
     monkeypatch.setattr(watch, "flush_path", fake_flush)
+    monkeypatch.setattr(
+        watch,
+        "source_prefix_digest_for_watch",
+        lambda _path: prefix,
+    )
     watch._process_ready_path(str(source), cfg=cfg, breaker=breaker, verbose=False)
     assert spawn_calls == 1
     watch._process_ready_path(str(source), cfg=cfg, breaker=breaker, verbose=False)
     assert spawn_calls == 1
+    monkeypatch.setattr(
+        watch,
+        "source_prefix_digest_for_watch",
+        lambda _path: "e" * 64,
+    )
+    watch._process_ready_path(str(source), cfg=cfg, breaker=breaker, verbose=False)
+    assert spawn_calls == 2
 
 
 def test_watcher_intake_event_types() -> None:
@@ -196,42 +279,29 @@ def test_watcher_intake_event_types() -> None:
         FileClosedEvent,
         FileClosedNoWriteEvent,
         FileCreatedEvent,
+        FileDeletedEvent,
         FileModifiedEvent,
         FileMovedEvent,
         FileOpenedEvent,
     )
 
     batch: list[str] = []
-    lock = threading.Lock()
-
-    class Handler:
-        def on_any_event(self, event) -> None:  # noqa: ANN001
-            if event.is_directory:
-                return
-            if isinstance(event, (FileOpenedEvent, FileClosedNoWriteEvent)):
-                return
-            queued: list[str] = []
-            if isinstance(event, FileMovedEvent):
-                queued.extend([event.dest_path, event.src_path])
-            elif isinstance(
-                event, (FileCreatedEvent, FileModifiedEvent, FileClosedEvent)
-            ):
-                queued.append(event.src_path)
-            with lock:
-                batch.extend(queued)
-
-    handler = Handler()
-    handler.on_any_event(mock.Mock(is_directory=True, src_path="/x"))
-    handler.on_any_event(FileOpenedEvent("/x/a.jsonl"))
-    handler.on_any_event(FileClosedNoWriteEvent("/x/a.jsonl"))
-    handler.on_any_event(FileModifiedEvent("/x/a.jsonl"))
-    handler.on_any_event(FileCreatedEvent("/x/b.jsonl"))
-    handler.on_any_event(FileClosedEvent("/x/c.jsonl"))
-    handler.on_any_event(FileMovedEvent("/x/old.jsonl", "/x/new.jsonl"))
+    for event in (
+        mock.Mock(is_directory=True, src_path="/x"),
+        FileOpenedEvent("/x/a.jsonl"),
+        FileClosedNoWriteEvent("/x/a.jsonl"),
+        FileModifiedEvent("/x/a.jsonl"),
+        FileCreatedEvent("/x/b.jsonl"),
+        FileClosedEvent("/x/c.jsonl"),
+        FileDeletedEvent("/x/removed.jsonl"),
+        FileMovedEvent("/x/old.jsonl", "/x/new.jsonl"),
+    ):
+        batch.extend(queue_paths_from_fs_event(event))
     assert batch == [
         "/x/a.jsonl",
         "/x/b.jsonl",
         "/x/c.jsonl",
+        "/x/removed.jsonl",
         "/x/new.jsonl",
         "/x/old.jsonl",
     ]
@@ -240,22 +310,39 @@ def test_watcher_intake_event_types() -> None:
 def test_index_file_deferral_and_override(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("HOME", str(tmp_path))
     sessions = _sessions_root(tmp_path)
     sessions.mkdir(parents=True)
     rollout = _admitted_rollout(sessions, datetime(2026, 6, 1, tzinfo=timezone.utc))
     cfg = _production_cfg(tmp_path, sessions, datetime(2026, 6, 1, tzinfo=timezone.utc))
+    cfg["watch"] = {"paths": [str(sessions)]}
     cfg_path = tmp_path / "config.toml"
     _write_user_config(cfg_path, cfg)
+    watch_paths = cfg.get("watch", {}).get("paths") or []
+    if watch_paths:
+        quoted = ", ".join(f'"{p}"' for p in watch_paths)
+        cfg_path.write_text(
+            cfg_path.read_text(encoding="utf-8")
+            + f"\n[watch]\npaths = [{quoted}]\n",
+            encoding="utf-8",
+        )
+    monkeypatch.setenv("CONVMEM_CONFIG", str(cfg_path))
+    monkeypatch.setattr(config, "CONFIG_PATH", cfg_path)
+    _real_is_watchable = watch.is_watchable
+
+    def _watchable_for_defer(path: Path | str) -> bool:
+        candidate = Path(path)
+        if candidate == rollout:
+            return True
+        if candidate.name == "claude.jsonl":
+            return False
+        return _real_is_watchable(candidate)
+
+    monkeypatch.setattr(watch, "is_watchable", _watchable_for_defer)
     lock_path = Path(cfg["index"]["chroma_dir"]).expanduser().parent / "watch.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.write_text("999999\n", encoding="utf-8")
     monkeypatch.setattr(watch, "_is_live_watch_pid", lambda _pid: True)
     monkeypatch.setattr(convmem, "_guard_write", lambda: None)
-    runner = CliRunner()
-    deferred = runner.invoke(convmem.app, ["index", "--file", str(rollout)])
-    assert deferred.exit_code == 0
-    assert f"[index] deferred: the convmem watcher captures {rollout}" in deferred.stdout
     indexed = {"calls": 0}
 
     def fake_index(**_kwargs: object) -> dict:
@@ -268,12 +355,81 @@ def test_index_file_deferral_and_override(
         }
 
     monkeypatch.setattr(ingest, "index", fake_index)
+    runner = CliRunner()
+    deferred = runner.invoke(convmem.app, ["index", "--file", str(rollout)])
+    assert deferred.exit_code == 0
+    assert f"[index] deferred: the convmem watcher captures {rollout}" in deferred.stdout
+    assert indexed["calls"] == 0
     forced = runner.invoke(convmem.app, ["index", "--file", str(rollout), "--now"])
     assert forced.exit_code == 0
     assert indexed["calls"] == 1
     claude = tmp_path / "claude.jsonl"
     claude.write_text("{}\n", encoding="utf-8")
-    monkeypatch.setattr(watch, "is_watchable", lambda path: str(path) != str(claude))
     claude_run = runner.invoke(convmem.app, ["index", "--file", str(claude)])
     assert claude_run.exit_code == 0
     assert indexed["calls"] == 2
+
+
+def test_export_tamper_still_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    source = write_source(isolated.root, 2)
+    boundary, cfg = _enable_incremental_kiro(isolated, source)
+    coord = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        chunk_size=2,
+        **_bootstrap_binding(),
+    )
+    export_path = Path(cfg["index"]["units_export"])
+    export_path.parent.mkdir(parents=True, exist_ok=True)
+    good = (
+        json.dumps(
+            {"source_path": str(source), "id": "owned-a"},
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
+    bad = json.dumps({"id": "owned-a", "source_path": str(source), "x": 1}).encode() + b"\n"
+    export_path.write_bytes(bad)
+    preimage = {
+        "version": 1,
+        "existed": True,
+        "source_lines": [
+            {
+                "foreign_lines_before": 0,
+                "payload_base64": __import__("base64").b64encode(good).decode("ascii"),
+            }
+        ],
+        "foreign_lines": 0,
+    }
+    coord._restore_export(preimage)
+    assert export_path.read_bytes() == good
+    with coord._session() as session:
+        session.store.add_unit(
+            "owned-a", "doc", [0.1] * 8, {"source_path": str(source), "id": "owned-a"}
+        )
+    preimage_bad = {
+        "version": 1,
+        "existed": True,
+        "source_lines": [
+            {
+                "foreign_lines_before": 0,
+                "payload_base64": __import__("base64").b64encode(
+                    json.dumps({"id": "owned-a", "source_path": str(source), "y": 2}).encode()
+                    + b"\n"
+                ).decode("ascii"),
+            }
+        ],
+        "foreign_lines": 0,
+    }
+    with pytest.raises(
+        incremental_jsonl.IncrementalJsonlError,
+        match="rollback_export_foreign_changed",
+    ):
+        coord._restore_export(preimage_bad)

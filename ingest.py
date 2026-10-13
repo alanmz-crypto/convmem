@@ -681,6 +681,9 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
                         and existing_identity != candidate_identity
                         and (existing_identity is not None or candidate_identity is not None)
                     ):
+                        # A stable source/chunk id is a projection address, not
+                        # provenance authority. Keep the old assertion intact
+                        # while staging a distinct assertion for this generation.
                         projection_id = hashlib.sha256(
                             (
                                 "convmem-p3-projection-v1:"

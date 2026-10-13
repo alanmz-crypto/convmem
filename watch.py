@@ -573,6 +573,54 @@ def path_in_watch_roots(path: Path | str, watch_paths: list[str]) -> bool:
     return False
 
 
+def queue_paths_from_fs_event(event) -> list[str]:  # noqa: ANN001
+    """Return watch paths to queue for a filesystem event (C4a intake)."""
+    from watchdog.events import (
+        FileClosedEvent,
+        FileClosedNoWriteEvent,
+        FileCreatedEvent,
+        FileDeletedEvent,
+        FileModifiedEvent,
+        FileMovedEvent,
+        FileOpenedEvent,
+    )
+
+    if getattr(event, "is_directory", False):
+        return []
+    if isinstance(event, (FileOpenedEvent, FileClosedNoWriteEvent)):
+        return []
+    if isinstance(event, FileMovedEvent):
+        return [event.dest_path, event.src_path]
+    if isinstance(
+        event,
+        (FileCreatedEvent, FileModifiedEvent, FileClosedEvent, FileDeletedEvent),
+    ):
+        return [event.src_path]
+    return []
+
+
+def source_prefix_digest_for_watch(path: str) -> str:
+    """Best-effort prefix digest for refusal quarantine matching."""
+    import hashlib
+
+    try:
+        from adapters.detect import detect_format
+        from adapters.codex_rollout_jsonl import parse_complete_prefix as codex_parse
+        from adapters.kiro_session_jsonl import parse_complete_prefix as kiro_parse
+
+        detected = detect_format(path)
+        if detected == "jsonl_codex_rollout":
+            return codex_parse(path).prefix_sha256
+        if detected == "jsonl_kiro_session":
+            return kiro_parse(path).prefix_sha256
+    except (OSError, ValueError, TypeError):
+        pass
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return ""
+
+
 def should_defer_index_file(cfg: dict, path: str) -> bool:
     """True when a live watcher owns indexing for this watchable path."""
     candidate = Path(path).expanduser()
@@ -625,7 +673,8 @@ def _process_ready_path(
             if verbose:
                 print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
             return
-        if breaker.has_refusal_quarantine_for_path(path):
+        prefix_digest = source_prefix_digest_for_watch(path)
+        if prefix_digest and breaker.is_refusal_quarantined(path, prefix_digest):
             if verbose:
                 print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
             return
@@ -766,29 +815,10 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
     _batch_lock = Lock()
     _batch: list[str] = []
 
-    from watchdog.events import (
-        FileClosedEvent,
-        FileClosedNoWriteEvent,
-        FileCreatedEvent,
-        FileModifiedEvent,
-        FileMovedEvent,
-        FileOpenedEvent,
-    )
-
     class Handler(FileSystemEventHandler):
         def on_any_event(self, event: FileSystemEvent) -> None:
-            if event.is_directory:
-                return
-            if isinstance(event, (FileOpenedEvent, FileClosedNoWriteEvent)):
-                return
-            queued: list[str] = []
-            if isinstance(event, FileMovedEvent):
-                queued.extend([event.dest_path, event.src_path])
-            elif isinstance(
-                event, (FileCreatedEvent, FileModifiedEvent, FileClosedEvent)
-            ):
-                queued.append(event.src_path)
-            else:
+            queued = queue_paths_from_fs_event(event)
+            if not queued:
                 return
             with _batch_lock:
                 _batch.extend(queued)

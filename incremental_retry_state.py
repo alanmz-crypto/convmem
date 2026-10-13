@@ -7,10 +7,13 @@ from pathlib import Path
 from typing import Any
 
 
-def _state_path(cfg: dict, path_key: str) -> Path:
-    root = Path(cfg["index"]["processed_log"]).expanduser().resolve().parent
-    digest = __import__("hashlib").sha256(path_key.encode()).hexdigest()
-    return root / "incremental_retry" / f"{digest}.json"
+def _state_path(paths: dict | None) -> Path | None:
+    if not paths:
+        return None
+    transaction = paths.get("transaction")
+    if not transaction:
+        return None
+    return Path(str(transaction)).parent / "retry_state.json"
 
 
 def _read(path: Path) -> dict[str, Any] | None:
@@ -23,13 +26,14 @@ def _read(path: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
-def clear_incremental_retry_state(cfg: dict, path_key: str) -> None:
-    path = _state_path(cfg, path_key)
-    path.unlink(missing_ok=True)
+def clear_incremental_retry_state(paths: dict | None) -> None:
+    path = _state_path(paths)
+    if path is not None:
+        path.unlink(missing_ok=True)
 
 
 def record_incremental_retry_failure(
-    cfg: dict,
+    paths: dict | None,
     *,
     path_key: str,
     prefix_digest: str,
@@ -37,9 +41,11 @@ def record_incremental_retry_failure(
     transaction_id: str,
 ) -> bool:
     """Return True when the same error repeats on an unchanged prefix (refuse)."""
-    path = _state_path(cfg, path_key)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    prior = _read(path) or {}
+    state_path = _state_path(paths)
+    if state_path is None:
+        return False
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    prior = _read(state_path) or {}
     repeat = (
         prior.get("error_code") == error_code
         and prior.get("prefix_digest") == prefix_digest
@@ -51,17 +57,19 @@ def record_incremental_retry_failure(
         "prefix_digest": prefix_digest,
         "consecutive": int(prior.get("consecutive") or 0) + 1 if repeat else 1,
     }
-    path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    state_path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
     return repeat
 
 
 def iter_wedged_incremental_states(cfg: dict) -> list[dict[str, Any]]:
-    root = Path(cfg["index"]["processed_log"]).expanduser().resolve().parent
-    retry_dir = root / "incremental_retry"
-    if not retry_dir.is_dir():
+    state_dir = (cfg.get("index") or {}).get("incremental_jsonl", {}).get("state_dir")
+    if not state_dir:
+        return []
+    root = Path(str(state_dir)).expanduser()
+    if not root.is_dir():
         return []
     rows: list[dict[str, Any]] = []
-    for path in sorted(retry_dir.glob("*.json")):
+    for path in sorted(root.glob("**/retry_state.json")):
         payload = _read(path)
         if not payload:
             continue

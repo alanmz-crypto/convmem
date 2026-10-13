@@ -369,8 +369,17 @@ def run_monitor(
     dry_run: bool = False,
     verbose: bool = True,
     session: requests.Session | None = None,
+    live_cfg: dict | None = None,
 ) -> dict:
     from observe import ingest_observation
+
+    def _ingest_locked(**kwargs):  # type: ignore[no-untyped-def]
+        if live_cfg is None:
+            return ingest_observation(**kwargs)
+        from purge_locks import index_write_flock
+
+        with index_write_flock(live_cfg):
+            return ingest_observation(**kwargs)
 
     stats = {
         "observations": 0,
@@ -413,7 +422,7 @@ def run_monitor(
                 if verbose:
                     print(f"[monitor] dry-run verification → {anchor} {record['result']}")
                 continue
-            unit = ingest_observation(
+            unit = _ingest_locked(
                 record,
                 store=store,
                 embed_model=embed_model,
@@ -452,7 +461,7 @@ def run_monitor(
                 if verbose:
                     print(f"[monitor] dry-run observation {record['id']}")
                 continue
-            unit = ingest_observation(
+            unit = _ingest_locked(
                 record,
                 store=store,
                 embed_model=embed_model,
@@ -499,7 +508,7 @@ def run_monitor(
             if dry_run:
                 stats["verifications"] += 1
             else:
-                unit = ingest_observation(
+                unit = _ingest_locked(
                     record,
                     store=store,
                     embed_model=embed_model,
@@ -522,7 +531,7 @@ def run_monitor(
         if dry_run:
             stats["observations"] += 1
         else:
-            unit = ingest_observation(
+            unit = _ingest_locked(
                 record,
                 store=store,
                 embed_model=embed_model,
