@@ -674,7 +674,7 @@ def _process_ready_path(
                 print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
             return
         prefix_digest = source_prefix_digest_for_watch(path)
-        if prefix_digest and breaker.is_refusal_quarantined(path, prefix_digest):
+        if breaker.should_skip_refusal_quarantine(path, prefix_digest):
             if verbose:
                 print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
             return

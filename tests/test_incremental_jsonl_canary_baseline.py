@@ -15,7 +15,7 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4) and
     # issue #268 D1 scratch diagnosis harness on the merged branch.
     # Refreshed for issue #286 stage-2 wedge fixes corrective 1 (index lock, watcher intake).
-    "watch.py": "767d9ec67acf86f8276b87e412156c74482b3e139ecbbae1fd3b5e2adf57ae93",
+    "watch.py": "9b0b22c2f83245d1b36e6a6ecb5806539c7130df767dfb5e223939e35409d0c1",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
