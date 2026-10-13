@@ -26,6 +26,22 @@ SUITES = {
     "t1": ROOT / "tests" / "test_safe_harbor_t1.py",
 }
 
+TRACKED_SOURCES = (
+    ROOT / "chroma_write_guard.py",
+    ROOT / "doctor.py",
+    ROOT / "watch.py",
+    ROOT / "scripts" / "chroma_guard.py",
+    ROOT / "tests" / "test_chroma_write_guard.py",
+    ROOT / "tests" / "_safe_harbor_t3_backend_worker.py",
+    ROOT / "tests" / "test_safe_harbor_t3.py",
+    ROOT / "tests" / "test_safe_harbor_t3_matrix.py",
+    ROOT / "tests" / "safe_harbor_t3_fixtures.py",
+    ROOT / "tests" / "_safe_harbor_bootstrap.py",
+    ROOT / "tests" / "_safe_harbor_t3_fault_worker.py",
+    ROOT / "tests" / "_chroma_write_guard_worker.py",
+    WORKER,
+)
+
 
 def _load_backend_worker_module() -> ModuleType:
     path = ROOT / "tests" / "_safe_harbor_t3_backend_worker.py"
@@ -130,11 +146,19 @@ def run_suite(mode: str) -> int:
     env = backend.build_allowlisted_env(fixture_root, evidence_root)
     child_env = dict(env)
     if mode == "suite":
-        modules = [SUITES["t3"], SUITES["guard"], SUITES["t1"]]
+        modules = [
+            SUITES["t3"],
+            ROOT / "tests" / "test_safe_harbor_t3_matrix.py",
+            SUITES["guard"],
+            SUITES["t1"],
+        ]
     elif mode in SUITES:
         modules = [SUITES[mode]]
     else:
         raise RuntimeError(f"unknown mode {mode}")
+    source_hashes_before = {
+        str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in TRACKED_SOURCES
+    }
     results: list[dict[str, object]] = []
     for module in modules:
         results.append(
@@ -146,21 +170,24 @@ def run_suite(mode: str) -> int:
                 label=module.stem,
             )
         )
-    lint = _run_pylint(
-        [ROOT / "tests" / "test_safe_harbor_t3.py", WORKER, ROOT / "chroma_write_guard.py"],
-        child_env,
-        evidence_root,
-    )
+    lint = _run_pylint(list(TRACKED_SOURCES), child_env, evidence_root)
+    source_hashes_after = {
+        str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in TRACKED_SOURCES
+    }
     summary = {
         "mode": mode,
         "uid": os.getuid(),
         "fixture_root": str(fixture_root),
         "evidence_root": str(evidence_root),
+        "source_hashes_before": source_hashes_before,
+        "source_hashes_after": source_hashes_after,
         "runs": results,
         "lint": lint,
     }
     (evidence_root / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))
+    if source_hashes_before != source_hashes_after:
+        return 1
     for item in results:
         if _exit_code(item) != 0:
             return _exit_code(item)

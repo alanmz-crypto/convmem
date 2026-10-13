@@ -173,8 +173,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"reconciled: {len(events)} change(s); run status for the current restore points")
         return 0
     if not args.disposition or not args.authority_digest:
-        print("clear-quarantine requires --disposition and --authority-digest", file=sys.stderr)
-        return 2
+        print("ordinary clear refuses; validated release requires --disposition and --authority-digest", file=sys.stderr)
+        return 1 if guard.read_authority().blocking else 2
     view = guard.read_authority()
     if view.document is None:
         print("no quarantine authority to release", file=sys.stderr)

@@ -938,3 +938,11 @@ Qualified failed runs (all under disposable `/tmp/safe-harbor-t3-suite-*` roots)
 - `i_fpuwvt`: 10 passed / 4 failed in 34.21 s, pytest exit 1; focused pylint exit 0 (guard, T3 test, launcher only). Remaining failures expose three incorrectly targeted tests and one expected conservative refusal with pending metadata. No success is inferred from these runs.
 
 The current tests still lack the complete deterministic crash/fault matrix and an actual same-ID stale-vector release negative control. The earlier timing-only kill and parent-only monkeypatch are not accepted evidence. Implementation, V3/V4, final-tip review, and owner acceptance remain pending.
+
+### T3 expanded fault-matrix checkpoint — unaccepted
+
+Cursor's follow-up runtime correction removed production test hooks and the extra source-facts sidecar. Original-file facts now live in the existing incident authority. Codex contributed the deterministic fault worker and matrix tests as verification work, plus narrow guard/CLI corrections. This is coauthored work; Codex is not an independent final reviewer.
+
+Qualified run `4sdx8m51` (source hashes stable) failed: core T3 1 passed/13 failed, matrix 4 passed/22 failed, guard regressions 21 passed/3 failed, T1 20 passed/1 failed; focused lint exit 30. The new harness mistakenly called a nonexistent instance `recover()`; corrected to the actual module function. Existing regression expectations were also updated to the accepted every-restore containment and conservative pending-work release refusal. Failures are retained, not excluded as successful evidence. The raw logs and command summary remain in `/tmp/safe-harbor-t3-suite-4sdx8m51/`.
+
+The expanded matrix covers actual method-boundary SIGKILL/restart, preservation IO faults, original evidence immutability, two-incident release, census retry, unknown snapshot sources and real stale-vector/census-only release sensitivity. These are authored cases, not a completed PASS. A supervised rerun is in progress at this checkpoint. Remaining claims must be reconciled with its actual results and lint; V3/V4 and final review remain unaccepted.
