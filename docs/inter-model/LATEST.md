@@ -9,6 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Codex Stage 2 fixes AUTHORIZED (not yet implemented) (2026-10-12):**
+  The Stage 2 watcher canary stopped at the paid ceiling after 12.8 h. New
+  Codex sessions cost about 12 calls; old sessions, Kiro and Cursor cost the
+  rest. Two new sessions are wedged because agents indexed their own
+  sessions while the watcher was capturing them. Ryan authorized fixes
+  P1–P3 and the Track A rule change for Cursor: a shared write lock,
+  source-scoped recovery, bounded retries, ignoring plain opens, and
+  `index --file` deferring to a running watcher. The watcher is off and
+  disabled. See
+  `docs/inter-model/CURSOR-2026-10-12-issue-286-stage2-fixes-handoff.md`.
+
 - **Arc Safe Harbor — BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW
   NEXT (2026-10-11):** The two-test correction passed its focused Copilot delta
   review at `2977c45` (85%). Cursor merged main `5550def` into the T1 branch
