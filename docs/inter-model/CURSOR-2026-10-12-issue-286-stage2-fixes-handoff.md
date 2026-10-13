@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` |
+| **State** | `IN_PROGRESS`: first implementation at `da7f9a0` FAILED verify; corrective 1 is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md` |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
