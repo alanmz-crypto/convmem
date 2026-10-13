@@ -723,9 +723,40 @@ Who: Cursor implemented Safe Harbor T2; Codex coordinated evidence and Copilot's
 
 ## V4 — Release and stale-vector proof (T3)
 
-**Proof-only grant: GRANTED / NOT RUN.** Ryan authorized the isolated pinned-backend demonstration in [execution section 10](EXECUTION-safe-harbor.md#10-cursor-t3-pinned-backend-proof--owner-granted). No proof has been run at handoff. Its evidence is only the backend ordering gate, not V4 acceptance or production release. Return DEMONSTRATED/NOT DEMONSTRATED with raw inputs and valid/stale controls before any remaining T3 implementation. V3 and the release/publication portions below remain ungranted and NOT RUN.
+### Pinned-backend ordering gate — isolated proof (2026-10-13)
 
-**NOT RUN.** Complete current incident set and Ryan disposition binding; added-finding invalidation; durable disposition before marker removal; truncated event tail and uncertain unlink/fsync behavior; strict source-watermark oracle. Before the remainder of T3 implementation, record the pinned-backend monotonicity/queue-purge/restart demonstration, including a valid releasable control and a same-ID changed-vector fixture demonstrating the census blind spot and refusal. Failure stops T3; it is not census-only PASS. Release-publication assertions must include file fsync, parent-directory fsync on creation and required newly created directory entries; inject directory-fsync failure and require containment to remain before marker removal. Process restart is not power-loss proof.
+**Verdict: DEMONSTRATED** on the pinned Chroma **1.5.9** / **hnswlib 0.8.0** backend under synthetic scratch fixtures. This closes only the execution section 10 / Kiro A1 backend ordering gate. It is **not** V4 acceptance, not V3 preservation/repair evidence, and not production release authorization.
+
+**Runner / environment:** Cursor; uid **1000**; `/home/lauer/miniforge3/bin/python` **3.13.12**; **numpy 2.4.4**; disposable roots under pytest `tmp_path` with scrubbed provider credentials and no production `HOME`, corpus, Restic, doctor, MCP or indexing. Child workers inherit the same allowlist via `tests/_safe_harbor_t3_backend_worker.py`.
+
+**Command (exact):**
+
+```bash
+cd /home/lauer/Projects/convmem/.worktrees/feat-2026-10-12-safe-harbor-t3-backend-proof
+env -u DEEPSEEK_API_KEY -u OPENAI_API_KEY -u ANTHROPIC_API_KEY \
+  /home/lauer/miniforge3/bin/python -m pytest tests/test_safe_harbor_t3_backend_proof.py \
+  -v --tb=line -p no:cacheprovider
+```
+
+**Result:** exit **0**; **5 passed in 4.41s** (2026-10-13 local). `pylint -sn` on the two proof modules reported no new findings beyond a duplicate-code note between test and worker embedding helpers.
+
+**Harness:** `tests/test_safe_harbor_t3_backend_proof.py` implements a **test-local** strict empty-changed-set predicate aligned with execution E1 (saved vector watermark, matching metadata/vector segment identities, zero `embeddings_queue` rows with `seq_id` above the saved watermark, segment signature/digest equality, `vector_census` lost/extra zero, and subprocess embedding reads). `evaluate_census_only_predicate` is the deliberate blind-spot control. No production `SNAPSHOT.json`, quarantine release, or preservation/repair code was added.
+
+**Demonstrated observations (pinned backend):**
+
+| Case | Outcome |
+|---|---|
+| Backend identity | `chromadb==1.5.9`, `PersistentClient`, SQLite `max_seq_id` + `embeddings_queue` watermarks recorded |
+| Mutation sequence | add → metadata update → embedding update → upsert → delete → reinsert; watermarks monotonic; queue length drops after vector sync (`sync_threshold=3`) |
+| Restart | fresh subprocess `restart_ping` preserves terminal watermarks (not power-loss proof) |
+| Valid releasable control | quiescent synced generation admits strict predicate after restart |
+| Stale-vector control | same-ID embedding change with restored older vector segment: **`vector_census` lost=0** but subprocess read shows stale vector; strict predicate **refuses** (`watermark_drift` / embedding mismatch) |
+| Census-only control | admits the stale fixture; fails independent safety assertion in-test |
+| Binding / negative | wrong segment id, missing watermark, and empty-queue + digest mismatch refuse without client open |
+
+**Limits / still NOT RUN for V4 overall:** Ryan disposition binding, added-finding invalidation, durable disposition-before-marker-removal, truncated event tail, directory-fsync failure injection, and production `events.jsonl` release publication. V3 remains NOT RUN. A passing gate does not authorize remaining T3 implementation without a new grant.
+
+**NOT RUN (remainder).** Complete current incident set and Ryan disposition binding; added-finding invalidation; durable disposition before marker removal; truncated event tail and uncertain unlink/fsync behavior; production release-publication fsync assertions. Process restart evidence above is not hardware power-loss proof.
 
 ## V5 — Approval recovery (T4)
 
@@ -741,6 +772,7 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 
 | When | Runner | Subject | Command / case | Result | Pointer |
 |---|---|---|---|---|---|
+| 2026-10-13 | Cursor, miniforge Python 3.13.12, uid 1000; chromadb 1.5.9; numpy 2.4.4; hnswlib 0.8.0 | proof branch `feat/2026-10-12-safe-harbor-t3-backend-proof` (parent `324dfc5`) | `pytest tests/test_safe_harbor_t3_backend_proof.py -v --tb=line -p no:cacheprovider` under disposable HOME/XDG/CONVMEM roots | **DEMONSTRATED**, exit 0, `5 passed in 4.41s` | V4 ordering-gate section |
 | 2026-10-11 | Cursor, isolated miniforge Python 3.13.12 | runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` | `pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py -q --tb=line` under temporary HOME/XDG/CONVMEM_CONFIG | historical PASS, exit 0, `41 passed in 40.45s`; does not close the three correction gaps | V1 historical paragraph |
 | 2026-10-11 | Cursor, isolated miniforge Python 3.13.12; chromadb 1.5.9; numpy 2.4.4 | runtime `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` | same pytest command under `/tmp/safe-harbor-t1-2J2Z` | PASS, exit 0, `43 passed in 43.56s`. Expected control failure: overwrite publisher dropped finding A | V1 corrected table |
 | 2026-10-11 | Cursor | corrected runtime parent; review tip is the evidence commit | BugBot exact-tip review | not satisfied — usage limit, no reviewed SHA | draft #387 |
@@ -784,4 +816,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] T1/T2 are accepted and merged. T2 final candidate `eb06c97` passed all six GitHub checks; Ryan accepted the Codex review and V2 evidence limitations as the BugBot outage exception, then squash-merged #389 as `458b9f6` (identical tree). The final isolated correction evidence remains 98 affected cases plus focused sensitivity and lint evidence; overlapping runs are not additional cases. Historical failed/unqualified attempts stay disclosed. Successful event-only completion is excluded and remains a T4 prerequisite. T3's pinned-backend proof alone is now granted under execution section 10 but unrun; return results before remaining implementation. V3–V6 remain NOT RUN and live operations remain ungranted.
+[Arc Safe Harbor] T1/T2 are accepted and merged. The T3 **pinned-backend ordering gate is DEMONSTRATED** (VERIFY V4 proof section; chromadb 1.5.9 scratch evidence). V3 and the remainder of V4–V6 stay NOT RUN; remaining T3 implementation, T4/T5 and live operations remain ungranted.

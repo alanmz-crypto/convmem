@@ -10,7 +10,7 @@
 
 ```text
 Planning Status
-Phase:        T3 pinned-backend proof granted; NOT_STARTED
+Phase:        T3 pinned-backend ordering gate DEMONSTRATED; remaining T3 ungranted
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
 Lanes:        Cursor proves in scratch; Codex coordinates; Ryan receives results
@@ -522,7 +522,7 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 ## 10. Cursor T3 pinned-backend proof — owner granted
 
-**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12 local; Codex planning lane; Cursor proof lane. **State: NOT_STARTED / GRANTED (proof and isolated evidence only).** This is the existing T3/Kiro A1 ordering gate, not a contract redesign or a grant for the remaining T3 implementation.
+**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12 local; Codex planning lane; Cursor proof lane. **State: DELIVERED — DEMONSTRATED (proof and isolated evidence only).** This is the existing T3/Kiro A1 ordering gate, not a contract redesign or a grant for the remaining T3 implementation.
 
 **Authority:** Ryan: “Authorize Cursor to perform T3’s isolated pinned-backend proof and collect evidence only. Return the results before implementing preservation, repair or release. Live operations remain unauthorized.” This overrides generic startup/indexing and automatic continuation requirements for this isolated task. No further approval is needed to perform this named proof.
 
