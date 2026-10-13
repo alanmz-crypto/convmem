@@ -288,6 +288,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-13 | Claude | Wedge-fix corrective 4 (`62fe3a2`) made the rollback check id-based; one-item corrective 5 (stop false tamper reports on clean rollbacks of grown sessions) to Cursor |
 | 2026-10-13 | Claude | Wedge-fix corrective 5 (`c7072fc`) passed round-6 verify; branch ready for Copilot audit and Kiro design review |
 | 2026-10-13 | Claude | Codex safety audit FAILed `c7072fc` (dedupe rollback loss, unbounded paid retries, incomplete C1 coverage, work under C1, Claude deferral); Kiro PASS with conditions; corrective 6 to Cursor |
+| 2026-10-13 | Claude | Round 8 FAILs corrective 6 (`e1914f5`): Codex's burn holes closed, but the new lock-order check makes `index --file` pay then fail on every Codex/Kiro source, and the write guard breaks ledger approvals; corrective 7 (S0–S7) to Cursor; not deployable |
 
 ## TL;DR
 

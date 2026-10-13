@@ -1,4 +1,419 @@
-# Verify: Stage 2 wedge fixes, round 7 at `c7072fc`: the Codex audit's FAIL holds; corrective 6
+# Verify: Stage 2 wedge fixes, round 8 at `e1914f5`: FAIL; the real index entrypoint now pays and then fails, so deploying this tip would burn; corrective 7
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-13
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `e1914f5`, Cursor
+Composer's corrective 6. It answers round 7 (below).
+**Method:**
+- I read the diff `c7072fc..e1914f5`.
+- I took a census of every production write session in non-test code and
+  checked each one for C1.
+- I ran Codex's 10 audit probes, my round-2 to round-5 probes, Cursor's
+  probe, wedge-fix and corrective-6 tests, and 15 new round-8 probes (in the
+  appendix). I ran control runs at `c7072fc` for the probes that test new
+  behavior.
+- I re-ran every test that fails only at the tip, with full tracebacks, and
+  sorted each one by cause.
+- I ran the full suite hermetically at main `458b9f6` and at `e1914f5`, at
+  the same time and on the same disk: `env -i`, a scratch `HOME`, no API
+  keys, and `tests/test_index_loud_failures.py` skipped.
+- I compared mtimes and sizes across the live data root before and after my
+  runs.
+
+## Burn status
+
+**No burn from this branch now: it isn't deployed, and the watcher stayed
+inactive and disabled throughout.**
+- **My runs:** none of them can reach a paid provider. Providers are faked,
+  and the environment has no keys.
+  - Six tip-only tests did reach a local Ollama at `localhost:11434`. It's
+    local and unpaid, and it answered 404. See category E below.
+- **Deploying `e1914f5` would burn.** See R0.
+- **Live writes during my window weren't mine:**
+  - the 2-minute `convmem-reconcile` timer;
+  - an index at 16:34 that grew the export by about 805 KB. It's most
+    likely Codex's own Track A on its two active rollouts, through
+    `runtime-main`.
+
+  That is the out-of-band self-indexing already seen at 12:05. The branch's
+  C4 deferral stops it once deployed. My runs ran with a scratch `HOME`;
+  the tests that tried to read the live config got "Config not found".
+
+## Verdict (round 8)
+
+**FAIL. Not ready for the audit and the review, and not deployable.**
+- **What's fixed:** corrective 6 closes every burn hole Codex found, when its
+  probes call the router directly.
+- **What its own checks broke:**
+  - **R0:** the new lock-order check makes the real `convmem index --file`
+    entrypoint pay for the transform and then fail at commit, on every
+    Codex and Kiro source. It also breaks purge, export compaction and
+    legacy `index --file`.
+  - **R1:** the new write guard breaks ledger approvals, which never took
+    C1.
+- **What's still open:**
+  - C1 misses one watcher writer (R2);
+  - slow and paid work moved under C1 (R3).
+- **The full suite:** 122 tests fail only at the tip. Each one is explained
+  below.
+- **My share of R0:** round 7's Q4 asked to "refuse C1 while a Chroma writer
+  session is held", and I didn't separate the outer writer-boundary lease
+  from an opened store session. My F2 probes also called the router
+  directly, so they couldn't see it.
+
+**Fixed and verified:**
+- **Q2(a)(b), paid retries are bounded.** This holds on all three paths
+  Codex probed:
+  - an `OSError` writing the prepared artifact;
+  - a 402 after a successful summary;
+  - a failed distill through manual `index --file`.
+
+  Each pays at most 2 summaries per prefix, then refuses before any
+  transform, and the watcher holds the path. Codex's three F2 probes,
+  flipped, pass. These probes call `maybe_route_incremental` directly. R0
+  covers the real entrypoint.
+- **Q2(d), the hold.** Three failures across three prefixes give 3 paid
+  attempts, then refusal with 0 further calls. Releasing the hold is broken;
+  see R5.
+- **Q2(c):** an unreadable retry state refuses before any transform work.
+- **Q1:**
+  - the rollback removes exactly this transaction's dedupe lines;
+  - foreign, legacy and malformed lines stay byte-identical and in order;
+  - it runs under C1.
+- **Q5, Q6, Q7 and Q8 do what they say.** Q7 checked against a real git
+  repo: a tracked `review-bundles/` writer is scanned and an untracked one is
+  skipped.
+- **Codex's 10 probes:** 8 flip. The other 2 still "reproduce" only because
+  of how the probes are built, so they aren't findings:
+  - **the refine probe** calls the tombstone helper directly, with a mock
+    store. Its real callers now hold C1, and the real store raises without
+    it.
+  - **the scan probe** scans a temp directory that isn't a git repo.
+- **Earlier probes:** my rounds 2 to 5 plus Cursor's tests give 47 passed.
+  - **2 obsolete:** the round-4 s2 probe stubs a helper that corrective 4
+    removed. It fails the same way at `c7072fc`.
+  - **1 Cursor test:** see R7.
+
+## Findings (round 8)
+
+**R0 (critical; a burn once deployed, plus an indexing outage): the new
+lock-order check fires inside the normal index path, after the paid
+transform.**
+- **Where:** `assert_lock_ordering_ok` (`purge_locks.py` ~78–84) now refuses
+  C1 whenever this thread holds any shared writer lease. It reads that from
+  `production_write_session_depth()`.
+- **Why it fires:** several callers take the outer
+  `production_writer_boundary` lease first, then C1:
+  - `ingest.index()` holds it around the whole run (`ingest.py` ~1638);
+  - `execute_purge` (`source_purge.py` ~296);
+  - `_deduplicate_units_export` (`ingest.py` ~580);
+  - `approve_and_ingest`.
+- **What breaks:**
+  - **Codex and Kiro sources (the incremental route):** `convmem index
+    --file` on a Codex rollout runs the transform and pays for it. Then
+    `_commit_generation`'s fresh C1 raises "lock ordering violation: cannot
+    acquire index write lock while holding a Chroma writer session".
+    - My probe through the real `ingest.index(force_file=...)`, with
+      production's single writer-lock path, paid 2 summaries and failed.
+    - The same probe commits at `c7072fc`.
+    - The error is counted as `unexpected_RuntimeError`, so Q2 caps it:
+      2 paid attempts per prefix, or 3 across prefixes for an active
+      session. Then R5's hold applies, and that hold never releases.
+    - So once deployed, each Codex or Kiro source would pay for up to 3
+      transforms and index nothing. Every new session would do the same.
+      That covers the watcher's `index --file` children and agents' Track A.
+  - **Legacy sources:** `index --file` fails at `_snapshot_reindex_rows`
+    (`ingest.py` ~1243) before any paid call. So no burn, but every
+    watcher child for Cursor, Crush, markdown and similar sources fails.
+  - **Bulk `convmem index`:** chunks commit, then the final export
+    compaction raises. Files are already marked processed, so nothing is
+    paid twice. But every run ends in an error.
+  - **Purge:** `convmem exclude-source` fails for every real candidate.
+  - **The canary-2 runner:** `incremental_jsonl_canary.py` fails at the
+    coordinator's `_chroma_row_count`.
+- **Evidence:**
+  - the tip-only failures in category A (54);
+  - `test_index_file_routes_codex_rollout_and_commits`, in the appendix.
+  Cursor's report saw this class and called it likely test-harness
+  breakage.
+
+**R1 (high, blocks the merge; not a burn issue): the write guard breaks
+ledger writes, because they never took C1.**
+- **What breaks:** `convmem record --approve-last` reaches
+  `ingest_approved_ledger` (`propose_decision.py` ~568–600), which opens a
+  production store without C1. `add_unit` then raises "production Chroma
+  mutation requires the store-wide index write lock".
+- **What the user sees:**
+  - the approval saga leaves `APPROVAL_STARTED` behind;
+  - recovery calls the same function, and it fails again;
+  - so after the merge, every approval would stick.
+- **The same shape elsewhere:**
+  - `convmem verify` (`convmem.py` ~560, via `update_unit_metadata`);
+  - `ingest_approved_file` (`propose_decision.py` ~549);
+  - `observe.repair_empty_ledger_documents` when not a dry run
+    (`scripts/repair-ledger-documents.py`).
+- **Evidence:**
+  `tests/test_chroma_approve_index.py::ChromaApproveIndexTests::test_ingest_approved_ledger_upsert_nonempty_corpus`
+  fails at `e1914f5` with that error. It passes at main `458b9f6` and at `c7072fc`.
+- **The guard did its job here:** it found writers missing from Cursor's
+  list. The fix is to give them C1, not to exempt them.
+
+**R2 (high; latent until the repository-knowledge manifests return): one
+watcher writer still mutates units without C1, and the guard can't see it.**
+- **The writer:** `repository_knowledge_sync._apply_retirements`
+  (~247–315).
+  - It opens a production session without C1, then calls
+    `supersede_units_for_source` on `knowledge_units`.
+  - The watcher runs it in-process, from the startup `reconcile_all` and
+    from reconcile tokens, at the same time as index children.
+  - That's the Stage 2 shape: a foreign write in the middle of an apply
+    trips `non_source_isolation_changed`.
+- **Why the guard misses it:**
+  - its `_MUTATORS` list leaves out `supersede_units_for_source`;
+  - it passes `_collection()` straight through, and that returns raw
+    collection handles that can write unguarded.
+- **Why it's latent:** `watch.repository_knowledge_manifests` has been out
+  of the live config since 2026-10-12. It comes back when the manifest fix
+  lands.
+- **Probes:**
+  - `test_guard_refuses_unlocked_supersede` gives no raise;
+  - `test_repository_knowledge_retirement_holds_index_write_lock` gives a
+    lock depth of `[0]`.
+
+**R3 (medium; liveness; contradicts the PR's "no lock is held across paid
+provider calls"): corrective 6 moved slow work under C1.**
+- **refine:** `_run_job_impl` (`refine.py` ~769–775) now holds C1 for the
+  whole job.
+  - That includes `backfill_domain`'s DeepSeek `generate` calls (~424–462),
+    which are paid.
+  - At `c7072fc`, the refine job held no C1 at all; its tombstone writes
+    were the F3 gap.
+- **monitor:** `convmem monitor` holds C1 across all of `run_monitor`,
+  including:
+  - both HTTP probes, which have 20 s timeouts;
+  - every embedding.
+
+  My probe sees both fetches at lock depth 1; at `c7072fc` it sees 0.
+  Round 1's C5 had already asked to narrow monitor's lock to the writes.
+- **`add --file`:** this path still embeds each record under C1, through
+  `ingest_observation_file`.
+- **Effect:**
+  - C1 is a blocking flock, so watcher applies wait.
+  - An index child that waits past the watcher's 15-minute subprocess
+    timeout is killed after its summaries were paid for.
+  - Those summaries are cached and reused, so this doesn't re-burn. But the
+    path's failure count climbs.
+
+**R4 (medium; correctness; corrective 6 introduced it): monitor stores an
+embedding of different text than the document it stores.**
+- **The mismatch:**
+  - `_ingest_locked` embeds `ledger_unit_document(record)`, on the raw
+    record;
+  - `ingest_observation` stores
+    `ledger_unit_document(normalize_ledger_record(record))`.
+- **Why the texts differ:** monitor records carry no keywords, so
+  normalization derives them. The stored document includes the keywords;
+  the embedding doesn't.
+- **Effect:** retrieval drifts silently for every monitor unit.
+- **It also embeds unchanged records:** monitor now embeds records that the
+  upsert path then skips as unchanged.
+- **`add` isn't affected:** it matches only because it requires 3 or more
+  keywords and passes them through.
+- **Probe:** `test_monitor_embeds_the_document_it_stores` fails at
+  `e1914f5` and passes at `c7072fc`.
+
+**R5 (medium; Q2(d) incomplete): nothing releases the 3-strikes hold.**
+- **What `--clear-quarantine` does:** `convmem watch --clear-quarantine
+  <path>` clears only the breaker state.
+- **What stays:** `retry_state.json` keeps `source_consecutive` at 3 or
+  more. So every later attempt refuses before any transform, from the
+  watcher or from `index --file`.
+- **Why it never clears itself:** only a success resets the count, and none
+  can happen.
+- **Effect:**
+  - it's burn-safe;
+  - but the session silently never indexes again;
+  - doctor WARNs, with no remedy that works.
+- **Probe:** `test_q2d_source_hold_across_prefixes_and_clear_quarantine_releases`.
+  It sees 3 calls, then the source is still refused after the clear.
+
+**R6 (low): Q2(c) is partial.**
+- **A corrupt retry state is read as "no state",** so the next attempt pays:
+  - a `retry_state.json` that doesn't parse is treated as missing;
+  - doctor calls the same file `retry_state_unavailable`.
+  - The failure then overwrites the file, so the cost is one extra paid
+    attempt.
+- **`retry_state_unavailable` exits 1, not 91:**
+  - the spec and Cursor's report both say 91;
+  - but only `live_route_refused` maps to 91 (`convmem.py` ~339–356).
+  - The watcher treats it as an ordinary failure. Each child still refuses
+    before transform, so there's no burn.
+
+**R7 (low; tests and the census):**
+- **One of Cursor's tests reads the live config.**
+  `test_add_embeds_before_index_lock` reads the real
+  `~/.config/convmem/config.toml`, because `add` now calls `load_config()`
+  before the session.
+  - Outside a hermetic environment, it also takes the live C1 lock file.
+  - It fails in a hermetic run ("Config not found"), and it would fail in
+    CI.
+- **Tests the spec asked for are missing:**
+  - Q2(c) and Q2(d);
+  - Q8 (the tamper record and the doctor WARN);
+  - an unlocked mutation raising (Q3);
+  - concurrent runs through real entrypoints;
+  - the three flipped F2 probes.
+- **Test too weak:** `test_rollback_preserves_foreign_dedupe` only checks
+  that the files aren't empty.
+- **The writer list was incomplete:** it named 12 routes and missed the 5
+  writers in R1 and R2.
+
+**R8 (the full suite): 122 tests fail only at the tip, and every one is
+explained.**
+- **Counts:**
+  - main `458b9f6`: 93 failed, 2896 passed, 66 skipped, 58 errors. That's
+    the same 151 known failure ids as round 6.
+  - `e1914f5`: 223 failed, 2804 passed, 66 skipped, 58 errors, giving 273
+    failure ids.
+  - No failure is main-only.
+- **Re-run:** re-running the 122 with full tracebacks gives 130 failures,
+  because parameters expand. They sort as follows.
+
+| Cause | Count | What it is |
+|---|---|---|
+| A: the lock-order check counts the outer writer boundary (R0) | 54 | purge, the purge contract tests and concurrent purge; export compaction; legacy `index --file`; the incremental commit through `index()`; the canary runner (`test_incremental_jsonl_canary_p2_*`); `test_b4_*` |
+| B: the write guard, on writers without C1 (R1) | 15 | ledger approve and recover (`test_safe_harbor_t2.py` CLI approve and recover, `test_chroma_approve_index.py`); ledger-document repair; the scratch prototype's projection |
+| C: stale writer inventories (R2b and shadow) | 45 | the R2b coverage proof can't mint ("diagnostic coverage did not pass"); "undocumented mutation sinks", "stale governed sinks", "production session inventory drift" (`convmem.py:545`, `:1801`, `incremental_jsonl.py:676`, …). Only `R2B-V2-WRITER-COVERAGE-INVENTORY.json` was regenerated, and before the last code edits. |
+| D: a test reads the live config (R7) | 1 | `test_add_embeds_before_index_lock` |
+| E: tests reach a local Ollama | 6 | `add` and `monitor` now embed before the session, through `llm.ollama_embed`, and the tests' mocks don't cover that (`test_add_severity.py` ×3, `test_monitor.py` ×2, +1). Update the mocks; this is also how R4 slipped by. |
+| F: a test double lacks `last_evidence` | 1 | `maybe_route_incremental` now writes `coordinator.last_evidence` before `run()`. Update the double. |
+| G: expectations made obsolete by Q1 | 2 | `test_c4_valid_exact_role_restore_still_succeeds` and `test_c4_isolation_dedupe_outside_role_refused_before_chmod` expect a whole-file dedupe restore, and the second uses the old signature. Q1's own code still runs the outside-role check, through `_dedupe_restore_paths()`. Update the tests to the new contract. |
+| H: CLI subprocess failures with no captured error | 6 | purge CLI ×4, Safe Harbor's event-only recovery, and the OpenClaw watch end-to-end (its index child left no Chroma behind). These are most likely A or B. Confirm after S0 and S1. |
+
+
+**Not findings:**
+- **`forget`:** it reads and prompts inside a writer session; the spec said
+  before one. The writer lease is shared (`LOCK_SH`), so it blocks only C5
+  activation, not other writers.
+- **CG-2 tooling:** `cg2_first_cutover` and `cg2_rehearsal` write raw
+  collections through `FileGenerationStore`, outside the production session.
+  That's Recovery Authority's Ryan-gated cutover tooling, not part of this
+  arc's census.
+
+## Test results (round 8)
+
+| Run | Result |
+|---|---|
+| Full suite, main `458b9f6` | 93 failed, 2896 passed, 66 skipped, 58 errors (the same 151 ids as round 6) |
+| Full suite, `e1914f5` | 223 failed, 2804 passed, 66 skipped, 58 errors; 122 tip-only, 0 main-only (R8) |
+| Round-8 probe, the real `index --file` entrypoint (R0) | fails at `e1914f5` (2 summaries paid, then a lock-order error); passes at `c7072fc` |
+| Round-8 probe, bulk `index` and legacy `index --file` (R0) | both fail at `e1914f5` (bulk at the final compaction, after commit; `--file` before any paid call); pass at main |
+| Codex's 10 audit probes (they assert the unsafe behavior) | 8 now fail, so those holes are fixed; 2 pass because of how they're built (explained above) |
+| My rounds 2–5, plus Cursor's probe, wedge-fix and corrective-6 tests | 47 passed; 2 obsolete (also fail at `c7072fc`); 1 non-hermetic (R7) |
+| Round-8 probes, burn bounds: F2a, F2b, F2c, Q2(c) unreadable, Q1, Q7 | 6 passed |
+| Round-8 probes, findings | R2 ×2, R3, R4, R5 and R6 fail, as expected; controls at `c7072fc` pass for R3 and R4 |
+| Approve-index test (R1) | fails at `e1914f5`; passes at main and at `c7072fc` |
+
+## Corrective 7 for Cursor
+
+All items are hermetic; none involve paid calls. Do S0 first.
+
+**S0 (R0): keep the lock-order rule, but count the right thing.**
+- **What the check counts:** it refuses C1 only while this thread has an
+  opened production *store session*, from `production_chroma_write_session`
+  or `open_production_write_store`. Track that depth separately.
+- **What it doesn't count:** the outer `production_writer_boundary` lease.
+  - It's the shared census and attestation lease (`LOCK_SH`), so it doesn't
+    block other writers.
+  - It belongs to the admission layer.
+- **The full order:** Safe Harbor's admission check, then the writer
+  boundary, then `source_flock`, then C1, then the store session, then
+  `export_flock`.
+- **Check every caller that opens a store and then takes C1:**
+  - ingest's `_snapshot_reindex_rows` and `_commit_chunk_to_stores`;
+  - export compaction;
+  - purge;
+  - the coordinator's `_session()`;
+  - the canary runner.
+- **Tests:**
+  - adopt `test_index_file_routes_codex_rollout_and_commits` and the
+    bulk-index probe;
+  - add a variant of the three F2 probes that goes through
+    `ingest.index(force_file=...)` instead of the router.
+
+  Every burn probe must use the real entrypoint from now on.
+
+**S1 (R1): C1 for every ledger writer, then a real census.**
+- **Give C1 to:**
+  - `ingest_approved_ledger` and `ingest_approved_file`;
+  - `convmem verify`;
+  - `observe.repair_empty_ledger_documents`.
+- **Take the census:** list every call to `production_chroma_write_session`
+  and `open_production_write_store` in production code, each with how it's
+  covered, for the PR body.
+- **Check the lock order:** `approve_and_ingest` holds `governed_lock`
+  before it would take C1. Confirm that nothing takes C1 and then
+  `governed_lock`.
+
+**S2 (R2): C1 around the retirement, and a guard that denies by default.**
+- Take C1 around `_apply_retirements`' mutation.
+- Make the guard deny by default: expose an explicit list of read methods,
+  and require C1 for everything else, including `supersede_units_for_source`.
+- Handle `_collection()`: either block it, or return a collection whose
+  add, upsert, update and delete require C1.
+
+**S3 (R3): nothing slow under C1.**
+- **refine:** make the LLM calls outside C1. Take C1 per write, and re-read
+  the row under C1 before writing it.
+- **monitor:** run the HTTP probes and the embeddings before C1. C1 and the
+  writer session cover only the writes.
+- **`add --file`:** compute the embeddings before C1.
+- **The lock order doesn't change:** admission, then `source_flock`, then
+  C1, then the Chroma session, then `export_flock`.
+
+**S4 (R4): embed exactly the document that gets stored.**
+- Embed the normalized document text, by exporting a prepare step from
+  `observe`.
+- Skip the embed when the record is unchanged.
+
+**S5 (R5): `convmem watch --clear-quarantine <path>` releases the
+retry-state hold.**
+- It also clears that source's retry state, and `--clear-quarantine-all`
+  clears every source's.
+- Doctor's WARN names the command.
+
+**S6 (R6): a corrupt retry state fails closed.**
+- An unparseable retry state refuses with `retry_state_unavailable`, before
+  any transform.
+- Map it to exit 91, with a refusal head the watcher can parse.
+
+**S7 (R7): tests.**
+- Patch `load_config` in `test_add_embeds_before_index_lock`.
+- Adopt the round-8 probes in the appendix as tests. They need Codex's
+  `_route_fixture`, from the audit appendix.
+- Add Q8 tests: the tamper record is written, and doctor WARNs within 7
+  days and not after.
+
+**Then:**
+- re-pin the baseline hashes and regenerate the writer inventories;
+- run the full suite hermetically in clean detached worktrees at main and
+  at your final tip;
+- **list every tip-only failure with its cause,** and fix it or explain
+  it. "Likely the C1 guard" isn't enough: R0 and R1 were both in that list.
+  R8's table is the starting point. After S0 to S7, the only tip-only
+  failures left should be tests updated on purpose (E, F and G), each
+  named.
+
+**After corrective 7:**
+1. I re-verify.
+2. A fresh Codex (Astra, high effort) audit and a fresh Kiro review on the
+   exact new tip.
+3. Ryan opens the PR and merges.
+
+---
+
+# Round 7: `c7072fc`, Codex's FAIL held; corrective 6 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -22,7 +437,7 @@ round is my disposition of two reviews of that tip:
 - I read the code each finding cites.
 - I checked three live config facts, printing booleans only.
 
-## Verdict (round 7)
+### Verdict (round 7)
 
 **The round-6 "ready" is withdrawn. Codex's FAIL holds, and corrective 6 is
 needed.**
@@ -47,7 +462,7 @@ needed.**
   - My round-2 statement that raised provider refusals "don't make a billed
     call" is wrong when the summary succeeded first.
 
-## Findings, confirmed
+### Findings, confirmed
 
 | Codex | Severity | Confirmed? | What it means here |
 |---|---|---|---|
@@ -69,7 +484,7 @@ needed.**
 - CO-5 (release a clean `rolled_back` on a prefix change) stays a canary-2
   decision, as Kiro recommends.
 
-## Corrective 6 for Cursor
+### Corrective 6 for Cursor
 
 All items are hermetic; none involve paid calls.
 
@@ -1165,6 +1580,492 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-8 probe tests
+
+They run from `tests/`. `test_zz_claude_verify8b.py` and `8d` import `_route_fixture` from Codex's
+audit probes (`tests/test_zz_codex_audit.py`, from the appendix of
+`CODEX-2026-10-13-issue-286-stage2-fixes-audit.md`). Each test asserts the round-7 spec.
+
+<details><summary>tests/test_zz_claude_verify8.py</summary>
+
+```python
+"""Claude verify probes for issue #286 corrective 6 (e1914f5). Scratch only.
+
+Each test asserts the round-7 spec; a failure at e1914f5 is a finding.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import unittest
+from contextlib import contextmanager
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import pytest
+import requests
+
+
+def test_guard_refuses_unlocked_supersede() -> None:
+    """Q3: every production Chroma mutator raises without C1, including supersede."""
+    from chroma_write_store import _IndexWriteGuardedChromaStore
+
+    inner = Mock()
+    guarded = _IndexWriteGuardedChromaStore(inner)
+    with pytest.raises(RuntimeError, match="index write lock"):
+        guarded.supersede_units_for_source("/audit/source", superseded_by="audit")
+    inner.supersede_units_for_source.assert_not_called()
+
+
+def test_repository_knowledge_retirement_holds_index_write_lock(monkeypatch) -> None:
+    """Q3: the watcher's repository-knowledge retirement supersedes units under C1."""
+    from chroma_store import ChromaStore
+    from purge_locks import index_write_lock_depth
+    from tests.test_repository_knowledge_sync import SyncRoutingTests
+
+    depths: list[int] = []
+    real = ChromaStore.supersede_units_for_source
+
+    def spy(self, *args, **kwargs):
+        depths.append(index_write_lock_depth())
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(ChromaStore, "supersede_units_for_source", spy)
+    result = unittest.TestResult()
+    SyncRoutingTests("test_retirement_requires_prior_state_and_row_manifest_identity").run(result)
+    assert result.wasSuccessful(), result.errors + result.failures
+    assert depths, "retirement never superseded"
+    assert all(depth >= 1 for depth in depths), depths
+
+
+class _Offline:
+    def get(self, *args, **kwargs):
+        raise requests.ConnectionError("offline")
+
+
+def test_monitor_embeds_the_document_it_stores(tmp_path, monkeypatch) -> None:
+    """Q4 side effect: the precomputed embedding must be of the stored document text."""
+    import llm
+    from chroma_store import ChromaStore
+    from monitor import run_monitor
+
+    embedded: list[str] = []
+
+    def embed(text, model=None, host=None):
+        embedded.append(text)
+        return [0.1, 0.2, 0.3]
+
+    monkeypatch.setattr(llm, "ollama_embed", embed)
+    store = ChromaStore(str(tmp_path / "chroma"))
+    try:
+        stats = run_monitor(
+            store, site="example.test", embed_model="fake", ollama_host="http://127.0.0.1:9",
+            units_export=None, dry_run=False, verbose=False, session=_Offline(),
+        )
+        assert stats["observations"] > 0, stats
+        docs = [store.get_unit(m["id"])["document"] for m in store.units_metadata()]
+    finally:
+        store.close()
+    mismatched = [doc for doc in docs if doc not in embedded]
+    assert not mismatched, {"stored": mismatched[:2], "embedded": embedded[:2]}
+
+
+def test_monitor_http_probes_run_outside_index_write_lock(tmp_path, monkeypatch) -> None:
+    """Q4: nothing slow under C1. The CLI must not hold C1 across monitor's HTTP probes."""
+    import chroma_write_store as cs
+    import config
+    import convmem
+    import llm
+    import monitor
+    from chroma_store import ChromaStore
+    from purge_locks import index_write_lock_depth
+    from tests.purge_test_util import purge_cfg
+    from typer.testing import CliRunner
+
+    cfg = purge_cfg(tmp_path)
+    cfg["models"] = {"embed_model": "fake", "ollama_host": "http://127.0.0.1:9"}
+    cfg["index"]["units_export"] = None
+    depths: list[tuple[str, int]] = []
+
+    def headers(site, *, session=None, timeout=20.0):
+        depths.append(("https_fetch", index_write_lock_depth()))
+        return {}, "offline"
+
+    def tls(site, *, session=None, timeout=20.0):
+        depths.append(("tls_fetch", index_write_lock_depth()))
+        return False
+
+    @contextmanager
+    def session(**kwargs):
+        store = ChromaStore(str(tmp_path / "chroma"))
+        try:
+            yield SimpleNamespace(store=store, live_cfg=cfg)
+        finally:
+            store.close()
+
+    monkeypatch.setattr(convmem, "_guard_write", lambda: None)
+    monkeypatch.setattr(config, "load_config", lambda *a, **k: cfg)
+    monkeypatch.setattr(cs, "production_chroma_write_session", session)
+    monkeypatch.setattr(monitor, "fetch_https_headers", headers)
+    monkeypatch.setattr(monitor, "check_tls_redirect", tls)
+    monkeypatch.setattr(llm, "ollama_embed", lambda *a, **k: [0.1, 0.2, 0.3])
+    monkeypatch.setattr("brief.refresh_brief_after_change", lambda *a, **k: None, raising=False)
+    result = CliRunner().invoke(convmem.app, ["monitor", "--site", "example.test"])
+    assert depths, (result.output, result.exception)
+    assert all(depth == 0 for _, depth in depths), depths
+```
+
+</details>
+
+<details><summary>tests/test_zz_claude_verify8b.py</summary>
+
+```python
+"""Claude verify probes for issue #286 corrective 6 (e1914f5), burn bounds. Scratch only.
+
+Codex's F2 probes flipped to the round-7 spec, plus Q2(c), Q2(d), Q7 and Q1 checks.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import json
+import subprocess
+
+import pytest
+import requests
+
+from tests.test_zz_codex_audit import _route_fixture
+
+
+def _count_summaries(monkeypatch):
+    import ingest
+    from tests.incremental_jsonl_helpers import fake_summarize
+
+    calls: list[int] = []
+
+    def summarize(*args, **kwargs):
+        calls.append(1)
+        return fake_summarize(*args, **kwargs)
+
+    monkeypatch.setattr(ingest, "summarize", summarize)
+    return calls
+
+
+def _cli_stderr(exc) -> tuple[int, str]:
+    """Mirror convmem.py's index --file handling of a routed failure (exit code, stderr)."""
+    from incremental_jsonl import format_live_route_refused
+
+    if getattr(exc, "code", "") != "live_route_refused":
+        return 1, str(exc)
+    lines = str(exc.detail or "").splitlines()
+    head = lines[0]
+    tail = head.rsplit(":", maxsplit=1)[-1]
+    outcome, digest = head.rsplit(":", maxsplit=1) if ":" in head and len(tail) == 64 else (head, "")
+    return 91, "\n".join([format_live_route_refused(outcome, digest), *lines[1:2]])
+
+
+def _watch_flush(monkeypatch, route, catch):
+    import watch
+
+    def flush(path, **kwargs):
+        try:
+            route()
+        except catch as exc:
+            code, stderr = _cli_stderr(exc)
+            raise watch.IndexSubprocessError(str(exc), returncode=code, stderr=stderr) from exc
+
+    monkeypatch.setattr(watch, "flush_path", flush)
+
+
+def test_f2a_prepared_write_oserror_stops_paying(tmp_path, monkeypatch) -> None:
+    import incremental_jsonl as inc
+    import watch
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+
+    def fail_save(*args, **kwargs):
+        raise OSError("simulated prepared-artifact write failure")
+
+    monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_write_prepared", fail_save)
+    _watch_flush(monkeypatch, route, (OSError, inc.IncrementalJsonlError))
+    breaker = watch.CircuitBreakerState(tmp_path / "breaker.json")
+    for _ in range(4):
+        watch._process_ready_path(str(source), cfg=cfg, breaker=breaker, verbose=False)
+    assert len(calls) == 2, len(calls)
+    assert breaker.has_refusal_quarantine_for_path(str(source))
+
+
+def test_f2b_manual_retry_refuses_before_transform(tmp_path, monkeypatch) -> None:
+    import incremental_jsonl as inc
+    import ingest
+
+    _source, _cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+
+    def failed_distill(*args, **kwargs):
+        raise RuntimeError("simulated distill timeout")
+
+    monkeypatch.setattr(ingest, "distill", failed_distill)
+    monkeypatch.setattr(ingest, "_SYNTHESIS_FAIL_LOG", tmp_path / "synthesis_failures.jsonl")
+    codes = []
+    for _ in range(4):
+        with pytest.raises(inc.IncrementalJsonlError) as caught:
+            route()
+        codes.append(caught.value.code)
+    assert len(calls) == 2, (len(calls), codes)
+    assert codes[2:] == ["live_route_refused", "live_route_refused"], codes
+
+
+def test_f2c_provider_refusal_stops_paying(tmp_path, monkeypatch) -> None:
+    import incremental_jsonl as inc
+    import ingest
+    import watch
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+
+    def failed_distill(*args, **kwargs):
+        response = requests.Response()
+        response.status_code = 402
+        raise requests.HTTPError("synthetic provider unavailable", response=response)
+
+    monkeypatch.setattr(ingest, "distill", failed_distill)
+    monkeypatch.setattr(ingest, "_SYNTHESIS_FAIL_LOG", tmp_path / "synthesis_failures.jsonl")
+    _watch_flush(monkeypatch, route, (ingest.ProviderUnavailableError, inc.IncrementalJsonlError))
+    breaker = watch.CircuitBreakerState(tmp_path / "breaker.json")
+    for _ in range(4):
+        watch._process_ready_path(str(source), cfg=cfg, breaker=breaker, verbose=False)
+    assert len(calls) == 2, len(calls)
+    assert breaker.has_refusal_quarantine_for_path(str(source))
+
+
+def test_q2d_source_hold_across_prefixes_and_clear_quarantine_releases(tmp_path, monkeypatch) -> None:
+    import config
+    import convmem
+    import incremental_jsonl as inc
+    from tests.incremental_jsonl_helpers import codex_rollout_record
+    from typer.testing import CliRunner
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+
+    def fail_save(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_write_prepared", fail_save)
+    codes = []
+    for index in range(4):
+        with pytest.raises(inc.IncrementalJsonlError) as caught:
+            route()
+        codes.append(caught.value.code)
+        with source.open("ab") as handle:  # an active session: a new prefix every time
+            handle.write(codex_rollout_record(100 + index))
+    assert len(calls) == 3, (len(calls), codes)
+    assert codes[3] == "live_route_refused", codes
+
+    monkeypatch.setattr(config, "load_config", lambda *a, **k: cfg)
+    out = CliRunner().invoke(convmem.app, ["watch", "--clear-quarantine", str(source)])
+    assert out.exit_code == 0, (out.output, out.exception)
+    with pytest.raises(inc.IncrementalJsonlError):
+        route()
+    assert len(calls) == 4, "clear-quarantine did not release the source hold"
+
+
+def _retry_state_path(tmp_path):
+    found = list((tmp_path / "data").rglob("retry_state.json"))
+    assert len(found) == 1, found
+    return found[0]
+
+
+def _one_failure(tmp_path, monkeypatch):
+    import incremental_jsonl as inc
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+
+    def fail_save(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_write_prepared", fail_save)
+    with pytest.raises(inc.IncrementalJsonlError):
+        route()
+    return route, calls, _retry_state_path(tmp_path)
+
+
+def test_q2c_unreadable_retry_state_fails_closed(tmp_path, monkeypatch) -> None:
+    import incremental_jsonl as inc
+
+    route, calls, state = _one_failure(tmp_path, monkeypatch)
+    state.chmod(0)
+    try:
+        with pytest.raises(inc.IncrementalJsonlError) as caught:
+            route()
+    finally:
+        state.chmod(0o600)
+    assert caught.value.code == "retry_state_unavailable", caught.value.code
+    assert len(calls) == 1
+
+
+def test_q2c_corrupt_retry_state_fails_closed(tmp_path, monkeypatch) -> None:
+    import incremental_jsonl as inc
+
+    route, calls, state = _one_failure(tmp_path, monkeypatch)
+    state.write_text("{not json", encoding="utf-8")
+    with pytest.raises(inc.IncrementalJsonlError) as caught:
+        route()
+    assert caught.value.code == "retry_state_unavailable", caught.value.code
+    assert len(calls) == 1
+
+
+def _git(root, *args):
+    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+
+
+def test_q7_tracked_review_bundle_scanned_untracked_skipped(tmp_path, monkeypatch) -> None:
+    from eval_corpus.r2b_v2.coverage import inventory
+
+    ctor = 'from chroma_store import ChromaStore\nstore = ChromaStore("~/.local/share/convmem/chroma")\n'
+    _git(tmp_path, "init", "-q")
+    (tmp_path / "review-bundles").mkdir()
+    (tmp_path / "review-bundles/tracked_writer.py").write_text(ctor)
+    (tmp_path / "review-bundles/untracked_writer.py").write_text(ctor)
+    _git(tmp_path, "add", "review-bundles/tracked_writer.py")
+    manifest = tmp_path / "shadow.json"
+    manifest.write_text('{"allowlisted_direct_sites": []}')
+    monkeypatch.setattr(inventory, "ROOT", tmp_path)
+    monkeypatch.setattr(inventory, "SHADOW_INVENTORY", manifest)
+    assert inventory._scan_chroma_ctor_uncached() == ["review-bundles/tracked_writer.py:2"]
+
+
+def test_q1_dedupe_rollback_removes_only_this_transaction(tmp_path, monkeypatch) -> None:
+    from tests.test_issue_286_stage2_wedge_probes import _wedge_then_replay
+
+    replay, _export, _foreign, _source = _wedge_then_replay(tmp_path, monkeypatch, "before_summary_upsert")
+    paths = replay._dedupe_restore_paths()
+    own, other = "tx-own", "tx-other"
+    lines = [
+        json.dumps({"event_id": "old", "transaction_id": other}, separators=(",", ":")) + "\n",
+        json.dumps({"event_id": "mine-1", "transaction_id": own}) + "\n",
+        '{"event_id": "legacy-no-tx"}\n',
+        json.dumps({"event_id": "mine-2", "transaction_id": own}) + "\n",
+        json.dumps({"z": 1, "event_id": "later-foreign", "a": 2}) + "\n",
+    ]
+    for path in paths.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("".join(lines), encoding="utf-8")
+    replay._restore_dedupe_files(own)
+    expected = "".join(lines[i] for i in (0, 2, 4))
+    for path in paths.values():
+        assert path.read_text(encoding="utf-8") == expected
+```
+
+</details>
+
+<details><summary>tests/test_zz_claude_verify8c.py</summary>
+
+```python
+"""Claude verify probe, round 8: legacy index paths through the real index() entrypoint. Scratch only."""
+
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+from unittest import mock
+
+import tests.test_index_limit_skip_stats as limit_stats
+
+
+def _run(force_file: bool):
+    calls: list[int] = []
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        (root / "chroma").mkdir()
+        (root / "processed.json").write_text("{}", encoding="utf-8")
+        (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
+        src = root / "agent-transcripts" / "s" / "chat.jsonl"
+        src.parent.mkdir(parents=True)
+        src.write_text(limit_stats._cursor_line() + "\n", encoding="utf-8")
+        inv = root / "inventory.jsonl"
+        limit_stats._write_inventory(inv, [str(src)])
+        cfg = limit_stats.IndexLimitSkipStatsTests()._cfg(root, inv)
+        unit = {"type": "explanation", "title": "T", "summary": "S", "keywords": ["k"],
+                "confidence": 0.9, "domain": "coding.tooling"}
+        with mock.patch("ingest.load_config", return_value=cfg), \
+                mock.patch("config.load_config", return_value=cfg), \
+                mock.patch("ingest.summarize", side_effect=lambda *a, **k: calls.append(1) or "summary"), \
+                mock.patch("ingest.distill", return_value=[unit]), \
+                mock.patch("ingest.ollama_embed", return_value=[0.1, 0.2]), \
+                mock.patch("brief.refresh_brief_after_change", lambda *_a, **_k: None):
+            from ingest import index
+
+            try:
+                return len(calls), index(verbose=False, force_file=str(src) if force_file else None), None
+            except Exception as exc:  # report how much was paid before the failure
+                return len(calls), None, repr(exc)[:160]
+
+
+def test_bulk_index_commits_without_lock_error() -> None:
+    calls, stats, err = _run(False)
+    assert err is None, (calls, err)
+    assert stats["files_processed"] == 1, stats
+
+
+def test_legacy_index_file_commits_without_lock_error() -> None:
+    calls, stats, err = _run(True)
+    assert err is None, (calls, err)
+    assert stats["files_processed"] == 1, stats
+```
+
+</details>
+
+<details><summary>tests/test_zz_claude_verify8d.py</summary>
+
+```python
+"""Claude verify probe, round 8: the incremental route through the real index() entrypoint. Scratch only."""
+
+from __future__ import annotations
+
+import traceback
+from unittest import mock
+
+from tests.test_zz_codex_audit import _route_fixture
+
+
+def test_index_file_routes_codex_rollout_and_commits(tmp_path, monkeypatch) -> None:
+    import ingest
+    from tests.incremental_jsonl_helpers import fake_summarize
+
+    import chroma_write_store
+    import incremental_jsonl as inc
+
+    source, cfg, _route = _route_fixture(tmp_path, monkeypatch)
+    # Production shape: the outer index() lease and the coordinator use one writer lock.
+    layout = inc.ProductionBoundary(cfg, str(source)).layout
+    monkeypatch.setattr(chroma_write_store, "DEFAULT_WRITER_LOCK", layout["locks"] / "chroma_writer_gate.lock")
+    calls = []
+
+    def summarize(*args, **kwargs):
+        calls.append(1)
+        return fake_summarize(*args, **kwargs)
+
+    monkeypatch.setattr(ingest, "summarize", summarize)
+    err = None
+    with mock.patch("ingest.load_config", return_value=cfg), mock.patch("config.load_config", return_value=cfg), \
+            mock.patch("brief.refresh_brief_after_change", lambda *_a, **_k: None):
+        try:
+            stats = ingest.index(verbose=False, force_file=str(source))
+        except Exception as exc:
+            stats = None
+            err = (repr(exc)[:200], [f"{f.filename.split('/')[-1]}:{f.lineno}" for f in traceback.extract_tb(exc.__traceback__)][-8:])
+    assert err is None, ("summaries paid:", len(calls), err)
+    assert stats["files_processed"] == 1, stats
+```
+
+</details>
 
 ## Appendix: round-5 probe tests
 
