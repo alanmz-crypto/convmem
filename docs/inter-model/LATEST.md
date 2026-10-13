@@ -9,18 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — governed-path correction implemented (2026-10-13 UTC):**
-  Cursor preserves original governed files for cross-parent Chroma aliases;
-  canonical client/export binding remains. Codex captured original failures
-  and passing final 98-case/lint evidence. Independent Codex delta PASS (95%)
-  at `dac925f33d4ebd7482c0536408b9be12f51d6106` closes the blocker under the
-  [bounded grant](../plans/EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized).
-  **Codex:** observe fresh final-tip CI on
-  [draft #389](https://github.com/alanmz-crypto/convmem/pull/389). See
-  [STATUS](../plans/STATUS-safe-harbor.md) and
-  [correction evidence](../plans/VERIFY-safe-harbor.md#governed-path-identity-correction--isolated-evidence).
-  PR stays draft; no paid reviewer, PR merge, deployment or T3–T5 grant.
-  No manual session indexing today.
+- **Arc Safe Harbor — draft PR #391; pytest correction returned (2026-10-13):**
+  **Next lane: Codex — report fresh final-tip hosted CI.**
+  [VERIFY](../plans/VERIFY-safe-harbor.md#t3-bounded-pytest-compatibility-correction)
+  records affected/integration evidence, full lint PASS and retained failures.
+  [STATUS](../plans/STATUS-safe-harbor.md) holds current gates. Runtime/baseline
+  stay fixed; successor acceptance, merge, deployment and T4/T5 remain pending.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

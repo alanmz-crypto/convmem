@@ -23,8 +23,9 @@ PYTEST_PIN_CANDIDATE_EVIDENCE = "2026-08-16T04:46:06Z"
 PYTEST_PIN_EXECUTION_EVIDENCE = "2026-08-16T05:34:00Z"
 
 VERSION_LOG_CMD = "python -m pytest --version"
-FULL_SUITE_CMD = "python -m pytest -q"
-CHECKER_INVOCATION = "python scripts/check_ci_critical_invariants.py"
+COLLECT_CMD = "python -I -S -B tests/_safe_harbor_t3_worker.py run-ci-collect"
+FULL_SUITE_CMD = "python -I -S -B tests/_safe_harbor_t3_worker.py run-ci"
+CHECKER_INVOCATION = COLLECT_CMD
 
 _UNPINNED_PYTEST_RE = re.compile(r"pip\s+install\b.*\bpytest\b(?!\s*==)")
 _PIP_INSTALL_RE = re.compile(r"^(?:python(?:3(?:\.\d+)?)?\s+-m\s+)?pip3?\s+install\b")
@@ -152,6 +153,10 @@ class WorkflowContractTests(unittest.TestCase):
     def test_workflow_contract_live_file(self):
         _assert_workflow_contract(_WORKFLOW)
 
+    def test_pytest_job_has_two_hour_bound(self):
+        data = _load_workflow(_WORKFLOW)
+        self.assertEqual(data["jobs"]["pytest"].get("timeout-minutes"), 120)
+
     def test_pin_constants_document_execution_evidence(self):
         self.assertEqual(APPROVED_PYTEST_PIN, "pytest==9.1.1")
         self.assertTrue(PYTEST_PIN_EXECUTION_EVIDENCE.endswith("Z"))
@@ -201,12 +206,12 @@ class WorkflowContractTests(unittest.TestCase):
         finally:
             tmp_path.unlink()
 
-    def test_contract_fails_when_checker_is_comment_only(self):
+    def test_contract_fails_when_collect_is_comment_only(self):
         data = _load_workflow(_WORKFLOW)
         _mutate_pytest_step_run(
             data,
             "Check critical invariant manifest",
-            "# " + CHECKER_INVOCATION,
+            "# " + COLLECT_CMD,
         )
         tmp_path = _write_temp_workflow(data)
         try:
@@ -215,12 +220,12 @@ class WorkflowContractTests(unittest.TestCase):
         finally:
             tmp_path.unlink()
 
-    def test_contract_fails_when_checker_is_echo_only(self):
+    def test_contract_fails_when_collect_is_echo_only(self):
         data = _load_workflow(_WORKFLOW)
         _mutate_pytest_step_run(
             data,
             "Check critical invariant manifest",
-            "echo " + CHECKER_INVOCATION,
+            "echo " + COLLECT_CMD,
         )
         tmp_path = _write_temp_workflow(data)
         try:

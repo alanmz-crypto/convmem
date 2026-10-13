@@ -12,6 +12,7 @@ from doctor import (
     _charter_register_consistency_probe,
     _check_claude_mcp,
     _check_dirty_main,
+    _check_empty_ledger_documents,
     _check_hooks_path,
     _check_standing_register,
     _check_unpushed_commits,
@@ -61,43 +62,77 @@ class DoctorTests(unittest.TestCase):
         mock_restic_password_backup,
         mock_drift,
     ):
-        mock_load.return_value = {"index": {"chroma_dir": "/tmp/c"}, "models": {}}
-        ok = DoctorCheck("x", True, "ok")
-        for mock in (
-            mock_cfg,
-            mock_key,
-            mock_ollama,
-            mock_chroma,
-            mock_drift,
-            mock_restic,
-            mock_restic_external,
-            mock_restic_password_backup,
-            mock_mcp,
-            mock_wire,
-            mock_cont,
-            mock_copilot,
-            mock_claude,
-        ):
-            mock.return_value = ok
-        mock_verify.return_value = DoctorCheck("verify_continue", True, "skipped")
+        with tempfile.TemporaryDirectory() as td:
+            chroma_dir = Path(td) / "chroma"
+            chroma_dir.mkdir()
+            cfg = {
+                "index": {"chroma_dir": str(chroma_dir)},
+                "models": {"embed_model": "nomic-embed-text"},
+            }
+            mock_load.return_value = cfg
+            ok = DoctorCheck("x", True, "ok")
+            for mock in (
+                mock_cfg,
+                mock_key,
+                mock_ollama,
+                mock_chroma,
+                mock_drift,
+                mock_restic,
+                mock_restic_external,
+                mock_restic_password_backup,
+                mock_mcp,
+                mock_wire,
+                mock_cont,
+                mock_copilot,
+                mock_claude,
+            ):
+                mock.return_value = ok
+            mock_verify.return_value = DoctorCheck("verify_continue", True, "skipped")
 
-        # These live gates read real telemetry/files (synthesis_failures.jsonl,
-        # index history) and are not part of the decorator mock set above. Mock
-        # them so `all(c.ok)` is hermetic and does not depend on the machine's
-        # rolling 7-day telemetry window (which can legitimately be non-zero)
-        # or on native faults the kernel logged this boot.
-        with (
-            patch("doctor._check_synthesis_gate", return_value=ok),
-            patch("doctor._check_index_gate", return_value=ok),
-            patch("doctor._check_arc_staleness", return_value=ok),
-            patch("doctor._check_logical_projection", return_value=ok),
-            patch("doctor._check_source_reconciliation_freshness", return_value=ok),
-            patch("doctor._check_cpu_tripwire", return_value=ok),  # this boot's kernel log
-            patch("doctor._check_chroma_audit", return_value=ok),
+            # These live gates read real telemetry/files (synthesis_failures.jsonl,
+            # index history) and are not part of the decorator mock set above. Mock
+            # them so `all(c.ok)` is hermetic and does not depend on the machine's
+            # rolling 7-day telemetry window (which can legitimately be non-zero)
+            # or on native faults the kernel logged this boot.
+            with (
+                patch("doctor._check_synthesis_gate", return_value=ok),
+                patch("doctor._check_index_gate", return_value=ok),
+                patch("doctor._check_arc_staleness", return_value=ok),
+                patch("doctor._check_logical_projection", return_value=ok),
+                patch("doctor._check_source_reconciliation_freshness", return_value=ok),
+                patch("doctor._check_cpu_tripwire", return_value=ok),  # this boot's kernel log
+                patch("doctor._check_chroma_audit", return_value=ok),
+                patch(
+                    "observe.repair_empty_ledger_documents",
+                    return_value={"scanned": 0, "empty": 0},
+                ) as repair_mock,
+            ):
+                checks = run_doctor(run_verify=False)
+            repair_mock.assert_called_once_with(cfg, dry_run=True, verbose=False)
+            failed = [(c.name, c.ok, c.detail) for c in checks if not c.ok]
+            self.assertEqual(failed, [], msg=f"unexpected doctor failures: {failed}")
+            self.assertEqual(doctor_exit_code(checks), 0)
+
+    def test_check_empty_ledger_documents_passes_when_helper_reports_zero_empty(self):
+        cfg = {"index": {"chroma_dir": "/fixture/chroma"}, "models": {}}
+        with patch(
+            "observe.repair_empty_ledger_documents",
+            return_value={"scanned": 12, "empty": 0},
+        ) as repair_mock:
+            check = _check_empty_ledger_documents(cfg)
+        repair_mock.assert_called_once_with(cfg, dry_run=True, verbose=False)
+        self.assertTrue(check.ok)
+        self.assertIn("0 empty", check.detail)
+
+    def test_check_empty_ledger_documents_fails_when_helper_raises(self):
+        cfg = {"index": {"chroma_dir": "/fixture/chroma"}, "models": {}}
+        with patch(
+            "observe.repair_empty_ledger_documents",
+            side_effect=RuntimeError("write-store unavailable"),
         ):
-            checks = run_doctor(run_verify=False)
-        self.assertTrue(all(c.ok for c in checks))
-        self.assertEqual(doctor_exit_code(checks), 0)
+            check = _check_empty_ledger_documents(cfg)
+        self.assertFalse(check.ok)
+        self.assertIn("write-store unavailable", check.detail)
 
     def test_doctor_exit_code_fail(self):
         checks = [

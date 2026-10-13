@@ -34,6 +34,7 @@ import fcntl
 import hashlib
 import json
 import os
+import stat
 import pickle
 import shutil
 import sqlite3
@@ -61,7 +62,12 @@ DEFAULT_LOCK_TIMEOUT_SECONDS = 120.0
 AUDIT_LOCK_TIMEOUT_SECONDS = 60.0
 GUARD_DIR_SUFFIX = ".write-guard"
 INCIDENT_SCHEMA = "convmem.safe_harbor.incident_set"
-INCIDENT_VERSION = 1
+INCIDENT_VERSION = 2
+PRESERVATION_MANIFEST_SCHEMA = "convmem.safe_harbor.preservation_manifest"
+PRESERVATION_MANIFEST_VERSION = 1
+_SUPPORTED_INCIDENT_VERSIONS = frozenset({1, 2})
+_SUPPORTED_CHROMADB_VERSIONS = frozenset({"1.5.9"})
+_RESTORE_REQUIRED_REASON = "segment failed validation; bounded restore required before further writes"
 LEGACY_BYTES_NAME = "QUARANTINE.legacy-bytes"
 _ADMISSION_BARRIER_ENV = "CONVMEM_GUARD_ADMISSION_BARRIER"
 _LOCK_HOLD_BARRIER_ENV = "CONVMEM_GUARD_LOCK_BARRIER"
@@ -95,6 +101,22 @@ class ChromaStaleSystemError(ChromaWriteGuardError):
 
 class ChromaContainmentUnavailableError(ChromaWriteGuardError):
     """Incident publication failed; no durable stop was established."""
+
+
+class ChromaReleaseUncertaintyError(ChromaWriteGuardError):
+    """Release disposition may be durable but quarantine marker state is uncertain."""
+
+
+class ReleaseEvidenceCaptureUnavailable(ChromaWriteGuardError):
+    """Snapshot-time SQL state cannot yet form strict release evidence (expected before first persist)."""
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+
+def _unavailable_release_evidence(reason: str) -> dict[str, Any]:
+    return {"status": "unavailable", "reason": reason}
 
 
 def _utc_now() -> str:
@@ -394,6 +416,18 @@ def _seq_id(value: Any) -> int:
     return int(value or 0)
 
 
+def _seq_id_strict(value: Any) -> int:
+    if value is None or isinstance(value, bool):
+        raise ValueError("invalid seq_id")
+    if isinstance(value, bytes):
+        if not value:
+            raise ValueError("empty seq_id bytes")
+        return int.from_bytes(value, "big")
+    if isinstance(value, int):
+        return int(value)
+    raise TypeError(f"unsupported seq_id type {type(value)!r}")
+
+
 def vector_census(chroma_dir: str | Path) -> dict[str, dict[str, Any]]:
     """Per collection: metadata rows whose vector is neither in the HNSW nor pending.
 
@@ -441,6 +475,460 @@ def vector_census(chroma_dir: str | Path) -> dict[str, dict[str, Any]]:
         return result
     finally:
         con.close()
+
+
+# --------------------------------------------------------------------------------------
+# Safe Harbor T3 — release evidence (client-free), preservation, validated release
+# --------------------------------------------------------------------------------------
+
+
+def segment_file_digests(seg_dir: Path) -> dict[str, str]:
+    """Content hashes for every present segment file (no inode/mtime)."""
+    out: dict[str, str] = {}
+    for name in SEGMENT_FILES:
+        path = seg_dir / name
+        if path.is_file():
+            out[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return out
+
+
+def sqlite_schema_digest(chroma_dir: Path) -> str:
+    database = Path(chroma_dir) / "chroma.sqlite3"
+    con = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
+    try:
+        con.execute("BEGIN")
+        rows = con.execute(
+            "select type, name, sql from sqlite_master where name not like 'sqlite_%' order by type, name"
+        ).fetchall()
+    finally:
+        con.execute("ROLLBACK")
+        con.close()
+    payload = json.dumps(rows, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def live_backend_identity(chroma_dir: str | Path) -> dict[str, Any]:
+    """Installed backend/schema identity without opening a Chroma client."""
+    root = Path(chroma_dir)
+    import importlib.metadata
+
+    import chromadb
+    from chromadb.api.client import Client
+    from chromadb.config import Settings
+
+    from chromadb_rust_bindings import chromadb_rust_bindings as native_binding
+
+    rust_path = Path(native_binding.__file__).resolve()
+    if not rust_path.is_file():
+        raise FileNotFoundError(f"missing rust binding at {rust_path}")
+    settings = Settings()
+    con = sqlite3.connect(f"file:{root / 'chroma.sqlite3'}?mode=ro", uri=True)
+    try:
+        con.execute("BEGIN")
+        migrations = tuple(row[0] for row in con.execute("select version from migrations order by version"))
+    finally:
+        con.execute("ROLLBACK")
+        con.close()
+    identity = {
+        "chromadb_version": chromadb.__version__,
+        "client_api": f"{Client.__module__}.{Client.__qualname__}",
+        "chroma_api_impl": str(getattr(settings, "chroma_api_impl", None)),
+        "rust_binding_sha256": hashlib.sha256(rust_path.read_bytes()).hexdigest(),
+        "sqlite_migrations": migrations,
+        "sqlite_schema_digest": sqlite_schema_digest(root),
+        "hnswlib": importlib.metadata.version("hnswlib"),
+    }
+    _assert_supported_backend_identity(identity)
+    return identity
+
+
+def _collection_segments_sql(con: sqlite3.Connection, collection: str) -> tuple[str, str, str]:
+    row = con.execute("select id, name from collections where name = ?", (collection,)).fetchone()
+    if not row:
+        raise KeyError(f"collection {collection!r} missing")
+    collection_id, _ = row
+    scopes = dict(con.execute("select scope, id from segments where collection = ?", (collection_id,)).fetchall())
+    meta_seg = scopes.get("METADATA")
+    vec_seg = scopes.get("VECTOR")
+    if not meta_seg or not vec_seg:
+        raise KeyError(f"collection {collection!r} missing METADATA/VECTOR segments")
+    return collection_id, meta_seg, vec_seg
+
+
+def _sqlite_reader_lock(con: sqlite3.Connection) -> None:
+    """Establish a read lock without nesting BEGIN on an active transaction."""
+    if con.in_transaction:
+        con.execute("SELECT 1")
+        return
+    con.execute("BEGIN")
+
+
+def build_release_evidence_for_collection(
+    chroma_dir: str | Path,
+    collection_name: str,
+    *,
+    segment_dir: Path | None = None,
+    con: sqlite3.Connection | None = None,
+) -> dict[str, Any]:
+    """Capture strict empty-changed-set inputs (read-only SQLite; optional pinned segment dir)."""
+    root = Path(chroma_dir)
+    owned = con is None
+    if owned:
+        con = sqlite3.connect(f"file:{root / 'chroma.sqlite3'}?mode=ro", uri=True)
+    try:
+        _sqlite_reader_lock(con)
+        collection_id, meta_seg, vec_seg = _collection_segments_sql(con, collection_name)
+        applied = {sid: _seq_id_strict(raw) for sid, raw in con.execute("select segment_id, seq_id from max_seq_id")}
+        if vec_seg not in applied:
+            raise ReleaseEvidenceCaptureUnavailable("vector_watermark_not_persisted")
+        vector_watermark = applied[vec_seg]
+        if vector_watermark <= 0:
+            raise ReleaseEvidenceCaptureUnavailable("vector_watermark_not_positive")
+        meta_wm = applied.get(meta_seg) if meta_seg in applied else None
+        vec_dir = segment_dir if segment_dir is not None else root / str(vec_seg)
+        if segment_dir is not None:
+            guard_root = root.parent / f"{root.name}{GUARD_DIR_SUFFIX}"
+            _assert_path_under_root(vec_dir, guard_root, "snapshot staging")
+        else:
+            _assert_live_segment_dir(vec_dir, root)
+        if not vec_dir.is_dir():
+            raise FileNotFoundError(f"vector segment directory missing: {vec_dir}")
+        for name in SEGMENT_FILES:
+            path = vec_dir / name
+            if path.exists():
+                _reject_symlink_path(path)
+                _assert_regular_segment_file(path)
+        digests = segment_file_digests(vec_dir)
+        backend = _backend_identity_for_storage(live_backend_identity(root))
+        return {
+            "collection_name": collection_name,
+            "collection_id": collection_id,
+            "metadata_segment_id": meta_seg,
+            "vector_segment_id": vec_seg,
+            "vector_watermark": vector_watermark,
+            "metadata_watermark": meta_wm,
+            "segment_digests": digests,
+            "backend_identity": backend,
+        }
+    finally:
+        if owned:
+            if con.in_transaction:
+                con.execute("ROLLBACK")
+            con.close()
+
+
+def _normalize_backend_identity(identity: Mapping[str, Any]) -> dict[str, Any]:
+    out = dict(identity)
+    migrations = out.get("sqlite_migrations")
+    if isinstance(migrations, (list, tuple)):
+        out["sqlite_migrations"] = tuple(int(item) for item in migrations)
+    return out
+
+
+def _backend_identity_for_storage(identity: Mapping[str, Any]) -> dict[str, Any]:
+    out = _normalize_backend_identity(identity)
+    out["sqlite_migrations"] = list(out.get("sqlite_migrations") or ())
+    return out
+
+
+def _assert_supported_backend_identity(identity: Mapping[str, Any]) -> None:
+    version = identity.get("chromadb_version")
+    if version not in _SUPPORTED_CHROMADB_VERSIONS:
+        raise ChromaWriteGuardError(f"unsupported chromadb backend {version!r} for release evidence")
+
+
+def authority_submission_digest(document: Mapping[str, Any]) -> str:
+    """Digest of the full current unresolved authority (incidents, findings, repair state)."""
+    incidents_out: list[dict[str, Any]] = []
+    for incident in document.get("incidents") or []:
+        if not isinstance(incident, dict):
+            raise ChromaWriteGuardError("invalid incident set for authority digest")
+        findings_out = []
+        for finding in incident.get("findings") or []:
+            if not isinstance(finding, dict):
+                raise ChromaWriteGuardError("invalid finding set for authority digest")
+            findings_out.append(
+                {
+                    "id": finding.get("id"),
+                    "revision": finding.get("revision"),
+                    "digest": finding.get("digest"),
+                    "kind": finding.get("kind"),
+                    "reason": finding.get("reason"),
+                }
+            )
+        findings_out.sort(key=lambda item: str(item.get("id")))
+        incidents_out.append(
+            {
+                "id": incident.get("id"),
+                "segment": incident.get("segment"),
+                "occurrence": incident.get("occurrence"),
+                "findings": findings_out,
+                "preservation": incident.get("preservation"),
+                "pinned_source": incident.get("pinned_source"),
+                "repair": incident.get("repair"),
+            }
+        )
+    incidents_out.sort(key=lambda item: str(item.get("id")))
+    payload = {
+        "schema": INCIDENT_SCHEMA,
+        "version": document.get("version"),
+        "target": document.get("target"),
+        "incidents": incidents_out,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _reject_symlink_path(path: Path) -> None:
+    cursor = path
+    while True:
+        if cursor.is_symlink():
+            raise ChromaWriteGuardError(f"refusing symlink path component {cursor}")
+        if cursor == cursor.parent:
+            break
+        cursor = cursor.parent
+
+
+def _assert_path_under_root(path: Path, root: Path, label: str) -> Path:
+    _reject_symlink_path(path)
+    _reject_symlink_path(root)
+    resolved = path.expanduser().resolve(strict=False)
+    root_resolved = root.expanduser().resolve(strict=False)
+    if resolved != root_resolved and root_resolved not in resolved.parents:
+        raise ChromaWriteGuardError(f"refusing {label} path outside root {resolved}")
+    return resolved
+
+
+def _assert_guard_relative_path(path: Path, root: Path) -> Path:
+    return _assert_path_under_root(path, root, "guard")
+
+
+def _assert_live_segment_dir(seg_dir: Path, chroma_dir: Path) -> Path:
+    return _assert_path_under_root(seg_dir, chroma_dir, "live segment")
+
+
+def _new_occurrence_epoch() -> str:
+    return f"occ_{time.time_ns()}-{os.getpid()}"
+
+
+def _coerce_occurrence(value: Any) -> dict[str, str] | None:
+    if not isinstance(value, dict):
+        return None
+    epoch = value.get("epoch")
+    if not isinstance(epoch, str) or not epoch or "/" in epoch or ".." in epoch:
+        return None
+    return {"epoch": epoch}
+
+
+def _assert_regular_segment_file(path: Path) -> None:
+    if path.is_symlink():
+        raise ChromaWriteGuardError(f"refusing symlink segment file {path}")
+    if path.exists() and not path.is_file():
+        raise ChromaWriteGuardError(f"refusing non-regular segment file {path}")
+
+
+def _reject_unsafe_directory_entry(entry: Path) -> None:
+    _reject_symlink_path(entry)
+    if entry.is_symlink():
+        if not entry.exists():
+            raise ChromaWriteGuardError(f"refusing dangling symlink {entry}")
+        raise ChromaWriteGuardError(f"refusing symlink entry {entry}")
+    try:
+        mode = entry.lstat().st_mode
+    except OSError as exc:
+        raise ChromaWriteGuardError(f"refusing unreadable segment entry {entry}: {exc}") from exc
+    if stat.S_ISSOCK(mode) or stat.S_ISCHR(mode) or stat.S_ISBLK(mode):
+        raise ChromaWriteGuardError(f"unsupported segment entry {entry.name}")
+
+
+def _source_facts_equal(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    if set(left.keys()) != set(right.keys()):
+        return False
+    for name in left:
+        if left[name] != right[name]:
+            return False
+    return True
+
+
+def _preservation_original_facts(incident: Mapping[str, Any]) -> dict[str, Any] | None:
+    preservation = incident.get("preservation")
+    if not isinstance(preservation, dict):
+        return None
+    recorded = preservation.get("original_facts")
+    if not isinstance(recorded, dict):
+        return None
+    return recorded
+
+
+def _release_identity_mismatch(live: Mapping[str, Any], saved: Mapping[str, Any]) -> str:
+    for key in (
+        "sqlite_schema_digest",
+        "chromadb_version",
+        "chroma_api_impl",
+        "rust_binding_sha256",
+        "client_api",
+        "hnswlib",
+    ):
+        if live.get(key) != saved.get(key):
+            return f"{key}_mismatch"
+    if tuple(live.get("sqlite_migrations") or ()) != tuple(saved.get("sqlite_migrations") or ()):
+        return "sqlite_migrations_mismatch"
+    return "backend_identity_mismatch"
+
+
+def _release_evidence_admission_status(evidence: Mapping[str, Any]) -> tuple[bool, str]:
+    if not evidence:
+        return False, "missing_release_evidence"
+    if evidence.get("status") == "unavailable":
+        reason = str(evidence.get("reason") or "unknown")
+        return False, f"release_evidence_unavailable:{reason}"
+    return True, ""
+
+
+def _evaluate_release_saved_watermark(evidence: Mapping[str, Any]) -> tuple[int | None, str]:
+    try:
+        saved_wm = _seq_id_strict(evidence.get("vector_watermark"))
+    except (TypeError, ValueError):
+        return None, "missing_vector_watermark"
+    if saved_wm <= 0:
+        return None, "missing_vector_watermark"
+    return saved_wm, ""
+
+
+def _evaluate_release_backend_identity(root: Path, evidence: Mapping[str, Any]) -> tuple[bool, str]:
+    try:
+        live_identity = _normalize_backend_identity(live_backend_identity(root))
+        _assert_supported_backend_identity(live_identity)
+    except ChromaWriteGuardError as exc:
+        return False, f"unsupported_backend {exc}"
+    except (OSError, ImportError, FileNotFoundError) as exc:
+        return False, f"backend_identity_unavailable {exc}"
+    saved_identity = evidence.get("backend_identity")
+    if not isinstance(saved_identity, dict):
+        return False, "missing_backend_identity"
+    saved_identity = _normalize_backend_identity(saved_identity)
+    try:
+        _assert_supported_backend_identity(saved_identity)
+    except ChromaWriteGuardError as exc:
+        return False, f"unsupported_saved_backend {exc}"
+    if live_identity != saved_identity:
+        reason = _release_identity_mismatch(live_identity, saved_identity)
+        return False, reason if reason != "backend_identity_mismatch" else "backend_identity_mismatch"
+    return True, ""
+
+
+def _evaluate_release_sql_watermarks(
+    evidence: Mapping[str, Any],
+    saved_wm: int,
+    *,
+    con: sqlite3.Connection,
+) -> tuple[bool, str]:
+    collection_name = evidence.get("collection_name")
+    if not isinstance(collection_name, str) or not collection_name:
+        return False, "missing_collection_name"
+    row = con.execute("select id, name from collections where name = ?", (collection_name,)).fetchone()
+    if not row:
+        return False, "collection_missing"
+    collection_id, _ = row
+    if collection_id != evidence.get("collection_id"):
+        return False, "collection_id_mismatch"
+    scopes = dict(con.execute("select scope, id from segments where collection = ?", (collection_id,)).fetchall())
+    meta_seg, vec_seg = scopes.get("METADATA"), scopes.get("VECTOR")
+    if meta_seg != evidence.get("metadata_segment_id") or vec_seg != evidence.get("vector_segment_id"):
+        return False, "segment_identity_mismatch"
+    applied = {sid: _seq_id_strict(raw) for sid, raw in con.execute("select segment_id, seq_id from max_seq_id")}
+    if vec_seg not in applied:
+        return False, "sequence_evidence_missing"
+    meta_wm = applied.get(meta_seg)
+    if meta_wm is None:
+        return False, "sequence_evidence_missing"
+    vec_wm = applied[vec_seg]
+    if meta_wm != saved_wm or vec_wm != saved_wm:
+        return False, f"watermark_drift meta={meta_wm} vec={vec_wm} saved={saved_wm}"
+    pending = con.execute(
+        "select count(*) from embeddings_queue where topic like ? and seq_id > ?",
+        (f"%/{collection_id}", saved_wm),
+    ).fetchone()[0]
+    if pending:
+        return False, f"queue_pending={pending}"
+    return True, ""
+
+
+def _evaluate_release_live_segment(
+    root: Path, evidence: Mapping[str, Any], collection_name: str
+) -> tuple[bool, str]:
+    vec_seg_id = str(evidence.get("vector_segment_id") or "")
+    vec_dir = root / vec_seg_id
+    if not vec_dir.is_dir():
+        return False, "vector_segment_missing"
+    saved_digests = evidence.get("segment_digests")
+    if not isinstance(saved_digests, dict):
+        return False, "missing_segment_digests"
+    if segment_file_digests(vec_dir) != saved_digests:
+        return False, "segment_digest_mismatch"
+    report = validate_segment(vec_dir)
+    if not report.ok:
+        return False, f"structural_invalid {list(report.failures)}"
+    try:
+        census_all = vector_census(root)
+    except (FileNotFoundError, sqlite3.Error, OSError) as exc:
+        return False, f"census_unavailable {exc}"
+    row = census_all.get(collection_name)
+    if row is None:
+        return False, "census_missing"
+    if row.get("lost") or row.get("extra"):
+        return False, f"census_mismatch {row}"
+    return True, ""
+
+
+def evaluate_release_evidence(
+    chroma_dir: str | Path,
+    evidence: Mapping[str, Any],
+    *,
+    con: sqlite3.Connection | None = None,
+) -> tuple[bool, str]:
+    """Strict empty-changed-set release oracle (no Chroma client)."""
+    root = Path(chroma_dir)
+    ok, reason = _release_evidence_admission_status(evidence)
+    if not ok:
+        return False, reason
+    saved_wm, reason = _evaluate_release_saved_watermark(evidence)
+    if saved_wm is None:
+        return False, reason
+    ok, reason = _evaluate_release_backend_identity(root, evidence)
+    if not ok:
+        return False, reason
+    collection_name = evidence.get("collection_name")
+    if not isinstance(collection_name, str) or not collection_name:
+        return False, "missing_collection_name"
+    owned = con is None
+    if owned:
+        con = sqlite3.connect(f"file:{root / 'chroma.sqlite3'}?mode=ro", uri=True)
+    try:
+        _sqlite_reader_lock(con)
+        ok, reason = _evaluate_release_sql_watermarks(evidence, saved_wm, con=con)
+        if not ok:
+            return False, reason
+    finally:
+        if owned and con is not None:
+            if con.in_transaction:
+                con.execute("ROLLBACK")
+            con.close()
+    return _evaluate_release_live_segment(root, evidence, collection_name)
+
+
+def _manifest_digest_payload(manifest: Mapping[str, Any]) -> str:
+    body = {key: value for key, value in manifest.items() if key != "manifest_digest"}
+    return hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _safe_preservation_name(name: str) -> bool:
+    if not name or name in {".", ".."} or "/" in name or "\\" in name:
+        return False
+    return name in SEGMENT_FILES or name == "MANIFEST.json"
 
 
 # --------------------------------------------------------------------------------------
@@ -536,6 +1024,22 @@ def _fsync(path: Path, *, directory: bool = False) -> None:
         os.close(fd)
 
 
+def _fsync_directory_chain(path: Path, *, stop: Path) -> None:
+    """Fsync each directory from path up through stop (inclusive)."""
+    start = path
+    if not start.exists():
+        start = start.parent
+    current = start.resolve(strict=False)
+    stop_resolved = stop.resolve(strict=False)
+    while True:
+        if not current.is_dir():
+            raise OSError(f"cannot durably link non-directory {current}")
+        _fsync(current, directory=True)
+        if current in (stop_resolved, current.parent):
+            break
+        current = current.parent
+
+
 def _copy_durable(src: Path, dst: Path) -> None:
     shutil.copyfile(src, dst)
     _fsync(dst)
@@ -550,6 +1054,8 @@ def _write_json_durable(path: Path, data: Mapping[str, Any]) -> None:
 
 
 _LOCK_STATE = threading.local()
+_EVENT_APPEND_LOCK = threading.Lock()
+_RELEASE_SUPPORTED_FINDING_KINDS = frozenset({"structural", "segment_restored", "lost_vectors", "legacy"})
 
 
 @contextmanager
@@ -806,11 +1312,24 @@ def _coerce_incident(incident: Any, target: str) -> dict[str, Any] | None:
             return None
         seen.add(finding["id"])
         coerced.append(finding)
-    return {"id": incident_id, "segment": segment, "findings": coerced}
+    out: dict[str, Any] = {"id": incident_id, "segment": segment, "findings": coerced}
+    occurrence = _coerce_occurrence(incident.get("occurrence"))
+    if incident.get("occurrence") is not None and occurrence is None:
+        return None
+    if occurrence is not None:
+        out["occurrence"] = occurrence
+    for optional in ("preservation", "repair", "pinned_source"):
+        extra = incident.get(optional)
+        if extra is not None:
+            if not isinstance(extra, dict):
+                return None
+            out[optional] = copy.deepcopy(extra)
+    return out
 
 
 def _interpret_current(parsed: Mapping[str, Any], expected_target: str) -> AuthorityView:
-    if parsed.get("version") != INCIDENT_VERSION:
+    version = parsed.get("version")
+    if version not in _SUPPORTED_INCIDENT_VERSIONS:
         return _blocked("unknown incident schema version")
     target = parsed.get("target")
     if not isinstance(target, str) or target != expected_target:
@@ -828,7 +1347,7 @@ def _interpret_current(parsed: Mapping[str, Any], expected_target: str) -> Autho
         incidents.append(coerced)
     document: dict[str, Any] = {
         "schema": INCIDENT_SCHEMA,
-        "version": INCIDENT_VERSION,
+        "version": max(int(version), INCIDENT_VERSION),
         "target": expected_target,
         "incidents": incidents,
     }
@@ -886,8 +1405,15 @@ def _upsert_finding(document: dict[str, Any], spec: Mapping[str, Any]) -> bool:
     incident_id = _incident_id(str(document["target"]), segment)
     incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
     if incident is None:
-        incident = {"id": incident_id, "segment": segment, "findings": []}
+        incident = {
+            "id": incident_id,
+            "segment": segment,
+            "findings": [],
+            "occurrence": {"epoch": _new_occurrence_epoch()},
+        }
         document["incidents"].append(incident)
+    elif not isinstance(incident.get("occurrence"), dict) or not incident["occurrence"].get("epoch"):
+        incident["occurrence"] = {"epoch": _new_occurrence_epoch()}
     current = next((item for item in incident["findings"] if item["id"] == finding_id), None)
     if current is None:
         incident["findings"].append(
@@ -1045,11 +1571,15 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         self.events_path = self.root / "events.jsonl"
         self.quarantine_path = self.root / "QUARANTINE.json"
         self.legacy_bytes_path = self.root / LEGACY_BYTES_NAME
+        self.preservation_root = self.root / "preservation"
         self.lock_timeout_seconds = lock_timeout_seconds
 
     @property
     def audit_path(self) -> Path:
         return self.root / "audit.json"
+
+    def _durable_directory_stop(self) -> Path:
+        return self.root.parent
 
     # -- quarantine -------------------------------------------------------------------
 
@@ -1080,7 +1610,7 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         view = self.read_authority()
         if view.state == "absent":
             return None
-        return {
+        payload = {
             "state": view.state,
             "blocking": view.blocking,
             "summary": view.summary,
@@ -1090,6 +1620,9 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
             "error": view.error,
             "legacy": view.legacy,
         }
+        if view.document is not None:
+            payload["authority_submission_digest"] = authority_submission_digest(view.document)
+        return payload
 
     def require_not_quarantined(self) -> None:
         self._reject_identity_conflict()
@@ -1099,12 +1632,22 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
                 f"chroma writes are quarantined: {view.summary}; see {self.quarantine_path}"
             )
 
-    def clear_quarantine(self) -> bool:
-        """Refuse every present marker. Validated release is not part of this task.
-
-        Returns False only when the marker is absent. Any unresolved, legacy, or
-        unrecognized marker stays on disk.
-        """
+    def clear_quarantine(
+        self,
+        *,
+        disposition_ref: str | None = None,
+        authority_digest: str | None = None,
+    ) -> bool:
+        """Ordinary clear refuses; validated release requires disposition and authority digest."""
+        if disposition_ref is not None or authority_digest is not None:
+            if not disposition_ref or not authority_digest:
+                raise ChromaWriteGuardError(
+                    "validated clear requires both disposition and current authority digest"
+                )
+            return self.release_quarantine(
+                disposition_ref=disposition_ref,
+                authority_digest=authority_digest,
+            )
         self._reject_identity_conflict()
         if self.read_authority().state == "absent":
             return False
@@ -1113,9 +1656,546 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
                 return False
             raise ChromaWriteGuardError(
                 "ordinary clear refuses unresolved incidents; "
-                "validated release is not available; "
+                "validated release requires --disposition and --authority-digest; "
                 f"see {self.quarantine_path}"
             )
+
+    def release_quarantine(
+        self,
+        *,
+        disposition_ref: str,
+        authority_digest: str,
+    ) -> bool:
+        """Validated all-or-nothing release after durable disposition publication."""
+        self._reject_identity_conflict()
+        disposition = str(disposition_ref or "").strip()
+        if not disposition:
+            raise ChromaWriteGuardError("release requires a non-empty disposition reference")
+        submitted = str(authority_digest or "").strip()
+        if len(submitted) != 64:
+            raise ChromaWriteGuardError("release requires a 64-char authority digest for the current incidents")
+        if self.read_authority().state == "absent":
+            return False
+        with _exclusive_flock(self.lock_path, self.lock_timeout_seconds):
+            view = self.read_authority()
+            if view.state == "absent":
+                return False
+            if view.state == "blocked" or view.document is None:
+                raise ChromaWriteGuardError(f"refusing release: {view.summary}")
+            document = view.document
+            current_digest = authority_submission_digest(document)
+            if submitted != current_digest:
+                raise ChromaWriteGuardError(
+                    "release authority digest does not match the current unresolved incident set"
+                )
+            incidents = document.get("incidents")
+            if not isinstance(incidents, list) or not incidents:
+                raise ChromaWriteGuardError("release refuses empty incident document")
+            con = sqlite3.connect(f"file:{self.chroma_dir / 'chroma.sqlite3'}?mode=ro", uri=True)
+            try:
+                _sqlite_reader_lock(con)
+                self._validate_release_evidence_for_document(document, con=con)
+                with self._events_cross_process_lock():
+                    self._validate_events_tail_for_release()
+                    self._append_event_record_durable(
+                        "release_disposition",
+                        disposition_ref=disposition,
+                        authority_digest=current_digest,
+                        incidents=[item["id"] for item in document["incidents"]],
+                    )
+                try:
+                    self._remove_quarantine_marker_durable()
+                except OSError as exc:
+                    raise ChromaReleaseUncertaintyError(
+                        "release disposition may be durable but quarantine marker removal is uncertain "
+                        f"({exc}); request process-level containment and retry after review"
+                    ) from exc
+            finally:
+                if con.in_transaction:
+                    con.execute("ROLLBACK")
+                con.close()
+            return True
+
+    def _release_evidence_for_incident(
+        self, incident: Mapping[str, Any], *, snap_meta: Mapping[str, Any] | None = None
+    ) -> dict[str, Any]:
+        pinned = incident.get("pinned_source")
+        if not isinstance(pinned, dict):
+            raise ChromaWriteGuardError("pinned restore source missing for release evidence")
+        generation = pinned.get("generation")
+        segment = incident.get("segment")
+        if not isinstance(generation, str) or not isinstance(segment, str):
+            raise ChromaWriteGuardError("invalid pinned generation for release evidence")
+        if "/" in generation or generation.startswith("."):
+            raise ChromaWriteGuardError("invalid pinned generation name")
+        snap_dir = self.snapshots / segment / generation
+        _assert_guard_relative_path(snap_dir, self.root)
+        self._assert_snapshot_generation_dir(snap_dir)
+        snap_meta_path = snap_dir / "SNAPSHOT.json"
+        _reject_symlink_path(snap_meta_path)
+        try:
+            meta = snap_meta if snap_meta is not None else json.loads(
+                snap_meta_path.read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ChromaWriteGuardError(f"pinned snapshot metadata unreadable: {exc}") from exc
+        expected_meta_digest = pinned.get("snapshot_meta_digest")
+        if not isinstance(expected_meta_digest, str) or len(expected_meta_digest) != 64:
+            raise ChromaWriteGuardError("pinned snapshot meta digest missing")
+        actual_meta_digest = hashlib.sha256(
+            json.dumps(meta, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        if expected_meta_digest != actual_meta_digest:
+            raise ChromaWriteGuardError("pinned snapshot metadata digest mismatch")
+        saved_digests = pinned.get("segment_digests")
+        if not isinstance(saved_digests, dict):
+            raise ChromaWriteGuardError("pinned segment digests missing")
+        if segment_file_digests(snap_dir) != saved_digests:
+            raise ChromaWriteGuardError("pinned segment file digests mismatch")
+        evidence = meta.get("release_evidence")
+        if not isinstance(evidence, dict):
+            raise ChromaWriteGuardError("pinned snapshot lacks release evidence")
+        if evidence.get("status") == "unavailable":
+            raise ChromaWriteGuardError("pinned snapshot release evidence is not yet admissible")
+        return evidence
+
+    def _validate_release_evidence_for_document(
+        self, document: Mapping[str, Any], *, con: sqlite3.Connection
+    ) -> None:
+        for incident in document.get("incidents") or []:
+            if not isinstance(incident, dict):
+                raise ChromaWriteGuardError("invalid incident set for release")
+            if _coerce_occurrence(incident.get("occurrence")) is None:
+                raise ChromaWriteGuardError(
+                    f"incident {incident.get('id')} lacks occurrence epoch; validated release unavailable"
+                )
+            for finding in incident.get("findings") or []:
+                if not isinstance(finding, dict):
+                    raise ChromaWriteGuardError("invalid finding set for release")
+                kind = finding.get("kind")
+                if kind not in _RELEASE_SUPPORTED_FINDING_KINDS:
+                    raise ChromaWriteGuardError(f"unsupported finding kind {kind!r} for release")
+            repair = incident.get("repair")
+            if not isinstance(repair, dict) or repair.get("status") != "complete":
+                raise ChromaWriteGuardError(f"incident {incident.get('id')} repair is not complete")
+            preservation = incident.get("preservation")
+            if not isinstance(preservation, dict) or preservation.get("status") != "complete":
+                raise ChromaWriteGuardError(
+                    f"incident {incident.get('id')} lacks complete preservation evidence"
+                )
+            manifest_digest = preservation.get("manifest_digest")
+            if not isinstance(manifest_digest, str) or len(manifest_digest) != 64:
+                raise ChromaWriteGuardError("preservation manifest digest missing or invalid")
+            if not self._verify_preservation_manifest(str(incident.get("id")), manifest_digest, incident):
+                raise ChromaWriteGuardError("preservation source evidence changed or is missing")
+            evidence = self._release_evidence_for_incident(incident)
+            ok, reason = evaluate_release_evidence(self.chroma_dir, evidence, con=con)
+            if not ok:
+                raise ChromaWriteGuardError(f"release evidence refuses admission: {reason}")
+
+    def _validate_events_tail_for_release(self) -> None:
+        if not self.events_path.is_file():
+            return
+        raw = self.events_path.read_bytes()
+        if not raw:
+            return
+        if not raw.endswith(b"\n"):
+            raise ChromaWriteGuardError("events log has a truncated final record; release blocked")
+        for line in raw.decode("utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                parsed = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ChromaWriteGuardError(f"events log contains malformed JSON: {exc}") from exc
+            if not isinstance(parsed, dict):
+                raise ChromaWriteGuardError("events log contains a non-object record")
+
+    def _append_event_durable(self, event: str, **detail: Any) -> dict[str, Any]:
+        with _EVENT_APPEND_LOCK:
+            with self._events_cross_process_lock():
+                return self._append_event_record_durable(event, **detail)
+
+    @contextmanager
+    def _events_cross_process_lock(self) -> Iterator[None]:
+        lock_path = self.root / ".events-append.lock"
+        with _exclusive_flock(lock_path, self.lock_timeout_seconds):
+            yield
+
+    def _append_event_record_durable(self, event: str, **detail: Any) -> dict[str, Any]:
+        record = {"ts": _utc_now(), "event": event, "pid": os.getpid(), **detail}
+        self.root.mkdir(parents=True, exist_ok=True)
+        stop = self._durable_directory_stop()
+        _fsync_directory_chain(self.root, stop=stop)
+        line = json.dumps(record, sort_keys=True) + "\n"
+        payload = line.encode("utf-8")
+        with self.events_path.open("ab") as fh:
+            written = fh.write(payload)
+            if written != len(payload):
+                raise OSError("short write of events log record")
+            fh.flush()
+            os.fsync(fh.fileno())
+        _fsync_directory_chain(self.events_path.parent, stop=stop)
+        return record
+
+    def _remove_quarantine_marker_durable(self) -> bool:
+        if not self.quarantine_path.is_file():
+            return False
+        self.quarantine_path.unlink()
+        try:
+            _fsync(self.quarantine_path.parent, directory=True)
+        except OSError as exc:
+            if self.quarantine_path.is_file():
+                raise ChromaWriteGuardError(
+                    f"quarantine marker retained after directory fsync failure ({exc})"
+                ) from exc
+            raise ChromaReleaseUncertaintyError(
+                f"quarantine marker removal fsync uncertain ({exc}); request process-level containment"
+            ) from exc
+        return True
+
+    def _pinned_generations(self, document: Mapping[str, Any] | None = None) -> set[tuple[str, str]]:
+        pinned: set[tuple[str, str]] = set()
+        if document is None:
+            view = self.read_authority()
+            if view.state == "absent":
+                return pinned
+            if view.state == "blocked" or view.document is None:
+                raise ChromaWriteGuardError(
+                    "cannot determine pinned generations from unrecognized quarantine authority"
+                )
+            document = view.document
+        for incident in document.get("incidents") or []:
+            if not isinstance(incident, dict):
+                continue
+            source = incident.get("pinned_source")
+            segment = incident.get("segment")
+            if isinstance(source, dict) and isinstance(segment, str):
+                generation = source.get("generation")
+                if isinstance(generation, str) and generation:
+                    pinned.add((segment, generation))
+        return pinned
+
+    def _preservation_epoch(self, incident: Mapping[str, Any]) -> str:
+        occ = _coerce_occurrence(incident.get("occurrence"))
+        if occ is None:
+            raise ChromaWriteGuardError("incident lacks occurrence epoch for preservation path")
+        return occ["epoch"]
+
+    def _preservation_dir(self, incident_id: str, incident: Mapping[str, Any] | None = None) -> Path:
+        if not incident_id or "/" in incident_id or ".." in incident_id:
+            raise ChromaWriteGuardError("invalid preservation incident id")
+        if incident is None:
+            view = self.read_authority()
+            if view.document is None:
+                raise ChromaWriteGuardError("missing incident document for preservation path")
+            incident = next(
+                (item for item in view.document.get("incidents") or [] if item.get("id") == incident_id),
+                None,
+            )
+            if not isinstance(incident, dict):
+                raise ChromaWriteGuardError(f"missing incident {incident_id} for preservation path")
+        epoch = self._preservation_epoch(incident)
+        if "/" in epoch or ".." in epoch:
+            raise ChromaWriteGuardError("invalid preservation occurrence epoch")
+        base = self.preservation_root / incident_id / epoch
+        _assert_guard_relative_path(base, self.root)
+        return base
+
+    def _preservation_manifest_digest(self, raw: bytes) -> str:
+        return hashlib.sha256(raw).hexdigest()
+
+    def _segment_source_file_facts(self, seg_dir: Path) -> dict[str, Any]:
+        _assert_live_segment_dir(seg_dir, self.chroma_dir)
+        _reject_symlink_path(seg_dir)
+        for child in seg_dir.iterdir():
+            _reject_unsafe_directory_entry(child)
+            if child.name in SEGMENT_FILES:
+                continue
+            if child.is_dir() or child.is_fifo():
+                raise ChromaWriteGuardError(f"unsupported segment entry {child.name}")
+            if child.is_file():
+                raise ChromaWriteGuardError(f"unsupported extra segment file {child.name}")
+        files: dict[str, Any] = {}
+        for name in SEGMENT_FILES:
+            src = seg_dir / name
+            _reject_symlink_path(src)
+            if not src.exists():
+                files[name] = {"missing": True}
+                continue
+            if not src.is_file():
+                raise ChromaWriteGuardError(f"preservation source {name} is not a regular file")
+            _assert_regular_segment_file(src)
+            data = src.read_bytes()
+            files[name] = {"sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+        return files
+
+    def _preservation_manifest_header_valid(
+        self, manifest: Mapping[str, Any], incident_id: str, incident: Mapping[str, Any]
+    ) -> bool:
+        if manifest.get("schema") != PRESERVATION_MANIFEST_SCHEMA:
+            return False
+        if manifest.get("version") != PRESERVATION_MANIFEST_VERSION:
+            return False
+        if manifest.get("status") != "complete":
+            return False
+        if manifest.get("incident_id") != incident_id:
+            return False
+        if manifest.get("occurrence_epoch") != self._preservation_epoch(incident):
+            return False
+        if manifest.get("segment") != incident.get("segment"):
+            return False
+        return manifest.get("target") == str(self.chroma_dir)
+
+    def _preservation_originals_match_manifest(self, originals: Path, files: Mapping[str, Any]) -> bool:
+        if set(files.keys()) != set(SEGMENT_FILES):
+            return False
+        _reject_symlink_path(originals)
+        for name in SEGMENT_FILES:
+            if not _safe_preservation_name(name):
+                return False
+            entry = files.get(name)
+            if not isinstance(entry, dict):
+                return False
+            if entry.get("missing"):
+                if (originals / name).exists():
+                    return False
+                continue
+            path = originals / name
+            _reject_symlink_path(path)
+            _assert_regular_segment_file(path)
+            if not path.is_file():
+                return False
+            sha = entry.get("sha256")
+            size = entry.get("size")
+            if not isinstance(sha, str) or len(sha) != 64 or not isinstance(size, int):
+                return False
+            data = path.read_bytes()
+            if len(data) != size or hashlib.sha256(data).hexdigest() != sha:
+                return False
+        return True
+
+    def _verify_preservation_manifest(
+        self, incident_id: str, expected_digest: str, incident: Mapping[str, Any]
+    ) -> bool:
+        base = self._preservation_dir(incident_id, incident)
+        manifest_path = base / "MANIFEST.json"
+        if not manifest_path.is_file():
+            return False
+        _reject_symlink_path(manifest_path)
+        _assert_regular_segment_file(manifest_path)
+        try:
+            raw = manifest_path.read_bytes()
+        except OSError:
+            return False
+        if self._preservation_manifest_digest(raw) != expected_digest:
+            return False
+        try:
+            manifest = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return False
+        if not isinstance(manifest, dict):
+            return False
+        if not self._preservation_manifest_header_valid(manifest, incident_id, incident):
+            return False
+        files = manifest.get("files")
+        if not isinstance(files, dict):
+            return False
+        recorded = _preservation_original_facts(incident)
+        if recorded is None or not _source_facts_equal(files, recorded):
+            return False
+        return self._preservation_originals_match_manifest(base / "originals", files)
+
+    def _bind_preservation_to_incident(self, document: dict[str, Any], incident_id: str, manifest_digest: str) -> None:
+        incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+        if incident is None:
+            raise ChromaWriteGuardError(f"missing incident {incident_id} for preservation binding")
+        preservation = incident.get("preservation")
+        original_facts = _preservation_original_facts(incident) if isinstance(preservation, dict) else None
+        if isinstance(preservation, dict) and preservation.get("status") == "complete":
+            bound = preservation.get("manifest_digest")
+            if isinstance(bound, str) and bound != manifest_digest:
+                raise ChromaWriteGuardError("preservation manifest binding is immutable")
+            if bound == manifest_digest:
+                return
+        bound_preservation: dict[str, Any] = {
+            "status": "complete",
+            "manifest_digest": manifest_digest,
+        }
+        if original_facts is not None:
+            bound_preservation["original_facts"] = copy.deepcopy(original_facts)
+        incident["preservation"] = bound_preservation
+        document["version"] = INCIDENT_VERSION
+        self._publish_marker(document)
+
+    def _require_live_source_facts_match(
+        self,
+        seg_dir: Path,
+        recorded: Mapping[str, Any],
+    ) -> None:
+        live = self._segment_source_file_facts(seg_dir)
+        if not _source_facts_equal(live, recorded):
+            raise ChromaWriteGuardError(
+                "live segment source facts changed since preservation original facts were recorded"
+            )
+
+    def _publish_preservation_original_facts(
+        self,
+        document: dict[str, Any],
+        incident_id: str,
+        source_facts: Mapping[str, Any],
+    ) -> None:
+        incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+        if incident is None:
+            raise ChromaWriteGuardError(f"missing incident {incident_id} for preservation recording")
+        preservation = incident.get("preservation")
+        if isinstance(preservation, dict) and preservation.get("status") == "complete":
+            recorded = preservation.get("original_facts")
+            if isinstance(recorded, dict) and not _source_facts_equal(recorded, source_facts):
+                raise ChromaWriteGuardError("preservation original facts are immutable")
+            return
+        if isinstance(preservation, dict) and preservation.get("status") == "in_progress":
+            recorded = preservation.get("original_facts")
+            if isinstance(recorded, dict):
+                if not _source_facts_equal(recorded, source_facts):
+                    raise ChromaWriteGuardError("preservation original facts are immutable")
+                return
+        incident["preservation"] = {
+            "status": "in_progress",
+            "original_facts": copy.deepcopy(dict(source_facts)),
+        }
+        document["version"] = INCIDENT_VERSION
+        self._publish_marker(document)
+
+    def _ensure_preservation_complete(
+        self,
+        document: dict[str, Any],
+        incident_id: str,
+        segment: str,
+        seg_dir: Path,
+    ) -> str:
+        incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+        if incident is None:
+            raise ChromaWriteGuardError(f"missing incident {incident_id} for preservation")
+        preservation = incident.get("preservation")
+        base = self._preservation_dir(incident_id, incident)
+        manifest_path = base / "MANIFEST.json"
+        if manifest_path.is_file():
+            raw = manifest_path.read_bytes()
+            digest = self._preservation_manifest_digest(raw)
+            if self._verify_preservation_manifest(incident_id, digest, incident):
+                if not isinstance(preservation, dict) or preservation.get("manifest_digest") != digest:
+                    self._bind_preservation_to_incident(document, incident_id, digest)
+                return digest
+            raise ChromaWriteGuardError("existing preservation manifest failed validation")
+        if isinstance(preservation, dict) and preservation.get("status") == "complete":
+            digest = preservation.get("manifest_digest")
+            if isinstance(digest, str) and self._verify_preservation_manifest(incident_id, digest, incident):
+                return digest
+            raise ChromaWriteGuardError("completed preservation failed revalidation")
+        durable_stop = self._durable_directory_stop()
+        recorded = _preservation_original_facts(incident)
+        if isinstance(preservation, dict) and preservation.get("status") == "in_progress" and recorded is None:
+            raise ChromaWriteGuardError("preservation in progress lacks recorded original facts")
+        if recorded is not None:
+            self._require_live_source_facts_match(seg_dir, recorded)
+            source_facts = recorded
+        else:
+            source_facts = self._segment_source_file_facts(seg_dir)
+            self._publish_preservation_original_facts(document, incident_id, source_facts)
+            incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+            if incident is None:
+                raise ChromaWriteGuardError(f"missing incident {incident_id} after preservation recording")
+        base.mkdir(parents=True, exist_ok=True)
+        _fsync_directory_chain(base, stop=durable_stop)
+        originals = base / "originals"
+        originals.mkdir(parents=True, exist_ok=True)
+        _fsync_directory_chain(originals, stop=durable_stop)
+        for name in SEGMENT_FILES:
+            entry = source_facts[name]
+            if entry.get("missing"):
+                continue
+            src = seg_dir / name
+            dst = originals / name
+            if dst.exists():
+                data = dst.read_bytes()
+                if hashlib.sha256(data).hexdigest() != entry["sha256"] or len(data) != entry["size"]:
+                    raise ChromaWriteGuardError(f"preservation originals for {name} differ; refusing overwrite")
+            else:
+                _copy_durable(src, dst)
+                data = dst.read_bytes()
+            if hashlib.sha256(data).hexdigest() != entry["sha256"] or len(data) != entry["size"]:
+                raise ChromaWriteGuardError(f"preservation copy for {name} does not match pre-captured source facts")
+        manifest: dict[str, Any] = {
+            "schema": PRESERVATION_MANIFEST_SCHEMA,
+            "version": PRESERVATION_MANIFEST_VERSION,
+            "incident_id": incident_id,
+            "occurrence_epoch": self._preservation_epoch(incident),
+            "segment": segment,
+            "target": str(self.chroma_dir),
+            "files": source_facts,
+            "status": "complete",
+            "completed_at": _utc_now(),
+        }
+        if manifest_path.is_file():
+            raw = manifest_path.read_bytes()
+            digest = self._preservation_manifest_digest(raw)
+            if self._verify_preservation_manifest(incident_id, digest, incident):
+                self._bind_preservation_to_incident(document, incident_id, digest)
+                return digest
+            raise ChromaWriteGuardError("existing preservation manifest failed validation")
+        raw = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        tmp = manifest_path.with_name(f".MANIFEST.{os.getpid()}.tmp")
+        tmp.write_bytes(raw)
+        _fsync(tmp)
+        if tmp.read_bytes() != raw:
+            raise OSError("short write of preservation manifest")
+        os.replace(tmp, manifest_path)
+        _fsync_directory_chain(base, stop=durable_stop)
+        digest = self._preservation_manifest_digest(raw)
+        self._bind_preservation_to_incident(document, incident_id, digest)
+        return digest
+
+    def _bind_restore_source_to_incident(
+        self,
+        document: dict[str, Any],
+        incident_id: str,
+        segment: str,
+        snapshot: tuple[Path, dict[str, Any]],
+    ) -> None:
+        snap_dir, meta = snapshot
+        generation = snap_dir.name
+        if "/" in generation or generation.startswith("."):
+            raise ChromaWriteGuardError("invalid snapshot generation name")
+        _assert_guard_relative_path(snap_dir, self.root)
+        incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+        if incident is None:
+            raise ChromaWriteGuardError(f"missing incident {incident_id} for restore binding")
+        pinned = incident.get("pinned_source")
+        if isinstance(pinned, dict) and pinned.get("generation"):
+            if pinned.get("generation") != generation or pinned.get("segment") != segment:
+                raise ChromaWriteGuardError("incident repair bound to a different source generation")
+            return
+        if meta.get("release_evidence") is None:
+            raise ChromaWriteGuardError(
+                "pinned restore source lacks release evidence; release remains unknown"
+            )
+        evidence = meta["release_evidence"]
+        if not isinstance(evidence, dict):
+            raise ChromaWriteGuardError("invalid source identity evidence")
+        if evidence.get("status") != "unavailable" and evidence.get("vector_segment_id") != segment:
+            raise ChromaWriteGuardError("restore source segment identity mismatch")
+        incident["pinned_source"] = {
+            "segment": segment,
+            "generation": generation,
+            "segment_digests": segment_file_digests(snap_dir),
+            "snapshot_meta_digest": hashlib.sha256(
+                json.dumps(meta, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest(),
+        }
+        incident["repair"] = {"status": "in_progress", "phase": "preservation"}
+        document["version"] = INCIDENT_VERSION
+        self._publish_marker(document)
 
     def _write_bytes(self, path: Path, payload: bytes) -> None:
         path.write_bytes(payload)
@@ -1220,11 +2300,7 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         )
 
     def _event(self, event: str, **detail: Any) -> dict[str, Any]:
-        record = {"ts": _utc_now(), "event": event, "pid": os.getpid(), **detail}
-        self.root.mkdir(parents=True, exist_ok=True)
-        with self.events_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record, sort_keys=True) + "\n")
-        return record
+        return self._append_event_durable(event, **detail)
 
     # -- the write protocol -------------------------------------------------------------
 
@@ -1244,6 +2320,11 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         with _exclusive_flock(self.lock_path, self.lock_timeout_seconds):
             self.require_not_quarantined()
             self.reconcile()
+            if self.read_authority().blocking:
+                view = self.read_authority()
+                raise ChromaWriteQuarantinedError(
+                    f"chroma writes are quarantined: {view.summary}; see {self.quarantine_path}"
+                )
             before = store_signature(self.chroma_dir)
             if _synced_only(_system_view(key)) != _synced_only(before):
                 reload_client()
@@ -1278,6 +2359,76 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
             )
         if pending:
             self._contain(pending)
+
+    def resume_bounded_restore(
+        self,
+        *,
+        incident_id: str,
+        authority_digest: str,
+    ) -> list[dict[str, Any]]:
+        """Resume bounded automatic restore for one quarantined incident (acquires native lock)."""
+        with _exclusive_flock(self.lock_path, self.lock_timeout_seconds):
+            return self._resume_bounded_restore_locked(
+                incident_id=incident_id,
+                authority_digest=authority_digest,
+            )
+
+    def _resume_bounded_restore_locked(
+        self,
+        *,
+        incident_id: str,
+        authority_digest: str,
+    ) -> list[dict[str, Any]]:
+        submitted = str(authority_digest or "").strip()
+        if len(submitted) != 64:
+            raise ChromaWriteGuardError("resume requires a 64-char authority digest")
+        view = self.read_authority()
+        if view.document is None:
+            raise ChromaWriteGuardError("no quarantine authority to resume")
+        document = view.document
+        if authority_submission_digest(document) != submitted:
+            raise ChromaWriteGuardError("resume authority digest does not match current incidents")
+        incident = next((item for item in document["incidents"] if item.get("id") == incident_id), None)
+        if not isinstance(incident, dict):
+            raise ChromaWriteGuardError(f"resume incident {incident_id} not found")
+        segment = incident.get("segment")
+        pinned = incident.get("pinned_source")
+        repair = incident.get("repair")
+        if not isinstance(segment, str) or not isinstance(pinned, dict):
+            raise ChromaWriteGuardError("resume requires a pinned restore source")
+        if not isinstance(repair, dict) or repair.get("status") not in {"in_progress", "complete"}:
+            raise ChromaWriteGuardError("resume requires repair already bound to the incident")
+        generation = pinned.get("generation")
+        if not isinstance(generation, str):
+            raise ChromaWriteGuardError("resume pinned generation missing")
+        snap_dir = self.snapshots / segment / generation
+        _assert_guard_relative_path(snap_dir, self.root)
+        snap_meta_path = snap_dir / "SNAPSHOT.json"
+        _reject_symlink_path(snap_meta_path)
+        try:
+            meta = json.loads(snap_meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ChromaWriteGuardError(f"resume pinned snapshot unreadable: {exc}") from exc
+        self._release_evidence_for_incident(incident, snap_meta=meta)
+        if segment_file_digests(snap_dir) != pinned.get("segment_digests"):
+            raise ChromaWriteGuardError("resume pinned segment digests mismatch")
+        seg_dirs = segment_dirs(self.chroma_dir)
+        if segment not in seg_dirs:
+            raise ChromaWriteGuardError("resume segment missing from live store")
+        seg = seg_dirs[segment]
+        document, _ = self._load_incident_document()
+        self._ensure_preservation_complete(document, incident_id, segment, seg)
+        live_report = validate_segment(seg)
+        if live_report.ok and repair.get("status") == "complete":
+            return []
+        snapshot = (snap_dir, meta)
+        event, extra = self._restore(segment, seg, snapshot, live_report)
+        events: list[dict[str, Any]] = []
+        if event is not None:
+            events.append(event)
+        if extra:
+            self._contain(extra)
+        return events
 
     def reconcile(self) -> list[dict[str, Any]]:
         """Bring every live segment back to a validated save; the caller holds the lock."""
@@ -1334,14 +2485,57 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
 
     # -- snapshots ------------------------------------------------------------------------
 
+    def _validate_snapshot_generation_name(self, generation: str) -> None:
+        if not generation or "/" in generation or ".." in generation or generation.startswith("."):
+            raise ChromaWriteGuardError(f"invalid snapshot generation name {generation!r}")
+
+    def _assert_snapshot_generation_dir(self, snap_dir: Path) -> None:
+        _reject_symlink_path(snap_dir)
+        if snap_dir.is_symlink() or not snap_dir.is_dir():
+            raise ChromaWriteGuardError(f"refusing unsafe snapshot generation directory {snap_dir}")
+        for child in snap_dir.iterdir():
+            _reject_unsafe_directory_entry(child)
+            if child.name in SEGMENT_FILES or child.name == "SNAPSHOT.json":
+                _reject_symlink_path(child)
+                if child.exists():
+                    _assert_regular_segment_file(child)
+                continue
+            raise ChromaWriteGuardError(f"unsupported snapshot generation entry {child.name}")
+
     def current_snapshot(self, seg_id: str) -> tuple[Path, dict[str, Any]] | None:
+        if not seg_id or "/" in seg_id or ".." in seg_id:
+            raise ChromaWriteGuardError("invalid snapshot segment id")
         base = self.snapshots / seg_id
-        try:
-            generation = (base / "CURRENT").read_text(encoding="utf-8").strip()
-            meta = json.loads((base / generation / "SNAPSHOT.json").read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        _assert_guard_relative_path(base, self.root)
+        current_path = base / "CURRENT"
+        if not current_path.is_file():
             return None
-        return base / generation, meta
+        _reject_symlink_path(current_path)
+        try:
+            generation = current_path.read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise ChromaWriteGuardError(f"refusing unreadable snapshot CURRENT for {seg_id}: {exc}") from exc
+        if not generation:
+            raise ChromaWriteGuardError(f"refusing empty snapshot CURRENT for {seg_id}")
+        self._validate_snapshot_generation_name(generation)
+        snap_dir = base / generation
+        _assert_guard_relative_path(snap_dir, self.root)
+        self._assert_snapshot_generation_dir(snap_dir)
+        meta_path = snap_dir / "SNAPSHOT.json"
+        _reject_symlink_path(meta_path)
+        if not meta_path.is_file():
+            raise ChromaWriteGuardError(f"refusing snapshot generation without SNAPSHOT.json for {seg_id}")
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ChromaWriteGuardError(f"refusing malformed snapshot metadata for {seg_id}: {exc}") from exc
+        if not isinstance(meta, dict):
+            raise ChromaWriteGuardError(f"refusing non-object snapshot metadata for {seg_id}")
+        if meta.get("segment") != seg_id:
+            raise ChromaWriteGuardError(
+                f"refusing snapshot segment binding mismatch for {seg_id}: {meta.get('segment')!r}"
+            )
+        return snap_dir, meta
 
     def _refresh_snapshot(self, seg_id: str, seg: Path, live_sig: Signature) -> dict[str, Any] | None:
         """Copy the live save as the segment's restore point; returns the event for a first copy."""
@@ -1360,7 +2554,39 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
                     f"segment {seg_id} changed while its save was being copied; "
                     "something is writing the store outside the write guard"
                 )
-            meta = {"segment": seg_id, "live_signature": live_sig, "created_at": _utc_now(), "pid": os.getpid()}
+            meta: dict[str, Any] = {
+                "segment": seg_id,
+                "live_signature": live_sig,
+                "created_at": _utc_now(),
+                "pid": os.getpid(),
+            }
+            con: sqlite3.Connection | None = None
+            try:
+                con = sqlite3.connect(f"file:{self.chroma_dir / 'chroma.sqlite3'}?mode=ro", uri=True)
+                _sqlite_reader_lock(con)
+                census = self._census_for_segment(seg_id)
+                collection = census.get("collection")
+                if isinstance(collection, str) and collection:
+                    try:
+                        evidence = build_release_evidence_for_collection(
+                            self.chroma_dir,
+                            collection,
+                            segment_dir=staging,
+                            con=con,
+                        )
+                    except ReleaseEvidenceCaptureUnavailable as exc:
+                        meta["release_evidence"] = _unavailable_release_evidence(exc.reason)
+                    else:
+                        if segment_file_digests(staging) != evidence.get("segment_digests"):
+                            raise ChromaWriteGuardError(
+                                "snapshot copy digests do not match captured release evidence"
+                            )
+                        meta["release_evidence"] = evidence
+            finally:
+                if con is not None:
+                    if con.in_transaction:
+                        con.execute("ROLLBACK")
+                    con.close()
             _write_json_durable(staging / "SNAPSHOT.json", meta)
             _fsync(staging, directory=True)
             os.rename(staging, base / generation)
@@ -1373,8 +2599,11 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
             raise
+        pinned = self._pinned_generations()
         for old in base.iterdir():
             if old.is_dir() and old.name != generation:
+                if (seg_id, old.name) in pinned:
+                    continue
                 shutil.rmtree(old, ignore_errors=True)
             elif old.name.startswith(".CURRENT."):
                 old.unlink(missing_ok=True)  # left by a writer killed mid-refresh
@@ -1387,7 +2616,7 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         snapshot: tuple[Path, dict[str, Any]],
         live_report: SegmentReport,
     ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
-        snap_dir, meta = snapshot
+        snap_dir, _snap_meta = snapshot
         snap_report = validate_segment(snap_dir)
         if not snap_report.ok:
             return None, [
@@ -1399,6 +2628,51 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
                     {"snapshot_failures": list(snap_report.failures)},
                 )
             ]
+        incident_id = _incident_id(str(self.chroma_dir), seg_id)
+        document, _ = self._load_incident_document()
+        incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+        repair = incident.get("repair") if isinstance(incident, dict) else None
+        if not isinstance(repair, dict) or repair.get("status") not in {"in_progress", "complete"}:
+            document = self._publish_findings(
+                [
+                    _finding_spec(
+                        seg_id,
+                        "structural",
+                        _RESTORE_REQUIRED_REASON,
+                        live_report.failures,
+                        {"phase": "restore_required"},
+                    )
+                ]
+            )
+        document, _ = self._load_incident_document()
+        try:
+            self._bind_restore_source_to_incident(document, incident_id, seg_id, snapshot)
+        except ChromaWriteGuardError as exc:
+            return None, [
+                _finding_spec(
+                    seg_id,
+                    "structural",
+                    "bounded restore refused before replacement",
+                    live_report.failures,
+                    {"error": str(exc)},
+                )
+            ]
+        document, _ = self._load_incident_document()
+        incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+        pinned_source = incident.get("pinned_source") if isinstance(incident, dict) else None
+        if isinstance(pinned_source, dict):
+            saved_digests = pinned_source.get("segment_digests")
+            if isinstance(saved_digests, dict) and segment_file_digests(snap_dir) != saved_digests:
+                return None, [
+                    _finding_spec(
+                        seg_id,
+                        "structural",
+                        "pinned restore source generation changed before replacement",
+                        live_report.failures,
+                    )
+                ]
+        self._ensure_preservation_complete(document, incident_id, seg_id, seg)
+        document, _ = self._load_incident_document()
         for name in SEGMENT_FILES:
             target = seg / name
             if (snap_dir / name).exists():
@@ -1413,8 +2687,13 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
             return None, [
                 _finding_spec(seg_id, "structural", "restored segment failed validation", restored.failures)
             ]
-        _write_json_durable(snap_dir / "SNAPSHOT.json", {**meta, "live_signature": segment_signature(seg)})
         census = self._census_for_segment(seg_id)
+        document, _ = self._load_incident_document()
+        incident = next((item for item in document["incidents"] if item["id"] == incident_id), None)
+        if isinstance(incident, dict):
+            incident["repair"] = {"status": "complete", "phase": "restored"}
+            document["version"] = INCIDENT_VERSION
+            self._publish_marker(document)
         event = self._event(
             "segment_restored",
             segment=seg_id,
@@ -1431,16 +2710,30 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
                     {"census": census},
                 )
             ]
-        return event, []
+        return event, [
+            _finding_spec(
+                seg_id,
+                "segment_restored",
+                "automatic segment restore completed; owner disposition required before release",
+                live_report.failures,
+                {"census": census},
+            )
+        ]
 
     def _census_for_segment(self, seg_id: str) -> dict[str, Any]:
-        try:
-            for name, row in vector_census(self.chroma_dir).items():
-                if row.get("vector_segment") == seg_id:
-                    return {"collection": name, **row}
-        except (sqlite3.Error, OSError, pickle.UnpicklingError, EOFError) as exc:
-            return {"unavailable": str(exc)}
-        return {"unavailable": "segment not listed in chroma.sqlite3"}
+        last_exc: BaseException | None = None
+        for attempt in range(2):
+            try:
+                for name, row in vector_census(self.chroma_dir).items():
+                    if row.get("vector_segment") == seg_id:
+                        return {"collection": name, **row}
+                return {"unavailable": "segment not listed in chroma.sqlite3"}
+            except (sqlite3.Error, OSError, pickle.UnpicklingError, EOFError) as exc:
+                last_exc = exc
+                if attempt == 0:
+                    continue
+                return {"unavailable": str(exc)}
+        return {"unavailable": str(last_exc) if last_exc else "census unavailable"}
 
     # -- scheduled silent-loss audit ----------------------------------------------------
 
@@ -1527,14 +2820,24 @@ def recover(
     chroma_dir: str | Path,
     *,
     lock_timeout_seconds: float = DEFAULT_LOCK_TIMEOUT_SECONDS,
+    incident_id: str | None = None,
+    authority_digest: str | None = None,
 ) -> list[dict[str, Any]]:
     """Restore torn segments now -- e.g. right after a writer died from a native fault."""
     guard = ChromaWriteGuard(chroma_dir, lock_timeout_seconds=lock_timeout_seconds)
     guard._reject_identity_conflict()  # pylint: disable=protected-access
-    guard.require_not_quarantined()
     barrier = os.environ.get(_ADMISSION_BARRIER_ENV)
     if barrier:
         _wait_barrier(barrier)
+    if incident_id is not None or authority_digest is not None:
+        if not incident_id or not authority_digest:
+            raise ChromaWriteGuardError(
+                "bounded resume requires both incident id and authority digest"
+            )
+        return guard.resume_bounded_restore(
+            incident_id=incident_id,
+            authority_digest=authority_digest,
+        )
     with _exclusive_flock(guard.lock_path, lock_timeout_seconds):
         guard.require_not_quarantined()
         return guard.reconcile()

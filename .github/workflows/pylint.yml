@@ -111,6 +111,7 @@ jobs:
 
   pytest:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     strategy:
       matrix:
@@ -145,11 +146,17 @@ jobs:
           chmod +x scripts/restic-ensure-chroma-snapshot.sh scripts/restic-copy-external.sh
 
       - name: Check critical invariant manifest
-        env:
-          CONVMEM_CONFIG: /tmp/convmem-ci/config.toml
-        run: python scripts/check_ci_critical_invariants.py
+        run: python -I -S -B tests/_safe_harbor_t3_worker.py run-ci-collect
 
       - name: Run pytest
-        env:
-          CONVMEM_CONFIG: /tmp/convmem-ci/config.toml
-        run: python -m pytest -q
+        run: python -I -S -B tests/_safe_harbor_t3_worker.py run-ci
+
+      - name: Upload Safe Harbor launcher logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: safe-harbor-pytest-evidence
+          path: |
+            /tmp/safe-harbor-t3-suite-*/*.log
+            /tmp/safe-harbor-t3-suite-*/summary.json
+          if-no-files-found: ignore
