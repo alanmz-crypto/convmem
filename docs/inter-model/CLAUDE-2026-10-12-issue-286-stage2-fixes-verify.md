@@ -35,7 +35,8 @@ paid calls.**
   incremental state directory.
 - **F6:** delete events are queued again.
 - **F8:** the removed comments and the journal-hash re-check are restored.
-- **Full suite:** pending. Both runs were 68% done when I committed this; I add the result here when they finish. Cursor's own run reports 0 tests failing only at the tip.
+- **Full suite:** 0 tests fail only at the tip. The same 151 tests fail or error at
+  both SHAs; all are pre-existing in the hermetic environment.
 
 **Still open:**
 - two gaps in C3's safety net (G1, G2);
@@ -162,7 +163,11 @@ directories. In production they share a parent (I checked as a boolean).
 
 | Run | Result |
 |---|---|
-| Full suite at `8a7cdab` and `117d698` | pending (68% when committed) |
+| Full suite at `8a7cdab` | 2835 passed, 93 failed, 58 errors, 66 skipped |
+| Full suite at `117d698` | 2842 passed, 93 failed, 58 errors, 66 skipped |
+| **Failing only at the tip** | **0**; the same 151 failing test ids at both SHAs |
+| Note | My runs used tmpfs, so the D1 OOM tests error at both SHAs; Cursor's on-disk runs show fewer errors. Like for like, the result is the same. |
+| Live state | unchanged by my runs. The one mtime change, `source_reconciliation.json` at 01:42:07, came from the scheduled `convmem-reconcile.timer` run at 01:42:06 |
 | Probes p1, p2, p3, p7 | pass |
 | Probes p4, p5 | fail (G1, G2) |
 | Probes p4b, p6 | pass; they document current behavior (G1, G5) |
