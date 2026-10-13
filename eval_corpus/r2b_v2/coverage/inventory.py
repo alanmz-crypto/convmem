@@ -91,7 +91,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         # shifted by the Arc Poison Pill --clear-quarantine CLI flags added
         # above it in convmem.py's watch() command. Refreshed 2026-10-11:
         # same site, shifted by the issue #268 D1 env-gated index bootstrap.
-        "governed_mutation_sinks": ("convmem.py:699",),
+        "governed_mutation_sinks": ("convmem.py:721",),
     },
     {
         "route_id": "cg2_file_generation_pointer",
@@ -310,6 +310,7 @@ _SKIP_SCAN_PREFIXES = (
     "tests/",
     "docs/",
     ".worktrees/",
+    "review-bundles/",
     ".tmp/",
     ".git/",
     "node_modules/",

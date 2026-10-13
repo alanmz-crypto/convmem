@@ -373,13 +373,13 @@ def run_monitor(
 ) -> dict:
     from observe import ingest_observation
 
-    def _ingest_locked(**kwargs):  # type: ignore[no-untyped-def]
+    def _ingest_locked(record, **kwargs):  # type: ignore[no-untyped-def]
         if live_cfg is None:
-            return ingest_observation(**kwargs)
+            return ingest_observation(record, **kwargs)
         from purge_locks import index_write_flock
 
         with index_write_flock(live_cfg):
-            return ingest_observation(**kwargs)
+            return ingest_observation(record, **kwargs)
 
     stats = {
         "observations": 0,

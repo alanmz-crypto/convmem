@@ -275,6 +275,7 @@ def test_bounded_retries_exit_91_on_repeat(
 
 
 def test_watcher_intake_event_types() -> None:
+    pytest.importorskip("watchdog")
     from watchdog.events import (
         FileClosedEvent,
         FileClosedNoWriteEvent,
