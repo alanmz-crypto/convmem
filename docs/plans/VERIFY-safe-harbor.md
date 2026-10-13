@@ -610,7 +610,7 @@ Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915
 
 **Coordinator identity (static):** of 31 files changed on one parent only, Codex confirmed 19 task-only and 12 main-only paths are byte-identical to their respective pinned parents; `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` is the sole file differing on both sides. Main's merged `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json` update is retained (not byte-identical to the pre-integration task parent). No new route or identity policy was introduced.
 
-**Non-qualified development run (not accepted evidence):** an early inventory regeneration used a login shell with inherited ambient environment (`/tmp/safe-harbor-t2-integration-20261012T234506Z`); Ryan interrupted it before treating it as evidence.
+**Non-qualified development run (not accepted evidence):** an early inventory regeneration used a login shell with inherited ambient environment (`/tmp/safe-harbor-t2-integration-20261012T234506Z`); Codex interrupted the Cursor invocation; that attempt is not accepted evidence.
 
 **Qualified evidence root:** `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z/` (`summary.json`, `inventory_regen.json`/`.log`, `affected_pytest.json`/`.log`, `pylint-raw.json`, `lint_gate.json`/`.log`). Coordinator: Codex, uid 1000, clean allowlist before every project import/subprocess via corrected `/tmp/safe_harbor_t2_integration_collect.py` (temporary runner only; not tracked).
 
@@ -620,13 +620,15 @@ Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915
 
 **Affected pytest (85 cases, one combined selection):** exit 0, `85 passed in 391.54s`. Full argv in `summary.json` / `affected_pytest.json` — entire `tests/test_safe_harbor_t2.py`, `tests/test_write_gate_effect.py`, `tests/test_record_review_cli.py`, `tests/test_r2b_v2_implementation_revision.py`, four T1 alias/competing-location nodes, two native stale-client nodes; `-q --tb=line`.
 
-**Lint:** full pylint JSON exit **30** (not a clean lint result); `scripts/pylint_regression_gate.py ci` exit **0** against pinned main baseline `8a7cdab` with `--pylint-status 30`.
+**Lint:** full pylint JSON exit **30** (not a clean lint result); `scripts/pylint_regression_gate.py ci` exit **0** against pinned main baseline `8a7cdab` with `--pylint-status 30`: 454 findings / 239 fingerprints, none new or increased.
 
 **Versions:** Python 3.13.12, pytest 9.1.1, numpy 2.4.4, Chroma 1.5.9, Restic 0.19.0 (see `summary.json`).
 
 **Merge commit (integration source SHA):** `551b16c13b66c8e3133402bdf6c0370d3efd35a5`, parents `181dfd18a2c0dc50745d74b45cc12fa37e916a82` and `8a7cdab16420893fe26a2648d1d03f2b84d8589d`. Pushed to `fix/2026-10-12-safe-harbor-t2`.
 
-**CI routing:** checks publish on [draft PR #389](https://github.com/alanmz-crypto/convmem/pull/389) for its current head; status recorded in STATUS/LATEST at docs handoff is a point-in-time observation only — GitHub check runs are the mutable authority. Codex monitors remaining CI and performs the bounded integration delta without moving the sealed tip solely to transcribe live status.
+**CI routing:** checks publish on [draft PR #389](https://github.com/alanmz-crypto/convmem/pull/389) for its current head; status recorded in STATUS/LATEST at docs handoff is a point-in-time observation only — GitHub check runs are the mutable authority. Codex has completed the bounded integration delta below and monitors remaining CI without moving the sealed tip solely to transcribe live status.
+
+**Codex bounded integration delta — PASS (90%):** reviewed candidate `0c3e6c7500fab1e2334ce4864e2521c5d1b506b1` (integration source `551b16c`) against both pinned parents. The only shared-file resolution is derived R2b JSON; task-only and main-only blobs match their respective parents, including main's shadow-policy update. The committed checkout reproduces the evidence fingerprint `20e4850b…` exactly; the docs successor changes only the four existing Safe Harbor evidence/routing files. Thus the qualified 85-case/lint results apply to the integrated source. The fresh GitHub checks are now running, and GitHub reports MERGEABLE, still DRAFT. No full local suite or live probe was run. This coordinator delta is not independent external-review evidence or an owner outage exception. Subsequent review-record edits are documentation-only; final CI is to be read at the sealed current head, not inferred from an earlier revision.
 
 **Next boundary:** final-tip external-review disposition, Ryan V2 acceptance/PR merge, deployment and T3–T5 remain ungranted. Event-only completion-success exclusion remains accepted; proof belongs to T4.
 
@@ -726,4 +728,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 - Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.
 - Event-only recovery: refusal and the human-review outcome are proven. Successful completion is not, because the current hash views disagree (an open T4 prerequisite).
 - Copilot review at `05c7706`: narrow FAIL (75%), B1 census-entrypoint regression. The B1 correction is implemented at `964c1de`: recovery reuses `propose_decision.write`, and armed-census positive, future and old-label controls behave as intended. Uid-1000 runs: 3 new and 153 affected cases passed (exit 0), lint gate exit 0.
-- Copilot delta PASS (88%) at `82f25ef` closes B1; original FAIL stays historical at `05c7706`. Draft #389 is open; BugBot reviewed no SHA. Codex's static delta of the recovered candidate `255c040` (runtime `a18df480`) requires the T1 competing-location correction and completion of the agreed export/regression evidence. CodeQL #6 is dismissed as false positive. No paid review request. V2 acceptance and final-tip external-review disposition remain pending; T3–T5/live operations remain ungranted.
+- Copilot delta PASS (88%) at `82f25ef` closes B1; original FAIL stays historical at `05c7706`. Draft #389 is open; BugBot reviewed no SHA. F1/F2 are closed at `cdebf64`, and pinned-main integration `551b16c` passes the bounded Codex delta at candidate `0c3e6c7` (90%) with 85 isolated cases and lint-gate PASS. Live GitHub checks at the final current head determine CI readiness. CodeQL #6 is dismissed as false positive. No paid review request. V2 acceptance and final-tip external-review disposition remain pending; T3–T5/live operations remain ungranted.

@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED WITH PINNED MAIN.** Merge `551b16c` (parents `181dfd18` + main `8a7cdab`) on `fix/2026-10-12-safe-harbor-t2`; Safe Harbor runtime unchanged at `cdebf64`. Isolated evidence PASS on sealed pre-merge bytes (85 cases, lint gate 0). PR #389 stays draft; GitHub CI on the docs tip is observed at handoff only. Codex bounded integration delta and final-tip review disposition, V2 acceptance, PR merge, deployment and T3–T5 remain pending.
+> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED WITH PINNED MAIN.** Merge `551b16c` (parents `181dfd18` + main `8a7cdab`) on `fix/2026-10-12-safe-harbor-t2`; Safe Harbor runtime unchanged at `cdebf64`. Isolated evidence PASS on sealed pre-merge bytes (85 cases, lint gate 0). PR #389 stays draft; GitHub CI on the docs tip is observed at handoff only. Codex integration delta PASS at `0c3e6c7` (90%); final current-head CI is published on GitHub. External-review disposition, V2 acceptance, PR merge, deployment and T3–T5 remain pending.
 
 ## 1. What This Is For (product goal)
 
@@ -87,14 +87,14 @@ The scope is application cooperation, not same-user security. Read clients can p
   - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
   - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
 - **PR #389: OPEN / DRAFT.** The authorized one-shot BugBot trigger returned a usage-limit reply, with no reviewed SHA. CodeQL alert #6 was owner-authorized and dismissed as false positive at `2026-10-12T10:34:24Z`; GitHub then reported CodeQL SUCCESS at `0cff157`. No paid retry/reviewer is requested.
-- **Current grant: T2 BRANCH INTEGRATION DELIVERED; CODEX DELTA + CI NEXT.** Cursor pushed merge `551b16c` and docs successor; Codex performs bounded integration delta and monitors GitHub CI on #389. F1/F2 correction grant remains complete. No final-tip acceptance, PR merge or live grant is inferred.
+- **Current grant: T2 INTEGRATION AND BOUNDED DELTA COMPLETE; CI IN PROGRESS AT HANDOFF.** Cursor pushed merge `551b16c`; Codex delta PASS at candidate `0c3e6c7` (90%). GitHub now reports MERGEABLE; current-head checks on #389 are authoritative for CI. F1/F2 correction grant remains complete. No final-tip acceptance, PR merge or live grant is inferred.
 - T3–T5 implementation, new review triggers/comments, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Perform the bounded integration delta on merge `551b16c`, monitor and report final GitHub CI on draft #389, preserve the separate external-review/owner-acceptance boundary. CodeQL #6 remains dispositioned.
+**Codex:** Integration delta is complete; monitor and report final GitHub CI at the sealed current head of draft #389. Preserve the separate external-review/owner-acceptance boundary; do not move the tip only to transcribe live check status. CodeQL #6 remains dispositioned.
 
-**Cursor:** Integration and isolated evidence complete; await Codex delta/CI only unless Ryan directs further correction.
+**Cursor:** Integration and isolated evidence complete; no implementation action unless a concrete CI/integration defect requires a scoped correction.
 
 **Ryan:** After Codex's bounded delta and observed CI, decide final-tip external-review disposition and V2 acceptance/PR merge. Event-only exclusion remains accepted; T1 outage acceptance does not carry over.
 
@@ -104,7 +104,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Codex bounded integration delta and fresh GitHub CI on draft #389 at the sealed docs tip; then Ryan resolves final-tip external-review disposition and V2 acceptance/merge. Integration merge `551b16c` and isolated evidence are recorded; F1/F2 remain closed for `cdebf64`. B1 remains closed historically; event-only exclusion accepted; CodeQL #6 dispositioned.
+1. Read fresh GitHub CI on draft #389 at the sealed current head (bounded Codex delta is PASS at `0c3e6c7`); then Ryan resolves final-tip external-review disposition and V2 acceptance/merge. Integration merge `551b16c` and isolated evidence are recorded; F1/F2 remain closed for `cdebf64`. B1 remains closed historically; event-only exclusion accepted; CodeQL #6 dispositioned.
 2. Complete T3–T5 only under their task grants, including:
    - T3's backend-proof ordering gate and preservation/validated release;
    - T4 approval recovery: gating or binding direct helper callers, aligning the proposal and ingestion hash views so an event-only completion can be proven, and unknown/tombstone/race/uncertain-completion handling;
@@ -146,6 +146,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-12 — Codex: integration delta PASS (90%) at `0c3e6c7`, source `551b16c`; GitHub conflict cleared and fresh CI running. Current-head checks remain the CI authority; final external-review/owner acceptance stays pending.
 
 - 2026-10-12 — Cursor: merged pinned main into T2 at `551b16c`, recorded qualified isolated evidence and docs routing; Codex integration delta and CI next, PR stays draft.
 
