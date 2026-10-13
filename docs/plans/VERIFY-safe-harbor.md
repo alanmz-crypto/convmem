@@ -1,14 +1,14 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED; T3 DRAFT PR #391, PYTEST CORRECTION RETURNED.** [Current correction evidence](#t3-bounded-pytest-compatibility-correction): 296 passes/one existing skip, 159 integration passes and full lint gate PASS with runtime/baseline fixed. Fresh hosted CI and successor review/acceptance remain pending. Historical Kiro implementation/integration verdicts stay pinned; V5/V6 remain NOT RUN.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED.** [T3 final record](#t3-final-ci-review-owner-acceptance-and-squash-mapping) binds accepted `3c490e2` to squash `a7f7200`, passing hosted CI, Kiro final delta PASS (89%) and Ryan’s T3/V3/V4/BugBot outage acceptance. Historical failures and limitations are retained below. V5/V6 remain NOT RUN; T4/T5 and deployment are ungranted.
 
 ```text
 Planning Status
-Phase:        Bounded T3 pytest correction evidence returned
+Phase:        T3 evidence accepted and source merged
 Characters:   Implementer, Test-First Reviewer
 Function:     Record observed evidence, failures and remaining limits
-Lanes:        Cursor/Codex contributing authors; successor review pending
-Authority:    EXECUTION section 14; draft PR/fresh CI only, no merge/live/T4/T5
+Lanes:        Cursor/Codex authors; Kiro reviewed; Ryan accepted/merged
+Authority:    Completed T3 grant; no deployment or T4/T5 grant
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -23,9 +23,9 @@ Authority:    EXECUTION section 14; draft PR/fresh CI only, no merge/live/T4/T5
 
 ## Human consequence
 
-T1's incident retention and T2's operation-bound preflight are landed source. T3 evidence preservation and validated owner release are implemented on their task branch, with isolated evidence returned for review. Approval-recovery handling is later T4 work. Rollout, recovery qualification and arc closure remain separate.
+T1 incident retention, T2 operation-bound preflight and T3 evidence preservation/validated release are accepted and merged source. Approval-recovery handling is later T4 work. Rollout, recovery qualification and arc closure remain separate.
 
-Who: Cursor supplied T1/T2 implementation evidence; GitHub supplied CI; Copilot/Codex reviews and Ryan's exact acceptances retain their scopes below. Cursor/Codex contributed T3 implementation and evidence; neither authors’ tests nor Kiro’s prerequisite-proof PASS supplies independent implementation review. V3/V4 acceptance is pending; V5/V6 remain unrun.
+Who: Cursor supplied T1/T2 implementation evidence; GitHub supplied CI; Copilot/Codex reviews and Ryan's exact acceptances retain their scopes below. Cursor/Codex contributed T3 implementation and evidence. Kiro independently reviewed the pinned implementation and successive integration/correction deltas; Ryan accepted V3/V4 and merged the exact candidate through #391. V5/V6 remain unrun.
 
 ## Scope lock
 
@@ -42,7 +42,7 @@ In scope: execution T1–T5 and their named production entrypoints under isolate
 
 **Plan prerequisites satisfied:** Ryan accepted the plan and explicitly approved v2 B-E4.1 at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, with ownership unchanged. This is approval metadata, not runtime evidence.
 
-**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3 now has only the separate proof/evidence grant in execution section 10; remaining T3 and T4/T5 have no grant. The external-review row below describes T1 only. T2's historical Copilot audits and final Codex review are recorded in V2; Ryan resolved its separate BugBot gate with the final-tip exception recorded below.
+**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3’s proof, implementation and bounded CI grants are complete; its final acceptance is recorded below. T4/T5 have no grant. The external-review row below describes T1 only. T2's historical Copilot audits and final Codex review are recorded in V2; Ryan resolved its separate BugBot gate with the final-tip exception recorded below.
 
 Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, services and external drives were not invoked.
 
@@ -719,13 +719,15 @@ Who: Cursor implemented Safe Harbor T2; Codex coordinated evidence and Copilot's
 
 ## V3 — Preservation and bounded restore (T3)
 
-**ISOLATED EVIDENCE RETURNED; NOT ACCEPTED.** See the [current checkpoint](#t3-implementation-checkpoint--isolated-v3v4-evidence) for actual cases and limits. Required contract: original bytes write-once; preservation complete before replacement; pinned sources; interruption/IO refusal; every restore aborts the initiating mutation; only incident-bound repair crosses quarantine; persistent census failure remains contained.
+**ACCEPTED AND MERGED.** See the [final acceptance](#t3-final-ci-review-owner-acceptance-and-squash-mapping) and [implementation checkpoint](#t3-implementation-checkpoint--isolated-v3v4-evidence) for exact pins, cases and limits. Required contract: original bytes write-once; preservation complete before replacement; pinned sources; interruption/IO refusal; every restore aborts the initiating mutation; only incident-bound repair crosses quarantine; persistent census failure remains contained.
 
 ### T3 initial authoring checkpoint — historical, not accepted, not executed
 
 Cursor’s first text-only draft is retained for provenance. Static inspection found contract violations before test execution: repair sidecar instead of prior publication in the sole incident authority; reconstruction of missing snapshot evidence from live state; incomplete manifest/digest/path binding; inadequate stale-disposition binding; missing repair resumption and failure-window evidence. The new launcher also needs bootstrap/import and exit-status corrections. These are implementation defects under the existing T3 grant, not a new direction decision. No new tests/runtime probes were executed. Cursor correction is required before supervised evidence. This checkpoint is not a T3/V3/V4 PASS or merge candidate.
 
 ## V4 — Release and stale-vector proof (T3)
+
+**ACCEPTED AND MERGED:** [final acceptance](#t3-final-ci-review-owner-acceptance-and-squash-mapping). The chronological records below retain earlier unaccepted and failed proof attempts.
 
 ### Pinned-backend ordering gate — isolated proof (2026-10-13)
 
@@ -1184,3 +1186,26 @@ eb855e5dc9b6e72c30fe7c611cba852e7c8cb4f654815100b6b24a5d2c4d2d56  tests/test_inc
 **Static scope:** all 17 compared protected files are byte-identical to `e7b5601`, including runtime, independent proof/matrix tests, workflow, dependencies, critical manifest, both generated writer inventories and lint baseline. The backend worker's 28 existing evidence functions are AST-identical; only `_launcher_path` and `build_allowlisted_env` change among pre-existing functions. The full-suite child remains unfiltered. Codex contributed to authoring/evidence and supplies no independent-review verdict.
 
 **Remaining gates:** the final pushed candidate needs fresh hosted full pytest/pylint/security; local Python 3.13 results do not establish Python 3.12 hosted success. Kiro's historical PASS remains pinned to `ea2d316` (integration) and `a54357c`/`802d74d` (implementation). No paid review, owner acceptance, merge, deployment or T4/T5 was performed or inferred. Process-interruption evidence remains distinct from hardware power-loss proof.
+
+
+### T3 final CI, review, owner acceptance and squash mapping
+
+**[Arc Safe Harbor] 2026-10-13. T3/V3/V4 ACCEPTED AND MERGED.** This record supersedes earlier pending closeout gates, without relabeling historical failed or excluded runs.
+
+**Exact subject:** final candidate `3c490e2ce61d5c6531a044132c5a01faf144f1ac`, base `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`, [PR #391](https://github.com/alanmz-crypto/convmem/pull/391). Hosted GitHub merge-test commit `6a15fbdc361fc9fc0b5a05762900626d85fad6a0` joined that head/base. Runtime implementation remains pinned to `802d74dc0525a8040e44408b891f83edc20df97f`; this describes source, not deployed processes.
+
+**Hosted evidence — observed from existing GitHub checks/logs:** [run 38474319887](https://github.com/alanmz-crypto/convmem/actions/runs/38474319887), Python 3.12.15. Full pytest through the isolated `run-ci` entry: **3,083 passed, 125 skipped, 8 warnings, 252 subtests passed**, exit 0, 1,487.23 seconds. Critical collection returned 0. Pylint regression gate PASS: raw status 30, 453 findings / 239 fingerprints, no new/increased findings against the unchanged base baseline. All six checks passed: pytest, pylint, secret-scan, CodeQL, Analyze (python), Analyze (actions). Local overlapping selections remain separate from this full-suite result. No suite was rerun for closeout.
+
+**Independent final review — supplied by Ryan:** Kiro **PASS 89%**, no blockers, at exact `3c490e2`, static/Git plus existing hosted logs. The review covered both commits in `ea2d316..3c490e2` (lint/plumbing and fixture/pytest compatibility), checked isolation, preserved test/critical-checker behavior, scope and evidence, and closed the correction-review gap. Earlier Kiro implementation (`a54357c`/`802d74d`, 85%) and integration (`ea2d316`, 88%) verdicts retain their subjects. Optional explicit Node-path selection and synchronization of maintained harness lists are not acceptance conditions. Kiro disclosed no re-execution, no local inspection of the hosted merge object and no power-loss proof. Codex contributed corrections/evidence and is not the independent reviewer.
+
+**Owner acceptance (Ryan, verbatim):**
+
+> I accept Safe Harbor T3/V3/V4 at 3c490e2ce61d5c6531a044132c5a01faf144f1ac, including the documented evidence limitations, and accept Kiro’s pinned reviews as the BugBot outage exception for PR #391. Merge, deployment and T4–T5 remain unauthorized.
+
+That statement accepted the named evidence and exception only. Ryan subsequently asked about squash readiness and reported completing the squash merge. The merge is verified below; deployment and T4/T5 were not granted by either action. The outage exception is owner acceptance of the pinned Kiro reviews, not a BugBot PASS.
+
+**Squash mapping — independently checked by Codex:** GitHub reports PR #391 **MERGED** at **2026-10-13 23:38:18 UTC**, squash `a7f72003aea516b4961a584fcfe54ad255d6a053`, parent `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`. The GitHub commit API returns tree `5e84b5451e0310f8d6f7eb5b6f5b20095ade57b6`; local Git reports that identical tree for accepted `3c490e2`. A fetch updated the origin/main tracking reference to the squash; the shared checkout and runtime-main were not switched. This maps acceptance to the landed source, not to future edits or running processes.
+
+**Remaining limits:** V5/V6 remain NOT RUN. T4/T5 and deployment require separate grants. Small-store availability, conservative release refusal, direct/incidental writer limits, power-loss evidence, recovery-artifact qualification, loss window and old-process adoption remain as documented. No production CLI/MCP, service, drive, restore, provider, session-indexing or ledger operation was performed during this closeout.
+
+**TL;DR:** [Arc Safe Harbor] Accepted T3 candidate `3c490e2` passed hosted CI and final Kiro review, then landed as tree-identical squash `a7f7200`. T4/T5 and live operations remain ungranted.

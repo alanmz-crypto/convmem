@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 MERGED; ISOLATED T3 IMPLEMENTATION GRANTED.** Ryan’s conditional instruction is recorded in section 11. The bounded isolation investigation is complete and Kiro independently PASSed the proof at `e08100ff` (82%). Cursor may implement the accepted T3 contract in the separate worktree; Codex supervises isolated execution. T4/T5, PR creation/comments, merge, deployment and live operations remain ungranted.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED.** [T3 closeout](VERIFY-safe-harbor.md#t3-final-ci-review-owner-acceptance-and-squash-mapping) records final CI, Kiro review, Ryan acceptance and PR #391 squash mapping. Sections 10–14 retain historical grants/evidence; they authorize no further implementation. T4/T5, deployment and live operations remain ungranted.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        Execute T3 in isolation; independent prerequisite passed
+Phase:        T3 closed; awaiting a separate T4 decision
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Cursor implementation; Codex supervised isolated evidence
-Authority:    Ryan conditional T3 grant (section 11); no T4/T5 or live grant
+Lanes:        Ryan decision; Codex documentation closeout
+Authority:    T1–T3 grants complete; no T4/T5 or live grant
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1 and T2 are accepted and merged. Section 10’s proof-only grant is complete; section 11 records the conditional remaining T3 grant, whose investigation/review prerequisites passed. T3 implementation is authorized only in isolation; T4/T5 remain NOT GRANTED. Shared files keep implementation serial. The reviewed task contracts below are unchanged.
+T1–T3 are accepted and merged. The proof, implementation and CI-correction grants in sections 10–14 are complete. T4/T5 remain NOT GRANTED. Shared files keep implementation serial. The reviewed task contracts below are unchanged; the next task requires Ryan’s separate grant.
 
 ### T1 — One durable incident authority at the existing guard
 

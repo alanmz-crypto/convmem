@@ -9,12 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — draft PR #391; pytest correction returned (2026-10-13):**
-  **Next lane: Codex — report fresh final-tip hosted CI.**
-  [VERIFY](../plans/VERIFY-safe-harbor.md#t3-bounded-pytest-compatibility-correction)
-  records affected/integration evidence, full lint PASS and retained failures.
-  [STATUS](../plans/STATUS-safe-harbor.md) holds current gates. Runtime/baseline
-  stay fixed; successor acceptance, merge, deployment and T4/T5 remain pending.
+- **Arc Safe Harbor — T1–T3 accepted and merged (2026-10-13):**
+  **Next lane: Ryan — separate T4 decision.**
+  [STATUS](../plans/STATUS-safe-harbor.md) holds current state and remaining gates.
+  [VERIFY closeout](../plans/VERIFY-safe-harbor.md#t3-final-ci-review-owner-acceptance-and-squash-mapping)
+  records final CI, Kiro review, owner acceptance and PR #391 squash mapping.
+  No active implementation, deployment or T4/T5 grant.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
