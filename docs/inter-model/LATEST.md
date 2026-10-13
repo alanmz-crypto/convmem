@@ -9,12 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — CI integration evidence returned (2026-10-13):**
-  **Next lane: Ryan — authorize bounded independent integration delta.**
-  [VERIFY's integration result](../plans/VERIFY-safe-harbor.md#t3-bounded-ci-integration--isolated-evidence-returned)
-  is the review packet; [STATUS](../plans/STATUS-safe-harbor.md) holds current gates.
-  Implementation/evidence are returned. No automatic reviewer invocation, hosted CI,
-  T4/T5, PR/merge or live action; runtime remains unchanged.
+- **Arc Safe Harbor — draft PR #391; lint correction returned (2026-10-13):**
+  **Next lane: Codex — report fresh CI; Ryan — separate pytest-failure scope.**
+  [VERIFY's hosted result](../plans/VERIFY-safe-harbor.md#t3-hosted-ci-and-bounded-lint-correction)
+  records 149 isolated passes, full lint gate PASS and retained failures;
+  [STATUS](../plans/STATUS-safe-harbor.md) holds current gates.
+  Kiro's integration PASS stays pinned to `ea2d316`. Runtime/baseline stay fixed;
+  pytest corrections, successor acceptance, merge, deployment and T4/T5 are ungranted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

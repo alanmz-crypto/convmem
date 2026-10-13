@@ -34,6 +34,8 @@ PROOF_TIMEOUT_SECONDS = 300.0
 
 @functools.lru_cache(maxsize=1)
 def _load_bootstrap_module() -> object:
+    # pylint: disable=duplicate-code
+    # -I parent must file-spec bootstrap before package imports exist (mirrored in T3 worker).
     path = ROOT / "tests" / "_safe_harbor_bootstrap.py"
     spec = importlib.util.spec_from_file_location("safe_harbor_t3_bootstrap", path)
     if spec is None or spec.loader is None:
@@ -41,6 +43,9 @@ def _load_bootstrap_module() -> object:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+# pylint: enable=duplicate-code
 
 
 def _launcher_path() -> str:
@@ -63,17 +68,20 @@ def mkdtemp_parent_dir() -> str:
     return _mkdtemp_parent_dir()
 
 
+# pylint: disable=duplicate-code
+# T3 isolation path keys overlap required entries with T2 but this tuple is not identical to T2's contract.
 ENV_PATH_KEYS = (
-        "CONVMEM_CONFIG",
-        "CONVMEM_ROOT",
-        "CONVMEM_RESTIC_ENV",
-        "XDG_CONFIG_HOME",
-        "XDG_DATA_HOME",
-        "XDG_CACHE_HOME",
-        "XDG_RUNTIME_DIR",
-        "RESTIC_CACHE_DIR",
-        "TMPDIR",
+    "CONVMEM_CONFIG",
+    "CONVMEM_ROOT",
+    "CONVMEM_RESTIC_ENV",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_CACHE_HOME",
+    "XDG_RUNTIME_DIR",
+    "RESTIC_CACHE_DIR",
+    "TMPDIR",
 )
+# pylint: enable=duplicate-code
 
 
 def _require_uid() -> None:
@@ -174,6 +182,8 @@ def build_allowlisted_env(
 
 
 def seq_id(value: Any) -> int:
+    # pylint: disable=duplicate-code
+    # Independent sqlite seq decoding mirror (must not import chroma_write_guard oracle).
     if value is None:
         raise ValueError("refusing None seq_id")
     if isinstance(value, bytes):
@@ -183,6 +193,7 @@ def seq_id(value: Any) -> int:
     if isinstance(value, int):
         return int(value)
     raise TypeError(f"unsupported seq_id type {type(value)!r}")
+# pylint: enable=duplicate-code
 
 
 def embedding_from_seed(seed: int) -> list[float]:
@@ -256,6 +267,8 @@ def segment_vector_synced(seg_dir: Path, embedding_id: str) -> bool:
 
 
 def sqlite_schema_digest(chroma: Path) -> str:
+    # pylint: disable=duplicate-code
+    # Independent schema fingerprint mirror for backend identity evidence.
     con = sqlite3.connect(f"file:{chroma / 'chroma.sqlite3'}?mode=ro", uri=True)
     try:
         con.execute("BEGIN")
@@ -267,6 +280,7 @@ def sqlite_schema_digest(chroma: Path) -> str:
         con.close()
     payload = json.dumps(rows, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode()).hexdigest()
+# pylint: enable=duplicate-code
 
 
 def live_backend_identity_client_free(chroma: Path) -> dict[str, Any]:
@@ -286,7 +300,10 @@ def live_backend_identity_client_free(chroma: Path) -> dict[str, Any]:
     con = sqlite3.connect(f"file:{chroma / 'chroma.sqlite3'}?mode=ro", uri=True)
     try:
         con.execute("BEGIN")
+        # pylint: disable=duplicate-code
+        # Client-free identity reads the same sqlite migrations ordering as production.
         migrations = tuple(row[0] for row in con.execute("select version from migrations order by version"))
+        # pylint: enable=duplicate-code
     finally:
         con.execute("ROLLBACK")
         con.close()
@@ -342,15 +359,7 @@ def run_proof_launcher() -> int:
     }
     try:
         started = time.monotonic()
-        pytest = subprocess.run(
-            pytest_cmd,
-            cwd=ROOT,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=PROOF_TIMEOUT_SECONDS,
-            check=False,
-        )
+        pytest = bootstrap.run_harness_child(pytest_cmd, env=env, timeout=PROOF_TIMEOUT_SECONDS)
         summary["pytest_returncode"] = pytest.returncode
         summary["pytest_elapsed_seconds"] = time.monotonic() - started
         (evidence_root / "pytest.log").write_text(pytest.stdout + pytest.stderr, encoding="utf-8")
@@ -373,15 +382,7 @@ def run_proof_launcher() -> int:
     lint_cmd = [*PYTHON_CHILD, "-m", "pylint", "-sn", str(TEST_MODULE), str(WORKER)]
     lint_started = time.monotonic()
     try:
-        lint = subprocess.run(
-            lint_cmd,
-            cwd=ROOT,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=PROOF_TIMEOUT_SECONDS,
-            check=False,
-        )
+        lint = bootstrap.run_harness_child(lint_cmd, env=env, timeout=PROOF_TIMEOUT_SECONDS)
         summary["pylint_returncode"] = lint.returncode
         summary["pylint_elapsed_seconds"] = time.monotonic() - lint_started
         (evidence_root / "pylint.log").write_text(lint.stdout + lint.stderr, encoding="utf-8")
@@ -413,6 +414,8 @@ def run_proof_launcher() -> int:
 
 
 def _collection_segments(con: sqlite3.Connection, collection: str) -> tuple[str, str, str]:
+    # pylint: disable=duplicate-code
+    # Independent collection/segment id reader for harness sqlite assertions.
     row = con.execute("select id, name from collections where name = ?", (collection,)).fetchone()
     if not row:
         raise KeyError(f"collection {collection!r} missing")
@@ -423,6 +426,7 @@ def _collection_segments(con: sqlite3.Connection, collection: str) -> tuple[str,
     if not meta_seg or not vec_seg:
         raise KeyError(f"collection {collection!r} missing METADATA/VECTOR segments")
     return collection_id, meta_seg, vec_seg
+# pylint: enable=duplicate-code
 
 
 def _sqlite_metadata_int(con: sqlite3.Connection, meta_seg: str, embedding_id: str, key: str) -> int | None:

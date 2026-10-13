@@ -75,6 +75,8 @@ CHECKER_SCRIPT = ROOT / "scripts" / "check_ci_critical_invariants.py"
 
 @functools.lru_cache(maxsize=1)
 def _load_bootstrap_module() -> ModuleType:
+    # pylint: disable=duplicate-code
+    # -I parent must file-spec bootstrap before package imports exist (mirrored in backend_worker).
     path = ROOT / "tests" / "_safe_harbor_bootstrap.py"
     spec = importlib.util.spec_from_file_location("safe_harbor_t3_bootstrap", path)
     if spec is None or spec.loader is None:
@@ -84,14 +86,15 @@ def _load_bootstrap_module() -> ModuleType:
     return module
 
 
+# pylint: enable=duplicate-code
+
+
 def _load_backend_worker_module() -> ModuleType:
-    path = ROOT / "tests" / "_safe_harbor_t3_backend_worker.py"
-    spec = importlib.util.spec_from_file_location("safe_harbor_t3_backend_worker", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load backend worker from {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    bootstrap = _load_bootstrap_module()
+    return bootstrap.load_stdlib_module(
+        ROOT / "tests" / "_safe_harbor_t3_backend_worker.py",
+        "safe_harbor_t3_backend_worker",
+    )
 
 
 def _temp_parent_dir(backend: ModuleType) -> str:
@@ -186,16 +189,9 @@ def _run_pytest_suite(
     }
     started = time.monotonic()
     log_name = f"{label}.pytest.log"
+    bootstrap = _load_bootstrap_module()
     try:
-        proc = subprocess.run(
-            pytest_cmd,
-            cwd=ROOT,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
+        proc = bootstrap.run_harness_child(pytest_cmd, env=env, timeout=timeout)
         rc = _child_returncode(proc)
         summary["pytest_returncode"] = rc if rc is not None else 124
         summary["pytest_elapsed_seconds"] = time.monotonic() - started
@@ -213,16 +209,9 @@ def _run_pylint(paths: list[Path], env: dict[str, str], evidence_root: Path) -> 
     lint_cmd = [*PYTHON_CHILD, "-m", "pylint", "--output-format=json", *[str(path) for path in paths]]
     started = time.monotonic()
     summary: dict[str, object] = {"pylint_command": lint_cmd}
+    bootstrap = _load_bootstrap_module()
     try:
-        proc = subprocess.run(
-            lint_cmd,
-            cwd=ROOT,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=RUN_TIMEOUT_SECONDS,
-            check=False,
-        )
+        proc = bootstrap.run_harness_child(lint_cmd, env=env, timeout=RUN_TIMEOUT_SECONDS)
         lint_rc = _child_returncode(proc)
         summary["pylint_returncode"] = lint_rc if lint_rc is not None else 124
         summary["pylint_elapsed_seconds"] = time.monotonic() - started
@@ -241,15 +230,7 @@ def _run_pylint(paths: list[Path], env: dict[str, str], evidence_root: Path) -> 
             "--git-cwd",
             str(ROOT),
         ]
-        gate = subprocess.run(
-            gate_cmd,
-            cwd=ROOT,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=RUN_TIMEOUT_SECONDS,
-            check=False,
-        )
+        gate = bootstrap.run_harness_child(gate_cmd, env=env, timeout=RUN_TIMEOUT_SECONDS)
         gate_rc = _child_returncode(gate)
         summary["pylint_gate_command"] = gate_cmd
         summary["pylint_gate_returncode"] = gate_rc if gate_rc is not None else 124
@@ -406,16 +387,9 @@ def run_ci_collect() -> int:
         "source_hashes_before": source_hashes_before,
     }
     started = time.monotonic()
+    bootstrap = _load_bootstrap_module()
     try:
-        proc = subprocess.run(
-            checker_cmd,
-            cwd=ROOT,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=CHECKER_TIMEOUT_SECONDS,
-            check=False,
-        )
+        proc = bootstrap.run_harness_child(checker_cmd, env=env, timeout=CHECKER_TIMEOUT_SECONDS)
         rc = _child_returncode(proc)
         summary["checker_returncode"] = rc if rc is not None else 124
         summary["checker_elapsed_seconds"] = time.monotonic() - started
@@ -463,15 +437,12 @@ def run_ci() -> int:
         "source_hashes_before": source_hashes_before,
     }
     started = time.monotonic()
+    bootstrap = _load_bootstrap_module()
     try:
-        proc = subprocess.run(
+        proc = bootstrap.run_harness_child(
             pytest_cmd,
-            cwd=ROOT,
             env=env,
-            capture_output=True,
-            text=True,
             timeout=FULL_SUITE_TIMEOUT_SECONDS,
-            check=False,
         )
         rc = _child_returncode(proc)
         summary["full_suite_returncode"] = rc if rc is not None else 124

@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 MERGED; T3 STATIC REVIEW PASS, CI INTEGRATION EVIDENCE RETURNED.** Kiro returned implementation PASS (85%) at `a54357c`, including runtime `802d74d` and recorded isolated evidence. The granted CI integration is returned at `34ff309` with 149 isolated passes and lint regression gate PASS. Successor review, fresh CI and owner acceptance remain pending; T4/T5 and live work remain ungranted.
+> **Arc: Safe Harbor. T1/T2 MERGED; T3 DRAFT PR #391, LINT CORRECTION RETURNED.** Kiro's implementation PASS (85%) at `a54357c`/`802d74d` and supplied integration-delta PASS (88%) at `ea2d316` stay pinned. After hosted lint/pytest failure at `ea2d316`, the bounded harness correction has 149 isolated passes and a full-repository lint-gate PASS with baseline/runtime unchanged. Fresh hosted CI is next; the initial pytest failures remain uncorrected. T3 acceptance, merge, deployment and T4/T5 remain pending.
 
 ## 1. What This Is For (product goal)
 
@@ -53,27 +53,28 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T2 / V2: ACCEPTED AND MERGED** via #389. Ryan separately accepted the Codex review and documented evidence limitations at `eb06c97` as the T2 BugBot outage exception. The bounded delta PASS remains pinned to runtime/evidence `dac925f`; the owner exception names the documentation successor. Final-head CI passed before merge. CodeQL #6 remains previously dispositioned as a false positive.
 - **T3 backend ordering gate: INDEPENDENT PASS (82%)** at `e08100ff`, source `93d4e34`; corrected nine-case evidence remains pinned. Bounded lapse investigation found no explicit production-directed operation, but ambient side effects cannot be excluded. See VERIFY for limits and failed attempts.
 - **T3 implementation/evidence: KIRO STATIC PASS, NOT OWNER-ACCEPTED.** Review at documentation tip `a54357c940327881239db98c89b965b1365efc84`, runtime/tests `802d74dc0525a8040e44408b891f83edc20df97f`, on `feat/2026-10-13-safe-harbor-t3`. Kiro returned **PASS 85%**, no implementation blocker, after completing omitted reads in the same authorized review. VERIFY records the source qualification without upgrading the verdict into CI or owner acceptance. Final isolated run remains **92 passed**, launcher exit 0, focused lint regression gate 0 (raw pylint 20, existing findings). Codex contributed code/verification and is not the independent reviewer. The native small-store limitation remains; V5/V6 remain NOT RUN.
-- **CI integration: IMPLEMENTATION/EVIDENCE RETURNED at `34ff309e760ef3a8db756157e8faec5500cc05fd`.** Portable pre-import bootstrap, full-suite/critical-collection workflow wiring, contract tests and derived inventory are complete on the task branch. [VERIFY](VERIFY-safe-harbor.md#t3-bounded-ci-integration--isolated-evidence-returned) records **149 passed**, launcher exit 0, focused lint gate 0 (raw 8), stable source hashes and failed attempts. Runtime and all 36 routes are unchanged. Full hosted CI is NOT RUN and needs a separately authorized draft PR; a feature push does not trigger this workflow. No integration delta verdict or T3/V3/V4 acceptance is inferred.
+- **CI integration: KIRO DELTA PASS AT `ea2d316`, HOSTED CI FAILED.** Ryan supplied Kiro's bounded static delta PASS (88%), no blockers, and separately authorized draft [PR #391](https://github.com/alanmz-crypto/convmem/pull/391) and normal hosted CI. At head `ea2d316`, base `458b9f6`, merge-test commit `a795f5dd5fda0c0a18b2a0d438ddd40cc7e8ecef`, run `38450752959` completed with lint regression FAIL (duplicate-code 71→85) and pytest FAIL (21 failed, 3043 passed, 124 skipped, 8 errors; 262 subtests passed). Critical collection, secret scan and CodeQL passed. The prior local 149-case result was a selection, not hosted full-suite proof. No owner acceptance follows from either static PASS.
+- **Bounded lint correction: IMPLEMENTATION / LOCAL EVIDENCE RETURNED.** [VERIFY](VERIFY-safe-harbor.md#t3-hosted-ci-and-bounded-lint-correction) records shared harness plumbing, independent assertion preservation and narrow duplicate-code exceptions. Final local selection: 149 passes, focused lint 0; full lint over 574 Python files: raw 30, gate 0, duplicate count 71 matching the unchanged baseline. Runtime, policy and inventories stay fixed. The first local full-scan failure and Cursor's unisolated JSON-reading breach are disclosed. Fresh hosted CI remains required; the initial hosted pytest failures are not corrected by this grant.
 - **Live operations/deployment: NOT AUTHORIZED.** Merged source does not activate the release workflow or prove backup usability.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** receive the completed bounded integration and authorize its independent delta review. Draft PR/hosted CI, T3/V3/V4 acceptance and deployment remain separate. No new full review of unchanged runtime is proposed.
+**Ryan:** decide the separate scope for the initial hosted pytest failures after reviewing the returned lint correction and fresh CI. T3/V3/V4 acceptance remains separate. PR #391 stays draft; merge and live work are not authorized.
 
-**Codex / Cursor:** section 12 implementation/evidence is returned. Preserve the clean pushed checkpoint and the unchanged runtime; route concrete review findings before further correction. No new task, full default local pytest or production ritual.
+**Codex:** section 13 local work is returned; monitor/report normal hosted CI on the pushed successor. No expansion into pytest/runtime fixes. **Cursor:** no active implementation continuation; any future text-only dispatch needs tool-level enforcement after the disclosed JSON-reading breach. No full local pytest or production ritual.
 
-**Next reviewer after integration:** review the changed bootstrap, CI contract and recorded evidence as a bounded delta. Kiro's prior PASS stays pinned; it does not silently transfer to changed harnesses. Invocation and final acceptance remain separate.
+**Next reviewer:** any successor verdict must cover the actual changed artifact. The supplied Kiro delta PASS stays at `ea2d316`; no automatic review invocation or transfer to the lint correction.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Obtain a bounded independent delta on integration source `34ff309`, its recorded 149-case evidence and the documentation successor. Keep the previous runtime verdict pinned; no automatic review invocation.
-2. Obtain separately authorized draft PR/fresh final-tip CI, then Ryan's T3/V3/V4 acceptance. Only section 12's bounded CI wiring is granted; no reviewer invocation or PR action is inferred. T4/T5 still need separate grants; T4 must address direct-helper binding, hash alignment, event-only completion and uncertain outcomes.
+1. Obtain/report fresh final-tip hosted CI on draft PR #391 for the returned section 13 correction. Local full lint passed; it is not hosted evidence.
+2. Route the separate pytest failures with concrete evidence; their correction needs a separate scope/grant. Then obtain final-tip CI, any required successor review and Ryan's T3/V3/V4 acceptance. T4/T5 still need separate grants; T4 must address direct-helper binding, hash alignment, event-only completion and uncertain outcomes.
 3. Before rollout, resolve the loss window, exact usable recovery artifact, old-process/guard-state adoption and rollback compatibility in EXECUTION section 6. The added external ext4 resource is capacity only; no access is granted here.
 4. Deployment and corpus-affecting operations require separate scope, evidence and authorization. No production or session-indexing operations under this task.
 
 ## 7. Hard Stops (models cannot cross)
 
-- T1/T2 and the proof grant are complete. Section 11's T3 implementation is returned and statically reviewed; section 12 integration/evidence granted at `23041bd` is returned at `34ff309`. No automatic continuation into T4/T5 or unrelated runtime fixes. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
+- T1/T2 and the proof grant are complete. T3 runtime and integration are statically reviewed at their exact pins. Section 13 correction/local evidence is returned; only reporting fresh CI remains. Unrelated pytest/runtime fixes require a separate grant. No T4/T5, installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
 - No restore drills, production experiments, indexing, ledger record or merge from this brief.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration or generalized repair. Read that arc's current STATUS hard stops.
 - No generic HOLD, identity registry, freeze, broad constructor change or automatic cleanup subsystem under this direction.
@@ -102,6 +103,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-13 — Cursor/Codex: returned bounded lint correction after draft #391 failed hosted CI; 149 isolated passes and full lint gate PASS (71 duplicates), runtime/baseline fixed, separate pytest failures and authoring breach disclosed.
 
 - 2026-10-13 — Cursor/Codex: returned bounded CI integration at `34ff309`, 149 isolated passes and lint regression gate PASS; runtime/routes unchanged, independent delta and hosted CI pending.
 
@@ -184,4 +187,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T3 implementation and isolated evidence are returned on their task branch. Independent implementation review, CI integration and owner acceptance remain pending. T4/T5, PR/merge and live operations remain ungranted.
+[Arc Safe Harbor] Draft #391 has the returned lint correction with 149 isolated passes and full lint gate PASS. Fresh hosted CI and separate pytest-failure scope are next; prior reviews remain pinned, acceptance/merge/deployment/T4/T5 pending.

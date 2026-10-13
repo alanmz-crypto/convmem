@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
 
 EXPECTED_UID_ENV = "SAFE_HARBOR_T3_EXPECTED_UID"
 _LAUNCHER_HINT = "python -I -S -B tests/_safe_harbor_t3_worker.py run-suite"
@@ -119,14 +121,43 @@ def with_expected_uid(env: dict[str, str], expected_uid: int) -> dict[str, str]:
     return out
 
 
-def _load_backend_worker_for_isolation() -> object:
-    path = _ROOT / "tests" / "_safe_harbor_t3_backend_worker.py"
-    spec = importlib.util.spec_from_file_location("safe_harbor_t3_backend_worker", path)
+def load_stdlib_module(path: Path, module_name: str) -> ModuleType:
+    """Load a stdlib-isolated module by file path (-I entry cannot use package imports)."""
+    spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load backend worker from {path}")
+        raise RuntimeError(f"cannot load module from {path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def run_harness_child(
+    cmd: list[str],
+    *,
+    env: dict[str, str],
+    timeout: float,
+) -> subprocess.CompletedProcess[str]:
+    """Repo-root captured text subprocess for isolated T3 launcher harnesses."""
+    # pylint: disable=duplicate-code
+    # Keep this one subprocess adapter explicit; older T1 tests spell out the same
+    # capture/check contract independently and are outside this harness correction.
+    return subprocess.run(
+        cmd,
+        cwd=_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+# pylint: enable=duplicate-code
+
+
+def _load_backend_worker_for_isolation() -> object:
+    return load_stdlib_module(
+        _ROOT / "tests" / "_safe_harbor_t3_backend_worker.py",
+        "safe_harbor_t3_backend_worker",
+    )
 
 
 def require_t3_bootstrap() -> None:

@@ -118,7 +118,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             tmp = Path(td)
             self._start_cooperative_parent(tmp, uid=1500)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
-                with mock.patch.object(self.worker.subprocess, "run", side_effect=fake_run):
+                with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=fake_run):
                     with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
                         rc = self.worker.run_ci()
         self.assertEqual(rc, 0)
@@ -126,6 +126,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
         child_env = run_kwargs["env"]
         assert isinstance(child_env, dict)
         fixture_root = Path(child_env["SAFE_HARBOR_T3_FIXTURE_ROOT"])
+        # pylint: disable=duplicate-code
         expected_cmd = [
             sys.executable,
             "-s",
@@ -137,8 +138,13 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             "no:cacheprovider",
             f"--basetemp={fixture_root / 'pytest-tmp' / 'full-suite'}",
         ]
+        # pylint: enable=duplicate-code
         self.assertEqual(calls[0], expected_cmd)
         self.assertEqual(run_kwargs["cwd"], _REPO)
+        self.assertIs(run_kwargs["capture_output"], True)
+        self.assertIs(run_kwargs["text"], True)
+        self.assertIs(run_kwargs["check"], False)
+        self.assertEqual(run_kwargs["timeout"], self.worker.FULL_SUITE_TIMEOUT_SECONDS)
         self.assertEqual(child_env["SAFE_HARBOR_T3_EXPECTED_UID"], "1500")
         self.assertNotIn("DEEPSEEK_API_KEY", child_env)
 
@@ -147,7 +153,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             self._start_cooperative_parent(Path(td))
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
-                    self.worker.subprocess,
+                    self.bootstrap.subprocess,
                     "run",
                     return_value=subprocess.CompletedProcess([], 7, "", "fail"),
                 ):
@@ -162,7 +168,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             self._start_cooperative_parent(Path(td))
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
-                with mock.patch.object(self.worker.subprocess, "run", side_effect=raise_timeout):
+                with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=raise_timeout):
                     with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
                         self.assertEqual(self.worker.run_ci(), 124)
 
@@ -171,7 +177,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             self._start_cooperative_parent(Path(td))
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
-                    self.worker.subprocess,
+                    self.bootstrap.subprocess,
                     "run",
                     return_value=subprocess.CompletedProcess([], None, "", ""),
                 ):
@@ -183,7 +189,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             self._start_cooperative_parent(Path(td))
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
-                    self.worker.subprocess,
+                    self.bootstrap.subprocess,
                     "run",
                     return_value=subprocess.CompletedProcess([], 0, "", ""),
                 ):
@@ -192,27 +198,34 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
 
     def test_run_ci_collect_delegates_to_checker_unchanged_argv(self) -> None:
         recorded: list[list[str]] = []
+        run_kwargs: dict[str, object] = {}
 
         def fake_run(cmd, **_kwargs):  # type: ignore[no-untyped-def]
             recorded.append(list(cmd))
+            run_kwargs.update(_kwargs)
             return subprocess.CompletedProcess(cmd, 0, "", "")
 
         with tempfile.TemporaryDirectory() as td:
             self._start_cooperative_parent(Path(td), uid=1500)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
-                with mock.patch.object(self.worker.subprocess, "run", side_effect=fake_run):
+                with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=fake_run):
                     with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
                         rc = self.worker.run_ci_collect()
         self.assertEqual(rc, 0)
         self.assertEqual(len(recorded), 1)
         self.assertEqual(recorded[0], [sys.executable, "-s", "-B", str(_CHECKER)])
+        self.assertEqual(run_kwargs["cwd"], _REPO)
+        self.assertIs(run_kwargs["capture_output"], True)
+        self.assertIs(run_kwargs["text"], True)
+        self.assertIs(run_kwargs["check"], False)
+        self.assertEqual(run_kwargs["timeout"], self.worker.CHECKER_TIMEOUT_SECONDS)
 
     def test_run_ci_collect_propagates_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             self._start_cooperative_parent(Path(td))
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
-                    self.worker.subprocess,
+                    self.bootstrap.subprocess,
                     "run",
                     return_value=subprocess.CompletedProcess([], 3, "", ""),
                 ):
@@ -225,7 +238,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(self.worker, "_source_hashes", side_effect=[{"a": "1"}, {"a": "2"}]):
                     with mock.patch.object(
-                        self.worker.subprocess,
+                        self.bootstrap.subprocess,
                         "run",
                         return_value=subprocess.CompletedProcess([], 0, "", ""),
                     ):
@@ -238,7 +251,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             self._start_cooperative_parent(Path(td))
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
-                with mock.patch.object(self.worker.subprocess, "run", side_effect=raise_timeout):
+                with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=raise_timeout):
                     with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
                         self.assertEqual(self.worker.run_ci_collect(), 124)
 
@@ -247,7 +260,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             self._start_cooperative_parent(Path(td))
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
-                    self.worker.subprocess,
+                    self.bootstrap.subprocess,
                     "run",
                     return_value=subprocess.CompletedProcess([], None, "", ""),
                 ):

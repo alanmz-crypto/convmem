@@ -86,17 +86,15 @@ def _worker_env() -> dict[str, str]:
 
 
 def _worker(*args: str, timeout: float = 180) -> subprocess.CompletedProcess[str]:
+    from tests._safe_harbor_bootstrap import run_harness_child
+
     for arg in args:
         if arg.startswith("/"):
             _constrain_under_fixture(Path(arg))
-    return subprocess.run(
+    return run_harness_child(
         [sys.executable, "-s", "-B", str(WORKER), *args],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
         env=_worker_env(),
+        timeout=timeout,
     )
 
 
@@ -123,6 +121,8 @@ class PersistedReleaseEvidence:
 
 
 def _segment_digests(seg_dir: Path) -> dict[str, str]:
+    # pylint: disable=duplicate-code
+    # Independent segment digest capture (must not delegate expected values to chroma_write_guard).
     from chroma_write_guard import SEGMENT_FILES
 
     out: dict[str, str] = {}
@@ -131,6 +131,7 @@ def _segment_digests(seg_dir: Path) -> dict[str, str]:
         if path.is_file():
             out[name] = hashlib.sha256(path.read_bytes()).hexdigest()
     return out
+# pylint: enable=duplicate-code
 
 
 def _sqlite_ro(chroma: Path) -> sqlite3.Connection:
@@ -241,6 +242,8 @@ def _check_collection_position(chroma: Path, snap: PersistedReleaseEvidence) -> 
 
 
 def evaluate_persisted_release_predicate(chroma: Path, snap: PersistedReleaseEvidence) -> tuple[bool, str]:
+    # pylint: disable=duplicate-code
+    # Independent persisted-release gate; validate_segment/vector_census are read-only production oracles.
     from chroma_write_guard import validate_segment, vector_census
 
     static = live_backend_identity_client_free(chroma)
@@ -278,6 +281,7 @@ def evaluate_persisted_release_predicate(chroma: Path, snap: PersistedReleaseEvi
     if row.get("lost") or row.get("extra"):
         return False, f"census_mismatch {row}"
     return True, "admit"
+# pylint: enable=duplicate-code
 
 
 def evaluate_census_only_predicate(chroma: Path, collection: str) -> bool:
