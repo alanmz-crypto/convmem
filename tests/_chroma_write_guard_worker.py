@@ -29,9 +29,6 @@ if os.environ.get("SAFE_HARBOR_T3_BOOTSTRAPPED") == "1":
         if len(sys.argv) < 3:
             raise RuntimeError("missing synthetic Chroma path")
         validate_chroma_argv_path(sys.argv[2], fixture_root=_fixture)
-else:
-    validate_chroma_argv_path = None  # type: ignore[assignment,misc]
-    _fixture = None
 
 from chroma_store import ChromaStore  # pylint: disable=wrong-import-position
 from chroma_write_guard import ChromaWriteGuard  # pylint: disable=wrong-import-position

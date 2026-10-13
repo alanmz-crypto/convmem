@@ -172,21 +172,28 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(event, sort_keys=True))
         print(f"reconciled: {len(events)} change(s); run status for the current restore points")
         return 0
-    if not args.disposition or not args.authority_digest:
-        print("ordinary clear refuses; validated release requires --disposition and --authority-digest", file=sys.stderr)
+    return _clear_quarantine(guard, args.disposition, args.authority_digest)
+
+
+def _clear_quarantine(guard: ChromaWriteGuard, disposition: str | None, digest: str | None) -> int:
+    if not disposition or not digest:
+        print(
+            "ordinary clear refuses; validated release requires --disposition and --authority-digest",
+            file=sys.stderr,
+        )
         return 1 if guard.read_authority().blocking else 2
     view = guard.read_authority()
     if view.document is None:
         print("no quarantine authority to release", file=sys.stderr)
         return 1
     expected = authority_submission_digest(view.document)
-    if args.authority_digest != expected:
+    if digest != expected:
         print(f"authority digest mismatch (expected {expected})", file=sys.stderr)
         return 1
     try:
         cleared = guard.clear_quarantine(
-            disposition_ref=args.disposition,
-            authority_digest=args.authority_digest,
+            disposition_ref=disposition,
+            authority_digest=digest,
         )
     except ChromaWriteGuardError as exc:
         print(str(exc), file=sys.stderr)

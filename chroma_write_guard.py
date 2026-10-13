@@ -2180,6 +2180,11 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
             raise ChromaWriteGuardError(
                 "pinned restore source lacks release evidence; release remains unknown"
             )
+        evidence = meta["release_evidence"]
+        if not isinstance(evidence, dict):
+            raise ChromaWriteGuardError("invalid source identity evidence")
+        if evidence.get("status") != "unavailable" and evidence.get("vector_segment_id") != segment:
+            raise ChromaWriteGuardError("restore source segment identity mismatch")
         incident["pinned_source"] = {
             "segment": segment,
             "generation": generation,

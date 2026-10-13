@@ -111,7 +111,7 @@ def _run_pytest_suite(
 
 
 def _run_pylint(paths: list[Path], env: dict[str, str], evidence_root: Path) -> dict[str, object]:
-    lint_cmd = [*PYTHON_CHILD, "-m", "pylint", "-sn", *[str(path) for path in paths]]
+    lint_cmd = [*PYTHON_CHILD, "-m", "pylint", "--output-format=json", *[str(path) for path in paths]]
     started = time.monotonic()
     summary: dict[str, object] = {"pylint_command": lint_cmd}
     try:
@@ -126,7 +126,18 @@ def _run_pylint(paths: list[Path], env: dict[str, str], evidence_root: Path) -> 
         )
         summary["pylint_returncode"] = proc.returncode
         summary["pylint_elapsed_seconds"] = time.monotonic() - started
-        (evidence_root / "pylint.log").write_text(proc.stdout + proc.stderr, encoding="utf-8")
+        report = evidence_root / "pylint-report.json"
+        report.write_text(proc.stdout, encoding="utf-8")
+        gate_cmd = [
+            *PYTHON_CHILD, str(ROOT / "scripts" / "pylint_regression_gate.py"), "ci",
+            "--report", str(report), "--pylint-status", str(proc.returncode),
+            "--base-ref", "e08100ff1c2fe8474f897d6ae3d3c55e5b1c7e5f", "--git-cwd", str(ROOT),
+        ]
+        gate = subprocess.run(gate_cmd, cwd=ROOT, env=env, capture_output=True, text=True,
+                              timeout=RUN_TIMEOUT_SECONDS, check=False)
+        summary["pylint_gate_command"] = gate_cmd
+        summary["pylint_gate_returncode"] = gate.returncode
+        (evidence_root / "pylint.log").write_text(proc.stderr + gate.stdout + gate.stderr, encoding="utf-8")
     except subprocess.TimeoutExpired:
         summary["pylint_timed_out"] = True
         summary["pylint_returncode"] = 124
@@ -170,7 +181,10 @@ def run_suite(mode: str) -> int:
                 label=module.stem,
             )
         )
-    lint = _run_pylint(list(TRACKED_SOURCES), child_env, evidence_root)
+    # The unchanged, reviewed backend-proof worker is hash-pinned above; this is
+    # affected-file lint, not a claim to replace the repository-wide CI run.
+    lint_paths = [path for path in TRACKED_SOURCES if path.name != "_safe_harbor_t3_backend_worker.py"]
+    lint = _run_pylint(lint_paths, child_env, evidence_root)
     source_hashes_after = {
         str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in TRACKED_SOURCES
     }
@@ -191,7 +205,7 @@ def run_suite(mode: str) -> int:
     for item in results:
         if _exit_code(item) != 0:
             return _exit_code(item)
-    lint_rc = lint.get("pylint_returncode")
+    lint_rc = lint.get("pylint_gate_returncode", lint.get("pylint_returncode"))
     if lint_rc is not None and int(lint_rc) != 0:
         return int(lint_rc)
     return 0

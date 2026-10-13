@@ -83,8 +83,18 @@ def install() -> None:
 
 
 def main() -> None:
-    install()
     guard = cwg.ChromaWriteGuard(CHROMA)
+    if ACTION == "event-partial":
+        with guard._events_cross_process_lock():
+            with guard.events_path.open("ab") as stream:
+                stream.write(b'{"event":"diagnostic"}')
+                stream.flush()
+                barrier()
+                stream.write(b"\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+        return
+    install()
     if ACTION == "restore":
         cwg.recover(CHROMA)
     elif ACTION == "release":

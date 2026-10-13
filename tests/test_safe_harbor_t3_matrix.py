@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import copy
 import errno
+import fcntl
 import json
 import shutil
 import sqlite3
+import subprocess
+import sys
+import threading
+import time
+from contextlib import contextmanager
+from pathlib import Path
 
 from tests._safe_harbor_bootstrap import require_t3_bootstrap
 require_t3_bootstrap()
@@ -18,7 +25,7 @@ from tests._safe_harbor_t3_backend_worker import (
     cosine_vectors_equal, embedding_from_seed, read_persisted_embedding_vector,
 )
 from tests.safe_harbor_t3_fixtures import (
-    kill_worker_at_barrier, segment_file_bytes_snapshot, tear_and_trigger_restore,
+    FAULT_WORKER, ROOT, kill_worker_at_barrier, segment_file_bytes_snapshot, tear_and_trigger_restore,
 )
 from tests.test_chroma_write_guard import _make_store, _segment, _set_header_count, _worker
 
@@ -296,3 +303,139 @@ def test_release_oracle_refuses_missing_or_mismatched_evidence(tmp_path, field, 
     ok, reason = cwg.evaluate_release_evidence(guard.chroma_dir, evidence)
     assert not ok and reason
     assert guard.read_authority().blocking
+
+
+@pytest.mark.parametrize("fault", ["partial", "file_fsync", "directory_fsync", "unacknowledged"])
+def test_disposition_publication_failure_retains_authority(tmp_path, fault, monkeypatch):
+    _, guard = tear_and_trigger_restore(tmp_path)
+    before = guard.quarantine_path.read_bytes()
+    # Exercise first log creation as well as a fully published but unacknowledged record.
+    guard.events_path.unlink()
+    real_append, real_sync = guard._append_event_record_durable, cwg._fsync
+    real_fsync = cwg.os.fsync
+    reached = []
+
+    def append(event, **detail):
+        if fault == "partial":
+            with guard.events_path.open("ab") as stream:
+                stream.write(b'{"incomplete":')
+                stream.flush()
+                real_fsync(stream.fileno())
+            reached.append(fault)
+            raise OSError("injected partial disposition")
+        row = real_append(event, **detail)
+        if fault == "unacknowledged":
+            reached.append(fault)
+            raise OSError("injected failure after durable disposition")
+        return row
+
+    def sync_fd(fd):
+        if fault == "file_fsync" and Path(f"/proc/self/fd/{fd}").resolve() == guard.events_path:
+            reached.append(fault)
+            raise OSError("injected disposition file fsync failure")
+        return real_fsync(fd)
+
+    def sync_path(path, *, directory=False):
+        if fault == "directory_fsync" and directory and path == guard.root:
+            reached.append(fault)
+            raise OSError("injected disposition naming durability failure")
+        return real_sync(path, directory=directory)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(guard, "_append_event_record_durable", append)
+        patch.setattr(cwg.os, "fsync", sync_fd)
+        patch.setattr(cwg, "_fsync", sync_path)
+        with pytest.raises(OSError):
+            release(guard)
+    assert reached
+    assert guard.quarantine_path.read_bytes() == before
+    fresh = cwg.ChromaWriteGuard(guard.chroma_dir)
+    assert fresh.read_authority().blocking
+    if fault == "partial":
+        with pytest.raises(cwg.ChromaWriteGuardError, match="truncated"):
+            release(fresh)
+    else:
+        release(fresh)  # reread + revalidation and a successful durable publication
+        assert not fresh.quarantine_path.exists()
+
+
+def test_wrong_source_identity_refuses_before_replacement(tmp_path):
+    chroma, seg = torn_store(tmp_path)
+    guard = cwg.ChromaWriteGuard(chroma)
+    segment, _ = _segment(chroma)
+    source, meta = guard.current_snapshot(segment)
+    meta["release_evidence"]["vector_segment_id"] = "different-segment"
+    (source / "SNAPSHOT.json").write_text(json.dumps(meta))
+    before = segment_file_bytes_snapshot(seg)
+    with pytest.raises(cwg.ChromaWriteQuarantinedError, match="refused before replacement"):
+        cwg.recover(chroma)
+    assert segment_file_bytes_snapshot(seg) == before
+    assert guard.read_authority().blocking
+
+
+def test_disposition_serializes_with_another_process_append(tmp_path, monkeypatch):
+    chroma, guard = tear_and_trigger_restore(tmp_path)
+    ready, proceed = tmp_path / "event-ready", tmp_path / "event-continue"
+    command = [sys.executable, "-s", "-B", str(FAULT_WORKER), "event-partial",
+               str(chroma), "event_lock", str(ready), str(proceed)]
+    attempting, completed = threading.Event(), threading.Event()
+    outcomes = []
+    real_lock = guard._events_cross_process_lock
+
+    @contextmanager
+    def observed_lock():
+        attempting.set()
+        with real_lock():
+            yield
+
+    def release_thread():
+        try:
+            outcomes.append(release(guard))
+        finally:
+            completed.set()
+
+    monkeypatch.setattr(guard, "_events_cross_process_lock", observed_lock)
+    with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as child:
+        thread = threading.Thread(target=release_thread, daemon=True)
+        try:
+            deadline = time.monotonic() + 25
+            while not ready.exists() and child.poll() is None and time.monotonic() < deadline:
+                time.sleep(0.01)
+            assert ready.exists(), "diagnostic did not reach partial append boundary"
+            with (guard.root / ".events-append.lock").open("rb") as lockfile:
+                with pytest.raises(BlockingIOError):
+                    fcntl.flock(lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            thread.start()
+            assert attempting.wait(10)
+            assert not completed.is_set() and guard.quarantine_path.exists()
+            proceed.write_text("continue")
+            out, err = child.communicate(timeout=15)
+            assert child.returncode == 0, (out, err)
+            thread.join(timeout=15)
+            assert completed.is_set() and outcomes == [True]
+            assert not guard.quarantine_path.exists()
+            events = [json.loads(line) for line in guard.events_path.read_text().splitlines()]
+            assert events[-2]["event"] == "diagnostic"
+            assert events[-1]["event"] == "release_disposition"
+        finally:
+            proceed.touch()
+            if child.poll() is None:
+                child.kill()
+                child.wait(timeout=10)
+            if thread.ident is not None:
+                thread.join(timeout=15)
+
+
+def test_existing_clear_cli_requires_current_disposition(tmp_path):
+    chroma, guard = tear_and_trigger_restore(tmp_path)
+    digest = cwg.authority_submission_digest(guard.read_authority().document)
+    command = [sys.executable, "-s", "-B", str(ROOT / "scripts/chroma_guard.py"),
+               "clear-quarantine", "--chroma-dir", str(chroma), "--disposition", "fixture-owner",
+               "--authority-digest"]
+    wrong = subprocess.run(command + ["0" * 64], cwd=ROOT, capture_output=True, text=True,
+                           timeout=30, check=False)
+    assert wrong.returncode == 1 and guard.read_authority().blocking
+    right = subprocess.run(command + [digest], cwd=ROOT, capture_output=True, text=True,
+                           timeout=30, check=False)
+    assert right.returncode == 0, right.stderr
+    assert not guard.quarantine_path.exists()

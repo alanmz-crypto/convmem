@@ -464,7 +464,7 @@ def test_watch_recovery_restores_and_never_raises(tmp_path: Path, capsys) -> Non
     _, seg = _segment(chroma)
     _set_header_count(seg / "header.bin", 9)
     events = watch.recover_chroma_after_abrupt_exit({"index": {"chroma_dir": str(chroma)}})
-    assert events == []  # contained recovery is not reported as ingest success
+    assert not events  # contained recovery is not reported as ingest success
     assert "quarantined" in capsys.readouterr().err
     assert ChromaWriteGuard(chroma).read_authority().blocking
     assert validate_segment(seg).ok
