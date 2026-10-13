@@ -1036,6 +1036,208 @@ def test_cli_missing_restic_is_21(cli: Cli):
     assert cli.dump() == before
 
 
+def _cross_parent_governed_paths(alias: Path, store_chroma: Path) -> tuple[dict[str, Path], dict[str, Path]]:
+    """Governed paths under the alias parent vs the faulty canonical parent."""
+    from conflict_events import event_path, lock_path
+    from hash_schema_gate import deploy_path, migration_report_path
+    from propose_decision import approved_path, queue_path
+
+    alias_cfg = {"index": {"chroma_dir": str(alias)}}
+    canonical_cfg = {"index": {"chroma_dir": str(store_chroma)}}
+    intended = {
+        "queue": queue_path(alias_cfg),
+        "approved": approved_path(alias_cfg),
+        "events": event_path(alias_cfg),
+        "lock": lock_path(alias_cfg),
+        "deploy": deploy_path(alias_cfg),
+        "migration": migration_report_path(alias_cfg),
+    }
+    alternate = {
+        "queue": queue_path(canonical_cfg),
+        "approved": approved_path(canonical_cfg),
+        "events": event_path(canonical_cfg),
+        "lock": lock_path(canonical_cfg),
+        "deploy": deploy_path(canonical_cfg),
+        "migration": migration_report_path(canonical_cfg),
+    }
+    for name, path in intended.items():
+        assert path.is_relative_to(alias.parent), path
+        assert alternate[name].is_relative_to(store_chroma.parent), alternate[name]
+        assert path != alternate[name]
+    return intended, alternate
+
+
+def _cross_parent_chroma_alias_setup(cli: Cli) -> tuple[Path, Path]:
+    """Stable alias under data root; canonical Chroma lives in a child directory."""
+    store_chroma = cli.s.data / "store" / "chroma"
+    store_chroma.mkdir(parents=True)
+    alias = cli.s.data / "chroma-link"
+    if alias.exists() or alias.is_symlink():
+        alias.unlink()
+    alias.symlink_to(store_chroma, target_is_directory=True)
+    cli.s.write_env(chroma=alias, data_root=cli.s.data, external=False)
+    cli.write_config(cli.config, alias)
+    cli.view_a = cli.write_config(cli.s.root / "view-a.toml", alias)
+    cli.seed()
+    assert alias.resolve() == store_chroma.resolve()
+    assert store_chroma.parent != cli.s.data
+    return alias, store_chroma
+
+
+def _chroma_snapshot(cli: Cli, chroma_path: Path) -> dict:
+    view = cli.write_config(cli.s.root / f"chroma-probe-{chroma_path.name}.toml", chroma_path)
+    proc = cli.run("dump", env={"CONVMEM_CONFIG": str(view)})
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout.strip().splitlines()[-1])
+    return payload["chroma"]
+
+
+def _file_hashes(cli: Cli, paths: dict[str, Path]) -> dict[str, str | None]:
+    proc = cli.run("dump", *[str(p) for p in paths.values()])
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout.strip().splitlines()[-1])
+    return {name: payload["files"].get(str(path)) for name, path in paths.items()}
+
+
+def _read_jsonl(path: Path) -> list[dict]:
+    if not path.is_file():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _queue_row(intended: dict[str, Path], pid: str) -> dict:
+    rows = _read_jsonl(intended["queue"])
+    return next(row for row in rows if row.get("id") == pid)
+
+
+def _approved_rows(intended: dict[str, Path], pid: str) -> list[dict]:
+    return [row for row in _read_jsonl(intended["approved"]) if row.get("proposal_id") == pid]
+
+
+def _canonical_client_paths(cli: Cli) -> list[str]:
+    return json.loads((cli.s.root / "chroma-client-path.txt").read_text(encoding="utf-8"))
+
+
+def _assert_canonical_client_paths(cli: Cli, expected_path: str) -> None:
+    paths = _canonical_client_paths(cli)
+    assert paths, "expected at least one PersistentClient construction"
+    for logged in paths:
+        assert logged == expected_path
+
+
+def _assert_intended_proposal_ledger(
+    cli: Cli,
+    pid: str,
+    intended: dict[str, Path],
+    store_chroma: Path,
+    *,
+    require_chroma_unit: bool,
+) -> None:
+    row = _queue_row(intended, pid)
+    assert row["id"] == pid
+    assert row.get("status") == "APPROVED"
+    approved = _approved_rows(intended, pid)
+    assert approved, pid
+    events = [
+        row
+        for row in _read_jsonl(intended["events"])
+        if row.get("proposal_id") == pid
+    ]
+    assert events, pid
+    assert [event["event_type"] for event in events].count("APPROVED") == 1
+    if require_chroma_unit:
+        chroma = _chroma_snapshot(cli, store_chroma)
+        matched = [unit for unit in chroma["units"] if unit["metadata"].get("proposal_id") == pid]
+        assert matched, pid
+
+
+def _preflight_env(cli: Cli, base: dict) -> dict:
+    return {
+        **base,
+        "SAFE_HARBOR_T2_HOOK": "record_cross_parent_admission",
+        "SAFE_HARBOR_T2_PREFLIGHT_LOG": str(cli.s.root / "preflight-target.json"),
+        "SAFE_HARBOR_T2_CHROMA_CLIENT_LOG": str(cli.s.root / "chroma-client-path.txt"),
+    }
+
+
+def _read_preflight(cli: Cli) -> dict:
+    return json.loads((cli.s.root / "preflight-target.json").read_text(encoding="utf-8"))
+
+
+def _assert_preflight_covers_governed(
+    cli: Cli, intended: dict[str, Path], store_chroma: Path
+) -> None:
+    recorded = _read_preflight(cli)
+    admitted = {Path(p).resolve() for p in recorded["affected_paths"]}
+    for _name, path in intended.items():
+        assert path.resolve() in admitted, (path, admitted)
+    assert recorded["chroma_dir"] == str(store_chroma)
+
+
+def _assert_alternate_governed_unchanged(
+    before: dict[str, str | None], after: dict[str, str | None]
+) -> None:
+    for name, digest in before.items():
+        assert after[name] == digest, name
+
+
+def _assert_cross_parent_indexed_approval_effects(
+    cli: Cli,
+    *,
+    pid: str,
+    store_chroma: Path,
+    intended: dict[str, Path],
+    alternate: dict[str, Path],
+    before_chroma: dict,
+    before_files: dict[str, str | None],
+    before_alt: dict[str, str | None],
+) -> None:
+    after_files = _file_hashes(cli, intended)
+    after_alt = _file_hashes(cli, alternate)
+    assert after_files["events"] != before_files["events"]
+    assert after_files["approved"] != before_files["approved"]
+    _assert_intended_proposal_ledger(
+        cli, pid, intended, store_chroma, require_chroma_unit=True
+    )
+    after_chroma = _chroma_snapshot(cli, store_chroma)
+    assert after_chroma["exists"]
+    assert len(after_chroma["units"]) == len(before_chroma["units"]) + 1
+    _assert_alternate_governed_unchanged(before_alt, after_alt)
+    _assert_canonical_client_paths(cli, str(store_chroma))
+    _assert_preflight_covers_governed(cli, intended, store_chroma)
+
+
+def _assert_cross_parent_recovery_effects(
+    cli: Cli,
+    *,
+    pid: str,
+    store_chroma: Path,
+    intended: dict[str, Path],
+    alternate: dict[str, Path],
+    before_chroma: dict,
+    before_files: dict[str, str | None],
+    before_alt: dict[str, str | None],
+) -> None:
+    after_files = _file_hashes(cli, intended)
+    after_alt = _file_hashes(cli, alternate)
+    assert after_files["events"] != before_files["events"]
+    assert after_files["approved"] == before_files["approved"]
+    _assert_intended_proposal_ledger(
+        cli, pid, intended, store_chroma, require_chroma_unit=True
+    )
+    after_chroma = _chroma_snapshot(cli, store_chroma)
+    assert len(after_chroma["units"]) == len(before_chroma["units"]) + 1
+    _assert_alternate_governed_unchanged(before_alt, after_alt)
+    _assert_canonical_client_paths(cli, str(store_chroma))
+    _assert_preflight_covers_governed(cli, intended, store_chroma)
+
+
+def _assert_proposal_not_found(proc) -> None:
+    text = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode != 0, proc.stdout + proc.stderr
+    assert "not found" in text or "proposal" in text and "absent" in text
+
+
 def _chroma_alias_setup(cli: Cli) -> tuple[Path, Path, Path]:
     """Config names a symlink; target A is backed up, target B is the redirect."""
     chroma_b = cli.s.data / "chroma-b"
@@ -1050,6 +1252,115 @@ def _chroma_alias_setup(cli: Cli) -> tuple[Path, Path, Path]:
     cli.write_config(cli.config, alias)
     cli.seed()
     return alias, cli.s.chroma, chroma_b
+
+
+def test_cross_parent_chroma_alias_indexed_approval_succeeds(cli: Cli):
+    alias, store_chroma = _cross_parent_chroma_alias_setup(cli)
+    intended, alternate = _cross_parent_governed_paths(alias, store_chroma)
+    cli.propose()
+    pid = cli.pending_id()
+    before_chroma = _chroma_snapshot(cli, store_chroma)
+    before_files = _file_hashes(cli, intended)
+    before_alt = _file_hashes(cli, alternate)
+    proc = cli.convmem(
+        "record",
+        "--approve-last",
+        env=_preflight_env(cli, _current(cli)),
+        stdin="y\n",
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    _assert_cross_parent_indexed_approval_effects(
+        cli,
+        pid=pid,
+        store_chroma=store_chroma,
+        intended=intended,
+        alternate=alternate,
+        before_chroma=before_chroma,
+        before_files=before_files,
+        before_alt=before_alt,
+    )
+
+
+def test_cross_parent_chroma_alias_retry_chroma_recovery_succeeds(cli: Cli):
+    alias, store_chroma = _cross_parent_chroma_alias_setup(cli)
+    intended, alternate = _cross_parent_governed_paths(alias, store_chroma)
+    pid = _approval_started(cli)
+    armed = cli.arm_census()
+    before_chroma = _chroma_snapshot(cli, store_chroma)
+    before_files = _file_hashes(cli, intended)
+    before_alt = _file_hashes(cli, alternate)
+    proc = cli.convmem(
+        "propose_decision",
+        "--recover",
+        pid,
+        env=_preflight_env(cli, _current(cli)),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert f"Recovered {pid}: retry_chroma" in proc.stdout
+    _assert_cross_parent_recovery_effects(
+        cli,
+        pid=pid,
+        store_chroma=store_chroma,
+        intended=intended,
+        alternate=alternate,
+        before_chroma=before_chroma,
+        before_files=before_files,
+        before_alt=before_alt,
+    )
+    _assert_census_admitted(cli.census_events(), armed)
+
+
+@pytest.mark.parametrize("workflow", ["approve_last", "recover"])
+def test_cross_parent_chroma_alias_canonical_substitution_negative_control(cli: Cli, workflow: str):
+    alias, store_chroma = _cross_parent_chroma_alias_setup(cli)
+    intended, alternate = _cross_parent_governed_paths(alias, store_chroma)
+    cli.propose()
+    pid = cli.pending_id()
+    if workflow == "recover":
+        started = cli.convmem("record", "--approve", pid, "--no-index", stdin="y\n")
+        assert started.returncode == 0, started.stdout + started.stderr
+    before_chroma = _chroma_snapshot(cli, store_chroma)
+    before_files = _file_hashes(cli, intended)
+    before_alt = _file_hashes(cli, alternate)
+    hook_env = {
+        **_current(cli),
+        "SAFE_HARBOR_T2_HOOK": "canonical_chroma_config_substitution",
+    }
+    if workflow == "approve_last":
+        proc = cli.convmem("record", "--approve-last", env=hook_env, stdin="y\n")
+    else:
+        proc = cli.convmem("propose_decision", "--recover", pid, env=hook_env)
+    _assert_proposal_not_found(proc)
+    with pytest.raises(AssertionError):
+        if workflow == "approve_last":
+            _assert_cross_parent_indexed_approval_effects(
+                cli,
+                pid=pid,
+                store_chroma=store_chroma,
+                intended=intended,
+                alternate=alternate,
+                before_chroma=before_chroma,
+                before_files=before_files,
+                before_alt=before_alt,
+            )
+        else:
+            _assert_cross_parent_recovery_effects(
+                cli,
+                pid=pid,
+                store_chroma=store_chroma,
+                intended=intended,
+                alternate=alternate,
+                before_chroma=before_chroma,
+                before_files=before_files,
+                before_alt=before_alt,
+            )
+    after_chroma = _chroma_snapshot(cli, store_chroma)
+    assert after_chroma == before_chroma
+    after_files = _file_hashes(cli, intended)
+    after_alt = _file_hashes(cli, alternate)
+    assert after_files == before_files
+    # Faulty canonical substitution can create governed artifacts under store/.
+    assert alternate["lock"].exists() or after_alt["lock"] != before_alt["lock"]
 
 
 def test_cli_add_succeeds_with_unchanged_chroma_alias(cli: Cli):

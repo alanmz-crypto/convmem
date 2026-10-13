@@ -26,6 +26,9 @@ Usage:
                               is constructed (real export consumer path)
   unbound_targets_after_preflight restore pre-correction config/store binding
   unbound_retarget_chroma_alias     retarget plus unbound binding (negative control)
+  canonical_chroma_config_substitution  restore pre-correction canonical chroma_dir
+                              in admitted config copies (negative control)
+  record_cross_parent_admission  record preflight target + PersistentClient paths
 ``SAFE_HARBOR_T2_NOW`` (ISO-8601 with offset) pins the evaluation instant.
 """
 
@@ -76,15 +79,102 @@ def _install_fakes() -> None:
             mod.evaluation_instant = lambda: instant
 
 
-def _install_hook() -> None:
-    hook = os.environ.get("SAFE_HARBOR_T2_HOOK", "")
-    if not hook:
-        return
-    import restic_gate
+def _install_cross_parent_admission_recorder() -> None:
+    """Transparent wrappers: real preflight + append each PersistentClient path."""
+    import chromadb
+    import restic_gate as rg_mod
 
-    real = restic_gate.preflight_operation
+    preflight_log = Path(os.environ["SAFE_HARBOR_T2_PREFLIGHT_LOG"])
+    client_log = Path(os.environ["SAFE_HARBOR_T2_CHROMA_CLIENT_LOG"])
+    real_preflight = rg_mod.preflight_operation
+    real_client = chromadb.PersistentClient
+    client_paths: list[str] = []
+
+    def _record_preflight(target):
+        result = real_preflight(target)
+        preflight_log.write_text(
+            json.dumps(
+                {
+                    "entrypoint": target.entrypoint,
+                    "chroma_dir": str(target.chroma_dir),
+                    "affected_paths": [str(p) for p in target.affected_paths],
+                    "config_path": str(target.config_path),
+                },
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        return result
+
+    def _client(*args, **kwargs):
+        path = kwargs.get("path")
+        if path is None and args:
+            path = args[0]
+        client_paths.append(str(path))
+        client_log.write_text(json.dumps(client_paths), encoding="utf-8")
+        return real_client(*args, **kwargs)
+
+    rg_mod.preflight_operation = _record_preflight
+    chromadb.PersistentClient = _client
+
+
+def _hook_canonical_chroma_config_substitution() -> None:
+    import copy
+
+    import chroma_write_store
+
+    def _canonical_config(self):
+        cfg = copy.deepcopy(self._cfg)
+        index = cfg.get("index")
+        if not isinstance(index, dict):
+            index = {}
+            cfg["index"] = index
+        index["chroma_dir"] = str(self.chroma_dir)
+        if self.units_export is not None:
+            index["units_export"] = str(self.units_export)
+        return cfg
+
+    chroma_write_store.AdmittedWriteOperation.config = _canonical_config
+
+
+def _hook_legacy_unbound_session(chroma_write_store, real_session):
+    @contextmanager
+    def _legacy_session(**kwargs):
+        path = Path(kwargs.get("config_path") or os.environ.get("CONVMEM_CONFIG", ""))
+        with real_session(**kwargs) as session:
+            op = chroma_write_store._bound_operation()
+            if op is None:
+                yield session
+                return
+            live = chroma_write_store.config_mod.load_config(path)
+            index = live.get("index") if isinstance(live.get("index"), dict) else {}
+            chroma_raw = index.get("chroma_dir")
+            if not chroma_raw:
+                yield session
+                return
+            session.store.close()
+            store, decision = chroma_write_store.open_chroma_for_write(
+                session.live_cfg,
+                chroma_raw,
+                purpose="production",
+                create_collections=True,
+                use_strict_validator=True,
+            )
+            yield chroma_write_store.ProductionWriteSession(
+                store=store, live_cfg=session.live_cfg, decision=decision
+            )
+            store.close()
+
+    return _legacy_session
+
+
+def _install_restic_preflight_hook(hook: str) -> None:
+    import restic_gate as rg_mod
+
+    real = rg_mod.preflight_operation
     if hook == "noop_preflight":
-        restic_gate.preflight_operation = lambda target: restic_gate.BoundPreflight(
+        rg_mod.preflight_operation = lambda target: rg_mod.BoundPreflight(
             target=target, status="admitted"
         )
     elif hook == "swap_config_after_preflight":
@@ -99,7 +189,7 @@ def _install_hook() -> None:
             )
             return result
 
-        restic_gate.preflight_operation = _swap
+        rg_mod.preflight_operation = _swap
     elif hook == "touch_env_after_preflight":
 
         def _touch(target):
@@ -109,8 +199,13 @@ def _install_hook() -> None:
                 handle.write("# edited after admission\n")
             return result
 
-        restic_gate.preflight_operation = _touch
-    elif hook == "fail_after_chroma_ingest":
+        rg_mod.preflight_operation = _touch
+    else:
+        raise SystemExit(f"unknown restic preflight hook {hook!r}")
+
+
+def _install_chroma_write_hook(hook: str) -> None:
+    if hook == "fail_after_chroma_ingest":
         import propose_decision
 
         def _interrupt(_cfg, proposal_id):
@@ -174,42 +269,12 @@ def _install_hook() -> None:
         import chroma_write_store
 
         chroma_write_store.verify_admitted_targets_unchanged = lambda _op: None
-
-        def _unpinned_config(self):
-            return copy.deepcopy(self._cfg)
-
-        chroma_write_store.AdmittedWriteOperation.config = _unpinned_config
-
-        real_session = chroma_write_store.production_chroma_write_session
-
-        @contextmanager
-        def _legacy_session(**kwargs):
-            path = Path(kwargs.get("config_path") or os.environ.get("CONVMEM_CONFIG", ""))
-            with real_session(**kwargs) as session:
-                op = chroma_write_store._bound_operation()
-                if op is None:
-                    yield session
-                    return
-                live = chroma_write_store.config_mod.load_config(path)
-                index = live.get("index") if isinstance(live.get("index"), dict) else {}
-                chroma_raw = index.get("chroma_dir")
-                if not chroma_raw:
-                    yield session
-                    return
-                session.store.close()
-                store, decision = chroma_write_store.open_chroma_for_write(
-                    session.live_cfg,
-                    chroma_raw,
-                    purpose="production",
-                    create_collections=True,
-                    use_strict_validator=True,
-                )
-                yield chroma_write_store.ProductionWriteSession(
-                    store=store, live_cfg=session.live_cfg, decision=decision
-                )
-                store.close()
-
-        chroma_write_store.production_chroma_write_session = _legacy_session
+        chroma_write_store.AdmittedWriteOperation.config = lambda self: copy.deepcopy(
+            self._cfg
+        )
+        chroma_write_store.production_chroma_write_session = _hook_legacy_unbound_session(
+            chroma_write_store, chroma_write_store.production_chroma_write_session
+        )
     elif hook == "unbound_retarget_chroma_alias":
         import copy
 
@@ -219,39 +284,9 @@ def _install_hook() -> None:
         chroma_write_store.AdmittedWriteOperation.config = lambda self: copy.deepcopy(
             self._cfg
         )
-        real_session = chroma_write_store.production_chroma_write_session
-
-        @contextmanager
-        def _legacy_session(**kwargs):
-            path = Path(
-                kwargs.get("config_path")
-                or os.environ.get("CONVMEM_CONFIG", "")
-            )
-            with real_session(**kwargs) as session:
-                op = chroma_write_store._bound_operation()
-                if op is None:
-                    yield session
-                    return
-                live = chroma_write_store.config_mod.load_config(path)
-                index = live.get("index") if isinstance(live.get("index"), dict) else {}
-                chroma_raw = index.get("chroma_dir")
-                if not chroma_raw:
-                    yield session
-                    return
-                session.store.close()
-                store, decision = chroma_write_store.open_chroma_for_write(
-                    session.live_cfg,
-                    chroma_raw,
-                    purpose="production",
-                    create_collections=True,
-                    use_strict_validator=True,
-                )
-                yield chroma_write_store.ProductionWriteSession(
-                    store=store, live_cfg=session.live_cfg, decision=decision
-                )
-                store.close()
-
-        chroma_write_store.production_chroma_write_session = _legacy_session
+        chroma_write_store.production_chroma_write_session = _hook_legacy_unbound_session(
+            chroma_write_store, chroma_write_store.production_chroma_write_session
+        )
         real_admit = chroma_write_store.admitted_write_operation
 
         @contextmanager
@@ -269,6 +304,31 @@ def _install_hook() -> None:
         chroma_write_store.admitted_write_operation = _combo
     else:
         raise SystemExit(f"unknown hook {hook!r}")
+
+
+_RESTIC_PREFLIGHT_HOOKS = frozenset(
+    {
+        "noop_preflight",
+        "swap_config_after_preflight",
+        "touch_env_after_preflight",
+    }
+)
+
+
+def _install_hook() -> None:
+    hook = os.environ.get("SAFE_HARBOR_T2_HOOK", "")
+    if not hook:
+        return
+    if hook == "record_cross_parent_admission":
+        _install_cross_parent_admission_recorder()
+        return
+    if hook in _RESTIC_PREFLIGHT_HOOKS:
+        _install_restic_preflight_hook(hook)
+        return
+    if hook == "canonical_chroma_config_substitution":
+        _hook_canonical_chroma_config_substitution()
+        return
+    _install_chroma_write_hook(hook)
 
 
 def _chroma_state(chroma_dir: str) -> dict:

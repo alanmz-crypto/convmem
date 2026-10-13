@@ -9,15 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — bounded governed-path correction granted (2026-10-13 UTC):**
-  CI passed at `45a1f00`, but fresh Codex review found cross-parent alias
-  canonicalization relocates approval/recovery files after preflight.
-  **Cursor:** reproduce, correct and collect isolated evidence under the
+- **Arc Safe Harbor — governed-path correction implemented (2026-10-13 UTC):**
+  Cursor preserves original governed files for cross-parent Chroma aliases;
+  canonical client/export binding remains. Codex captured original failures
+  and passing final 98-case/lint evidence under the
   [bounded grant](../plans/EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized).
-  **Codex:** coordinate, then bounded delta/fresh CI on
+  **Codex:** push, exact-tip bounded delta/fresh CI on
   [draft #389](https://github.com/alanmz-crypto/convmem/pull/389). See
   [STATUS](../plans/STATUS-safe-harbor.md) and
-  [fresh review](../plans/VERIFY-safe-harbor.md#fresh-final-t2-review--governed-path-identity-fail).
+  [correction evidence](../plans/VERIFY-safe-harbor.md#governed-path-identity-correction--isolated-evidence).
   PR stays draft; no paid reviewer, PR merge, deployment or T3–T5 grant.
   No manual session indexing today.
 

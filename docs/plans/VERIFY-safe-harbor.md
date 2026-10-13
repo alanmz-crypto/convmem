@@ -1,10 +1,10 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 FINAL CI GREEN BUT FRESH REVIEW FAIL; CORRECTION GRANTED.** At `45a1f00`, fresh static review found a stable cross-parent alias relocates governed-file lookups after preflight. Correction/evidence are authorized but not yet produced. PR #389 stays draft; external-review disposition and V2 acceptance remain pending. Event-only success exclusion remains; V3–V6 are NOT RUN.
+> **Arc: Safe Harbor. T1 MERGED; T2 GOVERNED-PATH CORRECTION IMPLEMENTED; 98-CASE EVIDENCE PASS; DELTA/CI PENDING.** Original-runtime failures and corrected focused/affected/lint evidence are captured below; final affected rerun passed 98 cases. The original review FAIL remains pinned to `45a1f00`. PR #389 stays draft; successor CI, external-review disposition and V2 acceptance remain pending. Event-only success exclusion remains; V3–V6 are NOT RUN.
 
 ```text
 Planning Status
-Phase:        T2 governed-path correction authorized; reproduction/evidence next
+Phase:        T2 governed-path correction/evidence complete; delta/CI pending
 Characters:   Implementer, Reviewer
 Function:     Correct the scoped identity mismatch and preserve evidence limits
 Lanes:        Cursor implements; Codex coordinates and reviews the delta
@@ -656,6 +656,22 @@ Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915
 
 **Limit:** this is a static path-identity finding, not a claim of a dynamically reproduced outside-root mutation. Runtime reproduction and actual downstream effects are required by [the owner-authorized correction](EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized). Correction evidence is **NOT RUN** at this record. No final-tip PASS, outage exception, V2 acceptance or phase advancement is inferred.
 
+### Governed-path identity correction — isolated evidence
+
+**[Arc Safe Harbor] Authorship / subject:** Cursor implemented the bounded correction after grant `02e6fd2dfdef077ac1ed10cfafe96fda94e9771f`; Codex inspected and ran the qualified evidence. The final tracked-Python fingerprint is `3b9a72dfd575514e9240f730baa229591889c249e3f6bb63680ec2596c264c48` (sorted tracked Python paths plus NUL-delimited contents, SHA-256). The only production behavior change is `AdmittedWriteOperation.config()` preserving `configured_chroma_dir` for governed-file derivation. Both factories still open `op.chroma_dir`; returned `units_export` stays canonical. No new production helper, schema, gate policy or T4 behavior.
+
+**Procedure correction / excluded attempts:** the first Cursor invocation ran several pytest attempts without the required outer pre-import allowlist, including a pipeline that hid pytest's return code; Codex stopped it and its children. Those attempts are not accepted evidence. Early fixture failures included reading TOML as JSON, observing the old fixture corpus, and mistakenly using the excluded event-only state. The initial full-run script was interrupted and is incomplete. There is no qualified claim about those attempts' pre-import isolation. Cursor then made static edits only; Codex controlled all accepted execution through `/tmp/safe-harbor-t2-governed-correction/evidence.py`. The original-runtime reproduction was obtained afterward in a scratch source copy, not before the initial edit; no claim of that ordering is made.
+
+**Qualified isolation:** uid 1000; fresh temporary HOME/XDG/config/root/Restic/cache/TMPDIR with a clean allowlist before collection, imports, generation and every subprocess. No inherited provider credentials. Captured `environment.json`, each command's actual return code and stdout/stderr, dependency probe and source fingerprint before/after are in each directory below. No full default local suite. Python 3.13.12, Chroma 1.5.9, numpy 2.4.4, pytest 9.1.1; scratch Restic uses `/home/lauer/.local/bin/restic` (0.19.0). The qualified runs do not exercise production CLI/MCP/services/drives/corpus or manual session indexing.
+
+- **Original-runtime sensitivity:** `/tmp/safe-harbor-t2-governed-reproduce-5c2eeb79`, exit **1**, **2 failed / 59 deselected**, 24.94s. Current tests/harness in a scratch source copy with `chroma_write_store.py` restored from `02e6fd2`; indexed approval fails with `Proposal not found`, retry-Chroma recovery with `Proposal not found in event log`. This is the actual old implementation, not an invented refusal. Earlier qualified reproduction `/tmp/safe-harbor-t2-governed-reproduce-qiq4xjgr` showed the same failures before test-helper cleanup.
+- **Corrected focused evidence:** `/tmp/safe-harbor-t2-governed-focused-v4db8zfu`, exit **0**, **4 passed / 57 deselected**, 59.73s. Two real positive workflows plus two test-only old-canonicalization controls. Positives check the exact proposal in original queue/approved/events and canonical Chroma, all six alternate governed paths unchanged, exact canonical client paths, admission covering actual intended paths, and armed-census recovery. Negative controls fail those same effect assertions with the actual old path substitution and expose the alternate lock creation. Event-only completion success remains excluded.
+- **Final affected suite:** `/tmp/safe-harbor-t2-governed-affected-gq7d_vio` — exit **0**, **98 passed**, 448.16s. Full T2, write-gate effect and record-review CLI files; four T1 alias/competing-location cases, two native stale-client cases, shadow scan/C3 coverage and R2b identity. Exact argv is in `affected.json`; tracked-Python fingerprint is unchanged before/after and matches the final focused/lint source. The earlier qualified run `/tmp/safe-harbor-t2-governed-affected-vs64nfj_` passed **98 cases**, exit 0, 442.18s, before test-helper cleanup; overlapping evidence, not 98 additional cases.
+- **Final lint:** `/tmp/safe-harbor-t2-governed-lint-c3ucw2_3`; raw pylint **30**, regression gate **0**, **456 findings / 239 fingerprints**, no new/increased findings versus pinned main `8a7cdab`. Baseline unchanged. Earlier lint `/tmp/safe-harbor-t2-governed-lint-283u2__x` failed on six test-helper findings; those were corrected without a waiver.
+- **Derived inventory:** `/tmp/safe-harbor-t2-governed-regen-xd3vsoqb`, both generator runs exit **0** and hashes equal. `code_revision=0df4d7882822db4af1f1abda8d41cc26a3892b6f`, `inventory_digest=dbe8d7dda7c6c1eb461a11e509195bd9f5a000ef88de5fdf86b947add92f5ae3`. All 36 route records are unchanged after removing their derived revision fields; shadow inventory is byte-identical to the grant tip. No identity algorithm/policy/allowlist change.
+
+**Next boundary:** bounded correction delta and fresh final-tip GitHub CI; external-review disposition and Ryan V2 acceptance remain separate. Historical green CI at `45a1f00` is not successor CI. Draft PR #389, no paid review/comment, merge, deployment or T3–T5.
+
 ### Historical prepared T2 draft PR text — now opened as #389
 
 Title: **Bind risky writes to their backup target and reject future snapshots**
@@ -751,7 +767,7 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] Current: CI passed at `45a1f00`, but fresh Codex static review FAILs its cross-parent alias/governed-file identity mismatch (95%). Ryan granted correction and isolated evidence; not yet implemented. The evidence chain below remains historical, not final acceptance.
+[Arc Safe Harbor] Current: the cross-parent alias/governed-file correction is implemented; original-runtime reproduction and corrected focused/lint evidence are captured above. Final affected evidence passed (98 cases); successor delta/CI and owner acceptance remain pending. The older evidence chain below is historical, not final acceptance.
 
 [Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation is delivered: runtime `44e29f6`, tests `2459acd`.
 - Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.

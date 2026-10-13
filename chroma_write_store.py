@@ -726,7 +726,13 @@ class AdmittedWriteOperation:  # pylint: disable=too-many-instance-attributes
     ) = None
 
     def config(self) -> dict[str, Any]:
-        """A private copy of the admitted configuration with pinned targets."""
+        """Private admitted-config copy for config-derived consumers.
+
+        Production store factories pass ``op.chroma_dir`` (canonical) explicitly.
+        Approval, recovery and other helpers that derive governed paths from
+        ``index.chroma_dir`` receive the configured spelling admitted at
+        preflight. Export binding stays on the canonical ``units_export`` pin.
+        """
         import copy
 
         cfg = copy.deepcopy(self._cfg)
@@ -734,7 +740,7 @@ class AdmittedWriteOperation:  # pylint: disable=too-many-instance-attributes
         if not isinstance(index, dict):
             index = {}
             cfg["index"] = index
-        index["chroma_dir"] = str(self.chroma_dir)
+        index["chroma_dir"] = str(self.configured_chroma_dir)
         if self.units_export is not None:
             index["units_export"] = str(self.units_export)
         return cfg
