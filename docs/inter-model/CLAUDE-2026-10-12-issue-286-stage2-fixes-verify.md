@@ -1,4 +1,123 @@
-# Verify: Stage 2 wedge fixes, round 4 at `8a8c03a`: doctor fixed; one rollback-diagnostic fix remains
+# Verify: Stage 2 wedge fixes, round 5 at `62fe3a2`: id check works; one false-alarm fix remains
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-13
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `62fe3a2`, Cursor
+Composer's corrective 4. It answers round 4 (below).
+**Method:**
+- I read the diff `8a8c03a..62fe3a2`.
+- I ran my round-2 to round-5 probes along with Cursor's probe and wedge-fix
+  tests. The appendix has the round-5 source.
+- I tested the fix proposed below in a scratch copy, then reverted it.
+- I ran the full suite hermetically at main `458b9f6` and at `62fe3a2`, at the
+  same time and on the same disk: `env -i`, a scratch `HOME`, no API keys, and
+  `tests/test_index_loud_failures.py` skipped.
+- Nothing live was touched. I compared mtimes and sizes across the live data
+  root before and after.
+
+## Verdict (round 5)
+
+**Not ready for review yet. One small fix remains, and none of it involves
+paid calls.**
+
+**Good:**
+- **N1's shape is right.** The rollback now checks unit ids. The on-disk
+  read, the extra store snapshot and the Chroma `InternalError` swallow are
+  gone.
+- **Real tamper is reported.** A tampered line with an unknown id is counted
+  on the real rollback path (s1).
+- **Earlier false alarms are gone.** A clean rollback of a fresh session
+  prints nothing at either fault point (s2, r2). So does the Kiro bootstrap
+  shape, where the export already holds legacy-writer lines (s4).
+- **Rollback is correct in every probe.** The export comes back
+  byte-for-byte.
+- **Full suite:** still running when I pushed this; I'll add the result in a
+  follow-up commit.
+
+**Still open:** the message fires on a clean rollback of a session that was
+already committed and then grew. That's the most common real shape (P1).
+
+## Findings (round 5)
+
+**P1 (medium): a clean rollback of a grown session reports "dropped N".**
+- **Where:** `_restore_export` (`incremental_jsonl.py` ~1752–1760). For a
+  line whose id is in the preimage, it also requires the bytes to match the
+  preimage.
+- **Why the bytes differ:**
+  - `_reconcile_export` rewrites all of this source's lines from store rows
+    with `json.dumps(payload)`, without sorted keys.
+  - Chroma returns metadata keys in a different order on each read, so the
+    content is identical and the bytes are new.
+  - I confirmed this directly: both old lines parse to equal objects, and
+    their key order differs.
+- **Repro, s3:**
+  - commit a Codex rollout, then append records;
+  - crash the next transaction after it rewrites the export
+    (`after_export_reconcile` or `before_dedupe_reconcile`);
+  - the replay rolls back and restores the export exactly, but prints
+    `rollback dropped 2 unexpected export lines`.
+- **It also skews real counts (s5):** one line edited in place while the
+  transaction is wedged is reported as 2.
+- **Effect:**
+  - diagnostic only;
+  - the rollback is correct;
+  - no burn impact.
+  - But this is the shape canary 2 will hit when a growing session rolls
+    back. A false tamper report there would send the next investigation the
+    wrong way.
+- **Whose error:** mine. N1 asked for ids only, and also for the direct
+  tamper test to still report 1. That test edits a line whose id is in the
+  preimage, so the two asks conflict. Cursor reconciled them with a byte
+  check, which reintroduced the key-order problem.
+- **Fix (about 7 lines; I tested it in a scratch copy):**
+  - for an id in the preimage, compare the parsed JSON object with the
+    preimage line or lines for that id, not the bytes;
+  - with that change, all 38 probe and wedge-fix tests pass, including s1,
+    s3, s4, s5, r2 and the direct tamper test.
+
+**A note for Kiro, no change asked:** an unexpected line whose id the store
+also holds (for example, one added while the transaction is wedged) is
+removed without being counted. The rollback removes it either way. The PR
+body should say the message counts lines the rollback can't account for by
+id, plus in-place edits of before-image lines.
+
+**A note, no change asked (it predates this branch):** each commit rewrites a
+source's export lines in a new key order. The export file then changes byte
+by byte even when its content doesn't, which only affects backup diffs.
+Sorting keys in `_reconcile_export` would fix it, but it would also rewrite
+every source's export lines on their next commit. That belongs in a separate
+issue.
+
+## Test results (round 5)
+
+| Run | Result |
+|---|---|
+| Full suite, main `458b9f6` against `62fe3a2` | running; result to follow |
+| Round-2 and round-3 probes, round-4 s1, Cursor's probe and wedge-fix tests | pass |
+| s3 control: a grown session commits | pass |
+| s4: Kiro bootstrap shape with a legacy-writer line, clean rollback | pass, silent |
+| s3: grown session, crash after the export rewrite, clean rollback | export restored; fail, "dropped 2" at both crash points (P1) |
+| s5: one preimage-id line edited while wedged | export restored; fail, reports 2 instead of 1 (P1) |
+| Same probe set with the proposed fix (scratch, reverted) | 38 passed |
+
+## Corrective 5 for Cursor
+
+- **O1 (P1):** in `_restore_export`, compare a preimage-id line by its
+  parsed JSON object, not its bytes. Add s3 (both crash points) and s5 from
+  the appendix. s1, s2, s4, r2 and the direct tamper test must still pass.
+- **Then:** re-pin the baseline hash and regenerate the inventories if they
+  change. Run the full suite in clean detached worktrees with the convmem
+  environment's python, at main and at your final tip.
+
+**After corrective 5:** a short re-verify from me (probes, plus a suite run
+if more than `incremental_jsonl.py` and its tests change). Then come the
+Copilot safety and isolation audit, Kiro's design review of C1 and C2, and
+Ryan's PR and merge.
+
+---
+
+# Round 4: `8a8c03a`, not ready yet (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -10,7 +129,7 @@ and round-4 probes along with Cursor's probe and wedge-fix tests; the appendix
 has the round-4 source. I read Cursor's own suite logs rather than rerunning
 the full suite; I'll run it myself on the final tip.
 
-## Verdict (round 4)
+### Verdict (round 4)
 
 **Not ready for review yet. One item remains, and none of it involves paid
 calls.**
@@ -23,7 +142,7 @@ calls.**
   result.
 - **L2, not fixed:** see M1.
 
-## Findings (round 4)
+### Findings (round 4)
 
 **M1 (medium): the tamper message can no longer fire on the real rollback
 path.**
@@ -55,7 +174,7 @@ path.**
   - **PR body:** say that the message counts lines whose id the rollback
     can't account for. It doesn't compare content.
 
-## Test results (round 4)
+### Test results (round 4)
 
 | Run | Result |
 |---|---|
@@ -64,7 +183,7 @@ path.**
 | s2: clean rollback without the disk read prints nothing | `after_summary_upsert` pass; `before_dedupe_reconcile` fail, "dropped 2" (M1) |
 | Cursor's full suite, main `458b9f6` against `8a8c03a` | 94 and 94 failed, same ids; 0 only at the tip |
 
-## Corrective 4 for Cursor
+### Corrective 4 for Cursor
 
 - **N1 (M1):** apply the id-based fix above. s1 passes: the real path
   reports 1 and the line is gone. r2 prints nothing at either point. The
@@ -652,6 +771,152 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-5 probe tests
+
+They run from `tests/` and import helpers from the round-2 probe file below.
+
+<details><summary>tests/test_zz_claude_verify5.py</summary>
+
+```python
+"""Claude verify probes for issue #286 corrective 4 (62fe3a2). Scratch only."""
+
+# pylint: disable=duplicate-code,protected-access
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+import incremental_jsonl
+from incremental_jsonl_production import ProductionBoundary
+from tests.incremental_jsonl_helpers import codex_rollout_record, install_fakes
+from tests.test_incremental_jsonl_codex_rollout_route import _write_user_config
+from tests.test_zz_claude_verify2 import _codex_env, _wedge_then_replay
+
+
+def _owned(export: Path, source: Path) -> list[bytes]:
+    out = []
+    for raw in export.read_bytes().splitlines(keepends=True):
+        row = json.loads(raw)
+        if row.get("source_path") == str(source):
+            out.append(raw)
+    return out
+
+
+def _commit_then_grow(tmp_path, monkeypatch, crash_point: str | None):
+    """Commit once, grow the rollout, then (optionally) crash the next transaction at crash_point."""
+    source, cfg = _codex_env(tmp_path, monkeypatch)
+    install_fakes(monkeypatch)
+    cfg_path = tmp_path / "config.toml"
+    _write_user_config(cfg_path, cfg)
+    boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
+    common = dict(cfg=cfg, enabled=True, chunk_size=4, overlap=0,
+                  min_confidence=0.6, embed_dimension=8)
+    first = incremental_jsonl.IncrementalJsonlCoordinator(boundary, source, **common)
+    assert first.run().outcome == "committed"
+    export = Path(cfg["index"]["units_export"])
+    before = export.read_bytes()
+    assert _owned(export, source), "first commit wrote no export lines"
+    with source.open("ab") as handle:
+        for index in range(8, 16):
+            handle.write(codex_rollout_record(index))
+    if crash_point:
+        def crash(point: str) -> None:
+            if point == crash_point:
+                raise RuntimeError("partial apply")
+        second = incremental_jsonl.IncrementalJsonlCoordinator(
+            boundary, source, fault=crash, **common)
+        with pytest.raises(RuntimeError, match="partial apply"):
+            second.run()
+    replay = incremental_jsonl.IncrementalJsonlCoordinator(boundary, source, **common)
+    return replay, export, before, source
+
+
+def _fail_at(point_name: str):
+    def fault(point: str) -> None:
+        if point == point_name:
+            raise incremental_jsonl.IncrementalJsonlError("synthetic_replay_fault", "forced")
+    return fault
+
+
+def test_s3_control_grown_session_commits(tmp_path, monkeypatch) -> None:
+    replay, export, before, source = _commit_then_grow(tmp_path, monkeypatch, None)
+    assert replay.run().outcome == "committed"
+    assert len(_owned(export, source)) > len(before.splitlines())
+
+
+@pytest.mark.parametrize("crash", ["after_export_reconcile", "before_dedupe_reconcile"])
+def test_s3_grown_session_clean_rollback_is_silent(tmp_path, monkeypatch, capsys, crash) -> None:
+    """Committed session grows; the next transaction dies after rewriting the export; replay rolls back."""
+    replay, export, before, _source = _commit_then_grow(tmp_path, monkeypatch, crash)
+    assert export.read_bytes() != before  # the crashed transaction rewrote the export
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    assert export.read_bytes() == before
+    err = capsys.readouterr().err
+    assert "rollback dropped" not in err, err
+
+
+def test_s4_legacy_format_preimage_line_clean_rollback(tmp_path, monkeypatch, capsys) -> None:
+    """Kiro bootstrap shape: the export already holds a legacy-writer line for this source."""
+    from adapters.kiro_session_jsonl import parse_complete_prefix
+    from tests.incremental_jsonl_helpers import apply_env, isolated_env, write_source
+    from tests.test_incremental_jsonl_live_boundary import _bootstrap_binding
+    from tests.test_zz_claude_verify2 import _enable
+
+    isolated, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    source = write_source(isolated.root, 4)
+    boundary, cfg = _enable(isolated, source)
+    common = dict(cfg=cfg, bootstrap_existing=True,
+                  expected_prefix_sha256=parse_complete_prefix(str(source)).prefix_sha256,
+                  max_bootstrap_chunks=4, chunk_size=2, **_bootstrap_binding())
+    export = Path(cfg["index"]["units_export"])
+    export.parent.mkdir(parents=True, exist_ok=True)
+    legacy = json.dumps({"id": "legacy-unit", "source_path": str(source), "text": "old"}) + "\n"
+    export.write_text(legacy, encoding="utf-8")
+    before = export.read_bytes()
+
+    def crash(point: str) -> None:
+        if point == "after_export_reconcile":
+            raise RuntimeError("partial apply")
+
+    first = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary, source, processed={"old-hash": {"path": str(source)}}, fault=crash, **common)
+    with first._session() as session:
+        session.store.add_unit("legacy-unit", "old", [0.1] * 8, {"source_path": str(source)})
+    with pytest.raises(RuntimeError, match="partial apply"):
+        first.run()
+    replay = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary, source, fault=_fail_at("after_summary_upsert"), **common)
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    assert export.read_bytes() == before
+    err = capsys.readouterr().err
+    assert "rollback dropped" not in err, err
+
+
+def test_s5_preimage_line_edited_while_wedged_is_reported(tmp_path, monkeypatch, capsys) -> None:
+    """While the transaction is wedged, a line with a preimage id is edited; rollback counts exactly 1."""
+    replay, export, before, source = _commit_then_grow(tmp_path, monkeypatch, "after_export_reconcile")
+    target_id = json.loads(_owned(export, source)[0])["id"]
+    data = export.read_bytes()
+    target = [r for r in data.splitlines(keepends=True) if json.loads(r).get("id") == target_id][0]
+    edited = dict(json.loads(target), text_tampered=True)
+    export.write_bytes(data.replace(target, (json.dumps(edited) + "\n").encode()))
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    assert export.read_bytes() == before
+    err = capsys.readouterr().err
+    assert "rollback dropped 1 unexpected export lines" in err, err
+```
+
+</details>
 
 ## Appendix: round-4 probe tests
 
