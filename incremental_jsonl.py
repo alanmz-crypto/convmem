@@ -1628,6 +1628,16 @@ class IncrementalJsonlCoordinator:
                 continue
             self._restore_file_preimage(paths[name], dedupe_files[name])
 
+    def _source_owned_export_bytes_on_disk(self, export_path: Path) -> set[bytes]:
+        owned: set[bytes] = set()
+        if not export_path.is_file():
+            return owned
+        with export_path.open("rb") as export_handle:
+            for raw in export_handle:
+                if self._export_line_owned_by_source(raw, self.path_key):
+                    owned.add(raw)
+        return owned
+
     def _restore_before_images(
         self,
         rollback: dict,
@@ -1638,19 +1648,27 @@ class IncrementalJsonlCoordinator:
             raise IncrementalJsonlError("recovery_unproven", "rollback version mismatch")
         if rollback.get("source_path") != self.path_key:
             raise IncrementalJsonlError("recovery_unproven", "rollback source mismatch")
-        export_bytes_before_store_restore: set[bytes] = set()
         export_path = Path(self.cfg["index"]["units_export"])
+        export_bytes_before_store_restore = self._source_owned_export_bytes_on_disk(
+            export_path
+        )
         with self._session() as session:
-            for row in session.store.snapshot_source_rows(UNITS, self.path_key):
-                export_bytes_before_store_restore.add(
-                    (
-                        json.dumps(
-                            self._export_unit_payload(row),
-                            separators=(",", ":"),
-                        )
-                        + "\n"
-                    ).encode("utf-8")
-                )
+            try:
+                for row in session.store.snapshot_source_rows(UNITS, self.path_key):
+                    export_bytes_before_store_restore.add(
+                        (
+                            json.dumps(
+                                self._export_unit_payload(row),
+                                separators=(",", ":"),
+                            )
+                            + "\n"
+                        ).encode("utf-8")
+                    )
+            except Exception as exc:
+                from chromadb.errors import InternalError as ChromaInternalError
+
+                if not isinstance(exc, ChromaInternalError):
+                    raise
             before_summary_ids = {row["id"] for row in rollback.get("summaries", [])}
             before_unit_ids = {row["id"] for row in rollback.get("units", [])}
             current_summaries = session.store.ids_for_source(SUMMARIES, self.path_key)
@@ -1671,11 +1689,6 @@ class IncrementalJsonlCoordinator:
                 )
             session.store.restore_source_rows(SUMMARIES, rollback.get("summaries") or [])
             session.store.restore_source_rows(UNITS, rollback.get("units") or [])
-        if export_path.is_file():
-            with export_path.open("rb") as export_handle:
-                for raw in export_handle:
-                    if self._export_line_owned_by_source(raw, self.path_key):
-                        export_bytes_before_store_restore.add(raw)
         self._restore_export(
             rollback.get("export_preimage") or {},
             expected_store_bytes=export_bytes_before_store_restore,
