@@ -114,8 +114,8 @@ def test_all_writer_session_sites_inventoried() -> None:
     total = len(inv["production_chroma_write_session_call_sites"]) + len(
         inv["open_production_write_store_call_sites"]
     )
-    # Seventeen production routes plus one ScratchBoundary-confined prototype.
-    assert total == 18
+    # Eighteen production routes plus one ScratchBoundary-confined prototype.
+    assert total == 19
     assert inv["must_use_factory_count"] == 0
 
 
