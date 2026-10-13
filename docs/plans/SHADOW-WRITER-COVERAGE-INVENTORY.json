@@ -34,7 +34,7 @@
     "chroma_store.py:108",
     "chroma_store.py:83",
     "chroma_write_store.py:666",
-    "convmem.py:699",
+    "convmem.py:721",
     "file_generation_store.py:97",
     "incremental_jsonl_canary.py:1234",
     "mixed_mode_control.py:44",
