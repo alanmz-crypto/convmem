@@ -86,8 +86,8 @@ Key invariants:
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
 | Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
-| Codex rollout admission | **Live for new Codex sessions since 2026-10-12.** PR #388 merged; `runtime-main` promoted to `05aa2c8`; the live config admits rollouts started after `2026-10-12T04:04:00Z`. Stage 1 PASS: 4 paid calls in total, and an unchanged run costs 0. The #308 retry-loop fix is merged via PR #390 (`8a7cdab`). Pre-activation rollouts, Kiro transcripts and Cursor JSONL stay on the legacy route. | Ryan Stage 2 grant: the 24 h watcher canary (packet in `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`, section "Stage 2 packet") |
-| Watcher activation | Watcher inactive and disabled; effective `MemoryMax=8G` (the 4G drop-in was removed on 2026-10-12) | Stage 2 grant; then a separate activation grant |
+| Codex rollout admission | **Live for new Codex sessions since 2026-10-12.** PR #388 merged; `runtime-main` promoted to `05aa2c8`; the live config admits rollouts started after `2026-10-12T04:04:00Z`. Stage 1 PASS: 4 paid calls in total, and an unchanged run costs 0. The #308 retry-loop fix is merged via PR #390 (`8a7cdab`). Pre-activation rollouts, Kiro transcripts and Cursor JSONL stay on the legacy route. | Stage 2 ran on 2026-10-12 and stopped at the paid ceiling after 12.8 h (about 410 of 400 calls): new sessions cost about 12; old sessions and Kiro/Cursor cost the rest. Two new sessions are wedged by agent self-indexing. See `docs/inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-report.md` |
+| Watcher activation | Watcher inactive and disabled since the Stage 2 stop (2026-10-12 21:21); `runtime-main` `8a7cdab`; live config has no repository-knowledge manifest; effective `MemoryMax=8G` | Ryan authorizes fixes P1–P3 from the Stage 2 report; then a second canary; then a separate activation grant |
 
 ## 5. Your Role
 
@@ -111,18 +111,19 @@ remain later separate gates. No lane may promote config/runtime or restart the
 watcher without separate Ryan authority.
 
 **Codex rollouts (separate track):** the burn fix is live for new Codex
-sessions, and the #308 retry-loop fix is merged (PR #390, `8a7cdab`). The
-watcher is still off. The next action is **Stage 2**, under Ryan's grant and
-following the "Stage 2 packet" section of the Stage 1 packet:
+sessions, and Stage 2 ran on 2026-10-12. It stopped at the paid ceiling
+after 12.8 h. The watcher is off and disabled. The next action is Ryan's
+decision on the Stage 2 report
+(`docs/inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-report.md`):
+- authorize fix handoffs P1 (a wedge after a concurrent writer), P2 (agents
+  indexing their own watched sessions) and P3 (plain opens queue indexes),
+  plus P4 and P5 as smaller fixes;
+- then a second canary.
 
-- promote `runtime-main` to `8a7cdab`;
-- run the watcher for 24 h;
-- report the paid calls, spawns and memory against the packet's stop
-  conditions.
-
-Start fresh Codex sessions; don't resume the long-lived pre-activation ones.
-Without Ryan's grant, this track authorizes no runtime, config or watcher
-action.
+Two sessions (`14-21-47`, `20-20-37`) are wedged in place. Don't repair them
+by hand; P1 covers them. Start fresh Codex sessions; don't resume
+pre-activation ones. Without Ryan's grant, this track authorizes no
+runtime, config or watcher action.
 
 ## 6. What Remains Before Live (sequential)
 
@@ -139,14 +140,12 @@ action.
 
 Codex rollouts (separate track):
 
-1. Ryan grants Stage 2, the 24 h watcher canary, per the "Stage 2 packet" in
-   `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
-   The steps are the backup gate, the doctor preview, the `runtime-main`
-   promotion to `8a7cdab`, and the watcher start, followed by measurement
-   and stop conditions.
-2. On a Stage 2 PASS, a separate Ryan grant leaves the watcher enabled
+1. Ryan authorizes the Stage 2 report's fix handoffs (P1–P3 required before
+   activation; P4–P5 recommended), and Cursor implements them.
+2. A second watcher canary runs with the same stop conditions.
+3. On a canary PASS, a separate Ryan grant leaves the watcher enabled
    (activation).
-3. Before any Kiro exact-path live incremental run, land the exact-path
+4. Before any Kiro exact-path live incremental run, land the exact-path
    recovery parity fix. Its design is on
    `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
    separate prerequisite.
@@ -286,6 +285,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-12 | Claude / Cursor / Copilot / Kiro | Stage 1 PASS; Stage 2 prerequisites done (drop-in removed, runtime `05aa2c8`, live admission config); #308 fixed via PR #390 (`8a7cdab`) after four correctives; Stage 2 packet drafted; next gate Ryan Stage 2 grant |
+| 2026-10-12 | Claude | Stage 2 canary stopped at the paid ceiling after 12.8 h (~410/400; new sessions ~12); two sessions wedged by agent self-indexing; report with fixes P1–P7; next gate Ryan fix authorization |
 
 ## TL;DR
 

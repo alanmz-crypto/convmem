@@ -332,3 +332,18 @@ CI guard.
   52 calls were added between 18:25 and 19:16, roughly 60 per hour at
   current activity. Memory is flat: watcher RSS 112 MB, cgroup peak
   1.30 GiB, no OOM events, 0 restarts.
+
+**Stopped at the paid ceiling, 21:21:14 (T0′ + 12.8 h).**
+- The guard counted about 410 estimated calls against the 400 ceiling
+  (new route 12, legacy 398) and ran `disable --now`. The watcher's last
+  child, a retry of the wedged 14:21 session, ran in its own scope and
+  finished soon after with no paid work. Nothing else was changed.
+- **A second wedge.** The Codex session started at 20:20 had not seen the
+  no-index message. Following the standing Track A rule, it ran
+  `convmem index --file` on itself 6 times between 20:24 and 20:36. The
+  watcher's first run on it, at 20:41, failed with
+  `rollback_export_foreign_changed`, and every retry after that failed the
+  same way.
+- The Codex session started at 20:40 was captured cleanly on the
+  incremental route: 1 chunk.
+- The report is `docs/inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-report.md`.
