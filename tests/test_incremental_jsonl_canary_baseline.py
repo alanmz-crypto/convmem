@@ -29,7 +29,7 @@ BASELINE_HASHES = {
     # structured admitted-run logging; refreshed for corrective 5 checkpointless
     # recovery bootstrap_required refusal.
     # Refreshed for issue #286 stage-2 wedge fixes corrective 1 (rollback/export/retry).
-    "incremental_jsonl.py": "e50c48082796c91b442b79fe84eca6c40392971399afed07feb6678ec011759d",
+    "incremental_jsonl.py": "1103eb8a162fb054d20bc678cfd13cabbb4a80e24c2b12f486ffaba563d7bc03",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

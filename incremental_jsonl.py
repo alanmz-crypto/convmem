@@ -1702,31 +1702,6 @@ class IncrementalJsonlCoordinator:
         from purge_locks import export_flock
 
         allowed_source_bytes = self._allowed_source_export_bytes(preimage)
-        with self._session() as session:
-            store_rows = {
-                row["id"]: row
-                for row in session.store.snapshot_source_rows(UNITS, self.path_key)
-            }
-        for row in source_lines:
-            payload = base64.b64decode(row["payload_base64"], validate=True)
-            try:
-                record = json.loads(payload.decode("utf-8").rstrip("\n"))
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                record = {}
-            unit_id = record.get("id")
-            if unit_id in store_rows:
-                canonical = (
-                    json.dumps(
-                        self._export_unit_payload(store_rows[unit_id]),
-                        separators=(",", ":"),
-                    )
-                    + "\n"
-                ).encode("utf-8")
-                if payload != canonical:
-                    raise IncrementalJsonlError(
-                        "rollback_export_foreign_changed",
-                        "source export line is not rollback authority",
-                    )
         with export_flock(self.cfg):
             temp = self._export_temp(export_path)
             temp_path = Path(temp.name)

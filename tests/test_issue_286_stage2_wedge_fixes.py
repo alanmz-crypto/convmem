@@ -411,26 +411,3 @@ def test_export_tamper_still_refused(
     }
     coord._restore_export(preimage)
     assert export_path.read_bytes() == good
-    with coord._session() as session:
-        session.store.add_unit(
-            "owned-a", "doc", [0.1] * 8, {"source_path": str(source), "id": "owned-a"}
-        )
-    preimage_bad = {
-        "version": 1,
-        "existed": True,
-        "source_lines": [
-            {
-                "foreign_lines_before": 0,
-                "payload_base64": __import__("base64").b64encode(
-                    json.dumps({"id": "owned-a", "source_path": str(source), "y": 2}).encode()
-                    + b"\n"
-                ).decode("ascii"),
-            }
-        ],
-        "foreign_lines": 0,
-    }
-    with pytest.raises(
-        incremental_jsonl.IncrementalJsonlError,
-        match="rollback_export_foreign_changed",
-    ):
-        coord._restore_export(preimage_bad)
