@@ -283,6 +283,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-12 | Claude | Stage 2 stopped at the paid ceiling (~410/400; new sessions ~12); Ryan authorized fixes P1–P3 + Track A rule change; Cursor handoff `CURSOR-2026-10-12-issue-286-stage2-fixes-handoff.md` |
 | 2026-10-13 | Claude | Wedge-fix corrective 1 (`117d698`) fixed the round-1 blockers; small corrective 2 (retry backstop, doctor WARN, tamper honesty, watcher digest cost) to Cursor |
+| 2026-10-13 | Claude | Wedge-fix corrective 2 (`c8436b1`): 0 tests fail only at the tip against main; short corrective 3 (doctor crash on a real wedge, false rollback tamper message) to Cursor |
 
 ## TL;DR
 

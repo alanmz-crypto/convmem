@@ -1,4 +1,168 @@
-# Verify: Stage 2 wedge fixes, round 2 at `117d698`: the fixes work, a small corrective 2 remains
+# Verify: Stage 2 wedge fixes, round 3 at `c8436b1`: K1, K4 and the merge are good; a short corrective 3 remains
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-13
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `c8436b1`, Cursor
+Composer's corrective 2. It answers round 2 (below).
+**Method:**
+- I read the corrective-2 diff `cb0fbfe..c8436b1` and the hand-resolved parts
+  of the merge `cb0fbfe` (`git show --remerge-diff`).
+- I ran my round-2 probes, Cursor's probe file and new round-3 probes; the
+  appendix has the round-3 source.
+- I ran the full suite hermetically at main `458b9f6` and at `c8436b1`, at the
+  same time and on the same disk: `env -i`, a scratch `HOME`, no API keys, and
+  `tests/test_index_loud_failures.py` skipped.
+- My runs touched nothing live. I compared mtimes and sizes across the live
+  data root before and after, and I read the live incremental state
+  directory for counts and phases only.
+- Live did change in the window, from another agent's work:
+  - A Codex session that started at 03:03 indexed its own rollout (Track A)
+    from 03:26:54 to 03:31:04. That was one committed incremental run with a
+    transform, so probably one paid summarization pass. It ran on the
+    deployed main code, which doesn't have this branch's `index --file`
+    deferral for active sessions.
+  - A short write session at 03:37 touched chroma and the attestations, with
+    no export or processed-log growth.
+
+## Verdict (round 3)
+
+**Not ready for review yet. Corrective 3 is small, and none of it involves
+paid calls.**
+
+**Good since round 2:**
+- **K1:** errors raised out of `run()` are now counted. A second identical
+  failure on the same prefix becomes `live_route_refused` (p4 passes).
+- **K4:** the watcher computes the prefix digest only when a wedge hold
+  exists for that path, and Cursor's test checks it.
+- **K5:** p1–p7 are in the suite as `tests/test_issue_286_stage2_wedge_probes.py`.
+- **K6, the merge:** Git needed a hand resolution in only one code file,
+  `convmem.py`.
+  - In `add`, it keeps main's admission wrapper and the branch's index lock.
+  - In `monitor`, Cursor's hand edit fixed a `NameError` the automatic merge
+    would have left.
+  - The other hand resolutions are the two writer inventories.
+- **Full suite:** the same 151 tests fail at main `458b9f6` and at `c8436b1`,
+  so 0 fail only at the tip.
+
+**Still open:**
+- the doctor wedge WARN crashes `convmem doctor` on real data (H1);
+- the new rollback diagnostic fires on ordinary rollbacks (H2);
+- Cursor's suite report doesn't hold up (H3).
+
+## Findings (round 3), most severe first
+
+**H1 (high): doctor crashes as soon as a real wedge is recorded.**
+- **Where:** `_check_wedged_incremental_transactions` (`doctor.py` ~609–645)
+  formats each row with `source={source}`. The writer,
+  `record_incremental_retry_failure`, stores the key `source_path`.
+- **Effect:** `KeyError: 'source'`. Doctor builds its checks as one list with
+  no per-check guard, so the whole `convmem doctor` fails. Every agent runs
+  doctor first in every session, and it would fail at exactly the moment it
+  should report a wedge.
+- **Why the tests missed it:**
+  - Before K2, doctor never found the state directory (G2), so the bad key
+    was never reached.
+  - My round-2 probe p5 hand-wrote `retry_state.json` using doctor's key, not
+    the writer's. Cursor copied it in as K5. That one is my mistake.
+- **Live exposure today:** none. The live state directory holds no
+  `retry_state.json` yet. The first one would appear after this code
+  deploys.
+- **Repro:**
+  - r1: two calls to the real writer, then the doctor check, gives `KeyError`;
+  - r1b: two raised failures through `maybe_route_incremental`, then the
+    doctor check, gives the same.
+- **Fix:**
+  - format `source_path`;
+  - read every row field with `.get`, so a malformed file can't crash doctor;
+  - make p5 write through `record_incremental_retry_failure`, assert the
+    check is a WARN, and add r1b.
+
+**H2 (medium): the "dropped unexpected export lines" message fires on
+ordinary rollbacks.**
+- **Where:** `_restore_before_images` (`incremental_jsonl.py` ~1630–1665)
+  restores the store first. It deletes this source's extra rows and writes
+  back the before-image. Only then does it call `_restore_export`.
+  `_restore_export` builds its "expected" set from the store as it is now,
+  which is the before-image again. So every export line the failed
+  transaction wrote counts as unexpected.
+- **Repro:** r2. A replay that fails at `before_dedupe_reconcile`, after
+  `_reconcile_export` has written the transaction's lines, rolls back
+  cleanly and prints `rollback dropped 2 unexpected export lines`. Nothing
+  was tampered with. At `after_summary_upsert`, before any export write, it
+  prints nothing.
+- **Effect:** a cosmetic message, but the wrong one. It reports tamper on a
+  healthy rollback, which is exactly the misleading signal G3 was meant to
+  remove. I specified "current store rows" in G3 without checking the
+  restore order; that's my error.
+- **Fix:**
+  - in `_restore_before_images`, before the store restore, capture the
+    export payloads of this source's current store rows;
+  - pass that set to `_restore_export` as expected lines, alongside the
+    preimage lines;
+  - r2 then passes at both fault points, and the tamper test still reports
+    exactly 1.
+
+**H3 (low, evidence): Cursor's suite report doesn't hold up.**
+- **No result at the real tip:** the newest row is `697df9f`, not
+  `c8436b1`.
+- **The 42 aren't expected:** the report calls 42 tip-only failures against
+  main "expected". Round 2 had 0, and my run at `c8436b1` has 0 too.
+- **Likely cause:**
+  - The branch run used `~/Projects/convmem`, whose untracked `artifacts/`
+    and docs files feed the R2b writer scans. Main ran in a separate
+    checkout.
+  - The worker processes the run spawned used `~/miniforge3/bin/python`, not
+    the convmem environment's interpreter.
+- **Fix:** run both SHAs in clean detached worktrees, with the convmem
+  environment's python.
+
+**A note, no change asked (K1 edge):** a raised error that leaves no prefix
+digest records an empty digest. The watcher never holds a digest-less wedge,
+so it re-spawns on each event. That costs nothing: these errors fire before
+any paid work, and the CLI exits 91 each time.
+
+**A note for canary 2:** the live state directory holds 3 transactions in
+`APPLYING` and 1 in `transform_failed`, all older than 15 minutes. These are
+the Stage 2 wedges. Once this code deploys, doctor's new stale-transaction
+WARN will list the 3 `APPLYING` ones. That's correct and expected. Canary 2
+should watch them clear, by rollback or by commit.
+
+## Test results (round 3)
+
+| Run | Result |
+|---|---|
+| Full suite, main `458b9f6` | 93 failed, 2896 passed, 66 skipped, 58 errors (21:49) |
+| Full suite, tip `c8436b1` | 93 failed, 2912 passed, 66 skipped, 58 errors (21:57) |
+| Failing test ids compared | the same 151 at both; 0 only at the tip |
+| Round-2 probes p1–p7, p4b, p6 at `c8436b1` | pass (p4 and p5 now pass) |
+| Cursor's probe file and wedge-fix tests | pass |
+| r1, r1b: doctor fed by the real writer | fail, `KeyError: 'source'` (H1) |
+| r2 at `after_summary_upsert` | pass |
+| r2 at `before_dedupe_reconcile` | fail, `rollback dropped 2 unexpected export lines` (H2) |
+
+## Corrective 3 for Cursor
+
+- **L1 (H1):** doctor formats `source_path` and reads row fields with `.get`.
+  p5 writes through the real writer and asserts a WARN; add r1b.
+- **L2 (H2):** capture this source's store-row export payloads before the
+  store restore and pass them to `_restore_export` as expected lines. Add r2
+  for both fault points; the tamper test still reports exactly 1.
+- **L3 (H3):** run both suites in clean detached worktrees
+  (`git worktree add --detach`) with the convmem environment's python: one
+  at main, one at your final tip. List every test that fails only at the
+  tip, with its cause.
+- **Then:** rerun the full suite hermetically at main and at your final tip.
+  Report the tip SHA, both results, and every test that fails only at your
+  tip.
+
+**After corrective 3:** a short re-verify from me, then the Copilot safety and
+isolation audit, then Kiro's design review of C1 and C2, then Ryan opens the
+PR and merges.
+
+---
+
+# Round 2: `117d698`, not ready yet (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -15,7 +179,7 @@ Composer's corrective 1. It answers round 1 (below) and the handoff
 - Nothing live was touched. I compared mtimes and sizes across the live data
   root before and after, and no `index_write.lock` exists there.
 
-## Verdict (round 2)
+### Verdict (round 2)
 
 **Not ready for review yet. Corrective 2 is small, and none of it involves
 paid calls.**
@@ -43,7 +207,7 @@ paid calls.**
 - a C2 deviation hidden behind a test whose name says the opposite (G3);
 - a per-event cost added to the watcher (G4).
 
-## Findings (round 2), most severe first
+### Findings (round 2), most severe first
 
 **G1 (medium): C3 counts only failures that `run()` returns, not errors it
 raises.**
@@ -159,7 +323,7 @@ session for good.**
 diverge only if `processed_log` and `units_export` lived in different
 directories. In production they share a parent (I checked as a boolean).
 
-## Test results (round 2)
+### Test results (round 2)
 
 | Run | Result |
 |---|---|
@@ -173,7 +337,7 @@ directories. In production they share a parent (I checked as a boolean).
 | Probes p4b, p6 | pass; they document current behavior (G1, G5) |
 | Digest cost, synthetic 60 MiB Codex rollout | 0.26 s, 195 MiB RSS peak per parse (G4) |
 
-## Corrective 2 for Cursor
+### Corrective 2 for Cursor
 
 - **K1 (G1):** count raised `IncrementalJsonlError`s in
   `maybe_route_incremental` as described. Then p4 passes.
@@ -407,6 +571,81 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-3 probe tests
+
+They run from `tests/` and import helpers from the round-2 probe file below.
+
+<details><summary>tests/test_zz_claude_verify3.py</summary>
+
+```python
+"""Claude verify probes for issue #286 corrective 2 (c8436b1). Scratch only."""
+
+# pylint: disable=duplicate-code,protected-access
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pytest
+
+import incremental_jsonl
+from tests.test_zz_claude_verify2 import _codex_env, _route, _wedge_then_replay
+
+
+def test_r1_doctor_with_real_retry_state(tmp_path, monkeypatch) -> None:
+    """Doctor's wedge WARN, fed by the real retry-state writer (not a hand-made file)."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    import doctor
+    from config import DEFAULT_INCREMENTAL_JSONL_STATE_DIR
+    from incremental_retry_state import record_incremental_retry_failure
+
+    root = Path(os.path.expanduser(DEFAULT_INCREMENTAL_JSONL_STATE_DIR)) / "src1"
+    paths = {"transaction": root / "transaction.json"}
+    repeat = False
+    for _ in range(2):
+        repeat = record_incremental_retry_failure(
+            paths, path_key="/s/rollout.jsonl", prefix_digest="d" * 64,
+            error_code="recovery_unproven", transaction_id="t" * 32,
+        )
+    assert repeat
+    cfg = {"index": {"incremental_jsonl": {"enabled": True, "embed_dimension": 8}}}
+    check = doctor._check_wedged_incremental_transactions(cfg)
+    assert check.status == "warn", check
+
+
+def test_r1b_route_wedge_then_doctor(tmp_path, monkeypatch) -> None:
+    """End to end: two raised failures through maybe_route_incremental, then doctor."""
+    source, cfg = _codex_env(tmp_path, monkeypatch)
+
+    def raising_run(self):
+        self.last_evidence["prefix_sha256"] = "e" * 64
+        raise incremental_jsonl.IncrementalJsonlError("recovery_unproven", "rollback failed")
+
+    monkeypatch.setattr(incremental_jsonl.IncrementalJsonlCoordinator, "run", raising_run)
+    for _ in range(2):
+        with pytest.raises(incremental_jsonl.IncrementalJsonlError):
+            _route(cfg, source)
+    import doctor
+    check = doctor._check_wedged_incremental_transactions(cfg)
+    assert check.status == "warn", check
+
+
+@pytest.mark.parametrize("point", ["after_summary_upsert", "before_dedupe_reconcile"])
+def test_r2_clean_rollback_prints_no_tamper_line(tmp_path, monkeypatch, capsys, point) -> None:
+    """A legitimate rollback must not report 'unexpected' (tampered) export lines."""
+    replay, export_path, _foreign, source = _wedge_then_replay(tmp_path, monkeypatch, point)
+    before = export_path.read_bytes() if export_path.exists() else b""
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    err = capsys.readouterr().err
+    print("EXPORT_BEFORE_REPLAY_SOURCE_LINES",
+          sum(1 for line in before.splitlines() if str(source).encode() in line))
+    assert "rollback dropped" not in err, err
+```
+
+</details>
 
 ## Appendix: round-2 probe tests
 

@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 1 at `117d698` fixed the round-1 blockers; corrective 2 (K1–K6) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md` |
+| **State** | `IN_PROGRESS`: corrective 2 at `c8436b1` landed K1, K4 and the merge cleanly; corrective 3 (L1–L3: doctor crash, rollback diagnostic, clean suite run) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md` |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
