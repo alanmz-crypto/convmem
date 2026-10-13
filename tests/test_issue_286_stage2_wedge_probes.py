@@ -101,6 +101,40 @@ def _wedge_then_replay(tmp_path, monkeypatch, replay_point: str):
     return replay, export_path, foreign_line, source
 
 
+def _tamper_export_line(export_path: Path, source: Path) -> None:
+    line = (
+        json.dumps({"id": "tampered-unit", "source_path": str(source), "text": "x"})
+        + "\n"
+    )
+    export_path.parent.mkdir(parents=True, exist_ok=True)
+    with export_path.open("a", encoding="utf-8") as handle:
+        handle.write(line)
+
+
+def test_s1_real_rollback_path_reports_tamper(
+    tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    replay, export_path, _foreign, source = _wedge_then_replay(
+        tmp_path, monkeypatch, "after_summary_upsert"
+    )
+    _tamper_export_line(export_path, source)
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    err = capsys.readouterr().err
+    assert "rollback dropped 1 unexpected export lines" in err, err
+    assert b"tampered-unit" not in export_path.read_bytes()
+
+
+@pytest.mark.parametrize("point", ["after_summary_upsert", "before_dedupe_reconcile"])
+def test_s2_clean_rollback_reports_no_dropped_lines(
+    tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str], point: str
+) -> None:
+    replay, _export, _foreign, _src = _wedge_then_replay(tmp_path, monkeypatch, point)
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    assert "rollback dropped" not in capsys.readouterr().err
+
+
 def test_p1_rollback_after_foreign_growth(
     tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

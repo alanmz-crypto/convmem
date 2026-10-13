@@ -30,7 +30,8 @@ BASELINE_HASHES = {
     # recovery bootstrap_required refusal.
     # Refreshed for issue #286 stage-2 wedge fixes corrective 1 (rollback/export/retry).
     # Refreshed for issue #286 stage-2 wedge fixes corrective 3 (export rollback diagnostic).
-    "incremental_jsonl.py": "20ad30057a6e70c2a7a479be58b08d1e6c3ff5d58a537e1f35316b5b87655fbe",
+    # Refreshed for issue #286 stage-2 wedge fixes corrective 4 (export rollback id check).
+    "incremental_jsonl.py": "0add6e3c232cd03a016d084b588583517f1eadd900074dfe781c1f58adb5c67c",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

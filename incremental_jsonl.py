@@ -1427,6 +1427,17 @@ class IncrementalJsonlCoordinator:
             return False
         return isinstance(row, dict) and row.get("source_path") == source_path
 
+    @staticmethod
+    def _export_line_unit_id(raw: bytes) -> str | None:
+        try:
+            row = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return None
+        if not isinstance(row, dict):
+            return None
+        unit_id = row.get("id")
+        return unit_id if isinstance(unit_id, str) and unit_id else None
+
     def _snapshot_export_before_image(self) -> dict:
         from purge_locks import export_flock
 
@@ -1628,15 +1639,19 @@ class IncrementalJsonlCoordinator:
                 continue
             self._restore_file_preimage(paths[name], dedupe_files[name])
 
-    def _source_owned_export_bytes_on_disk(self, export_path: Path) -> set[bytes]:
-        owned: set[bytes] = set()
-        if not export_path.is_file():
-            return owned
-        with export_path.open("rb") as export_handle:
-            for raw in export_handle:
-                if self._export_line_owned_by_source(raw, self.path_key):
-                    owned.add(raw)
-        return owned
+    @staticmethod
+    def _export_preimage_unit_ids(preimage: dict) -> set[str]:
+        ids: set[str] = set()
+        for row in preimage.get("source_lines") or []:
+            payload = row.get("payload_base64")
+            if not payload:
+                continue
+            unit_id = IncrementalJsonlCoordinator._export_line_unit_id(
+                base64.b64decode(payload, validate=True)
+            )
+            if unit_id:
+                ids.add(unit_id)
+        return ids
 
     def _restore_before_images(
         self,
@@ -1648,31 +1663,14 @@ class IncrementalJsonlCoordinator:
             raise IncrementalJsonlError("recovery_unproven", "rollback version mismatch")
         if rollback.get("source_path") != self.path_key:
             raise IncrementalJsonlError("recovery_unproven", "rollback source mismatch")
-        export_path = Path(self.cfg["index"]["units_export"])
-        export_bytes_before_store_restore = self._source_owned_export_bytes_on_disk(
-            export_path
-        )
+        export_preimage = rollback.get("export_preimage") or {}
+        expected_unit_ids = self._export_preimage_unit_ids(export_preimage)
         with self._session() as session:
-            try:
-                for row in session.store.snapshot_source_rows(UNITS, self.path_key):
-                    export_bytes_before_store_restore.add(
-                        (
-                            json.dumps(
-                                self._export_unit_payload(row),
-                                separators=(",", ":"),
-                            )
-                            + "\n"
-                        ).encode("utf-8")
-                    )
-            except Exception as exc:
-                from chromadb.errors import InternalError as ChromaInternalError
-
-                if not isinstance(exc, ChromaInternalError):
-                    raise
             before_summary_ids = {row["id"] for row in rollback.get("summaries", [])}
             before_unit_ids = {row["id"] for row in rollback.get("units", [])}
             current_summaries = session.store.ids_for_source(SUMMARIES, self.path_key)
             current_units = session.store.ids_for_source(UNITS, self.path_key)
+            expected_unit_ids |= set(current_units)
             extra_summaries = current_summaries - before_summary_ids
             extra_units = current_units - before_unit_ids
             if extra_summaries:
@@ -1689,10 +1687,7 @@ class IncrementalJsonlCoordinator:
                 )
             session.store.restore_source_rows(SUMMARIES, rollback.get("summaries") or [])
             session.store.restore_source_rows(UNITS, rollback.get("units") or [])
-        self._restore_export(
-            rollback.get("export_preimage") or {},
-            expected_store_bytes=export_bytes_before_store_restore,
-        )
+        self._restore_export(export_preimage, expected_unit_ids=expected_unit_ids)
         self._restore_processed(rollback.get("processed_preimage") or {})
         self._restore_state_files(
             rollback.get("state_files"),
@@ -1718,7 +1713,7 @@ class IncrementalJsonlCoordinator:
         self,
         preimage: dict,
         *,
-        expected_store_bytes: set[bytes] | None = None,
+        expected_unit_ids: set[str] | None = None,
     ) -> None:
         if preimage.get("version") != 1:
             raise IncrementalJsonlError("recovery_unproven", "export preimage invalid")
@@ -1730,20 +1725,14 @@ class IncrementalJsonlCoordinator:
             base64.b64decode(row["payload_base64"], validate=True)
             for row in source_lines
         }
-        if expected_store_bytes is not None:
-            store_bytes = set(expected_store_bytes)
+        preimage_unit_ids = self._export_preimage_unit_ids(preimage)
+        if expected_unit_ids is not None:
+            allowed_unit_ids = preimage_unit_ids | set(expected_unit_ids)
         else:
             with self._session() as session:
-                store_bytes = {
-                    (
-                        json.dumps(
-                            self._export_unit_payload(row),
-                            separators=(",", ":"),
-                        )
-                        + "\n"
-                    ).encode("utf-8")
-                    for row in session.store.snapshot_source_rows(UNITS, self.path_key)
-                }
+                allowed_unit_ids = preimage_unit_ids | set(
+                    session.store.ids_for_source(UNITS, self.path_key)
+                )
         dropped_unexpected = 0
         with export_flock(self.cfg):
             temp = self._export_temp(export_path)
@@ -1760,7 +1749,13 @@ class IncrementalJsonlCoordinator:
                     if current is not None:
                         for raw in current:
                             if self._export_line_owned_by_source(raw, self.path_key):
-                                if raw not in preimage_bytes and raw not in store_bytes:
+                                unit_id = self._export_line_unit_id(raw)
+                                if unit_id not in allowed_unit_ids:
+                                    dropped_unexpected += 1
+                                elif (
+                                    unit_id in preimage_unit_ids
+                                    and raw not in preimage_bytes
+                                ):
                                     dropped_unexpected += 1
                                 continue
                             while (
