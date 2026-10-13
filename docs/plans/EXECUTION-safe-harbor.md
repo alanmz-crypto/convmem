@@ -10,10 +10,10 @@
 
 ```text
 Planning Status
-Phase:        T3 proof correction required (R1–R3); remaining T3 ungranted
+Phase:        Corrected T3 proof returned; owner acceptance/remaining grant pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Cursor proves in scratch; Codex coordinates; Ryan receives results
+Lanes:        Cursor/Codex corrected proof; Ryan receives qualified results
 Authority:    Ryan granted T3 proof/evidence only; no remaining implementation/live grant
 ```
 
@@ -522,17 +522,18 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 ## 10. Cursor T3 pinned-backend proof — owner granted
 
-**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12 local; Codex planning lane; Cursor proof lane. **State: DELIVERED at `8c4ad91`; Codex review NOT DEMONSTRATED (95%), proof correction required.** This is the existing T3/Kiro A1 ordering gate, not a contract redesign or a grant for the remaining T3 implementation.
+**[Arc Safe Harbor] Date / author / recipient:** grant 2026-10-12 local; Codex planning lane; Cursor proof lane. **State: CORRECTED PROOF DELIVERED at `93d4e344c8959ed0176b3a9b39af7be3f638f148` on 2026-10-13; owner acceptance pending.** Cursor/Codex jointly corrected R1–R3 and captured nine passing isolated cases plus focused pylint exit 0. This is the existing T3/Kiro A1 ordering gate, not a contract redesign or a grant for the remaining T3 implementation.
 
 **Authority:** Ryan: “Authorize Cursor to perform T3’s isolated pinned-backend proof and collect evidence only. Return the results before implementing preservation, repair or release. Live operations remain unauthorized.” This overrides generic startup/indexing and automatic continuation requirements for this isolated task. No further approval is needed to perform this named proof.
 
-**Review return:** [Codex R1–R3](VERIFY-safe-harbor.md#codex-review-of-the-t3-proof--not-demonstrated) is the bounded correction scope. The original five passing examples are retained; they do not close this gate. Correct the proof within this existing grant and return fresh isolated evidence. No runtime edits or new authority are granted.
+**Review return and correction:** [Codex R1–R3](VERIFY-safe-harbor.md#codex-review-of-the-t3-proof--not-demonstrated) stays pinned to the original `8c4ad91` proof. Ryan subsequently instructed: “go: Next step: Correct R1–R3 within the existing proof-only grant, then return fresh evidence.” [Qualified successor evidence](VERIFY-safe-harbor.md#t3-r1r3-corrected-proof--qualified-evidence) addresses the three findings at `93d4e34`, discloses excluded early Cursor probes and qualified failed development runs, and records native small-store validation and CI integration limits. Codex also changed the harness, so this delivery is not independent review. No runtime edits, contract change or further authority are granted.
 
 ### Resume and pinned inputs
 
 - **Branch:** `feat/2026-10-12-safe-harbor-t3-backend-proof`.
 - **Local worktree:** `/home/lauer/Projects/convmem/.worktrees/feat-2026-10-12-safe-harbor-t3-backend-proof`. Do not switch the shared checkout, runtime-main or a completed T1/T2 worktree.
 - **Source base:** merged T2 `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`; documentation closeout parent `fc2ecae871e10994a89fa8d5d5cc3f65d9649164` has no runtime/test changes. Start at the clean, pushed grant successor supplied in dispatch; confirm it contains only this handoff/routing change over that parent. No automatic main update, rebase or force-push.
+- **Correction provenance:** the original handoff above is historical; R1–R3 correction resumed from clean, pushed review-record tip `2f00e8c283b5c87726d3efb8f5588e4be970fee4`. Source result is `93d4e34`; its documentation successor records fresh evidence without changing tested bytes. No branch integration or backend substitution occurred.
 - **PR:** none; creation, readiness changes and review-trigger comments are not granted. Commit/push the bounded proof and evidence on this branch with its explicit refspec. If a remote Cursor VM is used, clone/fetch this exact branch/tip into a clean workspace; do not treat absence of the host worktree path as permission to use another revision.
 - **Backend pin:** `requirements.txt` and `test_chromadb_internals_the_guard_depends_on` pin `chromadb==1.5.9`; HNSW inspection dependency is `hnswlib==0.8.0`. T2's last qualified interpreter was `/home/lauer/miniforge3/bin/python`, Python 3.13.12, with numpy 2.4.4. Verify the actual interpreter/package versions and active client/API/segment backend inside the isolated child before claiming a result. Capture native module origin/digest where available. A Python wrapper field or package version alone does not prove Rust backend semantics. No dependency upgrade or backend substitution to obtain a PASS.
 
@@ -573,4 +574,4 @@ Report **DEMONSTRATED** only if every required observation and both valid/stale 
 
 ## TL;DR
 
-[Arc Safe Harbor] T1/T2 are accepted and merged; final T2 acceptance and squash provenance are recorded in VERIFY V2. The approved task contracts are unchanged. Ryan granted only T3's isolated pinned-backend proof/evidence in section 10. Return its results before any preservation/repair/release implementation; T4/T5 and live operations remain ungranted.
+[Arc Safe Harbor] T1/T2 are accepted and merged. Section 10's corrected T3 proof has been returned with nine qualified passes, focused lint exit 0 and explicit exclusions/limits. Ryan's acceptance and any remaining T3 grant are next. The approved contracts are unchanged; preservation/repair/release, T4/T5 and live operations remain ungranted.

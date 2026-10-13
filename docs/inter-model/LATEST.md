@@ -9,12 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T3 proof correction required (2026-10-13 UTC):**
-  Codex reviewed Cursor's `8c4ad91` proof: full ordering gate
-  **NOT DEMONSTRATED (95%)**. Captured examples remain evidence; see
-  [R1–R3 and the bounded stop rule](../plans/VERIFY-safe-harbor.md#codex-review-of-the-t3-proof--not-demonstrated).
-  **Next lane: Cursor** for corrections within the existing proof-only grant,
-  then a Codex delta. [STATUS](../plans/STATUS-safe-harbor.md) is current.
+- **Arc Safe Harbor — corrected T3 proof returned (2026-10-13):**
+  Cursor/Codex corrected R1–R3 at `93d4e34`; see the
+  [qualified evidence, exclusions and limits](../plans/VERIFY-safe-harbor.md#t3-r1r3-corrected-proof--qualified-evidence).
+  This is joint correction/verification, not independent review.
+  **Next lane: Ryan** for ordering-gate acceptance and any remaining T3 grant.
+  [STATUS](../plans/STATUS-safe-harbor.md) holds the current scope.
   No preservation/repair/release implementation, T4/T5 or live operations.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;

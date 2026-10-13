@@ -1,13 +1,13 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED.** The final T2 candidate passed GitHub CI; Ryan accepted its documented limitations and Codex review as the tip-specific BugBot outage exception, then merged #389. The acceptance/squash record is under V2. Historical reviews and failed/unqualified attempts retain their scopes. V3–V6 are NOT RUN.
+> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED; CORRECTED T3 PROOF RETURNED.** The V2 acceptance/squash record remains authoritative for T2. The corrected T3 ordering-gate evidence at `93d4e34` has nine qualified passes and focused lint exit 0, with exclusions and limits below. Historical reviews retain their exact scopes. V3, the remainder of V4, V5/V6 are NOT RUN; owner acceptance and any remaining T3 grant are pending.
 
 ```text
 Planning Status
-Phase:        T2 accepted and merged; T3 proof granted / NOT RUN
+Phase:        T3 corrected proof returned; owner decision pending
 Characters:   Implementer, Reviewer
-Function:     Record acceptance and merge while preserving evidence limits
-Lanes:        Cursor performs proof; Codex coordinates; Ryan receives results
+Function:     Record qualified proof, failed attempts and evidence limits
+Lanes:        Cursor/Codex jointly corrected proof; Ryan receives results
 Authority:    T3 proof-only grant; no remaining implementation or live grant
 ```
 
@@ -25,7 +25,7 @@ Authority:    T3 proof-only grant; no remaining implementation or live grant
 
 T1's incident retention and T2's operation-bound preflight are landed source. Evidence preservation, validated owner release and unavailable/tombstoned approval-recovery handling remain later planned tasks. Rollout, actual recovery qualification and arc closure remain separate.
 
-Who: Cursor supplied isolated T1 evidence; GitHub supplied final-tip CI; Copilot supplied independent static reviews; Ryan accepted the outage exception and merged. Codex records the results here. T2 has captured isolated evidence and the independent review below; V3–V6 remain unrun.
+Who: Cursor supplied T1/T2 implementation evidence; GitHub supplied CI; Copilot/Codex reviews and Ryan's exact acceptances retain their scopes below. Cursor/Codex jointly corrected the T3 proof; the qualified result is returned without claiming independent review. V3, the remainder of V4, V5/V6 remain unrun.
 
 ## Scope lock
 
@@ -776,6 +776,80 @@ env -u DEEPSEEK_API_KEY -u OPENAI_API_KEY -u ANTHROPIC_API_KEY \
 
 **Stop rule:** one bounded correction and delta against R1–R3, with existing T1/T2 runtime and accepted contracts unchanged. Do not broaden into preservation/repair/release implementation, install dependencies, invoke paid reviewers, open a PR, merge or operate on production. A failed or unsupported predicate returns to Codex/Ryan; no census-only substitute.
 
+### T3 R1–R3 corrected proof — qualified evidence
+
+**[Arc Safe Harbor] Result returned on 2026-10-13: DEMONSTRATED in the pinned synthetic fixtures (90% confidence in this bounded conclusion).** R1–R3 corrections are committed at `93d4e344c8959ed0176b3a9b39af7be3f638f148`, on `feat/2026-10-12-safe-harbor-t3-backend-proof`, from clean review-record parent `2f00e8c283b5c87726d3efb8f5588e4be970fee4`. Only the two granted proof files change executable behavior; production runtime is unchanged from the merged T2 baseline. This delivers the ordering-gate evidence for Ryan's decision. It does not accept full V4 or grant the remainder of T3.
+
+**Authorship and review boundary:** Cursor Composer authored the correction; Codex stopped an unsafe probe session, made further bounded harness corrections, and ran the qualified launcher. This is jointly corrected proof and supervised verification, **not an independent Codex review of unchanged Cursor work**. The original review remains pinned to `8c4ad91`; no external-review PASS is inferred for this successor.
+
+**Reproduce from the proof worktree:**
+
+```bash
+/home/lauer/miniforge3/bin/python -I -S -B tests/_safe_harbor_t3_backend_worker.py run-proof
+```
+
+The stdlib bootstrap enforces isolated/no-site/no-bytecode flags and uid 1000, creates a fresh root, and starts pytest and focused pylint with a recorded clean allowlist before package/project imports. It uses child flags `-s -B`, allowing the pinned installed packages while disabling user site and bytecode. It sets fresh HOME, every XDG root including runtime, ConvMem config/root/Restic-env, Restic cache and TMPDIR; no provider credentials are inherited. The fixture config is empty and its Restic env is absent. Workers validate actual resolved input/output paths before opening a store. Each subprocess has a 300-second limit; no final-run timeout occurred.
+
+**Final qualified run:** `/tmp/safe-harbor-t3-s9ejarj3`. Launcher exit **0**; pytest exit **0**, **9 passed in 8.08s** (captured subprocess elapsed 8.311729s); focused pylint exit **0**, no messages (4.395689s). `summary.json` holds exact child argv, statuses, timeout, flags and before/after hashes. `environment.json`, `pytest.log`, `pylint.log`, and per-case `fixture/pytest-tmp/test_*0/v4-backend-proof-evidence.json` retain raw evidence. Local `/tmp` artifacts are not a durable backup; this committed summary and the reproducible harness preserve the decision-relevant result.
+
+**Actual identity:** uid 1000; `/home/lauer/miniforge3/bin/python` 3.13.12; pytest 9.1.1; chromadb 1.5.9; hnswlib 0.8.0; numpy 2.4.4. The actual client is `chromadb.api.client.Client`, its server is `chromadb.api.rust.RustBindingsAPI`, and its native binding type is checked against the loaded native module. The module origin is `/home/lauer/miniforge3/lib/python3.13/site-packages/chromadb_rust_bindings/chromadb_rust_bindings.abi3.so`, SHA256 `a9794735847c3a78c15931d869cee8368fddbb10048c3d098bc09a14130075ad`. SQLite schema digest is `c96a6b960fc8366bb3b0051a268ebd85ccc5d2ca5280a06effc0930a6bd052d5`; observed migration versions are `[1,1,1,2,2,2,3,3,4,4,5,5,6,6,7,8,9,10]`. The source manifest also binds collection and metadata/vector segment IDs, saved vector watermark, backend identity and segment content digests.
+
+Before/after SHA256 values are identical:
+
+```text
+test_safe_harbor_t3_backend_proof.py
+6d70830d58ee1b9670b21dc1f7c5929d7597d2e2032468421a6618422d430c5e
+_safe_harbor_t3_backend_worker.py
+c82994c4ea9b5398a93ebc6a84251c0bc08970bbef3205128f1084ef9f2c5558
+chroma_write_guard.py (unchanged production source)
+63b228d9e9f05b798b4141bc818d034c9e4528bf79fe280ffb696257bcef0d73
+```
+
+**R1 — predicate fidelity and sensitivity corrected.** `evaluate_persisted_release_predicate` consumes persisted identity, watermark, queue and content evidence without opening a Chroma client or accepting fixture gold vectors. It requires structural validation and census as additional conditions. Missing evidence refuses; there is no missing-sequence-to-zero or first-segment fallback. Content digests replace inode-bearing equality. The valid fixture admits after native restart and after copying the same generation into replacement files; a fresh client-free observer records identical content. Separate safety assertions inspect persisted HNSW float32 vectors via header/label metadata, comparing every normalized component. The stale fixture is inspected before any replay-capable client open. The same admission-plus-independent-safety workflow passes for the valid strict case, refuses the stale strict case, and fails its safety assertion when the deliberately faulty census-only predicate admits that stale case.
+
+**R2 — isolation and actual identity corrected.** The recorded bootstrap replaces ambient-environment inheritance. The test module refuses unsafe entry before pytest/project imports. Controls invoke the actual worker with an outside input, outside output and symlink escape; each refuses without creating the outside destination. A simulated uid-zero check refuses (the real process remains uid 1000). Actual API/native/schema identity and resolved fixture paths are captured rather than supplied as literal success labels. This qualifies the final launcher run, not the excluded earlier Cursor probes below.
+
+**R3 — semantic operations and collection-specific controls corrected.** The real add → metadata/document update → embedding update → same-ID upsert → delete → reinsert trace asserts logical IDs/content/metadata/full normalized vectors and strictly advancing metadata evidence at each mutation. Its observed `(metadata, saved-vector)` positions are `(1, absent), (2,2), (3,2), (4,2), (5,5), (6,5)`. Queue lengths are `1,1,2,3,1,2`; the asserted adjacent decrease removes rows 2,3,4 and retains row 5. Raw topic/sequence rows are recorded, not just min/max counts. After fresh restart, metadata is 6, saved-vector is 5, and one newer operation remains pending: the client presents the reinserted vector while persisted segment `a` is still absent. The proof records this distinction; restart is not treated as a forced save or a releasable state.
+
+The synced positive fixture has metadata/vector/source position **100/100/100**, no later relevant queue row, passing structural validation/census and matching digests. The stale fixture has source **100**, current metadata/vector **102/102**, old segment vectors and observed metadata `n=99`; the strict predicate refuses with `watermark_drift meta=102 vec=102 saved=100`. The census-only control admits and fails the independent vector safety assertion. Two-collection coverage admits unchanged A after B mutates. Exact controls observe `collection_id_mismatch`, `segment_identity_mismatch`, `missing_vector_watermark`, `sequence_evidence_missing`, `chromadb_version_mismatch`, `sqlite_schema_digest_mismatch` and `segment_digest_mismatch`. Mtime-only changes still admit. Missing-row SQL deletion and unsupported-sequence cases are explicitly synthetic fault injections, not claimed as natural purge evidence.
+
+**Unexpected results and exclusions — preserved:**
+
+- The first Cursor session ran ad-hoc package/client probes before the required clean allowlist, including fixed `/tmp/chk-chroma`. Codex stopped that dispatched process (SIGTERM, exit 143), inspected the transcript, and resumed Cursor with text-only instructions. Its probes and early test/lint attempts are **excluded** from qualified evidence. Visible store targets were in `/tmp`; this does **not** establish that the entire attempt had no global or production side effects. No production corpus target appears in the inspected commands. Raw transcript: `/tmp/safe-harbor-t3-cursor-correction-retry.jsonl` and matching `.stderr`; subsequent text-only continuations are `/tmp/safe-harbor-t3-cursor-text-only.jsonl` and `/tmp/safe-harbor-t3-cursor-text-fix.jsonl`. The initial CLI startup failure is preserved in `/tmp/safe-harbor-t3-cursor-correction.jsonl`/`.stderr`.
+- Qualified development run `/tmp/safe-harbor-t3-bc7e8ssr`: pytest **1**, **3 passed, 3 failed**, pylint **28**. Native Chroma preallocates 100 HNSW slots for a two-row fixture; the unchanged structural validator rejects `data_level0.bin` 20400 versus expected 408 bytes and `length.bin` 400 versus expected 8. Another failed assertion incorrectly expected the latest reinsert to be saved after restart despite metadata 6/vector 5 and a pending operation. The correction distinguishes saved state from client replay and fills the positive fixture's initial capacity with **real native inserts** (two target IDs plus 98 padding IDs). No runtime validator change or truncation/normalization of backend files was used to obtain PASS.
+- Qualified development run `/tmp/safe-harbor-t3-c7mlhylq`: pytest **1**, **7 passed, 2 failed**, pylint **2**; Codex had removed a still-used `segment_vector_synced` import. The import was restored. This was a harness defect, not a backend result.
+- Qualified earlier successor `/tmp/safe-harbor-t3-qikcwppx`: pytest **0**, **9 passed in 8.19s**, pylint **0**. Superseded by the final run above after bootstrap-flag enforcement and actual native-module identity refinements. It is not nine additional distinct cases.
+
+**Limits and next decision:** the observations support the strict oracle in these pinned synthetic cases, not arbitrary backend states or hardware durability. The existing structural validator still conservatively rejects small stores with unused native capacity; that release-availability limitation is carried to later T3 planning, not silently fixed here. No preservation, repair, quarantine release, fsync-failure lifecycle or full V4 implementation exists in this proof. Process restart is not power-loss evidence. No full default suite or GitHub CI was run. Ordinary unqualified pytest entry intentionally refuses before project imports; therefore standard-suite/CI integration is **not demonstrated** and this branch is not declared merge-ready. No dependency, inventory, policy, production runtime, service, drive, backup or permission change was made. Ryan receives the proof and decides acceptance and any remaining T3 grant; no automatic advance.
+
+#### Copy-ready PR text — not authorization to open
+
+**Title:** Prove recovery watermarks with isolated persisted-state checks
+
+```markdown
+Safe Harbor now has reproducible evidence for the strict recovery-release oracle on pinned synthetic Chroma stores. This adds proof fixtures only, not a production release path.
+
+Who: Cursor authored the correction; Codex made bounded harness corrections and captured qualified evidence. This is not an independent review.
+What/when: R1–R3 proof correction, source 93d4e344c8959ed0176b3a9b39af7be3f638f148, delivered 2026-10-13 on feat/2026-10-12-safe-harbor-t3-backend-proof.
+Why/how: client-free persisted-state admission, independent stale-vector controls, clean pre-import isolation and real mutation/purge/restart observations replace the incomplete original proof.
+
+TL;DR: Nine isolated cases and focused pylint pass; owner acceptance and remaining T3 implementation are separate. Small-store validation and standard-suite integration remain limitations.
+
+## Merge reading
+
+- [Evidence and exclusions](docs/plans/VERIFY-safe-harbor.md#t3-r1r3-corrected-proof--qualified-evidence)
+- [Current scope and next decision](docs/plans/STATUS-safe-harbor.md)
+- [Proof-only grant](docs/plans/EXECUTION-safe-harbor.md#10-cursor-t3-pinned-backend-proof--owner-granted)
+
+## Evidence
+
+- [x] Qualified launcher: pytest exit 0, 9 passed in 8.08s; focused pylint exit 0.
+- [x] Valid replacement-generation admission and stale refusal; census-only negative control fails the independent safety assertion.
+- [x] Source/harness hashes stable; runtime unchanged; excluded attempts disclosed.
+- [ ] Full suite / CI / merge readiness not established. Unsafe ordinary proof invocation refuses.
+- [ ] No preservation/repair/release, full V4, PR-native review, merge or deployment approval.
+```
+
 ## V5 — Approval recovery (T4)
 
 **NOT RUN.** Cold/warm caches; unknown/absent/tombstoned/conflicting/matching states; direct and CLI callers; actual lease/governed/native/export order; forced forget/refine competition; target substitution; partial Chroma/export/event completion and retry. Cover failure before completion append, partial record, complete record with failed fsync, and durable record followed by interrupted return. An unsuccessful invocation may leave APPROVED; assert truthful uncertain-outcome reporting, authoritative reread/reduction before retry, durability establishment before success, no duplicate approval/blind re-upsert, no hidden export loss and no automatic malformed-tail deletion. Readable bytes alone do not prove durability. All cases remain unrun.
@@ -790,7 +864,8 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 
 | When | Runner | Subject | Command / case | Result | Pointer |
 |---|---|---|---|---|---|
-| 2026-10-13 | Cursor, miniforge Python 3.13.12, uid 1000; chromadb 1.5.9; numpy 2.4.4; hnswlib 0.8.0 | proof branch `feat/2026-10-12-safe-harbor-t3-backend-proof` (parent `324dfc5`) | `pytest tests/test_safe_harbor_t3_backend_proof.py -v --tb=line -p no:cacheprovider` under disposable HOME/XDG/CONVMEM roots | **DEMONSTRATED**, exit 0, `5 passed in 4.41s` | V4 ordering-gate section |
+| 2026-10-13 | Codex-supervised corrected harness, uid 1000, clean allowlist; Python 3.13.12 / chromadb 1.5.9 | source `93d4e344c8959ed0176b3a9b39af7be3f638f148` | stdlib `-I -S -B` launcher; nine proof cases and focused pylint | qualified pytest **0**, **9 passed in 8.08s**; pylint **0**; stable hashes | [Corrected proof](#t3-r1r3-corrected-proof--qualified-evidence), `/tmp/safe-harbor-t3-s9ejarj3` |
+| 2026-10-13 | Cursor, miniforge Python 3.13.12, uid 1000; chromadb 1.5.9; numpy 2.4.4; hnswlib 0.8.0 | proof branch `feat/2026-10-12-safe-harbor-t3-backend-proof` (parent `324dfc5`) | `pytest tests/test_safe_harbor_t3_backend_proof.py -v --tb=line -p no:cacheprovider` under reported disposable roots | historical Cursor **DEMONSTRATED** claim, exit 0, `5 passed in 4.41s`; Codex review rejected full gate/isolation qualification | V4 original report and R1–R3 review |
 | 2026-10-11 | Cursor, isolated miniforge Python 3.13.12 | runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` | `pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py -q --tb=line` under temporary HOME/XDG/CONVMEM_CONFIG | historical PASS, exit 0, `41 passed in 40.45s`; does not close the three correction gaps | V1 historical paragraph |
 | 2026-10-11 | Cursor, isolated miniforge Python 3.13.12; chromadb 1.5.9; numpy 2.4.4 | runtime `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e` | same pytest command under `/tmp/safe-harbor-t1-2J2Z` | PASS, exit 0, `43 passed in 43.56s`. Expected control failure: overwrite publisher dropped finding A | V1 corrected table |
 | 2026-10-11 | Cursor | corrected runtime parent; review tip is the evidence commit | BugBot exact-tip review | not satisfied — usage limit, no reviewed SHA | draft #387 |
@@ -823,7 +898,7 @@ Explicitly cover new-log creation versus append to an existing durable log: file
 | 2026-10-13 | Cursor, uid 1000, `/tmp/safe-harbor-t2-shadow-coord-20261013T005040Z` | pre-fix `080b5f8` | `test_static_scan_matches_inventory_routing` | exit **1** (expected) | Shadow coordinate section |
 | 2026-10-13 | Cursor, uid 1000, `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z` | shadow metadata fix + R2b regen | 17-case scan/R2b/C3 selection | all exits **0** | Shadow coordinate section |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2 is not accepted: B1 remains closed historically; F1/F2 correction at `cdebf64` passes Codex's bounded delta at `721fd17` with 85 distinct isolated cases; pinned-main integration at merge `551b16c` passes the same 85-case isolated selection on sealed pre-merge bytes. Fresh GitHub CI on the integrated/docs tip, overall owner acceptance and the final-tip external-review gate remain pending. Ryan accepted the event-only evidence exclusion without claiming the missing success proof. V3–V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2's earlier correction/integration rows are historical; final owner acceptance and squash mapping are recorded above. The corrected T3 ordering-gate evidence is returned separately, with its exclusions and limitations. V3, the remainder of V4, V5 and V6 stay NOT RUN.
 
 ## Merge reading
 
@@ -834,4 +909,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] T1/T2 are accepted and merged. Cursor reported T3 DEMONSTRATED at `8c4ad91`; Codex static review leaves the complete ordering gate **NOT DEMONSTRATED (95%)** on R1–R3: predicate fidelity, isolation/backend evidence and sensitivity/coverage. The captured positive examples remain useful. Correct only the granted proof/harness and return evidence for a bounded delta; remaining T3, T4/T5, PR/merge and live work remain ungranted.
+[Arc Safe Harbor] T1/T2 are accepted and merged. R1–R3 proof corrections at `93d4e34` have qualified evidence: nine cases and focused pylint pass; the strict oracle admits a valid copied generation and refuses stale vectors while the census-only control fails. Cursor/Codex jointly corrected the harness; this is not independent review. Earlier unqualified probes are excluded, small-store validation and CI integration remain limits, and Ryan's acceptance/remaining T3 grant is pending. Full V4, preservation/repair/release, T4/T5, PR/merge and live work remain ungranted.
