@@ -9,14 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T2 merged (2026-10-13 UTC):**
-  Ryan accepted V2 and the final-tip review exception, then merged
-  [#389](https://github.com/alanmz-crypto/convmem/pull/389).
-  See [STATUS](../plans/STATUS-safe-harbor.md) for the current scope and
-  [VERIFY V2](../plans/VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping)
-  for acceptance, CI and squash provenance. **Next lane: Ryan** for a
-  separate T3 grant, beginning with the isolated pinned-backend proof.
-  T3–T5 and live operations remain ungranted; no manual session indexing.
+- **Arc Safe Harbor — T3 backend proof only granted (2026-10-13 UTC):**
+  T1/T2 are accepted and merged. **Next lane: Cursor** for the isolated
+  [pinned-backend proof handoff](../plans/EXECUTION-safe-harbor.md#10-cursor-t3-pinned-backend-proof--owner-granted).
+  See [STATUS](../plans/STATUS-safe-harbor.md) for the pinned branch/worktree
+  and [VERIFY V4](../plans/VERIFY-safe-harbor.md#v4--release-and-stale-vector-proof-t3)
+  for the unrun proof. Return results before preservation/repair/release code;
+  remaining T3, T4/T5 and live operations remain ungranted. No manual indexing.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

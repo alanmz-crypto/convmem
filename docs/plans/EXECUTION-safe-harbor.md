@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED; T3–T5 NOT GRANTED.** Ryan accepted the plan/B-E4.1 at `dca13a5`, including all five consumer outcomes. T1 landed through #387; T2 through #389 as `458b9f6`. [VERIFY V2](VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping) records final-head CI, Ryan's exact-tip review exception/V2 acceptance and the squash mapping. Section 9 preserves completed grant history, not current execution authority. Reviewed task contracts and ownership are unchanged; live operations remain ungranted.
+> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED; T3 BACKEND PROOF ONLY GRANTED.** Ryan accepted the plan/B-E4.1 at `dca13a5`, including all five consumer outcomes. T1 landed through #387; T2 through #389 as `458b9f6`. [VERIFY V2](VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping) records final-head CI, Ryan's exact-tip review exception/V2 acceptance and the squash mapping. Section 9 preserves completed grant history, not current execution authority. Section 10 records the separate proof-only T3 grant. Reviewed task contracts and ownership are unchanged; the remaining T3 implementation, T4/T5 and live operations remain ungranted.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        T1/T2 accepted and merged; T3 grant pending
+Phase:        T3 pinned-backend proof granted; NOT_STARTED
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Codex records closeout; Ryan decides the next bounded grant
-Authority:    Plan/B-E4.1 and T1/T2 accepted; no T3–T5 or live grant
+Lanes:        Cursor proves in scratch; Codex coordinates; Ryan receives results
+Authority:    Ryan granted T3 proof/evidence only; no remaining implementation/live grant
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1 and T2 are accepted and merged; their grants in sections 8–9 are complete. T3–T5 remain **NOT STARTED / NOT GRANTED**. The next task, if granted, starts with T3's pinned-backend proof ordering gate. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; historical grants and later acceptance are recorded separately.
+T1 and T2 are accepted and merged; their grants in sections 8–9 are complete. T3's isolated pinned-backend proof is **GRANTED / NOT STARTED** under section 10. Remaining T3 implementation and T4/T5 remain **NOT STARTED / NOT GRANTED**. Passing the proof does not authorize continuation; return results first. Execution lane: Cursor. Shared files make implementation serial by default: **T1 → T2 → T3 → T4 → T5**. This does not grant parallel working-tree edits. The task contracts below retain their reviewed wording; historical grants and later acceptance are recorded separately.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -520,6 +520,55 @@ Ryan authorized **“final-tip review, including the documented evidence limitat
 
 **Stops retained:** no production ConvMem CLI/MCP/doctor/brief/search/indexing, corpus/config/key/repository/provider/service/drive operation; no Track A. No paid review, PR comment/trigger/readiness change, PR merge, deployment or T3–T5. The accepted event-only completion-success evidence exclusion remains. External-review disposition and Ryan V2 acceptance remain separate and ungranted.
 
+## 10. Cursor T3 pinned-backend proof — owner granted
+
+**[Arc Safe Harbor] Date / author / recipient:** 2026-10-12 local; Codex planning lane; Cursor proof lane. **State: NOT_STARTED / GRANTED (proof and isolated evidence only).** This is the existing T3/Kiro A1 ordering gate, not a contract redesign or a grant for the remaining T3 implementation.
+
+**Authority:** Ryan: “Authorize Cursor to perform T3’s isolated pinned-backend proof and collect evidence only. Return the results before implementing preservation, repair or release. Live operations remain unauthorized.” This overrides generic startup/indexing and automatic continuation requirements for this isolated task. No further approval is needed to perform this named proof.
+
+### Resume and pinned inputs
+
+- **Branch:** `feat/2026-10-12-safe-harbor-t3-backend-proof`.
+- **Local worktree:** `/home/lauer/Projects/convmem/.worktrees/feat-2026-10-12-safe-harbor-t3-backend-proof`. Do not switch the shared checkout, runtime-main or a completed T1/T2 worktree.
+- **Source base:** merged T2 `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`; documentation closeout parent `fc2ecae871e10994a89fa8d5d5cc3f65d9649164` has no runtime/test changes. Start at the clean, pushed grant successor supplied in dispatch; confirm it contains only this handoff/routing change over that parent. No automatic main update, rebase or force-push.
+- **PR:** none; creation, readiness changes and review-trigger comments are not granted. Commit/push the bounded proof and evidence on this branch with its explicit refspec. If a remote Cursor VM is used, clone/fetch this exact branch/tip into a clean workspace; do not treat absence of the host worktree path as permission to use another revision.
+- **Backend pin:** `requirements.txt` and `test_chromadb_internals_the_guard_depends_on` pin `chromadb==1.5.9`; HNSW inspection dependency is `hnswlib==0.8.0`. T2's last qualified interpreter was `/home/lauer/miniforge3/bin/python`, Python 3.13.12, with numpy 2.4.4. Verify the actual interpreter/package versions and active client/API/segment backend inside the isolated child before claiming a result. Capture native module origin/digest where available. A Python wrapper field or package version alone does not prove Rust backend semantics. No dependency upgrade or backend substitution to obtain a PASS.
+
+### What to prove, and why
+
+The proposed release oracle requires no collection operation newer than the saved vector state. Prove whether the pinned backend exposes persistent evidence sufficient for that rule, using synthetic stores with explicit deterministic embeddings and independent expected outcomes. Existing `vector_census()` proves ID coverage only: same-ID stale vectors are its deliberate blind spot. A legitimate result is **NOT DEMONSTRATED** with the concrete counterexample; never turn an unsupported/missing watermark into zero or loosen the accepted rule.
+
+Read STATUS, this section, T3/E1/A1 and VERIFY V4 before editing. Source entry points: `chroma_store.py` client construction, `chroma_write_guard.py` `_seq_id`/`vector_census`/segment inspection and snapshot manifest, `tests/test_chroma_write_guard.py` and its scratch worker. Treat private fields as hypotheses until demonstrated on the active backend.
+
+### Allowed artifacts and isolation
+
+- New proof files only: `tests/test_safe_harbor_t3_backend_proof.py` and, if needed, `tests/_safe_harbor_t3_backend_worker.py`. A test-local oracle/observation helper is permitted solely to evaluate the proposed predicate; it is not a production release implementation. Existing runtime, guard, doctor, watch, config, dependency pins, migrations, inventories and CI policy are read-only.
+- Update only existing Safe Harbor EXECUTION/VERIFY/STATUS and inter-model LATEST/STATUS for evidence and routing. Do not create a new ledger, subsystem, log markdown or broad fixture refactor. Scratch JSON/stdout/stderr artifacts under a fresh `/tmp/safe-harbor-t3-*` root are allowed; reference them and preserve a compact reproducible evidence summary in VERIFY.
+- All project/package imports, collection, probes and child processes must start under a clean environment allowlist with fresh HOME, XDG config/data/cache/runtime, CONVMEM_CONFIG/ROOT/RESTIC_ENV, RESTIC_CACHE_DIR and TMPDIR. Use an empty fixture config and absent fixture Restic env. No inherited provider credentials or production fallback. Set user-site/bytecode/network telemetry controls as appropriate; use explicit embeddings and no provider/model download. Build isolation with stdlib before project imports; do not rely only on a pytest fixture that runs after collection. Each worker inherits/checks the isolated roots before opening a client. Default test invocation must refuse an unsafe environment or arrange isolation before any project import; it must not silently skip the proof.
+- Execute as ordinary uid 1000 on this host, never root. Reject resolved paths outside the task's disposable fixture root before creating/opening stores; reject production corpus/home/runtime-main paths and symlink escapes. Processes must terminate cleanly or be bounded by a reported timeout. A fresh process, not a client-cache reset, is required for restart evidence.
+- No production ConvMem CLI/MCP startup ritual, doctor/brief/search, manual indexing/Track A, live corpus reads/copies, backup commands/repositories/keys, external drives, provider calls, services or permissions. No default full suite. No dependency installation, paid reviewer or unrelated agent invocation. Reading code is allowed; fixture mutations are confined to synthetic scratch data.
+
+### Required observations and controls
+
+1. **Backend and persisted-state map:** record actual client/API backend, package/schema identities, collection/metadata/vector segment IDs, queue topic/sequence encoding and every candidate persistent watermark. Distinguish SQLite metadata application, vector in-memory application and vector save-to-disk positions. Do not infer that SQLite's vector row exists or describes persisted bytes from its name. Observe SQLite through a read-only connection/transaction; any mutating Chroma open is a separate, labeled fixture operation.
+2. **Real operation sequence:** create synthetic documents/vectors, then update metadata/document, update embedding, upsert the same ID with a changed embedding, delete, and reinsert/upsert that ID. Record expected IDs/content/vectors independently of the proposed oracle and the raw before/after persistent evidence. Show the relevant sequence values cannot move backward or silently reset across these mutations and actual process restart. Use separate collections to demonstrate collection/segment binding rather than a global maximum.
+3. **Queue purge and save/restart:** induce real backend persistence and queue purge using pinned backend behavior/fixture settings. Capture queue rows/counts and watermarks before/after purge and restart, and show that absence of pending rows cannot hide newer operations. Manual SQL deletion or mocked sequence values do not prove backend purge semantics; label any such auxiliary fault injection separately. If genuine purge or a reliable persisted watermark cannot be demonstrated, return NOT DEMONSTRATED.
+4. **Valid releasable control:** use a quiescent, persisted synthetic vector generation whose SQLite/segment identities, content and source watermark are demonstrably aligned. The proposed strict empty-changed-set predicate must admit that fixture after restart; an always-refuse predicate is not a successful proof. Capture source file digests and the exact predicate inputs without adding production SNAPSHOT fields.
+5. **Stale-vector refusal control:** retain an old synthetic vector save, perform a real same-ID embedding change, and construct an explicitly disposable old-vector/new-metadata pair. Before any client open can replay/repair it, show the current ID census can pass while independently checked persisted vector values are stale. The proposed predicate must refuse using real persisted evidence, including after genuine queue purge and restart where applicable. Compare with a test-only census-only predicate in this same workflow; it must wrongly admit and fail the independent safety assertion. Do not put a faulty hook in runtime code.
+6. **Unknown/binding controls:** absent/unsupported source sequence evidence and wrong collection/segment/source identity must refuse; an empty queue alone never licenses release. Check how update/delete/re-upsert behaves under equality: no newer semantic mutation may masquerade as the saved state. If the accepted predicate lacks a required field or observation, report the missing contract/data evidence rather than inventing a fallback or adding runtime instrumentation.
+
+A scratch copy of synthetic segment files is permitted only to construct these evidence controls. It does not authorize implementing or calling a new production preservation/repair/release path. No actual QUARANTINE release is needed: report what the test-local predicate decides and keep that distinction explicit.
+
+### Evidence, return and stop
+
+Capture commands, interpreter/backend/schema identity, actual subprocess return codes, timeouts, source/harness hashes before and after, isolated paths, operation trace, raw watermark/queue observations and control results. Do not hide an exit status behind `tee`/`tail` or assert success from readable partial output. A command/setup failure is not an expected negative-control PASS. Preserve failed attempts and explain any evidence exclusion. Include the minimal reproduction for any contradicted assumption and confidence in the conclusion, not incident probability.
+
+Run only this proof and its focused test/harness/lint checks under the same isolation. Do not import the whole project just to inspect versions or regenerate inventories. Use the existing lint policy for new proof files without baseline waivers; any wider validation need is returned as a named dependency. Production-runtime file diff against the pinned base must remain empty; existing T1/T2 code and tests are unchanged.
+
+Report **DEMONSTRATED** only if every required observation and both valid/stale controls support the accepted predicate on the pinned backend. Otherwise report **NOT DEMONSTRATED**, identify the failed or inaccessible condition and stop. Neither result accepts V4 as a whole or authorizes continuation. Update VERIFY V4 with proof-only evidence, leave V3 and the rest of V4 NOT RUN, update STATUS/LATEST for the next lane, commit and immediately push, and return the exact tip plus a copy-ready PR description. Do not open a PR or invoke paid reviewers.
+
+**Hard stop after results:** no preservation, bounded-repair or validated-release implementation even if the proof passes; no T4/T5, no merge, no deployment or live operation. Codex/Ryan receive the evidence and decide the next grant. No production or policy repair to make this proof pass.
+
 ## TL;DR
 
-[Arc Safe Harbor] T1/T2 are accepted and merged; final T2 acceptance and squash provenance are recorded in VERIFY V2. The approved task contracts are unchanged. T3 begins, only after a separate grant, with the isolated pinned-backend proof before remaining implementation. T3–T5 and live operations remain ungranted.
+[Arc Safe Harbor] T1/T2 are accepted and merged; final T2 acceptance and squash provenance are recorded in VERIFY V2. The approved task contracts are unchanged. Ryan granted only T3's isolated pinned-backend proof/evidence in section 10. Return its results before any preservation/repair/release implementation; T4/T5 and live operations remain ungranted.

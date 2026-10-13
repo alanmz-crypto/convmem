@@ -4,11 +4,11 @@
 
 ```text
 Planning Status
-Phase:        T2 accepted and merged; T3 grant pending
+Phase:        T2 accepted and merged; T3 proof granted / NOT RUN
 Characters:   Implementer, Reviewer
 Function:     Record acceptance and merge while preserving evidence limits
-Lanes:        Codex records closeout; Ryan decides the next grant
-Authority:    Ryan accepted final-tip T2/V2 and merged; no T3–T5 or live grant
+Lanes:        Cursor performs proof; Codex coordinates; Ryan receives results
+Authority:    T3 proof-only grant; no remaining implementation or live grant
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -42,7 +42,7 @@ In scope: execution T1–T5 and their named production entrypoints under isolate
 
 **Plan prerequisites satisfied:** Ryan accepted the plan and explicitly approved v2 B-E4.1 at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, with ownership unchanged. This is approval metadata, not runtime evidence.
 
-**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3–T5 have no grant. The external-review row below describes T1 only. T2's historical Copilot audits and final Codex review are recorded in V2; Ryan resolved its separate BugBot gate with the final-tip exception recorded below.
+**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3 now has only the separate proof/evidence grant in execution section 10; remaining T3 and T4/T5 have no grant. The external-review row below describes T1 only. T2's historical Copilot audits and final Codex review are recorded in V2; Ryan resolved its separate BugBot gate with the final-tip exception recorded below.
 
 Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, services and external drives were not invoked.
 
@@ -723,6 +723,8 @@ Who: Cursor implemented Safe Harbor T2; Codex coordinated evidence and Copilot's
 
 ## V4 — Release and stale-vector proof (T3)
 
+**Proof-only grant: GRANTED / NOT RUN.** Ryan authorized the isolated pinned-backend demonstration in [execution section 10](EXECUTION-safe-harbor.md#10-cursor-t3-pinned-backend-proof--owner-granted). No proof has been run at handoff. Its evidence is only the backend ordering gate, not V4 acceptance or production release. Return DEMONSTRATED/NOT DEMONSTRATED with raw inputs and valid/stale controls before any remaining T3 implementation. V3 and the release/publication portions below remain ungranted and NOT RUN.
+
 **NOT RUN.** Complete current incident set and Ryan disposition binding; added-finding invalidation; durable disposition before marker removal; truncated event tail and uncertain unlink/fsync behavior; strict source-watermark oracle. Before the remainder of T3 implementation, record the pinned-backend monotonicity/queue-purge/restart demonstration, including a valid releasable control and a same-ID changed-vector fixture demonstrating the census blind spot and refusal. Failure stops T3; it is not census-only PASS. Release-publication assertions must include file fsync, parent-directory fsync on creation and required newly created directory entries; inject directory-fsync failure and require containment to remain before marker removal. Process restart is not power-loss proof.
 
 ## V5 — Approval recovery (T4)
@@ -782,4 +784,4 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] T1/T2 are accepted and merged. T2 final candidate `eb06c97` passed all six GitHub checks; Ryan accepted the Codex review and V2 evidence limitations as the BugBot outage exception, then squash-merged #389 as `458b9f6` (identical tree). The final isolated correction evidence remains 98 affected cases plus focused sensitivity and lint evidence; overlapping runs are not additional cases. Historical failed/unqualified attempts stay disclosed. Successful event-only completion is excluded and remains a T4 prerequisite. T3's pinned-backend proof is the next step only after a new grant; V3–V6 and live operations remain unperformed/ungranted.
+[Arc Safe Harbor] T1/T2 are accepted and merged. T2 final candidate `eb06c97` passed all six GitHub checks; Ryan accepted the Codex review and V2 evidence limitations as the BugBot outage exception, then squash-merged #389 as `458b9f6` (identical tree). The final isolated correction evidence remains 98 affected cases plus focused sensitivity and lint evidence; overlapping runs are not additional cases. Historical failed/unqualified attempts stay disclosed. Successful event-only completion is excluded and remains a T4 prerequisite. T3's pinned-backend proof alone is now granted under execution section 10 but unrun; return results before remaining implementation. V3–V6 remain NOT RUN and live operations remain ungranted.

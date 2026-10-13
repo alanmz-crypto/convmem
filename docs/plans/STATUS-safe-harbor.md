@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 AND T2 MERGED; V2 ACCEPTED.** Ryan accepted the final T2 candidate and the Codex review as the tip-specific BugBot outage exception, then squash-merged PR #389. T3–T5 and live operations remain ungranted. The next implementation step, if granted, is T3's isolated pinned-backend proof before preservation/repair/release code.
+> **Arc: Safe Harbor. T1/T2 MERGED; T3 BACKEND PROOF ONLY GRANTED / NOT STARTED.** Cursor may perform the isolated pinned-backend proof and collect evidence under execution section 10. Return results before preservation/repair/release implementation. T4/T5 and all live operations remain ungranted.
 
 ## 1. What This Is For (product goal)
 
@@ -49,29 +49,29 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Plan and ownership:** Kiro delta PASS at `dca13a5` (88%); Ryan accepted that execution plan and B-E4.1 exactly as T2 specifies, including all five consumer outcomes. E4 full-scope compatibility PASS at `1268a50` (85%) remains complete; ownership is unchanged. No Recovery Authority T4/V4k authority was granted.
 - **T1 / V1: ACCEPTED AND MERGED** via #387. Its exact-tip exception remains T1-specific.
 - **T2 / V2: ACCEPTED AND MERGED** via #389. Ryan separately accepted the Codex review and documented evidence limitations at `eb06c97` as the T2 BugBot outage exception. The bounded delta PASS remains pinned to runtime/evidence `dac925f`; the owner exception names the documentation successor. Final-head CI passed before merge. CodeQL #6 remains previously dispositioned as a false positive.
-- **T3–T5: NOT STARTED / NOT GRANTED. V3–V6: NOT RUN.** No task auto-advance or paid review request. Implementation of T3's remaining preservation/repair/release logic must wait for its pinned-backend proof even after a T3 grant.
+- **T3 proof: GRANTED / NOT STARTED.** Ryan authorized the isolated pinned-backend proof/harness and evidence only, with an explicit return before implementing preservation, repair or release. [Execution section 10](EXECUTION-safe-harbor.md#10-cursor-t3-pinned-backend-proof--owner-granted) pins source, branch, backend, isolation and controls. V3–V6 remain NOT RUN; the proof will supply only part of V4. Remaining T3 implementation and T4/T5 are NOT GRANTED; even a passing proof does not auto-advance.
 - **Live operations/deployment: NOT AUTHORIZED.** Merged source does not activate the release workflow or prove backup usability.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** T2 closeout only. Keep this brief, VERIFY and routing aligned with the observed merge. Do not resume the completed T2 branch or infer T3 authority. After Ryan grants the next slice, bind its handoff to an isolated worktree and exact source.
+**Codex:** prepare the pinned proof handoff and coordinate the evidence. Review results against the existing T3 ordering gate; do not weaken the oracle or convert proof success into implementation authority.
 
-**Ryan:** Decide whether to authorize T3's isolated pinned-backend proof/harness first. The existing plan requires monotonic update/delete/re-upsert, queue-purge and restart evidence, with a valid releasable control and the stale-vector refusal control, before the rest of T3 implementation.
+**Cursor:** execute only the [section 10 proof](EXECUTION-safe-harbor.md#10-cursor-t3-pinned-backend-proof--owner-granted) on `feat/2026-10-12-safe-harbor-t3-backend-proof`, local worktree `/home/lauer/Projects/convmem/.worktrees/feat-2026-10-12-safe-harbor-t3-backend-proof`. Parent `fc2ecae` adds only T2 closeout docs over merged source `458b9f6`; start at the pushed grant successor supplied in dispatch. Use synthetic data and the pinned Chroma 1.5.9 backend. Report DEMONSTRATED or NOT DEMONSTRATED with raw evidence, then stop.
 
-**Cursor:** No active implementation grant. T2 is complete. Under a later T3 grant, begin with the proof ordering gate; if it fails, stop and return the concrete gap without weakening release.
+**Ryan:** receive proof results and decide the subsequent scope. No new approval is needed for this named proof; all preservation/repair/release implementation remains pending that return.
 
-**Review / ops lanes:** Prior reviews keep their exact scopes. No new reviewer invocation, production operation, rollout or service change is authorized by this merge.
+**Review / ops lanes:** previous verdicts remain pinned. No paid review request or live-operation grant.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Ryan grants the next bounded T3 work. First demonstrate the pinned backend's release-oracle semantics in isolation; no preservation/repair/release implementation before that ordering gate passes. Failure returns to Codex/Ryan, never to a census-only release.
+1. Cursor performs the granted isolated pinned-backend proof, including real update/delete/re-upsert, purge/restart and valid/stale-vector controls. Return results to Codex/Ryan; failure never falls back to census-only release. No remaining T3 implementation before both proof results and a new grant.
 2. Complete T3–T5 only under their task grants: evidence preservation and validated release; T4's direct-helper binding, hash-view alignment, event-only success and unknown/tombstone/race/uncertain-completion behavior; then integrated evidence and review. V3–V6 remain NOT RUN.
 3. Before live rollout, resolve the loss window, exact recovery-artifact qualification, old-process/guard-state adoption and rollback compatibility in execution section 6. Production `restic.env` must explicitly select `complete-data-v2` and a data root covering all affected paths, or the new gated paths refuse with 20/24.
 4. Any deployment or corpus-affecting operation needs its own scope, recovery evidence and Ryan grant. T1/T2 being merged does not provide T3's validated release or authorize detector/watch activation.
 
 ## 7. Hard Stops (models cannot cross)
 
-- T1/T2 grants are complete. No T3–T5 implementation or experiment grant is active. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
+- T1/T2 grants are complete. Only T3's bounded synthetic proof/harness/evidence is active; remaining T3 implementation and T4/T5 are ungranted. No installed runtime, production data, service, backup-repository, key, retention or installed-permission changes.
 - No restore drills, production experiments, indexing, ledger record or merge from this brief.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration or generalized repair. Read that arc's current STATUS hard stops.
 - No generic HOLD, identity registry, freeze, broad constructor change or automatic cleanup subsystem under this direction.
@@ -100,6 +100,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-12 — Codex: recorded Ryan's T3 isolated pinned-backend proof-only grant and prepared the separate pinned worktree/handoff; results must return before preservation/repair/release implementation.
 
 - 2026-10-12 — Codex: confirmed Ryan's final-tip T2/V2 acceptance and BugBot outage exception, six green final-head checks and #389 squash mapping; T1/T2 merged, T3 proof grant next, no live authority.
 
