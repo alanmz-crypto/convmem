@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED — SHADOW METADATA CORRECTION PUSHED.** Runtime `cdebf64` unchanged; CI run `38325044536` at `080b5f8` failed one shadow static-scan test (stale `convmem.add`/`verify` line coords). Mechanical shadow + R2b regen correction committed with 17-case isolated proof; fresh CI pending on successor tip. PR #389 stays draft. Prior 85-case pass did not include that scan. External-review disposition, V2 acceptance, PR merge, deployment and T3–T5 remain pending.
+> **Arc: Safe Harbor. T1 MERGED; T2 FINAL REVIEW FAIL — BOUNDED CORRECTION GRANTED.** CI is green at `45a1f00`, but fresh static review found stable cross-parent Chroma aliases relocate governed-file lookups after preflight. Ryan authorized this correction and isolated evidence; Cursor implements under EXECUTION §9. PR #389 stays draft. External-review disposition, V2 acceptance, PR merge, deployment and T3–T5 remain pending.
 
 ## 1. What This Is For (product goal)
 
@@ -35,6 +35,8 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
+- **Current blocker / grant:** fresh in-session Codex review of `45a1f002239644371d4813f3f010ece72c6fb865` versus base `8a7cdab` returned narrow **FAIL (95%, static)**: preflight and downstream approval/recovery disagree on governed-file locations for a stable cross-parent Chroma alias. Prior B1/F1/F2 closures stand in their scopes. Ryan granted only this bounded correction plus isolated evidence; see [the handoff](EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized) and [review evidence](VERIFY-safe-harbor.md#fresh-final-t2-review--governed-path-identity-fail).
+- **Latest completed CI:** all checks green at `45a1f00`; [run `38329309684`](https://github.com/alanmz-crypto/convmem/actions/runs/38329309684) pytest: 2996 passed, 121 skipped, 252 subtests; pylint/secret-scan and CodeQL pass. This does not cover the newly identified cross-parent case or a correction successor.
 - **Current T2 delivery:** integration merge `551b16c13b66c8e3133402bdf6c0370d3efd35a5` on draft [PR #389](https://github.com/alanmz-crypto/convmem/pull/389); Safe Harbor runtime/tests remain `cdebf64b487ffa27d61955df9739204829864fe0` (F1/F2 docs at `721fd17`). Pinned main `8a7cdab` brought inter-model rejection and updated shadow inventory; sole merge conflict was regenerated R2b inventory (`46801f24…` / digest `6bee3486…`). Prior pre-integration CI and conflict state remain historical.
 - **Target-binding correction: F1/F2 CLOSED BY BOUNDED CODEX DELTA (90%).** Canonical client/export pinning is retained; alias-local quarantine is checked before either factory opens a client; late export retarget refuses. The 42-case Cursor regression and disjoint 43-case Codex supplement pass on unchanged source, with the full lint regression gate PASS. See [the correction delta/evidence](VERIFY-safe-harbor.md#codex-f1f2-correction-delta-and-complete-isolated-evidence--pass). This is not independent external review or V2 acceptance. Derived R2b identity `638cf8d3…`; route policy and shadow inventory unchanged.
 - **Integration:** merge `551b16c` (parents `181dfd18` + main `8a7cdab`); 85-case isolated evidence at `/tmp/safe-harbor-t2-integration-evidence-20261012T234749Z` (historical on unchanged Python; omitted shadow scan). **CI `38325044536` at `080b5f8`:** one pytest failure on shadow inventory routing metadata. **Correction:** shadow call-site lines `420`/`523` for add/verify + R2b regen (`84a9c83…` / `ff1e5f11…`); proof `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z`. Fresh CI authorized on successor push.
@@ -87,14 +89,14 @@ The scope is application cooperation, not same-user security. Read clients can p
   - Ryan accepted the event-only success evidence exclusion only; T4 hash normalization/success and direct-caller proof remain unperformed.
   - No T2 PR-native BugBot evidence or exact-tip outage acceptance exists; T1's exception does not transfer.
 - **PR #389: OPEN / DRAFT.** The authorized one-shot BugBot trigger returned a usage-limit reply, with no reviewed SHA. CodeQL alert #6 was owner-authorized and dismissed as false positive at `2026-10-12T10:34:24Z`; GitHub then reported CodeQL SUCCESS at `0cff157`. No paid retry/reviewer is requested.
-- **Current grant: SHADOW METADATA CORRECTION DELIVERED; FRESH CI NEXT.** CI run `38325044536` at `080b5f8` exposed stale shadow call-site lines; Cursor corrected metadata, regenerated R2b and recorded 17-case isolated proof. Codex monitors GitHub CI on #389 for the correction successor. Prior integration delta PASS did not cover the shadow scan. F1/F2 correction grant remains complete. No final-tip acceptance, PR merge or live grant is inferred.
+- **Current grant: GOVERNED-PATH IDENTITY CORRECTION AUTHORIZED; NOT IMPLEMENTED.** Preserve original governed-file identities for stable cross-parent aliases while retaining canonical client/export binding; reproduce and prove in isolation, then obtain a bounded delta and fresh CI. The earlier shadow correction is complete and its CI passed at `45a1f00`. No final-tip acceptance, PR merge or live grant is inferred.
 - T3–T5 implementation, new review triggers/comments, merge and live operations/deployment: **NOT AUTHORIZED**. No phase auto-advance.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex:** Integration delta is complete; monitor and report final GitHub CI at the sealed current head of draft #389. Preserve the separate external-review/owner-acceptance boundary; do not move the tip only to transcribe live check status. CodeQL #6 remains dispositioned.
+**Codex:** Record the fresh finding and owner grant, dispatch Cursor, then inspect the bounded correction/evidence and fresh CI. Preserve the external-review/owner-acceptance boundary. CodeQL #6 remains dispositioned.
 
-**Cursor:** Integration and isolated evidence complete; no implementation action unless a concrete CI/integration defect requires a scoped correction.
+**Cursor:** Reproduce and implement only the governed-path identity correction in EXECUTION §9, collect isolated evidence and push. Do not reopen T4 semantics or earlier settled policies.
 
 **Ryan:** After Codex's bounded delta and observed CI, decide final-tip external-review disposition and V2 acceptance/PR merge. Event-only exclusion remains accepted; T1 outage acceptance does not carry over.
 
@@ -104,7 +106,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Read fresh GitHub CI on draft #389 at the sealed current head (bounded Codex delta is PASS at `0c3e6c7`); then Ryan resolves final-tip external-review disposition and V2 acceptance/merge. Integration merge `551b16c` and isolated evidence are recorded; F1/F2 remain closed for `cdebf64`. B1 remains closed historically; event-only exclusion accepted; CodeQL #6 dispositioned.
+1. Correct the cross-parent alias/governed-file mismatch identified at `45a1f00`, collect isolated evidence, obtain the bounded delta and fresh final-tip CI on draft #389; then Ryan resolves external-review disposition and V2 acceptance/merge. B1/F1/F2 remain closed in their recorded scopes; event-only exclusion accepted; CodeQL #6 dispositioned.
 2. Complete T3–T5 only under their task grants, including:
    - T3's backend-proof ordering gate and preservation/validated release;
    - T4 approval recovery: gating or binding direct helper callers, aligning the proposal and ingestion hash views so an event-only completion can be proven, and unknown/tombstone/race/uncertain-completion handling;
@@ -146,6 +148,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-12 — Codex: recorded green CI and fresh final-review FAIL at `45a1f00`; Ryan granted the bounded cross-parent alias/governed-file identity correction and isolated evidence; Cursor implementation next.
 
 - 2026-10-13 — Cursor: shadow call-site coordinate correction after CI `38325044536`; R2b regen and 17-case isolated proof; fresh CI next, PR stays draft.
 
@@ -204,4 +208,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] Shadow inventory line metadata corrected after CI `38325044536`; R2b regen and 17-case scan proof recorded; runtime `cdebf64` unchanged. PR #389 draft; fresh CI on successor; final-tip review, acceptance, merge, deployment and T3–T5 remain pending.
+[Arc Safe Harbor] CI passed at `45a1f00`; fresh review found one governed-file identity regression for cross-parent aliases. Ryan authorized its bounded correction/evidence. Cursor implements next; PR #389 remains draft, with acceptance, merge and later tasks pending.

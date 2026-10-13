@@ -9,15 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — shadow metadata fix after CI fail (2026-10-13):**
-  Run `38325044536` at `080b5f8` failed
-  `test_static_scan_matches_inventory_routing` (stale add/verify line coords).
-  Cursor corrected shadow inventory + regenerated R2b; proof
-  `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z` (17 cases, exit 0).
-  **Codex:** monitor fresh GitHub CI on [draft #389](https://github.com/alanmz-crypto/convmem/pull/389)
-  for the correction successor (checks are authoritative). See
+- **Arc Safe Harbor — bounded governed-path correction granted (2026-10-13 UTC):**
+  CI passed at `45a1f00`, but fresh Codex review found cross-parent alias
+  canonicalization relocates approval/recovery files after preflight.
+  **Cursor:** reproduce, correct and collect isolated evidence under the
+  [bounded grant](../plans/EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized).
+  **Codex:** coordinate, then bounded delta/fresh CI on
+  [draft #389](https://github.com/alanmz-crypto/convmem/pull/389). See
   [STATUS](../plans/STATUS-safe-harbor.md) and
-  [VERIFY shadow section](../plans/VERIFY-safe-harbor.md#shadow-session-call-site-coordinate-correction--captured-isolated-evidence).
+  [fresh review](../plans/VERIFY-safe-harbor.md#fresh-final-t2-review--governed-path-identity-fail).
   PR stays draft; no paid reviewer, PR merge, deployment or T3–T5 grant.
   No manual session indexing today.
 

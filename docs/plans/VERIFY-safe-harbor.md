@@ -1,14 +1,14 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1 MERGED; T2 INTEGRATED; SHADOW METADATA CORRECTED; V2 ACCEPTANCE PENDING.** Runtime `cdebf64` unchanged. CI `38325044536` at `080b5f8` failed one shadow static-scan test; coordinate correction + R2b regen with 17-case isolated proof recorded. Fresh CI pending on successor tip. PR #389 stays draft. Final-tip external-review disposition and Ryan acceptance remain pending. The accepted event-only success exclusion remains; V3–V6 are NOT RUN.
+> **Arc: Safe Harbor. T1 MERGED; T2 FINAL CI GREEN BUT FRESH REVIEW FAIL; CORRECTION GRANTED.** At `45a1f00`, fresh static review found a stable cross-parent alias relocates governed-file lookups after preflight. Correction/evidence are authorized but not yet produced. PR #389 stays draft; external-review disposition and V2 acceptance remain pending. Event-only success exclusion remains; V3–V6 are NOT RUN.
 
 ```text
 Planning Status
-Phase:        T2 B1 delta review complete; V2 acceptance and PR gate pending
-Characters:   Reviewer
-Function:     Preserve exact-tip findings and evidence limits
-Lanes:        Copilot audited; Codex checked the blocker and records the result
-Authority:    Ryan authorized review, then bounded B1 correction/evidence exclusion
+Phase:        T2 governed-path correction authorized; reproduction/evidence next
+Characters:   Implementer, Reviewer
+Function:     Correct the scoped identity mismatch and preserve evidence limits
+Lanes:        Cursor implements; Codex coordinates and reviews the delta
+Authority:    Ryan authorized bounded correction; acceptance/merge remain pending
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -646,6 +646,16 @@ Cursor final root-Python fingerprint before/after: `5a4f0a021c7920b508ee429a9915
 
 **Next boundary:** fresh GitHub CI on the correction successor; final-tip external-review disposition, Ryan V2 acceptance/PR merge, deployment and T3–T5 remain ungranted. Event-only completion-success exclusion remains accepted; proof belongs to T4.
 
+### Fresh final T2 review — governed-path identity FAIL
+
+**Reviewed subject/base:** `45a1f002239644371d4813f3f010ece72c6fb865` / `8a7cdab16420893fe26a2648d1d03f2b84d8589d`. Fresh in-session Codex reviewer, followed by the coordinating Codex's source check; **FAIL, narrow (95% confidence in the static conclusion)**. This is neither BugBot nor Copilot evidence. No tests, production probes or edits by the reviewer; previous B1/F1/F2 remain closed in their stated scopes.
+
+**CI at this subject:** [run `38329309684`](https://github.com/alanmz-crypto/convmem/actions/runs/38329309684), pytest **2996 passed, 121 skipped, 8 warnings, 252 subtests**, 1897.91s; pylint and secret-scan pass. CodeQL run `38329308857` also passes. Captured pytest log `/tmp/safe-harbor-t2-ci-38329309684-pytest.log`. Green CI did not exercise the counterexample below.
+
+**Finding / source at subject:** original config `/data/chroma-link -> /data/store/chroma` puts existing governed files in `/data`. CLI preview reads that configuration (`convmem.py:1298,1366,1374`) and preflight enumerates its governed paths (`chroma_write_store.py:940-942`; `convmem.py:2062`). `AdmittedWriteOperation.config()` substitutes the canonical Chroma directory (`chroma_write_store.py:728-740`), passed to approval/recovery (`convmem.py:1395-1397,1342-1343`). `propose_decision.py:27-36` and `conflict_events.py:21-30` derive queue/approved/event/lock roots from that directory's parent; `hash_schema_gate.py:30,34` uses the same root. Consequently the actual call reads `/data/store` instead of the admitted original `/data`; approval/recovery can report the proposal absent (`propose_decision.py:623-627,235-244`). Recheck resolves original config again (`chroma_write_store.py:811-816`) and preview comparison only checks canonical Chroma equality (`convmem.py:2096-2104`). No retarget or configuration edit is needed. Existing alias fixtures share one parent (`tests/test_safe_harbor_t2.py:1039-1052`) and miss it.
+
+**Limit:** this is a static path-identity finding, not a claim of a dynamically reproduced outside-root mutation. Runtime reproduction and actual downstream effects are required by [the owner-authorized correction](EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized). Correction evidence is **NOT RUN** at this record. No final-tip PASS, outage exception, V2 acceptance or phase advancement is inferred.
+
 ### Historical prepared T2 draft PR text — now opened as #389
 
 Title: **Bind risky writes to their backup target and reject future snapshots**
@@ -740,6 +750,8 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 - [Active routing](../inter-model/LATEST.md)
 
 ## TL;DR
+
+[Arc Safe Harbor] Current: CI passed at `45a1f00`, but fresh Codex static review FAILs its cross-parent alias/governed-file identity mismatch (95%). Ryan granted correction and isolated evidence; not yet implemented. The evidence chain below remains historical, not final acceptance.
 
 [Arc Safe Harbor] T1 evidence, exact-tip outage acceptance and merge remain recorded. T2 implementation is delivered: runtime `44e29f6`, tests `2459acd`.
 - Captured uid-1000 runs: 236 distinct cases passed at `44e29f6`; 64 affected cases re-passed at `2459acd`; all pytest exits 0, and the lint gate passed both times.
