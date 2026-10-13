@@ -3,13 +3,14 @@
 Proves the *wiring*, not just presence (the position-vs-presence trap): with the
 Restic gate forced to fail and ``CONVMEM_SKIP_RESTIC_GATE`` unset, both
 ``add --upsert`` and ``record --approve-last`` must abort AND leave the Chroma
-corpus unchanged. Guards against silently removing (or defanging) the inline
-``ensure_chroma_snapshot_for_live_write()`` calls in ``convmem.py`` -- a
+corpus unchanged. Guards against silently removing (or defanging) the bound
+operation preflight around these writes in ``convmem.py`` -- a
 reference-only check would pass even if the call were wrapped in a swallowed
 exception or a dead branch.
 
-The write-lane guard is patched to a no-op so the *only* possible blocker is the
-Restic gate; the test asserts the gate workflow actually ran
+The write-lane guard is patched to a no-op and the backup context is bound to
+this test's own Chroma target, so the *only* possible blocker is the snapshot
+workflow; the test asserts the gate workflow actually ran
 (``restic_gate.ensure_current_snapshot`` was invoked) and that no unit was written.
 """
 
@@ -26,6 +27,7 @@ from typer.testing import CliRunner
 import convmem
 from backup_workflows import STATUS_FAIL, WorkflowOutcome
 from chroma_store import ChromaStore
+from restic_snapshot import BackupProfile
 
 
 def _fake_embed(text, model=None, host=None):
@@ -62,6 +64,8 @@ class WriteGateEffectTests(unittest.TestCase):
                 },
             )
         store.close()
+        self.config_file = self.tmp / "config.toml"
+        self.config_file.write_text("", encoding="utf-8")
         self.baseline = self._count()
         self.assertEqual(self.baseline, 3)
         # The gate must not be short-circuited by the test escape hatch.
@@ -87,10 +91,20 @@ class WriteGateEffectTests(unittest.TestCase):
                 exit_code=1,
             )
         )
+        bound_ctx = MagicMock(
+            profile=BackupProfile.COMPLETE_DATA_V2,
+            data_root_derived=False,
+            data_root=self.tmp.resolve(),
+            chroma_dir=Path(self.chroma_dir).resolve(),
+        )
         with patch("config.load_config", return_value=self.cfg), patch(
+            "config.CONFIG_PATH", self.config_file
+        ), patch.dict(
+            os.environ, {"CONVMEM_RESTIC_ENV": str(self.tmp / "restic.env")}
+        ), patch(
             "runtime_guard.require_write_consent", return_value=None
         ), patch(
-            "restic_gate.BackupContext.from_env_file", return_value=MagicMock()
+            "restic_gate.BackupContext.from_env_file", return_value=bound_ctx
         ), patch(
             "restic_gate.ensure_current_snapshot", gate_call
         ), patch(

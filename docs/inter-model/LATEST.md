@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-11
+**Updated:** 2026-10-13
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,16 +9,18 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — BRANCH UPDATE INTEGRATED; FRESH CI AND FINAL-TIP REVIEW
-  NEXT (2026-10-11):** The two-test correction passed its focused Copilot delta
-  review at `2977c45` (85%). Cursor merged main `5550def` into the T1 branch
-  at `c624e2f`, regenerated the derived inventory and recorded isolated
-  integration evidence. Codex coordinates fresh CI and the final-tip review.
-  Bounded grant:
-  [execution section 8 grant](../plans/EXECUTION-safe-harbor.md#bounded-branch-update--owner-authorized).
-  Read the [Safe Harbor STATUS brief](../plans/STATUS-safe-harbor.md) for current
-  candidate, CI, review and authority state. Merge, deployment and T2–T5 remain
-  ungranted; the alternative audit is not an automatic BugBot-gate exemption.
+- **Arc Safe Harbor — governed-path correction implemented (2026-10-13 UTC):**
+  Cursor preserves original governed files for cross-parent Chroma aliases;
+  canonical client/export binding remains. Codex captured original failures
+  and passing final 98-case/lint evidence. Independent Codex delta PASS (95%)
+  at `dac925f33d4ebd7482c0536408b9be12f51d6106` closes the blocker under the
+  [bounded grant](../plans/EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized).
+  **Codex:** observe fresh final-tip CI on
+  [draft #389](https://github.com/alanmz-crypto/convmem/pull/389). See
+  [STATUS](../plans/STATUS-safe-harbor.md) and
+  [correction evidence](../plans/VERIFY-safe-harbor.md#governed-path-identity-correction--isolated-evidence).
+  PR stays draft; no paid reviewer, PR merge, deployment or T3–T5 grant.
+  No manual session indexing today.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
