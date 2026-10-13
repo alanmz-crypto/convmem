@@ -9,12 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T3 CI integration scope proposed (2026-10-13):**
-  **Next lane: Ryan — approve or narrow the bounded scope.**
-  [EXECUTION section 12](../plans/EXECUTION-safe-harbor.md#12-bounded-t3-ci-integration--proposed-not-authorized)
-  is the decision packet; [STATUS](../plans/STATUS-safe-harbor.md) links the pinned
-  Kiro implementation review, evidence and limits. No integration implementation,
-  new test/CI run, reviewer invocation, T4/T5, PR/merge or live action is granted.
+- **Arc Safe Harbor — T3 CI integration granted (2026-10-13):**
+  **Next lane: Cursor authors; Codex supervises isolated evidence.**
+  [EXECUTION section 12](../plans/EXECUTION-safe-harbor.md#12-bounded-t3-ci-integration--owner-authorized)
+  is the approved scope; [STATUS](../plans/STATUS-safe-harbor.md) links the pinned
+  Kiro implementation review, evidence and limits. Bounded integration and isolated evidence are granted at `23041bd`;
+  hosted CI, reviewer invocation, T4/T5, PR/merge and live actions remain pending.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
