@@ -607,26 +607,40 @@ def _check_index_gate() -> DoctorCheck:
 
 
 def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
-    from incremental_retry_state import iter_wedged_incremental_states
+    from incremental_retry_state import (
+        iter_stale_incremental_transactions,
+        iter_wedged_incremental_states,
+    )
 
     rows = iter_wedged_incremental_states(cfg)
-    if not rows:
+    stale = iter_stale_incremental_transactions(cfg)
+    if not rows and not stale:
         return DoctorCheck(
             "wedged_incremental_transaction",
             True,
             "0 wedged incremental transactions",
         )
-    detail = "; ".join(
-        "source={source} transaction={transaction_id} code={error_code} "
-        "remedy=wedged incremental transaction; see doctor".format(**row)
-        for row in rows[:3]
-    )
+    parts: list[str] = []
+    for row in rows[:3]:
+        parts.append(
+            "source={source} transaction={transaction_id} code={error_code} "
+            "remedy=wedged incremental transaction; see doctor".format(**row)
+        )
     if len(rows) > 3:
-        detail += f"; +{len(rows) - 3} more"
+        parts.append(f"+{len(rows) - 3} more retry-state wedges")
+    for row in stale[:3]:
+        parts.append(
+            "source={source_path} transaction={transaction_id} phase={phase} "
+            "age={age_seconds}s remedy=stale incremental transaction; see doctor".format(
+                **row
+            )
+        )
+    if len(stale) > 3:
+        parts.append(f"+{len(stale) - 3} more stale transactions")
     return DoctorCheck(
         "wedged_incremental_transaction",
         True,
-        detail,
+        "; ".join(parts),
         status="warn",
     )
 

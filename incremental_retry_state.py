@@ -61,12 +61,19 @@ def record_incremental_retry_failure(
     return repeat
 
 
+def _incremental_state_root(cfg: dict) -> Path | None:
+    from config import incremental_jsonl_settings
+
+    settings = incremental_jsonl_settings(cfg)
+    if not settings.enabled:
+        return None
+    root = Path(settings.state_dir).expanduser()
+    return root if root.is_dir() else None
+
+
 def iter_wedged_incremental_states(cfg: dict) -> list[dict[str, Any]]:
-    state_dir = (cfg.get("index") or {}).get("incremental_jsonl", {}).get("state_dir")
-    if not state_dir:
-        return []
-    root = Path(str(state_dir)).expanduser()
-    if not root.is_dir():
+    root = _incremental_state_root(cfg)
+    if root is None:
         return []
     rows: list[dict[str, Any]] = []
     for path in sorted(root.glob("**/retry_state.json")):
@@ -75,4 +82,39 @@ def iter_wedged_incremental_states(cfg: dict) -> list[dict[str, Any]]:
             continue
         if int(payload.get("consecutive") or 0) >= 2:
             rows.append(payload)
+    return rows
+
+
+def iter_stale_incremental_transactions(
+    cfg: dict, *, max_age_seconds: int = 900
+) -> list[dict[str, Any]]:
+    """Transactions stuck in PREPARING or APPLYING longer than max_age_seconds."""
+    import time
+
+    root = _incremental_state_root(cfg)
+    if root is None:
+        return []
+    now = time.time()
+    rows: list[dict[str, Any]] = []
+    for path in sorted(root.glob("**/transaction.json")):
+        payload = _read(path)
+        if not payload:
+            continue
+        phase = str(payload.get("phase") or "")
+        if phase not in {"PREPARING", "APPLYING"}:
+            continue
+        try:
+            age = now - path.stat().st_mtime
+        except OSError:
+            continue
+        if age < max_age_seconds:
+            continue
+        rows.append(
+            {
+                "source_path": payload.get("source_path"),
+                "transaction_id": payload.get("transaction_id"),
+                "phase": phase,
+                "age_seconds": int(age),
+            }
+        )
     return rows

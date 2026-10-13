@@ -371,8 +371,8 @@ def test_index_file_deferral_and_override(
     assert indexed["calls"] == 2
 
 
-def test_export_tamper_still_refused(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_export_rollback_drops_unexpected_source_lines_and_restores_preimage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     isolated, env = isolated_env(tmp_path)
     apply_env(monkeypatch, env)
@@ -411,3 +411,6 @@ def test_export_tamper_still_refused(
     }
     coord._restore_export(preimage)
     assert export_path.read_bytes() == good
+    err = capsys.readouterr().err
+    assert "rollback dropped 1 unexpected export lines" in err
+    assert str(source) in err

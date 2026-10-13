@@ -99,6 +99,16 @@ class CircuitBreakerState:
                 return True
         return False
 
+    def has_wedged_quarantine_for_path(self, path: str) -> bool:
+        for entry in self._data.get("refusals", {}).values():
+            if not entry.get("quarantined") or entry.get("path") != path:
+                continue
+            if str(entry.get("outcome") or "").startswith(
+                "wedged_incremental_transaction_"
+            ):
+                return True
+        return False
+
     def should_skip_refusal_quarantine(
         self, path: str, live_prefix_digest: str | None
     ) -> bool:

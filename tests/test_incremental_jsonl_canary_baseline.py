@@ -14,8 +14,8 @@ BASELINE_HASHES = {
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
     # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4) and
     # issue #268 D1 scratch diagnosis harness on the merged branch.
-    # Refreshed for issue #286 stage-2 wedge fixes corrective 1 (index lock, watcher intake).
-    "watch.py": "9b0b22c2f83245d1b36e6a6ecb5806539c7130df767dfb5e223939e35409d0c1",
+    # Refreshed for issue #286 stage-2 wedge fixes corrective 2 (lazy wedge digest).
+    "watch.py": "e141ede80c3fbd8a479d96dca609ec9443d1bdf0a984b504992b6db2e55791d8",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
@@ -29,7 +29,8 @@ BASELINE_HASHES = {
     # structured admitted-run logging; refreshed for corrective 5 checkpointless
     # recovery bootstrap_required refusal.
     # Refreshed for issue #286 stage-2 wedge fixes corrective 1 (rollback/export/retry).
-    "incremental_jsonl.py": "1103eb8a162fb054d20bc678cfd13cabbb4a80e24c2b12f486ffaba563d7bc03",
+    # Refreshed for issue #286 stage-2 wedge fixes corrective 2 (retry + export rollback).
+    "incremental_jsonl.py": "41fcaf847b30ca9174c01017b92973ed92160f1a84e4dfa65022e8e7c4cd2185",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

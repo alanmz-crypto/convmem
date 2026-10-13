@@ -1681,19 +1681,6 @@ class IncrementalJsonlCoordinator:
         os.chmod(handle.name, 0o600)
         return handle
 
-    def _allowed_source_export_bytes(self, preimage: dict) -> set[bytes]:
-        allowed = {
-            base64.b64decode(row["payload_base64"], validate=True)
-            for row in (preimage.get("source_lines") or [])
-        }
-        with self._session() as session:
-            for row in session.store.snapshot_source_rows(UNITS, self.path_key):
-                payload = self._export_unit_payload(row)
-                allowed.add(
-                    (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
-                )
-        return allowed
-
     def _restore_export(self, preimage: dict) -> None:
         if preimage.get("version") != 1:
             raise IncrementalJsonlError("recovery_unproven", "export preimage invalid")
@@ -1701,7 +1688,22 @@ class IncrementalJsonlCoordinator:
         source_lines = list(preimage.get("source_lines") or [])
         from purge_locks import export_flock
 
-        allowed_source_bytes = self._allowed_source_export_bytes(preimage)
+        preimage_bytes = {
+            base64.b64decode(row["payload_base64"], validate=True)
+            for row in source_lines
+        }
+        with self._session() as session:
+            store_bytes = {
+                (
+                    json.dumps(
+                        self._export_unit_payload(row),
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                ).encode("utf-8")
+                for row in session.store.snapshot_source_rows(UNITS, self.path_key)
+            }
+        dropped_unexpected = 0
         with export_flock(self.cfg):
             temp = self._export_temp(export_path)
             temp_path = Path(temp.name)
@@ -1717,8 +1719,8 @@ class IncrementalJsonlCoordinator:
                     if current is not None:
                         for raw in current:
                             if self._export_line_owned_by_source(raw, self.path_key):
-                                if raw not in allowed_source_bytes:
-                                    continue
+                                if raw not in preimage_bytes and raw not in store_bytes:
+                                    dropped_unexpected += 1
                                 continue
                             while (
                                 source_index < len(source_lines)
@@ -1758,6 +1760,12 @@ class IncrementalJsonlCoordinator:
                 if not temp.closed:
                     temp.close()
                 temp_path.unlink(missing_ok=True)
+        if dropped_unexpected:
+            print(
+                f"[incremental] rollback dropped {dropped_unexpected} unexpected export "
+                f"lines for {self.path_key}",
+                file=sys.stderr,
+            )
 
     def _reconcile_export(self) -> None:
         from purge_locks import export_flock
@@ -2639,35 +2647,68 @@ def maybe_route_incremental(
         file_hash=file_hash,
         processed=processed,
     )
-    result = coordinator.run()
+    try:
+        result = coordinator.run()
+    except IncrementalJsonlError as exc:
+        if exc.code == "live_route_refused" or isolated:
+            raise
+        _raise_incremental_retry_refusal(
+            coordinator,
+            path_key=path_key,
+            failure_code=exc.code,
+            re_raise=exc,
+        )
     if result.outcome in {"committed", "unchanged"}:
         from incremental_retry_state import clear_incremental_retry_state
 
         clear_incremental_retry_state(getattr(coordinator, "paths", None))
     elif not isolated:
-        digest = getattr(coordinator, "last_evidence", {}).get("prefix_sha256", "")
         failure_code = getattr(coordinator, "last_failure_code", "") or result.outcome
-        transaction_id = ""
-        tx_path = getattr(coordinator, "paths", {}).get("transaction")
-        if tx_path is not None and Path(tx_path).is_file():
-            tx_payload = _read_json(Path(tx_path))
-            if isinstance(tx_payload, dict):
-                transaction_id = str(tx_payload.get("transaction_id") or "")
-        from incremental_retry_state import record_incremental_retry_failure
-
-        if record_incremental_retry_failure(
-            getattr(coordinator, "paths", None),
+        _raise_incremental_retry_refusal(
+            coordinator,
             path_key=path_key,
-            prefix_digest=str(digest or ""),
-            error_code=failure_code,
-            transaction_id=transaction_id,
-        ):
-            outcome = wedged_incremental_outcome(failure_code)
-            head = f"{outcome}:{digest}" if digest else outcome
-            diagnostic = wedged_incremental_diagnostic(transaction_id, path_key)
-            raise IncrementalJsonlError("live_route_refused", f"{head}\n{diagnostic}")
-        raise IncrementalJsonlError(
-            "live_route_refused",
-            f"{result.outcome}:{digest}" if digest else result.outcome,
+            failure_code=failure_code,
+            fallback_outcome=result.outcome,
         )
     return result.ingest_tuple()
+
+
+def _raise_incremental_retry_refusal(
+    coordinator: IncrementalJsonlCoordinator,
+    *,
+    path_key: str,
+    failure_code: str,
+    re_raise: IncrementalJsonlError | None = None,
+    fallback_outcome: str | None = None,
+) -> None:
+    digest = str(
+        (getattr(coordinator, "last_evidence", {}) or {}).get("prefix_sha256") or ""
+    )
+    transaction_id = ""
+    tx_path = getattr(coordinator, "paths", {}).get("transaction")
+    if tx_path is not None and Path(tx_path).is_file():
+        tx_payload = _read_json(Path(tx_path))
+        if isinstance(tx_payload, dict):
+            transaction_id = str(tx_payload.get("transaction_id") or "")
+            if not digest:
+                digest = str(tx_payload.get("prefix_sha256") or "")
+    from incremental_retry_state import record_incremental_retry_failure
+
+    if record_incremental_retry_failure(
+        getattr(coordinator, "paths", None),
+        path_key=path_key,
+        prefix_digest=digest,
+        error_code=failure_code,
+        transaction_id=transaction_id,
+    ):
+        outcome = wedged_incremental_outcome(failure_code)
+        head = f"{outcome}:{digest}" if digest else outcome
+        diagnostic = wedged_incremental_diagnostic(transaction_id, path_key)
+        raise IncrementalJsonlError("live_route_refused", f"{head}\n{diagnostic}")
+    if re_raise is not None:
+        raise re_raise
+    refused = fallback_outcome or failure_code
+    raise IncrementalJsonlError(
+        "live_route_refused",
+        f"{refused}:{digest}" if digest else refused,
+    )

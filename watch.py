@@ -673,11 +673,14 @@ def _process_ready_path(
             if verbose:
                 print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
             return
-        prefix_digest = source_prefix_digest_for_watch(path)
-        if breaker.should_skip_refusal_quarantine(path, prefix_digest):
-            if verbose:
-                print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
-            return
+        if breaker.has_refusal_quarantine_for_path(path):
+            prefix_digest = None
+            if breaker.has_wedged_quarantine_for_path(path):
+                prefix_digest = source_prefix_digest_for_watch(path)
+            if breaker.should_skip_refusal_quarantine(path, prefix_digest):
+                if verbose:
+                    print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
+                return
         flush_path(path, verbose=verbose, use_subprocess=True)
         breaker.record_success(path)
     except Exception as e:  # pylint: disable=broad-exception-caught
