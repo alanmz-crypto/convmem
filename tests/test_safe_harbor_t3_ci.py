@@ -3,11 +3,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -17,6 +20,53 @@ _WORKER_PATH = _REPO / "tests" / "_safe_harbor_t3_worker.py"
 _BOOTSTRAP_PATH = _REPO / "tests" / "_safe_harbor_bootstrap.py"
 _BACKEND_PATH = _REPO / "tests" / "_safe_harbor_t3_backend_worker.py"
 _CHECKER = _REPO / "scripts" / "check_ci_critical_invariants.py"
+_INERT_HTTP_ENDPOINT = "http://127.0.0.1:9"
+
+
+def _isolated_node_path(tmp: Path) -> str:
+    node_dir = tmp / "node-bin"
+    node_dir.mkdir(parents=True, exist_ok=True)
+    node = node_dir / "node"
+    node.write_text("#!/bin/sh\n", encoding="utf-8")
+    node.chmod(0o755)
+    return str(node.resolve())
+
+
+def _assert_parsed_full_ci_config(
+    config_path: Path,
+    fixture_root: Path,
+    fixture_meta: dict[str, str],
+) -> None:
+    parsed = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    root = fixture_root.resolve()
+    assert parsed["sources"]["paths"] == []
+    assert parsed["refine"]["enabled"] is False
+    assert parsed["refine"]["jobs"] == []
+    assert parsed["models"]["ollama_host"] == _INERT_HTTP_ENDPOINT
+    assert parsed["models"]["deepseek_base_url"] == _INERT_HTTP_ENDPOINT
+    path_values = [
+        parsed["sources"]["inventory"],
+        parsed["index"]["chroma_dir"],
+        parsed["index"]["processed_log"],
+        parsed["index"]["units_export"],
+        parsed["index"]["incremental_jsonl"]["state_dir"],
+        parsed["shadow_ledger"]["ledger_path"],
+        parsed["shadow_ledger"]["activation_manifest_path"],
+        parsed["shadow_ledger"]["health_path"],
+    ]
+    for raw in path_values:
+        resolved = Path(str(raw)).expanduser().resolve()
+        if resolved != root and root not in resolved.parents:
+            raise AssertionError(f"path escapes fixture root: {resolved}")
+    node_executable = fixture_meta.get("node_executable")
+    node_bridge = fixture_meta.get("node_bridge")
+    node_sha = fixture_meta.get("node_executable_sha256")
+    assert node_executable and node_bridge and node_sha
+    selected = Path(node_executable).resolve()
+    bridge = Path(node_bridge)
+    assert bridge.is_symlink()
+    assert bridge.resolve() == selected
+    assert node_sha == hashlib.sha256(selected.read_bytes()).hexdigest()
 
 
 def _load_module(path: Path, name: str):
@@ -92,7 +142,13 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
         self.bootstrap = _load_bootstrap()
         self.backend = _load_backend()
 
-    def _start_cooperative_parent(self, tmp_path: Path, *, uid: int | None = None) -> None:
+    def _start_cooperative_parent(
+        self,
+        tmp_path: Path,
+        *,
+        uid: int | None = None,
+        full_ci: bool = False,
+    ) -> None:
         bound = uid if uid is not None else os.getuid()
         patchers = [
             mock.patch.object(self.worker, "_load_bootstrap_module", return_value=self.bootstrap),
@@ -104,6 +160,21 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             self.addCleanup(patcher.stop)
             patcher.start()
         _patch_os_uid(self, bound)
+        if full_ci:
+            self._patch_full_ci_node(tmp_path)
+
+    def _patch_full_ci_node(self, tmp_path: Path) -> Path:
+        """Non-/usr/bin node identity for full_ci profile (no ambient PATH inheritance)."""
+        node_dir = tmp_path / "isolated-node-bin"
+        node_dir.mkdir(parents=True, exist_ok=True)
+        node = node_dir / "node"
+        node.write_text("#!/bin/sh\n", encoding="utf-8")
+        node.chmod(0o755)
+        resolved = node.resolve()
+        patcher = mock.patch.object(self.backend, "_select_node_executable", return_value=resolved)
+        self.addCleanup(patcher.stop)
+        patcher.start()
+        return resolved
 
     def test_run_ci_builds_unfiltered_full_suite_child(self) -> None:
         calls: list[list[str]] = []
@@ -116,41 +187,68 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
-            self._start_cooperative_parent(tmp, uid=1500)
-            with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
-                with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=fake_run):
-                    with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
-                        rc = self.worker.run_ci()
-        self.assertEqual(rc, 0)
-        self.assertEqual(len(calls), 1)
-        child_env = run_kwargs["env"]
-        assert isinstance(child_env, dict)
-        fixture_root = Path(child_env["SAFE_HARBOR_T3_FIXTURE_ROOT"])
-        # pylint: disable=duplicate-code
-        expected_cmd = [
-            sys.executable,
-            "-s",
-            "-B",
-            "-m",
-            "pytest",
-            "-q",
-            "-p",
-            "no:cacheprovider",
-            f"--basetemp={fixture_root / 'pytest-tmp' / 'full-suite'}",
-        ]
-        # pylint: enable=duplicate-code
-        self.assertEqual(calls[0], expected_cmd)
-        self.assertEqual(run_kwargs["cwd"], _REPO)
-        self.assertIs(run_kwargs["capture_output"], True)
-        self.assertIs(run_kwargs["text"], True)
-        self.assertIs(run_kwargs["check"], False)
-        self.assertEqual(run_kwargs["timeout"], self.worker.FULL_SUITE_TIMEOUT_SECONDS)
-        self.assertEqual(child_env["SAFE_HARBOR_T3_EXPECTED_UID"], "1500")
-        self.assertNotIn("DEEPSEEK_API_KEY", child_env)
+            self._start_cooperative_parent(tmp, uid=1500, full_ci=True)
+            with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}, clear=False):
+                with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
+                    with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=fake_run):
+                        with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
+                            rc = self.worker.run_ci()
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(calls), 1)
+            child_env = run_kwargs["env"]
+            assert isinstance(child_env, dict)
+            fixture_root = Path(child_env["SAFE_HARBOR_T3_FIXTURE_ROOT"])
+            # pylint: disable=duplicate-code
+            expected_cmd = [
+                sys.executable,
+                "-s",
+                "-B",
+                "-m",
+                "pytest",
+                "-q",
+                "-p",
+                "no:cacheprovider",
+                f"--basetemp={fixture_root / 'pytest-tmp' / 'full-suite'}",
+            ]
+            # pylint: enable=duplicate-code
+            self.assertEqual(calls[0], expected_cmd)
+            self.assertEqual(run_kwargs["cwd"], _REPO)
+            self.assertIs(run_kwargs["capture_output"], True)
+            self.assertIs(run_kwargs["text"], True)
+            self.assertIs(run_kwargs["check"], False)
+            self.assertEqual(run_kwargs["timeout"], self.worker.FULL_SUITE_TIMEOUT_SECONDS)
+            self.assertEqual(child_env["SAFE_HARBOR_T3_EXPECTED_UID"], "1500")
+            self.assertNotIn("DEEPSEEK_API_KEY", child_env)
+            self.assertEqual(child_env.get("GITHUB_ACTIONS"), "true")
+            config_path = Path(child_env["CONVMEM_CONFIG"])
+            bridge = fixture_root / "toolbin" / "node"
+            selected = bridge.resolve()
+            _assert_parsed_full_ci_config(
+                config_path,
+                fixture_root,
+                {
+                    "node_executable": str(selected),
+                    "node_bridge": str(bridge),
+                    "node_executable_sha256": hashlib.sha256(selected.read_bytes()).hexdigest(),
+                },
+            )
+            path_entries = child_env["PATH"].split(":")
+            self.assertEqual(path_entries[0], str(fixture_root / "toolbin"))
+            self.assertEqual(
+                shutil.which("node", path=child_env["PATH"]),
+                str(fixture_root / "toolbin" / "node"),
+            )
+            tldr = Path(child_env["CONVMEM_ROOT"]) / "docs" / "CONVMEM-TLDR.md"
+            self.assertTrue(tldr.is_file())
+            self.assertIn("convmem doctor", tldr.read_text(encoding="utf-8"))
+            self.assertEqual(
+                tldr.read_text(encoding="utf-8"),
+                (_REPO / "docs" / "CONVMEM-TLDR.md").read_text(encoding="utf-8"),
+            )
 
     def test_run_ci_propagates_nonzero_child(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td))
+            self._start_cooperative_parent(Path(td), full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
                     self.bootstrap.subprocess,
@@ -166,7 +264,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             raise subprocess.TimeoutExpired(cmd=["pytest"], timeout=1, output="timed")
 
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td))
+            self._start_cooperative_parent(Path(td), full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=raise_timeout):
                     with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
@@ -174,7 +272,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
 
     def test_run_ci_refuses_none_returncode(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td))
+            self._start_cooperative_parent(Path(td), full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
                     self.bootstrap.subprocess,
@@ -186,7 +284,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
 
     def test_run_ci_refuses_source_hash_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td))
+            self._start_cooperative_parent(Path(td), full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
                     self.bootstrap.subprocess,
@@ -206,7 +304,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             return subprocess.CompletedProcess(cmd, 0, "", "")
 
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td), uid=1500)
+            self._start_cooperative_parent(Path(td), uid=1500, full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=fake_run):
                     with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
@@ -222,7 +320,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
 
     def test_run_ci_collect_propagates_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td))
+            self._start_cooperative_parent(Path(td), full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
                     self.bootstrap.subprocess,
@@ -234,7 +332,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
 
     def test_run_ci_collect_refuses_hash_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td))
+            self._start_cooperative_parent(Path(td), full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(self.worker, "_source_hashes", side_effect=[{"a": "1"}, {"a": "2"}]):
                     with mock.patch.object(
@@ -249,7 +347,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             raise subprocess.TimeoutExpired(cmd=["checker"], timeout=1, output="x")
 
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td))
+            self._start_cooperative_parent(Path(td), full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(self.bootstrap.subprocess, "run", side_effect=raise_timeout):
                     with mock.patch.object(self.worker, "_source_hashes", return_value={"a": "b"}):
@@ -257,7 +355,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
 
     def test_run_ci_collect_refuses_none_returncode(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            self._start_cooperative_parent(Path(td))
+            self._start_cooperative_parent(Path(td), full_ci=True)
             with mock.patch.object(self.worker, "_load_backend_worker_module", return_value=self.backend):
                 with mock.patch.object(
                     self.bootstrap.subprocess,
@@ -307,6 +405,21 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
     def test_builder_drops_ambient_before_child(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             _real_builder_env(self, Path(td), expected_uid=1500)
+
+    def test_builder_refuses_credentials_even_when_github_actions_true(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            fixture = tmp / "fixture"
+            evidence = tmp / "evidence"
+            _patch_os_uid(self, 1500)
+            merged = {**os.environ, **_ambient_canaries(), "GITHUB_ACTIONS": "true"}
+            env_patch = mock.patch.dict(os.environ, merged, clear=True)
+            self.addCleanup(env_patch.stop)
+            env_patch.start()
+            env = self.backend.build_allowlisted_env(fixture, evidence, expected_uid=1500)
+            self.assertNotIn("DEEPSEEK_API_KEY", env)
+            self.assertNotIn("OPENAI_API_KEY", env)
+            self.assertNotIn("GITHUB_ACTIONS", env)
 
     def test_builder_without_expected_uid_refuses_before_writes(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -362,6 +475,202 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
                 lint={},
             )
             self.assertEqual(rc, 124)
+
+
+class SafeHarborT3CiFixtureTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.backend = _load_backend()
+
+    def test_full_ci_profile_refuses_without_node(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            fixture = tmp / "fixture"
+            evidence = tmp / "evidence"
+            _patch_os_uid(self, 1500)
+            with mock.patch("shutil.which", return_value=None):
+                with self.assertRaises(RuntimeError):
+                    self.backend.build_allowlisted_env(
+                        fixture,
+                        evidence,
+                        expected_uid=1500,
+                        profile="full_ci",
+                    )
+
+    def test_full_ci_node_bridge_is_outside_usr_bin(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            fixture = tmp / "fixture"
+            evidence = tmp / "evidence"
+            _patch_os_uid(self, 1500)
+            node_dir = tmp / "isolated-node-bin"
+            node_dir.mkdir(parents=True, exist_ok=True)
+            node = node_dir / "node"
+            node.write_text("#!/bin/sh\n", encoding="utf-8")
+            node.chmod(0o755)
+            resolved = node.resolve()
+            self.assertNotEqual(resolved.parts[1:3], ("usr", "bin"))
+            meta: dict[str, str] = {}
+            with (
+                mock.patch("shutil.which", return_value=str(resolved)),
+                mock.patch.dict(os.environ, {"PATH": "/safe-harbor-path-canary"}),
+            ):
+                env = self.backend.build_allowlisted_env(
+                    fixture,
+                    evidence,
+                    expected_uid=1500,
+                    profile="full_ci",
+                    fixture_meta=meta,
+                )
+            bridge = fixture / "toolbin" / "node"
+            self.assertTrue(bridge.is_symlink())
+            self.assertEqual(bridge.resolve(), resolved)
+            self.assertEqual(meta.get("node_executable"), str(resolved))
+            self.assertEqual(
+                meta.get("node_executable_sha256"),
+                hashlib.sha256(resolved.read_bytes()).hexdigest(),
+            )
+            path_entries = env["PATH"].split(":")
+            self.assertEqual(path_entries[0], str(fixture / "toolbin"))
+            self.assertEqual(shutil.which("node", path=env["PATH"]), str(bridge))
+            self.assertEqual(
+                path_entries,
+                [str(fixture / "toolbin"), str(Path(sys.executable).absolute().parent),
+                 "/usr/bin", "/bin"],
+            )
+            self.assertNotIn("/safe-harbor-path-canary", path_entries)
+            _assert_parsed_full_ci_config(Path(env["CONVMEM_CONFIG"]), fixture, meta)
+
+    def test_full_ci_github_actions_only_when_parent_literal_true(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            _patch_os_uid(self, 1500)
+            node_dir = tmp / "node-bin"
+            node_dir.mkdir()
+            node = node_dir / "node"
+            node.write_text("#!/bin/sh\n", encoding="utf-8")
+            node.chmod(0o755)
+            cases = (
+                ({}, None),
+                ({"GITHUB_ACTIONS": "false"}, None),
+                ({"GITHUB_ACTIONS": "true"}, "true"),
+            )
+            for idx, (parent_env, expected) in enumerate(cases):
+                case_fixture = tmp / f"fixture-{idx}"
+                case_evidence = tmp / f"evidence-{idx}"
+                with mock.patch.dict(os.environ, parent_env, clear=True):
+                    with mock.patch("shutil.which", return_value=str(node.resolve())):
+                        env = self.backend.build_allowlisted_env(
+                            case_fixture,
+                            case_evidence,
+                            expected_uid=1500,
+                            profile="full_ci",
+                        )
+                self.assertEqual(env.get("GITHUB_ACTIONS"), expected)
+
+    def test_full_ci_refuses_unknown_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            _patch_os_uid(self, 1500)
+            with self.assertRaises(RuntimeError):
+                self.backend.build_allowlisted_env(
+                    tmp / "fixture",
+                    tmp / "evidence",
+                    expected_uid=1500,
+                    profile="scratch",
+                )
+
+    def test_staging_refuses_symlink_convmem_root_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            escape = tmp / "escape-root"
+            docs_dir = escape / "docs"
+            docs_dir.mkdir(parents=True)
+            sentinel = docs_dir / "CONVMEM-TLDR.md"
+            sentinel.write_text("SENTINEL_UNCHANGED", encoding="utf-8")
+            fixture = tmp / "fixture"
+            fixture.mkdir()
+            (fixture / "convmem-root").symlink_to(escape)
+            with self.assertRaises(RuntimeError):
+                self.backend._stage_convmem_readonly_docs(fixture)
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "SENTINEL_UNCHANGED")
+            self.assertEqual(list(docs_dir.iterdir()), [sentinel])
+
+    def test_full_ci_config_leaf_symlink_refuses_before_write(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            fixture = tmp / "fixture"
+            fixture.mkdir()
+            config_dir = fixture / "config"
+            config_dir.mkdir()
+            outside = tmp / "outside-config.toml"
+            outside.write_bytes(b"OUTSIDE_BYTES")
+            (config_dir / "config.toml").symlink_to(outside)
+            with self.assertRaises(RuntimeError):
+                self.backend._write_full_ci_fixture_config(fixture)
+            self.assertEqual(outside.read_bytes(), b"OUTSIDE_BYTES")
+
+    def test_require_isolated_refuses_inherited_credential_with_github_actions(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            fixture = tmp / "fixture"
+            evidence = tmp / "evidence"
+            _patch_os_uid(self, 1500)
+            with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}, clear=True):
+                with mock.patch("shutil.which", return_value=_isolated_node_path(tmp)):
+                    env = self.backend.build_allowlisted_env(
+                        fixture,
+                        evidence,
+                        expected_uid=1500,
+                        profile="full_ci",
+                    )
+            polluted = {**env, "DEEPSEEK_API_KEY": "leak"}
+            with mock.patch.dict(os.environ, polluted, clear=True):
+                with mock.patch.object(self.backend.os, "getuid", return_value=1500):
+                    with mock.patch.object(self.backend.os, "geteuid", return_value=1500):
+                        with self.assertRaises(RuntimeError):
+                            self.backend._require_isolated()
+
+    def test_require_isolated_refuses_escaped_config_path(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            fixture = tmp / "fixture"
+            evidence = tmp / "evidence"
+            outside = tmp / "outside.toml"
+            outside.write_text("[index]\n", encoding="utf-8")
+            _patch_os_uid(self, 1500)
+            with mock.patch("shutil.which", return_value=_isolated_node_path(tmp)):
+                env = self.backend.build_allowlisted_env(
+                    fixture,
+                    evidence,
+                    expected_uid=1500,
+                    profile="full_ci",
+                )
+            escaped = {**env, "CONVMEM_CONFIG": str(outside)}
+            with mock.patch.dict(os.environ, escaped, clear=True):
+                with mock.patch.object(self.backend.os, "getuid", return_value=1500):
+                    with mock.patch.object(self.backend.os, "geteuid", return_value=1500):
+                        with self.assertRaises(RuntimeError):
+                            self.backend._require_isolated()
+
+    def test_require_isolated_refuses_mismatched_uid_with_github_actions(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            fixture = tmp / "fixture"
+            evidence = tmp / "evidence"
+            _patch_os_uid(self, 1500)
+            with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}, clear=True):
+                with mock.patch("shutil.which", return_value=_isolated_node_path(tmp)):
+                    env = self.backend.build_allowlisted_env(
+                        fixture,
+                        evidence,
+                        expected_uid=1500,
+                        profile="full_ci",
+                    )
+            with mock.patch.dict(os.environ, env, clear=True):
+                with mock.patch.object(self.backend.os, "getuid", return_value=1501):
+                    with mock.patch.object(self.backend.os, "geteuid", return_value=1501):
+                        with self.assertRaises(RuntimeError):
+                            self.backend._require_isolated()
 
 
 if __name__ == "__main__":

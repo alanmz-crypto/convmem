@@ -47,6 +47,7 @@ HASH_TRACKED_PATHS = (
     ROOT / "tests" / "ci-critical-invariants.txt",
     ROOT / "docs" / "plans" / "R2B-V2-WRITER-COVERAGE-INVENTORY.json",
     ROOT / "docs" / "plans" / "SHADOW-WRITER-COVERAGE-INVENTORY.json",
+    ROOT / "docs" / "CONVMEM-TLDR.md",
     ROOT / "tests" / "test_safe_harbor_t3_backend_proof.py",
     ROOT / "tests" / "test_r2b_v2_implementation_revision.py",
     ROOT / "tests" / "test_chroma_write_guard.py",
@@ -101,7 +102,11 @@ def _temp_parent_dir(backend: ModuleType) -> str:
     return backend.mkdtemp_parent_dir()
 
 
-def _parent_uid_and_env(backend: ModuleType) -> tuple[int, Path, Path, dict[str, str]]:
+def _parent_uid_and_env(
+    backend: ModuleType,
+    *,
+    env_profile: str = "proof",
+) -> tuple[int, Path, Path, dict[str, str], dict[str, str]]:
     bootstrap = _load_bootstrap_module()
     bootstrap.require_parent_bootstrap_flags()
     parent_uid = bootstrap.parent_launcher_uid()
@@ -109,8 +114,15 @@ def _parent_uid_and_env(backend: ModuleType) -> tuple[int, Path, Path, dict[str,
     fixture_root = evidence_root / "fixture"
     fixture_root.mkdir(parents=True)
     (fixture_root / "pytest-tmp").mkdir()
-    env = backend.build_allowlisted_env(fixture_root, evidence_root, expected_uid=parent_uid)
-    return parent_uid, fixture_root, evidence_root, env
+    fixture_meta: dict[str, str] = {}
+    env = backend.build_allowlisted_env(
+        fixture_root,
+        evidence_root,
+        expected_uid=parent_uid,
+        profile=env_profile,
+        fixture_meta=fixture_meta,
+    )
+    return parent_uid, fixture_root, evidence_root, env, fixture_meta
 
 
 def _source_hashes() -> dict[str, str]:
@@ -310,7 +322,7 @@ def _finalize_summary(
 
 def run_suite(mode: str) -> int:
     backend = _load_backend_worker_module()
-    parent_uid, fixture_root, evidence_root, env = _parent_uid_and_env(backend)
+    parent_uid, fixture_root, evidence_root, env, _fixture_meta = _parent_uid_and_env(backend)
     child_env = dict(env)
     if mode == "suite":
         modules = [
@@ -350,7 +362,7 @@ def run_suite(mode: str) -> int:
 def run_integration() -> int:
     """Codex-supervised local selection (not a full default workstation suite)."""
     backend = _load_backend_worker_module()
-    parent_uid, fixture_root, evidence_root, env = _parent_uid_and_env(backend)
+    parent_uid, fixture_root, evidence_root, env, _fixture_meta = _parent_uid_and_env(backend)
     source_hashes_before = _source_hashes()
     results: list[dict[str, object]] = []
     for module in INTEGRATION_MODULES:
@@ -377,7 +389,7 @@ def run_integration() -> int:
 
 def run_ci_collect() -> int:
     backend = _load_backend_worker_module()
-    parent_uid, _, evidence_root, env = _parent_uid_and_env(backend)
+    parent_uid, _, evidence_root, env, fixture_meta = _parent_uid_and_env(backend, env_profile="full_ci")
     source_hashes_before = _source_hashes()
     checker_cmd = [*PYTHON_CHILD, str(CHECKER_SCRIPT)]
     summary: dict[str, object] = {
@@ -385,6 +397,7 @@ def run_ci_collect() -> int:
         "uid": parent_uid,
         "interpreter": sys.executable,
         "source_hashes_before": source_hashes_before,
+        "selected_tools": dict(fixture_meta),
     }
     started = time.monotonic()
     bootstrap = _load_bootstrap_module()
@@ -419,7 +432,10 @@ def run_ci_collect() -> int:
 
 def run_ci() -> int:
     backend = _load_backend_worker_module()
-    parent_uid, fixture_root, evidence_root, env = _parent_uid_and_env(backend)
+    parent_uid, fixture_root, evidence_root, env, fixture_meta = _parent_uid_and_env(
+        backend,
+        env_profile="full_ci",
+    )
     source_hashes_before = _source_hashes()
     pytest_cmd = [
         *PYTHON_CHILD,
@@ -435,6 +451,7 @@ def run_ci() -> int:
         "uid": parent_uid,
         "interpreter": sys.executable,
         "source_hashes_before": source_hashes_before,
+        "selected_tools": dict(fixture_meta),
     }
     started = time.monotonic()
     bootstrap = _load_bootstrap_module()

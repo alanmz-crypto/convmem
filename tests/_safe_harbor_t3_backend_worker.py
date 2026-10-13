@@ -15,13 +15,34 @@ import importlib.util
 from importlib import metadata as importlib_metadata
 import json
 import os
+import shutil
 import sqlite3
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+FixtureEnvProfile = Literal["proof", "full_ci"]
+_INERT_HTTP_ENDPOINT = "http://127.0.0.1:9"
+_FIXTURE_WRITE_ROOTS = (
+    "config",
+    "convmem-data",
+    "convmem-root",
+    "toolbin",
+)
+_BUILDER_SUBDIRS = (
+    "home",
+    "xdg-config",
+    "xdg-data",
+    "xdg-cache",
+    "xdg-runtime",
+    "convmem-root",
+    "restic-cache",
+    "config",
+    "tmp",
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKER = Path(__file__).resolve()
@@ -48,9 +69,215 @@ def _load_bootstrap_module() -> object:
 # pylint: enable=duplicate-code
 
 
-def _launcher_path() -> str:
-    bin_dir = Path(sys.executable).absolute().parent
+def _refuse_symlink_components(path: Path, *, stop_at: Path | None = None) -> None:
+    """Reject any symlink on the path or its parents (before mkdir/write)."""
+    current = path.expanduser()
+    stop = stop_at.resolve(strict=False) if stop_at is not None else None
+    while True:
+        if stop is not None and current == stop:
+            break
+        if current.is_symlink():
+            raise RuntimeError(f"refusing symlink path component {current}")
+        if current == current.parent:
+            break
+        current = current.parent
+
+
+def _assert_confined_under_fixture(path: Path, fixture_root: Path) -> Path:
+    root = fixture_root.resolve(strict=False)
+    resolved = path.expanduser().resolve(strict=False)
+    if resolved != root and root not in resolved.parents:
+        raise RuntimeError(f"refusing path outside fixture root {resolved} (root={root})")
+    return resolved
+
+
+def _prepare_fixture_subpath(fixture_root: Path, *parts: str) -> Path:
+    target = fixture_root.joinpath(*parts)
+    _refuse_symlink_components(target, stop_at=fixture_root)
+    _assert_confined_under_fixture(target, fixture_root)
+    return target
+
+
+def _require_fixture_env_profile(profile: str) -> FixtureEnvProfile:
+    if profile in ("proof", "full_ci"):
+        return profile
+    raise RuntimeError(f"refusing unknown fixture env profile {profile!r}")
+
+
+def _select_node_executable() -> Path:
+    """Resolve Node before any child env scrub; refuse ambiguous PATH inheritance."""
+    node = shutil.which("node")
+    if node is None:
+        raise RuntimeError("refusing full CI fixture setup without a resolvable node executable")
+    resolved = Path(node).expanduser().resolve(strict=False)
+    if not resolved.is_file():
+        raise RuntimeError(f"refusing non-file node executable {resolved}")
+    if not os.access(resolved, os.X_OK):
+        raise RuntimeError(f"refusing non-executable node {resolved}")
+    if resolved.is_symlink():
+        resolved = resolved.resolve(strict=False)
+        if not os.access(resolved, os.X_OK):
+            raise RuntimeError(f"refusing non-executable node target {resolved}")
+    return resolved
+
+
+def _bridge_node_into_toolbin(fixture_root: Path, node: Path) -> Path:
+    toolbin = _prepare_fixture_subpath(fixture_root, "toolbin")
+    toolbin.mkdir(parents=True, exist_ok=True)
+    bridge = toolbin / "node"
+    if bridge.exists() or bridge.is_symlink():
+        if not bridge.is_symlink():
+            raise RuntimeError(f"refusing non-symlink toolbin node at {bridge}")
+        existing = bridge.resolve(strict=False)
+        if existing != node:
+            raise RuntimeError(f"refusing toolbin node identity drift {existing} != {node}")
+        return bridge
+    bridge.symlink_to(node)
+    if bridge.resolve(strict=False) != node:
+        raise RuntimeError(f"refusing toolbin node bridge outside selected executable {node}")
+    return bridge
+
+
+def _launcher_path(fixture_root: Path, *, include_toolbin: bool) -> str:
+    bin_dir = str(Path(sys.executable).absolute().parent)
+    if include_toolbin:
+        toolbin = fixture_root / "toolbin"
+        parts: list[str] = []
+        if toolbin.is_dir():
+            parts.append(str(toolbin))
+        parts.append(bin_dir)
+        parts.extend(["/usr/bin", "/bin"])
+        return ":".join(parts)
     return f"{bin_dir}:/usr/bin:/bin"
+
+
+def _stage_convmem_readonly_docs(fixture_root: Path) -> Path:
+    """Stage tracked TLDR under CONVMEM_ROOT without pointing at the live checkout."""
+    source = ROOT / "docs" / "CONVMEM-TLDR.md"
+    _refuse_symlink_components(source, stop_at=ROOT)
+    if not source.is_file():
+        raise FileNotFoundError(f"missing tracked TLDR source {source}")
+    dest_dir = _prepare_fixture_subpath(fixture_root, "convmem-root", "docs")
+    dest = _prepare_fixture_subpath(fixture_root, "convmem-root", "docs", "CONVMEM-TLDR.md")
+    if dest.exists() or dest.is_symlink():
+        raise RuntimeError(f"refusing pre-existing TLDR destination {dest}")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    payload = source.read_text(encoding="utf-8")
+    if "convmem doctor" not in payload:
+        raise RuntimeError("refusing TLDR staging without expected convmem doctor marker")
+    dest.write_text(payload, encoding="utf-8")
+    _assert_confined_under_fixture(dest, fixture_root)
+    return dest
+
+
+def _write_full_ci_fixture_config(fixture_root: Path) -> Path:
+    """Complete nonsecret config with every path confined under the fixture root."""
+    for rel in _FIXTURE_WRITE_ROOTS:
+        _prepare_fixture_subpath(fixture_root, rel)
+    chroma_dir = _prepare_fixture_subpath(fixture_root, "convmem-data", "chroma")
+    incremental_state = _prepare_fixture_subpath(fixture_root, "convmem-data", "incremental-jsonl")
+    shadow_dir = _prepare_fixture_subpath(fixture_root, "convmem-data", "shadow")
+    config_dir = _prepare_fixture_subpath(fixture_root, "config")
+    processed_log = _prepare_fixture_subpath(fixture_root, "convmem-data", "processed.json")
+    inventory = _prepare_fixture_subpath(fixture_root, "convmem-data", "inventory.jsonl")
+    units_export = _prepare_fixture_subpath(fixture_root, "convmem-data", "knowledge_units.jsonl")
+    config_path = _prepare_fixture_subpath(fixture_root, "config", "config.toml")
+    shadow_ledger = _prepare_fixture_subpath(fixture_root, "convmem-data", "shadow", "ledger.jsonl")
+    shadow_activation = _prepare_fixture_subpath(fixture_root, "convmem-data", "shadow", "activation.json")
+    shadow_health = _prepare_fixture_subpath(fixture_root, "convmem-data", "shadow", "health.json")
+    for path in (chroma_dir, incremental_state, shadow_dir, config_dir):
+        path.mkdir(parents=True, exist_ok=True)
+    if not processed_log.is_file():
+        processed_log.write_text("{}\n", encoding="utf-8")
+    if not inventory.is_file():
+        inventory.write_text("", encoding="utf-8")
+    if not units_export.is_file():
+        units_export.write_text("", encoding="utf-8")
+
+    text = f"""[sources]
+paths = []
+inventory = "{inventory}"
+
+[index]
+chroma_dir = "{chroma_dir}"
+processed_log = "{processed_log}"
+units_export = "{units_export}"
+chunk_size = 60
+chunk_overlap = 10
+
+[index.incremental_jsonl]
+enabled = false
+state_dir = "{incremental_state}"
+allow_full_rebuild = false
+
+[models]
+embed_model = "nomic-embed-text"
+summarize_model = "llama3.1:8b"
+distill_model = "deepseek-v4-flash"
+ollama_host = "{_INERT_HTTP_ENDPOINT}"
+rerank_model = "BAAI/bge-reranker-v2-m3"
+deepseek_base_url = "{_INERT_HTTP_ENDPOINT}"
+
+[distill]
+min_confidence = 0.6
+
+[domains]
+allow_extra = []
+
+[query]
+top_k_candidates = 20
+top_k_results = 5
+semantic_rank_weight = 2.0
+rerank_rank_weight = 1.0
+recency_weight = 0.1
+recency_half_life_days = 30
+source_trust_weight = 1.0
+
+[watch]
+debounce_seconds = 90
+
+[refine]
+enabled = false
+batch_size = 10
+interval_seconds = 300
+jobs = []
+untagged_priority = true
+queue_max_depth = 100
+dedupe_similarity = 0.92
+min_confidence_redistill = 0.6
+
+[refine.cost]
+backfill_domain_calls_per_hour = 60
+redistill_calls_per_hour = 15
+semantic_dedupe_calls_per_hour = 20
+
+[ingest_dedup]
+semantic_similarity = 0.92
+candidate_k = 10
+max_semantic_candidates_per_unit = 3
+
+[eval]
+retrieval_p_at_1_min = 0.5
+summary_structural_min = 0.8
+synthesis_pass_min = 0.8
+canary_latency_ms_max = 15000
+
+[shadow_ledger]
+enabled = false
+ledger_path = "{shadow_ledger}"
+activation_manifest_path = "{shadow_activation}"
+health_path = "{shadow_health}"
+"""
+    config_path.write_text(text, encoding="utf-8")
+    return config_path
+
+
+def _write_proof_fixture_config(fixture_root: Path) -> Path:
+    config_path = fixture_root / "config" / "config.toml"
+    if not config_path.is_file():
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text('[index]\nchroma_dir = ""\n', encoding="utf-8")
+    return config_path
 
 
 def _mkdtemp_parent_dir() -> str:
@@ -134,8 +361,11 @@ def build_allowlisted_env(
     evidence_root: Path,
     *,
     expected_uid: int | None = None,
+    profile: str = "proof",
+    fixture_meta: dict[str, str] | None = None,
 ) -> dict[str, str]:
     """Stdlib-only clean environment for proof subprocesses."""
+    resolved_profile = _require_fixture_env_profile(profile)
     bootstrap = _load_bootstrap_module()
     if expected_uid is not None:
         bound_uid = bootstrap.require_explicit_uid_binding(expected_uid)
@@ -144,16 +374,24 @@ def build_allowlisted_env(
 
     fixture_root = fixture_root.resolve()
     evidence_root = evidence_root.resolve()
+    for sub in _BUILDER_SUBDIRS:
+        path = _prepare_fixture_subpath(fixture_root, sub)
+        path.mkdir(parents=True, exist_ok=True)
     home = fixture_root / "home"
-    home.mkdir(parents=True, exist_ok=True)
-    for sub in ("xdg-config", "xdg-data", "xdg-cache", "xdg-runtime", "convmem-root", "restic-cache", "config", "tmp"):
-        (fixture_root / sub).mkdir(parents=True, exist_ok=True)
-    config = fixture_root / "config" / "config.toml"
-    if not config.is_file():
-        config.write_text('[index]\nchroma_dir = ""\n', encoding="utf-8")
+    include_toolbin = False
+    selected_node = ""
+    if resolved_profile == "full_ci":
+        node = _select_node_executable()
+        _bridge_node_into_toolbin(fixture_root, node)
+        include_toolbin = True
+        selected_node = str(node)
+        config = _write_full_ci_fixture_config(fixture_root)
+        _stage_convmem_readonly_docs(fixture_root)
+    else:
+        config = _write_proof_fixture_config(fixture_root)
     env = {
         "HOME": str(home),
-        "PATH": _launcher_path(),
+        "PATH": _launcher_path(fixture_root, include_toolbin=include_toolbin),
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8",
         "TZ": "UTC",
@@ -178,6 +416,16 @@ def build_allowlisted_env(
         "ANONYMIZED_TELEMETRY": "FALSE",
         "OTEL_SDK_DISABLED": "true",
     }
+    if resolved_profile == "full_ci" and os.environ.get("GITHUB_ACTIONS") == "true":
+        env["GITHUB_ACTIONS"] = "true"
+    if fixture_meta is not None:
+        fixture_meta.clear()
+        fixture_meta["profile"] = resolved_profile
+        if selected_node:
+            node_path = Path(selected_node)
+            fixture_meta["node_executable"] = selected_node
+            fixture_meta["node_executable_sha256"] = hashlib.sha256(node_path.read_bytes()).hexdigest()
+            fixture_meta["node_bridge"] = str(fixture_root / "toolbin" / "node")
     return bootstrap.with_expected_uid(env, bound_uid)
 
 

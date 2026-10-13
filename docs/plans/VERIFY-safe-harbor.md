@@ -1,14 +1,14 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED; T3 IMPLEMENTATION EVIDENCE RETURNED.** The [current T3 checkpoint](#t3-implementation-checkpoint--isolated-v3v4-evidence) pins source, observed results and limitations. Kiro independently PASSed the prerequisite proof only. V3/V4 implementation review and acceptance remain pending; V5/V6 are NOT RUN. Historical reviews and failed attempts retain their scopes.
+> **Arc: Safe Harbor. T1/T2 ACCEPTED AND MERGED; T3 DRAFT PR #391, PYTEST CORRECTION RETURNED.** [Current correction evidence](#t3-bounded-pytest-compatibility-correction): 296 passes/one existing skip, 159 integration passes and full lint gate PASS with runtime/baseline fixed. Fresh hosted CI and successor review/acceptance remain pending. Historical Kiro implementation/integration verdicts stay pinned; V5/V6 remain NOT RUN.
 
 ```text
 Planning Status
-Phase:        Isolated T3 implementation evidence returned
+Phase:        Bounded T3 pytest correction evidence returned
 Characters:   Implementer, Test-First Reviewer
 Function:     Record observed evidence, failures and remaining limits
-Lanes:        Cursor/Codex contributing authors; independent review pending
-Authority:    EXECUTION section 11; no T4/T5, PR/merge or live grant
+Lanes:        Cursor/Codex contributing authors; successor review pending
+Authority:    EXECUTION section 14; draft PR/fresh CI only, no merge/live/T4/T5
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -1139,3 +1139,48 @@ f03184fe030b89c0a778c2181111274591fed7b3cd035cfffe2f152a00b07ac0  tests/test_saf
 ```
 
 **Return:** correction and local evidence are complete; pushing the successor on the open draft PR requests fresh hosted CI. Kiro's PASS remains pinned to `ea2d316`; no successor independent verdict or owner acceptance is inferred. The initial hosted 21 failures/8 errors remain a separate uncorrected scope. No baseline edit, runtime fix, paid reviewer, merge, deployment or T4/T5 work occurred.
+
+### T3 bounded pytest compatibility correction
+
+**[Arc Safe Harbor] 2026-10-13.** Ryan authorized EXECUTION section 14: complete isolated fixtures/tool paths, preserve the existing live-test exclusion, reconcile reviewed inventory/hash expectations, and retain runtime, lint baseline and safety assertions. Starting head `e7b56011e6c8a1bb9b5c7c2953ce23843eb6c02b`, base `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`, existing draft [PR #391](https://github.com/alanmz-crypto/convmem/pull/391). No branch integration or runtime edit.
+
+**Pre-correction hosted evidence:** [run `38462958469`](https://github.com/alanmz-crypto/convmem/actions/runs/38462958469), head `e7b5601`, tested merge `93a90064a5bda62015f127ec841e85632376cbf7`. Pylint regression gate, critical collection, secret scan and security checks passed. Full pytest returned **21 failed, 3043 passed, 124 skipped, 8 errors; 262 subtests passed**, child exit 1, 2313.74s and stable measured source hashes. All 29 failing/error case IDs match the first hosted run. Retained artifact [11849671647](https://github.com/alanmz-crypto/convmem/actions/runs/38462958469/artifacts/11849671647), digest `c9bba10af9697ab35f4c76c68d67e478864c0a88815279e1c1c1f7718e980fe9`.
+
+**Correction:** six test/harness files, with no production-source, workflow, dependency, manifest, lint-baseline or generated writer-inventory change.
+
+- The existing allowlist builder has a distinct full-CI fixture profile: complete scratch configuration, empty source list, inert provider endpoints, disabled refine jobs, fixture-contained durable paths and copied tracked TLDR content. Proof defaults remain separate. Destination symlink components/leaf files are refused before publication. This is a cooperative test fixture, not a hostile-process filesystem boundary.
+- Node is selected explicitly before the environment is cleared. One fixture tool bridge leads PATH; its resolved path and SHA256 are recorded. Ambient PATH is not copied. Missing/non-executable Node refuses setup rather than skipping its consumers.
+- Only the literal incoming `GITHUB_ACTIONS=true` is retained for the full-CI profile. Repository search found its sole pre-existing Python consumer in `test_eval_golden.py`: the existing live Ollama/corpus exclusion. No new skip, deselection or full-suite filtering was added; the proof/uid/path/credential controls do not use that flag as an exemption.
+- The doctor aggregation fixture now has its own temporary Chroma path and mocks `observe.repair_empty_ledger_documents`, whose dry-run path still opens a write store. The actual doctor check runs and its `dry_run=True, verbose=False` call is asserted; additional tests prove helper exceptions still produce a failed doctor check. Speculative blanket success mocks were rejected.
+- The strict read inventory explicitly classifies six reviewed `mode=ro` SQLite sites: `sqlite_schema_digest`, `live_backend_identity`, `build_release_evidence_for_collection`, `evaluate_release_evidence`, `release_quarantine`, `_refresh_snapshot`. Counts and inventory equality remain enforced.
+- The one shared `watch.py` expected hash becomes `c207555751b543dc8a6a48c9ff278ddf429cf665cfc0e9a71462e23e4e0b29fd`; all three canary checks consume it. Reviewed T3 source changes only the restored-under-containment reporting at that boundary. Other canary hashes stay fixed.
+
+**Authoring and inspection:** Cursor authored in disposable `/tmp/safe-harbor-t3-pytest-author-o372_eec/workspace`, with temporary HOME, no home MCP definitions, and project rules denying Shell/MCP/WebFetch. A harmless `printf` canary was explicitly refused by the CLI permissions configuration. Trace inspection found no Shell/MCP calls in the four authoring passes; no prompt-only execution restriction was relied upon. Codex inspected/copied the six allowed deltas and corrected the TOML text API use and later PATH assertion. Initial unexecuted drafts with live endpoints, fabricated CI context, overly broad doctor mocks, unsafe fixture staging and expired temporary-file reads were rejected. No production probe or session indexing was used to establish this.
+
+**Retained development evidence:** first affected selection `/tmp/safe-harbor-t3-pytest-correction-mcxdi0ce` passed 296 with 1 existing skip, exit 0. The separate integration run `/tmp/safe-harbor-t3-suite-urrp0k2c` exposed one new fixture-test error: rejecting the legitimate fixed PATH suffix when nested inside the proof environment. Its other child suites passed; launcher-contract tests had 1 failed/27 passed. The corrected test supplies an unwanted synthetic PATH and independently asserts the exact permitted entries; it does not weaken runtime isolation. The first full lint scan `/tmp/safe-harbor-t3-full-lint-1x2agkyn` returned raw 30/gate 1 for `consider-using-in` and `too-many-public-methods`; duplicate count remained 71. Cursor changed the comparison and separated fixture tests from launcher tests without dropping or duplicating any of the 28 cases. These failures are retained, not described as passing runs.
+
+**Final affected selection — PASS:** `/tmp/safe-harbor-t3-pytest-correction-fe73_6ej`: **296 passed, 1 skipped, 7 subtests passed**, pytest/supervisor exit 0, 97.20s, all **580 measured inputs stable**. The only skip is the existing live golden test; the scratch supervisor explicitly models the incoming GitHub flag for this selection. Python **3.13.12**, uid/euid **1000**, `/home/lauer/miniforge3/bin/python`; Node **v26.11.1** at `/usr/bin/node`, SHA256 `63887e4f3f18b4809c06a253352c5c8c3bbe9df6c6ae902b831db7ab80f0401c`. The 15 selected modules cover every earlier failure group plus launcher/CI/identity contracts. This is not a full local pytest run. Reproduction supervisor: `/tmp/safe-harbor-t3-pytest-author-o372_eec/affected_evidence.py`, entered with `-I -S -B`; it creates the clean environment before project import/collection and invokes explicit modules with `-s -B -m pytest -p no:cacheprovider` and fixture-bound basetemp.
+
+**Final integration — PASS:** `/tmp/safe-harbor-t3-suite-xy9pg_7e`, launcher exit 0: **159 passed** (14 T3 core, 33 matrix, 24 guard, 21 T1, 9 real backend proof, 22 CI contract, 28 launcher/fixture contract, 8 implementation identity). All child exits 0; focused pylint raw/gate **0/0**; all **23** measured inputs stable, including the newly staged TLDR source. Command: `/home/lauer/miniforge3/bin/python -I -S -B tests/_safe_harbor_t3_worker.py run-integration`. Same pinned Python/backend environment as prior T3 proof. This and the 296-case selection overlap; their counts must not be summed as distinct cases.
+
+**Final full lint — PASS:** `/tmp/safe-harbor-t3-full-lint-8spuck1t`, **574 tracked Python files**, raw pylint **30**, unchanged regression gate **0**, **457 findings / 239 fingerprints**, duplicate count **71** (baseline unchanged), stable measured hashes, 222.75s. The inspected stdlib supervisor `/tmp/safe-harbor-t3-lint-author-4LvQUX/full_lint.py` uses `-I -S -B`, uid/euid 1000 and the clean proof allowlist before any project imports; it invokes the real gate against base `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`. Raw 30 is retained pre-existing lint debt, not a clean raw-pylint claim.
+
+**Binding:** tested source is this correction over `e7b5601`; final file fingerprints below bind the evidence before commit/push. Summary SHA256s:
+
+- affected: `2f430019a32b622fa2bd1b6327941be7f54a99724f55b7b4870173649c33a2e7`.
+- integration: `22cd7f44566a60965e4de8c934b4ad654139b0432ac7b618bf0b0a1ea1992983`.
+- full lint: `e505821a04c4d68fe583f302060ec941eff7386c4f33f04e649f2d40ec355a7f`.
+- affected supervisor: `91c6818824847a8f458b3aacdab49eaf491d46e0a791f2cd4cdc782a88c66404`; static comparison: `11330b7ca3c426af7be6ac56f2d9a453540bb80bce97e771ceb5cd40d3facc08`.
+
+```text
+bf8ee1c29578351f75aef2e0795622dd8aff5fb99256c08662d6d9931e2275ff  tests/_safe_harbor_t3_backend_worker.py
+605dd5a6464eb23270ca36d0e161f60205995bd85973b57bbf1d9c414a62c7e3  tests/_safe_harbor_t3_worker.py
+b5b3d2cf9a7833c6e1edb204c5ae30c6fdd88e6ec9b6801cf268c736e8ce2fec  tests/test_safe_harbor_t3_ci.py
+4fd50054c61f5686cd0c5040281d8aa1e63fdddc5319d10b583099a27731c3d5  tests/test_doctor.py
+a8b2f58dc039e9166773736541fc8142cb9add2ff40cfb6b1e849bfb4224b028  tests/test_file_generation_read_path_inventory.py
+eb855e5dc9b6e72c30fe7c611cba852e7c8cb4f654815100b6b24a5d2c4d2d56  tests/test_incremental_jsonl_canary_baseline.py
+```
+
+**Static scope:** all 17 compared protected files are byte-identical to `e7b5601`, including runtime, independent proof/matrix tests, workflow, dependencies, critical manifest, both generated writer inventories and lint baseline. The backend worker's 28 existing evidence functions are AST-identical; only `_launcher_path` and `build_allowlisted_env` change among pre-existing functions. The full-suite child remains unfiltered. Codex contributed to authoring/evidence and supplies no independent-review verdict.
+
+**Remaining gates:** the final pushed candidate needs fresh hosted full pytest/pylint/security; local Python 3.13 results do not establish Python 3.12 hosted success. Kiro's historical PASS remains pinned to `ea2d316` (integration) and `a54357c`/`802d74d` (implementation). No paid review, owner acceptance, merge, deployment or T4/T5 was performed or inferred. Process-interruption evidence remains distinct from hardware power-loss proof.

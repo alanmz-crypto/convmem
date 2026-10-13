@@ -14,7 +14,10 @@ BASELINE_HASHES = {
     # docs/inter-model/CLAUDE-2026-09-24-chroma-upsert-containment-handoff.md
     # Refreshed for issue #286 terminal path refusal quarantine (§13 c3/c4) and
     # issue #268 D1 scratch diagnosis harness on the merged branch.
-    "watch.py": "58ea1bccebe49b03a8023b4185614558dc7c0201c4837b21478e751a0c8227e9",
+    # Refreshed for approved T3 runtime802d74d reporting: recover_chroma_after_abrupt_exit
+    # segment_restored message now states restored-under-containment / writes quarantined
+    # until validated owner release (reviewed base458b9f6..e7b56011).
+    "watch.py": "c207555751b543dc8a6a48c9ff278ddf429cf665cfc0e9a71462e23e4e0b29fd",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
