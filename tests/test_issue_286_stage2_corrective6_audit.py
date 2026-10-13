@@ -36,7 +36,10 @@ def test_add_embeds_before_index_lock(tmp_path, monkeypatch):
         depths.append(("embed", index_write_lock_depth()))
         return [0.1] * 8
 
+    import config
+
     monkeypatch.setattr(convmem, "_guard_write", lambda: None)
+    monkeypatch.setattr(config, "load_config", lambda *a, **k: cfg)
     monkeypatch.setattr(cs, "production_chroma_write_session", session)
     monkeypatch.setattr(llm, "ollama_embed", embed)
     result = CliRunner().invoke(
@@ -81,10 +84,9 @@ def test_refine_tombstone_waits_for_index_lock(tmp_path, monkeypatch):
 
     def contender():
         try:
-            with index_write_flock(cfg):
-                refine._tombstone_semantic_duplicate(
-                    store, cfg, tombstone_id="a", canonical_id="b", verbose=False
-                )
+            refine._tombstone_semantic_duplicate(
+                store, cfg, tombstone_id="a", canonical_id="b", verbose=False
+            )
         except BaseException as exc:
             errors.append(exc)
         finally:

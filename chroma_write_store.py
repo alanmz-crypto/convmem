@@ -132,9 +132,22 @@ def _held_writer_lease() -> _HeldWriterLease | None:
 
 
 def production_write_session_depth() -> int:
-    """Nested shared writer lease depth for lock-order enforcement."""
+    """Nested shared writer lease depth (admission / attestation gate)."""
     held = _held_writer_lease()
     return int(held.depth) if held is not None else 0
+
+
+def production_chroma_store_session_depth() -> int:
+    """Opened production Chroma store sessions on this thread (lock-order enforcement)."""
+    return int(getattr(_writer_tls, "chroma_store_depth", 0) or 0)
+
+
+def _enter_chroma_store_session() -> None:
+    _writer_tls.chroma_store_depth = production_chroma_store_session_depth() + 1
+
+
+def _exit_chroma_store_session() -> None:
+    _writer_tls.chroma_store_depth = max(0, production_chroma_store_session_depth() - 1)
 
 
 def require_writer_attestation() -> WriterAttestation:
@@ -1014,18 +1027,24 @@ def _session_config(path: Path) -> dict[str, Any]:
 
 
 class _IndexWriteGuardedChromaStore:
-    """Production store wrapper: Chroma mutations require the index write lock."""
+    """Production store wrapper: mutations require the index write lock (deny by default)."""
 
-    _MUTATORS = frozenset(
+    _READS = frozenset(
         {
-            "add_summary",
-            "add_unit",
-            "update_unit_metadata",
-            "update_unit",
-            "delete_units_for_source",
-            "tombstone_units_for_source",
-            "delete_summaries_for_source",
-            "restore_source_rows",
+            "close",
+            "query_summaries",
+            "count_summaries",
+            "summaries_metadata",
+            "query_units",
+            "count_units",
+            "units_metadata",
+            "get_units_with_embeddings",
+            "get_unit",
+            "count_for_source_path",
+            "ids_for_source",
+            "preview_supersede_for_source",
+            "snapshot_source_rows",
+            "non_source_inventory_digest",
         }
     )
 
@@ -1033,15 +1052,26 @@ class _IndexWriteGuardedChromaStore:
         self._inner = inner
 
     def __getattr__(self, name: str) -> Any:
-        if name in self._MUTATORS:
-            from purge_locks import require_index_write_lock_held
+        inner_attr = getattr(self._inner, name)
+        if not callable(inner_attr):
+            return inner_attr
+        if name in self._READS:
+            return inner_attr
+        from purge_locks import require_index_write_lock_held
 
-            def _guarded(*args: Any, **kwargs: Any) -> Any:
+        if name == "_collection":
+
+            def _collection(name_arg: str, *args: Any, **kwargs: Any) -> Any:
                 require_index_write_lock_held()
-                return getattr(self._inner, name)(*args, **kwargs)
+                return inner_attr(name_arg, *args, **kwargs)
 
-            return _guarded
-        return getattr(self._inner, name)
+            return _collection
+
+        def _guarded(*args: Any, **kwargs: Any) -> Any:
+            require_index_write_lock_held()
+            return inner_attr(*args, **kwargs)
+
+        return _guarded
 
     def close(self) -> None:
         self._inner.close()
@@ -1087,11 +1117,13 @@ def production_chroma_write_session(
             use_strict_validator=True,
         )
         guarded = _IndexWriteGuardedChromaStore(store)
+        _enter_chroma_store_session()
         try:
             yield ProductionWriteSession(
                 store=guarded, live_cfg=live_cfg, decision=decision
             )
         finally:
+            _exit_chroma_store_session()
             store.close()
 
 
@@ -1124,6 +1156,7 @@ def open_production_write_store(
         if closed["done"]:
             return
         closed["done"] = True
+        _exit_chroma_store_session()
         lease_cm.__exit__(None, None, None)
 
     try:
@@ -1146,6 +1179,7 @@ def open_production_write_store(
             use_strict_validator=True,
             on_close=_release,
         )
+        _enter_chroma_store_session()
         return ProductionWriteSession(
             store=_IndexWriteGuardedChromaStore(store),
             live_cfg=live_cfg,

@@ -87,11 +87,9 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
-        # Line pin refreshed 2026-09-23: unchanged ChromaStore ctor call site,
-        # shifted by the Arc Poison Pill --clear-quarantine CLI flags added
-        # above it in convmem.py's watch() command. Refreshed 2026-10-11:
-        # same site, shifted by the issue #268 D1 env-gated index bootstrap.
-        "governed_mutation_sinks": ("convmem.py:721",),
+        # Line pin refreshed 2026-10-13: monitor dry-run direct ChromaStore ctor
+        # (read-only; shadow allowlist). Shifts with convmem.py monitor command.
+        "governed_mutation_sinks": ("convmem.py:757",),
     },
     {
         "route_id": "cg2_file_generation_pointer",

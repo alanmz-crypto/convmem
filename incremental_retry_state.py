@@ -24,9 +24,38 @@ def _read(path: Path) -> dict[str, Any] | None:
         return None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError:
+        return None
+    except json.JSONDecodeError:
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _read_or_raise_unavailable(path: Path) -> dict[str, Any] | None:
+    import incremental_jsonl as inc
+
+    if not path.is_file():
+        return None
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise inc.IncrementalJsonlError(
+            "retry_state_unavailable",
+            "incremental retry state could not be read or written",
+        ) from exc
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise inc.IncrementalJsonlError(
+            "retry_state_unavailable",
+            "incremental retry state could not be read or written",
+        ) from exc
+    if not isinstance(payload, dict):
+        raise inc.IncrementalJsonlError(
+            "retry_state_unavailable",
+            "incremental retry state could not be read or written",
+        )
+    return payload
 
 
 def _write(path: Path, payload: dict[str, Any]) -> None:
@@ -38,6 +67,35 @@ def clear_incremental_retry_state(paths: dict | None) -> None:
     path = _state_path(paths)
     if path is not None:
         path.unlink(missing_ok=True)
+
+
+def clear_incremental_retry_states_for_source(cfg: dict, canonical_path: str) -> int:
+    """Remove retry-state holds for one source path (issue #286 Q2(d) release)."""
+    root = _incremental_state_root(cfg)
+    if root is None:
+        return 0
+    resolved = str(Path(canonical_path).expanduser().resolve())
+    cleared = 0
+    for path in sorted(root.glob("**/retry_state.json")):
+        payload = _read(path)
+        if not payload:
+            continue
+        stored = str(payload.get("source_path") or "")
+        if stored == resolved or stored == canonical_path:
+            path.unlink(missing_ok=True)
+            cleared += 1
+    return cleared
+
+
+def clear_all_incremental_retry_states(cfg: dict) -> int:
+    root = _incremental_state_root(cfg)
+    if root is None:
+        return 0
+    cleared = 0
+    for path in sorted(root.glob("**/retry_state.json")):
+        path.unlink(missing_ok=True)
+        cleared += 1
+    return cleared
 
 
 def classify_incremental_escape(exc: BaseException) -> str:
@@ -87,7 +145,7 @@ def enforce_incremental_retry_gates(
     if state_path is None:
         return
     _ensure_retry_state_available(state_path)
-    prior = _read(state_path)
+    prior = _read_or_raise_unavailable(state_path)
     if not prior:
         return
     error_code = str(prior.get("error_code") or "")

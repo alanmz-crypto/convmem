@@ -62,6 +62,43 @@ def normalize_observation(raw: dict, *, min_confidence: float = 0.0) -> dict | N
     return normalize_ledger_record(raw, min_confidence=min_confidence)
 
 
+def ledger_record_document_text(
+    record: dict, *, min_confidence: float = 0.0
+) -> str | None:
+    """Normalized document text exactly as stored by ``ingest_observation``."""
+    unit = normalize_ledger_record(record, min_confidence=min_confidence)
+    if unit is None:
+        return None
+    return ledger_unit_document(unit)
+
+
+def embed_ledger_record_for_storage(
+    record: dict,
+    *,
+    store,
+    embed_model: str,
+    ollama_host: str,
+    min_confidence: float = 0.0,
+    by_ledger_id: dict[str, dict] | None = None,
+    upsert: bool = False,
+) -> list[float] | None:
+    """Embed the stored document text; return None when the row is unchanged."""
+    unit = normalize_ledger_record(record, min_confidence=min_confidence)
+    if unit is None:
+        return None
+    doc = ledger_unit_document(unit)
+    lid = (unit.get("ledger_id") or "").strip()
+    if upsert and lid:
+        if by_ledger_id is None:
+            by_ledger_id, _ = build_ledger_index(store)
+        existing = by_ledger_id.get(lid)
+        if existing and _ledger_unchanged_in_index(existing, unit, store):
+            return None
+    from llm import ollama_embed
+
+    return ollama_embed(doc, model=embed_model, host=ollama_host)
+
+
 def _ledger_unchanged_in_index(existing: dict, unit: dict, store) -> bool:
     """True when Chroma already has this ledger row with the same durable text."""
     existing_unit = store.get_unit(existing["id"])
@@ -237,66 +274,73 @@ def repair_empty_ledger_documents(
     from chroma_write_store import open_production_write_store
     from ledger import invalidate_ledger_index_cache
     from ledger_recent import load_approved_decision_by_id
+    from purge_locks import index_write_flock
 
-    _pw = open_production_write_store(
-        entrypoint="observe.repair_empty_ledger_documents"
-    )
-    store = _pw.store
-    cfg = _pw.live_cfg
-    models = cfg["models"]
-    by_ledger_id, _ = build_ledger_index(store)
-    stats = {"scanned": 0, "empty": 0, "repaired": 0, "skipped": 0, "missing_source": 0}
+    lock_cfg = cfg if cfg.get("index") else None
+    if lock_cfg is None:
+        from config import load_config
 
-    try:
-        for lid, meta in by_ledger_id.items():
-            kind = (meta.get("ledger_kind") or "").strip()
-            if kind not in ("decision", "verification"):
-                continue
-            stats["scanned"] += 1
-            row = store.get_unit(meta["id"])
-            if row is None or (row.get("document") or "").strip():
-                continue
-            stats["empty"] += 1
-            rec = load_approved_decision_by_id(cfg, lid)
-            if rec is None:
-                stats["missing_source"] += 1
-                if verbose:
-                    print(f"  [miss] no approved row for {lid}")
-                continue
-            if dry_run:
-                stats["repaired"] += 1
-                if verbose:
-                    print(f"  [dry-run] would repair {lid}")
-                continue
-            # Document repair is not a semantic replace; mark protocol-safe.
-            repair_rec = {
-                **rec,
-                "_governed_protocol": True,
-                "proposal_id": (
-                    rec.get("proposal_id")
-                    or meta.get("proposal_id")
-                    or f"repair:{lid}"
-                ),
-            }
-            unit = ingest_observation(
-                repair_rec,
-                store=store,
-                embed_model=models["embed_model"],
-                ollama_host=models["ollama_host"],
-                upsert=True,
-                by_ledger_id=by_ledger_id,
-            )
-            if unit is None:
-                stats["missing_source"] += 1
-            elif unit.pop("_skipped", False):
-                stats["skipped"] += 1
-            elif unit.pop("_upserted", False) or unit:
-                stats["repaired"] += 1
-                if verbose:
-                    print(f"  [repair] {lid}")
-            if limit and stats["repaired"] >= limit:
-                break
-    finally:
-        store.close()
-    invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
-    return stats
+        lock_cfg = load_config()
+    with index_write_flock(lock_cfg):
+        _pw = open_production_write_store(
+            entrypoint="observe.repair_empty_ledger_documents"
+        )
+        store = _pw.store
+        cfg = _pw.live_cfg
+        models = cfg["models"]
+        by_ledger_id, _ = build_ledger_index(store)
+        stats = {"scanned": 0, "empty": 0, "repaired": 0, "skipped": 0, "missing_source": 0}
+
+        try:
+            for lid, meta in by_ledger_id.items():
+                kind = (meta.get("ledger_kind") or "").strip()
+                if kind not in ("decision", "verification"):
+                    continue
+                stats["scanned"] += 1
+                row = store.get_unit(meta["id"])
+                if row is None or (row.get("document") or "").strip():
+                    continue
+                stats["empty"] += 1
+                rec = load_approved_decision_by_id(cfg, lid)
+                if rec is None:
+                    stats["missing_source"] += 1
+                    if verbose:
+                        print(f"  [miss] no approved row for {lid}")
+                    continue
+                if dry_run:
+                    stats["repaired"] += 1
+                    if verbose:
+                        print(f"  [dry-run] would repair {lid}")
+                    continue
+                # Document repair is not a semantic replace; mark protocol-safe.
+                repair_rec = {
+                    **rec,
+                    "_governed_protocol": True,
+                    "proposal_id": (
+                        rec.get("proposal_id")
+                        or meta.get("proposal_id")
+                        or f"repair:{lid}"
+                    ),
+                }
+                unit = ingest_observation(
+                    repair_rec,
+                    store=store,
+                    embed_model=models["embed_model"],
+                    ollama_host=models["ollama_host"],
+                    upsert=True,
+                    by_ledger_id=by_ledger_id,
+                )
+                if unit is None:
+                    stats["missing_source"] += 1
+                elif unit.pop("_skipped", False):
+                    stats["skipped"] += 1
+                elif unit.pop("_upserted", False) or unit:
+                    stats["repaired"] += 1
+                    if verbose:
+                        print(f"  [repair] {lid}")
+                if limit and stats["repaired"] >= limit:
+                    break
+        finally:
+            store.close()
+        invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
+        return stats

@@ -244,8 +244,11 @@ def _apply_retirements(
     resolved: dict[str, dict[str, str]] = {}
     if not loaded.retire:
         return counts, resolved
+    from purge_locks import index_write_flock
+
     with production_chroma_write_session(entrypoint="repository_knowledge_retire") as session:
         store = session.store
+        live_cfg = session.live_cfg
         for rec in loaded.retire:
             prior_entries = prior.get("entries") or {}
             prior_entry = prior_entries.get(rec.path) or {}
@@ -277,39 +280,40 @@ def _apply_retirements(
                     "manifest_sha256": rec.prior_manifest_sha256,
                 }
                 continue
-            col = store._collection("knowledge_units")  # pylint: disable=protected-access
-            fetched = col.get(ids=list(ids), include=["metadatas"])
-            metas = fetched.get("metadatas") or []
-            row_ids = fetched.get("ids") or []
-            candidates: set[str] = set()
-            matching_identity = 0
-            for unit_id, meta in zip(row_ids, metas):
-                row = dict(meta or {})
-                if row.get("source_type") != SOURCE_TYPE:
+            with index_write_flock(live_cfg):
+                col = store._collection("knowledge_units")  # pylint: disable=protected-access
+                fetched = col.get(ids=list(ids), include=["metadatas"])
+                metas = fetched.get("metadatas") or []
+                row_ids = fetched.get("ids") or []
+                candidates: set[str] = set()
+                matching_identity = 0
+                for unit_id, meta in zip(row_ids, metas):
+                    row = dict(meta or {})
+                    if row.get("source_type") != SOURCE_TYPE:
+                        continue
+                    if row.get("file_sha256") != rec.prior_file_sha256:
+                        continue
+                    if row.get("manifest_sha256") != rec.prior_manifest_sha256:
+                        continue
+                    matching_identity += 1
+                    if is_superseded(row):
+                        continue
+                    candidates.add(unit_id)
+                if not candidates:
+                    if matching_identity:
+                        counts["already_gone"] += 1
+                        resolved[rec.path] = {
+                            "file_sha256": rec.prior_file_sha256,
+                            "manifest_sha256": rec.prior_manifest_sha256,
+                        }
+                    else:
+                        counts["refused"] += 1
                     continue
-                if row.get("file_sha256") != rec.prior_file_sha256:
-                    continue
-                if row.get("manifest_sha256") != rec.prior_manifest_sha256:
-                    continue
-                matching_identity += 1
-                if is_superseded(row):
-                    continue
-                candidates.add(unit_id)
-            if not candidates:
-                if matching_identity:
-                    counts["already_gone"] += 1
-                    resolved[rec.path] = {
-                        "file_sha256": rec.prior_file_sha256,
-                        "manifest_sha256": rec.prior_manifest_sha256,
-                    }
-                else:
-                    counts["refused"] += 1
-                continue
-            n = store.supersede_units_for_source(
-                source_path,
-                superseded_by=f"repository-knowledge-retire:{rec.path}:{rec.prior_file_sha256}",
-                candidate_ids=candidates,
-            )
+                n = store.supersede_units_for_source(
+                    source_path,
+                    superseded_by=f"repository-knowledge-retire:{rec.path}:{rec.prior_file_sha256}",
+                    candidate_ids=candidates,
+                )
             counts["superseded"] += n
             if n:
                 resolved[rec.path] = {

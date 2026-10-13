@@ -76,9 +76,9 @@ def assert_lock_ordering_ok(*, acquiring: str) -> None:
             "lock ordering violation: cannot acquire index write lock while holding export lock"
         )
     if acquiring == "index_write":
-        from chroma_write_store import production_write_session_depth
+        from chroma_write_store import production_chroma_store_session_depth
 
-        if production_write_session_depth() > 0:
+        if production_chroma_store_session_depth() > 0:
             raise RuntimeError(
                 "lock ordering violation: cannot acquire index write lock "
                 "while holding a Chroma writer session"

@@ -15,7 +15,17 @@ from pathlib import Path
 from typing import Any, Callable
 
 from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
+from contextlib import contextmanager
+
 from chroma_write_store import open_production_write_store, production_writer_boundary
+
+
+@contextmanager
+def _index_write_lock(cfg: dict):
+    from purge_locks import index_write_flock
+
+    with index_write_flock(cfg):
+        yield
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
 from vector_similarity import cosine_similarity
@@ -195,12 +205,16 @@ def _tombstone_semantic_duplicate(
         if tombstone_identity != canonical_identity:
             raise ValueError("cross-provenance tombstone is blocked")
     meta["id"] = tombstone_id
-    write_undo_snapshot(cfg, "semantic_dedupe", [meta])
-    new_meta = dict(meta)
-    new_meta["superseded"] = True
-    new_meta["superseded_by"] = canonical_id
-    new_meta["updated_at"] = _now_iso()
-    store.update_unit_metadata(tombstone_id, new_meta)
+    with _index_write_lock(cfg):
+        canon = store.get_unit(canonical_id)
+        if not canon:
+            raise ValueError(f"canonical unit not found: {canonical_id}")
+        write_undo_snapshot(cfg, "semantic_dedupe", [meta])
+        new_meta = dict(meta)
+        new_meta["superseded"] = True
+        new_meta["superseded_by"] = canonical_id
+        new_meta["updated_at"] = _now_iso()
+        store.update_unit_metadata(tombstone_id, new_meta)
     invalidate_superseded_cache(store.chroma_dir)
     if verbose:
         print(
@@ -383,25 +397,26 @@ def job_chroma_dedupe(
         if not to_tombstone:
             stats["skipped"] += 1
             continue
-        write_undo_snapshot(cfg, "chroma_dedupe", to_tombstone)
-        for m in to_tombstone:
-            chroma_id = m["id"]
-            new_meta = dict(m)
-            new_meta["superseded"] = True
-            new_meta["superseded_by"] = canon_id
-            new_meta["updated_at"] = _now_iso()
-            try:
-                store.update_unit_metadata(chroma_id, new_meta)
-                stats["tombstoned"] += 1
-                if verbose:
-                    print(
-                        f"  [tombstone] {lid}  {m['id'][:8]} → {canon_id[:8]}",
-                        file=sys.stderr,
-                    )
-            except Exception as e:
-                stats["errors"] += 1
-                if verbose:
-                    print(f"  [error] {m['id']}: {e}", file=sys.stderr)
+        with _index_write_lock(cfg):
+            write_undo_snapshot(cfg, "chroma_dedupe", to_tombstone)
+            for m in to_tombstone:
+                chroma_id = m["id"]
+                new_meta = dict(m)
+                new_meta["superseded"] = True
+                new_meta["superseded_by"] = canon_id
+                new_meta["updated_at"] = _now_iso()
+                try:
+                    store.update_unit_metadata(chroma_id, new_meta)
+                    stats["tombstoned"] += 1
+                    if verbose:
+                        print(
+                            f"  [tombstone] {lid}  {m['id'][:8]} → {canon_id[:8]}",
+                            file=sys.stderr,
+                        )
+                except Exception as e:
+                    stats["errors"] += 1
+                    if verbose:
+                        print(f"  [error] {m['id']}: {e}", file=sys.stderr)
         if stats["tombstoned"]:
             invalidate_superseded_cache(store.chroma_dir)
         stats["processed"] += 1
@@ -468,19 +483,25 @@ def job_backfill_domain(
             continue
 
         domain = normalize_domain(raw.strip().split()[0] if raw else None)
-        write_undo_snapshot(cfg, "backfill_domain", [m])
-        new_meta = dict(m)
-        new_meta["domain"] = domain
-        new_meta["updated_at"] = _now_iso()
-        try:
-            store.update_unit_metadata(uid, new_meta)
-            stats["updated"] += 1
-            if verbose:
-                print(f"  [domain] {uid[:8]} → {domain}", file=sys.stderr)
-        except Exception as e:
-            stats["errors"] += 1
-            if verbose:
-                print(f"  [error] update {uid[:8]}: {e}", file=sys.stderr)
+        with _index_write_lock(cfg):
+            fresh = store.get_unit(uid)
+            if not fresh:
+                stats["skipped"] += 1
+                continue
+            fresh_meta = dict(fresh.get("metadata") or m)
+            write_undo_snapshot(cfg, "backfill_domain", [fresh_meta])
+            new_meta = dict(fresh_meta)
+            new_meta["domain"] = domain
+            new_meta["updated_at"] = _now_iso()
+            try:
+                store.update_unit_metadata(uid, new_meta)
+                stats["updated"] += 1
+                if verbose:
+                    print(f"  [domain] {uid[:8]} → {domain}", file=sys.stderr)
+            except Exception as e:
+                stats["errors"] += 1
+                if verbose:
+                    print(f"  [error] update {uid[:8]}: {e}", file=sys.stderr)
         stats["processed"] += 1
     return stats
 
@@ -709,15 +730,16 @@ def job_stale_source_flag(
         if path.is_file():
             stats["skipped"] += 1
             continue
-        write_undo_snapshot(cfg, "stale_source_flag", [m])
-        new_meta = dict(m)
-        new_meta["source_available"] = False
-        new_meta["updated_at"] = _now_iso()
-        try:
-            store.update_unit_metadata(m["id"], new_meta)
-            stats["updated"] += 1
-        except Exception:
-            stats["errors"] += 1
+        with _index_write_lock(cfg):
+            write_undo_snapshot(cfg, "stale_source_flag", [m])
+            new_meta = dict(m)
+            new_meta["source_available"] = False
+            new_meta["updated_at"] = _now_iso()
+            try:
+                store.update_unit_metadata(m["id"], new_meta)
+                stats["updated"] += 1
+            except Exception:
+                stats["errors"] += 1
         stats["processed"] += 1
     return stats
 
@@ -766,39 +788,36 @@ def _run_job_impl(
     if job not in _JOBS:
         raise ValueError(f"Unknown job {job!r}. Choose from: {', '.join(JOB_NAMES)}")
 
-    from purge_locks import index_write_flock
-
     cfg = load_config()
-    with index_write_flock(cfg):
-        _pw = open_production_write_store(entrypoint="refine.write")
-        store = _pw.store
-        cfg = _pw.live_cfg
-        limiter = CostLimiter(_cost_caps(cfg))
+    _pw = open_production_write_store(entrypoint="refine.write")
+    store = _pw.store
+    cfg = _pw.live_cfg
+    limiter = CostLimiter(_cost_caps(cfg))
 
-        kwargs: dict[str, Any] = {"limit": limit, "verbose": verbose}
-        if job in ("backfill_domain", "semantic_dedupe"):
-            kwargs["limiter"] = limiter
+    kwargs: dict[str, Any] = {"limit": limit, "verbose": verbose}
+    if job in ("backfill_domain", "semantic_dedupe"):
+        kwargs["limiter"] = limiter
 
+    try:
+        result = _JOBS[job](store, cfg, **kwargs)
+        result.setdefault("llm_calls", 0)
+
+        all_stats = load_stats(cfg)
+        all_stats.setdefault("jobs", {})
+        all_stats["jobs"][job] = {
+            "last_run": _now_iso(),
+            **result,
+        }
+        save_stats(cfg, all_stats)
         try:
-            result = _JOBS[job](store, cfg, **kwargs)
-            result.setdefault("llm_calls", 0)
+            from brief import refresh_brief_after_change
 
-            all_stats = load_stats(cfg)
-            all_stats.setdefault("jobs", {})
-            all_stats["jobs"][job] = {
-                "last_run": _now_iso(),
-                **result,
-            }
-            save_stats(cfg, all_stats)
-            try:
-                from brief import refresh_brief_after_change
-
-                refresh_brief_after_change(cfg)
-            except Exception:
-                pass
-            return result
-        finally:
-            store.close()
+            refresh_brief_after_change(cfg)
+        except Exception:
+            pass
+        return result
+    finally:
+        store.close()
 
 
 def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:

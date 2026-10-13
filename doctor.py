@@ -688,7 +688,8 @@ def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
     for row in rows[:3]:
         parts.append(
             "source={source_path} transaction={transaction_id} code={error_code} "
-            "remedy=wedged incremental transaction; see doctor".format(
+            "remedy=convmem watch --clear-quarantine <path> "
+            "(clears circuit breaker and retry-state hold)".format(
                 source_path=row.get("source_path", "?"),
                 transaction_id=row.get("transaction_id", "?"),
                 error_code=row.get("error_code", "?"),

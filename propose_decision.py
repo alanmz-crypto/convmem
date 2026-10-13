@@ -540,30 +540,37 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
 
     from chroma_write_store import open_production_write_store
     from observe import ingest_observation_file
+    from purge_locks import index_write_flock
 
     models = cfg.get("models")
     if not models:
         from config import load_config
 
         models = load_config()["models"]
-    _pw = open_production_write_store(entrypoint="propose_decision.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    models = cfg["models"]
-    units_export = cfg["index"].get("units_export")
-    units_export_path = Path(units_export).expanduser() if units_export else None
-    try:
-        return ingest_observation_file(
-            str(approved_path(cfg)),
-            store=store,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            upsert=True,
-            verbose=verbose,
-            units_export=units_export_path,
-        )
-    finally:
-        store.close()
+    lock_cfg = cfg if cfg.get("index") else None
+    if lock_cfg is None:
+        from config import load_config
+
+        lock_cfg = load_config()
+    with index_write_flock(lock_cfg):
+        _pw = open_production_write_store(entrypoint="propose_decision.write")
+        store = _pw.store
+        cfg = _pw.live_cfg
+        models = cfg["models"]
+        units_export = cfg["index"].get("units_export")
+        units_export_path = Path(units_export).expanduser() if units_export else None
+        try:
+            return ingest_observation_file(
+                str(approved_path(cfg)),
+                store=store,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                upsert=True,
+                verbose=verbose,
+                units_export=units_export_path,
+            )
+        finally:
+            store.close()
 
 
 def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) -> dict:
@@ -572,41 +579,48 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
     from chroma_write_store import open_production_write_store
     from ledger import invalidate_ledger_index_cache
     from observe import ingest_observation
+    from purge_locks import index_write_flock
 
     models = cfg.get("models")
     if not models:
         from config import load_config
 
         models = load_config()["models"]
-    _pw = open_production_write_store(entrypoint="propose_decision.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    models = cfg["models"]
-    units_export = cfg["index"].get("units_export")
-    units_export_path = Path(units_export).expanduser() if units_export else None
-    protocol_ledger = {**ledger, "_governed_protocol": True}
-    try:
-        unit = ingest_observation(
-            protocol_ledger,
-            store=store,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            upsert=True,
-            units_export=units_export_path,
-        )
-        stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
-        if unit is None:
-            stats["rejected"] = 1
-        elif unit.pop("_upserted", False):
-            stats["updated"] = 1
-        elif unit.pop("_skipped", False):
-            stats["skipped"] = 1
-        else:
-            stats["accepted"] = 1
-        invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
-        return stats
-    finally:
-        store.close()
+    lock_cfg = cfg if cfg.get("index") else None
+    if lock_cfg is None:
+        from config import load_config
+
+        lock_cfg = load_config()
+    with index_write_flock(lock_cfg):
+        _pw = open_production_write_store(entrypoint="propose_decision.write")
+        store = _pw.store
+        cfg = _pw.live_cfg
+        models = cfg["models"]
+        units_export = cfg["index"].get("units_export")
+        units_export_path = Path(units_export).expanduser() if units_export else None
+        protocol_ledger = {**ledger, "_governed_protocol": True}
+        try:
+            unit = ingest_observation(
+                protocol_ledger,
+                store=store,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                upsert=True,
+                units_export=units_export_path,
+            )
+            stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
+            if unit is None:
+                stats["rejected"] = 1
+            elif unit.pop("_upserted", False):
+                stats["updated"] = 1
+            elif unit.pop("_skipped", False):
+                stats["skipped"] = 1
+            else:
+                stats["accepted"] = 1
+            invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
+            return stats
+        finally:
+            store.close()
 
 
 def _approve_unlocked(

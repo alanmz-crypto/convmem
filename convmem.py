@@ -337,9 +337,12 @@ def index(
         )
         raise typer.Exit(1) from exc
     except IncrementalJsonlError as exc:
-        if exc.code == "live_route_refused":
+        if exc.code in ("live_route_refused", "retry_state_unavailable"):
             from incremental_jsonl import format_live_route_refused
 
+            if exc.code == "retry_state_unavailable":
+                print(str(exc.detail or exc.code), file=sys.stderr)
+                raise typer.Exit(LIVE_ROUTE_REFUSED_EXIT) from exc
             detail = str(exc.detail or "")
             lines = detail.splitlines()
             head = lines[0]
@@ -554,28 +557,33 @@ def verify_command(
     import json
 
     from chroma_write_store import production_chroma_write_session
+    from purge_locks import index_write_flock
     from query import render_error
     from verify import verify_unit
 
-    with production_chroma_write_session(entrypoint="convmem.verify") as session:
-        store = session.store
-        cfg = session.live_cfg
-        models = cfg["models"]
-        units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
+    from config import load_config
 
-        meta = verify_unit(
-            store,
-            unit_id,
-            verifier_model=model,
-            confidence=confidence,
-            notes=notes,
-            result=result,
-            record_ledger=not no_record,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            units_export=units_export_path,
-        )
+    cfg_pre = load_config()
+    with index_write_flock(cfg_pre):
+        with production_chroma_write_session(entrypoint="convmem.verify") as session:
+            store = session.store
+            cfg = session.live_cfg
+            models = cfg["models"]
+            units_export = cfg["index"].get("units_export")
+            units_export_path = Path(units_export).expanduser() if units_export else None
+
+            meta = verify_unit(
+                store,
+                unit_id,
+                verifier_model=model,
+                confidence=confidence,
+                notes=notes,
+                result=result,
+                record_ledger=not no_record,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                units_export=units_export_path,
+            )
     if meta is None:
         render_error(f"No unit found with id {unit_id}.")
         raise typer.Exit(1)
@@ -636,13 +644,26 @@ def watch(
 
         cfg = load_config()
         breaker = CircuitBreakerState(_circuit_breaker_state_path_from_config(cfg))
+        from incremental_retry_state import (
+            clear_all_incremental_retry_states,
+            clear_incremental_retry_states_for_source,
+        )
+
         if clear_quarantine_all:
             breaker.clear()
-            typer.echo("Cleared all circuit-breaker quarantine state.")
+            n_retry = clear_all_incremental_retry_states(cfg)
+            typer.echo(
+                "Cleared all circuit-breaker quarantine state "
+                f"and {n_retry} incremental retry-state file(s)."
+            )
         else:
             resolved = str(Path(clear_quarantine).expanduser().resolve())
             breaker.clear(resolved)
-            typer.echo(f"Cleared circuit-breaker quarantine for {resolved}.")
+            n_retry = clear_incremental_retry_states_for_source(cfg, resolved)
+            typer.echo(
+                f"Cleared circuit-breaker quarantine for {resolved} "
+                f"and {n_retry} retry-state hold(s)."
+            )
         return
 
     _guard_write()
@@ -749,26 +770,23 @@ def monitor_command(
         typer.echo(json.dumps(stats, indent=2))
         return
 
-    from purge_locks import index_write_flock
-
     cfg_pre = load_config()
-    with index_write_flock(cfg_pre):
-        with production_chroma_write_session(entrypoint="convmem.monitor") as session:
-            store = session.store
-            live_cfg = session.live_cfg
-            models = live_cfg["models"]
-            units_export = live_cfg["index"].get("units_export")
-            units_export_path = Path(units_export).expanduser() if units_export else None
-            stats = run_monitor(
-                store,
-                site=site,
-                embed_model=models["embed_model"],
-                ollama_host=models["ollama_host"],
-                units_export=units_export_path,
-                dry_run=False,
-                verbose=True,
-                live_cfg=live_cfg,
-            )
+    with production_chroma_write_session(entrypoint="convmem.monitor") as session:
+        store = session.store
+        live_cfg = session.live_cfg
+        models = live_cfg["models"]
+        units_export = live_cfg["index"].get("units_export")
+        units_export_path = Path(units_export).expanduser() if units_export else None
+        stats = run_monitor(
+            store,
+            site=site,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            units_export=units_export_path,
+            dry_run=False,
+            verbose=True,
+            live_cfg=live_cfg,
+        )
     typer.echo(json.dumps(stats, indent=2))
     from brief import refresh_brief_after_change
 

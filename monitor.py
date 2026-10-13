@@ -374,19 +374,31 @@ def run_monitor(
     from observe import ingest_observation
 
     def _ingest_locked(record, **kwargs):  # type: ignore[no-untyped-def]
-        from ledger import ledger_unit_document
-        from llm import ollama_embed
+        from observe import embed_ledger_record_for_storage
+        from purge_locks import index_write_flock
 
-        embedding = ollama_embed(
-            ledger_unit_document(record),
-            model=embed_model,
-            host=ollama_host,
-        )
-        return ingest_observation(
+        upsert = bool(kwargs.get("upsert"))
+        by_ledger_id = kwargs.get("by_ledger_id")
+        embedding = embed_ledger_record_for_storage(
             record,
-            precomputed_embedding=embedding,
-            **kwargs,
+            store=store,
+            embed_model=embed_model,
+            ollama_host=ollama_host,
+            by_ledger_id=by_ledger_id,
+            upsert=upsert,
         )
+        ingest_kwargs = {
+            **kwargs,
+            "embed_model": embed_model,
+            "ollama_host": ollama_host,
+        }
+        if embedding is not None:
+            ingest_kwargs["precomputed_embedding"] = embedding
+
+        if live_cfg is None:
+            return ingest_observation(record, **ingest_kwargs)
+        with index_write_flock(live_cfg):
+            return ingest_observation(record, **ingest_kwargs)
 
     stats = {
         "observations": 0,
