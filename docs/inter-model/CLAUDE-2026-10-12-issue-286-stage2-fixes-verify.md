@@ -1,4 +1,85 @@
-# Verify: Stage 2 wedge fixes, round 3 at `c8436b1`: K1, K4 and the merge are good; a short corrective 3 remains
+# Verify: Stage 2 wedge fixes, round 4 at `8a8c03a`: doctor fixed; one rollback-diagnostic fix remains
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-13
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `8a8c03a`, Cursor
+Composer's corrective 3. It answers round 3 (below).
+**Method:** I read the diff `c8436b1..8a8c03a`, then ran my round-2, round-3
+and round-4 probes along with Cursor's probe and wedge-fix tests; the appendix
+has the round-4 source. I read Cursor's own suite logs rather than rerunning
+the full suite; I'll run it myself on the final tip.
+
+## Verdict (round 4)
+
+**Not ready for review yet. One item remains, and none of it involves paid
+calls.**
+
+- **L1, fixed:** doctor formats `source_path` and reads every field with
+  `.get`. r1 and r1b pass. A wedge recorded by the real writer now shows as a
+  WARN instead of crashing doctor.
+- **L3, done:** Cursor's final run fails 94 tests at main `458b9f6` and the
+  same 94 at `8a8c03a`, so 0 fail only at the tip. This matches my round-3
+  result.
+- **L2, not fixed:** see M1.
+
+## Findings (round 4)
+
+**M1 (medium): the tamper message can no longer fire on the real rollback
+path.**
+- **Where:** `_restore_before_images` (`incremental_jsonl.py` ~1641–1695)
+  adds every source-owned line now in the export file
+  (`_source_owned_export_bytes_on_disk`) to the expected set. A tampered line
+  is in that file, so it counts as expected.
+- **Repro:**
+  - s1: append a tampered source line, then replay a transaction that fails
+    at `after_summary_upsert`. The rollback prints nothing.
+  - The renamed tamper test still passes, but only because it calls
+    `_restore_export` directly, without the expected set.
+- **Why the disk read is there:** s2. Without it, a clean rollback at
+  `before_dedupe_reconcile` still reports 2 dropped lines. The bytes rebuilt
+  from store rows don't match the bytes the export writer wrote. Matching on
+  bytes was the wrong design, and both my G3 and L2 specs asked for it.
+- **Also:** `be1d34d` swallows a Chroma `InternalError` while taking the
+  extra store snapshot.
+- **Fix:** compare by unit id instead of bytes.
+  - **Expected ids:** the ids in the preimage source lines, plus
+    `current_units`. That's this source's store unit ids, which
+    `_restore_before_images` already reads before it deletes extras.
+  - **Unexpected:** a source-owned line whose `id` isn't in that set counts
+    as unexpected.
+  - **Remove:** `_source_owned_export_bytes_on_disk`, the extra
+    `snapshot_source_rows` and the `InternalError` swallow.
+  - **Direct callers:** when `_restore_export` is called without ids, it
+    uses the preimage ids plus `ids_for_source(UNITS)`.
+  - **PR body:** say that the message counts lines whose id the rollback
+    can't account for. It doesn't compare content.
+
+## Test results (round 4)
+
+| Run | Result |
+|---|---|
+| Round-2 probes, round-3 probes r1, r1b and r2 (both points), Cursor's probe and wedge-fix tests | pass |
+| s1: tampered line on the real rollback path is reported | fail, nothing printed (M1) |
+| s2: clean rollback without the disk read prints nothing | `after_summary_upsert` pass; `before_dedupe_reconcile` fail, "dropped 2" (M1) |
+| Cursor's full suite, main `458b9f6` against `8a8c03a` | 94 and 94 failed, same ids; 0 only at the tip |
+
+## Corrective 4 for Cursor
+
+- **N1 (M1):** apply the id-based fix above. s1 passes: the real path
+  reports 1 and the line is gone. r2 prints nothing at either point. The
+  direct tamper test still reports 1.
+- **Then:** re-pin the baseline hashes and regenerate the inventories if they
+  change. Run the full suite in clean detached worktrees with the convmem
+  environment's python, at main and at your final tip.
+
+**After corrective 4:** I run the full suite on the final tip and do a short
+re-verify. Then come the Copilot safety and isolation audit, Kiro's design
+review of C1 and C2, and Ryan's PR and merge.
+
+---
+
+# Round 3: `c8436b1`, not ready yet (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -25,7 +106,7 @@ Composer's corrective 2. It answers round 2 (below).
   - A short write session at 03:37 touched chroma and the attestations, with
     no export or processed-log growth.
 
-## Verdict (round 3)
+### Verdict (round 3)
 
 **Not ready for review yet. Corrective 3 is small, and none of it involves
 paid calls.**
@@ -50,7 +131,7 @@ paid calls.**
 - the new rollback diagnostic fires on ordinary rollbacks (H2);
 - Cursor's suite report doesn't hold up (H3).
 
-## Findings (round 3), most severe first
+### Findings (round 3), most severe first
 
 **H1 (high): doctor crashes as soon as a real wedge is recorded.**
 - **Where:** `_check_wedged_incremental_transactions` (`doctor.py` ~609–645)
@@ -128,7 +209,7 @@ the Stage 2 wedges. Once this code deploys, doctor's new stale-transaction
 WARN will list the 3 `APPLYING` ones. That's correct and expected. Canary 2
 should watch them clear, by rollback or by commit.
 
-## Test results (round 3)
+### Test results (round 3)
 
 | Run | Result |
 |---|---|
@@ -141,7 +222,7 @@ should watch them clear, by rollback or by commit.
 | r2 at `after_summary_upsert` | pass |
 | r2 at `before_dedupe_reconcile` | fail, `rollback dropped 2 unexpected export lines` (H2) |
 
-## Corrective 3 for Cursor
+### Corrective 3 for Cursor
 
 - **L1 (H1):** doctor formats `source_path` and reads row fields with `.get`.
   p5 writes through the real writer and asserts a WARN; add r1b.
@@ -571,6 +652,64 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-4 probe tests
+
+They run from `tests/` and import helpers from the round-2 probe file below.
+
+<details><summary>tests/test_zz_claude_verify4.py</summary>
+
+```python
+"""Claude verify probes for issue #286 corrective 3 (8a8c03a). Scratch only."""
+
+# pylint: disable=duplicate-code,protected-access
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+import incremental_jsonl
+from tests.test_zz_claude_verify2 import _wedge_then_replay
+
+
+def _tamper(export_path, source) -> None:
+    line = json.dumps({"id": "tampered-unit", "source_path": str(source), "text": "x"}) + "\n"
+    export_path.parent.mkdir(parents=True, exist_ok=True)
+    with export_path.open("a", encoding="utf-8") as handle:
+        handle.write(line)
+
+
+def test_s1_real_rollback_path_reports_tamper(tmp_path, monkeypatch, capsys) -> None:
+    """A tampered source line present at rollback must be reported on the real path."""
+    replay, export_path, _foreign, source = _wedge_then_replay(
+        tmp_path, monkeypatch, "after_summary_upsert"
+    )
+    _tamper(export_path, source)
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    err = capsys.readouterr().err
+    assert "rollback dropped 1 unexpected export lines" in err, err
+    assert b"tampered-unit" not in export_path.read_bytes()
+
+
+@pytest.mark.parametrize("point", ["after_summary_upsert", "before_dedupe_reconcile"])
+def test_s2_store_only_capture_is_enough(tmp_path, monkeypatch, capsys, point) -> None:
+    """Without the on-disk capture, a clean rollback still prints nothing."""
+    monkeypatch.setattr(
+        incremental_jsonl.IncrementalJsonlCoordinator,
+        "_source_owned_export_bytes_on_disk",
+        lambda self, _p: set(),
+    )
+    replay, _export, _foreign, _src = _wedge_then_replay(tmp_path, monkeypatch, point)
+    result = replay.run()
+    assert result.outcome == "rolled_back", result.outcome
+    err = capsys.readouterr().err
+    assert "rollback dropped" not in err, err
+```
+
+</details>
 
 ## Appendix: round-3 probe tests
 
