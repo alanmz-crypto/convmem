@@ -11,12 +11,27 @@ Modes:
 from __future__ import annotations
 
 import hashlib
+import os
 import random
 import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_ROOT))
+if os.environ.get("SAFE_HARBOR_T3_BOOTSTRAPPED") == "1":
+    from tests._safe_harbor_bootstrap import require_t3_bootstrap, validate_chroma_argv_path
+
+    require_t3_bootstrap()
+    _fixture_root = os.environ.get("SAFE_HARBOR_T3_FIXTURE_ROOT", "").strip()
+    _fixture = Path(_fixture_root).expanduser() if _fixture_root else None
+    if __name__ == "__main__":
+        if len(sys.argv) < 3:
+            raise RuntimeError("missing synthetic Chroma path")
+        validate_chroma_argv_path(sys.argv[2], fixture_root=_fixture)
+else:
+    validate_chroma_argv_path = None  # type: ignore[assignment,misc]
+    _fixture = None
 
 from chroma_store import ChromaStore  # pylint: disable=wrong-import-position
 from chroma_write_guard import ChromaWriteGuard  # pylint: disable=wrong-import-position
@@ -37,6 +52,8 @@ def write_one(store: ChromaStore, index: int) -> None:
 
 def main() -> None:
     mode, root, start, count = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+    if validate_chroma_argv_path is not None:
+        validate_chroma_argv_path(root, fixture_root=_fixture)
     guarded = "--guard" in sys.argv
     gate = sys.argv[5] if len(sys.argv) > 5 and not sys.argv[5].startswith("--") else None
     store = ChromaStore(root, write_guard=ChromaWriteGuard(root) if guarded else None)

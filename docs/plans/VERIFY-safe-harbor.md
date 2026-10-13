@@ -926,3 +926,15 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 ## TL;DR
 
 [Arc Safe Harbor] The qualified proof remains nine passes plus focused lint. The bounded isolation inspection found no explicit production target but cannot prove zero ambient effects. Independent Kiro PASS (82%) at `e08100ff` satisfies the prerequisite for Ryan’s conditional isolated T3 grant. V3/remainder-V4 are unrun; no implementation acceptance or live authority is implied.
+
+### T3 supervised development checkpoint — not acceptance
+
+Cursor text-only drafts were inspected and run by Codex through the clean stdlib launcher at uid 1000. Codex also corrected bootstrap/import ordering and two missing-state distinctions; Codex is therefore a contributing author, not an independent implementation reviewer. No production command or resource was used by these runs.
+
+Qualified failed runs (all under disposable `/tmp/safe-harbor-t3-suite-*` roots):
+- `kx9j4vhe`: 14 setup errors (missing pytest temp parent), focused pylint exit 28.
+- `rdgp09re`: 14 failures (initial snapshot has no persisted vector watermark), focused pylint exit 28. Capture now records unavailable evidence rather than fabricating a release watermark.
+- `d79cxcse`: 14 failures (absent marker incorrectly treated as unreadable authority), focused pylint exit 0. Missing and unknown remain distinct.
+- `i_fpuwvt`: 10 passed / 4 failed in 34.21 s, pytest exit 1; focused pylint exit 0 (guard, T3 test, launcher only). Remaining failures expose three incorrectly targeted tests and one expected conservative refusal with pending metadata. No success is inferred from these runs.
+
+The current tests still lack the complete deterministic crash/fault matrix and an actual same-ID stale-vector release negative control. The earlier timing-only kill and parent-only monkeypatch are not accepted evidence. Implementation, V3/V4, final-tip review, and owner acceptance remain pending.

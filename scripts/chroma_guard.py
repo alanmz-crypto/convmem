@@ -6,9 +6,9 @@
   census            records Chroma lists but can no longer return by vector (exit 1 if any)
   audit             validate + census under the write lock; saves the result for doctor
                     (exit 1 on a finding; run daily by convmem-chroma-audit.timer)
-  reconcile         create or refresh restore points now; restores a torn segment if found
-  clear-quarantine  refuse ordinary clear; use release-quarantine with disposition
-  release-quarantine  validated release after repair (disposition + finding digests)
+  reconcile         refresh restore points / restore torn segments; optional
+                    --incident-id + --authority-digest for bounded resume only
+  clear-quarantine  refuse ordinary clear; validated release needs disposition + authority digest
 
 status, validate, census and audit never modify the store: no Chroma client is opened and SQLite is
 opened read-only. Run reconcile at deploy time with the watcher stopped, so the first
@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from chroma_write_guard import (  # pylint: disable=wrong-import-position
     ChromaWriteGuard,
     ChromaWriteGuardError,
+    authority_submission_digest,
     recover,
     segment_dirs,
     segment_signature,
@@ -56,8 +57,14 @@ def _status(guard: ChromaWriteGuard) -> int:
             f"quarantine:  {quarantine.get('state')} "
             f"blocking={quarantine.get('blocking')} {quarantine.get('summary')}"
         )
+        digest = quarantine.get("authority_submission_digest")
+        if digest:
+            print(f"authority:   {digest}")
         for incident in quarantine.get("incidents") or []:
             print(f"  incident {incident.get('id')} segment {incident.get('segment')}")
+            occ = incident.get("occurrence") or {}
+            if occ.get("epoch"):
+                print(f"    occurrence {occ.get('epoch')}")
             for finding in incident.get("findings") or []:
                 print(
                     f"    {finding.get('id')} rev {finding.get('revision')} "
@@ -113,36 +120,25 @@ def _audit(guard: ChromaWriteGuard) -> int:
     return {"pass": 0, "skipped": 0, "fail": 1}.get(status, 2)
 
 
-def _parse_finding_digests(values: list[str]) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for item in values:
-        if "=" not in item:
-            raise argparse.ArgumentTypeError(f"finding digest must be id=hex, got {item!r}")
-        finding_id, digest = item.split("=", 1)
-        if not finding_id or len(digest) != 64:
-            raise argparse.ArgumentTypeError(f"invalid finding digest entry {item!r}")
-        out[finding_id] = digest
-    return out
-
-
 def main(argv: list[str] | None = None) -> int:
     """Run one subcommand; exit 0 on success, 1 on a finding, 2 when the store is missing."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "command",
-        choices=("status", "validate", "census", "audit", "reconcile", "clear-quarantine", "release-quarantine"),
+        choices=("status", "validate", "census", "audit", "reconcile", "clear-quarantine"),
     )
     parser.add_argument("--chroma-dir", help="defaults to [index] chroma_dir from the convmem config")
     parser.add_argument(
         "--disposition",
-        help="owner disposition reference (required for release-quarantine)",
+        help="owner disposition reference (required for validated clear-quarantine)",
     )
     parser.add_argument(
-        "--finding-digest",
-        action="append",
-        default=[],
-        metavar="FINDING_ID=HEX",
-        help="repeat for every current finding digest (release-quarantine)",
+        "--authority-digest",
+        help="64-char digest of the current unresolved authority (clear-quarantine / bounded reconcile)",
+    )
+    parser.add_argument(
+        "--incident-id",
+        help="incident id for bounded reconcile resume (requires --authority-digest)",
     )
     args = parser.parse_args(argv)
     chroma_dir = _chroma_dir(args.chroma_dir)
@@ -163,29 +159,39 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "audit":
         return _audit(guard)
     if args.command == "reconcile":
-        events = recover(chroma_dir)
+        try:
+            events = recover(
+                chroma_dir,
+                incident_id=args.incident_id,
+                authority_digest=args.authority_digest,
+            )
+        except ChromaWriteGuardError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
         for event in events:
             print(json.dumps(event, sort_keys=True))
         print(f"reconciled: {len(events)} change(s); run status for the current restore points")
         return 0
-    if args.command == "release-quarantine":
-        if not args.disposition:
-            print("release-quarantine requires --disposition", file=sys.stderr)
-            return 2
-        try:
-            digests = _parse_finding_digests(args.finding_digest)
-            released = guard.release_quarantine(disposition_ref=args.disposition, finding_digests=digests)
-        except ChromaWriteGuardError as exc:
-            print(str(exc), file=sys.stderr)
-            return 1
-        print(f"released {guard.quarantine_path}" if released else "no quarantine to release")
-        return 0
+    if not args.disposition or not args.authority_digest:
+        print("clear-quarantine requires --disposition and --authority-digest", file=sys.stderr)
+        return 2
+    view = guard.read_authority()
+    if view.document is None:
+        print("no quarantine authority to release", file=sys.stderr)
+        return 1
+    expected = authority_submission_digest(view.document)
+    if args.authority_digest != expected:
+        print(f"authority digest mismatch (expected {expected})", file=sys.stderr)
+        return 1
     try:
-        cleared = guard.clear_quarantine()
+        cleared = guard.clear_quarantine(
+            disposition_ref=args.disposition,
+            authority_digest=args.authority_digest,
+        )
     except ChromaWriteGuardError as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    print(f"cleared {guard.quarantine_path}" if cleared else "no quarantine to clear")
+    print(f"cleared {guard.quarantine_path}" if cleared else "no quarantine to release")
     return 0
 
 

@@ -699,7 +699,7 @@ def _check_chroma_write_guard(cfg: dict) -> DoctorCheck:
             f"writes QUARANTINED ({quarantine.get('state')}): {quarantine.get('summary')}; "
             f"{len(incidents)} incident(s), {finding_count} finding(s); "
             "ordinary clear will not release them; validated release requires "
-            "disposition and current finding digests; "
+            "disposition and current authority submission digest; "
             f"see {guard.quarantine_path}",
         )
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)

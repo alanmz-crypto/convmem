@@ -29,6 +29,7 @@ from chroma_write_guard import (
     ChromaWriteGuard,
     ChromaWriteGuardError,
     ChromaWriteQuarantinedError,
+    authority_submission_digest,
     load_segment_id_map,
     recover,
     segment_dirs,
@@ -68,6 +69,19 @@ def _worker(*args: object, timeout: float = 180) -> str:
     return done.stdout
 
 
+def _worker_expect_quarantine(*args: object, timeout: float = 180) -> subprocess.CompletedProcess[str]:
+    done = subprocess.run(
+        [sys.executable, str(WORKER), *map(str, args)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+    assert done.returncode != 0, done.stdout[-2000:]
+    return done
+
+
 def _segment(chroma: Path) -> tuple[str, Path]:
     (item,) = segment_dirs(chroma).items()  # only the summaries collection is written
     return item
@@ -82,15 +96,11 @@ def _events(chroma: Path) -> list[dict]:
 
 def _release_if_quarantined(chroma: Path) -> None:
     guard = ChromaWriteGuard(chroma)
-    state = guard.quarantine_state()
-    if state is None:
+    view = guard.read_authority()
+    if view.document is None:
         return
-    digests = {
-        finding["id"]: finding["digest"]
-        for incident in state["incidents"]
-        for finding in incident["findings"]
-    }
-    guard.release_quarantine(disposition_ref="test-release", finding_digests=digests)
+    digest = authority_submission_digest(view.document)
+    guard.release_quarantine(disposition_ref="test-release", authority_digest=digest)
 
 
 def _assert_every_record_has_its_vector(chroma: Path) -> int:
@@ -195,14 +205,15 @@ def test_torn_save_is_restored_before_the_next_write_without_losing_records(tmp_
     _set_header_count(seg / "header.bin", 50)
     assert not validate_segment(seg).ok
 
-    with pytest.raises(ChromaWriteQuarantinedError):
-        _worker("write", chroma, 250, 1, "--guard")  # reconciles, preserves, then contains
+    _worker_expect_quarantine("write", chroma, 250, 1, "--guard")  # reconciles, preserves, then contains
 
     assert validate_segment(seg).ok
     restored = [e for e in _events(chroma) if e["event"] == "segment_restored"]
     assert len(restored) == 1 and restored[0]["census"]["lost"] == 0
     assert ChromaWriteGuard(chroma).quarantine_state() is not None
+    assert _assert_every_record_has_its_vector(chroma) == 250
     _release_if_quarantined(chroma)
+    _worker("write", chroma, 250, 1, "--guard")
     assert _assert_every_record_has_its_vector(chroma) == 251
 
 
