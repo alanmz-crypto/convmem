@@ -19,3 +19,6 @@ tests/test_chroma_restore_drill.py
 tests/test_complete_data_restore.py
 tests/test_readonly_store.py
 tests/test_ci_contract.py
+tests/test_safe_harbor_t3.py
+tests/test_safe_harbor_t3_matrix.py
+tests/test_safe_harbor_t3_backend_proof.py

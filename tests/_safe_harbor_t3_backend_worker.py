@@ -2,14 +2,17 @@
 
 Qualified entry (stdlib-isolated interpreter, allowlisted env before pytest):
 
-    /home/lauer/miniforge3/bin/python -I -S -B tests/_safe_harbor_t3_backend_worker.py run-proof
+    python -I -S -B tests/_safe_harbor_t3_backend_worker.py run-proof
 
-Worker modes require SAFE_HARBOR_T3_BOOTSTRAPPED=1 and an isolated fixture root.
+Worker modes require SAFE_HARBOR_T3_BOOTSTRAPPED=1, SAFE_HARBOR_T3_EXPECTED_UID, and an isolated fixture root.
 """
 
 from __future__ import annotations
 
+import functools
 import hashlib
+import importlib.util
+from importlib import metadata as importlib_metadata
 import json
 import os
 import sqlite3
@@ -23,13 +26,41 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 WORKER = Path(__file__).resolve()
 TEST_MODULE = ROOT / "tests" / "test_safe_harbor_t3_backend_proof.py"
-PYTHON = "/home/lauer/miniforge3/bin/python"
-# The stdlib bootstrap uses -I -S -B. Children start with the clean environment
-# already installed and need the pinned interpreter's installed packages.
-PYTHON_CHILD = [PYTHON, "-s", "-B"]
+# The stdlib bootstrap uses -I -S -B. Children use the invoking interpreter with -s -B.
+PYTHON_CHILD = [sys.executable, "-s", "-B"]
 PROD_HOME = Path("/home/lauer")
-REQUIRED_UID = 1000
 PROOF_TIMEOUT_SECONDS = 300.0
+
+
+@functools.lru_cache(maxsize=1)
+def _load_bootstrap_module() -> object:
+    path = ROOT / "tests" / "_safe_harbor_bootstrap.py"
+    spec = importlib.util.spec_from_file_location("safe_harbor_t3_bootstrap", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load bootstrap from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _launcher_path() -> str:
+    bin_dir = Path(sys.executable).absolute().parent
+    return f"{bin_dir}:/usr/bin:/bin"
+
+
+def _mkdtemp_parent_dir() -> str:
+    if os.environ.get("SAFE_HARBOR_T3_BOOTSTRAPPED") != "1":
+        return "/tmp"
+    _require_isolated()
+    tmp = os.environ.get("TMPDIR", "")
+    if not tmp or not Path(tmp).is_absolute():
+        raise RuntimeError(f"refusing unset/relative TMPDIR under bootstrapped isolation: {tmp!r}")
+    return str(Path(tmp).expanduser())
+
+
+def mkdtemp_parent_dir() -> str:
+    """Launcher-facing temp parent selection (stdlib-isolated outer entry uses /tmp)."""
+    return _mkdtemp_parent_dir()
 
 
 ENV_PATH_KEYS = (
@@ -46,8 +77,7 @@ ENV_PATH_KEYS = (
 
 
 def _require_uid() -> None:
-    if os.getuid() != REQUIRED_UID:
-        raise RuntimeError(f"refusing uid {os.getuid()} (required {REQUIRED_UID})")
+    _load_bootstrap_module().require_expected_uid_match()
 
 
 def _fixture_root() -> Path:
@@ -91,8 +121,19 @@ def _require_isolated() -> None:
             raise RuntimeError(f"refusing inherited {secret}")
 
 
-def build_allowlisted_env(fixture_root: Path, evidence_root: Path) -> dict[str, str]:
+def build_allowlisted_env(
+    fixture_root: Path,
+    evidence_root: Path,
+    *,
+    expected_uid: int | None = None,
+) -> dict[str, str]:
     """Stdlib-only clean environment for proof subprocesses."""
+    bootstrap = _load_bootstrap_module()
+    if expected_uid is not None:
+        bound_uid = bootstrap.require_explicit_uid_binding(expected_uid)
+    else:
+        bound_uid = bootstrap.require_expected_uid_match()
+
     fixture_root = fixture_root.resolve()
     evidence_root = evidence_root.resolve()
     home = fixture_root / "home"
@@ -102,9 +143,9 @@ def build_allowlisted_env(fixture_root: Path, evidence_root: Path) -> dict[str, 
     config = fixture_root / "config" / "config.toml"
     if not config.is_file():
         config.write_text('[index]\nchroma_dir = ""\n', encoding="utf-8")
-    return {
+    env = {
         "HOME": str(home),
-        "PATH": "/usr/bin:/bin",
+        "PATH": _launcher_path(),
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8",
         "TZ": "UTC",
@@ -129,6 +170,7 @@ def build_allowlisted_env(fixture_root: Path, evidence_root: Path) -> dict[str, 
         "ANONYMIZED_TELEMETRY": "FALSE",
         "OTEL_SDK_DISABLED": "true",
     }
+    return bootstrap.with_expected_uid(env, bound_uid)
 
 
 def seq_id(value: Any) -> int:
@@ -229,8 +271,6 @@ def sqlite_schema_digest(chroma: Path) -> str:
 
 def live_backend_identity_client_free(chroma: Path) -> dict[str, Any]:
     """No PersistentClient(path=...) — module class, Settings API impl, sqlite digests."""
-    import importlib.metadata
-
     import chromadb
     from chromadb.api.client import Client
     from chromadb.config import Settings
@@ -259,19 +299,19 @@ def live_backend_identity_client_free(chroma: Path) -> dict[str, Any]:
         "rust_binding_sha256": rust_sha,
         "sqlite_migrations": migrations,
         "sqlite_schema_digest": sqlite_schema_digest(chroma),
-        "hnswlib": importlib.metadata.version("hnswlib"),
+        "hnswlib": importlib_metadata.version("hnswlib"),
     }
 
 
 def run_proof_launcher() -> int:
     """Run pytest + focused pylint under isolation; record subprocess evidence."""
-    _require_uid()
-    if not (sys.flags.isolated and sys.flags.no_site and sys.dont_write_bytecode):
-        raise RuntimeError("bootstrap requires python -I -S -B before run-proof")
-    evidence_root = Path(tempfile.mkdtemp(prefix="safe-harbor-t3-", dir="/tmp"))
+    bootstrap = _load_bootstrap_module()
+    bootstrap.require_parent_bootstrap_flags()
+    parent_uid = bootstrap.parent_launcher_uid()
+    evidence_root = Path(tempfile.mkdtemp(prefix="safe-harbor-t3-", dir=_mkdtemp_parent_dir()))
     fixture_root = evidence_root / "fixture"
     fixture_root.mkdir(parents=True)
-    env = build_allowlisted_env(fixture_root, evidence_root)
+    env = build_allowlisted_env(fixture_root, evidence_root, expected_uid=parent_uid)
     harness_before = {
         "test": hashlib.sha256(TEST_MODULE.read_bytes()).hexdigest(),
         "worker": hashlib.sha256(WORKER.read_bytes()).hexdigest(),
@@ -292,7 +332,7 @@ def run_proof_launcher() -> int:
     summary: dict[str, Any] = {
         "pytest_command": pytest_cmd,
         "uid": os.getuid(),
-        "interpreter": PYTHON,
+        "interpreter": sys.executable,
         "bootstrap_flags": ["-I", "-S", "-B"],
         "child_flags": ["-s", "-B"],
         "harness_sha256_before": harness_before,
@@ -638,7 +678,10 @@ def _probe_backend(chroma: Path, collection: str) -> dict[str, Any]:
     server_api = f"{type(server).__module__}.{type(server).__qualname__}" if server is not None else None
     from chromadb_rust_bindings import chromadb_rust_bindings as native_binding
 
-    assert isinstance(server.bindings, native_binding.Bindings), "active server is not using the recorded native module"
+    bindings_cls = getattr(native_binding, "Bindings")
+    assert isinstance(server.bindings, bindings_cls), (
+        "active server is not using the recorded native module"
+    )
     client.close()
     payload = live_backend_identity_client_free(chroma)
     payload["client_api_observed"] = client_api

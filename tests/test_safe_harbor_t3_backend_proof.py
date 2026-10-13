@@ -3,7 +3,7 @@
 
 Qualified entry:
 
-    /home/lauer/miniforge3/bin/python -I -S -B tests/_safe_harbor_t3_backend_worker.py run-proof
+    python -I -S -B tests/_safe_harbor_t3_backend_worker.py run-proof
 """
 
 from __future__ import annotations
@@ -23,17 +23,20 @@ from typing import Any
 if os.environ.get("SAFE_HARBOR_T3_BOOTSTRAPPED") != "1":
     raise SystemExit(
         "refusing test module import without launcher isolation: run "
-        "/home/lauer/miniforge3/bin/python -I -S -B tests/_safe_harbor_t3_backend_worker.py run-proof"
+        "python -I -S -B tests/_safe_harbor_t3_backend_worker.py run-proof"
     )
-if os.getuid() != 1000:
-    raise SystemExit(f"refusing uid {os.getuid()} (required 1000)")
+try:
+    from tests._safe_harbor_bootstrap import require_expected_uid_match
+
+    require_expected_uid_match()
+except RuntimeError as exc:
+    raise SystemExit(str(exc)) from exc
 
 import pytest  # pylint: disable=wrong-import-position  # isolation must precede pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 WORKER = ROOT / "tests" / "_safe_harbor_t3_backend_worker.py"
-PYTHON = "/home/lauer/miniforge3/bin/python"
 COLLECTION = "harbor_proof"
 COLLECTION_B = "harbor_proof_b"
 PROD_HOME = Path("/home/lauer")
@@ -41,7 +44,7 @@ PROD_DATA = PROD_HOME / ".local/share/convmem"
 PROD_CONFIG = PROD_HOME / ".config/convmem"
 RUNTIME_MAIN = PROD_HOME / "Projects/convmem/.worktrees/runtime-main"
 
-from tests._safe_harbor_t3_backend_worker import (  # pylint: disable=wrong-import-position  # isolated entry only
+from tests._safe_harbor_t3_backend_worker import (  # pylint: disable=wrong-import-position,ungrouped-imports  # pre-bootstrap import order
     build_allowlisted_env,
     ENV_PATH_KEYS,
     _constrain_under_fixture,
@@ -72,6 +75,7 @@ def _worker_env() -> dict[str, str]:
         "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
         *ENV_PATH_KEYS,
         "SAFE_HARBOR_T3_BOOTSTRAPPED",
+        "SAFE_HARBOR_T3_EXPECTED_UID",
         "SAFE_HARBOR_T3_FIXTURE_ROOT",
         "SAFE_HARBOR_T3_EVIDENCE_ROOT",
         "CHROMA_TELEMETRY",
@@ -86,7 +90,7 @@ def _worker(*args: str, timeout: float = 180) -> subprocess.CompletedProcess[str
         if arg.startswith("/"):
             _constrain_under_fixture(Path(arg))
     return subprocess.run(
-        [PYTHON, "-s", "-B", str(WORKER), *args],
+        [sys.executable, "-s", "-B", str(WORKER), *args],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -364,7 +368,9 @@ def simulate_same_generation_file_replacement(vec_dir: Path, backup: Path) -> No
 def isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     evidence_root = Path(os.environ["SAFE_HARBOR_T3_EVIDENCE_ROOT"])
     root = _constrain_under_fixture(tmp_path)
-    env = build_allowlisted_env(root, evidence_root)
+    inherited = os.environ.get("SAFE_HARBOR_T3_EXPECTED_UID", "").strip()
+    parent_uid = int(inherited) if inherited else os.getuid()
+    env = build_allowlisted_env(root, evidence_root, expected_uid=parent_uid)
     for key, value in env.items():
         monkeypatch.setenv(key, value)
     for key in (
@@ -410,7 +416,7 @@ def test_worker_path_safety_controls(chroma_dir: Path, evidence_path: Path, monk
         ("symlink", link / "chroma", chroma_dir / "out.json"),
     ):
         done = subprocess.run(
-            [PYTHON, "-s", "-B", str(WORKER), "observe", str(target), COLLECTION, str(output)],
+            [sys.executable, "-s", "-B", str(WORKER), "observe", str(target), COLLECTION, str(output)],
             cwd=ROOT, env=_worker_env(), capture_output=True, text=True, timeout=30, check=False,
         )
         assert done.returncode != 0 and "refusing path outside fixture root" in done.stderr, done.stderr
@@ -420,18 +426,18 @@ def test_worker_path_safety_controls(chroma_dir: Path, evidence_path: Path, monk
     assert not (chroma_dir / "chroma.sqlite3").exists()
     with monkeypatch.context() as changed:
         changed.setattr(worker_module.os, "getuid", lambda: 0)
-        with pytest.raises(RuntimeError, match="refusing uid 0"):
+        with pytest.raises(RuntimeError, match="refusing root uid"):
             worker_module._require_isolated()
     # A flag-free entry must refuse before pytest or any project imports.
     env = _worker_env()
     env.pop("SAFE_HARBOR_T3_BOOTSTRAPPED")
     done = subprocess.run(
-        [PYTHON, "-I", "-S", "-B", str(Path(__file__))],
+        [sys.executable, "-I", "-S", "-B", str(Path(__file__))],
         env=env, cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
     )
     assert done.returncode != 0 and "refusing test module import without launcher isolation" in done.stderr
     evidence_path.write_text(json.dumps({"worker_path_safety": observations,
-        "uid_refusal": "simulated uid 0; actual process uid 1000",
+        "uid_refusal": f"simulated uid 0; actual process uid {os.getuid()}",
         "unsafe_entry_returncode": done.returncode}, indent=2), encoding="utf-8")
 
 
@@ -454,8 +460,8 @@ def test_pinned_backend_identity(chroma_dir: Path, evidence_path: Path) -> None:
     assert identity.sqlite_schema_digest == sqlite_schema_digest(chroma_dir)
     payload = {
         "python": sys.version.split()[0],
-        "interpreter": PYTHON,
-        "interpreter_sha256": hashlib.sha256(Path(PYTHON).read_bytes()).hexdigest(),
+        "interpreter": sys.executable,
+        "interpreter_sha256": hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest(),
         "harness_sha256": {
             "test": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             "worker": hashlib.sha256(WORKER.read_bytes()).hexdigest(),
