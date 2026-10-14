@@ -46,7 +46,7 @@
     "monitor.py:589",
     "refine.py:49",
     "repository_knowledge_index.py:275",
-    "repository_knowledge_sync.py:275",
+    "repository_knowledge_sync.py:276",
     "scratch_jsonl_prototype/chroma_projection.py:69"
   ],
   "proof_class": "code_path static + hermetic (C3 writer gate)",
