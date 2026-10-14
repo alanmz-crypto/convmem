@@ -1,4 +1,171 @@
-# Verify: Stage 2 wedge fixes, round 13 at `0ee6994`: PASS; ready for the Astra audit and the Kiro review
+# Verify: Stage 2 wedge fixes, round 14 at `0ee6994`: Astra's audit FAIL confirmed; round 13's PASS withdrawn; corrective 12
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-14
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `0ee6994`, unchanged
+since round 13.
+**Inputs:**
+- Codex (Astra, high), round-2 safety audit, standing in for the Copilot audit
+  lane: **FAIL**, four blockers.
+  `docs/inter-model/CODEX-2026-10-14-issue-286-stage2-fixes-audit-r2.md` on
+  `docs/2026-10-14-issue-286-stage2-fixes-audit-r2` (`bd440dc`).
+- Kiro, round-2 design review: **PASS with conditions** (CO-1 revised, CO-2,
+  CO-3, CO-7; CO-5 and CO-6 for canary 2).
+  `docs/inter-model/KIRO-2026-10-14-issue-286-stage2-fixes-design-review-r2.md`
+  on `docs/2026-10-14-issue-286-stage2-fixes-design-review-r2` (`b07f044`).
+**Method:** I ran Astra's eight probes unchanged in my own harness (a
+disk-backed worktree at `0ee6994`, `env -i`, a scratch `HOME`, a private
+`--basetemp`), and read every cited location at `0ee6994`.
+
+## Burn status
+
+**No burn now.** Nothing changed since round 13: the branch isn't deployed, and
+the watcher, refine and monitor units are inactive and disabled. But R2-F1 is a
+burn path in the branch's own retry bounds, so the watcher must not run this
+code until it's fixed.
+
+## Verdict (round 14)
+
+**FAIL at `0ee6994`. Astra's four blockers are real; round 13's PASS is
+withdrawn.**
+- All 8 of Astra's probes pass in my harness (8 passed, 1.9 s). Seven assert
+  the unsafe behavior; the eighth checks the store binding. Each reproduces.
+- Every cited location reads as Astra describes (below).
+- **Why round 13 missed them:** my probes checked each corrective's own items
+  and the suite diffs. I didn't probe the gap between preparing a write and
+  committing it, a retry-state write that fails, or a sidecar writer outside
+  C1. Round 15 runs Astra's probes, flipped, plus those three classes.
+- **Kiro's PASS is design-level and stands for the C1/C2 mechanism.** One
+  factual statement in it doesn't hold at this revision: Q3 says observe's
+  commit "re-read[s] rows fresh under the lock". R2-F3 and R2-F4 show it
+  doesn't, by executable probes. I recommend no Sol-High: the facts are
+  settled by reproduction, not opinion, and both reviewers re-review the
+  corrected tip. Ryan decides.
+
+## Findings confirmed (Astra's numbering)
+
+- **R2-F1 (High, burn): retry accounting fails open.**
+  - `incremental_retry_state.record_incremental_retry_failure` catches
+    `OSError` from the state write and returns `False`. The caller treats that
+    as an ordinary first failure. So when the state can't be written (a
+    read-only file, a full disk), every attempt pays again and nothing counts.
+    Admission (`_ensure_retry_state_available`) only checks that an existing
+    file is readable.
+  - Both `consecutive` and `source_consecutive` reset when the error code
+    changes, so alternating failures never reach a hold (Astra: 6 paid in 6).
+  - Probes: `test_readonly_retry_file_allows_unbounded_paid_retries` (5 paid,
+    state bytes unchanged), `test_alternating_failures_reset_both_paid_retry_counters`.
+- **R2-F2 (High): foreign dedupe work can still be lost.**
+  - `refine.job_semantic_dedupe` appends to `dedupe_queue.jsonl` without C1
+    (`refine.py:663`). A locked rollback that reads the queue, then replaces
+    it, erases an append that lands in between.
+  - `_apply_approved_dedupe_impl` loads the queue (`refine.py:318`) before
+    taking C1 (`:338`) and saves that snapshot (`:363`), dropping any append
+    made in between, by refine or by ingest.
+  - Probe: `test_refine_queue_append_is_lost_by_locked_rollback`.
+- **R2-F3 (Medium): embedding still runs under C1 and a write session.**
+  - The batch commit (`observe.ingest_observation_file` with `prepared_rows`)
+    calls `ingest_observation` again. For a row prepared as unchanged
+    (embedding `None`) that changed before commit, that call embeds under the
+    lock. Reached from `add --file --upsert` (`convmem.py:510-529`) and
+    approved-file ingest (`propose_decision.py:569-586`).
+  - `propose_decision.ingest_approved_ledger` (`:611-626`) prepares and embeds
+    inside C1 and the session; the empty-document repair (`observe.repair_empty_ledger_documents`, `observe.py:410-466`)
+    has the same shape.
+  - Probes: `test_unchanged_preparation_then_drift_embeds_inside_real_c1_session`,
+    `test_approved_single_ledger_embeds_under_c1` (both record depths (1, 1)).
+- **R2-F4 (Medium): monitor commits a stale decision.**
+  - `observe.commit_observation_ingest` trusts the prepared `existing_chroma_id`
+    and the `skipped_unchanged` flag from the readonly snapshot. It doesn't
+    re-read the target under C1. If the row was deleted, `update_unit` changes
+    nothing, yet the result says `_upserted` and the export gets the line. A
+    skipped row may have changed or gone.
+  - Probes: `test_monitor_prepared_update_exports_a_row_deleted_before_commit`,
+    `test_prepared_monitor_update_never_rechecks_missing_target`.
+
+## Corrective 12 for Cursor
+
+Production code changes this time. Keep every provider call (summarize,
+distill, embed, LLM) outside C1 and outside any Chroma write session.
+
+- **A. Retry accounting that fails closed (R2-F1).**
+  1. **Reserve before paying.** In `enforce_incremental_retry_gates`, after the
+     gates pass and before any transform work, durably record the attempt
+     (atomic write, as `_write` does): a code-independent
+     `attempts_on_prefix` (+1 for the same `prefix_digest`, reset to 1 when it
+     changes) and the pending transaction id. If that write fails, raise
+     `retry_state_unavailable` before any paid work.
+  2. **Bound attempts whatever the error.** Refuse (`live_route_refused`, a
+     hold) when `attempts_on_prefix` reaches 3 without a success on that
+     prefix, whatever the codes. Keep the same-code gates.
+  3. **No silent write failures.** `record_incremental_retry_failure` must raise
+     `retry_state_unavailable` on `OSError`, never return `False`. On success,
+     a failed clear warns; it must not turn a committed success into a failure.
+  4. The watcher holds the file on `retry_state_unavailable`, as it does for a
+     corrupt state. Confirm it and test it.
+- **B. Every dedupe sidecar write under C1 (R2-F2).**
+  1. `job_semantic_dedupe`: collect candidates with no lock (the vector reader
+     closed as now; the limiter decision before), then take C1 from the live
+     config once and append them all.
+  2. `_apply_approved_dedupe_impl`: load the queue, and resolve the target,
+     inside the C1 block.
+  3. List every writer of `dedupe_queue.jsonl` and
+     `ingest_duplicate_suppressions.jsonl` (file:line) and show each holds C1.
+- **C. No embedding under the lock (R2-F3).**
+  1. Commits never embed. The batch path commits prepared rows through
+     `commit_observation_ingest`; it never calls `ingest_observation` with
+     `embedding=None` under the lock.
+  2. On drift (D below), callers release C1 and the session, re-prepare the
+     drifted rows outside (embedding there), and commit again: at most 2
+     rounds, then refuse with a clear error. Applies to `add --file --upsert`,
+     approved-file ingest, `ingest_approved_ledger` and the empty-document
+     repair; the last two must prepare before taking C1.
+  3. **Runtime guard:** `llm.ollama_embed`, `llm.summarize` and `distill.distill_with_response` (the distill entry
+     point) raise if `index_write_lock_depth() > 0` or
+     `production_chroma_store_session_depth() > 0`. If any production path
+     trips it in the full suite, stop and report it; don't weaken the guard.
+- **D. Commits revalidate under C1 (R2-F4).**
+  1. A prepared observation records what it decided against: the target id and
+     a digest of the target's document and metadata (or "no target").
+  2. `commit_observation_ingest` re-reads the current target by ledger id from
+     the write store under C1. If it's missing, or its digest differs, or a
+     `skipped_unchanged` row changed or vanished, raise a drift error (handled
+     as in C2). Never update a missing row; never resurrect a purged one.
+  3. Set `_upserted` and write the export line only after the store mutation is
+     confirmed.
+  4. Monitor (`monitor.py:394`, `:594-598`): on drift, release, re-prepare
+     outside, retry once, then count the observation as `drift_refused` in its
+     result. The monitor run itself doesn't crash.
+- **E. Kiro's low-effort conditions.**
+  1. **CO-7:** scope the Track A text's auto-capture claim to transcripts
+     **under the watch roots**, and say Crush databases outside a watch root
+     aren't deferred (#393). Edit the same protocol sources `15663db` changed;
+     no deploy.
+  2. **CO-1 (revised):** list `_IndexWriteGuardedChromaStore`'s read allow-list
+     with a one-line reason each method is read-only, and add a test that fails
+     when a public `ChromaStore` method is neither on the list nor guarded.
+- **Tests:** turn Astra's seven unsafe probes (the audit's appendix) into tests
+  of the safe behavior; keep the store-binding probe. Add the A3 crash case:
+  an exit after paying and before recording still counts the reservation.
+- **Inventories last:** this changes production code, so re-pin baseline hashes
+  and regenerate the R2b and Shadow inventories after every other edit, as in
+  corrective 10.
+- **Suites:** full hermetic suite in disk-backed worktrees (`git worktree add
+  --detach` on a non-tmpfs path) with a private `--basetemp`, at main
+  `458b9f6` and at your tip. List every tip-only failure id; target zero (flag
+  Z1, the inode flake, if it appears).
+
+## Next
+
+1. Cursor: corrective 12.
+2. Claude, round 15: Astra's probes flipped, drift, persistence-failure and
+   sidecar-writer probes of my own, the disk-backed suite diff and the census.
+3. Astra re-audits and Kiro re-reviews the exact corrected tip. Kiro rechecks
+   Q3.
+4. Then the PR draft (Kiro's CO-2 and CO-3 go in its body), and Ryan's grants.
+
+# Round 13: `0ee6994`, PASS withdrawn in round 14 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-14
@@ -20,7 +187,7 @@ Composer's corrective 11. It answers round 12 (below).
 - I ran every probe round, Codex's round-7 probes and Cursor's #286 files.
 - I compared mtimes and sizes across the live data root before and after.
 
-## Burn status
+### Burn status
 
 **No burn. This branch isn't deployed, and the watcher, refine and monitor
 units are all inactive and disabled.**
@@ -35,7 +202,7 @@ units are all inactive and disabled.**
   a live watch root and is watchable (3 chunks). So a re-enabled watcher would
   re-pay at most that one database on each change. Small, but known.
 
-## Verdict (round 13)
+### Verdict (round 13)
 
 **PASS. Ready for the Astra audit and the Kiro review on `0ee6994`.**
 - **Y0 is fixed.** `0ee6994` is byte-identical to the round-12 diff (same blob,
@@ -51,7 +218,7 @@ units are all inactive and disabled.**
 - **Probes:** 90 passed (the 89 of round 12 plus the #393 Crush probe), and
   the same 11 expected failures.
 
-## Findings (round 13)
+### Findings (round 13)
 
 - **Z1 (low, older than the branch, another arc's test): an inode-reuse flake.**
   `tests/test_shadow_activation.py::test_recovery_refuses_replaced_artifact_inode`
@@ -90,7 +257,7 @@ units are all inactive and disabled.**
   X3 (`chroma_dedupe` undo snapshots carry document text), X4 (two `pass`
   bodies), #393 (Crush re-pay).
 
-## Test results (round 13)
+### Test results (round 13)
 
 | Run (disk-backed worktrees, private `--basetemp`) | Result |
 |---|---|
@@ -102,7 +269,7 @@ units are all inactive and disabled.**
 | Z1 test alone, ×10 | tip 0/10, main 0/10 failed; patched 0/10 |
 | All probe rounds + Cursor's #286 files | 90 passed, 11 failed (all expected) |
 
-## Review focus (round 13)
+### Review focus (round 13)
 
 The Codex audit (round 7) and the Kiro review (round 6) looked at `c7072fc`.
 Correctives 6 to 11 changed a lot since. Both reviews should look at
@@ -146,7 +313,7 @@ Correctives 6 to 11 changed a lot since. Both reviews should look at
 5. Is anything in the round-6 design (C1 window, C2 recovery, relaxed
    invariants) contradicted by correctives 6 to 11?
 
-## Next
+### Next
 
 1. A fresh Codex (Astra, high) audit and a fresh Kiro review on `0ee6994`, in
    parallel.
