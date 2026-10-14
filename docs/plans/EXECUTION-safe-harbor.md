@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED.** [T3 closeout](VERIFY-safe-harbor.md#t3-final-ci-review-owner-acceptance-and-squash-mapping) records final CI, Kiro review, Ryan acceptance and PR #391 squash mapping. Sections 10–14 retain historical grants/evidence; they authorize no further implementation. T4/T5, deployment and live operations remain ungranted.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; ISOLATED T4 GRANTED.** Section 15 records Ryan’s separate T4 grant and Cursor/Codex handoff. T3 closeout remains pinned in VERIFY. PR creation/comments, merge, deployment, production operations and T5 remain unauthorized.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        T3 closed; awaiting a separate T4 decision
+Phase:        Execute T4 in isolation; evidence must return for review
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Ryan decision; Codex documentation closeout
-Authority:    T1–T3 grants complete; no T4/T5 or live grant
+Lanes:        Cursor implementation; Codex supervised isolated evidence
+Authority:    Ryan T4 grant (section 15); no PR/merge/live/T5 grant
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1–T3 are accepted and merged. The proof, implementation and CI-correction grants in sections 10–14 are complete. T4/T5 remain NOT GRANTED. Shared files keep implementation serial. The reviewed task contracts below are unchanged; the next task requires Ryan’s separate grant.
+T1–T3 are accepted and merged. The proof, implementation and CI-correction grants in sections 10–14 are complete. Ryan separately granted isolated T4 in section 15; T5 remains NOT GRANTED. Shared files keep implementation serial. The reviewed task contracts below are unchanged.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -659,3 +659,26 @@ Keep pytest/pylint versions, backend pins, Python 3.12 CI matrix, existing job/c
 ## TL;DR
 
 [Arc Safe Harbor] Section 14 correction and local evidence are returned. Draft #391 receives fresh CI on push; runtime, lint baseline and safety assertions remain fixed. No merge, deployment or T4/T5.
+
+
+## 15. Cursor T4 implementation and isolated V5 — owner authorized
+
+**Arc: Safe Harbor. Date: 2026-10-13. Author: Codex. For: Cursor implementation lane.** This section is the bounded implementation handoff; it changes no accepted T4 contract.
+
+**Ryan’s grant (verbatim):**
+
+> Authorize Cursor to implement Safe Harbor T4 under the accepted execution plan, in an isolated worktree, with Codex supervision and isolated V5 evidence. Return results for independent review. PR creation, merge, deployment, production operations and T5 remain unauthorized.
+
+**Resume state:** implementation NOT STARTED when this grant is committed. Branch `feat/2026-10-13-safe-harbor-t4`; worktree `/home/lauer/Projects/convmem/.worktrees/feat-2026-10-13-safe-harbor-t4`. Code base is main `a7f72003aea516b4961a584fcfe54ad255d6a053` (T3 squash). The branch carries documentation-only closeout `693af6756be4aceafe1fa3b30b3fd888b36df24a`; this is not a different runtime baseline. Pin the pushed grant commit before authoring. No PR. No additional owner input is needed for this bounded scope.
+
+**Outcome:** implement the T4 contract in section 3 and V5 in VERIFY. A retry must distinguish unknown from absence, preserve tombstones/conflicts, bind every durable target, serialize fresh state inspection with competing mutations, and report partial/uncertain completion honestly. T2’s event-only completion evidence exclusion must be closed by real fixture effects, not renamed or skipped.
+
+**Permitted files:** recovery portions of `propose_decision.py` and `convmem.py`; narrow event-publication helpers in `conflict_events.py`; admitted-store/config/export helpers in `observe.py`, `ledger.py`, `chroma_store.py`, `chroma_write_store.py`; the existing native guard in `chroma_write_guard.py` only as needed to span T4’s recheck, mutation, post-native validation and publication without nested reconciliation. Related existing governed recovery/gate tests and focused `tests/test_safe_harbor_t4*.py` / `tests/_safe_harbor_t4*.py` helpers. Reuse the reviewed stdlib bootstrap/environment builder. Necessary test call-site inventories and generated writer identities may be updated only for the reviewed T4 changes, preserving routes/classifications/gate policy; use their generator under isolation. Update existing Safe Harbor EXECUTION/VERIFY/STATUS/LATEST and the cross-arc status row for evidence/routing. No lint-baseline increase, dependency/workflow change, new lifecycle state or parallel ledger.
+
+**Division of work:** Cursor authors code and fixture evidence cases in a disposable source copy with Shell/MCP/WebFetch denied. Codex confirms the denial before authoring, inspects permitted deltas before copying them to the isolated worktree, and supervises execution. No ambient project imports or tests from Cursor. Capture failures and permission violations honestly; any isolation lapse stops that run and is excluded from evidence. Codex is a contributor/supervisor, not an independent reviewer.
+
+**Execution isolation:** establish a fresh allowlisted HOME/XDG/config/data/export/event environment before imports through the existing `-I -S -B` stdlib entry. Bind uid/euid and all fixture paths; refuse production paths, providers and inherited credentials. Use fake providers/test repositories and real fixture Chroma/subprocesses. No production CLI, MCP, doctor/brief/unresolved/search, Restic repository, drive, service, backup/key or ledger operations. No session indexing/Track A. This task-specific restriction overrides the default session ritual and handoff indexing.
+
+**Required evidence:** V5’s state matrix with cold/warm caches and fresh-process retries, direct and CLI consumers, actual admitted target effects, queue/approved-intent/event authority errors, and forced forget/refine competition via barriers. Independently assert documents/vectors/metadata/tombstones, export bytes and reduced proposal lifecycle. Inject before/partial/complete-but-fsync-failed/durable-but-unacknowledged APPROVED append outcomes, plus new-log/new-directory durability failures. Verify no success before post-native validation/durable publication, no duplicate APPROVED/blind replay, no malformed-tail cleanup, no hidden export omission. The old unknown-to-empty classifier, failure-assumed-rollback retry and out-of-lock recheck must each fail an independent negative control. Keep index/plain-add exemptions and T1–T3 regression assertions intact. Focused isolated pytest and the unchanged lint regression gate; full local suite/hosted CI are not implied by this grant.
+
+**Stops:** unresolved lock inversion, a needed authority-model change or an unprovable contract returns to Codex/Ryan before scope expansion. Return code/evidence and limitations for independent review; no self-acceptance. External-review applicability is required for the eventual runtime candidate, but PR creation/comments/triggers are not authorized here. Prior task-specific outage exceptions do not automatically apply to T4. Push each commit with the explicit branch refspec; do not switch the shared checkout or main, force-push, merge or deploy.

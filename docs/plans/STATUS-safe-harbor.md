@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED.** Ryan accepted T3/V3/V4 and the exact-candidate Kiro/BugBot outage exception at `3c490e2`, then squash-merged PR #391 as `a7f7200`. Final hosted CI passed; the squash tree matches the accepted candidate. [VERIFY closeout](VERIFY-safe-harbor.md#t3-final-ci-review-owner-acceptance-and-squash-mapping) records the evidence. T4/T5 and deployment remain unauthorized.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; ISOLATED T4 GRANTED.** Ryan authorized Cursor implementation with Codex supervision and isolated V5 evidence, returning results for independent review. [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized) is the handoff. T4 is not implemented at this grant; V5/V6 remain NOT RUN. PR creation, merge, deployment, production operations and T5 are unauthorized.
 
 ## 1. What This Is For (product goal)
 
@@ -52,26 +52,24 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T2 / V2: ACCEPTED AND MERGED** through #389 (`458b9f6`). Ryan accepted the Codex review and documented limitations at `eb06c97`; the final candidate and squash trees match.
 - **T3 / V3 / V4: ACCEPTED AND MERGED** through #391 (`a7f7200`). Owner-accepted candidate `3c490e2ce61d5c6531a044132c5a01faf144f1ac` has the identical tree. Hosted Python 3.12.15: 3,083 passed, 125 skipped, 252 subtests passed; critical collection, lint regression gate and all security checks passed. Kiro final correction review PASS (89%) closes the delta from `ea2d316`; earlier proof/implementation/integration reviews retain their exact pins. Ryan accepted the pinned Kiro reviews as this candidate's BugBot outage exception, not a BugBot PASS.
 - **Evidence limits retained:** isolated restart/IO injection is not power-loss proof; small-store validation and the strict release oracle can refuse recoverable states. Earlier failures and authoring lapses remain in VERIFY. No production backup usability or loss window was established.
-- **T4/T5 NOT GRANTED.** V5/V6 remain NOT RUN. Approval recovery still needs direct-helper coverage, hash-view alignment, event-only completion and uncertain-outcome evidence. The arc is not closed.
+- **T4 GRANTED, NOT IMPLEMENTED:** Cursor may implement the existing approval-recovery contract in isolation with Codex supervision; V5 evidence must return for independent review. Direct-helper coverage, hash-view alignment, event-only completion and uncertain outcomes remain to be proven. **T5 NOT GRANTED; V5/V6 NOT RUN.**
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** decide separately whether to grant the accepted T4 scope. No implementation continuation follows from the T3 merge.
+**Cursor:** implement T4 under EXECUTION section 15, file-authoring only in the disposable copy; return for supervised evidence. **Codex:** inspect permitted changes, run isolated V5/regressions and record exact results, failures and limitations. Neither author is the independent reviewer.
 
-**Codex:** preserve the closeout and, when requested, prepare the bounded T4 handoff against current main. **Cursor:** no active implementation grant. **Kiro:** the T3 review cadence is complete for the accepted candidate; no unchanged-artifact rerun is needed.
-
-No production ritual, manual session indexing or live operations under this closeout.
+**Next reviewer / Ryan:** review and accept the returned exact candidate separately. No PR, merge, live action or T5 grant. No production ritual or manual session indexing.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Ryan separately grants T4 before implementation. Its accepted contract must address direct-helper binding, hash alignment, event-only completion and uncertain outcomes; collect V5 and return independent review/acceptance evidence.
+1. Complete owner-granted T4 in isolation: direct-helper binding, hash alignment, event-only completion and uncertain outcomes. Collect V5 and return results for independent review and owner acceptance. No PR or live authority follows.
 2. T5 requires its own grant for integrated evidence and a bounded operational handoff (V6). T3's accepted evidence does not close T5.
 3. Before rollout, resolve the loss window, exact usable recovery artifact, old-process/guard-state adoption and rollback compatibility in EXECUTION section 6. Extra ext4 capacity is not qualified protection.
 4. Deployment and corpus-affecting operations require separate scope, evidence and owner authorization.
 
 ## 7. Hard Stops (models cannot cross)
 
-- T1–T3 are accepted and merged; their implementation grants are complete. This is documentation closeout only. T4/T5, new runtime changes and live operations require separate grants. No installed-runtime, production-data, service, backup-repository, key, retention or permission changes.
+- T1–T3 are accepted and merged; their implementation grants are complete. Only the existing T4 contract and isolated V5 evidence are granted in EXECUTION section 15. PR creation/comments, merge, T5 and live operations remain unauthorized. No installed-runtime, production-data, service, backup-repository, key, retention or permission changes.
 - No restore drills, production experiments, indexing, ledger record or merge from this brief.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration or generalized repair. Read that arc's current STATUS hard stops.
 - No generic HOLD, identity registry, freeze, broad constructor change or automatic cleanup subsystem under this direction.
@@ -100,6 +98,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-13 — Codex: recorded Ryan’s isolated T4/Cursor grant and pinned handoff; Codex supervises V5 evidence, results return for independent review, no PR/live/T5 authority.
 
 - 2026-10-13 — Codex: verified #391 squash `a7f7200` equals accepted `3c490e2`; recorded green hosted CI, Kiro final PASS and Ryan T3/V3/V4/outage acceptance; T4/T5/live work remain ungranted.
 

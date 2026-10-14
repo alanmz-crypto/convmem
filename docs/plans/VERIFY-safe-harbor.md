@@ -1,14 +1,14 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED.** [T3 final record](#t3-final-ci-review-owner-acceptance-and-squash-mapping) binds accepted `3c490e2` to squash `a7f7200`, passing hosted CI, Kiro final delta PASS (89%) and Ryan’s T3/V3/V4/BugBot outage acceptance. Historical failures and limitations are retained below. V5/V6 remain NOT RUN; T4/T5 and deployment are ungranted.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED.** [T3 final record](#t3-final-ci-review-owner-acceptance-and-squash-mapping) binds accepted `3c490e2` to squash `a7f7200`, passing hosted CI, Kiro final delta PASS (89%) and Ryan’s T3/V3/V4/BugBot outage acceptance. Historical failures and limitations are retained below. V5/V6 remain NOT RUN; T4 implementation/isolated evidence are now granted in EXECUTION section 15. T5 and deployment are ungranted.
 
 ```text
 Planning Status
-Phase:        T3 evidence accepted and source merged
+Phase:        T4 implementation granted; V5 not yet run
 Characters:   Implementer, Test-First Reviewer
 Function:     Record observed evidence, failures and remaining limits
-Lanes:        Cursor/Codex authors; Kiro reviewed; Ryan accepted/merged
-Authority:    Completed T3 grant; no deployment or T4/T5 grant
+Lanes:        Cursor authors T4; Codex supervises; independent review later
+Authority:    EXECUTION section 15; no PR/merge/deployment/T5 grant
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -869,6 +869,8 @@ The review keeps small-store validation and CI integration limitations open. It 
 **Owner continuation:** Ryan’s instruction to investigate once, obtain the bounded independent review, then proceed is satisfied. [EXECUTION section 11](EXECUTION-safe-harbor.md#11-cursor-remaining-t3--conditional-owner-grant-satisfied) grants isolated T3 implementation with Cursor authoring and Codex-supervised clean-bootstrap execution. The implementation evidence is now recorded below; no T4/T5 or live grant follows.
 
 ## V5 — Approval recovery (T4)
+
+**Current authority:** Ryan granted T4 implementation and isolated V5 evidence in [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized). No result or acceptance is claimed at this grant.
 
 **NOT RUN.** Cold/warm caches; unknown/absent/tombstoned/conflicting/matching states; direct and CLI callers; actual lease/governed/native/export order; forced forget/refine competition; target substitution; partial Chroma/export/event completion and retry. Cover failure before completion append, partial record, complete record with failed fsync, and durable record followed by interrupted return. An unsuccessful invocation may leave APPROVED; assert truthful uncertain-outcome reporting, authoritative reread/reduction before retry, durability establishment before success, no duplicate approval/blind re-upsert, no hidden export loss and no automatic malformed-tail deletion. Readable bytes alone do not prove durability. All cases remain unrun.
 
