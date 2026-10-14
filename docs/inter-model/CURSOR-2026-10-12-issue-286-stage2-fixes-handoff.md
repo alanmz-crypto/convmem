@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 8 FAILs corrective 6 (`e1914f5`). Deploying it would burn: the real `index --file` entrypoint pays for the transform, then fails at commit. Corrective 7 (S0–S7, S0 first) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 8 |
+| **State** | `IN_PROGRESS`: Claude's round 9 FAILs corrective 7 (`905e602`). The index-route burn is fixed through the real entrypoint, but refine, monitor and repository-knowledge retirement now take C1 inside an open store session and fail on every write; refine pays one DeepSeek call first. Corrective 8 (T0–T5, T0 first) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 9 |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

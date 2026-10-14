@@ -1,4 +1,278 @@
-# Verify: Stage 2 wedge fixes, round 8 at `e1914f5`: FAIL; the real index entrypoint now pays and then fails, so deploying this tip would burn; corrective 7
+# Verify: Stage 2 wedge fixes, round 9 at `905e602`: FAIL; refine, monitor and retirement now take C1 inside an open store session, so the S0 check refuses them, and refine pays before it fails; corrective 8
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-13
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `905e602`, Cursor
+Composer's corrective 7 (`3dbddae`) plus its census-test refresh (`905e602`).
+It answers round 8 (below).
+**Method:**
+- I read the diff `e1914f5..905e602`.
+- I took a census of every production store-session opener and checked, for
+  each one, whether C1 is taken before the session opens.
+- I wrote 4 round-9 probes that open the **real** production store session
+  against a scratch config (appendix). No fake session. Controls at
+  `c7072fc`.
+- I ran Codex's 10 round-7 probes, my round-2 to round-8 probes, and Cursor's
+  wedge, corrective-6 and corrective-7 tests.
+- I ran the full suite hermetically at `905e602` (`env -i`, a scratch
+  `HOME`, no API keys, `tests/test_index_loud_failures.py` skipped) and
+  compared it with round 8's main run at `458b9f6`, same SHA and same
+  method.
+- I compared mtimes and sizes across the live data root before and after my
+  runs.
+
+## Burn status
+
+**No burn now. This branch isn't deployed, and the watcher, refine and
+monitor units are all disabled.**
+- **My runs:** none can reach a paid provider. Providers are faked and the
+  environment has no keys.
+- **Deploying `905e602` would not burn through the watcher.** The index
+  route is fixed: the real `index --file` entrypoint commits, and the F2
+  retry bounds hold through it.
+- **It would burn through refine, if `convmem-refine.service` is enabled.**
+  See V0. Each restart pays one DeepSeek call and then crashes, about 120
+  calls an hour with no writes. The unit is disabled today.
+- **Live data root:** between my before and after snapshots, only `chroma/`,
+  `source_reconciliation.json` and `writer_attestations/` changed. That's the
+  2-minute `convmem-reconcile` timer's footprint. The export and the
+  processed log didn't change. My runs used a scratch `HOME`, and can't reach
+  the live config.
+
+## Verdict (round 9)
+
+**FAIL. Not ready for the audit and the review. Not deployable while the
+refine unit can be enabled.**
+- **What's fixed:** S0's real target. The incremental route through the real
+  `ingest.index(force_file=...)` commits. So do bulk `index` and legacy
+  `index --file`, purge, export compaction and the ledger approvals. R0 and
+  R1 are closed.
+- **What corrective 7 broke:** S3 and S2 moved C1 *inside* an already-open
+  store session in three writers: refine, monitor and repository-knowledge
+  retirement. That's exactly the order S0's check refuses, so all three now
+  fail on every write. Refine pays for its LLM call first (V0).
+- **Why nobody saw it:** every test of those three replaces the store
+  session with a fake that never counts as a store session. That includes my
+  own round-8 monitor and retirement probes. The round-9 probes open the
+  real session: all three fail at `905e602` and pass at `c7072fc`.
+- **Smaller:** S6's refusal can't be parsed by the watcher (V1). S5 can't
+  release a corrupt retry state (V2). S3 is not done for `add --file` (V3).
+- **The full suite:** 15 tests fail only at the tip (down from 122), and every
+  one is explained (V5). None is a burn or a production break; 7 are the
+  scratch prototype, refused by the guard as it should be.
+- **My share:** round 8's S2 said "take C1 around `_apply_retirements`'
+  mutation" without saying the session must open inside C1. S0's order list
+  implied it, but I should have said it. My round-8 monitor and retirement
+  probes used fake sessions, the same blind spot as the suite.
+
+**Fixed and verified:**
+- **S0 (R0):** the lock-order check now counts opened store sessions, not the
+  boundary lease.
+  - `test_index_file_routes_codex_rollout_and_commits` (real `index()`,
+    production's single writer-lock path) passes.
+  - Bulk `index` and legacy `index --file` (8c) pass.
+  - Cursor's three F2 variants go through `ingest.index(force_file=...)` and
+    pass: at most 2 paid summaries per prefix, then refusal.
+- **S1 (R1):** C1 before the store session in `ingest_approved_file`,
+  `ingest_approved_ledger`, `convmem verify` and
+  `repair_empty_ledger_documents`. `governed_lock` is still taken before C1;
+  `verify_unit` writes through `ingest_observation` and never takes
+  `governed_lock`, so nothing takes them in the reverse order.
+- **Census:** 18 store-session openers in production code, not counting the
+  scratch prototype.
+  - **14 take C1 first:** `add`, `verify`, `forget`'s write, ingest ×3,
+    inter-model, the two ledger approvals, ledger repair, refine's
+    approved-dedupe, repository-knowledge index, purge and the coordinator.
+  - **1 needs no C1:** `forget`'s first session only reads, which the guard
+    allows.
+  - **3 take C1 inside the session:** V0.
+- **S2:** the guard denies by default, with an explicit read list.
+  `supersede_units_for_source` and `_collection()` now need C1.
+- **S4 (R4):** monitor embeds the normalized stored document
+  (`embed_ledger_record_for_storage`) and skips unchanged rows. My round-8
+  probe passes.
+- **S5 (R5):** `--clear-quarantine <path>` clears that source's retry
+  state and releases the hold (8b passes). Doctor names the command.
+- **S6 (R6), refusal:** a corrupt or unreadable retry state refuses with
+  `retry_state_unavailable` before any transform, and the CLI exits 91.
+- **S7:** the round-8 appendix probes are in the tree unchanged, plus
+  Codex's `_route_fixture` (formatting changes only) and Q8 tests.
+- **Inventories:** both regenerated; the census test passes.
+- **Codex's 10 round-7 probes:** 9 now fail, so those holes are fixed. The
+  10th passes only because it scans a temp directory that isn't a git repo
+  (8b's Q7 probe covers the real case).
+- **Earlier probes:** my rounds 2 to 8 plus Cursor's wedge, corrective-6 and
+  corrective-7 tests give 69 passed. The 2 that fail are round 4's s2 probe,
+  obsolete since corrective 4, as in round 8.
+
+## Findings (round 9)
+
+**V0 (high; a burn if the refine unit is enabled, plus three writer
+outages): refine, monitor and retirement take C1 inside an open store
+session.**
+- **The rule (S0):** admission → writer boundary → `source_flock` → C1 →
+  store session → `export_flock`. `assert_lock_ordering_ok` refuses C1 while
+  this thread has an opened store session. That check is right: it's what
+  keeps a Chroma client from being opened before another writer's commit and
+  then writing from that stale view.
+- **refine** (`refine.py` ~792 `_run_job_impl`, ~27 `_index_write_lock`):
+  the job runner opens the store, then each job takes C1 per write.
+  - **Real session:** `backfill_domain` pays one DeepSeek call
+    (`llm.generate`, `distill_model`), then raises "lock ordering violation".
+    The `with` is outside the job's `try`, so the whole job aborts. Every
+    other job fails at its first write.
+  - **The burn path:** `run_refine_daemon` doesn't catch a job's exception,
+    so the daemon exits. `convmem-refine.service` has `Restart=on-failure`
+    and `RestartSec=30`, and at 30-second spacing the default start limit
+    never trips. `CostLimiter` lives in memory and is rebuilt on every job
+    run. So each restart pays one more call: about 120 an hour, no writes,
+    no end. Today the unit is disabled and the tip isn't deployed. The
+    missing per-job catch and the per-run limiter are both on main already;
+    this tip is what makes every run pay and fail.
+  - A manual `convmem refine --job backfill_domain` pays one call and fails.
+- **monitor** (`monitor.py` ~399 `_ingest_locked`; `convmem.py` ~774): the
+  CLI opens the store session, runs the HTTP probes, then takes C1 per
+  record. Real session: one local embed, then the lock-order error; exit 1;
+  nothing stored. `convmem-monitor.timer` is disabled.
+- **retirement** (`repository_knowledge_sync.py` ~249 and ~283):
+  `_apply_retirements` opens the session, then takes C1 inside the loop.
+  Every retirement raises. The repository-knowledge manifests are out of the
+  live config for now (the parked manifest fix), so the watcher doesn't
+  reach it today.
+- **Why the suite passes:** the tests for all three patch in a fake session
+  (`fake_session`, `_FakeProductionWrite`, `SimpleNamespace` stores) that
+  never increments the store-session counter. There are about 35 such
+  patches across 13 test files; none counts. Cursor's corrective-7 tests
+  for the index route do use the real session, which is why R0's fix holds.
+
+**V1 (medium): S6's exit 91 prints a line the watcher can't parse.**
+- `convmem.py` ~343 prints the detail, "incremental retry state could not be
+  read or written". `parse_live_route_refused` returns `None` for it, so
+  `watch.py` ~711 records no hold.
+- Effect: for an active session with a corrupt retry state, every new event
+  spawns another index child that refuses before the transform. No payment,
+  but churn, and the path never shows as held.
+- Round 8's S6 asked for "a refusal head the watcher can parse". Use
+  `format_live_route_refused("retry_state_unavailable", digest)`.
+
+**V2 (medium): `--clear-quarantine <path>` can't release a corrupt retry
+state.**
+- `clear_incremental_retry_states_for_source` finds state files by reading
+  their `source_path`. A corrupt file reads as `None` and is skipped.
+- So the S6 fail-closed state is cleared only by `--clear-quarantine-all`,
+  while doctor's remedy names the per-source command. Find the file by the
+  source's computed state path, not by its contents.
+
+**V3 (low): S3 isn't done for `add --file`.**
+- `add --file` and `ingest_approved_file` still embed every record inside C1
+  and the store session (local Ollama; not paid). C1 stays held for N
+  embeds.
+- Single-record `add` embeds before C1, but embeds the raw record, not the
+  normalized stored text. In my samples the two were identical; use
+  `embed_ledger_record_for_storage` anyway, as monitor does.
+
+**V4 (low): the guard passes non-callable attributes straight through.**
+- `session.store.client` returns the raw Chroma client, unguarded. No
+  production caller uses it through a guarded store today. Deny it, or
+  return a guarded proxy.
+
+**V5 (the full suite): 15 tests fail only at the tip, and every one is explained.**
+- **Counts:**
+  - main `458b9f6` (round 8's run, same method): 93 failed, 2896 passed,
+    66 skipped, 58 errors.
+  - `905e602`: 108 failed, 2931 passed, 66 skipped, 58 errors.
+  - Collapsing parameters: 146 failure ids at main, 161 at the tip, 15
+    tip-only, 0 main-only. That matches Cursor's report after `905e602`.
+- **Re-run with tracebacks:**
+
+| Cause | Count | What it is |
+|---|---|---|
+| B: the scratch prototype writes without C1 | 7 | `test_scratch_jsonl_chroma.py` ×6, `test_scratch_jsonl_live_source_canary.py` ×1: "production Chroma mutation requires the store-wide index write lock". The guard is right; production never imports the prototype. Give the prototype's `_session()` C1 the way the coordinator's does. |
+| E: tests reach a local Ollama | 5 | `test_add_severity.py` ×3 (exit 1 after a 404 from `localhost:11434`), `test_monitor.py` ×2 (404). `add` and monitor embed before the session now, and the mocks don't cover `llm.ollama_embed`. T0 changes monitor again, so update these after it. |
+| G: expectations made obsolete by Q1 | 2 | `test_c4_valid_exact_role_restore_still_succeeds`, `test_c4_isolation_dedupe_outside_role_refused_before_chmod`: they expect the old whole-file dedupe restore (`'tampered' != 'keep-me'`). Update to the per-transaction contract. |
+| F: a test double lacks `last_evidence` | 1 | `test_selected_refusal_is_visible_without_legacy_fallback`: the router writes `coordinator.last_evidence` before `run()`. Give `RefusingCoordinator` `last_evidence = {}` and `paths = None`. |
+
+Categories A, C, D and H from round 8 are gone.
+
+**Not findings:**
+- **`main` moved** to `a7f7200` (Safe Harbor's recovery-evidence PR #391)
+  since this branch forked at `458b9f6`. I verified against `458b9f6` so the
+  numbers compare with round 8. Bringing main in is for the PR step, and
+  agents don't force-push, so that's a merge commit or GitHub's update
+  button, Ryan's call.
+
+## Test results (round 9)
+
+| Run | Result |
+|---|---|
+| Full suite, main `458b9f6` (round 8) | 93 failed, 2896 passed, 66 skipped, 58 errors |
+| Full suite, `905e602` | 108 failed, 2931 passed, 66 skipped, 58 errors; 15 tip-only, 0 main-only (V5) |
+| Round-9 probes, real store session: refine, monitor, retirement (V0) | all 3 fail at `905e602` (refine after 1 paid call, monitor after 1 local embed); all 3 pass at `c7072fc` |
+| Round-9 control: the real session counts as one store session | passes at `905e602` |
+| Round-8 probes (8, 8b, 8c, 8d), now in the tree | all pass: real `index --file` commits; bulk and legacy index commit; F2a/b/c ≤ 2 paid; Q2(d) hold and release; Q2(c) unreadable and corrupt; Q7; Q1 |
+| Cursor's corrective-7 tests (F2 through `ingest.index`, Q8) and corrective-6 audit tests | all pass |
+| Codex's 10 round-7 probes (they assert the unsafe behavior) | 9 now fail, so those holes are fixed; 1 passes because it scans a non-git directory |
+| My rounds 2–5, plus Cursor's wedge-probe and wedge-fix tests | pass, except round 4's obsolete s2 probe (×2) |
+
+## Corrective 8 for Cursor
+
+All items are hermetic; none involve paid calls. Do T0 first.
+
+**T0 (V0): C1 before the store session, in all three.**
+- **The order doesn't change:** admission → writer boundary →
+  `source_flock` → C1 → store session → `export_flock`. Never take C1 inside
+  an open session; open the session inside C1.
+- **refine:**
+  - Do the reads and the LLM calls with no production store session open
+    (a read-only store, or a session closed before the write phase).
+  - Then, per batch: C1 → store session → re-read each row → write → close.
+  - In `run_refine_daemon`, catch a job's exception, log it, and go on to
+    the next job and the next interval, so one failure can't become a
+    restart loop.
+  - Keep one `CostLimiter` for the daemon's life, so the hourly cap is an
+    hourly cap.
+- **monitor:** run the HTTP probes and the embeddings with no store session
+  open. Then C1 → store session → ingest with the precomputed embeddings →
+  close.
+- **retirement:** `index_write_flock` around `production_chroma_write_session`
+  in `_apply_retirements`, not inside it.
+
+**T1: tests that can see the lock order.**
+- Adopt the round-9 probes (appendix).
+- Give the tests one shared fake-session helper that counts as a store
+  session (it calls `_enter_chroma_store_session()` and
+  `_exit_chroma_store_session()`), and move every fake production session in
+  `tests/` onto it. Then the suite sees this class of bug.
+
+**T2 (V1):** print the `retry_state_unavailable` refusal with
+`format_live_route_refused`, and add a watcher test: a corrupt state gives a
+hold, not a retry on every event.
+
+**T3 (V2):** clear a source's retry state by its computed state path,
+corrupt or not. Add a test: corrupt state, `--clear-quarantine <path>`, then
+the route runs again.
+
+**T4 (V3, V4):** embed before C1 in `add --file` and `ingest_approved_file`,
+using `embed_ledger_record_for_storage`; use it for single-record `add` too.
+Deny `client` in the guard.
+
+**T5: the full suite.**
+- Fix or explain every tip-only failure: B (give the scratch prototype's `_session()` C1),
+  E (mock `llm.ollama_embed` in `test_add_severity.py` and `test_monitor.py`,
+  after T0), G (update both tests to the per-transaction dedupe contract) and
+  F (`last_evidence = {}` on the double).
+- Then re-pin, regenerate the writer inventories after the last code edit,
+  run the full suite hermetically at main `458b9f6` and at your tip, and list
+  every tip-only failure with its cause.
+
+**After corrective 8:**
+1. I re-verify.
+2. A fresh Codex (Astra, high effort) audit and a fresh Kiro review on the
+   exact new tip.
+3. Ryan opens the PR and merges.
+
+# Round 8: `e1914f5`, FAIL; corrective 7 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -21,7 +295,7 @@ Composer's corrective 6. It answers round 7 (below).
 - I compared mtimes and sizes across the live data root before and after my
   runs.
 
-## Burn status
+### Burn status
 
 **No burn from this branch now: it isn't deployed, and the watcher stayed
 inactive and disabled throughout.**
@@ -40,7 +314,7 @@ inactive and disabled throughout.**
   C4 deferral stops it once deployed. My runs ran with a scratch `HOME`;
   the tests that tried to read the live config got "Config not found".
 
-## Verdict (round 8)
+### Verdict (round 8)
 
 **FAIL. Not ready for the audit and the review, and not deployable.**
 - **What's fixed:** corrective 6 closes every burn hole Codex found, when its
@@ -95,7 +369,7 @@ inactive and disabled throughout.**
     removed. It fails the same way at `c7072fc`.
   - **1 Cursor test:** see R7.
 
-## Findings (round 8)
+### Findings (round 8)
 
 **R0 (critical; a burn once deployed, plus an indexing outage): the new
 lock-order check fires inside the normal index path, after the paid
@@ -301,7 +575,7 @@ explained.**
   That's Recovery Authority's Ryan-gated cutover tooling, not part of this
   arc's census.
 
-## Test results (round 8)
+### Test results (round 8)
 
 | Run | Result |
 |---|---|
@@ -315,7 +589,7 @@ explained.**
 | Round-8 probes, findings | R2 ×2, R3, R4, R5 and R6 fail, as expected; controls at `c7072fc` pass for R3 and R4 |
 | Approve-index test (R1) | fails at `e1914f5`; passes at main and at `c7072fc` |
 
-## Corrective 7 for Cursor
+### Corrective 7 for Cursor
 
 All items are hermetic; none involve paid calls. Do S0 first.
 
@@ -1580,6 +1854,140 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-9 probe tests
+
+They run from `tests/` and import `_route_fixture` from `tests/test_zz_codex_audit.py`, which is
+already on the branch. Each probe opens the real production store session against a scratch
+config. Each test asserts the corrective-7 spec.
+
+<details><summary>tests/test_zz_claude_verify9.py</summary>
+
+```python
+"""Claude verify probes, round 9 (905e602): writers that take C1 inside an open store session.
+
+Each probe opens the real production store session (no fake session), against a scratch
+config. Scratch only.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import json
+import traceback
+
+from tests.test_zz_codex_audit import _route_fixture
+
+
+def _real_session_env(tmp_path, monkeypatch):
+    import chroma_write_store
+    import config
+    import incremental_jsonl as inc
+
+    source, cfg, _route = _route_fixture(tmp_path, monkeypatch)
+    layout = inc.ProductionBoundary(cfg, str(source)).layout
+    monkeypatch.setattr(chroma_write_store, "DEFAULT_WRITER_LOCK", layout["locks"] / "chroma_writer_gate.lock")
+    monkeypatch.setattr(config, "CONFIG_PATH", tmp_path / "config.toml")
+    monkeypatch.setattr(config, "load_config", lambda *a, **k: cfg)
+    monkeypatch.setattr("brief.refresh_brief_after_change", lambda *a, **k: None, raising=False)
+    return cfg
+
+
+def _where(exc):
+    return repr(exc)[:160], [f"{f.filename.split('/')[-1]}:{f.lineno}" for f in traceback.extract_tb(exc.__traceback__)][-5:]
+
+
+def test_real_session_counts_one_store_session(tmp_path, monkeypatch) -> None:
+    """Control: the real session is what the lock-order check counts."""
+    from chroma_write_store import production_chroma_store_session_depth, production_chroma_write_session
+
+    _real_session_env(tmp_path, monkeypatch)
+    with production_chroma_write_session(entrypoint="claude_verify9") as session:
+        assert session.store is not None
+        assert production_chroma_store_session_depth() == 1
+    assert production_chroma_store_session_depth() == 0
+
+
+def test_refine_backfill_domain_pays_then_writes(tmp_path, monkeypatch) -> None:
+    import llm
+    import refine
+    from chroma_store import ChromaStore
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    seed = ChromaStore(cfg["index"]["chroma_dir"])
+    seed.add_unit("u-untagged", "notes about python packaging", [0.1, 0.2, 0.3],
+                  {"id": "u-untagged", "title": "Packaging", "source_path": "/scratch/a"})
+    seed.close()
+    paid: list[int] = []
+    monkeypatch.setattr(llm, "generate", lambda *a, **k: paid.append(1) or "coding.tooling")
+    try:
+        result, err = refine.run_job("backfill_domain", limit=1, verbose=False), None
+    except Exception as exc:  # report how much was paid before the failure
+        result, err = None, _where(exc)
+    assert err is None, ("paid calls:", len(paid), err)
+    assert result["updated"] == 1, result
+
+
+def test_monitor_cli_ingests_through_real_session(tmp_path, monkeypatch) -> None:
+    import convmem
+    import llm
+    import monitor
+    from typer.testing import CliRunner
+
+    _real_session_env(tmp_path, monkeypatch)
+    embeds: list[int] = []
+    monkeypatch.setattr(convmem, "_guard_write", lambda: None)
+    monkeypatch.setattr(monitor, "fetch_https_headers", lambda site, *, session=None, timeout=20.0: ({}, "offline"))
+    monkeypatch.setattr(monitor, "check_tls_redirect", lambda site, *, session=None, timeout=20.0: False)
+    monkeypatch.setattr(llm, "ollama_embed", lambda *a, **k: embeds.append(1) or [0.1, 0.2, 0.3])
+    out = CliRunner().invoke(convmem.app, ["monitor", "--site", "example.test"])
+    err = _where(out.exception) if out.exception and not isinstance(out.exception, SystemExit) else None
+    assert out.exit_code == 0 and err is None, ("embeds:", len(embeds), err, out.output[-300:])
+    stats, _end = json.JSONDecoder().raw_decode(out.output[out.output.index("{"):])
+    assert stats["observations"] > 0, stats
+
+
+def test_repository_knowledge_retirement_through_real_session(tmp_path, monkeypatch) -> None:
+    import repository_knowledge_scope as rks
+    from chroma_store import ChromaStore
+    from repository_knowledge_sync import reconcile_manifest
+    from tests.test_repository_knowledge_scope import _commit_all, _init_repo, _write_manifest
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    rks.reset_configuration()
+    root = tmp_path / "repo"
+    root.mkdir()
+    _init_repo(root)
+    man = _write_manifest(root, {"docs/plan.md": ("# Plan\n", "markdown")})
+    _commit_all(root)
+    rk_cfg = {"index": dict(cfg["index"]), "watch": {"repository_knowledge_manifests": [str(man)]}}
+    reconcile_manifest(str(man), rk_cfg, dispatch=lambda *_: None)
+    prior_manifest = rks.sha256_file(man)
+    prior_file = rks.sha256_file(root / "docs/plan.md")
+    source = str((root / "docs/plan.md").resolve())
+    seed = ChromaStore(cfg["index"]["chroma_dir"])
+    seed.add_unit("right-row", "right", [0.0, 0.1, 0.2],
+                  {"id": "right-row", "source_path": source, "source_type": "repository_knowledge_v1",
+                   "file_sha256": prior_file, "manifest_sha256": prior_manifest})
+    seed.close()
+    payload = json.loads(man.read_text(encoding="utf-8"))
+    (root / "docs/plan.md").unlink()
+    payload["entries"] = [e for e in payload["entries"] if e["path"] != "docs/plan.md"]
+    payload["classifications"] = [r for r in payload["classifications"] if r["path"] != "docs/plan.md"]
+    payload["retire"] = [{"path": "docs/plan.md", "prior_file_sha256": prior_file,
+                          "prior_manifest_sha256": prior_manifest, "reason": "probe retire"}]
+    man.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    _commit_all(root, "retire")
+    try:
+        result, err = reconcile_manifest(str(man), rk_cfg, dispatch=lambda *_: None), None
+    except Exception as exc:
+        result, err = None, _where(exc)
+    assert err is None, err
+    assert result["retired"]["superseded"] == 1, result
+```
+
+</details>
 
 ## Appendix: round-8 probe tests
 
