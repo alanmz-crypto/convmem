@@ -19,11 +19,10 @@ Composer's corrective 8. It answers round 9 (below).
 - I ran the full suite hermetically at `61307d7` (`env -i`, a scratch `HOME`,
   no API keys, `tests/test_index_loud_failures.py` skipped) and compared it
   with round 8's main run at `458b9f6`, same method.
-- I started a leak census: the full suite at `61307d7` and at main
-  `458b9f6`, each with a fake live config in a scratch `HOME`, with a small
-  plugin that logs every test that changes a file under that config's data
-  root or the default data dir (appendix). It was 20% through when I
-  published; the rest follows in a later commit.
+- I ran a leak census: the full suite at `61307d7` and at main `458b9f6`,
+  each with a fake live config in a scratch `HOME`, with a small plugin that
+  logs every test that changes a file under that config's data root or the
+  default data dir (appendix).
 - I compared mtimes and sizes across the live data root before and after my
   runs.
 
@@ -170,19 +169,27 @@ the user's config.**
   only asks whether *some* C1 is held, and the test holds its temp one.
 - **It hasn't happened:** the newest file in the live `refine_undo/` is from
   2026-07-22.
-- **The leak census so far (20% of the suite, `test_add_severity` through
-  `test_exclude_source_purge`):** main and the tip touch the same files, so
-  this part of the class is older than this branch.
-  - About 25 tests take the default writer-gate lock and write attestation
-    files under `~/.local/share/convmem/` (`add`, approvals, conflict
-    events, purge).
-  - `test_doctor.py::test_run_doctor_all_pass` and
-    `test_eval_golden.py::test_golden_questions` open the configured Chroma
-    directory.
-  - With a real `HOME` those are the live writer lock, the live attestation
-    directory and the live store. T0's suite-wide fixture covers all of
-    them. `test_refine.py` comes later in the run; the targeted run above
-    already shows its tip-only writes.
+- **The leak census (the full suite, main `458b9f6` vs `61307d7`):**
+  - **New at the tip, writing into the configured data root (7 tests):**
+    the 5 in `test_refine.py`, Cursor's
+    `test_issue_286_stage2_corrective6_audit.py::test_refine_tombstone_waits_for_index_lock`,
+    and `test_file_generation_dedupe.py::test_persisted_semantic_record_resolves_real_approval_path`.
+    All touch `chroma/`. 3 also write `refine_undo/` snapshots, and 1
+    creates the write-guard lock.
+  - **Older than this branch (also at main):**
+    - `test_doctor.py::test_run_doctor_all_pass`,
+      `test_eval_golden.py::test_golden_questions` and
+      `test_mcp_crush_stdio_sequence.py::test_shell_profile_stats_after_crush_handshake`
+      open the configured Chroma directory.
+    - 84 tests at main (92 at the tip) write attestation files under the
+      default `~/.local/share/convmem/writer_attestations/`. One also takes
+      the default writer-gate lock.
+  - The other tip-only entries are my round-8 probes in
+    `test_zz_claude_verify8c.py`. They write attestations only, and they
+    don't exist at main.
+  - With a real `HOME`, all of these are the live store, the live writer
+    lock and the live attestation directory. T0's suite-wide fixture covers
+    every one.
 
 **W2 (low): monitor's deferred ingest returns a stub.**
 - `_ingest_locked` (`monitor.py` ~409) queues the record and returns
@@ -236,7 +243,7 @@ Round 9's other 13 tip-only failures (B, E for `add`, F, G) now pass.
 | `tests/test_refine.py` with a fake live config | `61307d7`: 5 failed, 5 passed, 4 files written under the fake live root and default dir. `c7072fc`: 10 passed, nothing written |
 | Rounds 2–9 probes plus Cursor's #286 tests, `61307d7` | 73 passed, 3 failed (round 4's obsolete s2 ×2; W1 ×1) |
 | Codex's round-7 probes, `61307d7` | 9 failed (holes fixed), 1 passed (the non-git scan artifact) |
-| Leak census, `61307d7` vs `458b9f6` | partial (20%): the same files at both so far (W1) |
+| Leak census, `61307d7` vs `458b9f6` | 94 tests vs 86 touch the fake live root or default dir; 7 tests write into the configured data root only at the tip (W1); 3 older Chroma openers and 84 older attestation writers at both |
 | Live data root, before vs after | two `runtime-main` index runs and the reconcile timer; nothing from my runs |
 
 ## Corrective 9 for Cursor
