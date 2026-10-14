@@ -1573,6 +1573,11 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         self.legacy_bytes_path = self.root / LEGACY_BYTES_NAME
         self.preservation_root = self.root / "preservation"
         self.lock_timeout_seconds = lock_timeout_seconds
+        self._approval_recovery_depth = 0
+        self._approval_recovery_finalized = False
+        self._approval_recovery_owner: int | None = None
+        self._approval_recovery_mutated = False
+        self._approval_recovery_pending_after_write: tuple[str, dict[str, Signature]] | None = None
 
     @property
     def audit_path(self) -> Path:
@@ -2304,6 +2309,81 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
 
     # -- the write protocol -------------------------------------------------------------
 
+    def finalize_approval_recovery(self) -> None:
+        """Run deferred native validation once before export/event publication."""
+        if self._approval_recovery_depth <= 0:
+            raise ChromaWriteGuardError("finalize outside approval recovery section")
+        if threading.get_ident() != self._approval_recovery_owner:
+            raise ChromaWriteGuardError("approval recovery finalize from wrong thread")
+        if self._approval_recovery_finalized:
+            return
+        pending = self._approval_recovery_pending_after_write
+        if self._approval_recovery_mutated and pending is not None:
+            key, before = pending
+            self._after_write(key, before, system_trusted=True)
+        if self.read_authority().blocking:
+            view = self.read_authority()
+            raise ChromaWriteQuarantinedError(
+                f"post-native validation failed: {view.summary}; see {self.quarantine_path}"
+            )
+        self._approval_recovery_finalized = True
+
+    @contextmanager
+    def approval_recovery_critical_section(
+        self,
+        *,
+        reload_client: Callable[[], None],
+    ) -> Iterator[ChromaWriteGuard]:
+        """Hold native lock from recovery recheck through completion effects.
+
+        Reconciles and reloads once at entry. Nested ``native_write`` defers segment
+        validation until ``finalize_approval_recovery``.
+        """
+        self._reject_identity_conflict()
+        if self._approval_recovery_depth > 0:
+            raise ChromaWriteGuardError("nested approval recovery sections are forbidden")
+        key = _view_key(self.chroma_dir)
+        self.require_not_quarantined()
+        barrier = os.environ.get(_ADMISSION_BARRIER_ENV)
+        if barrier:
+            _wait_barrier(barrier)
+        with _exclusive_flock(self.lock_path, self.lock_timeout_seconds):
+            self.require_not_quarantined()
+            self.reconcile()
+            if self.read_authority().blocking:
+                view = self.read_authority()
+                raise ChromaWriteQuarantinedError(
+                    f"chroma writes are quarantined: {view.summary}; see {self.quarantine_path}"
+                )
+            before = store_signature(self.chroma_dir)
+            if _synced_only(_system_view(key)) != _synced_only(before):
+                reload_client()
+                _set_system_view(key, before)
+            self._approval_recovery_owner = threading.get_ident()
+            self._approval_recovery_finalized = False
+            self._approval_recovery_mutated = False
+            self._approval_recovery_pending_after_write = (key, before)
+            self._approval_recovery_depth += 1
+            try:
+                yield self
+                if self._approval_recovery_mutated and not self._approval_recovery_finalized:
+                    raise ChromaWriteGuardError(
+                        "approval recovery exited before finalize_approval_recovery"
+                    )
+            finally:
+                try:
+                    if self._approval_recovery_mutated and not self._approval_recovery_finalized:
+                        pending = self._approval_recovery_pending_after_write
+                        if pending is not None:
+                            key, before = pending
+                            self._after_write(key, before, system_trusted=False)
+                finally:
+                    self._approval_recovery_depth = 0
+                    self._approval_recovery_owner = None
+                    self._approval_recovery_pending_after_write = None
+                    self._approval_recovery_mutated = False
+                    self._approval_recovery_finalized = False
+
     @contextmanager
     def native_write(self, *, identifier: str, reload_client: Callable[[], None]) -> Iterator[None]:
         """Run one native Chroma mutation under the containment invariants."""
@@ -2319,6 +2399,19 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
             _wait_barrier(barrier)
         with _exclusive_flock(self.lock_path, self.lock_timeout_seconds):
             self.require_not_quarantined()
+            if self._approval_recovery_depth > 0:
+                if threading.get_ident() != self._approval_recovery_owner:
+                    raise ChromaWriteGuardError("native write outside recovery owner thread")
+                if self._approval_recovery_finalized:
+                    raise ChromaWriteGuardError("mutations after approval recovery finalize forbidden")
+                if self.read_authority().blocking:
+                    view = self.read_authority()
+                    raise ChromaWriteQuarantinedError(
+                        f"chroma writes are quarantined: {view.summary}; see {self.quarantine_path}"
+                    )
+                self._approval_recovery_mutated = True
+                yield
+                return
             self.reconcile()
             if self.read_authority().blocking:
                 view = self.read_authority()

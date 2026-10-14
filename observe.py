@@ -18,6 +18,44 @@ def _reject_governed_bypass(record: dict, *, upsert: bool) -> None:
         raise ValueError("governed decision upsert requires proposal_id from approval protocol")
 
 
+# pylint: disable=duplicate-code
+# Export parsing fails closed; the restore parser has a different result/authority contract.
+def export_projection_records(
+    units_export: Path,
+    ledger_id: str,
+) -> tuple[list[dict], str | None]:
+    """Return export rows for ``ledger_id``; reason set when authority is unreadable."""
+    if not units_export.is_file():
+        return [], None
+    needle = ledger_id.strip()
+    matches: list[dict] = []
+    for number, raw in enumerate(units_export.read_text(encoding="utf-8").splitlines(), 1):
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError:
+            return [], f"malformed_export_line_{number}"
+        if not isinstance(row, dict):
+            return [], f"invalid_export_line_{number}"
+        if str(row.get("ledger_id") or "").strip() == needle:
+            matches.append(row)
+    if len(matches) > 1:
+        return matches, "duplicate_export_identity"
+    return matches, None
+
+
+# pylint: enable=duplicate-code
+
+def export_unit_matches_normalized(unit: dict, export_row: dict) -> bool:
+    """Compare durable export projection to a normalized in-memory unit."""
+    expected = json.dumps({k: v for k, v in unit.items() if not k.startswith("_")},
+                          sort_keys=True, separators=(",", ":"))
+    actual = json.dumps({k: v for k, v in export_row.items() if not k.startswith("_")},
+                        sort_keys=True, separators=(",", ":"))
+    return expected == actual
+
+
 def _upsert_jsonl_line(
     units_export: Path,
     ledger_id: str,

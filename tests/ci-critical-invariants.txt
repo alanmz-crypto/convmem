@@ -13,6 +13,7 @@ tests/test_mixed_mode_proof.py
 tests/test_cg2_rehearsal.py
 tests/test_shadow_activation.py
 tests/test_governed_recovery_and_writers.py
+tests/test_governed_recovery_matrix_admitted.py
 tests/test_governed_writer_gate.py
 tests/test_writer_census.py
 tests/test_chroma_restore_drill.py
@@ -22,3 +23,5 @@ tests/test_ci_contract.py
 tests/test_safe_harbor_t3.py
 tests/test_safe_harbor_t3_matrix.py
 tests/test_safe_harbor_t3_backend_proof.py
+tests/test_safe_harbor_t4_fixture_scope.py
+tests/test_safe_harbor_t4_restic_ci.py

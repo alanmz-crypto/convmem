@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1/T2 MERGED; ISOLATED T3 IMPLEMENTATION GRANTED.** Ryan’s conditional instruction is recorded in section 11. The bounded isolation investigation is complete and Kiro independently PASSed the proof at `e08100ff` (82%). Cursor may implement the accepted T3 contract in the separate worktree; Codex supervises isolated execution. T4/T5, PR creation/comments, merge, deployment and live operations remain ungranted.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; T4 INDEPENDENT REVIEW PASS; OWNER/CI GATES OPEN.** Section 15 records Ryan’s separate T4 grant and Cursor/Codex handoff. T3 closeout remains pinned in VERIFY. PR creation/comments, merge, deployment, production operations and T5 remain unauthorized.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        Execute T3 in isolation; independent prerequisite passed
+Phase:        T4 Kiro review complete; Ryan next-step decision pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Cursor implementation; Codex supervised isolated evidence
-Authority:    Ryan conditional T3 grant (section 11); no T4/T5 or live grant
+Lanes:        Ryan next-step decision; Codex preserves pinned review/evidence
+Authority:    Ryan T4 grant (section 15); no PR/merge/live/T5 grant
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1 and T2 are accepted and merged. Section 10’s proof-only grant is complete; section 11 records the conditional remaining T3 grant, whose investigation/review prerequisites passed. T3 implementation is authorized only in isolation; T4/T5 remain NOT GRANTED. Shared files keep implementation serial. The reviewed task contracts below are unchanged.
+T1–T3 are accepted and merged. The proof, implementation and CI-correction grants in sections 10–14 are complete. Ryan separately granted isolated T4 in section 15; T5 remains NOT GRANTED. Shared files keep implementation serial. The reviewed task contracts below are unchanged.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -659,3 +659,51 @@ Keep pytest/pylint versions, backend pins, Python 3.12 CI matrix, existing job/c
 ## TL;DR
 
 [Arc Safe Harbor] Section 14 correction and local evidence are returned. Draft #391 receives fresh CI on push; runtime, lint baseline and safety assertions remain fixed. No merge, deployment or T4/T5.
+
+
+## 15. Cursor T4 implementation and isolated V5 — owner authorized
+
+**Arc: Safe Harbor. Date: 2026-10-13. Author: Codex. For: Cursor implementation lane.** This section is the bounded implementation handoff; it changes no accepted T4 contract.
+
+**Ryan’s grant (verbatim):**
+
+> Authorize Cursor to implement Safe Harbor T4 under the accepted execution plan, in an isolated worktree, with Codex supervision and isolated V5 evidence. Return results for independent review. PR creation, merge, deployment, production operations and T5 remain unauthorized.
+
+**Resume state:** implementation NOT STARTED when this grant is committed. Branch `feat/2026-10-13-safe-harbor-t4`; worktree `/home/lauer/Projects/convmem/.worktrees/feat-2026-10-13-safe-harbor-t4`. Code base is main `a7f72003aea516b4961a584fcfe54ad255d6a053` (T3 squash). The branch carries documentation-only closeout `693af6756be4aceafe1fa3b30b3fd888b36df24a`; this is not a different runtime baseline. Pin the pushed grant commit before authoring. No PR. No additional owner input is needed for this bounded scope.
+
+**Outcome:** implement the T4 contract in section 3 and V5 in VERIFY. A retry must distinguish unknown from absence, preserve tombstones/conflicts, bind every durable target, serialize fresh state inspection with competing mutations, and report partial/uncertain completion honestly. T2’s event-only completion evidence exclusion must be closed by real fixture effects, not renamed or skipped.
+
+**Permitted files:** recovery portions of `propose_decision.py` and `convmem.py`; narrow event-publication helpers in `conflict_events.py`; admitted-store/config/export helpers in `observe.py`, `ledger.py`, `chroma_store.py`, `chroma_write_store.py`; the existing native guard in `chroma_write_guard.py` only as needed to span T4’s recheck, mutation, post-native validation and publication without nested reconciliation. Related existing governed recovery/gate tests and focused `tests/test_safe_harbor_t4*.py` / `tests/_safe_harbor_t4*.py` helpers. Reuse the reviewed stdlib bootstrap/environment builder. Necessary test call-site inventories and generated writer identities may be updated only for the reviewed T4 changes, preserving routes/classifications/gate policy; use their generator under isolation. Update existing Safe Harbor EXECUTION/VERIFY/STATUS/LATEST and the cross-arc status row for evidence/routing. No lint-baseline increase, dependency/workflow change, new lifecycle state or parallel ledger.
+
+**Division of work:** Cursor authors code and fixture evidence cases in a disposable source copy with Shell/MCP/WebFetch denied. Codex confirms the denial before authoring, inspects permitted deltas before copying them to the isolated worktree, and supervises execution. No ambient project imports or tests from Cursor. Capture failures and permission violations honestly; any isolation lapse stops that run and is excluded from evidence. Codex is a contributor/supervisor, not an independent reviewer.
+
+**Execution isolation:** establish a fresh allowlisted HOME/XDG/config/data/export/event environment before imports through the existing `-I -S -B` stdlib entry. Bind uid/euid and all fixture paths; refuse production paths, providers and inherited credentials. Use fake providers/test repositories and real fixture Chroma/subprocesses. No production CLI, MCP, doctor/brief/unresolved/search, Restic repository, drive, service, backup/key or ledger operations. No session indexing/Track A. This task-specific restriction overrides the default session ritual and handoff indexing.
+
+**Required evidence:** V5’s state matrix with cold/warm caches and fresh-process retries, direct and CLI consumers, actual admitted target effects, queue/approved-intent/event authority errors, and forced forget/refine competition via barriers. Independently assert documents/vectors/metadata/tombstones, export bytes and reduced proposal lifecycle. Inject before/partial/complete-but-fsync-failed/durable-but-unacknowledged APPROVED append outcomes, plus new-log/new-directory durability failures. Verify no success before post-native validation/durable publication, no duplicate APPROVED/blind replay, no malformed-tail cleanup, no hidden export omission. The old unknown-to-empty classifier, failure-assumed-rollback retry and out-of-lock recheck must each fail an independent negative control. Keep index/plain-add exemptions and T1–T3 regression assertions intact. Focused isolated pytest and the unchanged lint regression gate; full local suite/hosted CI are not implied by this grant.
+
+**Stops:** unresolved lock inversion, a needed authority-model change or an unprovable contract returns to Codex/Ryan before scope expansion. Return code/evidence and limitations for independent review; no self-acceptance. External-review applicability is required for the eventual runtime candidate, but PR creation/comments/triggers are not authorized here. Prior task-specific outage exceptions do not automatically apply to T4. Push each commit with the explicit branch refspec; do not switch the shared checkout or main, force-push, merge or deploy.
+
+**T4 delivery (2026-10-13 local):** Cursor/Codex implemented the section 15 scope at `a3207fe397bf820f4f2bd412c7d5f110d00fdc67`. [VERIFY V5](VERIFY-safe-harbor.md#t4-implementation-and-isolated-v5--returned-for-independent-review) records 70 isolated T4 passes, affected regressions and full lint gate PASS, with source/artifact hashes and the excluded fixture model-download lapse preserved. Direct/CLI event-only completion and uncertain retry are demonstrated in scratch. This returns the grant for independent review; it does not self-accept V5 or authorize a PR, hosted CI, merge, T5 or live action.
+
+
+**Independent review completed (2026-10-13 local):** Ryan separately authorized the bounded complete-candidate review. Kiro returned **PASS (90%)** at `d27d3c00c1ed6f35c9502c4628b4dbcc3af78de1`, source `a3207fe`, with no blockers. [VERIFY records the original PASS, completed test-source coverage and explicit limits](VERIFY-safe-harbor.md#t4-independent-kiro-review--pinned-pass-with-coverage-limits): logs were sampled; auxiliary sink non-interference remains at author-trace level; hosted CI and power loss were not established. This records a review, not owner V5 acceptance or an outage exception. The next proposed step is a separately authorized draft PR/normal hosted CI; no fixes, PR actions, merge, live work or T5 follows automatically.
+
+
+## 16. Bounded T4 CI correction — owner authorized
+
+**Arc: Safe Harbor. Date: 2026-10-14. Codex supervision / Cursor authoring.**
+
+Ryan authorized: “Authorize bounded T4 CI corrections and isolated evidence. Preserve runtime behavior, safety assertions and the lint baseline. Keep PR #392 draft.”
+
+**Start:** draft [PR #392](https://github.com/alanmz-crypto/convmem/pull/392), branch `feat/2026-10-13-safe-harbor-t4`, clean candidate `76ea292701836c003ec86732ce011d85553b5212`; base `a7f72003aea516b4961a584fcfe54ad255d6a053`. Same isolated worktree as section 15. Ryan's preceding grant authorized this draft PR and normal hosted CI; no paid review trigger was made.
+
+**Failure to correct:** hosted run `38512289708` reported seven pytest failures, 3,086 passes, 186 skips and 252 passing subtests; lint/secret/security checks passed. Two old recovery fixtures lack current admission/state setup; the writer inventory assertion still expects 18 rather than 19 static sites; four watcher/path-safety assertions disagree with current fixture HOME/import state. Investigate that last cause rather than changing runtime. The 61 extra skips must be explained and required T4 Restic cases must execute; a green result obtained by skipping those cases is insufficient.
+
+**Bounded scope:** test fixtures and test-only harness/tool plumbing for these failures and required coverage; a narrow hosted workflow step may provision a pinned, checksum-verified Restic binary and expose it through the isolated tool path. Preserve all runtime files, lint baseline, independent proof assertions, critical collection, full unfiltered pytest and existing live-test exclusions. No broader provider/network/config inheritance. Update existing EXECUTION/VERIFY/STATUS/LATEST and the cross-arc status row with actual results. No inventory policy or runtime change; derived identities only if changed tracked inputs require regeneration.
+
+**Method:** reuse section 15's file-only Cursor authoring and Codex-supervised pre-import isolation. Prove the fixture/import cause with bounded scratch evidence. Give old recovery fixtures real admitted effects rather than mocking away the gate or fresh-state checks. Assert static-site coverage distinguishes the internal delegated recovery factory from external routes. Make missing required CI tools fail explicitly, preserve intentional local optional-tool behavior, and include a sensitivity control for missing required coverage. Test affected legacy, watcher, inventory, harness and T4 cases under isolation; then push for normal fresh hosted CI. Report unexpected runtime/authority needs before changing scope.
+
+**Limits:** PR stays draft. This grant supplies no independent review or owner V5 acceptance, no paid review trigger, merge, deployment, production commands, manual session indexing or T5. The prior Kiro PASS stays pinned to `d27d3c0`; subsequent changes need a bounded review.
+
+
+**Section 16 delivery:** the bounded fixture/tool correction is implemented with runtime, baseline and independent proof assertions unchanged. [VERIFY](VERIFY-safe-harbor.md#bounded-t4-ci-correction-and-isolated-evidence) records the original hosted failure, collection-order cause, retained development attempts and final local evidence: 76 T4 / 62 T2 / 71 focused / 40 inventory-contract passes (overlapping groups), nine native-backend proof passes, real critical collection exit 0 and full lint regression PASS. N8/N9's new file and the new fixture/tool checks are in the critical manifest. Push requests normal full hosted CI on draft #392. Live final-head checks, a bounded independent correction review and Ryan’s T4/V5 acceptance remain required. No PR comment/review trigger, merge, deployment, production action or T5.

@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-13
+**Updated:** 2026-10-14
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,12 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — draft PR #391; pytest correction returned (2026-10-13):**
-  **Next lane: Codex — report fresh final-tip hosted CI.**
-  [VERIFY](../plans/VERIFY-safe-harbor.md#t3-bounded-pytest-compatibility-correction)
-  records affected/integration evidence, full lint PASS and retained failures.
-  [STATUS](../plans/STATUS-safe-harbor.md) holds current gates. Runtime/baseline
-  stay fixed; successor acceptance, merge, deployment and T4/T5 remain pending.
+- **Arc Safe Harbor — T4 CI correction delivered (2026-10-14):**
+  **Next lane: Codex**, to report [draft #392’s hosted checks](https://github.com/alanmz-crypto/convmem/pull/392/checks),
+  then a bounded independent correction review and Ryan’s T4/V5 decision.
+  [VERIFY](../plans/VERIFY-safe-harbor.md#bounded-t4-ci-correction-and-isolated-evidence)
+  records passing local evidence and retained failures; [STATUS](../plans/STATUS-safe-harbor.md)
+  holds the current gates. Runtime/baseline unchanged; keep draft, no merge/live/T5.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
