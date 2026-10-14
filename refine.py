@@ -638,6 +638,7 @@ def job_semantic_dedupe(
     batch_cap = limit or int(refine.get("batch_size", 10))
     seen_pairs: set[tuple[str, str]] = set()
     pending_records: list[dict] = []
+    cap_hit = False
 
     for i, (uid_a, meta_a, emb_a) in enumerate(rows):
         if stats["queued"] >= batch_cap:
@@ -656,7 +657,8 @@ def job_semantic_dedupe(
             if limiter and not limiter.allow("semantic_dedupe"):
                 if verbose:
                     print("  [stop] semantic_dedupe hourly cap", file=sys.stderr)
-                return stats
+                cap_hit = True
+                break
             pending_records.append(
                 {
                     "id_a": uid_a,
@@ -673,6 +675,8 @@ def job_semantic_dedupe(
             stats["processed"] += 1
             if verbose:
                 print(f"  [dedupe?] {sim:.3f}  {uid_a[:8]} ~ {uid_b[:8]}", file=sys.stderr)
+        if cap_hit:
+            break
     if pending_records:
         from purge_locks import index_write_flock
 

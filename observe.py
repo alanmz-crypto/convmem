@@ -14,22 +14,75 @@ from ledger import build_ledger_index, ledger_unit_document, ledger_unit_metadat
 class ObservationIngestDriftError(Exception):
     """Prepared target changed or vanished before commit under C1."""
 
-    def __init__(self, ledger_id: str) -> None:
+    def __init__(
+        self, ledger_id: str, *, ledger_ids: set[str] | None = None
+    ) -> None:
         self.ledger_id = ledger_id
-        super().__init__(f"observation ingest drift for {ledger_id}")
+        self.ledger_ids = ledger_ids or {ledger_id}
+        super().__init__(
+            f"observation ingest drift for {', '.join(sorted(self.ledger_ids))}"
+        )
 
 
 class ObservationIngestDriftRefusedError(Exception):
     """Drift persisted after the allowed re-prepare round."""
 
 
+_READER_ONLY_TARGET_METADATA_KEYS = frozenset({"document"})
+
+
+def _canonical_observation_target(unit_row: dict | None) -> dict | None:
+    """Document text plus durable metadata, independent of store representation."""
+    if unit_row is None:
+        return None
+    doc = (unit_row.get("document") or "").strip()
+    meta = dict(unit_row.get("metadata") or {})
+    for key in _READER_ONLY_TARGET_METADATA_KEYS:
+        meta.pop(key, None)
+    return {"document": doc, "metadata": meta}
+
+
 def _observation_target_digest(unit_row: dict | None) -> str:
     if unit_row is None:
         return "missing"
-    doc = (unit_row.get("document") or "").strip()
-    meta = unit_row.get("metadata") or {}
-    payload = json.dumps({"document": doc, "metadata": meta}, sort_keys=True)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    payload = _canonical_observation_target(unit_row)
+    assert payload is not None
+    canonical = json.dumps(payload, sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _prepared_observation_drifted(
+    prepared: PreparedObservationIngest,
+    *,
+    store,
+    by_ledger_id: dict[str, dict],
+) -> bool:
+    unit = prepared.unit
+    lid = (unit.get("ledger_id") or "").strip()
+
+    if prepared.skipped_unchanged or prepared.upsert_update:
+        chroma_id, row = _lookup_target_row(store, lid)
+        current_digest = _observation_target_digest(row)
+        if prepared.skipped_unchanged:
+            return row is None or current_digest != prepared.target_digest
+        if row is None or chroma_id != prepared.existing_chroma_id:
+            return True
+        return current_digest != prepared.target_digest
+
+    if prepared.target_digest == "missing":
+        return bool(lid and lid in by_ledger_id)
+    return False
+
+
+def _fresh_readonly_embed_store(embed_store):
+    chroma_dir = getattr(embed_store, "chroma_dir", None)
+    if chroma_dir is None:
+        return embed_store
+    from chroma_readonly import open_readonly_unit_store
+    from ledger import invalidate_ledger_index_cache
+
+    invalidate_ledger_index_cache(chroma_dir)
+    return open_readonly_unit_store(chroma_dir)
 
 
 def _lookup_target_row(store, ledger_id: str) -> tuple[str | None, dict | None]:
@@ -244,25 +297,22 @@ def commit_observation_ingest(
     units_export: Path | None = None,
 ) -> dict | None:
     """Persist a prepared observation under an open write store."""
+    from ledger import invalidate_ledger_index_cache
+
     unit = prepared.unit
     lid = (unit.get("ledger_id") or "").strip()
-
-    if prepared.upsert and lid:
-        chroma_id, row = _lookup_target_row(store, lid)
-        current_digest = _observation_target_digest(row)
-        if prepared.skipped_unchanged:
-            if row is None or current_digest != prepared.target_digest:
-                raise ObservationIngestDriftError(lid)
-            unit["id"] = chroma_id or prepared.existing_chroma_id or unit.get("id")
-            unit["_skipped"] = True
-            return unit
-        if prepared.upsert_update:
-            if row is None or chroma_id != prepared.existing_chroma_id:
-                raise ObservationIngestDriftError(lid)
-            if current_digest != prepared.target_digest:
-                raise ObservationIngestDriftError(lid)
+    chroma_dir = getattr(store, "chroma_dir", None)
+    if chroma_dir:
+        invalidate_ledger_index_cache(chroma_dir)
+    by_ledger_id, _ = build_ledger_index(store)
+    if _prepared_observation_drifted(
+        prepared, store=store, by_ledger_id=by_ledger_id
+    ):
+        raise ObservationIngestDriftError(lid or str(unit.get("id") or ""))
 
     if prepared.skipped_unchanged:
+        chroma_id, _row = _lookup_target_row(store, lid)
+        unit["id"] = chroma_id or prepared.existing_chroma_id or unit.get("id")
         unit["_skipped"] = True
         return unit
 
@@ -423,9 +473,26 @@ def commit_prepared_observation_file_rows(
     by_ledger_id: dict[str, dict] | None = None,
 ) -> dict:
     """Commit prepared rows without re-embedding under the write lock."""
+    from ledger import invalidate_ledger_index_cache
+
     stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
-    if upsert and by_ledger_id is None:
-        by_ledger_id, _ = build_ledger_index(store)
+    chroma_dir = getattr(store, "chroma_dir", None)
+    if chroma_dir:
+        invalidate_ledger_index_cache(chroma_dir)
+    by_ledger_id, _ = build_ledger_index(store)
+    drift_ids: set[str] = set()
+    for _line_no, prepared in prepared_rows:
+        if prepared is None:
+            continue
+        lid = (prepared.unit.get("ledger_id") or "").strip()
+        if _prepared_observation_drifted(
+            prepared, store=store, by_ledger_id=by_ledger_id
+        ):
+            drift_ids.add(lid or str(prepared.unit.get("id") or ""))
+    if drift_ids:
+        raise ObservationIngestDriftError(
+            next(iter(drift_ids)), ledger_ids=drift_ids
+        )
     for line_no, prepared in prepared_rows:
         if prepared is None:
             stats["rejected"] += 1
@@ -597,8 +664,8 @@ def ingest_observation_file_with_drift_retry(
             prepared_rows = reprepare_observation_file_rows(
                 path,
                 prepared_rows,
-                drift_ledger_ids={drift.ledger_id},
-                embed_store=embed_store,
+                drift_ledger_ids=set(drift.ledger_ids),
+                embed_store=_fresh_readonly_embed_store(embed_store),
                 embed_model=embed_model,
                 ollama_host=ollama_host,
                 min_confidence=min_confidence,
@@ -676,44 +743,53 @@ def repair_empty_ledger_documents(
         if limit and len(pending) >= limit:
             break
 
-    with index_write_flock(lock_cfg):
-        _pw = open_production_write_store(
-            entrypoint="observe.repair_empty_ledger_documents"
-        )
-        store = _pw.store
-        cfg = _pw.live_cfg
-        try:
-            for prepared in pending:
-                for attempt in range(2):
+    chroma_dir = lock_cfg["index"]["chroma_dir"]
+    for prepared in pending:
+        current = prepared
+        unit = None
+        drift_skip = False
+        for attempt in range(2):
+            try:
+                with index_write_flock(lock_cfg):
+                    _pw = open_production_write_store(
+                        entrypoint="observe.repair_empty_ledger_documents"
+                    )
+                    store = _pw.store
                     try:
-                        unit = commit_observation_ingest(prepared, store=store)
-                        break
-                    except ObservationIngestDriftError:
-                        if attempt == 1:
-                            stats["skipped"] += 1
-                            unit = None
-                            break
-                        prepared = prepare_observation_ingest(
-                            prepared.record,
-                            store=reader,
-                            embed_model=models["embed_model"],
-                            ollama_host=models["ollama_host"],
-                            upsert=True,
-                            by_ledger_id=by_ledger_id,
-                        )
-                        if prepared is None:
-                            unit = None
-                            break
-                if unit is None:
-                    stats["missing_source"] += 1
-                elif unit.pop("_skipped", False):
+                        unit = commit_observation_ingest(current, store=store)
+                    finally:
+                        store.close()
+                break
+            except ObservationIngestDriftError:
+                if attempt == 1:
                     stats["skipped"] += 1
-                elif unit.pop("_upserted", False) or unit:
-                    stats["repaired"] += 1
-                    if verbose:
-                        lid = (unit.get("ledger_id") or "").strip()
-                        print(f"  [repair] {lid}")
-        finally:
-            store.close()
-    invalidate_ledger_index_cache(lock_cfg["index"]["chroma_dir"])
+                    drift_skip = True
+                    unit = None
+                    break
+                invalidate_ledger_index_cache(chroma_dir)
+                fresh_reader = open_readonly_unit_store(chroma_dir)
+                by_ledger_id, _ = build_ledger_index(fresh_reader)
+                current = prepare_observation_ingest(
+                    current.record,
+                    store=fresh_reader,
+                    embed_model=models["embed_model"],
+                    ollama_host=models["ollama_host"],
+                    upsert=True,
+                    by_ledger_id=by_ledger_id,
+                )
+                if current is None:
+                    unit = None
+                    break
+        if drift_skip:
+            continue
+        if unit is None:
+            stats["missing_source"] += 1
+        elif unit.pop("_skipped", False):
+            stats["skipped"] += 1
+        elif unit.pop("_upserted", False) or unit:
+            stats["repaired"] += 1
+            if verbose:
+                lid = (unit.get("ledger_id") or "").strip()
+                print(f"  [repair] {lid}")
+    invalidate_ledger_index_cache(chroma_dir)
     return stats

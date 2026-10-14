@@ -308,3 +308,54 @@ def test_index_write_guarded_store_read_allow_list_complete():
             continue
         with pytest.raises(RuntimeError, match="index write lock"):
             getattr(guarded, name)("x", "y", [0.0], {})
+
+
+def test_add_file_upsert_drift_allows_second_admission_round(tmp_path, monkeypatch) -> None:
+    """N4: a fresh admission context per commit round survives drift retry (no RuntimeError)."""
+    import json
+    from contextlib import contextmanager
+
+    import llm
+
+    monkeypatch.setattr(llm, "ollama_embed", lambda *_a, **_k: [0.1, 0.2, 0.3])
+    from chroma_readonly import open_readonly_unit_store
+    from chroma_write_store import production_chroma_write_session
+    from observe import ingest_observation_file_with_drift_retry
+    from purge_locks import index_write_flock
+    from tests.test_zz_claude_verify15 import _foreign_update, _obs, _seed
+    from tests.test_zz_claude_verify9 import _real_session_env
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    rec = _obs("obs_c13_add_upsert", "Original.")
+    unit, = _seed(cfg, rec)
+    path = tmp_path / "upsert.jsonl"
+    path.write_text(json.dumps({**rec, "summary": "Updated from file."}) + "\n")
+    admission_opens: list[int] = []
+    commit_rounds = {"n": 0}
+
+    @contextmanager
+    def _admission_once_per_round():
+        admission_opens.append(1)
+        yield None
+
+    def open_write_commit(commit_fn):
+        commit_rounds["n"] += 1
+        if commit_rounds["n"] == 1:
+            _foreign_update(cfg, unit["id"], "foreign drift")
+        with _admission_once_per_round():
+            with index_write_flock(cfg):
+                with production_chroma_write_session(entrypoint="convmem.add") as session:
+                    return commit_fn(session.store, None)
+
+    result = ingest_observation_file_with_drift_retry(
+        str(path),
+        embed_store=open_readonly_unit_store(cfg["index"]["chroma_dir"]),
+        open_write_commit=open_write_commit,
+        embed_model="fake",
+        ollama_host="offline",
+        upsert=True,
+        verbose=False,
+    )
+    assert commit_rounds["n"] == 2, commit_rounds
+    assert len(admission_opens) == 2, admission_opens
+    assert result["updated"] == 1, result

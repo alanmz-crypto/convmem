@@ -21,7 +21,7 @@ def _inventory() -> dict:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-_SCAN_SKIP_PREFIXES = ("tests/", ".worktrees/", "review-bundles/")
+_SCAN_SKIP_PREFIXES = ("tests/", ".worktrees/", "review-bundles/", "artifacts/")
 
 
 def _should_skip_scan_path(rel: str) -> bool:

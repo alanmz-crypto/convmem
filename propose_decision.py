@@ -639,9 +639,11 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
         except ObservationIngestDriftError:
             if attempt == 1:
                 raise ObservationIngestDriftRefusedError("approved ledger ingest drift") from None
+            invalidate_ledger_index_cache(lock_cfg["index"]["chroma_dir"])
+            fresh_reader = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
             prepared = prepare_observation_ingest(
                 protocol_ledger,
-                store=reader,
+                store=fresh_reader,
                 embed_model=models["embed_model"],
                 ollama_host=models["ollama_host"],
                 upsert=True,

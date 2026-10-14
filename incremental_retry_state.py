@@ -304,9 +304,10 @@ def record_incremental_retry_failure(
         return False
     try:
         prior = _read(state_path) or {}
+        failure_prefix = str(prior.get("failure_prefix_digest") or "")
         repeat = (
             prior.get("error_code") == error_code
-            and prior.get("prefix_digest") == prefix_digest
+            and failure_prefix == prefix_digest
             and bool(prefix_digest)
         )
         source_repeat = prior.get("error_code") == error_code and bool(error_code)
@@ -314,7 +315,8 @@ def record_incremental_retry_failure(
             "source_path": path_key,
             "transaction_id": transaction_id,
             "error_code": error_code,
-            "prefix_digest": prefix_digest,
+            "prefix_digest": str(prior.get("prefix_digest") or prefix_digest),
+            "failure_prefix_digest": prefix_digest,
             "consecutive": int(prior.get("consecutive") or 0) + 1 if repeat else 1,
             "source_consecutive": int(prior.get("source_consecutive") or 0) + 1
             if source_repeat

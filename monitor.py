@@ -609,13 +609,20 @@ def run_monitor(
                     if attempt == 1:
                         stats["drift_refused"] += 1
                         break
+                    from chroma_readonly import open_readonly_unit_store
+                    from ledger import invalidate_ledger_index_cache
+
+                    chroma_dir = session_cfg["index"]["chroma_dir"]
+                    invalidate_ledger_index_cache(chroma_dir)
+                    fresh_reader = open_readonly_unit_store(chroma_dir)
+                    by_ledger_id_fresh, _ = build_ledger_index(fresh_reader)
                     current = prepare_observation_ingest(
                         current.record,
-                        store=store,
+                        store=fresh_reader,
                         embed_model=embed_model,
                         ollama_host=ollama_host,
                         upsert=True,
-                        by_ledger_id=by_ledger_id_after,
+                        by_ledger_id=by_ledger_id_fresh,
                         precomputed_embedding=current.embedding,
                     )
                     if current is None:

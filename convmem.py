@@ -494,12 +494,12 @@ def add(
         from observe import ingest_observation_file_with_drift_retry
 
         embed_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
-        admission_file = (
-            _admitted_operation("convmem.add") if upsert else nullcontext()
-        )
 
         def open_write_commit(commit_fn):
-            with admission_file:
+            admission = (
+                _admitted_operation("convmem.add") if upsert else nullcontext()
+            )
+            with admission:
                 with index_write_flock(cfg_pre):
                     with production_chroma_write_session(entrypoint="convmem.add") as session:
                         live = session.live_cfg

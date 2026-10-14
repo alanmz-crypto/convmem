@@ -5,8 +5,8 @@
     "cg2_rehearsal.py:951",
     "chroma_store.py:108",
     "chroma_store.py:83",
-    "chroma_write_store.py:1123",
-    "chroma_write_store.py:1188",
+    "chroma_write_store.py:1133",
+    "chroma_write_store.py:1198",
     "chroma_write_store.py:685",
     "file_generation_store.py:97",
     "incremental_jsonl_canary.py:1234",
@@ -27,15 +27,13 @@
   ],
   "open_chroma_for_write_production_call_sites": [],
   "open_production_write_store_call_sites": [
-    "chroma_write_store.py:1144",
-    "observe.py:680",
+    "observe.py:754",
     "propose_decision.py:563",
     "propose_decision.py:625",
     "refine.py:347",
     "source_purge.py:341"
   ],
   "production_chroma_write_session_call_sites": [
-    "chroma_write_store.py:1095",
     "convmem.py:1870",
     "convmem.py:1900",
     "convmem.py:504",

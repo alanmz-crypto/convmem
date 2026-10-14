@@ -308,6 +308,7 @@ _SKIP_SCAN_PREFIXES = (
     "docs/",
     ".worktrees/",
     "review-bundles/",
+    "artifacts/",
     ".tmp/",
     ".git/",
     "node_modules/",

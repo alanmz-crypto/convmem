@@ -283,8 +283,10 @@ def _route(cfg, source):
 
 
 def test_p3_real_wedge_marker_through_cli_parses(tmp_path, monkeypatch) -> None:
+    from adapters.codex_rollout_jsonl import parse_complete_prefix
+
     source, cfg = _codex_env(tmp_path, monkeypatch)
-    digest = "c" * 64
+    digest = parse_complete_prefix(str(source)).prefix_sha256
 
     def failing_run(self):
         self.last_failure_code = "rollback_export_foreign_changed"
