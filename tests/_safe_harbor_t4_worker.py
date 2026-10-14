@@ -33,6 +33,7 @@ HASH_TRACKED_PATHS = (
     HARNESS,
     ROOT / "tests" / "_safe_harbor_bootstrap.py",
     ROOT / "tests" / "_safe_harbor_t3_backend_worker.py",
+    ROOT / "tests" / "_safe_harbor_restic_ci.py",
     ROOT / "tests" / "_safe_harbor_t2_cli.py",
     *SUITES,
     *sorted(ROOT.glob("tests/_safe_harbor_t4*.py")),

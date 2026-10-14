@@ -23,6 +23,7 @@ TRACKED_INPUT_PATHS = (
     T2_RUNNER,
     ROOT / "tests" / "_safe_harbor_bootstrap.py",
     ROOT / "tests" / "_safe_harbor_t3_backend_worker.py",
+    ROOT / "tests" / "_safe_harbor_restic_ci.py",
     ROOT / "tests" / "test_safe_harbor_t4_matrix.py",
 )
 

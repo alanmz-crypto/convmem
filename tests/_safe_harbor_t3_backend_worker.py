@@ -356,6 +356,13 @@ def _require_isolated() -> None:
             raise RuntimeError(f"refusing inherited {secret}")
 
 
+def _load_restic_ci() -> object:
+    """Load only the stdlib tool verifier before the isolated child imports."""
+    return _load_bootstrap_module().load_stdlib_module(
+        ROOT / "tests" / "_safe_harbor_restic_ci.py", "safe_harbor_restic_ci_bootstrap",
+    )
+
+
 def build_allowlisted_env(
     fixture_root: Path,
     evidence_root: Path,
@@ -380,11 +387,13 @@ def build_allowlisted_env(
     home = fixture_root / "home"
     include_toolbin = False
     selected_node = ""
+    restic_meta = {}
     if resolved_profile == "full_ci":
         node = _select_node_executable()
         _bridge_node_into_toolbin(fixture_root, node)
         include_toolbin = True
         selected_node = str(node)
+        restic_meta = _load_restic_ci().stage_ci_restic(fixture_root)
         config = _write_full_ci_fixture_config(fixture_root)
         _stage_convmem_readonly_docs(fixture_root)
     else:
@@ -418,6 +427,8 @@ def build_allowlisted_env(
     }
     if resolved_profile == "full_ci" and os.environ.get("GITHUB_ACTIONS") == "true":
         env["GITHUB_ACTIONS"] = "true"
+    if restic_meta:
+        env["SAFE_HARBOR_REQUIRE_RESTIC"] = "1"
     if fixture_meta is not None:
         fixture_meta.clear()
         fixture_meta["profile"] = resolved_profile
@@ -426,6 +437,7 @@ def build_allowlisted_env(
             fixture_meta["node_executable"] = selected_node
             fixture_meta["node_executable_sha256"] = hashlib.sha256(node_path.read_bytes()).hexdigest()
             fixture_meta["node_bridge"] = str(fixture_root / "toolbin" / "node")
+        fixture_meta.update(restic_meta)
     return bootstrap.with_expected_uid(env, bound_uid)
 
 

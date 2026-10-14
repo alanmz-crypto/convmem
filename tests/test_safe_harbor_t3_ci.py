@@ -136,6 +136,36 @@ def _real_builder_env(
     return fixture, evidence, env
 
 
+def _patch_full_ci_restic(case, backend, tmp_path: Path) -> Path:
+    restic = tmp_path / "restic-bin" / "restic"
+    restic.parent.mkdir(parents=True, exist_ok=True)
+    restic.write_text("#!/bin/sh\necho 'restic 0.19.0'\n", encoding="utf-8")
+    restic.chmod(0o755)
+    resolved = restic.resolve()
+    from tests import _safe_harbor_restic_ci as restic_helper
+
+    loader_patch = mock.patch.object(backend, "_load_restic_ci", return_value=restic_helper)
+    case.addCleanup(loader_patch.stop)
+    loader_patch.start()
+    verify_patcher = mock.patch(
+        "tests._safe_harbor_restic_ci.verify_restic_binary",
+        return_value=None,
+    )
+    case.addCleanup(verify_patcher.stop)
+    verify_patcher.start()
+    env_patcher = mock.patch.dict(
+        os.environ,
+        {"SAFE_HARBOR_CI_RESTIC_EXECUTABLE": str(resolved)},
+        clear=False,
+    )
+    case.addCleanup(env_patcher.stop)
+    env_patcher.start()
+    resolve_patch = mock.patch.object(restic_helper, "resolve_ci_restic_executable", return_value=resolved)
+    case.addCleanup(resolve_patch.stop)
+    resolve_patch.start()
+    return resolved
+
+
 class SafeHarborT3CiLauncherTests(unittest.TestCase):
     def setUp(self) -> None:
         self.worker = _load_worker()
@@ -162,6 +192,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
         _patch_os_uid(self, bound)
         if full_ci:
             self._patch_full_ci_node(tmp_path)
+            _patch_full_ci_restic(self, self.backend, tmp_path)
 
     def _patch_full_ci_node(self, tmp_path: Path) -> Path:
         """Non-/usr/bin node identity for full_ci profile (no ambient PATH inheritance)."""
@@ -206,6 +237,7 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
                 "-m",
                 "pytest",
                 "-q",
+                "-ra",
                 "-p",
                 "no:cacheprovider",
                 f"--basetemp={fixture_root / 'pytest-tmp' / 'full-suite'}",
@@ -237,6 +269,12 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
             self.assertEqual(
                 shutil.which("node", path=child_env["PATH"]),
                 str(fixture_root / "toolbin" / "node"),
+            )
+            restic_bridge = fixture_root / "toolbin" / "restic"
+            self.assertTrue(restic_bridge.is_symlink())
+            self.assertEqual(
+                shutil.which("restic", path=child_env["PATH"]),
+                str(restic_bridge),
             )
             tldr = Path(child_env["CONVMEM_ROOT"]) / "docs" / "CONVMEM-TLDR.md"
             self.assertTrue(tldr.is_file())
@@ -480,6 +518,13 @@ class SafeHarborT3CiLauncherTests(unittest.TestCase):
 class SafeHarborT3CiFixtureTests(unittest.TestCase):
     def setUp(self) -> None:
         self.backend = _load_backend()
+        # TestCase closes this context after the test through its cleanup stack.
+        fixture = self.enterContext(
+            tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
+        )
+        # These existing tests isolate node/config/uid plumbing; the separate
+        # Restic contract tests exercise the real verifier and missing-tool stop.
+        _patch_full_ci_restic(self, self.backend, Path(fixture))
 
     def test_full_ci_profile_refuses_without_node(self) -> None:
         with tempfile.TemporaryDirectory() as td:

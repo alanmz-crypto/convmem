@@ -166,7 +166,9 @@ def _restic_ok() -> bool:
     try:
         restic_snapshot.check_restic_available(RESTIC)
         return True
-    except ResolverError:
+    except ResolverError as exc:
+        if os.environ.get("SAFE_HARBOR_REQUIRE_RESTIC") == "1":
+            raise RuntimeError("required CI Restic unavailable; refusing skipped coverage") from exc
         return False
 
 

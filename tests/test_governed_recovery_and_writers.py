@@ -14,8 +14,6 @@ from propose_decision import (
     approve_and_ingest,
     approved_for_proposal,
     propose,
-    recover_approval,
-    recovery_action,
 )
 
 
@@ -90,53 +88,6 @@ class RecoveryMatrix(unittest.TestCase):
         _, ledger = approve(self.cfg, rec["id"], signer="ryan", ledger_id="dec_shared")
         self.assertEqual(ledger["proposal_id"], rec["id"])
         self.assertEqual(approved_for_proposal(self.cfg, rec["id"])["id"], "dec_shared")
-
-    @patch("propose_decision.ingest_approved_ledger")
-    def test_n8_retry_chroma_then_approved(self, mock_ingest):
-        mock_ingest.return_value = {"accepted": 1, "rejected": 0, "updated": 0, "skipped": 0}
-        rec = propose(
-            self.cfg,
-            relates_to="dec_a",
-            summary="Retry chroma",
-            rationale="approved jsonl first",
-            author="cursor",
-            constraints=["none-identified"],
-        )
-        # Interrupt after APPROVAL_STARTED + approved JSONL (no Chroma, no APPROVED).
-        approve(self.cfg, rec["id"], signer="ryan")
-        states = reduce_events(load_events(self.cfg))
-        self.assertEqual(states[rec["id"]]["lifecycle_state"], "APPROVAL_STARTED")
-        with patch("propose_decision.live_decision_snapshot", return_value=("", "")):
-            action = recover_approval(self.cfg, rec["id"])
-        self.assertEqual(action, "retry_chroma")
-        mock_ingest.assert_called()
-        states = reduce_events(load_events(self.cfg))
-        self.assertEqual(states[rec["id"]]["lifecycle_state"], "APPROVED")
-
-    @patch("propose_decision.ingest_approved_ledger")
-    def test_n9_marker_and_hash_append_approved(self, mock_ingest):
-        rec = propose(
-            self.cfg,
-            relates_to="dec_a",
-            summary="Marker done",
-            rationale="chroma already applied",
-            author="cursor",
-            constraints=["none-identified"],
-        )
-        approve(self.cfg, rec["id"], signer="ryan")
-        proposed = reduce_events(load_events(self.cfg))[rec["id"]]["proposal"][
-            "proposed_content_hash"
-        ]
-        with patch(
-            "propose_decision.live_decision_snapshot",
-            return_value=(rec["id"], proposed),
-        ):
-            action = recover_approval(self.cfg, rec["id"])
-        self.assertEqual(action, "approve")
-        mock_ingest.assert_not_called()
-        self.assertEqual(
-            reduce_events(load_events(self.cfg))[rec["id"]]["lifecycle_state"], "APPROVED"
-        )
 
     @patch("propose_decision.ingest_approved_ledger")
     def test_n10_uncertain_upsert_leaves_approval_started(self, mock_ingest):

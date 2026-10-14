@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; T4 DRAFT PR CI CORRECTION AUTHORIZED.** Draft [PR #392](https://github.com/alanmz-crypto/convmem/pull/392) at `76ea292` failed hosted pytest (seven failures, 186 skips); lint/security passed. Ryan authorized [section 16’s bounded test/CI correction](EXECUTION-safe-harbor.md#16-bounded-t4-ci-correction--owner-authorized), isolated evidence and fresh CI. Runtime, safety assertions and lint baseline remain fixed. Kiro PASS stays pinned to `d27d3c0`; V5 acceptance, final review and merge remain pending. No deployment, production operations or T5.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; T4 CI CORRECTION DELIVERED, HOSTED/REVIEW GATES OPEN.** Draft [PR #392](https://github.com/alanmz-crypto/convmem/pull/392) carries section 16’s test/CI correction. [VERIFY](VERIFY-safe-harbor.md#bounded-t4-ci-correction-and-isolated-evidence) records passing isolated T4/T2/fixture/inventory evidence, the backend proof, critical collection and unchanged-baseline lint gate. Runtime remains `a3207fe`; Kiro PASS stays pinned to `d27d3c0`. [Current-head hosted checks](https://github.com/alanmz-crypto/convmem/pull/392/checks), a bounded correction review and owner V5 acceptance remain separate gates. No merge, deployment, production operations or T5.
 
 ## 1. What This Is For (product goal)
 
@@ -52,17 +52,17 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T2 / V2: ACCEPTED AND MERGED** through #389 (`458b9f6`). Ryan accepted the Codex review and documented limitations at `eb06c97`; the final candidate and squash trees match.
 - **T3 / V3 / V4: ACCEPTED AND MERGED** through #391 (`a7f7200`). Owner-accepted candidate `3c490e2ce61d5c6531a044132c5a01faf144f1ac` has the identical tree. Hosted Python 3.12.15: 3,083 passed, 125 skipped, 252 subtests passed; critical collection, lint regression gate and all security checks passed. Kiro final correction review PASS (89%) closes the delta from `ea2d316`; earlier proof/implementation/integration reviews retain their exact pins. Ryan accepted the pinned Kiro reviews as this candidate's BugBot outage exception, not a BugBot PASS.
 - **Evidence limits retained:** isolated restart/IO injection is not power-loss proof; small-store validation and the strict release oracle can refuse recoverable states. Earlier failures and authoring lapses remain in VERIFY. No production backup usability or loss window was established.
-- **T4 / V5: IMPLEMENTED; CI CORRECTION IN PROGRESS.** Kiro PASS (90%) at `d27d3c0` remains historical, with sampled-log/auxiliary sink-trace limits. Hosted run `38512289708` at `76ea292` returned 7 failed / 3,086 passed / 186 skipped / 252 passing subtests; critical collection, lint and security passed. Required T4 coverage must be reconciled with the extra skips. V5 is not owner-accepted; the Kiro verdict is not automatically an outage exception. **T5 NOT GRANTED; V6 NOT RUN.**
+- **T4 / V5: IMPLEMENTED; CI CORRECTION DELIVERED.** Kiro PASS (90%) at `d27d3c0` remains historical, with sampled-log/auxiliary sink-trace limits. Hosted run `38512289708` at `76ea292` returned 7 failed / 3,086 passed / 186 skipped / 252 passing subtests; critical collection, lint and security passed. Section 16 now removes global fixture leakage and provisions verified Restic with missing-required-tool refusal; all 76 local T4 cases ran without skips. The original failed run is retained, not replaced by a local full-suite claim. V5 is not owner-accepted; the Kiro verdict is not automatically an outage exception. **T5 NOT GRANTED; V6 NOT RUN.**
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Cursor/Codex:** complete section 16’s bounded fixture/tool correction and isolated evidence, then normal hosted CI on draft #392. Preserve runtime, safety assertions and lint baseline; report any wider need before changing scope. Codex supervises and is a contributing author, not the independent reviewer.
+**Codex:** report normal hosted CI on the pushed correction; keep draft #392. Local evidence is delivered. The [live check page](https://github.com/alanmz-crypto/convmem/pull/392/checks) is the current-head CI authority. Report an unexpected runtime or wider-scope need before further changes. Codex/Cursor contributed; neither supplies an independent correction PASS.
 
-**Ryan:** after final-candidate evidence and the bounded review, decide T4/V5 acceptance and the candidate-specific external-review disposition.
+**Next reviewer / Ryan:** bounded final-candidate review of the CI correction and hosted evidence, then Ryan’s T4/V5 acceptance and candidate-specific external-review disposition. No merge or live grant follows automatically.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Complete bounded CI correction, obtain full hosted evidence with required T4 cases executed, then final-candidate delta review and Ryan’s T4/V5 acceptance. Prior Kiro review is pinned; T4 is not merge-ready.
+1. Obtain full hosted evidence with required T4 cases executed, then final-candidate delta review and Ryan’s T4/V5 acceptance. The bounded correction/local evidence are delivered. Prior Kiro review is pinned; T4 is not merge-ready.
 2. T5 requires its own grant for integrated evidence and a bounded operational handoff (V6). T3/T4 isolated evidence does not close T5.
 3. Before rollout, resolve the loss window, exact usable recovery artifact, old-process/guard-state adoption and rollback compatibility in EXECUTION section 6. Extra ext4 capacity is not qualified protection.
 4. Deployment and corpus-affecting operations require separate scope, evidence and owner authorization.
@@ -98,6 +98,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-14 — Cursor/Codex: delivered bounded T4 fixture/tool correction, full isolated T4/T2 evidence, native proof and lint/collection gates; runtime/baseline fixed, hosted CI and correction review remain distinct.
 
 - 2026-10-14 — Codex: recorded draft #392’s seven-test CI failure and extra skips; Ryan authorized bounded fixture/tool corrections, isolated evidence and fresh CI with runtime/baseline fixed.
 
@@ -194,4 +196,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1–T3 are accepted and merged. T4 draft #392 failed pytest; bounded fixture/tool corrections and evidence are authorized. Runtime and baseline stay fixed; review/acceptance, merge, live operations and T5 remain pending.
+[Arc Safe Harbor] T1–T3 are accepted and merged. T4’s bounded CI correction and passing local evidence are delivered on draft #392. Consult the final-head hosted checks before review/acceptance; no merge, live operation or T5 is authorized.

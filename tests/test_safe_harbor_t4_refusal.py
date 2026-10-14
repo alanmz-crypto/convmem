@@ -1,4 +1,4 @@
-# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-position,redefined-outer-name
 # Project imports follow the mandatory isolation check.
 """Uncertain/contradictory recovery states never authorize a write."""
 from datetime import timedelta
@@ -7,7 +7,8 @@ from tests._safe_harbor_bootstrap import require_t3_bootstrap
 require_t3_bootstrap()
 # Register only for this module; each child gets refusal before project imports.
 from tests._safe_harbor_t4_pytest import isolated_t4_child_network  # pylint: disable=unused-import
-pytest_plugins = ('tests.test_safe_harbor_t2',)
+from tests.test_safe_harbor_t2 import cli, isolated, scratch  # pylint: disable=unused-import
+
 from tests._safe_harbor_t4_harness import expect_probe_ok
 from tests.test_safe_harbor_t2 import local_noon, _current, NOW_ENV_KEY
 
