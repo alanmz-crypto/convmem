@@ -1193,6 +1193,14 @@ def _pending_record_hint() -> None:
     after_record_pending()
 
 
+def _recovery_failure_message(exc: Exception) -> str:
+    from propose_decision import RecoveryCompletionUnknown
+
+    if isinstance(exc, RecoveryCompletionUnknown):
+        return f"\n⚠ Recovery completion outcome unknown: {exc}"
+    return f"\n⚠ Recovery deferred for review: {exc}"
+
+
 @app.command("propose_decision")
 def propose_decision_command(
     list_: bool = typer.Option(False, "--list", help="Show pending drafts"),
@@ -1345,14 +1353,8 @@ def propose_decision_command(
             render_error(str(e))
             raise typer.Exit(1) from e
         except Exception as e:
-            from propose_decision import RecoveryCompletionUnknown
-
-            if isinstance(e, RecoveryCompletionUnknown):
-                _log_index_failure(recover, e)
-                typer.echo(f"\n⚠ Recovery completion outcome unknown: {e}")
-                raise typer.Exit(1) from e
             _log_index_failure(recover, e)
-            typer.echo(f"\n⚠ Recovery deferred for review: {e}")
+            typer.echo(_recovery_failure_message(e))
             raise typer.Exit(1) from e
         typer.echo(f"Recovered {recover}: {action}")
         return
@@ -2065,20 +2067,10 @@ def writer_census_report_command(
     typer.echo(json.dumps({"verdict": "PASS", **report}, sort_keys=True))
 
 
-def _governed_affected_paths(cfg) -> list:
-    """Approval/recovery durable outputs beyond the Chroma session's own set."""
-    from conflict_events import event_path, lock_path
-    from hash_schema_gate import deploy_path, migration_report_path
-    from propose_decision import approved_path, queue_path
-
-    return [
-        event_path(cfg),
-        lock_path(cfg),
-        queue_path(cfg),
-        approved_path(cfg),
-        deploy_path(cfg),
-        migration_report_path(cfg),
-    ]
+def _governed_affected_paths(cfg):
+    """Existing admission consumer of the governed proposal file set."""
+    from propose_decision import _governed_recovery_affected_paths
+    return _governed_recovery_affected_paths(cfg)
 
 
 def _admission_steps(entrypoint: str, governed: bool, expected_cfg):

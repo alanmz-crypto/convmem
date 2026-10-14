@@ -10,6 +10,7 @@ import re
 import secrets
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 
 PROPOSAL_KIND = "decision_proposal"
@@ -103,7 +104,7 @@ def _valid_content_hash(value: str | None) -> bool:
     return bool(value and _CONTENT_HASH_RE.fullmatch(str(value).strip()))
 
 
-def recovery_action(
+def recovery_action(  # pylint: disable=too-many-arguments
     cfg: dict,
     proposal_id: str,
     *,
@@ -116,6 +117,7 @@ def recovery_action(
     intent_present: bool = True,
 ) -> str:
     """Classify recovery using strict inputs (tests and legacy callers)."""
+    del cfg  # compat: callers pass config; classification uses explicit flat state only
     return classify_recovery_action(
         proposal_id=proposal_id,
         intent_present=intent_present,
@@ -128,7 +130,7 @@ def recovery_action(
     )
 
 
-def classify_recovery_action(
+def classify_recovery_action(  # pylint: disable=too-many-arguments
     *,
     proposal_id: str,
     intent_present: bool,
@@ -139,9 +141,8 @@ def classify_recovery_action(
     live_read_failed: bool,
     base_hash: str,
 ) -> str:
+    """Flat explicit recovery state machine (no opaque kwargs)."""
     if live_read_failed or not intent_present or not _valid_content_hash(proposed_hash):
-        return "review"
-    if live_marker and live_marker != proposal_id:
         return "review"
     if live_absent:
         return "retry_chroma"
@@ -153,7 +154,9 @@ def classify_recovery_action(
         if live_marker == proposal_id:
             return "approve"
         return "review"
-    if base_hash and live_hash == base_hash:
+    # A revised decision retains the previous approval marker at its valid base.
+    # Matching proposed content still requires this proposal's marker (above).
+    if _valid_content_hash(base_hash) and live_hash == base_hash:
         return "retry_chroma"
     return "review"
 
@@ -261,14 +264,6 @@ def load_strict_approved_intent(cfg: dict, proposal_id: str, event_prop: dict) -
     q_prop = str(qrow.get("proposed_content_hash") or "").strip()
     if q_prop and q_prop != ev_proposed:
         raise ValueError("queue_event_proposed_hash_mismatch")
-
-    ev_proposed_ledger = str(event_prop.get("proposed_ledger_id") or pid).strip()
-    ev_target = event_prop.get("target_ledger_id")
-    if ev_target is not None and str(ev_target).strip():
-        if str(ev_target).strip() != target:
-            raise ValueError("event_target_mismatch")
-    elif target != ev_proposed_ledger:
-        raise ValueError("event_proposed_ledger_mismatch")
 
     ev_base = event_prop.get("base_content_hash")
     if ev_base is not None and str(ev_base).strip():
@@ -492,7 +487,8 @@ def _recovery_classify_live(store, ledger_id: str) -> dict:
         return {"review": "target_missing"}
     try:
         rows = store.units_metadata(include_superseded=True)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Read boundary: any Chroma/metadata failure → refuse as unknown live state.
         return {"review": "missing_collection"}
     matches = [dict(m) for m in rows if str(m.get("ledger_id") or "").strip() == needle]
     if not matches:
@@ -508,7 +504,8 @@ def _recovery_classify_live(store, ledger_id: str) -> dict:
     meta = active[0]
     try:
         unit = store.get_unit(meta["id"], include_embedding=True)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Read boundary: unreadable unit → refuse rather than guess.
         return {"review": "chroma_unreadable"}
     if unit is None:
         return {"review": "chroma_unreadable"}
@@ -555,7 +552,8 @@ def _verify_live_matches_intent(unit: dict, intent_row: dict, store) -> str | No
                 return "missing_embedding"
             if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in embedding):
                 return "invalid_embedding"
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
+            # Read boundary: embedding fetch failure → refuse unknown live corpus.
             return "chroma_unreadable"
     return None
 
@@ -655,15 +653,13 @@ def _check_recovery_export(units_export, intent_row, live, base_hash):
         raise ValueError("conflicting_export_projection")
 
 
-def _fsync_export_path(units_export: Path) -> None:
+def _fsync_export_path(units_export: Path, durability_root: Path) -> None:
     try:
         with open(units_export, "rb") as handle:
             os.fsync(handle.fileno())
-        directory = os.open(units_export.parent, os.O_RDONLY | os.O_DIRECTORY)
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
+        from conflict_events import _ensure_directory_chain_durable
+
+        _ensure_directory_chain_durable(units_export.parent, stop=durability_root)
     except OSError as exc:
         raise RecoveryCompletionUnknown(f"export durability outcome unknown: {exc}") from exc
 
@@ -674,10 +670,11 @@ def _ensure_export_for_recovery(
     live_unit: dict,
     *,
     allow_replace: bool,
+    durability_root: Path,
     base_export_row: dict | None = None,
 ) -> None:
     from atomic_files import atomic_write_text
-    from observe import export_projection_records, export_unit_matches_normalized
+    from observe import export_unit_matches_normalized
     from purge_locks import export_flock_path
 
     if units_export is None:
@@ -700,8 +697,8 @@ def _ensure_export_for_recovery(
                     continue
                 try:
                     row = json.loads(stripped)
-                except json.JSONDecodeError:
-                    raise ValueError(f"malformed_export_line_{number}")
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"malformed_export_line_{number}") from exc
                 if not isinstance(row, dict):
                     raise ValueError(f"invalid_export_line_{number}")
                 parsed.append((raw, row))
@@ -720,7 +717,7 @@ def _ensure_export_for_recovery(
         if existing_rows:
             existing = existing_rows[0]
             if export_unit_matches_normalized(compare_expected, existing):
-                _fsync_export_path(units_export)
+                _fsync_export_path(units_export, durability_root)
                 return
             if not allow_replace:
                 raise ValueError("conflicting_export_projection")
@@ -739,7 +736,7 @@ def _ensure_export_for_recovery(
             if not replaced:
                 out_lines.append(json.dumps(compare_expected) + "\n")
             atomic_write_text(units_export, "".join(out_lines))
-            _fsync_export_path(units_export)
+            _fsync_export_path(units_export, durability_root)
             return
 
         payload = json.dumps(compare_expected) + "\n"
@@ -749,65 +746,134 @@ def _ensure_export_for_recovery(
             )
         else:
             atomic_write_text(units_export, payload)
-        _fsync_export_path(units_export)
+        _fsync_export_path(units_export, durability_root)
 
 
-def _publish_recovery_event(cfg: dict, proposal_id: str, *, lifecycle_approved: bool) -> None:
+def _publish_recovery_event(
+    cfg: dict, proposal_id: str, *, lifecycle_approved: bool, durability_root: Path
+) -> None:
     from conflict_events import append_event_durable, ensure_event_log_durable, new_event
 
     if lifecycle_approved:
-        ensure_event_log_durable(cfg)
+        ensure_event_log_durable(cfg, durability_root=durability_root)
         return
-    append_event_durable(cfg, new_event("APPROVED", proposal_id))
+    append_event_durable(
+        cfg, new_event("APPROVED", proposal_id), durability_root=durability_root
+    )
+
+
+def _load_recovery_event_states(cfg: dict) -> dict:
+    from conflict_events import load_events, reduce_events
+
+    events = load_events(cfg)
+    _validate_recovery_event_authority(events)
+    return reduce_events(events)
+
+
+@dataclass(frozen=True)
+class _RecoveryIntent:
+    lifecycle: str
+    target: str
+    base_hash: str
+    row: dict
+    proposed_hash: str
+
+
+def _recovery_authority_from_states(
+    states: dict, cfg: dict, proposal_id: str
+) -> _RecoveryIntent:
+    """Resolve lifecycle, target ledger, hashes, and strict approved intent."""
+    state = states.get(proposal_id)
+    if state is None:
+        raise ValueError(f"Proposal not found in event log: {proposal_id}")
+    lifecycle = state.get("lifecycle_state")
+    if lifecycle not in {"APPROVAL_STARTED", "APPROVED"}:
+        raise ValueError(
+            f"Proposal {proposal_id} is not recoverable (lifecycle={lifecycle})"
+        )
+    prop = dict(state.get("proposal") or {})
+    target = str(
+        prop.get("target_ledger_id") or prop.get("proposed_ledger_id") or proposal_id
+    )
+    base_hash = str(prop.get("base_content_hash") or "")
+    if not _valid_content_hash(base_hash):
+        base_hash = ""
+    intent_row = load_strict_approved_intent(cfg, proposal_id, prop)
+    proposed_hash = ingestion_content_hash_from_record(intent_row) or ""
+    if not _valid_content_hash(proposed_hash):
+        raise ValueError(f"Proposal {proposal_id} needs human review (invalid intent hash)")
+    return _RecoveryIntent(lifecycle, target, base_hash, intent_row, proposed_hash)
+
+
+def _execute_recovery_inside_guard(op, proposal_id, intent, store, guard, *, durability_root) -> str:
+    """One serialized inspect/apply/validate/export/approve sequence."""
+    from chroma_write_store import admitted_units_export_path, verify_admitted_operation_unchanged
+
+    cfg = op.config()
+    units_export = admitted_units_export_path(cfg)
+    live = _recovery_classify_live(store, intent.target)
+    if live.get("review"):
+        raise ValueError(f"Proposal {proposal_id} needs human review ({live['review']})")
+    action = classify_recovery_action(
+        proposal_id=proposal_id, intent_present=True, proposed_hash=intent.proposed_hash,
+        live_marker=live.get("marker") or "", live_hash=live.get("live_hash") or "",
+        live_absent=bool(live.get("absent")), live_read_failed=False, base_hash=intent.base_hash,
+    )
+    if action == "review" or (intent.lifecycle == "APPROVED" and action != "approve"):
+        raise ValueError(f"Proposal {proposal_id} needs human review (action={action})")
+    base_export = _check_recovery_export(units_export, intent.row, live, intent.base_hash)
+    if action == "repair_marker":
+        _repair_marker_only(store, live["unit"], proposal_id, intent.row)
+    elif action == "retry_chroma":
+        _recovery_apply_intent(store, intent.row, cfg.get("models") or {})
+
+    after = _recovery_classify_live(store, intent.target)
+    if after.get("review") or after.get("absent"):
+        raise ValueError(f"Proposal {proposal_id} needs human review (post-write state unavailable)")
+    reason = _verify_live_matches_intent(after["unit"], intent.row, store)
+    if reason or after.get("marker") != proposal_id:
+        raise ValueError(f"Proposal {proposal_id} needs human review ({reason or 'marker incomplete'})")
+    verify_admitted_operation_unchanged(op)
+    guard.finalize_approval_recovery()
+    _ensure_export_for_recovery(
+        units_export, intent.row, after["unit"], allow_replace=action == "retry_chroma",
+        durability_root=durability_root, base_export_row=base_export,
+    )
+    verify_admitted_operation_unchanged(op)
+    _publish_recovery_event(
+        cfg, proposal_id, lifecycle_approved=intent.lifecycle == "APPROVED",
+        durability_root=durability_root,
+    )
+    return action
 
 
 def _recover_approval_impl(op, proposal_id: str) -> str:
     from chroma_write_guard import ChromaWriteGuardError, ChromaWriteQuarantinedError
     from chroma_write_store import (
-        admitted_units_export_path,
+        recovery_durability_root,
         open_production_recovery_write_store,
         verify_admitted_operation_unchanged,
         verify_admitted_targets_unchanged,
         verify_recovery_config_binding,
     )
-    from conflict_events import EventPublicationError, governed_lock, load_events, reduce_events
+    from conflict_events import EventPublicationError, governed_lock
 
     proposal_id = proposal_id.strip()
     cfg = op.config()
     verify_recovery_config_binding(op, cfg)
+    durability_root = recovery_durability_root(op)
     with governed_lock(cfg):
         try:
-            events = load_events(cfg)
-            _validate_recovery_event_authority(events)
-            states = reduce_events(events)
+            states = _load_recovery_event_states(cfg)
         except ValueError as exc:
             raise ValueError(f"event authority unreadable for {proposal_id}: {exc}") from exc
-        state = states.get(proposal_id)
-        if state is None:
-            raise ValueError(f"Proposal not found in event log: {proposal_id}")
-        lifecycle = state.get("lifecycle_state")
-        if lifecycle not in {"APPROVAL_STARTED", "APPROVED"}:
-            raise ValueError(
-                f"Proposal {proposal_id} is not recoverable (lifecycle={lifecycle})"
-            )
-        prop = dict(state.get("proposal") or {})
-        target = str(
-            prop.get("target_ledger_id") or prop.get("proposed_ledger_id") or proposal_id
+        intent = _recovery_authority_from_states(
+            states, cfg, proposal_id
         )
-        base_hash = str(prop.get("base_content_hash") or "")
-        if not _valid_content_hash(base_hash):
-            base_hash = ""
-        intent_row = load_strict_approved_intent(cfg, proposal_id, prop)
-        proposed_hash = ingestion_content_hash_from_record(intent_row) or ""
-        if not _valid_content_hash(proposed_hash):
-            raise ValueError(f"Proposal {proposal_id} needs human review (invalid intent hash)")
 
         verify_admitted_operation_unchanged(op)
         session = open_production_recovery_write_store(entrypoint=op.entrypoint)
         store = session.store
-        live_cfg = session.live_cfg
-        models = live_cfg.get("models") or {}
-        units_export = admitted_units_export_path(live_cfg)
         action = "review"
         try:
             guard = store._write_guard  # pylint: disable=protected-access
@@ -816,107 +882,14 @@ def _recover_approval_impl(op, proposal_id: str) -> str:
                     f"Proposal {proposal_id} needs human review (write guard required)"
                 )
             with guard.approval_recovery_critical_section(
-                reload_client=store._reload_client
+                reload_client=store._reload_client,  # pylint: disable=protected-access
             ) as recovery_guard:
                 verify_recovery_config_binding(op, cfg)
                 verify_admitted_operation_unchanged(op)
                 verify_admitted_targets_unchanged(op)
-
-                live = _recovery_classify_live(store, target)
-                if live.get("review"):
-                    raise ValueError(
-                        f"Proposal {proposal_id} needs human review ({live['review']})"
-                    )
-                action = classify_recovery_action(
-                    proposal_id=proposal_id,
-                    intent_present=True,
-                    proposed_hash=proposed_hash,
-                    live_marker=live.get("marker") or "",
-                    live_hash=live.get("live_hash") or "",
-                    live_absent=bool(live.get("absent")),
-                    live_read_failed=False,
-                    base_hash=base_hash,
+                action = _execute_recovery_inside_guard(
+                    op, proposal_id, intent, store, recovery_guard, durability_root=durability_root
                 )
-                if action == "review":
-                    raise ValueError(f"Proposal {proposal_id} needs human review")
-                base_export_row = _check_recovery_export(
-                    units_export, intent_row, live, base_hash
-                )
-                if lifecycle == "APPROVED":
-                    if action != "approve":
-                        raise ValueError(
-                            f"Proposal {proposal_id} needs human review "
-                            f"(terminal lifecycle action={action})"
-                        )
-                    if live.get("absent"):
-                        raise ValueError(
-                            f"Proposal {proposal_id} needs human review (approved_but_absent)"
-                        )
-                    reason = _verify_live_matches_intent(live["unit"], intent_row, store)
-                    if reason:
-                        raise ValueError(
-                            f"Proposal {proposal_id} needs human review ({reason})"
-                        )
-                    verify_admitted_operation_unchanged(op)
-                    recovery_guard.finalize_approval_recovery()
-                    _ensure_export_for_recovery(
-                        units_export,
-                        intent_row,
-                        live["unit"],
-                        allow_replace=False,
-                    )
-                    verify_admitted_operation_unchanged(op)
-                    _publish_recovery_event(
-                        cfg, proposal_id, lifecycle_approved=True
-                    )
-                else:
-                    if action == "review":
-                        raise ValueError(f"Proposal {proposal_id} needs human review")
-
-                    if action == "repair_marker":
-                        _repair_marker_only(store, live["unit"], proposal_id, intent_row)
-                    elif action == "retry_chroma":
-                        _recovery_apply_intent(store, intent_row, models)
-                    elif action == "approve":
-                        reason = _verify_live_matches_intent(
-                            live["unit"], intent_row, store
-                        )
-                        if reason:
-                            raise ValueError(
-                                f"Proposal {proposal_id} needs human review ({reason})"
-                            )
-
-                    live_after = _recovery_classify_live(store, target)
-                    if live_after.get("review"):
-                        raise ValueError(
-                            f"Proposal {proposal_id} needs human review ({live_after['review']})"
-                        )
-                    reason = _verify_live_matches_intent(
-                        live_after["unit"], intent_row, store
-                    )
-                    if reason:
-                        raise ValueError(
-                            f"Proposal {proposal_id} needs human review ({reason})"
-                        )
-                    marker_after = live_after.get("marker") or ""
-                    if marker_after != proposal_id:
-                        raise ValueError(
-                            f"Proposal {proposal_id} needs human review (marker incomplete)"
-                        )
-                    allow_replace = action == "retry_chroma"
-                    verify_admitted_operation_unchanged(op)
-                    recovery_guard.finalize_approval_recovery()
-                    _ensure_export_for_recovery(
-                        units_export,
-                        intent_row,
-                        live_after["unit"],
-                        allow_replace=allow_replace,
-                        base_export_row=base_export_row,
-                    )
-                    verify_admitted_operation_unchanged(op)
-                    _publish_recovery_event(
-                        cfg, proposal_id, lifecycle_approved=False
-                    )
         except (EventPublicationError, OSError) as exc:
             raise RecoveryCompletionUnknown(
                 f"recovery completion outcome unknown for {proposal_id}: {exc}"

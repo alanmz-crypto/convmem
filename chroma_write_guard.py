@@ -2311,8 +2311,6 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
 
     def finalize_approval_recovery(self) -> None:
         """Run deferred native validation once before export/event publication."""
-        import threading
-
         if self._approval_recovery_depth <= 0:
             raise ChromaWriteGuardError("finalize outside approval recovery section")
         if threading.get_ident() != self._approval_recovery_owner:
@@ -2341,8 +2339,6 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         Reconciles and reloads once at entry. Nested ``native_write`` defers segment
         validation until ``finalize_approval_recovery``.
         """
-        import threading
-
         self._reject_identity_conflict()
         if self._approval_recovery_depth > 0:
             raise ChromaWriteGuardError("nested approval recovery sections are forbidden")
@@ -2391,8 +2387,6 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
     @contextmanager
     def native_write(self, *, identifier: str, reload_client: Callable[[], None]) -> Iterator[None]:
         """Run one native Chroma mutation under the containment invariants."""
-        import threading
-
         self._reject_identity_conflict()
         if canonical_target(identifier) != self.chroma_dir:
             raise ChromaWriteGuardError(
@@ -2416,10 +2410,7 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
                         f"chroma writes are quarantined: {view.summary}; see {self.quarantine_path}"
                     )
                 self._approval_recovery_mutated = True
-                try:
-                    yield
-                except BaseException:
-                    raise
+                yield
                 return
             self.reconcile()
             if self.read_authority().blocking:

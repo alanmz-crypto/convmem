@@ -83,33 +83,25 @@ def _fsync_path(path: Path, *, directory: bool = False) -> None:
 
 def _ensure_directory_chain_durable(path: Path, *, stop: Path) -> None:
     """Fsync directory entries from ``path`` (or its parent) through ``stop`` inclusive."""
-    stop_resolved = stop.expanduser().resolve(strict=False)
-    current = path.expanduser() if path.is_dir() else path.parent
-    chain: list[Path] = []
+    stop_resolved = stop.expanduser().resolve(strict=True)
+    current = path.expanduser().resolve(strict=True)
+    if not stop_resolved.is_dir() or not current.is_dir():
+        raise EventPublicationError("directory durability requires existing directories")
+    if current != stop_resolved and stop_resolved not in current.parents:
+        raise EventPublicationError("directory durability path escapes admitted root")
     while True:
         try:
-            resolved = current.expanduser().resolve(strict=False)
-        except OSError as exc:
-            raise EventPublicationError(f"cannot resolve {current}: {exc}") from exc
-        if not current.is_dir():
-            raise EventPublicationError(f"directory durability missing path: {current}")
-        chain.append(current)
-        if resolved == stop_resolved:
-            break
-        parent = current.parent
-        if parent == current:
-            break
-        current = parent
-    for directory in chain:
-        try:
-            _fsync_path(directory, directory=True)
+            _fsync_path(current, directory=True)
         except OSError as exc:
             raise EventPublicationError(
-                f"directory durability failed for {directory}: {exc}"
+                f"directory durability failed for {current}: {exc}"
             ) from exc
+        if current == stop_resolved:
+            break
+        current = current.parent
 
 
-def ensure_event_log_durable(cfg: dict) -> None:
+def ensure_event_log_durable(cfg: dict, *, durability_root: Path) -> None:
     """Establish durability for an existing events log without appending."""
     path = event_path(cfg)
     if not path.is_file():
@@ -117,15 +109,16 @@ def ensure_event_log_durable(cfg: dict) -> None:
     try:
         with open(path, "rb") as handle:
             os.fsync(handle.fileno())
-        _ensure_directory_chain_durable(path.parent, stop=data_root(cfg))
+        _ensure_directory_chain_durable(path.parent, stop=durability_root)
     except OSError as exc:
         raise EventPublicationError(f"event log durability failed for {path}: {exc}") from exc
 
 
-def append_event_durable(cfg: dict, event: dict) -> None:
+def append_event_durable(
+    cfg: dict, event: dict, *, durability_root: Path
+) -> None:
     """Append one lifecycle event with required file and directory-chain durability."""
     path = event_path(cfg)
-    root = data_root(cfg)
     parent = path.parent
     line = json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n"
     try:
@@ -134,9 +127,7 @@ def append_event_durable(cfg: dict, event: dict) -> None:
             handle.write(line)
             handle.flush()
             os.fsync(handle.fileno())
-        with open(path, "rb") as handle:
-            os.fsync(handle.fileno())
-        _ensure_directory_chain_durable(path.parent, stop=root)
+        _ensure_directory_chain_durable(path.parent, stop=durability_root)
     except OSError as exc:
         raise EventPublicationError(
             f"event log publication durability failed for {path}: {exc}"

@@ -1078,6 +1078,20 @@ def verify_recovery_config_binding(
         )
         seen_chroma = seen_index.get("chroma_dir")
         admitted_chroma = admitted_index.get("chroma_dir")
+        if not seen_chroma or not admitted_chroma:
+            raise OperationAdmissionRefused(
+                "recovery cfg missing chroma target", EXIT_WRONG_PATH,
+                "operation_config_changed",
+            )
+        seen_export = seen_index.get("units_export")
+        admitted_export = admitted_index.get("units_export")
+        if bool(seen_export) != bool(admitted_export) or (
+            seen_export and _canonical_path(seen_export) != op.units_export
+        ):
+            raise OperationAdmissionRefused(
+                "recovery cfg export does not match admitted target", EXIT_WRONG_PATH,
+                "operation_config_changed",
+            )
         if seen_chroma and admitted_chroma:
             if Path(seen_chroma).expanduser() != Path(admitted_chroma).expanduser():
                 raise OperationAdmissionRefused(
@@ -1120,6 +1134,32 @@ def verify_recovery_config_binding(
             )
 
     verify_admitted_operation_unchanged(op)
+
+
+def recovery_durability_root(op: AdmittedWriteOperation) -> Path:
+    """Use the admitted backup root as the pre-existing directory durability anchor.
+
+    Recovery may create entries below this boundary, never the boundary itself.
+    Re-sync every intermediate directory on retries: readable names alone do not
+    establish that a previous directory-fsync attempt succeeded.
+    """
+    from restic_snapshot import BackupContext
+
+    verify_admitted_operation_unchanged(op)
+    if op.preflight.env_file is not None:
+        root = BackupContext.from_env_file(op.preflight.env_file).data_root
+    else:
+        # Existing test/lab admission exception; never a production fallback.
+        if op.preflight.status != "isolated-exception":
+            raise WriterBoundaryError("recovery lacks a bound backup root")
+        root = Path(op.config()["index"]["chroma_dir"]).expanduser().parent
+    root = root.resolve(strict=True)
+    if not root.is_dir():
+        raise WriterBoundaryError("recovery durability root must already exist")
+    if any(path != root and root not in path.parents for path in op.affected_paths):
+        raise WriterBoundaryError("recovery affected path outside durability root")
+    verify_admitted_operation_unchanged(op)
+    return root
 
 
 def open_production_recovery_write_store(

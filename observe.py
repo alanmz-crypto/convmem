@@ -52,32 +52,6 @@ def export_unit_matches_normalized(unit: dict, export_row: dict) -> bool:
     return expected == actual
 
 
-def ensure_export_projection(
-    unit: dict,
-    *,
-    units_export: Path,
-    allow_replace: bool = False,
-) -> bool:
-    """Write or repair export when Chroma already matches ``unit``.
-
-    Refuses duplicate/conflicting export rows unless ``allow_replace`` and the
-    existing row matches the expected normalized projection.
-    """
-    ledger_id = (unit.get("ledger_id") or "").strip()
-    if not ledger_id:
-        raise ValueError("export repair requires ledger_id")
-    rows, reason = export_projection_records(units_export, ledger_id)
-    if reason:
-        raise ValueError(reason)
-    if rows:
-        if export_unit_matches_normalized(unit, rows[0]):
-            return False
-        if not allow_replace:
-            raise ValueError("conflicting_export_projection")
-    _upsert_jsonl_line(units_export, ledger_id, unit)
-    return True
-
-
 def _upsert_jsonl_line(
     units_export: Path,
     ledger_id: str,

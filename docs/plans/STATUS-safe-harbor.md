@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; ISOLATED T4 GRANTED.** Ryan authorized Cursor implementation with Codex supervision and isolated V5 evidence, returning results for independent review. [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized) is the handoff. T4 is in progress; a draft runtime checkpoint is not review-ready. V5 is incomplete; V6 remains NOT RUN. PR creation, merge, deployment, production operations and T5 are unauthorized.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; ISOLATED T4 GRANTED.** Ryan authorized Cursor implementation with Codex supervision and isolated V5 evidence, returning results for independent review. [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized) is the handoff. T4 is in progress; a draft runtime checkpoint is not review-ready. V5 is incomplete, with an excluded fixture model-download lapse recorded in VERIFY; fresh network-refused runs are pending. V6 remains NOT RUN. PR creation, merge, deployment, production operations and T5 are unauthorized.
 
 ## 1. What This Is For (product goal)
 
@@ -188,4 +188,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] Draft #391 has the returned lint correction with 149 isolated passes and full lint gate PASS. Fresh hosted CI and separate pytest-failure scope are next; prior reviews remain pinned, acceptance/merge/deployment/T4/T5 pending.
+[Arc Safe Harbor] T1–T3 are accepted and merged. T4 implementation and isolated V5 are in progress on `feat/2026-10-13-safe-harbor-t4`; the draft is not review-ready. VERIFY preserves failed development runs and the excluded fixture model-download lapse. Return the finished candidate for independent review. No PR, live operations or T5 are authorized.
