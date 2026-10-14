@@ -290,6 +290,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-13 | Claude | Codex safety audit FAILed `c7072fc` (dedupe rollback loss, unbounded paid retries, incomplete C1 coverage, work under C1, Claude deferral); Kiro PASS with conditions; corrective 6 to Cursor |
 | 2026-10-13 | Claude | Round 8 FAILs corrective 6 (`e1914f5`): Codex's burn holes closed, but the new lock-order check makes `index --file` pay then fail on every Codex/Kiro source, and the write guard breaks ledger approvals; corrective 7 (S0–S7) to Cursor; not deployable |
 | 2026-10-13 | Claude | Round 9 FAILs corrective 7 (`905e602`): the real `index --file` route commits and the paid-retry bounds hold through it, but refine, monitor and retirement now take C1 inside an open store session (refine pays then fails; a burn if the refine unit is enabled); corrective 8 (T0–T5) to Cursor; not deployable |
+| 2026-10-13 | Claude | Round 10 FAILs corrective 8 (`61307d7`): the lock order is fixed and the refine daemon is hardened, but refine and monitor keep a reader open across writes (refine pays, then the write guard refuses), refine's tests now write through the user's config, and the R2b inventory is stale; corrective 9 (T0–T4) to Cursor; not deployable |
 
 ## TL;DR
 

@@ -1,4 +1,310 @@
-# Verify: Stage 2 wedge fixes, round 9 at `905e602`: FAIL; refine, monitor and retirement now take C1 inside an open store session, so the S0 check refuses them, and refine pays before it fails; corrective 8
+# Verify: Stage 2 wedge fixes, round 10 at `61307d7`: FAIL; refine and monitor keep a reader open across their writes, and refine's tests now write through the user's live config; corrective 9
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-13
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `61307d7`, Cursor
+Composer's corrective 8. It answers round 9 (below).
+**Method:**
+- I read the diff `905e602..61307d7`.
+- I ran the round-9 probes, now in the tree as `tests/test_zz_claude_verify9.py`.
+  They open the real production store session.
+- I wrote 5 round-10 probes (appendix). Two of them make a real second process
+  save to the store, through the write guard, while the code under test waits
+  on a paid call or an HTTP probe. That's what the watcher does when it
+  commits during a refine job. Each of those probes asserts that the foreign
+  save really synced, so a pass can't be vacuous. Controls at `c7072fc`.
+- I ran `tests/test_refine.py` against a fake "live" config in a scratch
+  `HOME`, and listed every file it wrote outside its temp dir.
+- I ran the full suite hermetically at `61307d7` (`env -i`, a scratch `HOME`,
+  no API keys, `tests/test_index_loud_failures.py` skipped) and compared it
+  with round 8's main run at `458b9f6`, same method.
+- I started a leak census: the full suite at `61307d7` and at main
+  `458b9f6`, each with a fake live config in a scratch `HOME`, with a small
+  plugin that logs every test that changes a file under that config's data
+  root or the default data dir (appendix). It was 20% through when I
+  published; the rest follows in a later commit.
+- I compared mtimes and sizes across the live data root before and after my
+  runs.
+
+## Burn status
+
+**No burn now. This branch isn't deployed, and the watcher, refine and
+monitor units are all inactive and disabled.**
+- **My runs:** none can reach a paid provider. Providers are faked and the
+  environment has no keys.
+- **Live data root:** two `convmem index --file` runs, at 20:19 and 20:44 CDT
+  (`knowledge_units.jsonl` +87 KB and +40 KB, `processed.json`, `brief.md`),
+  both from `runtime-main`, which is main's code, not this branch. They're 25
+  minutes apart, so this is session indexing (most likely Cursor's Track A
+  and another agent starting up; a `convmem doctor` was running at 20:51),
+  not a loop. Also the reconcile timer (`chroma/`,
+  `source_reconciliation.json`, `writer_attestations/`). Nothing from my
+  runs.
+- **The watcher burn path, at this tip:** fixed, and it holds up in the new
+  probe. The index route still commits when another process saves while it
+  pays for a summary. The F2 retry bounds hold. A corrupt retry state now
+  makes the watcher hold the file, checked end to end through the real CLI.
+- **Refine's restart loop (V0), at this tip:** closed. The lock-order failure
+  is fixed. The daemon now survives a failed job and keeps one hourly limiter
+  for its whole life, so the old ~120 calls an hour can't happen.
+- **What's left for refine (W0):** if another process saves while a refine
+  job runs, every later write in that job fails after paying for its call.
+  The units stay untagged and are retried next interval. That's bounded by
+  the hourly caps (60 + 20 calls an hour at the defaults), and it only
+  happens when a foreign save lands mid-job. It's still payment without
+  progress. The unit is disabled today.
+
+## Verdict (round 10)
+
+**FAIL. Not ready for the audit and the review.**
+- **What's fixed:** V0's lock order in refine, monitor and retirement. All
+  three round-9 probes pass through the real session. Also V1 (the watcher
+  holds a corrupt retry state), V2 (`--clear-quarantine <path>` releases a
+  corrupt state), V3 (`add --file` and `ingest_approved_file` embed before
+  C1), V4 (the guard denies `client`), the refine daemon's per-job catch and
+  single limiter, and round 9's B, E, F and G suite items.
+- **What corrective 8 broke:**
+  - **W0:** refine and monitor open a read-only store, keep it open, and
+    then open write sessions while it's still open. Both share one in-process
+    Chroma system, so when another process saves in between, the write guard
+    refuses the write: "another client in this process still holds a Chroma
+    system that predates the latest save". That's the guard doing its job
+    (no corruption). But refine has already paid by then.
+  - **W1:** `tests/test_refine.py` now opens the production store session
+    from the default config path. With a real `HOME` on this machine, the
+    suite would write a refine undo snapshot into the live data root and
+    open the live store for write. It hasn't happened: the live
+    `refine_undo/` is untouched since 2026-07-22.
+- **Smaller:** monitor's deferred ingest counts rejected records as
+  observations (W2). One fake session still doesn't count, and the refine
+  tests bypass session fakes entirely (W3).
+- **The full suite:** 145 failed at `61307d7` against 93 at main `458b9f6`: 52
+  failure ids fail only at the tip, and none only at main. 43 are the R2b
+  inventory not knowing the new readers. 6 are W1. 2 are monitor tests
+  that still reach a local Ollama. 1 is the read-path inventory (W4).
+- **My share:** round 9's T0 said refine could read through "a read-only
+  store, or a session closed before the write phase" without saying the
+  reader must be closed before a write session opens. `add` gets this right
+  because it closes its reader first. Refine and monitor followed the looser
+  wording. I should have stated it.
+
+**Fixed and verified:**
+- **V0 (T0):** refine, monitor and retirement now take C1, then open the
+  session. The round-9 probes `test_refine_backfill_domain_pays_then_writes`,
+  `test_monitor_cli_ingests_through_real_session` and
+  `test_repository_knowledge_retirement_through_real_session` pass at
+  `61307d7`, unchanged except for formatting.
+- **Refine daemon:** `run_refine_daemon` catches a job's exception and goes
+  on. One `CostLimiter` lives for the daemon's life. My probe
+  `test_refine_daemon_survives_a_failing_job_with_one_limiter` passes. It
+  fails at `c7072fc`.
+- **V1 (T2):** the CLI's exit-91 refusal now starts with
+  `live_route_refused:retry_state_unavailable`. My end-to-end probe runs
+  the real `convmem index --file` CLI over a corrupt retry state, then feeds
+  its output to the watcher's failure handler, and the watcher holds the
+  file. No paid summary after the corruption. It fails at `c7072fc`.
+- **V2 (T3):** the per-source clear finds the state file by its computed
+  path. Cursor's test covers clearing a corrupt state and the route running
+  again.
+- **V3, V4 (T4):** `add`, `add --file` and `ingest_approved_file` embed with
+  a reader that is closed before C1. The guard raises on `client`.
+- **T1, partly:** the round-9 probes are in the tree. A counting fake
+  (`tests/fake_production_write_session.py`) now backs the fakes in seven
+  test files.
+- **Earlier probes:** my rounds 2 to 9 plus Cursor's wedge, corrective-6,
+  corrective-7 and wedge-probe tests give 73 passed, 3 failed: round 4's two
+  s2 probes (obsolete since corrective 4, as in rounds 8 and 9) and Cursor's
+  `test_refine_tombstone_waits_for_index_lock` (W1). Codex's 10 round-7
+  probes: 9 still fail, so those holes stay fixed. The 10th is the non-git
+  scan artifact, as in round 9.
+
+## Findings (round 10)
+
+**W0 (medium; payment without progress in refine, a monitor outage): a
+reader held open across write sessions in refine and monitor.**
+- **Where:**
+  - refine: `_run_job_impl` (`refine.py` ~815) opens `_open_read_store` and
+    closes it only when the job ends. Each write opens
+    `_refine_write_scope` (~36) while it's still open.
+  - monitor: `run_monitor` (`monitor.py` ~381) opens its own `ChromaStore`,
+    runs the HTTP probes, then opens the write session at ~584 while that
+    store is still open.
+- **Why it fails:** Chroma keeps one system per path per process. The
+  write session's store reuses the system the reader loaded before C1. The
+  write guard sees that another process saved since then and tries to
+  reload. It can't while the reader still holds the old system, so it raises
+  `ChromaStaleSystemError`. That refusal is correct: it's what stops a stale
+  view from overwriting another writer's save.
+- **Probes** (another process saves 150 guarded rows, and the HNSW syncs):
+  - refine `backfill_domain`, 3 untagged units, a foreign save during the
+    first paid call: 3 calls paid, 0 updated, 3 errors at `61307d7`. At
+    `c7072fc`: 3 updated.
+  - monitor CLI, a foreign save during the HTTP probe: exit 1 with
+    `ChromaStaleSystemError` at `61307d7`. Passes at `c7072fc`.
+  - the index route, a foreign save during the paid summary: commits at
+    both. The main burn path doesn't have this problem.
+- **Impact:** fail-closed, no corruption. Refine pays for every unit left in
+  the job and writes none. The units are retried next interval. A new job
+  opens a fresh reader, so it isn't sticky, and the hourly caps bound it.
+  Monitor exits 1 (local embeds only, no payment).
+
+**W1 (high; production safety, not a burn): refine's tests write through
+the user's config.**
+- `_refine_write_scope(cfg)` takes C1 from the caller's `cfg`, but opens
+  `production_chroma_write_session()` from `config.CONFIG_PATH`. In
+  production those are the same. In `tests/test_refine.py` they aren't: the
+  tests pass a temp store and a temp `cfg`, and never point
+  `CONFIG_PATH` anywhere.
+- **Shown with a fake live config** in a scratch `HOME`
+  (`~/.config/convmem/config.toml` pointing at `~/live/`):
+  - at `61307d7`, `tests/test_refine.py` wrote
+    `live/refine_undo/chroma_dedupe/<ts>.jsonl`, `live/chroma/chroma.sqlite3`,
+    `live/chroma.write-guard/native-write.lock` and the writer-gate lock.
+    5 of its 10 tests fail.
+  - at `c7072fc`: nothing outside the temp dirs, and 10 of 10 pass.
+- **On this machine:** a plain `pytest tests/test_refine.py` with the real
+  `HOME` would open the live 5 GB store for write, put test rows in a live
+  undo snapshot, and run the guard's reconcile on the live segments. The C1
+  check (`require_index_write_lock_held`) doesn't stop the write, because it
+  only asks whether *some* C1 is held, and the test holds its temp one.
+- **It hasn't happened:** the newest file in the live `refine_undo/` is from
+  2026-07-22.
+- **The leak census so far (20% of the suite, `test_add_severity` through
+  `test_exclude_source_purge`):** main and the tip touch the same files, so
+  this part of the class is older than this branch.
+  - About 25 tests take the default writer-gate lock and write attestation
+    files under `~/.local/share/convmem/` (`add`, approvals, conflict
+    events, purge).
+  - `test_doctor.py::test_run_doctor_all_pass` and
+    `test_eval_golden.py::test_golden_questions` open the configured Chroma
+    directory.
+  - With a real `HOME` those are the live writer lock, the live attestation
+    directory and the live store. T0's suite-wide fixture covers all of
+    them. `test_refine.py` comes later in the run; the targeted run above
+    already shows its tip-only writes.
+
+**W2 (low): monitor's deferred ingest returns a stub.**
+- `_ingest_locked` (`monitor.py` ~409) queues the record and returns
+  `{"id", "ledger_id"}`. The real `ingest_observation` runs later, and its
+  result is dropped.
+- So a record `ingest_observation` would reject (it returns `None`) counts
+  as an observation, not an error. The run's ledger map (`by_ledger_id_after`)
+  holds stub rows whose `id` is the ledger id, not the stored unit id.
+
+**W3 (low): T1 is not done.**
+- `tests/test_inter_model_doc.py:143` still patches the session with a
+  `MagicMock` that doesn't count.
+- The refine job tests reach the real session instead of a fake (W1), so
+  they can't see a lock-order change either.
+- The two monitor tests from round 9's E row still reach a local Ollama (W4).
+
+**W4 (the full suite): 52 tests fail only at the tip, from four causes.**
+- **Counts:**
+  - main `458b9f6` (round 8's run, same method): 93 failed, 2896 passed,
+    66 skipped, 58 errors.
+  - `61307d7`: 145 failed, 2900 passed, 66 skipped, 58 errors.
+  - Collapsing parameters: 146 failure ids at main, 198 at the tip, 52
+    tip-only, 0 main-only.
+- **Re-run with tracebacks:**
+
+| Cause | Count | What it is |
+|---|---|---|
+| R2b static coverage | 43 | `incomplete_static_coverage`: "route refine_job: undocumented mutation sinks ['refine.py:45']", "route convmem_cli_index: undocumented mutation sinks ['convmem.py:482', 'convmem.py:500', 'convmem.py:791']", "route convmem_cli_index: stale governed sinks ['convmem.py:757']", "route propose_decision: undocumented mutation sinks ['propose_decision.py:559']". The new readers are raw `ChromaStore`s, which can mutate, and the inventory wasn't regenerated after they were added. 7 tests fail on that directly. In the other 36 the coverage proof can't mint ("diagnostic coverage did not pass"). A reader built on `chroma_readonly.open_readonly_unit_store` isn't a mutation sink (T1). |
+| W1: refine tests reach the default config | 6 | `test_refine.py` ×5 and `test_issue_286_stage2_corrective6_audit.py::test_refine_tombstone_waits_for_index_lock`: "Config not found" under the scratch `HOME`. With a real `HOME` they'd write live. |
+| E, still open: monitor tests reach a local Ollama | 2 | `test_monitor.py::MonitorProbeTests::test_run_monitor_emits_verification` and `::test_run_monitor_skips_kiro`: a 404 from `localhost:11434/api/embeddings`. Round 9 named these; corrective 8 mocked `test_add_severity` only. |
+| Read-path inventory | 1 | `test_file_generation_read_path_inventory.py::test_all_direct_chroma_read_boundaries_are_explicitly_classified`: the new direct `ChromaStore` reads aren't classified. |
+
+Round 9's other 13 tip-only failures (B, E for `add`, F, G) now pass.
+
+**Not findings:**
+- **Per-unit sessions in refine:** a session open is cheap here (the sink
+  decision, the guard, and a client on the cached system). That's fine.
+- **`main` moved** to `a7f7200` (Safe Harbor PR #391). I verified against
+  `458b9f6` so the numbers compare with rounds 8 and 9. Bringing main in is
+  for the PR step: a merge commit or GitHub's update button, Ryan's call.
+
+## Test results (round 10)
+
+| Run | Result |
+|---|---|
+| Full suite, main `458b9f6` (round 8) | 93 failed, 2896 passed, 66 skipped, 58 errors |
+| Full suite, `61307d7` | 145 failed, 2900 passed, 66 skipped, 58 errors; 52 tip-only, 0 main-only (W4) |
+| Round-9 probes (now in the tree), `61307d7` | 4 passed |
+| Round-10 probes, `61307d7` | 3 passed (the index route, the watcher hold, the daemon); 2 failed (refine and monitor after a foreign save, W0) |
+| Round-10 probes, `c7072fc` (control) | 3 passed (refine, monitor, the index route); 2 failed (the watcher hold and the daemon, fixed at the tip) |
+| `tests/test_refine.py` with a fake live config | `61307d7`: 5 failed, 5 passed, 4 files written under the fake live root and default dir. `c7072fc`: 10 passed, nothing written |
+| Rounds 2–9 probes plus Cursor's #286 tests, `61307d7` | 73 passed, 3 failed (round 4's obsolete s2 ×2; W1 ×1) |
+| Codex's round-7 probes, `61307d7` | 9 failed (holes fixed), 1 passed (the non-git scan artifact) |
+| Leak census, `61307d7` vs `458b9f6` | partial (20%): the same files at both so far (W1) |
+| Live data root, before vs after | two `runtime-main` index runs and the reconcile timer; nothing from my runs |
+
+## Corrective 9 for Cursor
+
+All items are hermetic; none involve paid calls. Do T0 first.
+
+**T0 (W1): no test can reach the user's config.**
+- Add `tests/conftest.py` with an autouse fixture that points
+  `config.CONFIG_PATH` at a path that doesn't exist under `tmp_path`. Do the
+  same for every other default live path a session can reach:
+  `chroma_write_store.DEFAULT_WRITER_LOCK`, the attestation and census
+  defaults. A test that forgets its own config then fails instead of
+  touching live data. Tests that need a config keep setting their own.
+- Fix `tests/test_refine.py`, and every other test the leak census names,
+  to use a scratch config.
+- Take C1 from the same config the session will load, in
+  `_refine_write_scope` and in `_apply_retirements` (it uses the caller's
+  `_cfg` now). Load the live config, take C1 from it, then open the session.
+- Make the guard's C1 check name the lock: refuse a write unless the held C1
+  belongs to the session's data root.
+- Acceptance: with a fake live config in a scratch `HOME`, the full suite
+  writes nothing under that config's data root or the default data dir.
+  (My plugin for this is in the appendix.)
+
+**T1 (W0, and most of W4's R2b rows): close the reader before any write
+session opens, and prefer one that holds no Chroma client.**
+- `chroma_readonly.open_readonly_unit_store` reads `units_metadata()` and
+  `get_unit()` straight from SQLite in read-only mode. It loads no Chroma
+  system, so it can't pin a stale view, and it isn't a mutation sink. Use it
+  for the metadata reads in refine, in monitor's and `add`'s embedding
+  checks, and in `ingest_approved_file`. Check that each caller gets the
+  fields it uses.
+- Where a job needs vectors (`semantic_dedupe`'s
+  `get_units_with_embeddings`), read them with a client and close it before
+  the write phase.
+- **refine:** read the batch's candidates (ids and metadata) into memory,
+  close the reader, then make the LLM calls. Then per write: C1 → session →
+  re-read the row → write → close. Where a job writes metadata it read
+  earlier (`chroma_dedupe`, `stale_source_flag`, the tombstone path),
+  re-read inside the session and write from the fresh row.
+- **monitor:** open the reader only for the embedding checks, and close it
+  before the write phase.
+- Adopt the round-10 probes (appendix).
+
+**T2 (W2):** don't return a stub. Split `ingest_observation` into a prepare
+step (validate, build the unit and its embedding; no write) and a commit
+step. Count rejections at prepare time, and fill the run's ledger map from
+prepared units.
+
+**T3 (W3):** move `test_inter_model_doc.py:143` onto the counting fake.
+
+**T4: the full suite.**
+- Fix or explain every tip-only failure (W4). Regenerate the R2b inventory
+  and re-pin the route sinks after T1, classify any direct read that's left
+  in the read-path inventory, and mock `llm.ollama_embed` in the two
+  `test_monitor.py` tests.
+- Then re-pin, regenerate the writer inventories after the last code edit,
+  run the full suite hermetically at main `458b9f6` and at your tip, and list
+  every tip-only failure with its cause. Your corrective-8 run reported 200
+  failures without that comparison. I need the diff, not the total.
+
+**After corrective 9:**
+1. I re-verify.
+2. A fresh Codex (Astra, high effort) audit and a fresh Kiro review on the
+   exact new tip.
+3. Ryan opens the PR and merges.
+
+# Round 9: `905e602`, FAIL; corrective 8 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -22,7 +328,7 @@ It answers round 8 (below).
 - I compared mtimes and sizes across the live data root before and after my
   runs.
 
-## Burn status
+### Burn status
 
 **No burn now. This branch isn't deployed, and the watcher, refine and
 monitor units are all disabled.**
@@ -40,7 +346,7 @@ monitor units are all disabled.**
   processed log didn't change. My runs used a scratch `HOME`, and can't reach
   the live config.
 
-## Verdict (round 9)
+### Verdict (round 9)
 
 **FAIL. Not ready for the audit and the review. Not deployable while the
 refine unit can be enabled.**
@@ -106,7 +412,7 @@ refine unit can be enabled.**
   corrective-7 tests give 69 passed. The 2 that fail are round 4's s2 probe,
   obsolete since corrective 4, as in round 8.
 
-## Findings (round 9)
+### Findings (round 9)
 
 **V0 (high; a burn if the refine unit is enabled, plus three writer
 outages): refine, monitor and retirement take C1 inside an open store
@@ -202,7 +508,7 @@ Categories A, C, D and H from round 8 are gone.
   agents don't force-push, so that's a merge commit or GitHub's update
   button, Ryan's call.
 
-## Test results (round 9)
+### Test results (round 9)
 
 | Run | Result |
 |---|---|
@@ -215,7 +521,7 @@ Categories A, C, D and H from round 8 are gone.
 | Codex's 10 round-7 probes (they assert the unsafe behavior) | 9 now fail, so those holes are fixed; 1 passes because it scans a non-git directory |
 | My rounds 2–5, plus Cursor's wedge-probe and wedge-fix tests | pass, except round 4's obsolete s2 probe (×2) |
 
-## Corrective 8 for Cursor
+### Corrective 8 for Cursor
 
 All items are hermetic; none involve paid calls. Do T0 first.
 
@@ -1854,6 +2160,284 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-10 probe tests
+
+They run from `tests/` and import from `tests/test_zz_claude_verify9.py` and
+`tests/test_zz_claude_verify8b.py`, both already on the branch. The refine, monitor and
+index-route probes open the real production store session against a scratch config, and a
+second process saves to the same store through the write guard. Each test asserts the
+corrective-8 spec.
+
+<details><summary>tests/test_zz_claude_verify10.py</summary>
+
+```python
+"""Claude verify probes, round 10 (61307d7): stores held open across a write session, the S6 watcher hold, the refine daemon.
+
+The refine and monitor probes open the real production store session against a scratch
+config, and a real second process saves to the same store through the write guard, the way the watcher would while refine
+waits on its LLM call or monitor on its HTTP probes. Scratch only.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+from tests.test_zz_claude_verify9 import _real_session_env, _where
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _small_sync_store(chroma: Path) -> None:
+    """Create both collections with a small HNSW sync threshold, from another process."""
+    code = (
+        "import sys, chromadb\n"
+        "from chroma_store import SUMMARIES, UNITS\n"
+        "c = chromadb.PersistentClient(path=sys.argv[1])\n"
+        "for n in (SUMMARIES, UNITS):\n"
+        "    c.get_or_create_collection(n, configuration={'hnsw': {'space': 'cosine', 'sync_threshold': 100, 'batch_size': 10}})\n"
+    )
+    done = subprocess.run([sys.executable, "-c", code, str(chroma)], cwd=ROOT, capture_output=True, text=True, timeout=120, check=False)
+    assert done.returncode == 0, done.stderr[-1500:]
+
+
+_FOREIGN = (
+    "import random, sys\n"
+    "from chroma_store import ChromaStore\n"
+    "from chroma_write_guard import ChromaWriteGuard\n"
+    "root, dim = sys.argv[1], int(sys.argv[2])\n"
+    "store = ChromaStore(root, write_guard=ChromaWriteGuard(root))\n"
+    "try:\n"
+    "    for i in range(150):\n"
+    "        rng = random.Random(i)\n"
+    "        store.add_summary(f'foreign{i}', f'summary {i}', [rng.random() - 0.5 for _ in range(dim)],\n"
+    "                          {'source_path': '/foreign', 'n': i})\n"
+    "finally:\n"
+    "    store.close()\n"
+)
+
+
+def _foreign_save(chroma: Path, dim: int = 16) -> None:
+    """Another process saves: 150 guarded summaries, so the HNSW syncs at 100."""
+    from chroma_write_guard import _synced_only, store_signature
+
+    before = _synced_only(store_signature(chroma))
+    done = subprocess.run([sys.executable, "-c", _FOREIGN, str(chroma), str(dim)],
+                          cwd=ROOT, capture_output=True, text=True, timeout=300, check=False)
+    assert done.returncode == 0, done.stderr[-1500:]
+    assert _synced_only(store_signature(chroma)) != before, "the foreign save did not sync; the probe would be vacuous"
+
+
+def _store_env(tmp_path, monkeypatch):
+    from chroma_store import ChromaStore
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    chroma = Path(cfg["index"]["chroma_dir"]).expanduser()
+    _small_sync_store(chroma)
+    seed = ChromaStore(str(chroma))
+    for n in range(3):
+        seed.add_unit(f"u-untagged-{n}", f"notes about python packaging {n}", [0.1, 0.2, 0.3 + n],
+                      {"id": f"u-untagged-{n}", "title": f"Packaging {n}", "source_path": f"/scratch/{n}"})
+    seed.close()
+    return cfg, chroma
+
+
+def test_refine_write_survives_a_foreign_save_during_the_llm_call(tmp_path, monkeypatch) -> None:
+    import llm
+    import refine
+
+    _cfg, chroma = _store_env(tmp_path, monkeypatch)
+    paid: list[int] = []
+
+    def generate(*_a, **_k):
+        paid.append(1)
+        if len(paid) == 1:
+            _foreign_save(chroma)  # the watcher commits while refine waits on DeepSeek
+        return "coding.tooling"
+
+    monkeypatch.setattr(llm, "generate", generate)
+    try:
+        result, err = refine.run_job("backfill_domain", limit=3, verbose=False), None
+    except Exception as exc:  # report how much was paid before the failure
+        result, err = None, _where(exc)
+    assert err is None, ("paid calls:", len(paid), err)
+    assert result["updated"] == 3 and not result.get("errors"), ("paid calls:", len(paid), result)
+
+
+def test_monitor_write_survives_a_foreign_save_during_the_probes(tmp_path, monkeypatch) -> None:
+    import convmem
+    import llm
+    import monitor
+    from typer.testing import CliRunner
+
+    _cfg, chroma = _store_env(tmp_path, monkeypatch)
+    saved: list[int] = []
+
+    def fetch(site, *, session=None, timeout=20.0):
+        if not saved:
+            saved.append(1)
+            _foreign_save(chroma)  # the watcher commits while monitor waits on HTTP
+        return {}, "offline"
+
+    monkeypatch.setattr(convmem, "_guard_write", lambda: None)
+    monkeypatch.setattr(monitor, "fetch_https_headers", fetch)
+    monkeypatch.setattr(monitor, "check_tls_redirect", lambda site, *, session=None, timeout=20.0: False)
+    monkeypatch.setattr(llm, "ollama_embed", lambda *a, **k: [0.1, 0.2, 0.3])
+    out = CliRunner().invoke(convmem.app, ["monitor", "--site", "example.test"])
+    err = _where(out.exception) if out.exception and not isinstance(out.exception, SystemExit) else None
+    assert saved and out.exit_code == 0 and err is None, (out.exit_code, err, out.output[-300:])
+    stats, _end = json.JSONDecoder().raw_decode(out.output[out.output.index("{"):])
+    assert stats["observations"] > 0, stats
+
+
+def test_corrupt_retry_state_cli_refusal_holds_the_watcher(tmp_path, monkeypatch) -> None:
+    """S6/T2 end to end: the real CLI's exit-91 output makes the watcher hold the path."""
+    import config
+    import convmem
+    import watch
+    from typer.testing import CliRunner
+    from watch_circuit_breaker import CircuitBreakerState
+
+    import incremental_jsonl as inc
+    import pytest
+
+    from tests.test_zz_claude_verify8b import _count_summaries, _retry_state_path, _route_fixture
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+
+    def fail_save(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_write_prepared", fail_save)
+    with pytest.raises(inc.IncrementalJsonlError):
+        route()
+    _retry_state_path(tmp_path).write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(config, "CONFIG_PATH", tmp_path / "config.toml")
+    monkeypatch.setattr(config, "load_config", lambda *a, **k: cfg)
+    monkeypatch.setattr("ingest.load_config", lambda *a, **k: cfg, raising=False)
+    monkeypatch.setattr(convmem, "_guard_write", lambda: None, raising=False)
+    out = CliRunner().invoke(convmem.app, ["index", "--file", str(source)])
+    assert out.exit_code == 91, (out.exit_code, out.output[-400:], out.exception)
+    assert len(calls) == 1, "no paid summary after the corrupt state"
+    breaker = CircuitBreakerState(tmp_path / "breaker.json")
+    exc = watch.IndexSubprocessError("index child failed", returncode=91, stderr=out.output)
+    watch._record_ready_path_failure(str(source), exc, breaker=breaker, verbose=False)
+    assert breaker.has_refusal_quarantine_for_path(str(source)), out.output[-400:]
+    assert breaker.should_skip_refusal_quarantine(str(source), None)
+
+
+def test_refine_daemon_survives_a_failing_job_with_one_limiter(tmp_path, monkeypatch) -> None:
+    import config
+    import refine
+
+    cfg = {"refine": {"jobs": ["backfill_domain", "chroma_dedupe"], "interval_seconds": 1, "batch_size": 2}}
+    monkeypatch.setattr(config, "load_config", lambda *a, **k: cfg)
+    monkeypatch.setattr(refine, "_lock_path", lambda _cfg: tmp_path / "refine.lock")
+    seen: list[tuple[str, int]] = []
+
+    def run_job(job, **kwargs):
+        seen.append((job, id(kwargs.get("limiter"))))
+        if job == "backfill_domain":
+            raise RuntimeError("lock ordering violation (probe)")
+        return {}
+
+    sleeps: list[int] = []
+
+    def sleep(_s):
+        sleeps.append(1)
+        if len(sleeps) == 2:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(refine, "run_job", run_job)
+    monkeypatch.setattr(refine.time, "sleep", sleep)
+    refine.run_refine_daemon(verbose=False, use_lock=False)
+    assert [j for j, _ in seen] == ["backfill_domain", "chroma_dedupe"] * 2, seen
+    assert len({lid for _, lid in seen}) == 1 and seen[0][1] != id(None), seen
+
+
+def test_index_route_commits_after_a_foreign_save_during_the_paid_summary(tmp_path, monkeypatch) -> None:
+    """The main burn path, same interleaving: another process saves while the route pays for a summary."""
+    import ingest
+    from tests.incremental_jsonl_helpers import fake_summarize
+
+    _source, cfg, route = _route_fixture_small_sync(tmp_path, monkeypatch)
+    chroma = Path(cfg["index"]["chroma_dir"]).expanduser()
+    paid: list[int] = []
+
+    def summarize(*args, **kwargs):
+        paid.append(1)
+        if len(paid) == 1:
+            _foreign_save(chroma, dim=8)
+        return fake_summarize(*args, **kwargs)
+
+    monkeypatch.setattr(ingest, "summarize", summarize)
+    try:
+        result, err = route(), None
+    except Exception as exc:  # report how much was paid before the failure
+        result, err = None, _where(exc)
+    assert err is None, ("paid summaries:", len(paid), err)
+    assert paid, result
+
+
+def _route_fixture_small_sync(tmp_path, monkeypatch):
+    from tests.test_zz_codex_audit import _route_fixture
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    _small_sync_store(Path(cfg["index"]["chroma_dir"]).expanduser())
+    return source, cfg, route
+```
+
+</details>
+
+The leak census plugin (scratch; load it with `PYTHONPATH=<dir> pytest -p leakwatch`, with
+`LEAKWATCH_ROOTS` set to the fake live data root and the default data dir under the scratch
+`HOME`, and `LEAKWATCH_OUT` set to a log path):
+
+<details><summary>leakwatch.py</summary>
+
+```python
+"""Scratch pytest plugin: log every test that changes files under the fake live roots."""
+import json
+import os
+import pathlib
+
+import pytest
+
+ROOTS = [pathlib.Path(p) for p in os.environ["LEAKWATCH_ROOTS"].split(":")]
+OUT = pathlib.Path(os.environ["LEAKWATCH_OUT"])
+
+
+def _snap():
+    seen = {}
+    for root in ROOTS:
+        if root.exists():
+            for p in root.rglob("*"):
+                try:
+                    st = p.stat()
+                except OSError:
+                    continue
+                seen[str(p)] = (st.st_mtime_ns, st.st_size)
+    return seen
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_protocol(item, nextitem):
+    before = _snap()
+    yield
+    after = _snap()
+    changed = sorted([k for k, v in after.items() if before.get(k) != v] + [k for k in before if k not in after])
+    if changed:
+        with OUT.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"test": item.nodeid, "n": len(changed), "changed": changed[:8]}) + "\n")
+```
+
+</details>
 
 ## Appendix: round-9 probe tests
 

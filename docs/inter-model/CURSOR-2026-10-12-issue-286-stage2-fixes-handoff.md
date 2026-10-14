@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 9 FAILs corrective 7 (`905e602`). The index-route burn is fixed through the real entrypoint, but refine, monitor and repository-knowledge retirement now take C1 inside an open store session and fail on every write; refine pays one DeepSeek call first. Corrective 8 (T0–T5, T0 first) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 9 |
+| **State** | `IN_PROGRESS`: Claude's round 10 FAILs corrective 8 (`61307d7`). Round 9's lock-order bug is fixed and the refine daemon now survives a failed job with one hourly limiter, but refine and monitor keep a reader open across their writes (after another process saves, refine pays and every write is refused), and `tests/test_refine.py` now writes through the user's config (a production-safety hazard; not triggered live). Corrective 9 (T0–T4, T0 first) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 10 |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
