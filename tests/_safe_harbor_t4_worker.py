@@ -40,6 +40,8 @@ HASH_TRACKED_PATHS = (
 
 
 @functools.lru_cache(maxsize=1)
+# pylint: disable=duplicate-code
+# The -I launcher cannot import the package before isolation; same explicit bootstrap as child.
 def _load_bootstrap_module() -> ModuleType:
     path = ROOT / "tests" / "_safe_harbor_bootstrap.py"
     spec = importlib.util.spec_from_file_location("safe_harbor_t4_bootstrap", path)
@@ -50,6 +52,8 @@ def _load_bootstrap_module() -> ModuleType:
     return module
 
 
+# pylint: enable=duplicate-code
+
 def _load_backend_worker() -> ModuleType:
     bootstrap = _load_bootstrap_module()
     return bootstrap.load_stdlib_module(
@@ -59,16 +63,8 @@ def _load_backend_worker() -> ModuleType:
 
 
 def _source_hashes() -> dict[str, str]:
-    out: dict[str, str] = {}
-    missing: list[str] = []
-    for path in HASH_TRACKED_PATHS:
-        if not path.is_file():
-            missing.append(str(path))
-            continue
-        out[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
-    if missing:
-        raise RuntimeError(f"T4 worker tracked inputs missing: {missing}")
-    return out
+    helpers = _load_bootstrap_module().load_stdlib_module(HARNESS, "t4_hash_helpers")
+    return helpers.file_hashes(HASH_TRACKED_PATHS)
 
 
 def _child_returncode(proc) -> int | None:

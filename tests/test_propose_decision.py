@@ -145,8 +145,13 @@ class ProposeDecisionTests(unittest.TestCase):
         )
         _, ledger = approve(self.cfg, rec["id"], signer="ryan", ledger_id="dec_shared")
         self.assertEqual(approved_for_proposal(self.cfg, rec["id"]), ledger)
-        self.assertEqual(recovery_action(self.cfg, rec["id"], base_hash="b", proposed_hash="p"), "retry_chroma")
-        self.assertEqual(recovery_action(self.cfg, rec["id"], live_hash="p", proposed_hash="p"), "repair_marker")
+        self.assertEqual(recovery_action(self.cfg, rec["id"], proposed_hash="a" * 64), "review")
+        self.assertEqual(recovery_action(
+            self.cfg, rec["id"], live_absent=True, proposed_hash="a" * 64
+        ), "retry_chroma")
+        self.assertEqual(recovery_action(
+            self.cfg, rec["id"], live_hash="a" * 64, proposed_hash="a" * 64
+        ), "repair_marker")
 
     def test_governed_apply_rejects_sibling_stale_and_create_collision(self):
         from propose_decision import validate_governed_apply

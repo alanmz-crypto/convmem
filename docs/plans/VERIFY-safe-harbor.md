@@ -1245,3 +1245,19 @@ Cursor authored the draft and later cleanup; Codex contributed runtime/test corr
 
 - `/tmp/safe-harbor-t4-suite-qqh17gie`: with the new Python-network refusal active, eight descriptor/isolation checks and two native-order checks passed. Real recovery-first forget/refine races and the out-of-lock negative control passed. Two competitor-first tests failed solely on an incorrect empty-export expectation: the interrupted approval had already exported. They now compare pre-recovery export and event bytes exactly; a fresh run is required. Summary records stable sources and only the deliberate denied DNS canary, with no unexpected Python network attempt.
 - The first cleanup lint report (`j1ekgn6y`) still failed; the next (`kkos9io3`) had only remaining test-style findings. No lint baseline or cycle allowlist was changed. This checkpoint remains incomplete pending fresh suites, affected regressions, generated identity and full lint evidence.
+
+### T4 supervised checkpoint — terminal and regression completion pending
+
+At checkpoint `275a7b1`, the complete six-module T4 run `/tmp/safe-harbor-t4-suite-a9gs4liw` passed 60 cases with stable source/harness hashes, Python network refusal active, and no unexpected Python network attempts. The one logged DNS attempt was the intentionally refused canary. This is development evidence, preceding the final edge-case changes.
+
+Subsequent supervised changes require fresh final evidence: recovery refuses active event conflicts and contradictory queue/event target, base or hash-schema authority; shared fixture plumbing replaces duplicate subprocess/hash code; test-only terminal cases and an actual blocked-native-lock config replacement are added. Narrow lint annotations describe real whole-repository AST-name collisions with the stale `docs/chatgpt-pack` copies and intentionally separate strict readers/barriers; the lint baseline stays unchanged.
+
+Development results retained:
+- Full lint `/tmp/safe-harbor-t4-full-lint-j5ig28gc`: gate FAIL, 81 duplicates versus 71 baseline, stale-module import-resolution findings and a test long line. Corrected source still needs a fresh full report; focused lint `/tmp/safe-harbor-t4-lint-89rcwbb3` passed (47 findings/37 fingerprints, raw 28).
+- Terminal draft `/tmp/safe-harbor-t4-suite-6iu50syp`: 4 passed/1 failed in 85.18s. The CLI fault did not reach recovery because the fixture used `record --recover`, an unsupported option. The actual existing consumer is `propose_decision --recover`; the corrected fixture uses it. This qualifies earlier plan/review shorthand, without adding a new public CLI option.
+- Affected governed selection `/tmp/safe-harbor-t4-regress-kb6xuks5`: 41 passed and 5 subtests, 2.17s, exit 0.
+- Existing guard/T1 selection `/tmp/safe-harbor-t4-regress-hv4zb2c8`: 45 passed, 59.11s, exit 0.
+- Existing T3 implementation/matrix selection `/tmp/safe-harbor-t4-regress-e7gb6kpx`: 47 passed, 95.28s, exit 0.
+- Identity selection `/tmp/safe-harbor-t4-regress-o_euehed`: 3 failed/5 passed because the artifact preceded the final source-format change. Regeneration is required after source settles. Shadow metadata updates only `convmem.forget` 1777→1785 and the factory site record 660→666; its direct-constructor allowlist already named 666. Classifications/routes/exemptions are unchanged.
+
+No hosted CI, PR, independent review, acceptance or live work is claimed. The excluded model-download lapse remains excluded; Python networking refusal is defense in depth, not OS/native-subprocess isolation or power-loss evidence.

@@ -161,6 +161,8 @@ def classify_recovery_action(  # pylint: disable=too-many-arguments
     return "review"
 
 
+# pylint: disable=duplicate-code
+# Strict queue/intent readers intentionally do not reuse tolerant legacy or restore parsers.
 def _load_queue_strict(path: Path) -> list[dict]:
     """Parse the queue JSONL without skipping malformed lines."""
     if not path.is_file():
@@ -261,15 +263,18 @@ def load_strict_approved_intent(cfg: dict, proposal_id: str, event_prop: dict) -
     raw_proposed = ledger_content_hash(expected_ledger)
     if ev_proposed != raw_proposed:
         raise ValueError("event_proposed_hash_mismatch")
-    q_prop = str(qrow.get("proposed_content_hash") or "").strip()
-    if q_prop and q_prop != ev_proposed:
+    if qrow.get("proposed_content_hash") != ev_proposed:
         raise ValueError("queue_event_proposed_hash_mismatch")
-
-    ev_base = event_prop.get("base_content_hash")
-    if ev_base is not None and str(ev_base).strip():
-        q_base = qrow.get("base_content_hash")
-        if q_base is not None and str(q_base).strip() != str(ev_base).strip():
-            raise ValueError("queue_event_base_hash_mismatch")
+    queue_target = str(qrow.get("target_ledger_id") or pid).strip()
+    if queue_target != target:
+        raise ValueError("queue_event_target_mismatch")
+    from ledger_content_hash import HASH_SCHEMA_VERSION
+    if any(record.get("hash_schema_version") != HASH_SCHEMA_VERSION for record in (qrow, event_prop)):
+        raise ValueError("unknown_recovery_hash_schema")
+    ev_base = str(event_prop.get("base_content_hash") or "").strip()
+    queue_base = str(qrow.get("base_content_hash") or "").strip()
+    if queue_base != ev_base or (ev_base and not _valid_content_hash(ev_base)):
+        raise ValueError("queue_event_base_hash_mismatch")
 
     ingest_hash = ingestion_content_hash_from_record(row)
     if not ingest_hash:
@@ -277,6 +282,8 @@ def load_strict_approved_intent(cfg: dict, proposal_id: str, event_prop: dict) -
 
     return row
 
+
+# pylint: enable=duplicate-code
 
 def validate_governed_apply(*, target_ledger_id: str | None, live_hash: str | None,
                            base_hash: str | None, unresolved_targets: set[str],
@@ -479,7 +486,8 @@ def live_decision_snapshot(cfg: dict, ledger_id: str) -> tuple[str, str]:
 def _recovery_classify_live(store, ledger_id: str) -> dict:
     """Fresh authoritative lookup under native lock (includes superseded rows)."""
     from chroma_store import is_superseded
-    from ledger import invalidate_ledger_index_cache
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
 
     invalidate_ledger_index_cache(getattr(store, "chroma_dir", ""))
     needle = ledger_id.strip()
@@ -522,7 +530,8 @@ def _recovery_classify_live(store, ledger_id: str) -> dict:
 
 
 def _verify_live_matches_intent(unit: dict, intent_row: dict, store) -> str | None:
-    from ledger import ledger_unit_document, normalize_ledger_record
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import ledger_unit_document, normalize_ledger_record  # pylint: disable=no-name-in-module
     from ledger_content_hash import ledger_content_hash
 
     normalized = normalize_ledger_record(intent_row)
@@ -576,7 +585,8 @@ def _repair_marker_only(
 
 
 def _recovery_apply_intent(store, intent_row: dict, models: dict) -> dict:
-    from ledger import build_ledger_index, invalidate_ledger_index_cache
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import build_ledger_index, invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
     from observe import ingest_observation
 
     invalidate_ledger_index_cache(store.chroma_dir)
@@ -616,8 +626,12 @@ def _export_unit_for_recovery(intent_row: dict, live_unit: dict) -> dict:
 
 def _check_recovery_export(units_export, intent_row, live, base_hash):
     """Validate an existing projection before any corpus change; recheck at publication."""
-    from ledger import ledger_unit_document, ledger_unit_metadata, normalize_ledger_record
-    from observe import export_projection_records, export_unit_matches_normalized
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import (  # pylint: disable=no-name-in-module
+        ledger_unit_document, ledger_unit_metadata, normalize_ledger_record,
+    )
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from observe import export_projection_records, export_unit_matches_normalized  # pylint: disable=no-name-in-module
     from purge_locks import export_flock_path
 
     if units_export is None:
@@ -674,7 +688,8 @@ def _ensure_export_for_recovery(
     base_export_row: dict | None = None,
 ) -> None:
     from atomic_files import atomic_write_text
-    from observe import export_unit_matches_normalized
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from observe import export_unit_matches_normalized  # pylint: disable=no-name-in-module
     from purge_locks import export_flock_path
 
     if units_export is None:
@@ -791,6 +806,8 @@ def _recovery_authority_from_states(
         raise ValueError(
             f"Proposal {proposal_id} is not recoverable (lifecycle={lifecycle})"
         )
+    if state.get("active_conflicts"):
+        raise ValueError(f"Proposal {proposal_id} needs human review (active conflicts)")
     prop = dict(state.get("proposal") or {})
     target = str(
         prop.get("target_ledger_id") or prop.get("proposed_ledger_id") or proposal_id
@@ -1210,7 +1227,8 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
     """Index one approved decision (fast path for record --approve-last)."""
 
     from chroma_write_store import open_production_write_store
-    from ledger import invalidate_ledger_index_cache
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
     from observe import ingest_observation
 
     models = cfg.get("models")

@@ -32,6 +32,9 @@ def main():
         elif group == 'refusal':
             from tests._safe_harbor_t4_refusal import run_refusal
             payload = run_refusal(cfg, mode)
+        elif group == 'terminal':
+            from tests._safe_harbor_t4_terminal import run_terminal_case
+            payload = run_terminal_case(cfg, mode)
         elif group == 'guard':
             from tests._safe_harbor_t4_order import run_guard_case
             payload = run_guard_case(cfg, mode)

@@ -4,7 +4,7 @@
   "open_chroma_for_write_production_call_sites": [],
   "chroma_write_session_production_call_sites": [],
   "production_chroma_write_session_call_sites": [
-    "convmem.py:1777",
+    "convmem.py:1785",
     "convmem.py:420",
     "convmem.py:523",
     "convmem.py:715",
@@ -47,7 +47,7 @@
   "sites": [
     {
       "file": "convmem.py",
-      "line": 1777,
+      "line": 1785,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -227,7 +227,7 @@
     },
     {
       "file": "chroma_write_store.py",
-      "line": 660,
+      "line": 666,
       "snippet": "store = ChromaStore(",
       "class": "factory_internal",
       "required_routing": "allowlisted_direct",

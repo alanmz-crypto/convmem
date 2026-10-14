@@ -338,3 +338,38 @@ def test_t4_faulty_out_of_lock_recheck_negative_control(cli):
     finally:
         terminate_worker(rec_proc)
         close_fds(open_fds)
+
+def test_t4_rechecks_config_after_native_lock_wait(cli):
+    """A real blocked recovery cannot use its now-replaced config after admission."""
+    import fcntl
+    from pathlib import Path
+    pid = _event_only_state(cli)
+    before = cli.dump()
+    lock_path = lock_path_for_cli(cli)
+    lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    signal_r, signal_w = os.pipe()
+    proc = None
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        proc = spawn_worker_popen(
+            cli, "recover-wait-config", (pid,),
+            extra_env={**_current(cli), NOW_ENV_KEY: local_noon().isoformat(),
+                       "SAFE_HARBOR_T4_LOCK_PATH": lock_path,
+                       "SAFE_HARBOR_T4_SIGNAL_WRITE_FD": str(signal_w)},
+            pass_fds=(signal_w,),
+        )
+        os.close(signal_w)
+        assert read_event(signal_r, timeout=BARRIER_TIMEOUT_SECONDS) == "PRE_FLOCK"
+        assert read_event(signal_r, timeout=BARRIER_TIMEOUT_SECONDS) == "NB_BLOCKED"
+        replacement = Path(str(cli.config) + ".replacement")
+        replacement.write_bytes(cli.config.read_bytes() + b"\n# replaced after admission\n")
+        os.replace(replacement, cli.config)
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        payload = parse_worker_stdout(proc, timeout=CHILD_TIMEOUT_SECONDS)
+        assert payload["cli_rc"] == 24, payload
+        assert "operation_config_changed" in payload["output"], payload
+        assert cli.dump() == before, "post-wait refusal changed corpus or governed effects"
+        _assert_no_approved(cli, pid)
+    finally:
+        terminate_worker(proc)
+        close_fds([lock_fd, signal_r, signal_w])

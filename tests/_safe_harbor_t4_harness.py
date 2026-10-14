@@ -31,16 +31,26 @@ def tracked_input_hashes() -> dict[str, str]:
     paths = list(TRACKED_INPUT_PATHS)
     paths.extend(sorted(ROOT.glob("tests/test_safe_harbor_t4*.py")))
     paths.extend(sorted(ROOT.glob("tests/_safe_harbor_t4*.py")))
-    out: dict[str, str] = {}
-    missing: list[str] = []
-    for path in paths:
-        if not path.is_file():
-            missing.append(str(path))
-            continue
-        out[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return file_hashes(paths)
+
+
+def file_hashes(paths) -> dict[str, str]:
+    """Fail on missing evidence inputs and hash every supplied file."""
+    missing = [str(path) for path in paths if not path.is_file()]
     if missing:
-        raise AssertionError(f"T4 tracked harness inputs missing: {missing}")
-    return out
+        raise RuntimeError(f"T4 tracked inputs missing: {missing}")
+    return {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
+
+
+def run_fixture_child(cmd, *, env, timeout, input_text=None, pass_fds=()):
+    """Captured subprocess contract shared by T4 fixture drivers."""
+    # pylint: disable=duplicate-code
+    # Existing T1 subprocess assertions are independent and outside this task.
+    return subprocess.run(
+        cmd, cwd=ROOT, env=env, input=input_text, capture_output=True,
+        text=True, timeout=timeout, check=False, pass_fds=pass_fds,
+    )
+    # pylint: enable=duplicate-code
 
 
 def assert_tracked_inputs_unchanged(before: dict[str, str], after: dict[str, str]) -> None:
@@ -104,15 +114,7 @@ def run_probe(
     before = tracked_input_hashes()
     env = probe_env(cli, case=case, extra=extra_env)
     cmd = [*PYTHON_CHILD, str(PROBE), case]
-    proc = subprocess.run(
-        cmd,
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
+    proc = run_fixture_child(cmd, env=env, timeout=timeout)
     after = tracked_input_hashes()
     assert_tracked_inputs_unchanged(before, after)
     if proc.returncode is None:

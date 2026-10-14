@@ -100,6 +100,8 @@ def _read_line_fd(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError(f"timed out waiting for line on fd {fd}")
+        # pylint: disable=duplicate-code
+        # Independent bounded pipe barrier, shared shape with existing T1 fixture.
         readable, _, _ = select.select([fd], [], [], remaining)
         if not readable:
             continue
@@ -110,6 +112,8 @@ def _read_line_fd(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
     line, _, _ = bytes(buffer).partition(b"\n")
     return line.decode().strip()
 
+
+# pylint: enable=duplicate-code
 
 def _write_line_fd(fd: int, text: str) -> None:
     payload = text if text.endswith("\n") else f"{text}\n"
@@ -256,6 +260,14 @@ def _mode_probe_lock_nb() -> dict[str, Any]:
     acquired = _lock_nb_probe(lock_path)
     return {"verdict": "PASS", "acquired": acquired, "lock_path": lock_path}
 
+
+
+def _mode_recover_wait_config(proposal_id: str) -> dict[str, Any]:
+    import convmem
+    from typer.testing import CliRunner
+    with _install_competitor_flock_observer(os.environ["SAFE_HARBOR_T4_LOCK_PATH"]):
+        result = CliRunner().invoke(convmem.app, ["propose_decision", "--recover", proposal_id])
+    return {"verdict": "OK", "cli_rc": result.exit_code, "output": result.output}
 
 def _mode_recover(proposal_id: str) -> dict[str, Any]:
     from propose_decision import recover_approval
@@ -478,6 +490,8 @@ def _dispatch(argv: list[str]) -> int:
             return _emit(MODES[mode]())
         if mode == "recover":
             return _emit(_mode_recover(rest[0]))
+        if mode == "recover-wait-config":
+            return _emit(_mode_recover_wait_config(rest[0]))
         if mode == "recover-refused":
             return _emit(_mode_recover_refused(rest[0]))
         if mode == "recover-held":
@@ -522,14 +536,11 @@ def spawn_worker(
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, Any]]:
     env = worker_env(cli, extra=extra_env)
     cmd = [*PYTHON_CHILD, str(WORKER), mode, *worker_args]
-    proc = subprocess.run(
+    from tests._safe_harbor_t4_harness import run_fixture_child
+    proc = run_fixture_child(
         cmd,
-        cwd=ROOT,
         env=env,
-        capture_output=True,
-        text=True,
         timeout=timeout,
-        check=False,
         pass_fds=pass_fds or (),
     )
     if proc.returncode is None:

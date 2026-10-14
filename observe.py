@@ -18,6 +18,8 @@ def _reject_governed_bypass(record: dict, *, upsert: bool) -> None:
         raise ValueError("governed decision upsert requires proposal_id from approval protocol")
 
 
+# pylint: disable=duplicate-code
+# Export parsing fails closed; the restore parser has a different result/authority contract.
 def export_projection_records(
     units_export: Path,
     ledger_id: str,
@@ -42,6 +44,8 @@ def export_projection_records(
         return matches, "duplicate_export_identity"
     return matches, None
 
+
+# pylint: enable=duplicate-code
 
 def export_unit_matches_normalized(unit: dict, export_row: dict) -> bool:
     """Compare durable export projection to a normalized in-memory unit."""

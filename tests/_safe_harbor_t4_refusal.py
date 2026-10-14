@@ -77,6 +77,11 @@ def run_refusal(cfg, mode):  # pylint: disable=too-many-branches,too-many-locals
                     rows[-1]['summary'] = 'different intent'
                 return rows
             _edit_rows(path, alter)
+        elif defect in {'target', 'base', 'hashschema'}:
+            key, value = {'target': ('target_ledger_id', 'dec_other'),
+                          'base': ('base_content_hash', 'f' * 64),
+                          'hashschema': ('hash_schema_version', 999)}[defect]
+            _edit_rows(path, lambda rows: [{**r, key: value} for r in rows])
         elif defect == 'unsigned':
             _edit_rows(path, lambda rows: [{**r, 'signer': ''} for r in rows])
     elif mode not in {'read_error', 'unknown_control', 'cfg_chroma', 'cfg_export', 'cfg_missing'}:

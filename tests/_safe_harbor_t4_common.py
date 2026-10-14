@@ -66,15 +66,12 @@ def _run_t2_cli(
 ) -> subprocess.CompletedProcess[str]:
     if not os.environ.get("SAFE_HARBOR_T2_NOW"):
         raise RuntimeError("SAFE_HARBOR_T2_NOW must be set before admission")
-    proc = subprocess.run(
+    from tests._safe_harbor_t4_harness import run_fixture_child
+    proc = run_fixture_child(
         [sys.executable, "-s", "-B", str(T2_RUNNER), "cli", *args],
-        cwd=ROOT,
         env=dict(os.environ) if env is None else env,
-        input=stdin,
-        capture_output=True,
-        text=True,
+        input_text=stdin,
         timeout=SUBPROCESS_TIMEOUT,
-        check=False,
     )
     if proc.returncode is None:
         raise RuntimeError("subprocess missing returncode")
@@ -134,14 +131,11 @@ def _dump_state(cfg) -> dict[str, Any]:
         str(data / "decisions-approved.jsonl"),
         str(data / "pending_decision_events.jsonl"),
     ]
-    proc = subprocess.run(
+    from tests._safe_harbor_t4_harness import run_fixture_child
+    proc = run_fixture_child(
         [sys.executable, "-s", "-B", str(T2_RUNNER), "dump", *files],
-        cwd=ROOT,
         env=os.environ.copy(),
-        capture_output=True,
-        text=True,
         timeout=SUBPROCESS_TIMEOUT,
-        check=False,
     )
     if proc.returncode is None:
         raise RuntimeError("dump subprocess missing returncode")
@@ -427,14 +421,11 @@ def _spawn_probe_case(case: str, *, pid: str) -> tuple[int, dict[str, Any]]:
     cmd = [sys.executable, "-s", "-B", str(ROOT / "tests" / "_safe_harbor_t4_probe.py"), case]
     env = os.environ.copy()
     env["SAFE_HARBOR_T4_PRESEEDED_PID"] = pid
-    proc = subprocess.run(
+    from tests._safe_harbor_t4_harness import run_fixture_child
+    proc = run_fixture_child(
         cmd,
-        cwd=ROOT,
         env=env,
-        capture_output=True,
-        text=True,
         timeout=SUBPROCESS_TIMEOUT,
-        check=False,
     )
     if proc.returncode is None:
         raise RuntimeError(f"missing returncode for child {case}")
