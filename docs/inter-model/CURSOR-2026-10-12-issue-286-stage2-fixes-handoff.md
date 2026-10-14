@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Codex (Astra) round-2 audit FAILs `0ee6994` with four blockers (retry accounting fails open when its state can't be written or the error code alternates; refine's dedupe append and approval snapshot bypass C1; embedding still runs under C1; monitor commits a stale prepared decision). Claude's round 14 reproduces all four and withdraws round 13's PASS. Kiro's round-2 review is PASS with conditions. Corrective 12 (A-E, production code) goes to Cursor; see round 14 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Claude's round 15 FAILs corrective 12 (`8d6ee76`). Astra's four blockers are closed (retry reservation and a 3-attempt bound, dedupe side files under C1, a runtime provider guard, commit revalidation), but the new drift check hashes the readonly reader's metadata (which carries the document) against the write store's, so every update or skip of an existing ledger row refuses; plus a partial batch commit, an unrevalidated insert path, a single-use admission context reused across rounds, and dropped dedupe candidates at the hourly cap. Corrective 13 goes to Cursor; see round 15 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

@@ -1,4 +1,131 @@
-# Verify: Stage 2 wedge fixes, round 14 at `0ee6994`: Astra's audit FAIL confirmed; round 13's PASS withdrawn; corrective 12
+# Verify: Stage 2 wedge fixes, round 15 at `8d6ee76`: FAIL; Astra's four are closed, but the new drift check refuses every existing row; corrective 13
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-14
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `8d6ee76`, Cursor
+Composer's corrective 12. It answers round 14 (below).
+**Method:**
+- I read the diff `0ee6994..8d6ee76` (26 files).
+- I ran Astra's eight round-2 probes unchanged at the tip, and Cursor's new
+  `tests/test_issue_286_stage2_corrective12.py`.
+- I wrote 9 round-15 probes (appendix) for the three classes round 13 missed:
+  prepare-to-commit drift, retry-state persistence, and side-file writers. All
+  go through real production sessions against a scratch config, with fake
+  providers.
+- The full suite and the leak census are running in disk-backed worktrees;
+  results follow in an update.
+
+## Burn status
+
+**No burn.** The branch isn't deployed, and the watcher, refine and monitor
+units are inactive and disabled. **R2-F1, the burn path in the retry bounds, is
+closed at this tip** (below).
+
+## Verdict (round 15)
+
+**FAIL. Astra's four blockers are closed, but D's new drift check has a
+representation bug that refuses every update or skip of an existing ledger
+row, and three smaller gaps remain.** It fails closed: nothing wrong is
+written. But monitor, `add --file --upsert` and approved-file ingest stop
+working for existing rows.
+
+**Closed and verified:**
+- **R2-F1 (A):** the attempt is reserved durably before `coordinator.run()`. A
+  failed reservation or failure record raises `retry_state_unavailable`, which
+  the CLI maps to the live-route-refused exit, so the watcher holds the file. A
+  code-independent bound of 3 attempts per prefix applies. Astra's probes now
+  fail for the safe reason: `retry_state_unavailable` instead of
+  `artifact_write_failed`, and 3 paid instead of 6. The prefix digest is empty
+  only when the file can't be read, before any payment.
+- **R2-F2 (B):** approval loads the queue inside C1; `save_dedupe_queue`
+  requires C1; semantic dedupe appends under C1 (Astra's probe: the append now
+  waits for the rollback). Cursor's writer list covers both dedupe side files.
+- **R2-F3 (C):** the runtime guard is in `llm.ollama_embed`, `llm.summarize` and
+  `distill.distill_with_response`. My probe calls the real functions under C1;
+  all three refuse before any HTTP. Single-record approval now embeds at depth
+  (0, 0).
+- **R2-F4 (D), for deletes and edits:** commit re-reads the target by ledger id
+  and compares digests; a deleted target raises drift instead of exporting.
+- **E:** the CO-7 text is scoped to watch roots and cites #393; the CO-1
+  allow-list is documented and tested.
+- **Astra's probes:** 6 of the 7 unsafe-behavior probes fail for the safe
+  reason, and the store-binding probe passes. The seventh, drift-embed, breaks
+  on the new prepared-row format instead, so my D probes stand in for it.
+
+## Findings (round 15)
+
+- **N1 (High, merge-blocking): every readonly-prepared commit of an existing
+  row is a false drift.** The readonly reader's `get_unit` carries the stored
+  document inside `metadata` (a `document` key); the write store's doesn't. The
+  documents are equal and every other metadata value matches, but
+  `_observation_target_digest` hashes the whole metadata dict, so the two
+  digests never match. So:
+  - an unchanged row (skip) and a changed row (update), prepared from the
+    readonly reader and committed with nothing in between, both raise
+    `ObservationIngestDriftError` (probe `c0`);
+  - the retry re-prepares through the same kind of reader, so it drifts again:
+    monitor counts every existing observation as `drift_refused`;
+    `add --file --upsert`, approved-file ingest and `ingest_approved_ledger`
+    refuse for any existing ledger id.
+  - Cursor's tests didn't catch it: none prepares from the real readonly reader
+    and commits to the real write store without a foreign change in between.
+- **N2 (Medium): a batch commits row by row, so a later drift leaves a partial
+  commit and a second round that trips on the batch's own writes.**
+  `commit_prepared_observation_file_rows` writes each row as it validates it.
+  If row 2 drifts, row 1 is already written; the retry re-commits row 1 against
+  its pre-commit digest (drift again, refused), or adds an inserted row twice.
+  Probe `d3` (it currently stops at N1 first). The re-prepare also reuses the
+  caller's readonly reader, which is a snapshot taken when it opened, so it
+  can't see the change it's retrying for (probe `d1` against `d2`).
+- **N3 (Medium): the insert path isn't revalidated.** A row prepared against
+  "no target" commits even when a row with that ledger id appeared since: probe
+  `i1` ends with two rows for one ledger id. The lookup also goes through the
+  process-lifetime ledger-index cache, which can't see a new row.
+- **N4 (Medium): `add --file --upsert` can't do a second round.**
+  `open_write_commit` re-enters one `admission_file` object, a single-use
+  generator context manager (`contextmanager(_admission_steps)(...)`), so round
+  2 fails with `RuntimeError` instead of retrying or refusing. With N1, every
+  upsert of an existing row reaches round 2. Found by reading `convmem.py`; not
+  probed (the admission step needs the restic preflight).
+- **N5 (Low): the semantic-dedupe batch drops candidates at the hourly cap.**
+  The cap's `return stats` still sits inside the loop, before the new batched
+  append, so candidates already counted are lost (probe `l1`: queued 1, file
+  empty). Before corrective 12 each was appended at once.
+
+## Corrective 13 for Cursor
+
+- **N1:** one canonical form for the target, used at prepare and at commit:
+  the document text, plus metadata without reader-only keys (at least
+  `document`; compare `ReadonlyUnitStore.get_unit` with `ChromaStore.get_unit`
+  for the same rows to find the full set). Test: prepare from the real readonly
+  reader, commit to the real write store, nothing between: the skip and the
+  update both succeed.
+- **N2 and N3, validate first, then write:** under C1, rebuild the ledger index
+  fresh (invalidate the process cache first), revalidate **every** prepared row
+  before writing any (an insert's target must still be missing), and raise
+  drift listing all drifted ledger ids. Round 2 re-prepares the drifted rows
+  outside C1 with a **newly opened** readonly reader. Apply the same to
+  monitor's commit and `ingest_approved_ledger`.
+- **N4:** build the admission context inside `open_write_commit`, once per
+  round. Test `add --file --upsert` through a drift: two rounds, no
+  `RuntimeError`.
+- **N5:** append whatever was collected when the cap stops the job, or count
+  only what was appended.
+- **Tests:** add my round-15 probes (appendix) as tests: `c0`, `d1`, `d2`, `d3`,
+  `i1`, `l1` must pass as written, `g1` too. Keep Cursor's corrective-12 tests.
+- **Inventories last,** as before; disk-backed full suites at main `458b9f6`
+  and the tip; tip-only list, target zero.
+
+## Next
+
+1. My full suite and leak census at `8d6ee76` finish; I add the tip-only list
+   to this round.
+2. Cursor: corrective 13.
+3. Claude, round 16; then Astra re-audits and Kiro re-reviews the exact tip
+   (Kiro rechecks Q3 with N1 in mind).
+
+# Round 14: `0ee6994`, FAIL (Astra's audit confirmed); corrective 12 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-14
@@ -18,14 +145,14 @@ since round 13.
 disk-backed worktree at `0ee6994`, `env -i`, a scratch `HOME`, a private
 `--basetemp`), and read every cited location at `0ee6994`.
 
-## Burn status
+### Burn status
 
 **No burn now.** Nothing changed since round 13: the branch isn't deployed, and
 the watcher, refine and monitor units are inactive and disabled. But R2-F1 is a
 burn path in the branch's own retry bounds, so the watcher must not run this
 code until it's fixed.
 
-## Verdict (round 14)
+### Verdict (round 14)
 
 **FAIL at `0ee6994`. Astra's four blockers are real; round 13's PASS is
 withdrawn.**
@@ -43,7 +170,7 @@ withdrawn.**
   settled by reproduction, not opinion, and both reviewers re-review the
   corrected tip. Ryan decides.
 
-## Findings confirmed (Astra's numbering)
+### Findings confirmed (Astra's numbering)
 
 - **R2-F1 (High, burn): retry accounting fails open.**
   - `incremental_retry_state.record_incremental_retry_failure` catches
@@ -84,7 +211,7 @@ withdrawn.**
   - Probes: `test_monitor_prepared_update_exports_a_row_deleted_before_commit`,
     `test_prepared_monitor_update_never_rechecks_missing_target`.
 
-## Corrective 12 for Cursor
+### Corrective 12 for Cursor
 
 Production code changes this time. Keep every provider call (summarize,
 distill, embed, LLM) outside C1 and outside any Chroma write session.
@@ -156,7 +283,7 @@ distill, embed, LLM) outside C1 and outside any Chroma write session.
   `458b9f6` and at your tip. List every tip-only failure id; target zero (flag
   Z1, the inode flake, if it appears).
 
-## Next
+### Next
 
 1. Cursor: corrective 12.
 2. Claude, round 15: Astra's probes flipped, drift, persistence-failure and
@@ -2964,6 +3091,262 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-15 probe tests
+
+They run from `tests/` and import `_real_session_env` from `tests/test_zz_claude_verify9.py`,
+already on the branch. Real production store sessions against a scratch config; fake
+providers; provider hosts point at a closed port.
+
+<details><summary>tests/test_zz_claude_verify15.py</summary>
+
+```python
+"""Claude verify probes, round 15 (8d6ee76): corrective 12's drift retry, insert race, limiter, guard.
+
+Scratch only: real production store sessions against a scratch config; fake providers; no network.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from unittest.mock import Mock
+
+import pytest
+
+from tests.test_zz_claude_verify9 import _real_session_env
+
+
+def _obs(lid: str, summary: str) -> dict:
+    return {"id": lid, "title": f"Probe {lid}", "summary": summary,
+            "keywords": ["probe", "scratch", "verify"], "author_model": "claude-verify",
+            "type": "observation", "domain": "coding.tooling", "confidence": 0.9}
+
+
+def _seed(cfg, *records):
+    from chroma_store import ChromaStore
+    from ledger import invalidate_ledger_index_cache
+    from observe import ingest_observation
+
+    seed = ChromaStore(cfg["index"]["chroma_dir"])
+    try:
+        units = [ingest_observation(r, store=seed, embed_model="fake", ollama_host="offline",
+                                    upsert=True, precomputed_embedding=[0.1, 0.2, 0.3]) for r in records]
+    finally:
+        seed.close()
+    invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
+    return units
+
+
+def _foreign_update(cfg, unit_id: str, text: str) -> None:
+    from chroma_write_store import production_chroma_write_session
+    from purge_locks import index_write_flock
+
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="claude_verify15.foreign") as session:
+            fresh = session.store.get_unit(unit_id)
+            session.store.update_unit(unit_id, text, [0.1, 0.2, 0.3], fresh["metadata"])
+
+
+def _depth_embed(monkeypatch, depths):
+    import llm
+    from chroma_write_store import production_chroma_store_session_depth
+    from purge_locks import index_write_lock_depth
+
+    def embed(*_a, **_k):
+        depths.append((index_write_lock_depth(), production_chroma_store_session_depth()))
+        return [0.1, 0.2, 0.3]
+
+    monkeypatch.setattr(llm, "ollama_embed", embed)
+
+
+def _commit_fn(cfg, foreign=None):
+    """Like convmem.add's open_write_commit; runs `foreign` once, before the first commit."""
+    from chroma_write_store import production_chroma_write_session
+    from purge_locks import index_write_flock
+
+    calls = {"n": 0}
+
+    def open_write_commit(commit):
+        calls["n"] += 1
+        if foreign and calls["n"] == 1:
+            foreign()
+        with index_write_flock(cfg):
+            with production_chroma_write_session(entrypoint="claude_verify15.commit") as session:
+                return commit(session.store, None)
+
+    return open_write_commit, calls
+
+
+class _FreshReader:
+    """A readonly reader reopened on every call, to separate snapshot staleness from other effects."""
+
+    def __init__(self, chroma_dir):
+        self.chroma_dir = str(chroma_dir)
+
+    def __getattr__(self, name):
+        from chroma_readonly import open_readonly_unit_store
+        from ledger import invalidate_ledger_index_cache
+
+        invalidate_ledger_index_cache(self.chroma_dir)
+        return getattr(open_readonly_unit_store(self.chroma_dir), name)
+
+
+def test_c0_unchanged_and_changed_rows_commit_without_false_drift(tmp_path, monkeypatch) -> None:
+    """Control: prepared from the readonly reader, committed to the write store, nothing foreign in between."""
+    from chroma_readonly import open_readonly_unit_store
+    from chroma_write_store import production_chroma_write_session
+    from observe import commit_observation_ingest, prepare_observation_ingest
+    from purge_locks import index_write_flock
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    same, changed = _obs("obs_v15_same", "Stays the same."), _obs("obs_v15_chg", "Old text.")
+    _seed(cfg, same, changed)
+    _depth_embed(monkeypatch, [])
+    reader = open_readonly_unit_store(cfg["index"]["chroma_dir"])
+    p_same = prepare_observation_ingest(same, store=reader, embed_model="fake", ollama_host="offline", upsert=True)
+    p_chg = prepare_observation_ingest({**changed, "summary": "New text."}, store=reader, embed_model="fake",
+                                       ollama_host="offline", upsert=True)
+    assert p_same.skipped_unchanged and p_chg.upsert_update
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="claude_verify15.c0") as session:
+            a = commit_observation_ingest(p_same, store=session.store)
+            b = commit_observation_ingest(p_chg, store=session.store)
+    assert a.get("_skipped") and b.get("_upserted")
+
+
+def test_d1_single_row_drift_retry_recovers(tmp_path, monkeypatch) -> None:
+    """Spec C2: on drift, release, re-prepare outside C1, commit again. Uses the caller's real reader."""
+    from chroma_readonly import open_readonly_unit_store
+    from observe import ingest_observation_file_with_drift_retry
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    rec = _obs("obs_v15_d1", "Old text.")
+    unit, = _seed(cfg, rec)
+    path = tmp_path / "obs.jsonl"
+    path.write_text(json.dumps({**rec, "summary": "New text from the file."}) + "\n")
+    depths = []
+    _depth_embed(monkeypatch, depths)
+    owc, calls = _commit_fn(cfg, lambda: _foreign_update(cfg, unit["id"], "foreign change"))
+    try:
+        result, err = ingest_observation_file_with_drift_retry(
+            str(path), embed_store=open_readonly_unit_store(cfg["index"]["chroma_dir"]),
+            open_write_commit=owc, embed_model="fake", ollama_host="offline", upsert=True, verbose=False), None
+    except Exception as exc:  # noqa: BLE001
+        result, err = None, repr(exc)[:160]
+    assert all(d == (0, 0) for d in depths), depths
+    assert err is None, ("commit rounds:", calls["n"], err)
+    assert result["updated"] == 1, result
+
+
+def test_d2_single_row_drift_retry_with_a_fresh_reader(tmp_path, monkeypatch) -> None:
+    """Same as d1 but the reader is reopened on each call: isolates snapshot staleness."""
+    from observe import ingest_observation_file_with_drift_retry
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    rec = _obs("obs_v15_d2", "Old text.")
+    unit, = _seed(cfg, rec)
+    path = tmp_path / "obs.jsonl"
+    path.write_text(json.dumps({**rec, "summary": "New text from the file."}) + "\n")
+    _depth_embed(monkeypatch, [])
+    owc, calls = _commit_fn(cfg, lambda: _foreign_update(cfg, unit["id"], "foreign change"))
+    result = ingest_observation_file_with_drift_retry(
+        str(path), embed_store=_FreshReader(cfg["index"]["chroma_dir"]), open_write_commit=owc,
+        embed_model="fake", ollama_host="offline", upsert=True, verbose=False)
+    assert result["updated"] == 1 and calls["n"] == 2, (result, calls)
+
+
+def test_d3_batch_drift_on_a_later_row_recovers(tmp_path, monkeypatch) -> None:
+    """Two changed rows; only row 2 drifts. Row 1 is committed in round 1; round 2 must not trip on it."""
+    from observe import ingest_observation_file_with_drift_retry
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    r1, r2 = _obs("obs_v15_b1", "Old one."), _obs("obs_v15_b2", "Old two.")
+    _u1, u2 = _seed(cfg, r1, r2)
+    path = tmp_path / "obs.jsonl"
+    path.write_text(json.dumps({**r1, "summary": "New one."}) + "\n" + json.dumps({**r2, "summary": "New two."}) + "\n")
+    _depth_embed(monkeypatch, [])
+    owc, calls = _commit_fn(cfg, lambda: _foreign_update(cfg, u2["id"], "foreign change"))
+    try:
+        result, err = ingest_observation_file_with_drift_retry(
+            str(path), embed_store=_FreshReader(cfg["index"]["chroma_dir"]), open_write_commit=owc,
+            embed_model="fake", ollama_host="offline", upsert=True, verbose=False), None
+    except Exception as exc:  # noqa: BLE001
+        result, err = None, repr(exc)[:160]
+    assert err is None, ("commit rounds:", calls["n"], err)
+    assert result["updated"] == 2, result
+
+
+def test_i1_insert_race_is_revalidated(tmp_path, monkeypatch) -> None:
+    """Spec D: a row prepared against 'no target' must not commit over a target that appeared since."""
+    from chroma_readonly import open_readonly_unit_store
+    from chroma_write_store import production_chroma_write_session
+    from ledger import invalidate_ledger_index_cache
+    from observe import (ObservationIngestDriftError, commit_observation_ingest, ingest_observation,
+                         prepare_observation_ingest)
+    from purge_locks import index_write_flock
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    _depth_embed(monkeypatch, [])
+    rec = _obs("obs_v15_ins", "Mine, prepared first.")
+    reader = open_readonly_unit_store(cfg["index"]["chroma_dir"])
+    prepared = prepare_observation_ingest(rec, store=reader, embed_model="fake", ollama_host="offline", upsert=True)
+    assert not prepared.upsert_update and not prepared.skipped_unchanged
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="claude_verify15.foreign") as session:
+            ingest_observation({**rec, "summary": "Foreign, inserted after my prepare."}, store=session.store,
+                               embed_model="fake", ollama_host="offline", upsert=True,
+                               precomputed_embedding=[0.1, 0.2, 0.3])
+    invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
+    outcome = "committed"
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="claude_verify15.commit") as session:
+            try:
+                commit_observation_ingest(prepared, store=session.store)
+            except ObservationIngestDriftError:
+                outcome = "drift"
+            rows = [m for m in session.store.units_metadata() if m.get("ledger_id") == "obs_v15_ins"]
+    assert outcome == "drift", (outcome, len(rows))
+
+
+def test_l1_semantic_dedupe_limiter_keeps_what_it_counted(tmp_path, monkeypatch) -> None:
+    """The batched append must not drop candidates found before the hourly cap stops the job."""
+    import refine
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    vectors = Mock()
+    vectors.get_units_with_embeddings.return_value = [
+        {"id": x, "metadata": {"domain": "general"}, "embedding": [1.0, 0.0]} for x in ("a", "b", "c")]
+    monkeypatch.setattr(refine, "ChromaStore", lambda *a, **k: vectors)
+    limiter = Mock()
+    limiter.allow.side_effect = [True, False, False, False]
+    stats = refine.job_semantic_dedupe(None, cfg, verbose=False, limiter=limiter)
+    queue = refine.dedupe_queue_path(cfg)
+    lines = queue.read_text().splitlines() if queue.exists() else []
+    assert stats["queued"] == len(lines), (stats, len(lines))
+
+
+@pytest.mark.parametrize("call", ["embed", "summarize", "distill"])
+def test_g1_real_provider_entry_refuses_under_c1(tmp_path, monkeypatch, call) -> None:
+    """The runtime guard fires before any HTTP (hosts point at a closed port)."""
+    import distill
+    import llm
+    from purge_locks import index_write_flock
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    fn = {"embed": lambda: llm.ollama_embed("x", model="fake", host="http://127.0.0.1:9"),
+          "summarize": lambda: llm.summarize("x", model="fake", ollama_host="http://127.0.0.1:9",
+                                             deepseek_base_url="http://127.0.0.1:9"),
+          "distill": lambda: distill.distill_with_response("x", model="fake", ollama_host="http://127.0.0.1:9",
+                                                           deepseek_base_url="http://127.0.0.1:9")}[call]
+    with index_write_flock(cfg):
+        with pytest.raises(RuntimeError, match="provider calls are forbidden"):
+            fn()
+```
+
+</details>
 
 ## Appendix: round-12 probe and corrective-11 diff
 
