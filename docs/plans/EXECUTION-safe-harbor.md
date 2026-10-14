@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; T4 INDEPENDENT REVIEW PASS; OWNER/CI GATES OPEN.** Section 15 records Ryan’s separate T4 grant and Cursor/Codex handoff. T3 closeout remains pinned in VERIFY. PR creation/comments, merge, deployment, production operations and T5 remain unauthorized.
+> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 STOPPED ON A CONCURRENCY EVIDENCE FAILURE.** [Section 17](#17-t5-integrated-verification-and-operational-handoff--owner-authorized) records the isolated verification and operational-handoff grant. Independent V6 sign-off, owner closeout and live operations remain separate.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        T4 Kiro review complete; Ryan next-step decision pending
+Phase:        T5 failure recorded; return for bounded corrective decision
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Ryan next-step decision; Codex preserves pinned review/evidence
-Authority:    Ryan T4 grant (section 15); no PR/merge/live/T5 grant
+Lanes:        Codex mechanical/doc evidence; Kiro independent sign-off; Ryan gate
+Authority:    Ryan T5 grant (section 17); no new PR/merge/live grant
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -53,7 +53,7 @@ Reviewed acceptance requirements (Ryan's disposition is recorded in section 7; a
 
 ## 3. Five bounded tasks
 
-T1–T3 are accepted and merged. The proof, implementation and CI-correction grants in sections 10–14 are complete. Ryan separately granted isolated T4 in section 15; T5 remains NOT GRANTED. Shared files keep implementation serial. The reviewed task contracts below are unchanged.
+T1–T4 are accepted and merged. Their implementation/correction grants are complete. Ryan granted T5 integrated verification and operational handoff in section 17. Shared files keep implementation serial. The reviewed task contracts below are unchanged.
 
 ### T1 — One durable incident authority at the existing guard
 
@@ -210,9 +210,9 @@ These are operational prerequisites to be completed later, not additional implem
 
 ## 7. VERIFY companion and review record
 
-Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md), based on [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md). It retains historical V1 results and records final T1 correction/integration evidence, CI, review, owner acceptance and merge; V2–V6 remain unrun. Evidence must identify its actual implementation revision.
+Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md). V1–V5 are owner-accepted, with exact review, hosted-CI and squash mappings. V6 records the separately authorized T5 run and prepared operational handoff; Kiro sign-off and Ryan’s V6 gate remain pending.
 
-Next: Cursor implements T2 under section 9 and records isolated V2 evidence. The plan reviews and B-E4.1 owner disposition are already complete; do not request them again. Section 8 preserves completed T1 grants and VERIFY preserves its exact-tip outage acceptance. That acceptance does not waive T2's own final-tip review gate or authorize live operations.
+Next: Ryan dispositions the T5-F1 concurrency failure before any fixture correction/rerun. Existing operator-doc synchronization is prepared; a V6 PASS and independent closeout review require resolved evidence. Historical reviews/grants below keep their dates and original scope; their old “pending” labels do not override the current STATUS/V6 record. Do not reopen completed B-E4.1 approval or transfer a prior outage exception to changed runtime.
 
 ### Kiro execution review and advisory disposition
 
@@ -707,3 +707,73 @@ Ryan authorized: “Authorize bounded T4 CI corrections and isolated evidence. P
 
 
 **Section 16 delivery:** the bounded fixture/tool correction is implemented with runtime, baseline and independent proof assertions unchanged. [VERIFY](VERIFY-safe-harbor.md#bounded-t4-ci-correction-and-isolated-evidence) records the original hosted failure, collection-order cause, retained development attempts and final local evidence: 76 T4 / 62 T2 / 71 focused / 40 inventory-contract passes (overlapping groups), nine native-backend proof passes, real critical collection exit 0 and full lint regression PASS. N8/N9's new file and the new fixture/tool checks are in the critical manifest. Push requests normal full hosted CI on draft #392. Live final-head checks, a bounded independent correction review and Ryan’s T4/V5 acceptance remain required. No PR comment/review trigger, merge, deployment, production action or T5.
+
+
+## 17. T5 integrated verification and operational handoff — owner authorized
+
+**Arc: Safe Harbor. Date: 2026-10-14. Codex coordination and mechanical runner.**
+
+Ryan authorized: “authorized: Next step: Your decision on authorizing T5’s integrated verification and operational handoff.” This grants the existing T5 contract, without changing it. T4/V5 acceptance at `ed6699bea949b95e0807f166c3297500736d4aa9` and the subsequent explicitly instructed squash are recorded in VERIFY.
+
+**Start:** clean isolated worktree `.worktrees/feat-2026-10-14-safe-harbor-t5`, branch `feat/2026-10-14-safe-harbor-t5`, base `fdc8da7fa67c1d7b31bc5cd44de466001df04260`. The accepted T4 candidate, hosted test merge `33a4d9590a7adc0775005617a37b5998a2e2614b` and this main squash share tree `3e2e50f69da63bb58d1b6b4455bac15f52c50d25`. No shared checkout or runtime-main switch.
+
+**Bounded work:** run existing V1–V5 suites together with the reviewed bootstrap, clean full_ci fixtures, real fixture subprocesses, fake providers and checksum-verified fixture Restic. Capture exit status, collected cases, skips/failures, controls, source hashes and isolation limits. Reuse the matching-tree hosted full suite and pinned independent reviews for their actual scope; the new selected run is not another full-suite claim. Synchronize existing VERIFY/EXECUTION/STATUS, ROADMAP/RECOVER/role-mapping and routing. Prepare section 6’s checklist; do not execute it. Runtime, tests, workflows, dependencies, inventories and lint baseline stay unchanged unless a separately authorized correction is needed.
+
+**Isolation:** stdlib-only `-I -S -B` outer entry; reviewed allowlisted environment and uid/path checks before project imports. Required Restic uses the verified 0.19.0 binary and scratch repositories. Existing T4 Python-network refusal is installed before child imports. Capture unexpected attempts; this is not an OS/native-network sandbox claim. No production CLI/MCP/doctor/brief/search, service, drive, backup/key, restore, ledger or session-indexing action. The task-specific restriction continues to override the general startup/Track A ritual.
+
+**Stop and return:** any unexplained failure, missing required case, source drift, unexpected resource access or runtime gap. Preserve evidence; no weakening assertions, suppressing a failure, automatic repair or operational scope expansion. Documentation findings may be corrected within T5. Optional earlier review suggestions are not new acceptance conditions.
+
+**Exit:** existing VERIFY contains the exact-revision mechanical packet and operational limits, Kiro’s independent V6 sign-off is requested or recorded, and Ryan’s acceptance remains pending. A docs-only T5 delta can use the documented external-review exemption with its exact subject, but it does not replace Kiro’s V6 sign-off. No paid review trigger, new PR/comment, merge, deployment or live operation is granted. Push each commit immediately with an explicit branch refspec.
+
+
+**Returned result:** the combined run returned **240 passed / 1 failed / 0 skipped**, exit 1. [T5-F1](VERIFY-safe-harbor.md#captured-result-and-blocker-t5-f1) records the failed forget/recovery assertion and the static pipe-reader defect; missing child output prevents conclusive attribution. No corrections/reruns were performed. Ryan’s next decision is the proposed bounded fixture correction/instrumentation and fresh evidence, with runtime/safety assertions unchanged.
+
+### T5 bounded Kiro review handoff
+
+Deferred until T5-F1 has resolved corrective evidence. Use the immutable successor T5 SHA supplied by Codex, not a moving branch. This is a prepared prompt; no reviewer invocation or PR action is authorized by its presence.
+
+```text
+Arc: Safe Harbor. One bounded independent V6 evidence/operational-handoff review.
+TARGET: <full final T5 SHA supplied with the handoff>, branch
+feat/2026-10-14-safe-harbor-t5. Record the resolved full SHA before inspection.
+BASE: fdc8da7fa67c1d7b31bc5cd44de466001df04260 (accepted/merged T4 source).
+Read EXECUTION section 17, VERIFY V0/V6 and T4 final closeout, STATUS,
+RECOVER's Safe Harbor handoff, and the ROADMAP/role-mapping deltas.
+Apply DECISION-REVIEW-GUARDRAILS within reason. Static Git/source and existing
+logs only: no production commands, new tests, edits, PR actions or cleanup.
+
+Preserve the pinned T1–T4 verdicts and owner acceptances. Check only:
+1. Exact source mapping and docs-only scope; accepted T4, tested merge and
+   squash tree equality; prior outage exceptions remain tip-specific.
+2. New combined V1–V5 evidence: actual cases/controls, exit and skip counts,
+   source hashes, isolation/temporary-artifact limits. Reused hosted full-suite
+   evidence must remain distinct; author evidence is not independent sign-off.
+3. Operator instructions match merged code: retained exemptions, direct/CLI
+   recovery, uncertain completion, every-restore containment, immutable originals,
+   current finding-bound disposition and conservative all-incident release.
+4. Prepared rollout versus live authority: exact candidate/test interpreters,
+   unverified actual processes/guard state, loss window, backup/key/custody,
+   legacy/schema adoption and rollback gates. No drive or service grant implied.
+
+Return PASS/FAIL for V6 at TARGET, blockers versus optional suggestions, and
+any unsupported claim with its smallest correction. Prior sampled-sink,
+small-store, power-loss and live-recovery limitations remain. A PASS may support
+Ryan's code/evidence closeout decision; it grants no PR, merge or deployment.
+No repeated full implementation review without concrete new evidence.
+```
+
+### Prepared docs PR text — not opened
+
+**Title:** Record integrated recovery evidence and rollout limits
+
+**Body:**
+
+Safe Harbor’s merged recovery safeguards now have one integrated evidence packet and prepared operator handoff. The first T5 run has an unresolved concurrency failure (T5-F1); this branch is not closeout-ready. This documents how to respond to incidents and uncertain completion while keeping deployment and backup qualification separately gated.
+
+Who: Codex prepared T5 after Ryan accepted T1–T4; Kiro’s independent V6 sign-off remains pending. What: existing evidence, policy and recovery documentation only. When: based on T4 squash `fdc8da7fa67c1d7b31bc5cd44de466001df04260`, 2026-10-14. Why: stale pending labels and unfinished operator instructions obscured the actual merged state. How: exact source/review mappings, combined isolated V1–V5 evidence and a prepared live-operations checklist; runtime/tests/workflows/baseline unchanged.
+
+**TL;DR:** T5 records 240 passes and one unresolved concurrency failure, plus prepared operator instructions. It is not closeout-ready or a live grant.
+
+**Merge reading:** [VERIFY V6](VERIFY-safe-harbor.md#v6--integrated-handoff-and-independent-sign-off-t5), [STATUS](STATUS-safe-harbor.md), [operator handoff](../RECOVER.md#safe-harbor-incident-handling-and-rollout), [EXECUTION section 17](#17-t5-integrated-verification-and-operational-handoff--owner-authorized), [LATEST](../inter-model/LATEST.md).
+
+Evidence: exact combined results and retained limits are in VERIFY V6. Hosted full-suite evidence is reused from the identical-tree T4 candidate, not represented as a new T5 full run. External-review applicability: docs-only exemption; Kiro V6 and Ryan acceptance remain required. No new PR, merge or live action is authorized by this prepared text.
