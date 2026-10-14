@@ -1,4 +1,164 @@
-# Verify: Stage 2 wedge fixes, round 12 at `41561ef`: FAIL on one test-only item older than the branch; Cursor's three "flakes" are real and would turn CI red; corrective 11 (7 lines, test-only)
+# Verify: Stage 2 wedge fixes, round 13 at `0ee6994`: PASS; ready for the Astra audit and the Kiro review
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-14
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `0ee6994`, Cursor
+Composer's corrective 11. It answers round 12 (below).
+**Method:**
+- I read the diff `41561ef..0ee6994`: one test file, 7 lines.
+- I ran corrective 11's acceptance in a disk-backed scratch worktree: the D1
+  file followed by `verify8b` and `verify8d`.
+- **New this round:** every full-suite run used a disk-backed worktree (ext4,
+  under `~/.cache`) with a private `--basetemp`, so the D1 live-diagnosis
+  tests run as they do in Cursor's checkout and in CI. Earlier rounds used
+  tmpfs worktrees, where 27 of the 41 D1 tests error at setup.
+- I ran the full suite hermetically (`env -i`, a scratch `HOME`, no API keys,
+  `tests/test_index_loud_failures.py` skipped) at `0ee6994` **and at main
+  `458b9f6`, fresh, same method**, so the comparison is like for like.
+- I ran the leak census at `0ee6994` the same way.
+- I ran every probe round, Codex's round-7 probes and Cursor's #286 files.
+- I compared mtimes and sizes across the live data root before and after.
+
+## Burn status
+
+**No burn. This branch isn't deployed, and the watcher, refine and monitor
+units are all inactive and disabled.**
+- **My runs:** none can reach a paid provider. Providers are faked and the
+  environment has no keys. Everything ran in scratch `HOME`s.
+- **Live data root during round 13:** only the reconcile timer (`chroma/`,
+  `source_reconciliation.json`, `writer_attestations/`). The export didn't
+  grow; no index ran. The Crush session behind #393 is on hold.
+- **The watcher burn path, at this tip:** unchanged from round 11 and still
+  holding.
+- **Canary 2 and #393:** of the 47 Crush databases ConvMem knows, 1 lies under
+  a live watch root and is watchable (3 chunks). So a re-enabled watcher would
+  re-pay at most that one database on each change. Small, but known.
+
+## Verdict (round 13)
+
+**PASS. Ready for the Astra audit and the Kiro review on `0ee6994`.**
+- **Y0 is fixed.** `0ee6994` is byte-identical to the round-12 diff (same blob,
+  `b0db98a..105ebb9`). In a disk-backed checkout, the D1 file followed by the
+  three probes passes. The only D1 failures are 3 `bwrap` tests that fail the
+  same way at main in my scratch `HOME`.
+- **The full suite, disk-backed, tip against main:** 142 failure ids each.
+  **No failure comes from this branch.** One id fails only at the tip, and it
+  is a pre-existing filesystem flake in a test the branch doesn't touch (Z1);
+  one fails only at main (the MCP test, fixed by X1).
+- **The leak census:** **0 tests** change a file under the fake user's data
+  root or default data dir, now with the D1 tests running.
+- **Probes:** 90 passed (the 89 of round 12 plus the #393 Crush probe), and
+  the same 11 expected failures.
+
+## Findings (round 13)
+
+- **Z1 (low, older than the branch, another arc's test): an inode-reuse flake.**
+  `tests/test_shadow_activation.py::test_recovery_refuses_replaced_artifact_inode`
+  unlinks a file, writes a replacement and asserts the replacement has a new
+  `(st_dev, st_ino)`. ext4 can hand the freed inode number straight back, so
+  the precondition fails: `assert (66306, 37364686) != (66306, 37364686)`. It
+  failed at the tip in both disk-backed full runs (hermetic and census) and not
+  at main; alone it passes 10/10 at both, and the files before it don't
+  reproduce it. The branch changes neither the test nor
+  `shadow_activation.py`. CI's runner is ext4 too, so it can flake there at
+  main or at the tip. **Fix (proved in scratch, 5 lines):** keep the original
+  open across the unlink, so its inode can't be reused:
+  ```diff
+  -    fixture["ledger"].unlink()
+  -    _write_private(fixture["ledger"], "replacement\n")
+  -    replacement_inode = fixture["ledger"].stat().st_ino
+  +    # Hold the original open so its inode can't be freed and reused by the replacement.
+  +    with fixture["ledger"].open("rb"):
+  +        fixture["ledger"].unlink()
+  +        _write_private(fixture["ledger"], "replacement\n")
+  +        replacement_inode = fixture["ledger"].stat().st_ino
+  ```
+  Patched, it passes 10/10 alone and its file passes 32/32. It belongs to the
+  Shadow Ledger arc's tests, so it's Ryan's call whether it rides on this PR
+  (if CI trips) or lands separately.
+- **Z2 (low, for Kiro): the Track A protocol text overstates the watcher's
+  Crush coverage.** `15663db` tells agents that while the watcher runs it
+  "captures Codex, Kiro, Cursor, Copilot, and Crush transcripts automatically",
+  so `index --file` on those paths is deferred. For Crush, 1 of 47 databases
+  is under a watch root; the rest are never deferred, and each `index --file`
+  on them re-pays the whole database (#393). The behavior is safe (it indexes
+  rather than silently skipping), but the text should say "under the watch
+  roots".
+- **Follow-ups after the merge, unchanged:** X2 (the readonly reader loads
+  everything when it opens: plain `add` 0.7 s → 4.8 s on a 109k-unit store),
+  X3 (`chroma_dedupe` undo snapshots carry document text), X4 (two `pass`
+  bodies), #393 (Crush re-pay).
+
+## Test results (round 13)
+
+| Run (disk-backed worktrees, private `--basetemp`) | Result |
+|---|---|
+| Hermetic full suite, `0ee6994` | 95 failed, 2961 passed, 66 skipped, 52 errors (23 min) |
+| Hermetic full suite, main `458b9f6`, same method | 95 failed, 2900 passed, 66 skipped, 52 errors (22 min) |
+| Failure ids, tip only / main only | 1 (Z1, pre-existing flake) / 1 (MCP test, fixed by X1) |
+| Leak census, `0ee6994` | **0** tests |
+| D1 file + `verify8b` + `verify8d` | the 3 probes pass; 3 `bwrap` D1 tests fail, as at main |
+| Z1 test alone, ×10 | tip 0/10, main 0/10 failed; patched 0/10 |
+| All probe rounds + Cursor's #286 files | 90 passed, 11 failed (all expected) |
+
+## Review focus (round 13)
+
+The Codex audit (round 7) and the Kiro review (round 6) looked at `c7072fc`.
+Correctives 6 to 11 changed a lot since. Both reviews should look at
+`git diff origin/main...0ee6994`, weighted toward what changed after `c7072fc`
+(`git diff c7072fc 0ee6994`).
+
+**For the Astra audit (safety and isolation):**
+1. **C1 is bound to its store.** `purge_locks.index_write_flock` records the
+   `chroma_dir` it was taken for; the guarded store's
+   `require_index_write_lock_held(chroma_dir=...)` compares canonical paths.
+   `_refine_write_scope`, monitor's commit and `_apply_retirements` take C1
+   from the live config. Can any production writer of summaries, units or the
+   export write without C1, or under a C1 taken for another `chroma_dir`?
+2. **The readonly reader.** Refine, monitor and its dry run, `add`,
+   `add --file` and `ingest_approved_file` read through
+   `chroma_readonly.open_readonly_unit_store` (SQLite `mode=ro`, no Chroma
+   system). Can a write be built from a readonly row (stale metadata, the
+   `document` key) instead of a fresh write-store read?
+3. **Paid work outside locks.** Is any provider call (summarize, distill,
+   embed, LLM) made while C1 or a Chroma write session is held? Check refine,
+   monitor, `observe.prepare_observation_ingest` / `commit_observation_ingest`
+   and `semantic_dedupe`.
+4. **Burn safety.** Your round-7 findings F1 to F5 and O1, O2: confirm each
+   stays fixed at this tip. Can any failure path re-run paid transform work in
+   a loop?
+5. **Hermeticity.** The `tests/conftest.py` autouse fixture and the D1 test fix:
+   can any test reach the live `HOME`, live data paths or the network, or leave
+   process-wide patches behind?
+6. Out of scope, already known: #393, Z1, X2 to X4.
+
+**For the Kiro review (design):**
+1. Is binding C1 to its store (the lock remembers `chroma_dir`; the guard
+   compares canonical paths; a symlinked `chroma_dir` is accepted) the right
+   design?
+2. The readonly reader trades open-time cost for not holding a Chroma system
+   across writes (X2: plain `add` 0.7 s → 4.8 s, 151 → 617 MB on a 109k-unit
+   store). Accept as is with X2 as a follow-up, or must X2 land before the
+   merge?
+3. Is `observe`'s prepare/commit split the right boundary for monitor?
+4. Z2: should the Track A protocol text be corrected in this PR?
+5. Is anything in the round-6 design (C1 window, C2 recovery, relaxed
+   invariants) contradicted by correctives 6 to 11?
+
+## Next
+
+1. A fresh Codex (Astra, high) audit and a fresh Kiro review on `0ee6994`, in
+   parallel.
+2. If both pass: a PR draft with the census and the round history. Main has
+   moved to `fdc8da7`; bringing it in is Ryan's call at PR time. Ryan decides
+   whether Z1's 5-line fix rides on this PR.
+3. Ryan's PR and merge; the docs branch gets its own PR.
+4. Separate Ryan grants: the `runtime-main` promotion, the protocol-surface
+   deploy, and canary 2.
+5. Follow-ups after the merge: X2 to X4, #393, and Z1 if it didn't ride along.
+
+# Round 12: `41561ef`, FAIL; corrective 11 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-14
@@ -27,7 +187,7 @@ Composer's corrective 10. It answers round 11 (below).
 - I compared mtimes and sizes across the live data root before and after my
   runs, and checked running index processes from metadata only.
 
-## Burn status
+### Burn status
 
 **No burn loop. This branch isn't deployed, and the watcher, refine and
 monitor units are all inactive and disabled.**
@@ -58,7 +218,7 @@ monitor units are all inactive and disabled.**
   2026-10-12 (exit 10, which usually means the repository isn't reachable).
   The local backup runs.
 
-## Verdict (round 12)
+### Verdict (round 12)
 
 **FAIL, on one test-only item (Y0). It is older than this branch. Everything
 else passes.**
@@ -100,7 +260,7 @@ else passes.**
   lease held or an index-lock depth above 0. Y0 is not a lease leak.
 - **Earlier probes:** 89 passed, 11 failed, the same 11 expected as round 11.
 
-## Findings (round 12)
+### Findings (round 12)
 
 - **Y0 (blocks CI, test-only, older than the branch): a D1 test leaves the
   live-diagnosis bootstrap's patches active for the rest of the run.**
@@ -149,7 +309,7 @@ else passes.**
   109k-unit store), X3 (`chroma_dedupe` undo snapshots carry document text),
   X4 (two `pass` bodies).
 
-## Test results (round 12)
+### Test results (round 12)
 
 | Run | Result |
 |---|---|
@@ -164,7 +324,7 @@ else passes.**
 | Inventory + MCP tests | 34 passed |
 | Crush re-pay probe (#393) | 3 paid, then 0 (unchanged), then 4 (one message appended) |
 
-## Corrective 11 for Cursor
+### Corrective 11 for Cursor
 
 Test-only. No production code, no inventory changes.
 - **Y0:** in
@@ -183,7 +343,7 @@ Test-only. No production code, no inventory changes.
 - If any inventory test fails after the edit, regenerate the inventories
   last, as in corrective 10. A test-only edit shouldn't need it.
 
-## Next
+### Next
 
 1. Cursor: corrective 11.
 2. Claude, round 13: the D1 file plus probes in a disk-backed worktree, the

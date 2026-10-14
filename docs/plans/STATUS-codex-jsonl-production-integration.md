@@ -293,6 +293,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-13 | Claude | Round 10 FAILs corrective 8 (`61307d7`): the lock order is fixed and the refine daemon is hardened, but refine and monitor keep a reader open across writes (refine pays, then the write guard refuses), refine's tests now write through the user's config, and the R2b inventory is stale; corrective 9 (T0–T4) to Cursor; not deployable |
 | 2026-10-14 | Claude | Round 11 FAILs corrective 9 (`d2abcbe`) on one mechanical item: all round-10 findings fixed, leak census 86 → 1 test, but the writer inventories are one edit behind the code (6 tip-only failures); corrective 10 (inventory regeneration + one test's environment, no production code) to Cursor; not deployable |
 | 2026-10-14 | Claude | Round 12 FAILs corrective 10 (`41561ef`) on one test-only item older than the branch (a D1 test leaks the live-diagnosis bootstrap's patches; CI would go red on 3 probes); X0/X1 fixed, 0 tip-only failures, leak census 0; corrective 11 (7 lines, test-only) to Cursor; Crush re-pay filed as #393; not deployable |
+| 2026-10-14 | Claude | Round 13 PASSes corrective 11 (`0ee6994`): disk-backed suites show no branch failure (one pre-existing inode flake, Z1), leak census 0; ready for the Astra audit and Kiro review; not deployable until the merge and Ryan's grants |
 
 ## TL;DR
 

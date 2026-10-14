@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 12 FAILs corrective 10 (`41561ef`) on one test-only item older than the branch. X0 and X1 are fixed; the hermetic suite has 0 tip-only failures and the leak census 0 tests. But a D1 live-diagnosis test leaves the bootstrap's patches active, so in a disk-backed checkout (Cursor's, CI's) three adopted probes fail and the PR's CI would go red. Corrective 11 (Y0, 7 lines in one test, no production code) goes to Cursor; then round 13, the Astra audit and the Kiro review. See round 12 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS` (implementation verified): Claude's round 13 PASSes corrective 11 (`0ee6994`). Disk-backed full suites at tip and main show no failure from this branch (one pre-existing ext4 inode flake in a Shadow Ledger test, Z1), and the leak census is 0 tests. Next: a fresh Codex (Astra) audit and a fresh Kiro review on `0ee6994`, then the PR draft. See round 13's "Review focus" in `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
