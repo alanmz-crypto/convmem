@@ -1356,3 +1356,39 @@ The earlier ONNX model-download run remains **excluded** in full, with its log, 
 Process restart and injected IO/fsync errors are not physical power-loss evidence. Fake embeddings establish effect identity/ordering, not semantic vector correctness. The whole local pytest suite, hosted Python 3.12/CI, independent T4 review, exact-tip external-review gate and owner V5 acceptance have not occurred. Static lock tracing and isolated races do not cover arbitrary same-user/legacy writers. No production health, backup usability, loss window, old-process adoption or rollout was established.
 
 **Next:** one bounded independent review of the complete T4 delta from `a7f7200` to the delivery candidate, including source `a3207fe397bf820f4f2bd412c7d5f110d00fdc67`, these results, retained failures/lapse and the limited lint annotations. Review freshness/authority classification, serialization/sink trace, uncertain durable completion, direct/CLI binding and isolation. Return findings before any PR/CI or further task. Ryan retains acceptance and later grants; no T5 or live continuation follows this delivery.
+
+### T4 independent Kiro review — pinned PASS with coverage limits
+
+**[Arc Safe Harbor] 2026-10-13.** Ryan authorized: “go: Next step: Bounded independent review of the complete candidate.” Kiro reviewed candidate `d27d3c00c1ed6f35c9502c4628b4dbcc3af78de1`, runtime/harness source `a3207fe397bf820f4f2bd412c7d5f110d00fdc67`, against accepted T3 base `a7f72003aea516b4961a584fcfe54ad255d6a053`. Cursor and Codex remain contributing authors; this is Kiro's independent verdict, not Codex self-acceptance.
+
+**Final verdict: PASS, 90% confidence; no blocking findings.** The initial substantive review returned PASS (86%); the same reviewer's coverage addendum retained PASS after inspecting previously unread test helpers. Confidence is the reviewer's judgment about the conclusion, not an incident probability or measured reliability. The verdict applies to the exact candidate above, not automatically to later commits. This documentation successor records the result and changes no runtime or test source.
+
+#### Scope and corrected review record
+
+- Static file reads only: no project imports, tests, ConvMem CLI/MCP, indexing, services, backups, drives, PR actions or paid review triggers. The custom Kiro profile exposed read tools with shell/write/MCP denied. The coordinator checked the completed tool transcript and all 1,577 tracked-file hashes: no candidate drift during review.
+- The first launcher used the obsolete `--trust-tools=fs_read` identifier. Noninteractive approval rejected the reads; Kiro inspected no source and returned **INCOMPLETE**. That failed startup is retained. The same session resumed with the documented exact V3 read tool IDs; no trust-all or shell permission was added.
+- The first substantive PASS overstated its direct test coverage: it had inspected runtime and sampled summaries, but not the negative-control implementations. Codex identified that gap from the tool transcript. The same reviewer completed a bounded coverage addendum on the unchanged candidate; no implementation or new test run occurred.
+- Kiro also corrected its counterargument's ordering description. The traced implementation is **native finalize → export → event**, all under the held native lock. Finalize does not sit between export and event.
+
+#### Conclusions and actual coverage
+
+- **Authority/state:** Kiro accepted strict queue/approved/event intent checks, fresh superseded-inclusive lookup, explicit unknown/tombstone/conflict refusal, bounded marker repair, and terminal APPROVED retry without re-upsert or duplicate completion append.
+- **Serialization/targets:** Kiro traced shared lease → governed → native → export, reentrant native locking, both CLI spellings and the direct helper, admitted-target rechecks after lock acquisition, and finalization before durable completion. The inspected concurrency fixtures invoke the real forget/refine entrypoints and use actual pipes/flock probes.
+- **Durability:** Kiro accepted truthful unknown-completion reporting, authoritative reread on retry, missing-export completion, file/directory synchronization and refusal to clean malformed tails automatically. Process restart and fault injection are not power-loss proof.
+- **Evidence:** The addendum directly read `test_safe_harbor_t4_concurrency_real.py`, `_safe_harbor_t4_concurrency.py`, `_safe_harbor_t4_common.py`, `_safe_harbor_t4_publication.py`, `_safe_harbor_t4_refusal.py` and `_safe_harbor_t4_network.py`. Kiro found independent effect assertions and genuinely faulty unknown-to-absence, duplicate-APPROVED and out-of-lock controls. The excluded ONNX-download attempt remains excluded; Python socket/DNS refusal is not OS/native-subprocess isolation.
+- **Integration:** Kiro accepted the shared `record --recover` route, narrow lint annotations against the unchanged baseline and the inventory's added internal factory-delegation entry. It found no new external writer or exemption policy.
+
+**Explicit review limits:** Kiro sampled source hashes, summaries and the lint gate log; it did not independently recount every log underlying the reported 70 T4 / 206 affected / 18 overlapping inventory results. Those counts remain author-reported, with sampled corroboration. Kiro did not directly inspect the auxiliary shadow-sink/ingest/compaction lock bodies; that non-interference claim remains supported by the contributing author's trace above. Kiro classified that remaining read as optional/non-blocking, not as independently completed coverage. Hosted Python 3.12/full-suite/security CI, physical power loss and native-backend interruption behavior were not established by this review. No universal same-user write-prevention or backup-usability claim follows.
+
+**Strongest counterargument retained:** recovery correctness depends on ordering across several modules and on the barrier/fault fixtures catching future reordering. Static acceptance of today's order does not prove future edits, platform durability or full-suite integration safe.
+
+#### Retained review provenance
+
+Kiro session `sess_42e55d38-86b7-4ff0-af6e-c2e58015b5bb`; local packet `/tmp/safe-harbor-t4-review-rlh4udnd`. Initial failed startup, original PASS and addendum are retained separately. Substantive review and completion exited 0; the recorded tool calls were read/search/list operations only. Raw transcripts are local, not uploaded to GitHub.
+
+- Original verdict-only text: `continuation-verdict-only.txt`, SHA-256 `7ed29019ce88179037e863974c9d994e1e63c2b8fab4e52093966169d743c2e2`.
+- Coverage addendum text: `coverage-verdict-only.txt`, SHA-256 `9f6faf0a937a35eac3ae3c6d3a2beafd8e1cd086d3504776b9cada105de230ca`.
+- Original read transcript: `continuation.jsonl`, SHA-256 `d9b3fab163d175900c86a5db71dcfd9885ccd2ed8e0a207fcd3c6f41cc8eda5a`.
+- Completion transcript: `coverage.jsonl`, SHA-256 `219e0599c7d937b44dc4dae59b44b8d88b80a19dd003d09aeebd1d8c08e1c936`.
+
+**Disposition:** the authorized independent review is complete, with the limits above. Kiro permits advancing to Ryan's acceptance/next-step decision; it does not declare merge readiness. Recommended next step is a separately authorized draft PR and normal hosted CI on the eventual candidate. V5 owner acceptance and the eventual external-review gate remain open; this PASS is not automatically a BugBot outage exception. No corrections, PR/comments, hosted CI, merge, deployment, production operations or T5 were performed or newly authorized by this review.

@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; T4 IMPLEMENTATION/EVIDENCE RETURNED.** Section 15 records Ryan’s separate T4 grant and Cursor/Codex handoff. T3 closeout remains pinned in VERIFY. PR creation/comments, merge, deployment, production operations and T5 remain unauthorized.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; T4 INDEPENDENT REVIEW PASS; OWNER/CI GATES OPEN.** Section 15 records Ryan’s separate T4 grant and Cursor/Codex handoff. T3 closeout remains pinned in VERIFY. PR creation/comments, merge, deployment, production operations and T5 remain unauthorized.
 
 ## 1. Source, authority and goal
 
@@ -10,10 +10,10 @@
 
 ```text
 Planning Status
-Phase:        T4 implementation/evidence returned; independent review pending
+Phase:        T4 Kiro review complete; Ryan next-step decision pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Cursor implementation; Codex supervised isolated evidence
+Lanes:        Ryan next-step decision; Codex preserves pinned review/evidence
 Authority:    Ryan T4 grant (section 15); no PR/merge/live/T5 grant
 ```
 
@@ -684,3 +684,6 @@ Keep pytest/pylint versions, backend pins, Python 3.12 CI matrix, existing job/c
 **Stops:** unresolved lock inversion, a needed authority-model change or an unprovable contract returns to Codex/Ryan before scope expansion. Return code/evidence and limitations for independent review; no self-acceptance. External-review applicability is required for the eventual runtime candidate, but PR creation/comments/triggers are not authorized here. Prior task-specific outage exceptions do not automatically apply to T4. Push each commit with the explicit branch refspec; do not switch the shared checkout or main, force-push, merge or deploy.
 
 **T4 delivery (2026-10-13 local):** Cursor/Codex implemented the section 15 scope at `a3207fe397bf820f4f2bd412c7d5f110d00fdc67`. [VERIFY V5](VERIFY-safe-harbor.md#t4-implementation-and-isolated-v5--returned-for-independent-review) records 70 isolated T4 passes, affected regressions and full lint gate PASS, with source/artifact hashes and the excluded fixture model-download lapse preserved. Direct/CLI event-only completion and uncertain retry are demonstrated in scratch. This returns the grant for independent review; it does not self-accept V5 or authorize a PR, hosted CI, merge, T5 or live action.
+
+
+**Independent review completed (2026-10-13 local):** Ryan separately authorized the bounded complete-candidate review. Kiro returned **PASS (90%)** at `d27d3c00c1ed6f35c9502c4628b4dbcc3af78de1`, source `a3207fe`, with no blockers. [VERIFY records the original PASS, completed test-source coverage and explicit limits](VERIFY-safe-harbor.md#t4-independent-kiro-review--pinned-pass-with-coverage-limits): logs were sampled; auxiliary sink non-interference remains at author-trace level; hosted CI and power loss were not established. This records a review, not owner V5 acceptance or an outage exception. The next proposed step is a separately authorized draft PR/normal hosted CI; no fixes, PR actions, merge, live work or T5 follows automatically.
