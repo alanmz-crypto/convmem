@@ -1,4 +1,277 @@
-# Verify: Stage 2 wedge fixes, round 10 at `61307d7`: FAIL; refine and monitor keep a reader open across their writes, and refine's tests now write through the user's live config; corrective 9
+# Verify: Stage 2 wedge fixes, round 11 at `d2abcbe`: FAIL on one mechanical item only; the inventories were regenerated before the last code edit; corrective 10 (small)
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-14
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `d2abcbe`, Cursor
+Composer's corrective 9. It answers round 10 (below).
+**Method:**
+- I read the diff `61307d7..d2abcbe`.
+- I ran my canonical copy of the round-10 probes. Cursor adopted them as
+  `tests/test_zz_claude_verify10.py`, reformatted, with one helper inlined
+  and the assertions unchanged.
+- I wrote 4 round-11 probes (appendix), all through the real production
+  store session against a scratch config. Controls at `61307d7`.
+- I ran every earlier probe round, Codex's round-7 probes and Cursor's #286
+  test files.
+- I timed the new readonly reader against the old readers on a synthetic
+  109,000-unit scratch store, the size of the live corpus.
+- I ran the full suite hermetically at `d2abcbe` (`env -i`, a scratch `HOME`,
+  no API keys, `tests/test_index_loud_failures.py` skipped) and compared it
+  with round 8's main run at `458b9f6`, same method.
+- I ran the leak census again: the full suite at `d2abcbe` with a fake live
+  config in a scratch `HOME`, logging every test that changes a file under
+  that config's data root or the default data dir. Compared with round 10's
+  census of main `458b9f6`.
+- I regenerated both writer inventories in a scratch worktree, to confirm
+  what the tip-only failures are.
+- I compared mtimes and sizes across the live data root before and after my
+  runs.
+
+## Burn status
+
+**No burn now. This branch isn't deployed, and the watcher, refine and
+monitor units are all inactive and disabled.**
+- **My runs:** none can reach a paid provider. Providers are faked and the
+  environment has no keys. Everything ran in scratch `HOME`s.
+- **Live data root since round 10:** three `convmem index --file` runs from
+  `runtime-main` (main's code, not this branch): 23:55 CDT on 2026-10-13
+  (`knowledge_units.jsonl` +1.1 MB, at the end of Cursor's corrective-9
+  session), and 00:35 and 00:41 CDT on 2026-10-14 (+171 KB; Codex and Kiro
+  sessions were active). That's agents indexing their own sessions, not a
+  loop. Also the reconcile timer (`chroma/`, `source_reconciliation.json`,
+  `writer_attestations/`) and the 00:16 restic backup. Nothing from my runs.
+- **The watcher burn path, at this tip:** unchanged from round 10 and still
+  holding. The index route commits when another process saves while it pays
+  for a summary. The F2 retry bounds hold. A corrupt retry state makes the
+  watcher hold the file.
+- **Refine (W0), at this tip:** closed. A refine job now reads through the
+  SQLite readonly reader, which holds no Chroma system. So a foreign save
+  during a paid call no longer makes the job's writes fail. The round-10
+  probe (3 units, a foreign save during the first paid call) now gives 3
+  paid, 3 updated, 0 errors. At `61307d7` it gave 3 paid, 0 updated, 3
+  errors.
+
+## Verdict (round 11)
+
+**FAIL, on one mechanical item. Everything substantive passes.**
+- **All of round 10 is fixed:** W0 (readers held across writes), W1 (tests
+  reaching the user's config), W2 (monitor's stub), W3 (the non-counting
+  fake) and the bulk of W4.
+- **The full suite:** 6 failure ids fail only at the tip, and none only at
+  main (152 against 146). All 6 are the writer inventories being one edit
+  behind the code (X0): a call in `repository_knowledge_sync.py` moved from
+  line 275 to 276 after Cursor regenerated them. With the pin corrected and
+  the R2b inventory regenerated in scratch, all 164 R2b and Shadow inventory
+  tests pass. No behavior is involved. But CI runs these tests, so the PR
+  would go red, and the audit and the review should see the final tip.
+- **The leak census:** 1 test, down from 86 at main. The one left is older
+  than this branch: it starts the MCP server in a subprocess with the
+  caller's `HOME`, which the new fixture can't reach (X1). It's a two-line
+  fix, and corrective 10 is open anyway, so I've put it in.
+- **Cursor's three suite-order flakes** (`test_zz_claude_verify8b.py` ×2,
+  `test_zz_claude_verify8d.py` ×1) didn't reproduce in my full run. All
+  three passed.
+- **Corrective 10** is the inventory regeneration and the MCP test's
+  environment. Nothing in it touches production code. After it, I re-run
+  the inventory tests, the census and the hermetic diff. Then the Astra
+  audit and the Kiro review.
+
+**Fixed and verified:**
+- **W1 (T0), tests reaching the user's config:**
+  - `tests/conftest.py` has a new autouse fixture. It points
+    `config.CONFIG_PATH`, the default writer-gate lock, the attestation and
+    census dirs, and the incremental state dir at a path that doesn't exist.
+    `load_config()` reads `CONFIG_PATH` at call time, so the fixture covers
+    it.
+  - The refine tests run inside a scratch config
+    (`tests/refine_scratch_env.py`).
+  - `_refine_write_scope` takes C1 from the live config, the one the session
+    loads, and refuses a caller config that names a different `chroma_dir`.
+    Monitor's commit and retirement take C1 from the live config too.
+  - The guard now checks that C1 belongs to the store it guards. C1
+    remembers the `chroma_dir` it was taken for, and the guarded store
+    compares canonical (symlink-resolved) paths on every mutation.
+  - My probe `test_guard_refuses_a_lock_for_another_chroma_dir` passes at
+    `d2abcbe` and fails at `61307d7` ("DID NOT RAISE"). A symlinked
+    `chroma_dir` still writes (`test_guard_accepts_a_symlinked_chroma_dir`).
+  - **The census:** 86 tests at main changed files under the fake user's
+    data root or default data dir. At `d2abcbe`, 1 does (X1). Gone: the 84
+    attestation writers, the writer-gate lock, `test_doctor.py` and the
+    golden eval. Round 10's 7 tip-only writers (5 in `test_refine.py`,
+    Cursor's corrective-6 refine test, `test_file_generation_dedupe.py`) are
+    gone too.
+- **W0 (T1), readers held across writes:**
+  - Refine, monitor and monitor's dry run, `add`, `add --file` and
+    `ingest_approved_file` now read through
+    `chroma_readonly.open_readonly_unit_store`. It reads SQLite in `mode=ro`
+    and holds no Chroma system.
+  - `semantic_dedupe` needs vectors. It opens a `ChromaStore`, reads them,
+    and closes it before anything else. It writes no rows, only the queue
+    file.
+  - `chroma_dedupe` and `stale_source_flag` now re-read each row from the
+    write store before writing, as `backfill_domain` already did.
+  - All 5 round-10 probes pass, among them refine (3 updated) and monitor
+    (exit 0, observations stored) with a foreign save in the middle.
+  - **No `document` key leaks into metadata.** The readonly rows carry the
+    stored document under `document`. Every refine write builds its metadata
+    from a fresh write-store read, never from those rows. My probe
+    `test_readonly_rows_do_not_leak_documents_into_metadata` checks this
+    through a real refine job.
+  - The readonly reader returns real stored documents (`chroma:document`),
+    so monitor's and `add --upsert`'s unchanged-row skip still compares the
+    right text.
+- **W2 (T2):** `observe.ingest_observation` is now `prepare_observation_ingest`
+  plus `commit_observation_ingest`, and `ingest_observation` composes the
+  two. Monitor prepares (validate, unchanged check, embed) with no session
+  open and queues only prepared rows. A rejected record returns `None` and
+  isn't counted. The commit runs under C1, then the session.
+- **W3 (T3):** `test_inter_model_doc.py` uses the counting fake.
+- **W4 (T4):** 50 of round 10's 52 tip-only ids now pass, among them the
+  6 W1 tests, the 2 monitor tests (no longer reaching Ollama), the
+  read-path inventory (it classifies the new `semantic_dedupe` reader) and
+  41 of the 43 R2b ones. The other 2 are R2b identity tests, now failing
+  for X0's reason. X0 adds 4 more ids.
+- **Approved dedupe, which no earlier round covered:** `--approve-dedupe all`
+  takes C1 and opens the store, and each row then opens a nested write scope
+  (C1 again, re-entrant, and a second session). Nesting is allowed. My probe
+  `test_approve_dedupe_all_tombstones_every_row` (2 approved rows, real
+  sessions) tombstones both with 0 errors, at `d2abcbe` and at `61307d7`.
+  Nothing to fix.
+- **Earlier probes:** my rounds 2 to 11 plus Cursor's #286 test files give
+  89 passed, 11 failed. The 11 are expected: round 4's two s2 probes
+  (obsolete since corrective 4) and 9 of Codex's 10 round-7 probes, which
+  fail because those holes stay fixed. Round 10's W1 probe now passes.
+
+## Findings (round 11)
+
+**X0 (blocks the PR's CI, mechanical): the writer inventories are one edit
+behind the code.**
+- `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json` pins
+  `repository_knowledge_sync.py:275`. The retirement session call is now
+  on line 276, after `_apply_retirements` gained its config fallback.
+- The R2b inventory's `code_revision` is `39ca8e4c…` and the code resolves
+  to another identity.
+- **The 6 tip-only ids:**
+  - `tests/test_shadow_writer_coverage_scan.py::test_static_scan_matches_inventory_routing`
+    ("missing={'repository_knowledge_sync.py:275'} extra={'repository_knowledge_sync.py:276'}")
+  - `tests/test_r2b_v2_implementation_revision.py`:
+    `test_committed_inventory_matches_resolved_implementation_identity`,
+    `test_production_coverage_uses_committed_inventory_without_dual_mock`,
+    `test_regenerated_inventory_matches_on_disk_artifact`
+  - `tests/test_r2b_v2_corrective_viii.py`:
+    `test_committed_inventory_matches_authority_content_identity`,
+    `test_inventory_artifact_exists_on_disk`
+- **Confirmed in scratch:**
+  - I corrected the one pin.
+  - I regenerated R2b with `write_v2_inventory_file()` under an isolated
+    `HOME`, XDG dirs and `CONVMEM_CONFIG`.
+  - The diff is only the derived `code_revision` and `inventory_digest`
+    values, plus that route's `entrypoint`, `route_id` and
+    `shadow_inventory_ref` moving from 275 to 276.
+  - All 164 tests in the R2b and Shadow inventory files pass.
+
+**X1 (low; T0's last leak, older than this branch): the MCP stdio test
+starts the server with the caller's `HOME`.**
+- `tests/test_mcp_crush_stdio_sequence.py` ~42–44 copies `os.environ`, and
+  sets `HOME` only when it's missing. The server subprocess loads the user's
+  config and opens the configured Chroma directory. The autouse fixture
+  can't reach a subprocess.
+- In the census it created `live/chroma/chroma.sqlite3` under the fake
+  user's data root. With a real `HOME` it opens the live store, as any
+  running MCP server does. There are about ten of those on this machine
+  right now, so the risk is low. But it's the one test left against the T0
+  bar.
+- In the hermetic run it fails at both main and the tip (no config).
+
+**X2 (low, performance; follow-up, not corrective 10): the readonly reader
+loads the whole corpus when it opens.**
+- `ReadonlyUnitStore.__init__` reads every active unit's metadata and
+  document. On a synthetic 109,000-unit store (about 2 KB documents, run
+  alongside two full suites, so the times are rough):
+
+  | Path | Before corrective 9 | `d2abcbe` |
+  |---|---|---|
+  | plain `convmem add` (the old reader opened lazily and read nothing) | 0.7 s, 151 MB | 4.8 s, 617 MB |
+  | upsert paths: monitor, `add --upsert`, `ingest_approved_file`, refine (old: `ChromaStore.units_metadata()`) | 12.3 s, 459 MB | 4.8 s, 617 MB |
+
+- So the upsert paths got faster. A plain `add` now pays about 4 s and
+  470 MB for a scan it doesn't use. Not paid calls, and not the burn.
+  Later: load lazily, or open the reader only when `upsert` is set.
+
+**X3 (low; follow-up): `chroma_dedupe`'s undo snapshots now carry document
+text.**
+- `write_undo_snapshot(wcfg, "chroma_dedupe", to_tombstone)` writes the
+  readonly rows, which include `document`. The snapshots get bigger, and a
+  hand restore through `update_unit_metadata` would put the document into
+  metadata. Nothing restores them automatically. Later: drop `document`
+  before the snapshot, or snapshot the fresh write-store rows, as
+  `stale_source_flag` does.
+
+**X4 (cosmetic; follow-up):** `refine._run_job_impl` ends in
+`finally: pass`, and `run_monitor` in `if owned_store: pass`, leftovers from
+the old `close()`.
+
+**Not findings:**
+- The fixture doesn't patch the import-time copies of these defaults:
+  `ProductionBoundary`'s `config_path=CONFIG_PATH` default, `doctor.CONFIG_PATH`,
+  and `DEFAULT_WRITER_LOCK` in `shadow_canary` and
+  `eval_corpus/r2b_v2/gate_policy.py`. All four only read or record the
+  path, and the census shows no test writing through them.
+- The C1 file is still found from the config's data root
+  (`processed_log`'s parent), while the new binding is to `chroma_dir`. Two
+  configs that share a store but not a data root would take different
+  lock files. Production loads one config, and this is older than the
+  branch.
+
+## Test results (round 11)
+
+| What | Result |
+|---|---|
+| Round-10 probes (my canonical copy) at `d2abcbe` | 5 of 5 pass |
+| Round-11 probes at `d2abcbe` | 4 of 4 pass |
+| Round-11 probes at `61307d7` (control) | 3 pass; the C1 binding probe fails ("DID NOT RAISE"), as it should |
+| My rounds 2–11, Codex's round 7, Cursor's #286 files | 89 passed, 11 failed, all expected (round 4's s2 ×2; Codex round 7 ×9, holes fixed) |
+| Hermetic full suite at `d2abcbe` | 99 failed, 2951 passed, 66 skipped, 58 errors (23 min) |
+| Hermetic full suite at main `458b9f6` (round 8's run) | 93 failed, 2896 passed, 66 skipped, 58 errors |
+| Failure ids, tip vs main | 152 vs 146; **6 tip-only (X0), 0 main-only** |
+| R2b and Shadow inventory tests, inventories regenerated in scratch | 164 passed |
+| Leak census at `d2abcbe` (fake live config) | 1 test changes files under the fake user dirs (X1), against 86 at main |
+| Full suite with the fake live config | 98 failed: the hermetic 99 less X1's test, which passes when a config exists |
+
+## Corrective 10 for Cursor
+
+Small. No production code changes. Do X1 first, then X0 last, after every
+other edit.
+
+**X1:** in `tests/test_mcp_crush_stdio_sequence.py`, start the server with a
+scratch `HOME` and `CONVMEM_CONFIG` pointing at a nonexistent path (or a
+temp config pointing at a temp data root), not the caller's. If the test
+needs a store to answer `stats`, build one in its temp dir.
+
+**X0:**
+1. Correct the Shadow inventory pin `repository_knowledge_sync.py:275` to
+   wherever the retirement session call is after your last edit (276 at
+   `d2abcbe`).
+2. Regenerate the R2b inventory with `write_v2_inventory_file()` under an
+   isolated `HOME`, XDG dirs and `CONVMEM_CONFIG`.
+3. The diff should be only `code_revision`, `inventory_digest` and that one
+   route's line fields.
+
+**Then:**
+- Run the hermetic full suite at your tip and list every tip-only failure id
+  against main `458b9f6`. The target is zero.
+- Push with an explicit refspec. Don't open a PR or merge.
+- X2–X4 are follow-ups for after the merge. Leave them out, so nothing else
+  moves.
+
+**After corrective 10:**
+1. I re-verify: the inventory tests, the census and the hermetic diff.
+2. A fresh Codex (Astra, high effort) audit and a fresh Kiro review on the
+   exact new tip.
+3. Ryan opens the PR and merges.
+
+# Round 10: `61307d7`, FAIL; corrective 9 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-13
@@ -26,7 +299,7 @@ Composer's corrective 8. It answers round 9 (below).
 - I compared mtimes and sizes across the live data root before and after my
   runs.
 
-## Burn status
+### Burn status
 
 **No burn now. This branch isn't deployed, and the watcher, refine and
 monitor units are all inactive and disabled.**
@@ -54,7 +327,7 @@ monitor units are all inactive and disabled.**
   happens when a foreign save lands mid-job. It's still payment without
   progress. The unit is disabled today.
 
-## Verdict (round 10)
+### Verdict (round 10)
 
 **FAIL. Not ready for the audit and the review.**
 - **What's fixed:** V0's lock order in refine, monitor and retirement. All
@@ -118,7 +391,7 @@ monitor units are all inactive and disabled.**
   probes: 9 still fail, so those holes stay fixed. The 10th is the non-git
   scan artifact, as in round 9.
 
-## Findings (round 10)
+### Findings (round 10)
 
 **W0 (medium; payment without progress in refine, a monitor outage): a
 reader held open across write sessions in refine and monitor.**
@@ -231,7 +504,7 @@ Round 9's other 13 tip-only failures (B, E for `add`, F, G) now pass.
   `458b9f6` so the numbers compare with rounds 8 and 9. Bringing main in is
   for the PR step: a merge commit or GitHub's update button, Ryan's call.
 
-## Test results (round 10)
+### Test results (round 10)
 
 | Run | Result |
 |---|---|
@@ -246,7 +519,7 @@ Round 9's other 13 tip-only failures (B, E for `add`, F, G) now pass.
 | Leak census, `61307d7` vs `458b9f6` | 94 tests vs 86 touch the fake live root or default dir; 7 tests write into the configured data root only at the tip (W1); 3 older Chroma openers and 84 older attestation writers at both |
 | Live data root, before vs after | two `runtime-main` index runs and the reconcile timer; nothing from my runs |
 
-## Corrective 9 for Cursor
+### Corrective 9 for Cursor
 
 All items are hermetic; none involve paid calls. Do T0 first.
 
@@ -2167,6 +2440,127 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-11 probe tests
+
+They run from `tests/` and import from `tests/test_zz_claude_verify9.py`, already on the
+branch. Each opens the real production store session against a scratch config.
+
+<details><summary>tests/test_zz_claude_verify11.py</summary>
+
+```python
+"""Claude verify probes, round 11 (d2abcbe): the approved-dedupe nesting, C1 binding, readonly rows.
+
+Scratch only: real production store sessions against a scratch config; no provider calls.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from tests.test_zz_claude_verify9 import _real_session_env, _where
+
+
+def _seed_pairs(chroma: Path, pairs: int) -> list[dict]:
+    from chroma_store import ChromaStore
+
+    seed = ChromaStore(str(chroma))
+    rows = []
+    try:
+        for n in range(pairs):
+            for role in ("canon", "dup"):
+                uid = f"{role}{n}"
+                seed.add_unit(uid, f"{role} document {n}", [0.1, 0.2, 0.3 + n],
+                              {"id": uid, "title": f"{role} {n}", "timestamp": "2026-01-01T00:00:00Z"})
+            rows.append({"id_a": f"canon{n}", "id_b": f"dup{n}", "status": "approved_merge_a_canonical",
+                         "canonical_id": f"canon{n}", "tombstone_id": f"dup{n}", "similarity": 0.99})
+    finally:
+        seed.close()
+    return rows
+
+
+def test_approve_dedupe_all_tombstones_every_row(tmp_path, monkeypatch) -> None:
+    """`convmem refine --approve-dedupe all`: C1 + session, then a nested write scope per row."""
+    import refine
+    from chroma_store import ChromaStore
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    chroma = Path(cfg["index"]["chroma_dir"]).expanduser()
+    refine.save_dedupe_queue(cfg, _seed_pairs(chroma, 2))
+    try:
+        totals, err = refine.apply_approved_dedupe("all", verbose=False), None
+    except Exception as exc:
+        totals, err = None, _where(exc)
+    assert err is None, err
+    assert totals == {"processed": 2, "tombstoned": 2, "skipped": 0, "errors": 0}, totals
+    check = ChromaStore(str(chroma), mutation_sink=None)
+    try:
+        for n in range(2):
+            meta = check.get_unit(f"dup{n}")["metadata"]
+            assert meta.get("superseded") and meta.get("superseded_by") == f"canon{n}", meta
+    finally:
+        check.close()
+
+
+def test_guard_refuses_a_lock_for_another_chroma_dir(tmp_path, monkeypatch) -> None:
+    """T0: C1 taken from another config cannot authorize writes to this store."""
+    from chroma_write_store import production_chroma_write_session
+    from purge_locks import index_write_flock
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    other = {"index": {k: str(tmp_path / "other" / Path(v).name) for k, v in cfg["index"].items()
+                       if k in ("chroma_dir", "processed_log", "units_export")}}
+    with index_write_flock(other):
+        with production_chroma_write_session(entrypoint="claude_verify11") as session:
+            with pytest.raises(RuntimeError, match="index write lock belongs to Chroma dir"):
+                session.store.add_unit("x", "doc", [0.1, 0.2, 0.3], {"id": "x"})
+
+
+def test_guard_accepts_a_symlinked_chroma_dir(tmp_path, monkeypatch) -> None:
+    """T0: the binding compares canonical paths, so a symlinked chroma_dir in the config still writes."""
+    from chroma_write_store import production_chroma_write_session
+    from purge_locks import index_write_flock
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    real = Path(cfg["index"]["chroma_dir"]).expanduser()
+    link = tmp_path / "chroma-link"
+    link.symlink_to(real, target_is_directory=True)
+    cfg["index"]["chroma_dir"] = str(link)
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="claude_verify11") as session:
+            session.store.add_unit("x", "doc", [0.1, 0.2, 0.3], {"id": "x"})
+
+
+def test_readonly_rows_do_not_leak_documents_into_metadata(tmp_path, monkeypatch) -> None:
+    """Refine writes metadata from a fresh write-store read, never from a readonly row (which carries 'document')."""
+    import llm
+    import refine
+    from chroma_store import ChromaStore
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    chroma = Path(cfg["index"]["chroma_dir"]).expanduser()
+    seed = ChromaStore(str(chroma))
+    try:
+        seed.add_unit("u0", "notes about python packaging", [0.1, 0.2, 0.3],
+                      {"id": "u0", "title": "Packaging", "source_path": "/scratch/0"})
+    finally:
+        seed.close()
+    monkeypatch.setattr(llm, "generate", lambda *a, **k: "coding.tooling")
+    result = refine.run_job("backfill_domain", limit=1, verbose=False)
+    assert result["updated"] == 1, result
+    check = ChromaStore(str(chroma), mutation_sink=None)
+    try:
+        meta = check.get_unit("u0")["metadata"]
+    finally:
+        check.close()
+    assert meta.get("domain") == "coding.tooling" and "document" not in meta, meta
+```
+
+</details>
 
 ## Appendix: round-10 probe tests
 

@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 10 FAILs corrective 8 (`61307d7`). Round 9's lock-order bug is fixed and the refine daemon now survives a failed job with one hourly limiter, but refine and monitor keep a reader open across their writes (after another process saves, refine pays and every write is refused), and `tests/test_refine.py` now writes through the user's config (a production-safety hazard; not triggered live). Corrective 9 (T0–T4, T0 first) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 10 |
+| **State** | `IN_PROGRESS`: Claude's round 11 FAILs corrective 9 (`d2abcbe`) on one mechanical item only. Every round-10 finding is fixed (readers no longer held across writes, tests no longer reach the user's config, C1 is bound to its store), and the leak census is down from 86 tests to 1. The writer inventories were regenerated before the last code edit (6 tip-only failures, CI would go red), and one older MCP test still starts the server with the caller's `HOME`. Corrective 10 (X1, then X0; no production code) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 11 |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
