@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-13
+**Updated:** 2026-10-14
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,13 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T4 independent review PASS (2026-10-13):**
-  **Next lane: Ryan**, for a draft-PR/normal-hosted-CI decision.
-  [Kiro's pinned verdict and coverage limits](../plans/VERIFY-safe-harbor.md#t4-independent-kiro-review--pinned-pass-with-coverage-limits)
-  record PASS (90%) at `d27d3c0`, source `a3207fe`, with no blockers.
-  [STATUS](../plans/STATUS-safe-harbor.md) holds current state. Owner acceptance,
-  final review gate and hosted CI remain open; no PR, fixes, merge, production,
-  deployment or T5 authority follows from the review. T1–T3 remain merged.
+- **Arc Safe Harbor — T4 draft CI correction authorized (2026-10-14):**
+  **Next lane: Cursor/Codex**, for [section 16’s bounded correction and evidence](../plans/EXECUTION-safe-harbor.md#16-bounded-t4-ci-correction--owner-authorized).
+  Draft [PR #392](https://github.com/alanmz-crypto/convmem/pull/392) failed pytest;
+  [STATUS](../plans/STATUS-safe-harbor.md) holds the failures, coverage gap and scope.
+  Runtime, safety assertions and lint baseline remain fixed. Keep draft;
+  review/acceptance, merge, deployment, production operations and T5 are pending.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

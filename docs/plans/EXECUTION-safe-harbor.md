@@ -687,3 +687,20 @@ Keep pytest/pylint versions, backend pins, Python 3.12 CI matrix, existing job/c
 
 
 **Independent review completed (2026-10-13 local):** Ryan separately authorized the bounded complete-candidate review. Kiro returned **PASS (90%)** at `d27d3c00c1ed6f35c9502c4628b4dbcc3af78de1`, source `a3207fe`, with no blockers. [VERIFY records the original PASS, completed test-source coverage and explicit limits](VERIFY-safe-harbor.md#t4-independent-kiro-review--pinned-pass-with-coverage-limits): logs were sampled; auxiliary sink non-interference remains at author-trace level; hosted CI and power loss were not established. This records a review, not owner V5 acceptance or an outage exception. The next proposed step is a separately authorized draft PR/normal hosted CI; no fixes, PR actions, merge, live work or T5 follows automatically.
+
+
+## 16. Bounded T4 CI correction — owner authorized
+
+**Arc: Safe Harbor. Date: 2026-10-14. Codex supervision / Cursor authoring.**
+
+Ryan authorized: “Authorize bounded T4 CI corrections and isolated evidence. Preserve runtime behavior, safety assertions and the lint baseline. Keep PR #392 draft.”
+
+**Start:** draft [PR #392](https://github.com/alanmz-crypto/convmem/pull/392), branch `feat/2026-10-13-safe-harbor-t4`, clean candidate `76ea292701836c003ec86732ce011d85553b5212`; base `a7f72003aea516b4961a584fcfe54ad255d6a053`. Same isolated worktree as section 15. Ryan's preceding grant authorized this draft PR and normal hosted CI; no paid review trigger was made.
+
+**Failure to correct:** hosted run `38512289708` reported seven pytest failures, 3,086 passes, 186 skips and 252 passing subtests; lint/secret/security checks passed. Two old recovery fixtures lack current admission/state setup; the writer inventory assertion still expects 18 rather than 19 static sites; four watcher/path-safety assertions disagree with current fixture HOME/import state. Investigate that last cause rather than changing runtime. The 61 extra skips must be explained and required T4 Restic cases must execute; a green result obtained by skipping those cases is insufficient.
+
+**Bounded scope:** test fixtures and test-only harness/tool plumbing for these failures and required coverage; a narrow hosted workflow step may provision a pinned, checksum-verified Restic binary and expose it through the isolated tool path. Preserve all runtime files, lint baseline, independent proof assertions, critical collection, full unfiltered pytest and existing live-test exclusions. No broader provider/network/config inheritance. Update existing EXECUTION/VERIFY/STATUS/LATEST and the cross-arc status row with actual results. No inventory policy or runtime change; derived identities only if changed tracked inputs require regeneration.
+
+**Method:** reuse section 15's file-only Cursor authoring and Codex-supervised pre-import isolation. Prove the fixture/import cause with bounded scratch evidence. Give old recovery fixtures real admitted effects rather than mocking away the gate or fresh-state checks. Assert static-site coverage distinguishes the internal delegated recovery factory from external routes. Make missing required CI tools fail explicitly, preserve intentional local optional-tool behavior, and include a sensitivity control for missing required coverage. Test affected legacy, watcher, inventory, harness and T4 cases under isolation; then push for normal fresh hosted CI. Report unexpected runtime/authority needs before changing scope.
+
+**Limits:** PR stays draft. This grant supplies no independent review or owner V5 acceptance, no paid review trigger, merge, deployment, production commands, manual session indexing or T5. The prior Kiro PASS stays pinned to `d27d3c0`; subsequent changes need a bounded review.
