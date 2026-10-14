@@ -341,7 +341,9 @@ def index(
             from incremental_jsonl import format_live_route_refused
 
             if exc.code == "retry_state_unavailable":
-                print(str(exc.detail or exc.code), file=sys.stderr)
+                print(format_live_route_refused("retry_state_unavailable"), file=sys.stderr)
+                if exc.detail:
+                    print(str(exc.detail), file=sys.stderr)
                 raise typer.Exit(LIVE_ROUTE_REFUSED_EXIT) from exc
             detail = str(exc.detail or "")
             lines = detail.splitlines()
@@ -438,13 +440,12 @@ def add(
     from purge_locks import index_write_flock
     from query import render_error
 
-    admission = (
-        _admitted_operation("convmem.add") if upsert else nullcontext()
-    )
     cfg_pre = load_config()
     models_pre = cfg_pre["models"]
     precomputed_embedding = None
     prepared_record = None
+    prepared_file_rows = None
+    file_prep_stats = None
     if not file:
         if not title or not summary or not author:
             render_error(
@@ -475,14 +476,44 @@ def add(
             "source_path": source_path,
             "severity": severity,
         }
-        from ledger import ledger_unit_document
-        from llm import ollama_embed
+        from chroma_store import ChromaStore
+        from observe import embed_ledger_record_for_storage
 
-        precomputed_embedding = ollama_embed(
-            ledger_unit_document(prepared_record),
-            model=models_pre["embed_model"],
-            host=models_pre["ollama_host"],
+        read_store = ChromaStore(
+            str(cfg_pre["index"]["chroma_dir"]), mutation_sink=None
         )
+        try:
+            precomputed_embedding = embed_ledger_record_for_storage(
+                prepared_record,
+                store=read_store,
+                embed_model=models_pre["embed_model"],
+                ollama_host=models_pre["ollama_host"],
+                upsert=upsert,
+            )
+        finally:
+            read_store.close()
+
+    if file:
+        from chroma_store import ChromaStore as _ChromaStore
+        from observe import prepare_observation_file_rows
+
+        embed_store = _ChromaStore(
+            str(cfg_pre["index"]["chroma_dir"]), mutation_sink=None
+        )
+        try:
+            prepared_file_rows, file_prep_stats = prepare_observation_file_rows(
+                file,
+                embed_store=embed_store,
+                embed_model=models_pre["embed_model"],
+                ollama_host=models_pre["ollama_host"],
+                upsert=upsert,
+            )
+        finally:
+            embed_store.close()
+
+    admission = (
+        _admitted_operation("convmem.add") if upsert else nullcontext()
+    )
 
     with admission:
         with index_write_flock(cfg_pre):
@@ -501,7 +532,10 @@ def add(
                         ollama_host=models["ollama_host"],
                         units_export=units_export_path,
                         upsert=upsert,
+                        prepared_rows=prepared_file_rows,
                     )
+                    if file_prep_stats is not None:
+                        result["rejected"] += file_prep_stats["rejected"]
                     parts = [
                         f"accepted={result['accepted']}",
                         f"rejected={result['rejected']}",
@@ -771,26 +805,22 @@ def monitor_command(
         return
 
     cfg_pre = load_config()
-    with production_chroma_write_session(entrypoint="convmem.monitor") as session:
-        store = session.store
-        live_cfg = session.live_cfg
-        models = live_cfg["models"]
-        units_export = live_cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
-        stats = run_monitor(
-            store,
-            site=site,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            units_export=units_export_path,
-            dry_run=False,
-            verbose=True,
-            live_cfg=live_cfg,
-        )
+    models = cfg_pre["models"]
+    units_export = cfg_pre["index"].get("units_export")
+    units_export_path = Path(units_export).expanduser() if units_export else None
+    stats = run_monitor(
+        site=site,
+        embed_model=models["embed_model"],
+        ollama_host=models["ollama_host"],
+        units_export=units_export_path,
+        dry_run=False,
+        verbose=True,
+        live_cfg=cfg_pre,
+    )
     typer.echo(json.dumps(stats, indent=2))
     from brief import refresh_brief_after_change
 
-    refresh_brief_after_change(live_cfg)
+    refresh_brief_after_change(cfg_pre)
 
 
 @app.command()

@@ -360,7 +360,7 @@ def _tls_verification(site: str, relates_to: str, passed: bool) -> dict:
 
 
 def run_monitor(
-    store,
+    store=None,
     *,
     site: str,
     embed_model: str,
@@ -371,11 +371,20 @@ def run_monitor(
     session: requests.Session | None = None,
     live_cfg: dict | None = None,
 ) -> dict:
+    from chroma_store import ChromaStore
     from observe import ingest_observation
+
+    owned_store = False
+    if store is None:
+        if live_cfg is None:
+            raise ValueError("run_monitor requires store or live_cfg")
+        store = ChromaStore(str(live_cfg["index"]["chroma_dir"]), mutation_sink=None)
+        owned_store = True
+
+    pending_ingests: list[tuple[dict, dict]] = []
 
     def _ingest_locked(record, **kwargs):  # type: ignore[no-untyped-def]
         from observe import embed_ledger_record_for_storage
-        from purge_locks import index_write_flock
 
         upsert = bool(kwargs.get("upsert"))
         by_ledger_id = kwargs.get("by_ledger_id")
@@ -397,8 +406,8 @@ def run_monitor(
 
         if live_cfg is None:
             return ingest_observation(record, **ingest_kwargs)
-        with index_write_flock(live_cfg):
-            return ingest_observation(record, **ingest_kwargs)
+        pending_ingests.append((record, ingest_kwargs))
+        return {"id": record.get("id"), "ledger_id": record.get("id")}
 
     stats = {
         "observations": 0,
@@ -566,5 +575,19 @@ def run_monitor(
                     print(f"[monitor] observation {record['id']} (tls)")
             else:
                 stats["errors"] += 1
+
+    if pending_ingests and live_cfg is not None and not dry_run:
+        from chroma_write_store import production_chroma_write_session
+        from purge_locks import index_write_flock
+
+        with index_write_flock(live_cfg):
+            with production_chroma_write_session(entrypoint="convmem.monitor") as session:
+                wstore = session.store
+                for record, ingest_kwargs in pending_ingests:
+                    merged = {**ingest_kwargs, "store": wstore}
+                    ingest_observation(record, **merged)
+
+    if owned_store:
+        store.close()
 
     return stats

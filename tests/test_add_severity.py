@@ -36,6 +36,7 @@ class AddSeverityTests(unittest.TestCase):
             patch("convmem._guard_write"),
             patch("config.load_config", return_value=_CFG),
             patch("chroma_store.ChromaStore", return_value=MagicMock()),
+            patch("llm.ollama_embed", return_value=[0.1, 0.2, 0.3]),
             patch("observe.ingest_observation", side_effect=_fake_ingest),
         ):
             result = runner.invoke(app, _BASE_ARGS + extra_args)

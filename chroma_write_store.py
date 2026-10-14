@@ -1052,6 +1052,10 @@ class _IndexWriteGuardedChromaStore:
         self._inner = inner
 
     def __getattr__(self, name: str) -> Any:
+        if name == "client":
+            raise RuntimeError(
+                "raw Chroma client access is denied on production stores"
+            )
         inner_attr = getattr(self._inner, name)
         if not callable(inner_attr):
             return inner_attr

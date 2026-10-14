@@ -190,23 +190,23 @@ def ingest_observation(
     return unit
 
 
-def ingest_observation_file(
+def prepare_observation_file_rows(
     path: str,
     *,
-    store,
+    embed_store,
     embed_model: str,
     ollama_host: str,
     min_confidence: float = 0.0,
-    units_export: Path | None = None,
-    verbose: bool = True,
     upsert: bool = False,
-) -> dict:
-    """Ingest a JSONL file of ledger records. Returns counts."""
+    verbose: bool = True,
+) -> tuple[list[tuple[int, dict, list[float] | None]], dict]:
+    """Parse a JSONL file and precompute embeddings (no write lock required)."""
     stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
     by_ledger_id: dict[str, dict] | None = None
     if upsert:
-        by_ledger_id, _ = build_ledger_index(store)
+        by_ledger_id, _ = build_ledger_index(embed_store)
 
+    prepared: list[tuple[int, dict, list[float] | None]] = []
     with open(path, encoding="utf-8") as f:
         for line_no, line in enumerate(f, 1):
             line = line.strip()
@@ -219,47 +219,94 @@ def ingest_observation_file(
                 if verbose:
                     print(f"  [skip] line {line_no}: invalid JSON ({e})")
                 continue
-            unit = ingest_observation(
+            embedding = embed_ledger_record_for_storage(
                 record,
-                store=store,
+                store=embed_store,
                 embed_model=embed_model,
                 ollama_host=ollama_host,
                 min_confidence=min_confidence,
-                units_export=units_export,
-                upsert=upsert,
                 by_ledger_id=by_ledger_id,
+                upsert=upsert,
             )
-            if unit is None:
-                stats["rejected"] += 1
-                if verbose:
-                    print(f"  [skip] line {line_no}: rejected (missing/invalid fields)")
-            elif unit.pop("_upserted", False):
-                stats["updated"] += 1
-                if verbose:
-                    lid = unit.get("ledger_id", unit["id"][:8])
-                    print(
-                        f"  [upd] {unit['ledger_kind']:<14} {unit['domain']:<28} "
-                        f"{lid}  {unit['title'][:50]}"
-                    )
-            elif unit.pop("_skipped", False):
-                stats["skipped"] += 1
-                if verbose:
-                    lid = unit.get("ledger_id", unit["id"][:8])
-                    print(f"  [skip] unchanged {lid}")
-            else:
-                stats["accepted"] += 1
-                if by_ledger_id is not None:
-                    lid = (unit.get("ledger_id") or "").strip()
-                    if lid:
-                        row = ledger_unit_metadata(unit)
-                        row["id"] = unit["id"]
-                        by_ledger_id[lid] = row
-                if verbose:
-                    lid = unit.get("ledger_id", unit["id"][:8])
-                    print(
-                        f"  [add] {unit['ledger_kind']:<14} {unit['domain']:<28} "
-                        f"{lid}  {unit['title'][:50]}"
-                    )
+            prepared.append((line_no, record, embedding))
+    return prepared, stats
+
+
+def ingest_observation_file(
+    path: str,
+    *,
+    store,
+    embed_model: str,
+    ollama_host: str,
+    min_confidence: float = 0.0,
+    units_export: Path | None = None,
+    verbose: bool = True,
+    upsert: bool = False,
+    embedding_store=None,
+    prepared_rows: list[tuple[int, dict, list[float] | None]] | None = None,
+) -> dict:
+    """Ingest a JSONL file of ledger records. Returns counts."""
+    stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
+    embed_index_store = embedding_store if embedding_store is not None else store
+    by_ledger_id: dict[str, dict] | None = None
+    if upsert:
+        by_ledger_id, _ = build_ledger_index(embed_index_store)
+
+    if prepared_rows is None:
+        prepared_rows, prep_stats = prepare_observation_file_rows(
+            path,
+            embed_store=embed_index_store,
+            embed_model=embed_model,
+            ollama_host=ollama_host,
+            min_confidence=min_confidence,
+            upsert=upsert,
+            verbose=verbose,
+        )
+        stats["rejected"] += prep_stats["rejected"]
+
+    for line_no, record, embedding in prepared_rows:
+        unit = ingest_observation(
+            record,
+            store=store,
+            embed_model=embed_model,
+            ollama_host=ollama_host,
+            min_confidence=min_confidence,
+            units_export=units_export,
+            upsert=upsert,
+            by_ledger_id=by_ledger_id,
+            precomputed_embedding=embedding,
+        )
+        if unit is None:
+            stats["rejected"] += 1
+            if verbose:
+                print(f"  [skip] line {line_no}: rejected (missing/invalid fields)")
+        elif unit.pop("_upserted", False):
+            stats["updated"] += 1
+            if verbose:
+                lid = unit.get("ledger_id", unit["id"][:8])
+                print(
+                    f"  [upd] {unit['ledger_kind']:<14} {unit['domain']:<28} "
+                    f"{lid}  {unit['title'][:50]}"
+                )
+        elif unit.pop("_skipped", False):
+            stats["skipped"] += 1
+            if verbose:
+                lid = unit.get("ledger_id", unit["id"][:8])
+                print(f"  [skip] unchanged {lid}")
+        else:
+            stats["accepted"] += 1
+            if by_ledger_id is not None:
+                lid = (unit.get("ledger_id") or "").strip()
+                if lid:
+                    row = ledger_unit_metadata(unit)
+                    row["id"] = unit["id"]
+                    by_ledger_id[lid] = row
+            if verbose:
+                lid = unit.get("ledger_id", unit["id"][:8])
+                print(
+                    f"  [add] {unit['ledger_kind']:<14} {unit['domain']:<28} "
+                    f"{lid}  {unit['title'][:50]}"
+                )
     return stats
 
 

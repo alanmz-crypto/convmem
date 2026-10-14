@@ -552,6 +552,23 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
         from config import load_config
 
         lock_cfg = load_config()
+    from chroma_store import ChromaStore
+    from observe import prepare_observation_file_rows
+
+    approved = str(approved_path(cfg))
+    embed_store = ChromaStore(str(lock_cfg["index"]["chroma_dir"]), mutation_sink=None)
+    try:
+        prepared_rows, prep_stats = prepare_observation_file_rows(
+            approved,
+            embed_store=embed_store,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            upsert=True,
+            verbose=verbose,
+        )
+    finally:
+        embed_store.close()
+
     with index_write_flock(lock_cfg):
         _pw = open_production_write_store(entrypoint="propose_decision.write")
         store = _pw.store
@@ -560,15 +577,18 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
         units_export = cfg["index"].get("units_export")
         units_export_path = Path(units_export).expanduser() if units_export else None
         try:
-            return ingest_observation_file(
-                str(approved_path(cfg)),
+            result = ingest_observation_file(
+                approved,
                 store=store,
                 embed_model=models["embed_model"],
                 ollama_host=models["ollama_host"],
                 upsert=True,
                 verbose=verbose,
                 units_export=units_export_path,
+                prepared_rows=prepared_rows,
             )
+            result["rejected"] += prep_stats["rejected"]
+            return result
         finally:
             store.close()
 

@@ -30,7 +30,10 @@ def test_add_embeds_before_index_lock(tmp_path, monkeypatch):
     @contextmanager
     def session(**kwargs):
         depths.append(("session_enter", index_write_lock_depth()))
-        yield SimpleNamespace(store=Mock(), live_cfg=cfg)
+        from tests.fake_production_write_session import counting_fake_production_write_session
+
+        with counting_fake_production_write_session(Mock(), cfg):
+            yield SimpleNamespace(store=Mock(), live_cfg=cfg)
 
     def embed(*args, **kwargs):
         depths.append(("embed", index_write_lock_depth()))

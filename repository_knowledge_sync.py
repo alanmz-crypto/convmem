@@ -246,41 +246,43 @@ def _apply_retirements(
         return counts, resolved
     from purge_locks import index_write_flock
 
-    with production_chroma_write_session(entrypoint="repository_knowledge_retire") as session:
-        store = session.store
-        live_cfg = session.live_cfg
-        for rec in loaded.retire:
-            prior_entries = prior.get("entries") or {}
-            prior_entry = prior_entries.get(rec.path) or {}
-            prior_retired = (prior.get("retired") or {}).get(rec.path) or {}
-            expected_file = prior_entry.get("file_sha256") or prior_retired.get(
-                "file_sha256"
+    lock_cfg = dict(_cfg) if isinstance(_cfg, dict) else dict(_cfg)
+    for rec in loaded.retire:
+        prior_entries = prior.get("entries") or {}
+        prior_entry = prior_entries.get(rec.path) or {}
+        prior_retired = (prior.get("retired") or {}).get(rec.path) or {}
+        expected_file = prior_entry.get("file_sha256") or prior_retired.get(
+            "file_sha256"
+        )
+        expected_manifest = prior.get("manifest_sha256")
+        if not prior_entry:
+            expected_manifest = prior_retired.get("manifest_sha256")
+        try:
+            validate_prior_identity(
+                manifest=loaded,
+                relpath=rec.path,
+                prior_file_sha256=rec.prior_file_sha256,
+                prior_manifest_sha256=rec.prior_manifest_sha256,
+                expected_file_sha256=expected_file,
+                expected_manifest_sha256=expected_manifest,
             )
-            expected_manifest = prior.get("manifest_sha256")
-            if not prior_entry:
-                expected_manifest = prior_retired.get("manifest_sha256")
-            try:
-                validate_prior_identity(
-                    manifest=loaded,
-                    relpath=rec.path,
-                    prior_file_sha256=rec.prior_file_sha256,
-                    prior_manifest_sha256=rec.prior_manifest_sha256,
-                    expected_file_sha256=expected_file,
-                    expected_manifest_sha256=expected_manifest,
-                )
-            except ScopeError:
-                counts["refused"] += 1
-                continue
-            source_path = str((loaded.root / rec.path).resolve())
-            ids = store.ids_for_source("knowledge_units", source_path)
-            if not ids:
-                counts["already_gone"] += 1
-                resolved[rec.path] = {
-                    "file_sha256": rec.prior_file_sha256,
-                    "manifest_sha256": rec.prior_manifest_sha256,
-                }
-                continue
-            with index_write_flock(live_cfg):
+        except ScopeError:
+            counts["refused"] += 1
+            continue
+        source_path = str((loaded.root / rec.path).resolve())
+        with index_write_flock(lock_cfg):
+            with production_chroma_write_session(
+                entrypoint="repository_knowledge_retire"
+            ) as session:
+                store = session.store
+                ids = store.ids_for_source("knowledge_units", source_path)
+                if not ids:
+                    counts["already_gone"] += 1
+                    resolved[rec.path] = {
+                        "file_sha256": rec.prior_file_sha256,
+                        "manifest_sha256": rec.prior_manifest_sha256,
+                    }
+                    continue
                 col = store._collection("knowledge_units")  # pylint: disable=protected-access
                 fetched = col.get(ids=list(ids), include=["metadatas"])
                 metas = fetched.get("metadatas") or []
@@ -314,14 +316,14 @@ def _apply_retirements(
                     superseded_by=f"repository-knowledge-retire:{rec.path}:{rec.prior_file_sha256}",
                     candidate_ids=candidates,
                 )
-            counts["superseded"] += n
-            if n:
-                resolved[rec.path] = {
-                    "file_sha256": rec.prior_file_sha256,
-                    "manifest_sha256": rec.prior_manifest_sha256,
-                }
-            else:
-                counts["refused"] += 1
+        counts["superseded"] += n
+        if n:
+            resolved[rec.path] = {
+                "file_sha256": rec.prior_file_sha256,
+                "manifest_sha256": rec.prior_manifest_sha256,
+            }
+        else:
+            counts["refused"] += 1
     return counts, resolved
 
 

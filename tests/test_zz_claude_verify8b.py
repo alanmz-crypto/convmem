@@ -186,6 +186,44 @@ def test_q2c_unreadable_retry_state_fails_closed(tmp_path, monkeypatch) -> None:
     assert len(calls) == 1
 
 
+def test_retry_state_unavailable_marker_parses_for_watch() -> None:
+    from incremental_jsonl import format_live_route_refused
+    from watch_circuit_breaker import parse_live_route_refused
+
+    marker = format_live_route_refused("retry_state_unavailable")
+    assert parse_live_route_refused(marker) == ("retry_state_unavailable", "")
+
+
+def test_corrupt_retry_state_clear_quarantine_per_source(tmp_path, monkeypatch) -> None:
+    import convmem
+    import config
+    import incremental_jsonl as inc
+    from tests.incremental_jsonl_helpers import codex_rollout_record
+    from typer.testing import CliRunner
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+
+    def fail_save(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_write_prepared", fail_save)
+    with pytest.raises(inc.IncrementalJsonlError):
+        route()
+    state = _retry_state_path(tmp_path)
+    state.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(config, "load_config", lambda *a, **k: cfg)
+    out = CliRunner().invoke(convmem.app, ["watch", "--clear-quarantine", str(source)])
+    assert out.exit_code == 0, (out.output, out.exception)
+    assert not state.exists(), state
+    with source.open("ab") as handle:
+        handle.write(codex_rollout_record(200))
+    before_retry = len(calls)
+    with pytest.raises(inc.IncrementalJsonlError):
+        route()
+    assert len(calls) == before_retry + 1, "route should run again after corrupt state cleared"
+
+
 def test_q2c_corrupt_retry_state_fails_closed(tmp_path, monkeypatch) -> None:
     import incremental_jsonl as inc
 

@@ -47,7 +47,10 @@ def _run_inter_model_index(cfg: dict, path: Path, store: ChromaStore) -> int:
     @contextmanager
     def fake_session(*, entrypoint=None):
         del entrypoint
-        yield _FakeProductionWrite(store, cfg)
+        from tests.fake_production_write_session import counting_fake_production_write_session
+
+        with counting_fake_production_write_session(store, cfg):
+            yield _FakeProductionWrite(store, cfg)
 
     with mock.patch(
         "inter_model_index.production_chroma_write_session", fake_session

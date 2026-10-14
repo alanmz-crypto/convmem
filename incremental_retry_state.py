@@ -69,6 +69,29 @@ def clear_incremental_retry_state(paths: dict | None) -> None:
         path.unlink(missing_ok=True)
 
 
+def _retry_state_path_for_source(cfg: dict, canonical_path: str) -> Path | None:
+    from config import incremental_jsonl_settings
+    from incremental_jsonl import (
+        ELIGIBLE_FORMAT,
+        detect_format,
+        get_format_spec,
+        source_state_id,
+    )
+
+    settings = incremental_jsonl_settings(cfg)
+    if not settings.enabled:
+        return None
+    state_root = Path(settings.state_dir).expanduser()
+    if not state_root.is_dir():
+        return None
+    resolved = str(Path(canonical_path).expanduser().resolve())
+    detected = detect_format(resolved)
+    spec = get_format_spec(detected) or get_format_spec(ELIGIBLE_FORMAT)
+    assert spec is not None
+    state_id = source_state_id(resolved, format_id=spec.format_id)
+    return state_root / state_id / "retry_state.json"
+
+
 def clear_incremental_retry_states_for_source(cfg: dict, canonical_path: str) -> int:
     """Remove retry-state holds for one source path (issue #286 Q2(d) release)."""
     root = _incremental_state_root(cfg)
@@ -76,7 +99,13 @@ def clear_incremental_retry_states_for_source(cfg: dict, canonical_path: str) ->
         return 0
     resolved = str(Path(canonical_path).expanduser().resolve())
     cleared = 0
+    computed = _retry_state_path_for_source(cfg, canonical_path)
+    if computed is not None and computed.is_file():
+        computed.unlink(missing_ok=True)
+        cleared += 1
     for path in sorted(root.glob("**/retry_state.json")):
+        if computed is not None and path == computed:
+            continue
         payload = _read(path)
         if not payload:
             continue

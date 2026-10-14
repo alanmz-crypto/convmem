@@ -17,7 +17,11 @@ from typing import Any, Callable
 from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
 from contextlib import contextmanager
 
-from chroma_write_store import open_production_write_store, production_writer_boundary
+from chroma_write_store import (
+    open_production_write_store,
+    production_chroma_write_session,
+    production_writer_boundary,
+)
 
 
 @contextmanager
@@ -26,6 +30,21 @@ def _index_write_lock(cfg: dict):
 
     with index_write_flock(cfg):
         yield
+
+
+@contextmanager
+def _refine_write_scope(cfg: dict):
+    """C1 before production store session (issue #286 corrective 8)."""
+    with _index_write_lock(cfg):
+        with production_chroma_write_session(entrypoint="refine.write") as session:
+            yield session.store, session.live_cfg
+
+
+def _open_read_store(cfg: dict) -> ChromaStore:
+    chroma_dir = cfg["index"]["chroma_dir"]
+    return ChromaStore(str(chroma_dir), mutation_sink=None)
+
+
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
 from vector_similarity import cosine_similarity
@@ -205,16 +224,16 @@ def _tombstone_semantic_duplicate(
         if tombstone_identity != canonical_identity:
             raise ValueError("cross-provenance tombstone is blocked")
     meta["id"] = tombstone_id
-    with _index_write_lock(cfg):
-        canon = store.get_unit(canonical_id)
+    with _refine_write_scope(cfg) as (wstore, wcfg):
+        canon = wstore.get_unit(canonical_id)
         if not canon:
             raise ValueError(f"canonical unit not found: {canonical_id}")
-        write_undo_snapshot(cfg, "semantic_dedupe", [meta])
+        write_undo_snapshot(wcfg, "semantic_dedupe", [meta])
         new_meta = dict(meta)
         new_meta["superseded"] = True
         new_meta["superseded_by"] = canonical_id
         new_meta["updated_at"] = _now_iso()
-        store.update_unit_metadata(tombstone_id, new_meta)
+        wstore.update_unit_metadata(tombstone_id, new_meta)
     invalidate_superseded_cache(store.chroma_dir)
     if verbose:
         print(
@@ -397,8 +416,8 @@ def job_chroma_dedupe(
         if not to_tombstone:
             stats["skipped"] += 1
             continue
-        with _index_write_lock(cfg):
-            write_undo_snapshot(cfg, "chroma_dedupe", to_tombstone)
+        with _refine_write_scope(cfg) as (wstore, wcfg):
+            write_undo_snapshot(wcfg, "chroma_dedupe", to_tombstone)
             for m in to_tombstone:
                 chroma_id = m["id"]
                 new_meta = dict(m)
@@ -406,7 +425,7 @@ def job_chroma_dedupe(
                 new_meta["superseded_by"] = canon_id
                 new_meta["updated_at"] = _now_iso()
                 try:
-                    store.update_unit_metadata(chroma_id, new_meta)
+                    wstore.update_unit_metadata(chroma_id, new_meta)
                     stats["tombstoned"] += 1
                     if verbose:
                         print(
@@ -483,18 +502,18 @@ def job_backfill_domain(
             continue
 
         domain = normalize_domain(raw.strip().split()[0] if raw else None)
-        with _index_write_lock(cfg):
-            fresh = store.get_unit(uid)
+        with _refine_write_scope(cfg) as (wstore, wcfg):
+            fresh = wstore.get_unit(uid)
             if not fresh:
                 stats["skipped"] += 1
                 continue
             fresh_meta = dict(fresh.get("metadata") or m)
-            write_undo_snapshot(cfg, "backfill_domain", [fresh_meta])
+            write_undo_snapshot(wcfg, "backfill_domain", [fresh_meta])
             new_meta = dict(fresh_meta)
             new_meta["domain"] = domain
             new_meta["updated_at"] = _now_iso()
             try:
-                store.update_unit_metadata(uid, new_meta)
+                wstore.update_unit_metadata(uid, new_meta)
                 stats["updated"] += 1
                 if verbose:
                     print(f"  [domain] {uid[:8]} → {domain}", file=sys.stderr)
@@ -730,13 +749,13 @@ def job_stale_source_flag(
         if path.is_file():
             stats["skipped"] += 1
             continue
-        with _index_write_lock(cfg):
-            write_undo_snapshot(cfg, "stale_source_flag", [m])
+        with _refine_write_scope(cfg) as (wstore, wcfg):
+            write_undo_snapshot(wcfg, "stale_source_flag", [m])
             new_meta = dict(m)
             new_meta["source_available"] = False
             new_meta["updated_at"] = _now_iso()
             try:
-                store.update_unit_metadata(m["id"], new_meta)
+                wstore.update_unit_metadata(m["id"], new_meta)
                 stats["updated"] += 1
             except Exception:
                 stats["errors"] += 1
@@ -770,11 +789,12 @@ def run_job(
     *,
     limit: int | None = None,
     verbose: bool = True,
+    limiter: CostLimiter | None = None,
 ) -> dict:
     """Run one refinement job under one universal mutation/capture boundary."""
 
     with production_writer_boundary(entrypoint="refine.write"):
-        return _run_job_impl(job, limit=limit, verbose=verbose)
+        return _run_job_impl(job, limit=limit, verbose=verbose, limiter=limiter)
 
 
 def _run_job_impl(
@@ -782,6 +802,7 @@ def _run_job_impl(
     *,
     limit: int | None = None,
     verbose: bool = True,
+    limiter: CostLimiter | None = None,
 ) -> dict:
     from config import load_config
 
@@ -789,10 +810,9 @@ def _run_job_impl(
         raise ValueError(f"Unknown job {job!r}. Choose from: {', '.join(JOB_NAMES)}")
 
     cfg = load_config()
-    _pw = open_production_write_store(entrypoint="refine.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    limiter = CostLimiter(_cost_caps(cfg))
+    if limiter is None:
+        limiter = CostLimiter(_cost_caps(cfg))
+    store = _open_read_store(cfg)
 
     kwargs: dict[str, Any] = {"limit": limit, "verbose": verbose}
     if job in ("backfill_domain", "semantic_dedupe"):
@@ -844,6 +864,8 @@ def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:
             file=sys.stderr,
         )
 
+    limiter = CostLimiter(_cost_caps(cfg))
+
     try:
         while True:
             for job in jobs:
@@ -851,7 +873,10 @@ def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:
                     continue
                 if verbose:
                     print(f"[refine] job {job}", file=sys.stderr)
-                run_job(job, limit=batch, verbose=verbose)
+                try:
+                    run_job(job, limit=batch, verbose=verbose, limiter=limiter)
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    print(f"[refine] job {job} failed: {exc}", file=sys.stderr)
             # Release fragmented Python heap arenas back to the OS
             gc.collect()
             try:

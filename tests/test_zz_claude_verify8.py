@@ -105,11 +105,14 @@ def test_monitor_http_probes_run_outside_index_write_lock(tmp_path, monkeypatch)
         depths.append(("tls_fetch", index_write_lock_depth()))
         return False
 
+    from tests.fake_production_write_session import counting_fake_production_write_session
+
     @contextmanager
     def session(**kwargs):
         store = ChromaStore(str(tmp_path / "chroma"))
         try:
-            yield SimpleNamespace(store=store, live_cfg=cfg)
+            with counting_fake_production_write_session(store, cfg) as session_obj:
+                yield session_obj
         finally:
             store.close()
 

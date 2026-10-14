@@ -178,8 +178,12 @@ def test_selected_refusal_is_visible_without_legacy_fallback(
     monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
 
     class RefusingCoordinator:
+        paths: dict = {}
+        last_evidence: dict = {}
+
         def __init__(self, *_args, **_kwargs):
-            pass
+            self.paths = {}
+            self.last_evidence = {}
 
         def run(self):
             return SimpleNamespace(outcome="bootstrap_required")
