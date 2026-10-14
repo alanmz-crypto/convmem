@@ -270,6 +270,10 @@ class ReadonlyUnitStore:
         self.chroma_dir = str(Path(chroma_dir).expanduser())
         metas: list[dict] = []
         units: dict[str, dict] = {}
+        if not _db_path(self.chroma_dir).is_file():
+            self._metas = metas
+            self._units = units
+            return
         for meta in collection_metadata_rows(self.chroma_dir, UNITS):
             if is_superseded(meta):
                 continue

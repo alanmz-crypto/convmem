@@ -69,6 +69,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": ("refine.py:622",),
     },
     {
         "route_id": "monitor_reconcile",
@@ -87,9 +88,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
-        # Line pin refreshed 2026-10-13: monitor dry-run direct ChromaStore ctor
-        # (read-only; shadow allowlist). Shifts with convmem.py monitor command.
-        "governed_mutation_sinks": ("convmem.py:757",),
+        "governed_mutation_sinks": (),
     },
     {
         "route_id": "cg2_file_generation_pointer",

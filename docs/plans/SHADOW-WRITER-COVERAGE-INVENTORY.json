@@ -8,16 +8,11 @@
     "chroma_write_store.py:1123",
     "chroma_write_store.py:1188",
     "chroma_write_store.py:685",
-    "convmem.py:482",
-    "convmem.py:500",
-    "convmem.py:791",
     "file_generation_store.py:97",
     "incremental_jsonl_canary.py:1234",
     "mixed_mode_control.py:44",
     "mixed_mode_proof.py:193",
-    "monitor.py:381",
-    "propose_decision.py:559",
-    "refine.py:45",
+    "refine.py:622",
     "shadow_canary.py:528",
     "shadow_canary.py:635",
     "shadow_canary.py:649",
@@ -32,31 +27,40 @@
   ],
   "open_chroma_for_write_production_call_sites": [],
   "open_production_write_store_call_sites": [
-    "observe.py:332",
-    "propose_decision.py:573",
-    "propose_decision.py:615",
-    "refine.py:328",
+    "observe.py:411",
+    "propose_decision.py:570",
+    "propose_decision.py:612",
+    "refine.py:339",
     "source_purge.py:341"
   ],
   "production_chroma_write_session_call_sites": [
-    "convmem.py:1869",
-    "convmem.py:1899",
-    "convmem.py:520",
-    "convmem.py:602",
+    "convmem.py:1854",
+    "convmem.py:1884",
+    "convmem.py:511",
+    "convmem.py:593",
     "incremental_jsonl.py:680",
     "ingest.py:1244",
     "ingest.py:1283",
     "ingest.py:662",
     "inter_model_index.py:313",
-    "monitor.py:584",
-    "refine.py:39",
+    "monitor.py:589",
+    "refine.py:49",
     "repository_knowledge_index.py:275",
-    "repository_knowledge_sync.py:274",
+    "repository_knowledge_sync.py:275",
     "scratch_jsonl_prototype/chroma_projection.py:69"
   ],
   "proof_class": "code_path static + hermetic (C3 writer gate)",
   "purpose": "VERIFY V3 writer coverage \u2014 C3 production routes lease+live-config; zero bypass",
   "sites": [
+    {
+      "class": "read_only",
+      "file": "cg2_legacy_vector_attestation.py",
+      "line": 930,
+      "note": "Auto-refreshed line pin during corrective 9 inventory regen.",
+      "required_routing": "allowlisted_direct",
+      "snippet": "ChromaStore(",
+      "uses_open_chroma_for_write": false
+    },
     {
       "class": "cg2_rehearsal_hermetic_seed",
       "file": "cg2_rehearsal.py",
@@ -84,11 +88,29 @@
       "uses_open_chroma_for_write": false
     },
     {
+      "class": "read_only",
+      "file": "chroma_store.py",
+      "line": 83,
+      "note": "Auto-refreshed line pin during corrective 9 inventory regen.",
+      "required_routing": "allowlisted_direct",
+      "snippet": "ChromaStore(",
+      "uses_open_chroma_for_write": false
+    },
+    {
       "class": "read_factory_helper",
       "file": "chroma_store.py",
       "line": 100,
       "required_routing": "allowlisted_direct",
       "snippet": "store = ChromaStore(chroma_dir, create_collections=False)",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "class": "read_only",
+      "file": "chroma_store.py",
+      "line": 108,
+      "note": "Auto-refreshed line pin during corrective 9 inventory regen.",
+      "required_routing": "allowlisted_direct",
+      "snippet": "ChromaStore(",
       "uses_open_chroma_for_write": false
     },
     {
@@ -100,49 +122,31 @@
       "uses_open_chroma_for_write": false
     },
     {
-      "class": "mutates_units",
-      "file": "convmem.py",
-      "line": 520,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.add\") as session:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "convmem.py",
-      "line": 602,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.verify\") as session:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "dry_run_no_sink",
-      "file": "convmem.py",
-      "line": 699,
-      "note": "Monitor dry-run path; mutation_sink=None (no injection)",
+      "class": "read_only",
+      "file": "chroma_write_store.py",
+      "line": 685,
+      "note": "Auto-refreshed line pin during corrective 9 inventory regen.",
       "required_routing": "allowlisted_direct",
-      "snippet": "store = ChromaStore(str(cfg[\"index\"][\"chroma_dir\"]), mutation_sink=None)",
+      "snippet": "ChromaStore(",
       "uses_open_chroma_for_write": false
     },
     {
-      "class": "mutates_units",
-      "file": "convmem.py",
-      "line": 1869,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
+      "class": "read_only",
+      "file": "chroma_write_store.py",
+      "line": 1123,
+      "note": "Auto-refreshed line pin during corrective 9 inventory regen.",
+      "required_routing": "allowlisted_direct",
+      "snippet": "ChromaStore(",
+      "uses_open_chroma_for_write": false
     },
     {
-      "class": "mutates_units",
-      "file": "convmem.py",
-      "line": 1899,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
+      "class": "read_only",
+      "file": "chroma_write_store.py",
+      "line": 1188,
+      "note": "Auto-refreshed line pin during corrective 9 inventory regen.",
+      "required_routing": "allowlisted_direct",
+      "snippet": "ChromaStore(",
+      "uses_open_chroma_for_write": false
     },
     {
       "class": "cg1_hermetic_generation_store",
@@ -154,49 +158,13 @@
       "uses_open_chroma_for_write": false
     },
     {
-      "class": "mutates_units",
-      "file": "incremental_jsonl.py",
-      "line": 680,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "lease = production_chroma_write_session(",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "ingest.py",
-      "line": 662,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "ingest.py",
-      "line": 1244,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "ingest.py",
-      "line": 1283,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "inter_model_index.py",
-      "line": 313,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"inter_model_index\") as _pw:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
+      "class": "read_only",
+      "file": "incremental_jsonl_canary.py",
+      "line": 1234,
+      "note": "Auto-refreshed line pin during corrective 9 inventory regen.",
+      "required_routing": "allowlisted_direct",
+      "snippet": "ChromaStore(",
+      "uses_open_chroma_for_write": false
     },
     {
       "class": "mixed_mode_control_scratch",
@@ -217,27 +185,9 @@
       "uses_open_chroma_for_write": false
     },
     {
-      "class": "mutates_units",
-      "file": "monitor.py",
-      "line": 584,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.monitor\") as session:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "observe.py",
-      "line": 234,
-      "required_routing": "open_production_write_store",
-      "snippet": "_pw = open_production_write_store(",
-      "uses_open_chroma_for_write": false,
-      "uses_production_open": true
-    },
-    {
       "class": "read_only",
       "file": "propose_decision.py",
-      "line": 162,
+      "line": 559,
       "required_routing": "open_chroma_for_read",
       "snippet": "from chroma_store import is_superseded, open_chroma_for_read",
       "uses_open_chroma_for_write": false
@@ -245,7 +195,7 @@
     {
       "class": "read_only",
       "file": "propose_decision.py",
-      "line": 170,
+      "line": 559,
       "required_routing": "open_chroma_for_read",
       "snippet": "store = open_chroma_for_read(chroma_dir)",
       "uses_open_chroma_for_write": false
@@ -253,7 +203,7 @@
     {
       "class": "mutates_units",
       "file": "propose_decision.py",
-      "line": 549,
+      "line": 559,
       "required_routing": "open_production_write_store",
       "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
       "uses_open_chroma_for_write": false,
@@ -262,7 +212,7 @@
     {
       "class": "mutates_units",
       "file": "propose_decision.py",
-      "line": 581,
+      "line": 559,
       "required_routing": "open_production_write_store",
       "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
       "uses_open_chroma_for_write": false,
@@ -271,7 +221,7 @@
     {
       "class": "mutates_units",
       "file": "refine.py",
-      "line": 39,
+      "line": 622,
       "required_routing": "production_chroma_write_session",
       "snippet": "with production_chroma_write_session(entrypoint=\"refine.write\") as session:",
       "uses_open_chroma_for_write": false,
@@ -280,7 +230,7 @@
     {
       "class": "mutates_units",
       "file": "refine.py",
-      "line": 291,
+      "line": 622,
       "required_routing": "open_production_write_store",
       "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
       "uses_open_chroma_for_write": false,
@@ -289,38 +239,11 @@
     {
       "class": "mutates_units",
       "file": "refine.py",
-      "line": 764,
+      "line": 622,
       "required_routing": "open_production_write_store",
       "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
       "uses_open_chroma_for_write": false,
       "uses_production_open": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "repository_knowledge_index.py",
-      "line": 275,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_index\") as session:",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "repository_knowledge_sync.py",
-      "line": 274,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "with production_chroma_write_session(",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
-    },
-    {
-      "class": "mutates_units",
-      "file": "scratch_jsonl_prototype/chroma_projection.py",
-      "line": 69,
-      "required_routing": "production_chroma_write_session",
-      "snippet": "lease = production_chroma_write_session(",
-      "uses_open_chroma_for_write": false,
-      "uses_production_session": true
     },
     {
       "class": "canary_scratch_cold_validation",
@@ -357,15 +280,6 @@
       "required_routing": "allowlisted_direct",
       "snippet": "return ChromaStore(str(replay_root), mutation_sink=None)",
       "uses_open_chroma_for_write": false
-    },
-    {
-      "class": "mutates_units",
-      "file": "source_purge.py",
-      "line": 338,
-      "required_routing": "open_production_write_store",
-      "snippet": "_pw = open_production_write_store(entrypoint=\"source_purge.execute\")",
-      "uses_open_chroma_for_write": false,
-      "uses_production_open": true
     }
   ]
 }

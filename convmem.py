@@ -477,39 +477,30 @@ def add(
             "severity": severity,
         }
         from chroma_store import ChromaStore
+        from chroma_readonly import open_readonly_unit_store
         from observe import embed_ledger_record_for_storage
 
-        read_store = ChromaStore(
-            str(cfg_pre["index"]["chroma_dir"]), mutation_sink=None
+        read_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
+        precomputed_embedding = embed_ledger_record_for_storage(
+            prepared_record,
+            store=read_store,
+            embed_model=models_pre["embed_model"],
+            ollama_host=models_pre["ollama_host"],
+            upsert=upsert,
         )
-        try:
-            precomputed_embedding = embed_ledger_record_for_storage(
-                prepared_record,
-                store=read_store,
-                embed_model=models_pre["embed_model"],
-                ollama_host=models_pre["ollama_host"],
-                upsert=upsert,
-            )
-        finally:
-            read_store.close()
 
     if file:
-        from chroma_store import ChromaStore as _ChromaStore
+        from chroma_readonly import open_readonly_unit_store
         from observe import prepare_observation_file_rows
 
-        embed_store = _ChromaStore(
-            str(cfg_pre["index"]["chroma_dir"]), mutation_sink=None
+        embed_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
+        prepared_file_rows, file_prep_stats = prepare_observation_file_rows(
+            file,
+            embed_store=embed_store,
+            embed_model=models_pre["embed_model"],
+            ollama_host=models_pre["ollama_host"],
+            upsert=upsert,
         )
-        try:
-            prepared_file_rows, file_prep_stats = prepare_observation_file_rows(
-                file,
-                embed_store=embed_store,
-                embed_model=models_pre["embed_model"],
-                ollama_host=models_pre["ollama_host"],
-                upsert=upsert,
-            )
-        finally:
-            embed_store.close()
 
     admission = (
         _admitted_operation("convmem.add") if upsert else nullcontext()
@@ -777,8 +768,7 @@ def monitor_command(
     from pathlib import Path
 
     from config import load_config
-    from chroma_write_store import production_chroma_write_session
-    from chroma_store import ChromaStore
+    from chroma_readonly import open_readonly_unit_store
     from monitor import run_monitor
 
     if dry_run:
@@ -786,21 +776,16 @@ def monitor_command(
         models = cfg["models"]
         units_export = cfg["index"].get("units_export")
         units_export_path = Path(units_export).expanduser() if units_export else None
-        # Dry-run monitor keeps a read-only client outside the production factory.
-        # Shadow inventory allowlist pins this direct ctor site at a stable line.
-        store = ChromaStore(str(cfg["index"]["chroma_dir"]), mutation_sink=None)
-        try:
-            stats = run_monitor(
-                store,
-                site=site,
-                embed_model=models["embed_model"],
-                ollama_host=models["ollama_host"],
-                units_export=units_export_path,
-                dry_run=True,
-                verbose=True,
-            )
-        finally:
-            store.close()
+        store = open_readonly_unit_store(cfg["index"]["chroma_dir"])
+        stats = run_monitor(
+            store,
+            site=site,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            units_export=units_export_path,
+            dry_run=True,
+            verbose=True,
+        )
         typer.echo(json.dumps(stats, indent=2))
         return
 

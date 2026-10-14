@@ -244,9 +244,11 @@ def _apply_retirements(
     resolved: dict[str, dict[str, str]] = {}
     if not loaded.retire:
         return counts, resolved
+    from config import CONFIG_PATH, load_config
     from purge_locks import index_write_flock
 
-    lock_cfg = dict(_cfg) if isinstance(_cfg, dict) else dict(_cfg)
+    cfg_path = CONFIG_PATH.expanduser()
+    lock_cfg = load_config(cfg_path) if cfg_path.is_file() else dict(_cfg)
     for rec in loaded.retire:
         prior_entries = prior.get("entries") or {}
         prior_entry = prior_entries.get(rec.path) or {}

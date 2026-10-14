@@ -140,13 +140,10 @@ class InterModelDocAdapterTests(unittest.TestCase):
 
 class InterModelIndexTests(unittest.TestCase):
     @mock.patch("inter_model_index.ollama_embed", return_value=[0.1, 0.2])
-    @mock.patch("inter_model_index.production_chroma_write_session")
-    def test_index_inter_model_messages(self, mock_session, _embed):
+    def test_index_inter_model_messages(self, _embed):
+        from tests.fake_production_write_session import counting_fake_production_write_session
+
         store = mock.MagicMock()
-        session = mock.MagicMock()
-        session.store = store
-        mock_session.return_value.__enter__.return_value = session
-        mock_session.return_value.__exit__.return_value = False
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "docs" / "inter-model" / "CROSS-PROJECT-DIGEST-PILOT.md"
             path.parent.mkdir(parents=True)
@@ -162,18 +159,21 @@ class InterModelIndexTests(unittest.TestCase):
                     "chroma_dir": str(Path(td) / "chroma"),
                 }
             }
-            session.live_cfg = cfg
             Path(cfg["index"]["processed_log"]).write_text("{}", encoding="utf-8")
-            n = index_inter_model_messages(
-                str(path),
-                messages,
-                path_key=str(path.resolve()),
-                chroma_dir=cfg["index"]["chroma_dir"],
-                embed_model="nomic-embed-text",
-                ollama_host="http://localhost:11434",
-                cfg=cfg,
-                verbose=False,
-            )
+            with mock.patch(
+                "inter_model_index.production_chroma_write_session",
+                lambda **kw: counting_fake_production_write_session(store, cfg, **kw),
+            ):
+                n = index_inter_model_messages(
+                    str(path),
+                    messages,
+                    path_key=str(path.resolve()),
+                    chroma_dir=cfg["index"]["chroma_dir"],
+                    embed_model="nomic-embed-text",
+                    ollama_host="http://localhost:11434",
+                    cfg=cfg,
+                    verbose=False,
+                )
             self.assertEqual(n, 1)
             store.add_unit.assert_called_once()
             _args, kwargs = store.add_unit.call_args

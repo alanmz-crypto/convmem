@@ -33,16 +33,27 @@ def _index_write_lock(cfg: dict):
 
 
 @contextmanager
-def _refine_write_scope(cfg: dict):
-    """C1 before production store session (issue #286 corrective 8)."""
-    with _index_write_lock(cfg):
+def _refine_write_scope(_cfg: dict | None = None):
+    """C1 from live config before production store session (issue #286 corrective 9)."""
+    from config import load_config
+
+    live_cfg = load_config()
+    if _cfg is not None:
+        caller = Path(_cfg["index"]["chroma_dir"]).expanduser().resolve()
+        live = Path(live_cfg["index"]["chroma_dir"]).expanduser().resolve()
+        if caller != live:
+            raise ValueError(
+                f"refine write scope: caller chroma_dir {caller} != live config {live}"
+            )
+    with _index_write_lock(live_cfg):
         with production_chroma_write_session(entrypoint="refine.write") as session:
             yield session.store, session.live_cfg
 
 
-def _open_read_store(cfg: dict) -> ChromaStore:
-    chroma_dir = cfg["index"]["chroma_dir"]
-    return ChromaStore(str(chroma_dir), mutation_sink=None)
+def _open_read_store(cfg: dict):
+    from chroma_readonly import open_readonly_unit_store
+
+    return open_readonly_unit_store(cfg["index"]["chroma_dir"])
 
 
 from domains import DEFAULT_DOMAINS, normalize_domain
@@ -420,7 +431,12 @@ def job_chroma_dedupe(
             write_undo_snapshot(wcfg, "chroma_dedupe", to_tombstone)
             for m in to_tombstone:
                 chroma_id = m["id"]
-                new_meta = dict(m)
+                fresh = wstore.get_unit(chroma_id)
+                if not fresh:
+                    stats["errors"] += 1
+                    continue
+                base_meta = dict(fresh.get("metadata") or m)
+                new_meta = dict(base_meta)
                 new_meta["superseded"] = True
                 new_meta["superseded_by"] = canon_id
                 new_meta["updated_at"] = _now_iso()
@@ -437,7 +453,7 @@ def job_chroma_dedupe(
                     if verbose:
                         print(f"  [error] {m['id']}: {e}", file=sys.stderr)
         if stats["tombstoned"]:
-            invalidate_superseded_cache(store.chroma_dir)
+            invalidate_superseded_cache(str(cfg["index"]["chroma_dir"]))
         stats["processed"] += 1
     return stats
 
@@ -602,7 +618,12 @@ def job_semantic_dedupe(
         return {"processed": 0, "queued": 0, "skipped": 0, "errors": 0, "llm_calls": 0}
     queue_path = dedupe_queue_path(cfg)
 
-    units = store.get_units_with_embeddings(include_superseded=False)
+    chroma_dir = cfg["index"]["chroma_dir"]
+    vector_store = ChromaStore(str(chroma_dir), mutation_sink=None)
+    try:
+        units = vector_store.get_units_with_embeddings(include_superseded=False)
+    finally:
+        vector_store.close()
     rows: list[tuple[str, dict, list[float]]] = [
         (u["id"], u["metadata"], u["embedding"]) for u in units
     ]
@@ -750,8 +771,14 @@ def job_stale_source_flag(
             stats["skipped"] += 1
             continue
         with _refine_write_scope(cfg) as (wstore, wcfg):
-            write_undo_snapshot(wcfg, "stale_source_flag", [m])
-            new_meta = dict(m)
+            fresh = wstore.get_unit(m["id"])
+            if not fresh:
+                stats["errors"] += 1
+                stats["processed"] += 1
+                continue
+            fresh_meta = dict(fresh.get("metadata") or m)
+            write_undo_snapshot(wcfg, "stale_source_flag", [fresh_meta])
+            new_meta = dict(fresh_meta)
             new_meta["source_available"] = False
             new_meta["updated_at"] = _now_iso()
             try:
@@ -837,7 +864,7 @@ def _run_job_impl(
             pass
         return result
     finally:
-        store.close()
+        pass
 
 
 def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from atomic_files import atomic_write_text
@@ -116,19 +117,32 @@ def _ledger_unchanged_in_index(existing: dict, unit: dict, store) -> bool:
     )
 
 
-def ingest_observation(
+@dataclass
+class PreparedObservationIngest:
+    """Validated unit plus embedding computed before the index write lock."""
+
+    record: dict
+    unit: dict
+    doc: str
+    embedding: list[float]
+    upsert: bool
+    existing_chroma_id: str | None = None
+    skipped_unchanged: bool = False
+    upsert_update: bool = False
+
+
+def prepare_observation_ingest(
     record: dict,
     *,
     store,
     embed_model: str,
     ollama_host: str,
     min_confidence: float = 0.0,
-    units_export: Path | None = None,
     upsert: bool = False,
     by_ledger_id: dict[str, dict] | None = None,
     precomputed_embedding: list[float] | None = None,
-) -> dict | None:
-    """Validate, embed, and store one ledger record. Returns the stored unit or None."""
+) -> PreparedObservationIngest | None:
+    """Validate and embed one ledger record without opening a write session."""
     _reject_governed_bypass(record, upsert=upsert)
     unit = normalize_ledger_record(record, min_confidence=min_confidence)
     if unit is None:
@@ -144,22 +158,30 @@ def ingest_observation(
         if existing:
             if _ledger_unchanged_in_index(existing, unit, store):
                 unit["id"] = existing["id"]
-                unit["_skipped"] = True
-                return unit
+                return PreparedObservationIngest(
+                    record=record,
+                    unit=unit,
+                    doc=doc,
+                    embedding=precomputed_embedding or [],
+                    upsert=upsert,
+                    existing_chroma_id=existing["id"],
+                    skipped_unchanged=True,
+                )
             if precomputed_embedding is None:
                 from llm import ollama_embed
 
                 embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
             else:
                 embedding = precomputed_embedding
-            meta = ledger_unit_metadata(unit)
-            chroma_id = existing["id"]
-            store.update_unit(chroma_id, doc, embedding, meta)
-            unit["id"] = chroma_id
-            unit["_upserted"] = True
-            if units_export:
-                _upsert_jsonl_line(units_export, lid, unit)
-            return unit
+            return PreparedObservationIngest(
+                record=record,
+                unit=unit,
+                doc=doc,
+                embedding=embedding,
+                upsert=upsert,
+                existing_chroma_id=existing["id"],
+                upsert_update=True,
+            )
 
     if precomputed_embedding is None:
         from llm import ollama_embed
@@ -167,14 +189,43 @@ def ingest_observation(
         embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
     else:
         embedding = precomputed_embedding
+    return PreparedObservationIngest(
+        record=record,
+        unit=unit,
+        doc=doc,
+        embedding=embedding,
+        upsert=upsert,
+    )
+
+
+def commit_observation_ingest(
+    prepared: PreparedObservationIngest,
+    *,
+    store,
+    units_export: Path | None = None,
+) -> dict | None:
+    """Persist a prepared observation under an open write store."""
+    unit = prepared.unit
+    if prepared.skipped_unchanged:
+        unit["_skipped"] = True
+        return unit
+
+    lid = (unit.get("ledger_id") or "").strip()
+
+    if prepared.upsert_update and prepared.existing_chroma_id:
+        meta = ledger_unit_metadata(unit)
+        chroma_id = prepared.existing_chroma_id
+        store.update_unit(chroma_id, prepared.doc, prepared.embedding, meta)
+        unit["id"] = chroma_id
+        unit["_upserted"] = True
+        if units_export and lid:
+            _upsert_jsonl_line(units_export, lid, unit)
+        return unit
+
     meta = ledger_unit_metadata(unit)
+    store.add_unit(unit["id"], prepared.doc, prepared.embedding, meta)
 
-    store.add_unit(unit["id"], doc, embedding, meta)
-
-    if units_export and upsert and lid:
-        # Chroma may have lost a projection while the authoritative export
-        # still retains the ledger row. Reproject without duplicating that
-        # authority line; the ledger id, not the Chroma UUID, is durable.
+    if units_export and prepared.upsert and lid:
         _upsert_jsonl_line(units_export, lid, unit)
     elif units_export:
         from purge_locks import export_flock_path
@@ -188,6 +239,34 @@ def ingest_observation(
                 atomic_write_text(units_export, line)
 
     return unit
+
+
+def ingest_observation(
+    record: dict,
+    *,
+    store,
+    embed_model: str,
+    ollama_host: str,
+    min_confidence: float = 0.0,
+    units_export: Path | None = None,
+    upsert: bool = False,
+    by_ledger_id: dict[str, dict] | None = None,
+    precomputed_embedding: list[float] | None = None,
+) -> dict | None:
+    """Validate, embed, and store one ledger record. Returns the stored unit or None."""
+    prepared = prepare_observation_ingest(
+        record,
+        store=store,
+        embed_model=embed_model,
+        ollama_host=ollama_host,
+        min_confidence=min_confidence,
+        upsert=upsert,
+        by_ledger_id=by_ledger_id,
+        precomputed_embedding=precomputed_embedding,
+    )
+    if prepared is None:
+        return None
+    return commit_observation_ingest(prepared, store=store, units_export=units_export)
 
 
 def prepare_observation_file_rows(

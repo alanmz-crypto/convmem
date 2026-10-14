@@ -73,6 +73,10 @@ def test_refine_tombstone_waits_for_index_lock(tmp_path, monkeypatch):
     from tests.purge_test_util import purge_cfg
 
     cfg = purge_cfg(tmp_path)
+    import config
+
+    monkeypatch.setattr(config, "CONFIG_PATH", tmp_path / "config.toml")
+    monkeypatch.setattr(config, "load_config", lambda *a, **k: cfg)
     store = Mock()
     store.chroma_dir = cfg["index"]["chroma_dir"]
     store.get_unit.side_effect = lambda uid: {"id": uid, "metadata": {"id": uid}}
@@ -82,6 +86,13 @@ def test_refine_tombstone_waits_for_index_lock(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(refine, "write_undo_snapshot", lambda *args: None)
     monkeypatch.setattr(refine, "invalidate_superseded_cache", lambda *args: None)
+
+    @contextmanager
+    def _scope(_cfg):
+        with index_write_flock(cfg):
+            yield store, cfg
+
+    monkeypatch.setattr(refine, "_refine_write_scope", _scope)
     done = threading.Event()
     errors = []
 

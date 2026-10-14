@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -371,43 +372,45 @@ def run_monitor(
     session: requests.Session | None = None,
     live_cfg: dict | None = None,
 ) -> dict:
-    from chroma_store import ChromaStore
-    from observe import ingest_observation
+    from chroma_readonly import open_readonly_unit_store
+    from observe import (
+        PreparedObservationIngest,
+        commit_observation_ingest,
+        prepare_observation_ingest,
+    )
 
     owned_store = False
     if store is None:
         if live_cfg is None:
             raise ValueError("run_monitor requires store or live_cfg")
-        store = ChromaStore(str(live_cfg["index"]["chroma_dir"]), mutation_sink=None)
+        store = open_readonly_unit_store(live_cfg["index"]["chroma_dir"])
         owned_store = True
 
-    pending_ingests: list[tuple[dict, dict]] = []
+    pending_ingests: list[PreparedObservationIngest] = []
 
     def _ingest_locked(record, **kwargs):  # type: ignore[no-untyped-def]
-        from observe import embed_ledger_record_for_storage
-
         upsert = bool(kwargs.get("upsert"))
         by_ledger_id = kwargs.get("by_ledger_id")
-        embedding = embed_ledger_record_for_storage(
+        prepared = prepare_observation_ingest(
             record,
             store=store,
             embed_model=embed_model,
             ollama_host=ollama_host,
-            by_ledger_id=by_ledger_id,
+            min_confidence=float(kwargs.get("min_confidence", 0.0)),
             upsert=upsert,
+            by_ledger_id=by_ledger_id,
         )
-        ingest_kwargs = {
-            **kwargs,
-            "embed_model": embed_model,
-            "ollama_host": ollama_host,
-        }
-        if embedding is not None:
-            ingest_kwargs["precomputed_embedding"] = embedding
-
+        if prepared is None:
+            return None
         if live_cfg is None:
-            return ingest_observation(record, **ingest_kwargs)
-        pending_ingests.append((record, ingest_kwargs))
-        return {"id": record.get("id"), "ledger_id": record.get("id")}
+            return commit_observation_ingest(
+                prepared,
+                store=kwargs["store"],
+                units_export=kwargs.get("units_export"),
+            )
+        pending_ingests.append(prepared)
+        unit = prepared.unit
+        return {"id": unit.get("id"), "ledger_id": unit.get("ledger_id")}
 
     stats = {
         "observations": 0,
@@ -578,16 +581,24 @@ def run_monitor(
 
     if pending_ingests and live_cfg is not None and not dry_run:
         from chroma_write_store import production_chroma_write_session
+        from config import load_config
         from purge_locks import index_write_flock
 
-        with index_write_flock(live_cfg):
+        session_cfg = load_config()
+        with index_write_flock(session_cfg):
             with production_chroma_write_session(entrypoint="convmem.monitor") as session:
                 wstore = session.store
-                for record, ingest_kwargs in pending_ingests:
-                    merged = {**ingest_kwargs, "store": wstore}
-                    ingest_observation(record, **merged)
+                wcfg = session.live_cfg
+                export_raw = wcfg["index"].get("units_export")
+                units_path = Path(export_raw).expanduser() if export_raw else units_export
+                for prepared in pending_ingests:
+                    commit_observation_ingest(
+                        prepared,
+                        store=wstore,
+                        units_export=units_path,
+                    )
 
     if owned_store:
-        store.close()
+        pass
 
     return stats

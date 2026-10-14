@@ -552,22 +552,19 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
         from config import load_config
 
         lock_cfg = load_config()
-    from chroma_store import ChromaStore
+    from chroma_readonly import open_readonly_unit_store
     from observe import prepare_observation_file_rows
 
     approved = str(approved_path(cfg))
-    embed_store = ChromaStore(str(lock_cfg["index"]["chroma_dir"]), mutation_sink=None)
-    try:
-        prepared_rows, prep_stats = prepare_observation_file_rows(
-            approved,
-            embed_store=embed_store,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            upsert=True,
-            verbose=verbose,
-        )
-    finally:
-        embed_store.close()
+    embed_store = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
+    prepared_rows, prep_stats = prepare_observation_file_rows(
+        approved,
+        embed_store=embed_store,
+        embed_model=models["embed_model"],
+        ollama_host=models["ollama_host"],
+        upsert=True,
+        verbose=verbose,
+    )
 
     with index_write_flock(lock_cfg):
         _pw = open_production_write_store(entrypoint="propose_decision.write")

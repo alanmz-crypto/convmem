@@ -37,6 +37,12 @@ def index_write_lock_depth() -> int:
     return int(getattr(_tls, "index_write_depth", 0) or 0)
 
 
+def index_write_lock_chroma_dir() -> Path | None:
+    """Chroma directory bound to the outermost held index write lock, if any."""
+    raw = getattr(_tls, "index_write_bound_chroma", None)
+    return Path(raw) if raw is not None else None
+
+
 def _source_depth() -> int:
     return int(getattr(_tls, "source_depth", 0) or 0)
 
@@ -89,10 +95,25 @@ def assert_lock_ordering_ok(*, acquiring: str) -> None:
         )
 
 
-def require_index_write_lock_held() -> None:
+def require_index_write_lock_held(*, chroma_dir: str | Path | None = None) -> None:
     if index_write_lock_depth() == 0:
         raise RuntimeError(
             "production Chroma mutation requires the store-wide index write lock"
+        )
+    if chroma_dir is None:
+        return
+    held = index_write_lock_chroma_dir()
+    if held is None:
+        raise RuntimeError(
+            "production Chroma mutation requires the store-wide index write lock "
+            "to be bound to a Chroma directory"
+        )
+    from chroma_store import canonical_target
+
+    requested = Path(canonical_target(chroma_dir)).resolve()
+    if held != requested:
+        raise RuntimeError(
+            f"index write lock belongs to Chroma dir {held}, not {requested}"
         )
 
 
@@ -172,6 +193,10 @@ def index_write_flock(cfg: dict) -> Iterator[Path]:
     if depth_before == 0:
         handle = _open_private_lock(lock)
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        chroma_raw = (cfg.get("index") or {}).get("chroma_dir")
+        _tls.index_write_bound_chroma = (
+            Path(chroma_raw).expanduser().resolve() if chroma_raw else None
+        )
     _tls.index_write_depth = depth_before + 1
     try:
         yield lock
@@ -180,6 +205,7 @@ def index_write_flock(cfg: dict) -> Iterator[Path]:
         if depth_before == 0 and handle is not None:
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
             handle.close()
+            _tls.index_write_bound_chroma = None
 
 
 @contextmanager

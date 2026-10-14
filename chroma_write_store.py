@@ -1066,13 +1066,13 @@ class _IndexWriteGuardedChromaStore:
         if name == "_collection":
 
             def _collection(name_arg: str, *args: Any, **kwargs: Any) -> Any:
-                require_index_write_lock_held()
+                require_index_write_lock_held(chroma_dir=self._inner.chroma_dir)
                 return inner_attr(name_arg, *args, **kwargs)
 
             return _collection
 
         def _guarded(*args: Any, **kwargs: Any) -> Any:
-            require_index_write_lock_held()
+            require_index_write_lock_held(chroma_dir=self._inner.chroma_dir)
             return inner_attr(*args, **kwargs)
 
         return _guarded

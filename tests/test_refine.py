@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from chroma_store import ChromaStore
+from tests.refine_scratch_env import patch_refine_scratch_env
 from refine import (
     _pick_canonical,
     job_chroma_dedupe,
@@ -39,6 +40,8 @@ class RefineJobTests(unittest.TestCase):
                 "deepseek_base_url": "https://api.deepseek.com",
             },
         }
+        self._scratch_env = patch_refine_scratch_env(root, self.cfg)
+        self._scratch_env.__enter__()
         self.store.add_unit(
             "u1",
             "doc a",
@@ -65,6 +68,7 @@ class RefineJobTests(unittest.TestCase):
         )
 
     def tearDown(self):
+        self._scratch_env.__exit__(None, None, None)
         self.tmp.cleanup()
 
     def test_pick_canonical_prefers_confidence(self):
@@ -191,14 +195,15 @@ class ChromaDedupeIdMismatchTests(unittest.TestCase):
                     "title": "canonical",
                 },
             )
-            stats = job_chroma_dedupe(store, cfg, verbose=False)
-            self.assertEqual(stats["tombstoned"], 1)
-            orphan = store.get_unit("real-chroma-uuid")
-            assert orphan is not None
-            self.assertTrue(orphan["metadata"]["superseded"])
-            self.assertEqual(orphan["metadata"]["superseded_by"], "canonical-uuid")
-            stats2 = job_chroma_dedupe(store, cfg, verbose=False)
-            self.assertEqual(stats2["tombstoned"], 0)
+            with patch_refine_scratch_env(root, cfg):
+                stats = job_chroma_dedupe(store, cfg, verbose=False)
+                self.assertEqual(stats["tombstoned"], 1)
+                orphan = store.get_unit("real-chroma-uuid")
+                assert orphan is not None
+                self.assertTrue(orphan["metadata"]["superseded"])
+                self.assertEqual(orphan["metadata"]["superseded_by"], "canonical-uuid")
+                stats2 = job_chroma_dedupe(store, cfg, verbose=False)
+                self.assertEqual(stats2["tombstoned"], 0)
 
 
 class ApproveDedupeTests(unittest.TestCase):
@@ -219,6 +224,8 @@ class ApproveDedupeTests(unittest.TestCase):
                 "ollama_host": "http://localhost:11434",
             },
         }
+        self._scratch_env = patch_refine_scratch_env(root, self.cfg)
+        self._scratch_env.__enter__()
         self.store.add_unit(
             "canon",
             "canonical doc",
@@ -260,6 +267,7 @@ class ApproveDedupeTests(unittest.TestCase):
         )
 
     def tearDown(self):
+        self._scratch_env.__exit__(None, None, None)
         self.tmp.cleanup()
 
     def test_apply_approved_dedupe_tombstones_and_marks_queue(self):
