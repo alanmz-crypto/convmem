@@ -9,12 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — isolated T4 implementation granted (2026-10-13):**
-  **Next lane: Cursor authors; Codex supervises isolated V5 evidence.**
-  [EXECUTION section 15](../plans/EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized)
-  is the pinned scope/handoff; [STATUS](../plans/STATUS-safe-harbor.md) holds state.
-  Return results for independent review. No PR, merge, production operation,
-  deployment or T5 grant. T1–T3 remain accepted and merged.
+- **Arc Safe Harbor — T4 implementation/evidence returned (2026-10-13):**
+  **Next lane: independent reviewer, then Ryan.** Cursor/Codex source `a3207fe`
+  has 70 isolated V5 passes, affected regressions and unchanged-baseline lint PASS.
+  [VERIFY evidence and retained limits](../plans/VERIFY-safe-harbor.md#t4-implementation-and-isolated-v5--returned-for-independent-review)
+  is the review entry; [STATUS](../plans/STATUS-safe-harbor.md) holds current state.
+  The excluded model-download lapse remains disclosed. No independent T4 PASS or
+  owner acceptance yet; no PR, merge, production, deployment or T5 authority.
+  T1–T3 remain accepted and merged.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

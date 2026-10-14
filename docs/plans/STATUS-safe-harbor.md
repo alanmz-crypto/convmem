@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; ISOLATED T4 GRANTED.** Ryan authorized Cursor implementation with Codex supervision and isolated V5 evidence, returning results for independent review. [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized) is the handoff. T4 is in progress; a draft runtime checkpoint is not review-ready. V5 is incomplete, with an excluded fixture model-download lapse recorded in VERIFY; fresh network-refused runs are pending. V6 remains NOT RUN. PR creation, merge, deployment, production operations and T5 are unauthorized.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; T4 RETURNED FOR INDEPENDENT REVIEW.** Cursor/Codex implemented T4 at `a3207fe397bf820f4f2bd412c7d5f110d00fdc67` under [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized). [VERIFY](VERIFY-safe-harbor.md#t4-implementation-and-isolated-v5--returned-for-independent-review) records 70 isolated T4 passes, affected regressions, full lint gate PASS and retained failures, including an excluded model-download lapse. V5 is not owner-accepted; V6 remains NOT RUN. PR creation, merge, deployment, production operations and T5 remain unauthorized.
 
 ## 1. What This Is For (product goal)
 
@@ -35,14 +35,14 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- **T1 on main:** incident retention, canonical client/cache identity and refusal of persisted-empty authority landed through [PR #387](https://github.com/alanmz-crypto/convmem/pull/387), squash `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Ordinary clear still cannot provide validated release; that is T3.
+- **T1 on main:** incident retention, canonical client/cache identity and refusal of persisted-empty authority landed through [PR #387](https://github.com/alanmz-crypto/convmem/pull/387), squash `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`. Ordinary clear refuses unresolved authority; T3 now supplies the separate validated-release contract below.
 - **T2 on main:** operation-bound backup preflight, production-skip refusal and future-time rejection across all five consumers landed through [PR #389](https://github.com/alanmz-crypto/convmem/pull/389), squash `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3` at 2026-10-13 03:43:09 UTC (2026-10-12 local). Its tree is identical to Ryan's accepted candidate `eb06c97df2cfe9de3627fd8672b9e3b7c277c963`. Canonical client/export binding preserves the configured governed-file identities. The completed task branch is historical, not an active grant.
 - **Evidence and acceptance:** [VERIFY V2 acceptance record](VERIFY-safe-harbor.md#t2-final-tip-ci-owner-acceptance-and-squash-mapping) holds the six successful final-head GitHub checks, the pinned Codex review, Ryan's exact acceptance and the squash mapping. The final affected isolated suite passed 98 cases; this is not an additional full-suite claim. Earlier failed/unqualified attempts remain disclosed. BugBot reviewed no SHA; its gate was resolved by Ryan's written exception, not a BugBot PASS.
-- **Open T4 limitation:** successful event-only approval completion is not proven. The ingestion/proposal hash views disagree; T4 must align them and demonstrate real completion. Direct-helper caller coverage and uncertain completion remain later T4 work. Ryan's V2 acceptance includes this documented evidence exclusion, not a claim that those paths work.
-- `ARCHITECTURE-safe-harbor.md`: approved direction and E1–E7 obligations. `EXECUTION-safe-harbor.md`: accepted five-task contracts, section 11’s isolated T3 grant and [section 12's authorized CI scope](EXECUTION-safe-harbor.md#12-bounded-t3-ci-integration--owner-authorized). `VERIFY-safe-harbor.md`: T1/T2 acceptance, corrected proof, [current T3 evidence](VERIFY-safe-harbor.md#t3-implementation-checkpoint--isolated-v3v4-evidence) and [pinned Kiro implementation review](VERIFY-safe-harbor.md#t3-independent-kiro-implementation-review). V3/V4 are owner-accepted; V5/V6 remain NOT RUN.
+- **T4 on the isolated branch:** strict approval authority and fresh tombstone-aware lookup, direct/CLI target binding, serialized native recheck/mutation/publication, export completion and truthful uncertain-outcome retry are implemented at `a3207fe397bf820f4f2bd412c7d5f110d00fdc67`. Real event-only completion is demonstrated by the new V5 fixtures, closing that implementation gap pending independent review/owner acceptance. Cursor and Codex are contributing authors.
+- `ARCHITECTURE-safe-harbor.md`: approved direction and E1–E7 obligations. `EXECUTION-safe-harbor.md`: accepted five-task contracts, section 11’s isolated T3 grant and [section 12's authorized CI scope](EXECUTION-safe-harbor.md#12-bounded-t3-ci-integration--owner-authorized). `VERIFY-safe-harbor.md`: T1/T2 acceptance, corrected proof, [current T3 evidence](VERIFY-safe-harbor.md#t3-implementation-checkpoint--isolated-v3v4-evidence) and [pinned Kiro implementation review](VERIFY-safe-harbor.md#t3-independent-kiro-implementation-review). V3/V4 are owner-accepted; V5 isolated evidence is returned, V6 remains NOT RUN.
 - **T3 on main:** [PR #391](https://github.com/alanmz-crypto/convmem/pull/391), squash `a7f72003aea516b4961a584fcfe54ad255d6a053`, landed 2026-10-13 23:38:18 UTC. The guard preserves original evidence before replacement, pins source generations, contains every automatic restore and validates the complete incident set before durable disposition/release. CLI/doctor/watch report the contract. The accepted `3c490e2` candidate has green full hosted CI and Kiro final delta PASS (89%). Unavailable release evidence can permit a contained restore but must refuse release. See VERIFY for the exact pins and retained limits.
 - **T3 proof included in the merge:** `tests/test_safe_harbor_t3_backend_proof.py` and `tests/_safe_harbor_t3_backend_worker.py` at `93d4e344c8959ed0176b3a9b39af7be3f638f148`. Client-free persisted-state predicate; independent stale-vector sensitivity; real mutation/purge/restart; collection-specific binding and pre-import isolation. Qualified run `/tmp/safe-harbor-t3-s9ejarj3`: nine passes, pytest/pylint exit 0, stable source hashes. Production runtime is unchanged. Earlier unqualified Cursor probes were stopped/excluded; full disclosure and qualified failed development runs remain in VERIFY.
-- **Deployment is separate:** this closeout inspected Git/GitHub only. It did not move runtime-main, restart processes, inspect live health or qualify a recovery artifact. Merged source does not establish running-process identity; drafting-time D/P/B labels remain historical citations.
+- **Deployment is separate:** the T3 closeout and T4 fixture evidence did not move runtime-main, restart processes, inspect live health or qualify a recovery artifact. Merged source does not establish running-process identity; drafting-time D/P/B labels remain historical citations.
 - **Recovery inputs remain open:** the loss window and exact usable recovery artifact require qualification before rollout. Preserve the reported pre-incident Rescuezilla image. The extra drive `/run/media/lauer/ext-ex4-1T-NVMe/` is a candidate resource, not completed protection; no drive access or new backup qualification occurred during closeout. Historical access checks are not standing recovery proof.
 
 ## 4. Completion State
@@ -52,18 +52,18 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T2 / V2: ACCEPTED AND MERGED** through #389 (`458b9f6`). Ryan accepted the Codex review and documented limitations at `eb06c97`; the final candidate and squash trees match.
 - **T3 / V3 / V4: ACCEPTED AND MERGED** through #391 (`a7f7200`). Owner-accepted candidate `3c490e2ce61d5c6531a044132c5a01faf144f1ac` has the identical tree. Hosted Python 3.12.15: 3,083 passed, 125 skipped, 252 subtests passed; critical collection, lint regression gate and all security checks passed. Kiro final correction review PASS (89%) closes the delta from `ea2d316`; earlier proof/implementation/integration reviews retain their exact pins. Ryan accepted the pinned Kiro reviews as this candidate's BugBot outage exception, not a BugBot PASS.
 - **Evidence limits retained:** isolated restart/IO injection is not power-loss proof; small-store validation and the strict release oracle can refuse recoverable states. Earlier failures and authoring lapses remain in VERIFY. No production backup usability or loss window was established.
-- **T4 GRANTED, IMPLEMENTATION IN PROGRESS:** Cursor may implement the existing approval-recovery contract in isolation with Codex supervision; V5 evidence must return for independent review. Direct-helper coverage, hash-view alignment, event-only completion and uncertain outcomes remain to be proven. **T5 NOT GRANTED; V5 INCOMPLETE; V6 NOT RUN.**
+- **T4 / V5: IMPLEMENTED, EVIDENCE RETURNED.** All 70 T4 cases and affected regressions passed at the source SHA above; full lint gate passed against the unchanged baseline. Python 3.13 local evidence only. Independent T4 review, owner acceptance and any PR/hosted-CI grant remain pending. **T5 NOT GRANTED; V6 NOT RUN.**
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Cursor:** implement T4 under EXECUTION section 15, file-authoring only in the disposable copy; return for supervised evidence. **Codex:** inspect permitted changes, run isolated V5/regressions and record exact results, failures and limitations. Neither author is the independent reviewer.
+**Independent reviewer:** inspect the complete T4 delta and [returned V5 evidence](VERIFY-safe-harbor.md#t4-implementation-and-isolated-v5--returned-for-independent-review), including the excluded isolation lapse, publication uncertainty, actual races and lock/sink trace. Cursor and Codex contributed; neither supplies the independent verdict. The next review is static/read-only unless Ryan grants more.
 
-**Next reviewer / Ryan:** review and accept the returned exact candidate separately. No PR, merge, live action or T5 grant. No production ritual or manual session indexing.
+**Ryan:** decide on the exact reviewed candidate and any later draft-PR/hosted-CI step. Existing grants do not authorize either. No production ritual or manual session indexing.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Complete owner-granted T4 in isolation: direct-helper binding, hash alignment, event-only completion and uncertain outcomes. Collect V5 and return results for independent review and owner acceptance. No PR or live authority follows.
-2. T5 requires its own grant for integrated evidence and a bounded operational handoff (V6). T3's accepted evidence does not close T5.
+1. Independent review of returned T4/V5; then Ryan's candidate-specific acceptance and any separately authorized corrections or draft-PR/hosted-CI step. T4 is not merge-ready.
+2. T5 requires its own grant for integrated evidence and a bounded operational handoff (V6). T3/T4 isolated evidence does not close T5.
 3. Before rollout, resolve the loss window, exact usable recovery artifact, old-process/guard-state adoption and rollback compatibility in EXECUTION section 6. Extra ext4 capacity is not qualified protection.
 4. Deployment and corpus-affecting operations require separate scope, evidence and owner authorization.
 
@@ -86,7 +86,7 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 
 - [Safe Harbor architecture](ARCHITECTURE-safe-harbor.md): proposed direction, evidence, risks and reviewer assignment.
 - [Execution plan](EXECUTION-safe-harbor.md): five bounded tasks, interface proposal, proof requirements and new-drive operational limits.
-- [VERIFY companion](VERIFY-safe-harbor.md): T1/T2 acceptance, corrected T3 proof, implementation evidence and limits; V5/V6 remain unrun.
+- [VERIFY companion](VERIFY-safe-harbor.md): T1/T2 acceptance, corrected T3 proof, implementation evidence and limits; V5 is returned for review and V6 remains unrun.
 - [Reboot checkpoint](https://github.com/alanmz-crypto/convmem/blob/bc3a6fd34bc594024d53fb86c9ca6b312cb64bd1/docs/inter-model/CODEX-2026-10-11-durability-reboot-checkpoint.md): review provenance and saved pre-reboot state.
 - [Recovery Authority STATUS](STATUS-recovery-authority.md): ownership and hard stops.
 - [Complete-data Backup v2 STATUS](STATUS-complete-data-backup-correction-v2.md): existing profile/restore contract and open consistency audit.
@@ -98,6 +98,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-13 — Cursor/Codex: returned T4 at `a3207fe`, 70 isolated V5 passes, affected regression and full lint PASS; retained excluded model-download lapse; independent review/owner acceptance next, no PR/live/T5 authority.
 
 - 2026-10-13 — Codex: recorded Ryan’s isolated T4/Cursor grant and pinned handoff; Codex supervises V5 evidence, results return for independent review, no PR/live/T5 authority.
 

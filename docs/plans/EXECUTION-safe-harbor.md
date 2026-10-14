@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; ISOLATED T4 GRANTED.** Section 15 records Ryan’s separate T4 grant and Cursor/Codex handoff. T3 closeout remains pinned in VERIFY. PR creation/comments, merge, deployment, production operations and T5 remain unauthorized.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; T4 IMPLEMENTATION/EVIDENCE RETURNED.** Section 15 records Ryan’s separate T4 grant and Cursor/Codex handoff. T3 closeout remains pinned in VERIFY. PR creation/comments, merge, deployment, production operations and T5 remain unauthorized.
 
 ## 1. Source, authority and goal
 
@@ -10,7 +10,7 @@
 
 ```text
 Planning Status
-Phase:        Execute T4 in isolation; evidence must return for review
+Phase:        T4 implementation/evidence returned; independent review pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
 Lanes:        Cursor implementation; Codex supervised isolated evidence
@@ -682,3 +682,5 @@ Keep pytest/pylint versions, backend pins, Python 3.12 CI matrix, existing job/c
 **Required evidence:** V5’s state matrix with cold/warm caches and fresh-process retries, direct and CLI consumers, actual admitted target effects, queue/approved-intent/event authority errors, and forced forget/refine competition via barriers. Independently assert documents/vectors/metadata/tombstones, export bytes and reduced proposal lifecycle. Inject before/partial/complete-but-fsync-failed/durable-but-unacknowledged APPROVED append outcomes, plus new-log/new-directory durability failures. Verify no success before post-native validation/durable publication, no duplicate APPROVED/blind replay, no malformed-tail cleanup, no hidden export omission. The old unknown-to-empty classifier, failure-assumed-rollback retry and out-of-lock recheck must each fail an independent negative control. Keep index/plain-add exemptions and T1–T3 regression assertions intact. Focused isolated pytest and the unchanged lint regression gate; full local suite/hosted CI are not implied by this grant.
 
 **Stops:** unresolved lock inversion, a needed authority-model change or an unprovable contract returns to Codex/Ryan before scope expansion. Return code/evidence and limitations for independent review; no self-acceptance. External-review applicability is required for the eventual runtime candidate, but PR creation/comments/triggers are not authorized here. Prior task-specific outage exceptions do not automatically apply to T4. Push each commit with the explicit branch refspec; do not switch the shared checkout or main, force-push, merge or deploy.
+
+**T4 delivery (2026-10-13 local):** Cursor/Codex implemented the section 15 scope at `a3207fe397bf820f4f2bd412c7d5f110d00fdc67`. [VERIFY V5](VERIFY-safe-harbor.md#t4-implementation-and-isolated-v5--returned-for-independent-review) records 70 isolated T4 passes, affected regressions and full lint gate PASS, with source/artifact hashes and the excluded fixture model-download lapse preserved. Direct/CLI event-only completion and uncertain retry are demonstrated in scratch. This returns the grant for independent review; it does not self-accept V5 or authorize a PR, hosted CI, merge, T5 or live action.
