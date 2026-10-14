@@ -13,8 +13,9 @@ Composer's corrective 12. It answers round 14 (below).
   prepare-to-commit drift, retry-state persistence, and side-file writers. All
   go through real production sessions against a scratch config, with fake
   providers.
-- The full suite and the leak census are running in disk-backed worktrees;
-  results follow in an update.
+- I ran the full suite hermetically in a disk-backed worktree (`env -i`, a
+  scratch `HOME`, a private `--basetemp`) and diffed it against round 13's main
+  run at `458b9f6`, same method; and the leak census.
 
 ## Burn status
 
@@ -92,6 +93,45 @@ working for existing rows.
   The cap's `return stats` still sits inside the loop, before the new batched
   append, so candidates already counted are lost (probe `l1`: queued 1, file
   empty). Before corrective 12 each was appended at once.
+- **N6 (Medium): the empty-document repair re-prepares inside C1 on drift.**
+  `observe.repair_empty_ledger_documents` catches drift inside its
+  `index_write_flock` block and calls `prepare_observation_ingest` there,
+  without a precomputed embedding and with the snapshot reader. So it embeds
+  under the lock, or, with the real runtime guard, raises `RuntimeError`; and a
+  row skipped for drift is counted as both `skipped` and `missing_source`.
+  Monitor and `ingest_approved_ledger` do re-prepare outside C1, but with their
+  snapshot readers (N2).
+- **N7 (blocks CI, mechanical): line-pinned inventories and pins are stale
+  again.** CO-1's new docstring moved `chroma_write_store.py` by about 10 lines
+  after the inventories were made: the R2b scan finds unlisted direct
+  `ChromaStore` constructor sites `chroma_write_store.py:1133` and `:1198`, so no
+  trusted coverage proof can be minted and about 43 R2b authority tests fail;
+  the Shadow inventory misses session site `chroma_write_store.py:1095`; the C3
+  gate counts 22 writer-session sites against 19 inventoried. Three
+  baseline-hash tests still pin the old `incremental_jsonl.py`.
+- **N8 (Low): tests on the old API, and one changed meaning.**
+  - Four tests mock functions the new paths no longer call
+    (`test_add_severity.py` ×2, `test_monitor.py::test_run_monitor_skips_kiro`,
+    `test_propose_decision.py::test_ingest_approved_ledger_indexes_one`). Not
+    regressions: a spy shows `add --severity critical` still reaches prepare
+    with `severity: critical`. Move them to the new API, keeping what they
+    assert.
+  - `consecutive` changed meaning. The reservation writes the current prefix
+    before the failure is recorded, so `record_incremental_retry_failure` now
+    counts same-code failures across prefix changes: after a hold, a new prefix
+    gets one attempt, not two. That is more conservative, but undocumented, and
+    `test_p3_real_wedge_marker_through_cli_parses` now fails (its fake run
+    reports a prefix that differs from the file's). Keep the failure's prefix
+    in its own field so `consecutive` keeps its meaning, or document the
+    change; fix p3's fake digest either way.
+
+**The full suite at `8d6ee76`:** 148 failed, 2917 passed, 66 skipped, 52 errors
+(23 min). **54 ids fail only at the tip** (round 13: 1), 1 only at main (the
+MCP test, fixed by X1). By cause: about 47 are N7 (R2b ×43, Shadow ×2,
+baseline pins ×3, less overlap), 4 are N8's old-API tests, 1 is N8's p3, 1 is
+`test_ledger_document.py::test_repair_empty_ledger_documents` (repairs 0: N1,
+the false drift, counted as a skip), and Z1 didn't appear. **The leak census:
+0 tests.**
 
 ## Corrective 13 for Cursor
 
@@ -112,17 +152,23 @@ working for existing rows.
   `RuntimeError`.
 - **N5:** append whatever was collected when the cap stops the job, or count
   only what was appended.
+- **N6:** the repair prepares and re-prepares outside C1, like the others, and
+  counts a drift skip once.
+- **N8:** move the four old-API tests to the new API; keep the failure prefix
+  in its own field (or document the new meaning); fix p3's fake digest.
+- **N7, last of all:** after every other edit, regenerate the R2b and Shadow
+  inventories, update the R2b constructor-site and mutation-sink allow-lists
+  and the C3 session-site count, and re-pin the three baseline hashes. Then run
+  the inventory, R2b and baseline tests before the full suite.
 - **Tests:** add my round-15 probes (appendix) as tests: `c0`, `d1`, `d2`, `d3`,
   `i1`, `l1` must pass as written, `g1` too. Keep Cursor's corrective-12 tests.
-- **Inventories last,** as before; disk-backed full suites at main `458b9f6`
-  and the tip; tip-only list, target zero.
+- **Suites:** disk-backed full suites at main `458b9f6` and the tip; tip-only
+  list, target zero.
 
 ## Next
 
-1. My full suite and leak census at `8d6ee76` finish; I add the tip-only list
-   to this round.
-2. Cursor: corrective 13.
-3. Claude, round 16; then Astra re-audits and Kiro re-reviews the exact tip
+1. Cursor: corrective 13.
+2. Claude, round 16; then Astra re-audits and Kiro re-reviews the exact tip
    (Kiro rechecks Q3 with N1 in mind).
 
 # Round 14: `0ee6994`, FAIL (Astra's audit confirmed); corrective 12 (kept for the record)
