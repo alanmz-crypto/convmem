@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 11 FAILs corrective 9 (`d2abcbe`) on one mechanical item only. Every round-10 finding is fixed (readers no longer held across writes, tests no longer reach the user's config, C1 is bound to its store), and the leak census is down from 86 tests to 1. The writer inventories were regenerated before the last code edit (6 tip-only failures, CI would go red), and one older MCP test still starts the server with the caller's `HOME`. Corrective 10 (X1, then X0; no production code) is in `CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`, round 11 |
+| **State** | `IN_PROGRESS`: Claude's round 12 FAILs corrective 10 (`41561ef`) on one test-only item older than the branch. X0 and X1 are fixed; the hermetic suite has 0 tip-only failures and the leak census 0 tests. But a D1 live-diagnosis test leaves the bootstrap's patches active, so in a disk-backed checkout (Cursor's, CI's) three adopted probes fail and the PR's CI would go red. Corrective 11 (Y0, 7 lines in one test, no production code) goes to Cursor; then round 13, the Astra audit and the Kiro review. See round 12 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

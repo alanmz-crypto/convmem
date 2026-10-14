@@ -1,4 +1,201 @@
-# Verify: Stage 2 wedge fixes, round 11 at `d2abcbe`: FAIL on one mechanical item only; the inventories were regenerated before the last code edit; corrective 10 (small)
+# Verify: Stage 2 wedge fixes, round 12 at `41561ef`: FAIL on one test-only item older than the branch; Cursor's three "flakes" are real and would turn CI red; corrective 11 (7 lines, test-only)
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-14
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `41561ef`, Cursor
+Composer's corrective 10. It answers round 11 (below).
+**Method:**
+- I read the diff `d2abcbe..41561ef`: three files, no production code.
+- I compared both committed writer inventories with my own scratch
+  regeneration from round 11.
+- I ran every earlier probe round, Codex's round-7 probes, Cursor's #286
+  test files, and the inventory and MCP tests.
+- I ran the full suite hermetically at `41561ef` (`env -i`, a scratch `HOME`,
+  no API keys, `tests/test_index_loud_failures.py` skipped) and compared it
+  with round 8's main run at `458b9f6`, same method.
+- I ran the leak census again: the full suite with a fake live config in a
+  scratch `HOME`, logging every test that changes a file under that config's
+  data root or the default data dir.
+- I read Cursor's own junit results for its three tip-only failures, ran the
+  full suite in a Cursor-like environment (`~/.local/bin` on `PATH`,
+  `TMPDIR=/tmp`) with a scratch plugin that logs the per-thread writer-lease
+  and index-lock state after each test, then reproduced and bisected the
+  failures in a disk-backed scratch worktree.
+- I wrote one scratch probe (appendix) for a burn path outside #286: Crush
+  databases. It is now issue #393.
+- I compared mtimes and sizes across the live data root before and after my
+  runs, and checked running index processes from metadata only.
+
+## Burn status
+
+**No burn loop. This branch isn't deployed, and the watcher, refine and
+monitor units are all inactive and disabled.**
+- **My runs:** none can reach a paid provider. Providers are faked and the
+  environment has no keys. Everything ran in scratch `HOME`s.
+- **Live data root since round 11:** agents' own Track A runs from
+  `runtime-main` (main's code, not this branch). By the export's
+  `source_path`, the growth is: a Crush session's first index of its
+  project's database (02:00 to 02:28 CDT; 34 chunks, 472 units, about 68 paid
+  calls; it held a connection to the DeepSeek API while it ran), two Codex
+  rollouts from 01:56 and 01:58 through the incremental route, and two Claude
+  sessions from another project. Also the reconcile timer and the 00:16
+  restic backup. Nothing from my runs.
+- **A burn path outside #286, now issue #393:** indexing a changed Crush
+  database pays for every chunk again. Crush databases go through the legacy
+  single-file route. Any new message changes the file hash, and the next
+  `index --file` re-chunks the whole database and calls summarize and
+  distill for every chunk; duplicates are dropped only after the payment. My
+  probe `test_changed_crush_db_repays_every_chunk` (appendix; real
+  `ingest.index`, counting fakes) gives 3 paid on the first index, 0 when
+  unchanged, and 4 after one appended message: all 3 old chunks again plus
+  the new one. This branch doesn't change it: its deferral only applies to
+  watched paths while the watcher runs. Ryan is holding that Crush session's
+  Track A; #286 links to #393.
+- **The watcher burn path, at this tip:** unchanged from round 11 and still
+  holding.
+- **Outside this arc:** the external restic backup has failed every run since
+  2026-10-12 (exit 10, which usually means the repository isn't reachable).
+  The local backup runs.
+
+## Verdict (round 12)
+
+**FAIL, on one test-only item (Y0). It is older than this branch. Everything
+else passes.**
+- **Corrective 10 is done:** X0 (the inventories) and X1 (the MCP test's
+  environment) are fixed exactly as asked.
+- **My hermetic suite meets both targets:** 0 tip-only failure ids against
+  main, and 0 tests in the leak census.
+- **Cursor's three "suite-order flakes" are real, and CI would see them.**
+  Cursor reported `test_zz_claude_verify8b.py` ×2 and
+  `test_zz_claude_verify8d.py` ×1 failing in its full runs only. Round 11 said
+  they didn't reproduce for me. The reason: my worktrees live on tmpfs, so 27 of
+  the 41 D1 live-diagnosis tests error at setup in my runs
+  (`scratch_not_disk_backed:tmpfs`), the bootstrap test among them. In a disk-backed checkout, Cursor's and
+  GitHub's, they run, and one of them leaves process-wide patches behind (Y0).
+  The three probes then fail deterministically. Main's CI is green and runs
+  on pull requests, so the PR would go red on exactly these three ids.
+- **Corrective 11** is 7 lines in one test, with no production code. I proved
+  it in scratch (appendix): with it, the D1 file followed by the three probes
+  passes.
+
+**Fixed and verified:**
+- **X0, the inventories:** the Shadow pin now reads
+  `repository_knowledge_sync.py:276`, and the R2b inventory is regenerated.
+  Both files are byte-for-byte identical to my round-11 scratch
+  regeneration: only `code_revision`, `inventory_digest` and that route's
+  line fields changed. All 6 round-11 tip-only ids pass.
+- **X1, the MCP test's environment:** `tests/test_mcp_crush_stdio_sequence.py`
+  starts the server with a scratch `HOME` and `CONVMEM_CONFIG` (a minimal
+  config and an empty Chroma dir under a temp tree). Of the caller's
+  environment it passes only `PATH` and `USER`. The test passes hermetically;
+  it failed at main.
+- **The full suite:** 92 failed, 2958 passed, 66 skipped, 58 errors. 145
+  failure ids against main's 146: **0 fail only at the tip**, and 1 fails only
+  at main (the MCP test, fixed by X1).
+- **The leak census:** **0 tests** change a file under the fake user's data
+  root or default data dir (86 at main, 1 at `d2abcbe`). Both stay empty
+  after the full suite.
+- **Writer leases:** across the Cursor-like full run, no test leaves a writer
+  lease held or an index-lock depth above 0. Y0 is not a lease leak.
+- **Earlier probes:** 89 passed, 11 failed, the same 11 expected as round 11.
+
+## Findings (round 12)
+
+- **Y0 (blocks CI, test-only, older than the branch): a D1 test leaves the
+  live-diagnosis bootstrap's patches active for the rest of the run.**
+  - `tests/test_watch_oom_live_diagnosis_d1.py::test_network_denied_under_hermetic`
+    calls `live_diagnosis.bootstrap_index_child()` inside the pytest process.
+    That function is the entry hook for a disposable D1 index child. It
+    installs its patches with `unittest.mock.patch(...).start()` and never
+    stops them:
+    - `ingest.production_chroma_write_session` and
+      `ingest.production_writer_boundary`, rerouted to the test's scratch
+      writer lock (`writer_root/writer.lock`);
+    - `ingest.summarize`, `ingest._distill_with_provenance`,
+      `ingest.ollama_embed`, `llm.summarize`, `llm.ollama_embed`,
+      `distill.distill_with_response` and `ingest.time.sleep`, stubbed;
+    - `brief.DEFAULT_BRIEF_PATH`, redirected; `ingest._LIVE_DIAG_PATCHED`,
+      set.
+  - The test's `finally` calls only `teardown_hermetic_guards()`, which
+    restores the open guards. Everything above stays patched.
+  - Every later index in the same process then takes its write session on
+    the dead scratch lock, while the caller's lease is on another lock:
+    `WriterBoundaryError: nested shared writer lease must reuse the outer
+    lock path`, after 2 paid summaries (`verify8d`). And the stubbed distill
+    never refuses, so the F2 retry and refusal-quarantine probes fail
+    (`verify8b`: "DID NOT RAISE", `has_refusal_quarantine_for_path` False).
+  - **Bisect:** that test alone, followed by `verify8d`, fails; the other 40
+    D1 tests don't. The other in-process `bootstrap_index_child()` call
+    (`test_index_child_source_contract_fail_closed`) refuses before installing
+    anything.
+  - **Age:** main `458b9f6` has the same test and the same bootstrap; this
+    branch changes neither. On main nothing after D1 is sensitive to the
+    leftover patches. On this branch the adopted probes are.
+  - **Production:** not affected. `bootstrap_index_child()` returns at once
+    unless `CONVMEM_LIVE_DIAG_HERMETIC=1`, which only the D1 harness sets, in
+    a child.
+  - **Fix (corrective 11):** in that test, save `brief.DEFAULT_BRIEF_PATH` and
+    `ingest._LIVE_DIAG_PATCHED` with `monkeypatch` before the call, and call
+    `unittest.mock.patch.stopall()` in the `finally` after
+    `teardown_hermetic_guards()`. The diff is in the appendix. Not a global
+    `stopall()` in `conftest.py`: tests that start patches in `setUpClass`
+    would break.
+- **My method gap, closed for round 13:** my hermetic runs used tmpfs
+  worktrees, so the D1 file never ran for me. Round 13 adds a disk-backed
+  worktree run.
+- **Still open from round 11, follow-ups after the merge:** X2 (the readonly
+  reader loads everything when it opens: plain `add` 0.7 s → 4.8 s on a
+  109k-unit store), X3 (`chroma_dedupe` undo snapshots carry document text),
+  X4 (two `pass` bodies).
+
+## Test results (round 12)
+
+| Run | Result |
+|---|---|
+| Hermetic full suite, `41561ef` (tmpfs worktree) | 92 failed, 2958 passed, 66 skipped, 58 errors (22 min) |
+| Main `458b9f6` (round 8, same method) | 93 failed, 2896 passed, 66 skipped, 58 errors |
+| Failure ids, tip only / main only | **0** / 1 |
+| Leak census, `41561ef` | **0** tests (round 11: 1; main: 86) |
+| Cursor-like full suite with lease watch (tmpfs worktree) | 93 failed, 3014 passed, 9 skipped, 58 errors; no leaked lease; the three probes pass |
+| D1 file + `verify8b` + `verify8d`, disk-backed worktree | the 3 probes fail (Y0), as in Cursor's runs |
+| Same, with the corrective-11 diff | the 3 probes pass; 3 D1 tests fail on `bwrap` in my scratch `HOME`, as in Cursor's runs at tip and main |
+| All probe rounds + Cursor's #286 files | 89 passed, 11 failed (all expected) |
+| Inventory + MCP tests | 34 passed |
+| Crush re-pay probe (#393) | 3 paid, then 0 (unchanged), then 4 (one message appended) |
+
+## Corrective 11 for Cursor
+
+Test-only. No production code, no inventory changes.
+- **Y0:** in
+  `tests/test_watch_oom_live_diagnosis_d1.py::test_network_denied_under_hermetic`,
+  undo everything `bootstrap_index_child()` installs in the pytest process:
+  - save `brief.DEFAULT_BRIEF_PATH` and `ingest._LIVE_DIAG_PATCHED` with
+    `monkeypatch` before the call;
+  - call `unittest.mock.patch.stopall()` in the `finally`, after
+    `teardown_hermetic_guards()`.
+  - The appendix has the 7-line diff I proved in scratch.
+- **Acceptance, in a disk-backed checkout** (yours is):
+  `pytest tests/test_watch_oom_live_diagnosis_d1.py tests/test_zz_claude_verify8b.py tests/test_zz_claude_verify8d.py`
+  shows no `verify8b` or `verify8d` failure.
+- **Then** the hermetic full suite at your tip, with the tip-only list
+  against main `458b9f6`. Target: zero, the three probes included.
+- If any inventory test fails after the edit, regenerate the inventories
+  last, as in corrective 10. A test-only edit shouldn't need it.
+
+## Next
+
+1. Cursor: corrective 11.
+2. Claude, round 13: the D1 file plus probes in a disk-backed worktree, the
+   hermetic diff against `458b9f6` (target zero) and the probes.
+3. A fresh Codex (Astra, high) audit and a fresh Kiro review on that exact tip.
+4. A PR draft with the census. Main has moved to `fdc8da7`; bringing it in is
+   Ryan's call at PR time.
+5. Separate Ryan grants: the `runtime-main` promotion, the protocol-surface
+   deploy, and canary 2.
+6. Follow-ups after the merge: X2–X4, and #393 (Crush re-pay).
+
+# Round 11: `d2abcbe`, FAIL; corrective 10 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-14
@@ -28,7 +225,7 @@ Composer's corrective 9. It answers round 10 (below).
 - I compared mtimes and sizes across the live data root before and after my
   runs.
 
-## Burn status
+### Burn status
 
 **No burn now. This branch isn't deployed, and the watcher, refine and
 monitor units are all inactive and disabled.**
@@ -52,7 +249,7 @@ monitor units are all inactive and disabled.**
   paid, 3 updated, 0 errors. At `61307d7` it gave 3 paid, 0 updated, 3
   errors.
 
-## Verdict (round 11)
+### Verdict (round 11)
 
 **FAIL, on one mechanical item. Everything substantive passes.**
 - **All of round 10 is fixed:** W0 (readers held across writes), W1 (tests
@@ -143,7 +340,7 @@ monitor units are all inactive and disabled.**
   (obsolete since corrective 4) and 9 of Codex's 10 round-7 probes, which
   fail because those holes stay fixed. Round 10's W1 probe now passes.
 
-## Findings (round 11)
+### Findings (round 11)
 
 **X0 (blocks the PR's CI, mechanical): the writer inventories are one edit
 behind the code.**
@@ -224,7 +421,7 @@ the old `close()`.
   lock files. Production loads one config, and this is older than the
   branch.
 
-## Test results (round 11)
+### Test results (round 11)
 
 | What | Result |
 |---|---|
@@ -239,7 +436,7 @@ the old `close()`.
 | Leak census at `d2abcbe` (fake live config) | 1 test changes files under the fake user dirs (X1), against 86 at main |
 | Full suite with the fake live config | 98 failed: the hermetic 99 less X1's test, which passes when a config exists |
 
-## Corrective 10 for Cursor
+### Corrective 10 for Cursor
 
 Small. No production code changes. Do X1 first, then X0 last, after every
 other edit.
@@ -2440,6 +2637,139 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-12 probe and corrective-11 diff
+
+The Crush probe runs from `tests/` and imports `_route_fixture` from
+`tests/test_zz_codex_audit.py`, already on the branch. It uses counting fake
+providers; nothing is paid. The diff is the Y0 fix I proved in a disk-backed
+scratch worktree at `41561ef`.
+
+<details><summary>tests/test_zz_claude_verify12.py (issue #393)</summary>
+
+```python
+"""Claude verify probe, round 12: does a changed Crush database re-pay every chunk? Scratch only, fake providers."""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+import traceback
+from pathlib import Path
+from unittest import mock
+
+from tests.test_zz_codex_audit import _route_fixture
+
+_SCHEMA = """
+CREATE TABLE goose_db_version (id INTEGER PRIMARY KEY AUTOINCREMENT, version_id INTEGER NOT NULL,
+    is_applied INTEGER NOT NULL, tstamp TIMESTAMP DEFAULT (datetime('now')));
+CREATE TABLE sessions (id TEXT PRIMARY KEY, title TEXT NOT NULL, message_count INTEGER NOT NULL DEFAULT 0,
+    prompt_tokens INTEGER NOT NULL DEFAULT 0, completion_tokens INTEGER NOT NULL DEFAULT 0,
+    cost REAL NOT NULL DEFAULT 0.0, updated_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
+CREATE TABLE messages (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, role TEXT NOT NULL,
+    parts TEXT NOT NULL DEFAULT '[]', model TEXT, provider TEXT, created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL, finished_at INTEGER);
+"""
+
+
+def _add_messages(db: Path, start: int, count: int) -> None:
+    con = sqlite3.connect(db)
+    try:
+        if start == 0:
+            con.executescript(_SCHEMA)
+            con.execute("INSERT INTO sessions VALUES ('s1', 'probe', 0, 0, 0, 0.0, 1700000000000, 1700000000000)")
+        for n in range(start, start + count):
+            words = " ".join(f"topic{n}-word{k}" for k in range(400))
+            parts = json.dumps([{"type": "text", "data": {"text": f"message {n}: {words}"}}])
+            ts = 1_700_000_000_000 + n * 1000
+            con.execute("INSERT INTO messages VALUES (?, 's1', ?, ?, NULL, NULL, ?, ?, NULL)",
+                        (f"m{n}", "user" if n % 2 == 0 else "assistant", parts, ts, ts))
+        con.commit()
+    finally:
+        con.close()
+
+
+def test_changed_crush_db_repays_every_chunk(tmp_path, monkeypatch) -> None:
+    import chroma_write_store
+    import incremental_jsonl as inc
+    import ingest
+
+    source, cfg, _route = _route_fixture(tmp_path, monkeypatch)
+    layout = inc.ProductionBoundary(cfg, str(source)).layout
+    monkeypatch.setattr(chroma_write_store, "DEFAULT_WRITER_LOCK", layout["locks"] / "chroma_writer_gate.lock")
+    paid = {"summarize": 0, "distill": 0}
+    real_summarize, real_distill = ingest.summarize, ingest.distill
+
+    def summarize(*a, **k):
+        paid["summarize"] += 1
+        return real_summarize(*a, **k)
+
+    def distill(*a, **k):
+        paid["distill"] += 1
+        return real_distill(*a, **k)
+
+    monkeypatch.setattr(ingest, "summarize", summarize)
+    monkeypatch.setattr(ingest, "distill", distill)
+    db = tmp_path / "proj" / ".crush" / "crush.db"
+    db.parent.mkdir(parents=True)
+    _add_messages(db, 0, 12)
+
+    runs = []
+
+    def run(label):
+        before = dict(paid)
+        with mock.patch("ingest.load_config", return_value=cfg), mock.patch("config.load_config", return_value=cfg), \
+                mock.patch("brief.refresh_brief_after_change", lambda *_a, **_k: None):
+            try:
+                stats = ingest.index(verbose=False, force_file=str(db))
+            except Exception as exc:  # noqa: BLE001
+                stats = (repr(exc)[:160], [f"{f.filename.split('/')[-1]}:{f.lineno}"
+                                           for f in traceback.extract_tb(exc.__traceback__)][-6:])
+        runs.append((label, {k: paid[k] - before[k] for k in paid}, stats))
+
+    run("first index, 12 messages")
+    run("unchanged")
+    _add_messages(db, 12, 1)
+    run("one message appended")
+    print("\nCRUSH-REPAY", json.dumps(runs, default=str))
+    first, unchanged, appended = (r[1]["summarize"] for r in runs)
+    assert first > 1 and unchanged == 0, runs
+    # The finding: the append re-pays every earlier chunk, not just the new one.
+    assert appended >= first, runs
+```
+
+</details>
+
+<details><summary>Corrective 11 (Y0), proved in scratch</summary>
+
+```diff
+diff --git a/tests/test_watch_oom_live_diagnosis_d1.py b/tests/test_watch_oom_live_diagnosis_d1.py
+index b0db98a..105ebb9 100644
+--- a/tests/test_watch_oom_live_diagnosis_d1.py
++++ b/tests/test_watch_oom_live_diagnosis_d1.py
+@@ -437,12 +437,19 @@ def test_network_denied_under_hermetic(layout: dict, monkeypatch: pytest.MonkeyP
+         "CONVMEM_LIVE_DIAG_INDEX_PID_PATH",
+         str(layout["index_pid_path"]),
+     )
++    import brief
++    import ingest
++
++    # bootstrap_index_child() is a child-process entry hook: its patches never stop.
++    monkeypatch.setattr(brief, "DEFAULT_BRIEF_PATH", brief.DEFAULT_BRIEF_PATH)
++    monkeypatch.setattr(ingest, "_LIVE_DIAG_PATCHED", False, raising=False)
+     try:
+         bootstrap_index_child()
+         with pytest.raises(LiveDiagnosisRefused, match="network_denied"):
+             socket.create_connection(("127.0.0.1", 9), timeout=0.2)
+     finally:
+         teardown_hermetic_guards()
++        patch.stopall()
+ 
+ 
+ def test_canary_drift_fail_closed() -> None:
+```
+
+</details>
 
 ## Appendix: round-11 probe tests
 
