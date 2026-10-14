@@ -127,8 +127,8 @@ working for existing rows.
 
 **The full suite at `8d6ee76`:** 148 failed, 2917 passed, 66 skipped, 52 errors
 (23 min). **54 ids fail only at the tip** (round 13: 1), 1 only at main (the
-MCP test, fixed by X1). By cause: about 47 are N7 (R2b ×43, Shadow ×2,
-baseline pins ×3, less overlap), 4 are N8's old-API tests, 1 is N8's p3, 1 is
+MCP test, fixed by X1). By cause: 48 are N7 (R2b 43, Shadow 2, baseline
+pins 3), 4 are N8's old-API tests, 1 is N8's p3, 1 is
 `test_ledger_document.py::test_repair_empty_ledger_documents` (repairs 0: N1,
 the false drift, counted as a skip), and Z1 didn't appear. **The leak census:
 0 tests.**
