@@ -1211,3 +1211,19 @@ That statement accepted the named evidence and exception only. Ryan subsequently
 **Remaining limits:** V5/V6 remain NOT RUN. T4/T5 and deployment require separate grants. Small-store availability, conservative release refusal, direct/incidental writer limits, power-loss evidence, recovery-artifact qualification, loss window and old-process adoption remain as documented. No production CLI/MCP, service, drive, restore, provider, session-indexing or ledger operation was performed during this closeout.
 
 **TL;DR:** [Arc Safe Harbor] Accepted T3 candidate `3c490e2` passed hosted CI and final Kiro review, then landed as tree-identical squash `a7f7200`. T4/T5 and live operations remain ungranted.
+
+
+### T4 authoring checkpoint — unqualified draft, evidence incomplete
+
+[Arc Safe Harbor] Cursor authored T4 runtime in a disposable copy under denied Shell/MCP/WebFetch permissions; the shell denial canary was observed before authoring. Codex statically inspected and copied only allowed runtime files into the section 15 worktree. Codex also supplied bounded corrections to finalize ordering, context cleanup, semantic-hash validation and export prechecks/durability, so neither author is an independent reviewer.
+
+**Not ready for review or acceptance.** The runtime and new V5 fixture drafts are still being corrected. Known missing evidence includes actual process-barrier competition, complete uncertain-publication restart cases, directory-chain durability assertions and independent negative controls. Early Cursor test drafts included parent-only patches that could not affect child recovery, tautological assertions and incomplete fixture setup; those drafts were rejected as evidence and have not been run or represented as a PASS. No production/session commands or live operations were used.
+
+One supervised development run of the unchanged existing T2 tests against the first T4 runtime draft completed under a fresh allowlisted environment, uid binding and temporary HOME/XDG/config/data before project imports:
+
+- Launcher: `/home/lauer/miniforge3/bin/python -I -S -B /tmp/safe-harbor-t4-xkr97pkn/smoke.py`.
+- Child: `python -s -B -m pytest tests/test_safe_harbor_t2.py -k 'recover or event_only' -q --tb=short -p no:cacheprovider --basetemp=<fixture>/pytest-tmp`.
+- Artifact: `/tmp/safe-harbor-t4-smoke-4e3xx51p/summary.json` and `pytest.log`; exact source hashes and argv are recorded there and unchanged across that run.
+- Result: **exit 1; 6 passed, 2 failed, 53 deselected, 111.51 seconds**. The historical event-only test expected refusal but the draft returned `approve`/0; the alias-substitution control received earlier exit-24 `operation_config_changed` refusal instead of proposal-not-found. Assertions need corresponding effect-preserving updates. This selected development run does not establish V5 or current-checkpoint correctness; subsequent supervisor corrections have not been exercised yet.
+
+Current task remains Cursor/Codex implementation and isolated evidence under section 15. No PR, external-review invocation, full local suite, hosted CI, merge, deployment or T5 is authorized by this checkpoint.

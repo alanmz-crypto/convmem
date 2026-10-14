@@ -1345,6 +1345,12 @@ def propose_decision_command(
             render_error(str(e))
             raise typer.Exit(1) from e
         except Exception as e:
+            from propose_decision import RecoveryCompletionUnknown
+
+            if isinstance(e, RecoveryCompletionUnknown):
+                _log_index_failure(recover, e)
+                typer.echo(f"\n⚠ Recovery completion outcome unknown: {e}")
+                raise typer.Exit(1) from e
             _log_index_failure(recover, e)
             typer.echo(f"\n⚠ Recovery deferred for review: {e}")
             raise typer.Exit(1) from e

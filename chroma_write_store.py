@@ -1054,6 +1054,93 @@ def production_chroma_write_session(
             store.close()
 
 
+def verify_recovery_config_binding(
+    op: AdmittedWriteOperation,
+    cfg: Mapping[str, Any] | None,
+) -> None:
+    """Refuse recovery when caller cfg does not match the admitted operation."""
+    from propose_decision import _governed_recovery_affected_paths
+    from restic_gate import OperationAdmissionRefused
+    from restic_snapshot import EXIT_WRONG_PATH
+
+    if op.entrypoint != "propose_decision.write":
+        raise OperationAdmissionRefused(
+            f"{op.entrypoint}: recovery requires propose_decision.write admission",
+            EXIT_WRONG_PATH,
+            "operation_config_changed",
+        )
+
+    admitted = op.config()
+    if cfg is not None and cfg is not admitted:
+        seen_index = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
+        admitted_index = (
+            admitted.get("index") if isinstance(admitted.get("index"), dict) else {}
+        )
+        seen_chroma = seen_index.get("chroma_dir")
+        admitted_chroma = admitted_index.get("chroma_dir")
+        if seen_chroma and admitted_chroma:
+            if Path(seen_chroma).expanduser() != Path(admitted_chroma).expanduser():
+                raise OperationAdmissionRefused(
+                    f"{op.entrypoint}: recovery cfg chroma_dir does not match admitted config",
+                    EXIT_WRONG_PATH,
+                    "operation_config_changed",
+                )
+        if seen_chroma and _canonical_path(seen_chroma) != op.chroma_dir:
+            raise OperationAdmissionRefused(
+                f"{op.entrypoint}: recovery cfg resolves outside admitted chroma target",
+                EXIT_WRONG_PATH,
+                "operation_config_changed",
+            )
+
+    expected_paths = {
+        _canonical_path(p) for p in _governed_recovery_affected_paths(admitted)
+    }
+    admitted_paths = {_canonical_path(p) for p in op.affected_paths}
+    missing = expected_paths - admitted_paths
+    if missing:
+        raise OperationAdmissionRefused(
+            f"{op.entrypoint}: recovery admission missing governed affected paths: "
+            f"{sorted(str(p) for p in missing)}",
+            EXIT_WRONG_PATH,
+            "operation_config_changed",
+        )
+
+    index = admitted.get("index") if isinstance(admitted.get("index"), dict) else {}
+    configured_chroma = index.get("chroma_dir")
+    if configured_chroma:
+        lexical_root = Path(configured_chroma).expanduser().parent.resolve(strict=False)
+        if lexical_root not in admitted_paths and not any(
+            lexical_root == p or lexical_root in p.parents for p in admitted_paths
+        ):
+            raise OperationAdmissionRefused(
+                f"{op.entrypoint}: lexical governed data root {lexical_root} "
+                "is not covered by admitted affected paths",
+                EXIT_WRONG_PATH,
+                "operation_config_changed",
+            )
+
+    verify_admitted_operation_unchanged(op)
+
+
+def open_production_recovery_write_store(
+    config_path: str | Path | None = None,
+    *,
+    lock_path: Path | None = None,
+    attest_dir: Path | None = None,
+    census_dir: Path | None = None,
+    entrypoint: str = "propose_decision.write",
+) -> ProductionWriteSession:
+    """Recovery session: never auto-create collections (absence is review/unknown)."""
+    return open_production_write_store(
+        config_path,
+        create_collections=False,
+        lock_path=lock_path,
+        attest_dir=attest_dir,
+        census_dir=census_dir,
+        entrypoint=entrypoint,
+    )
+
+
 def open_production_write_store(
     config_path: str | Path | None = None,
     *,

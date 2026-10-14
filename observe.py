@@ -18,6 +18,66 @@ def _reject_governed_bypass(record: dict, *, upsert: bool) -> None:
         raise ValueError("governed decision upsert requires proposal_id from approval protocol")
 
 
+def export_projection_records(
+    units_export: Path,
+    ledger_id: str,
+) -> tuple[list[dict], str | None]:
+    """Return export rows for ``ledger_id``; reason set when authority is unreadable."""
+    if not units_export.is_file():
+        return [], None
+    needle = ledger_id.strip()
+    matches: list[dict] = []
+    for number, raw in enumerate(units_export.read_text(encoding="utf-8").splitlines(), 1):
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError:
+            return [], f"malformed_export_line_{number}"
+        if not isinstance(row, dict):
+            return [], f"invalid_export_line_{number}"
+        if str(row.get("ledger_id") or "").strip() == needle:
+            matches.append(row)
+    if len(matches) > 1:
+        return matches, "duplicate_export_identity"
+    return matches, None
+
+
+def export_unit_matches_normalized(unit: dict, export_row: dict) -> bool:
+    """Compare durable export projection to a normalized in-memory unit."""
+    expected = json.dumps({k: v for k, v in unit.items() if not k.startswith("_")},
+                          sort_keys=True, separators=(",", ":"))
+    actual = json.dumps({k: v for k, v in export_row.items() if not k.startswith("_")},
+                        sort_keys=True, separators=(",", ":"))
+    return expected == actual
+
+
+def ensure_export_projection(
+    unit: dict,
+    *,
+    units_export: Path,
+    allow_replace: bool = False,
+) -> bool:
+    """Write or repair export when Chroma already matches ``unit``.
+
+    Refuses duplicate/conflicting export rows unless ``allow_replace`` and the
+    existing row matches the expected normalized projection.
+    """
+    ledger_id = (unit.get("ledger_id") or "").strip()
+    if not ledger_id:
+        raise ValueError("export repair requires ledger_id")
+    rows, reason = export_projection_records(units_export, ledger_id)
+    if reason:
+        raise ValueError(reason)
+    if rows:
+        if export_unit_matches_normalized(unit, rows[0]):
+            return False
+        if not allow_replace:
+            raise ValueError("conflicting_export_projection")
+    _upsert_jsonl_line(units_export, ledger_id, unit)
+    return True
+
+
 def _upsert_jsonl_line(
     units_export: Path,
     ledger_id: str,

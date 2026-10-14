@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; ISOLATED T4 GRANTED.** Ryan authorized Cursor implementation with Codex supervision and isolated V5 evidence, returning results for independent review. [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized) is the handoff. T4 is not implemented at this grant; V5/V6 remain NOT RUN. PR creation, merge, deployment, production operations and T5 are unauthorized.
+> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED; ISOLATED T4 GRANTED.** Ryan authorized Cursor implementation with Codex supervision and isolated V5 evidence, returning results for independent review. [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized) is the handoff. T4 is in progress; a draft runtime checkpoint is not review-ready. V5 is incomplete; V6 remains NOT RUN. PR creation, merge, deployment, production operations and T5 are unauthorized.
 
 ## 1. What This Is For (product goal)
 
@@ -52,7 +52,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T2 / V2: ACCEPTED AND MERGED** through #389 (`458b9f6`). Ryan accepted the Codex review and documented limitations at `eb06c97`; the final candidate and squash trees match.
 - **T3 / V3 / V4: ACCEPTED AND MERGED** through #391 (`a7f7200`). Owner-accepted candidate `3c490e2ce61d5c6531a044132c5a01faf144f1ac` has the identical tree. Hosted Python 3.12.15: 3,083 passed, 125 skipped, 252 subtests passed; critical collection, lint regression gate and all security checks passed. Kiro final correction review PASS (89%) closes the delta from `ea2d316`; earlier proof/implementation/integration reviews retain their exact pins. Ryan accepted the pinned Kiro reviews as this candidate's BugBot outage exception, not a BugBot PASS.
 - **Evidence limits retained:** isolated restart/IO injection is not power-loss proof; small-store validation and the strict release oracle can refuse recoverable states. Earlier failures and authoring lapses remain in VERIFY. No production backup usability or loss window was established.
-- **T4 GRANTED, NOT IMPLEMENTED:** Cursor may implement the existing approval-recovery contract in isolation with Codex supervision; V5 evidence must return for independent review. Direct-helper coverage, hash-view alignment, event-only completion and uncertain outcomes remain to be proven. **T5 NOT GRANTED; V5/V6 NOT RUN.**
+- **T4 GRANTED, IMPLEMENTATION IN PROGRESS:** Cursor may implement the existing approval-recovery contract in isolation with Codex supervision; V5 evidence must return for independent review. Direct-helper coverage, hash-view alignment, event-only completion and uncertain outcomes remain to be proven. **T5 NOT GRANTED; V5 INCOMPLETE; V6 NOT RUN.**
 
 ## 5. Your Role (read this to know what you're here to do)
 
