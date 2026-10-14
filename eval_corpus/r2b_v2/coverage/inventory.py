@@ -69,7 +69,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
-        "governed_mutation_sinks": ("refine.py:622",),
+        "governed_mutation_sinks": ("refine.py:628",),
     },
     {
         "route_id": "monitor_reconcile",

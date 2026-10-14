@@ -2791,10 +2791,17 @@ def maybe_route_incremental(
 
     prefix_digest = source_prefix_digest_for_watch(path)
     coordinator.last_evidence["prefix_sha256"] = prefix_digest
+    pending_tx = ""
+    tx_path = getattr(coordinator, "paths", {}).get("transaction")
+    if tx_path is not None and Path(tx_path).is_file():
+        tx_payload = _read_json(Path(tx_path))
+        if isinstance(tx_payload, dict):
+            pending_tx = str(tx_payload.get("transaction_id") or "")
     enforce_incremental_retry_gates(
         getattr(coordinator, "paths", None),
         path_key=path_key,
         prefix_digest=prefix_digest,
+        transaction_id=pending_tx,
     )
     try:
         result = coordinator.run()

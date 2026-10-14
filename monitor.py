@@ -417,6 +417,7 @@ def run_monitor(
         "verifications": 0,
         "skipped_kiro": 0,
         "errors": 0,
+        "drift_refused": 0,
         "dry_run": dry_run,
     }
 
@@ -582,21 +583,44 @@ def run_monitor(
     if pending_ingests and live_cfg is not None and not dry_run:
         from chroma_write_store import production_chroma_write_session
         from config import load_config
+        from observe import ObservationIngestDriftError
         from purge_locks import index_write_flock
 
         session_cfg = load_config()
-        with index_write_flock(session_cfg):
-            with production_chroma_write_session(entrypoint="convmem.monitor") as session:
-                wstore = session.store
-                wcfg = session.live_cfg
-                export_raw = wcfg["index"].get("units_export")
-                units_path = Path(export_raw).expanduser() if export_raw else units_export
-                for prepared in pending_ingests:
-                    commit_observation_ingest(
-                        prepared,
-                        store=wstore,
-                        units_export=units_path,
+        export_raw = session_cfg["index"].get("units_export")
+        units_path = Path(export_raw).expanduser() if export_raw else units_export
+        for prepared in pending_ingests:
+            current = prepared
+            committed = False
+            for attempt in range(2):
+                try:
+                    with index_write_flock(session_cfg):
+                        with production_chroma_write_session(
+                            entrypoint="convmem.monitor"
+                        ) as session:
+                            commit_observation_ingest(
+                                current,
+                                store=session.store,
+                                units_export=units_path,
+                            )
+                    committed = True
+                    break
+                except ObservationIngestDriftError:
+                    if attempt == 1:
+                        stats["drift_refused"] += 1
+                        break
+                    current = prepare_observation_ingest(
+                        current.record,
+                        store=store,
+                        embed_model=embed_model,
+                        ollama_host=ollama_host,
+                        upsert=True,
+                        by_ledger_id=by_ledger_id_after,
+                        precomputed_embedding=current.embedding,
                     )
+                    if current is None:
+                        stats["errors"] += 1
+                        break
 
     if owned_store:
         pass

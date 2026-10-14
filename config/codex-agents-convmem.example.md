@@ -41,7 +41,7 @@ The `-l` flag sources `~/.zshrc`/`~/.bashrc` where Ollama's PATH is set. For per
 | **A — Session chat** | What the model *said and did* in chat | **Every** substantive handoff |
 | **B — Log artifact** | A `logs/*.md` file the model wrote | Only if such a file was created/updated |
 
-Watch auto-indexes session files after debounce (~90s). While the watcher runs, it captures Codex, Kiro, Cursor, Copilot, and Crush transcripts automatically — `convmem index --file` on those paths is deferred (exit 0) unless you pass `--now`. Claude transcripts are not watch roots; still run Track A for Claude at handoff. Agents still **nudge Track B** (log artifacts) before handoff when a `logs/*.md` file exists.
+Watch auto-indexes session files after debounce (~90s). While the watcher runs, it captures Codex, Kiro, Cursor, Copilot, and Crush transcripts **under configured watch roots** automatically — `convmem index --file` on those paths is deferred (exit 0) unless you pass `--now`. Crush databases outside a watch root are not deferred (#393). Claude transcripts are not watch roots; still run Track A for Claude at handoff. Agents still **nudge Track B** (log artifacts) before handoff when a `logs/*.md` file exists.
 
 **A — Index your session chat (required at handoff):**
 

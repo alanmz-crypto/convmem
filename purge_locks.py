@@ -95,6 +95,16 @@ def assert_lock_ordering_ok(*, acquiring: str) -> None:
         )
 
 
+def reject_provider_under_write_scope() -> None:
+    """Refuse paid provider work while C1 or a production Chroma session is held."""
+    from chroma_write_store import production_chroma_store_session_depth
+
+    if index_write_lock_depth() > 0 or production_chroma_store_session_depth() > 0:
+        raise RuntimeError(
+            "provider calls are forbidden under the index write lock or a Chroma write session"
+        )
+
+
 def require_index_write_lock_held(*, chroma_dir: str | Path | None = None) -> None:
     if index_write_lock_depth() == 0:
         raise RuntimeError(

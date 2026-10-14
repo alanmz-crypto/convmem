@@ -436,7 +436,7 @@ def add(
     from contextlib import nullcontext
     from config import load_config
     from chroma_write_store import admitted_units_export_path, production_chroma_write_session
-    from observe import ingest_observation, ingest_observation_file
+    from observe import ingest_observation
     from purge_locks import index_write_flock
     from query import render_error
 
@@ -491,19 +491,55 @@ def add(
 
     if file:
         from chroma_readonly import open_readonly_unit_store
-        from observe import prepare_observation_file_rows
+        from observe import ingest_observation_file_with_drift_retry
 
         embed_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
-        prepared_file_rows, file_prep_stats = prepare_observation_file_rows(
+        admission_file = (
+            _admitted_operation("convmem.add") if upsert else nullcontext()
+        )
+
+        def open_write_commit(commit_fn):
+            with admission_file:
+                with index_write_flock(cfg_pre):
+                    with production_chroma_write_session(entrypoint="convmem.add") as session:
+                        live = session.live_cfg
+                        units_export = live["index"].get("units_export")
+                        units_export_path = (
+                            admitted_units_export_path(live) if units_export else None
+                        )
+                        return commit_fn(session.store, units_export_path)
+
+        result = ingest_observation_file_with_drift_retry(
             file,
             embed_store=embed_store,
+            open_write_commit=open_write_commit,
             embed_model=models_pre["embed_model"],
             ollama_host=models_pre["ollama_host"],
             upsert=upsert,
         )
+        parts = [
+            f"accepted={result['accepted']}",
+            f"rejected={result['rejected']}",
+        ]
+        if upsert:
+            parts.append(f"updated={result['updated']}")
+        typer.echo(f"\nDone. {' '.join(parts)}")
+        return
 
     admission = (
         _admitted_operation("convmem.add") if upsert else nullcontext()
+    )
+
+    from observe import commit_observation_ingest, prepare_observation_ingest
+
+    read_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
+    prepared_single = prepare_observation_ingest(
+        prepared_record,
+        store=read_store,
+        embed_model=models_pre["embed_model"],
+        ollama_host=models_pre["ollama_host"],
+        upsert=upsert,
+        precomputed_embedding=precomputed_embedding,
     )
 
     with admission:
@@ -515,34 +551,14 @@ def add(
                 units_export = cfg["index"].get("units_export")
                 units_export_path = admitted_units_export_path(cfg) if units_export else None
 
-                if file:
-                    result = ingest_observation_file(
-                        file,
+                unit = (
+                    commit_observation_ingest(
+                        prepared_single,
                         store=store,
-                        embed_model=models["embed_model"],
-                        ollama_host=models["ollama_host"],
                         units_export=units_export_path,
-                        upsert=upsert,
-                        prepared_rows=prepared_file_rows,
                     )
-                    if file_prep_stats is not None:
-                        result["rejected"] += file_prep_stats["rejected"]
-                    parts = [
-                        f"accepted={result['accepted']}",
-                        f"rejected={result['rejected']}",
-                    ]
-                    if upsert:
-                        parts.append(f"updated={result['updated']}")
-                    typer.echo(f"\nDone. {' '.join(parts)}")
-                    return
-
-                unit = ingest_observation(
-                    prepared_record,
-                    store=store,
-                    embed_model=models["embed_model"],
-                    ollama_host=models["ollama_host"],
-                    units_export=units_export_path,
-                    precomputed_embedding=precomputed_embedding,
+                    if prepared_single is not None
+                    else None
                 )
                 if unit is None:
                     render_error("Record rejected — check required fields.")

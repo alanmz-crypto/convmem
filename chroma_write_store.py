@@ -1027,7 +1027,17 @@ def _session_config(path: Path) -> dict[str, Any]:
 
 
 class _IndexWriteGuardedChromaStore:
-    """Production store wrapper: mutations require the index write lock (deny by default)."""
+    """Production store wrapper: mutations require the index write lock (deny by default).
+
+    Read allow-list (CO-1): each method only reads Chroma state or metadata.
+    - close: release client resources without mutation
+    - query_summaries / count_summaries / summaries_metadata: read summary collection
+    - query_units / count_units / units_metadata / get_units_with_embeddings / get_unit:
+      read unit collection
+    - count_for_source_path / ids_for_source / preview_supersede_for_source /
+      snapshot_source_rows: read source-scoped inventory
+    - non_source_inventory_digest: read-only digest helper
+    """
 
     _READS = frozenset(
         {

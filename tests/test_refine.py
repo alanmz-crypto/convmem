@@ -250,21 +250,23 @@ class ApproveDedupeTests(unittest.TestCase):
                 "title": "Dup",
             },
         )
+        from purge_locks import index_write_flock
         from refine import dedupe_queue_path, save_dedupe_queue
 
-        save_dedupe_queue(
-            self.cfg,
-            [
-                {
-                    "id_a": "canon",
-                    "id_b": "dup",
-                    "status": "approved_merge_a_canonical",
-                    "canonical_id": "canon",
-                    "tombstone_id": "dup",
-                    "similarity": 0.99,
-                }
-            ],
-        )
+        with index_write_flock(self.cfg):
+            save_dedupe_queue(
+                self.cfg,
+                [
+                    {
+                        "id_a": "canon",
+                        "id_b": "dup",
+                        "status": "approved_merge_a_canonical",
+                        "canonical_id": "canon",
+                        "tombstone_id": "dup",
+                        "similarity": 0.99,
+                    }
+                ],
+            )
 
     def tearDown(self):
         self._scratch_env.__exit__(None, None, None)

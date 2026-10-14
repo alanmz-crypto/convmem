@@ -553,49 +553,46 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
 
         lock_cfg = load_config()
     from chroma_readonly import open_readonly_unit_store
-    from observe import prepare_observation_file_rows
+    from observe import ingest_observation_file_with_drift_retry
 
     approved = str(approved_path(cfg))
     embed_store = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
-    prepared_rows, prep_stats = prepare_observation_file_rows(
+
+    def open_write_commit(commit_fn):
+        with index_write_flock(lock_cfg):
+            _pw = open_production_write_store(entrypoint="propose_decision.write")
+            store = _pw.store
+            live = _pw.live_cfg
+            units_export = live["index"].get("units_export")
+            units_export_path = Path(units_export).expanduser() if units_export else None
+            try:
+                return commit_fn(store, units_export_path)
+            finally:
+                store.close()
+
+    return ingest_observation_file_with_drift_retry(
         approved,
         embed_store=embed_store,
+        open_write_commit=open_write_commit,
         embed_model=models["embed_model"],
         ollama_host=models["ollama_host"],
         upsert=True,
         verbose=verbose,
     )
 
-    with index_write_flock(lock_cfg):
-        _pw = open_production_write_store(entrypoint="propose_decision.write")
-        store = _pw.store
-        cfg = _pw.live_cfg
-        models = cfg["models"]
-        units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
-        try:
-            result = ingest_observation_file(
-                approved,
-                store=store,
-                embed_model=models["embed_model"],
-                ollama_host=models["ollama_host"],
-                upsert=True,
-                verbose=verbose,
-                units_export=units_export_path,
-                prepared_rows=prepared_rows,
-            )
-            result["rejected"] += prep_stats["rejected"]
-            return result
-        finally:
-            store.close()
-
 
 def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) -> dict:
     """Index one approved decision (fast path for record --approve-last)."""
 
+    from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import open_production_write_store
     from ledger import invalidate_ledger_index_cache
-    from observe import ingest_observation
+    from observe import (
+        ObservationIngestDriftError,
+        ObservationIngestDriftRefusedError,
+        commit_observation_ingest,
+        prepare_observation_ingest,
+    )
     from purge_locks import index_write_flock
 
     models = cfg.get("models")
@@ -608,36 +605,60 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
         from config import load_config
 
         lock_cfg = load_config()
-    with index_write_flock(lock_cfg):
-        _pw = open_production_write_store(entrypoint="propose_decision.write")
-        store = _pw.store
-        cfg = _pw.live_cfg
-        models = cfg["models"]
-        units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
-        protocol_ledger = {**ledger, "_governed_protocol": True}
+    protocol_ledger = {**ledger, "_governed_protocol": True}
+    reader = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
+    prepared = prepare_observation_ingest(
+        protocol_ledger,
+        store=reader,
+        embed_model=models["embed_model"],
+        ollama_host=models["ollama_host"],
+        upsert=True,
+    )
+    stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
+    if prepared is None:
+        stats["rejected"] = 1
+        return stats
+    unit = None
+    for attempt in range(2):
         try:
-            unit = ingest_observation(
+            with index_write_flock(lock_cfg):
+                _pw = open_production_write_store(entrypoint="propose_decision.write")
+                store = _pw.store
+                live = _pw.live_cfg
+                units_export = live["index"].get("units_export")
+                units_export_path = Path(units_export).expanduser() if units_export else None
+                try:
+                    unit = commit_observation_ingest(
+                        prepared,
+                        store=store,
+                        units_export=units_export_path,
+                    )
+                finally:
+                    store.close()
+            break
+        except ObservationIngestDriftError:
+            if attempt == 1:
+                raise ObservationIngestDriftRefusedError("approved ledger ingest drift") from None
+            prepared = prepare_observation_ingest(
                 protocol_ledger,
-                store=store,
+                store=reader,
                 embed_model=models["embed_model"],
                 ollama_host=models["ollama_host"],
                 upsert=True,
-                units_export=units_export_path,
             )
-            stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
-            if unit is None:
+            if prepared is None:
                 stats["rejected"] = 1
-            elif unit.pop("_upserted", False):
-                stats["updated"] = 1
-            elif unit.pop("_skipped", False):
-                stats["skipped"] = 1
-            else:
-                stats["accepted"] = 1
-            invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
-            return stats
-        finally:
-            store.close()
+                return stats
+    if unit is None:
+        stats["rejected"] = 1
+    elif unit.pop("_upserted", False):
+        stats["updated"] = 1
+    elif unit.pop("_skipped", False):
+        stats["skipped"] = 1
+    else:
+        stats["accepted"] = 1
+    invalidate_ledger_index_cache(lock_cfg["index"]["chroma_dir"])
+    return stats
 
 
 def _approve_unlocked(

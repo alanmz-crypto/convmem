@@ -93,7 +93,9 @@ def distill_with_response(
     deepseek_base_url: str = "https://api.deepseek.com",
 ) -> tuple[list[dict], str]:
     """Extract knowledge units and retain the provider response for binding."""
+    from purge_locks import reject_provider_under_write_scope
 
+    reject_provider_under_write_scope()
     prompt = distill_prompt(chunk_text)
     # Pass the configured model straight through; llm.generate owns the
     # provider fallback (warn-once / CONVMEM_FAIL_ON_FALLBACK) so the

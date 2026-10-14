@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
+import warnings
 from pathlib import Path
 from typing import Any
 
 
 SOURCE_HOLD_THRESHOLD = 3
+PREFIX_ATTEMPT_THRESHOLD = 3
 
 
 def _state_path(paths: dict | None) -> Path | None:
@@ -58,15 +61,32 @@ def _read_or_raise_unavailable(path: Path) -> dict[str, Any] | None:
     return payload
 
 
-def _write(path: Path, payload: dict[str, Any]) -> None:
+def _assert_retry_state_writable(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    if path.exists() and not os.access(path, os.W_OK):
+        raise OSError("retry state file is not writable")
+    if not os.access(path.parent, os.W_OK):
+        raise OSError("retry state directory is not writable")
+
+
+def _write(path: Path, payload: dict[str, Any]) -> None:
+    from atomic_files import atomic_write_text
+
+    _assert_retry_state_writable(path)
+    atomic_write_text(path, json.dumps(payload, sort_keys=True) + "\n")
 
 
 def clear_incremental_retry_state(paths: dict | None) -> None:
     path = _state_path(paths)
-    if path is not None:
+    if path is None:
+        return
+    try:
         path.unlink(missing_ok=True)
+    except OSError as exc:
+        warnings.warn(
+            f"could not clear incremental retry state at {path}: {exc}",
+            stacklevel=2,
+        )
 
 
 def _retry_state_path_for_source(cfg: dict, canonical_path: str) -> Path | None:
@@ -161,45 +181,111 @@ def _ensure_retry_state_available(state_path: Path) -> None:
         ) from exc
 
 
-def enforce_incremental_retry_gates(
+def _refuse_live_route(
+    prior: dict[str, Any],
+    *,
+    path_key: str,
+    prefix_digest: str,
+    failure_code: str | None = None,
+) -> None:
+    import incremental_jsonl as inc
+
+    error_code = failure_code or str(prior.get("error_code") or "")
+    outcome = inc.wedged_incremental_outcome(error_code or "live_route_refused")
+    head = f"{outcome}:{prefix_digest}" if prefix_digest else outcome
+    diagnostic = inc.wedged_incremental_diagnostic(
+        str(prior.get("transaction_id") or ""), path_key
+    )
+    raise inc.IncrementalJsonlError("live_route_refused", f"{head}\n{diagnostic}")
+
+
+def reserve_incremental_retry_attempt(
     paths: dict | None,
     *,
     path_key: str,
     prefix_digest: str,
+    transaction_id: str = "",
 ) -> None:
-    """Refuse before paid transform work when retry state demands it."""
+    """Durably record one paid attempt before transform work (issue #286 corrective 12)."""
     import incremental_jsonl as inc
 
     state_path = _state_path(paths)
     if state_path is None:
         return
     _ensure_retry_state_available(state_path)
+    prior = _read_or_raise_unavailable(state_path) or {}
+    stored_prefix = str(prior.get("prefix_digest") or "")
+    if stored_prefix == prefix_digest and prefix_digest:
+        attempts = int(prior.get("attempts_on_prefix") or 0) + 1
+    else:
+        attempts = 1
+    payload = dict(prior)
+    payload.update(
+        {
+            "source_path": path_key,
+            "prefix_digest": prefix_digest,
+            "attempts_on_prefix": attempts,
+            "pending_transaction_id": transaction_id,
+        }
+    )
+    try:
+        _write(state_path, payload)
+    except OSError as exc:
+        raise inc.IncrementalJsonlError(
+            "retry_state_unavailable",
+            "incremental retry state could not be read or written",
+        ) from exc
+
+
+def enforce_incremental_retry_gates(
+    paths: dict | None,
+    *,
+    path_key: str,
+    prefix_digest: str,
+    transaction_id: str = "",
+) -> None:
+    """Refuse before paid transform work when retry state demands it."""
+    state_path = _state_path(paths)
+    if state_path is None:
+        return
+    _ensure_retry_state_available(state_path)
     prior = _read_or_raise_unavailable(state_path)
     if not prior:
+        reserve_incremental_retry_attempt(
+            paths,
+            path_key=path_key,
+            prefix_digest=prefix_digest,
+            transaction_id=transaction_id,
+        )
         return
     error_code = str(prior.get("error_code") or "")
     stored_prefix = str(prior.get("prefix_digest") or "")
     consecutive = int(prior.get("consecutive") or 0)
     source_consecutive = int(prior.get("source_consecutive") or 0)
-    if source_consecutive >= SOURCE_HOLD_THRESHOLD and error_code:
-        outcome = inc.wedged_incremental_outcome(error_code)
-        head = f"{outcome}:{prefix_digest}" if prefix_digest else outcome
-        diagnostic = inc.wedged_incremental_diagnostic(
-            str(prior.get("transaction_id") or ""), path_key
+    attempts_on_prefix = int(prior.get("attempts_on_prefix") or 0)
+    if (
+        attempts_on_prefix >= PREFIX_ATTEMPT_THRESHOLD
+        and stored_prefix == prefix_digest
+        and prefix_digest
+    ):
+        _refuse_live_route(
+            prior, path_key=path_key, prefix_digest=prefix_digest, failure_code=error_code
         )
-        raise inc.IncrementalJsonlError("live_route_refused", f"{head}\n{diagnostic}")
+    if source_consecutive >= SOURCE_HOLD_THRESHOLD and error_code:
+        _refuse_live_route(prior, path_key=path_key, prefix_digest=prefix_digest)
     if (
         consecutive >= 2
         and error_code
         and stored_prefix == prefix_digest
         and prefix_digest
     ):
-        outcome = inc.wedged_incremental_outcome(error_code)
-        head = f"{outcome}:{prefix_digest}"
-        diagnostic = inc.wedged_incremental_diagnostic(
-            str(prior.get("transaction_id") or ""), path_key
-        )
-        raise inc.IncrementalJsonlError("live_route_refused", f"{head}\n{diagnostic}")
+        _refuse_live_route(prior, path_key=path_key, prefix_digest=prefix_digest)
+    reserve_incremental_retry_attempt(
+        paths,
+        path_key=path_key,
+        prefix_digest=prefix_digest,
+        transaction_id=transaction_id,
+    )
 
 
 def record_incremental_retry_failure(
@@ -211,6 +297,8 @@ def record_incremental_retry_failure(
     transaction_id: str,
 ) -> bool:
     """Return True when the same error repeats on an unchanged prefix (refuse)."""
+    import incremental_jsonl as inc
+
     state_path = _state_path(paths)
     if state_path is None:
         return False
@@ -231,10 +319,15 @@ def record_incremental_retry_failure(
             "source_consecutive": int(prior.get("source_consecutive") or 0) + 1
             if source_repeat
             else 1,
+            "attempts_on_prefix": int(prior.get("attempts_on_prefix") or 0),
+            "pending_transaction_id": prior.get("pending_transaction_id") or "",
         }
         _write(state_path, payload)
-    except OSError:
-        return False
+    except OSError as exc:
+        raise inc.IncrementalJsonlError(
+            "retry_state_unavailable",
+            "incremental retry state could not be read or written",
+        ) from exc
     return repeat
 
 
@@ -259,7 +352,12 @@ def iter_wedged_incremental_states(cfg: dict) -> list[dict[str, Any]]:
             continue
         consecutive = int(payload.get("consecutive") or 0)
         source_consecutive = int(payload.get("source_consecutive") or 0)
-        if consecutive >= 2 or source_consecutive >= SOURCE_HOLD_THRESHOLD:
+        attempts = int(payload.get("attempts_on_prefix") or 0)
+        if (
+            consecutive >= 2
+            or source_consecutive >= SOURCE_HOLD_THRESHOLD
+            or attempts >= PREFIX_ATTEMPT_THRESHOLD
+        ):
             rows.append(payload)
     return rows
 

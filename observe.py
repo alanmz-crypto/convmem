@@ -2,12 +2,44 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
 from atomic_files import atomic_write_text
 from ledger import build_ledger_index, ledger_unit_document, ledger_unit_metadata, normalize_ledger_record
+
+
+class ObservationIngestDriftError(Exception):
+    """Prepared target changed or vanished before commit under C1."""
+
+    def __init__(self, ledger_id: str) -> None:
+        self.ledger_id = ledger_id
+        super().__init__(f"observation ingest drift for {ledger_id}")
+
+
+class ObservationIngestDriftRefusedError(Exception):
+    """Drift persisted after the allowed re-prepare round."""
+
+
+def _observation_target_digest(unit_row: dict | None) -> str:
+    if unit_row is None:
+        return "missing"
+    doc = (unit_row.get("document") or "").strip()
+    meta = unit_row.get("metadata") or {}
+    payload = json.dumps({"document": doc, "metadata": meta}, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _lookup_target_row(store, ledger_id: str) -> tuple[str | None, dict | None]:
+    by_ledger_id, _ = build_ledger_index(store)
+    existing = by_ledger_id.get(ledger_id)
+    if not existing:
+        return None, None
+    chroma_id = str(existing.get("id") or "")
+    row = store.get_unit(chroma_id) if chroma_id else None
+    return chroma_id or None, row
 
 
 def _reject_governed_bypass(record: dict, *, upsert: bool) -> None:
@@ -129,6 +161,7 @@ class PreparedObservationIngest:
     existing_chroma_id: str | None = None
     skipped_unchanged: bool = False
     upsert_update: bool = False
+    target_digest: str = "missing"
 
 
 def prepare_observation_ingest(
@@ -156,16 +189,20 @@ def prepare_observation_ingest(
             by_ledger_id, _ = build_ledger_index(store)
         existing = by_ledger_id.get(lid)
         if existing:
+            chroma_id = existing["id"]
+            target_row = store.get_unit(chroma_id)
+            target_digest = _observation_target_digest(target_row)
             if _ledger_unchanged_in_index(existing, unit, store):
-                unit["id"] = existing["id"]
+                unit["id"] = chroma_id
                 return PreparedObservationIngest(
                     record=record,
                     unit=unit,
                     doc=doc,
                     embedding=precomputed_embedding or [],
                     upsert=upsert,
-                    existing_chroma_id=existing["id"],
+                    existing_chroma_id=chroma_id,
                     skipped_unchanged=True,
+                    target_digest=target_digest,
                 )
             if precomputed_embedding is None:
                 from llm import ollama_embed
@@ -179,8 +216,9 @@ def prepare_observation_ingest(
                 doc=doc,
                 embedding=embedding,
                 upsert=upsert,
-                existing_chroma_id=existing["id"],
+                existing_chroma_id=chroma_id,
                 upsert_update=True,
+                target_digest=target_digest,
             )
 
     if precomputed_embedding is None:
@@ -195,6 +233,7 @@ def prepare_observation_ingest(
         doc=doc,
         embedding=embedding,
         upsert=upsert,
+        target_digest="missing",
     )
 
 
@@ -206,16 +245,33 @@ def commit_observation_ingest(
 ) -> dict | None:
     """Persist a prepared observation under an open write store."""
     unit = prepared.unit
+    lid = (unit.get("ledger_id") or "").strip()
+
+    if prepared.upsert and lid:
+        chroma_id, row = _lookup_target_row(store, lid)
+        current_digest = _observation_target_digest(row)
+        if prepared.skipped_unchanged:
+            if row is None or current_digest != prepared.target_digest:
+                raise ObservationIngestDriftError(lid)
+            unit["id"] = chroma_id or prepared.existing_chroma_id or unit.get("id")
+            unit["_skipped"] = True
+            return unit
+        if prepared.upsert_update:
+            if row is None or chroma_id != prepared.existing_chroma_id:
+                raise ObservationIngestDriftError(lid)
+            if current_digest != prepared.target_digest:
+                raise ObservationIngestDriftError(lid)
+
     if prepared.skipped_unchanged:
         unit["_skipped"] = True
         return unit
-
-    lid = (unit.get("ledger_id") or "").strip()
 
     if prepared.upsert_update and prepared.existing_chroma_id:
         meta = ledger_unit_metadata(unit)
         chroma_id = prepared.existing_chroma_id
         store.update_unit(chroma_id, prepared.doc, prepared.embedding, meta)
+        if store.get_unit(chroma_id) is None:
+            raise ObservationIngestDriftError(lid)
         unit["id"] = chroma_id
         unit["_upserted"] = True
         if units_export and lid:
@@ -278,14 +334,14 @@ def prepare_observation_file_rows(
     min_confidence: float = 0.0,
     upsert: bool = False,
     verbose: bool = True,
-) -> tuple[list[tuple[int, dict, list[float] | None]], dict]:
-    """Parse a JSONL file and precompute embeddings (no write lock required)."""
+) -> tuple[list[tuple[int, PreparedObservationIngest | None]], dict]:
+    """Parse a JSONL file and prepare commits (no write lock required)."""
     stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
     by_ledger_id: dict[str, dict] | None = None
     if upsert:
         by_ledger_id, _ = build_ledger_index(embed_store)
 
-    prepared: list[tuple[int, dict, list[float] | None]] = []
+    prepared: list[tuple[int, PreparedObservationIngest | None]] = []
     with open(path, encoding="utf-8") as f:
         for line_no, line in enumerate(f, 1):
             line = line.strip()
@@ -307,8 +363,152 @@ def prepare_observation_file_rows(
                 by_ledger_id=by_ledger_id,
                 upsert=upsert,
             )
-            prepared.append((line_no, record, embedding))
+            prep = prepare_observation_ingest(
+                record,
+                store=embed_store,
+                embed_model=embed_model,
+                ollama_host=ollama_host,
+                min_confidence=min_confidence,
+                upsert=upsert,
+                by_ledger_id=by_ledger_id,
+                precomputed_embedding=embedding if embedding is not None else [],
+            )
+            prepared.append((line_no, prep))
     return prepared, stats
+
+
+def _stats_from_committed_unit(
+    unit: dict,
+    stats: dict,
+    *,
+    verbose: bool,
+    by_ledger_id: dict[str, dict] | None,
+) -> None:
+    if unit.pop("_upserted", False):
+        stats["updated"] += 1
+        if verbose:
+            lid = unit.get("ledger_id", unit["id"][:8])
+            print(
+                f"  [upd] {unit['ledger_kind']:<14} {unit['domain']:<28} "
+                f"{lid}  {unit['title'][:50]}"
+            )
+    elif unit.pop("_skipped", False):
+        stats["skipped"] += 1
+        if verbose:
+            lid = unit.get("ledger_id", unit["id"][:8])
+            print(f"  [skip] unchanged {lid}")
+    else:
+        stats["accepted"] += 1
+        if by_ledger_id is not None:
+            lid = (unit.get("ledger_id") or "").strip()
+            if lid:
+                row = ledger_unit_metadata(unit)
+                row["id"] = unit["id"]
+                by_ledger_id[lid] = row
+        if verbose:
+            lid = unit.get("ledger_id", unit["id"][:8])
+            print(
+                f"  [add] {unit['ledger_kind']:<14} {unit['domain']:<28} "
+                f"{lid}  {unit['title'][:50]}"
+            )
+
+
+def commit_prepared_observation_file_rows(
+    prepared_rows: list[tuple[int, PreparedObservationIngest | None]],
+    *,
+    store,
+    units_export: Path | None = None,
+    verbose: bool = True,
+    upsert: bool = False,
+    by_ledger_id: dict[str, dict] | None = None,
+) -> dict:
+    """Commit prepared rows without re-embedding under the write lock."""
+    stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
+    if upsert and by_ledger_id is None:
+        by_ledger_id, _ = build_ledger_index(store)
+    for line_no, prepared in prepared_rows:
+        if prepared is None:
+            stats["rejected"] += 1
+            if verbose:
+                print(f"  [skip] line {line_no}: rejected (missing/invalid fields)")
+            continue
+        try:
+            unit = commit_observation_ingest(
+                prepared, store=store, units_export=units_export
+            )
+        except ObservationIngestDriftError:
+            raise
+        if unit is None:
+            stats["rejected"] += 1
+            if verbose:
+                print(f"  [skip] line {line_no}: rejected (missing/invalid fields)")
+            continue
+        _stats_from_committed_unit(
+            unit, stats, verbose=verbose, by_ledger_id=by_ledger_id
+        )
+    return stats
+
+
+def reprepare_observation_file_rows(
+    path: str,
+    prepared_rows: list[tuple[int, PreparedObservationIngest | None]],
+    *,
+    drift_ledger_ids: set[str],
+    embed_store,
+    embed_model: str,
+    ollama_host: str,
+    min_confidence: float = 0.0,
+    upsert: bool = False,
+) -> list[tuple[int, PreparedObservationIngest | None]]:
+    """Re-prepare only rows that drifted (outside C1)."""
+    by_ledger_id: dict[str, dict] | None = None
+    if upsert:
+        by_ledger_id, _ = build_ledger_index(embed_store)
+    records_by_line: dict[int, dict] = {}
+    with open(path, encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                records_by_line[line_no] = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+    refreshed: list[tuple[int, PreparedObservationIngest | None]] = []
+    for line_no, prepared in prepared_rows:
+        if prepared is None:
+            refreshed.append((line_no, None))
+            continue
+        lid = (prepared.unit.get("ledger_id") or "").strip()
+        if lid not in drift_ledger_ids:
+            refreshed.append((line_no, prepared))
+            continue
+        record = records_by_line.get(line_no) or prepared.record
+        embedding = embed_ledger_record_for_storage(
+            record,
+            store=embed_store,
+            embed_model=embed_model,
+            ollama_host=ollama_host,
+            min_confidence=min_confidence,
+            by_ledger_id=by_ledger_id,
+            upsert=upsert,
+        )
+        refreshed.append(
+            (
+                line_no,
+                prepare_observation_ingest(
+                    record,
+                    store=embed_store,
+                    embed_model=embed_model,
+                    ollama_host=ollama_host,
+                    min_confidence=min_confidence,
+                    upsert=upsert,
+                    by_ledger_id=by_ledger_id,
+                    precomputed_embedding=embedding if embedding is not None else [],
+                ),
+            )
+        )
+    return refreshed
 
 
 def ingest_observation_file(
@@ -322,15 +522,10 @@ def ingest_observation_file(
     verbose: bool = True,
     upsert: bool = False,
     embedding_store=None,
-    prepared_rows: list[tuple[int, dict, list[float] | None]] | None = None,
+    prepared_rows: list[tuple[int, PreparedObservationIngest | None]] | None = None,
 ) -> dict:
     """Ingest a JSONL file of ledger records. Returns counts."""
-    stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
     embed_index_store = embedding_store if embedding_store is not None else store
-    by_ledger_id: dict[str, dict] | None = None
-    if upsert:
-        by_ledger_id, _ = build_ledger_index(embed_index_store)
-
     if prepared_rows is None:
         prepared_rows, prep_stats = prepare_observation_file_rows(
             path,
@@ -341,52 +536,75 @@ def ingest_observation_file(
             upsert=upsert,
             verbose=verbose,
         )
-        stats["rejected"] += prep_stats["rejected"]
+    else:
+        prep_stats = {"rejected": 0}
+    stats = commit_prepared_observation_file_rows(
+        prepared_rows,
+        store=store,
+        units_export=units_export,
+        verbose=verbose,
+        upsert=upsert,
+        by_ledger_id=None if embedding_store is not None else None,
+    )
+    stats["rejected"] += prep_stats["rejected"]
+    return stats
 
-    for line_no, record, embedding in prepared_rows:
-        unit = ingest_observation(
-            record,
-            store=store,
+
+def ingest_observation_file_with_drift_retry(
+    path: str,
+    *,
+    embed_store,
+    open_write_commit,
+    embed_model: str,
+    ollama_host: str,
+    min_confidence: float = 0.0,
+    upsert: bool = False,
+    verbose: bool = True,
+    prepared_rows: list[tuple[int, PreparedObservationIngest | None]] | None = None,
+) -> dict:
+    """Prepare outside C1; commit with at most one drift re-prepare round."""
+
+    if prepared_rows is None:
+        prepared_rows, prep_stats = prepare_observation_file_rows(
+            path,
+            embed_store=embed_store,
             embed_model=embed_model,
             ollama_host=ollama_host,
             min_confidence=min_confidence,
-            units_export=units_export,
             upsert=upsert,
-            by_ledger_id=by_ledger_id,
-            precomputed_embedding=embedding,
+            verbose=verbose,
         )
-        if unit is None:
-            stats["rejected"] += 1
-            if verbose:
-                print(f"  [skip] line {line_no}: rejected (missing/invalid fields)")
-        elif unit.pop("_upserted", False):
-            stats["updated"] += 1
-            if verbose:
-                lid = unit.get("ledger_id", unit["id"][:8])
-                print(
-                    f"  [upd] {unit['ledger_kind']:<14} {unit['domain']:<28} "
-                    f"{lid}  {unit['title'][:50]}"
+    else:
+        prep_stats = {"rejected": 0}
+    last_drift: ObservationIngestDriftError | None = None
+    for attempt in range(2):
+        try:
+            stats = open_write_commit(
+                lambda store, units_export: commit_prepared_observation_file_rows(
+                    prepared_rows,
+                    store=store,
+                    units_export=units_export,
+                    verbose=verbose,
+                    upsert=upsert,
                 )
-        elif unit.pop("_skipped", False):
-            stats["skipped"] += 1
-            if verbose:
-                lid = unit.get("ledger_id", unit["id"][:8])
-                print(f"  [skip] unchanged {lid}")
-        else:
-            stats["accepted"] += 1
-            if by_ledger_id is not None:
-                lid = (unit.get("ledger_id") or "").strip()
-                if lid:
-                    row = ledger_unit_metadata(unit)
-                    row["id"] = unit["id"]
-                    by_ledger_id[lid] = row
-            if verbose:
-                lid = unit.get("ledger_id", unit["id"][:8])
-                print(
-                    f"  [add] {unit['ledger_kind']:<14} {unit['domain']:<28} "
-                    f"{lid}  {unit['title'][:50]}"
-                )
-    return stats
+            )
+            stats["rejected"] += prep_stats["rejected"]
+            return stats
+        except ObservationIngestDriftError as drift:
+            last_drift = drift
+            if attempt == 1:
+                raise ObservationIngestDriftRefusedError(str(drift)) from drift
+            prepared_rows = reprepare_observation_file_rows(
+                path,
+                prepared_rows,
+                drift_ledger_ids={drift.ledger_id},
+                embed_store=embed_store,
+                embed_model=embed_model,
+                ollama_host=ollama_host,
+                min_confidence=min_confidence,
+                upsert=upsert,
+            )
+    raise ObservationIngestDriftRefusedError(str(last_drift or "drift"))
 
 
 def repair_empty_ledger_documents(
@@ -407,55 +625,85 @@ def repair_empty_ledger_documents(
         from config import load_config
 
         lock_cfg = load_config()
+    from chroma_readonly import open_readonly_unit_store
+
+    reader = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
+    by_ledger_id, _ = build_ledger_index(reader)
+    models = lock_cfg["models"]
+    pending: list[PreparedObservationIngest] = []
+    stats = {"scanned": 0, "empty": 0, "repaired": 0, "skipped": 0, "missing_source": 0}
+    for lid, meta in by_ledger_id.items():
+        kind = (meta.get("ledger_kind") or "").strip()
+        if kind not in ("decision", "verification"):
+            continue
+        stats["scanned"] += 1
+        row = reader.get_unit(meta["id"])
+        if row is None or (row.get("document") or "").strip():
+            continue
+        stats["empty"] += 1
+        rec = load_approved_decision_by_id(lock_cfg, lid)
+        if rec is None:
+            stats["missing_source"] += 1
+            if verbose:
+                print(f"  [miss] no approved row for {lid}")
+            continue
+        if dry_run:
+            stats["repaired"] += 1
+            if verbose:
+                print(f"  [dry-run] would repair {lid}")
+            continue
+        repair_rec = {
+            **rec,
+            "_governed_protocol": True,
+            "proposal_id": (
+                rec.get("proposal_id")
+                or meta.get("proposal_id")
+                or f"repair:{lid}"
+            ),
+        }
+        prepared = prepare_observation_ingest(
+            repair_rec,
+            store=reader,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            upsert=True,
+            by_ledger_id=by_ledger_id,
+        )
+        if prepared is None:
+            stats["missing_source"] += 1
+            continue
+        pending.append(prepared)
+        if limit and len(pending) >= limit:
+            break
+
     with index_write_flock(lock_cfg):
         _pw = open_production_write_store(
             entrypoint="observe.repair_empty_ledger_documents"
         )
         store = _pw.store
         cfg = _pw.live_cfg
-        models = cfg["models"]
-        by_ledger_id, _ = build_ledger_index(store)
-        stats = {"scanned": 0, "empty": 0, "repaired": 0, "skipped": 0, "missing_source": 0}
-
         try:
-            for lid, meta in by_ledger_id.items():
-                kind = (meta.get("ledger_kind") or "").strip()
-                if kind not in ("decision", "verification"):
-                    continue
-                stats["scanned"] += 1
-                row = store.get_unit(meta["id"])
-                if row is None or (row.get("document") or "").strip():
-                    continue
-                stats["empty"] += 1
-                rec = load_approved_decision_by_id(cfg, lid)
-                if rec is None:
-                    stats["missing_source"] += 1
-                    if verbose:
-                        print(f"  [miss] no approved row for {lid}")
-                    continue
-                if dry_run:
-                    stats["repaired"] += 1
-                    if verbose:
-                        print(f"  [dry-run] would repair {lid}")
-                    continue
-                # Document repair is not a semantic replace; mark protocol-safe.
-                repair_rec = {
-                    **rec,
-                    "_governed_protocol": True,
-                    "proposal_id": (
-                        rec.get("proposal_id")
-                        or meta.get("proposal_id")
-                        or f"repair:{lid}"
-                    ),
-                }
-                unit = ingest_observation(
-                    repair_rec,
-                    store=store,
-                    embed_model=models["embed_model"],
-                    ollama_host=models["ollama_host"],
-                    upsert=True,
-                    by_ledger_id=by_ledger_id,
-                )
+            for prepared in pending:
+                for attempt in range(2):
+                    try:
+                        unit = commit_observation_ingest(prepared, store=store)
+                        break
+                    except ObservationIngestDriftError:
+                        if attempt == 1:
+                            stats["skipped"] += 1
+                            unit = None
+                            break
+                        prepared = prepare_observation_ingest(
+                            prepared.record,
+                            store=reader,
+                            embed_model=models["embed_model"],
+                            ollama_host=models["ollama_host"],
+                            upsert=True,
+                            by_ledger_id=by_ledger_id,
+                        )
+                        if prepared is None:
+                            unit = None
+                            break
                 if unit is None:
                     stats["missing_source"] += 1
                 elif unit.pop("_skipped", False):
@@ -463,10 +711,9 @@ def repair_empty_ledger_documents(
                 elif unit.pop("_upserted", False) or unit:
                     stats["repaired"] += 1
                     if verbose:
+                        lid = (unit.get("ledger_id") or "").strip()
                         print(f"  [repair] {lid}")
-                if limit and stats["repaired"] >= limit:
-                    break
         finally:
             store.close()
-        invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
-        return stats
+    invalidate_ledger_index_cache(lock_cfg["index"]["chroma_dir"])
+    return stats

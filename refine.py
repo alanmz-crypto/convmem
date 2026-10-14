@@ -192,6 +192,9 @@ def load_dedupe_queue(cfg: dict) -> list[dict]:
 
 
 def save_dedupe_queue(cfg: dict, rows: list[dict]) -> None:
+    from purge_locks import require_index_write_lock_held
+
+    require_index_write_lock_held()
     path = dedupe_queue_path(cfg)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -315,12 +318,9 @@ def _apply_approved_dedupe_impl(
     from config import load_config
 
     cfg = load_config()
-    rows = load_dedupe_queue(cfg)
-    if not rows:
-        return {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
 
     if target.strip().lower() == "all":
-        indices = list(range(len(rows)))
+        indices_arg = "all"
     else:
         try:
             line = int(target)
@@ -328,14 +328,22 @@ def _apply_approved_dedupe_impl(
             raise ValueError(
                 f"--approve-dedupe expects 1-based line number or 'all', got {target!r}"
             ) from e
-        if line < 1 or line > len(rows):
-            raise ValueError(f"dedupe_queue line {line} out of range (1–{len(rows)})")
-        indices = [line - 1]
+        indices_arg = line
 
     from purge_locks import index_write_flock
 
     cfg = load_config()
     with index_write_flock(cfg):
+        rows = load_dedupe_queue(cfg)
+        if not rows:
+            return {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
+        if indices_arg == "all":
+            indices = list(range(len(rows)))
+        else:
+            line = int(indices_arg)
+            if line < 1 or line > len(rows):
+                raise ValueError(f"dedupe_queue line {line} out of range (1–{len(rows)})")
+            indices = [line - 1]
         _pw = open_production_write_store(entrypoint="refine.write")
         store = _pw.store
         cfg = _pw.live_cfg
@@ -616,8 +624,6 @@ def job_semantic_dedupe(
         if verbose:
             print(f"  [pause] dedupe_queue depth {existing} >= {max_depth}", file=sys.stderr)
         return {"processed": 0, "queued": 0, "skipped": 0, "errors": 0, "llm_calls": 0}
-    queue_path = dedupe_queue_path(cfg)
-
     chroma_dir = cfg["index"]["chroma_dir"]
     vector_store = ChromaStore(str(chroma_dir), mutation_sink=None)
     try:
@@ -631,6 +637,7 @@ def job_semantic_dedupe(
     stats = {"processed": 0, "queued": 0, "skipped": 0, "errors": 0, "llm_calls": 0}
     batch_cap = limit or int(refine.get("batch_size", 10))
     seen_pairs: set[tuple[str, str]] = set()
+    pending_records: list[dict] = []
 
     for i, (uid_a, meta_a, emb_a) in enumerate(rows):
         if stats["queued"] >= batch_cap:
@@ -650,22 +657,30 @@ def job_semantic_dedupe(
                 if verbose:
                     print("  [stop] semantic_dedupe hourly cap", file=sys.stderr)
                 return stats
-            rec = {
-                "id_a": uid_a,
-                "id_b": uid_b,
-                "similarity": round(sim, 4),
-                "title_a": meta_a.get("title"),
-                "title_b": meta_b.get("title"),
-                "domain": dom_a,
-                "queued_at": _now_iso(),
-                "status": "pending",
-            }
-            with queue_path.open("a", encoding="utf-8") as qf:
-                qf.write(json.dumps(rec) + "\n")
+            pending_records.append(
+                {
+                    "id_a": uid_a,
+                    "id_b": uid_b,
+                    "similarity": round(sim, 4),
+                    "title_a": meta_a.get("title"),
+                    "title_b": meta_b.get("title"),
+                    "domain": dom_a,
+                    "queued_at": _now_iso(),
+                    "status": "pending",
+                }
+            )
             stats["queued"] += 1
             stats["processed"] += 1
             if verbose:
                 print(f"  [dedupe?] {sim:.3f}  {uid_a[:8]} ~ {uid_b[:8]}", file=sys.stderr)
+    if pending_records:
+        from purge_locks import index_write_flock
+
+        with index_write_flock(cfg):
+            queue_path = dedupe_queue_path(cfg)
+            with queue_path.open("a", encoding="utf-8") as qf:
+                for rec in pending_records:
+                    qf.write(json.dumps(rec) + "\n")
     return stats
 
 
