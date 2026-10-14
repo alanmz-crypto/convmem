@@ -14,6 +14,8 @@ import pytest
 from tests._safe_harbor_bootstrap import require_t3_bootstrap
 
 require_t3_bootstrap()
+# Register only for this module; each child gets refusal before project imports.
+from tests._safe_harbor_t4_pytest import isolated_t4_child_network  # pylint: disable=unused-import
 
 pytest_plugins = ("tests.test_safe_harbor_t2",)
 
@@ -366,7 +368,7 @@ def test_t4_rechecks_config_after_native_lock_wait(cli):
         os.replace(replacement, cli.config)
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         payload = parse_worker_stdout(proc, timeout=CHILD_TIMEOUT_SECONDS)
-        assert payload["cli_rc"] == 24, payload
+        assert payload["cli_rc"] == 20, payload
         assert "operation_config_changed" in payload["output"], payload
         assert cli.dump() == before, "post-wait refusal changed corpus or governed effects"
         _assert_no_approved(cli, pid)

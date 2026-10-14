@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 from tests._safe_harbor_bootstrap import require_t3_bootstrap
 require_t3_bootstrap()
+# Register only for this module; each child gets refusal before project imports.
+from tests._safe_harbor_t4_pytest import isolated_t4_child_network  # pylint: disable=unused-import
 from conflict_events import append_event_durable, ensure_event_log_durable, event_path, EventPublicationError
 
 @pytest.mark.parametrize('failure', ['file', 'leaf', 'intermediate', 'root', 'none'])
@@ -76,7 +78,6 @@ def test_network_refusal_inherited_by_fresh_child():
     import subprocess
     import sys
     import json
-    assert getattr(sys, '_safe_harbor_t4_network_refused', False)
     code = """import socket,sys
 assert getattr(sys, '_safe_harbor_t4_network_refused', False)
 try:

@@ -266,7 +266,7 @@ def _mode_recover_wait_config(proposal_id: str) -> dict[str, Any]:
     import convmem
     from typer.testing import CliRunner
     with _install_competitor_flock_observer(os.environ["SAFE_HARBOR_T4_LOCK_PATH"]):
-        result = CliRunner().invoke(convmem.app, ["propose_decision", "--recover", proposal_id])
+        result = CliRunner().invoke(convmem.app, ["record", "--recover", proposal_id])
     return {"verdict": "OK", "cli_rc": result.exit_code, "output": result.output}
 
 def _mode_recover(proposal_id: str) -> dict[str, Any]:

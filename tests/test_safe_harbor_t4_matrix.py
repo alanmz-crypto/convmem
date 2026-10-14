@@ -10,6 +10,8 @@ import pytest
 from tests._safe_harbor_bootstrap import require_t3_bootstrap
 
 require_t3_bootstrap()
+# Register only for this module; each child gets refusal before project imports.
+from tests._safe_harbor_t4_pytest import isolated_t4_child_network  # pylint: disable=unused-import
 
 pytest_plugins = ("tests.test_safe_harbor_t2",)
 
@@ -31,6 +33,7 @@ def _matrix_env(cli):
         "matrix.marker_repair",
         "matrix.base_retry",
         "matrix.cli_recover",
+        "matrix.cli_record",
         "matrix.unbound_helper",
         "matrix.warm_same_process",
         "matrix.fresh_process_retry",

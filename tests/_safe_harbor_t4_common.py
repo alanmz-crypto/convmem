@@ -22,6 +22,8 @@ SUBPROCESS_TIMEOUT = 300.0
 
 
 def _load_bootstrap():
+    # pylint: disable=duplicate-code
+    # Independent stdlib child bootstrap must precede package imports.
     path = ROOT / "tests" / "_safe_harbor_bootstrap.py"
     spec = importlib.util.spec_from_file_location("safe_harbor_t4_bootstrap", path)
     if spec is None or spec.loader is None:
@@ -30,6 +32,8 @@ def _load_bootstrap():
     spec.loader.exec_module(module)
     return module
 
+
+# pylint: enable=duplicate-code
 
 def _fixture_root() -> Path:
     raw = os.environ.get("SAFE_HARBOR_T3_FIXTURE_ROOT", "").strip()
@@ -349,10 +353,10 @@ def _matrix_warm_same_process(cfg) -> dict[str, Any]:
     return {"verdict": "PASS", "first": first, "second": second, "pid": pid}
 
 
-def _matrix_cli_recover(cfg) -> dict[str, Any]:
+def _matrix_cli_recover(cfg, command="propose_decision") -> dict[str, Any]:
     pid = _setup_event_only(cfg)
     proc = subprocess.run(
-        [sys.executable, "-s", "-B", str(T2_RUNNER), "cli", "propose_decision", "--recover", pid],
+        [sys.executable, "-s", "-B", str(T2_RUNNER), "cli", command, "--recover", pid],
         cwd=ROOT,
         env=os.environ.copy(),
         capture_output=True,
@@ -365,6 +369,10 @@ def _matrix_cli_recover(cfg) -> dict[str, Any]:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert [e["event_type"] for e in _pid_events(cfg, pid)].count("APPROVED") == 1
     return {"verdict": "PASS", "stdout": proc.stdout.strip(), "pid": pid}
+
+
+def _matrix_cli_record(cfg) -> dict[str, Any]:
+    return _matrix_cli_recover(cfg, command="record")
 
 
 def _resolve_pid(cfg) -> str:

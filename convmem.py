@@ -1526,7 +1526,8 @@ def propose_decision_command(
 
 
 @app.command("record")
-def record_command(
+# Typer exposes one parameter per explicit option; keep both command aliases typed.
+def record_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     list_: bool = typer.Option(False, "--list", help="Show pending drafts"),
     all_: bool = typer.Option(False, "--all", help="With --list: include approved/rejected"),
     json_out: bool = typer.Option(False, "--json", help="With --list: emit raw JSONL records"),
@@ -1546,6 +1547,11 @@ def record_command(
     reject: str | None = typer.Option(None, "--reject", help="Reject a draft id"),
     signer: str | None = typer.Option(None, "--signer", help="Signer (default on approve: ryan)"),
     reason: str | None = typer.Option(None, "--reason", help="Required for --reject"),
+    recover: str | None = typer.Option(
+        None,
+        "--recover",
+        help="Reconcile APPROVAL_STARTED proposal (no blind retry)",
+    ),
     ledger_id: str | None = typer.Option(None, "--ledger-id", help="Canonical ledger id on approve"),
     parse_doc: str | None = typer.Option(None, "--parse-doc", hidden=True),
     relates_to: str | None = typer.Option(None, "--relates-to"),
@@ -1561,7 +1567,7 @@ def record_command(
     confidence: float = typer.Option(0.8, "--confidence"),
     proposal_id: str | None = typer.Option(None, "--id"),
 ):
-    """Record a durable fact for all agents (`record -i` → `record --approve-last`)."""
+    """Record a durable fact (`record -i` → `record --approve-last`; `record --recover` shared)."""
     # Pass recover/rebase explicitly: Typer Option defaults are OptionInfo objects
     # when this wrapper calls the shared command as a plain Python function.
     propose_decision_command(
@@ -1575,7 +1581,7 @@ def record_command(
         reject=reject,
         signer=signer,
         reason=reason,
-        recover=None,
+        recover=recover if isinstance(recover, str) else None,
         rebase=None,
         ledger_id=ledger_id,
         parse_doc=parse_doc,

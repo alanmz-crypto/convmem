@@ -148,7 +148,7 @@ def _cli_uncertain(cfg) -> dict[str, Any]:
 
     ce.append_event_durable = append
     try:
-        result = CliRunner().invoke(convmem.app, ["propose_decision", "--recover", pid])
+        result = CliRunner().invoke(convmem.app, ["record", "--recover", pid])
     finally:
         ce.append_event_durable = real_append
     assert hits == ["approved_append"], "fault injection did not reach durable APPROVED"

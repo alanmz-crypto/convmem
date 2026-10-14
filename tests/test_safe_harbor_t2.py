@@ -1375,8 +1375,12 @@ def test_cross_parent_chroma_alias_canonical_substitution_negative_control(cli: 
     after_files = _file_hashes(cli, intended)
     after_alt = _file_hashes(cli, alternate)
     assert after_files == before_files
-    # Faulty canonical substitution can create governed artifacts under store/.
-    assert alternate["lock"].exists() or after_alt["lock"] != before_alt["lock"]
+    if workflow == "recover":
+        # T4 refuses the injected wrong config before opening any alternate lock.
+        # The independent successful-completion checker above must still fail.
+        assert after_alt == before_alt
+    else:
+        assert alternate["lock"].exists() or after_alt["lock"] != before_alt["lock"]
 
 
 def test_cli_add_succeeds_with_unchanged_chroma_alias(cli: Cli):
