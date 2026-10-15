@@ -23,7 +23,8 @@ fast recovery without reindexing.
 ## Restic snapshot gate (live Chroma writes)
 
 **Policy:** fail-closed. If Restic cannot verify or create a current snapshot, **do not**
-run live `record --approve-last`, `add --upsert` or `propose_decision --recover` on the
+run live indexed approval, `add --upsert` or approval recovery (`record --recover` /
+`propose_decision --recover`) on the
 production corpus. Since Safe Harbor T2 the CLI gate is bound to the operation: it needs an
 explicit `complete-data-v2` profile whose Chroma directory matches the write target and
 whose data root contains every affected path; `CONVMEM_SKIP_RESTIC_GATE=1` is refused
@@ -51,7 +52,9 @@ Back up this file offline; without it you cannot restore from the Restic repo.
 
 ### Live writes
 
-`convmem record --approve-last`, `convmem add --file … --upsert` and `convmem propose_decision --recover <id>` run the bound Restic gate **fail-closed** before opening Chroma or changing approval state. **Scope:** only these overwrite/durable-merge paths gate; `convmem index`, plain `add` (no `--upsert`) and `--no-index` approval are append-only or index-free and reindexable, so they are intentionally ungated (see ROADMAP "Pre-live-write gate"). Gating every mutation was declined by design. Direct Python callers of the approval/recovery helpers are not gated by T2; that remains with Safe Harbor T4.
+Indexed `convmem record --approve-last` / `--approve <id>`, `convmem add --file … --upsert`, and `convmem record --recover <id>` / `convmem propose_decision --recover <id>` run the bound Restic gate **fail-closed** before opening Chroma or changing approval state. T4 also binds direct `recover_approval()` calls; this does not claim every direct Python approval helper or arbitrary writer is gated.
+
+**Scope retained:** the July 7 `index` and plain `add` (no `--upsert`) exemptions and existing `--no-index` approval behavior are unchanged. They do not gain per-invocation recovery qualification. This is a retained owner boundary, not proof that all indexing is append-only or harmless: replacement indexing can supersede/delete existing units. `forget` and refine gain no new gate or exemption here. Any broader change needs Ryan’s decision and synchronized policy docs.
 
 Optional wrapper (same gate, then `convmem`):
 
@@ -60,14 +63,11 @@ Optional wrapper (same gate, then `convmem`):
 ~/Projects/convmem/scripts/convmem-live-write.sh add --file ~/.local/share/convmem/decisions-approved.jsonl --upsert
 ```
 
-### Verify gate
+### What gate diagnostics establish
 
-```bash
-restic snapshots --tag convmem-chroma          # list chroma backups
-bash ~/Projects/convmem/scripts/restic-ensure-chroma-snapshot.sh --check-only
-bash ~/Projects/convmem/scripts/verify-restic-gate.sh   # happy + fail-closed negative
-convmem doctor                                   # includes restic_gate check
-```
+The configured profile/tag/path and local-day checks establish snapshot eligibility, not demonstrated recovery or a consistent live-file capture method. Under complete-data-v2 the tag is `convmem-data-v2`; `convmem-chroma` is legacy and cannot substitute for that profile. Use the existing explicit BackupContext resolver; do not select `--latest` or silently fall back across profiles.
+
+The ensure `--check-only` probe deliberately leaves eligibility **unchecked** and can return PASS after caught resolver errors. It is a reachability/toolchain probe, not permission to write. The live gate, local health, offsite health and copy retain their distinct reviewed outcomes (ROADMAP). Doctor aggregates those observations; a healthy report does not qualify a recovery artifact. Running these diagnostics on production is an operational action requiring the applicable grant.
 
 ### Complete-data restore classifications (v2)
 
@@ -269,3 +269,43 @@ If Chroma itself is corrupt, restore from Restic (above) before reindexing.
 - `docs/SYSTEMD-DEPLOY.md` — systemd + env details
 - `docs/archive/minipc-deploy/` — archived miniPC deploy (historical; do not run)
 - `docs/inter-model/CONTINUE-VERIFY.md` — Continue UI checklist
+
+
+## Safe Harbor incident handling and rollout
+
+**Status:** T1–T4 are accepted and merged through `fdc8da7fa67c1d7b31bc5cd44de466001df04260`; T5 prepares this handoff, but its integrated run has an unresolved concurrency failure (T5-F1); V6 is not accepted. These instructions describe the implemented contract, not a live-operation grant. [VERIFY V6](plans/VERIFY-safe-harbor.md#v6--integrated-handoff-and-independent-sign-off-t5) separates source/test evidence from independent sign-off and owner acceptance. [EXECUTION section 6](plans/EXECUTION-safe-harbor.md) holds the still-open recovery inputs.
+
+### Stop, inspect and preserve
+
+1. An automatic segment restore ends the initiating mutation and leaves an incident, even when structural validation and census pass. Ryan accepted the availability/operator cost: every restore needs a current owner disposition before release. Do not reinterpret “restored” as successful ingestion or enable an automatic clear/retry loop.
+2. The sole guarded-write authority is `QUARANTINE.json` beside the **canonical** Chroma directory in `<chroma_dir>.write-guard/`. Current publications use `convmem.safe_harbor.incident_set`, version 2. Recognized version 1/legacy state, unknown/malformed/unreadable state and persisted-empty incident sets are not implicit release. A competing lexical alias guard location refuses; do not delete either location or create a fresh empty authority to bypass it.
+3. Preserve the marker, `preservation/` originals/manifests, pinned `snapshots/<segment>/<generation>/SNAPSHOT.json` and segment files, `events.jsonl`, plus relevant approval/export authority. Local segment saves are HNSW repair sources, not complete-data or independent disaster-recovery backups. No automatic cleanup is part of Safe Harbor. `audit.json` is latest-observation telemetry; a later pass/skipped/error cannot erase an unresolved incident.
+4. Within a separately authorized diagnostic scope, `scripts/chroma_guard.py status --chroma-dir <canonical-path>` reports incident IDs, finding revisions and the current authority digest. `validate` checks structure; `census` detects missing IDs. Zero missing IDs does not establish fresh vectors/content. These script paths open no Chroma client and use read-only SQLite; generic ConvMem/Chroma reads can still write bookkeeping. `audit` also writes telemetry/events and may publish quarantine under the lock; it is not a physically read-only command.
+5. **Containment unavailable** or a release-removal durability error means a marker file’s visible presence/absence is insufficient. Stop the affected operation, retain evidence and request Ryan’s bounded process-level containment/investigation. Do not claim a durable stop or durable release. The native guard does not stop incidental read-client writes, older clients, arbitrary same-user operations or other publishers.
+
+### Bounded repair and validated release
+
+The existing `reconcile` command can mutate segments and snapshot state; it is not a health probe. With existing authority, only the guard’s incident-bound resume is available: `--incident-id <current-id> --authority-digest <current-digest>` names a previously bound repair and pinned source. It does not authorize a general repair or invent a source for an unsupported/legacy incident. Originals must have a durable write-once completion manifest before replacement. Failed space/IO/hash/source checks retain containment; stop and route unavailable evidence to a separate repair decision.
+
+Ordinary `clear-quarantine` refuses. Its validated path requires **both** `--disposition <owner-reference>` and `--authority-digest <current-digest>`, for the explicitly selected canonical store. The owner reference records authorization, not authentication against a same-user actor. Ryan’s disposition must bind the actual findings authorized; additional findings or a new occurrence invalidate an older digest and require a fresh disposition.
+
+Under the native lock, release checks **every** unresolved incident: supported finding/occurrence, completed preservation and repair, immutable originals, pinned generation identities/digests, supported backend/schema, structure/census and the strict watermark oracle. Metadata must match the saved vector watermark with no newer relevant queued work. Census-only success cannot release stale same-ID vectors. Missing/legacy evidence, unknown semantics or pending/newer work keep containment, even where another recovery strategy could work. There is no force clear or automatic re-embedding fallback.
+
+Only after all checks pass does release durably append the disposition to existing `events.jsonl`, then remove the marker and durably publish its removal. A crash/error can leave a recorded disposition with containment still present, or uncertain marker removal. Do not infer rollback or replay a disposition over changed findings; inspect current authority/history and obtain the bounded follow-up decision. Evidence and pinned generations are not automatically deleted after release. A confirmed release permits guarded admission; resuming services or retrying a corpus mutation still requires its own applicable authorization.
+
+### Uncertain approval completion
+
+`record --recover <proposal-id>` and `propose_decision --recover <proposal-id>` share the admitted recovery path with direct `recover_approval()`. Recovery resolves the protected target/config first, reads authoritative intent/events under the governed lock, then performs fresh state checks and effects in the native critical section. It refuses unavailable/tombstoned/conflicting state rather than treating it as absence.
+
+An error reported as **completion outcome unknown** may occur after Chroma, export or APPROVED publication took effect. Keep all three; do not truncate the event tail, manually append approval, re-upsert blindly or assume APPROVAL_STARTED remains. A separately authorized retry reloads/reduces authoritative events, checks present Chroma and export effects, completes permitted missing effects/durability, and cannot duplicate a terminal approval. A malformed/truncated log or contradictory effects stops for review. A terminal event by itself is not proof that export and native validation completed. This is recovery of the existing approved intent, not permission to resurrect a tombstone or change intent.
+
+### Prepared rollout checklist — not executed
+
+- **Candidate and interpreter:** merged implementation `fdc8da7fa67c1d7b31bc5cd44de466001df04260`; local integrated evidence uses `/home/lauer/miniforge3/bin/python` 3.13.12 and hosted evidence Python 3.12.15, with Chroma 1.5.9. These are test identities. Choose and review the actual deployment interpreter/native binding; the strict release backend allowlist currently supports Chroma 1.5.9 only. A newer main must receive its own delta assessment.
+- **Recovery material:** Ryan must set the lost-work interval and name a qualified artifact, completion time, scope, exclusions and retrieval instructions. Confirm key access independently of the workstation and actual physical custody. Preserve the reported pre-incident Rescuezilla image. A fresh offline image can support planned maintenance; neither its frequency nor a mounted USB proves usable/offsite recovery. The added `/run/media/lauer/ext-ex4-1T-NVMe/` is unallocated capacity until separately authorized; no current drive inspection or write is part of T5.
+- **Processes and code roots:** under a later operational scope, inventory exact CLI/watch/MCP/reconcile/audit/backup-unit roots, interpreters and running versions. Name how every old writer or clear command is stopped/restarted/held; lazy-import caches require process replacement. Preserve currently stopped services as stopped. Include unguarded and incidental writers; the flock is not a global freeze. T5 performed no live process census.
+- **Existing state and coverage:** inspect actual canonical and lexical guard locations, markers, supported schemas, incident sources and backup profile coverage before first adoption. Record an explicit preservation/adoption procedure for any live legacy state. There is no migration grant here and no permission to rely on a first ordinary write as migration. Ensure explicit complete-data-v2 covers every actual affected path; Rescuezilla qualification alone does not bypass an unhealthy Restic gate on named consumers.
+- **Activation and rollback:** a separate reviewed grant must name the exact commit, interpreter, targets, permitted commands, service transitions and stop conditions. Inspect the actual intervening runtime-to-candidate delta; this handoff is not permission for an unreviewed main catch-up. A rollback to old code that can overwrite/ignore/clear incidents is blocked until compatibility is proven with containment retained. Unexpected schema/target/clock/IO or validation results stop the affected action for investigation.
+- **Acceptance after a permitted rollout:** record observed code/process identities, guard state and granted diagnostics; do not infer deployment health from CI. Any restore drill, backup creation, corpus operation, incident repair/release or watch start must remain within its separately named scope. Complete-data Backup v2’s Hybrid consistency audit and Recovery Authority T4/V4k remain open under their existing owners.
+
+**TL;DR:** [Arc Safe Harbor] Merged code retains incidents and original evidence, binds approval recovery to its protected target and refuses uncertain release. Operational qualification, deployment and live repair remain separate owner decisions.

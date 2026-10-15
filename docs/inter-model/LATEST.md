@@ -9,12 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T4 CI correction delivered (2026-10-14):**
-  **Next lane: Codex**, to report [draft #392’s hosted checks](https://github.com/alanmz-crypto/convmem/pull/392/checks),
-  then a bounded independent correction review and Ryan’s T4/V5 decision.
-  [VERIFY](../plans/VERIFY-safe-harbor.md#bounded-t4-ci-correction-and-isolated-evidence)
-  records passing local evidence and retained failures; [STATUS](../plans/STATUS-safe-harbor.md)
-  holds the current gates. Runtime/baseline unchanged; keep draft, no merge/live/T5.
+- **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
+  Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
+  **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

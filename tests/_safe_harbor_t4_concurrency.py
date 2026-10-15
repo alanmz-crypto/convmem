@@ -13,6 +13,8 @@ import subprocess
 import sys
 import time
 from contextlib import contextmanager
+from unittest import mock
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
@@ -105,6 +107,27 @@ def _read_line_fd(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
         readable, _, _ = select.select([fd], [], [], remaining)
         if not readable:
             continue
+        chunk = os.read(fd, 1)
+        if not chunk:
+            raise EOFError(f"unexpected EOF on fd {fd}")
+        buffer.extend(chunk)
+    line, _, _ = bytes(buffer).partition(b"\n")
+    return line.decode().strip()
+
+
+def _read_line_fd_lossy(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
+    """Historical T5-F1 reader: one large read drops bytes after the first newline."""
+    # pylint: disable=duplicate-code
+    # Keep the historical reader verbatim as an independent sensitivity control.
+    buffer = bytearray()
+    deadline = time.monotonic() + timeout
+    while b"\n" not in buffer:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(f"timed out waiting for line on fd {fd}")
+        readable, _, _ = select.select([fd], [], [], remaining)
+        if not readable:
+            continue
         chunk = os.read(fd, 4096)
         if not chunk:
             raise EOFError(f"unexpected EOF on fd {fd}")
@@ -117,7 +140,13 @@ def _read_line_fd(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
 
 def _write_line_fd(fd: int, text: str) -> None:
     payload = text if text.endswith("\n") else f"{text}\n"
-    os.write(fd, payload.encode())
+    data = payload.encode()
+    view = memoryview(data)
+    while view:
+        written = os.write(fd, view)
+        if written <= 0:
+            raise OSError(f"failed to write line to fd {fd}")
+        view = view[written:]
 
 
 def _signal_fd(name: str) -> int:
@@ -577,35 +606,372 @@ def spawn_worker_popen(
     )
 
 
+def collect_popen_output(
+    proc: subprocess.Popen[str],
+    *,
+    timeout: float = CHILD_TIMEOUT_SECONDS,
+    kill_if_running: bool = False,
+) -> tuple[str, str, int | None, dict[str, Any]]:
+    """Gather once, retrying after kill only to drain a timed-out child's pipes."""
+    meta: dict[str, Any] = {"returncode_before_gather": proc.poll()}
+    if kill_if_running and proc.poll() is None:
+        proc.kill()
+        meta["killed_before_gather"] = True
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        meta["communicate_timeout"] = True
+        meta["returncode_on_timeout"] = proc.poll()
+        partial_out = exc.stdout or ""
+        partial_err = exc.stderr or ""
+        if proc.poll() is None:
+            proc.kill()
+            meta["killed_after_timeout"] = True
+        try:
+            out, err = proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired as exc2:
+            meta["gather_failed_after_kill"] = True
+            out = (exc2.stdout or partial_out or "") if exc2.stdout or partial_out else ""
+            err = (exc2.stderr or partial_err or "") if exc2.stderr or partial_err else ""
+        else:
+            out = out or partial_out
+            err = err or partial_err
+    meta["returncode_after_gather"] = proc.returncode
+    # TimeoutExpired may expose bytes even when Popen uses text=True.
+    def as_text(value: str | bytes | None) -> str:
+        return value.decode(errors="replace") if isinstance(value, bytes) else value or ""
+
+    return as_text(out), as_text(err), proc.returncode, meta
+
+
+@dataclass
+class WorkerChildDiagnostic:
+    """Retain worker stdout/stderr/returncode; one gather per process."""
+
+    label: str
+    proc: subprocess.Popen[str] | subprocess.CompletedProcess[str] | None = None
+    stdout: str = ""
+    stderr: str = ""
+    returncode: int | None = None
+    annotations: dict[str, Any] = field(default_factory=dict)
+    _gathered: bool = False
+
+    def ingest(
+        self,
+        stdout: str,
+        stderr: str,
+        returncode: int | None,
+        **annotations: Any,
+    ) -> None:
+        if self._gathered:
+            return
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = returncode
+        self.annotations.update(annotations)
+        self._gathered = True
+
+    def annotate(self, **extra: Any) -> None:
+        self.annotations.update(extra)
+
+    def finalize(
+        self,
+        *,
+        timeout: float = CHILD_TIMEOUT_SECONDS,
+        kill_if_running: bool = True,
+    ) -> None:
+        if self._gathered:
+            return
+        proc = self.proc
+        if proc is None:
+            self._gathered = True
+            return
+        if isinstance(proc, subprocess.CompletedProcess):
+            self.ingest(proc.stdout or "", proc.stderr or "", proc.returncode)
+            return
+        if proc.stdout is None and proc.stderr is None:
+            self.ingest("", "", proc.returncode)
+            return
+        stdout, stderr, rc, meta = collect_popen_output(
+            proc, timeout=timeout, kill_if_running=kill_if_running
+        )
+        self.ingest(stdout, stderr, rc, **meta)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "label": self.label,
+            "returncode": self.returncode,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "annotations": self.annotations,
+        }
+
+
+def attach_worker_diagnostic(
+    proc: subprocess.Popen[str] | subprocess.CompletedProcess[str] | None,
+    label: str,
+) -> WorkerChildDiagnostic:
+    return WorkerChildDiagnostic(label=label, proc=proc)
+
+
 def parse_worker_stdout(
     proc: subprocess.CompletedProcess[str] | subprocess.Popen[str],
     *,
     timeout: float = CHILD_TIMEOUT_SECONDS,
+    diagnostic: WorkerChildDiagnostic | None = None,
 ) -> dict[str, Any]:
+    meta: dict[str, Any] = {}
     if isinstance(proc, subprocess.Popen):
-        out, err = proc.communicate(timeout=timeout)
-        stdout = out or ""
-        stderr = err or ""
-        rc = proc.returncode
+        if diagnostic is not None and diagnostic._gathered:
+            stdout = diagnostic.stdout
+            stderr = diagnostic.stderr
+            rc = diagnostic.returncode
+            meta = diagnostic.annotations
+        else:
+            stdout, stderr, rc, meta = collect_popen_output(
+                proc, timeout=timeout, kill_if_running=False
+            )
+            if diagnostic is not None:
+                diagnostic.ingest(stdout, stderr, rc, **meta)
     else:
         stdout = proc.stdout or ""
         stderr = proc.stderr or ""
         rc = proc.returncode
+        if diagnostic is not None:
+            diagnostic.ingest(stdout, stderr, rc)
+    if meta.get("communicate_timeout"):
+        # Complete-looking output does not turn a timed-out worker into success.
+        raise subprocess.TimeoutExpired(proc.args, timeout, output=stdout, stderr=stderr)
     lines = [line for line in stdout.splitlines() if line.strip()]
     if not lines:
+        if diagnostic is not None:
+            diagnostic.annotate(parse_error="empty_stdout")
         raise RuntimeError(f"worker empty stdout rc={rc} stderr={stderr}")
-    payload = json.loads(lines[-1])
+    try:
+        payload = json.loads(lines[-1])
+    except json.JSONDecodeError as exc:
+        if diagnostic is not None:
+            diagnostic.annotate(parse_error=str(exc), malformed_tail=lines[-1][:240])
+        raise RuntimeError(
+            f"worker malformed json rc={rc} stderr={stderr} tail={lines[-1][:240]}"
+        ) from exc
     payload["_worker_rc"] = rc
     payload["_worker_stderr"] = stderr
     return payload
 
 
-def terminate_worker(proc: subprocess.Popen[str] | None) -> None:
+def terminate_worker(
+    proc: subprocess.Popen[str] | None,
+    *,
+    diagnostic: WorkerChildDiagnostic | None = None,
+) -> None:
     if proc is None:
+        if diagnostic is not None and not diagnostic._gathered:
+            diagnostic.finalize(kill_if_running=False)
+        return
+    if diagnostic is not None and not diagnostic._gathered:
+        diagnostic.finalize(kill_if_running=True)
         return
     if proc.poll() is None:
         proc.kill()
-        proc.communicate(timeout=5)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+
+
+@dataclass
+class RaceTrace:
+    parent_stages: dict[str, float] = field(default_factory=dict)
+    signals: list[dict[str, Any]] = field(default_factory=list)
+    holder_polls: list[dict[str, Any]] = field(default_factory=list)
+    cleanup_errors: list[str] = field(default_factory=list)
+
+    def stage(self, name: str) -> None:
+        self.parent_stages[name] = time.monotonic()
+
+    def record_signal(self, label: str, value: str) -> None:
+        self.signals.append(
+            {"label": label, "value": value, "t": time.monotonic()}
+        )
+
+
+def read_tracked_event(
+    fd: int,
+    trace: RaceTrace,
+    label: str,
+    *,
+    timeout: float = BARRIER_TIMEOUT_SECONDS,
+) -> str:
+    value = _read_line_fd(fd, timeout=timeout)
+    trace.record_signal(label, value)
+    return value
+
+
+def cleanup_race_workers(
+    *,
+    rec_proc: subprocess.Popen[str] | None,
+    comp_proc: subprocess.Popen[str] | None,
+    rec_diag: WorkerChildDiagnostic,
+    comp_diag: WorkerChildDiagnostic,
+    open_fds: list[int],
+    trace: RaceTrace,
+) -> None:
+    for label, proc, diag in (
+        ("recovery", rec_proc, rec_diag),
+        ("competitor", comp_proc, comp_diag),
+    ):
+        try:
+            terminate_worker(proc, diagnostic=diag)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            trace.cleanup_errors.append(f"{label} cleanup: {type(exc).__name__}: {exc}")
+    try:
+        close_fds(open_fds)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        trace.cleanup_errors.append(f"close_fds: {type(exc).__name__}: {exc}")
+
+
+def persist_race_packet(
+    cli,
+    stem: str,
+    trace: RaceTrace,
+    *,
+    race: str,
+    competitor: str,
+    proposal_id: str,
+    children: dict[str, WorkerChildDiagnostic],
+    race_exc: BaseException | None,
+) -> Path:
+    payload: dict[str, Any] = {
+        "race": race,
+        "competitor": competitor,
+        "proposal_id": proposal_id,
+        "outcome": "failure" if race_exc or trace.cleanup_errors else "success",
+        "parent_stages": trace.parent_stages,
+        "signals": trace.signals,
+        "holder_polls": trace.holder_polls,
+        "children": {key: diag.as_dict() for key, diag in children.items()},
+        "cleanup_errors": trace.cleanup_errors,
+    }
+    if race_exc is not None:
+        payload["failure"] = f"{type(race_exc).__name__}: {race_exc}"
+    path = write_race_diagnostic(cli, stem, payload)
+    print(compact_race_diagnostic_summary(path, payload), flush=True)
+    return path
+
+
+def finish_race_run(
+    cli,
+    stem: str,
+    trace: RaceTrace,
+    *,
+    race: str,
+    competitor: str,
+    proposal_id: str,
+    children: dict[str, WorkerChildDiagnostic],
+    race_exc: BaseException | None,
+) -> None:
+    try:
+        persist_race_packet(
+            cli, stem, trace, race=race, competitor=competitor,
+            proposal_id=proposal_id, children=children, race_exc=race_exc,
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        detail = f"diagnostic publication failed: {type(exc).__name__}: {exc}"
+        print(json.dumps({"error": detail, "children": {
+            key: diag.as_dict() for key, diag in children.items()
+        }, "signals": trace.signals, "holder_polls": trace.holder_polls,
+            "cleanup_errors": trace.cleanup_errors}), file=sys.stderr, flush=True)
+        if race_exc is not None:
+            race_exc.add_note(detail)
+            raise race_exc from exc
+        raise
+    if race_exc is not None:
+        raise race_exc
+    if trace.cleanup_errors:
+        raise RuntimeError(
+            "race cleanup failed: " + "; ".join(trace.cleanup_errors)
+        )
+
+
+@contextmanager
+def pipe_read_fragment_delivery(read_fd: int, write_fd: int, fragments: list[bytes]):
+    """Deliver pipe bytes one fragment at a time as the reader consumes them."""
+    if not fragments:
+        raise ValueError("fragments required")
+    real_read = os.read
+    os.write(write_fd, fragments[0])
+    pending = fragments[0]
+    pending_offset = 0
+    next_idx = 1
+
+    def delivering_read(fd: int, n: int) -> bytes:
+        nonlocal pending, pending_offset, next_idx
+        if fd != read_fd:
+            return real_read(fd, n)
+        chunk = real_read(fd, n)
+        if not chunk:
+            return chunk
+        pending_offset += len(chunk)
+        if pending_offset >= len(pending):
+            if next_idx < len(fragments):
+                pending = fragments[next_idx]
+                pending_offset = 0
+                next_idx += 1
+                os.write(write_fd, pending)
+        return chunk
+
+    with mock.patch("os.read", delivering_read):
+        yield
+
+
+def race_diagnostic_path(cli, stem: str) -> Path:
+    from tests._safe_harbor_t4_harness import assert_cli_confined
+
+    assert_cli_confined(cli)
+    root = Path(cli.s.root).resolve(strict=False)
+    digest = hashlib.sha256(stem.encode()).hexdigest()[:12]
+    path = (root / f"safe_harbor_t4_race_{digest}.json").resolve(strict=False)
+    if path != root and root not in path.parents:
+        raise RuntimeError(f"refusing race diagnostic outside fixture root: {path}")
+    return path
+
+
+def write_race_diagnostic(
+    cli,
+    stem: str,
+    payload: dict[str, Any],
+) -> Path:
+    path = race_diagnostic_path(cli, stem)
+    path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def compact_race_diagnostic_summary(path: Path, payload: dict[str, Any]) -> str:
+    children = payload.get("children") or {}
+    labels = ",".join(sorted(children))
+    stages = payload.get("parent_stages") or {}
+    last_stage = max(stages, key=stages.get) if stages else "none"
+    return (
+        f"race_diag path={path} children={labels} "
+        f"last_stage={last_stage} competitor={payload.get('competitor', '?')}"
+    )
+
+
+def assert_holder_live(
+    proc: subprocess.Popen[str] | None,
+    *,
+    stage: str,
+    trace: RaceTrace,
+) -> None:
+    rc = proc.poll() if proc is not None else None
+    trace.holder_polls.append(
+        {"stage": stage, "t": time.monotonic(), "returncode": rc}
+    )
+    trace.parent_stages[f"holder_poll_{stage}"] = trace.holder_polls[-1]["t"]
+    if proc is None:
+        raise AssertionError(f"holder missing at {stage}")
+    assert rc is None, f"holder exited before {stage} rc={rc}"
 
 
 def close_fds(fds: list[int]) -> None:
@@ -665,6 +1031,10 @@ def assert_child_isolation(cli, extra_env: dict[str, str] | None = None) -> None
 
 def read_event(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
     return _read_line_fd(fd, timeout=timeout)
+
+
+def read_event_lossy(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
+    return _read_line_fd_lossy(fd, timeout=timeout)
 
 
 def write_go(fd: int, text: str = "GO") -> None:

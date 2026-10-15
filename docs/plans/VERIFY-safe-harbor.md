@@ -1,14 +1,14 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T3 ACCEPTED AND MERGED.** [T3 final record](#t3-final-ci-review-owner-acceptance-and-squash-mapping) binds accepted `3c490e2` to squash `a7f7200`, passing hosted CI, Kiro final delta PASS (89%) and Ryan’s T3/V3/V4/BugBot outage acceptance. Historical failures and limitations are retained below. [T4 isolated V5 evidence is returned](#t4-implementation-and-isolated-v5--returned-for-independent-review), pending independent review and Ryan acceptance. V6 remains NOT RUN; T5 and deployment are ungranted.
+> **Arc: Safe Harbor. T1–T4 / V1–V5 ACCEPTED AND MERGED; V6 ACCEPTED AT `1cb02fb`.** [T4 closeout](#t4-final-ci-review-owner-acceptance-and-squash-mapping) records the accepted candidate, hosted CI, independent reviews and identical-tree squash. [V6 acceptance](#v6-independent-kiro-review-and-owner-acceptance) records Kiro's pinned PASS and Ryan's acceptance with the evidence limits retained. T5 remains on its branch; PR creation, hosted CI, merge and deployment remain separately gated.
 
 ```text
 Planning Status
-Phase:        T4 implemented; isolated V5 returned for independent review
+Phase:        T5 / V6 accepted at 1cb02fb; delivery decision pending
 Characters:   Implementer, Test-First Reviewer
 Function:     Record observed evidence, failures and remaining limits
-Lanes:        Cursor authors T4; Codex supervises; independent review later
-Authority:    EXECUTION section 15; no PR/merge/deployment/T5 grant
+Lanes:        Codex acceptance record; Kiro V6 review complete; Ryan delivery gate
+Authority:    EXECUTION sections 17–18; no PR/hosted-CI/merge/deployment/live grant
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -23,9 +23,13 @@ Authority:    EXECUTION section 15; no PR/merge/deployment/T5 grant
 
 ## Human consequence
 
-T1 incident retention, T2 operation-bound preflight and T3 evidence preservation/validated release are accepted and merged source. Approval-recovery handling is implemented on the isolated T4 branch; its returned V5 evidence awaits independent review and owner acceptance. Rollout, recovery qualification and arc closure remain separate.
+T1–T4’s incident handling, target-bound preflight, preservation/release and approval recovery are accepted and merged. T5’s corrected combined run passes all 257 cases; its historical concurrency failure and attribution limit remain recorded. Kiro independently PASSed V6 at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, and Ryan accepted that reviewed V6 subject. T5 delivery, final-tip outage disposition and live authority remain separate. Nothing here qualifies a live recovery artifact or deploys the merged code.
 
-Who: Cursor supplied T1/T2 implementation evidence; GitHub supplied CI; Copilot/Codex reviews and Ryan's exact acceptances retain their scopes below. Cursor/Codex contributed T3 implementation and evidence. Kiro independently reviewed the pinned implementation and successive integration/correction deltas; Ryan accepted V3/V4 and merged the exact candidate through #391. T4/V5 isolated evidence is returned below; V6 remains unrun.
+Who: Cursor/Codex supplied implementation and mechanical evidence, GitHub supplied hosted CI, and the pinned Copilot/Codex/Kiro reviews and Ryan’s task-specific acceptances retain the scopes below. When: T5 began 2026-10-14 from the T4 squash. Why/how: synchronize evidence and operator instructions while keeping source acceptance, recovery assurance and live authority distinct.
+
+**Merge reading:** [current STATUS](STATUS-safe-harbor.md), [T5 grant](EXECUTION-safe-harbor.md#17-t5-integrated-verification-and-operational-handoff--owner-authorized), [approved architecture](ARCHITECTURE-safe-harbor.md), [operator handoff](../RECOVER.md#safe-harbor-incident-handling-and-rollout), [routing](../inter-model/LATEST.md).
+
+**TL;DR:** [Arc Safe Harbor] Corrected integrated evidence passes 257 cases; Kiro PASS and Ryan V6 acceptance are pinned to `1cb02fb`. The historical failure's exact cause remains unproven. Delivery and live operations remain separately gated.
 
 ## Scope lock
 
@@ -42,7 +46,7 @@ In scope: execution T1–T5 and their named production entrypoints under isolate
 
 **Plan prerequisites satisfied:** Ryan accepted the plan and explicitly approved v2 B-E4.1 at `dca13a59a2edf649ac6a19777f572645bea8674e`, including all five consumer outcomes, with ownership unchanged. This is approval metadata, not runtime evidence.
 
-**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3’s proof, implementation and bounded CI grants are complete; its final acceptance is recorded below. T4 has the isolated implementation/evidence grant in section 15; T5 remains ungranted. The external-review row below describes T1 only. T2's historical Copilot audits and final Codex review are recorded in V2; Ryan resolved its separate BugBot gate with the final-tip exception recorded below.
+**T1 grant satisfied:** the completed T1/Cursor scope and corrections are recorded in execution section 8. **T2 grant recorded:** Ryan subsequently granted isolated T2 implementation and V2 evidence; section 9 records its boundary. T3’s proof, implementation and bounded CI grants are complete; its final acceptance is recorded below. T4/V5 is accepted and merged; the later final record preserves its exact outage exception. T5 is authorized in section 17; V6’s independent/owner gates remain open. The external-review row below describes T1 only. T2's historical Copilot audits and final Codex review are recorded in V2; Ryan resolved its separate BugBot gate with the final-tip exception recorded below.
 
 Isolated V1 ran. Production CLI, MCP, session indexing, Restic, providers, services and external drives were not invoked.
 
@@ -870,18 +874,246 @@ The review keeps small-store validation and CI integration limitations open. It 
 
 ## V5 — Approval recovery (T4)
 
-**ISOLATED EVIDENCE RETURNED; NOT OWNER-ACCEPTED.** Ryan granted T4 in [EXECUTION section 15](EXECUTION-safe-harbor.md#15-cursor-t4-implementation-and-isolated-v5--owner-authorized). [The final evidence record](#t4-implementation-and-isolated-v5--returned-for-independent-review) pins the 70 T4 cases, affected regressions and unchanged-baseline lint result to `a3207fe`. It retains all failed/excluded attempts and limitations. Independent review and Ryan's exact acceptance are separate outstanding gates.
+**ACCEPTED AND MERGED.** [T4 final closeout](#t4-final-ci-review-owner-acceptance-and-squash-mapping) pins final hosted evidence, Kiro’s implementation/correction reviews, Ryan’s V5 acceptance and the outage exception to `ed6699b`, landed as identical-tree `fdc8da7`. The [initial isolated record](#t4-implementation-and-isolated-v5--returned-for-independent-review) retains source `a3207fe`, its original 70 cases and all failed/excluded attempts; the later correction/full-suite evidence supersedes its pending gates. V6 is a separate handoff gate.
 
 Covered: cold/warm caches and fresh retries; unknown/absent/tombstoned/conflicting/matching states; direct and CLI admission; actual native-lock competition with forget/refine; config/target changes; partial Chroma/export/event completion; before/partial/complete-but-fsync-failed/durable-but-unacknowledged append; new-log/new-directory durability; independent faulty alternatives. An unsuccessful invocation may leave APPROVED. Retry rereads authority and establishes durability before success; no duplicate approval, blind re-upsert, hidden export loss or malformed-tail cleanup is accepted. The detailed source/command/artifact record below scopes each claim.
 
 ## V6 — Integrated handoff and independent sign-off (T5)
 
-**NOT RUN.** All required cases and negative controls accounted for at the implementation tip; policy docs synchronized; no production/drive/provider access; truthful scope/operational prerequisites; written independent verdict with residuals and Ryan gate. Reviewers perform no cleanup or corrective live operations.
+**Mechanical result: PASS — 257 corrected integrated cases passed; historical T5-F1 retained below. Independent Kiro V6 sign-off: PASS. Ryan V6 acceptance: ACCEPTED at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`.** The independent review is bounded to the test/evidence/operator-handoff delta; it does not repeat or replace the pinned T1–T4 implementation verdicts.
+
+### V6.1 — Exact subject and accepted review coverage
+
+Source base: main squash `fdc8da7fa67c1d7b31bc5cd44de466001df04260`, accepted T4 candidate `ed6699bea949b95e0807f166c3297500736d4aa9`, hosted tested merge `33a4d9590a7adc0775005617a37b5998a2e2614b`. Codex rechecked GitHub PR/check/commit metadata and local Git: **all three trees equal `3e2e50f69da63bb58d1b6b4455bac15f52c50d25`**. No current-main assumption transfers evidence to future edits.
+
+- V1: [T1 acceptance and Copilot exception](#final-tip-ci-review-and-owner-acceptance), candidate `0c7b4e263dff12f8e1a6b2d485616153ed096b66`, squash `05aa2c8`.
+- V2: [T2 acceptance and Codex exception](#t2-final-tip-ci-owner-acceptance-and-squash-mapping), candidate `eb06c97df2cfe9de3627fd8672b9e3b7c277c963`, squash `458b9f6`. Its event-only evidence exclusion was real at T2; T4’s real recovery effects now supply that evidence without rewriting the earlier acceptance.
+- V3/V4: [T3 Kiro reviews and owner exception](#t3-final-ci-review-owner-acceptance-and-squash-mapping), candidate `3c490e2ce61d5c6531a044132c5a01faf144f1ac`, squash `a7f7200`.
+- V5: [T4 Kiro reviews and owner exception](#t4-final-ci-review-owner-acceptance-and-squash-mapping), candidate `ed6699b`, squash `fdc8da7`.
+
+All four runtime tasks had required external review, resolved by the quoted tip-specific owner outage exceptions; **BugBot reviewed no accepted SHA**. These are not blanket exemptions. T5 includes the section 18 test correction: `gate_applicability=required`, `subject_tip_sha=1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, `bugbot_reviewed_sha=n/a`, `independent_kiro_v6=PASS`, `owner_v6=ACCEPTED`, `outage_exception=not_granted`, `result=pending external-gate disposition`. The earlier docs-only exemption is superseded; neither prior outage exceptions nor V6 acceptance alone close that delivery gate. No paid review or new PR action ran.
+
+### V6 independent Kiro review and owner acceptance
+
+**[Arc Safe Harbor] Subject:** `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, branch `feat/2026-10-14-safe-harbor-t5`; runtime base `fdc8da7fa67c1d7b31bc5cd44de466001df04260`, executed test source `22fa1b9fc547092c7bf7e3b0156621e7db10b597`. This documentation successor records the decisions; it does not move the reviewed or accepted subject.
+
+**Kiro: PASS, high confidence, no blockers.** Ryan authorized one bounded read-only V6 review. Kiro inspected the test delta, original/fresh raw run logs, both real recovery-first race packets, lint evidence and operator instructions, with sampled checks against unchanged recovery/release source. The reviewer confirmed lossless framing, short-write handling, timeout refusal and retained child diagnostics without weakened lock/effect assertions. The 257 integrated passes, 22 affected passes and 16 control passes remain overlapping selections. The final two-comment lint annotation is separately mapped to the executed pytest source.
+
+**Review provenance:** the initial response stopped incomplete and is not a verdict. The same Kiro session completed raw-log/race and runtime coverage before returning its final PASS, exit 0. Codex's scope audit found 32 read/list calls confined to the exported packet and verified all 173 copied source files and 47 evidence files against the packet manifest. Kiro did not run Git, tests or production commands or independently recompute hashes; revision/hash identities were coordinator-supplied. Its runtime inspection was sampled, not a fresh full implementation audit. Temporary transcript/verdict and manifest: `/tmp/safe-harbor-t5-review-94mmz3lq/` (`verdict.txt`, `subject.json`, `scope-audit.json`); this in-repository record preserves the verdict if those temporary files expire.
+
+**Retained limits:** the exact historical 240/1 failure timeline was not reproduced; the framing defect is demonstrated separately. Synthetic fixtures do not establish hardware power-loss durability, OS-level isolation or production behavior under arbitrary load. Earlier small-store and sampled auxiliary-sink limits remain. Reused T4 hosted CI is not a fresh hosted run on the changed T5 tests. Kiro's sole optional suggestion was a clearer count pointer between the historical six concurrency cases and the corrected 22; it was not an acceptance condition.
+
+**Ryan's V6 acceptance:** following the pinned PASS, Ryan stated: “accpected: Next step: Your V6 acceptance decision. PR creation, hosted CI, merge and deployment remain separately gated.” This accepts V6 at the reviewed subject above with its documented limits. It grants no BugBot outage exception, PR creation, hosted CI, merge, deployment, drive/service action or other production operation.
+
+**Next:** a separate owner decision on one draft PR and normal hosted CI. Resolve final-tip external review/outage disposition and merge separately; do not reopen the completed V6 review merely to record this acceptance.
+
+### V6.2 — Combined V1–V5 execution
+
+**Current evidence:** [the authorized correction and fresh runs](#t5-f1-correction-and-fresh-evidence) pass at `22fa1b9`. The following first attempt is retained as history.
+
+**FAIL, exit 1: 240 passed / 1 failed / 0 skipped / 0 errors in 1,578.09 seconds (26:18).** Codex ran the existing cases together against untouched `fdc8da7`, before documentation edits. The explicit selection is T1 + existing guard regressions, T2, T3 unit/matrix/native proof, real N8/N9 admitted effects and every T4 test module. This is a selected integrated run, not the full repository suite or a new proof of arbitrary workload combinations.
+
+Isolation uses the reviewed stdlib bootstrap and `full_ci` builder before imports: fixture HOME/XDG/config/data, bound uid, inert provider endpoints, required verified fixture Restic 0.19.0 and real synthetic Chroma 1.5.9. The existing T4 Python-network refusal hook is installed in the child before project imports and inherited by its covered subprocesses. Unexpected logged attempts fail the supervisor; the intentional refusal canary is distinguished. This is not native/OS network isolation or exhaustive filesystem-access tracing. No production commands, probes, drives or services were invoked; this run does not independently strengthen the accepted auxiliary-sink trace claim.
+
+Entry: `/home/lauer/miniforge3/bin/python -I -S -B /tmp/safe-harbor-t5-evidence.py integrated`. Temporary driver, selected argv, source hashes, tool identity, network log, JUnit cases and captured stdout/stderr are retained in `/tmp/safe-harbor-t5-evidence-e1yp43_3`; counts and hashes follow below. The driver reuses the reviewed builder and network hook, adds no runtime predicate, and fails on nonzero/timeout, changed tracked source or unexpected Python network attempts. Raw local artifacts are temporary; the command/selection and result digest are retained here for later comparison. The checked-in full-suite reproduction entry remains `tests/_safe_harbor_t3_worker.py run-ci` under `-I -S -B` and the same explicit verified Restic configuration; it is a broader reproduction, not the exact local selection.
+
+#### Captured result and blocker T5-F1
+
+- Runner: Codex, uid/euid 1000, `/home/lauer/miniforge3/bin/python` 3.13.12; pinned Chroma 1.5.9 fixture checks ran. Required Restic 0.19.0 SHA256 `ae7fe58ab3511f830fd31d157158620b209522ff1332b119199d2e938d72338c` was verified and bridged into the fixture toolbin.
+- JUnit: 241 cases across all 16 selected modules; one failure, no errors/skips. Captured pytest and supervisor exit **1**. **1,581 source-file hashes unchanged**. Only the intentional `safe-harbor-canary.invalid` refusal was logged; no unexpected Python-network attempts. No production command or live resource probe ran.
+- **Observed failure:** `tests/test_safe_harbor_t4_concurrency_real.py::test_t4_real_recovery_holds_lock_forget_cannot_acquire`, line 153: expected `NB_BLOCKED`, observed `ACQUIRED`; case duration 33.575 seconds. The counterpart refine race and the out-of-lock faulty control passed, but neither disposes of this failure.
+- **Static helper defect:** `_read_line_fd()` in `tests/_safe_harbor_t4_concurrency.py:96–113` reads up to 4096 bytes, partitions at the first newline and discards the remaining bytes. The competitor emits `PRE_FLOCK` then `NB_BLOCKED`/`NB_FREE` on the same pipe. Coalesced delivery can therefore lose the second event. The held recovery uses the same reader with a 20-second timeout; a lost event could let that timeout unwind the holder before the parent sees `ACQUIRED`. This is a plausible explanation, **not a reproduced attribution of this failed run**.
+- **Evidence limitation:** the early assertion bypassed normal child-output parsing. The `finally` cleanup kills/collects a running child but does not retain that output; already-exited children are not collected there. JUnit contains the assertion only, with no child stdout/stderr. The retained synthetic event authority has PROPOSED and APPROVAL_STARTED, no APPROVED; this does not identify the precise lock timeline. Production lock correctness is neither disproved nor cleared by this artifact.
+- **Stop honored:** no correction, test suppression, timeout increase, rerun-for-green or runtime change. Preserve the failed artifacts and return the finding. Proposed bounded follow-up: lossless pipe framing with coalesced/fragmented-message controls; retain both children’s output/return codes and holder-liveness evidence on every exit; then rerun the unchanged real forget/refine races, faulty control and integrated suite. A changed safety assertion or runtime need returns separately to Ryan. Do not classify this as harmless flakiness without evidence.
+
+Artifact SHA256:
+
+- `/tmp/safe-harbor-t5-evidence-e1yp43_3/run.log` — `d869f238e5bd875122a50edceccead834c41ad81e1b35333d70688855186bcc6`
+- `/tmp/safe-harbor-t5-evidence-e1yp43_3/summary.json` — `529dd2a300452fe23285bf147f611b695033153e2ca94f30c7d1c21679aa3c3f`
+- `/tmp/safe-harbor-t5-evidence-e1yp43_3/junit.xml` — `59c50b78da4db8a9304f98210efd57ca694ad5bad310455913d93847300f9f8f`
+- `/tmp/safe-harbor-t5-evidence-e1yp43_3/reconciled.json` — `fb023e1e933b0cbb3b9ac37edbe27f482e85553c886224a03e2f5c4d00879376`
+
+#### T5-F1 correction and fresh evidence
+
+**Mechanical PASS at test source `22fa1b9fc547092c7bf7e3b0156621e7db10b597`; subsequent Kiro PASS and Ryan acceptance are pinned above.** Ryan authorized EXECUTION section 18 from checkpoint `ed5b2b9`; scope record `4c40635` precedes this test-only correction. Cursor authored the draft in a disposable copy; Codex inspected and completed it and supervised execution. Neither supplies an independent verdict.
+
+**Scope:** only `tests/_safe_harbor_t4_concurrency.py` and `tests/test_safe_harbor_t4_concurrency_real.py` change code. Runtime, dependencies, workflows, inventories and `ci/pylint-baseline.json` remain byte-identical to the accepted T4 source. The 20-second barrier and 90-second child timeouts are unchanged. Forty-two pre-existing helper functions, including the actual lock/mutation worker hooks, are AST-identical; the four changed existing helpers are line reading/writing and child parsing/cleanup.
+
+**Final-source mapping:** the three pytest runs below executed the exact source at `22fa1b9`. After they completed, the historical faulty reader received only a function-local `pylint: disable=duplicate-code` annotation and its rationale. The entire Python AST is unchanged; final full lint covers the annotated bytes. No functional rerun is claimed for those comment-only bytes. The exact hashes and AST comparison are recorded below.
+
+**Correction and controls:** the reader consumes one byte through newline, leaving subsequent signals in the kernel so the existing `select` check remains meaningful. Short writes complete or refuse on zero progress. Sixteen added cases exercise coalesced and genuinely fragmented delivery through the actual pipe helper, kernel readiness, short/zero writes, successful/exited/killed/timed-out/malformed child output, idempotent cleanup, both children retained after an early assertion, and diagnostic-publication failure. The historical lossy reader's AST matches the original reader; its real pipe control loses the second line and reaches EOF. A child that prints valid success JSON but times out still raises `TimeoutExpired`, with both streams retained. Diagnostic-write failure preserves the original exception and fails an otherwise successful test.
+
+The recovery-first races now retain JSON packets on success and failure: actual received signals and monotonic receipt times, parent stages, holder polls, both child streams/statuses and cleanup errors. Faulty out-of-lock/config-wait paths also retain packets. These are fixture diagnostics, not a new production incident authority. Instrumentation is larger than the one-byte reader fix because it covers failure paths that previously discarded evidence.
+
+**Captured runs** (same source; JUnit durations; counts overlap and must not be added):
+
+- Signalling/logging controls: **16 passed**, exit **0**, 26.13 seconds; no errors or skips. `/tmp/safe-harbor-t5-correction-evidence-5dq4y7zf`.
+- All affected concurrency cases and controls: **22 passed**, exit **0**, 126.03 seconds; no errors or skips. `/tmp/safe-harbor-t5-correction-evidence-1r2ujm2i`.
+- Combined V1–V5 selection: **257 passed**, exit **0**, 1605.42 seconds; no errors or skips. `/tmp/safe-harbor-t5-correction-evidence-ac4igdm0`.
+
+The integrated **257 cases across 16 modules** are the original 241 plus 16 new controls: V1/guard 45, V2 62, V3 unit/matrix 47, native backend proof 9, real N8/N9 effects 2, T4 92. All six original concurrency cases passed, including both recovery-first races, both tombstone-first refusals, config replacement while waiting and the actual faulty out-of-lock control. The original lock/effect assertions remain; no test was suppressed or timeout enlarged.
+
+Both integrated positive-race packets record INSPECTED → PRE_FLOCK → NB_BLOCKED, a live holder immediately before GO, then receipt of ACQUIRED; both workers exit 0, with no cleanup errors. The real nonblocking lock probe and pre-GO readiness assertion also pass. Receipt timestamps are parent observations, not independent timestamps of the child's exact acquisition instruction.
+
+All three runs preserve **1,581 source-file hashes**. Python 3.13.12, uid/euid 1000, the reviewed `-I -S -B` bootstrap, clean `full_ci` fixture environment, inert providers, synthetic Chroma 1.5.9 and checksum-verified scratch Restic 0.19.0 remain in use. No unexpected Python-network attempt was logged; the integrated run includes only the expected refusal canary. The selected run is not a full repository or hosted Python 3.12 run, OS network sandbox, exhaustive filesystem trace or power-loss proof. The accepted auxiliary-sink trace limitation remains.
+
+**Lint:** focused raw pylint 0 / gate 0. Full isolated repository gate against unchanged base `fdc8da7`:
+
+```text
+Pylint status 30: accepted (no fatal/usage bits)
+Using baseline from base:fdc8da7fa67c1d7b31bc5cd44de466001df04260
+Pylint regression gate PASS (452 findings, 234 fingerprints; no new/increased vs baseline)
+```
+
+The first full lint run, `/tmp/safe-harbor-t5-full-lint-eakjhzyr`, failed on one additional duplicate: the deliberately preserved historical faulty reader matches the old T1 barrier shape (72 duplicate findings versus baseline 71). It ran at reduced CPU priority alongside integrated evidence; source hashes remained stable. After pytest completed, a function-local annotation documented this intentional independent negative control without changing the baseline, reader or assertions. The fresh full lint result above covers that annotation. Earlier draft-focused lint attempts returned four findings, then one unused import, before raw-zero focused evidence. Their logs remain `/tmp/safe-harbor-t5-focused-lint-9icv06nv` and `...-eub0mvx6`; no baseline was edited. Final focused artifacts: `/tmp/safe-harbor-t5-focused-lint-8qvtghnt`.
+
+**Primary-source check:** SiteOne retrieved the official Python 3.13 [os](https://docs.python.org/3.13/library/os.html#os.read) and [subprocess](https://docs.python.org/3.13/library/subprocess.html#subprocess.Popen.communicate) documentation into `/tmp/safe-harbor-research-sudn23mx/runs/2026-10-14-python-docs`. It corroborates bounded reads and timeout/kill/drain handling; this is supporting reference material, not independent code review or proof of the historical failure's cause. Tavily was not exposed in this tool session; browser interaction was unnecessary.
+
+**Authoring boundary:** the disposable Cursor command-denial canary was observed; actual author/refinement calls used file reads/edits only. Codex corrected draft issues before execution, including partial-write accounting, timeout refusal despite success-shaped output, and stronger failure-log controls. No draft execution is presented as qualified evidence.
+
+**Disposition of T5-F1:** the framing defect is demonstrated and corrected; fresh affected and integrated evidence supports the required lock behaviour. The exact sequence of the original failed run remains unproven because its child output was not retained. That failed artifact and its hashes remain above. This is not a retrospective claim that the old failure was harmless.
+
+Artifact SHA256 (raw files remain local temporary evidence; this committed record and reproduction survive independently):
+
+- **signals**, `/tmp/safe-harbor-t5-correction-evidence-5dq4y7zf`:
+  - `run.log`: `d77a9dfdb95fe93be5e45b8ba9b4f92472f9f2e0f82aa22caac6a6aabf25e953`
+  - `summary.json`: `f16949d1b9a44b722b66afcdc2e945bd32312a2f6a6a8bc80a9cb2ba0376935e`
+  - `junit.xml`: `b90eb26f48f881dc4a321c8822e164c7ed316761af303ea4f4b14631c0cf285a`
+  - `reconciled.json`: `c1f9ed46644d4d527ecb3413ad7bb13094a31927ce281b00c51d2dc42b9f1083`
+
+- **concurrency**, `/tmp/safe-harbor-t5-correction-evidence-1r2ujm2i`:
+  - `run.log`: `481604274b7ff7ee6233c59ad0b0b295eb5fdb7ee22e54da221127c87b81f58c`
+  - `summary.json`: `ec477209d4d584efd03dae09d5b9abb88acf6956e455f4fe6ab8e443568b68bf`
+  - `junit.xml`: `f546b68bb742fb4ac48ea148588a5e4706b96b64c3941097d2d2418995773057`
+  - `reconciled.json`: `d79f00f931c5874a18b0e97b00f601ce7cd7381e10fb3122be2e974db0cd4417`
+
+- **integrated**, `/tmp/safe-harbor-t5-correction-evidence-ac4igdm0`:
+  - `run.log`: `ec25633b684a643f93758021c38cdf926041000c9f5bc02a91902627dc638756`
+  - `summary.json`: `844facd15f38e2e5569957a46bbdd635eb16b6a033ca0616076337cb5672dcf0`
+  - `junit.xml`: `b01f3c38d6080a1f792f3f0e8076121ccd77f81f192d12940214e11b5554207f`
+  - `reconciled.json`: `44305d0197b933c445ca2a0d7da13c2195d75bd67eab113bbd145af15c4780d9`
+
+- Integrated **refine** race packet: `/tmp/safe-harbor-t5-correction-evidence-ac4igdm0/fixture/pytest-tmp/test_t4_real_recovery_holds_lo1/t2/scratch/safe_harbor_t4_race_68de453efa0f.json`; SHA256 `8584497614dcc8f1fe808781b2898b052bd6da57a24f79f1df6df51f3dd6ab7f`.
+
+- Integrated **forget** race packet: `/tmp/safe-harbor-t5-correction-evidence-ac4igdm0/fixture/pytest-tmp/test_t4_real_recovery_holds_lo0/t2/scratch/safe_harbor_t4_race_22eb915492fa.json`; SHA256 `91ea0f54358dd4f70d8f4db38bd2fc1c44656c3bd89cebacae6270fba20d58d9`.
+
+- Full lint artifacts: `/tmp/safe-harbor-t5-full-lint-dfpvmr9f`.
+  - `report.json`: `d4d16f3f7771b24da83679bfb2729081ef7e6529ea70ad9c9f8f91ec013e54bb`
+  - `gate.log`: `9e02a06c81b43a4cf4302e53d77588fc71d9a0da01f80e6a5ee5c879cbf5f0e2`
+  - `summary.json`: `22026cf254465405ea7614d88627a8958ed023a24a77f588bd7a18c82941b90a`
+
+Executed test source SHA256 at `22fa1b9`:
+
+- `tests/_safe_harbor_t4_concurrency.py`: `ef548cacb568de152c33babb8844d295f9dc69f7c7e3d24243f3307331cc45fa`.
+
+- `tests/test_safe_harbor_t4_concurrency_real.py`: `1fada517813b158ee92e07bde1d87db4bd5b9b910341cb3811a90f6ec46e8d7e`.
+
+Final annotated helper SHA256: `fee3fcb4c60acdfe31e447c4efdae6993388410807f6b7174d3213fe54d045bb`. Whole-file AST equality: `True`; AST digest before/after: `e8fb8b8cde96f4c2e0a09eca357f0309e2c5ccf0d306bb812240b35c2e84a001`. Static record: `/tmp/safe-harbor-t5-lint-annotation.json`; the test module is byte-unchanged after execution.
+
+**Exact reproduction:** `/home/lauer/miniforge3/bin/python -I -S -B /tmp/safe-harbor-t5-correction-evidence.py signals`, then `concurrency`, then `integrated`. Supervisor SHA256 `dd76840dd5c02b8d18309d1b4fbb38826d0c3e51f310349701a63784d6f557bb`. It uses the same reviewed fixture builder and refusal hook as the historical run, adds the bounded selections, streams logs to the artifact, and requests captured JUnit output. The source below normalizes one whitespace-only line; its SHA256 is `94b19d3dda21c4f399914666215714f10962faf7eb31684f0241bb1501439eca` and its AST matches the executed driver. Running it again requires applicable authority.
+
+```python
+from pathlib import Path
+import sys,json,tempfile,importlib.util,hashlib,subprocess,os
+ROOT=Path('/home/lauer/Projects/convmem/.worktrees/feat-2026-10-14-safe-harbor-t5')
+assert sys.flags.isolated and sys.flags.no_site and sys.dont_write_bytecode
+os.environ['SAFE_HARBOR_CI_RESTIC_EXECUTABLE']='/tmp/safe-harbor-restic-tool/restic'
+os.environ['GITHUB_ACTIONS']='true'
+spec=importlib.util.spec_from_file_location('bootstrap',ROOT/'tests/_safe_harbor_bootstrap.py'); b=importlib.util.module_from_spec(spec);spec.loader.exec_module(b)
+uid=b.parent_launcher_uid();backend=b.load_stdlib_module(ROOT/'tests/_safe_harbor_t3_backend_worker.py','backend')
+e=Path(tempfile.mkdtemp(prefix='safe-harbor-t5-correction-evidence-',dir='/tmp'));f=e/'fixture';f.mkdir();meta={};env=backend.build_allowlisted_env(f,e,expected_uid=uid,profile='full_ci',fixture_meta=meta)
+hook=f/'network-hook';hook.mkdir();(hook/'sitecustomize.py').write_bytes((ROOT/'tests/_safe_harbor_t4_network.py').read_bytes());env['SAFE_HARBOR_T4_NETWORK_LOG']=str(f/'network-refusals.jsonl');env['PYTHONPATH']=str(hook)+':'+str(ROOT)
+mode=sys.argv[1]; groups={
+ 'signals':['tests/test_safe_harbor_t4_concurrency_real.py','-k','pipe_protocol or write_go or diagnostic'],
+ 'concurrency':['tests/test_safe_harbor_t4_concurrency_real.py'],
+ 'integrated':['tests/test_safe_harbor_t1.py','tests/test_chroma_write_guard.py','tests/test_safe_harbor_t2.py','tests/test_safe_harbor_t3.py','tests/test_safe_harbor_t3_matrix.py','tests/test_safe_harbor_t3_backend_proof.py','tests/test_governed_recovery_matrix_admitted.py',*[str(p.relative_to(ROOT)) for p in sorted(ROOT.glob('tests/test_safe_harbor_t4*.py'))]],
+ 'quick':['tests/test_governed_recovery_and_writers.py','tests/test_governed_recovery_matrix_admitted.py','tests/test_shadow_writer_gate_c3.py','tests/test_safe_harbor_t3_ci.py','tests/test_safe_harbor_t4_fixture_scope.py','tests/test_safe_harbor_t4_restic_ci.py'],
+ 't4':[str(p.relative_to(ROOT)) for p in sorted(ROOT.glob('tests/test_safe_harbor_t4*.py'))],
+ 't2':['tests/test_safe_harbor_t2.py'],
+ 'inventory':['tests/test_r2b_v2_implementation_revision.py','tests/test_shadow_writer_coverage_scan.py','tests/test_file_generation_read_path_inventory.py','tests/test_ci_contract.py'],
+ 'watch':['tests/test_watch.py::WatchPathTests','tests/test_watch_oom_live_diagnosis_d1.py::test_scratch_root_ancestor_of_production_fail_closed','tests/test_watch_oom_live_diagnosis_d1.py::test_scratch_root_production_fail_closed'],
+}
+cmd=[sys.executable,'-s','-B','-m','pytest',*groups[mode],'-v','-ra','-o','junit_logging=all','--junitxml='+str(e/'junit.xml'),'--tb=short','-p','no:cacheprovider','--basetemp='+str(f/'pytest-tmp')]
+files=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard'],cwd=ROOT,text=True).splitlines()
+def hashes():return {n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in files if (ROOT/n).is_file()}
+before=hashes();print(e,flush=True)
+try:
+
+ with (e/'run.log').open('w') as output:
+  p=subprocess.run(cmd,cwd=ROOT,env=env,stdout=output,stderr=subprocess.STDOUT,text=True,timeout=2700,check=False)
+ rc=p.returncode;log=(e/'run.log').read_text()
+except subprocess.TimeoutExpired as exc:rc=124;log=(e/'run.log').read_text()+'\nSUPERVISOR TIMEOUT: '+str(exc)
+(e/'run.log').write_text(log);after=hashes();net=f/'network-refusals.jsonl';attempts=[json.loads(x) for x in net.read_text().splitlines()] if net.exists() else [];unexpected=[x for x in attempts if x!={'event':'socket.getaddrinfo','destination':'safe-harbor-canary.invalid'}]
+summary={'source_revision':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),'supervisor_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'mode':mode,'cmd':cmd,'returncode':rc,'before':before,'after':after,'network_attempts':attempts,'unexpected_network':unexpected,'fixture_meta':meta,'uid':uid};(e/'summary.json').write_text(json.dumps(summary,indent=2));print(log);print('hashes_stable',before==after,'unexpected_network',unexpected);raise SystemExit(rc if before==after and not unexpected else 3)
+```
+
+**Current disposition:** [Kiro PASS and Ryan V6 acceptance](#v6-independent-kiro-review-and-owner-acceptance) are recorded at `1cb02fb`. External-gate/outage disposition remains pending for the changed tests; the earlier docs-only exemption no longer applies. No PR, hosted CI, merge or live authority is implied.
+
+### V6.3 — Required effects and sensitivity controls
+
+The historical first-run JUnit accounted for all **241 cases in 16 selected modules**; none were skipped. V1/guard 45 passed; V2 62 passed; V3 unit/matrix 47 passed; backend proof 9 passed; N8/N9 2 passed; T4 75 passed and 1 failed. The actual overwrite, no-op gate, copy-over-original, census-only, unknown-classifier, assumed-rollback and out-of-lock controls executed and passed their sensitivity assertions. This does not cancel the failed positive concurrency case. Source families:
+
+- **V1:** `test_safe_harbor_t1.py` plus `test_chroma_write_guard.py`: incident A→B and same-segment retention, empty/unknown/legacy authority, canonical alias/cache identity, sticky audit results, locked recheck/publication and ordinary-clear refusal. The actual overwrite publisher, unlocked audit and shared-undo faulty controls are retained.
+- **V2:** `test_safe_harbor_t2.py`: target/config/profile/alias changes, affected exports/governed paths, skip refusal, five distinct freshness consumers, local-day rollover, CLI effects and retained exemptions. No-op preflight and unbound alias/governed-target controls must expose the unsafe write.
+- **V3:** `test_safe_harbor_t3.py` / `test_safe_harbor_t3_matrix.py`: publish incident before replacement, immutable preservation/pins, real kill/restart and IO faults, two-incident release, current disposition, census retry and restored-caller refusal. Copy-over-original control must lose original evidence and fail its independent assertion.
+- **V4:** those matrix cases plus the real `test_safe_harbor_t3_backend_proof.py`: backend identity, monotonic operations/purge/restart, valid release, same-ID stale vector, binding/unknown sequence, mismatched source/manifest, append/removal durability and recurrence. Actual census-only release must incorrectly admit the stale fixture and be detected; count equality is not the oracle.
+- **V5:** all `test_safe_harbor_t4*.py` and `test_governed_recovery_matrix_admitted.py`: cold/warm/terminal states, direct+CLI real effects, independent Chroma/export/event assertions, actual forget/refine contention, native validation before completion and directory durability. Unknown→empty, assumed-rollback retry and out-of-lock recheck controls remain. Partial/torn/visible-but-fsync-failed/durable-but-unacknowledged append states retain truthful uncertainty and refuse blind replay.
+
+The old successful-restore-and-continue expectation was deliberately replaced by “restore retains authority and aborts the initiating mutation”; `test_restore_aborts_subsequent_guarded_write` and matrix effects make that changed contract observable. V6 does not weaken or modify those tests. Synthetic tests plus controls establish bounded implementation behavior; they do not prove hardware power-loss or historical semantic correctness.
+
+### V6.4 — Hosted evidence, operational handoff and remaining gates
+
+**Current checkpoint mechanics:** 168 local file/anchor links resolve, fences balance and `git diff --check` passes. Compared with the completed integrated run, only five evidence/routing docs and the two-comment lint annotation differ; the helper AST is identical. Against the accepted T4 base, the complete branch changes eight existing docs and the two granted test files. Runtime, workflows, dependencies, inventories and lint baseline remain unchanged.
+
+**Historical documentation mechanics at `ed5b2b9`:** eight existing Markdown files only; 166 local file/anchor links checked with no broken target, balanced code fences and `git diff --check` clean. Comparing every captured source hash after documentation edits found differences only in those eight docs. Runtime/tests/workflows/inventories/lint baseline remain identical to the failed-run subject. These checks do not clear T5-F1.
+
+The [T4 hosted record](#t4-final-ci-review-owner-acceptance-and-squash-mapping) is contemporaneous full-suite evidence on the accepted base tree, before this test correction: Python 3.12.15, 3,267 passes, 18 existing host/environment skips, 252 passing subtests, critical collector 0, unchanged-baseline lint PASS and six successful checks. **Reused for its original scope, not rerun or transferred to the changed T5 test tree.** The local selected run is separately identified; counts overlap and must not be added.
+
+[ROADMAP](../ROADMAP.md), [RECOVER](../RECOVER.md#safe-harbor-incident-handling-and-rollout) and [role mapping](../role-mapping.md) now name direct/CLI recovery coverage, retain the owner’s gate exemptions without endorsing the blanket append-only premise, and explain uncertainty/containment/release. The prepared handoff records the candidate and test interpreters, current guard schema/location contract, disposition binding, old-process/legacy-state and rollback prerequisites. **Actual deployed interpreter, process census, live guard state, recovery artifact/key/custody and loss window remain OPEN.** No live adoption, drill, release or service operation ran. The extra ext4 destination is a reported resource, not allocated or qualified protection. Backup v2’s Hybrid audit and Recovery Authority T4/V4k remain untouched.
+
+**V6 disposition and remaining delivery gates:** Kiro independently PASSed and Ryan accepted `1cb02fb`. Codex/Cursor remain contributing authors. The owner must separately authorize PR creation/hosted CI and resolve the final-tip external-review gate and merge; no T5 outage exception is recorded. No rollout or disaster-recovery claim follows automatically.
+
+### V6.5 — Local supervisor reproduction (source, not a live grant)
+
+The exact temporary supervisor below is retained so the local result does not depend on an unavailable `/tmp` script. It loads only stdlib/bootstrap until the fixture environment exists. Paths identify the recorded worktree and verified binary; a later reproduction must use an authorized isolated worktree and verified scratch tool. The extra named groups are inherited, unused driver options; the recorded invocation is `integrated`. No command below authorizes live execution.
+
+Supervisor SHA256: `2ddfba70b971bb34e0556741a7deb2ecda31e867145a0f3edb469094ff32cb21`.
+
+```python
+from pathlib import Path
+import sys,json,tempfile,importlib.util,hashlib,subprocess,os
+ROOT=Path('/home/lauer/Projects/convmem/.worktrees/feat-2026-10-14-safe-harbor-t5')
+assert sys.flags.isolated and sys.flags.no_site and sys.dont_write_bytecode
+os.environ['SAFE_HARBOR_CI_RESTIC_EXECUTABLE']='/tmp/safe-harbor-restic-tool/restic'
+os.environ['GITHUB_ACTIONS']='true'
+spec=importlib.util.spec_from_file_location('bootstrap',ROOT/'tests/_safe_harbor_bootstrap.py'); b=importlib.util.module_from_spec(spec);spec.loader.exec_module(b)
+uid=b.parent_launcher_uid();backend=b.load_stdlib_module(ROOT/'tests/_safe_harbor_t3_backend_worker.py','backend')
+e=Path(tempfile.mkdtemp(prefix='safe-harbor-t5-evidence-',dir='/tmp'));f=e/'fixture';f.mkdir();meta={};env=backend.build_allowlisted_env(f,e,expected_uid=uid,profile='full_ci',fixture_meta=meta)
+hook=f/'network-hook';hook.mkdir();(hook/'sitecustomize.py').write_bytes((ROOT/'tests/_safe_harbor_t4_network.py').read_bytes());env['SAFE_HARBOR_T4_NETWORK_LOG']=str(f/'network-refusals.jsonl');env['PYTHONPATH']=str(hook)+':'+str(ROOT)
+mode=sys.argv[1]; groups={
+ 'integrated':['tests/test_safe_harbor_t1.py','tests/test_chroma_write_guard.py','tests/test_safe_harbor_t2.py','tests/test_safe_harbor_t3.py','tests/test_safe_harbor_t3_matrix.py','tests/test_safe_harbor_t3_backend_proof.py','tests/test_governed_recovery_matrix_admitted.py',*[str(p.relative_to(ROOT)) for p in sorted(ROOT.glob('tests/test_safe_harbor_t4*.py'))]],
+ 'quick':['tests/test_governed_recovery_and_writers.py','tests/test_governed_recovery_matrix_admitted.py','tests/test_shadow_writer_gate_c3.py','tests/test_safe_harbor_t3_ci.py','tests/test_safe_harbor_t4_fixture_scope.py','tests/test_safe_harbor_t4_restic_ci.py'],
+ 't4':[str(p.relative_to(ROOT)) for p in sorted(ROOT.glob('tests/test_safe_harbor_t4*.py'))],
+ 't2':['tests/test_safe_harbor_t2.py'],
+ 'inventory':['tests/test_r2b_v2_implementation_revision.py','tests/test_shadow_writer_coverage_scan.py','tests/test_file_generation_read_path_inventory.py','tests/test_ci_contract.py'],
+ 'watch':['tests/test_watch.py::WatchPathTests','tests/test_watch_oom_live_diagnosis_d1.py::test_scratch_root_ancestor_of_production_fail_closed','tests/test_watch_oom_live_diagnosis_d1.py::test_scratch_root_production_fail_closed'],
+}
+cmd=[sys.executable,'-s','-B','-m','pytest',*groups[mode],'-q','-ra','--junitxml='+str(e/'junit.xml'),'--tb=short','-p','no:cacheprovider','--basetemp='+str(f/'pytest-tmp')]
+files=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard'],cwd=ROOT,text=True).splitlines()
+def hashes():return {n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in files if (ROOT/n).is_file()}
+before=hashes();print(e,flush=True)
+try:
+ p=subprocess.run(cmd,cwd=ROOT,env=env,capture_output=True,text=True,timeout=2700,check=False);rc=p.returncode;log=p.stdout+p.stderr
+except subprocess.TimeoutExpired as exc:rc=124;log=str(exc)
+(e/'run.log').write_text(log);after=hashes();net=f/'network-refusals.jsonl';attempts=[json.loads(x) for x in net.read_text().splitlines()] if net.exists() else [];unexpected=[x for x in attempts if x!={'event':'socket.getaddrinfo','destination':'safe-harbor-canary.invalid'}]
+summary={'mode':mode,'cmd':cmd,'returncode':rc,'before':before,'after':after,'network_attempts':attempts,'unexpected_network':unexpected,'fixture_meta':meta,'uid':uid};(e/'summary.json').write_text(json.dumps(summary,indent=2));print(log);print('hashes_stable',before==after,'unexpected_network',unexpected);raise SystemExit(rc if before==after and not unexpected else 3)
+```
 
 ## Evidence log
 
 | When | Runner | Subject | Command / case | Result | Pointer |
 |---|---|---|---|---|---|
+| 2026-10-14 | Codex, clean allowlist, uid 1000 | `fdc8da7` | combined 16-module V1–V5 selection; preserved source/control assertions | **FAIL**, exit 1; 240 passed / 1 failed / 0 skipped; stable 1,581 hashes | [T5-F1](#captured-result-and-blocker-t5-f1), `/tmp/safe-harbor-t5-evidence-e1yp43_3` |
 | 2026-10-13 | Codex-supervised corrected harness, uid 1000, clean allowlist; Python 3.13.12 / chromadb 1.5.9 | source `93d4e344c8959ed0176b3a9b39af7be3f638f148` | stdlib `-I -S -B` launcher; nine proof cases and focused pylint | qualified pytest **0**, **9 passed in 8.08s**; pylint **0**; stable hashes | [Corrected proof](#t3-r1r3-corrected-proof--qualified-evidence), `/tmp/safe-harbor-t3-s9ejarj3` |
 | 2026-10-13 | Cursor, miniforge Python 3.13.12, uid 1000; chromadb 1.5.9; numpy 2.4.4; hnswlib 0.8.0 | proof branch `feat/2026-10-12-safe-harbor-t3-backend-proof` (parent `324dfc5`) | `pytest tests/test_safe_harbor_t3_backend_proof.py -v --tb=line -p no:cacheprovider` under reported disposable roots | historical Cursor **DEMONSTRATED** claim, exit 0, `5 passed in 4.41s`; Codex review rejected full gate/isolation qualification | V4 original report and R1–R3 review |
 | 2026-10-11 | Cursor, isolated miniforge Python 3.13.12 | runtime `fa82028b762e5564eed9f2884336ccfb0e3caf73` | `pytest tests/test_safe_harbor_t1.py tests/test_chroma_write_guard.py -q --tb=line` under temporary HOME/XDG/CONVMEM_CONFIG | historical PASS, exit 0, `41 passed in 40.45s`; does not close the three correction gaps | V1 historical paragraph |
@@ -916,7 +1148,7 @@ Covered: cold/warm caches and fresh retries; unknown/absent/tombstoned/conflicti
 | 2026-10-13 | Cursor, uid 1000, `/tmp/safe-harbor-t2-shadow-coord-20261013T005040Z` | pre-fix `080b5f8` | `test_static_scan_matches_inventory_routing` | exit **1** (expected) | Shadow coordinate section |
 | 2026-10-13 | Cursor, uid 1000, `/tmp/safe-harbor-t2-shadow-coord-20261013T005048Z` | shadow metadata fix + R2b regen | 17-case scan/R2b/C3 selection | all exits **0** | Shadow coordinate section |
 
-SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2's earlier correction/integration rows are historical; final owner acceptance and squash mapping are recorded above. The corrected T3 ordering-gate proof and later implementation evidence are separate records. V3/V4 acceptance is pending; V5/V6 stay NOT RUN.
+SKIP does not satisfy a required safety claim. No session-start health result fills a runtime or recovery row. V2's earlier correction/integration rows are historical; final owner acceptance and squash mapping are recorded above. The corrected T3 ordering-gate proof and later implementation evidence are separate records. V1–V5 acceptance is recorded in the final task closeouts; the evidence-log rows above remain historical. V6 alone awaits independent sign-off and Ryan’s gate.
 
 ## Merge reading
 
@@ -927,7 +1159,7 @@ SKIP does not satisfy a required safety claim. No session-start health result fi
 
 ## TL;DR
 
-[Arc Safe Harbor] The qualified proof and independent Kiro PASS remain prerequisite evidence. Current T3 implementation evidence is recorded below, without independent implementation acceptance. The original isolation lapse retains its uncertainty; no live authority is implied.
+[Arc Safe Harbor] V1–V5 are accepted and merged; V6 holds the integrated handoff. The chronological checkpoints below retain their original failures, exclusions and pending-at-the-time statements; final closeouts supersede those gates, not their evidence limitations.
 
 ### T3 supervised development checkpoint — historical, not acceptance
 
@@ -1394,7 +1626,7 @@ Kiro session `sess_42e55d38-86b7-4ff0-af6e-c2e58015b5bb`; local packet `/tmp/saf
 **Disposition:** the authorized independent review is complete, with the limits above. Kiro permits advancing to Ryan's acceptance/next-step decision; it does not declare merge readiness. Recommended next step is a separately authorized draft PR and normal hosted CI on the eventual candidate. V5 owner acceptance and the eventual external-review gate remain open; this PASS is not automatically a BugBot outage exception. No corrections, PR/comments, hosted CI, merge, deployment, production operations or T5 were performed or newly authorized by this review.
 
 
-### T4 first hosted CI failure and bounded correction — in progress
+### T4 first hosted CI failure and bounded correction — historical
 
 **Arc Safe Harbor, 2026-10-14.** Ryan authorized one draft PR and normal CI, then the bounded correction in EXECUTION section 16. Draft [PR #392](https://github.com/alanmz-crypto/convmem/pull/392) initially tested head `76ea292701836c003ec86732ce011d85553b5212`, runtime `a3207fe`, against base `a7f72003aea516b4961a584fcfe54ad255d6a053`. Hosted run [38512289708](https://github.com/alanmz-crypto/convmem/actions/runs/38512289708) checked merge `4fda7d75ff2aaeafefd005cf4c9db7930f050e3a` on Python 3.12.15: **7 failed, 3,086 passed, 186 skipped, 252 subtests passed**, 1,613.69s. Critical collection returned 0. Pylint regression PASS (raw 30, 452 findings / 235 fingerprints), secret scan and all security checks passed. This is a failed candidate, not V5 acceptance.
 
@@ -1440,3 +1672,24 @@ Evidence SHA256 (temporary raw artifacts; key results and reproduction are retai
 - `/tmp/safe-harbor-t3-_anac5l8/summary.json` — `da4a92a83a4aa93f4cf323503a493ff591d5bc077cf2ad5fd7f46e82e2e29345`
 
 Reproduction: the checked-in `-I -S -B` entries `tests/_safe_harbor_t3_worker.py run-ci-collect`, `tests/_safe_harbor_t3_worker.py run-ci` (full hosted suite) and `tests/_safe_harbor_t3_backend_worker.py run-proof` keep their existing isolation contract. For full_ci, supply the verified binary with `SAFE_HARBOR_CI_RESTIC_EXECUTABLE`; the workflow provisions it in the runner. The captured local selection argv/config and source hashes are in the summary artifacts above. Codex’s temporary selection driver is `/tmp/safe-harbor-t4-ci-evidence.py`; it builds the full_ci environment before imports, uses the actual verified binary and refuses unexpected Python network activity. No production tool/config/data/backup operation is part of reproduction.
+
+
+### T4 final CI, review, owner acceptance and squash mapping
+
+**[Arc Safe Harbor] 2026-10-14. T4/V5 ACCEPTED AND MERGED.** This record supersedes earlier pending T4 gates, preserving failed/excluded attempts and each review’s scope.
+
+**Candidate:** `ed6699bea949b95e0807f166c3297500736d4aa9`, [PR #392](https://github.com/alanmz-crypto/convmem/pull/392). Runtime implementation remains `a3207fe397bf820f4f2bd412c7d5f110d00fdc67`; the final correction changes tests/CI/docs only. It replaces global fixture registration, proves N8/N9’s actual admitted effects, requires checksum-verified Restic and accounts for 19 writer-session sites (17 external, one scratch, one production internal recovery delegate). No route-policy/runtime/lint-baseline change.
+
+**Hosted evidence, observed existing checks/logs:** [run 38519477899](https://github.com/alanmz-crypto/convmem/actions/runs/38519477899), Python 3.12.15: **3,267 passed, 18 skipped, 9 warnings, 252 subtests passed in 4,336.44 seconds**, full-suite exit 0. Critical collector returned 0. The 18 skips are existing live-store/provider/corpus/host-memory/cgroup/userns exclusions; no Safe Harbor/T3/T4/Restic test was skipped. Pylint regression gate PASS: raw status 30, 453 findings / 234 fingerprints, no new/increased findings against unchanged `a7f72003aea516b4961a584fcfe54ad255d6a053`. All six PR checks succeeded: pytest, pylint, secret-scan, Analyze (actions), Analyze (python), CodeQL. Reported before/after source hashes were stable and the 24 files matched the candidate. Restic 0.19.0 binary SHA256 `ae7fe58ab3511f830fd31d157158620b209522ff1332b119199d2e938d72338c`.
+
+**Independent reviews supplied by Ryan:** Kiro implementation PASS (90%) at `d27d3c00c1ed6f35c9502c4628b4dbcc3af78de1` / runtime `a3207fe`; final correction PASS (89%) at `ed6699b`, delta `76ea292..ed6699b`, static Git plus existing hosted logs. No blockers. The final review confirmed fixture confinement, real N8/N9 effects, required Restic, inventory and green logs. Optional collection-count/list-sync improvements are not new acceptance conditions. Preserve the implementation review’s sampled-log/auxiliary sink-trace limits and process-interruption-versus-power-loss distinction. Codex/Cursor contributed; neither replaces Kiro’s independent review.
+
+**Source/evidence qualification:** the correction review’s “V5/V6 NOT RUN” sentence is inconsistent with its own V5 runtime/test evidence and T4/V5 acceptance routing. V5 did run, was reviewed and is now accepted; V6 alone remained unrun at that review. The internal recovery delegate is a production internal site, not a non-production writer; it is excluded from the *external entrypoint* count. These correct factual labels without changing the PASS or contract.
+
+**Ryan’s acceptance (verbatim):**
+
+> I accept Safe Harbor T4/V5 at ed6699bea949b95e0807f166c3297500736d4aa9, including its documented evidence limitations, and accept Kiro’s pinned implementation and correction reviews as the BugBot outage exception for PR #392. Merge, deployment and T5 remain unauthorized.
+
+Ryan then explicitly instructed **“merge”**. Codex checked the exact head and successful checks and performed a SHA-bound squash. GitHub reports merged at **2026-10-14 07:32:58 UTC**, squash `fdc8da7fa67c1d7b31bc5cd44de466001df04260`, parent `a7f72003aea516b4961a584fcfe54ad255d6a053`. Accepted head, hosted tested merge `33a4d9590a7adc0775005617a37b5998a2e2614b` and squash all have tree **`3e2e50f69da63bb58d1b6b4455bac15f52c50d25`** (GitHub commit API/local Git rechecked). This maps reviewed/tested source to main, not to running processes. T5’s subsequent grant is separate in EXECUTION section 17. Deployment/live operations remain unauthorized.
+
+**TL;DR:** [Arc Safe Harbor] T4/V5 and its exact outage exception are accepted; #392 landed the identical reviewed/tested tree. T5 verification is separately authorized; live operations remain pending.
