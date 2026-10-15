@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 STOPPED ON A CONCURRENCY EVIDENCE FAILURE.** [Section 17](#17-t5-integrated-verification-and-operational-handoff--owner-authorized) records the isolated verification and operational-handoff grant. Independent V6 sign-off, owner closeout and live operations remain separate.
+> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 / V6 ACCEPTED AT `1cb02fb`.** [The V6 record](VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance) pins Kiro's PASS and Ryan's acceptance, retaining the historical failure and evidence limits. PR creation, hosted CI, merge and deployment remain separately gated.
 
 ## 1. Source, authority and goal
 
@@ -10,10 +10,10 @@
 
 ```text
 Planning Status
-Phase:        T5 failure recorded; return for bounded corrective decision
+Phase:        T5 / V6 accepted at 1cb02fb; delivery decision pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Codex mechanical/doc evidence; Kiro independent sign-off; Ryan gate
+Lanes:        Codex acceptance record; Kiro V6 review complete; Ryan delivery gate
 Authority:    Ryan T5 grant (section 17); no new PR/merge/live grant
 ```
 
@@ -210,9 +210,9 @@ These are operational prerequisites to be completed later, not additional implem
 
 ## 7. VERIFY companion and review record
 
-Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md). V1–V5 are owner-accepted, with exact review, hosted-CI and squash mappings. V6 records the separately authorized T5 run and prepared operational handoff; Kiro sign-off and Ryan’s V6 gate remain pending.
+Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md). V1–V5 are owner-accepted, with exact review, hosted-CI and squash mappings. V6 has Kiro PASS and Ryan acceptance at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, covering the corrected test/evidence and prepared operational handoff with its documented limits.
 
-Next: bounded independent Kiro V6 review of the corrected test/evidence successor, then Ryan acceptance/outage disposition. Section 18’s correction has fresh 257-pass integrated evidence; operator-doc synchronization is prepared. Historical reviews/grants below keep their dates and original scope; their old “pending” labels do not override the current STATUS/V6 record. Do not reopen completed B-E4.1 approval or transfer a prior outage exception to changed runtime.
+Next: Ryan's separate draft-PR/normal-hosted-CI decision, followed by final-tip external-review/outage disposition and merge decision. V6 acceptance grants none of those actions. Section 18's correction has 257-pass integrated evidence; operator-doc synchronization is prepared. Historical reviews/grants below keep their dates and original scope; their old “pending” labels do not override the current STATUS/V6 record. Do not reopen completed B-E4.1 approval or transfer prior outage exceptions to T5.
 
 ### Kiro execution review and advisory disposition
 
@@ -730,7 +730,7 @@ Ryan authorized: “authorized: Next step: Your decision on authorizing T5’s i
 
 ### T5 bounded Kiro review handoff
 
-Fresh corrective evidence is returned in VERIFY V6. Use the immutable final T5 successor SHA supplied by Codex, not a moving branch. This is a prepared prompt; no reviewer invocation or PR action is authorized by its presence.
+**Completed assignment; reference only — do not rerun.** Ryan authorized the bounded review, Kiro returned PASS at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, and Ryan accepted V6 at that subject. [The acceptance record](VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance) carries scope/provenance/limits. The original prompt below grants no new reviewer invocation or PR action.
 
 ```text
 Arc: Safe Harbor. One bounded independent V6 evidence/operational-handoff review.
@@ -775,7 +775,7 @@ No repeated full implementation review without concrete new evidence.
 
 **Body:**
 
-Safe Harbor’s concurrency tests now preserve every signal and retain child diagnostics when a test fails. Fresh integrated evidence passes all 257 cases, and the operator handoff is prepared; independent V6 review and owner acceptance remain pending.
+Safe Harbor's concurrency tests now preserve every signal and retain child diagnostics when a test fails. Integrated evidence passes all 257 cases. Kiro independently PASSed and Ryan accepted V6 at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`; the operator handoff remains prepared only.
 
 Who: Cursor/Codex supplied the bounded test correction and evidence. What: two test files plus existing policy/evidence/routing docs. When: 2026-10-14, runtime base `fdc8da7`, test source `22fa1b9fc547092c7bf7e3b0156621e7db10b597`. Why: a pipe reader could discard the second lock signal and failure cleanup lost the child output needed to diagnose it. How: lossless reads, retained diagnostics, sixteen sensitivity/diagnostic controls and fresh affected/integrated evidence; runtime, timeouts, safety assertions and lint baseline preserved.
 
@@ -783,7 +783,7 @@ Who: Cursor/Codex supplied the bounded test correction and evidence. What: two t
 
 **Merge reading:** [fresh evidence](VERIFY-safe-harbor.md#t5-f1-correction-and-fresh-evidence), [STATUS](STATUS-safe-harbor.md), [operator handoff](../RECOVER.md#safe-harbor-incident-handling-and-rollout), [EXECUTION section 18](#18-t5-f1-signalling-and-logging-correction--owner-authorized), [LATEST](../inter-model/LATEST.md).
 
-Evidence: 16 controls, 22 affected cases and 257 integrated cases pass; counts overlap. Full isolated lint passes against unchanged `fdc8da7` baseline. Earlier failed run and remaining limits are retained. Reused T4 hosted evidence is not a fresh hosted run on this changed test tree. External review is required and pending; prior exceptions do not transfer. No PR, paid review, hosted CI, merge or live action is authorized by this prepared text.
+Evidence: 16 controls, 22 affected cases and 257 integrated cases pass; counts overlap. Full isolated lint passes against unchanged `fdc8da7` baseline. Earlier failed run and remaining limits are retained. Reused T4 hosted evidence is not a fresh hosted run on this changed test tree. Kiro V6 PASS and Ryan acceptance are pinned above; final-tip external-gate/outage disposition remains pending, and prior exceptions do not transfer. No PR, paid review, hosted CI, merge or live action is authorized by this prepared text.
 
 ## 18. T5-F1 signalling and logging correction — owner authorized
 
@@ -801,3 +801,5 @@ Ryan authorized: “go: Next step: Authorize a bounded signalling/logging correc
 
 
 **Returned correction:** source `22fa1b9fc547092c7bf7e3b0156621e7db10b597`, two test files only; sixteen new controls plus all six original concurrency cases pass, and the combined selection returns 257 passes / 0 errors/failures/skips. Full isolated lint passes with unchanged baseline. [VERIFY V6](VERIFY-safe-harbor.md#t5-f1-correction-and-fresh-evidence) contains exact artifacts, source hashes, authoring limits and the retained historical failure. Independent Kiro V6 review and Ryan acceptance are next; no reviewer was invoked and no PR or live action was taken.
+
+**Subsequent review and acceptance (2026-10-14):** Ryan granted the bounded read-only Kiro review; Kiro PASSed V6 with high confidence and no blockers at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`. Ryan then accepted that reviewed V6 subject while expressly retaining separate PR/hosted-CI/merge/deployment gates. [VERIFY records the decisions and limits](VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance). No T5 BugBot outage exception is inferred. This record changes no code/test contract and grants no further execution.

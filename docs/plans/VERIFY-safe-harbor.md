@@ -1,13 +1,13 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T4 / V1–V5 ACCEPTED AND MERGED.** [T4 closeout](#t4-final-ci-review-owner-acceptance-and-squash-mapping) records the accepted candidate, hosted CI, independent reviews and identical-tree squash. [V6](#v6--integrated-handoff-and-independent-sign-off-t5) records the historical T5 failure, its authorized test correction, fresh passing integrated evidence and the prepared operational handoff. Kiro V6 sign-off and Ryan acceptance remain pending; no live authority is implied.
+> **Arc: Safe Harbor. T1–T4 / V1–V5 ACCEPTED AND MERGED; V6 ACCEPTED AT `1cb02fb`.** [T4 closeout](#t4-final-ci-review-owner-acceptance-and-squash-mapping) records the accepted candidate, hosted CI, independent reviews and identical-tree squash. [V6 acceptance](#v6-independent-kiro-review-and-owner-acceptance) records Kiro's pinned PASS and Ryan's acceptance with the evidence limits retained. T5 remains on its branch; PR creation, hosted CI, merge and deployment remain separately gated.
 
 ```text
 Planning Status
-Phase:        T5 mechanical evidence returned; independent Kiro V6 review next
+Phase:        T5 / V6 accepted at 1cb02fb; delivery decision pending
 Characters:   Implementer, Test-First Reviewer
 Function:     Record observed evidence, failures and remaining limits
-Lanes:        Codex mechanical/doc evidence; Kiro independent V6 sign-off; Ryan gate
+Lanes:        Codex acceptance record; Kiro V6 review complete; Ryan delivery gate
 Authority:    EXECUTION sections 17–18; no PR/hosted-CI/merge/deployment/live grant
 ```
 
@@ -23,13 +23,13 @@ Authority:    EXECUTION sections 17–18; no PR/hosted-CI/merge/deployment/live 
 
 ## Human consequence
 
-T1–T4’s incident handling, target-bound preflight, preservation/release and approval recovery are accepted and merged. T5’s corrected combined run passes all 257 cases; its historical concurrency failure and attribution limit remain recorded. Codex’s T5 packet ties that source to integrated evidence and a prepared operator handoff; Kiro’s V6 sign-off and Ryan’s closeout decision remain pending. Nothing here qualifies a live recovery artifact or deploys the merged code.
+T1–T4’s incident handling, target-bound preflight, preservation/release and approval recovery are accepted and merged. T5’s corrected combined run passes all 257 cases; its historical concurrency failure and attribution limit remain recorded. Kiro independently PASSed V6 at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, and Ryan accepted that reviewed V6 subject. T5 delivery, final-tip outage disposition and live authority remain separate. Nothing here qualifies a live recovery artifact or deploys the merged code.
 
 Who: Cursor/Codex supplied implementation and mechanical evidence, GitHub supplied hosted CI, and the pinned Copilot/Codex/Kiro reviews and Ryan’s task-specific acceptances retain the scopes below. When: T5 began 2026-10-14 from the T4 squash. Why/how: synchronize evidence and operator instructions while keeping source acceptance, recovery assurance and live authority distinct.
 
 **Merge reading:** [current STATUS](STATUS-safe-harbor.md), [T5 grant](EXECUTION-safe-harbor.md#17-t5-integrated-verification-and-operational-handoff--owner-authorized), [approved architecture](ARCHITECTURE-safe-harbor.md), [operator handoff](../RECOVER.md#safe-harbor-incident-handling-and-rollout), [routing](../inter-model/LATEST.md).
 
-**TL;DR:** [Arc Safe Harbor] T5 recorded 240 passes and one unresolved concurrency failure. Corrections, V6 sign-off and live operations remain pending.
+**TL;DR:** [Arc Safe Harbor] Corrected integrated evidence passes 257 cases; Kiro PASS and Ryan V6 acceptance are pinned to `1cb02fb`. The historical failure's exact cause remains unproven. Delivery and live operations remain separately gated.
 
 ## Scope lock
 
@@ -880,7 +880,7 @@ Covered: cold/warm caches and fresh retries; unknown/absent/tombstoned/conflicti
 
 ## V6 — Integrated handoff and independent sign-off (T5)
 
-**Mechanical result: PASS — 257 corrected integrated cases passed; historical T5-F1 retained below. Independent Kiro V6 sign-off: PENDING. Ryan V6 acceptance: PENDING.** T5 is author/coordinator evidence, not a fresh independent implementation verdict.
+**Mechanical result: PASS — 257 corrected integrated cases passed; historical T5-F1 retained below. Independent Kiro V6 sign-off: PASS. Ryan V6 acceptance: ACCEPTED at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`.** The independent review is bounded to the test/evidence/operator-handoff delta; it does not repeat or replace the pinned T1–T4 implementation verdicts.
 
 ### V6.1 — Exact subject and accepted review coverage
 
@@ -891,7 +891,21 @@ Source base: main squash `fdc8da7fa67c1d7b31bc5cd44de466001df04260`, accepted T4
 - V3/V4: [T3 Kiro reviews and owner exception](#t3-final-ci-review-owner-acceptance-and-squash-mapping), candidate `3c490e2ce61d5c6531a044132c5a01faf144f1ac`, squash `a7f7200`.
 - V5: [T4 Kiro reviews and owner exception](#t4-final-ci-review-owner-acceptance-and-squash-mapping), candidate `ed6699b`, squash `fdc8da7`.
 
-All four runtime tasks had required external review, resolved by the quoted tip-specific owner outage exceptions; **BugBot reviewed no accepted SHA**. These are not blanket exemptions. The current T5 delta includes the section 18 test correction: `gate_applicability=required`, `result=pending independent review and owner disposition`. The earlier docs-only exemption is superseded; no prior outage exception transfers. Its immutable `subject_tip_sha` is supplied in the final branch handoff and must be recorded by Kiro before review. Kiro’s V6 sign-off remains required regardless of that applicability decision. No paid review or new PR action ran.
+All four runtime tasks had required external review, resolved by the quoted tip-specific owner outage exceptions; **BugBot reviewed no accepted SHA**. These are not blanket exemptions. T5 includes the section 18 test correction: `gate_applicability=required`, `subject_tip_sha=1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, `bugbot_reviewed_sha=n/a`, `independent_kiro_v6=PASS`, `owner_v6=ACCEPTED`, `outage_exception=not_granted`, `result=pending external-gate disposition`. The earlier docs-only exemption is superseded; neither prior outage exceptions nor V6 acceptance alone close that delivery gate. No paid review or new PR action ran.
+
+### V6 independent Kiro review and owner acceptance
+
+**[Arc Safe Harbor] Subject:** `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, branch `feat/2026-10-14-safe-harbor-t5`; runtime base `fdc8da7fa67c1d7b31bc5cd44de466001df04260`, executed test source `22fa1b9fc547092c7bf7e3b0156621e7db10b597`. This documentation successor records the decisions; it does not move the reviewed or accepted subject.
+
+**Kiro: PASS, high confidence, no blockers.** Ryan authorized one bounded read-only V6 review. Kiro inspected the test delta, original/fresh raw run logs, both real recovery-first race packets, lint evidence and operator instructions, with sampled checks against unchanged recovery/release source. The reviewer confirmed lossless framing, short-write handling, timeout refusal and retained child diagnostics without weakened lock/effect assertions. The 257 integrated passes, 22 affected passes and 16 control passes remain overlapping selections. The final two-comment lint annotation is separately mapped to the executed pytest source.
+
+**Review provenance:** the initial response stopped incomplete and is not a verdict. The same Kiro session completed raw-log/race and runtime coverage before returning its final PASS, exit 0. Codex's scope audit found 32 read/list calls confined to the exported packet and verified all 173 copied source files and 47 evidence files against the packet manifest. Kiro did not run Git, tests or production commands or independently recompute hashes; revision/hash identities were coordinator-supplied. Its runtime inspection was sampled, not a fresh full implementation audit. Temporary transcript/verdict and manifest: `/tmp/safe-harbor-t5-review-94mmz3lq/` (`verdict.txt`, `subject.json`, `scope-audit.json`); this in-repository record preserves the verdict if those temporary files expire.
+
+**Retained limits:** the exact historical 240/1 failure timeline was not reproduced; the framing defect is demonstrated separately. Synthetic fixtures do not establish hardware power-loss durability, OS-level isolation or production behavior under arbitrary load. Earlier small-store and sampled auxiliary-sink limits remain. Reused T4 hosted CI is not a fresh hosted run on the changed T5 tests. Kiro's sole optional suggestion was a clearer count pointer between the historical six concurrency cases and the corrected 22; it was not an acceptance condition.
+
+**Ryan's V6 acceptance:** following the pinned PASS, Ryan stated: “accpected: Next step: Your V6 acceptance decision. PR creation, hosted CI, merge and deployment remain separately gated.” This accepts V6 at the reviewed subject above with its documented limits. It grants no BugBot outage exception, PR creation, hosted CI, merge, deployment, drive/service action or other production operation.
+
+**Next:** a separate owner decision on one draft PR and normal hosted CI. Resolve final-tip external review/outage disposition and merge separately; do not reopen the completed V6 review merely to record this acceptance.
 
 ### V6.2 — Combined V1–V5 execution
 
@@ -921,7 +935,7 @@ Artifact SHA256:
 
 #### T5-F1 correction and fresh evidence
 
-**Mechanical PASS at test source `22fa1b9fc547092c7bf7e3b0156621e7db10b597`; independent V6 review and Ryan acceptance remain pending.** Ryan authorized EXECUTION section 18 from checkpoint `ed5b2b9`; scope record `4c40635` precedes this test-only correction. Cursor authored the draft in a disposable copy; Codex inspected and completed it and supervised execution. Neither supplies an independent verdict.
+**Mechanical PASS at test source `22fa1b9fc547092c7bf7e3b0156621e7db10b597`; subsequent Kiro PASS and Ryan acceptance are pinned above.** Ryan authorized EXECUTION section 18 from checkpoint `ed5b2b9`; scope record `4c40635` precedes this test-only correction. Cursor authored the draft in a disposable copy; Codex inspected and completed it and supervised execution. Neither supplies an independent verdict.
 
 **Scope:** only `tests/_safe_harbor_t4_concurrency.py` and `tests/test_safe_harbor_t4_concurrency_real.py` change code. Runtime, dependencies, workflows, inventories and `ci/pylint-baseline.json` remain byte-identical to the accepted T4 source. The 20-second barrier and 90-second child timeouts are unchanged. Forty-two pre-existing helper functions, including the actual lock/mutation worker hooks, are AST-identical; the four changed existing helpers are line reading/writing and child parsing/cleanup.
 
@@ -1033,7 +1047,7 @@ except subprocess.TimeoutExpired as exc:rc=124;log=(e/'run.log').read_text()+'\n
 summary={'source_revision':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),'supervisor_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'mode':mode,'cmd':cmd,'returncode':rc,'before':before,'after':after,'network_attempts':attempts,'unexpected_network':unexpected,'fixture_meta':meta,'uid':uid};(e/'summary.json').write_text(json.dumps(summary,indent=2));print(log);print('hashes_stable',before==after,'unexpected_network',unexpected);raise SystemExit(rc if before==after and not unexpected else 3)
 ```
 
-**Next:** one bounded independent Kiro V6 review of this test delta, fresh evidence and the prepared operator handoff. External review is required for the changed tests; the earlier docs-only exemption no longer applies. Ryan's V6 acceptance and any outage exception remain separate, tip-specific decisions. No PR, hosted CI, merge or live authority is implied.
+**Current disposition:** [Kiro PASS and Ryan V6 acceptance](#v6-independent-kiro-review-and-owner-acceptance) are recorded at `1cb02fb`. External-gate/outage disposition remains pending for the changed tests; the earlier docs-only exemption no longer applies. No PR, hosted CI, merge or live authority is implied.
 
 ### V6.3 — Required effects and sensitivity controls
 
@@ -1057,7 +1071,7 @@ The [T4 hosted record](#t4-final-ci-review-owner-acceptance-and-squash-mapping) 
 
 [ROADMAP](../ROADMAP.md), [RECOVER](../RECOVER.md#safe-harbor-incident-handling-and-rollout) and [role mapping](../role-mapping.md) now name direct/CLI recovery coverage, retain the owner’s gate exemptions without endorsing the blanket append-only premise, and explain uncertainty/containment/release. The prepared handoff records the candidate and test interpreters, current guard schema/location contract, disposition binding, old-process/legacy-state and rollback prerequisites. **Actual deployed interpreter, process census, live guard state, recovery artifact/key/custody and loss window remain OPEN.** No live adoption, drill, release or service operation ran. The extra ext4 destination is a reported resource, not allocated or qualified protection. Backup v2’s Hybrid audit and Recovery Authority T4/V4k remain untouched.
 
-**V6 remaining gates:** the corrected mechanical packet is ready for one bounded independent Kiro review under EXECUTION sections 17–18. Codex and Cursor contributed and cannot supply independent sign-off. Ryan then accepts/rejects V6 and any exact-tip outage exception. No new hosted full suite, PR, merge, rollout or disaster-recovery claim follows automatically.
+**V6 disposition and remaining delivery gates:** Kiro independently PASSed and Ryan accepted `1cb02fb`. Codex/Cursor remain contributing authors. The owner must separately authorize PR creation/hosted CI and resolve the final-tip external-review gate and merge; no T5 outage exception is recorded. No rollout or disaster-recovery claim follows automatically.
 
 ### V6.5 — Local supervisor reproduction (source, not a live grant)
 

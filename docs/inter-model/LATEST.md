@@ -9,10 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — corrected T5 evidence returned (2026-10-14):**
-  T1–T4 remain accepted/merged. The bounded test correction passes **257 integrated cases** and full isolated lint; the original failure is retained.
-  **Next lane: Kiro**, for a separately authorized bounded V6 review of the exact successor using [EXECUTION §17](../plans/EXECUTION-safe-harbor.md#t5-bounded-kiro-review-handoff).
-  [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; [fresh evidence](../plans/VERIFY-safe-harbor.md#t5-f1-correction-and-fresh-evidence) is the easiest review entry. Ryan acceptance follows; no PR, hosted CI, merge or live grant.
+- **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
+  Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
+  **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
