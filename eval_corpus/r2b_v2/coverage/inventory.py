@@ -316,19 +316,20 @@ _SKIP_SCAN_PREFIXES = (
 
 
 def _skip_repo_scan_path(rel: str) -> bool:
-    if rel.startswith("review-bundles/"):
-        import subprocess
+    import subprocess
 
-        proc = subprocess.run(
-            ["git", "-C", str(ROOT), "ls-files", "--error-unmatch", rel],
-            capture_output=True,
-            check=False,
-        )
-        return proc.returncode != 0
+    for tracked_prefix in ("review-bundles/", "artifacts/"):
+        if rel.startswith(tracked_prefix):
+            proc = subprocess.run(
+                ["git", "-C", str(ROOT), "ls-files", "--error-unmatch", rel],
+                capture_output=True,
+                check=False,
+            )
+            return proc.returncode != 0
     return any(
         rel.startswith(prefix)
         for prefix in _SKIP_SCAN_PREFIXES
-        if prefix != "review-bundles/"
+        if prefix not in ("review-bundles/", "artifacts/")
     )
 
 

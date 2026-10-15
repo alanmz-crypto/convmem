@@ -2470,6 +2470,45 @@ class IncrementalJsonlCoordinator:
             )
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
 
+    def _acquire_source_lock(self) -> None:
+        def acquire() -> None:
+            if self._lock is not None:
+                return
+            self._lock = SourceAdvisoryLock(self.boundary, self.paths["lock"])
+            self._lock.acquire()
+
+        self._transition("lock_acquire", acquire)
+
+    def _release_source_lock(self) -> None:
+        def release() -> None:
+            if self._lock is not None:
+                self._lock.release()
+                self._lock = None
+
+        self._transition("lock_release", release)
+
+    def _enforce_live_retry_admission_if_needed(self) -> None:
+        path_key = getattr(self, "_live_retry_admission_path_key", None)
+        if path_key is None or getattr(self, "_live_retry_admission_isolated", True):
+            return
+        from watch import source_prefix_digest_for_watch
+        from incremental_retry_state import enforce_incremental_retry_gates
+
+        prefix_digest = source_prefix_digest_for_watch(str(self.source))
+        self.last_evidence["prefix_sha256"] = prefix_digest
+        pending_tx = ""
+        tx_path = self.paths.get("transaction")
+        if tx_path is not None and Path(tx_path).is_file():
+            tx_payload = _read_json(Path(tx_path))
+            if isinstance(tx_payload, dict):
+                pending_tx = str(tx_payload.get("transaction_id") or "")
+        enforce_incremental_retry_gates(
+            self.paths,
+            path_key=path_key,
+            prefix_digest=prefix_digest,
+            transaction_id=pending_tx,
+        )
+
     def run(self) -> IncrementalRunResult:  # pylint: disable=too-many-return-statements
         self._run_started = time.monotonic()
         if not self.enabled:
@@ -2480,11 +2519,9 @@ class IncrementalJsonlCoordinator:
         if self.force_reindex or self.supersede_on_reindex:
             return self._refusal("incremental_force_unsupported")
 
-        def acquire() -> None:
-            self._lock = SourceAdvisoryLock(self.boundary, self.paths["lock"])
-            self._lock.acquire()
-
-        self._transition("lock_acquire", acquire)
+        skip_lock = bool(getattr(self, "_run_under_external_source_lock", False))
+        if not skip_lock:
+            self._acquire_source_lock()
         try:
             existing_tx = _read_json(self.paths["transaction"])
             if existing_tx:
@@ -2500,6 +2537,7 @@ class IncrementalJsonlCoordinator:
                         self._validate_bootstrap_transaction_binding(existing_tx)
                     except IncrementalJsonlError as exc:
                         return self._refusal(exc.code)
+                self._enforce_live_retry_admission_if_needed()
                 return self._roll_forward(existing_tx)
             transaction_id = uuid.uuid4().hex
             try:
@@ -2600,6 +2638,7 @@ class IncrementalJsonlCoordinator:
                     elapsed_seconds=time.monotonic() - self._run_started,
                 )
                 return result
+            self._enforce_live_retry_admission_if_needed()
             frontier = 0 if continuity else frontier_start(
                 int(checkpoint["record_count"]) if checkpoint else 0,
                 self.chunk_size,
@@ -2706,12 +2745,8 @@ class IncrementalJsonlCoordinator:
                 mode=mode,
             )
         finally:
-            def release() -> None:
-                if self._lock is not None:
-                    self._lock.release()
-                    self._lock = None
-
-            self._transition("lock_release", release)
+            if not skip_lock:
+                self._release_source_lock()
 
 
 def maybe_route_incremental(
@@ -2783,60 +2818,54 @@ def maybe_route_incremental(
         file_hash=file_hash,
         processed=processed,
     )
-    from watch import source_prefix_digest_for_watch
-    from incremental_retry_state import (
-        classify_incremental_escape,
-        enforce_incremental_retry_gates,
-    )
+    from incremental_retry_state import classify_incremental_escape
 
-    prefix_digest = source_prefix_digest_for_watch(path)
-    coordinator.last_evidence["prefix_sha256"] = prefix_digest
-    pending_tx = ""
-    tx_path = getattr(coordinator, "paths", {}).get("transaction")
-    if tx_path is not None and Path(tx_path).is_file():
-        tx_payload = _read_json(Path(tx_path))
-        if isinstance(tx_payload, dict):
-            pending_tx = str(tx_payload.get("transaction_id") or "")
-    enforce_incremental_retry_gates(
-        getattr(coordinator, "paths", None),
-        path_key=path_key,
-        prefix_digest=prefix_digest,
-        transaction_id=pending_tx,
-    )
+    coordinator._live_retry_admission_path_key = path_key
+    coordinator._live_retry_admission_isolated = isolated
+    coordinator._acquire_source_lock()
     try:
-        result = coordinator.run()
-    except (KeyboardInterrupt, SystemExit):
-        raise
-    except IncrementalJsonlError as exc:
-        if exc.code == "live_route_refused" or isolated:
+        try:
+            coordinator._run_under_external_source_lock = True
+            try:
+                result = coordinator.run()
+            finally:
+                coordinator._run_under_external_source_lock = False
+        except (KeyboardInterrupt, SystemExit):
             raise
-        _raise_incremental_retry_refusal(
-            coordinator,
-            path_key=path_key,
-            failure_code=exc.code,
-            re_raise=exc,
-        )
-    except Exception as exc:
-        failure_code = classify_incremental_escape(exc)
-        _raise_incremental_retry_refusal(
-            coordinator,
-            path_key=path_key,
-            failure_code=failure_code,
-            re_raise=IncrementalJsonlError(failure_code, str(exc)),
-        )
-    if result.outcome in {"committed", "unchanged"}:
-        from incremental_retry_state import clear_incremental_retry_state
+        except IncrementalJsonlError as exc:
+            if exc.code == "live_route_refused" or isolated:
+                raise
+            _raise_incremental_retry_refusal(
+                coordinator,
+                path_key=path_key,
+                failure_code=exc.code,
+                re_raise=exc,
+            )
+        except Exception as exc:
+            failure_code = classify_incremental_escape(exc)
+            _raise_incremental_retry_refusal(
+                coordinator,
+                path_key=path_key,
+                failure_code=failure_code,
+                re_raise=IncrementalJsonlError(failure_code, str(exc)),
+            )
+        if result.outcome in {"committed", "unchanged"}:
+            from incremental_retry_state import clear_incremental_retry_state
 
-        clear_incremental_retry_state(getattr(coordinator, "paths", None))
-    elif not isolated:
-        failure_code = getattr(coordinator, "last_failure_code", "") or result.outcome
-        _raise_incremental_retry_refusal(
-            coordinator,
-            path_key=path_key,
-            failure_code=failure_code,
-            fallback_outcome=result.outcome,
-        )
-    return result.ingest_tuple()
+            clear_incremental_retry_state(getattr(coordinator, "paths", None))
+        elif not isolated:
+            failure_code = getattr(coordinator, "last_failure_code", "") or result.outcome
+            _raise_incremental_retry_refusal(
+                coordinator,
+                path_key=path_key,
+                failure_code=failure_code,
+                fallback_outcome=result.outcome,
+            )
+        return result.ingest_tuple()
+    finally:
+        coordinator._live_retry_admission_path_key = None
+        coordinator._live_retry_admission_isolated = True
+        coordinator._release_source_lock()
 
 
 def _raise_incremental_retry_refusal(

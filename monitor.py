@@ -623,7 +623,7 @@ def run_monitor(
                         ollama_host=ollama_host,
                         upsert=True,
                         by_ledger_id=by_ledger_id_fresh,
-                        precomputed_embedding=current.embedding,
+                        precomputed_embedding=current.embedding or None,
                     )
                     if current is None:
                         stats["errors"] += 1

@@ -365,28 +365,30 @@ def _write_prepared_observation_ingest(
         store.update_unit(chroma_id, prepared.doc, prepared.embedding, meta)
         unit["id"] = chroma_id
         unit["_upserted"] = True
-        if units_export and lid:
-            _upsert_jsonl_line(units_export, lid, unit)
-        _invalidate_observation_ingest_cache(store)
+        try:
+            if units_export and lid:
+                _upsert_jsonl_line(units_export, lid, unit)
+        finally:
+            _invalidate_observation_ingest_cache(store)
         return unit
 
     meta = ledger_unit_metadata(unit)
     store.add_unit(unit["id"], prepared.doc, prepared.embedding, meta)
+    try:
+        if units_export and prepared.upsert and lid:
+            _upsert_jsonl_line(units_export, lid, unit)
+        elif units_export:
+            from purge_locks import export_flock_path
 
-    if units_export and prepared.upsert and lid:
-        _upsert_jsonl_line(units_export, lid, unit)
-    elif units_export:
-        from purge_locks import export_flock_path
-
-        units_export.parent.mkdir(parents=True, exist_ok=True)
-        with export_flock_path(units_export):
-            line = json.dumps(unit) + "\n"
-            if units_export.exists():
-                atomic_write_text(units_export, units_export.read_text(encoding="utf-8") + line)
-            else:
-                atomic_write_text(units_export, line)
-
-    _invalidate_observation_ingest_cache(store)
+            units_export.parent.mkdir(parents=True, exist_ok=True)
+            with export_flock_path(units_export):
+                line = json.dumps(unit) + "\n"
+                if units_export.exists():
+                    atomic_write_text(units_export, units_export.read_text(encoding="utf-8") + line)
+                else:
+                    atomic_write_text(units_export, line)
+    finally:
+        _invalidate_observation_ingest_cache(store)
     return unit
 
 
@@ -845,7 +847,7 @@ def repair_empty_ledger_documents(
                     unit = None
                     break
                 invalidate_ledger_index_cache(chroma_dir)
-                fresh_reader = open_readonly_unit_store(chroma_dir)
+                fresh_reader = _DocumentAccurateReadonlyStore(chroma_dir)
                 by_ledger_id, _ = build_ledger_index(fresh_reader)
                 current = prepare_observation_ingest(
                     current.record,
