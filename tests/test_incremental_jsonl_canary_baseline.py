@@ -35,7 +35,7 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 stage-2 wedge fixes corrective 5 (preimage semantic match).
     # Refreshed for issue #286 stage-2 corrective 6 (dedupe rollback, retry gates, tamper log).
     # Refreshed for issue #286 stage-2 corrective 13 (retry failure prefix field).
-    "incremental_jsonl.py": "9ccc736a78a2f720565fbe6a9715a6c9c8a3c1790ebaef940773592d3f0cb13d",
+    "incremental_jsonl.py": "95196540a8f0e7d17c20d95452c5c1f3d7bb349ffc74bf152ae07d837134e3c6",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

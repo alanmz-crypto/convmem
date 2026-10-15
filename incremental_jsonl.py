@@ -2822,7 +2822,12 @@ def maybe_route_incremental(
 
     coordinator._live_retry_admission_path_key = path_key
     coordinator._live_retry_admission_isolated = isolated
-    coordinator._acquire_source_lock()
+    holds_source_lock = (
+        callable(getattr(type(coordinator), "_acquire_source_lock", None))
+        and callable(getattr(type(coordinator), "_release_source_lock", None))
+    )
+    if holds_source_lock:
+        coordinator._acquire_source_lock()
     try:
         try:
             coordinator._run_under_external_source_lock = True
@@ -2865,7 +2870,8 @@ def maybe_route_incremental(
     finally:
         coordinator._live_retry_admission_path_key = None
         coordinator._live_retry_admission_isolated = True
-        coordinator._release_source_lock()
+        if holds_source_lock:
+            coordinator._release_source_lock()
 
 
 def _raise_incremental_retry_refusal(
