@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 16 FAILs corrective 13 (`2ffaf79`). Round 15's findings (N1–N8) are closed and verified, including N4 on the real `convmem add --file --upsert` command. Two new problems: a commit fills the shared ledger-index cache with its pre-write index, so a later prepare in the same process refuses as drift (7 existing upsert and repair tests fail), and every commit rescans the whole store under C1 once per row (about 10 s per row at 110k units). Plus repeated ledger ids in one file and two outdated mock tests. Corrective 14 goes to Cursor; see round 16 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Claude's round 17 FAILs corrective 14 (`700b6ba`) on one finding. Round 16's findings are closed (no stale cache; targeted reads under C1, 20 rows commit in 0.3 s on a 109k store; duplicates coalesce; full suite shows only the Z1 flake; leak census 0). New: the repair scan reads each decision's document with a full-store scan, so `convmem doctor`'s dry-run repair would take about 13 minutes on the live corpus. Corrective 15 (small) goes to Cursor; see round 17 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

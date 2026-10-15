@@ -1,4 +1,118 @@
-# Verify: Stage 2 wedge fixes, round 16 at `2ffaf79`: FAIL; round 15's findings are closed, but a commit now leaves the ledger cache stale and rescans the whole store under C1 once per row; corrective 14
+# Verify: Stage 2 wedge fixes, round 17 at `700b6ba`: FAIL (one finding); round 16's findings are closed and C1 holds are short again, but the repair scan makes `convmem doctor` take minutes; corrective 15
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-14
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `700b6ba`, Cursor
+Composer's corrective 14 (`d1a63d4`, `700b6ba`). It answers round 16 (below).
+**Method:**
+- I read the diff `2ffaf79..700b6ba` (11 files).
+- I ran the round-15 and round-16 probes (Cursor added both unchanged),
+  Cursor's tests, the upsert, ledger-document and monitor suites, and Astra's
+  round-2 probes at the tip.
+- I timed the batch commit and the dry-run repair on round 11's synthetic
+  109,000-unit store, at the tip and at main `458b9f6`.
+- I ran the hermetic full suite and the leak census in disk-backed worktrees
+  and compared against main `458b9f6`, run the same way.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units
+are inactive and disabled. No further Mirror Crush indexing since round 16
+(the export still holds 735 Mirror lines). The retry bounds still hold:
+Astra's probes show 3 paid attempts, not 6.
+
+## Verdict (round 17)
+
+**FAIL, on one finding. Every round-16 finding is closed and verified, and
+C1 holds are short again: 3 rows commit in under 0.1 s and 20 rows in 0.3 s
+on the 109k store (40.7 s for 3 rows at `2ffaf79`).** The one new problem is
+outside C1: the fix for the repair test reads each ledger decision's document
+with a full scan of the store. `convmem doctor` runs that repair as a dry
+run, so on the live corpus (about 213 decisions) doctor would take about 13
+minutes instead of about 10 seconds. Every agent session starts with
+`convmem doctor`. No paid calls, no lock.
+
+**Closed and verified:**
+- **N11:** the cache is cleared after every write and once after a batch;
+  validation no longer fills it. `tests/test_upsert.py` and
+  `tests/test_ledger_document.py` pass.
+- **N9:** validation under C1 uses `get_unit(existing_chroma_id)` for updates
+  and skips, and a targeted `active_units_for_ledger_id` (a `where` query, on
+  the guarded store's read allow-list) for inserts; the write loop doesn't
+  re-validate. Probe `s1`: 0 full scans. `perf16_commit_scans.py` on the 109k
+  store: `scans=0`, 3 rows in 0.0 s, 20 rows in 0.3 s.
+- **N10:** repeated ledger ids coalesce at prepare, before embedding; the last
+  line wins in one round (probe `u1`, all four cases). Earlier lines aren't
+  reported as skipped in the result (cosmetic; main counted them as updated).
+- **N4:** probe `n4` (the real `convmem add --file --upsert` through a drift
+  round) passes.
+- **Mocks:** the corrective-6 add test and `test_run_monitor_skips_kiro`
+  pass; the drift message `str()`s its ids.
+- **Round-15 probes** (`c0`, `d1`–`d3`, `i1`, `l1`, `g1`) and the
+  corrective-12 tests pass.
+- **Astra's round-2 probes:** six of seven fail for the safe reason (the
+  monitor missing-target probe now raises drift); the drift-embed probe still
+  breaks on the prepared-row shape, covered by `c0` and `d1`–`d3`.
+
+**Full suite** (disk-backed worktree, private `--basetemp`, compared with
+main `458b9f6` run the same way, ids without parameters):
+- Tip: 94 failed, 2987 passed, 66 skipped, 52 errors. **1 tip-only: Z1**
+  (`tests/test_shadow_activation.py::test_recovery_refuses_replaced_artifact_inode`,
+  the ext4 inode-reuse flake from round 13; not this branch). Cursor's
+  "0 tip-only" matches once Z1 is set aside.
+- No inventory, R2b, Shadow or baseline-hash failures.
+- **Leak census: 0** (no test wrote under the fake live roots). Its failures match the tip run, less Z1 and one D1 bwrap test that failed only in the plain run.
+- Live state during the runs: no indexing writes (export and `processed.json` unchanged; only the reconcile timer's files moved).
+
+## Findings (round 17)
+
+- **N12 (Medium, merge-blocking): the repair scan reads each document with a
+  full-store scan, so `convmem doctor` takes minutes.**
+  `chroma_readonly.unit_document_text(chroma_dir, chroma_id)` iterates every
+  row of the units collection, documents included, until it finds the id.
+  `repair_empty_ledger_documents` calls it once per scanned decision or
+  verification, and `_DocumentAccurateReadonlyStore.get_unit` calls it again
+  for every lookup through that reader. `doctor.py:1591`
+  (`_check_empty_ledger_documents`) runs the repair as a dry run on every
+  `convmem doctor`.
+  - One lookup on the 109k store: 1.9 s (an early id) to 3.6 s (a late or
+    missing id).
+  - Dry-run repair with 20 decisions on the same store: 75.6 s at the tip,
+    3.8 s per decision, against 10.3 s at main `458b9f6` (one fixed scan).
+    Both measured alongside two full suites, so rough.
+  - The live export holds about 213 distinct decision ledger ids, so doctor's
+    check would take about 13 minutes at the tip and about 10 s on main.
+  - Not a burn and not under C1; it's outside the lock. But every agent
+    session starts with `convmem doctor` and waits for it.
+
+## Corrective 15 for Cursor
+
+- **N12:** read the documents of all candidate units in one pass, or look one
+  up by id with a targeted query (the embedding id, not a full iteration).
+  `unit_document_text` must not scan the collection per call, and
+  `_DocumentAccurateReadonlyStore.get_unit` must not either. Accept: probe
+  `r1` (appendix) passes: on a store with 2,000 units and 20 decisions, the
+  dry-run repair reads the documents with at most 2 full iterations of the
+  units collection. On the 109k store, a dry-run repair with 20 decisions
+  takes about as long as on main (about 10 s).
+- **Optional (cosmetic):** report coalesced duplicate lines in the result's
+  `skipped` count.
+- **Tests:** add probe `r1` unchanged; keep every round-15 and round-16 probe,
+  the corrective-12 to -14 tests, and the upsert, ledger-document and monitor
+  suites passing.
+- **Inventories last,** as before; then the inventory, R2b and baseline
+  tests; then the disk-backed full suites at main `458b9f6` and the tip;
+  tip-only list, target zero.
+
+## Next
+
+1. Cursor: corrective 15 (small).
+2. Claude, round 18: probe `r1`, the dry-run timing, the probes, the full
+   suite and the leak census.
+3. Then Astra re-audits and Kiro re-reviews the exact tip (Kiro rechecks Q3).
+
+# Round 16: `2ffaf79`, FAIL; corrective 14 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-14
@@ -3324,6 +3438,66 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-17 probe test
+
+It runs from `tests/` and imports `_real_session_env` from `tests/test_zz_claude_verify9.py`,
+on the branch. Scratch config and store; no providers. At `700b6ba` it counts 21 passes over
+the units collection for 20 decisions.
+
+<details><summary>tests/test_zz_claude_verify17.py</summary>
+
+```python
+"""Claude verify probes, round 17 (700b6ba): the dry-run repair (run by `convmem doctor`) must not scan per decision.
+
+Scratch only: a scratch config and store; no providers; no network.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+from tests.test_zz_claude_verify9 import _real_session_env
+
+
+def test_r1_dry_run_repair_reads_documents_without_a_scan_per_decision(tmp_path, monkeypatch) -> None:
+    import chroma_readonly
+    from chroma_store import UNITS, ChromaStore
+    from ledger import invalidate_ledger_index_cache
+    from observe import repair_empty_ledger_documents
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    chroma_dir = cfg["index"]["chroma_dir"]
+    store = ChromaStore(chroma_dir)
+    try:
+        col = store._collection(UNITS)
+        n_fill, n_dec = 200, 20
+        col.add(ids=[f"u_fill_{i}" for i in range(n_fill)], documents=[f"filler {i}" for i in range(n_fill)],
+                metadatas=[{"title": f"filler {i}", "source_path": f"/scratch/f{i}.jsonl"} for i in range(n_fill)],
+                embeddings=[[0.1, 0.2, 0.3] for _ in range(n_fill)])
+        col.add(ids=[f"u_dec_{i}" for i in range(n_dec)], documents=[f"Decision text {i}" for i in range(n_dec)],
+                metadatas=[{"ledger_id": f"dec_v17_{i}", "ledger_kind": "decision", "title": f"Decision {i}"}
+                           for i in range(n_dec)],
+                embeddings=[[0.1, 0.2, 0.3] for _ in range(n_dec)])
+    finally:
+        store.close()
+    invalidate_ledger_index_cache(chroma_dir)
+    passes = []
+    real = chroma_readonly.iter_collection_metadata_rows
+
+    def counting(chroma, collection, *a, **k):
+        if collection == UNITS:
+            passes.append(1)
+        return real(chroma, collection, *a, **k)
+
+    monkeypatch.setattr(chroma_readonly, "iter_collection_metadata_rows", counting)
+    stats = repair_empty_ledger_documents(cfg, dry_run=True, verbose=False)
+    print(f"\nR1 unit-collection passes={len(passes)} stats={stats}")
+    assert stats["scanned"] == n_dec and stats["empty"] == 0, stats
+    assert len(passes) <= 2, len(passes)
+```
+
+</details>
 
 ## Appendix: round-16 probe tests
 
