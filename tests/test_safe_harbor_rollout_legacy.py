@@ -27,9 +27,9 @@ def _digests(root: Path) -> dict[str, str]:
             for p in sorted(root.rglob('*')) if p.is_file()}
 
 
-def _legacy(tmp_path: Path):
+def _legacy(tmp_path: Path, *, count: int = 200):
     chroma = _make_store(tmp_path)
-    _worker('write', chroma, 0, 200, '--guard')
+    _worker('write', chroma, 0, count, '--guard')
     segment_id, segment = _segment(chroma)
     guard = ChromaWriteGuard(chroma)
     generation, metadata = guard.current_snapshot(segment_id)
@@ -138,6 +138,37 @@ def test_explicit_scratch_refresh_preserves_archive_and_enables_release(tmp_path
 
 def test_refresh_manifest_failure_keeps_old_pointer_and_archive(tmp_path, monkeypatch):
     _archived_refresh(tmp_path, fault=True, monkeypatch=monkeypatch)
+
+
+def test_refresh_with_pending_work_cannot_manufacture_releasability(tmp_path):
+    chroma, guard, segment_id, segment, generation = _legacy(tmp_path, count=250)
+    archive = tmp_path / 'original-pending-generation'
+    shutil.copytree(generation, archive)
+    saved = _digests(generation)
+    live = _digests(chroma)
+    with guard_module._exclusive_flock(guard.lock_path, guard.lock_timeout_seconds):
+        guard._refresh_snapshot(segment_id, segment, segment_signature(segment))
+    current, metadata = guard.current_snapshot(segment_id)
+    assert current != generation
+    assert not generation.exists()
+    assert _digests(archive) == saved
+    assert _digests(chroma) == live
+    ok, reason = evaluate_release_evidence(chroma, metadata['release_evidence'])
+    assert not ok
+    assert 'watermark_drift' in reason
+    _set_header_count(segment / 'header.bin', 50)
+    with pytest.raises(ChromaWriteQuarantinedError):
+        recover(chroma)
+    document = guard.read_authority().document
+    assert document['incidents'][0]['repair']['status'] == 'complete'
+    marker = guard.quarantine_path.read_bytes()
+    with pytest.raises(ChromaWriteGuardError, match='watermark_drift'):
+        guard.release_quarantine(
+            disposition_ref='synthetic-pending-work-refusal',
+            authority_digest=authority_submission_digest(document),
+        )
+    assert guard.quarantine_path.read_bytes() == marker
+    assert _digests(archive) == saved
 
 # ref: ../docs/plans/ROLLOUT-safe-harbor.md — legacy readiness, not live initialization authority
 # src: ./test_safe_harbor_t3.py, ../chroma_write_guard.py — real guard and release mechanics
