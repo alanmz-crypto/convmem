@@ -2510,6 +2510,63 @@ class IncrementalJsonlCoordinator:
             reserve=reserve,
         )
 
+    def _unchanged_prereturn_refusal(
+        self, checkpoint: dict | None, snapshot: dict
+    ) -> str | None:
+        """Guards shared by the pre-capture shortcut and the full-path unchanged return."""
+        if self.codex_admitted_live:
+            identity_refusal = verify_session_meta_identity(self.source, snapshot["raw"])
+            if identity_refusal:
+                return identity_refusal
+        if self.bootstrap_existing and snapshot["prefix_sha256"] != self.expected_prefix_sha256:
+            return "bootstrap_source_digest_mismatch"
+        detected = detect_format(self.source)
+        processed = self._processed()
+        chroma_count = 0
+        if checkpoint is None and not _path_has_processed_entry(processed, self.path_key):
+            chroma_count = self._chroma_row_count()
+        outcome = decide_eligibility(
+            enabled=True,
+            detected_format=detected,
+            path_key=self.path_key,
+            processed=processed,
+            chroma_row_count=chroma_count,
+            checkpoint=checkpoint,
+            force_reindex=self.force_reindex,
+            supersede_on_reindex=self.supersede_on_reindex,
+            eligible_formats=self.routed_formats,
+        )
+        if self.bootstrap_existing and outcome != "bootstrap_required":
+            return "bootstrap_not_required"
+        if outcome == "bootstrap_required" and self.bootstrap_existing:
+            chunk_count = len(
+                chunk_messages(snapshot["messages"], self.chunk_size, self.overlap)
+            )
+            if chunk_count > int(self.max_bootstrap_chunks or 0):
+                return "bootstrap_chunk_limit_exceeded"
+            outcome = "eligible_bootstrap_existing"
+        if outcome in {"bootstrap_required", "invalid_state"}:
+            return outcome
+        projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
+        if projection_mismatch:
+            return f"rebuild_required:{projection_mismatch}"
+        continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
+        if continuity and continuity != "initial_full" and not self.settings.allow_full_rebuild:
+            return f"rebuild_required:{continuity}"
+        return None
+
+    def _refusal_before_unchanged_return(
+        self, checkpoint: dict | None, snapshot: dict
+    ) -> IncrementalRunResult | None:
+        refusal_code = self._unchanged_prereturn_refusal(checkpoint, snapshot)
+        if refusal_code is None:
+            return None
+        self._cleanup(snapshot["snapshot_dir"])
+        if refusal_code.startswith("rebuild_required:"):
+            fallback = refusal_code.split(":", 1)[1]
+            return self._refusal(refusal_code, fallback=fallback, snapshot=snapshot)
+        return self._refusal(refusal_code, snapshot=snapshot)
+
     def _unchanged_short_circuit_if_applicable(self) -> IncrementalRunResult | None:
         """Skip capture and retry admission when the selected prefix is unchanged."""
         try:
@@ -2518,39 +2575,46 @@ class IncrementalJsonlCoordinator:
             return None
         if checkpoint is None:
             return None
-        fd = open_source_readonly(self.source)
+        if self.bootstrap_existing:
+            return None
         try:
-            info = validate_regular_source(fd)
-            admission = self.settings.codex_rollout_admission
+            fd = open_source_readonly(self.source)
+            try:
+                info = validate_regular_source(fd)
+                admission = self.settings.codex_rollout_admission
+                if (
+                    self.codex_admitted_live
+                    and admission is not None
+                    and info.st_size > admission.max_source_bytes
+                ):
+                    return None
+                raw = os.read(fd, info.st_size)
+            finally:
+                os.close(fd)
+            boundary = raw.rfind(b"\n") + 1
+            prefix = raw[:boundary]
+            view = self.format_spec.parse_complete_prefix(str(self.source), raw=prefix)
+            self._validate_incremental_prefix_view(view)
+            snapshot = {
+                "raw": prefix,
+                "complete_boundary": view.complete_boundary,
+                "prefix_sha256": view.prefix_sha256,
+                "messages": view.messages,
+                "generation_identity": {"device": int(info.st_dev), "inode": int(info.st_ino)},
+                "session_meta_digest": view.session_meta_digest,
+                "source_identity": self.source_id,
+                "size": int(info.st_size),
+            }
+            continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
             if (
-                self.codex_admitted_live
-                and admission is not None
-                and info.st_size > admission.max_source_bytes
+                continuity is not None
+                or checkpoint.get("complete_boundary") != snapshot["complete_boundary"]
+                or checkpoint.get("record_count") != len(snapshot["messages"])
             ):
                 return None
-            raw = os.read(fd, info.st_size)
-        finally:
-            os.close(fd)
-        boundary = raw.rfind(b"\n") + 1
-        prefix = raw[:boundary]
-        view = self.format_spec.parse_complete_prefix(str(self.source), raw=prefix)
-        self._validate_incremental_prefix_view(view)
-        snapshot = {
-            "raw": prefix,
-            "complete_boundary": view.complete_boundary,
-            "prefix_sha256": view.prefix_sha256,
-            "messages": view.messages,
-            "generation_identity": {"device": int(info.st_dev), "inode": int(info.st_ino)},
-            "session_meta_digest": view.session_meta_digest,
-            "source_identity": self.source_id,
-            "size": int(info.st_size),
-        }
-        continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
-        if (
-            continuity is not None
-            or checkpoint.get("complete_boundary") != snapshot["complete_boundary"]
-            or checkpoint.get("record_count") != len(snapshot["messages"])
-        ):
+            if self._unchanged_prereturn_refusal(checkpoint, snapshot) is not None:
+                return None
+        except IncrementalJsonlError:
             return None
         self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
         result = IncrementalRunResult(
@@ -2614,71 +2678,21 @@ class IncrementalJsonlCoordinator:
                 snapshot = self._capture(transaction_id)
             except IncrementalJsonlError as exc:
                 return self._refusal(exc.code, fallback=exc.detail or None)
-            if self.codex_admitted_live:
-                identity_refusal = verify_session_meta_identity(
-                    self.source, snapshot["raw"]
-                )
-                if identity_refusal:
-                    self._cleanup(snapshot["snapshot_dir"])
-                    result = self._refusal(identity_refusal, snapshot=snapshot)
-                    self._emit_codex_admitted_log(
-                        result,
-                        snapshot=snapshot,
-                        elapsed_seconds=time.monotonic() - self._run_started,
-                    )
-                    return result
             checkpoint = None
             try:
                 checkpoint = self.checkpoint()
             except IncrementalJsonlError:
                 return self._refusal("invalid_state", snapshot=snapshot)
-            if self.bootstrap_existing and snapshot["prefix_sha256"] != self.expected_prefix_sha256:
-                self._cleanup(snapshot["snapshot_dir"])
-                return self._refusal("bootstrap_source_digest_mismatch")
-            processed = self._processed()
-            chroma_count = 0
-            if checkpoint is None and not _path_has_processed_entry(processed, self.path_key):
-                chroma_count = self._chroma_row_count()
-            outcome = decide_eligibility(
-                enabled=True,
-                detected_format=detected,
-                path_key=self.path_key,
-                processed=processed,
-                chroma_row_count=chroma_count,
-                checkpoint=checkpoint,
-                force_reindex=self.force_reindex,
-                supersede_on_reindex=self.supersede_on_reindex,
-                eligible_formats=self.routed_formats,
-            )
-            if self.bootstrap_existing and outcome != "bootstrap_required":
-                self._cleanup(snapshot["snapshot_dir"])
-                return self._refusal("bootstrap_not_required")
-            if outcome == "bootstrap_required" and self.bootstrap_existing:
-                chunk_count = len(chunk_messages(
-                    snapshot["messages"], self.chunk_size, self.overlap
-                ))
-                if chunk_count > int(self.max_bootstrap_chunks or 0):
-                    self._cleanup(snapshot["snapshot_dir"])
-                    return self._refusal("bootstrap_chunk_limit_exceeded")
-                outcome = "eligible_bootstrap_existing"
-            if outcome in {"bootstrap_required", "invalid_state"}:
-                self._cleanup(snapshot["snapshot_dir"])
-                return self._refusal(outcome, snapshot=snapshot)
-            projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
-            if projection_mismatch:
-                self._cleanup(snapshot["snapshot_dir"])
-                return self._refusal(
-                    f"rebuild_required:{projection_mismatch}",
-                    fallback=projection_mismatch,
-                    snapshot=snapshot,
-                )
+            refusal = self._refusal_before_unchanged_return(checkpoint, snapshot)
+            if refusal is not None:
+                if self.codex_admitted_live and refusal.outcome == "codex_session_identity_mismatch":
+                    self._emit_codex_admitted_log(
+                        refusal,
+                        snapshot=snapshot,
+                        elapsed_seconds=time.monotonic() - self._run_started,
+                    )
+                return refusal
             continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
-            if continuity and continuity != "initial_full" and not self.settings.allow_full_rebuild:
-                return self._refusal(
-                    f"rebuild_required:{continuity}",
-                    fallback=continuity,
-                    snapshot=snapshot,
-                )
             if (
                 checkpoint is not None
                 and continuity is None
