@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `READY_FOR_REVIEW`: Claude's round 21 PASSes `74c8ee7` (corrective 16 plus the R2b inventory regeneration): no tip-only failure, leak census 0 (round 20), static undefined-name check clean, and diff coverage shows no broken never-run branch (three risky ones probed). Next: Astra re-audit and Kiro lock-order check on this exact tip, then the PR. See round 21 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Astra's round-4 audit FAILs `74c8ee7` and Claude's round 22 reproduces it (round 21 withdrawn): moving admission into `run()` lets the error handler overwrite corrupt retry state (paid work resumes past the cap) and leaves a source snapshot per refused call. Round-3 findings stay closed. Corrective 17 goes to Cursor; see round 22 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

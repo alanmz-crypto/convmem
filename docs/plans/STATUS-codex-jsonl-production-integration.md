@@ -302,6 +302,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-15 | Claude | Astra round 3 FAILs `7d46e6e` (concurrent retry cap bypass, repair and monitor drift crashes); Kiro round 3 PASS with conditions; Claude round 19 reproduces Astra and withdraws round 18; corrective 16 to Cursor; not deployable |
 | 2026-10-15 | Claude | Round 20 PASSes corrective 16 (`928700b`) on safety (concurrent cap holds across processes); R2b inventory stale again, one mechanical regeneration before Astra's re-audit; not deployed |
 | 2026-10-15 | Claude | Round 21 PASSes `74c8ee7`: inventory current, no tip-only failure, diff coverage and static checks added, no hidden broken branch; Astra re-audit and Kiro check next; not deployed |
+| 2026-10-15 | Claude | Astra round 4 FAILs `74c8ee7` (corrupt retry state overwritten, snapshot per refusal); Claude round 22 reproduces, withdraws round 21; corrective 17 to Cursor; not deployed |
 
 ## TL;DR
 

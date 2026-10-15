@@ -1,4 +1,87 @@
-# Verify: Stage 2 wedge fixes, round 21 at `74c8ee7`: PASS; the inventory is current, the suite has no tip-only failure, and diff coverage finds no hidden broken branch
+# Verify: Stage 2 wedge fixes, round 22 at `74c8ee7`: round 21's PASS withdrawn; Astra's round-4 FAIL reproduced (two regressions from moving admission into `run()`); corrective 17
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `74c8ee7` (unchanged since
+round 21).
+**Input:** Astra's round-4 safety audit, **FAIL** (`docs/2026-10-15-issue-286-stage2-fixes-audit-r4`,
+`d6b93ff`, `docs/inter-model/CODEX-2026-10-15-issue-286-stage2-fixes-audit-r4.md`).
+Kiro's round-4 check is pending.
+**Method:** I ran Astra's seven round-4 checks unchanged (hash `fb7726ec…`) in my
+worktree at `74c8ee7`, and the two failing ones at `7d46e6e` as a control.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are
+inactive and disabled; no further Mirror Crush indexing. R4-F1 is a paid-attempt
+bound gap after state corruption, so it matters once the watcher is back on.
+
+## Verdict (round 22)
+
+**Round 21's PASS is withdrawn. Both regressions reproduce at `74c8ee7` and are
+absent at `7d46e6e`** (2 failed there vs 2 passed at the control). Astra's five
+other checks pass at the tip: the source lock covers admission, run and
+accounting; a competitor can't enter during accounting; 8 concurrent callers
+with failing accounting still cap at three; success and unchanged runs take no
+reservation; export failures clear the cache. All five round-3 findings stay
+closed.
+
+- **R4-F1 (High): corrupt retry state is overwritten, and paid work resumes.**
+  Corrective 16 moved admission into `run()`, inside the wrapper's error
+  handler. A corrupt `retry_state.json` correctly raises
+  `retry_state_unavailable`, but the handler then records a failure through
+  the permissive `_read`, which treats the corrupt file as empty and writes a
+  fresh state with `attempts_on_prefix=0`. The next calls pay again: 2 extra
+  fake summaries after one corruption (4 total on one prefix, past the cap).
+  At `7d46e6e` the corrupt bytes stay and every call refuses.
+- **R4-F2 (Medium): each refused attempt leaves a full source snapshot.** With
+  no pending transaction, `run()` now captures and publishes a source snapshot
+  before the admission gate; a refusal leaves it with no owner. Four refused
+  calls leave 4 snapshots (1,234 bytes each, one full copy of the source per
+  refusal). At `7d46e6e`: none.
+
+**Why round 21 missed them:** diff coverage finds changed lines that never run;
+these lines run, but in a new order on error paths. The retained corrupt-state
+test (`test_q2c_corrupt_retry_state_fails_closed`) checks only the first
+refusal, not the bytes afterwards or the next call. New rule for my rounds: for
+any reordering of admission, accounting or snapshot steps, probe repeated calls
+after each refusal kind and check the state files and disk between calls.
+
+## Corrective 17 for Cursor
+
+- **R4-F1:** separate an admission refusal from a failed admitted attempt. A
+  refusal raised by the gate (`retry_state_unavailable`, `live_route_refused`)
+  goes straight out, with no failure recording. And
+  `record_incremental_retry_failure` must read the state strictly
+  (`_read_or_raise_unavailable`): if it's unreadable, leave the bytes untouched
+  and raise `retry_state_unavailable`; never replace corrupt evidence with a new
+  zero-count state. Recovery stays explicit. Keep the source lock across
+  admission and accounting.
+- **R4-F2:** keep the unchanged-prefix short-circuit, but run the admission gate
+  before the snapshot is captured and published; if the gate needs data from
+  the capture, delete only the snapshot this call just captured (never one a
+  transaction owns) when admission refuses.
+- **Tests:** add Astra's seven round-4 checks as `tests/test_zz_codex_audit_r4.py`
+  (the two safety assertions must pass; the five controls unchanged), plus a
+  repeated-call test per refusal kind (corrupt state, unavailable state, cap
+  reached, same-code hold) that checks the state bytes, the snapshot count and
+  the summary count after every call. Keep Astra's round-3 tests, every retained
+  probe (rounds 15–21), the corrective-12 to -16 tests, and the upsert,
+  ledger-document, monitor, doctor and live-boundary suites passing.
+- **Process:** after your **last** code commit, regenerate the R2b and Shadow
+  inventories and the baseline hashes, then run the inventory tests and the
+  hermetic full suite at that final tip vs main `458b9f6`; tip-only target is
+  Z1 alone.
+
+## Next
+
+1. Kiro's round-4 check (pending) is on `74c8ee7`; it stands for the lock order
+   unless corrective 17 changes it.
+2. Cursor: corrective 17.
+3. Claude, round 23, and Astra's re-audit on the same new tip, in parallel.
+
+# Round 21: `74c8ee7`, PASS withdrawn in round 22 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15
