@@ -1,4 +1,88 @@
-# Verify: Stage 2 wedge fixes, round 24 at `a89f573`: PASS; corrective 18 closes N13 and N14, the shortcut matches the full path in every probed case, no tip-only failure, no leak
+# Verify: Stage 2 wedge fixes, round 25 at `a89f573`: round 24's PASS withdrawn; Astra's round-5 FAIL reproduced (the shortcut skips source revalidation and the retry gate); corrective 19
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `a89f573` (unchanged since
+round 24).
+**Input:** Astra's round-5 safety re-audit, **FAIL** (`docs/2026-10-15-issue-286-stage2-fixes-audit-r5`,
+`80e8008`, `docs/inter-model/CODEX-2026-10-15-issue-286-stage2-fixes-audit-r5.md`).
+**Method:** I ran Astra's round-5 probes unchanged (`test_audit_r5.py`, hash `80123bdf…`)
+in my worktree at `a89f573`, and at `74c8ee7` as the baseline.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are inactive.
+Live writes are still only on-demand Track A indexes of Codex session files (new chunks
+only).
+
+## Verdict (round 25)
+
+**Round 24's PASS is withdrawn. Both findings reproduce at `a89f573`:** 8 failed, 6
+passed, matching Astra's run. At `74c8ee7` the eight two-arm cases pass (no shortcut
+exists there; the six controls that call the new method can't run there).
+
+- **R5-F1 (Medium, new in corrective 17): the shortcut accepts a source that changed after
+  its read.** It reads the bytes, checks them, and returns "unchanged" without
+  `_revalidate_live_prefix`, which the full path runs after capture. If the file is
+  truncated, rewritten in place or replaced between the read and the return, the shortcut
+  reports success (`skipped`, no retry record); the full path refuses
+  (`SourceCaptureError`) and keeps accounting. No paid call in the raced run.
+- **R5-F2 (Medium, inherited): a matching checkpoint bypasses the retry gate and erases
+  its evidence.** The shortcut returns before the refuse-only gate, and the router clears
+  `retry_state.json` on "unchanged". Corrupt state, a prefix cap, a same-error hold or a
+  source-wide hold all disappear when the source matches its checkpoint; with the
+  shortcut disabled, the current full path refuses and keeps the bytes. Astra's natural
+  case shows real re-admission: three invalid appends set a source-wide hold; restoring
+  the committed bytes and calling once clears it; one valid append then pays one fake
+  summary. At `74c8ee7` the old unchanged path cleared holds the same way, so this is
+  inherited, but corrective 17's own rule (refuse before any work when state demands it)
+  now applies to the full path only.
+
+**Why round 24 missed them:** my equivalence probe (`y1`) compared the two arms only with
+clean retry state and a quiet source. New rule: equivalence probes for a fast path must
+also seed every retry-state kind and race the source between read and return.
+
+**Also from Astra:** Cursor's adapted lock control is valid (one refuse-only event, not a
+second reservation); R4-F1 and R4-F2 stay closed; the round-24 shared-helper cases pass.
+
+## Corrective 19 for Cursor
+
+- **Split the gate.** Add a read-only check in `incremental_retry_state.py`
+  (`check_incremental_retry_gates(paths, *, path_key, prefix_digest)`): it raises
+  `retry_state_unavailable` or `live_route_refused` exactly as the gate does today and never
+  writes. `enforce_incremental_retry_gates` becomes check plus reservation; drop the
+  `reserve` parameter.
+- **R5-F2:** in `run()`, after the pending-transaction branch, call the read-only check
+  **before** the unchanged shortcut (replacing today's `reserve=False` call before capture).
+  A clean unchanged source still takes no reservation; corrupt or unavailable state and
+  every hold refuse with the bytes untouched. The router's clear on "unchanged" then only
+  clears state that holds nothing.
+- **R5-F1:** the shortcut calls `self._revalidate_live_prefix(snapshot)` as its last step
+  before returning "unchanged"; on `IncrementalJsonlError` or `SourceCaptureError` it
+  returns `None`, so the full path runs and refuses as today.
+- **Tests:** add Astra's `test_audit_r5.py` unchanged as `tests/test_zz_codex_audit_r5.py`
+  (all 14 pass). With the split, Astra's round-4 harness should pass **unchanged**,
+  including the original lock-sequence assertion (the read-only check isn't the spied
+  gate, and replays go through the pending-transaction branch); restore
+  `test_lock_covers_admission_run_accounting_and_release` in
+  `tests/test_zz_codex_audit_r4.py` to Astra's original sequence. Keep my round-23 and
+  round-24 probes, Astra's round-3 tests, the corrective 12–18 tests and the core suites
+  passing. Keep the lock order; no provider call under C1.
+- **Inventories last,** then the hermetic full suite against main `458b9f6` (main's failure
+  ids from the full `-rfE` summary); tip-only target: Z1 at most.
+
+## Next
+
+1. Ryan: R5-F2 is inherited; corrective 19 fixes it now (fail closed: an unchanged source
+   with corrupt retry state refuses instead of deleting the file). Pasting corrective 19
+   accepts that disposition.
+2. Cursor: corrective 19.
+3. Claude round 26 and Astra round 6 on the same tip, in parallel.
+
+---
+
+# Round 24: `a89f573`, PASS withdrawn in round 25 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15

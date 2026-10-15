@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 24 PASSes corrective 18 at `a89f573` (N13/N14 closed; the unchanged shortcut matches the full path in every probed case; no tip-only suite failure; 0 leaks). Next: Astra re-audits `a89f573`; if PASS, the PR draft with Kiro's CO-2/CO-3, then Ryan. See round 24 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Astra's round-5 audit FAILs `a89f573` and Claude's round 25 reproduces it (round 24 withdrawn): the unchanged shortcut skips live-source revalidation (R5-F1, new) and the retry gate, so holds and corrupt evidence are erased on an unchanged source (R5-F2, inherited). R4-F1/F2 and N13/N14 stay closed. Corrective 19 goes to Cursor; see round 25 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

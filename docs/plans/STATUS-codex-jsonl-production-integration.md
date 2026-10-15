@@ -305,6 +305,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-15 | Claude | Astra round 4 FAILs `74c8ee7` (corrupt retry state overwritten, snapshot per refusal); Claude round 22 reproduces, withdraws round 21; corrective 17 to Cursor; not deployed |
 | 2026-10-15 | Claude | Round 23 at `881c804`: R4-F1/F2 closed; FAIL on N13 (pre-capture unchanged shortcut bypasses the lineage guard and clears the retry hold, no paid calls); corrective 18 to Cursor; not deployed |
 | 2026-10-15 | Claude | Round 24 PASS at `a89f573` (corrective 18 closes N13/N14; no tip-only failure; 0 leaks); Astra re-audit next, then PR draft; not deployed |
+| 2026-10-15 | Claude | Astra round 5 FAILs `a89f573` (shortcut skips revalidation and the retry gate); Claude round 25 reproduces, withdraws round 24; corrective 19 to Cursor; not deployed |
 
 ## TL;DR
 
