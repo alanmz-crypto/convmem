@@ -61,8 +61,14 @@ second reservation); R4-F1 and R4-F2 stay closed; the round-24 shared-helper cas
 - **R5-F1:** the shortcut calls `self._revalidate_live_prefix(snapshot)` as its last step
   before returning "unchanged"; on `IncrementalJsonlError` or `SourceCaptureError` it
   returns `None`, so the full path runs and refuses as today.
-- **Tests:** add Astra's `test_audit_r5.py` unchanged as `tests/test_zz_codex_audit_r5.py`
-  (all 14 pass). With the split, Astra's round-4 harness should pass **unchanged**,
+- **Tests:** add Astra's `test_audit_r5.py` as `tests/test_zz_codex_audit_r5.py`; 13 of its
+  14 tests pass unchanged. The split supersedes
+  `test_adapted_lock_sequence_has_correct_reservation_semantics` (it spies the
+  `reserve=False` gate call, which no longer exists, and conflicts with Astra's original
+  round-4 sequence). Replace only that test with the same check against the split: spy
+  `check_incremental_retry_gates` as `check` and the gate as `gate`; expect `check, capture,
+  gate, work, account, gate, work, account, gate, gate`; the check never changes the state
+  bytes; summaries equal `attempts_on_prefix` equal 2. Astra rules on it in round 6. With the split, Astra's round-4 harness should pass **unchanged**,
   including the original lock-sequence assertion (the read-only check isn't the spied
   gate, and replays go through the pending-transaction branch); restore
   `test_lock_covers_admission_run_accounting_and_release` in
