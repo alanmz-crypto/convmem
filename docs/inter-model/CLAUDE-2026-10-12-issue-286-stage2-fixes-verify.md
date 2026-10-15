@@ -1,4 +1,232 @@
-# Verify: Stage 2 wedge fixes, round 23 at `881c804`/`d45ada4`: FAIL (one new finding); R4-F1 and R4-F2 are closed, but the new pre-capture "unchanged" shortcut skips the legacy re-index lineage guard and clears the retry hold; corrective 18
+# Verify: Stage 2 wedge fixes, round 24 at `a89f573`: PASS; corrective 18 closes N13 and N14, the shortcut matches the full path in every probed case, no tip-only failure, no leak
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `a89f573`, Cursor's
+corrective 18: `7f8daab` (the unchanged shortcut and the full path share one guard
+helper; the shortcut never raises and skips itself for bootstrap grants) and `a89f573`
+(R2b inventory and `incremental_jsonl.py` baseline hash, after the last code commit).
+**Method:**
+- I read the diff `d45ada4..a89f573`. Cursor's `tests/test_zz_claude_verify23.py` differs
+  from my round-23 appendix only in line wrapping; I also ran my original copy.
+- I ran Astra's round-4 harness unchanged (hash `fb7726ec…`), Astra's round-3 probes, my
+  retained probes (rounds 15–17, 20, 21, 23), Cursor's round-4 tests and the core suites
+  (`test_upsert`, `test_ledger_document`, `test_monitor`, `test_doctor`,
+  `test_incremental_jsonl_live_boundary`).
+- New probes (`tests/test_zz_claude_verify24.py`, appendix): `y1` runs five scenarios twice
+  from fresh fixtures, once with the shortcut and once with it disabled, and compares the
+  outcome, paid calls, snapshot count and retry state after each of four calls; `y2`
+  drives the session-identity refusal, which the suite never runs.
+- The full hermetic suite under coverage, the leak census, diff coverage and the static
+  check, all at `a89f573`, compared with main `458b9f6`.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are inactive.
+Live writes during this round came from on-demand Track A indexes of today's Codex session
+files through the incremental route on main (the last one, `rollout-2026-10-15T11-20-29-…`,
+started 11:35). Each one only charges for its new chunks. Each commit also rewrites the
+5.5 GB `knowledge_units.jsonl` through a temp file (a 4.3 GB `.tmp` was mid-write at
+11:39). That's I/O, not a paid call; it belongs with the X-series follow-ups after merge.
+
+## Verdict (round 24)
+
+**PASS.**
+- **N13 closed.** Probe `x1` passes: after a legacy re-index replaces the lineage, the
+  unchanged source is refused (`rebuild_required:projection_checkpoint_mismatch`), 0 paid
+  calls, the retry state is kept.
+- **N14 closed.** Probe `x3`: the shortcut no longer raises; the gate decides, and the
+  state bytes are stable from the third call. Capture still publishes a snapshot before
+  it finds the invalid line; the hold bounds that to 2 (observation below).
+- **Shortcut equals full path** (`y1`), call for call over four calls, in all five
+  scenarios: plain unchanged ("skipped" four times, no retry state), legacy lineage,
+  processed entry dropped, processed entry excluded (each refused as
+  `rebuild_required:projection_checkpoint_mismatch`), and transform fingerprint changed
+  (`rebuild_required:transform_fingerprint_changed`). 0 paid calls and 0 snapshots
+  everywhere.
+- **Session identity** (`y2`, the path the suite never runs): a mismatched session-meta
+  id is refused on the first run and after a commit, with 0 paid calls and 0 snapshots,
+  and the admitted-route log still records `codex_session_identity_mismatch`.
+- **Bonus:** the shared helper deletes the call's snapshot before every refusal that
+  precedes the unchanged check. A mutated validated prefix (`x2`) now leaves 0 snapshots
+  (round 23: 2; before corrective 17: one more per call).
+- **Retained checks:** 167 passed across Astra's round-3 and round-4 probes, my retained
+  probes, Cursor's round-4 tests and the core suites. The only failure is Astra's lock
+  control on sequence shape (two admission checks per attempt since corrective 17;
+  unchanged from round 23, every lock assertion holds). Astra should confirm Cursor's
+  adapted copy.
+- **Lock order unchanged:** the helper reads `processed.json` and the checkpoint under
+  the per-source lock, as the full path already did; no C1, no provider call. Kiro's
+  round-4 verdict carries.
+- **Full suite under coverage** (disk-backed worktree, private `--basetemp`, against main
+  `458b9f6` run the same way, ids without parameters): 93 failed, 3015 passed, 66
+  skipped, 52 errors. **No tip-only failure** (Z1 didn't flake). Cursor's corrective-18
+  comparison agrees (0 tip-only, with 152 main failure ids collected this time).
+- **Leak census** (fake live config in a scratch HOME): **0 leaks**; 92 failed, 3014
+  passed, 66 skipped, 52 errors; no tip-only failure.
+- **Static check:** clean (undefined-name family) on all 14 changed production files.
+- **Diff coverage, corrective 18 (`d45ada4..a89f573`):** 62 changed executable lines,
+  5 never run in the suite: the identity refusal and its log (`incremental_jsonl.py:2520`,
+  `2689`, both run by `y2`), `bootstrap_not_required` (`2540`) and the shortcut's skip for
+  bootstrap grants (`2579`), both moved unchanged and only reachable with Ryan's one-shot
+  bootstrap grant, and the shortcut's oversized-source `return None` (`2590`, falls
+  through to capture's existing refusal). Whole series: 694 lines, 130 never run.
+- **Inventories** were regenerated after the last code commit (`a89f573`); the R2b,
+  Shadow and baseline tests pass in both suites.
+
+**Observations (not blocking; for the post-merge list):**
+- A refusal raised inside capture (`invalid_prefix_encoding`) still leaves the snapshot
+  it published; the retry hold bounds it to 2 per source (`x3`). Follow-up: capture should
+  delete its own snapshot when it raises.
+- Bootstrap refusals now report the captured boundary and record count instead of 0. No
+  caller or test depends on the zero (the suite has no tip-only failure).
+- Refusals with `rebuild_required:…` codes go through failure accounting on every call
+  (`consecutive` 1, 2, 3…) rather than a gate hold; this was already so before corrective
+  17, with no paid calls and now no snapshots.
+
+## Next
+
+1. Astra re-audits the exact tip `a89f573` (if not already running), including the
+   adapted lock-control copy.
+2. If Astra passes: the PR draft, carrying Kiro's CO-2 (R2b owner acknowledgement of the
+   `review-bundles/` and `artifacts/` skip prefixes) and CO-3 (verdict "PASS with
+   conditions"; cite this round's suite numbers, Z1 as a pre-existing flake). Ryan opens
+   and merges.
+3. After merge, separate Ryan grants: runtime-main promotion, protocol-surface deploy,
+   canary 2 (CO-5, CO-6).
+
+## Appendix (round 24): probes `tests/test_zz_claude_verify24.py`
+
+```python
+"""Claude verify probes, round 24 (corrective 18): the pre-capture shortcut must agree with the full path.
+
+Scratch only: tmp_path HOME, fake providers, no network. Each scenario runs twice from a fresh fixture, once with
+the shortcut and once with it disabled, and the observable results must match call for call.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from tests.test_zz_claude_verify23 import _call, _metrics
+
+
+def _lineage(cfg, value):
+    plog = Path(cfg["index"]["processed_log"])
+    data = json.loads(plog.read_text())
+    for entry in data.values():
+        if isinstance(entry, dict) and entry.get("incremental_jsonl_lineage"):
+            entry["incremental_jsonl_lineage"] = value
+    plog.write_text(json.dumps(data))
+
+
+def _drop_processed(cfg):
+    plog = Path(cfg["index"]["processed_log"])
+    plog.write_text(json.dumps({k: v for k, v in json.loads(plog.read_text()).items()
+                                if not (isinstance(v, dict) and v.get("incremental_jsonl_lineage"))}))
+
+
+def _exclude_processed(cfg):
+    plog = Path(cfg["index"]["processed_log"])
+    data = json.loads(plog.read_text())
+    for entry in data.values():
+        if isinstance(entry, dict) and entry.get("incremental_jsonl_lineage"):
+            entry["excluded"] = True
+    plog.write_text(json.dumps(data))
+
+
+def _fingerprint(cfg, source):
+    from tests.test_zz_claude_verify23 import _root
+
+    cp = _root(source, cfg) / "checkpoint.json"
+    data = json.loads(cp.read_text())
+    data["transform_fingerprint"] = "older-transform"
+    cp.write_text(json.dumps(data))
+
+
+SCENARIOS = {
+    "plain": lambda cfg, source: None,
+    "lineage": lambda cfg, source: _lineage(cfg, "legacy-reindex-lineage"),
+    "processed_dropped": lambda cfg, source: _drop_processed(cfg),
+    "processed_excluded": lambda cfg, source: _exclude_processed(cfg),
+    "fingerprint": _fingerprint,
+}
+
+
+def _run(tmp_path, monkeypatch, scenario, shortcut):
+    import incremental_jsonl as inc
+    from tests.test_zz_claude_verify8b import _count_summaries
+    from tests.test_zz_codex_audit import _route_fixture
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+    route()
+    SCENARIOS[scenario](cfg, source)
+    if not shortcut:
+        monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_unchanged_short_circuit_if_applicable",
+                            lambda self: None)
+    rows = []
+    for _ in range(4):
+        result = _call(route)
+        m = _metrics(source, cfg, calls)
+        state = None
+        if isinstance(m["state"], bytes):
+            state = {k: v for k, v in json.loads(m["state"]).items()
+                     if k in ("attempts_on_prefix", "consecutive", "error_code")}
+        rows.append((result[:2], m["paid"], m["snapshots"], state))
+    return rows
+
+
+@pytest.mark.parametrize("scenario", sorted(SCENARIOS))
+def test_y1_shortcut_matches_full_path(tmp_path, monkeypatch, scenario) -> None:
+    with_shortcut = _run(tmp_path / "a", monkeypatch, scenario, True)
+    without = _run(tmp_path / "b", monkeypatch, scenario, False)
+    print(f"\nY1 {scenario}\n  shortcut: {with_shortcut}\n  full:     {without}")
+    assert with_shortcut == without
+
+
+@pytest.mark.parametrize("when", ["first_run", "after_commit"])
+def test_y2_session_identity_mismatch_refuses_and_logs(tmp_path, monkeypatch, when) -> None:
+    import incremental_jsonl as inc
+    from tests.test_zz_claude_verify8b import _count_summaries
+    from tests.test_zz_codex_audit import _route_fixture
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+    if when == "after_commit":
+        route()
+    raw = bytearray(source.read_bytes())
+    meta_end = raw.index(b"\n")
+    uid = source.name.split("-", 6)[-1].removesuffix(".jsonl")[-12:].encode()
+    pos = raw.index(uid, 0, meta_end) + len(uid) - 1
+    raw[pos] = ord("0") if raw[pos] != ord("0") else ord("1")
+    with open(source, "r+b") as fh:
+        fh.write(bytes(raw))
+    logged = []
+    real = inc.IncrementalJsonlCoordinator._emit_codex_admitted_log
+    def spy(self, result, **kw):
+        logged.append(result.outcome)
+        return real(self, result, **kw)
+    monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_emit_codex_admitted_log", spy)
+    paid = len(calls)
+    rows = [(_call(route), _metrics(source, cfg, calls)) for _ in range(3)]
+    print(f"\nY2 {when}", [(r[:3], m["paid"], m["snapshots"]) for r, m in rows], "logged", logged)
+    assert len(calls) == paid
+    assert all(r[0] == "raised" for r, _ in rows)
+    assert "codex_session_identity_mismatch" in rows[0][0][2]
+    assert all(m["snapshots"] == 0 for _, m in rows)
+    assert "codex_session_identity_mismatch" in logged
+```
+
+---
+
+# Round 23: `881c804`, FAIL on N13 (shortcut bypassed the lineage guard), corrective 18 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15
