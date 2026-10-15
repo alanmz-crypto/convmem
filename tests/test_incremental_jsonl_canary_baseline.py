@@ -36,7 +36,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 stage-2 corrective 6 (dedupe rollback, retry gates, tamper log).
     # Refreshed for issue #286 stage-2 corrective 13 (retry failure prefix field).
     # Refreshed for issue #286 stage-2 corrective 17 (admission before capture).
-    "incremental_jsonl.py": "2184c7d2e4f057713e12d5a3d8a164df94108b7d8ff5f161a1427d2b259e45d8",
+    # Refreshed for issue #286 stage-2 corrective 18 (unchanged shortcut guards).
+    "incremental_jsonl.py": "487020d7a7050196e7845cfc2f057883691f18da00fb8af9fd8d795b3f05771b",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
