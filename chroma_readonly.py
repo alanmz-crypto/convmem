@@ -151,12 +151,32 @@ def unit_document_text(chroma_dir: str | Path, chroma_id: str) -> str | None:
     want = (chroma_id or "").strip()
     if not want:
         return None
-    for meta in iter_collection_metadata_rows(
-        chroma_dir, UNITS, include_document=True
-    ):
-        if (meta.get("id") or "").strip() == want:
-            return meta.get("document")
-    return None
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return None
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT em.string_value
+            FROM embeddings e
+            JOIN segments s ON e.segment_id = s.id
+            JOIN collections c ON s.collection = c.id
+            JOIN embedding_metadata em ON em.id = e.id
+            WHERE c.name = ? AND s.scope = 'METADATA'
+              AND e.embedding_id = ?
+              AND em.key = 'chroma:document'
+            LIMIT 1
+            """,
+            (UNITS, want),
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        return None
+    return row[0] or ""
 
 
 def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> list[dict]:
