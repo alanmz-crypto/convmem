@@ -274,8 +274,17 @@ def check_incremental_retry_gates(
     prefix_digest: str,
 ) -> None:
     """Read-only refusal when retry state demands it (issue #286 corrective 19)."""
+    import incremental_jsonl as inc
+
     state_path = _state_path(paths)
-    if state_path is None or not state_path.is_file():
+    if state_path is None:
+        return
+    if state_path.exists() and not state_path.is_file():
+        raise inc.IncrementalJsonlError(
+            "retry_state_unavailable",
+            "incremental retry state could not be read or written",
+        )
+    if not state_path.is_file():
         return
     prior = _read_or_raise_unavailable(state_path)
     if not prior:
