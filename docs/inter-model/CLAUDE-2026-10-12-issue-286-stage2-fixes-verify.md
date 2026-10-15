@@ -1,4 +1,101 @@
-# Verify: Stage 2 wedge fixes, round 18 at `7d46e6e`: PASS; N12 is closed, the suite is clean but for the Z1 flake; Astra and Kiro next
+# Verify: Stage 2 wedge fixes, round 19 at `7d46e6e`: round 18's PASS withdrawn; Astra's round-3 FAIL reproduced (three blockers); corrective 16
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `7d46e6e` (unchanged
+since round 18).
+**Inputs:**
+- Astra's round-3 safety audit, **FAIL** (`docs/2026-10-15-issue-286-stage2-fixes-audit-r3`,
+  `3af90a3`, `docs/inter-model/CODEX-2026-10-15-issue-286-stage2-fixes-audit-r3.md`).
+- Kiro's round-3 design review, **PASS with conditions**
+  (`docs/2026-10-15-issue-286-stage2-fixes-design-review-r3`, `607102f`): Q3 confirmed;
+  CO-1 (revised) and CO-7 resolved; CO-2 and CO-3 for the PR body; CO-5 and CO-6
+  for canary 2.
+**Method:** I ran Astra's seven round-3 probes unchanged (hash `3d8cab20…`) in my
+own disk-backed worktree at `7d46e6e` with my hermetic environment, twice, and
+read the code at each finding.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are
+inactive and disabled; no further Mirror Crush indexing. But R3-F1 is a paid-work
+bound gap, so it matters to the burn once the watcher is back on.
+
+## Verdict (round 19)
+
+**Round 18's PASS is withdrawn. Astra's three blockers reproduce at `7d46e6e`,
+on both runs:**
+- **R3-F1 (High): concurrent entrants on one source bypass the attempt cap.** The
+  retry gate and reservation (`incremental_jsonl.py:2800`) run before
+  `coordinator.run()` takes the per-source lock (`:2483`). Probe: 4 fake summary
+  calls, reservations `[1, 1, 1, 1]`, persisted attempts 1, against a cap of 3.
+  This is a real pattern: the watcher indexes a session file after its debounce
+  while an agent's Track A `convmem index --file` targets the same file. Each
+  concurrent entrant pays.
+- **R3-F2 (Medium): repair crashes on drift.** The retry branch
+  (`observe.py:848`) calls `open_readonly_unit_store`, which isn't imported in
+  that function (the local import went with `700b6ba`'s reader change).
+  `NameError`; the job aborts.
+- **R3-F3 (Medium): monitor turns a drifted skip into an update with an empty
+  embedding.** `monitor.py:626` passes `precomputed_embedding=current.embedding`,
+  which is `[]` for a row first prepared as unchanged. Chroma raises
+  `IndexError` in `update`; the monitor run aborts.
+- **R3-O1, R3-O2 (Low)** also reproduce: an export failure after a successful
+  store write skips the cache clear; the `artifacts/` skip hides tracked files
+  from the R2b scan.
+- Astra's two safe controls (post-admission failure recording bounds work;
+  refine append survives a real rollback) pass.
+
+**Why rounds 15–18 missed them:** my probes never ran two routes on one source
+at once, and never drove repair's retry branch or monitor's skip-to-update
+transition through real drift. Kiro's PASS doesn't conflict on any fact: it
+confirmed the Q3 design, and these are implementation defects outside it. So no
+Sol-High; reproduction settles it.
+
+## Corrective 16 for Cursor
+
+- **R3-F1:** serialize admission per source. Take the coordinator's per-source
+  lock (not C1; it already serializes transform work, and provider calls under
+  it are fine) before the retry gate and reservation, and run gate, reservation,
+  transform and failure accounting inside it. A caller that waited re-checks
+  admission after it gets the lock: if the prefix is already processed, it does
+  no work; if the cap is reached, it refuses. Accept: Astra's
+  `test_concurrent_real_routes_lose_reservations_and_exceed_prefix_cap`,
+  inverted into a safe-direction test (same interleaving, real route): at most 3
+  fake summaries for one prefix across 4 concurrent callers, and persisted
+  attempts equal to the paid attempts.
+- **R3-F2:** make repair's retry branch executable (a fresh document-accurate
+  reader, as at prepare). Accept: Astra's repair-drift scenario as a safe-direction
+  test: the job completes, the drifted row is skipped or repaired once, and the
+  remaining pending rows are processed; embedding at depth (0, 0).
+- **R3-F3:** a re-prepared row that now needs an embedding must not reuse an
+  empty one: pass `current.embedding or None` (or compute it outside C1), or
+  refuse cleanly before mutation. Accept: Astra's monitor scenario as a
+  safe-direction test: the third run completes or records `drift_refused`; no
+  `IndexError`; any embedding at (0, 0).
+- **R3-O1:** clear the ledger cache once the store write succeeds, even if the
+  export then fails (`finally`). **R3-O2:** apply the tracked-file check to
+  `artifacts/` as for `review-bundles/`, with a test.
+- **Tests:** add Astra's seven probes as `tests/test_zz_codex_audit_r3.py`,
+  rewritten so each asserts the safe behavior (the two controls unchanged).
+  Keep every retained probe (rounds 15–17), the corrective-12 to -15 tests,
+  and the upsert, ledger-document, monitor and doctor suites passing.
+- **Optional:** X5, the indexed document query from round 18.
+- **Inventories last;** then the inventory, R2b and baseline tests; then the
+  disk-backed full suites at main `458b9f6` and the tip; tip-only list, target
+  zero (Z1 is a known flake).
+
+## Next
+
+1. Cursor: corrective 16.
+2. Claude, round 20: Astra's scenarios in both directions, a concurrency probe of
+   my own, the retained probes, the full suite and the leak census.
+3. Astra re-audits the exact tip; Kiro's PASS with conditions carries unless the
+   design changes (R3-F1's lock order does touch the route, so Kiro should
+   confirm it).
+
+# Round 18: `7d46e6e`, PASS withdrawn in round 19 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15
