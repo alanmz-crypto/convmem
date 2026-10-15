@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 VERIFICATION STOPPED ON ONE CONCURRENCY FAILURE.** [VERIFY V6](VERIFY-safe-harbor.md#v6--integrated-handoff-and-independent-sign-off-t5) is the integrated evidence packet. The combined run returned 240 passes / 1 failure; [T5-F1](VERIFY-safe-harbor.md#captured-result-and-blocker-t5-f1) records an event-framing defect and unresolved failure attribution. Ryan’s bounded corrective decision comes next; Kiro sign-off and V6 acceptance remain pending. Merged source is not deployed runtime or demonstrated disaster recovery.
+> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 VERIFICATION STOPPED ON ONE CONCURRENCY FAILURE.** [VERIFY V6](VERIFY-safe-harbor.md#v6--integrated-handoff-and-independent-sign-off-t5) is the integrated evidence packet. The combined run returned 240 passes / 1 failure; [T5-F1](VERIFY-safe-harbor.md#captured-result-and-blocker-t5-f1) records an event-framing defect and unresolved failure attribution. Ryan authorized the bounded signalling/logging correction and fresh isolated evidence; Kiro sign-off and V6 acceptance remain pending. Merged source is not deployed runtime or demonstrated disaster recovery.
 
 ## 1. What This Is For (product goal)
 
@@ -47,14 +47,14 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Direction/name, every-restore owner-disposition cost, execution plan and B-E4.1 (all five consumers) are owner-approved. Ownership stays with the existing arcs.
 - **T1–T4 / V1–V5 ACCEPTED AND MERGED.** Each task’s review and BugBot outage exception stays bound to its accepted candidate. None is a BugBot PASS or a blanket future exemption.
 - **Latest full hosted integration:** T4 candidate `ed6699b`, Python 3.12.15, run `38519477899`: 3,267 passed / 18 host-environment skips / 252 passing subtests; critical collection, unchanged-baseline lint and all security checks passed. Its tested merge and main squash have the same tree. V5 is completed evidence, not NOT RUN.
-- **T5 / V6: FAIL / STOPPED.** Combined V1–V5: 240 passed / 1 failed / 0 skipped, exit 1. Recovery-versus-forget saw ACQUIRED instead of NB_BLOCKED. Static inspection found the test pipe reader can discard a coalesced event; missing child output prevents attributing this run conclusively. No correction or rerun was performed; all source stayed unchanged.
+- **T5 / V6: FAIL / STOPPED.** Combined V1–V5: 240 passed / 1 failed / 0 skipped, exit 1. Recovery-versus-forget saw ACQUIRED instead of NB_BLOCKED. Static inspection found the test pipe reader can discard a coalesced event; missing child output prevents attributing this run conclusively. The failed run remains historical evidence. Section 18 now authorizes the test-only correction and fresh isolated evidence; corrected results are pending.
 - Limits persist: process restart/IO injection is not hardware power-loss proof; strict release can refuse recoverable states; auxiliary sink non-interference remains at the accepted author-trace level; incidental/unguarded writers are outside a global stop guarantee. Historical failed and excluded runs remain visible.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan next:** disposition T5-F1 and decide the bounded fixture correction/instrumentation grant. Proposed: lossless pipe framing, child-output/liveness capture, coalesced/fragmented controls and affected concurrency plus integrated evidence; preserve runtime and safety assertions.
+**Cursor/Codex next:** implement [EXECUTION section 18](EXECUTION-safe-harbor.md#18-t5-f1-signalling-and-logging-correction--owner-authorized): lossless pipe framing and retained child/liveness diagnostics, deterministic controls, then affected concurrency and integrated V1–V5 evidence. Preserve runtime, isolation, timeouts and safety assertions.
 
-**Codex:** preserve the failed packet and prepared operator docs; no corrective implementation or rerun without the bounded decision. **Kiro later:** review the exact corrected V6 successor after fresh evidence, keeping the old implementation verdicts pinned. No arc close or live authority follows from this handoff.
+**Kiro later:** review the exact corrected V6 successor after fresh evidence, keeping prior implementation verdicts pinned. **Ryan:** acceptance follows independent review. No PR or live authority follows from the correction grant.
 
 ## 6. What Remains Before "Live" (sequential)
 
@@ -65,7 +65,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 7. Hard Stops (models cannot cross)
 
-- T5 authorizes isolated verification and existing-doc handoff only. No runtime/test weakening, new dependency, baseline change, new PR/comment/review trigger, merge, deployment, production command, drive/key/repository/service action, ledger write or session indexing.
+- T5 section 18 authorizes the bounded test-only signalling/logging correction, isolated evidence and existing-doc handoff. No runtime/test weakening, new dependency, baseline change, new PR/comment/review trigger, merge, deployment, production command, drive/key/repository/service action, ledger write or session indexing.
 - Guard containment is cooperative. A publication/removal durability failure may require separately authorized process-level containment; do not claim a marker is a durable stop merely because bytes are visible.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
 - Gate PASS is availability/freshness/path evidence; zero missing vector IDs is not semantic integrity. Neither substitutes for exact-artifact recovery qualification.
@@ -93,6 +93,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-14 — Codex: recorded Ryan’s bounded T5-F1 signalling/logging correction and fresh-evidence grant; Cursor/Codex work next, runtime and live boundaries unchanged.
 
 - 2026-10-14 — Codex: recorded T4 acceptance/merge and T5 grant; returned 240 passes plus one concurrency failure, the static pipe-framing defect and prepared operator handoff; no correction/rerun/live action.
 
@@ -193,4 +195,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1–T4 remain accepted and merged. T5 stopped with 240 passes and one unresolved concurrency failure; Ryan’s bounded corrective decision is next. No V6 PASS, correction or live grant.
+[Arc Safe Harbor] T1–T4 remain accepted and merged. T5 stopped with 240 passes and one unresolved concurrency failure; The bounded signalling/logging correction and fresh evidence are authorized; independent V6 review and acceptance follow. No live grant.

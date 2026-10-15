@@ -777,3 +777,17 @@ Who: Codex prepared T5 after Ryan accepted T1–T4; Kiro’s independent V6 sign
 **Merge reading:** [VERIFY V6](VERIFY-safe-harbor.md#v6--integrated-handoff-and-independent-sign-off-t5), [STATUS](STATUS-safe-harbor.md), [operator handoff](../RECOVER.md#safe-harbor-incident-handling-and-rollout), [EXECUTION section 17](#17-t5-integrated-verification-and-operational-handoff--owner-authorized), [LATEST](../inter-model/LATEST.md).
 
 Evidence: exact combined results and retained limits are in VERIFY V6. Hosted full-suite evidence is reused from the identical-tree T4 candidate, not represented as a new T5 full run. External-review applicability: docs-only exemption; Kiro V6 and Ryan acceptance remain required. No new PR, merge or live action is authorized by this prepared text.
+
+## 18. T5-F1 signalling and logging correction — owner authorized
+
+**Arc: Safe Harbor. Date: 2026-10-14. Cursor implementation; Codex supervision and isolated evidence.**
+
+Ryan authorized: “go: Next step: Authorize a bounded signalling/logging correction and fresh isolated evidence.” Resume from clean, pushed `ed5b2b9efd7f5cbde09ce0b417d6bb95d033abef` on `feat/2026-10-14-safe-harbor-t5`. The original 240-pass / 1-failure result stays in VERIFY; a demonstrated pipe-framing defect does not establish the historical failure's exact cause.
+
+**Scope:** correct the test-only pipe reader so coalesced and fragmented lines are not lost; retain both workers' stdout/stderr/return codes and monotonic event/holder-liveness diagnostics on success and failure. Use the actual helper for deterministic framing sensitivity controls. Preserve the real forget/refine native-lock and effect assertions, the out-of-lock negative control, existing timeouts and isolation. Keep production runtime, workflows, dependencies, inventories and lint baseline unchanged. Primary implementation files: `tests/_safe_harbor_t4_concurrency.py` and `tests/test_safe_harbor_t4_concurrency_real.py`; existing Safe Harbor evidence/routing docs carry the result.
+
+**Authoring:** Cursor may edit those test files in a disposable source copy with Shell/MCP/web execution denied. Codex inspects and copies the bounded delta, may contribute narrow corrections, and runs only the reviewed isolated bootstrap with clean fixtures and required scratch Restic. No author is an independent reviewer. No startup production commands or session indexing.
+
+**Evidence order:** deterministic coalesced/fragmented-line and failure-log controls, then all affected real concurrency cases including the faulty out-of-lock control, then the combined V1–V5 selection. Capture exact source hashes, case/skip counts, exit statuses, child diagnostics and network-attempt logs. Do not weaken checks, retry for green, or increase timeouts to hide a failure. If corrected diagnostics show a runtime defect or an unexplained required failure, preserve the packet and return before expanding scope.
+
+**Exit and routing:** corrected isolated evidence returns for bounded independent Kiro V6 review and Ryan acceptance. Section 17's prepared review/PR wording must be updated to include this test delta; it is no longer a docs-only review subject. PR creation/comments, hosted CI, paid review triggers, merge, deployment, production and drive/service operations remain ungranted.

@@ -9,11 +9,10 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T5 stopped on a concurrency evidence failure (2026-10-14):**
-  T1–T4 are accepted and merged. The combined V1–V5 run returned **240 passes / 1 failure**.
-  **Next lane: Ryan**, for the bounded corrective decision on [T5-F1](../plans/VERIFY-safe-harbor.md#captured-result-and-blocker-t5-f1).
-  The pipe reader can discard an event; attribution needs retained child output and fresh evidence.
-  [STATUS](../plans/STATUS-safe-harbor.md) holds the limits. No correction/rerun, PR, merge or live grant.
+- **Arc Safe Harbor — bounded T5-F1 correction authorized (2026-10-14):**
+  T1–T4 remain accepted/merged; the historical integrated result is **240 passes / 1 failure**.
+  **Next lane: Cursor/Codex**, for lossless test signalling, retained child diagnostics and fresh isolated evidence under [EXECUTION section 18](../plans/EXECUTION-safe-harbor.md#18-t5-f1-signalling-and-logging-correction--owner-authorized).
+  [STATUS](../plans/STATUS-safe-harbor.md) holds current limits. Independent Kiro V6 review and Ryan acceptance follow; no PR, merge or live grant.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
