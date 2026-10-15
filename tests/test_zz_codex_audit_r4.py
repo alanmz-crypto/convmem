@@ -80,17 +80,7 @@ def test_lock_covers_admission_run_accounting_and_release(tmp_path, monkeypatch)
             route()
         assert not _lock_held(lock_path[0])
     assert len(calls) == 2
-    assert seen == [
-        "admission",
-        "admission",
-        "run",
-        "accounting",
-        "admission",
-        "run",
-        "accounting",
-        "admission",
-        "admission",
-    ]
+    assert seen == ["admission", "run", "accounting"] * 2 + ["admission"] * 2
 
 
 def test_competitor_cannot_enter_during_failure_accounting(tmp_path, monkeypatch):

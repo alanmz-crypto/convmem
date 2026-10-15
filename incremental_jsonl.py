@@ -2487,12 +2487,11 @@ class IncrementalJsonlCoordinator:
 
         self._transition("lock_release", release)
 
-    def _enforce_live_retry_admission_if_needed(self, *, reserve: bool = True) -> None:
+    def _live_retry_gate_context(self) -> tuple[str, str, str] | None:
         path_key = getattr(self, "_live_retry_admission_path_key", None)
         if path_key is None or getattr(self, "_live_retry_admission_isolated", True):
-            return
+            return None
         from watch import source_prefix_digest_for_watch
-        from incremental_retry_state import enforce_incremental_retry_gates
 
         prefix_digest = source_prefix_digest_for_watch(str(self.source))
         self.last_evidence["prefix_sha256"] = prefix_digest
@@ -2502,12 +2501,33 @@ class IncrementalJsonlCoordinator:
             tx_payload = _read_json(Path(tx_path))
             if isinstance(tx_payload, dict):
                 pending_tx = str(tx_payload.get("transaction_id") or "")
+        return path_key, prefix_digest, pending_tx
+
+    def _check_live_retry_admission_if_needed(self) -> None:
+        ctx = self._live_retry_gate_context()
+        if ctx is None:
+            return
+        from incremental_retry_state import check_incremental_retry_gates
+
+        path_key, prefix_digest, _pending_tx = ctx
+        check_incremental_retry_gates(
+            self.paths,
+            path_key=path_key,
+            prefix_digest=prefix_digest,
+        )
+
+    def _enforce_live_retry_admission_if_needed(self) -> None:
+        ctx = self._live_retry_gate_context()
+        if ctx is None:
+            return
+        from incremental_retry_state import enforce_incremental_retry_gates
+
+        path_key, prefix_digest, pending_tx = ctx
         enforce_incremental_retry_gates(
             self.paths,
             path_key=path_key,
             prefix_digest=prefix_digest,
             transaction_id=pending_tx,
-            reserve=reserve,
         )
 
     def _unchanged_prereturn_refusal(
@@ -2616,6 +2636,10 @@ class IncrementalJsonlCoordinator:
                 return None
         except IncrementalJsonlError:
             return None
+        try:
+            self._revalidate_live_prefix(snapshot)
+        except (IncrementalJsonlError, SourceCaptureError):
+            return None
         self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
         result = IncrementalRunResult(
             outcome="unchanged",
@@ -2670,12 +2694,15 @@ class IncrementalJsonlCoordinator:
                 self._enforce_live_retry_admission_if_needed()
                 return self._roll_forward(existing_tx)
             transaction_id = uuid.uuid4().hex
+            self._check_live_retry_admission_if_needed()
             unchanged = self._unchanged_short_circuit_if_applicable()
             if unchanged is not None:
                 return unchanged
-            self._enforce_live_retry_admission_if_needed(reserve=False)
             try:
                 snapshot = self._capture(transaction_id)
+            except SourceCaptureError as exc:
+                self.last_failure_code = exc.code
+                return self._refusal(exc.code, fallback=exc.detail or None)
             except IncrementalJsonlError as exc:
                 return self._refusal(exc.code, fallback=exc.detail or None)
             checkpoint = None

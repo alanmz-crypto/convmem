@@ -237,29 +237,12 @@ def reserve_incremental_retry_attempt(
         ) from exc
 
 
-def enforce_incremental_retry_gates(
-    paths: dict | None,
+def _apply_incremental_retry_refusals(
+    prior: dict[str, Any],
     *,
     path_key: str,
     prefix_digest: str,
-    transaction_id: str = "",
-    reserve: bool = True,
 ) -> None:
-    """Refuse before paid transform work when retry state demands it."""
-    state_path = _state_path(paths)
-    if state_path is None:
-        return
-    _ensure_retry_state_available(state_path)
-    prior = _read_or_raise_unavailable(state_path)
-    if not prior:
-        if reserve:
-            reserve_incremental_retry_attempt(
-                paths,
-                path_key=path_key,
-                prefix_digest=prefix_digest,
-                transaction_id=transaction_id,
-            )
-        return
     error_code = str(prior.get("error_code") or "")
     stored_prefix = str(prior.get("prefix_digest") or "")
     consecutive = int(prior.get("consecutive") or 0)
@@ -282,13 +265,47 @@ def enforce_incremental_retry_gates(
         and prefix_digest
     ):
         _refuse_live_route(prior, path_key=path_key, prefix_digest=prefix_digest)
-    if reserve:
-        reserve_incremental_retry_attempt(
-            paths,
-            path_key=path_key,
-            prefix_digest=prefix_digest,
-            transaction_id=transaction_id,
-        )
+
+
+def check_incremental_retry_gates(
+    paths: dict | None,
+    *,
+    path_key: str,
+    prefix_digest: str,
+) -> None:
+    """Read-only refusal when retry state demands it (issue #286 corrective 19)."""
+    state_path = _state_path(paths)
+    if state_path is None or not state_path.is_file():
+        return
+    prior = _read_or_raise_unavailable(state_path)
+    if not prior:
+        return
+    _apply_incremental_retry_refusals(
+        prior, path_key=path_key, prefix_digest=prefix_digest
+    )
+
+
+def enforce_incremental_retry_gates(
+    paths: dict | None,
+    *,
+    path_key: str,
+    prefix_digest: str,
+    transaction_id: str = "",
+) -> None:
+    """Refuse before paid transform work when retry state demands it, then reserve."""
+    check_incremental_retry_gates(
+        paths, path_key=path_key, prefix_digest=prefix_digest
+    )
+    state_path = _state_path(paths)
+    if state_path is None:
+        return
+    _ensure_retry_state_available(state_path)
+    reserve_incremental_retry_attempt(
+        paths,
+        path_key=path_key,
+        prefix_digest=prefix_digest,
+        transaction_id=transaction_id,
+    )
 
 
 def record_incremental_retry_failure(
