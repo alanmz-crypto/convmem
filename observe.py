@@ -52,6 +52,33 @@ def _observation_target_digest(unit_row: dict | None) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+class _DocumentAccurateReadonlyStore:
+    """Readonly index view with Chroma-backed document text for drift checks."""
+
+    def __init__(self, chroma_dir: str) -> None:
+        from chroma_readonly import open_readonly_unit_store
+
+        self.chroma_dir = str(chroma_dir)
+        self._inner = open_readonly_unit_store(self.chroma_dir)
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
+
+    def get_unit(self, unit_id: str) -> dict | None:
+        row = self._inner.get_unit(unit_id)
+        if row is None:
+            return None
+        chroma_id = (row.get("id") or unit_id).strip()
+        from chroma_readonly import unit_document_text
+
+        document = unit_document_text(self.chroma_dir, chroma_id)
+        if document is None:
+            return dict(row)
+        out = dict(row)
+        out["document"] = document
+        return out
+
+
 def _active_units_for_ledger_id(store, ledger_id: str) -> list[dict]:
     lookup = getattr(store, "active_units_for_ledger_id", None)
     if callable(lookup):
@@ -742,9 +769,8 @@ def repair_empty_ledger_documents(
         from config import load_config
 
         lock_cfg = load_config()
-    from chroma_readonly import open_readonly_unit_store
-
-    reader = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
+    chroma_dir = lock_cfg["index"]["chroma_dir"]
+    reader = _DocumentAccurateReadonlyStore(chroma_dir)
     by_ledger_id, _ = build_ledger_index(reader)
     models = lock_cfg["models"]
     pending: list[PreparedObservationIngest] = []
@@ -754,8 +780,11 @@ def repair_empty_ledger_documents(
         if kind not in ("decision", "verification"):
             continue
         stats["scanned"] += 1
-        row = reader.get_unit(meta["id"])
-        if row is None or (row.get("document") or "").strip():
+        chroma_id = meta["id"]
+        from chroma_readonly import unit_document_text
+
+        document = unit_document_text(chroma_dir, chroma_id)
+        if document is None or (document or "").strip():
             continue
         stats["empty"] += 1
         rec = load_approved_decision_by_id(lock_cfg, lid)
@@ -793,7 +822,6 @@ def repair_empty_ledger_documents(
         if limit and len(pending) >= limit:
             break
 
-    chroma_dir = lock_cfg["index"]["chroma_dir"]
     for prepared in pending:
         current = prepared
         unit = None

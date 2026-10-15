@@ -27,7 +27,7 @@
   ],
   "open_chroma_for_write_production_call_sites": [],
   "open_production_write_store_call_sites": [
-    "observe.py:804",
+    "observe.py:832",
     "propose_decision.py:563",
     "propose_decision.py:625",
     "refine.py:347",

@@ -144,6 +144,21 @@ def iter_collection_metadata_rows(
         conn.close()
 
 
+def unit_document_text(chroma_dir: str | Path, chroma_id: str) -> str | None:
+    """Return stored document text for one unit id, or None if missing."""
+    from chroma_store import UNITS
+
+    want = (chroma_id or "").strip()
+    if not want:
+        return None
+    for meta in iter_collection_metadata_rows(
+        chroma_dir, UNITS, include_document=True
+    ):
+        if (meta.get("id") or "").strip() == want:
+            return meta.get("document")
+    return None
+
+
 def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> list[dict]:
     """Return one dict per embedding_id from the metadata segment of a collection."""
     return list(iter_collection_metadata_rows(chroma_dir, collection_name))
