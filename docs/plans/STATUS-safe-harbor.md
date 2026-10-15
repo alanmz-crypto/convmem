@@ -52,9 +52,9 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** supply lost-work interval and newest recovery-artifact details; decide the proposed isolated readiness slice. No deployment or backup/restore operation is authorized.
+**Ryan:** supply lost-work interval and newest recovery-artifact details. The isolated readiness slice is granted; no deployment or live backup/restore operation is authorized.
 
-**Codex:** the bounded read-only preflight and rollout/rollback draft are returned. Preserve the exact source/observations. If separately granted, supervise isolated production-interpreter and representative legacy-state evidence, finish the procedure and route it to Kiro before the operational decision. Do not execute its command examples.
+**Codex:** execute only the bounded synthetic interpreter/legacy-state evidence in EXECUTION section 20, then return results and update the rollout readiness. Runtime fixes and live initialization remain ungranted.
 
 ## 6. What Remains Before "Live" (sequential)
 
@@ -65,7 +65,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 7. Hard Stops (models cannot cross)
 
-- Current grant is bounded read-only deployment preflight and procedure drafting. No service change, corpus write, backup/restore, deployment, new tests, paid review trigger, PR creation, ledger write or session indexing. Only selected metadata/config/process/journal observations were used; no credential contents or project entrypoints were opened.
+- Current grant is isolated interpreter/legacy-state evidence under EXECUTION section 20. No service change, production corpus write, live backup/restore, deployment, runtime fix, paid review trigger, PR creation, ledger write or session indexing. Only selected metadata/config/process/journal observations were used; no credential contents or project entrypoints were opened.
 - Guard containment is cooperative. A publication/removal durability failure may require separately authorized process-level containment; do not claim a marker is a durable stop merely because bytes are visible.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
 - Gate PASS is availability/freshness/path evidence; zero missing vector IDs is not semantic integrity. Neither substitutes for exact-artifact recovery qualification.
@@ -93,6 +93,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-15 — Codex: recorded bounded isolated interpreter/legacy-state evidence grant; live operations and runtime fixes remain excluded.
 
 - 2026-10-14 — Codex: recorded #394 exact-tree squash and final acceptance; returned read-only deployment preflight and conditional rollout/rollback draft with recovery/interpreter/legacy-state readiness still open.
 

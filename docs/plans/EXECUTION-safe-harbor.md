@@ -836,5 +836,34 @@ mutation or additional verification is granted by preparing the draft. Next
 proposed work is bounded isolated readiness evidence, then the complete
 operational procedure's review and Ryan's explicit execution decision.
 
+
+## 20. Isolated rollout-readiness evidence — owner authorized
+
+**Arc: Safe Harbor. 2026-10-15.** Ryan authorized: “go: Next step: Bounded
+isolated interpreter/legacy-state evidence, plus your recovery inputs”.
+Start from rollout draft `5fa8e978e9605a4566a68795f850f667014fd1e9`, candidate
+runtime `c6f0724`, in isolated branch `feat/2026-10-15-safe-harbor-rollout-evidence`.
+
+Codex collects evidence with the installed production Python executable against
+synthetic temporary roots only. Permitted additions are a bounded stdlib launcher,
+focused synthetic legacy-generation tests and evidence/routing docs. Reuse the
+reviewed bootstrap, clean environment, uid/path refusal, inert providers and
+Python network refusal. Hash source before/after. No ambient project imports,
+production HOME/config/data, live service/drive/key/repository access, corpus
+writes, deployment, dependency change, runtime fix, PR or reviewer trigger.
+Scratch fixture writes/restores are evidence, not production operations.
+
+Sequence: qualify the interpreter with existing backend/release/recovery cases;
+construct representative legacy manifests in synthetic stores; demonstrate that
+unchanged reconciliation skips them, restore/release refuses missing evidence,
+and explicitly rehearsed fresh-generation capture preserves the archived source
+and obeys the existing release predicate. Fault/control failures and any unproven
+initialization mechanics remain explicit. No production migration command is
+created or authorized. A needed runtime change returns as a separate decision.
+Recovery artifact, lost-work interval and independent-access inputs remain Ryan's.
+
+Return recorded evidence and updated rollout status for bounded independent
+review. Do not turn test-only private-helper access into an operational grant.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->
