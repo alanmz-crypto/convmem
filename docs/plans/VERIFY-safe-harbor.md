@@ -1,14 +1,14 @@
 # Verify Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T4 / V1–V5 ACCEPTED AND MERGED; V6 ACCEPTED AT `1cb02fb`.** [T4 closeout](#t4-final-ci-review-owner-acceptance-and-squash-mapping) records the accepted candidate, hosted CI, independent reviews and identical-tree squash. [V6 acceptance](#v6-independent-kiro-review-and-owner-acceptance) records Kiro's pinned PASS and Ryan's acceptance with the evidence limits retained. T5 remains on its branch; PR creation, hosted CI, merge and deployment remain separately gated.
+> **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED.** [Final T5 closeout](#t5-hosted-ci-owner-exception-and-squash-mapping) records the exact-tree squash, hosted CI and owner outage exception. [ROLLOUT](ROLLOUT-safe-harbor.md) holds the subsequent read-only preflight; deployment and recovery qualification remain separate.
 
 ```text
 Planning Status
-Phase:        T5 / V6 accepted at 1cb02fb; delivery decision pending
+Phase:        T1–T5 merged; read-only deployment preflight returned
 Characters:   Implementer, Test-First Reviewer
 Function:     Record observed evidence, failures and remaining limits
-Lanes:        Codex acceptance record; Kiro V6 review complete; Ryan delivery gate
-Authority:    EXECUTION sections 17–18; no PR/hosted-CI/merge/deployment/live grant
+Lanes:        Codex operational draft; Kiro later procedure review; Ryan live gate
+Authority:    EXECUTION section 19; read-only preflight/draft only, no live changes
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -23,13 +23,13 @@ Authority:    EXECUTION sections 17–18; no PR/hosted-CI/merge/deployment/live 
 
 ## Human consequence
 
-T1–T4’s incident handling, target-bound preflight, preservation/release and approval recovery are accepted and merged. T5’s corrected combined run passes all 257 cases; its historical concurrency failure and attribution limit remain recorded. Kiro independently PASSed V6 at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, and Ryan accepted that reviewed V6 subject. T5 delivery, final-tip outage disposition and live authority remain separate. Nothing here qualifies a live recovery artifact or deploys the merged code.
+T1–T4’s incident handling, target-bound preflight, preservation/release and approval recovery are accepted and merged. T5’s corrected combined run passes all 257 cases; its historical concurrency failure and attribution limit remain recorded. Kiro independently PASSed V6 at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, and Ryan accepted that reviewed V6 subject. T5 delivery and the final-tip exception are now recorded in the closeout below; live authority remains separate. Nothing here qualifies a live recovery artifact or deploys the merged code.
 
 Who: Cursor/Codex supplied implementation and mechanical evidence, GitHub supplied hosted CI, and the pinned Copilot/Codex/Kiro reviews and Ryan’s task-specific acceptances retain the scopes below. When: T5 began 2026-10-14 from the T4 squash. Why/how: synchronize evidence and operator instructions while keeping source acceptance, recovery assurance and live authority distinct.
 
 **Merge reading:** [current STATUS](STATUS-safe-harbor.md), [T5 grant](EXECUTION-safe-harbor.md#17-t5-integrated-verification-and-operational-handoff--owner-authorized), [approved architecture](ARCHITECTURE-safe-harbor.md), [operator handoff](../RECOVER.md#safe-harbor-incident-handling-and-rollout), [routing](../inter-model/LATEST.md).
 
-**TL;DR:** [Arc Safe Harbor] Corrected integrated evidence passes 257 cases; Kiro PASS and Ryan V6 acceptance are pinned to `1cb02fb`. The historical failure's exact cause remains unproven. Delivery and live operations remain separately gated.
+**TL;DR:** [Arc Safe Harbor] T1–T5 are accepted and merged through `c6f0724`; final hosted checks and owner exception are recorded below. The historical failure attribution and other evidence limits remain. Deployment is not authorized.
 
 ## Scope lock
 
@@ -1693,3 +1693,47 @@ Reproduction: the checked-in `-I -S -B` entries `tests/_safe_harbor_t3_worker.py
 Ryan then explicitly instructed **“merge”**. Codex checked the exact head and successful checks and performed a SHA-bound squash. GitHub reports merged at **2026-10-14 07:32:58 UTC**, squash `fdc8da7fa67c1d7b31bc5cd44de466001df04260`, parent `a7f72003aea516b4961a584fcfe54ad255d6a053`. Accepted head, hosted tested merge `33a4d9590a7adc0775005617a37b5998a2e2614b` and squash all have tree **`3e2e50f69da63bb58d1b6b4455bac15f52c50d25`** (GitHub commit API/local Git rechecked). This maps reviewed/tested source to main, not to running processes. T5’s subsequent grant is separate in EXECUTION section 17. Deployment/live operations remain unauthorized.
 
 **TL;DR:** [Arc Safe Harbor] T4/V5 and its exact outage exception are accepted; #392 landed the identical reviewed/tested tree. T5 verification is separately authorized; live operations remain pending.
+
+
+## T5 hosted CI, owner exception and squash mapping
+
+**[Arc Safe Harbor] Final delivery, recorded after Ryan's squash.** Draft PR #394
+carried `188184b28707eb87c042d579aa7bbcba043dd5d0`; Kiro V6 reviewed `1cb02fb`.
+The intervening four files record acceptance/routing only. Codex's final static
+check found no contract/code/test change; it is not a new independent review.
+
+Normal hosted run `38668689296` passed all six checks: pytest (3.12), pylint
+(3.12), secret-scan, CodeQL, Analyze (actions) and Analyze (python). Captured log:
+**3,283 passed, 18 skipped, 9 warnings, 252 passing subtests**, 3,356.04 seconds;
+critical collector exit 0. Lint regression gate PASS: 455 findings / 234
+fingerprints with no new/increased findings against unchanged `fdc8da7` baseline;
+raw status 30 is accepted debt, not clean lint. Existing test/evidence limits hold.
+
+Ryan accepted the explicit proposal: “I accept Kiro's pinned V6 review, with
+Codex's documentation-delta check, as the BugBot outage exception for PR #394 at
+188184b28707eb87c042d579aa7bbcba043dd5d0. Merge and deployment remain unauthorized.”
+His response was “accepted: Next step: Explicit outage-exception acceptance.”
+The decision was recorded in the PR body without changing its candidate.
+
+Ryan subsequently reported the squash merge. GitHub confirms merge
+`c6f07241ccf1a71d9d874fee963a37b04091b3ce`, 2026-10-15 03:31:16 UTC, parent
+`fdc8da7fa67c1d7b31bc5cd44de466001df04260`. Candidate and squash share tree
+`57e09250fbd4a74caa2b308e99aefeed8335ac3d`. No runtime update is inferred.
+
+External review: `gate_applicability=required`,
+`subject_tip_sha=188184b28707eb87c042d579aa7bbcba043dd5d0`,
+`independent_kiro_v6_sha=1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`,
+`bugbot_reviewed_sha=n/a`, `result=owner_outage_exception_accepted`,
+`outage_exception=accepted_for_exact_tip`. Earlier pending labels are historical.
+No exception is extended to a later changed candidate.
+
+**Subsequent preflight:** Ryan authorized read-only deployment inspection and a
+rollout/rollback draft. [ROLLOUT](ROLLOUT-safe-harbor.md) records dated observations,
+including the namespace-limited process scan excluded from host evidence. No
+new tests, production client opens, corpus writes, service changes, backups or
+restores ran. Recovery artifact and production-interpreter/state-adoption
+qualification remain open; this is operational planning evidence, not V7 or a
+new implementation acceptance gate.
+
+<!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — operational preflight and current routing -->
+<!-- src: EXECUTION-safe-harbor.md — grants and retained limits -->

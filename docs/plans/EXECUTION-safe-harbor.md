@@ -1,6 +1,6 @@
 # Execution Plan — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 / V6 ACCEPTED AT `1cb02fb`.** [The V6 record](VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance) pins Kiro's PASS and Ryan's acceptance, retaining the historical failure and evidence limits. PR creation, hosted CI, merge and deployment remain separately gated.
+> **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** Section 19 records the bounded read-only deployment preflight/drafting grant. [ROLLOUT](ROLLOUT-safe-harbor.md) returns findings and the conditional procedure. No deployment, service change or backup/restore operation is authorized.
 
 ## 1. Source, authority and goal
 
@@ -10,11 +10,11 @@
 
 ```text
 Planning Status
-Phase:        T5 / V6 accepted at 1cb02fb; delivery decision pending
+Phase:        T1–T5 merged; operational procedure drafted
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Codex acceptance record; Kiro V6 review complete; Ryan delivery gate
-Authority:    Ryan T5 grant (section 17); no new PR/merge/live grant
+Lanes:        Codex operational drafting; Kiro later review; Ryan live gate
+Authority:    Ryan read-only preflight/draft grant (section 19); no live changes
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -212,7 +212,11 @@ These are operational prerequisites to be completed later, not additional implem
 
 Companion: [VERIFY-safe-harbor.md](VERIFY-safe-harbor.md). V1–V5 are owner-accepted, with exact review, hosted-CI and squash mappings. V6 has Kiro PASS and Ryan acceptance at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`, covering the corrected test/evidence and prepared operational handoff with its documented limits.
 
-Next: Ryan's separate draft-PR/normal-hosted-CI decision, followed by final-tip external-review/outage disposition and merge decision. V6 acceptance grants none of those actions. Section 18's correction has 257-pass integrated evidence; operator-doc synchronization is prepared. Historical reviews/grants below keep their dates and original scope; their old “pending” labels do not override the current STATUS/V6 record. Do not reopen completed B-E4.1 approval or transfer prior outage exceptions to T5.
+Next: resolve the operational readiness items in [ROLLOUT](ROLLOUT-safe-harbor.md).
+[VERIFY closeout](VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping)
+records #394 hosted CI, Ryan's exact-tip exception and tree-identical squash.
+Historical pending labels below retain their original scope; STATUS and section
+19 supply current routing. No implementation acceptance authorizes deployment.
 
 ### Kiro execution review and advisory disposition
 
@@ -803,3 +807,34 @@ Ryan authorized: “go: Next step: Authorize a bounded signalling/logging correc
 **Returned correction:** source `22fa1b9fc547092c7bf7e3b0156621e7db10b597`, two test files only; sixteen new controls plus all six original concurrency cases pass, and the combined selection returns 257 passes / 0 errors/failures/skips. Full isolated lint passes with unchanged baseline. [VERIFY V6](VERIFY-safe-harbor.md#t5-f1-correction-and-fresh-evidence) contains exact artifacts, source hashes, authoring limits and the retained historical failure. Independent Kiro V6 review and Ryan acceptance are next; no reviewer was invoked and no PR or live action was taken.
 
 **Subsequent review and acceptance (2026-10-14):** Ryan granted the bounded read-only Kiro review; Kiro PASSed V6 with high confidence and no blockers at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`. Ryan then accepted that reviewed V6 subject while expressly retaining separate PR/hosted-CI/merge/deployment gates. [VERIFY records the decisions and limits](VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance). No T5 BugBot outage exception is inferred. This record changes no code/test contract and grants no further execution.
+
+
+## 19. Read-only deployment preflight and rollout/rollback drafting — owner authorized
+
+**Arc: Safe Harbor. 2026-10-14 local. Codex authoring.** Ryan authorized:
+“Authorize Codex to perform Safe Harbor’s bounded read-only deployment preflight
+and draft the rollout/rollback procedure. No service changes, corpus writes,
+backup/restore operations or deployment.”
+
+Work begins from merged candidate `c6f07241ccf1a71d9d874fee963a37b04091b3ce` in
+isolated branch `plan/2026-10-14-safe-harbor-rollout`. The shared checkout and
+runtime-main remain unchanged. Direct Git worktree setup avoids the production
+CLI. Selected file/package metadata, unit status/definitions, mount identity,
+existing journal output and the separately approved host process listing inform
+[ROLLOUT-safe-harbor.md](ROLLOUT-safe-harbor.md). No key contents, production
+Chroma client, generic doctor/brief/search/MCP, session indexing or new tests.
+
+The returned draft records old clients, split backup routing, absent audit
+units, production-interpreter evidence limits and two matching legacy generations
+without release evidence. It does not prescribe generic reconciliation as
+migration or claim a qualified recovery point. Existing source/review acceptances
+are carried; operator inputs and exact state-initialization evidence stay open.
+
+Documentation updates may reconcile Safe Harbor's stale merge/routing labels.
+No other arc status/authority is changed. No PR, review invocation, operational
+mutation or additional verification is granted by preparing the draft. Next
+proposed work is bounded isolated readiness evidence, then the complete
+operational procedure's review and Ryan's explicit execution decision.
+
+<!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
+<!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->

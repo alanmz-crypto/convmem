@@ -9,9 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
-  Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
-  **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
+- **Arc Safe Harbor — T1–T5 merged; rollout readiness open (2026-10-14):**
+  PR #394 is tree-identical to the accepted candidate; [VERIFY closeout](../plans/VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping)
+  records hosted CI and Ryan's exact-tip outage exception.
+  Codex returned the authorized [read-only preflight and rollout/rollback draft](../plans/ROLLOUT-safe-harbor.md).
+  **Next lane: Ryan**, for recovery/loss-window inputs and the proposed isolated
+  interpreter/legacy-state readiness slice. [STATUS](../plans/STATUS-safe-harbor.md)
+  carries current gates. No service change, backup/restore or deployment is granted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
@@ -274,3 +278,6 @@ its existing archive/reference location. Use
 | T4 | The next Recovery Authority execution stage; it is not currently authorized. |
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
+
+<!-- ref: ../plans/STATUS-safe-harbor.md — current Safe Harbor lane -->
+<!-- src: ../plans/ROLLOUT-safe-harbor.md — returned preflight and remaining readiness -->

@@ -1,0 +1,323 @@
+# Safe Harbor — deployment preflight and rollout/rollback draft
+
+**Arc: Safe Harbor. DRAFT; NOT AN EXECUTION GRANT.** Codex prepared this procedure
+under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
+(America/Chicago). T1–T5 are accepted and merged. Deployment readiness is **OPEN**.
+No service change, corpus write, backup, restore, audit, repair or release was run.
+
+**Goal:** bring the accepted recovery/incident contracts into service without losing
+the ability to recover or allowing old processes to undermine incident authority.
+**Author:** Codex. **Next reviewers:** Kiro for the operational procedure; Ryan for
+the recovery inputs, explicit service/process transitions and execution decision.
+No reviewer was invoked by preparing this document.
+
+## 1. Exact source and authority
+
+- Candidate: `c6f07241ccf1a71d9d874fee963a37b04091b3ce`, Ryan's squash of PR #394
+  at 2026-10-15 03:31:16 UTC. Its tree `57e09250fbd4a74caa2b308e99aefeed8335ac3d`
+  equals accepted head `188184b28707eb87c042d579aa7bbcba043dd5d0` exactly.
+- Kiro V6 PASS remains pinned to `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`.
+  The successor changed only acceptance/routing docs. Ryan accepted that review
+  plus Codex's documentation-delta check as the exact-head BugBot outage exception.
+  [VERIFY](VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping)
+  records hosted CI and the merge; BugBot reviewed no accepted SHA.
+- Runtime checkout observed at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`.
+  Exactly four first-parent commits separate it from the candidate: Safe Harbor
+  PRs #389, #391, #392 and #394. T1 is already in the deployed checkout.
+  This is an on-disk identity, not proof of what each old process loaded.
+- Existing architecture, July 7 gate exemptions, Backup v2 ownership and
+  Recovery Authority T4/V4k limits remain unchanged. This procedure neither
+  closes the Hybrid capture-consistency audit nor qualifies continuous Restic
+  capture. Watch activation and other arcs' live canaries are excluded.
+- Current grant: read-only observations plus this documentation. Future command
+  examples below are review material, not commands to execute under this grant.
+
+## 2. Observed preflight, with limits
+
+Observations were taken 2026-10-15 approximately 04:26–04:53 UTC (October 14 local).
+They must be refreshed at the maintenance boundary. Other agents/timers were
+active; this is not a frozen cross-file snapshot.
+
+### Code roots, processes and services
+
+- `/home/lauer/Projects/convmem/.worktrees/runtime-main` was clean at `8a7cdab`.
+  The installed CLI and inspected Codex/Cursor/Kiro/Claude MCP entries select
+  this root and `/home/lauer/miniforge3/envs/convmem/bin/python`.
+- Shared checkout `/home/lauer/Projects/convmem` was on the unrelated feature
+  branch `fix/2026-10-12-issue-286-stage2-wedge-fixes`, at `7d46e6e`, with
+  unrelated untracked files. It was not switched, cleaned or edited.
+- The host process listing showed **29 MCP servers** using runtime-main. The
+  oldest started October 11, before runtime-main moved on October 12 at 06:54 CDT.
+  Loaded module identity is unknown; lazy imports make the disk SHA insufficient.
+  All require replacement, not a claim that a fast-forward upgrades them.
+- A concurrent `convmem.py index --file` process was observed (PID 1754207 at
+  23:47 CDT). It belonged to another activity and was not stopped. Watch being
+  stopped does not establish quiescence. PIDs are historical evidence, never a
+  reusable kill list; enumerate command/start-time/owner again before acting.
+- `convmem-watch.service`: inactive/dead, disabled, MainPID 0. Preserve this
+  state. Its OOM drop-in exists; no change to it is proposed here.
+- `convmem-reconcile.timer`, local/external Restic timers and cross-project
+  digest timer were active/waiting. Their oneshot services were inactive between
+  invocations. Reconcile runs about every two minutes from runtime-main.
+- Restic local/external services invoke scripts in the **shared feature checkout**.
+  Their configured PATH resolves `python3` to `/usr/bin/python3.14` (3.14.8), not
+  the production conda interpreter. The weekly digest also uses the shared root.
+- `convmem-chroma-audit.service` and `.timer` were not installed. `audit.json`
+  was absent. Installing/enabling them is a future operational change, not part
+  of this inspection. Audit writes guard telemetry/events and can quarantine;
+  the example unit's historical “read-only” description is not its effect contract.
+
+The first sandbox-local `/proc` scan saw only two namespace processes. Its empty
+result is **excluded** as evidence of no host clients. A separately approved
+read-only host `ps` listing supplied the counts above. Selected config fields
+and package metadata were read without importing project code or Chroma. No
+production CLI/MCP startup ritual or session indexing ran.
+
+### Interpreter and native backend
+
+Proposed choice is to **retain** the production interpreter, subject to isolated
+qualification, rather than silently move all clients to a different environment:
+
+- Production: conda Python 3.11.15, Chroma 1.5.9, hnswlib 0.8.0, NumPy 2.4.6.
+- Prior local proof: base miniforge Python 3.13.12, Chroma 1.5.9, hnswlib 0.8.0,
+  NumPy 2.4.4. Hosted proof: Python 3.12.15.
+- Both installed Chroma Rust bindings have SHA-256
+  `a9794735847c3a78c15931d869cee8368fddbb10048c3d098bc09a14130075ad`.
+  The hnswlib binaries differ by Python ABI. Production binary SHA-256 is
+  `e2338cb057f75eb0d84d856f1626d56d876703c47278772ee48e2c6c31d7073d`.
+  Matching Rust bytes are useful identity evidence, not proof that the complete
+  Python 3.11 environment passes the candidate. No tests/import probes ran here.
+
+### Targets and existing guard state
+
+- Config: `/home/lauer/.config/convmem/config.toml`, observed SHA-256
+  `a8c279aafa0050f98c34717e40383d7f609230a875759827714614922c50e23b`.
+  Configured Chroma is `/home/lauer/.local/share/convmem/chroma`, export is
+  `/home/lauer/.local/share/convmem/knowledge_units.jsonl`.
+  The Chroma path was canonical already, not a symlink.
+- Restic env specifies `complete-data-v2` and the complete root
+  `/home/lauer/.local/share/convmem`; env-file SHA-256 was
+  `40ca2e3c0f71c50bd193b5e9399b89e0916758da925e9d2e0a3ec18bec52c5f3`.
+  This is configuration inspection, not an executed gate PASS. Resolve every
+  affected path, including governed files and enabled shadow sinks, at execution.
+- Guard root: `/home/lauer/.local/share/convmem/chroma.write-guard`.
+  No `QUARANTINE.json` was present. This is not a health or semantic-integrity
+  verdict. The guard has `native-write.lock`, events and two current generations.
+- Segment `5cda8744-0eb5-4580-9ff2-c57e985abf68`: CURRENT
+  `g1791846318855181664-3011058`, manifest created October 12 23:05:18 UTC.
+- Segment `5e85bc5f-5bea-4129-9602-9afe15991cca`: CURRENT
+  `g1792023447979504839-170599`, manifest created October 15 00:17:28 UTC.
+- Both manifests contain only `segment`, `live_signature`, `created_at`, `pid`;
+  neither has `release_evidence`. Both signatures matched live segment stat
+  signatures during inspection. No SQLite query, HNSW load, content validation
+  or vector census was performed.
+
+**Material adoption issue:** candidate `ChromaWriteGuard.reconcile()` skips a
+generation when its signature matches. It does not upgrade these manifests just
+because the code was upgraded. `_refresh_snapshot()` captures release evidence
+when it does refresh, but it is not an operator-facing migration command and
+prunes unpinned old generations. A generic deploy-time `reconcile` is neither a
+guaranteed evidence upgrade nor an inspection: it can restore damaged segments.
+Do not invent evidence for an old generation or induce an ordinary write to
+“initialize” the new format. A restore using a generation without evidence can
+remain contained with no validated release available under the strict oracle.
+
+### Recovery resources
+
+- Root filesystem UUID `93d30805-f5c4-43a6-a746-ef914d6e5f8d` is ext4, currently
+  `/dev/nvme0n1p2`, about 279.5 GiB available. Device numbering differs from the
+  earlier image discussion; use UUID and disk serial, never copied `/dev/nvmeN`
+  names, to select an imaging/restore target.
+- `/run/media/lauer/ext-ex4-1T-NVMe` is mounted ext4, UUID
+  `cce6ae9a-b6ce-49da-8dd9-feb94b817777`, about 869.2 GiB available. The top-level
+  listing was empty excluding `lost+found`. No allocation or write was made.
+- External Restic repo path exists on mounted rxBU volume, UUID
+  `f1bd69b4-e567-4ef3-89ec-13faff0602e9`, about 78 GiB available.
+- The password-copy path now exists and is readable at
+  `/run/media/lauer/BIT-Brg-larch-7t/convmem-secrets/restic.password` (mode 0600,
+  45 bytes). The workstation password file is also 45 bytes. **Contents were
+  not read or compared**; size equality is not key verification. Independent
+  retrieval/use and physical custody remain open.
+- Existing journal reports local snapshot
+  `ca2a6f047a707820bc8209ca7a4bc6c2d145910f7af0eec875f69988535510a1`
+  with tag `convmem-data-v2` at October 14 00:18 CDT, copied as
+  `c288c04557cf60cc3483e4e12571c93431246dcef4e7b98f77096f705e8a8794`
+  at 21:54 and 23:03 CDT, with `original == source`. Earlier external attempts
+  failed while the repo path was unavailable. These are dated service reports;
+  no Restic command, new check or restore was run. They do not qualify an artifact.
+- No current Rescuezilla image was identified on the inspected mounted top-level
+  locations. Newest image, completion, scope, custody, restore history and the
+  acceptable lost-work interval await Ryan. Absence from this limited inspection
+  does not mean an image does not exist elsewhere.
+
+## 3. Readiness decisions before activation
+
+1. **Recovery point:** Ryan supplies maximum lost work for maintenance and routine
+   operation. Name the exact image/snapshot and independent key path. Obtain a
+   separately scoped capture/qualification grant if required. Preserve the
+   pre-incident image. The proposed extra drive has capacity, not proven protection.
+2. **Interpreter:** authorize isolated candidate verification with production
+   Python 3.11.15 and its actual installed packages, through the existing bootstrap
+   and synthetic roots. Include release positive/stale-vector controls and
+   target-bound recovery/uncertain-publication cases. No production config,
+   corpus or provider. Failure returns for a bounded decision; no dependency
+   upgrade or test weakening is implied. This run is not performed by this draft.
+3. **Legacy generations:** review and rehearse a bounded initialization procedure
+   on isolated representative legacy state before selecting its exact live action.
+   Preserve original guard/generation bytes and CURRENT references before any
+   refresh can prune them; do not fabricate release evidence for the old saves.
+   Prefer an explicitly authorized, validated new generation using existing guard
+   mechanics. If that needs an implementation change or cannot establish the
+   oracle, return the concrete gap to Codex/Ryan. No private-method production
+   one-liner, forced queue flush, census-only release or generic reconcile fallback.
+4. **Process/service manifest:** name the owners of MCP parents, manual indexing
+   and all launch paths. Agree the maintenance window and prevent respawn before
+   draining. Stopping readers matters because reads can write bookkeeping.
+   Preserve watch as stopped/disabled. No blanket stop of unrelated applications.
+5. **Reviewed procedure and grant:** Kiro reviews the resulting exact procedure;
+   Ryan grants its named transitions. Unresolved entries above keep activation
+   closed. Draft completeness is not operational readiness.
+
+## 4. Proposed rollout sequence — future grant only
+
+### A. Prepare while the old runtime remains in service
+
+1. Pin this candidate and refresh the observations. Refuse if runtime-main is
+   dirty, has moved from the recorded base, the candidate differs, or any actual
+   target/profile/interpreter differs. Review only the new delta before proceeding.
+2. Finish the isolated interpreter and legacy-state rehearsals and record their
+   exact source/results. Name approved preservation paths, required free space
+   and complete artifact/config/key recovery dependencies.
+3. Qualify the recovery artifact for the accepted loss interval under its own
+   bounded grant. A fresh offline Rescuezilla image is one option, retaining the
+   older image. A reboot invalidates the process/unit census: inspect it again.
+   A restore drill must use a separate approved target, never the only backup disk.
+4. Prepare exact unit/drop-in changes for review. Proposed Restic services use
+   the selected production interpreter and runtime-main directly:
+
+   ```text
+   /home/lauer/miniforge3/envs/convmem/bin/python3.11 /home/lauer/Projects/convmem/.worktrees/runtime-main/backup_workflows.py ensure --env-file /home/lauer/.config/convmem/restic.env
+   /home/lauer/miniforge3/envs/convmem/bin/python3.11 /home/lauer/Projects/convmem/.worktrees/runtime-main/backup_workflows.py copy-offsite --env-file /home/lauer/.config/convmem/restic.env
+   ```
+
+   Preserve schedules, complete-data-v2 profile, repositories, tags and lineage.
+   Do not install the old shared-checkout examples unchanged. A systemd drop-in
+   replacing ExecStart must clear the old ExecStart first. Review the final unit
+   text/environment and inherited settings; these example argv are not an install.
+   Hold the digest timer until its shared-root entrypoint disposition is explicit.
+
+### B. Establish and prove maintenance quiescence
+
+1. Under the future grant, stop the named **timers first**, then drain their
+   active services and unrelated-to-watch manual ConvMem writers. Record exactly
+   which timer enablement/active states are to be restored. Do not interrupt a
+   backup or writer mid-commit merely to meet a timetable; investigate a stuck job.
+2. Coordinate all MCP/client parents: prevent new launches, close the selected
+   clients, and verify their old child processes exited. Enumerate any remaining
+   direct clients. Application flock/quarantine alone cannot establish this boundary.
+3. Verify no new writer can enter during capture/adoption, not merely that one
+   `ps` sample was empty. Recheck stopped services and all known launch sources.
+   If access cannot be controlled, postpone the maintenance. Refresh guard state
+   under this boundary; any new incident changes the plan and stops generic rollout.
+4. Make the separately authorized preservation capture of complete relevant state:
+   Chroma, guard generations/CURRENT/markers/events, governed intent/events/export,
+   config and exact deployment/unit files. Record manifest identity and durable
+   completion. This capture is evidence preservation and rollback support; it
+   does not replace independent artifact qualification.
+
+### C. Install the pinned source and adopt state deliberately
+
+1. Ryan/authorized operator advances clean runtime-main **only** to `c6f0724`,
+   after confirming the ancestor relationship. The reviewed command is:
+
+   ```sh
+   git -C /home/lauer/Projects/convmem/.worktrees/runtime-main merge --ff-only c6f07241ccf1a71d9d874fee963a37b04091b3ce
+   ```
+
+   This is a future local deployment command, not permission for agents to merge
+   a PR, push main or execute it now. Do not use moving `origin/main` as the target.
+2. Install only the reviewed unit/drop-in changes and reload the unit manager
+   under that grant. Keep timers and clients held. Do not start watch.
+3. Perform the specifically reviewed legacy-state initialization from section 3,
+   with exact input manifest, pinned source/interpreter and abort conditions.
+   This substep remains **UNRESOLVED**; the draft supplies no executable adoption
+   command. A failure or unavailable evidence retains containment and the old bytes.
+4. Run only the granted diagnostics. `status`, `validate` and `census` have
+   narrower effects than `audit`; audit publishes authority/telemetry. Production
+   doctor and MCP/search also have incidental paths and are not substitutes for
+   approved read-only checks. Never use `reconcile` as a health probe.
+5. After a clean permitted audit, enable the reviewed audit timer if explicitly
+   granted. A failed or unavailable check stops this sequence. `skipped` is not a
+   passing audit. Check evidence freshness separately from a zero exit code.
+
+### D. Resume only named consumers and observe
+
+1. Recreate selected MCP clients against the pinned root/interpreter. Check new
+   process start identities and selected target configuration; do not reuse old
+   imports. Any functional query or write is a separately named canary with its
+   expected effects. No index/approve/recover command is an implicit smoke test.
+2. Restore only the pre-approved reconcile/backup schedules after their new
+   routing and gates pass. `ensure --check-only` is toolchain evidence and does
+   not license a write. Freshness must use the actual evaluation time; midnight
+   rollover/future-date refusal is not permission for fallback or skipped gates.
+3. Keep watch stopped/disabled and preserve the existing OOM settings. Digest
+   resumption requires its reviewed routing. Record the observation interval,
+   events, expected no-incident result and exact release criterion before resuming.
+4. If any automatic restore occurs, stop the initiating operation. Every restore
+   requires a fresh owner disposition; no automatic release or retry is authorized.
+   Close deployment only with observed code/process/guard identities and the
+   authorized diagnostics. Do not label that disaster-recovery proof.
+
+## 5. Rollback and stop conditions
+
+**Default on an unexpected result: stop affected activity and preserve evidence.**
+Stopping timers/clients itself needs the named future operational authority;
+this drafting grant does not permit emergency service manipulation.
+
+- **Before new code has touched durable state:** keep consumers held, compare
+  state and deployment records with the completed pre-change preservation
+  manifest. If the reviewed procedure proves no incompatible state was published,
+  an expressly authorized operator may restore the old source/unit selection.
+  Pin old source `8a7cdab`, old interpreter and exact old unit bytes. No blanket
+  `git reset --hard`, shared-checkout switch or automatic restart.
+- **After a new incident, generation, disposition, approval event or uncertain
+  write/removal:** do not resume the old runtime against that store. The old guard
+  is version 1; it lacks T3 preservation/pinning/release semantics. Its refusal of
+  an unknown marker does not prove whole-store rollback compatibility. Keep
+  current authority and originals; prefer a separately reviewed forward correction.
+- **If data restoration is required:** use a new exact-artifact/target grant after
+  independent qualification. Restore coherent affected state, not just HNSW or a
+  convenient old marker. Preserve post-change evidence separately. Code rollback
+  does not roll back completed Chroma/export/APPROVED effects; uncertain outcomes
+  must be reconciled from authoritative records without truncation or blind replay.
+- Stop for any unexpected schema/target/config/clock/backend identity, live writer
+  during quiescence, preservation failure, missing recovery dependency, new
+  incident or failed/unknown validation. No force clear, backup skip, invented
+  release evidence or erased incident is an allowed escape.
+
+## 6. Completion and next bounded work
+
+This draft completes the authorized read-only preflight and procedure authoring.
+It does not close recovery qualification, interpreter qualification, legacy-state
+initialization or rollout approval. The remaining procedure gaps are explicit.
+
+Next useful work is one bounded isolated readiness slice covering production-
+interpreter verification and representative legacy-generation initialization,
+while Ryan supplies the backup/loss-window facts. Return that evidence and the
+finished operational procedure for Kiro review, then an exact Ryan execution
+decision. Do not reopen the completed T1–T5 implementation reviews without new
+evidence requiring it. No tests, live changes, PR or reviewer invocation follow
+from this recommendation.
+
+**Suggested documentation PR title:** Prepare Safe Harbor rollout against the current runtime
+
+**Prepared body (not a PR-creation grant):** Codex records Ryan's T5 merge and the
+read-only deployment preflight, then drafts the rollout/rollback sequence. It
+identifies old MCP processes, shared-checkout backup routing, missing audit units,
+unqualified Python 3.11 execution and legacy generations without release evidence.
+No runtime or live state changed. Read this procedure, STATUS and VERIFY before
+granting the isolated readiness slice or later operations. **TL;DR:** deployment
+remains gated on concrete recovery, interpreter and state-adoption evidence.
+
+<!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
+<!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
