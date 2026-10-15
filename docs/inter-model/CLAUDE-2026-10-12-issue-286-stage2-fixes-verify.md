@@ -1,4 +1,68 @@
-# Verify: Stage 2 wedge fixes, round 20 at `928700b`: PASS on safety, with one mechanical condition (the R2b inventory is stale again); Astra re-audit next
+# Verify: Stage 2 wedge fixes, round 21 at `74c8ee7`: PASS; the inventory is current, the suite has no tip-only failure, and diff coverage finds no hidden broken branch
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `74c8ee7`, Cursor's
+R2b inventory regeneration on top of `928700b` (round 20's condition).
+**Method (two additions, after round 19's lesson):**
+- **Diff coverage.** The full hermetic suite ran under `coverage` (installed in
+  a scratch folder, not the shared environment), tracing the 13 production
+  files changed since corrective 12. `diffcov.py` (appendix) lists every
+  changed executable line (`0ee6994..74c8ee7`) that no test executes.
+- **Static undefined-name check.** pylint's `undefined-variable`,
+  `used-before-assignment` and related checks on the same 13 files. Run
+  against `7d46e6e`'s `observe.py`, it flags Astra's R3-F2 `NameError` at line
+  848, so it would have caught that bug before the audit.
+- Plus: the commit is inventory-only; the R2b, Shadow and baseline tests; the
+  full-suite comparison against main `458b9f6`.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are
+inactive and disabled; no further Mirror Crush indexing (735 lines).
+
+## Verdict (round 21)
+
+**PASS.**
+- `928700b..74c8ee7` changes only `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`.
+  The R2b, Shadow and canary-baseline tests: 66 passed.
+- Full suite under coverage: 93 failed, 2998 passed, 66 skipped, 52 errors;
+  **no tip-only failure** against main (Z1 didn't flake this run). Cursor's
+  report calls a live-boundary test "Z1"; Z1 is
+  `tests/test_shadow_activation.py::test_recovery_refuses_replaced_artifact_inode`.
+- **Static check: clean** on all 13 files.
+- **Diff coverage:** 609 changed executable lines; 125 (20%) never executed.
+  Most are guards, early returns, verbose prints and counters. Three groups
+  carried real risk, and I ran each with a new probe (appendix,
+  `tests/test_zz_claude_verify21.py`):
+  - `propose_decision.py:639–653`, `ingest_approved_ledger`'s drift retry:
+    `v1` recovers in round 2 (`updated=1`), both embeddings at depth (0, 0);
+    `v2` refuses persistent drift cleanly.
+  - `refine.py:323–346`, `convmem refine --approve-dedupe` (queue load and
+    tombstone under C1): `v3` applies line 1, then `all`; the right units are
+    superseded, queue rows are marked applied, no errors. `v4` refuses an
+    out-of-range line.
+  - `propose_decision.py:556–573`, `ingest_approved_file`: no caller in the
+    repository (dead code); left as a note.
+  - The rest (repair's second-drift skip, monitor's `drift_refused` and
+    `errors` branches, drift-refused raises in the file wrapper, retry-state
+    unwritable-directory errors) are short, simple branches; the static check
+    covers the name-error class.
+
+## Follow-ups (not merge-blocking)
+
+- `ingest_approved_file` has no caller: delete it or wire it, later.
+- X5 (doctor query plan), the cosmetic `skipped` count, X2–X4, #393, Z1, the
+  test-double lock branch.
+
+## Next
+
+1. Astra re-audits the exact tip `74c8ee7`; Kiro confirms the lock-order change
+   (in parallel).
+2. Then the PR draft (CO-2 and CO-3 in its body); Ryan merges.
+
+# Round 20: `928700b`, PASS on safety with one mechanical condition (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15
@@ -3700,6 +3764,204 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-21 probes and diff-coverage script
+
+<details><summary>tests/test_zz_claude_verify21.py</summary>
+
+```python
+"""Claude verify probes, round 21 (74c8ee7): run the changed paths no test executed (diff coverage).
+
+Scratch only: real production store sessions against a scratch config; fake providers; no network.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import json
+
+from tests.test_zz_claude_verify15 import _depth_embed, _foreign_update, _obs, _seed
+from tests.test_zz_claude_verify9 import _real_session_env
+
+
+def test_v1_approved_ledger_recovers_from_one_drift(tmp_path, monkeypatch) -> None:
+    """propose_decision.py:639-653: first commit drifts, the retry re-prepares outside C1 and commits."""
+    import propose_decision
+    import purge_locks
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    rec = _obs("obs_v21_appr", "Old text.")
+    unit, = _seed(cfg, rec)
+    depths = []
+    _depth_embed(monkeypatch, depths)
+    real_flock, calls = purge_locks.index_write_flock, {"n": 0}
+
+    def flock(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            _foreign_update(cfg, unit["id"], "foreign change")  # its own flock call is n == 2
+        return real_flock(*a, **k)
+
+    monkeypatch.setattr(purge_locks, "index_write_flock", flock)
+    stats = propose_decision.ingest_approved_ledger(cfg, {**rec, "summary": "New approved text."})
+    print(f"\nV1 stats={stats} flock_calls={calls['n']} depths={depths}")
+    assert stats["updated"] == 1, stats
+    assert depths and all(d == (0, 0) for d in depths), depths
+
+
+def test_v2_approved_ledger_refuses_persistent_drift(tmp_path, monkeypatch) -> None:
+    """Drift on both rounds: a clean refusal, not a crash or a write."""
+    import pytest
+
+    import propose_decision
+    import purge_locks
+    from observe import ObservationIngestDriftRefusedError
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    rec = _obs("obs_v21_appr2", "Old text.")
+    unit, = _seed(cfg, rec)
+    _depth_embed(monkeypatch, [])
+    real_flock, state = purge_locks.index_write_flock, {"n": 0, "busy": False}
+
+    def flock(*a, **k):
+        if not state["busy"]:
+            state["n"] += 1
+            state["busy"] = True
+            try:
+                _foreign_update(cfg, unit["id"], f"foreign change {state['n']}")
+            finally:
+                state["busy"] = False
+        return real_flock(*a, **k)
+
+    monkeypatch.setattr(purge_locks, "index_write_flock", flock)
+    with pytest.raises(ObservationIngestDriftRefusedError):
+        propose_decision.ingest_approved_ledger(cfg, {**rec, "summary": "New approved text."})
+
+
+def _dedupe_setup(tmp_path, monkeypatch):
+    import refine
+    from chroma_store import UNITS, ChromaStore
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    try:
+        col = store._collection(UNITS)
+        ids = [f"u_dd_{i}" for i in range(4)]
+        col.add(ids=ids, documents=[f"near-duplicate text {i}" for i in range(4)],
+                metadatas=[{"title": f"dup {i}", "source_path": f"/scratch/d{i}.jsonl", "domain": "general"}
+                           for i in range(4)],
+                embeddings=[[1.0, 0.0, 0.0] for _ in range(4)])
+    finally:
+        store.close()
+    rows = [{"event_id": f"e{i}", "id_a": ids[2 * i], "id_b": ids[2 * i + 1], "similarity": 0.99,
+             "status": "approved_merge_a_canonical", "canonical_id": ids[2 * i], "tombstone_id": ids[2 * i + 1]}
+            for i in range(2)]
+    queue = refine.dedupe_queue_path(cfg)
+    queue.parent.mkdir(parents=True, exist_ok=True)
+    queue.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    return cfg, queue, ids
+
+
+def _superseded(cfg, unit_id):
+    from chroma_store import ChromaStore, is_superseded
+
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    try:
+        unit = store.get_unit(unit_id)
+        return bool(unit and is_superseded(unit.get("metadata") or {}))
+    finally:
+        store.close()
+
+
+def test_v3_approve_dedupe_one_line_then_all(tmp_path, monkeypatch) -> None:
+    """refine.py:323-346: `--approve-dedupe 1`, then `all`; tombstones land, the queue records it, no error."""
+    import refine
+
+    cfg, queue, ids = _dedupe_setup(tmp_path, monkeypatch)
+    one = refine.apply_approved_dedupe("1", verbose=False)
+    after_one = [json.loads(x) for x in queue.read_text().splitlines()]
+    rest = refine.apply_approved_dedupe("all", verbose=False)
+    after_all = [json.loads(x) for x in queue.read_text().splitlines()]
+    print(f"\nV3 one={one} all={rest} applied={[r.get('chroma_applied') for r in after_all]} "
+          f"superseded={[_superseded(cfg, i) for i in ids]}")
+    assert one["tombstoned"] == 1 and one["errors"] == 0, one
+    assert after_one[0].get("chroma_applied") is True and not after_one[1].get("chroma_applied"), after_one
+    assert rest["errors"] == 0 and rest["tombstoned"] == 1, rest
+    assert [_superseded(cfg, i) for i in ids] == [False, True, False, True]
+    assert all(r.get("chroma_applied") is True for r in after_all), after_all
+
+
+def test_v4_approve_dedupe_out_of_range_refuses_cleanly(tmp_path, monkeypatch) -> None:
+    import pytest
+
+    import refine
+
+    _dedupe_setup(tmp_path, monkeypatch)
+    with pytest.raises(ValueError, match="out of range"):
+        refine.apply_approved_dedupe("9", verbose=False)
+```
+
+</details>
+
+<details><summary>diffcov.py (scratch; run after `coverage json`)</summary>
+
+```python
+"""Changed-but-never-executed lines: git diff BASE..HEAD (added/modified lines) x coverage JSON missing lines.
+
+Usage: python diffcov.py <worktree> <base> <coverage.json>
+"""
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+wt, base, cov_json = sys.argv[1], sys.argv[2], sys.argv[3]
+cov = json.load(open(cov_json))
+files = {Path(k).name: v for k, v in cov["files"].items()}
+diff = subprocess.run(["git", "-C", wt, "diff", "-U0", f"{base}..HEAD", "--", *files], capture_output=True,
+                      text=True, check=True).stdout
+changed: dict[str, set[int]] = {}
+cur = None
+for line in diff.splitlines():
+    if line.startswith("+++ b/"):
+        cur = Path(line[6:]).name
+        changed.setdefault(cur, set())
+    m = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", line)
+    if m and cur:
+        start, count = int(m.group(1)), int(m.group(2) or 1)
+        changed[cur].update(range(start, start + count))
+tot_exec = tot_miss = 0
+report = []
+for name, lines in sorted(changed.items()):
+    f = files.get(name)
+    if not f:
+        continue
+    executable = set(f["executed_lines"]) | set(f["missing_lines"])
+    ch_exec = lines & executable
+    miss = sorted(lines & set(f["missing_lines"]))
+    tot_exec += len(ch_exec)
+    tot_miss += len(miss)
+    report.append((name, len(ch_exec), miss))
+print(f"changed executable lines: {tot_exec}; never executed: {tot_miss} "
+      f"({100 * (1 - tot_miss / max(1, tot_exec)):.1f}% covered)")
+for name, n, miss in report:
+    runs, start, prev = [], None, None
+    for ln in miss:
+        if start is None:
+            start = prev = ln
+        elif ln == prev + 1:
+            prev = ln
+        else:
+            runs.append((start, prev)); start = prev = ln
+    if start is not None:
+        runs.append((start, prev))
+    shown = ", ".join(f"{a}" if a == b else f"{a}-{b}" for a, b in runs)
+    print(f"{name}: {n} changed executable, {len(miss)} never run: {shown}")
+```
+
+</details>
 
 ## Appendix: round-20 probe test
 
