@@ -2487,7 +2487,7 @@ class IncrementalJsonlCoordinator:
 
         self._transition("lock_release", release)
 
-    def _enforce_live_retry_admission_if_needed(self) -> None:
+    def _enforce_live_retry_admission_if_needed(self, *, reserve: bool = True) -> None:
         path_key = getattr(self, "_live_retry_admission_path_key", None)
         if path_key is None or getattr(self, "_live_retry_admission_isolated", True):
             return
@@ -2507,7 +2507,73 @@ class IncrementalJsonlCoordinator:
             path_key=path_key,
             prefix_digest=prefix_digest,
             transaction_id=pending_tx,
+            reserve=reserve,
         )
+
+    def _unchanged_short_circuit_if_applicable(self) -> IncrementalRunResult | None:
+        """Skip capture and retry admission when the selected prefix is unchanged."""
+        try:
+            checkpoint = self.checkpoint()
+        except IncrementalJsonlError:
+            return None
+        if checkpoint is None:
+            return None
+        fd = open_source_readonly(self.source)
+        try:
+            info = validate_regular_source(fd)
+            admission = self.settings.codex_rollout_admission
+            if (
+                self.codex_admitted_live
+                and admission is not None
+                and info.st_size > admission.max_source_bytes
+            ):
+                return None
+            raw = os.read(fd, info.st_size)
+        finally:
+            os.close(fd)
+        boundary = raw.rfind(b"\n") + 1
+        prefix = raw[:boundary]
+        view = self.format_spec.parse_complete_prefix(str(self.source), raw=prefix)
+        self._validate_incremental_prefix_view(view)
+        snapshot = {
+            "raw": prefix,
+            "complete_boundary": view.complete_boundary,
+            "prefix_sha256": view.prefix_sha256,
+            "messages": view.messages,
+            "generation_identity": {"device": int(info.st_dev), "inode": int(info.st_ino)},
+            "session_meta_digest": view.session_meta_digest,
+            "source_identity": self.source_id,
+            "size": int(info.st_size),
+        }
+        continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
+        if (
+            continuity is not None
+            or checkpoint.get("complete_boundary") != snapshot["complete_boundary"]
+            or checkpoint.get("record_count") != len(snapshot["messages"])
+        ):
+            return None
+        self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
+        result = IncrementalRunResult(
+            outcome="unchanged",
+            mode="unchanged",
+            fallback_reason=None,
+            adapter_format=self.format_spec.format_id,
+            selected_boundary=snapshot["complete_boundary"],
+            records=len(snapshot["messages"]),
+            frontier_record=int(checkpoint.get("chunk_frontier") or 0),
+            counters=self.counters,
+            reused_artifacts=0,
+            max_units_in_flight=0,
+            active_generation=str(checkpoint.get("active_generation") or ""),
+            ingest_status="skipped",
+        )
+        self.last_result = result
+        self._emit_codex_admitted_log(
+            result,
+            snapshot=None,
+            elapsed_seconds=time.monotonic() - self._run_started,
+        )
+        return result
 
     def run(self) -> IncrementalRunResult:  # pylint: disable=too-many-return-statements
         self._run_started = time.monotonic()
@@ -2540,6 +2606,10 @@ class IncrementalJsonlCoordinator:
                 self._enforce_live_retry_admission_if_needed()
                 return self._roll_forward(existing_tx)
             transaction_id = uuid.uuid4().hex
+            unchanged = self._unchanged_short_circuit_if_applicable()
+            if unchanged is not None:
+                return unchanged
+            self._enforce_live_retry_admission_if_needed(reserve=False)
             try:
                 snapshot = self._capture(transaction_id)
             except IncrementalJsonlError as exc:
@@ -2838,7 +2908,7 @@ def maybe_route_incremental(
         except (KeyboardInterrupt, SystemExit):
             raise
         except IncrementalJsonlError as exc:
-            if exc.code == "live_route_refused" or isolated:
+            if exc.code in ("live_route_refused", "retry_state_unavailable") or isolated:
                 raise
             _raise_incremental_retry_refusal(
                 coordinator,
