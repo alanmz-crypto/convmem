@@ -117,6 +117,8 @@ def _read_line_fd(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
 
 def _read_line_fd_lossy(fd: int, *, timeout: float = BARRIER_TIMEOUT_SECONDS) -> str:
     """Historical T5-F1 reader: one large read drops bytes after the first newline."""
+    # pylint: disable=duplicate-code
+    # Keep the historical reader verbatim as an independent sensitivity control.
     buffer = bytearray()
     deadline = time.monotonic() + timeout
     while b"\n" not in buffer:

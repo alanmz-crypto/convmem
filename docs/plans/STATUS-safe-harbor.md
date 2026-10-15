@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 VERIFICATION STOPPED ON ONE CONCURRENCY FAILURE.** [VERIFY V6](VERIFY-safe-harbor.md#v6--integrated-handoff-and-independent-sign-off-t5) is the integrated evidence packet. The combined run returned 240 passes / 1 failure; [T5-F1](VERIFY-safe-harbor.md#captured-result-and-blocker-t5-f1) records an event-framing defect and unresolved failure attribution. Ryan authorized the bounded signalling/logging correction and fresh isolated evidence; Kiro sign-off and V6 acceptance remain pending. Merged source is not deployed runtime or demonstrated disaster recovery.
+> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 MECHANICAL EVIDENCE RETURNED.** The authorized signalling/logging correction passes all 257 integrated cases. [VERIFY V6](VERIFY-safe-harbor.md#t5-f1-correction-and-fresh-evidence) preserves the original failure, fresh evidence and limits. Independent Kiro V6 review and Ryan acceptance are next. Merged source is not deployed runtime or demonstrated disaster recovery.
 
 ## 1. What This Is For (product goal)
 
@@ -39,7 +39,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T2 / V2 on main:** operation-bound preflight, production-skip refusal and future-time policy across five consumers; [PR #389](https://github.com/alanmz-crypto/convmem/pull/389), accepted `eb06c97df2cfe9de3627fd8672b9e3b7c277c963`, tree-identical squash `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`.
 - **T3 / V3 / V4 on main:** preserve before replacement, pin generations, contain every automatic segment restore and validate all incidents before release; [PR #391](https://github.com/alanmz-crypto/convmem/pull/391), accepted `3c490e2ce61d5c6531a044132c5a01faf144f1ac`, tree-identical squash `a7f72003aea516b4961a584fcfe54ad255d6a053`.
 - **T4 / V5 on main:** fresh tombstone-aware approval recovery, direct/CLI target binding, native-lock serialization, export completion and truthful uncertain-outcome retry; [PR #392](https://github.com/alanmz-crypto/convmem/pull/392), accepted `ed6699bea949b95e0807f166c3297500736d4aa9`, tree-identical squash `fdc8da7fa67c1d7b31bc5cd44de466001df04260`. [Final closeout](VERIFY-safe-harbor.md#t4-final-ci-review-owner-acceptance-and-squash-mapping) records hosted CI, Kiro’s pinned reviews and Ryan’s acceptance/outage exception. Codex performed the squash on Ryan’s explicit “merge” instruction.
-- **T5 on an isolated docs branch:** `feat/2026-10-14-safe-harbor-t5`, based on that exact T4 squash. [EXECUTION section 17](EXECUTION-safe-harbor.md#17-t5-integrated-verification-and-operational-handoff--owner-authorized) is the grant; [VERIFY V6](VERIFY-safe-harbor.md#v6--integrated-handoff-and-independent-sign-off-t5) separates new mechanical evidence, reused hosted evidence and pending sign-off. [RECOVER](../RECOVER.md#safe-harbor-incident-handling-and-rollout) is the operational handoff, prepared only.
+- **T5 on an isolated verification branch:** `feat/2026-10-14-safe-harbor-t5`, based on that exact T4 squash. [EXECUTION section 17](EXECUTION-safe-harbor.md#17-t5-integrated-verification-and-operational-handoff--owner-authorized) and [section 18](EXECUTION-safe-harbor.md#18-t5-f1-signalling-and-logging-correction--owner-authorized) are the verification/correction grants; [VERIFY V6](VERIFY-safe-harbor.md#v6--integrated-handoff-and-independent-sign-off-t5) separates new mechanical evidence, reused hosted evidence and pending sign-off. [RECOVER](../RECOVER.md#safe-harbor-incident-handling-and-rollout) is the operational handoff, prepared only.
 - **Runtime remains unqualified for rollout:** no T5 action changes runtime-main or services. No live process census, guard-state adoption, loss-window decision or exact backup qualification was performed. The extra ext4 drive is a reported resource, not proof of usable or offsite protection.
 
 ## 4. Completion State
@@ -47,18 +47,18 @@ The scope is application cooperation, not same-user security. Read clients can p
 - Direction/name, every-restore owner-disposition cost, execution plan and B-E4.1 (all five consumers) are owner-approved. Ownership stays with the existing arcs.
 - **T1–T4 / V1–V5 ACCEPTED AND MERGED.** Each task’s review and BugBot outage exception stays bound to its accepted candidate. None is a BugBot PASS or a blanket future exemption.
 - **Latest full hosted integration:** T4 candidate `ed6699b`, Python 3.12.15, run `38519477899`: 3,267 passed / 18 host-environment skips / 252 passing subtests; critical collection, unchanged-baseline lint and all security checks passed. Its tested merge and main squash have the same tree. V5 is completed evidence, not NOT RUN.
-- **T5 / V6: FAIL / STOPPED.** Combined V1–V5: 240 passed / 1 failed / 0 skipped, exit 1. Recovery-versus-forget saw ACQUIRED instead of NB_BLOCKED. Static inspection found the test pipe reader can discard a coalesced event; missing child output prevents attributing this run conclusively. The failed run remains historical evidence. Section 18 now authorizes the test-only correction and fresh isolated evidence; corrected results are pending.
+- **T5 / V6: mechanical PASS; independent sign-off and owner acceptance PENDING.** Test source `22fa1b9fc547092c7bf7e3b0156621e7db10b597` changes only the two concurrency test files. Signalling/logging controls: 16 passed; all affected cases: 22 passed; combined V1–V5: 257 passed, no failures/errors/skips. These selections overlap. Full isolated lint passes against the unchanged baseline. The historical 240/1 run remains recorded; its exact failure sequence cannot be reconstructed from the old missing child output.
 - Limits persist: process restart/IO injection is not hardware power-loss proof; strict release can refuse recoverable states; auxiliary sink non-interference remains at the accepted author-trace level; incidental/unguarded writers are outside a global stop guarantee. Historical failed and excluded runs remain visible.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Cursor/Codex next:** implement [EXECUTION section 18](EXECUTION-safe-harbor.md#18-t5-f1-signalling-and-logging-correction--owner-authorized): lossless pipe framing and retained child/liveness diagnostics, deterministic controls, then affected concurrency and integrated V1–V5 evidence. Preserve runtime, isolation, timeouts and safety assertions.
+**Kiro next, after Ryan’s bounded review grant:** inspect the exact final successor, the two-file test delta, recorded isolated evidence and the prepared operational handoff using EXECUTION §17’s updated prompt. Preserve pinned T1–T4 implementation verdicts; examine new evidence and contracts only.
 
-**Kiro later:** review the exact corrected V6 successor after fresh evidence, keeping prior implementation verdicts pinned. **Ryan:** acceptance follows independent review. No PR or live authority follows from the correction grant.
+**Codex:** provide the pinned packet and clarify findings; no self-issued independent PASS. **Ryan:** decide V6 acceptance and any exact-tip outage exception after review. No PR, hosted CI, merge or live operation is granted.
 
 ## 6. What Remains Before "Live" (sequential)
 
-1. Resolve T5-F1 under a bounded grant, obtain fresh integrated evidence, then independent Kiro V6 sign-off and Ryan’s closeout decision. The current failure cannot be waived by prior green CI.
+1. Obtain independent Kiro V6 sign-off on the corrected exact-tip evidence and operator handoff, then Ryan’s acceptance/outage disposition and a separate delivery decision. The fresh selected run does not establish new hosted full-suite evidence.
 2. Set the lost-work interval and qualify an exact usable recovery artifact and independently accessible key. Preserve the reported pre-incident image; extra drive capacity grants no backup/restore/retention operation.
 3. Approve a deployment procedure naming candidate/interpreter, all old-process dispositions, canonical and lexical guard locations, existing incident/snapshot schema handling and rollback compatibility. Keep stopped services stopped unless separately granted.
 4. Execute only a separately authorized rollout or corpus operation. No V6 PASS alone opens that lane.
@@ -93,6 +93,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-14 — Cursor/Codex: delivered the bounded signalling/logging correction; 257 integrated passes, retained failure diagnostics and full isolated lint PASS; independent V6 review and Ryan acceptance next.
 
 - 2026-10-14 — Codex: recorded Ryan’s bounded T5-F1 signalling/logging correction and fresh-evidence grant; Cursor/Codex work next, runtime and live boundaries unchanged.
 
@@ -195,4 +197,4 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1–T4 remain accepted and merged. T5 stopped with 240 passes and one unresolved concurrency failure; The bounded signalling/logging correction and fresh evidence are authorized; independent V6 review and acceptance follow. No live grant.
+[Arc Safe Harbor] T1–T4 remain accepted and merged. The corrected T5 selection passes all 257 cases; Kiro V6 review and Ryan acceptance remain pending. Historical failure and evidence limits stay visible; no PR or live grant.
