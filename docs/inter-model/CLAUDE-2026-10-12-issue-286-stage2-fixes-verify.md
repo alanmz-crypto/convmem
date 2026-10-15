@@ -1,4 +1,91 @@
-# Verify: Stage 2 wedge fixes, round 19 at `7d46e6e`: round 18's PASS withdrawn; Astra's round-3 FAIL reproduced (three blockers); corrective 16
+# Verify: Stage 2 wedge fixes, round 20 at `928700b`: PASS on safety, with one mechanical condition (the R2b inventory is stale again); Astra re-audit next
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `928700b`, Cursor
+Composer's corrective 16 (`9324d03`, `928700b`). It answers round 19 (below) and
+Astra's round-3 audit (`3af90a3`).
+**Method:**
+- I read the diff `7d46e6e..928700b` (8 files).
+- I ran Astra's seven round-3 probes in both directions: the originals (which
+  assert the unsafe behavior) and Cursor's safe-direction rewrite
+  (`tests/test_zz_codex_audit_r3.py`).
+- I wrote a concurrency probe of my own (appendix): the real route, slowed fake
+  summaries so callers pile up on the source lock, a failing prepared write,
+  8 threads and 6 forked processes (the real collision is the watcher process
+  against a CLI process). Each paid summary is counted in a shared file.
+- I ran every retained probe (rounds 15–17), the corrective-6 and -12 tests,
+  and the upsert, ledger-document, monitor, doctor, live-boundary,
+  add-severity and propose-decision suites.
+- I ran the hermetic full suite and the leak census in disk-backed worktrees
+  and compared against main `458b9f6`, run the same way.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are
+inactive and disabled; no further Mirror Crush indexing (735 lines). R3-F1, the
+paid-cap gap, is closed at this tip (below).
+
+## Verdict (round 20)
+
+**PASS on safety, with one mechanical condition:** regenerate the R2b inventory (below) before the re-audit.
+- **R3-F1 (closed):** `maybe_route_incremental` takes the coordinator's
+  per-source lock before anything else and holds it through the run and the
+  failure accounting. Inside `run()`, the retry gate and reservation run after
+  the unchanged-prefix short-circuit, right before the paid transform and
+  before a roll-forward; every earlier return is a refusal with no paid work.
+  - My probe: 8 threads, 2 paid, persisted attempts 2; 6 processes, 2 paid,
+    persisted attempts 2 (the same-code gate refuses after 2; the cap is 3).
+  - Astra's original probe now fails for the safe reason: only one reservation
+    gets through before the lock serializes the rest.
+  - The lock is skipped only when the coordinator's class lacks the lock
+    helpers. The one real class (`IncrementalJsonlCoordinator`, constructed at
+    `incremental_jsonl.py:2806`) has them, so production always locks; the
+    branch exists for a test double (low; a test-side fix would be cleaner).
+- **R3-F2 (closed):** repair's drift retry builds a fresh
+  `_DocumentAccurateReadonlyStore`; Astra's original probe no longer raises
+  `NameError`.
+- **R3-F3 (closed):** monitor's re-prepare passes `current.embedding or None`,
+  so a skip that drifted into an update embeds outside C1; no `IndexError`.
+- **R3-O1 (closed):** the cache clear runs in a `finally` after the store write;
+  the stale-cache probe now sees the row.
+- **R3-O2 (closed):** `artifacts/` gets the tracked-file rule; the tracked
+  writer is reported.
+- Astra's two safe controls pass; every retained probe and the named suites
+  pass (183 passed with my probe).
+
+**Full suite and leak census** (ids compared without parameters):
+- Tip: 99 failed, 2990 passed, 66 skipped, 52 errors. **6 tip-only:**
+  - **5 R2b inventory tests** (`tests/test_r2b_v2_corrective_viii.py` ×2,
+    `tests/test_r2b_v2_implementation_revision.py` ×3), deterministic (they
+    fail the same way alone). The committed inventory records implementation
+    identity `3a45709…`; the tip's is `f53ad1b…`. Cause: `928700b` edited
+    `incremental_jsonl.py` after `9324d03` regenerated the inventory, and the
+    full suite wasn't rerun after `928700b` (Cursor's report says so). The
+    rule is still "inventories last".
+  - **Z1**, the known ext4 inode flake.
+- **Leak census: 0.** Its failures match the tip run.
+
+**Condition (mechanical, Cursor):** regenerate the R2b inventory at `928700b`
+(nothing else), run `tests/test_r2b_v2_corrective_viii.py`,
+`tests/test_r2b_v2_implementation_revision.py`, the Shadow and baseline tests,
+then the full suite at the new tip; tip-only target is Z1 alone.
+
+## Follow-ups (not merge-blocking)
+
+- X5 (doctor query plan), the cosmetic `skipped` count, X2–X4, #393, Z1, and the
+  test-double lock branch above.
+
+## Next
+
+1. Cursor: the inventory commit above. Claude confirms the R2b tests and the tip-only list on the new tip.
+2. Astra re-audits the new exact tip.
+3. Kiro confirms the lock-order change (the source lock now wraps admission;
+   C1 placement is unchanged).
+4. Then the PR draft (CO-2 and CO-3 in its body); Ryan merges.
+
+# Round 19: `7d46e6e`, Astra's FAIL reproduced; corrective 16 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15
@@ -3613,6 +3700,98 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-20 probe test
+
+Runs from `tests/` with helpers already on the branch. Real route against a scratch config; fake
+providers; slowed fake summaries; 8 threads and 6 forked processes on one source.
+
+<details><summary>tests/test_zz_claude_verify20.py</summary>
+
+```python
+"""Claude verify probes, round 20 (928700b): concurrent entrants on one source stay within the paid-attempt cap.
+
+Scratch only: the real route against a scratch config; fake providers; no network. Summaries are slowed so
+callers pile up on the source lock; each paid summary appends one line to a scratch file (shared across processes).
+"""
+
+from __future__ import annotations
+
+import json
+import multiprocessing
+import os
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import pytest
+
+
+def _setup(tmp_path, monkeypatch, ledger: Path):
+    import time
+
+    import incremental_jsonl as inc
+    import ingest
+    from tests.incremental_jsonl_helpers import fake_summarize
+    from tests.test_zz_codex_audit import _route_fixture
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+
+    def summarize(*args, **kwargs):
+        with open(ledger, "a", encoding="utf-8") as fh:
+            fh.write(f"{os.getpid()}\n")
+        time.sleep(0.2)
+        return fake_summarize(*args, **kwargs)
+
+    monkeypatch.setattr(ingest, "summarize", summarize)
+
+    def fail(*_a, **_k):
+        raise OSError("scratch prepared artifact failure")
+
+    monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_write_prepared", fail)
+    state = (Path(cfg["index"]["incremental_jsonl"]["state_dir"])
+             / inc.source_state_id(str(source.resolve()), format_id="jsonl_codex_rollout") / "retry_state.json")
+    return route, state
+
+
+def _invoke(route):
+    import incremental_jsonl as inc
+
+    try:
+        route()
+        return "ok"
+    except inc.IncrementalJsonlError as exc:
+        return exc.code
+
+
+def _child(route, out):
+    out.put(_invoke(route))
+
+
+@pytest.mark.parametrize("mode,callers", [("threads", 8), ("processes", 6)])
+def test_c20_concurrent_entrants_stay_within_the_cap(tmp_path, monkeypatch, mode, callers) -> None:
+    ledger = tmp_path / "paid.log"
+    route, state = _setup(tmp_path, monkeypatch, ledger)
+    if mode == "threads":
+        with ThreadPoolExecutor(max_workers=callers) as pool:
+            results = list(pool.map(lambda _: _invoke(route), range(callers)))
+    else:
+        ctx = multiprocessing.get_context("fork")
+        out = ctx.Queue()
+        procs = [ctx.Process(target=_child, args=(route, out)) for _ in range(callers)]
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join(timeout=120)
+        results = [out.get(timeout=5) for _ in procs]
+    paid = ledger.read_text().splitlines() if ledger.exists() else []
+    saved = json.loads(state.read_text()) if state.exists() else {}
+    print(f"\nC20 {mode} callers={callers} paid={len(paid)} attempts={saved.get('attempts_on_prefix')} "
+          f"results={sorted(results)}")
+    assert len(paid) <= 3, len(paid)
+    assert int(saved.get("attempts_on_prefix") or 0) == len(paid), (saved.get("attempts_on_prefix"), len(paid))
+```
+
+</details>
 
 ## Appendix: round-17 probe test
 

@@ -300,6 +300,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-14 | Claude | Round 17 FAILs corrective 14 (`700b6ba`) on one finding: round 16 closed, C1 holds short, suite clean but for Z1, leak census 0; the repair scan makes `convmem doctor` take minutes; corrective 15 to Cursor; not deployable |
 | 2026-10-15 | Claude | Round 18 PASSes corrective 15 (`7d46e6e`): all retained probes pass, suite clean but for Z1, leak census 0; X5 doctor-query follow-up; Astra re-audit and Kiro re-review next; not deployed |
 | 2026-10-15 | Claude | Astra round 3 FAILs `7d46e6e` (concurrent retry cap bypass, repair and monitor drift crashes); Kiro round 3 PASS with conditions; Claude round 19 reproduces Astra and withdraws round 18; corrective 16 to Cursor; not deployable |
+| 2026-10-15 | Claude | Round 20 PASSes corrective 16 (`928700b`) on safety (concurrent cap holds across processes); R2b inventory stale again, one mechanical regeneration before Astra's re-audit; not deployed |
 
 ## TL;DR
 

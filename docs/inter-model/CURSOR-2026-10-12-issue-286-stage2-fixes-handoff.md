@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Astra's round-3 audit FAILs `7d46e6e` and Claude's round 19 reproduces it (round 18's PASS withdrawn): concurrent entrants on one source bypass the paid-attempt cap (High); repair's drift retry raises NameError; monitor reuses an empty embedding after a skip drifts. Kiro's round 3 passes with conditions (Q3 confirmed). Corrective 16 goes to Cursor; see round 19 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Claude's round 20 PASSes corrective 16 (`928700b`) on safety: Astra's three blockers and two observations are closed, including concurrent entrants (8 threads and 6 processes stay within the paid cap); leak census 0. One mechanical condition: the R2b inventory went stale when `928700b` edited `incremental_jsonl.py` (5 tip-only tests). Cursor regenerates it; then Astra re-audits the new tip. See round 20 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
