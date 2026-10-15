@@ -1,4 +1,191 @@
-# Verify: Stage 2 wedge fixes, round 15 at `8d6ee76`: FAIL; Astra's four are closed, but the new drift check refuses every existing row; corrective 13
+# Verify: Stage 2 wedge fixes, round 16 at `2ffaf79`: FAIL; round 15's findings are closed, but a commit now leaves the ledger cache stale and rescans the whole store under C1 once per row; corrective 14
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-14
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `2ffaf79`, Cursor
+Composer's corrective 13. It answers round 15 (below).
+**Method:**
+- I read the diff `8d6ee76..2ffaf79` (17 files).
+- I ran the round-15 probes (Cursor added them unchanged), Cursor's tests,
+  and Astra's round-2 probes at the tip.
+- I wrote round-16 probes (appendix), all through real production sessions
+  against a scratch config with fake providers:
+  - the real `convmem add --file --upsert` command through a drift round;
+  - one ledger id on several lines of one file;
+  - a count of full-store scans inside the batch commit.
+- I timed the batch commit on a synthetic 109,000-unit store (round 11's).
+- I ran the hermetic full suite and the leak census in disk-backed worktrees
+  and compared against main `458b9f6`, run the same way.
+
+## Burn status
+
+**Not from this branch, but a second Mirror Crush index ran this evening.**
+The branch isn't deployed, and the watcher, refine and monitor units are
+inactive and disabled. Nothing in this round touches the paid route, and the
+retry bounds (R2-F1) still hold: Astra's probes show 3 paid attempts, not 6.
+But the live export gained a second block of 263 units from
+`~/Projects/SubProjects/Mirror/.crush/crush.db` (after the 472 from the
+02:00 first index), the last written at 19:26:16, 159 of them during this
+round's suite runs. By the first run's ratio that's about 19 chunks, about
+38 DeepSeek calls (an estimate). `processed.json` gained no Mirror entry, so
+the run didn't record completion and a repeat pays again (#393). No index
+process is running now. The watcher is off and the reconcile timer only
+queues work, so it was a manual or agent `convmem index --file`, most likely
+from one of the two Mirror Crush sessions (one since 10-11, one since 10-13
+21:17); the Track A hold may have reached only one of them. Ryan to check.
+
+## Verdict (round 16)
+
+**FAIL. Every round-15 finding is closed and verified, but the new
+validation has two problems.** First, a commit fills the shared ledger-index
+cache with the index from *before* its own write, so the next prepare in the
+same process sees an existing ledger id as missing and the commit refuses it
+as drift: 7 existing upsert and repair tests fail (N11). Second, cost: under
+the index write lock (C1), every commit now rebuilds the ledger index from a
+full scan of the store, once per row (N9). On the live
+store's size (about 110,000 units) that's about 10 s per row. While C1 is
+held the watcher waits, so a 3-row file stalls it for about 40 s, and a
+100-row file for about 17 minutes. It doesn't pay anything (C1 is a blocking
+lock with no timeout, and provider calls are refused under C1), but this PR
+exists to remove wedges, so it shouldn't add a long C1 hold. A targeted
+lookup takes about 8 ms on the same store.
+
+**Closed and verified:**
+- **N1:** the target digest drops the reader-only `document` key. Probe `c0`
+  passes: prepared from the real readonly reader, committed to the real write
+  store, the skip and the update both succeed.
+- **N2:** every prepared row is validated under C1 before any is written, and
+  round 2 re-prepares with a newly opened readonly reader. Probes `d1` (the
+  caller's real reader), `d2` and `d3` pass.
+- **N3:** an insert whose ledger id appeared since prepare raises drift
+  (probe `i1`).
+- **N4:** the admission context is built once per round. My probe runs the
+  real `convmem add --file --upsert` through a drift: two admission rounds,
+  exit 0, `updated=1`. With `8d6ee76`'s `convmem.py` and the rest at the tip,
+  the same probe fails (exit 1; the single-use context can't be re-entered).
+  Cursor's own N4 test builds its own `open_write_commit` and admission
+  context, so it would pass against the old code too; my probe should replace
+  it.
+- **N5:** the hourly cap now breaks out of the loop and the collected
+  candidates are appended (probe `l1`).
+- **N6:** repair re-prepares outside C1 with a fresh reader and counts a
+  drift skip once.
+- **N8:** the failure prefix has its own field; the reservation keeps it.
+- **g1:** the provider guard refuses `ollama_embed`, `summarize` and
+  `distill_with_response` under C1 before any HTTP.
+- **Astra's round-2 probes:** five of the seven fail for the safe reason (retry
+  state unavailable; 3 paid, not 6; the append waits for the rollback; embed
+  at depth (0, 0); a deleted target raises drift). The other two break on the
+  new prepared-row format (a `Mock` store can't be scanned; a tuple shape);
+  `c0`, `d1`–`d3` and Cursor's tests cover what they tested.
+
+**Full suite and leak census** (disk-backed worktrees, private
+`--basetemp`, compared with main `458b9f6` run the same way; ids compared
+without parameters, since the main baseline was recorded without them):
+- Tip: 102 failed, 2973 passed, 66 skipped, 52 errors. **9 tip-only**, all
+  deterministic (they fail the same way run alone, in about a second):
+  - **N11, 7:** `tests/test_upsert.py` (`test_upsert_keeps_unit_count`,
+    `test_upsert_updates_document_and_embedding`,
+    `test_upsert_skips_unchanged_reembed`, `test_file_ingest_twice_stats`,
+    `test_upsert_export_uses_atomic_publication`) and
+    `tests/test_ledger_document.py` (`test_repair_empty_ledger_documents`,
+    `test_upsert_repairs_empty_document_when_metadata_unchanged`).
+  - **Mocks, 2:** `test_issue_286_stage2_corrective6_audit.py::test_add_embeds_before_index_lock`
+    (the new scan iterates a `Mock` store) and
+    `test_monitor.py::MonitorProbeTests::test_run_monitor_skips_kiro` (a
+    `MagicMock` ledger id reaches the drift message's `join`).
+- **N7 is closed:** no inventory, R2b, Shadow or baseline-hash failures.
+- **Leak census: 0.** Its one extra failure is the Z1 inode flake.
+
+## Findings (round 16)
+
+- **N11 (High, merge-blocking): a commit leaves the ledger cache stale.**
+  `commit_observation_ingest` clears the process-wide ledger-index cache and
+  rebuilds it *before* it writes, then writes and doesn't clear it again. The
+  cache is keyed by `chroma_dir`, which the readonly reader shares, so any
+  later prepare in the same process reads the pre-write index. Insert then
+  upsert the same ledger id in one process: the prepare sees the id as missing
+  (`target_digest == "missing"`), and the commit, which rescans, finds it and
+  raises drift. Traced on `test_upsert_keeps_unit_count`: after the insert,
+  the cache holds an empty index. At `8d6ee76` the insert path never filled
+  the cache, which is why these tests passed then. The drift-retry wrappers
+  recover in round 2 (re-embedding); a plain `ingest_observation`, repair and
+  `ingest_approved_ledger` refuse.
+- **N9 (Medium, merge-blocking): every commit rescans the whole store under
+  C1.** `commit_observation_ingest` and `commit_prepared_observation_file_rows`
+  now clear the ledger-index cache and rebuild it from `units_metadata()`, a
+  full metadata scan. A batch scans once up front and again inside each row's
+  commit: N+1 scans for N rows, all inside one C1 hold. Monitor, repair and
+  approved ingest scan once per observation, each in its own C1 session.
+  - Measured on the synthetic 109,000-unit store, run alongside two full
+    suites: one scan takes 10.7 s. A 1-row batch held C1 for 20.5 s (2
+    scans); 3 rows for 40.7 s (4 scans). At `8d6ee76` the same batch did 0
+    scans (it used the stale cache, which was N3).
+  - The live corpus was 109.9k units on 10-10. So `add --file --upsert` or an
+    approved-file ingest of 100 rows holds C1 for about 17 minutes, and
+    monitor adds about 11 s of C1 per observation.
+  - C1 (`index_write_flock`) is a blocking `LOCK_EX` with no timeout, and the
+    watch path has no lease TTL or watchdog, so the watcher waits; it doesn't
+    fail or retry. A stall, not a burn.
+  - Probe `s1` counts the scans: 5 for a 4-row batch at the tip; it should
+    be 0.
+- **N10 (Low): one ledger id on several lines of one file.** Validation passes
+  for all of them; the write loop then re-checks each row against the
+  batch's own earlier writes. Two copies need a second round (and re-embed);
+  three copies are refused after round 2, with the row left at the second
+  line's text. Main applies them in one pass and the last line wins (probe
+  `u1`; main: `updated=2`, final text "Version 2.").
+
+## Corrective 14 for Cursor
+
+- **N11:** clear the ledger-index cache after every write (each
+  `add_unit` or `update_unit` in the commit path, and once after a batch), and
+  don't fill the shared cache from validation under C1 (N9's targeted reads
+  remove that). Accept: the 7 tests above pass unchanged.
+- **Mocks:** update the two tests to the new commit contract (give the mock
+  store real `units_metadata`/lookup returns), and make the drift message
+  `str()` its ids.
+- **N9: validate with targeted reads, once per batch, and don't rescan
+  inside the write loop.**
+  - For an update or a skip, the prepared target is a chroma id:
+    `get_unit(existing_chroma_id)` must still exist, carry the same ledger
+    id, not be superseded, and match the prepared digest. No index needed.
+  - For an insert, a targeted lookup of active rows with that ledger id
+    (`where={"ledger_id": lid}` on the units collection, skipping
+    superseded rows the way `units_metadata()` does) must return nothing.
+    Add it as a read method on `ChromaStore` and to the guarded store's read
+    allow-list (the CO-1 allow-list test will check).
+  - Validate every row this way under C1, then write. The write loop
+    doesn't re-validate (nothing else can write while C1 is held) and doesn't
+    clear or rebuild the ledger-index cache; clear it once after the
+    commit.
+  - Same function for monitor, repair and `ingest_approved_ledger`.
+  - Accept: probe `s1` passes (0 full scans); `perf16_commit_scans.py` on the
+    109k store shows `scans=0` for 3 rows.
+- **N10:** coalesce repeated ledger ids at prepare, before embedding: the last
+  line wins, as on main, and earlier lines are counted (for example as
+  skipped). Accept: probe `u1`, all four cases, in one round.
+- **Tests:** add `tests/test_zz_claude_verify16.py` (appendix) unchanged;
+  `u1` ×4, `n4` and `s1` must pass. Replace Cursor's N4 test with `n4`, or
+  make it call the real command. Keep `c0`, `d1`–`d3`, `i1`, `l1`, `g1` and
+  the corrective-12 and -13 tests passing.
+- **Inventories last,** as before: regenerate after the last edit; run the
+  inventory, R2b and baseline tests before the full suite; disk-backed full
+  suites at main `458b9f6` and the tip; tip-only list, target zero. Run
+  `tests/test_upsert.py`, `tests/test_ledger_document.py` and
+  `tests/test_monitor.py` before the full suite too.
+
+## Next
+
+1. Ryan: send the Track A hold to both Mirror Crush sessions (or close the
+   older one); then paste corrective 14 into Cursor.
+2. Cursor: corrective 14.
+3. Claude, round 17: the round-15 and round-16 probes as acceptance, the perf
+   probe, the full suite and leak census.
+4. Then Astra re-audits and Kiro re-reviews the exact tip (Kiro rechecks Q3).
+
+# Round 15: `8d6ee76`, FAIL; corrective 13 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-14
@@ -3137,6 +3324,206 @@ ingest, dedupe, locks, watch and the protocol, plus the new file.
 - **C6:** queue deleted events again. Use one lock-path function. Make
   re-entry skip the order assert. Restore the removed comments and the
   journal-hash re-check.
+
+## Appendix: round-16 probe tests
+
+They run from `tests/` and import helpers from `tests/test_zz_claude_verify15.py` and
+`tests/test_zz_claude_verify9.py`, both on the branch. Real production store sessions against
+a scratch config; fake providers; no network. `perf16_commit_scans.py` is not a test: it runs
+against round 11's synthetic 109,000-unit store (built by a script in that round) and prints
+the full scans and seconds inside one batch commit.
+
+<details><summary>tests/test_zz_claude_verify16.py</summary>
+
+```python
+"""Claude verify probes, round 16 (2ffaf79): one ledger id on several lines of one file.
+
+Scratch only: real production store sessions against a scratch config; fake providers; no network.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from tests.test_zz_claude_verify15 import _commit_fn, _depth_embed, _FreshReader, _obs, _seed
+from tests.test_zz_claude_verify9 import _real_session_env
+
+
+def _rows(cfg, lid):
+    from chroma_store import ChromaStore
+
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    try:
+        return [m for m in store.units_metadata() if m.get("ledger_id") == lid]
+    finally:
+        store.close()
+
+
+@pytest.mark.parametrize("copies,seeded", [(2, False), (3, False), (2, True), (3, True)])
+def test_u1_repeated_ledger_id_in_one_file(tmp_path, monkeypatch, copies, seeded) -> None:
+    from observe import ingest_observation_file_with_drift_retry
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    lid = f"obs_v16_dup_{copies}_{int(seeded)}"
+    if seeded:
+        _seed(cfg, _obs(lid, "Seeded text."))
+    path = tmp_path / "obs.jsonl"
+    path.write_text("".join(json.dumps(_obs(lid, f"Version {i}.")) + "\n" for i in range(copies)))
+    _depth_embed(monkeypatch, [])
+    owc, calls = _commit_fn(cfg)
+    try:
+        result, err = ingest_observation_file_with_drift_retry(
+            str(path), embed_store=_FreshReader(cfg["index"]["chroma_dir"]), open_write_commit=owc,
+            embed_model="fake", ollama_host="offline", upsert=True, verbose=False), None
+    except Exception as exc:  # noqa: BLE001
+        result, err = None, repr(exc)[:160]
+    rows = _rows(cfg, lid)
+    summary = (rows[0].get("summary") or rows[0].get("title")) if rows else None
+    print(f"\nU1 copies={copies} seeded={seeded} rounds={calls['n']} err={err} result={result} "
+          f"rows={len(rows)} summary={summary!r}")
+    assert err is None and len(rows) == 1 and calls["n"] == 1, (calls["n"], err, len(rows))
+    assert summary == f"Version {copies - 1}.", summary  # last line wins, as on main
+
+
+def test_n4_real_add_file_upsert_survives_a_drift_round(tmp_path, monkeypatch) -> None:
+    """The real `convmem add --file --upsert` command; only the Restic admission body is stubbed (still single-use)."""
+    from typer.testing import CliRunner
+
+    import convmem
+    import purge_locks
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    rec = _obs("obs_v16_n4", "Old text.")
+    unit, = _seed(cfg, rec)
+    path = tmp_path / "upsert.jsonl"
+    path.write_text(json.dumps({**rec, "summary": "New text from the file."}) + "\n")
+    _depth_embed(monkeypatch, [])
+    opens, flocks = [], {"n": 0}
+
+    def admission_steps(_entrypoint, _governed, _expected_cfg):
+        opens.append(1)
+        yield
+
+    real_flock = purge_locks.index_write_flock
+
+    def flock(*a, **k):
+        flocks["n"] += 1
+        if flocks["n"] == 1:
+            from tests.test_zz_claude_verify15 import _foreign_update
+            _foreign_update(cfg, unit["id"], "foreign change")
+        return real_flock(*a, **k)
+
+    monkeypatch.setattr(convmem, "_admission_steps", admission_steps)
+    monkeypatch.setattr(purge_locks, "index_write_flock", flock)
+    res = CliRunner().invoke(convmem.app, ["add", "--file", str(path), "--upsert"])
+    print(f"\nN4 exit={res.exit_code} opens={len(opens)} exc={res.exception!r} out={res.output[-160:]!r}")
+    assert res.exit_code == 0 and len(opens) == 2 and "updated=1" in res.output, res.output
+
+
+def test_s1_batch_commit_does_no_full_store_scan_under_c1(tmp_path, monkeypatch) -> None:
+    """Validation under C1 must not rescan the whole store (one 10 s scan per row at 109k units)."""
+    from chroma_readonly import open_readonly_unit_store
+    from chroma_write_store import production_chroma_write_session
+    from observe import commit_prepared_observation_file_rows, prepare_observation_file_rows
+    from purge_locks import index_write_flock
+
+    cfg = _real_session_env(tmp_path, monkeypatch)
+    recs = [_obs(f"obs_v16_s{i}", "Old text.") for i in range(3)]
+    _seed(cfg, *recs)
+    path = tmp_path / "obs.jsonl"
+    path.write_text("".join(json.dumps({**r, "summary": "New text."}) + "\n" for r in recs)
+                    + json.dumps(_obs("obs_v16_s_new", "Brand new.")) + "\n")
+    _depth_embed(monkeypatch, [])
+    rows, _ = prepare_observation_file_rows(str(path), embed_store=open_readonly_unit_store(cfg["index"]["chroma_dir"]),
+                                            embed_model="fake", ollama_host="offline", upsert=True)
+    scans = []
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="claude_verify16.s1") as session:
+            inner = session.store
+            real = inner.units_metadata
+            monkeypatch.setattr(inner, "units_metadata", lambda *a, **k: scans.append(1) or real(*a, **k),
+                                raising=False)
+            stats = commit_prepared_observation_file_rows(rows, store=inner, upsert=True, verbose=False)
+    print(f"\nS1 full_scans={len(scans)} stats={stats}")
+    assert stats["updated"] == 3 and stats["accepted"] == 1, stats
+    assert scans == [], len(scans)
+```
+
+</details>
+
+<details><summary>perf16_commit_scans.py (scratch; run with PYTHONPATH at the checkout)</summary>
+
+```python
+"""Round 16 perf probe: full-store scans and time inside the batch commit (the C1 critical section).
+
+Usage: python perf16_commit_scans.py <chroma_dir> <n_rows>
+Scratch store only (synthetic 109k units); fake embeddings; no network.
+"""
+import sys
+import time
+
+from chroma_store import ChromaStore
+from ledger import invalidate_ledger_index_cache
+from observe import (commit_prepared_observation_file_rows, ingest_observation,
+                     prepare_observation_ingest)
+
+path, n = sys.argv[1], int(sys.argv[2])
+EMB = [0.5] * 16
+
+
+class Counting:
+    """Delegates to the store; counts and times full metadata scans."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.scans = 0
+        self.scan_secs = 0.0
+
+    def units_metadata(self, *a, **k):
+        t = time.perf_counter()
+        try:
+            return self._inner.units_metadata(*a, **k)
+        finally:
+            self.scans += 1
+            self.scan_secs += time.perf_counter() - t
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
+def obs(i, summary):
+    return {"id": f"obs_perf16_{i}", "title": f"Perf {i}", "summary": summary,
+            "keywords": ["perf", "scratch", "verify"], "author_model": "claude-verify",
+            "type": "observation", "domain": "coding.tooling", "confidence": 0.9}
+
+
+store = ChromaStore(path, mutation_sink=None)
+try:
+    tag = str(time.time_ns())
+    for i in range(n):
+        ingest_observation(obs(i, f"old {tag}"), store=store, embed_model="fake", ollama_host="offline",
+                           upsert=True, precomputed_embedding=EMB)
+    invalidate_ledger_index_cache(path)
+    rows = []
+    for i in range(n):
+        p = prepare_observation_ingest(obs(i, f"new {tag}"), store=store, embed_model="fake",
+                                       ollama_host="offline", upsert=True, precomputed_embedding=EMB)
+        assert p is not None and p.upsert_update, p
+        rows.append((i + 1, p))
+    counting = Counting(store)
+    t = time.perf_counter()
+    stats = commit_prepared_observation_file_rows(rows, store=counting, upsert=True, verbose=False)
+    total = time.perf_counter() - t
+    print(f"rows={n}\tscans={counting.scans}\tscan_secs={counting.scan_secs:.1f}\tcommit_secs={total:.1f}\tstats={stats}")
+finally:
+    store.close()
+```
+
+</details>
 
 ## Appendix: round-15 probe tests
 

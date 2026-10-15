@@ -296,6 +296,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-14 | Claude | Round 13 PASSes corrective 11 (`0ee6994`): disk-backed suites show no branch failure (one pre-existing inode flake, Z1), leak census 0; ready for the Astra audit and Kiro review; not deployable until the merge and Ryan's grants |
 | 2026-10-14 | Claude | Astra's round-2 audit FAILs `0ee6994` (four blockers, one a burn path in the retry bounds); Kiro PASS with conditions; round 14 reproduces all four and withdraws round 13's PASS; corrective 12 (retry reservation, sidecar C1, no embedding under C1, commit revalidation, Kiro CO-1/CO-7) to Cursor; not deployable |
 | 2026-10-14 | Claude | Round 15 FAILs corrective 12 (`8d6ee76`): Astra's four blockers closed (the retry burn path included), but the new drift check refuses every existing ledger row (readonly vs write-store digest) plus four smaller gaps; corrective 13 to Cursor; not deployable |
+| 2026-10-14 | Claude | Round 16 FAILs corrective 13 (`2ffaf79`): round 15's findings closed; new stale ledger cache after a commit (7 tip-only test failures) and a full-store scan under C1 per row; corrective 14 to Cursor; a second Mirror Crush index (263 units, about 38 paid calls) ran outside the watcher this evening; not deployable |
 
 ## TL;DR
 

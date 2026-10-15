@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 15 FAILs corrective 12 (`8d6ee76`). Astra's four blockers are closed (retry reservation and a 3-attempt bound, dedupe side files under C1, a runtime provider guard, commit revalidation), but the new drift check hashes the readonly reader's metadata (which carries the document) against the write store's, so every update or skip of an existing ledger row refuses; plus a partial batch commit, an unrevalidated insert path, a single-use admission context reused across rounds, and dropped dedupe candidates at the hourly cap. Corrective 13 goes to Cursor; see round 15 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Claude's round 16 FAILs corrective 13 (`2ffaf79`). Round 15's findings (N1–N8) are closed and verified, including N4 on the real `convmem add --file --upsert` command. Two new problems: a commit fills the shared ledger-index cache with its pre-write index, so a later prepare in the same process refuses as drift (7 existing upsert and repair tests fail), and every commit rescans the whole store under C1 once per row (about 10 s per row at 110k units). Plus repeated ledger ids in one file and two outdated mock tests. Corrective 14 goes to Cursor; see round 16 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
