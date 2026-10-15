@@ -298,6 +298,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-14 | Claude | Round 15 FAILs corrective 12 (`8d6ee76`): Astra's four blockers closed (the retry burn path included), but the new drift check refuses every existing ledger row (readonly vs write-store digest) plus four smaller gaps; corrective 13 to Cursor; not deployable |
 | 2026-10-14 | Claude | Round 16 FAILs corrective 13 (`2ffaf79`): round 15's findings closed; new stale ledger cache after a commit (7 tip-only test failures) and a full-store scan under C1 per row; corrective 14 to Cursor; a second Mirror Crush index (263 units, about 38 paid calls) ran outside the watcher this evening; not deployable |
 | 2026-10-14 | Claude | Round 17 FAILs corrective 14 (`700b6ba`) on one finding: round 16 closed, C1 holds short, suite clean but for Z1, leak census 0; the repair scan makes `convmem doctor` take minutes; corrective 15 to Cursor; not deployable |
+| 2026-10-15 | Claude | Round 18 PASSes corrective 15 (`7d46e6e`): all retained probes pass, suite clean but for Z1, leak census 0; X5 doctor-query follow-up; Astra re-audit and Kiro re-review next; not deployed |
 
 ## TL;DR
 

@@ -1,4 +1,82 @@
-# Verify: Stage 2 wedge fixes, round 17 at `700b6ba`: FAIL (one finding); round 16's findings are closed and C1 holds are short again, but the repair scan makes `convmem doctor` take minutes; corrective 15
+# Verify: Stage 2 wedge fixes, round 18 at `7d46e6e`: PASS; N12 is closed, the suite is clean but for the Z1 flake; Astra and Kiro next
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `7d46e6e`, Cursor
+Composer's corrective 15 (`5a78e1e`, `7d46e6e`). It answers round 17 (below).
+**Method:**
+- I read the diff `700b6ba..7d46e6e` (3 files: `chroma_readonly.py`, the R2b
+  inventory, and my round-17 probe, added unchanged).
+- I ran every retained probe (rounds 15–17), Cursor's corrective-6 and -12
+  tests, the upsert, ledger-document, monitor, doctor, add-severity and
+  propose-decision suites, and Astra's round-2 probes at the tip.
+- I timed the dry-run repair (what `convmem doctor` runs) on round 11's
+  synthetic 109,000-unit store with 20 and with 213 decisions, the live
+  corpus's count.
+- I ran the hermetic full suite and the leak census in disk-backed worktrees
+  and compared against main `458b9f6`, run the same way.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units
+are inactive and disabled. No further Mirror Crush indexing (the export still
+holds 735 Mirror lines). The only live write during this round was Cursor's
+own Track A index of its session transcript (6 units). The retry bounds still
+hold: Astra's probes show 3 paid attempts, not 6.
+
+## Verdict (round 18)
+
+**PASS.** `unit_document_text` now reads one unit's document with a SQL
+lookup instead of iterating the collection in Python.
+- Probe `r1`: 1 pass over the units collection for 20 decisions (21 at
+  `700b6ba`).
+- Dry-run repair on the 109k store: 7.5 s with 20 decisions; 35.3 s with
+  213. At `700b6ba` that was about 13 minutes; on main about 10 s.
+- Every retained probe passes: `c0`, `d1`–`d3`, `i1`, `l1`, `g1` (round 15);
+  `u1` ×4, `n4`, `s1` (round 16); `r1` (round 17). The upsert,
+  ledger-document, monitor and doctor suites pass.
+- Astra's round-2 probes fail for the same safe reasons as in round 17.
+
+**Full suite and leak census** (ids compared without parameters):
+- Tip: 94 failed, 2988 passed, 66 skipped, 52 errors. **1 tip-only: Z1**
+  (`tests/test_shadow_activation.py::test_recovery_refuses_replaced_artifact_inode`,
+  the ext4 inode-reuse flake; not this branch). Cursor's "0 tip-only"
+  matches.
+- **Leak census: 0.** Its failures match the tip run.
+
+## Follow-ups (not merge-blocking)
+
+- **X5 (low, performance): doctor's dry-run repair is still about 3.5× main
+  on a large corpus.** SQLite plans the new query as a scan of
+  `embedding_metadata` (`SCAN em`), so each lookup costs about 150 ms warm
+  (8 s once, cold) and grows with the store: 35 s for 213 decisions against
+  main's 10 s. Starting from the indexed id fixes it: 213 lookups in 1.05 s.
+  ```sql
+  SELECT em.string_value FROM embedding_metadata em
+  WHERE em.key = 'chroma:document' AND em.id = (
+    SELECT e.id FROM embeddings e
+    JOIN segments sg ON e.segment_id = sg.id
+    JOIN collections c ON sg.collection = c.id
+    WHERE c.name = ? AND sg.scope = 'METADATA' AND e.embedding_id = ? LIMIT 1)
+  ```
+  Can ride on this PR if Ryan wants (one function; `r1` still covers it), or
+  follow with X2–X4.
+- **Cosmetic:** coalesced duplicate lines aren't reported in the result's
+  `skipped` count.
+- **Still open from earlier rounds:** X2–X4, #393 (Crush re-pay), Z1 (Ryan's
+  call whether its fix rides on this PR).
+
+## Next
+
+1. Astra (audit lane) re-audits and Kiro re-reviews the exact tip `7d46e6e`
+   (Kiro rechecks Q3: rows are re-read fresh under the lock, now by targeted
+   reads).
+2. Then the PR draft (CO-2 and CO-3 in its body); Ryan merges.
+3. Separate grants after merge: `runtime-main` promotion, protocol-surface
+   deploy, canary 2 (CO-5, CO-6).
+
+# Round 17: `700b6ba`, FAIL; corrective 15 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-14

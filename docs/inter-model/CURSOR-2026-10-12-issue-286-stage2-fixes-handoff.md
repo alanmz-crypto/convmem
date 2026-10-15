@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 17 FAILs corrective 14 (`700b6ba`) on one finding. Round 16's findings are closed (no stale cache; targeted reads under C1, 20 rows commit in 0.3 s on a 109k store; duplicates coalesce; full suite shows only the Z1 flake; leak census 0). New: the repair scan reads each decision's document with a full-store scan, so `convmem doctor`'s dry-run repair would take about 13 minutes on the live corpus. Corrective 15 (small) goes to Cursor; see round 17 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Claude's round 18 PASSes corrective 15 (`7d46e6e`). Every retained probe passes, write-lock holds are short, doctor's dry-run repair is back to seconds (35 s at 213 decisions; X5 follow-up makes it about 1 s), the full suite shows only the Z1 flake, leak census 0. Next: Astra re-audit and Kiro re-review of the exact tip, then the PR. See round 18 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
