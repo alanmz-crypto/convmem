@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-12
+**Updated:** 2026-10-14
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,7 +9,26 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Kiro bootstrap / issue #286 — r9 REVIEWED / GRANT PENDING
+- **Arc Kiro bootstrap / issue #286 — r10 PREPARED / REVIEW PENDING
+  (2026-10-14):** Sol replaced the reviewed but ungranted r9 backup proposal
+  after its bound October 12 date, config, and inventory expired. Two fresh
+  captures under ConvMem's exclusive writer lease agree on inventory
+  `c827469c…a3e5`; the Kiro projection remains two summaries and 17 units.
+  R10 binds the current config `a8c279aa…e23b`, whose only change from r9 is
+  removal of the unrelated OpenClaw repository-knowledge manifest entry, and
+  reserves fresh October 14 runner/result paths. The proposed operation still
+  permits exactly one local complete-data snapshot and one exact offsite copy;
+  it permits no bootstrap, provider transport, indexing, config/runtime
+  promotion, or watcher activation. A later 45-second readiness window was
+  interrupted by an unrelated full pytest run, and `/dev/sda1` is currently
+  mounted. **Next:** Kiro and Copilot review the same exact pushed r10
+  revision. After dual PASS, Sol must wait for pytest to end, require the
+  device to be unmounted, rerun all live checks, and only then present Ryan's
+  exact execution grant. Resume from the
+  [backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
+  and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
+
+- **Arc Kiro bootstrap / issue #286 — r9 HISTORY / STALE
   (2026-10-12):** The guarded Kiro route and failed-operation supersession are
   merged and remain disabled. Ryan's exact r3 bootstrap grant stopped before
   bootstrap, corpus mutation, dimension probing, or provider transport because
@@ -82,14 +101,9 @@ cross-arc snapshot and the linked arc brief below.
   metadata change. R9 reserves fresh paths and changes the final launcher to
   `exec` so no parent shell remains visible to the runner census; all other
   runner behavior is unchanged. Kiro and Copilot both PASSed exact pushed
-  revision `a202d97` with no blockers. Copilot observed later foreign pytest
-  activity that would make the runner refuse safely and consume the grant, so
-  Sol must recheck the live writer census before presenting or executing it.
-  **Next:** Ryan decides whether to grant the exact reviewed r9 runner after a
-  clean non-consuming readiness check. Resume from
-  the
-  [backup authority packet](SOL-2026-10-11-issue-286-fresh-backup-authority.md)
-  and [Arc Kiro bootstrap status brief](../plans/STATUS-codex-jsonl-production-integration.md).
+  revision `a202d97` with no blockers. Ryan did not grant or execute it before
+  its bound date ended. R9 is unconsumed but stale and must never be used;
+  current action is the r10 review above.
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
@@ -341,3 +355,5 @@ its existing archive/reference location. Use
 | T4 | The next Recovery Authority execution stage; it is not currently authorized. |
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
+
+<!-- ref: ./SOL-2026-10-11-issue-286-fresh-backup-authority.md, ../plans/STATUS-codex-jsonl-production-integration.md — active Kiro backup authority -->

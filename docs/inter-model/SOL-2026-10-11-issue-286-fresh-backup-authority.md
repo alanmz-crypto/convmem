@@ -1,8 +1,8 @@
 # Sol Backup Authority Proposal — Issue #286 Kiro Bootstrap
 
 **Arc:** Kiro bootstrap  
-**Prepared:** 2026-10-12 by Sol
-**State:** r9 proposal only; `NO-GO` until Kiro and Copilot PASS the same
+**Prepared:** 2026-10-14 by Sol
+**State:** r10 proposal only; `NO-GO` until Kiro and Copilot PASS the same
 exact pushed revision and Ryan grants that reviewed revision
 **Scope:** one new local complete-data Restic snapshot and one exact offsite
 copy; no bootstrap, provider transport, source operation, proposal generation,
@@ -22,7 +22,7 @@ inventory binding is stale. It must not be executed, edited, regenerated, or
 reused. A new successor bootstrap proposal can be prepared only after this
 separate backup-only operation returns a valid matching local/offsite pair.
 
-This r9 authority proposal binds the current inventory and the most recent
+This r10 authority proposal binds the current inventory and the most recent
 valid pair as a readiness anchor:
 
 - local snapshot
@@ -168,15 +168,33 @@ file sizes and mtimes stayed unchanged. The runner changes only its result
 path from r8 to r9. The invocation uses `exec` for the final runner process so
 no parent launcher shell remains visible to its protected writer census.
 
+Kiro and Copilot both PASSed exact r9 revision
+`a202d97955fc5846710b115516644acc9942a0fd` with no blockers. Ryan did not
+grant or execute r9 before its bound Chicago date ended. R9 is therefore
+unconsumed but stale and must never be executed or reused.
+
+For r10, two captures under the exclusive writer lease produced the same
+inventory digest `c827469c…a3e5` and byte-identical evidence SHA-256
+`888e6780…aae8`. The Kiro projection remains two conversation summaries and
+17 knowledge units with unchanged entry digests. The live config changed from
+`a0f88897…c3528` to `a8c279aa…e23b` only by removing the OpenClaw repository
+knowledge manifest entry; r10 binds the current config without restoring or
+editing another arc's configuration. A 45-second readiness window was later
+interrupted by an unrelated full pytest run, and `/dev/sda1` was already
+mounted. Those are live execution blockers, not packet-generation failures:
+before any grant is presented or used, pytest must be absent, the writer
+census must be clear, the device must be unmounted, and every bound value must
+be revalidated.
+
 ## Exact proposed runner
 
 | Item | Bound value |
 |---|---|
 | Repository attachment | `docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt` |
-| Attachment SHA-256 | `4382b5fcc7442368ef120a13ce4ce6b5d75823b956ca400b5f28eaf310cf3eaf` |
-| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py` |
-| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261012-r9.json` |
-| Valid local date | `2026-10-12` in `America/Chicago` |
+| Attachment SHA-256 | `7ce9d64c49960df6201b26d7e67d336604d35b0af0ef96ef2adc0f5907bf2dbd` |
+| Materialized path | `/tmp/convmem-kiro-replacement-backup-runner-20261014-r10.py` |
+| Result path | `/tmp/convmem-kiro-replacement-backup-result-20261014-r10.json` |
+| Valid local date | `2026-10-14` in `America/Chicago` |
 
 After same-revision Kiro/Copilot PASS and Ryan's exact grant, the one-shot
 operation would consist only of these commands from that exact checkout:
@@ -186,10 +204,10 @@ set -e
 if findmnt -rn -S /dev/sda1 -o TARGET; then
     exit 1
 fi
-cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py
-chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py
-printf '%s  %s\n' '4382b5fcc7442368ef120a13ce4ce6b5d75823b956ca400b5f28eaf310cf3eaf' '/tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py' | sha256sum --check --strict -
-exec /home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261012-r9.py --execute
+cp docs/inter-model/attachments/issue-286-kiro-replacement-backup-runner.py.txt /tmp/convmem-kiro-replacement-backup-runner-20261014-r10.py
+chmod 0700 /tmp/convmem-kiro-replacement-backup-runner-20261014-r10.py
+printf '%s  %s\n' '7ce9d64c49960df6201b26d7e67d336604d35b0af0ef96ef2adc0f5907bf2dbd' '/tmp/convmem-kiro-replacement-backup-runner-20261014-r10.py' | sha256sum --check --strict -
+exec /home/lauer/miniforge3/envs/convmem/bin/python3.11 -I -B /tmp/convmem-kiro-replacement-backup-runner-20261014-r10.py --execute
 ```
 
 The runner refuses an existing result path, including a dangling symlink. Its
@@ -267,15 +285,15 @@ remain evidence and are never deleted to hide a failed qualification.
 |---|---|
 | Mutable data root | `/home/lauer/.local/share/convmem` |
 | Detached runtime | clean `/tmp/convmem-kiro-bootstrap-e798bba` at `e798bba284c96642fc31229e6375eadc26986493` |
-| Current inventory digest | `9b7599818c1eaad927c07f46e1b9de2a175abc7cd152eba441868842ddebca12` |
-| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261012-r9.json` |
-| Inventory evidence SHA-256 | `12d585f11becc06defedee562f5719ff30ff4738a9305d32d7411151f8a3e189` |
+| Current inventory digest | `c827469cd23a5970192ac37e0d114d9d1af4fc2fbfaf74ca24f2898aa36aa3e5` |
+| Inventory evidence | `/tmp/convmem-kiro-current-mutation-inventory-20261014-r10.json` |
+| Inventory evidence SHA-256 | `888e67809256793fe0ec6cc2514b8c6feaa973e25a5c06a1f5167e65eed2aae8` |
 | Inventory procedure | `bootstrap_mutation_inventory` + `convmem-bootstrap-mutation-proof-v1` at runtime `e798bba…` |
 | Exact source | `/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_2628159e-d039-4646-a208-0a10a1b3e450/messages.jsonl` |
 | Source SHA-256 | `dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741` |
 | Source state ID | `13c4c30c5c644a1771f0372e1b16fde35ab8cd283c26f594b96f800aad3976d2` |
-| Config SHA-256 | `a0f88897f1c1b4b1da2f7027d4d1e0673e168cdb7c7d3ea6a40457bef39c3528` |
-| Authority timezone/date | `America/Chicago`; `2026-10-12` |
+| Config SHA-256 | `a8c279aafa0050f98c34717e40383d7f609230a875759827714614922c50e23b` |
+| Authority timezone/date | `America/Chicago`; `2026-10-14` |
 | Backup profile | `complete-data-v2` |
 | Restic executable | `/home/lauer/miniforge3/envs/convmem/bin/restic` |
 | Restic executable SHA-256 | `20683e7746b70e99dd0538cc2740abd222dbb6b3a6851071be9880e3fe02694c` |
@@ -283,7 +301,7 @@ remain evidence and are never deleted to hide a failed qualification.
 | Offsite block device | `/dev/sda1`, UUID `f1bd69b4-e567-4ef3-89ec-13faff0602e9` |
 | Offsite Restic repository | `/run/media/lauer/rxBUlauer-128Gfs/convmem-backups` |
 | Required backup path | `/home/lauer/.local/share/convmem` |
-| Required tags | `convmem-data-v2`, `convmem-2026-10-12`, `kiro-successor-preflight` |
+| Required tags | `convmem-data-v2`, `convmem-2026-10-14`, `kiro-successor-preflight` |
 | Maximum writes | one `/tmp` marker/result; one complete-data evidence update; one local snapshot; one offsite copy; no prune/delete |
 
 Any source, runtime, config, Chicago date, profile, executable, inventory,
@@ -321,7 +339,10 @@ be retried. The r7 backup-only grant at revision
 `17460c218bb38ea89025d56866dd5de9f8c0521f` is also consumed and must never
 be retried. The r8 backup-only grant at revision
 `de9b98a8fec1840a688bdec0f87cd879ea8d97b2` is also consumed and must never
-be retried. The sealed r3 bootstrap proposal at revision
+be retried. The r9 backup-only proposal at revision
+`a202d97955fc5846710b115516644acc9942a0fd` was never granted or executed,
+but its date, config, and inventory bindings are stale and it must never be
+used. The sealed r3 bootstrap proposal at revision
 `9d249d0c36dcf791ebc95e2516f94c5844b2b845` is unconsumed but stale and must
 never be executed or reused.
 
@@ -337,9 +358,12 @@ authorize that preparation or any bootstrap execution.
 
 ## TL;DR
 
-The r4 through r8 backup grants are consumed. R8 safely refused before mount
-or backup when an unrelated Safe Harbor pytest restarted; it restored all
-governed state and created no snapshot. R9 binds the unchanged config and
-writer-lease inventory after a longer quiet window, reserves fresh paths, and
-uses `exec` for the final launcher. It remains `NO-GO` pending same-revision
-Kiro/Copilot PASS and Ryan's separate exact execution grant.
+The r4 through r8 backup grants are consumed, and the ungranted r9 proposal is
+stale. R10 binds the October 14 date, current config, fresh writer-lease
+inventory, and new runner/result paths while preserving the reviewed one-shot
+behavior. It remains `NO-GO` pending same-revision Kiro/Copilot PASS, a clean
+live readiness check, an initially unmounted offsite device, and Ryan's
+separate exact execution grant.
+
+<!-- ref: ./attachments/issue-286-kiro-replacement-backup-runner.py.txt, ../plans/STATUS-codex-jsonl-production-integration.md — exact runner and current arc state -->
+<!-- src: /tmp/convmem-kiro-current-mutation-inventory-20261014-r10.json -->

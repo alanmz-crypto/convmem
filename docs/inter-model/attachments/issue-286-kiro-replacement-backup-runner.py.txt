@@ -27,14 +27,14 @@ INTERPRETER = Path("/home/lauer/miniforge3/envs/convmem/bin/python3.11")
 RESTIC_BIN = Path("/home/lauer/miniforge3/envs/convmem/bin/restic")
 RESTIC_BIN_SHA256 = "20683e7746b70e99dd0538cc2740abd222dbb6b3a6851071be9880e3fe02694c"
 CONFIG = Path("/home/lauer/.config/convmem/config.toml")
-CONFIG_SHA256 = "a0f88897f1c1b4b1da2f7027d4d1e0673e168cdb7c7d3ea6a40457bef39c3528"
+CONFIG_SHA256 = "a8c279aafa0050f98c34717e40383d7f609230a875759827714614922c50e23b"
 SOURCE = Path(
     "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/"
     "sess_2628159e-d039-4646-a208-0a10a1b3e450/messages.jsonl"
 )
 SOURCE_SHA256 = "dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741"
 SOURCE_STATE_ID = "13c4c30c5c644a1771f0372e1b16fde35ab8cd283c26f594b96f800aad3976d2"
-EXPECTED_INVENTORY = "9b7599818c1eaad927c07f46e1b9de2a175abc7cd152eba441868842ddebca12"
+EXPECTED_INVENTORY = "c827469cd23a5970192ac37e0d114d9d1af4fc2fbfaf74ca24f2898aa36aa3e5"
 DATA_ROOT = Path("/home/lauer/.local/share/convmem")
 LOCAL_REPOSITORY = "/home/lauer/.local/share/convmem-restic"
 OFFSITE_DEVICE = "/dev/sda1"
@@ -43,10 +43,10 @@ OFFSITE_MOUNT = Path("/run/media/lauer/rxBUlauer-128Gfs")
 OFFSITE_REPOSITORY = str(OFFSITE_MOUNT / "convmem-backups")
 OLD_LOCAL = "89aaf9ef40a1b07e95af09d0227382ce7333a4c897fd3f0da8c6382d62d63ecc"
 OLD_OFFSITE = "995102108a10ad222f615e7cf130feb7c56ebceac19c5eeb0ebdd0562b31a4a8"
-RUN_DATE = "2026-10-12"
+RUN_DATE = "2026-10-14"
 AUTHORITY_TIMEZONE = "America/Chicago"
-REQUIRED_TAGS = {"convmem-data-v2", "convmem-2026-10-12", "kiro-successor-preflight"}
-RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261012-r9.json")
+REQUIRED_TAGS = {"convmem-data-v2", "convmem-2026-10-14", "kiro-successor-preflight"}
+RESULT = Path("/tmp/convmem-kiro-replacement-backup-result-20261014-r10.json")
 BACKUP_EVIDENCE = DATA_ROOT / ".convmem-backup-evidence.json"
 LOCK = DATA_ROOT / "locks/chroma_writer_gate.lock"
 TIMERS = (
