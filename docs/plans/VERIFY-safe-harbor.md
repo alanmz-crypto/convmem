@@ -1856,5 +1856,84 @@ decision. Do not use a private production one-liner, alter live signatures, forc
 queue flushing or weaken release. Recovery artifact/loss-window inputs remain
 unanswered; no backup or deployment is authorized by these results.
 
+### Independent readiness review — Kiro PASS, exact subject retained
+
+**Arc: Safe Harbor. 2026-10-15.** Ryan authorized: “go: Next step: Bounded
+independent review, recovery inputs, then scope legacy initialization.” Kiro
+reviewed `f45b0513fc31df98d96d90f324bcad1fe893e2b5`, evidence delta from
+`5fa8e978e9605a4566a68795f850f667014fd1e9`, with runtime fixed at `c6f0724`.
+Codex remains the evidence author/coordinator, not its independent reviewer.
+
+**Final verdict: PASS for bounded evidence, high confidence; no blocking findings.**
+Operational readiness remains OPEN. This is neither Ryan's evidence acceptance
+nor approval of a future initializer, implementation, PR, merge or live operation.
+The scope proposal subsequently added to EXECUTION §22 was not part of this
+reviewed subject and has no inferred Kiro PASS.
+
+Kiro's file-only agent ran against a pinned source/evidence copy. Shell, writes,
+MCP, powers and hooks were disabled; no startup ritual or indexing. The coordinator
+inspected the tool transcript: file reads/search/listing and one static document-
+symbol query, all within the packet. Both reviewer invocations exited 0. All
+1,584 copied source hashes remained unchanged; no tests were rerun.
+
+The initial PASS overstated direct artifact coverage. Codex checked actual tool
+calls and requested completion in the **same session, unchanged candidate**.
+Kiro acknowledged the overstatement, read the missing clean-environment builder,
+new standalone files, raw logs/identities/JUnit and substantive stale-vector
+control bodies, and retained PASS. No third opinion or fresh full review occurred.
+
+Actual final scope: both new test/launcher files in full; bootstrap and Python
+network hook; relevant environment-builder/full_ci helpers; the guard's skip,
+refresh, source-binding, preservation and release paths; all three runs' logs,
+JUnit and identity files; selected raw-summary fields and the compact evidence
+index; existing backend/matrix stale-vector and census-only assertion bodies.
+Summary hash maps were sampled as recorded evidence, **not independently rehashed
+by Kiro**. Runtime-unchanged/source-drift conclusions use the provided Git delta,
+coordinator hash evidence and inspected launcher checks. Recorded runs were not
+re-executed. The review does not cover the entire accepted T1–T5 implementation.
+
+Accepted conclusions:
+
+- The 83 existing interpreter cases plus five final legacy cases are supported
+  by recorded results; the historical four-case run is not extra coverage.
+- The legacy checks exercise real skip, source refusal before replacement,
+  preservation/pruning, completed repair and strict release paths. The actual
+  census-only faulty-policy control loses containment where strict release refuses.
+- The positive case is synced single-segment synthetic state. Pending-work
+  refusal does not become eligibility merely because a fresh manifest exists.
+  Kiro corrected an imprecise numerical watermark claim: exact `meta=/vec=`
+  integers were not emitted in the passing logs; the asserted and traced outcome
+  is `watermark_drift`. Record counts are not independently measured watermark IDs.
+- The Python-network and power-loss limits are honest. No public live initializer
+  or qualified recovery artifact is claimed.
+
+Kiro permits **scoping**, with these constraints: durable preservation before
+pruning; multi-segment and pending-work handling; a reviewed public entrypoint;
+no queue flush, fabricated evidence or weaker release predicate; independent
+recovery qualification still required. Its optional historical-JUnit digest note
+requires no correction and adds no acceptance condition.
+
+Review packet: `/tmp/safe-harbor-readiness-review-eu14g7dg`, Kiro session
+`sess_4fba2f39-2e32-4872-a687-687aec5708e4`. Temporary raw artifacts are local;
+this committed disposition survives independently:
+
+- Initial stream `review.jsonl` SHA-256
+  `b939077253b3f9ae7aadbb4bb41cf69385c9557ddf963e89a2e8b76bbc492ced`.
+- Coverage completion `completion.jsonl` SHA-256
+  `23fba67720aec9a1f0fb69a6e5be3d51d249593b52bdd619a9df14c89dd1ba8c`.
+- Initial text `review-text.txt` SHA-256
+  `872d9555f2a56de8e4b8fe7fbc1cdace19b2e3b3915737aca452b44afedd0f54`;
+  completion text `completion-text.txt`
+  `2124f1b81a6ed5e25e71b2f2b18a031bfa69f4ec54b17268eaddb177897c53f6`.
+- Initial supervisor result `result.json`
+  `2f5b7f6b98605f7b4e88f74ab8c16dcdd08a78e95e1174d9a31ce95884b3b1f1`;
+  completion result `completion-result.json`
+  `7f58bfc12ece542034ebcd819e08522012c7418b34e551d40d77637ce350b108`.
+
+Recovery questions were sent to Ryan; no answer was supplied before this record.
+Maximum lost work, newest image completion/scope/location, independent key access
+and restore/check history remain unanswered. Scoping uses explicit prerequisites,
+not inferred acceptance or invented recovery facts.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md, ../../tests/_safe_harbor_rollout_evidence.py, ../../tests/test_safe_harbor_rollout_legacy.py — operational readiness evidence and current routing -->
 <!-- src: EXECUTION-safe-harbor.md — grants and retained limits -->

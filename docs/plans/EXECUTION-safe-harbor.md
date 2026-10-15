@@ -877,5 +877,144 @@ still refuses release and a scratch copy is not a durable archival protocol.
 An operational entrypoint/procedure remains a separate bounded decision. This
 result does not grant implementation, independent review, a PR or live operations.
 
+## 21. Readiness review and initialization scoping — owner authorized
+
+**Arc: Safe Harbor. 2026-10-15.** Ryan authorized: “go: Next step: Bounded
+independent review, recovery inputs, then scope legacy initialization.”
+
+Kiro's bounded static review of `f45b0513fc31df98d96d90f324bcad1fe893e2b5`
+returned PASS with high confidence, retained after a same-session coverage
+completion on the unchanged candidate. [VERIFY](VERIFY-safe-harbor.md#independent-readiness-review--kiro-pass-exact-subject-retained)
+records actual coverage, the initial overstatement/correction and remaining
+limits. No new tests, production commands or runtime edits were run for review.
+
+Recovery questions have been sent; answers remain pending. The proposed scope
+below therefore preserves recovery qualification as an unresolved prerequisite.
+It is Codex's new planning artifact, not part of Kiro's reviewed `f45b051` or an
+Execute grant. Implementation, PR/CI, merge, backup/restore and deployment remain
+unauthorized. No other arc ownership or accepted T1–T5 contract changes.
+
+## 22. Bounded legacy-source initialization — proposed scope, not a grant
+
+### Decision and boundary
+
+The missing operation is deliberate creation of evidence-bearing local segment
+saves when unchanged legacy CURRENT generations lack evidence. Ordinary reconcile
+skips them; an old source cannot be used for bounded repair without that evidence.
+The proposed solution is one explicit operation on the **existing guard and CLI**,
+not a migration framework, new recovery authority or change to ordinary writes.
+
+Proposed entrypoint: `scripts/chroma_guard.py initialize-legacy`. Default behavior
+is a read-only preview; applying it requires explicit canonical Chroma root, a
+fresh archive destination, the preview's expected-state digest and an apply
+flag. Exact arguments/output schema require the scope's governing review. There
+is no implicit config-selected production target, startup hook, timer, environment
+bypass or automatic first-write initialization. A digest binds state; it is not
+an owner authorization token.
+
+Alternatives considered: generic reconcile does not initialize matching saves;
+deleting CURRENT or changing signatures to force it conceals the intended
+operation and risks pruning originals. A private-method production one-liner
+omits a supported admission/preservation contract. These are not permitted routes.
+
+### Required behavior
+
+1. **Preview and binding.** Inspect existing state without opening a Chroma client
+   or changing corpus/guard files. Enumerate the complete expected segment set,
+   CURRENT bytes, generation manifests/files and backend identity. Bind the
+   preview digest to canonical target plus these inputs; show existing eligible,
+   legacy, unavailable and unexpected states distinctly. Refuse ambiguous paths,
+   symlinks, incomplete generations or unknown schema. Do not reinterpret an
+   already initialized or partially initialized store as a new legacy operation.
+2. **Admission and complete precheck.** A later apply acquires the existing native
+   lock, rechecks quarantine/target/digest, and keeps a read-only SQLite transaction
+   across validation and capture. All affected segments must pass structural,
+   identity, census and the **existing strict empty-changed-set predicate** before
+   the first CURRENT publication or prune. A mixed eligible/ineligible set refuses
+   as a whole before publication. Old clients/incidental writers still require the
+   separately granted maintenance quiescence; these locks are not a global freeze.
+3. **Durable originals before pruning.** Archive every affected original generation
+   and exact CURRENT bytes outside the Chroma/guard prune trees. The explicit
+   destination must be fresh, non-overlapping and free of symlink redirection;
+   never overwrite/reuse an existing archive. Copy/verify originals, fsync files
+   and created directory entries, then publish/fsync a write-once completion
+   manifest binding target, original inputs and digests. Recheck original state
+   before accepting completion. Any copy/hash/space/fsync failure prevents CURRENT
+   changes and pruning. The archive is evidence/rollback material, not a second
+   authority or a substitute for the qualified recovery artifact.
+4. **Create new saves, leave the corpus alone.** Reuse existing snapshot capture
+   and validation under the locks after complete archival. Do not add release
+   evidence to an old manifest. Create new generations, verify their identities,
+   digests and strict evidence, and then publish their CURRENT pointers. Preserve
+   existing ordinary capture behavior; any helper factoring must keep it covered.
+   No queue flush, embedding/indexing, repair, automatic release or SQLite write.
+5. **Multiple segments and interruption.** Success means every expected segment's
+   newly selected generation has passed the stated checks and its required
+   publication durability has completed. There is **no claim of atomic publication
+   across all CURRENT files**. A failure after one segment's publication reports
+   partial/uncertain completion with observed old/new references and archive
+   identity; it must not claim rollback or automatically resume consumers. Keep
+   the completed archive. The maintenance hold remains an operational prerequisite.
+   Inspect actual state before a newly authorized continuation; no blind retry,
+   rollback of pointers, archive overwrite or automatic cleanup is included.
+6. **Reporting and fail-closed limits.** Report preview/refusal/complete/partial-or-
+   uncertain results explicitly, using the existing event/output surfaces rather
+   than a new ledger. A required event/fsync failure after publication is uncertain
+   completion, not absence of effects. Quarantine, pending work (`watermark_drift`
+   or `queue_pending`), unavailable evidence, backend mismatch or unexpected state
+   stops the operation. Never clear an incident or change the release predicate.
+
+### Proposed implementation boundary and evidence
+
+If approved later, Cursor would implement in an isolated worktree. Allowed runtime
+surfaces would be `chroma_write_guard.py` and `scripts/chroma_guard.py` only, reusing
+existing durable-copy/publication, canonical identity and guard primitives. Focused
+synthetic tests/helpers may extend the rollout legacy tests under the existing
+bootstrap. Documentation may update this scope, ROLLOUT/VERIFY/STATUS and the CLI
+operator guidance. No dependency, workflow/lint-baseline, backup resolver/profile,
+governed recovery, watch/service, general HOLD or other-arc authority changes.
+A needed surface/contract expansion returns before implementation.
+
+Minimum isolated acceptance evidence:
+
+- Two populated legacy segments: complete preview, durable archive, both fresh
+  sources strict-admissible; corpus bytes unchanged; original archived bytes and
+  CURRENT references retained. Test the actual public command, not only helpers.
+- One synced segment plus one pending/ineligible segment: refuse before either
+  CURRENT changes; never force eligibility. Unknown authority, changed digest,
+  wrong target, alias retarget, unexpected segment/schema and existing destination
+  also refuse without erasing source/incident state.
+- Archive short write/hash mismatch/file and directory fsync failures: no publish
+  or prune. A real faulty omit-archive control must fail the retention assertion.
+- Interrupt before archival completion, before first CURRENT publication and
+  after the first of two publications. Restart inspection distinguishes old,
+  partial and complete state; retained originals survive; neither retry nor a
+  failed final event/fsync falsely reports rollback or global success.
+- Missing/unavailable/mismatched evidence remains refused; existing stale-vector
+  and census-only negative controls remain meaningful. Preserve ordinary snapshot,
+  incident, repair and release behavior with affected regressions under isolation.
+
+Fsync/fault/restart evidence establishes implementation boundaries, not hardware
+power-loss survival. No new tests or implementation are authorized by this scope.
+Independent review and owner acceptance remain required for a later candidate.
+
+### Recovery and live-operation gate
+
+Ryan's maximum lost-work interval and newest completed Rescuezilla image
+(date, scope, location, independent access and restore/check history) remain open.
+The mounted ext4 drive is an available capacity option, not the selected archive
+destination or a qualified recovery point. Do not touch it under this scope.
+
+Scope review may proceed with those values explicitly unresolved. No live apply
+may proceed until a qualified recovery artifact, original-state preservation,
+exact target/archive paths, process/timer quiescence, selected interpreter/revision
+and stop/continuation procedure are reviewed and separately granted. If real
+pending work prevents the strict precheck, return that concrete state for a
+separate decision; there is no implicit repair/flush permission.
+
+**Next decision:** governing review of this proposed scope and Ryan's recovery
+inputs; then a separate bounded implementation/evidence grant if accepted. Kiro's
+PASS at `f45b051` validates the preceding evidence only, not this new interface.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->

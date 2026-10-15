@@ -166,8 +166,9 @@ strict release/stale-vector controls, alias admission and uncertain approval
 publication/concurrency. **Five legacy cases passed**, including an actual
 refresh/restore/release positive case and pending-work refusal. No skips or source
 drift; runtime stays `c6f0724`. [VERIFY's readiness record](VERIFY-safe-harbor.md#isolated-rollout-readiness--installed-interpreter-and-legacy-state)
-pins source, selection, logs, identities and limits. Author evidence awaits
-bounded independent review; it is not a full Python 3.11 suite or deployment PASS.
+pins source, selection, logs, identities and limits. Kiro's bounded evidence
+review PASS is pinned to `f45b051`, after same-session coverage completion. It is
+not a full Python 3.11 suite, owner acceptance or deployment PASS.
 
 The legacy rehearsal establishes the existing mechanism, not a live command:
 the test archives old bytes outside the prune tree, then invokes the private
@@ -175,10 +176,12 @@ refresh under the native lock. A synced fixture becomes releasable; a fixture
 with pending work still refuses `watermark_drift`, even after successful repair.
 No queue flush or database mutation is performed by refresh. The ordinary scratch
 archive copy is not a power-loss-qualified archival procedure. The public CLI has
-no explicit unchanged-generation initializer. Selecting and authorizing a bounded
-operational entrypoint with durable preservation remains necessary; no private
-production one-liner is provided. Multiple live segments and actual pending work
-remain to be handled under that separately reviewed procedure.
+no explicit unchanged-generation initializer. [EXECUTION §22](EXECUTION-safe-harbor.md#22-bounded-legacy-source-initialization--proposed-scope-not-a-grant)
+now proposes the bounded entrypoint: whole-set eligibility, durable originals
+before prune, new saves only, and honest partial/uncertain completion. This later
+scope was not part of Kiro's `f45b051` review and is not implemented or granted.
+No private production one-liner is provided. Multiple live segments and actual
+pending work remain to be handled under that separately reviewed procedure.
 
 ### Decisions still open
 
@@ -186,11 +189,11 @@ remain to be handled under that separately reviewed procedure.
    operation. Name the exact image/snapshot and independent key path. Obtain a
    separately scoped capture/qualification grant if required. Preserve the
    pre-incident image. The proposed extra drive has capacity, not proven protection.
-2. **Interpreter:** review the completed focused Python 3.11 evidence and its
-   explicit coverage limits. No dependency upgrade, interpreter switch or full
-   environment certification is implied by 83 selected passing cases.
-3. **Legacy generations:** review the five synthetic cases and select a bounded
-   operational entrypoint before choosing its exact live action.
+2. **Interpreter:** Kiro has reviewed the focused Python 3.11 evidence and its
+   limits. Ryan's operational choice/acceptance remains pending. No dependency
+   upgrade, interpreter switch or full environment certification is implied.
+3. **Legacy generations:** review the proposed EXECUTION §22 scope, then grant
+   its bounded implementation/evidence separately if accepted.
    Preserve original guard/generation bytes and CURRENT references before any
    refresh can prune them; do not fabricate release evidence for the old saves.
    Prefer an explicitly authorized, validated new generation using existing guard
@@ -330,13 +333,14 @@ installed-interpreter and legacy mechanisms now have focused evidence; recovery
 qualification, an operational initialization entrypoint and rollout approval remain
 open. These are concrete remaining steps, not a request to redo T1–T5 reviews.
 
-Next: obtain bounded independent review of the new evidence, and Ryan's recovery
-inputs (acceptable lost-work interval, newest image completion/scope/location,
-independent access and restore/check history). Scope the legacy initialization
-operation separately, including durable preservation, multi-segment handling and
-refusal when the strict oracle cannot pass. Then finish operational review and
-request an exact execution decision. No reviewer, PR, live operation or runtime
-fix is invoked by recording this recommendation.
+Kiro's bounded evidence review is complete. Next: Ryan's recovery inputs
+(acceptable lost-work interval, newest image completion/scope/location,
+independent access and restore/check history), and governing review of the new
+EXECUTION §22 initializer scope. No recovery answer has been inferred. Later
+implementation and evidence must address durable preservation, multiple segments
+and refusal when the strict oracle cannot pass. Then finish operational review
+and request an exact execution decision. No further reviewer, PR, live operation
+or runtime fix is invoked by recording this recommendation.
 
 **Suggested documentation PR title:** Prepare Safe Harbor rollout against the current runtime
 

@@ -9,14 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T1–T5 merged; isolated rollout evidence returned (2026-10-15):**
+- **Arc Safe Harbor — readiness evidence PASS; initializer scope drafted (2026-10-15):**
   PR #394 is tree-identical to the accepted candidate; [VERIFY closeout](../plans/VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping)
   records hosted CI and Ryan's exact-tip outage exception.
-  Codex returned the [preflight, rollout draft and focused readiness evidence](../plans/ROLLOUT-safe-harbor.md#3-readiness-decisions-before-activation).
-  **Next lane: Ryan**, for recovery/loss-window inputs and bounded independent
-  review; a supported legacy initialization procedure remains unresolved.
+  Kiro PASSed bounded readiness evidence at `f45b051`, with coverage corrected in
+  the same session. Codex drafted [the initializer scope](../plans/EXECUTION-safe-harbor.md#22-bounded-legacy-source-initialization--proposed-scope-not-a-grant).
+  **Next lane: Ryan**, for pending recovery/loss-window facts and governing scope
+  review; the proposal is not implemented or covered by that evidence PASS.
   [STATUS](../plans/STATUS-safe-harbor.md) carries results and current gates.
-  No runtime fix, PR, service change, live backup/restore or deployment is granted.
+  No implementation, PR, service change, live backup/restore or deployment is granted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
