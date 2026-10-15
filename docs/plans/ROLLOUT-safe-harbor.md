@@ -3,7 +3,9 @@
 **Arc: Safe Harbor. DRAFT; NOT AN EXECUTION GRANT.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
 (America/Chicago). T1–T5 are accepted and merged. Deployment readiness is **OPEN**.
-No service change, corpus write, backup, restore, audit, repair or release was run.
+No production service change, corpus write, backup, restore, audit, repair or
+release was run. The later authorized synthetic readiness evidence is recorded
+below; it changes neither the deployed runtime nor this draft's execution status.
 
 **Goal:** bring the accepted recovery/incident contracts into service without losing
 the ability to recover or allowing old processes to undermine incident authority.
@@ -29,8 +31,9 @@ No reviewer was invoked by preparing this document.
   Recovery Authority T4/V4k limits remain unchanged. This procedure neither
   closes the Hybrid capture-consistency audit nor qualifies continuous Restic
   capture. Watch activation and other arcs' live canaries are excluded.
-- Current grant: read-only observations plus this documentation. Future command
-  examples below are review material, not commands to execute under this grant.
+- Current bounded evidence slice (EXECUTION §20) is complete: installed-interpreter
+  checks and synthetic legacy-state rehearsal only. Future command examples below
+  remain review material, not commands to execute under that grant.
 
 ## 2. Observed preflight, with limits
 
@@ -86,7 +89,8 @@ qualification, rather than silently move all clients to a different environment:
   The hnswlib binaries differ by Python ABI. Production binary SHA-256 is
   `e2338cb057f75eb0d84d856f1626d56d876703c47278772ee48e2c6c31d7073d`.
   Matching Rust bytes are useful identity evidence, not proof that the complete
-  Python 3.11 environment passes the candidate. No tests/import probes ran here.
+  Python 3.11 environment passes the candidate. No tests/import probes ran during
+  that preflight; the subsequent focused run is recorded in section 3 below.
 
 ### Targets and existing guard state
 
@@ -121,6 +125,8 @@ guaranteed evidence upgrade nor an inspection: it can restore damaged segments.
 Do not invent evidence for an old generation or induce an ordinary write to
 “initialize” the new format. A restore using a generation without evidence can
 remain contained with no validated release available under the strict oracle.
+The synthetic rehearsal now confirms that missing evidence refuses source binding
+before replacement: the torn files remain and the incident cannot be released.
 
 ### Recovery resources
 
@@ -152,23 +158,45 @@ remain contained with no validated release available under the strict oracle.
 
 ## 3. Readiness decisions before activation
 
+### Completed isolated evidence; remaining operational gap
+
+Codex used the installed production Python 3.11.15 and actual packages on
+synthetic roots only. **83 existing safety cases passed**, including real backend,
+strict release/stale-vector controls, alias admission and uncertain approval
+publication/concurrency. **Five legacy cases passed**, including an actual
+refresh/restore/release positive case and pending-work refusal. No skips or source
+drift; runtime stays `c6f0724`. [VERIFY's readiness record](VERIFY-safe-harbor.md#isolated-rollout-readiness--installed-interpreter-and-legacy-state)
+pins source, selection, logs, identities and limits. Author evidence awaits
+bounded independent review; it is not a full Python 3.11 suite or deployment PASS.
+
+The legacy rehearsal establishes the existing mechanism, not a live command:
+the test archives old bytes outside the prune tree, then invokes the private
+refresh under the native lock. A synced fixture becomes releasable; a fixture
+with pending work still refuses `watermark_drift`, even after successful repair.
+No queue flush or database mutation is performed by refresh. The ordinary scratch
+archive copy is not a power-loss-qualified archival procedure. The public CLI has
+no explicit unchanged-generation initializer. Selecting and authorizing a bounded
+operational entrypoint with durable preservation remains necessary; no private
+production one-liner is provided. Multiple live segments and actual pending work
+remain to be handled under that separately reviewed procedure.
+
+### Decisions still open
+
 1. **Recovery point:** Ryan supplies maximum lost work for maintenance and routine
    operation. Name the exact image/snapshot and independent key path. Obtain a
    separately scoped capture/qualification grant if required. Preserve the
    pre-incident image. The proposed extra drive has capacity, not proven protection.
-2. **Interpreter:** authorize isolated candidate verification with production
-   Python 3.11.15 and its actual installed packages, through the existing bootstrap
-   and synthetic roots. Include release positive/stale-vector controls and
-   target-bound recovery/uncertain-publication cases. No production config,
-   corpus or provider. Failure returns for a bounded decision; no dependency
-   upgrade or test weakening is implied. This run is not performed by this draft.
-3. **Legacy generations:** review and rehearse a bounded initialization procedure
-   on isolated representative legacy state before selecting its exact live action.
+2. **Interpreter:** review the completed focused Python 3.11 evidence and its
+   explicit coverage limits. No dependency upgrade, interpreter switch or full
+   environment certification is implied by 83 selected passing cases.
+3. **Legacy generations:** review the five synthetic cases and select a bounded
+   operational entrypoint before choosing its exact live action.
    Preserve original guard/generation bytes and CURRENT references before any
    refresh can prune them; do not fabricate release evidence for the old saves.
    Prefer an explicitly authorized, validated new generation using existing guard
-   mechanics. If that needs an implementation change or cannot establish the
-   oracle, return the concrete gap to Codex/Ryan. No private-method production
+   mechanics. The existing public CLI lacks that explicit operation; a separately
+   bounded procedure/tool decision is needed. If the actual store has pending
+   work, creating a manifest alone cannot establish the oracle. No private-method production
    one-liner, forced queue flush, census-only release or generic reconcile fallback.
 4. **Process/service manifest:** name the owners of MCP parents, manual indexing
    and all launch paths. Agree the maintenance window and prevent respawn before
@@ -297,27 +325,29 @@ this drafting grant does not permit emergency service manipulation.
 
 ## 6. Completion and next bounded work
 
-This draft completes the authorized read-only preflight and procedure authoring.
-It does not close recovery qualification, interpreter qualification, legacy-state
-initialization or rollout approval. The remaining procedure gaps are explicit.
+The authorized preflight/draft and isolated readiness slice are complete. The
+installed-interpreter and legacy mechanisms now have focused evidence; recovery
+qualification, an operational initialization entrypoint and rollout approval remain
+open. These are concrete remaining steps, not a request to redo T1–T5 reviews.
 
-Next useful work is one bounded isolated readiness slice covering production-
-interpreter verification and representative legacy-generation initialization,
-while Ryan supplies the backup/loss-window facts. Return that evidence and the
-finished operational procedure for Kiro review, then an exact Ryan execution
-decision. Do not reopen the completed T1–T5 implementation reviews without new
-evidence requiring it. No tests, live changes, PR or reviewer invocation follow
-from this recommendation.
+Next: obtain bounded independent review of the new evidence, and Ryan's recovery
+inputs (acceptable lost-work interval, newest image completion/scope/location,
+independent access and restore/check history). Scope the legacy initialization
+operation separately, including durable preservation, multi-segment handling and
+refusal when the strict oracle cannot pass. Then finish operational review and
+request an exact execution decision. No reviewer, PR, live operation or runtime
+fix is invoked by recording this recommendation.
 
 **Suggested documentation PR title:** Prepare Safe Harbor rollout against the current runtime
 
 **Prepared body (not a PR-creation grant):** Codex records Ryan's T5 merge and the
 read-only deployment preflight, then drafts the rollout/rollback sequence. It
 identifies old MCP processes, shared-checkout backup routing, missing audit units,
-unqualified Python 3.11 execution and legacy generations without release evidence.
+legacy generations without release evidence. Follow-up synthetic checks give 83
+installed-Python safety passes and five legacy-state passes, with explicit limits.
 No runtime or live state changed. Read this procedure, STATUS and VERIFY before
-granting the isolated readiness slice or later operations. **TL;DR:** deployment
-remains gated on concrete recovery, interpreter and state-adoption evidence.
+granting review or later work. **TL;DR:** deployment remains gated on recovery
+qualification and a reviewed, preserved legacy-state initialization procedure.
 
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->

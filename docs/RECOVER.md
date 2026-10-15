@@ -278,7 +278,8 @@ If Chroma itself is corrupt, restore from Restic (above) before reindexing.
 records the resolved correction, hosted CI, owner exception and identical-tree squash.
 These instructions describe the implemented contract, not live authority.
 [The rollout/rollback draft](plans/ROLLOUT-safe-harbor.md) records the subsequent
-read-only preflight and unresolved recovery/interpreter/legacy-state prerequisites.
+read-only preflight, subsequent focused interpreter/legacy evidence, and remaining
+recovery/initialization prerequisites. Its readiness section is the current pointer.
 
 ### Stop, inspect and preserve
 

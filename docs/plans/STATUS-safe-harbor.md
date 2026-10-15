@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** The [rollout draft](ROLLOUT-safe-harbor.md) records the authorized read-only preflight. Deployment remains pending recovery qualification, interpreter evidence, legacy-generation handling and a reviewed operational grant. Merged code is not deployed runtime.
+> **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** The [rollout draft](ROLLOUT-safe-harbor.md) now includes 83 installed-interpreter safety passes and five synthetic legacy-state passes. Bounded independent review, recovery qualification, an operational legacy initializer and rollout authorization remain open. Merged code is not deployed runtime.
 
 ## 1. What This Is For (product goal)
 
@@ -40,32 +40,34 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Observed deployed checkout:** clean runtime-main at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`, four Safe Harbor commits behind the candidate. Long-lived MCP processes predate its last update; disk identity does not establish loaded code identity.
 - **Operational preflight/draft:** [ROLLOUT](ROLLOUT-safe-harbor.md) records the October 14 local observations and conditional sequence. Watch is stopped/disabled; reconcile/backup/digest timers are active. Backups still run the shared feature checkout under system Python. Audit units are absent.
 - **Existing guard state:** two matching legacy snapshot generations lack release evidence; no quarantine marker was present at inspection. Candidate reconciliation skips unchanged signatures, so it does not initialize these generations automatically. No production validation/adoption ran.
+- **New isolated readiness evidence:** `tests/_safe_harbor_rollout_evidence.py` runs a fixed selection under the reviewed bootstrap; `tests/test_safe_harbor_rollout_legacy.py` rehearses representative old manifests. [VERIFY readiness](VERIFY-safe-harbor.md#isolated-rollout-readiness--installed-interpreter-and-legacy-state) records source pins, results and limitations. Runtime is unchanged; no production initialization command was added.
 
 ## 4. Completion State
 
 - Approved direction/name, every-restore owner disposition, execution plan and B-E4.1 remain settled. Ownership and gate exemptions are unchanged.
 - **Implementation and integrated verification complete:** T1–T5 / V1–V6 accepted and merged. BugBot reviewed no accepted SHA; each owner exception remains bound to its own candidate.
 - **Latest hosted evidence:** PR #394 head `188184b`, run `38668689296`, all six checks passed; Python 3.12 pytest 3,283 passed / 18 skipped / 252 passing subtests; critical collector exit 0; lint regression gate PASS against unchanged `fdc8da7` baseline. Raw lint status 30 is not a lint-clean result.
-- **Deployment readiness OPEN:** retain production Python 3.11.15 only after isolated qualification; existing local proof used Python 3.13 and hosted proof 3.12. Old processes, timer routing, legacy generations and recovery inputs require the named dispositions in ROLLOUT.
+- **Focused Python 3.11 evidence complete, author review only:** 83 existing safety cases passed under the installed production environment; five new legacy cases passed. No skips/source drift. This is not the whole suite, hosted CI or independent acceptance of the new harness/tests.
+- **Deployment readiness OPEN:** old processes, timer routing, recovery inputs and an operational legacy initializer still require the named dispositions in ROLLOUT. The scratch refresh can create admissible evidence for synced state, but pending work still blocks release. Archival byte retention in tests is not a durable production archival procedure.
 - The key-copy file is now present on the mounted BIT-Brg drive; contents/equality/off-machine use were not checked. The new ext4 destination is mounted and empty at top level. No current Rescuezilla artifact or accepted lost-work interval is established by this preflight.
 - Limits remain: historical T5-F1 exact causal timeline unproven; fixture restart/IO injection is not hardware power-loss proof; strict release may refuse recoverable states; auxiliary sink and incidental-writer limits remain as accepted.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** supply lost-work interval and newest recovery-artifact details. The isolated readiness slice is granted; no deployment or live backup/restore operation is authorized.
+**Ryan:** supply lost-work interval and newest recovery-artifact details; decide the bounded evidence review and later legacy-initialization scope. No deployment or live backup/restore operation is authorized.
 
-**Codex:** execute only the bounded synthetic interpreter/legacy-state evidence in EXECUTION section 20, then return results and update the rollout readiness. Runtime fixes and live initialization remain ungranted.
+**Codex:** the EXECUTION section 20 evidence slice is returned. Keep the exact runtime/coverage limits and the unresolved initializer explicit. Kiro is the proposed next reviewer of this evidence and operational procedure; no review has been invoked. Runtime fixes and live initialization remain ungranted.
 
 ## 6. What Remains Before "Live" (sequential)
 
 1. Resolve recovery artifact, independent access/custody and acceptable loss interval; any new capture or scratch restore needs its own bounded grant.
-2. Obtain isolated evidence for the actual production interpreter and the specific legacy-generation initialization procedure. No automatic first-write migration or generic reconcile fallback.
-3. Review the exact operational procedure: all old clients/manual writers, timer routing, audit publication, guard preservation/adoption and conditional rollback. Keep watch stopped/disabled and retain other arcs' limits.
+2. Independently review the completed 83+5 focused evidence; scope a supported, bounded legacy initialization operation with durable preservation and multi-segment handling. The existing mechanism passed on scratch, but no live entrypoint/procedure is qualified. Pending work is a refusal, not permission to flush or weaken release.
+3. Review the complete operational procedure: all old clients/manual writers, timer routing, audit publication, guard preservation/adoption and conditional rollback. Keep watch stopped/disabled and retain other arcs' limits. No automatic first-write migration or generic reconcile fallback.
 4. Ryan grants only the named rollout transitions after those prerequisites pass. Record actual deployed identities and granted diagnostics afterwards. No implementation PASS or merge implies live recovery assurance.
 
 ## 7. Hard Stops (models cannot cross)
 
-- Current grant is isolated interpreter/legacy-state evidence under EXECUTION section 20. No service change, production corpus write, live backup/restore, deployment, runtime fix, paid review trigger, PR creation, ledger write or session indexing. Only selected metadata/config/process/journal observations were used; no credential contents or project entrypoints were opened.
+- EXECUTION section 20's isolated evidence slice is complete. No service change, production corpus write, live backup/restore, deployment, runtime fix, review trigger, PR creation, ledger write or session indexing. Project entrypoints ran only inside synthetic fixtures; no production config/data or credential contents were opened in this slice.
 - Guard containment is cooperative. A publication/removal durability failure may require separately authorized process-level containment; do not claim a marker is a durable stop merely because bytes are visible.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
 - Gate PASS is availability/freshness/path evidence; zero missing vector IDs is not semantic integrity. Neither substitutes for exact-artifact recovery qualification.
@@ -93,6 +95,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-15 — Codex: returned 83 installed-Python safety passes and five legacy-state passes; operational initializer, recovery inputs and independent review remain open, with runtime unchanged.
 
 - 2026-10-15 — Codex: recorded bounded isolated interpreter/legacy-state evidence grant; live operations and runtime fixes remain excluded.
 
@@ -203,7 +207,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1–T5 are accepted and merged. The read-only rollout preflight is complete; recovery qualification, production-interpreter evidence and legacy-state initialization remain open before reviewed deployment.
+[Arc Safe Harbor] T1–T5 are accepted and merged. The rollout preflight and 83+5 focused readiness cases are complete. Independent review, recovery qualification and an operational legacy initializer remain open before reviewed deployment.
 
 <!-- ref: ROLLOUT-safe-harbor.md — operational readiness and proposed sequence -->
 <!-- src: VERIFY-safe-harbor.md — accepted implementation, hosted evidence and merge mapping -->

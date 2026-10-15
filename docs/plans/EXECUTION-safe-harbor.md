@@ -865,5 +865,17 @@ Recovery artifact, lost-work interval and independent-access inputs remain Ryan'
 Return recorded evidence and updated rollout status for bounded independent
 review. Do not turn test-only private-helper access into an operational grant.
 
+**Returned:** installed Python 3.11.15 selection at `a6c7adb` passed 83 existing
+safety cases; final legacy selection at `7788028` passed five cases. No skips or
+source drift; runtime stays `c6f0724`. [VERIFY readiness](VERIFY-safe-harbor.md#isolated-rollout-readiness--installed-interpreter-and-legacy-state)
+records exact selections and local artifact digests. The early four-case legacy
+run is historical, not additional coverage. No full suite/lint/hosted CI rerun.
+
+The public CLI lacks an explicit unchanged-generation initializer. Private refresh
+works in a synced synthetic fixture after preserving old bytes, but pending work
+still refuses release and a scratch copy is not a durable archival protocol.
+An operational entrypoint/procedure remains a separate bounded decision. This
+result does not grant implementation, independent review, a PR or live operations.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->

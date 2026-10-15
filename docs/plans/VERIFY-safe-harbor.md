@@ -1735,5 +1735,126 @@ restores ran. Recovery artifact and production-interpreter/state-adoption
 qualification remain open; this is operational planning evidence, not V7 or a
 new implementation acceptance gate.
 
-<!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — operational preflight and current routing -->
+## Isolated rollout readiness — installed interpreter and legacy state
+
+**Arc: Safe Harbor. Codex author evidence, 2026-10-15; independent review pending.**
+Ryan authorized EXECUTION §20. Runtime remains byte-identical to merged candidate
+`c6f07241ccf1a71d9d874fee963a37b04091b3ce`. This slice adds a stdlib evidence
+launcher and synthetic legacy tests, not a runtime fix or live initialization tool.
+The shared checkout, runtime-main, services, production corpus and backups were
+not changed. No ConvMem startup ritual, MCP, session indexing or provider call.
+
+### Reproduction and execution identity
+
+From `feat/2026-10-15-safe-harbor-rollout-evidence`, the exact launcher entry is:
+
+```sh
+/home/lauer/miniforge3/envs/convmem/bin/python -I -S -B tests/_safe_harbor_rollout_evidence.py interpreter
+/home/lauer/miniforge3/envs/convmem/bin/python -I -S -B tests/_safe_harbor_rollout_evidence.py legacy
+```
+
+The launcher requires the already present `/tmp/safe-harbor-restic-tool/restic`;
+the existing verifier checks its pinned checksum/version. It downloads nothing.
+It reuses the reviewed bootstrap, a fresh allowlisted `full_ci` fixture environment,
+inert provider endpoints, uid/euid binding and pre-import Python network refusal.
+All project imports run after fixture setup. `full_ci` here names the fixture
+profile, **not** full-suite coverage. The selected argv are fixed in the launcher.
+Each invocation owns a separate `/tmp/safe-harbor-rollout-*` root. A nonzero exit,
+timeout, source drift, unexpected Python network attempt, missing JUnit results or
+any skipped/failed/error case prevents launcher PASS.
+
+Observed executable: `/home/lauer/miniforge3/envs/convmem/bin/python`, Python
+3.11.15, uid/euid 1000; chromadb 1.5.9, hnswlib 0.8.0, NumPy 2.4.6, pytest 9.1.1.
+Chroma Rust binding SHA-256:
+`a9794735847c3a78c15931d869cee8368fddbb10048c3d098bc09a14130075ad`;
+hnswlib CPython 3.11 binding SHA-256:
+`e2338cb057f75eb0d84d856f1626d56d876703c47278772ee48e2c6c31d7073d`.
+These match the preceding read-only package inspection.
+
+### Results and coverage
+
+- **Installed-interpreter selection:** source `a6c7adb87cfdde8062a3ac3d3ba22ed0133dc98c`,
+  83 passed / 0 skipped / 0 failed or errors, pytest and launcher exit 0;
+  pytest 381.28 seconds. Includes real backend proof (9), preservation/release
+  core and matrix (14 + 33), uncertain approval publication (7), durability (8),
+  real admitted N8/N9 effects (2), alias binding/control (4), and real recovery
+  concurrency/config recheck (6). Existing stale-vector/census-only and
+  out-of-lock recheck negative controls are exercised without assertion changes.
+- **Final legacy selection:** source `778802803cfcfa1dd8d3d67608a7930c43aa86bb`,
+  5 passed / 0 skipped / 0 failed or errors, both exits 0; pytest 9.53 seconds.
+  Only the synthetic legacy test changed after the interpreter run; launcher,
+  existing selected tests and runtime did not change.
+- Each run hashed 1,584 repository files before/after; hashes matched. Interpreter
+  run recorded exactly the deliberately refused `safe-harbor-canary.invalid`
+  DNS canary. Legacy run recorded no Python network attempts. Each pytest run
+  emitted one OpenTelemetry metadata deprecation warning.
+- The initial four-case legacy run at `a6c7adb` also passed (7.93 seconds), before
+  the pending-work case was added. It is historical, not four additional cases:
+  the combined final coverage is **88 distinct cases**, not 92.
+
+Legacy fixtures use real scratch Chroma stores and remove only `release_evidence`
+from their generated manifests, yielding the four-field shape observed in the
+old production saves. No production bytes were copied. The checks show:
+
+1. A matching signature causes unchanged reconcile to skip the old manifest;
+   CURRENT and generation bytes stay unchanged. Reconcile is not initialization.
+2. A torn live segment with such a source is quarantined **before replacement**:
+   source binding refuses missing release evidence. The torn live bytes and
+   original generation remain unchanged; release refuses incomplete repair and
+   the marker remains. This is stronger than merely refusing release afterwards.
+3. A test-only call to the existing refresh under the native lock creates a new
+   generation on a quiescent, synced fixture. The strict oracle passes; a later
+   synthetic tear/restore and incident-bound release succeed. Original generation
+   and CURRENT bytes are copied outside the prune tree beforehand and checked.
+   The actual unpinned old generation is pruned, proving archival is necessary.
+4. An injected failure before manifest publication leaves old CURRENT/source and
+   the archive unchanged; partial staging is removed. It does not invent evidence.
+5. With 250 records and a 200-record persisted vector save, refreshing still leaves
+   the corpus byte-unchanged and preserves the archived source, but strict release
+   refuses `watermark_drift`. After a synthetic tear and completed bounded repair,
+   release remains refused and the marker is unchanged. A fresh manifest does not
+   flush pending work or establish an empty changed set.
+
+### Artifact locations and digests
+
+Raw logs/JUnit/summaries remain local temporary artifacts. This committed record,
+test source and reproduction survive on the remote branch; raw artifacts are not
+uploaded. Identity JSON SHA-256, common to all three runs:
+`c665db30adad3660d34314b7e13c8f42994a49e6678ccccd180c8ef79e4b42c4`.
+
+- Interpreter root `/tmp/safe-harbor-rollout-65ha9r0p`:
+  summary `dc4d9a7d044dac549a83116a87228f015781bfb4420d14fe5d5fa8f7ef769778`;
+  run log `a787c6cea80bab1f52533398518d2a608473b435feaca048a1d5b0a75a56f7ba`;
+  JUnit `5fa3da2974fe529b6a5f71d74cf586496287c23490c27c769f9d92b6fd2696ce`.
+- Final legacy root `/tmp/safe-harbor-rollout-cqqurrak`:
+  summary `2e5bb7de4ddc7752d7e4a7a6dd2fc7e3838b001419fbc94e70bce81ab14557cf`;
+  run log `11362262154dadf8673ee31fad9f02c6be539f36a8854a90ea634ab165890d64`;
+  JUnit `af1e44674d0f2eff042fa9bdbce365aeddd254b169242d8e7c4a89169f4d33bd`.
+- Historical first legacy root `/tmp/safe-harbor-rollout-jow6ot56`:
+  summary `0df82f86462caa235a58e7d6dee9624465ddad58542a47419ca46a31c0a907be`;
+  run log `bcb632782e6459739d1e30f9ea4fba11bca938111154002f042cadccf9741811`.
+
+### Limits and disposition
+
+This supplies bounded Python 3.11 evidence; it does not rerun the full suite,
+hosted CI, lint, installed backup services or every package path. No dependencies,
+runtime source, lint baseline or prior safety assertions changed. The new launcher
+and test evidence have not received independent review.
+
+The positive refresh is a private-helper **test rehearsal**, not an operational
+entrypoint. Its ordinary scratch archive copy verifies byte retention, not durable
+archival under power loss. It covers one populated segment per fixture; existing
+backend cases supply separate multi-collection identity checks, not a production
+multi-segment migration rehearsal. Pending production work and actual oracle
+eligibility are unknown. No native/OS network sandbox or hardware power-loss
+guarantee is claimed by the Python audit hook and process/IO tests.
+
+Live initialization remains unresolved: the public CLI has no bounded operation
+that explicitly refreshes unchanged legacy generations while retaining a durable,
+verified archive. Any implementation/procedure addition needs a separate bounded
+decision. Do not use a private production one-liner, alter live signatures, force
+queue flushing or weaken release. Recovery artifact/loss-window inputs remain
+unanswered; no backup or deployment is authorized by these results.
+
+<!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md, ../../tests/_safe_harbor_rollout_evidence.py, ../../tests/test_safe_harbor_rollout_legacy.py — operational readiness evidence and current routing -->
 <!-- src: EXECUTION-safe-harbor.md — grants and retained limits -->

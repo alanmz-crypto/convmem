@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-14
+**Updated:** 2026-10-15
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,13 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — T1–T5 merged; rollout readiness open (2026-10-14):**
+- **Arc Safe Harbor — T1–T5 merged; isolated rollout evidence returned (2026-10-15):**
   PR #394 is tree-identical to the accepted candidate; [VERIFY closeout](../plans/VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping)
   records hosted CI and Ryan's exact-tip outage exception.
-  Codex returned the authorized [read-only preflight and rollout/rollback draft](../plans/ROLLOUT-safe-harbor.md).
-  **Next lane: Ryan**, for recovery/loss-window inputs and the proposed isolated
-  interpreter/legacy-state readiness slice. [STATUS](../plans/STATUS-safe-harbor.md)
-  carries current gates. No service change, backup/restore or deployment is granted.
+  Codex returned the [preflight, rollout draft and focused readiness evidence](../plans/ROLLOUT-safe-harbor.md#3-readiness-decisions-before-activation).
+  **Next lane: Ryan**, for recovery/loss-window inputs and bounded independent
+  review; a supported legacy initialization procedure remains unresolved.
+  [STATUS](../plans/STATUS-safe-harbor.md) carries results and current gates.
+  No runtime fix, PR, service change, live backup/restore or deployment is granted.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
