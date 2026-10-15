@@ -177,9 +177,7 @@ def test_commit_rechecks_missing_monitor_target(tmp_path, monkeypatch):
     assert prepared is not None
     writer = Mock()
     writer.get_unit.return_value = None
-    writer.units_metadata.return_value = [
-        {"ledger_id": "obs_audit_r2", "id": "old"},
-    ]
+    writer.active_units_for_ledger_id.return_value = []
 
     from observe import ObservationIngestDriftError
 

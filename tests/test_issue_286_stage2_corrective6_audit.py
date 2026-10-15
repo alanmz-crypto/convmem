@@ -26,14 +26,18 @@ def test_add_embeds_before_index_lock(tmp_path, monkeypatch):
     cfg["models"] = {"embed_model": "fake", "ollama_host": "http://127.0.0.1:9"}
     cfg["index"]["units_export"] = None
     depths = []
+    write_store = Mock()
+    write_store.chroma_dir = cfg["index"]["chroma_dir"]
+    write_store.active_units_for_ledger_id.return_value = []
+    write_store.get_unit.return_value = None
 
     @contextmanager
     def session(**kwargs):
         depths.append(("session_enter", index_write_lock_depth()))
         from tests.fake_production_write_session import counting_fake_production_write_session
 
-        with counting_fake_production_write_session(Mock(), cfg):
-            yield SimpleNamespace(store=Mock(), live_cfg=cfg)
+        with counting_fake_production_write_session(write_store, cfg):
+            yield SimpleNamespace(store=write_store, live_cfg=cfg)
 
     def embed(*args, **kwargs):
         depths.append(("embed", index_write_lock_depth()))

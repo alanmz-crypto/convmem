@@ -34,6 +34,14 @@ class FakeStore:
     def get_unit(self, uid: str):
         return self._units.get(uid)
 
+    def active_units_for_ledger_id(self, ledger_id: str):
+        lid = (ledger_id or "").strip()
+        return [
+            dict(m)
+            for m in self._metas
+            if (m.get("ledger_id") or "").strip() == lid
+        ]
+
     def add_unit(self, unit_id, document, embedding, metadata):
         meta = dict(metadata)
         meta["id"] = unit_id
@@ -156,6 +164,7 @@ class MonitorProbeTests(unittest.TestCase):
             doc="doc",
             embedding=[0.1],
             upsert=True,
+            target_digest="missing",
         )
         mock_commit.return_value = {"id": "u1", "ledger_id": "ver_x"}
 
@@ -186,10 +195,11 @@ class MonitorProbeTests(unittest.TestCase):
         self.assertEqual(first_call["author_model"], AUTHOR_MODEL)
         self.assertEqual(first_call["confidence"], 0.4)
 
+    @mock.patch("observe.commit_observation_ingest")
     @mock.patch("observe.prepare_observation_ingest")
     @mock.patch("monitor.fetch_https_headers")
     @mock.patch("monitor.check_tls_redirect")
-    def test_run_monitor_skips_kiro(self, mock_tls, mock_fetch, mock_prepare):
+    def test_run_monitor_skips_kiro(self, mock_tls, mock_fetch, mock_prepare, mock_commit):
         mock_fetch.return_value = ({"Content-Security-Policy": "x"}, None)
         mock_tls.return_value = True
         store = FakeStore(

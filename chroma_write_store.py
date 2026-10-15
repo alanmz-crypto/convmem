@@ -1032,8 +1032,8 @@ class _IndexWriteGuardedChromaStore:
     Read allow-list (CO-1): each method only reads Chroma state or metadata.
     - close: release client resources without mutation
     - query_summaries / count_summaries / summaries_metadata: read summary collection
-    - query_units / count_units / units_metadata / get_units_with_embeddings / get_unit:
-      read unit collection
+    - query_units / count_units / units_metadata / active_units_for_ledger_id /
+      get_units_with_embeddings / get_unit: read unit collection
     - count_for_source_path / ids_for_source / preview_supersede_for_source /
       snapshot_source_rows: read source-scoped inventory
     - non_source_inventory_digest: read-only digest helper
@@ -1048,6 +1048,7 @@ class _IndexWriteGuardedChromaStore:
             "query_units",
             "count_units",
             "units_metadata",
+            "active_units_for_ledger_id",
             "get_units_with_embeddings",
             "get_unit",
             "count_for_source_path",

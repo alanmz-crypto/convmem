@@ -298,6 +298,16 @@ class ReadonlyUnitStore:
 
         return [dict(m) for m in self._metas if not is_superseded(m)]
 
+    def active_units_for_ledger_id(self, ledger_id: str) -> list[dict]:
+        from chroma_store import is_superseded
+
+        lid = (ledger_id or "").strip()
+        return [
+            dict(m)
+            for m in self._metas
+            if (m.get("ledger_id") or "").strip() == lid and not is_superseded(m)
+        ]
+
     def get_unit(self, unit_id: str) -> dict | None:
         hit = self._units.get(unit_id.strip())
         if hit:

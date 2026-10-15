@@ -176,8 +176,11 @@ class ProposeDecisionTests(unittest.TestCase):
             doc="Fast index",
             embedding=[0.1],
             upsert=True,
+            existing_chroma_id="u1",
+            upsert_update=True,
+            target_digest="missing",
         )
-        mock_commit.return_value = {"id": "u1", "ledger_id": "dec_test_approved"}
+        mock_commit.return_value = {"id": "u1", "ledger_id": "dec_test_approved", "_upserted": True}
         with patch_live_config(self.cfg):
             stats = ingest_approved_ledger(self.cfg, ledger)
         self.assertEqual(stats["accepted"], 1)
