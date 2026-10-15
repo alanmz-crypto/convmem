@@ -1,4 +1,283 @@
-# Verify: Stage 2 wedge fixes, round 22 at `74c8ee7`: round 21's PASS withdrawn; Astra's round-4 FAIL reproduced (two regressions from moving admission into `run()`); corrective 17
+# Verify: Stage 2 wedge fixes, round 23 at `881c804`/`d45ada4`: FAIL (one new finding); R4-F1 and R4-F2 are closed, but the new pre-capture "unchanged" shortcut skips the legacy re-index lineage guard and clears the retry hold; corrective 18
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes`, Cursor's corrective 17:
+code `e73d88d`, inventory and canary baseline `881c804`. The pushed tip `d45ada4`
+adds only Kiro's round-4 review document on top (no code).
+**Method:**
+- I read the diff `74c8ee7..881c804` (`incremental_jsonl.py`, `incremental_retry_state.py`,
+  the baseline hash, the new `tests/test_zz_codex_audit_r4.py`).
+- I ran Astra's seven round-4 checks **unchanged** (hash `fb7726ec…`), Cursor's adapted copy,
+  Astra's round-3 probes and my retained probes (rounds 15, 16, 17, 20, 21) at the tip.
+- New probes (`tests/test_zz_claude_verify23.py`, appendix): repeated calls after each
+  refusal kind, checking paid calls, snapshot count and bytes, and the retry-state bytes
+  after every call; run at the tip and at `74c8ee7` as a differential.
+- The full hermetic suite under coverage at `d45ada4`, compared with main `458b9f6`;
+  diff coverage; the static undefined-name check.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are inactive.
+The live corpus did change since round 22, by design: four of today's Codex session
+transcripts (Astra's audit sessions, 02:04 to 06:28) were indexed on demand through the
+incremental route on main (Track A), a few chunks each (export +4.7 MB). One of them
+(`rollout-2026-10-15T04-16-58-…`) stopped mid-run at 04:46 and left a `PREPARING`
+transaction with one prepared artifact and one snapshot; its next index rolls forward and
+reuses the artifact. I did not touch it. No further Mirror Crush indexing.
+
+## Verdict (round 23)
+
+**FAIL, on one new finding (Medium). Astra's two round-4 regressions are closed.**
+
+**Closed and verified:**
+- **R4-F1:** Astra's `test_corrupt_retry_admission_differential` passes unchanged. Probe
+  `x4[corrupt]`: six calls on a corrupt state make 0 paid calls and 0 snapshots, and the
+  corrupt bytes stay exactly as written (at `74c8ee7`: the state is rewritten and 2 paid
+  calls follow). `x4[unavailable]` (a directory where the state file belongs): 0 paid,
+  0 snapshots on every call (at `74c8ee7`: one snapshot per call, growing to 6).
+- **R4-F2:** Astra's `test_refusal_snapshot_growth_differential` passes unchanged. Probe
+  `x4[same_code]`: 2 paid, 0 snapshots across six calls (at `74c8ee7`: snapshots grow
+  by one per held call). `x4[cap]`: 2 paid and one snapshot, the pending transaction's
+  own, unchanged across six calls (same at `74c8ee7`).
+- Bonus: two refusals outside the gate also stop leaking. A mutated validated prefix
+  (`x2`) now stops at 2 snapshots (at `74c8ee7`: one more per call, 6 after six calls);
+  invalid UTF-8 appended after a commit (`x3`) leaves none (at `74c8ee7`: 5 after five).
+- Astra's five controls: four pass unchanged. The lock control
+  (`test_lock_covers_admission_run_accounting_and_release`) fails unchanged only on the
+  sequence shape: it expects one admission check per attempt, and corrective 17 now
+  checks twice (refuse-only before capture, then the reservation). Cursor's copy updates
+  the expected sequence; every lock assertion and the paid-call bound (2) still hold.
+  Astra should confirm the adapted copy.
+- Astra's round-3 probes, my round 15–17, 20 and 21 probes, and Cursor's ten round-4
+  tests: 45 passed (plus the one shape-only failure above).
+- **Kiro's lock order is unchanged:** the shortcut and the refuse-only gate run inside
+  `run()` under the per-source lock, take no C1, and make no provider call. Kiro's
+  round-4 verdict carries to this tip.
+- Static check: clean on all 14 changed production files.
+- **Full suite under coverage** (disk-backed worktree at `d45ada4`, private `--basetemp`,
+  compared with main `458b9f6` run the same way, ids without parameters): 93 failed, 3008
+  passed, 66 skipped, 52 errors. **No tip-only failure** (Z1 didn't flake). All 117 of
+  Cursor's "tip-only" entries fail on main in this harness too; its main-side id list held
+  26 of main's 150 failures.
+- **Diff coverage, corrective 17 (`74c8ee7..881c804`):** 39 changed executable lines, 1
+  never run (`incremental_jsonl.py:2530`, the shortcut's oversized-source `return None`,
+  which then falls through to capture's existing `source_too_large` refusal). Whole series
+  since corrective 12: 644 lines, 126 never run (round 21 classified those).
+- **Concurrency:** round 20's probe (8 threads, 6 forked processes) still gives 2 paid / 2
+  attempts.
+- **Live state:** one live write during the run (09:43–09:46): the incremental route on main
+  committed one new chunk of the live Codex session `rollout-2026-10-15T06-28-45-…`. That's
+  on-demand Track A of a real `~/.codex/sessions` file, not this suite (scratch HOME). The
+  leak census moves to round 24 (this round already fails).
+
+## Findings (round 23)
+
+- **N13 (Medium, merge-blocking): the pre-capture "unchanged" shortcut skips guards the
+  full path runs, so a refused source reports success and its retry hold is wiped.**
+  `_unchanged_short_circuit_if_applicable` (new in `e73d88d`) returns "unchanged" when the
+  checkpoint's continuity, boundary and record count match. The full path checks more
+  before it may return "unchanged": the D8 lineage guard
+  (`_codex_projection_checkpoint_mismatch`: a legacy re-index replaced the path's
+  processed lineage), the one-shot bootstrap refusals, eligibility and the session-meta
+  identity. The router treats "unchanged" as success and calls
+  `clear_incremental_retry_state`.
+  - Probe `x1`: commit a source, then replace its processed lineage (as a legacy
+    re-index does), then call three times with the source unchanged.
+    - At `74c8ee7`: refused (`rebuild_required:projection_checkpoint_mismatch`), then
+      held (`wedged_incremental_transaction_…`); the retry state is kept.
+    - At the tip: three times "skipped" (success), and the retry state file is deleted.
+  - No paid calls either way, and the mismatch surfaces again once the source grows. But
+    a safety refusal becomes a silent success and its evidence is erased; this is the same
+    class of bug as R4-F1 (an ordering change that weakens a guard).
+- **N14 (Low): the shortcut can raise before the gate.** Its prefix parse raises
+  `invalid_prefix_encoding` (invalid UTF-8 appended after a commit, probe `x3`) before
+  the refuse-only gate, so each call goes through failure accounting and rewrites the
+  state (`consecutive` 1, 2, 3, 4, 5) instead of being refused by the gate. No paid
+  calls, no snapshots. Cost: one full parse and one state write per call.
+- **Observation (not blocking):** a snapshot is still left by refusals that happen after
+  capture but before the transaction is written (`rebuild_required:…`, `invalid_state`).
+  The refuse-only gate now bounds them to the attempts admitted before the hold (2 in
+  `x2`); before corrective 17 they grew on every call. Follow-up: every return before
+  `_write_transaction` should delete the snapshot this call captured.
+- **Note:** Kiro's round-4 review document (`d45ada4`) was committed on the fix branch
+  rather than its own docs branch, so it will ride in the PR. Harmless; no history rewrite
+  needed.
+
+## Corrective 18 for Cursor
+
+- **N13:** the shortcut may return "unchanged" only where the full path would. Put the
+  post-capture checks that precede the full path's "unchanged" return (bootstrap refusals,
+  eligibility, `_codex_projection_checkpoint_mismatch`, the session-meta identity) in one
+  helper that both paths call, or have the shortcut return `None` (fall through to the
+  full path) whenever `self.bootstrap_existing` is set, the projection check reports a
+  mismatch, or the identity check refuses. Accept: probe `x1` passes (refused, retry
+  state kept, 0 paid calls).
+- **N14:** the shortcut never raises: on any `IncrementalJsonlError` or parse error it
+  returns `None`, so the refuse-only gate decides first. Accept: probe `x3` passes (state
+  bytes stable from the third call; 0 paid calls; no snapshots).
+- **Tests:** add `tests/test_zz_claude_verify23.py` unchanged (all seven pass); keep Astra's
+  round-3 and round-4 tests, all retained probes, the corrective 12–17 tests and the core
+  suites passing. Keep every provider call outside C1; don't change the lock order.
+- **Inventories last:** after the last code commit, refresh the R2b inventory and the
+  `incremental_jsonl.py` baseline hash; run the inventory tests; then the hermetic full
+  suite. For the comparison, collect main's failure ids from the full `-rfE` summary
+  (corrective 17's harness kept only 26 of main's 150 failure ids, which produced the 117
+  false "tip-only" entries; all 117 fail on main too); tip-only target: Z1 at most.
+
+## Next
+
+1. Cursor: corrective 18 (small: one helper plus one guard).
+2. Claude round 24 and Astra's re-audit on the same new tip, in parallel. Kiro only if the
+   lock order changes.
+
+## Appendix (round 23): probes `tests/test_zz_claude_verify23.py`
+
+```python
+"""Claude verify probes, round 23 (corrective 17): the new pre-capture unchanged shortcut and repeated refusals.
+
+Scratch only: tmp_path HOME, fake providers, no network. Each probe prints a row so the same file can run at
+74c8ee7 (before corrective 17) and at the tip for a differential.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+
+def _root(source, cfg):
+    import incremental_jsonl as inc
+
+    return Path(cfg["index"]["incremental_jsonl"]["state_dir"]) / inc.source_state_id(
+        str(source.resolve()), format_id="jsonl_codex_rollout")
+
+
+def _metrics(source, cfg, calls):
+    root = _root(source, cfg)
+    snaps = list((root / "snapshots").glob("*/*")) if (root / "snapshots").exists() else []
+    state = root / "retry_state.json"
+    return {"paid": len(calls), "snapshots": len(snaps), "snap_bytes": sum(p.stat().st_size for p in snaps),
+            "state": state.read_bytes() if state.is_file() else ("dir" if state.is_dir() else None)}
+
+
+def _call(route):
+    import incremental_jsonl as inc
+
+    try:
+        result = route()
+        return ("ok", result[0] if isinstance(result, tuple) else result)
+    except inc.IncrementalJsonlError as exc:
+        return ("raised", exc.code, str(exc).splitlines()[0][:90])
+
+
+def _commit(tmp_path, monkeypatch):
+    from tests.test_zz_claude_verify8b import _count_summaries
+    from tests.test_zz_codex_audit import _route_fixture
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+    route()
+    assert (_root(source, cfg) / "checkpoint.json").is_file()
+    return source, cfg, route, calls
+
+
+def test_x1_unchanged_source_after_legacy_reindex_lineage(tmp_path, monkeypatch) -> None:
+    """D8 guard: the full path refuses an unchanged source whose processed lineage no longer matches."""
+    source, cfg, route, calls = _commit(tmp_path, monkeypatch)
+    plog = Path(cfg["index"]["processed_log"])
+    data = json.loads(plog.read_text())
+    hits = 0
+    for entry in data.values():
+        if isinstance(entry, dict) and entry.get("incremental_jsonl_lineage"):
+            entry["incremental_jsonl_lineage"] = "legacy-reindex-lineage"
+            hits += 1
+    assert hits == 1, hits
+    plog.write_text(json.dumps(data))
+    paid = len(calls)
+    rows = [(_call(route), _metrics(source, cfg, calls)) for _ in range(3)]
+    print("\nX1", [(r, {k: v for k, v in m.items() if k != "state"}, m["state"] is not None) for r, m in rows])
+    print("X1 lineage after:", [e.get("incremental_jsonl_lineage") for e in json.loads(plog.read_text()).values() if isinstance(e, dict)])
+    assert len(calls) == paid
+    assert all(r[0] == "raised" for r, _ in rows), rows
+
+
+def test_x2_mutated_prefix_repeated_calls_bound_snapshots(tmp_path, monkeypatch) -> None:
+    source, cfg, route, calls = _commit(tmp_path, monkeypatch)
+    raw = bytearray(source.read_bytes())
+    second = raw.index(b"\n") + 1
+    end = raw.index(b"\n", second)
+    pos = max(i for i in range(second, end) if chr(raw[i]).isdigit())
+    raw[pos] = ord("1") if raw[pos] != ord("1") else ord("2")
+    with open(source, "r+b") as fh:  # same inode, same length
+        fh.write(bytes(raw))
+    paid = len(calls)
+    rows = []
+    for _ in range(6):
+        rows.append((_call(route), _metrics(source, cfg, calls)))
+    print("\nX2", [(r[:2], m["paid"], m["snapshots"], m["snap_bytes"]) for r, m in rows])
+    for _, m in rows:
+        print("X2state", m["state"][:200] if m["state"] else None)
+    assert len(calls) == paid
+    assert rows[-1][1]["snapshots"] == rows[2][1]["snapshots"], "snapshots must stop growing once held"
+    assert rows[-1][1]["state"] == rows[3][1]["state"]
+
+
+def test_x3_invalid_utf8_appended_after_commit(tmp_path, monkeypatch) -> None:
+    source, cfg, route, calls = _commit(tmp_path, monkeypatch)
+    with open(source, "ab") as fh:
+        fh.write(b'{"type":"response_item","payload":"\xff\xfe"}\n')
+    paid = len(calls)
+    rows = [(_call(route), _metrics(source, cfg, calls)) for _ in range(5)]
+    print("\nX3", [(r[:2], m["paid"], m["snapshots"]) for r, m in rows])
+    assert len(calls) == paid
+    assert rows[-1][1]["snapshots"] == rows[2][1]["snapshots"]
+    assert rows[-1][1]["state"] == rows[3][1]["state"]
+
+
+@pytest.mark.parametrize("kind", ["corrupt", "unavailable", "cap", "same_code"])
+def test_x4_repeated_refusal_kinds(tmp_path, monkeypatch, kind) -> None:
+    import incremental_jsonl as inc
+    import ingest
+    from tests.test_zz_claude_verify8b import _count_summaries
+    from tests.test_zz_codex_audit import _route_fixture
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+    state = _root(source, cfg) / "retry_state.json"
+    if kind == "same_code":
+        def fail_distill(*_a, **_k):
+            raise RuntimeError("scratch distill unavailable")
+        monkeypatch.setattr(ingest, "distill", fail_distill)
+        monkeypatch.setattr(ingest, "_SYNTHESIS_FAIL_LOG", tmp_path / "synthesis_failures.jsonl")
+    else:
+        def fail(*_a, **_k):
+            raise OSError("scratch prepared failure")
+        monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_write_prepared", fail)
+    if kind == "corrupt":
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text("{truncated\n")
+    if kind == "unavailable":
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.mkdir()  # a directory where the state file belongs
+    rows = [(_call(route), _metrics(source, cfg, calls)) for _ in range(6)]
+    print(f"\nX4 {kind}", [(r[:2], m["paid"], m["snapshots"], m["snap_bytes"]) for r, m in rows])
+    paid = [m["paid"] for _, m in rows]
+    assert paid[-1] == paid[2] and paid[-1] <= 4, paid
+    assert rows[-1][1]["snapshots"] == rows[2][1]["snapshots"]
+    assert rows[-1][1]["state"] == rows[2][1]["state"]
+    if kind == "corrupt":
+        assert state.read_text() == "{truncated\n"
+```
+
+---
+
+# Round 22: `74c8ee7`, round 21 withdrawn, Astra round-4 FAIL reproduced, corrective 17 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15

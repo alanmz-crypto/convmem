@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Astra's round-4 audit FAILs `74c8ee7` and Claude's round 22 reproduces it (round 21 withdrawn): moving admission into `run()` lets the error handler overwrite corrupt retry state (paid work resumes past the cap) and leaves a source snapshot per refused call. Round-3 findings stay closed. Corrective 17 goes to Cursor; see round 22 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: corrective 17 (`e73d88d`, inventory `881c804`) closes Astra's R4-F1/R4-F2 (verified with her unchanged harness), but Claude's round 23 FAILs it on N13: the new pre-capture "unchanged" shortcut skips the legacy re-index lineage guard and other full-path checks, so a refused source reports success and its retry hold is deleted (no paid calls). Plus N14 (Low). Full suite: no tip-only failure. Corrective 18 goes to Cursor; see round 23 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
