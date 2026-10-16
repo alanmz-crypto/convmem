@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 19 (`d5d10b5`) closes R5-F1/R5-F2, but Astra's round 6 FAILs it and Claude's round 26 reproduces: its capture-error code change resets the retry counters, so alternating capture faults never hold and a later call pays (R6-F1), and the R2b inventory is stale (R6-F2). `main` moved to `c6f0724` and conflicts in four files. Corrective 20 (one-line accounting fix, merge main, regenerate inventories last) goes to Cursor; see round 26 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: corrective 20 (`3e0caf9`) closes R6-F1/R6-F2 and merges main `c6f0724`, but Claude's round 27 FAILs the merged tip under main's CI launcher: approval recovery now takes the index write lock (C1) inside its Chroma session and refuses (R27-F1, real regression), the branch's test conftest hides the launcher's config (R27-F2, 87 tests), and Safe Harbor's T4 helpers and one dedupe test predate C1 (R27-F3/F4). Corrective 21 (a tested diff, then inventories last) goes to Cursor; see round 27 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

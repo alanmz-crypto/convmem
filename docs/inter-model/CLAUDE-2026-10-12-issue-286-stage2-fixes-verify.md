@@ -1,4 +1,446 @@
-# Verify: Stage 2 wedge fixes, round 26 at `d5d10b5`: FAIL; corrective 19 closes R5-F1 and R5-F2, but its capture-error code change weakens the retry hold (Astra's R6-F1, reproduced) and the R2b inventory is stale; corrective 20 (a one-line accounting fix, merge main, regenerate)
+# Verify: Stage 2 wedge fixes, round 27 at `3e0caf9`: FAIL; corrective 20's own changes are correct, but merging main exposes two conflicts with Safe Harbor (a test conftest that hides the launcher's config, and a recovery path that takes C1 inside a Chroma session); corrective 21 (tested under main's CI launcher)
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-16
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `3e0caf9`, Cursor's corrective
+20: `c19b73d` (merge of main `c6f0724`: Safe Harbor #391, #392, #394), `71fa518` (R6-F1
+accounting fix plus Astra's round-6 harness and my round-26 probes), `3e0caf9` (R2b and
+Shadow inventories, baseline hashes, writer-site pins).
+**Input:** Cursor's corrective-20 report: full suite through main's CI launcher, main 31
+failure ids, tip 165, 134 tip-only.
+**Method:**
+- I read the R6-F1 commit, the merge resolution and the inventory commit.
+- Retained checks at the tip: Astra's round-4, 5 and 6 harnesses unchanged, my round-20,
+  21, 23, 24 and 26 probes, Cursor's audit copies, the corrective 12–19 tests, the R2b
+  identity tests and the canary, Shadow and live-boundary suites.
+- Static check (undefined-name family) on the 26 production files that differ from main.
+- I grouped Cursor's tip-only failures by their first error line, traced each group to
+  its call site, and reproduced the lock-order failure under main's launcher with a
+  stack-reporting copy of the lock check (`run-integration` narrowed to one module, in a
+  scratch worktree).
+- I wrote corrective 21 in a scratch worktree at `3e0caf9` and ran **main's full CI
+  launcher** on it (`python -I -S -B tests/_safe_harbor_t3_worker.py run-ci`, pinned
+  restic 0.19.0), compared with Cursor's launcher run of main `c6f0724`. I then fixed the
+  remaining cases and reran the affected modules under the launcher.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are inactive.
+
+## Verdict (round 27)
+
+**FAIL.** Corrective 20's own changes are correct, but the merge with main breaks about 100
+tests under main's CI launcher, including a real recovery regression. Corrective 21 below
+fixes all of it; I've run it under the launcher.
+
+**Corrective 20, verified:**
+- **R6-F1 closed:** `run()` refuses with the specific capture code and accounts the failure
+  as `classify_incremental_escape(exc)`, exactly as specified. Astra's round-6 harness
+  (10) and my round-26 probes (17) are committed byte-identical to the originals and pass.
+- **Retained checks:** 197 passed. The failures are the known obsolete Astra round-5 lock
+  control and Astra's round-2 bug demonstrations, which fail identically at `d5d10b5`
+  (they assert the old bugs).
+- **Merge resolution:** `propose_decision.py` keeps the branch's imports and main's
+  `# pylint: disable=no-name-in-module` on the `ledger` import, as specified.
+- **Inventories:** regenerated after the last code commit. The writer-site pins in
+  `tests/test_shadow_writer_gate_c3.py` moved from 20 to 21 sites: the branch's 20 plus
+  main's internal recovery delegate (`chroma_write_store.py:1262`). Mechanical and correct.
+- **Static check:** clean on all 26 production files that differ from main.
+
+**The merge with main fails under main's launcher.** Since #391/#392/#394, CI runs the
+suite only through main's Safe Harbor launcher, which supplies a fixture HOME and
+`CONVMEM_CONFIG`. My earlier rounds compared plain pytest runs, where main failed the same
+config-dependent tests, so these failures were invisible until Cursor used the launcher.
+Recomputed from the traceback headers of both logs (Cursor's short summary truncates ids),
+**104 test functions fail only on the tip; none fail only on main.**
+
+## Findings (round 27)
+
+- **R27-F1 (High, merge-blocking; real regression): approval recovery fails on the merged
+  tip.** `convmem record --recover` of an approved decision stops with "Recovery deferred
+  for review: lock ordering violation: cannot acquire index write lock while holding a
+  Chroma writer session" (about 17 tests: the T2 CLI recovery tests, the T4 matrix, the
+  terminal and publication cases).
+  - Stack, captured under the launcher: `recover_approval` → `_recover_approval_impl`
+    (`propose_decision.py:907`) → `_execute_recovery_inside_guard` (`:841`) →
+    `_check_recovery_export` (`:644`) → `export_flock_path` → `index_write_flock`.
+  - Main's recovery opens the recovery Chroma session and then takes the export lock. On
+    the branch, the export lock takes the store-wide index write lock (C1) when it isn't
+    held, and C1 refuses to start inside a Chroma session.
+  - Main has no C1, so this only exists after the merge.
+- **R27-F2 (Medium, merge-blocking; CI red): the branch's `tests/conftest.py` hides the
+  launcher's config (87 tests).** Corrective 9 added an autouse fixture that points
+  `config.CONFIG_PATH` at a missing file, and made `load_config()` read `CONFIG_PATH` at
+  call time. Under the launcher, that overrides `CONVMEM_CONFIG`, so every test that needs
+  the fixture config fails closed: cg2 cutover, rollback and attestation (via
+  `file_generation_store.py:181`), file_generation, watch_skip and watch.
+- **R27-F3 (Medium, merge-blocking): Safe Harbor's T4 test helpers write to Chroma without
+  C1.** They imitate production writers but skip the lock the branch now requires
+  (`_matrix_marker_repair`, `_guarded_delete_unit`, `_canonical_seed_unit_id`,
+  `_mode_refine_apply`). The two "recovery holds lock" races and the out-of-lock negative
+  control watch only the guard flock, so with recovery also holding C1 their signals never
+  arrive.
+- **R27-F4 (Low, merge-blocking): `test_file_generation_dedupe.py` assumes refine writes
+  through the store it's given.** Since corrective 8 the branch writes refine tombstones
+  only through C1 and the live store (`_refine_write_scope`); the test passes a temporary
+  generation store and gets "caller chroma_dir != live config". The branch's rule is
+  deliberate (the only production caller, `refine.py:354`, passes the live store), so the
+  test binds the live config to its own tree the way `tests/test_refine.py` does.
+
+## Corrective 21 for Cursor
+
+The diff in the appendix applies to `3e0caf9` (`git apply`). It has these parts:
+
+1. **R27-F1:** in `_recover_approval_impl`, take `index_write_flock(cfg)` right after
+   `governed_lock(cfg)`, before opening the recovery store
+   (`with governed_lock(cfg), index_write_flock(cfg):`). This is the same order as the
+   branch's approve path (writer boundary → governed lock → C1 → Chroma session); C1 is
+   re-entrant, so the export lock then reuses it.
+2. **R27-F2:** in `tests/conftest.py`, skip the `CONFIG_PATH` redirect when
+   `SAFE_HARBOR_T3_BOOTSTRAPPED=1` (the launcher already isolates the config).
+3. **R27-F3:**
+   - Wrap the four T4 helpers' writes in `index_write_flock(cfg)`.
+   - The competitor flock observer also wraps `purge_locks.index_write_flock`. When C1 is
+     contended, it signals `PRE_FLOCK`/`NB_BLOCKED`/`ACQUIRED` there once and stays quiet
+     at the guard flock. When C1 is free, it signals at the guard flock as before (needed
+     by `test_t4_rechecks_config_after_native_lock_wait`).
+   - The faulty out-of-lock recovery also releases C1 during its gap, so the negative
+     control still opens a real window.
+4. **R27-F4:** in `tests/test_file_generation_dedupe.py`, wrap the two
+   `apply_dedupe_queue_record` calls in `patch_refine_scratch_env(tmp_path, cfg)`.
+5. **Inventories last:** part 1 moves `propose_decision.py` lines, so regenerate the R2b
+   and Shadow inventories and the pins after the code commit.
+
+**Tested under main's CI launcher:**
+- **Full suite, parts 1–3 without the race-observer and negative-control changes:**
+  15 failed / 3434 passed / 11 skipped, 0 errors.
+  - Tip-only: 5. Three were the T4 races and the negative control, one the dedupe test,
+    one the inventory drift.
+  - Main-only: none. The 24 apparent main-only D1 tests are `tmpfs` setup errors in
+    Cursor's `/tmp` checkout; my worktree is disk-backed.
+- **With the whole diff:** T4 concurrency 22/22, T4 matrix 11/11, T4 terminal 5/5,
+  file-generation dedupe 5/5, all under the launcher.
+- **Lint:** no new pylint findings on the changed files; the conftest's unused `Path`
+  import predates this.
+
+**For Cursor:**
+- Apply the appendix diff to `3e0caf9` as one commit, then regenerate inventories as the
+  last commit.
+- Keep Astra's round-3 to 6 harnesses, my probes, the corrective 12–20 tests and the core
+  suites passing.
+- **Full suite through main's launcher** at the final tip and at main `c6f0724`:
+  - Run both from disk-backed worktrees (e.g. under `~/.cache`), one after the other.
+  - The launcher keeps its fixture in `/tmp`, about 76k inodes per run, and `/tmp` is at
+    92% of inodes. After each run, copy `full-suite.pytest.log` and `summary.json` to
+    disk and delete that run's own `/tmp/safe-harbor-t3-suite-*` directory.
+  - Take failure ids from the traceback section headers, not the short summary.
+  - Tip-only target: Z1 at most.
+- Push with an explicit refspec; no PR, no merge.
+
+**Arc boundary:** parts 1 and 3 touch Safe Harbor's recovery path and its T4 test
+helpers. They're needed to merge #286 onto main and don't change Safe Harbor's guarantees
+beyond adding C1 (recovery now also excludes C1 writers for its whole critical section).
+The Safe Harbor lane should see them in the PR.
+
+## Next
+
+1. Cursor: corrective 21.
+2. Claude round 28 and Astra round 7 on Cursor's final tip, in parallel. Round 7 covers
+   the R6-F1 fix, the merge and corrective 21, with her round-4 to 6 harnesses
+   unchanged, under main's launcher.
+3. If both pass: the PR draft with Kiro's CO-2 and CO-3; Ryan opens and merges.
+
+**Also on main, not #286:** `tests/_chroma_write_guard_worker.py` (from #391) imports
+`validate_chroma_argv_path` only under the launcher but calls it on every run, so 15
+`test_chroma_write_guard.py` tests raise `NameError` outside the launcher. CI isn't
+affected. This is a candidate issue for the Safe Harbor lane.
+
+## Appendix (round 27): corrective 21 diff (applies to `3e0caf9`)
+
+```diff
+diff --git a/propose_decision.py b/propose_decision.py
+index 4fe60be..a05b852 100644
+--- a/propose_decision.py
++++ b/propose_decision.py
+@@ -874,12 +874,13 @@ def _recover_approval_impl(op, proposal_id: str) -> str:
+         verify_recovery_config_binding,
+     )
+     from conflict_events import EventPublicationError, governed_lock
++    from purge_locks import index_write_flock
+ 
+     proposal_id = proposal_id.strip()
+     cfg = op.config()
+     verify_recovery_config_binding(op, cfg)
+     durability_root = recovery_durability_root(op)
+-    with governed_lock(cfg):
++    with governed_lock(cfg), index_write_flock(cfg):
+         try:
+             states = _load_recovery_event_states(cfg)
+         except ValueError as exc:
+diff --git a/tests/_safe_harbor_t4_common.py b/tests/_safe_harbor_t4_common.py
+index 3a25035..983e701 100644
+--- a/tests/_safe_harbor_t4_common.py
++++ b/tests/_safe_harbor_t4_common.py
+@@ -405,15 +405,17 @@ def _matrix_marker_repair(cfg) -> dict[str, Any]:
+     doc_before = unit.get("document")
+     emb_before = unit.get("embedding_sha")
+     from chroma_write_store import open_production_recovery_write_store
+-
+-    session = open_production_recovery_write_store(entrypoint="propose_decision.write")
+-    store = session.store
+-    try:
+-        meta = dict(unit["metadata"])
+-        meta["proposal_id"] = ""
+-        store.update_unit_metadata(chroma_id, meta)
+-    finally:
+-        store.close()
++    from purge_locks import index_write_flock
++
++    with index_write_flock(cfg):
++        session = open_production_recovery_write_store(entrypoint="propose_decision.write")
++        store = session.store
++        try:
++            meta = dict(unit["metadata"])
++            meta["proposal_id"] = ""
++            store.update_unit_metadata(chroma_id, meta)
++        finally:
++            store.close()
+     action = _recover(cfg, pid)
+     assert action == "repair_marker"
+     after = _dump_state(cfg)
+diff --git a/tests/_safe_harbor_t4_concurrency.py b/tests/_safe_harbor_t4_concurrency.py
+index 0b4c199..e046fa8 100644
+--- a/tests/_safe_harbor_t4_concurrency.py
++++ b/tests/_safe_harbor_t4_concurrency.py
+@@ -170,11 +170,13 @@ def _lock_nb_probe(lock_path: str) -> bool:
+         os.close(fd)
+ 
+ 
+-def _install_ool_fcntl_tracker(lock_path: str) -> Callable[[], None]:
++def _install_ool_fcntl_tracker(lock_path: str, *extra_paths: str) -> Callable[[], None]:
+     real_flock = fcntl.flock
++    tracked = {lock_path, *extra_paths}
+ 
+     def tracking_flock(fd: int, operation: int) -> None:
+-        key = lock_path if os.readlink(f"/proc/self/fd/{fd}") == lock_path else ""
++        target = os.readlink(f"/proc/self/fd/{fd}")
++        key = target if target in tracked else ""
+         if key and (operation & fcntl.LOCK_EX):
+             _OOL_TRACKED_LOCK_FD[key] = fd
+         if key and (operation & fcntl.LOCK_UN):
+@@ -202,32 +204,64 @@ def _ool_release_tracked_lock(lock_path: str) -> None:
+ def _install_competitor_flock_observer(lock_path: str):
+     """Signal PRE_FLOCK + NB probe, then real blocking flock; ACQUIRED after real acquire."""
+     import chroma_write_guard
++    import purge_locks
+ 
+     real = chroma_write_guard._exclusive_flock
++    real_index = purge_locks.index_write_flock
+     if os.environ.get("SAFE_HARBOR_T4_COMPETE_SIGNAL_WRITE_FD"):
+         signal_write = _signal_fd("SAFE_HARBOR_T4_COMPETE_SIGNAL_WRITE_FD")
+     else:
+         signal_write = _signal_fd("SAFE_HARBOR_T4_SIGNAL_WRITE_FD")
++    signalled = {"done": False}
+ 
+     @contextmanager
+-    def wrapped(path: Path, timeout_seconds: float):
+-        key = str(path)
+-        if key == lock_path:
++    def observe(probe_path: str, acquire):
++        first = not signalled["done"]
++        if first:
+             _write_line_fd(signal_write, "PRE_FLOCK")
+-            if _lock_nb_probe(lock_path):
++            if _lock_nb_probe(probe_path):
+                 _write_line_fd(signal_write, "NB_FREE")
+             else:
+                 _write_line_fd(signal_write, "NB_BLOCKED")
+-        with real(path, timeout_seconds):
+-            if key == lock_path:
++        with acquire() as held:
++            if first:
++                signalled["done"] = True
+                 _write_line_fd(signal_write, "ACQUIRED")
+-            yield
++            yield held
++
++    @contextmanager
++    def wrapped(path: Path, timeout_seconds: float):
++        if str(path) != lock_path:
++            with real(path, timeout_seconds) as held:
++                yield held
++            return
++        with observe(lock_path, lambda: real(path, timeout_seconds)) as held:
++            yield held
++
++    @contextmanager
++    def wrapped_index(cfg: dict):
++        # Writers take the store-wide index write lock (C1) before the guard flock,
++        # so a competitor first blocks there while recovery holds both.
++        if purge_locks.index_write_lock_depth() > 0:
++            with real_index(cfg) as held:
++                yield held
++            return
++        index_lock = str(Path(purge_locks.index_write_lock_path(cfg)).resolve())
++        if signalled["done"] or _lock_nb_probe(index_lock):
++            # Uncontended C1: signal at the guard flock as before.
++            with real_index(cfg) as held:
++                yield held
++            return
++        with observe(index_lock, lambda: real_index(cfg)) as held:
++            yield held
+ 
+     chroma_write_guard._exclusive_flock = wrapped
++    purge_locks.index_write_flock = wrapped_index
+     try:
+         yield
+     finally:
+         chroma_write_guard._exclusive_flock = real
++        purge_locks.index_write_flock = real_index
+ 
+ 
+ def _invoke_forget_cli(unit_id: str) -> None:
+@@ -250,8 +284,9 @@ def _canonical_seed_unit_id(cfg: dict) -> str:
+         if unit.get("id") == "seed-0":
+             return "seed-0"
+     from chroma_write_store import production_chroma_write_session
++    from purge_locks import index_write_flock
+ 
+-    with production_chroma_write_session(entrypoint="tests.t4_concurrency_seed") as session:
++    with index_write_flock(cfg), production_chroma_write_session(entrypoint="tests.t4_concurrency_seed") as session:
+         store = session.store
+         store.add_unit(
+             "seed-0",
+@@ -411,7 +446,9 @@ def _mode_refine_apply() -> dict[str, Any]:
+ 
+         ctx = nullcontext()
+     with ctx:
+-        with production_chroma_write_session(entrypoint="refine.apply_dedupe") as session:
++        from purge_locks import index_write_flock
++
++        with index_write_flock(cfg), production_chroma_write_session(entrypoint="refine.apply_dedupe") as session:
+             stats = apply_dedupe_queue_record(session.store, cfg, record, verbose=False)
+     if stats.get("errors"):
+         raise RuntimeError(f"apply_dedupe_queue_record errors: {stats}")
+@@ -429,11 +466,12 @@ def _mode_refine_apply() -> dict[str, Any]:
+ def _install_faulty_classify_hooks(
+     lock_path: str,
+     saved: dict[str, Any],
++    index_lock_path: str,
+ ) -> tuple[Callable[[], None], Callable[[], None]]:
+     import propose_decision
+ 
+     real_classify = propose_decision._recovery_classify_live
+-    restore_fcntl = _install_ool_fcntl_tracker(lock_path)
++    restore_fcntl = _install_ool_fcntl_tracker(lock_path, index_lock_path)
+     signal_write = _signal_fd("SAFE_HARBOR_T4_SIGNAL_WRITE_FD")
+     gap_read = _signal_fd("SAFE_HARBOR_T4_GAP_READ_FD")
+     calls = {"n": 0}
+@@ -445,7 +483,9 @@ def _install_faulty_classify_hooks(
+             saved["live"] = live
+             _write_line_fd(signal_write, "INSPECTED")
+             _read_line_fd(gap_read)
++            # Out of every lock: recovery also holds the store-wide index write lock (C1).
+             _ool_release_tracked_lock(lock_path)
++            _ool_release_tracked_lock(index_lock_path)
+             _write_line_fd(signal_write, "GAP")
+             _read_line_fd(gap_read)
+             return live
+@@ -473,7 +513,10 @@ def _mode_recover_faulty_oool(proposal_id: str) -> dict[str, Any]:
+     os.environ["SAFE_HARBOR_T4_LOCK_PATH"] = lock_path
+     os.environ["SAFE_HARBOR_T4_FAULTY_OOL"] = "1"
+     saved: dict[str, Any] = {}
+-    restore_all, _ = _install_faulty_classify_hooks(lock_path, saved)
++    from purge_locks import index_write_lock_path
++
++    index_lock_path = str(Path(index_write_lock_path(cfg)).resolve())
++    restore_all, _ = _install_faulty_classify_hooks(lock_path, saved, index_lock_path)
+     verdict = "OK"
+     action = ""
+     err = ""
+diff --git a/tests/_safe_harbor_t4_terminal.py b/tests/_safe_harbor_t4_terminal.py
+index 7344f25..8ce986f 100644
+--- a/tests/_safe_harbor_t4_terminal.py
++++ b/tests/_safe_harbor_t4_terminal.py
+@@ -73,7 +73,8 @@ def _guarded_tombstone_unit(unit_id: str) -> None:
+ 
+ def _guarded_delete_unit(_cfg, unit_id: str, unit_meta: dict) -> None:
+     from chroma_write_store import production_chroma_write_session
+-    with production_chroma_write_session(entrypoint="tests.t4_terminal_delete") as session:
++    from purge_locks import index_write_flock
++    with index_write_flock(_cfg), production_chroma_write_session(entrypoint="tests.t4_terminal_delete") as session:
+         removed = session.store.delete_units_for_source(
+             str(unit_meta.get("source_path") or ""), candidate_ids={unit_id}
+         )
+diff --git a/tests/conftest.py b/tests/conftest.py
+index b9091b8..bc4a9e2 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++import os
+ from pathlib import Path
+ 
+ import pytest
+@@ -15,7 +16,9 @@ def _block_live_config_and_writer_defaults(tmp_path, monkeypatch):
+     import config
+     import writer_census
+ 
+-    monkeypatch.setattr(config, "CONFIG_PATH", missing / "config.toml")
++    if os.environ.get("SAFE_HARBOR_T3_BOOTSTRAPPED") != "1":
++        # Under main's launcher, CONVMEM_CONFIG already names the fixture config.
++        monkeypatch.setattr(config, "CONFIG_PATH", missing / "config.toml")
+     monkeypatch.setattr(
+         chroma_write_store,
+         "DEFAULT_WRITER_LOCK",
+diff --git a/tests/test_file_generation_dedupe.py b/tests/test_file_generation_dedupe.py
+index f8e0b29..d032711 100644
+--- a/tests/test_file_generation_dedupe.py
++++ b/tests/test_file_generation_dedupe.py
+@@ -11,6 +11,7 @@ from ingest_dedupe import (
+     persist_ingest_dedupe,
+ )
+ from refine import apply_dedupe_queue_record
++from tests.refine_scratch_env import patch_refine_scratch_env
+ 
+ 
+ def _row(physical: str, logical: str, embedding: list[float], *, owner="owner"):
+@@ -93,9 +94,12 @@ def test_persisted_semantic_record_resolves_real_approval_path(tmp_path: Path) -
+                 "canonical_id": canonical.physical_id,
+             }
+         )
+-        applied = apply_dedupe_queue_record(
+-            store.raw_store, cfg, persisted, verbose=False
+-        )
++        # Refine writes only through C1 and the live store (issue #286); bind the
++        # live config to this test's Chroma tree for the apply calls.
++        with patch_refine_scratch_env(tmp_path, cfg):
++            applied = apply_dedupe_queue_record(
++                store.raw_store, cfg, persisted, verbose=False
++            )
+         assert applied == {"tombstoned": 1, "skipped": 0, "errors": 0}
+         changed = store.raw_store.get_unit(tombstone.physical_id)
+         assert changed is not None
+@@ -105,9 +109,10 @@ def test_persisted_semantic_record_resolves_real_approval_path(tmp_path: Path) -
+         negative = dict(persisted)
+         negative["tombstone_id"] = tombstone.logical_id
+         negative["chroma_applied"] = False
+-        silent = apply_dedupe_queue_record(
+-            store.raw_store, cfg, negative, verbose=False
+-        )
++        with patch_refine_scratch_env(tmp_path, cfg):
++            silent = apply_dedupe_queue_record(
++                store.raw_store, cfg, negative, verbose=False
++            )
+         assert silent == {"tombstoned": 0, "skipped": 1, "errors": 0}
+ 
+ 
+```
+
+# Round 26: `d5d10b5`, FAIL (R6-F1, R6-F2), corrective 20 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15
