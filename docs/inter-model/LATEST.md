@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-16
+**Updated:** 2026-10-15
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,13 +9,11 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — readiness evidence PASS; initializer scope includes Codex reuse (2026-10-16):**
+- **Arc Safe Harbor — readiness evidence PASS; initializer scope drafted (2026-10-15):**
   PR #394 is tree-identical to the accepted candidate; [VERIFY closeout](../plans/VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping)
   records hosted CI and Ryan's exact-tip outage exception.
   Kiro PASSed bounded readiness evidence at `f45b051`, with coverage corrected in
   the same session. Codex drafted [the initializer scope](../plans/EXECUTION-safe-harbor.md#22-bounded-legacy-source-initialization--proposed-scope-not-a-grant).
-  Ryan's requested comparison now records Arc Codex's newer shared-lock/recovery
-  work and the integration decision needed before initializer implementation.
   **Next lane: Ryan**, for pending recovery/loss-window facts and governing scope
   review; the proposal is not implemented or covered by that evidence PASS.
   [STATUS](../plans/STATUS-safe-harbor.md) carries results and current gates.
@@ -284,4 +282,4 @@ its existing archive/reference location. Use
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
 
 <!-- ref: ../plans/STATUS-safe-harbor.md — current Safe Harbor lane -->
-<!-- src: ../plans/ROLLOUT-safe-harbor.md, ../plans/EXECUTION-safe-harbor.md — returned preflight, initializer scope and Codex reuse -->
+<!-- src: ../plans/ROLLOUT-safe-harbor.md — returned preflight and remaining readiness -->

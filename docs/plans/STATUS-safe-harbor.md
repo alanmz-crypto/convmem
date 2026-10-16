@@ -42,7 +42,6 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Existing guard state:** two matching legacy snapshot generations lack release evidence; no quarantine marker was present at inspection. Candidate reconciliation skips unchanged signatures, so it does not initialize these generations automatically. No production validation/adoption ran.
 - **New isolated readiness evidence:** `tests/_safe_harbor_rollout_evidence.py` runs a fixed selection under the reviewed bootstrap; `tests/test_safe_harbor_rollout_legacy.py` rehearses representative old manifests. [VERIFY readiness](VERIFY-safe-harbor.md#isolated-rollout-readiness--installed-interpreter-and-legacy-state) records source pins, results and limitations. Runtime is unchanged; no production initialization command was added.
 - **Independent review and new proposal:** [Kiro's pinned PASS](VERIFY-safe-harbor.md#independent-readiness-review--kiro-pass-exact-subject-retained) covers `f45b051` after same-session coverage completion. EXECUTION §22 proposes one manual initializer on the existing guard/CLI, with durable originals before prune and whole-set eligibility checks. That later proposal is unreviewed and unimplemented.
-- **Parallel indexing work inspected:** [EXECUTION §22](EXECUTION-safe-harbor.md#reuse-from-arc-codex--issue-286-2026-10-16-comparison) records useful coordination/recovery evidence from Arc Codex PR #395 at `d5f765a`. Its shared write lock must be reconciled with the initializer's selected base; it does not implement legacy initialization or transfer acceptance to Safe Harbor.
 
 ## 4. Completion State
 
@@ -58,12 +57,12 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 **Ryan:** answer the pending recovery questions and decide the proposed initializer scope/review. Kiro's evidence review is complete. No implementation, deployment or live backup/restore operation is authorized.
 
-**Codex:** review/scoping work and Ryan's requested Arc Codex comparison are returned in EXECUTION §§21–22. Preserve the evidence PASS at its exact subject; it does not extend to the new initializer interface or PR #395 recovery delta. Kiro is the next governing reviewer if Ryan grants that proposed scope review, including the integration base and lock interface. No further code/tests/live action is active.
+**Codex:** review/scoping work is returned in EXECUTION §§21–22. Preserve the evidence PASS at its exact subject; it does not extend to the new initializer interface. Kiro is the next governing reviewer if Ryan grants that proposed scope review. No further code/tests/live action is active.
 
 ## 6. What Remains Before "Live" (sequential)
 
 1. Resolve recovery artifact, independent access/custody and acceptable loss interval; any new capture or scratch restore needs its own bounded grant.
-2. Review EXECUTION §22's proposed initializer and Arc Codex integration/lock interface; separately grant isolated implementation/evidence if accepted. The existing mechanism passed on scratch and Kiro reviewed that evidence, but no live entrypoint/procedure is qualified. Pending work is a refusal, not permission to flush or weaken release.
+2. Review EXECUTION §22's proposed initializer; separately grant isolated implementation/evidence if accepted. The existing mechanism passed on scratch and Kiro reviewed that evidence, but no live entrypoint/procedure is qualified. Pending work is a refusal, not permission to flush or weaken release.
 3. Review the complete operational procedure: all old clients/manual writers, timer routing, audit publication, guard preservation/adoption and conditional rollback. Keep watch stopped/disabled and retain other arcs' limits. No automatic first-write migration or generic reconcile fallback.
 4. Ryan grants only the named rollout transitions after those prerequisites pass. Record actual deployed identities and granted diagnostics afterwards. No implementation PASS or merge implies live recovery assurance.
 
@@ -97,8 +96,6 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
-
-- 2026-10-16 — Codex: compared the newer Arc Codex candidate and recorded reusable coordination/recovery evidence plus the initializer integration decision; no code, tests, reviews or live changes authorized.
 
 - 2026-10-15 — Codex: recorded Kiro readiness PASS at `f45b051` with corrected coverage and drafted the bounded initializer scope; recovery facts, scope review and implementation remain pending.
 
@@ -215,5 +212,5 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 [Arc Safe Harbor] T1–T5 are accepted and merged; Kiro PASSed the 83+5 readiness evidence at `f45b051`. The initializer scope is drafted, not reviewed or implemented. Recovery facts and live authorization remain pending.
 
-<!-- ref: ROLLOUT-safe-harbor.md, EXECUTION-safe-harbor.md — operational readiness, initialization scope and Codex reuse -->
+<!-- ref: ROLLOUT-safe-harbor.md — operational readiness and proposed sequence -->
 <!-- src: VERIFY-safe-harbor.md — accepted implementation, hosted evidence and merge mapping -->
