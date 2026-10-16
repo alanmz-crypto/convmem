@@ -81,7 +81,7 @@ def test_readonly_check_has_no_mutation(tmp_path, monkeypatch, kind):
         return [(str(p.relative_to(tmp_path)), p.is_dir(), p.read_bytes() if p.is_file() else None, p.stat().st_mtime_ns) for p in sorted(tmp_path.rglob('*'))]
     before = image()
     if kind == 'unreadable':
-        read_text = Path.read_text
+        read_text = vars(Path)["read_text"]  # vars(): pylint 4.0.6 open-call check crashes on a bare alias call
         def deny(self, *a, **kw):
             if self == path: raise PermissionError('scratch unreadable state')
             return read_text(self, *a, **kw)
