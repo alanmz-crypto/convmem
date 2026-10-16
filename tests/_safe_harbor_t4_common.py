@@ -405,15 +405,17 @@ def _matrix_marker_repair(cfg) -> dict[str, Any]:
     doc_before = unit.get("document")
     emb_before = unit.get("embedding_sha")
     from chroma_write_store import open_production_recovery_write_store
+    from purge_locks import index_write_flock
 
-    session = open_production_recovery_write_store(entrypoint="propose_decision.write")
-    store = session.store
-    try:
-        meta = dict(unit["metadata"])
-        meta["proposal_id"] = ""
-        store.update_unit_metadata(chroma_id, meta)
-    finally:
-        store.close()
+    with index_write_flock(cfg):
+        session = open_production_recovery_write_store(entrypoint="propose_decision.write")
+        store = session.store
+        try:
+            meta = dict(unit["metadata"])
+            meta["proposal_id"] = ""
+            store.update_unit_metadata(chroma_id, meta)
+        finally:
+            store.close()
     action = _recover(cfg, pid)
     assert action == "repair_marker"
     after = _dump_state(cfg)

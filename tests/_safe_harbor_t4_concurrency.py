@@ -170,11 +170,13 @@ def _lock_nb_probe(lock_path: str) -> bool:
         os.close(fd)
 
 
-def _install_ool_fcntl_tracker(lock_path: str) -> Callable[[], None]:
+def _install_ool_fcntl_tracker(lock_path: str, *extra_paths: str) -> Callable[[], None]:
     real_flock = fcntl.flock
+    tracked = {lock_path, *extra_paths}
 
     def tracking_flock(fd: int, operation: int) -> None:
-        key = lock_path if os.readlink(f"/proc/self/fd/{fd}") == lock_path else ""
+        target = os.readlink(f"/proc/self/fd/{fd}")
+        key = target if target in tracked else ""
         if key and (operation & fcntl.LOCK_EX):
             _OOL_TRACKED_LOCK_FD[key] = fd
         if key and (operation & fcntl.LOCK_UN):
@@ -202,32 +204,64 @@ def _ool_release_tracked_lock(lock_path: str) -> None:
 def _install_competitor_flock_observer(lock_path: str):
     """Signal PRE_FLOCK + NB probe, then real blocking flock; ACQUIRED after real acquire."""
     import chroma_write_guard
+    import purge_locks
 
     real = chroma_write_guard._exclusive_flock
+    real_index = purge_locks.index_write_flock
     if os.environ.get("SAFE_HARBOR_T4_COMPETE_SIGNAL_WRITE_FD"):
         signal_write = _signal_fd("SAFE_HARBOR_T4_COMPETE_SIGNAL_WRITE_FD")
     else:
         signal_write = _signal_fd("SAFE_HARBOR_T4_SIGNAL_WRITE_FD")
+    signalled = {"done": False}
 
     @contextmanager
-    def wrapped(path: Path, timeout_seconds: float):
-        key = str(path)
-        if key == lock_path:
+    def observe(probe_path: str, acquire):
+        first = not signalled["done"]
+        if first:
             _write_line_fd(signal_write, "PRE_FLOCK")
-            if _lock_nb_probe(lock_path):
+            if _lock_nb_probe(probe_path):
                 _write_line_fd(signal_write, "NB_FREE")
             else:
                 _write_line_fd(signal_write, "NB_BLOCKED")
-        with real(path, timeout_seconds):
-            if key == lock_path:
+        with acquire() as held:
+            if first:
+                signalled["done"] = True
                 _write_line_fd(signal_write, "ACQUIRED")
-            yield
+            yield held
+
+    @contextmanager
+    def wrapped(path: Path, timeout_seconds: float):
+        if str(path) != lock_path:
+            with real(path, timeout_seconds) as held:
+                yield held
+            return
+        with observe(lock_path, lambda: real(path, timeout_seconds)) as held:
+            yield held
+
+    @contextmanager
+    def wrapped_index(cfg: dict):
+        # Writers take the store-wide index write lock (C1) before the guard flock,
+        # so a competitor first blocks there while recovery holds both.
+        if purge_locks.index_write_lock_depth() > 0:
+            with real_index(cfg) as held:
+                yield held
+            return
+        index_lock = str(Path(purge_locks.index_write_lock_path(cfg)).resolve())
+        if signalled["done"] or _lock_nb_probe(index_lock):
+            # Uncontended C1: signal at the guard flock as before.
+            with real_index(cfg) as held:
+                yield held
+            return
+        with observe(index_lock, lambda: real_index(cfg)) as held:
+            yield held
 
     chroma_write_guard._exclusive_flock = wrapped
+    purge_locks.index_write_flock = wrapped_index
     try:
         yield
     finally:
         chroma_write_guard._exclusive_flock = real
+        purge_locks.index_write_flock = real_index
 
 
 def _invoke_forget_cli(unit_id: str) -> None:
@@ -250,8 +284,9 @@ def _canonical_seed_unit_id(cfg: dict) -> str:
         if unit.get("id") == "seed-0":
             return "seed-0"
     from chroma_write_store import production_chroma_write_session
+    from purge_locks import index_write_flock
 
-    with production_chroma_write_session(entrypoint="tests.t4_concurrency_seed") as session:
+    with index_write_flock(cfg), production_chroma_write_session(entrypoint="tests.t4_concurrency_seed") as session:
         store = session.store
         store.add_unit(
             "seed-0",
@@ -411,7 +446,9 @@ def _mode_refine_apply() -> dict[str, Any]:
 
         ctx = nullcontext()
     with ctx:
-        with production_chroma_write_session(entrypoint="refine.apply_dedupe") as session:
+        from purge_locks import index_write_flock
+
+        with index_write_flock(cfg), production_chroma_write_session(entrypoint="refine.apply_dedupe") as session:
             stats = apply_dedupe_queue_record(session.store, cfg, record, verbose=False)
     if stats.get("errors"):
         raise RuntimeError(f"apply_dedupe_queue_record errors: {stats}")
@@ -429,11 +466,12 @@ def _mode_refine_apply() -> dict[str, Any]:
 def _install_faulty_classify_hooks(
     lock_path: str,
     saved: dict[str, Any],
+    index_lock_path: str,
 ) -> tuple[Callable[[], None], Callable[[], None]]:
     import propose_decision
 
     real_classify = propose_decision._recovery_classify_live
-    restore_fcntl = _install_ool_fcntl_tracker(lock_path)
+    restore_fcntl = _install_ool_fcntl_tracker(lock_path, index_lock_path)
     signal_write = _signal_fd("SAFE_HARBOR_T4_SIGNAL_WRITE_FD")
     gap_read = _signal_fd("SAFE_HARBOR_T4_GAP_READ_FD")
     calls = {"n": 0}
@@ -445,7 +483,9 @@ def _install_faulty_classify_hooks(
             saved["live"] = live
             _write_line_fd(signal_write, "INSPECTED")
             _read_line_fd(gap_read)
+            # Out of every lock: recovery also holds the store-wide index write lock (C1).
             _ool_release_tracked_lock(lock_path)
+            _ool_release_tracked_lock(index_lock_path)
             _write_line_fd(signal_write, "GAP")
             _read_line_fd(gap_read)
             return live
@@ -473,7 +513,10 @@ def _mode_recover_faulty_oool(proposal_id: str) -> dict[str, Any]:
     os.environ["SAFE_HARBOR_T4_LOCK_PATH"] = lock_path
     os.environ["SAFE_HARBOR_T4_FAULTY_OOL"] = "1"
     saved: dict[str, Any] = {}
-    restore_all, _ = _install_faulty_classify_hooks(lock_path, saved)
+    from purge_locks import index_write_lock_path
+
+    index_lock_path = str(Path(index_write_lock_path(cfg)).resolve())
+    restore_all, _ = _install_faulty_classify_hooks(lock_path, saved, index_lock_path)
     verdict = "OK"
     action = ""
     err = ""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,9 @@ def _block_live_config_and_writer_defaults(tmp_path, monkeypatch):
     import config
     import writer_census
 
-    monkeypatch.setattr(config, "CONFIG_PATH", missing / "config.toml")
+    if os.environ.get("SAFE_HARBOR_T3_BOOTSTRAPPED") != "1":
+        # Under main's launcher, CONVMEM_CONFIG already names the fixture config.
+        monkeypatch.setattr(config, "CONFIG_PATH", missing / "config.toml")
     monkeypatch.setattr(
         chroma_write_store,
         "DEFAULT_WRITER_LOCK",

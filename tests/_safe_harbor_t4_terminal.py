@@ -73,7 +73,8 @@ def _guarded_tombstone_unit(unit_id: str) -> None:
 
 def _guarded_delete_unit(_cfg, unit_id: str, unit_meta: dict) -> None:
     from chroma_write_store import production_chroma_write_session
-    with production_chroma_write_session(entrypoint="tests.t4_terminal_delete") as session:
+    from purge_locks import index_write_flock
+    with index_write_flock(_cfg), production_chroma_write_session(entrypoint="tests.t4_terminal_delete") as session:
         removed = session.store.delete_units_for_source(
             str(unit_meta.get("source_path") or ""), candidate_ids={unit_id}
         )

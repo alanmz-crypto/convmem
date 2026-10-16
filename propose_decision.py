@@ -874,12 +874,13 @@ def _recover_approval_impl(op, proposal_id: str) -> str:
         verify_recovery_config_binding,
     )
     from conflict_events import EventPublicationError, governed_lock
+    from purge_locks import index_write_flock
 
     proposal_id = proposal_id.strip()
     cfg = op.config()
     verify_recovery_config_binding(op, cfg)
     durability_root = recovery_durability_root(op)
-    with governed_lock(cfg):
+    with governed_lock(cfg), index_write_flock(cfg):
         try:
             states = _load_recovery_event_states(cfg)
         except ValueError as exc:
