@@ -166,7 +166,9 @@ def _restic_ok() -> bool:
     try:
         restic_snapshot.check_restic_available(RESTIC)
         return True
-    except ResolverError:
+    except ResolverError as exc:
+        if os.environ.get("SAFE_HARBOR_REQUIRE_RESTIC") == "1":
+            raise RuntimeError("required CI Restic unavailable; refusing skipped coverage") from exc
         return False
 
 
@@ -954,7 +956,7 @@ def test_control_old_recover_label_refused_by_armed_census(cli: Cli):
     _assert_census_admitted(cli.census_events(), armed)
 
 
-def test_cli_event_only_recovery_refused_before_approved_event(cli: Cli):
+def test_cli_event_only_recovery_completes_approved_event(cli: Cli):
     pid = _event_only_state(cli)
     types = [e["event_type"] for e in _pid_events(cli, pid)]
     assert "APPROVAL_STARTED" in types and "APPROVED" not in types
@@ -963,11 +965,6 @@ def test_cli_event_only_recovery_refused_before_approved_event(cli: Cli):
     live = [u["metadata"] for u in cli.dump()["chroma"]["units"]
             if u["metadata"].get("proposal_id") == pid]
     assert len(live) == 1
-    proposed = next(e for e in _pid_events(cli, pid) if e["event_type"] == "PROPOSED")
-    # Current views disagree: the proposal hash omits the title/notes/result that
-    # ingestion derives, so the classifier cannot match marker and hash (T4).
-    assert live[0]["content_hash"] != proposed["proposal"]["proposed_content_hash"]
-
     env = _future(cli)
     before = cli.dump()
     proc = cli.convmem("propose_decision", "--recover", pid, env=env)
@@ -977,9 +974,25 @@ def test_cli_event_only_recovery_refused_before_approved_event(cli: Cli):
     later = {NOW_ENV_KEY: (local_noon() + timedelta(hours=2)).isoformat()}
     proc = cli.convmem("propose_decision", "--recover", pid, env=later)
     assert "BLOCKED" not in proc.stderr
-    assert proc.returncode == 1, proc.stdout + proc.stderr
-    assert "needs human review" in proc.stdout + proc.stderr
-    assert cli.dump() == before
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert f"Recovered {pid}: approve" in proc.stdout
+    after = cli.dump()
+    assert [e["event_type"] for e in _pid_events(cli, pid)].count("APPROVED") == 1
+    assert len(after["chroma"]["units"]) == len(before["chroma"]["units"])
+    assert [u for u in after["chroma"]["units"] if u["metadata"].get("proposal_id") == pid]
+
+
+def test_cli_event_only_recovery_refused_before_approved_event(cli: Cli):
+    """T4 completes event-only recovery on current snapshot (no longer refused)."""
+    pid = _event_only_state(cli)
+    env = _current(cli)
+    before = cli.dump()
+    proc = cli.convmem("propose_decision", "--recover", pid, env=env)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert f"Recovered {pid}: approve" in proc.stdout
+    after = cli.dump()
+    assert len(after["chroma"]["units"]) == len(before["chroma"]["units"])
+    assert [e["event_type"] for e in _pid_events(cli, pid)].count("APPROVED") == 1
 
 
 def test_cli_config_swap_after_preflight_refused_on_both_targets(cli: Cli):
@@ -1330,7 +1343,12 @@ def test_cross_parent_chroma_alias_canonical_substitution_negative_control(cli: 
         proc = cli.convmem("record", "--approve-last", env=hook_env, stdin="y\n")
     else:
         proc = cli.convmem("propose_decision", "--recover", pid, env=hook_env)
-    _assert_proposal_not_found(proc)
+    if workflow == "recover":
+        assert proc.returncode == EXIT_WRONG_PATH, proc.stdout + proc.stderr
+        assert "operation_config_changed" in (proc.stdout + proc.stderr)
+        assert "APPROVED" not in [e["event_type"] for e in _pid_events(cli, pid)]
+    else:
+        _assert_proposal_not_found(proc)
     with pytest.raises(AssertionError):
         if workflow == "approve_last":
             _assert_cross_parent_indexed_approval_effects(
@@ -1359,8 +1377,12 @@ def test_cross_parent_chroma_alias_canonical_substitution_negative_control(cli: 
     after_files = _file_hashes(cli, intended)
     after_alt = _file_hashes(cli, alternate)
     assert after_files == before_files
-    # Faulty canonical substitution can create governed artifacts under store/.
-    assert alternate["lock"].exists() or after_alt["lock"] != before_alt["lock"]
+    if workflow == "recover":
+        # T4 refuses the injected wrong config before opening any alternate lock.
+        # The independent successful-completion checker above must still fail.
+        assert after_alt == before_alt
+    else:
+        assert alternate["lock"].exists() or after_alt["lock"] != before_alt["lock"]
 
 
 def test_cli_add_succeeds_with_unchanged_chroma_alias(cli: Cli):

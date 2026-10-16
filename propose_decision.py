@@ -5,9 +5,12 @@ from __future__ import annotations
 
 import json
 import os
+import math
+import re
 import secrets
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 
 PROPOSAL_KIND = "decision_proposal"
@@ -94,17 +97,193 @@ def approved_for_proposal(cfg: dict, proposal_id: str) -> dict | None:
     return None
 
 
-def recovery_action(cfg: dict, proposal_id: str, *, live_marker: str = "", live_hash: str = "", base_hash: str = "", proposed_hash: str = "") -> str:
-    """Classify an APPROVAL_STARTED recovery without performing a blind retry."""
-    if live_marker == proposal_id and live_hash == proposed_hash:
-        return "approve"
-    row = approved_for_proposal(cfg, proposal_id)
-    if row and live_hash == proposed_hash:
-        return "repair_marker"
-    if row and (not live_hash or live_hash == base_hash):
+_CONTENT_HASH_RE = re.compile(r"^[a-f0-9]{64}$")
+
+
+def _valid_content_hash(value: str | None) -> bool:
+    return bool(value and _CONTENT_HASH_RE.fullmatch(str(value).strip()))
+
+
+def recovery_action(  # pylint: disable=too-many-arguments
+    cfg: dict,
+    proposal_id: str,
+    *,
+    live_marker: str = "",
+    live_hash: str = "",
+    base_hash: str = "",
+    proposed_hash: str = "",
+    live_absent: bool = False,
+    live_read_failed: bool = False,
+    intent_present: bool = True,
+) -> str:
+    """Classify recovery using strict inputs (tests and legacy callers)."""
+    del cfg  # compat: callers pass config; classification uses explicit flat state only
+    return classify_recovery_action(
+        proposal_id=proposal_id,
+        intent_present=intent_present,
+        proposed_hash=proposed_hash,
+        live_marker=live_marker,
+        live_hash=live_hash if _valid_content_hash(live_hash) else "",
+        live_absent=live_absent,
+        live_read_failed=live_read_failed,
+        base_hash=base_hash if _valid_content_hash(base_hash) else "",
+    )
+
+
+def classify_recovery_action(  # pylint: disable=too-many-arguments
+    *,
+    proposal_id: str,
+    intent_present: bool,
+    proposed_hash: str,
+    live_marker: str,
+    live_hash: str,
+    live_absent: bool,
+    live_read_failed: bool,
+    base_hash: str,
+) -> str:
+    """Flat explicit recovery state machine (no opaque kwargs)."""
+    if live_read_failed or not intent_present or not _valid_content_hash(proposed_hash):
+        return "review"
+    if live_absent:
+        return "retry_chroma"
+    if not _valid_content_hash(live_hash):
+        return "review"
+    if live_hash == proposed_hash:
+        if not live_marker:
+            return "repair_marker"
+        if live_marker == proposal_id:
+            return "approve"
+        return "review"
+    # A revised decision retains the previous approval marker at its valid base.
+    # Matching proposed content still requires this proposal's marker (above).
+    if _valid_content_hash(base_hash) and live_hash == base_hash:
         return "retry_chroma"
     return "review"
 
+
+# pylint: disable=duplicate-code
+# Strict queue/intent readers intentionally do not reuse tolerant legacy or restore parsers.
+def _load_queue_strict(path: Path) -> list[dict]:
+    """Parse the queue JSONL without skipping malformed lines."""
+    if not path.is_file():
+        raise ValueError("queue_missing")
+    records: list[dict] = []
+    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"malformed queue line {number}") from exc
+        if not isinstance(row, dict):
+            raise ValueError(f"invalid queue line {number}")
+        records.append(row)
+    return records
+
+
+def _validate_recovery_event_authority(events: list[dict]) -> None:
+    """Refuse contradictory or malformed lifecycle events for recovery."""
+    seen: dict[str, str] = {}
+    for number, event in enumerate(events, 1):
+        if not isinstance(event, dict):
+            raise ValueError(f"invalid event log record {number}")
+        eid = event.get("event_id")
+        if not isinstance(eid, str) or not eid.strip():
+            raise ValueError(f"event missing id at record {number}")
+        canonical = json.dumps(event, sort_keys=True, separators=(",", ":"))
+        prior = seen.get(eid)
+        if prior is not None and prior != canonical:
+            raise ValueError(f"contradictory event_id {eid}")
+        seen[eid] = canonical
+
+
+def load_strict_approved_intent(cfg: dict, proposal_id: str, event_prop: dict) -> dict:
+    """Strict approved JSONL authority bound to the signed queue and event proposal."""
+    from ledger_content_hash import ledger_content_hash
+
+    pid = proposal_id.strip()
+    qrows = _load_queue_strict(queue_path(cfg))
+    qmatches = [r for r in qrows if str(r.get("id") or "").strip() == pid]
+    if not qmatches:
+        raise ValueError("queue_proposal_missing")
+    if len(qmatches) > 1:
+        raise ValueError("duplicate_queue_proposal")
+    qrow = qmatches[0]
+    if (qrow.get("status") or "").strip() != "APPROVED":
+        raise ValueError("queue_proposal_not_approved")
+    signer = str(qrow.get("signer") or "").strip()
+    if not is_valid_signer(signer):
+        raise ValueError("queue_proposal_unsigned")
+    if not str(qrow.get("signed_at") or "").strip():
+        raise ValueError("queue_proposal_unsigned")
+
+    path = approved_path(cfg)
+    if not path.is_file():
+        raise ValueError("approved_intent_missing")
+    matches: list[dict] = []
+    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"malformed approved intent line {number}") from exc
+        if not isinstance(row, dict):
+            raise ValueError(f"invalid approved intent line {number}")
+        if str(row.get("proposal_id") or "").strip() == pid:
+            matches.append(row)
+    if not matches:
+        raise ValueError("approved_intent_missing")
+    if len(matches) > 1:
+        raise ValueError("duplicate_approved_intent")
+    row = matches[0]
+
+    target = str(
+        event_prop.get("target_ledger_id")
+        or event_prop.get("proposed_ledger_id")
+        or pid
+    ).strip()
+    ledger_id = str(row.get("id") or row.get("ledger_id") or "").strip()
+    if ledger_id and target and ledger_id != target:
+        raise ValueError("approved_intent_target_mismatch")
+    if str(row.get("proposal_id") or "").strip() != pid:
+        raise ValueError("approved_proposal_id_mismatch")
+
+    approved_signer = str(row.get("author_model") or row.get("tool") or "").strip()
+    if not is_valid_signer(approved_signer) or approved_signer != signer:
+        raise ValueError("approved_intent_unsigned")
+
+    expected_ledger = proposal_to_ledger(qrow, signer=signer, ledger_id=target)
+    if ledger_content_hash(row) != ledger_content_hash(expected_ledger):
+        raise ValueError("approved_intent_semantic_mismatch")
+
+    ev_proposed = str(event_prop.get("proposed_content_hash") or "").strip()
+    if not _valid_content_hash(ev_proposed):
+        raise ValueError("event_proposed_hash_missing")
+    raw_proposed = ledger_content_hash(expected_ledger)
+    if ev_proposed != raw_proposed:
+        raise ValueError("event_proposed_hash_mismatch")
+    if qrow.get("proposed_content_hash") != ev_proposed:
+        raise ValueError("queue_event_proposed_hash_mismatch")
+    queue_target = str(qrow.get("target_ledger_id") or pid).strip()
+    if queue_target != target:
+        raise ValueError("queue_event_target_mismatch")
+    from ledger_content_hash import HASH_SCHEMA_VERSION
+    if any(record.get("hash_schema_version") != HASH_SCHEMA_VERSION for record in (qrow, event_prop)):
+        raise ValueError("unknown_recovery_hash_schema")
+    ev_base = str(event_prop.get("base_content_hash") or "").strip()
+    queue_base = str(qrow.get("base_content_hash") or "").strip()
+    if queue_base != ev_base or (ev_base and not _valid_content_hash(ev_base)):
+        raise ValueError("queue_event_base_hash_mismatch")
+
+    ingest_hash = ingestion_content_hash_from_record(row)
+    if not ingest_hash:
+        raise ValueError("approved_intent_invalid_ingest_hash")
+
+    return row
+
+
+# pylint: enable=duplicate-code
 
 def validate_governed_apply(*, target_ledger_id: str | None, live_hash: str | None,
                            base_hash: str | None, unresolved_targets: set[str],
@@ -154,6 +333,89 @@ def unresolved_target_ids(cfg: dict) -> set[str]:
     return out
 
 
+class RecoveryCompletionUnknown(RuntimeError):
+    """Recovery effects may be partial; completion outcome is unknown."""
+
+
+def ingestion_content_hash_from_record(record: dict) -> str | None:
+    """Ingestion-side semantic hash for an approved JSONL row or protocol record."""
+    from ledger import ledger_unit_metadata, normalize_ledger_record
+
+    unit = normalize_ledger_record(record)
+    if unit is None:
+        return None
+    meta = ledger_unit_metadata(unit)
+    digest = str(meta.get("content_hash") or "").strip()
+    return digest or None
+
+
+def stored_content_hash(unit: dict) -> str:
+    """Return persisted content_hash only; never synthesize eligibility."""
+    meta = dict(unit.get("metadata") or {})
+    digest = str(meta.get("content_hash") or "").strip()
+    return digest if _valid_content_hash(digest) else ""
+
+
+def _metadata_semantic_record(meta: dict, ledger_id: str) -> dict:
+    """Rebuild the v1 semantic record from persisted Chroma metadata."""
+
+    def _list(key: str) -> list:
+        raw = meta.get(key) or "[]"
+        if isinstance(raw, list):
+            return list(raw)
+        val = json.loads(raw)
+        if not isinstance(val, list):
+            raise ValueError(f"invalid semantic list: {key}")
+        return list(val)
+
+    return {
+        "ledger_id": meta.get("ledger_id") or ledger_id,
+        "kind": meta.get("ledger_kind") or meta.get("type") or "decision",
+        "status": meta.get("status") or "",
+        "title": meta.get("title") or "",
+        "summary": meta.get("summary") or "",
+        "rationale": meta.get("rationale") or "",
+        "relates_to": meta.get("relates_to") or "",
+        "confidence": meta.get("confidence"),
+        "domain": meta.get("domain") or "",
+        "site": meta.get("site") or "",
+        "notes": meta.get("notes") or "",
+        "result": meta.get("result") or "",
+        "alternatives_rejected": _list("alternatives_rejected_json"),
+        "constraints": _list("constraints_json"),
+    }
+
+
+def verified_stored_content_hash(unit: dict) -> str:
+    """Return content_hash only when it matches recomputed semantic metadata."""
+    from ledger_content_hash import ledger_content_hash
+
+    stored = stored_content_hash(unit)
+    if not stored:
+        return ""
+    meta = dict(unit.get("metadata") or {})
+    ledger_id = str(meta.get("ledger_id") or "").strip()
+    try:
+        recomputed = ledger_content_hash(_metadata_semantic_record(meta, ledger_id))
+    except (ValueError, TypeError):
+        return ""
+    return stored if stored == recomputed else ""
+
+
+def _governed_recovery_affected_paths(cfg: dict) -> list[Path]:
+    from conflict_events import event_path, lock_path
+    from hash_schema_gate import deploy_path, migration_report_path
+
+    return [
+        event_path(cfg),
+        lock_path(cfg),
+        queue_path(cfg),
+        approved_path(cfg),
+        deploy_path(cfg),
+        migration_report_path(cfg),
+    ]
+
+
 def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     """Return (proposal_id_marker, content_hash, tombstoned) for a live decision."""
     if not ledger_id:
@@ -161,6 +423,7 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     try:
         from chroma_store import is_superseded, open_chroma_for_read
         from ledger import find_unit_by_ledger_id
+        from ledger_content_hash import ledger_content_hash
     except Exception:
         return "", "", False
     chroma_dir = (cfg.get("index") or {}).get("chroma_dir")
@@ -183,15 +446,12 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     if live_hash:
         return marker, live_hash, tombstoned
     try:
-        _json = json
-        from ledger_content_hash import ledger_content_hash
-
         def _list(key: str) -> list:
             raw = meta.get(key) or "[]"
             if isinstance(raw, list):
                 return list(raw)
             try:
-                val = _json.loads(raw)
+                val = json.loads(raw)
                 return list(val) if isinstance(val, list) else []
             except Exception:
                 return []
@@ -223,62 +483,459 @@ def live_decision_snapshot(cfg: dict, ledger_id: str) -> tuple[str, str]:
     return marker, live_hash
 
 
-def recover_approval(cfg: dict, proposal_id: str) -> str:
-    """Reconcile an APPROVAL_STARTED proposal per the recovery matrix.
+def _recovery_classify_live(store, ledger_id: str) -> dict:
+    """Fresh authoritative lookup under native lock (includes superseded rows)."""
+    from chroma_store import is_superseded
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
 
-    Returns the action taken: approve | retry_chroma | repair_marker.
-    Raises ValueError when human review is required.
-    """
-    from conflict_events import append_event, governed_lock, load_events, new_event, reduce_events
+    invalidate_ledger_index_cache(getattr(store, "chroma_dir", ""))
+    needle = ledger_id.strip()
+    if not needle:
+        return {"review": "target_missing"}
+    try:
+        rows = store.units_metadata(include_superseded=True)
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Read boundary: any Chroma/metadata failure → refuse as unknown live state.
+        return {"review": "missing_collection"}
+    matches = [dict(m) for m in rows if str(m.get("ledger_id") or "").strip() == needle]
+    if not matches:
+        return {"review": None, "absent": True, "marker": "", "live_hash": "", "unit": None}
+    active = [m for m in matches if not is_superseded(m)]
+    tombstoned = [m for m in matches if is_superseded(m)]
+    if len(active) > 1:
+        return {"review": "duplicate_ledger_identity"}
+    if active and tombstoned:
+        return {"review": "tombstone_and_active_identity"}
+    if not active:
+        return {"review": "target_tombstoned"}
+    meta = active[0]
+    try:
+        unit = store.get_unit(meta["id"], include_embedding=True)
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Read boundary: unreadable unit → refuse rather than guess.
+        return {"review": "chroma_unreadable"}
+    if unit is None:
+        return {"review": "chroma_unreadable"}
+    live_hash = verified_stored_content_hash(unit)
+    if not live_hash:
+        return {"review": "missing_content_hash"}
+    return {
+        "review": None,
+        "absent": False,
+        "marker": str(meta.get("proposal_id") or "").strip(),
+        "live_hash": live_hash,
+        "unit": unit,
+    }
+
+
+def _verify_live_matches_intent(unit: dict, intent_row: dict, store) -> str | None:
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import ledger_unit_document, normalize_ledger_record  # pylint: disable=no-name-in-module
+    from ledger_content_hash import ledger_content_hash
+
+    normalized = normalize_ledger_record(intent_row)
+    if normalized is None:
+        return "invalid_intent"
+    expected_hash = ingestion_content_hash_from_record(intent_row)
+    if not expected_hash:
+        return "invalid_intent_hash"
+    meta = dict(unit.get("metadata") or {})
+    ledger_id = str(meta.get("ledger_id") or "").strip()
+    live_hash = verified_stored_content_hash(unit)
+    if not live_hash:
+        return "missing_content_hash"
+    if ledger_content_hash(_metadata_semantic_record(meta, ledger_id)) != live_hash:
+        return "hash_metadata_mismatch"
+    if live_hash != expected_hash:
+        return "hash_mismatch"
+    document = (unit.get("document") or "").strip()
+    if document != ledger_unit_document(normalized):
+        return "document_mismatch"
+    chroma_id = meta.get("id") or unit.get("id")
+    if chroma_id:
+        try:
+            fetched = store.get_unit(chroma_id, include_embedding=True)
+            embedding = (fetched or {}).get("embedding")
+            if not isinstance(embedding, list) or not embedding:
+                return "missing_embedding"
+            if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in embedding):
+                return "invalid_embedding"
+        except Exception:  # pylint: disable=broad-exception-caught
+            # Read boundary: embedding fetch failure → refuse unknown live corpus.
+            return "chroma_unreadable"
+    return None
+
+
+def _repair_marker_only(
+    store,
+    unit: dict,
+    proposal_id: str,
+    intent_row: dict,
+) -> None:
+    reason = _verify_live_matches_intent(unit, intent_row, store)
+    if reason:
+        raise ValueError(f"marker repair refused ({reason})")
+    meta = dict(unit.get("metadata") or {})
+    if meta.get("proposal_id"):
+        raise ValueError("marker repair refused (nonempty marker)")
+    chroma_id = meta.get("id") or unit.get("id")
+    new_meta = {**meta, "proposal_id": proposal_id}
+    store.update_unit_metadata(chroma_id, new_meta)
+
+
+def _recovery_apply_intent(store, intent_row: dict, models: dict) -> dict:
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import build_ledger_index, invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
+    from observe import ingest_observation
+
+    invalidate_ledger_index_cache(store.chroma_dir)
+    by_ledger_id, _ = build_ledger_index(store)
+    protocol_row = {**intent_row, "_governed_protocol": True}
+    unit = ingest_observation(
+        protocol_row,
+        store=store,
+        embed_model=models.get("embed_model", "nomic-embed-text"),
+        ollama_host=models.get("ollama_host", ""),
+        upsert=True,
+        units_export=None,
+        by_ledger_id=by_ledger_id,
+    )
+    if unit is None:
+        raise ValueError("ingestion rejected approved intent")
+    return unit
+
+
+def _export_unit_for_recovery(intent_row: dict, live_unit: dict) -> dict:
+    """Normalized export row using the live Chroma id and stable projection fields."""
+    from ledger import normalize_ledger_record
+
+    unit = normalize_ledger_record(intent_row)
+    if unit is None:
+        raise ValueError("invalid export intent")
+    meta = dict(live_unit.get("metadata") or {})
+    chroma_id = str(live_unit.get("id") or meta.get("id") or "").strip()
+    if not chroma_id:
+        raise ValueError("export_missing_chroma_id")
+    unit["id"] = chroma_id
+    timestamp = meta.get("timestamp") or unit.get("timestamp")
+    if timestamp:
+        unit["timestamp"] = str(timestamp)
+    return unit
+
+
+def _check_recovery_export(units_export, intent_row, live, base_hash):
+    """Validate an existing projection before any corpus change; recheck at publication."""
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import (  # pylint: disable=no-name-in-module
+        ledger_unit_document, ledger_unit_metadata, normalize_ledger_record,
+    )
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from observe import export_projection_records, export_unit_matches_normalized  # pylint: disable=no-name-in-module
+    from purge_locks import export_flock_path
+
+    if units_export is None:
+        return None
+    if units_export.exists() and not units_export.is_file():
+        raise ValueError("export is not a regular file")
+    expected = normalize_ledger_record(intent_row)
+    if expected is None:
+        raise ValueError("invalid export intent")
+    with export_flock_path(units_export):
+        rows, reason = export_projection_records(units_export, expected["ledger_id"])
+        if reason:
+            raise ValueError(reason)
+        if not rows:
+            return None
+        existing = rows[0]
+        unit = live.get("unit")
+        if unit is not None and live.get("live_hash") == ingestion_content_hash_from_record(intent_row):
+            expected = _export_unit_for_recovery(intent_row, unit)
+        else:
+            expected["id"] = existing.get("id")
+        if export_unit_matches_normalized(expected, existing):
+            return dict(existing)
+        if unit is not None and base_hash and live.get("live_hash") == base_hash:
+            try:
+                projection_hash = ledger_unit_metadata(existing)["content_hash"]
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("invalid base export projection") from exc
+            if (projection_hash == base_hash and existing.get("id") == unit["id"]
+                    and ledger_unit_document(existing) == unit.get("document")
+                    and existing.get("proposal_id", "") == live.get("marker", "")):
+                return dict(existing)
+        raise ValueError("conflicting_export_projection")
+
+
+def _fsync_export_path(units_export: Path, durability_root: Path) -> None:
+    try:
+        with open(units_export, "rb") as handle:
+            os.fsync(handle.fileno())
+        from conflict_events import _ensure_directory_chain_durable
+
+        _ensure_directory_chain_durable(units_export.parent, stop=durability_root)
+    except OSError as exc:
+        raise RecoveryCompletionUnknown(f"export durability outcome unknown: {exc}") from exc
+
+
+def _ensure_export_for_recovery(
+    units_export: Path | None,
+    intent_row: dict,
+    live_unit: dict,
+    *,
+    allow_replace: bool,
+    durability_root: Path,
+    base_export_row: dict | None = None,
+) -> None:
+    from atomic_files import atomic_write_text
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from observe import export_unit_matches_normalized  # pylint: disable=no-name-in-module
+    from purge_locks import export_flock_path
+
+    if units_export is None:
+        return
+    expected = _export_unit_for_recovery(intent_row, live_unit)
+    ledger_id = str(expected.get("ledger_id") or "").strip()
+    if not ledger_id:
+        raise ValueError("export repair requires ledger_id")
+
+    with export_flock_path(units_export):
+        units_export.parent.mkdir(parents=True, exist_ok=True)
+        parsed: list[tuple[str, dict | None]] = []
+        if units_export.is_file():
+            for number, raw in enumerate(
+                units_export.read_text(encoding="utf-8").splitlines(keepends=True), 1
+            ):
+                stripped = raw.strip()
+                if not stripped:
+                    parsed.append((raw, None))
+                    continue
+                try:
+                    row = json.loads(stripped)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"malformed_export_line_{number}") from exc
+                if not isinstance(row, dict):
+                    raise ValueError(f"invalid_export_line_{number}")
+                parsed.append((raw, row))
+
+        existing_rows = [
+            row
+            for _raw, row in parsed
+            if row is not None and str(row.get("ledger_id") or "").strip() == ledger_id
+        ]
+        if len(existing_rows) > 1:
+            raise ValueError("duplicate_export_identity")
+
+        compare_expected = {
+            k: v for k, v in expected.items() if not str(k).startswith("_")
+        }
+        if existing_rows:
+            existing = existing_rows[0]
+            if export_unit_matches_normalized(compare_expected, existing):
+                _fsync_export_path(units_export, durability_root)
+                return
+            if not allow_replace:
+                raise ValueError("conflicting_export_projection")
+            if base_export_row is None:
+                raise ValueError("conflicting_export_projection")
+            if not export_unit_matches_normalized(base_export_row, existing):
+                raise ValueError("export_replace_not_verified")
+            out_lines: list[str] = []
+            replaced = False
+            for _raw, row in parsed:
+                if row is not None and str(row.get("ledger_id") or "").strip() == ledger_id:
+                    out_lines.append(json.dumps(compare_expected) + "\n")
+                    replaced = True
+                else:
+                    out_lines.append(_raw)
+            if not replaced:
+                out_lines.append(json.dumps(compare_expected) + "\n")
+            atomic_write_text(units_export, "".join(out_lines))
+            _fsync_export_path(units_export, durability_root)
+            return
+
+        payload = json.dumps(compare_expected) + "\n"
+        if parsed:
+            atomic_write_text(
+                units_export, "".join(raw for raw, _row in parsed) + payload
+            )
+        else:
+            atomic_write_text(units_export, payload)
+        _fsync_export_path(units_export, durability_root)
+
+
+def _publish_recovery_event(
+    cfg: dict, proposal_id: str, *, lifecycle_approved: bool, durability_root: Path
+) -> None:
+    from conflict_events import append_event_durable, ensure_event_log_durable, new_event
+
+    if lifecycle_approved:
+        ensure_event_log_durable(cfg, durability_root=durability_root)
+        return
+    append_event_durable(
+        cfg, new_event("APPROVED", proposal_id), durability_root=durability_root
+    )
+
+
+def _load_recovery_event_states(cfg: dict) -> dict:
+    from conflict_events import load_events, reduce_events
+
+    events = load_events(cfg)
+    _validate_recovery_event_authority(events)
+    return reduce_events(events)
+
+
+@dataclass(frozen=True)
+class _RecoveryIntent:
+    lifecycle: str
+    target: str
+    base_hash: str
+    row: dict
+    proposed_hash: str
+
+
+def _recovery_authority_from_states(
+    states: dict, cfg: dict, proposal_id: str
+) -> _RecoveryIntent:
+    """Resolve lifecycle, target ledger, hashes, and strict approved intent."""
+    state = states.get(proposal_id)
+    if state is None:
+        raise ValueError(f"Proposal not found in event log: {proposal_id}")
+    lifecycle = state.get("lifecycle_state")
+    if lifecycle not in {"APPROVAL_STARTED", "APPROVED"}:
+        raise ValueError(
+            f"Proposal {proposal_id} is not recoverable (lifecycle={lifecycle})"
+        )
+    if state.get("active_conflicts"):
+        raise ValueError(f"Proposal {proposal_id} needs human review (active conflicts)")
+    prop = dict(state.get("proposal") or {})
+    target = str(
+        prop.get("target_ledger_id") or prop.get("proposed_ledger_id") or proposal_id
+    )
+    base_hash = str(prop.get("base_content_hash") or "")
+    if not _valid_content_hash(base_hash):
+        base_hash = ""
+    intent_row = load_strict_approved_intent(cfg, proposal_id, prop)
+    proposed_hash = ingestion_content_hash_from_record(intent_row) or ""
+    if not _valid_content_hash(proposed_hash):
+        raise ValueError(f"Proposal {proposal_id} needs human review (invalid intent hash)")
+    return _RecoveryIntent(lifecycle, target, base_hash, intent_row, proposed_hash)
+
+
+def _execute_recovery_inside_guard(op, proposal_id, intent, store, guard, *, durability_root) -> str:
+    """One serialized inspect/apply/validate/export/approve sequence."""
+    from chroma_write_store import admitted_units_export_path, verify_admitted_operation_unchanged
+
+    cfg = op.config()
+    units_export = admitted_units_export_path(cfg)
+    live = _recovery_classify_live(store, intent.target)
+    if live.get("review"):
+        raise ValueError(f"Proposal {proposal_id} needs human review ({live['review']})")
+    action = classify_recovery_action(
+        proposal_id=proposal_id, intent_present=True, proposed_hash=intent.proposed_hash,
+        live_marker=live.get("marker") or "", live_hash=live.get("live_hash") or "",
+        live_absent=bool(live.get("absent")), live_read_failed=False, base_hash=intent.base_hash,
+    )
+    if action == "review" or (intent.lifecycle == "APPROVED" and action != "approve"):
+        raise ValueError(f"Proposal {proposal_id} needs human review (action={action})")
+    base_export = _check_recovery_export(units_export, intent.row, live, intent.base_hash)
+    if action == "repair_marker":
+        _repair_marker_only(store, live["unit"], proposal_id, intent.row)
+    elif action == "retry_chroma":
+        _recovery_apply_intent(store, intent.row, cfg.get("models") or {})
+
+    after = _recovery_classify_live(store, intent.target)
+    if after.get("review") or after.get("absent"):
+        raise ValueError(f"Proposal {proposal_id} needs human review (post-write state unavailable)")
+    reason = _verify_live_matches_intent(after["unit"], intent.row, store)
+    if reason or after.get("marker") != proposal_id:
+        raise ValueError(f"Proposal {proposal_id} needs human review ({reason or 'marker incomplete'})")
+    verify_admitted_operation_unchanged(op)
+    guard.finalize_approval_recovery()
+    _ensure_export_for_recovery(
+        units_export, intent.row, after["unit"], allow_replace=action == "retry_chroma",
+        durability_root=durability_root, base_export_row=base_export,
+    )
+    verify_admitted_operation_unchanged(op)
+    _publish_recovery_event(
+        cfg, proposal_id, lifecycle_approved=intent.lifecycle == "APPROVED",
+        durability_root=durability_root,
+    )
+    return action
+
+
+def _recover_approval_impl(op, proposal_id: str) -> str:
+    from chroma_write_guard import ChromaWriteGuardError, ChromaWriteQuarantinedError
+    from chroma_write_store import (
+        recovery_durability_root,
+        open_production_recovery_write_store,
+        verify_admitted_operation_unchanged,
+        verify_admitted_targets_unchanged,
+        verify_recovery_config_binding,
+    )
+    from conflict_events import EventPublicationError, governed_lock
 
     proposal_id = proposal_id.strip()
+    cfg = op.config()
+    verify_recovery_config_binding(op, cfg)
+    durability_root = recovery_durability_root(op)
     with governed_lock(cfg):
-        states = reduce_events(load_events(cfg))
-        state = states.get(proposal_id)
-        if state is None:
-            raise ValueError(f"Proposal not found in event log: {proposal_id}")
-        if state.get("lifecycle_state") == "APPROVED":
-            return "approve"
-        if state.get("lifecycle_state") != "APPROVAL_STARTED":
-            raise ValueError(
-                f"Proposal {proposal_id} is not recoverable "
-                f"(lifecycle={state.get('lifecycle_state')})"
-            )
-        prop = dict(state.get("proposal") or {})
-        target = str(prop.get("target_ledger_id") or prop.get("proposed_ledger_id") or proposal_id)
-        base_hash = str(prop.get("base_content_hash") or "")
-        proposed_hash = str(prop.get("proposed_content_hash") or "")
-        live_marker, live_hash = live_decision_snapshot(cfg, target)
-        # Prefer hashes from approved JSONL row when event payload lacked them.
-        row = approved_for_proposal(cfg, proposal_id)
-        if row and not proposed_hash:
-            from ledger_content_hash import ledger_content_hash
-            proposed_hash = ledger_content_hash(row)
-        action = recovery_action(
-            cfg,
-            proposal_id,
-            live_marker=live_marker,
-            live_hash=live_hash,
-            base_hash=base_hash,
-            proposed_hash=proposed_hash,
+        try:
+            states = _load_recovery_event_states(cfg)
+        except ValueError as exc:
+            raise ValueError(f"event authority unreadable for {proposal_id}: {exc}") from exc
+        intent = _recovery_authority_from_states(
+            states, cfg, proposal_id
         )
-        if action == "review":
-            raise ValueError(
-                f"Proposal {proposal_id} needs human review "
-                f"(marker={live_marker!r} live_hash={live_hash[:12]!r} "
-                f"base={base_hash[:12]!r} proposed={proposed_hash[:12]!r})"
-            )
-        if action == "approve":
-            append_event(cfg, new_event("APPROVED", proposal_id))
-            return action
-        if row is None:
-            raise ValueError(
-                f"Proposal {proposal_id} has APPROVAL_STARTED but no approved JSONL row"
-            )
-        # retry_chroma / repair_marker: re-upsert then APPROVED
-        ingest_approved_ledger(cfg, {**row, "_governed_protocol": True})
-        append_event(cfg, new_event("APPROVED", proposal_id))
+
+        verify_admitted_operation_unchanged(op)
+        session = open_production_recovery_write_store(entrypoint=op.entrypoint)
+        store = session.store
+        action = "review"
+        try:
+            guard = store._write_guard  # pylint: disable=protected-access
+            if guard is None:
+                raise ValueError(
+                    f"Proposal {proposal_id} needs human review (write guard required)"
+                )
+            with guard.approval_recovery_critical_section(
+                reload_client=store._reload_client,  # pylint: disable=protected-access
+            ) as recovery_guard:
+                verify_recovery_config_binding(op, cfg)
+                verify_admitted_operation_unchanged(op)
+                verify_admitted_targets_unchanged(op)
+                action = _execute_recovery_inside_guard(
+                    op, proposal_id, intent, store, recovery_guard, durability_root=durability_root
+                )
+        except (EventPublicationError, OSError) as exc:
+            raise RecoveryCompletionUnknown(
+                f"recovery completion outcome unknown for {proposal_id}: {exc}"
+            ) from exc
+        except (ChromaWriteQuarantinedError, ChromaWriteGuardError) as exc:
+            raise ValueError(f"Proposal {proposal_id} needs human review ({exc})") from exc
+        finally:
+            store.close()
         return action
+
+
+def recover_approval(cfg: dict | None, proposal_id: str) -> str:
+    """Reconcile APPROVAL_STARTED / verify APPROVED completion under admission."""
+    from chroma_write_store import (
+        _bound_operation,
+        admitted_write_operation,
+        verify_recovery_config_binding,
+    )
+
+    op = _bound_operation()
+    if op is not None:
+        verify_recovery_config_binding(op, cfg)
+        return _recover_approval_impl(op, proposal_id.strip())
+    with admitted_write_operation(
+        entrypoint="propose_decision.write",
+        extra_affected_paths=_governed_recovery_affected_paths,
+    ) as admitted:
+        verify_recovery_config_binding(admitted, cfg)
+        return _recover_approval_impl(admitted, proposal_id.strip())
 
 
 def find_proposal(records: list[dict], proposal_id: str) -> dict | None:
@@ -586,7 +1243,8 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
 
     from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import open_production_write_store
-    from ledger import invalidate_ledger_index_cache
+    # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
     from observe import (
         ObservationIngestDriftError,
         ObservationIngestDriftRefusedError,

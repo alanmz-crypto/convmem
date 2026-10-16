@@ -29,6 +29,7 @@ from chroma_write_guard import (
     ChromaWriteGuard,
     ChromaWriteGuardError,
     ChromaWriteQuarantinedError,
+    authority_submission_digest,
     load_segment_id_map,
     recover,
     segment_dirs,
@@ -68,6 +69,19 @@ def _worker(*args: object, timeout: float = 180) -> str:
     return done.stdout
 
 
+def _worker_expect_quarantine(*args: object, timeout: float = 180) -> subprocess.CompletedProcess[str]:
+    done = subprocess.run(
+        [sys.executable, str(WORKER), *map(str, args)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+    assert done.returncode != 0, done.stdout[-2000:]
+    return done
+
+
 def _segment(chroma: Path) -> tuple[str, Path]:
     (item,) = segment_dirs(chroma).items()  # only the summaries collection is written
     return item
@@ -78,6 +92,15 @@ def _events(chroma: Path) -> list[dict]:
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def _release_if_quarantined(chroma: Path) -> None:
+    guard = ChromaWriteGuard(chroma)
+    view = guard.read_authority()
+    if view.document is None:
+        return
+    digest = authority_submission_digest(view.document)
+    guard.release_quarantine(disposition_ref="test-release", authority_digest=digest)
 
 
 def _assert_every_record_has_its_vector(chroma: Path) -> int:
@@ -182,49 +205,48 @@ def test_torn_save_is_restored_before_the_next_write_without_losing_records(tmp_
     _set_header_count(seg / "header.bin", 50)
     assert not validate_segment(seg).ok
 
-    _worker("write", chroma, 250, 1, "--guard")  # reconciles before writing
+    _worker_expect_quarantine("write", chroma, 250, 1, "--guard")  # reconciles, preserves, then contains
 
     assert validate_segment(seg).ok
     restored = [e for e in _events(chroma) if e["event"] == "segment_restored"]
     assert len(restored) == 1 and restored[0]["census"]["lost"] == 0
-    assert _assert_every_record_has_its_vector(chroma) == 251
+    assert ChromaWriteGuard(chroma).quarantine_state() is not None
+    assert _assert_every_record_has_its_vector(chroma) == 250
+    with pytest.raises(ChromaWriteGuardError, match="watermark_drift"):
+        _release_if_quarantined(chroma)
+    _worker_expect_quarantine("write", chroma, 250, 1, "--guard")
+    assert _assert_every_record_has_its_vector(chroma) == 250
 
 
 def test_native_crash_mid_write_leaves_the_shared_index_clean(tmp_path: Path) -> None:
     """Kill a guarded writer the moment a save touches the segment, three times over."""
-    chroma = _make_store(tmp_path)
-    _worker("write", chroma, 0, 100, "--guard")
-    _, seg = _segment(chroma)
-    start = 100
-    for _ in range(3):
+    for attempt in range(3):
+        case = tmp_path / str(attempt)
+        case.mkdir()
+        chroma = _make_store(case)
+        _worker("write", chroma, 0, 100, "--guard")
+        _, seg = _segment(chroma)
         before = segment_signature(seg)
-        proc = subprocess.Popen(  # pylint: disable=consider-using-with
-            [sys.executable, str(WORKER), "loop", str(chroma), str(start), "0", "--guard"],
-            cwd=ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        )
-        deadline = time.monotonic() + 60
-        while proc.poll() is None and time.monotonic() < deadline:
-            if segment_signature(seg) != before:
-                break
-            time.sleep(0.0005)
-        proc.kill()
-        out, _ = proc.communicate()
-        written = [int(tok) for tok in out.split() if tok.isdigit()]
-        # After a restore, the first write replays Chroma's log and can save before any
-        # record of this run is acknowledged, so an empty ``written`` is legitimate.
-        start = max(written) + 2 if written else start + 1
-
-        recover(chroma)
-
+        with subprocess.Popen(
+            [sys.executable, str(WORKER), "loop", str(chroma), "100", "0", "--guard"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+        ) as proc:
+            deadline = time.monotonic() + 60
+            while proc.poll() is None and time.monotonic() < deadline:
+                if segment_signature(seg) != before:
+                    break
+                time.sleep(0.0005)
+            assert segment_signature(seg) != before
+            proc.kill()
+            proc.communicate(timeout=10)
+        try:
+            recover(chroma)
+        except ChromaWriteQuarantinedError:
+            assert ChromaWriteGuard(chroma).read_authority().blocking
+            _worker_expect_quarantine("write", chroma, 10000, 1, "--guard")
         assert validate_segment(seg).ok
-        assert ChromaWriteGuard(chroma).quarantine_state() is None
         assert vector_census(chroma)["conversation_summaries"]["lost"] == 0
-
-    _worker("write", chroma, start, 5, "--guard")
-    _assert_every_record_has_its_vector(chroma)
+        _assert_every_record_has_its_vector(chroma)
 
 
 def test_torn_segment_with_no_validated_save_quarantines(tmp_path: Path) -> None:
@@ -434,7 +456,7 @@ def test_abrupt_index_child_exits_trigger_guard_recovery(tmp_path: Path, monkeyp
         assert len(calls) == expected, message
 
 
-def test_watch_recovery_restores_and_never_raises(tmp_path: Path) -> None:
+def test_watch_recovery_restores_and_never_raises(tmp_path: Path, capsys) -> None:
     import watch
 
     chroma = _make_store(tmp_path)
@@ -442,7 +464,9 @@ def test_watch_recovery_restores_and_never_raises(tmp_path: Path) -> None:
     _, seg = _segment(chroma)
     _set_header_count(seg / "header.bin", 9)
     events = watch.recover_chroma_after_abrupt_exit({"index": {"chroma_dir": str(chroma)}})
-    assert [e["event"] for e in events] == ["segment_restored"]
+    assert not events  # contained recovery is not reported as ingest success
+    assert "quarantined" in capsys.readouterr().err
+    assert ChromaWriteGuard(chroma).read_authority().blocking
     assert validate_segment(seg).ok
     ChromaWriteGuard(chroma).quarantine_path.write_text("{}", encoding="utf-8")
     assert not watch.recover_chroma_after_abrupt_exit({"index": {"chroma_dir": str(chroma)}})

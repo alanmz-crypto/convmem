@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-13
+**Updated:** 2026-10-14
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,18 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — governed-path correction implemented (2026-10-13 UTC):**
-  Cursor preserves original governed files for cross-parent Chroma aliases;
-  canonical client/export binding remains. Codex captured original failures
-  and passing final 98-case/lint evidence. Independent Codex delta PASS (95%)
-  at `dac925f33d4ebd7482c0536408b9be12f51d6106` closes the blocker under the
-  [bounded grant](../plans/EXECUTION-safe-harbor.md#t2-governed-path-identity-correction--owner-authorized).
-  **Codex:** observe fresh final-tip CI on
-  [draft #389](https://github.com/alanmz-crypto/convmem/pull/389). See
-  [STATUS](../plans/STATUS-safe-harbor.md) and
-  [correction evidence](../plans/VERIFY-safe-harbor.md#governed-path-identity-correction--isolated-evidence).
-  PR stays draft; no paid reviewer, PR merge, deployment or T3–T5 grant.
-  No manual session indexing today.
+- **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
+  Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
+  **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the

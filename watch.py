@@ -428,10 +428,16 @@ def recover_chroma_after_abrupt_exit(cfg: dict | None = None) -> list[dict]:
         print(f"[watch] chroma write-guard recovery failed: {exc}", file=sys.stderr)
         return []
     for event in events:
-        print(
-            f"[watch] chroma write-guard: {event.get('event')} (segment {event.get('segment')})",
-            file=sys.stderr,
-        )
+        name = event.get("event")
+        segment = event.get("segment")
+        if name == "segment_restored":
+            print(
+                f"[watch] chroma write-guard: segment {segment} restored under containment; "
+                "writes stay quarantined until validated owner release",
+                file=sys.stderr,
+            )
+            continue
+        print(f"[watch] chroma write-guard: {name} (segment {segment})", file=sys.stderr)
     return events
 
 
