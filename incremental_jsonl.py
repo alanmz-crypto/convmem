@@ -2701,7 +2701,9 @@ class IncrementalJsonlCoordinator:
             try:
                 snapshot = self._capture(transaction_id)
             except SourceCaptureError as exc:
-                self.last_failure_code = exc.code
+                from incremental_retry_state import classify_incremental_escape
+
+                self.last_failure_code = classify_incremental_escape(exc)
                 return self._refusal(exc.code, fallback=exc.detail or None)
             except IncrementalJsonlError as exc:
                 return self._refusal(exc.code, fallback=exc.detail or None)
