@@ -12,11 +12,11 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Claude's round 30 PASSes `d5f765a` (tree `c7d4b78e`). Corrective 22 (`0c49286` + inventories `a5fb7d7`) closes R7-F1: recovery embeds the signed intent under the governed lock before C1 and any Chroma session. Corrective 23 (`d5f765a`) records main `c6f0724` as a real parent (the earlier `c19b73d` "merge" had one parent, so the PR would have conflicted on 8 files). The full suite under main's CI launcher has 0 tip-only failures. Next: Astra's round 8 on the same tree, then the PR draft. See round 30 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `READY_FOR_PR`: tip `d5f765a` (tree `c7d4b78e`; main `c6f0724` is a real parent). Claude round 30 PASS; Astra round 8 PASS (`docs/2026-10-16-issue-286-stage2-fixes-audit-r8`, `483875d`); Kiro round 4 PASS with conditions (CO-2, CO-3 in the PR body; CO-5, CO-6 at canary 2). Full suite under main's CI launcher: 0 tip-only failures. Next: Ryan opens the PR; the R2b owner acknowledges CO-2; the Safe Harbor lane reviews the recovery changes (correctives 21, 22); Ryan merges. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
-| **PR** | not opened |
+| **PR** | not opened; body drafted by Claude (round 30 follow-up) |
 | **Ryan GATE** | none for hermetic implementation. Ryan alone merges. Deploying (promoting `runtime-main`, deploying the regenerated protocol surfaces, any watcher start) needs separate Ryan grants after the merge. |
 | **Track A ingest** | your Cursor transcript, at handoff |
 
