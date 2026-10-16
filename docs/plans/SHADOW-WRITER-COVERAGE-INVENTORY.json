@@ -45,7 +45,7 @@
     "ingest.py:1283",
     "ingest.py:662",
     "inter_model_index.py:313",
-    "monitor.py:598",
+    "monitor.py:599",
     "refine.py:49",
     "repository_knowledge_index.py:275",
     "repository_knowledge_sync.py:276",
@@ -157,7 +157,7 @@
     {
       "class": "mutates_units",
       "file": "propose_decision.py",
-      "line": 1335,
+      "line": 1272,
       "required_routing": "open_production_write_store",
       "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
       "uses_open_chroma_for_write": false,

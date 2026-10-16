@@ -31,7 +31,8 @@ BASELINE_HASHES = {
     # structured admitted-run logging; refreshed for corrective 5 checkpointless
     # recovery bootstrap_required refusal.
     # Refreshed for issue #286 stage-2 corrective 20 (R6-F1 capture-error escape accounting).
-    "incremental_jsonl.py": "0f216e8aad98e7550b4f057e7e4dca74e0867f0f29206528f9a3e49c893afe69",
+    # Refreshed for issue #286 corrective 24 pylint comment-only suppressions (no semantics).
+    "incremental_jsonl.py": "3330dbbb3308f17f12b51bc8036493bf45857ffb3c4c246e692110b363f6339d",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
