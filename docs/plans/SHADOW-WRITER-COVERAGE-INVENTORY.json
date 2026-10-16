@@ -29,8 +29,8 @@
   "open_production_write_store_call_sites": [
     "chroma_write_store.py:1262",
     "observe.py:872",
-    "propose_decision.py:1221",
-    "propose_decision.py:1284",
+    "propose_decision.py:1272",
+    "propose_decision.py:1335",
     "refine.py:347",
     "source_purge.py:341"
   ],
@@ -148,7 +148,7 @@
     {
       "class": "mutates_units",
       "file": "propose_decision.py",
-      "line": 1221,
+      "line": 1272,
       "required_routing": "open_production_write_store",
       "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
       "uses_open_chroma_for_write": false,
@@ -157,7 +157,7 @@
     {
       "class": "mutates_units",
       "file": "propose_decision.py",
-      "line": 1221,
+      "line": 1335,
       "required_routing": "open_production_write_store",
       "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
       "uses_open_chroma_for_write": false,
