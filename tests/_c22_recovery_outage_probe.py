@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Claude round 29: recovery with the embedding provider down, then back (real embed gate, fake transport)."""
 import importlib.util
 import json
@@ -10,21 +11,21 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('c22_common', ROOT/'tests/_safe_harbor_t4_common.py')
 helpers = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helpers)
-helpers._require_child_isolation()
-helpers._refuse_outside_fixture(Path(os.environ['CONVMEM_CONFIG']))
-import llm
+helpers._require_child_isolation()  # pylint: disable=protected-access
+helpers._refuse_outside_fixture(Path(os.environ['CONVMEM_CONFIG']))  # pylint: disable=protected-access
+import llm  # pylint: disable=wrong-import-position
 real_embed = llm.ollama_embed
-helpers._install_fakes()
+helpers._install_fakes()  # pylint: disable=protected-access
 fake_embed = llm.ollama_embed
 state = {'down': True, 'http': 0, 'depths': []}
 
-def post(url, *, json, timeout):
+def post(url, *, json, timeout):  # pylint: disable=redefined-outer-name, unused-argument
     state['http'] += 1
     if state['down']:
         raise ConnectionError('ollama down (probe)')
     class Response:
-        def raise_for_status(self): pass
-        def json(self): return {'embedding': fake_embed(json['prompt'])}
+        def raise_for_status(self): pass  # pylint: disable=multiple-statements
+        def json(self): return {'embedding': fake_embed(json['prompt'])}  # pylint: disable=multiple-statements
     return Response()
 
 def embed(*args, **kwargs):
@@ -39,33 +40,33 @@ llm.ollama_embed = embed
 case = sys.argv[1]
 out = {'case': case}
 try:
-    cfg = helpers._load_cfg()
+    cfg = helpers._load_cfg()  # pylint: disable=protected-access
     if case == 'create_absence_down_then_up':
-        pid = helpers._setup_approval_started(cfg)
-        before = helpers._dump_state(cfg)
+        pid = helpers._setup_approval_started(cfg)  # pylint: disable=protected-access
+        before = helpers._dump_state(cfg)  # pylint: disable=protected-access
         try:
-            helpers._recover(cfg, pid)
+            helpers._recover(cfg, pid)  # pylint: disable=protected-access
             raise AssertionError('recovery succeeded with the provider down')
         except ValueError as exc:
             out['down_error'] = str(exc)
             assert 'recovery deferred (embedding unavailable' in str(exc), exc
-        mid = helpers._dump_state(cfg)
+        mid = helpers._dump_state(cfg)  # pylint: disable=protected-access
         assert mid == before, 'deferred recovery changed state'
-        assert helpers._lifecycle_state(cfg, pid) == 'APPROVAL_STARTED'
+        assert helpers._lifecycle_state(cfg, pid) == 'APPROVAL_STARTED'  # pylint: disable=protected-access
         state['down'] = False
-        out['action'] = helpers._recover(cfg, pid)
+        out['action'] = helpers._recover(cfg, pid)  # pylint: disable=protected-access
         assert out['action'] == 'retry_chroma'
-        assert helpers._lifecycle_state(cfg, pid) == 'APPROVED'
-        unit = helpers._unit_for_pid(helpers._dump_state(cfg), pid)
-        assert unit['metadata'].get('content_hash') == helpers._independent_ingest_hash(helpers._approved_row(cfg, pid))
-        assert unit.get('embedding_sha') == helpers._expected_embedding_sha(unit.get('document') or '')
+        assert helpers._lifecycle_state(cfg, pid) == 'APPROVED'  # pylint: disable=protected-access
+        unit = helpers._unit_for_pid(helpers._dump_state(cfg), pid)  # pylint: disable=protected-access
+        assert unit['metadata'].get('content_hash') == helpers._independent_ingest_hash(helpers._approved_row(cfg, pid))  # pylint: disable=protected-access
+        assert unit.get('embedding_sha') == helpers._expected_embedding_sha(unit.get('document') or '')  # pylint: disable=protected-access
     elif case in ('event_only_down', 'marker_repair_down'):
         out.update(getattr(helpers, '_matrix_' + case[:-5])(cfg))
     else:
         raise AssertionError(case)
     assert all(d == (0, 0) for d in state['depths']), state['depths']
     out.setdefault('verdict', 'PASS')
-except Exception as exc:  # noqa: BLE001
+except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
     out.update(verdict='FAIL', error=str(exc), type=type(exc).__name__, traceback=traceback.format_exc())
 out.update(http=state['http'], depths=state['depths'])
 print(json.dumps(out, sort_keys=True))

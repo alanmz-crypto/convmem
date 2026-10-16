@@ -1,6 +1,6 @@
 """Codex audit round-4 probes (issue #286 corrective 17)."""
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def test_lock_covers_admission_run_accounting_and_release(tmp_path, monkeypatch)
     from tests.test_zz_claude_verify8b import _count_summaries
     from tests.test_zz_codex_audit import _route_fixture
 
-    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)  # pylint: disable=unused-variable
     calls = _count_summaries(monkeypatch)
     seen = []
     lock_path = []
@@ -61,7 +61,7 @@ def test_lock_covers_admission_run_accounting_and_release(tmp_path, monkeypatch)
         seen.append("admission")
         return original_gate(paths, **kw)
 
-    def fail(self, *args, **kw):
+    def fail(self, *args, **kw):  # pylint: disable=unused-argument
         assert _lock_held(self.paths["lock"])
         assert (index_write_lock_depth(), production_chroma_store_session_depth()) == (0, 0)
         seen.append("run")
@@ -105,7 +105,7 @@ def test_competitor_cannot_enter_during_failure_accounting(tmp_path, monkeypatch
     def fail(*args, **kw):
         raise OSError("scratch prepared failure")
 
-    def invoke():
+    def invoke():  # pylint: disable=inconsistent-return-statements
         try:
             route()
         except inc.IncrementalJsonlError as exc:
@@ -149,7 +149,7 @@ def test_concurrent_failed_accounting_still_caps_at_three(tmp_path, monkeypatch)
     def fail(*args, **kw):
         raise OSError("scratch prepared failure")
 
-    def invoke(_):
+    def invoke(_):  # pylint: disable=inconsistent-return-statements
         try:
             route()
         except inc.IncrementalJsonlError as exc:
@@ -240,7 +240,7 @@ def test_export_failure_clears_cache_without_test_invalidation(tmp_path, monkeyp
     cfg = _real_session_env(tmp_path, monkeypatch)
     rec = _obs("obs_cache_r4", "Original scratch observation.")
     reader = open_readonly_unit_store(cfg["index"]["chroma_dir"])
-    prepared = observe.prepare_observation_ingest(
+    prepared = observe.prepare_observation_ingest(  # pylint: disable=no-member  # stale docs/chatgpt-pack observe/ledger names
         rec,
         store=reader,
         embed_model="fake",
@@ -248,17 +248,17 @@ def test_export_failure_clears_cache_without_test_invalidation(tmp_path, monkeyp
         upsert=True,
         precomputed_embedding=[0.1, 0.2, 0.3],
     )
-    assert build_ledger_index(reader)[0] == {}
+    assert build_ledger_index(reader)[0] == {}  # pylint: disable=use-implicit-booleaness-not-comparison
 
     def fail(*a, **kw):
         raise OSError("export unavailable")
 
     monkeypatch.setattr(observe, "_upsert_jsonl_line", fail)
-    for stage in ("insert", "update"):
+    for stage in ("insert", "update"):  # pylint: disable=unused-variable
         with index_write_flock(cfg):
             with production_chroma_write_session(entrypoint="audit.r4.cache") as session:
                 with pytest.raises(OSError, match="export unavailable"):
-                    observe.commit_observation_ingest(
+                    observe.commit_observation_ingest(  # pylint: disable=no-member  # stale docs/chatgpt-pack observe/ledger names
                         prepared,
                         store=session.store,
                         units_export=tmp_path / "export.jsonl",
@@ -267,7 +267,7 @@ def test_export_failure_clears_cache_without_test_invalidation(tmp_path, monkeyp
                 doc = session.store.get_unit(prepared.existing_chroma_id or prepared.unit["id"])["document"]
                 assert prepared.doc == doc
         reader = open_readonly_unit_store(cfg["index"]["chroma_dir"])
-        prepared = observe.prepare_observation_ingest(
+        prepared = observe.prepare_observation_ingest(  # pylint: disable=no-member  # stale docs/chatgpt-pack observe/ledger names
             {**rec, "summary": "Changed scratch observation."},
             store=reader,
             embed_model="fake",

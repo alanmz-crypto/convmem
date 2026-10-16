@@ -130,7 +130,7 @@ def clear_incremental_retry_states_for_source(cfg: dict, canonical_path: str) ->
         if not payload:
             continue
         stored = str(payload.get("source_path") or "")
-        if stored == resolved or stored == canonical_path:
+        if stored == resolved or stored == canonical_path:  # pylint: disable=consider-using-in
             path.unlink(missing_ok=True)
             cleared += 1
     return cleared

@@ -448,7 +448,7 @@ def _check_synthesis_gate() -> DoctorCheck:
         ignored (not counted as ask, to avoid false-alarms on legacy entries).
     """
     import json as _json
-    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td  # pylint: disable=reimported
 
     log_path = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
     if not log_path.is_file():
@@ -573,7 +573,7 @@ def _check_summarization_canary(cfg: dict) -> DoctorCheck:
 def _check_index_gate() -> DoctorCheck:
     """Detect approved decisions whose Chroma indexing failed (delayed-index)."""
     import json as _json
-    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td  # pylint: disable=reimported
 
     log_path = Path("~/.local/share/convmem/index_failures.jsonl").expanduser()
     if not log_path.is_file():
@@ -607,7 +607,7 @@ def _check_index_gate() -> DoctorCheck:
 
 
 def _check_incremental_rollback_tamper(cfg: dict) -> DoctorCheck:
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta, timezone  # pylint: disable=redefined-outer-name, reimported
 
     from config import incremental_jsonl_settings
 
@@ -687,7 +687,7 @@ def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
     parts: list[str] = []
     for row in rows[:3]:
         parts.append(
-            "source={source_path} transaction={transaction_id} code={error_code} "
+            "source={source_path} transaction={transaction_id} code={error_code} "  # pylint: disable=consider-using-f-string
             "remedy=convmem watch --clear-quarantine <path> "
             "(clears circuit breaker and retry-state hold)".format(
                 source_path=row.get("source_path", "?"),
@@ -699,7 +699,7 @@ def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
         parts.append(f"+{len(rows) - 3} more retry-state wedges")
     for row in stale[:3]:
         parts.append(
-            "source={source_path} transaction={transaction_id} phase={phase} "
+            "source={source_path} transaction={transaction_id} phase={phase} "  # pylint: disable=consider-using-f-string
             "age={age_seconds}s remedy=stale incremental transaction; see doctor".format(
                 source_path=row.get("source_path", "?"),
                 transaction_id=row.get("transaction_id", "?"),

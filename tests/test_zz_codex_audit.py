@@ -1,6 +1,6 @@
 """Codex audit probes for issue #286 stage-2 corrective 6 (reference fixtures)."""
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 

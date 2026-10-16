@@ -31,7 +31,7 @@ def patch_refine_scratch_env(root: Path, cfg: dict):
             chroma_root / "writer_attestations",
         ),
     ]
-    started = [p.start() for p in patches]
+    started = [p.start() for p in patches]  # pylint: disable=unused-variable
     try:
         yield
     finally:

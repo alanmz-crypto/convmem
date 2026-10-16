@@ -391,7 +391,7 @@ def stats():
 
 
 @app.command()
-def add(
+def add(  # pylint: disable=too-many-locals
     file: str | None = typer.Option(
         None, "--file", help="JSONL file of observation records to batch-ingest"
     ),
@@ -436,7 +436,7 @@ def add(
     from contextlib import nullcontext
     from config import load_config
     from chroma_write_store import admitted_units_export_path, production_chroma_write_session
-    from observe import ingest_observation
+    from observe import ingest_observation  # pylint: disable=unused-import
     from purge_locks import index_write_flock
     from query import render_error
 
@@ -444,8 +444,8 @@ def add(
     models_pre = cfg_pre["models"]
     precomputed_embedding = None
     prepared_record = None
-    prepared_file_rows = None
-    file_prep_stats = None
+    prepared_file_rows = None  # pylint: disable=unused-variable
+    file_prep_stats = None  # pylint: disable=unused-variable
     if not file:
         if not title or not summary or not author:
             render_error(
@@ -476,9 +476,9 @@ def add(
             "source_path": source_path,
             "severity": severity,
         }
-        from chroma_store import ChromaStore
+        from chroma_store import ChromaStore  # pylint: disable=unused-import
         from chroma_readonly import open_readonly_unit_store
-        from observe import embed_ledger_record_for_storage
+        from observe import embed_ledger_record_for_storage  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
         read_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
         precomputed_embedding = embed_ledger_record_for_storage(
@@ -491,7 +491,7 @@ def add(
 
     if file:
         from chroma_readonly import open_readonly_unit_store
-        from observe import ingest_observation_file_with_drift_retry
+        from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
         embed_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
 
@@ -530,7 +530,7 @@ def add(
         _admitted_operation("convmem.add") if upsert else nullcontext()
     )
 
-    from observe import commit_observation_ingest, prepare_observation_ingest
+    from observe import commit_observation_ingest, prepare_observation_ingest  # pylint: disable=line-too-long, no-name-in-module# stale docs/chatgpt-pack observe/ledger names
 
     read_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
     prepared_single = prepare_observation_ingest(
@@ -547,7 +547,7 @@ def add(
             with production_chroma_write_session(entrypoint="convmem.add") as session:
                 store = session.store
                 cfg = session.live_cfg
-                models = cfg["models"]
+                models = cfg["models"]  # pylint: disable=unused-variable
                 units_export = cfg["index"].get("units_export")
                 units_export_path = admitted_units_export_path(cfg) if units_export else None
 

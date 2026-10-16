@@ -3,13 +3,13 @@
 Each test asserts the round-7 spec; a failure at e1914f5 is a finding.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
 import unittest
 from contextlib import contextmanager
-from types import SimpleNamespace
+from types import SimpleNamespace  # pylint: disable=unused-import
 from unittest.mock import Mock
 
 import pytest
@@ -61,7 +61,7 @@ def test_monitor_embeds_the_document_it_stores(tmp_path, monkeypatch) -> None:
 
     embedded: list[str] = []
 
-    def embed(text, model=None, host=None):
+    def embed(text, model=None, host=None):  # pylint: disable=unused-argument
         embedded.append(text)
         return [0.1, 0.2, 0.3]
 
@@ -97,18 +97,18 @@ def test_monitor_http_probes_run_outside_index_write_lock(tmp_path, monkeypatch)
     cfg["index"]["units_export"] = None
     depths: list[tuple[str, int]] = []
 
-    def headers(site, *, session=None, timeout=20.0):
+    def headers(site, *, session=None, timeout=20.0):  # pylint: disable=unused-argument
         depths.append(("https_fetch", index_write_lock_depth()))
         return {}, "offline"
 
-    def tls(site, *, session=None, timeout=20.0):
+    def tls(site, *, session=None, timeout=20.0):  # pylint: disable=unused-argument
         depths.append(("tls_fetch", index_write_lock_depth()))
         return False
 
     from tests.fake_production_write_session import counting_fake_production_write_session
 
     @contextmanager
-    def session(**kwargs):
+    def session(**kwargs):  # pylint: disable=unused-argument
         store = ChromaStore(str(tmp_path / "chroma"))
         try:
             with counting_fake_production_write_session(store, cfg) as session_obj:

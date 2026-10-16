@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
-from contextlib import contextmanager
+from contextlib import contextmanager  # pylint: disable=wrong-import-order
 
 from chroma_write_store import (
     open_production_write_store,
@@ -56,11 +56,11 @@ def _open_read_store(cfg: dict):
     return open_readonly_unit_store(cfg["index"]["chroma_dir"])
 
 
-from domains import DEFAULT_DOMAINS, normalize_domain
-from process_lock import acquire_lock, release_lock
-from vector_similarity import cosine_similarity
-from ingest_dedupe import semantic_queue_at_max_depth
-from provenance_binding import provenance_identity
+from domains import DEFAULT_DOMAINS, normalize_domain  # pylint: disable=wrong-import-position
+from process_lock import acquire_lock, release_lock  # pylint: disable=wrong-import-position
+from vector_similarity import cosine_similarity  # pylint: disable=wrong-import-position
+from ingest_dedupe import semantic_queue_at_max_depth  # pylint: disable=wrong-import-position
+from provenance_binding import provenance_identity  # pylint: disable=wrong-import-position
 
 JOB_NAMES = (
     "chroma_dedupe",
@@ -608,8 +608,8 @@ def job_ledger_link(
     return stats
 
 
-def job_semantic_dedupe(
-    store: ChromaStore,
+def job_semantic_dedupe(  # pylint: disable=too-many-locals
+    store: ChromaStore,  # pylint: disable=unused-argument
     cfg: dict,
     *,
     limit: int | None = None,

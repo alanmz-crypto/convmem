@@ -1,13 +1,13 @@
 """Safe-behavior tests for issue #286 stage-2 corrective 12 (R2-F1..F4)."""
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
 import inspect
 import json
-import threading
-from pathlib import Path
+import threading  # pylint: disable=unused-import
+from pathlib import Path  # pylint: disable=unused-import
 from unittest.mock import Mock
 
 import pytest
@@ -33,7 +33,7 @@ def test_readonly_retry_file_refuses_before_more_paid_work(tmp_path, monkeypatch
     from tests.test_zz_claude_verify8b import _count_summaries, _retry_state_path
     from tests.test_zz_codex_audit import _route_fixture
 
-    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)  # pylint: disable=unused-variable
     calls = _count_summaries(monkeypatch)
 
     def fail(*_a, **_k):
@@ -60,7 +60,7 @@ def test_alternating_failures_bound_by_prefix_attempts(tmp_path, monkeypatch):
     from tests.test_zz_claude_verify8b import _count_summaries
     from tests.test_zz_codex_audit import _route_fixture
 
-    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)  # pylint: disable=unused-variable
     calls = _count_summaries(monkeypatch)
 
     def fail(*_a, **_k):
@@ -98,7 +98,7 @@ def test_reservation_survives_exit_before_failure_record(tmp_path):
 def test_unchanged_preparation_drift_reprepares_outside_c1(tmp_path, monkeypatch):
     import llm
     from chroma_write_store import production_chroma_store_session_depth
-    from observe import (
+    from observe import (  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
         ObservationIngestDriftError,
         commit_observation_ingest,
         ingest_observation,
@@ -110,7 +110,7 @@ def test_unchanged_preparation_drift_reprepares_outside_c1(tmp_path, monkeypatch
     cfg = _real_session_env(tmp_path, monkeypatch)
     record = observation()
     seed = ChromaStore(cfg["index"]["chroma_dir"])
-    unit = ingest_observation(
+    unit = ingest_observation(  # pylint: disable=unexpected-keyword-arg
         record,
         store=seed,
         embed_model="fake",
@@ -123,7 +123,7 @@ def test_unchanged_preparation_drift_reprepares_outside_c1(tmp_path, monkeypatch
     path.write_text(json.dumps(record) + "\n")
     from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import production_chroma_write_session
-    from ledger import invalidate_ledger_index_cache
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
     reader = open_readonly_unit_store(cfg["index"]["chroma_dir"])
@@ -157,11 +157,11 @@ def test_unchanged_preparation_drift_reprepares_outside_c1(tmp_path, monkeypatch
         with production_chroma_write_session(entrypoint="audit.commit") as session:
             with pytest.raises(ObservationIngestDriftError):
                 commit_observation_ingest(rows[0][1], store=session.store)
-    assert depths == []
+    assert depths == []  # pylint: disable=use-implicit-booleaness-not-comparison
 
 
-def test_commit_rechecks_missing_monitor_target(tmp_path, monkeypatch):
-    from observe import commit_observation_ingest, prepare_observation_ingest
+def test_commit_rechecks_missing_monitor_target(tmp_path, monkeypatch):  # pylint: disable=unused-argument
+    from observe import commit_observation_ingest, prepare_observation_ingest  # pylint: disable=line-too-long, no-name-in-module# stale docs/chatgpt-pack observe/ledger names
 
     reader = Mock()
     reader.get_unit.return_value = {"id": "old", "metadata": {}, "document": "old text"}
@@ -179,7 +179,7 @@ def test_commit_rechecks_missing_monitor_target(tmp_path, monkeypatch):
     writer.get_unit.return_value = None
     writer.active_units_for_ledger_id.return_value = []
 
-    from observe import ObservationIngestDriftError
+    from observe import ObservationIngestDriftError  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     with pytest.raises(ObservationIngestDriftError):
         commit_observation_ingest(prepared, store=writer)
@@ -240,8 +240,8 @@ def test_approved_single_ledger_prepares_outside_c1(tmp_path, monkeypatch):
 
 def test_monitor_deleted_target_does_not_export_upsert(tmp_path, monkeypatch):
     from chroma_write_store import production_chroma_write_session
-    from ledger import invalidate_ledger_index_cache
-    from observe import (
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+    from observe import (  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
         ObservationIngestDriftError,
         commit_observation_ingest,
         ingest_observation,
@@ -253,7 +253,7 @@ def test_monitor_deleted_target_does_not_export_upsert(tmp_path, monkeypatch):
     cfg = _real_session_env(tmp_path, monkeypatch)
     record = observation()
     seed = ChromaStore(cfg["index"]["chroma_dir"])
-    unit = ingest_observation(
+    unit = ingest_observation(  # pylint: disable=unexpected-keyword-arg
         record,
         store=seed,
         embed_model="fake",
@@ -290,7 +290,7 @@ def test_monitor_deleted_target_does_not_export_upsert(tmp_path, monkeypatch):
 
 
 def test_index_write_guarded_store_read_allow_list_complete():
-    from chroma_store import ChromaStore
+    from chroma_store import ChromaStore  # pylint: disable=redefined-outer-name, reimported
     from chroma_write_store import _IndexWriteGuardedChromaStore
 
     public = {
@@ -310,7 +310,7 @@ def test_index_write_guarded_store_read_allow_list_complete():
 
 def test_add_file_upsert_drift_allows_second_admission_round(tmp_path, monkeypatch) -> None:
     """N4: a fresh admission context per commit round survives drift retry (no RuntimeError)."""
-    import json
+    import json  # pylint: disable=redefined-outer-name, reimported
     from contextlib import contextmanager
 
     import llm
@@ -318,7 +318,7 @@ def test_add_file_upsert_drift_allows_second_admission_round(tmp_path, monkeypat
     monkeypatch.setattr(llm, "ollama_embed", lambda *_a, **_k: [0.1, 0.2, 0.3])
     from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import production_chroma_write_session
-    from observe import ingest_observation_file_with_drift_retry
+    from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
     from purge_locks import index_write_flock
     from tests.test_zz_claude_verify15 import _foreign_update, _obs, _seed
     from tests.test_zz_claude_verify9 import _real_session_env

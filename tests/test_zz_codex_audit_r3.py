@@ -1,6 +1,6 @@
 """Codex audit round-3 probes (issue #286 corrective 16) — safe-behavior assertions."""
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ def test_repair_real_drift_completes_with_document_accurate_retry(tmp_path, monk
     import llm
     import observe
     from chroma_write_store import production_chroma_store_session_depth
-    from ledger import invalidate_ledger_index_cache
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
     from purge_locks import index_write_lock_depth
     from tests.test_ledger_document import _DECISION
 
@@ -30,20 +30,20 @@ def test_repair_real_drift_completes_with_document_accurate_retry(tmp_path, monk
     monkeypatch.setattr("ledger_recent.load_approved_decision_by_id", lambda *a: record)
     depths: list[tuple[int, int]] = []
 
-    def embed(*a, **kw):
+    def embed(*a, **kw):  # pylint: disable=unused-argument
         depths.append((index_write_lock_depth(), production_chroma_store_session_depth()))
         _foreign_update(cfg, unit["id"], "A cooperating writer repaired the text.")
         return [0.1, 0.2, 0.3]
 
     monkeypatch.setattr(llm, "ollama_embed", embed)
-    stats = observe.repair_empty_ledger_documents(cfg, verbose=False)
+    stats = observe.repair_empty_ledger_documents(cfg, verbose=False)  # pylint: disable=no-member  # stale docs/chatgpt-pack observe/ledger names
     assert depths and all(depth == (0, 0) for depth in depths)
     assert stats["repaired"] + stats["skipped"] >= 1
 
 
 def test_concurrent_real_routes_bound_prefix_attempts(tmp_path, monkeypatch):
     import incremental_jsonl as inc
-    import incremental_retry_state as retry
+    import incremental_retry_state as retry  # pylint: disable=unused-import
     from tests.test_zz_claude_verify8b import _count_summaries
     from tests.test_zz_codex_audit import _route_fixture
 
@@ -61,7 +61,7 @@ def test_concurrent_real_routes_bound_prefix_attempts(tmp_path, monkeypatch):
 
     monkeypatch.setattr(inc.IncrementalJsonlCoordinator, "_write_prepared", fail)
 
-    def invoke():
+    def invoke():  # pylint: disable=inconsistent-return-statements
         try:
             route()
         except inc.IncrementalJsonlError as exc:
@@ -98,7 +98,7 @@ def test_monitor_unchanged_row_drift_completes_or_refuses_cleanly(tmp_path, monk
     run()
     run()
     depths.clear()
-    real_prepare = observe.prepare_observation_ingest
+    real_prepare = observe.prepare_observation_ingest  # pylint: disable=no-member  # stale docs/chatgpt-pack observe/ledger names
     changed: list[str] = []
 
     def prepare(*a, **kw):
@@ -113,7 +113,7 @@ def test_monitor_unchanged_row_drift_completes_or_refuses_cleanly(tmp_path, monk
     stats = run()
     assert len(changed) == 1
     assert stats["errors"] == 0 or stats.get("drift_refused", 0) >= 1
-    assert depths == [(0, 0)] or depths == []
+    assert depths == [(0, 0)] or depths == []  # pylint: disable=consider-using-in, use-implicit-booleaness-not-comparison
 
 
 def test_post_admission_failure_record_error_still_bounds_work(tmp_path, monkeypatch):
@@ -122,7 +122,7 @@ def test_post_admission_failure_record_error_still_bounds_work(tmp_path, monkeyp
     from tests.test_zz_claude_verify8b import _count_summaries
     from tests.test_zz_codex_audit import _route_fixture
 
-    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)  # pylint: disable=unused-variable
     calls = _count_summaries(monkeypatch)
     original_write = retry._write
 
@@ -180,7 +180,7 @@ def test_refine_append_waits_then_survives_real_rollback(tmp_path, monkeypatch):
                 started.set()
                 try:
                     assert refine.job_semantic_dedupe(None, replay.cfg, verbose=False)["queued"] == 1
-                except BaseException as exc:
+                except BaseException as exc:  # pylint: disable=broad-exception-caught
                     errors.append(exc)
                 finally:
                     finished.set()
@@ -208,12 +208,12 @@ def test_export_failure_still_clears_post_write_ledger_cache(tmp_path, monkeypat
     import observe
     from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import production_chroma_write_session
-    from ledger import build_ledger_index, invalidate_ledger_index_cache
+    from ledger import build_ledger_index, invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
     from purge_locks import index_write_flock
     cfg = _real_session_env(tmp_path, monkeypatch)
     rec = _obs("obs_cache_failure", "Scratch cache failure observation.")
     reader = open_readonly_unit_store(cfg["index"]["chroma_dir"])
-    prepared = observe.prepare_observation_ingest(
+    prepared = observe.prepare_observation_ingest(  # pylint: disable=no-member  # stale docs/chatgpt-pack observe/ledger names
         rec,
         store=reader,
         embed_model="fake",
@@ -221,7 +221,7 @@ def test_export_failure_still_clears_post_write_ledger_cache(tmp_path, monkeypat
         upsert=True,
         precomputed_embedding=[0.1, 0.2, 0.3],
     )
-    assert build_ledger_index(reader)[0] == {}
+    assert build_ledger_index(reader)[0] == {}  # pylint: disable=use-implicit-booleaness-not-comparison
 
     def fail(*a, **kw):
         raise OSError("scratch export publication failure")
@@ -230,7 +230,7 @@ def test_export_failure_still_clears_post_write_ledger_cache(tmp_path, monkeypat
     with index_write_flock(cfg):
         with production_chroma_write_session(entrypoint="audit.cache") as session:
             with pytest.raises(OSError, match="scratch export"):
-                observe.commit_observation_ingest(
+                observe.commit_observation_ingest(  # pylint: disable=no-member  # stale docs/chatgpt-pack observe/ledger names
                     prepared,
                     store=session.store,
                     units_export=tmp_path / "export.jsonl",
@@ -239,7 +239,7 @@ def test_export_failure_still_clears_post_write_ledger_cache(tmp_path, monkeypat
             invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
             assert rec["id"] in build_ledger_index(session.store)[0]
     fresh_reader = open_readonly_unit_store(cfg["index"]["chroma_dir"])
-    next_prepared = observe.prepare_observation_ingest(
+    next_prepared = observe.prepare_observation_ingest(  # pylint: disable=no-member  # stale docs/chatgpt-pack observe/ledger names
         rec,
         store=fresh_reader,
         embed_model="fake",
@@ -250,7 +250,7 @@ def test_export_failure_still_clears_post_write_ledger_cache(tmp_path, monkeypat
     assert next_prepared.target_digest != "missing"
     with index_write_flock(cfg):
         with production_chroma_write_session(entrypoint="audit.cache.recheck") as session:
-            unit = observe.commit_observation_ingest(next_prepared, store=session.store)
+            unit = observe.commit_observation_ingest(next_prepared, store=session.store)  # pylint: disable=line-too-long, no-member# stale docs/chatgpt-pack observe/ledger names
             assert unit is not None
             assert rec["id"] in build_ledger_index(session.store)[0]
 

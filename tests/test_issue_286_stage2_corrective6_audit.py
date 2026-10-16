@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import threading
 from contextlib import contextmanager
-from pathlib import Path
+from pathlib import Path  # pylint: disable=unused-import
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -18,7 +18,7 @@ def test_add_embeds_before_index_lock(tmp_path, monkeypatch):
     import chroma_write_store as cs
     import convmem
     import llm
-    from purge_locks import index_write_flock, index_write_lock_depth
+    from purge_locks import index_write_flock, index_write_lock_depth  # pylint: disable=unused-import
     from tests.purge_test_util import purge_cfg
     from typer.testing import CliRunner
 
@@ -32,14 +32,14 @@ def test_add_embeds_before_index_lock(tmp_path, monkeypatch):
     write_store.get_unit.return_value = None
 
     @contextmanager
-    def session(**kwargs):
+    def session(**kwargs):  # pylint: disable=unused-argument
         depths.append(("session_enter", index_write_lock_depth()))
         from tests.fake_production_write_session import counting_fake_production_write_session
 
         with counting_fake_production_write_session(write_store, cfg):
             yield SimpleNamespace(store=write_store, live_cfg=cfg)
 
-    def embed(*args, **kwargs):
+    def embed(*args, **kwargs):  # pylint: disable=unused-argument
         depths.append(("embed", index_write_lock_depth()))
         return [0.1] * 8
 
@@ -105,7 +105,7 @@ def test_refine_tombstone_waits_for_index_lock(tmp_path, monkeypatch):
             refine._tombstone_semantic_duplicate(
                 store, cfg, tombstone_id="a", canonical_id="b", verbose=False
             )
-        except BaseException as exc:
+        except BaseException as exc:  # pylint: disable=broad-exception-caught
             errors.append(exc)
         finally:
             done.set()
@@ -185,7 +185,7 @@ def test_rollback_preserves_foreign_dedupe(tmp_path, monkeypatch):
     from ingest_dedupe import IngestDedupeResult, persist_ingest_dedupe
     from tests.test_issue_286_stage2_wedge_probes import _wedge_then_replay
 
-    replay, export, foreign, source = _wedge_then_replay(
+    replay, export, foreign, source = _wedge_then_replay(  # pylint: disable=unused-variable
         tmp_path, monkeypatch, "before_summary_upsert"
     )
     persist_ingest_dedupe(

@@ -29,7 +29,7 @@ class AddSeverityTests(unittest.TestCase):
         runner = CliRunner()
         captured: dict = {}
 
-        from observe import PreparedObservationIngest
+        from observe import PreparedObservationIngest  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
         def _fake_prepare(record, **_kw):
             captured.update(record)

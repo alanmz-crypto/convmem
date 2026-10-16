@@ -82,7 +82,7 @@ def test_f2c_index_entrypoint_provider_refusal_stops_paying(tmp_path, monkeypatc
     source, cfg, _route = _route_fixture(tmp_path, monkeypatch)
     calls = _count_summaries(monkeypatch)
 
-    def failed_distill(*args, **kwargs):
+    def failed_distill(*args, **kwargs):  # pylint: disable=unused-argument
         response = requests.Response()
         response.status_code = 402
         raise requests.HTTPError("synthetic provider unavailable", response=response)

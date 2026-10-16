@@ -4,7 +4,7 @@ Each probe opens the real production store session (no fake session), against a 
 config. Scratch only.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ def test_refine_backfill_domain_pays_then_writes(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(llm, "generate", lambda *a, **k: paid.append(1) or "coding.tooling")
     try:
         result, err = refine.run_job("backfill_domain", limit=1, verbose=False), None
-    except Exception as exc:  # report how much was paid before the failure
+    except Exception as exc:  # report how much was paid before the failure  # pylint: disable=broad-exception-caught
         result, err = None, _where(exc)
     assert err is None, ("paid calls:", len(paid), err)
     assert result["updated"] == 1, result
@@ -154,7 +154,7 @@ def test_repository_knowledge_retirement_through_real_session(tmp_path, monkeypa
     _commit_all(root, "retire")
     try:
         result, err = reconcile_manifest(str(man), rk_cfg, dispatch=lambda *_: None), None
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         result, err = None, _where(exc)
     assert err is None, err
     assert result["retired"]["superseded"] == 1, result

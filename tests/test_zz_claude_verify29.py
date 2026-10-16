@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from tests._safe_harbor_t4_pytest import isolated_t4_child_network  # noqa: F401  (fixture)
-from tests.test_safe_harbor_t2 import cli, isolated, scratch  # noqa: F401  (fixtures)
+from tests._safe_harbor_t4_pytest import isolated_t4_child_network  # noqa: F401  (fixture)  # pylint: disable=unused-import,duplicate-code
+from tests.test_safe_harbor_t2 import cli, isolated, scratch  # noqa: F401  (fixtures)  # pylint: disable=unused-import
 from tests.test_safe_harbor_t4_matrix import _matrix_env
 from tests._safe_harbor_t4_harness import probe_env, run_fixture_child
 
 
 @pytest.mark.parametrize('case', ['create_absence_down_then_up', 'event_only_down', 'marker_repair_down'])
-def test_recovery_provider_outage(cli, case):  # noqa: F811
+def test_recovery_provider_outage(cli, case):  # noqa: F811  # pylint: disable=redefined-outer-name
     env = probe_env(cli, case=case, extra=_matrix_env(cli))
     probe = Path(__file__).with_name('_c22_recovery_outage_probe.py')
     proc = run_fixture_child([sys.executable, '-s', '-B', str(probe), case], env=env, timeout=300)

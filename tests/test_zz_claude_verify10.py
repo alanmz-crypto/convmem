@@ -5,7 +5,7 @@ config, and a real second process saves to the same store through the write guar
 Scratch only.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def _small_sync_store(chroma: Path) -> None:
         "from chroma_store import SUMMARIES, UNITS\n"
         "c = chromadb.PersistentClient(path=sys.argv[1])\n"
         "for n in (SUMMARIES, UNITS):\n"
-        "    c.get_or_create_collection(n, configuration={'hnsw': {'space': 'cosine', 'sync_threshold': 100, 'batch_size': 10}})\n"
+        "    c.get_or_create_collection(n, configuration={'hnsw': {'space': 'cosine', 'sync_threshold': 100, 'batch_size': 10}})\n"  # pylint: disable=line-too-long
     )
     done = subprocess.run(
         [sys.executable, "-c", code, str(chroma)],
@@ -112,7 +112,7 @@ def test_refine_write_survives_a_foreign_save_during_the_llm_call(tmp_path, monk
     monkeypatch.setattr(llm, "generate", generate)
     try:
         result, err = refine.run_job("backfill_domain", limit=3, verbose=False), None
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         result, err = None, _where(exc)
     assert err is None, ("paid calls:", len(paid), err)
     assert result["updated"] == 3 and not result.get("errors"), (
@@ -131,7 +131,7 @@ def test_monitor_write_survives_a_foreign_save_during_the_probes(tmp_path, monke
     _cfg, chroma = _store_env(tmp_path, monkeypatch)
     saved: list[int] = []
 
-    def fetch(site, *, session=None, timeout=20.0):
+    def fetch(site, *, session=None, timeout=20.0):  # pylint: disable=unused-argument
         if not saved:
             saved.append(1)
             _foreign_save(chroma)
@@ -236,7 +236,7 @@ def test_index_route_commits_after_a_foreign_save_during_the_paid_summary(
     from tests.incremental_jsonl_helpers import fake_summarize
     from tests.test_zz_codex_audit import _route_fixture
 
-    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)  # pylint: disable=unused-variable
     chroma = Path(cfg["index"]["chroma_dir"]).expanduser()
     _small_sync_store(chroma)
     paid: list[int] = []
@@ -250,7 +250,7 @@ def test_index_route_commits_after_a_foreign_save_during_the_paid_summary(
     monkeypatch.setattr(ingest, "summarize", summarize)
     try:
         result, err = route(), None
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         result, err = None, _where(exc)
     assert err is None, ("paid summaries:", len(paid), err)
     assert paid, result

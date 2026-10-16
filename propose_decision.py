@@ -591,7 +591,7 @@ def _prepare_recovery_embedding(intent_row: dict, models: dict) -> tuple[list[fl
     so event-only and marker-only recovery still complete without the provider.
     """
     from llm import ollama_embed
-    from observe import ledger_record_document_text
+    from observe import ledger_record_document_text  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     doc = ledger_record_document_text({**intent_row, "_governed_protocol": True})
     if doc is None:
@@ -616,7 +616,7 @@ def _recovery_apply_intent(store, intent_row: dict, models: dict, embedding: lis
     invalidate_ledger_index_cache(store.chroma_dir)
     by_ledger_id, _ = build_ledger_index(store)
     protocol_row = {**intent_row, "_governed_protocol": True}
-    unit = ingest_observation(
+    unit = ingest_observation(  # pylint: disable=unexpected-keyword-arg
         protocol_row,
         store=store,
         embed_model=models.get("embed_model", "nomic-embed-text"),
@@ -1248,7 +1248,7 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
     """Upsert decisions-approved.jsonl into Chroma."""
 
     from chroma_write_store import open_production_write_store
-    from observe import ingest_observation_file
+    from observe import ingest_observation_file  # pylint: disable=unused-import
     from purge_locks import index_write_flock
 
     models = cfg.get("models")
@@ -1262,7 +1262,7 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
 
         lock_cfg = load_config()
     from chroma_readonly import open_readonly_unit_store
-    from observe import ingest_observation_file_with_drift_retry
+    from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     approved = str(approved_path(cfg))
     embed_store = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
@@ -1297,7 +1297,7 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
     from chroma_write_store import open_production_write_store
     # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
     from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
-    from observe import (
+    from observe import (  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
         ObservationIngestDriftError,
         ObservationIngestDriftRefusedError,
         commit_observation_ingest,

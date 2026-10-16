@@ -237,7 +237,7 @@ def export_flock_path(export_path: Path | str) -> Iterator[Path]:
 
 @contextmanager
 def export_flock(cfg: dict) -> Iterator[Path]:
-    with export_flock_path(cfg["index"]["units_export"]) as lock:
+    with export_flock_path(cfg["index"]["units_export"]) as lock:  # pylint: disable=contextmanager-generator-missing-cleanup
         yield lock
 
 

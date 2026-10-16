@@ -3,7 +3,7 @@
 Scratch only: real production store sessions against a scratch config; fake providers; no network.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def _rows(cfg, lid):
 
 @pytest.mark.parametrize("copies,seeded", [(2, False), (3, False), (2, True), (3, True)])
 def test_u1_repeated_ledger_id_in_one_file(tmp_path, monkeypatch, copies, seeded) -> None:
-    from observe import ingest_observation_file_with_drift_retry
+    from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     cfg = _real_session_env(tmp_path, monkeypatch)
     lid = f"obs_v16_dup_{copies}_{int(seeded)}"
@@ -41,7 +41,7 @@ def test_u1_repeated_ledger_id_in_one_file(tmp_path, monkeypatch, copies, seeded
         result, err = ingest_observation_file_with_drift_retry(
             str(path), embed_store=_FreshReader(cfg["index"]["chroma_dir"]), open_write_commit=owc,
             embed_model="fake", ollama_host="offline", upsert=True, verbose=False), None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         result, err = None, repr(exc)[:160]
     rows = _rows(cfg, lid)
     summary = (rows[0].get("summary") or rows[0].get("title")) if rows else None
@@ -90,7 +90,7 @@ def test_s1_batch_commit_does_no_full_store_scan_under_c1(tmp_path, monkeypatch)
     """Validation under C1 must not rescan the whole store (one 10 s scan per row at 109k units)."""
     from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import production_chroma_write_session
-    from observe import commit_prepared_observation_file_rows, prepare_observation_file_rows
+    from observe import commit_prepared_observation_file_rows, prepare_observation_file_rows  # pylint: disable=line-too-long, no-name-in-module# stale docs/chatgpt-pack observe/ledger names
     from purge_locks import index_write_flock
 
     cfg = _real_session_env(tmp_path, monkeypatch)
@@ -112,4 +112,4 @@ def test_s1_batch_commit_does_no_full_store_scan_under_c1(tmp_path, monkeypatch)
             stats = commit_prepared_observation_file_rows(rows, store=inner, upsert=True, verbose=False)
     print(f"\nS1 full_scans={len(scans)} stats={stats}")
     assert stats["updated"] == 3 and stats["accepted"] == 1, stats
-    assert scans == [], len(scans)
+    assert scans == [], len(scans)  # pylint: disable=use-implicit-booleaness-not-comparison

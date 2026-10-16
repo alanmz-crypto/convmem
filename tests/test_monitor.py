@@ -156,7 +156,7 @@ class MonitorProbeTests(unittest.TestCase):
     ):
         mock_fetch.return_value = ({}, None)
         mock_tls.return_value = False
-        from observe import PreparedObservationIngest
+        from observe import PreparedObservationIngest  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
         mock_prepare.return_value = PreparedObservationIngest(
             record={"id": "ver_x"},
@@ -199,7 +199,7 @@ class MonitorProbeTests(unittest.TestCase):
     @mock.patch("observe.prepare_observation_ingest")
     @mock.patch("monitor.fetch_https_headers")
     @mock.patch("monitor.check_tls_redirect")
-    def test_run_monitor_skips_kiro(self, mock_tls, mock_fetch, mock_prepare, mock_commit):
+    def test_run_monitor_skips_kiro(self, mock_tls, mock_fetch, mock_prepare, mock_commit):  # pylint: disable=unused-argument
         mock_fetch.return_value = ({"Content-Security-Policy": "x"}, None)
         mock_tls.return_value = True
         store = FakeStore(

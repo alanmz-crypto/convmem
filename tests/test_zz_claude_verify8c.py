@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Claude verify probe, round 8: legacy index paths through the real index() entrypoint. Scratch only."""
 
 from __future__ import annotations
@@ -18,10 +19,10 @@ def _run(force_file: bool):
         (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
         src = root / "agent-transcripts" / "s" / "chat.jsonl"
         src.parent.mkdir(parents=True)
-        src.write_text(limit_stats._cursor_line() + "\n", encoding="utf-8")
+        src.write_text(limit_stats._cursor_line() + "\n", encoding="utf-8")  # pylint: disable=protected-access
         inv = root / "inventory.jsonl"
-        limit_stats._write_inventory(inv, [str(src)])
-        cfg = limit_stats.IndexLimitSkipStatsTests()._cfg(root, inv)
+        limit_stats._write_inventory(inv, [str(src)])  # pylint: disable=protected-access
+        cfg = limit_stats.IndexLimitSkipStatsTests()._cfg(root, inv)  # pylint: disable=protected-access
         unit = {"type": "explanation", "title": "T", "summary": "S", "keywords": ["k"],
                 "confidence": 0.9, "domain": "coding.tooling"}
         with mock.patch("ingest.load_config", return_value=cfg), \
@@ -34,7 +35,7 @@ def _run(force_file: bool):
 
             try:
                 return len(calls), index(verbose=False, force_file=str(src) if force_file else None), None
-            except Exception as exc:  # report how much was paid before the failure
+            except Exception as exc:  # report how much was paid before the failure  # pylint: disable=broad-exception-caught
                 return len(calls), None, repr(exc)[:160]
 
 

@@ -3,7 +3,7 @@
 Scratch only: a scratch config and store; no providers; no network.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from tests.test_zz_claude_verify9 import _real_session_env
 def test_r1_dry_run_repair_reads_documents_without_a_scan_per_decision(tmp_path, monkeypatch) -> None:
     import chroma_readonly
     from chroma_store import UNITS, ChromaStore
-    from ledger import invalidate_ledger_index_cache
-    from observe import repair_empty_ledger_documents
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+    from observe import repair_empty_ledger_documents  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     cfg = _real_session_env(tmp_path, monkeypatch)
     chroma_dir = cfg["index"]["chroma_dir"]

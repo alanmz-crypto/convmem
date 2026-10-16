@@ -1,6 +1,6 @@
 """Codex audit round-5 probes (issue #286 corrective 19)."""
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -169,24 +169,24 @@ def test_shortcut_revalidates_source_after_read(tmp_path, monkeypatch, mutation)
 
             def parse(filepath, *, raw=None):
                 view = original_spec.parse_complete_prefix(filepath, raw=raw)
-                if not mutated:
-                    mutated.append(True)
-                    data = source.read_bytes()
+                if not mutated:  # pylint: disable=cell-var-from-loop
+                    mutated.append(True)  # pylint: disable=cell-var-from-loop
+                    data = source.read_bytes()  # pylint: disable=cell-var-from-loop
                     if mutation == "truncate":
-                        source.write_bytes(data.splitlines(keepends=True)[0])
+                        source.write_bytes(data.splitlines(keepends=True)[0])  # pylint: disable=cell-var-from-loop
                     elif mutation == "rewrite":
                         data = data.replace(b"line-0", b"line-X", 1)
-                        if data == source.read_bytes():
+                        if data == source.read_bytes():  # pylint: disable=cell-var-from-loop
                             split = data.index(b"\n") + 1
                             tail = bytearray(data[split:])
                             i = next(i for i, value in enumerate(tail) if value == ord("0"))
                             tail[i] = ord("9")
                             data = data[:split] + bytes(tail)
-                        source.write_bytes(data)
+                        source.write_bytes(data)  # pylint: disable=cell-var-from-loop
                     else:
-                        replacement = source.with_suffix(".replacement")
+                        replacement = source.with_suffix(".replacement")  # pylint: disable=cell-var-from-loop
                         replacement.write_bytes(data)
-                        replacement.replace(source)
+                        replacement.replace(source)  # pylint: disable=cell-var-from-loop
                 return view
 
             mp.setitem(
@@ -240,7 +240,7 @@ def test_adapted_lock_sequence_has_correct_reservation_semantics(tmp_path, monke
         seen.append(("capture",))
         return capture_original(self, *a, **kw)
 
-    def fail(self, *a, **kw):
+    def fail(self, *a, **kw):  # pylint: disable=unused-argument
         assert _lock_held(self.paths["lock"])
         seen.append(("work",))
         raise OSError("scratch prepared failure")

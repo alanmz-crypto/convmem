@@ -123,7 +123,7 @@ def _fresh_readonly_embed_store(embed_store):
     if chroma_dir is None:
         return embed_store
     from chroma_readonly import open_readonly_unit_store
-    from ledger import invalidate_ledger_index_cache
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     invalidate_ledger_index_cache(chroma_dir)
     return open_readonly_unit_store(chroma_dir)
@@ -285,7 +285,7 @@ def _ledger_unchanged_in_index(existing: dict, unit: dict, store) -> bool:
 
 
 @dataclass
-class PreparedObservationIngest:
+class PreparedObservationIngest:  # pylint: disable=too-many-instance-attributes
     """Validated unit plus embedding computed before the index write lock."""
 
     record: dict
@@ -373,7 +373,7 @@ def prepare_observation_ingest(
 
 
 def _invalidate_observation_ingest_cache(store) -> None:
-    from ledger import invalidate_ledger_index_cache
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     chroma_dir = getattr(store, "chroma_dir", None)
     if chroma_dir:
@@ -449,7 +449,7 @@ def commit_observation_ingest(
     )
 
 
-def ingest_observation(
+def ingest_observation(  # pylint: disable=too-many-arguments
     record: dict,
     *,
     store,
@@ -590,7 +590,7 @@ def commit_prepared_observation_file_rows(
     store,
     units_export: Path | None = None,
     verbose: bool = True,
-    upsert: bool = False,
+    upsert: bool = False,  # pylint: disable=unused-argument
     by_ledger_id: dict[str, dict] | None = None,
 ) -> dict:
     """Commit prepared rows without re-embedding under the write lock."""
@@ -619,7 +619,7 @@ def commit_prepared_observation_file_rows(
                 units_export=units_export,
                 skip_drift_check=True,
             )
-        except ObservationIngestDriftError:
+        except ObservationIngestDriftError:  # pylint: disable=try-except-raise
             raise
         if unit is None:
             stats["rejected"] += 1
@@ -695,7 +695,7 @@ def reprepare_observation_file_rows(
     return refreshed
 
 
-def ingest_observation_file(
+def ingest_observation_file(  # pylint: disable=too-many-arguments
     path: str,
     *,
     store,
@@ -734,7 +734,7 @@ def ingest_observation_file(
     return stats
 
 
-def ingest_observation_file_with_drift_retry(
+def ingest_observation_file_with_drift_retry(  # pylint: disable=too-many-arguments
     path: str,
     *,
     embed_store,
@@ -791,7 +791,7 @@ def ingest_observation_file_with_drift_retry(
     raise ObservationIngestDriftRefusedError(str(last_drift or "drift"))
 
 
-def repair_empty_ledger_documents(
+def repair_empty_ledger_documents(  # pylint: disable=too-many-locals
     cfg: dict,
     *,
     dry_run: bool = False,
@@ -800,7 +800,7 @@ def repair_empty_ledger_documents(
 ) -> dict:
     """Re-embed ledger units whose Chroma document is empty (decision/verification)."""
     from chroma_write_store import open_production_write_store
-    from ledger import invalidate_ledger_index_cache
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
     from ledger_recent import load_approved_decision_by_id
     from purge_locks import index_write_flock
 

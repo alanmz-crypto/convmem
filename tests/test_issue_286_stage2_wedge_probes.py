@@ -53,7 +53,7 @@ def _wedge_then_replay(tmp_path, monkeypatch, replay_point: str):
     source = write_source(isolated.root, 4)
     boundary, cfg = _enable(isolated, source)
     digest = parse_complete_prefix(str(source)).prefix_sha256
-    common = dict(
+    common = dict(  # pylint: disable=use-dict-literal
         cfg=cfg,
         bootstrap_existing=True,
         expected_prefix_sha256=digest,
@@ -155,7 +155,7 @@ def _commit_then_grow_codex_rollout(
     cfg_path = tmp_path / "config.toml"
     _write_user_config(cfg_path, cfg)
     boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
-    common = dict(
+    common = dict(  # pylint: disable=use-dict-literal
         cfg=cfg,
         enabled=True,
         chunk_size=4,
@@ -283,7 +283,7 @@ def _route(cfg, source):
 
 
 def test_p3_real_wedge_marker_through_cli_parses(tmp_path, monkeypatch) -> None:
-    from adapters.codex_rollout_jsonl import parse_complete_prefix
+    from adapters.codex_rollout_jsonl import parse_complete_prefix  # pylint: disable=redefined-outer-name, reimported
 
     source, cfg = _codex_env(tmp_path, monkeypatch)
     digest = parse_complete_prefix(str(source)).prefix_sha256
@@ -448,7 +448,7 @@ def test_lazy_prefix_digest_only_when_wedge_quarantine_held(
     monkeypatch.setattr(watch, "flush_path", lambda *_a, **_k: None)
     breaker = CircuitBreakerState(tmp_path / "breaker.json")
     watch._process_ready_path("/x/rollout.jsonl", cfg={}, breaker=breaker, verbose=False)
-    assert digest_calls == []
+    assert digest_calls == []  # pylint: disable=use-implicit-booleaness-not-comparison
     breaker.record_refusal(
         "/x/rollout.jsonl",
         outcome="wedged_incremental_transaction_recovery_unproven",

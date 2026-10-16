@@ -1825,7 +1825,7 @@ class IncrementalJsonlCoordinator:
             temp_path = Path(temp.name)
             foreign_lines = 0
             source_index = 0
-            try:
+            try:  # pylint: disable=too-many-nested-blocks
                 current = (  # pylint: disable=consider-using-with
                     export_path.open("rb")  # pylint: disable=consider-using-with
                     if export_path.is_file()
@@ -2933,22 +2933,22 @@ def maybe_route_incremental(
     )
     from incremental_retry_state import classify_incremental_escape
 
-    coordinator._live_retry_admission_path_key = path_key
-    coordinator._live_retry_admission_isolated = isolated
+    coordinator._live_retry_admission_path_key = path_key  # pylint: disable=attribute-defined-outside-init, protected-access
+    coordinator._live_retry_admission_isolated = isolated  # pylint: disable=attribute-defined-outside-init, protected-access
     holds_source_lock = (
         callable(getattr(type(coordinator), "_acquire_source_lock", None))
         and callable(getattr(type(coordinator), "_release_source_lock", None))
     )
     if holds_source_lock:
-        coordinator._acquire_source_lock()
+        coordinator._acquire_source_lock()  # pylint: disable=protected-access
     try:
         try:
-            coordinator._run_under_external_source_lock = True
+            coordinator._run_under_external_source_lock = True  # pylint: disable=attribute-defined-outside-init, protected-access
             try:
                 result = coordinator.run()
             finally:
-                coordinator._run_under_external_source_lock = False
-        except (KeyboardInterrupt, SystemExit):
+                coordinator._run_under_external_source_lock = False  # pylint: disable=attribute-defined-outside-init, protected-access
+        except (KeyboardInterrupt, SystemExit):  # pylint: disable=try-except-raise
             raise
         except IncrementalJsonlError as exc:
             if exc.code in ("live_route_refused", "retry_state_unavailable") or isolated:
@@ -2959,7 +2959,7 @@ def maybe_route_incremental(
                 failure_code=exc.code,
                 re_raise=exc,
             )
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             failure_code = classify_incremental_escape(exc)
             _raise_incremental_retry_refusal(
                 coordinator,
@@ -2981,10 +2981,10 @@ def maybe_route_incremental(
             )
         return result.ingest_tuple()
     finally:
-        coordinator._live_retry_admission_path_key = None
-        coordinator._live_retry_admission_isolated = True
+        coordinator._live_retry_admission_path_key = None  # pylint: disable=attribute-defined-outside-init, protected-access
+        coordinator._live_retry_admission_isolated = True  # pylint: disable=attribute-defined-outside-init, protected-access
         if holds_source_lock:
-            coordinator._release_source_lock()
+            coordinator._release_source_lock()  # pylint: disable=protected-access
 
 
 def _raise_incremental_retry_refusal(

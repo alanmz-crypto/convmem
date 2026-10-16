@@ -3,7 +3,7 @@
 Scratch only: tmp_path HOME, fake providers, no network.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -127,7 +127,7 @@ def test_z2_shortcut_matches_full_path_for_every_retry_kind(tmp_path, monkeypatc
 
 def test_z3_capture_time_source_error_is_held(tmp_path, monkeypatch) -> None:
     """A source that rotates during every capture is refused, never paid, and held once its errors repeat."""
-    import incremental_jsonl as inc
+    import incremental_jsonl as inc  # pylint: disable=unused-import
     from incremental_jsonl_formats import FORMAT_SPECS
     from tests.test_zz_claude_verify8b import _count_summaries
     from tests.test_zz_codex_audit import _route_fixture

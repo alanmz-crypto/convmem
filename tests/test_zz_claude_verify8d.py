@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Claude verify probe, round 8: the incremental route through the real index() entrypoint. Scratch only."""
 
 from __future__ import annotations
@@ -31,8 +32,8 @@ def test_index_file_routes_codex_rollout_and_commits(tmp_path, monkeypatch) -> N
             mock.patch("brief.refresh_brief_after_change", lambda *_a, **_k: None):
         try:
             stats = ingest.index(verbose=False, force_file=str(source))
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             stats = None
-            err = (repr(exc)[:200], [f"{f.filename.split('/')[-1]}:{f.lineno}" for f in traceback.extract_tb(exc.__traceback__)][-8:])
+            err = (repr(exc)[:200], [f"{f.filename.split('/')[-1]}:{f.lineno}" for f in traceback.extract_tb(exc.__traceback__)][-8:])  # pylint: disable=line-too-long
     assert err is None, ("summaries paid:", len(calls), err)
     assert stats["files_processed"] == 1, stats

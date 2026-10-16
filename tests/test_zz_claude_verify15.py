@@ -3,12 +3,12 @@
 Scratch only: real production store sessions against a scratch config; fake providers; no network.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from pathlib import Path  # pylint: disable=unused-import
 from unittest.mock import Mock
 
 import pytest
@@ -24,12 +24,12 @@ def _obs(lid: str, summary: str) -> dict:
 
 def _seed(cfg, *records):
     from chroma_store import ChromaStore
-    from ledger import invalidate_ledger_index_cache
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
     from observe import ingest_observation
 
     seed = ChromaStore(cfg["index"]["chroma_dir"])
     try:
-        units = [ingest_observation(r, store=seed, embed_model="fake", ollama_host="offline",
+        units = [ingest_observation(r, store=seed, embed_model="fake", ollama_host="offline",  # pylint: disable=unexpected-keyword-arg
                                     upsert=True, precomputed_embedding=[0.1, 0.2, 0.3]) for r in records]
     finally:
         seed.close()
@@ -85,7 +85,7 @@ class _FreshReader:
 
     def __getattr__(self, name):
         from chroma_readonly import open_readonly_unit_store
-        from ledger import invalidate_ledger_index_cache
+        from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
         invalidate_ledger_index_cache(self.chroma_dir)
         return getattr(open_readonly_unit_store(self.chroma_dir), name)
@@ -95,7 +95,7 @@ def test_c0_unchanged_and_changed_rows_commit_without_false_drift(tmp_path, monk
     """Control: prepared from the readonly reader, committed to the write store, nothing foreign in between."""
     from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import production_chroma_write_session
-    from observe import commit_observation_ingest, prepare_observation_ingest
+    from observe import commit_observation_ingest, prepare_observation_ingest  # pylint: disable=line-too-long, no-name-in-module# stale docs/chatgpt-pack observe/ledger names
     from purge_locks import index_write_flock
 
     cfg = _real_session_env(tmp_path, monkeypatch)
@@ -117,7 +117,7 @@ def test_c0_unchanged_and_changed_rows_commit_without_false_drift(tmp_path, monk
 def test_d1_single_row_drift_retry_recovers(tmp_path, monkeypatch) -> None:
     """Spec C2: on drift, release, re-prepare outside C1, commit again. Uses the caller's real reader."""
     from chroma_readonly import open_readonly_unit_store
-    from observe import ingest_observation_file_with_drift_retry
+    from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     cfg = _real_session_env(tmp_path, monkeypatch)
     rec = _obs("obs_v15_d1", "Old text.")
@@ -131,7 +131,7 @@ def test_d1_single_row_drift_retry_recovers(tmp_path, monkeypatch) -> None:
         result, err = ingest_observation_file_with_drift_retry(
             str(path), embed_store=open_readonly_unit_store(cfg["index"]["chroma_dir"]),
             open_write_commit=owc, embed_model="fake", ollama_host="offline", upsert=True, verbose=False), None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         result, err = None, repr(exc)[:160]
     assert all(d == (0, 0) for d in depths), depths
     assert err is None, ("commit rounds:", calls["n"], err)
@@ -140,7 +140,7 @@ def test_d1_single_row_drift_retry_recovers(tmp_path, monkeypatch) -> None:
 
 def test_d2_single_row_drift_retry_with_a_fresh_reader(tmp_path, monkeypatch) -> None:
     """Same as d1 but the reader is reopened on each call: isolates snapshot staleness."""
-    from observe import ingest_observation_file_with_drift_retry
+    from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     cfg = _real_session_env(tmp_path, monkeypatch)
     rec = _obs("obs_v15_d2", "Old text.")
@@ -157,7 +157,7 @@ def test_d2_single_row_drift_retry_with_a_fresh_reader(tmp_path, monkeypatch) ->
 
 def test_d3_batch_drift_on_a_later_row_recovers(tmp_path, monkeypatch) -> None:
     """Two changed rows; only row 2 drifts. Row 1 is committed in round 1; round 2 must not trip on it."""
-    from observe import ingest_observation_file_with_drift_retry
+    from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
     cfg = _real_session_env(tmp_path, monkeypatch)
     r1, r2 = _obs("obs_v15_b1", "Old one."), _obs("obs_v15_b2", "Old two.")
@@ -170,7 +170,7 @@ def test_d3_batch_drift_on_a_later_row_recovers(tmp_path, monkeypatch) -> None:
         result, err = ingest_observation_file_with_drift_retry(
             str(path), embed_store=_FreshReader(cfg["index"]["chroma_dir"]), open_write_commit=owc,
             embed_model="fake", ollama_host="offline", upsert=True, verbose=False), None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         result, err = None, repr(exc)[:160]
     assert err is None, ("commit rounds:", calls["n"], err)
     assert result["updated"] == 2, result
@@ -180,8 +180,8 @@ def test_i1_insert_race_is_revalidated(tmp_path, monkeypatch) -> None:
     """Spec D: a row prepared against 'no target' must not commit over a target that appeared since."""
     from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import production_chroma_write_session
-    from ledger import invalidate_ledger_index_cache
-    from observe import (ObservationIngestDriftError, commit_observation_ingest, ingest_observation,
+    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+    from observe import (ObservationIngestDriftError, commit_observation_ingest, ingest_observation,  # pylint: disable=line-too-long, no-name-in-module# stale docs/chatgpt-pack observe/ledger names
                          prepare_observation_ingest)
     from purge_locks import index_write_flock
 
@@ -193,7 +193,7 @@ def test_i1_insert_race_is_revalidated(tmp_path, monkeypatch) -> None:
     assert not prepared.upsert_update and not prepared.skipped_unchanged
     with index_write_flock(cfg):
         with production_chroma_write_session(entrypoint="claude_verify15.foreign") as session:
-            ingest_observation({**rec, "summary": "Foreign, inserted after my prepare."}, store=session.store,
+            ingest_observation({**rec, "summary": "Foreign, inserted after my prepare."}, store=session.store,  # pylint: disable=unexpected-keyword-arg
                                embed_model="fake", ollama_host="offline", upsert=True,
                                precomputed_embedding=[0.1, 0.2, 0.3])
     invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])

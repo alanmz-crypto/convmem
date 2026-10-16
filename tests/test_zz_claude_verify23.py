@@ -4,7 +4,7 @@ Scratch only: tmp_path HOME, fake providers, no network. Each probe prints a row
 74c8ee7 (before corrective 17) and at the tip for a differential.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -55,18 +55,18 @@ def test_x1_unchanged_source_after_legacy_reindex_lineage(tmp_path, monkeypatch)
     """D8 guard: the full path refuses an unchanged source whose processed lineage no longer matches."""
     source, cfg, route, calls = _commit(tmp_path, monkeypatch)
     plog = Path(cfg["index"]["processed_log"])
-    data = json.loads(plog.read_text())
+    data = json.loads(plog.read_text())  # pylint: disable=unspecified-encoding
     hits = 0
     for entry in data.values():
         if isinstance(entry, dict) and entry.get("incremental_jsonl_lineage"):
             entry["incremental_jsonl_lineage"] = "legacy-reindex-lineage"
             hits += 1
     assert hits == 1, hits
-    plog.write_text(json.dumps(data))
+    plog.write_text(json.dumps(data))  # pylint: disable=unspecified-encoding
     paid = len(calls)
     rows = [(_call(route), _metrics(source, cfg, calls)) for _ in range(3)]
     print("\nX1", [(r, {k: v for k, v in m.items() if k != "state"}, m["state"] is not None) for r, m in rows])
-    print("X1 lineage after:", [e.get("incremental_jsonl_lineage") for e in json.loads(plog.read_text()).values() if isinstance(e, dict)])
+    print("X1 lineage after:", [e.get("incremental_jsonl_lineage") for e in json.loads(plog.read_text()).values() if isinstance(e, dict)])  # pylint: disable=line-too-long, unspecified-encoding
     assert len(calls) == paid
     assert all(r[0] == "raised" for r, _ in rows), rows
 

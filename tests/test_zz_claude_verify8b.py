@@ -3,7 +3,7 @@
 Codex's F2 probes flipped to the round-7 spec, plus Q2(c), Q2(d), Q7 and Q1 checks.
 """
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def _cli_stderr(exc) -> tuple[int, str]:
 def _watch_flush(monkeypatch, route, catch):
     import watch
 
-    def flush(path, **kwargs):
+    def flush(path, **kwargs):  # pylint: disable=unused-argument
         try:
             route()
         except catch as exc:
@@ -104,7 +104,7 @@ def test_f2c_provider_refusal_stops_paying(tmp_path, monkeypatch) -> None:
     source, cfg, route = _route_fixture(tmp_path, monkeypatch)
     calls = _count_summaries(monkeypatch)
 
-    def failed_distill(*args, **kwargs):
+    def failed_distill(*args, **kwargs):  # pylint: disable=unused-argument
         response = requests.Response()
         response.status_code = 402
         raise requests.HTTPError("synthetic provider unavailable", response=response)
@@ -160,7 +160,7 @@ def _retry_state_path(tmp_path):
 def _one_failure(tmp_path, monkeypatch):
     import incremental_jsonl as inc
 
-    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)  # pylint: disable=unused-variable
     calls = _count_summaries(monkeypatch)
 
     def fail_save(*args, **kwargs):

@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone  # pylint: disable=unused-import
 
-import pytest
+import pytest  # pylint: disable=unused-import
 
 from doctor import _check_incremental_rollback_tamper
 
 
-def test_rollback_tamper_record_warns_within_seven_days(tmp_path, monkeypatch) -> None:
-    import doctor
+def test_rollback_tamper_record_warns_within_seven_days(tmp_path, monkeypatch) -> None:  # pylint: disable=unused-argument
+    import doctor  # pylint: disable=unused-import
 
     state_dir = tmp_path / "incremental"
     state_dir.mkdir()
@@ -26,9 +26,9 @@ def test_rollback_tamper_record_warns_within_seven_days(tmp_path, monkeypatch) -
     assert "rollback tamper" in check.detail
 
 
-def test_rollback_tamper_record_silent_after_seven_days(tmp_path, monkeypatch) -> None:
-    import doctor
-    import os
+def test_rollback_tamper_record_silent_after_seven_days(tmp_path, monkeypatch) -> None:  # pylint: disable=unused-argument
+    import doctor  # pylint: disable=unused-import
+    import os  # pylint: disable=unused-import
 
     state_dir = tmp_path / "incremental"
     state_dir.mkdir()

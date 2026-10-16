@@ -164,7 +164,7 @@ class ProposeDecisionTests(unittest.TestCase):
     @patch("observe.commit_observation_ingest")
     @patch("observe.prepare_observation_ingest")
     def test_ingest_approved_ledger_indexes_one(self, mock_prepare, mock_commit):
-        from observe import PreparedObservationIngest
+        from observe import PreparedObservationIngest  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
 
         ledger = {
             "id": "dec_test_approved",
