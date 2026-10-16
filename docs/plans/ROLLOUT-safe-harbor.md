@@ -183,6 +183,16 @@ scope was not part of Kiro's `f45b051` review and is not implemented or granted.
 No private production one-liner is provided. Multiple live segments and actual
 pending work remain to be handled under that separately reviewed procedure.
 
+### Parallel Codex work to reuse
+
+[EXECUTION §22's comparison](EXECUTION-safe-harbor.md#reuse-from-arc-codex--issue-286-2026-10-16-comparison)
+records the newer issue #286 candidate's shared write lock, recovery preparation
+outside write scopes, and lock-sensitive evidence. Reconcile these with the exact
+rollout candidate before initializer implementation; do not build a competing
+coordination mechanism. This does not upgrade the historical `c6f0724` evidence
+to the newer combined runtime. The guard/CLI are unchanged by that candidate, so
+legacy initialization and durable original-generation preservation remain open.
+
 ### Decisions still open
 
 1. **Recovery point:** Ryan supplies maximum lost work for maintenance and routine
@@ -194,6 +204,8 @@ pending work remain to be handled under that separately reviewed procedure.
    upgrade, interpreter switch or full environment certification is implied.
 3. **Legacy generations:** review the proposed EXECUTION §22 scope, then grant
    its bounded implementation/evidence separately if accepted.
+   Resolve the selected integration base and existing index-write/native-lock
+   order using the Arc Codex comparison; its PR/reviews are not deployment grants.
    Preserve original guard/generation bytes and CURRENT references before any
    refresh can prune them; do not fabricate release evidence for the old saves.
    Prefer an explicitly authorized, validated new generation using existing guard

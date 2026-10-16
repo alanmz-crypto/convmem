@@ -917,6 +917,52 @@ deleting CURRENT or changing signatures to force it conceals the intended
 operation and risks pruning originals. A private-method production one-liner
 omits a supported admission/preservation contract. These are not permitted routes.
 
+### Reuse from Arc Codex / issue #286 (2026-10-16 comparison)
+
+Ryan asked Codex to inspect the parallel indexing work before duplicating it.
+Static comparison used PR #395 candidate
+`d5f765a05dbb74d2786e2f15ae6bb0824ac38dba` against Safe Harbor's merged
+`c6f0724`. The candidate adds relevant coordination; `chroma_write_guard.py` and
+`scripts/chroma_guard.py` are byte-unchanged, so it supplies no legacy initializer.
+The older Arc Codex STATUS/LATEST entries do not describe this newer candidate.
+
+- **Reuse the writer coordination.** `purge_locks.index_write_flock` (C1) binds a
+  store-wide lock to a Chroma target, and the production-store wrapper requires it
+  for mutations. Recovery now nests governed lock → C1 → Chroma session → native
+  guard. Scope review must reconcile the initializer with the selected combined
+  runtime: if it participates in C1, reuse that primitive before the native guard,
+  and prove the exact same lock identity as the configured writers. Do not infer
+  the lock path from the Chroma parent: the existing helper selects the data root
+  from configured processed/export paths as well. Do not add a parallel lock or
+  claim that C1 covers old clients or incidental writes from readers.
+- **Reuse preparation/revalidation and its tests.** Corrective 22 prepares the
+  recovery embedding before C1/session acquisition, then rechecks and applies
+  under the existing native guard. A provider outage refuses a needed rebuild;
+  event-only/marker completion can still finish. The initializer remains entirely
+  provider-free. Its preview must stay observational and its apply must recheck
+  actual state after waiting; an unchanged/no-op path cannot skip an incident
+  check. Reuse the corresponding refusal and real-effect test patterns rather
+  than assuming a successful helper call establishes safe admission.
+- **Keep evidence sensitive to each lock.** The Codex audit found that a blocked
+  competitor can be waiting on C1 while a missing native guard goes unnoticed.
+  If C1 is used here, retain an independent native-lock probe and a faulty control
+  that drops only that guard while C1 remains held. Reusing a harness is useful;
+  its prior PASS does not certify a new initializer or combined revision.
+
+The bounded Astra recovery audit at `483875d` reviewed `a5fb7d7`, whose tree
+`c7d4b78e59b60746e182c8e61b588a9df8aabd0f` equals `d5f765a`; its reported provider
+outage, document/vector and concurrency evidence is reusable context, not a rerun
+or an acceptance by this lane. PR #395 explicitly requests Safe Harbor review of
+the recovery/test integration. At inspection it was open, with hosted pylint
+failed and pytest running. No merge, deployment or review completion is inferred.
+
+Source-scoped transcript rollback in #286 is not a substitute for archiving whole
+shared HNSW generations. Durable originals, strict pending-work refusal and the
+multi-segment interruption contract below remain necessary. Before an initializer
+Execute grant, choose the exact integration base and resolve its lock interface
+in governing scope review. This comparison changes planning only; other-arc
+implementation, acceptance and authority remain with their existing owners.
+
 ### Required behavior
 
 1. **Preview and binding.** Inspect existing state without opening a Chroma client
@@ -1018,3 +1064,4 @@ PASS at `f45b051` validates the preceding evidence only, not this new interface.
 
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->
+<!-- src: /home/lauer/Projects/convmem/purge_locks.py, /home/lauer/Projects/convmem/propose_decision.py, /home/lauer/Projects/convmem/tests/_safe_harbor_t4_concurrency.py — Arc Codex comparison pinned to d5f765a above -->
