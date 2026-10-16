@@ -306,6 +306,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-15 | Claude | Round 23 at `881c804`: R4-F1/F2 closed; FAIL on N13 (pre-capture unchanged shortcut bypasses the lineage guard and clears the retry hold, no paid calls); corrective 18 to Cursor; not deployed |
 | 2026-10-15 | Claude | Round 24 PASS at `a89f573` (corrective 18 closes N13/N14; no tip-only failure; 0 leaks); Astra re-audit next, then PR draft; not deployed |
 | 2026-10-15 | Claude | Astra round 5 FAILs `a89f573` (shortcut skips revalidation and the retry gate); Claude round 25 reproduces, withdraws round 24; corrective 19 to Cursor; not deployed |
+| 2026-10-15 | Claude | Round 26 at `d5d10b5`: FAIL with Astra's round 6. R5-F1/R5-F2 closed; capture-error codes reset retry counters (R6-F1) and the R2b inventory is stale (R6-F2); corrective 20 adds a one-line accounting fix and merges main `c6f0724` |
 
 ## TL;DR
 

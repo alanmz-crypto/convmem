@@ -1,4 +1,341 @@
-# Verify: Stage 2 wedge fixes, round 25 at `a89f573`: round 24's PASS withdrawn; Astra's round-5 FAIL reproduced (the shortcut skips source revalidation and the retry gate); corrective 19
+# Verify: Stage 2 wedge fixes, round 26 at `d5d10b5`: FAIL; corrective 19 closes R5-F1 and R5-F2, but its capture-error code change weakens the retry hold (Astra's R6-F1, reproduced) and the R2b inventory is stale; corrective 20 (a one-line accounting fix, merge main, regenerate)
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-15
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `d5d10b5`, Cursor's corrective
+19: `8da61de` (read-only retry check before the unchanged shortcut; shortcut revalidates
+the live source), `c252b22` (R2b inventory and baseline hash), `d5d10b5` (the read-only
+check refuses a non-file state path).
+**Input:** Astra's round-6 safety re-audit, **FAIL** (`docs/2026-10-15-issue-286-stage2-fixes-audit-r6`,
+`5240cd6`, `docs/inter-model/CODEX-2026-10-15-issue-286-stage2-fixes-audit-r6.md`). My first
+draft of this round accepted the change behind R6-F1; Astra's probe showed why that was wrong.
+**Method:**
+- I read the diff `a89f573..d5d10b5`.
+- I ran Astra's round-4 harness (hash `fb7726ec…`) and round-5 harness (hash `80123bdf…`)
+  unchanged. I also ran Cursor's copies, Astra's round-3 tests, my retained probes
+  (rounds 15–17, 20, 21, 23, 24), the stage-2 wedge tests and the core suites.
+- New probes (`tests/test_zz_claude_verify26.py`, appendix), run at the tip and at
+  `a89f573`:
+  - `z1` calls the read-only check directly for eight retry-state kinds and compares the
+    state directory (files, bytes, timestamps) before and after.
+  - `z2` runs the shortcut and the full path from fresh fixtures for the same eight kinds:
+    three unchanged calls, then one valid append.
+  - `z3` rotates the source during capture and checks the refusal and the retry record.
+- The full hermetic suite under coverage, the leak census, diff coverage and the static
+  check, all at `d5d10b5`, compared with main `458b9f6`.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are inactive.
+Live writes are still only on-demand Track A indexes of Codex session files (new chunks
+only).
+
+## Verdict (round 26)
+
+**FAIL.** R5-F1 and R5-F2 are closed, but one change outside the spec weakens the retry
+hold (R6-F1, Medium), and the R2b inventory is stale (R6-F2, Low). `main` also moved and now
+conflicts. Corrective 20 below fixes R6-F1 with a one-line accounting change I've already
+tested, and handles the rest mechanically.
+
+**Closed and verified:**
+- **R5-F2:** Astra's four `test_unchanged_preserves_gate_refusal` cases and her natural
+  source-hold case pass unchanged.
+  - Probe `z2`: for all eight kinds (absent, empty, corrupt, unavailable, prefix cap,
+    same-error hold, source-wide hold, hold on another prefix), the shortcut and the full
+    path give the same outcome, paid calls, snapshots and retry state on every call.
+  - At `a89f573` the same probe diverges for five kinds (corrupt, unavailable, cap,
+    same-error, source-wide): the shortcut reports "skipped" and the evidence is erased.
+- **R5-F1:** Astra's three `test_shortcut_revalidates_source_after_read` cases (truncate,
+  in-place rewrite, replacement) pass unchanged.
+- **The check is read-only** (`z1`):
+  - It raises `retry_state_unavailable` for corrupt state and for a directory in the
+    state file's place.
+  - It raises `live_route_refused` for a prefix cap, a same-error hold and a source-wide
+    hold.
+  - It passes for absent state, empty state and a hold on another prefix.
+  - In every case the state directory is unchanged (same files, bytes and timestamps),
+    and an absent state directory is never created.
+- **Astra's round-4 harness passes unchanged, 7 of 7**, including the original lock
+  sequence. Cursor restored `tests/test_zz_codex_audit_r4.py` to it.
+- **Astra's round-5 harness: 13 of 14 pass unchanged.** The one failure is
+  `test_adapted_lock_sequence_has_correct_reservation_semantics`, which spies the removed
+  `reserve=False` gate call (expected; corrective 19 replaced it).
+  - Cursor's replacement spies the coordinator's `_check_live_retry_admission_if_needed`
+    rather than the module's `check_incremental_retry_gates`. The gate now calls that
+    function internally, so spying it would add an event per gate call.
+  - The expected sequence, the bytes-unchanged assertion and `summaries ==
+    attempts_on_prefix == 2` are as specified. Astra rules on the copy in round 6.
+- **Retained checks:** 223 passed (plus the planned failure above) across Astra's rounds
+  3–5, my probes from rounds 15–17, 20, 21, 23 and 24, Cursor's copies, the stage-2 wedge
+  tests and the core suites.
+- **Lock order unchanged:** the check runs inside `run()` under the per-source lock, after
+  the pending-transaction branch, with no C1 and no provider call. Kiro's round-4 verdict
+  carries.
+- **Static check:** clean (undefined-name family) on all 26 changed production files.
+- **Diff coverage, corrective 19 (`a89f573..d5d10b5`):** 45 changed executable lines, 2
+  never run (`incremental_retry_state.py:281` and `310`). Both are the `return` taken when
+  a call has no state paths; no live route reaches them.
+- **Leak census:** 0 leaks.
+
+**One change outside the spec, rejected (R6-F1).** `run()` now catches `SourceCaptureError`
+from capture, refuses with its own code, and accounts the failure under that code.
+- My probe `z3` rotated the source on every call, so the code never changed and the hold
+  built normally. I accepted the change on that evidence. That was wrong: the same-error
+  and source-wide counters compare codes exactly, so **different** capture errors reset
+  them.
+- Astra's probe alternates the faults. I reproduced it with her file unchanged (hash
+  `4fe4ea54…`):
+  - At `d5d10b5`: six calls alternate `source_truncated` and `validated_prefix_mutated`,
+    the counters stay at 1, and the seventh, quiet call processes the source and pays 2
+    summaries.
+  - At `a89f573`: both faults share `unexpected_SourceCaptureError`, the hold sets after 2
+    captures, and the quiet call is refused with 0 paid.
+- **Removing the catch isn't the fix:** without it, Astra's three round-5 race cases fail.
+  The full path lets the error escape as `unexpected_SourceCaptureError`, while the shortcut
+  arm refuses with `live_route_refused`.
+- **Tested fix:** keep the catch and the specific code as the refusal's diagnostic, but
+  account under the old key with `self.last_failure_code =
+  classify_incremental_escape(exc)`. In my scratch worktree:
+  - Astra's alternating probe matches `a89f573`: 2 captures, held, 0 paid, state kept.
+  - Her round-5 race cases pass.
+  - 161 tests pass across Astra's rounds 3–6, my probes and the route suites; only the
+    obsolete round-5 control fails.
+  - `z3` records `unexpected_SourceCaptureError` again.
+
+**Full suite under coverage** (disk-backed worktree, private `--basetemp`, against main
+`458b9f6` run the same way, ids without parameters): 98 failed, 3031 passed, 66 skipped, 52
+errors. **Five tip-only failures, all from N15.** Leak census: 97 failed, 3030 passed, the
+same five tip-only.
+
+## Findings (round 26)
+
+- **R6-F1 (Medium, merge-blocking; Astra's finding, reproduced):** specific capture-error
+  codes reset the retry counters, so alternating capture faults never set the hold, and a
+  later quiet call does paid work that `a89f573` refuses. Details and the tested fix above.
+- **R6-F2 (Low, merge-blocking; found independently by Astra and me): the R2b inventory is
+  stale at the tip.**
+  - `d5d10b5` changed `incremental_retry_state.py` after the inventory refresh in
+    `c252b22`, breaking "inventories after the last code commit".
+  - Five R2b identity tests fail at `d5d10b5` (`test_r2b_v2_implementation_revision.py`
+    ×3, `test_r2b_v2_corrective_viii.py` ×2); all 18 pass at `c252b22`.
+  - Cursor's report missed it: its hermetic run was at `c252b22`, and it reran only one
+    probe at `d5d10b5`.
+- **Main moved (merge-blocking, not a finding against the branch).** `main` is now
+  `c6f0724`: Safe Harbor PRs #391, #392 and #394. Merging it into the branch conflicts in
+  four files:
+  - `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` and
+    `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json`: generated; regenerate them.
+  - `tests/test_incremental_jsonl_canary_baseline.py`: recompute the baseline hash.
+  - `propose_decision.py`: one import block. Keep the branch's imports (`prepare_` and
+    `commit_observation_ingest`, the drift errors, `index_write_flock`) and add main's
+    `# pylint: disable=no-name-in-module` comment on the `ledger` import.
+  - Main also runs its full suite only through the Safe Harbor launcher
+    (`python -I -S -B tests/_safe_harbor_t3_worker.py run-ci`, with the pinned upstream
+    restic 0.19.0 in `SAFE_HARBOR_CI_RESTIC_EXECUTABLE`). A plain `pytest tests` stops at
+    collection on main.
+
+## Corrective 20 for Cursor
+
+- **R6-F1:** in `run()`, keep the `except SourceCaptureError` branch and its refusal code,
+  but set `self.last_failure_code = classify_incremental_escape(exc)` (imported from
+  `incremental_retry_state`) instead of `exc.code`. Add Astra's
+  `/home/lauer/.kiro/audit-286-r6/harness/test_audit_r6.py` unchanged as
+  `tests/test_zz_codex_audit_r6.py`; all 10 must pass. This is the only logic change.
+- **Merge, don't rebase:** `git merge origin/main` into the branch (no force-push). Resolve
+  the four conflicts as above. Take main's side for everything else.
+- Add my round-26 probes (appendix) as
+  `tests/test_zz_claude_verify26.py`; all 17 must pass.
+- **Inventories last, after the merge commit:** regenerate the R2b and Shadow inventories
+  with their generators and refresh the `incremental_jsonl.py` baseline hash. Run the
+  inventory tests at that final tip, including `test_r2b_v2_implementation_revision.py`
+  and `test_r2b_v2_corrective_viii.py`.
+- **Full suite at the final tip through main's launcher**, compared with main `c6f0724`
+  run the same way. Take failure ids from the full summary; tip-only target is Z1 at most.
+- Push with an explicit refspec; no PR, no merge.
+
+## Next
+
+1. Cursor: corrective 20.
+2. Claude round 27 and Astra round 7 on Cursor's final tip, in parallel. Round 27 covers
+   the merge resolution, the inventories, Astra's harnesses and my probes, and the full
+   suite against main `c6f0724`.
+3. If both pass: the PR draft with Kiro's CO-2 and CO-3; Ryan opens and merges.
+
+**Note on Astra's round 6:** her report discloses one out-of-scope `convmem` corpus search
+during orientation. It used the local embedding path, not a paid provider; no indexing
+followed. Her test runs were isolated.
+
+## Appendix (round 26): probes `tests/test_zz_claude_verify26.py`
+
+```python
+"""Claude verify probes, round 26 (corrective 19): the read-only retry check and the revalidating shortcut.
+
+Scratch only: tmp_path HOME, fake providers, no network.
+"""
+
+# pylint: disable=protected-access
+
+from __future__ import annotations
+
+import dataclasses
+import json
+import os
+from pathlib import Path
+
+import pytest
+
+from tests.test_zz_claude_verify23 import _call, _metrics, _root
+
+
+def _tree(root: Path):
+    if not root.exists():
+        return None
+    out = {}
+    for dirpath, dirnames, filenames in os.walk(root):
+        for name in dirnames + filenames:
+            p = Path(dirpath) / name
+            st = p.lstat()
+            out[str(p.relative_to(root))] = (p.is_dir(), st.st_mtime_ns, None if p.is_dir() else p.read_bytes())
+    return out
+
+
+def _seed(state: Path, kind: str, prefix: str, source) -> None:
+    state.parent.mkdir(parents=True, exist_ok=True)
+    if kind == "absent":
+        return
+    if kind == "empty":
+        state.write_text("{}\n")
+    elif kind == "corrupt":
+        state.write_text("{truncated\n")
+    elif kind == "unavailable":
+        state.mkdir()
+    else:
+        state.write_text(json.dumps({
+            "source_path": str(source),
+            "prefix_digest": "0" * 64 if kind == "other_prefix" else prefix,
+            "error_code": "artifact_write_failed",
+            "attempts_on_prefix": 3 if kind == "cap" else 0,
+            "consecutive": 2 if kind in {"same_error", "other_prefix"} else 0,
+            "source_consecutive": 3 if kind == "source_hold" else 0,
+        }))
+
+
+KINDS = ["absent", "empty", "corrupt", "unavailable", "cap", "same_error", "source_hold", "other_prefix"]
+EXPECT = {"corrupt": "retry_state_unavailable", "unavailable": "retry_state_unavailable",
+          "cap": "live_route_refused", "same_error": "live_route_refused", "source_hold": "live_route_refused"}
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_z1_check_is_read_only(tmp_path, monkeypatch, kind) -> None:
+    """The check refuses exactly like the gate and never creates, writes or touches anything."""
+    import incremental_jsonl as inc
+    from incremental_retry_state import check_incremental_retry_gates
+    from watch import source_prefix_digest_for_watch
+    from tests.test_zz_codex_audit import _route_fixture
+
+    source, cfg, _route = _route_fixture(tmp_path, monkeypatch)
+    root = _root(source, cfg)
+    state = root / "retry_state.json"
+    prefix = source_prefix_digest_for_watch(str(source))
+    if kind == "absent":
+        assert not root.exists()
+    else:
+        _seed(state, kind, prefix, source)
+    before = _tree(root)
+    paths = {"transaction": root / "transaction.json", "lock": root / "lock.flock", "retry_state": state}
+    from incremental_retry_state import _state_path
+    assert _state_path(paths) == state, "probe must hit the real state path"
+    try:
+        check_incremental_retry_gates(paths, path_key=str(source), prefix_digest=prefix)
+        got = None
+    except inc.IncrementalJsonlError as exc:
+        got = exc.code
+    print(f"\nZ1 {kind}", got)
+    assert got == EXPECT.get(kind)
+    assert _tree(root) == before
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_z2_shortcut_matches_full_path_for_every_retry_kind(tmp_path, monkeypatch, kind) -> None:
+    """Seeded retry state, unchanged source: three calls, then a valid append and one more call."""
+    import incremental_jsonl as inc
+    from watch import source_prefix_digest_for_watch
+    from tests.test_zz_claude_verify8b import _count_summaries
+    from tests.test_zz_codex_audit import _route_fixture
+
+    original = inc.IncrementalJsonlCoordinator._unchanged_short_circuit_if_applicable
+    arms = []
+    for shortcut in (True, False):
+        with monkeypatch.context() as mp:
+            source, cfg, route = _route_fixture(tmp_path / str(shortcut), mp)
+            calls = _count_summaries(mp)
+            route()
+            state = _root(source, cfg) / "retry_state.json"
+            assert not state.exists()
+            _seed(state, kind, source_prefix_digest_for_watch(str(source)), source)
+            mp.setattr(inc.IncrementalJsonlCoordinator, "_unchanged_short_circuit_if_applicable",
+                       original if shortcut else (lambda self: None))
+            paid = len(calls)
+            rows = []
+            for i in range(4):
+                if i == 3:
+                    with source.open("ab") as fh:
+                        fh.write(source.read_bytes().splitlines(keepends=True)[-1])
+                r = _call(route)
+                m = _metrics(source, cfg, calls)
+                st = m["state"]
+                if isinstance(st, bytes):
+                    try:
+                        st = {k: v for k, v in json.loads(st).items() if k != "source_path"}
+                    except ValueError:
+                        pass
+                rows.append((r[:2], m["paid"] - paid, m["snapshots"], st))
+            arms.append(rows)
+    print(f"\nZ2 {kind}\n  shortcut: {[r[:3] for r in arms[0]]}\n  full:     {[r[:3] for r in arms[1]]}")
+    assert arms[0] == arms[1]
+
+
+def test_z3_capture_time_source_error_is_held(tmp_path, monkeypatch) -> None:
+    """A source that rotates during every capture is refused, never paid, and held once its errors repeat."""
+    import incremental_jsonl as inc
+    from incremental_jsonl_formats import FORMAT_SPECS
+    from tests.test_zz_claude_verify8b import _count_summaries
+    from tests.test_zz_codex_audit import _route_fixture
+
+    source, cfg, route = _route_fixture(tmp_path, monkeypatch)
+    calls = _count_summaries(monkeypatch)
+    route()
+    with source.open("ab") as fh:
+        fh.write(source.read_bytes().splitlines(keepends=True)[-1])
+    spec = FORMAT_SPECS["jsonl_codex_rollout"]
+
+    def parse(filepath, *, raw=None):
+        view = spec.parse_complete_prefix(filepath, raw=raw)
+        data = source.read_bytes()
+        repl = source.with_suffix(".replacement")
+        repl.write_bytes(data)
+        repl.replace(source)  # rotate on every parse
+        return view
+
+    monkeypatch.setitem(FORMAT_SPECS, "jsonl_codex_rollout", dataclasses.replace(spec, parse_complete_prefix=parse))
+    paid = len(calls)
+    rows = []
+    for _ in range(5):
+        r = _call(route)
+        m = _metrics(source, cfg, calls)
+        st = json.loads(m["state"]) if isinstance(m["state"], bytes) else None
+        rows.append((r[:2], m["paid"] - paid, m["snapshots"],
+                     st and (st.get("error_code"), st.get("consecutive"), st.get("attempts_on_prefix"))))
+    print("\nZ3", rows)
+    assert all(r[0][0] == "raised" for r in rows)
+    assert rows[-1][1] == 0
+    assert rows[-1][2] == rows[2][2], "snapshots must stop growing once held"
+```
+
+---
+
+# Round 25: `a89f573`, FAIL (R5-F1, R5-F2), corrective 19 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-15

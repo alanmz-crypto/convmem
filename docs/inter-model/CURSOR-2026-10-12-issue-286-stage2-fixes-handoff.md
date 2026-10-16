@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Astra's round-5 audit FAILs `a89f573` and Claude's round 25 reproduces it (round 24 withdrawn): the unchanged shortcut skips live-source revalidation (R5-F1, new) and the retry gate, so holds and corrupt evidence are erased on an unchanged source (R5-F2, inherited). R4-F1/F2 and N13/N14 stay closed. Corrective 19 goes to Cursor; see round 25 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: corrective 19 (`d5d10b5`) closes R5-F1/R5-F2, but Astra's round 6 FAILs it and Claude's round 26 reproduces: its capture-error code change resets the retry counters, so alternating capture faults never hold and a later call pays (R6-F1), and the R2b inventory is stale (R6-F2). `main` moved to `c6f0724` and conflicts in four files. Corrective 20 (one-line accounting fix, merge main, regenerate inventories last) goes to Cursor; see round 26 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
