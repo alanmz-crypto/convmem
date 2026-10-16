@@ -308,6 +308,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-15 | Claude | Astra round 5 FAILs `a89f573` (shortcut skips revalidation and the retry gate); Claude round 25 reproduces, withdraws round 24; corrective 19 to Cursor; not deployed |
 | 2026-10-15 | Claude | Round 26 at `d5d10b5`: FAIL with Astra's round 6. R5-F1/R5-F2 closed; capture-error codes reset retry counters (R6-F1) and the R2b inventory is stale (R6-F2); corrective 20 adds a one-line accounting fix and merges main `c6f0724` |
 | 2026-10-16 | Claude | Round 27 at `3e0caf9`: FAIL under main's CI launcher. R6-F1 closed; the merge with main breaks approval recovery (C1 taken inside a Chroma session) and 87 config-dependent tests (branch conftest); corrective 21 is a tested diff, run under the launcher |
+| 2026-10-16 | Claude | Round 28 at `d0510f8`: PASS. Corrective 21 matches the tested diff; 0 tip-only failures under main's CI launcher; Astra round 7 next |
 
 ## TL;DR
 

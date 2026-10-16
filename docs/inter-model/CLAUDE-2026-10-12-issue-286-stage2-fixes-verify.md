@@ -1,4 +1,98 @@
-# Verify: Stage 2 wedge fixes, round 27 at `3e0caf9`: FAIL; corrective 20's own changes are correct, but merging main exposes two conflicts with Safe Harbor (a test conftest that hides the launcher's config, and a recovery path that takes C1 inside a Chroma session); corrective 21 (tested under main's CI launcher)
+# Verify: Stage 2 wedge fixes, round 28 at `d0510f8`: PASS; corrective 21 landed exactly as tested and the full suite under main's CI launcher has no tip-only failures
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-16
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `d0510f8`, Cursor's corrective
+21: `be8ec2d` (recovery takes the index write lock; conftest respects the launcher's config;
+Safe Harbor T4 helpers, flock observer and out-of-lock control; dedupe test binds its live
+config), `d0510f8` (R2b and Shadow inventories).
+**Input:** Cursor's corrective-21 report: full suite through main's CI launcher at the tip
+and at main `c6f0724`, both 6 failed, 0 tip-only.
+**Method:**
+- I compared `3e0caf9..be8ec2d` with my round-27 candidate diff, and read the inventory
+  commit.
+- Retained checks at the tip: Astra's round-4, 5 and 6 harnesses unchanged (hashes
+  `fb7726ec…`, `80123bdf…`, `4fe4ea54…`), my round-8 to round-26 probes, Cursor's audit
+  copies, the corrective 6–20 tests, the R2b identity tests, the inventory and canary
+  baseline tests and the Shadow writer scans.
+- Static check (undefined-name family) on the 26 production files that differ from main.
+- Leak census (fake live config in a scratch HOME) on the modules corrective 21 touched
+  plus the recovery and refine suites.
+- **My own full run through main's CI launcher** at the tip, from a clean disk-backed
+  worktree, compared with Cursor's launcher run of main `c6f0724`. I also re-derived
+  Cursor's tip-vs-main comparison from the traceback headers of both of their logs.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are inactive.
+
+## Verdict (round 28)
+
+**PASS.** No findings.
+
+- **Corrective 21 is exactly the tested candidate.** `3e0caf9..be8ec2d` is identical to the
+  round-27 appendix diff (only index and hunk headers differ). No lint changes were needed.
+- **Inventories after the last code commit:** `d0510f8` only moves the two
+  `propose_decision.py` writer sites down one line (1220→1221, 1283→1284, the added import)
+  and updates `code_revision` and the digest. Mechanical.
+- **R27-F1 closed (recovery lock order):** `_recover_approval_impl` now takes
+  `index_write_flock(cfg)` right after `governed_lock(cfg)`, the same order and the same
+  lock path (`data_root/locks/index_write.lock`) as the approve path. The lock is
+  thread-local reentrant, so the nested `export_flock_path` no longer tries to take C1
+  inside the Chroma session. The only production caller is `convmem record --recover`
+  (`convmem.py:1442`).
+- **R27-F2, F3, F4 closed:** the Safe Harbor T4 modules and the file-generation dedupe
+  module pass under the launcher (see the full suite below).
+- **Retained checks: 360 passed, 8 failed, same as round 27.** The failures are Astra's
+  obsolete round-5 lock control and the 7 round-2 bug demonstrations, which assert the old
+  bugs and fail identically at `d5d10b5` and `3e0caf9`. The R2b identity, inventory routing
+  and canary baseline tests pass.
+- **Static check:** clean on all 26 production files.
+- **Leak census:** 0 writes under the fake live roots (97 tests: file-generation dedupe,
+  Safe Harbor T2, refine, propose-decision).
+
+**Full suite through main's CI launcher: 0 tip-only failures.** Failure ids come from the
+traceback section headers.
+
+| Run | Failed | Passed | Skipped | Errors |
+|-----|--------|--------|---------|--------|
+| Mine, tip `d0510f8` (clean worktree under `~/.cache`, 54 min) | 5 | 3444 | 11 | 0 |
+| Cursor, tip `d0510f8` | 6 | 3442 | 12 | 0 |
+| Cursor, main `c6f0724` | 6 | 3284 | 11 | 0 |
+
+- My 5 failures are exactly main's: golden eval (#320, needs the live corpus), export
+  compaction's large-index temp test, and three D1 live-diagnosis tests.
+- Cursor's sixth, on both tip and main, is the OpenClaw watch-coverage subprocess test; it
+  didn't fail in my run.
+- No errors on either side: the D1 `scratch_not_disk_backed` errors from round 27 came from
+  `/tmp` checkouts.
+- The extra ~160 passes on the tip are the branch's own tests.
+- Z1 (the ext4 inode flake) didn't trip.
+
+**Observation (not merge-blocking, follow-up):** outside the launcher, the branch's
+`tests/conftest.py` (corrective 9) points `config.CONFIG_PATH` at a missing file so tests
+never read the developer's real config. Two dedupe tests
+(`test_persisted_semantic_record_resolves_real_approval_path`,
+`test_inactive_duplicate_does_not_influence_dedupe_but_stable_row_does`) need a config, so
+a plain `pytest tests/test_file_generation_dedupe.py` fails them at `3e0caf9` and `d0510f8`
+("cannot resolve live production identity for Chroma staging"). On main they read whatever
+config HOME has. Both pass under the launcher, which is the only way CI runs the suite.
+This is the safe side of the trade-off; a follow-up can give those tests their own scratch
+config file.
+
+## Next
+
+1. Astra round 7 on `d0510f8` (her r4–r6 harnesses unchanged under main's launcher; audit
+   R6-F1, the main merge and corrective 21).
+2. If Astra passes: the PR draft with Kiro's CO-2 (the R2b owner acknowledges the
+   `review-bundles/` and `artifacts/` skip prefixes) and CO-3 ("PASS with conditions", final
+   suite numbers, Z1 as a pre-existing flake). The Safe Harbor lane reviews the recovery
+   lock change and the T4 helper changes in the PR. Ryan opens and merges.
+3. After the merge, separate Ryan grants: runtime-main promotion, the protocol-surface
+   deploy, canary 2 (CO-5, CO-6).
+
+# Round 27: `3e0caf9`, FAIL (R27-F1 to R27-F4), corrective 21 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-16

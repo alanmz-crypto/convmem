@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 20 (`3e0caf9`) closes R6-F1/R6-F2 and merges main `c6f0724`, but Claude's round 27 FAILs the merged tip under main's CI launcher: approval recovery now takes the index write lock (C1) inside its Chroma session and refuses (R27-F1, real regression), the branch's test conftest hides the launcher's config (R27-F2, 87 tests), and Safe Harbor's T4 helpers and one dedupe test predate C1 (R27-F3/F4). Corrective 21 (a tested diff, then inventories last) goes to Cursor; see round 27 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: corrective 21 (`be8ec2d`, inventories `d0510f8`) lands exactly the round-27 tested diff. Claude's round 28 PASSes `d0510f8`: retained checks, static check and leak census clean, and the full suite through main's CI launcher has 0 tip-only failures (tip and main fail the same pre-existing tests). Next: Astra round 7 on `d0510f8`, then the PR draft with Kiro's CO-2/CO-3; Ryan merges. See round 28 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |
