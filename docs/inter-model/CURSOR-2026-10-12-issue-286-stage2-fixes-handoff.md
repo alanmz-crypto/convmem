@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: Astra's round 7 FAILs `d0510f8` (R7-F1, High): main's Safe Harbor recovery embeds inside its Chroma session, which the branch's no-provider-under-C1/session rule refuses, so every recovery that must rebuild a Chroma row fails. Claude's round 29 reproduces it, withdraws round 28's PASS, and gives corrective 22 (a tested diff: embed the signed intent under the governed lock before C1, pass it in as a precomputed embedding; inventories last). See round 29 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Claude's round 30 PASSes `d5f765a` (tree `c7d4b78e`). Corrective 22 (`0c49286` + inventories `a5fb7d7`) closes R7-F1: recovery embeds the signed intent under the governed lock before C1 and any Chroma session. Corrective 23 (`d5f765a`) records main `c6f0724` as a real parent (the earlier `c19b73d` "merge" had one parent, so the PR would have conflicted on 8 files). The full suite under main's CI launcher has 0 tip-only failures. Next: Astra's round 8 on the same tree, then the PR draft. See round 30 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

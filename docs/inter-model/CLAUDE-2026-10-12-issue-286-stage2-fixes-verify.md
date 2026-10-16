@@ -1,4 +1,138 @@
-# Verify: Stage 2 wedge fixes, round 29 at `d0510f8`: round 28's PASS withdrawn; Astra's round-7 R7-F1 reproduced (recovery that needs an embedding always refuses on the branch); corrective 22 (tested under main's CI launcher)
+# Verify: Stage 2 wedge fixes, round 30 at `d5f765a`: PASS; corrective 22 landed exactly as tested, corrective 23 makes main a real parent, and the full suite under main's CI launcher has no tip-only failures
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-16
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `d5f765a` (tree `c7d4b78e…`):
+- Cursor's corrective 22: `0c49286` (recovery embeds before C1 and the Chroma session) and
+  `a5fb7d7` (R2b and Shadow inventories).
+- Cursor's corrective 23: `d5f765a`, a two-parent merge of main `c6f0724` with the tree left
+  unchanged.
+
+**Input:**
+- Cursor's corrective-22 report: launcher full suite at `a5fb7d7`, 6 failed / 3449 passed /
+  12 skipped, 0 tip-only against main `c6f0724`.
+- Cursor's corrective-23 report.
+
+**Method:**
+- I compared `d0510f8..0c49286` with the round-29 appendix diff and read the inventory
+  commit.
+- I checked merge ancestry and test-merged the tip into main.
+- I read the new recovery path against `ingest_observation` and the lifecycle gates.
+- I ran the following at the tip:
+  - Astra's round-7 probe and my outage probe under main's launcher;
+  - the retained checks;
+  - the static check (undefined-name family) on the 26 changed production files;
+  - a leak census.
+- **My own full run through main's CI launcher** at tree `c7d4b78e`, from a clean
+  disk-backed worktree.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are inactive.
+
+## Verdict (round 30)
+
+**PASS.** One finding (R30-F1, merge ancestry), fixed by corrective 23 within this round.
+No open findings.
+
+**Corrective 22 is exactly the tested candidate.**
+- `d0510f8..0c49286` is identical to the round-29 appendix diff; only index and hunk headers
+  differ.
+- `a5fb7d7` only moves the two `propose_decision.py` writer sites (1221→1272, 1284→1335) and
+  updates `code_revision` and the digest. Both new lines are
+  `open_production_write_store(entrypoint="propose_decision.write")`.
+
+**R7-F1 closed (recovery that needs an embedding).**
+- **Probes:** under main's launcher at the tip, Astra's probe, unchanged, passes all four
+  cases, and my outage probe passes all three (7 passed).
+- **Same text:** the vector is computed from the same text the write stores.
+  `_prepare_recovery_embedding` calls
+  `ledger_record_document_text({**intent_row, "_governed_protocol": True})`, which is
+  `ledger_unit_document(normalize_ledger_record(...))`. `prepare_observation_ingest` builds
+  its document the same way, from the same protocol row and with the same default
+  `min_confidence`.
+- **Same intent:** the intent is loaded once under `governed_lock`, and the lock is held
+  from the embed through the write.
+- **Only one state embeds:** only `APPROVAL_STARTED` can reach `retry_chroma`. Recovery
+  refuses any other lifecycle except `APPROVED`, and an `APPROVED` intent with any action
+  other than `approve` goes to human review (`propose_decision.py:830`, `:866`). So
+  embedding only for `APPROVAL_STARTED` can't leave an approved proposal stuck.
+- **Note, not a defect:** if a signed intent ever normalised to nothing, the branch says
+  "recovery deferred (embedding unavailable: ingestion rejected approved intent) … retry"
+  where main says "ingestion rejected approved intent". Both refuse before any write, and
+  normalisation is deterministic, so a signed, already-approved intent can't reach it.
+
+**R30-F1 (High for the PR, fixed by corrective 23): main wasn't an ancestor of the branch.**
+- **What was wrong:** `c19b73d` ("merge: sync main Safe Harbor delivery into issue #286
+  wedge branch") has a single parent (`d5d10b5`). It copied main's content without recording
+  main as a parent, and a later merge (`cb0fbfe`) brought in only `458b9f6`.
+- **Effect:** `git merge-tree origin/main a5fb7d7` conflicted on 8 files:
+  - `propose_decision.py`;
+  - the three Safe Harbor T4 helpers;
+  - both writer inventories;
+  - the canary baseline test and `test_shadow_writer_gate_c3.py`.
+  A PR would have shown conflicts, and resolving them in the GitHub editor could have undone
+  corrective 21 or 22.
+- **Content check:**
+  - `c19b73d` carries main's `458b9f6..c6f0724` patch exactly for 58 of the 62 files.
+  - The other 4 are the regenerated inventories and baselines.
+  - Every file git merged cleanly already equalled the tip.
+- **Fix:** `d5f765a` is `git merge -s ours` of `c6f0724`. I confirmed:
+  - parents `a5fb7d7` and `c6f0724`;
+  - tree `c7d4b78e…`, the same as `a5fb7d7`;
+  - main is an ancestor;
+  - `git merge-tree --write-tree origin/main d5f765a` is clean and gives the same tree.
+  All the testing in this round ran on that tree.
+
+**Retained checks: 360 passed, 8 failed, same as round 28.**
+- The 8 failures are Astra's obsolete round-5 lock spy and the 7 round-2 bug demonstrations.
+- The R2b identity, inventory routing, canary baseline and Shadow writer-scan tests pass.
+- The two new probe modules (`test_zz_codex_audit_r7.py`, `test_zz_claude_verify29.py`) need
+  the launcher, so they ran there (above).
+
+**Static check:** clean on all 26 production files that differ from main.
+
+**Leak census:** 0 writes under the fake live roots, in 77 tests (propose-decision, governed
+recovery and writers, Recovery Authority T1 and T2, file-generation dedupe, refine).
+- The two dedupe failures are the plain-pytest config observation from round 28; both pass
+  under the launcher.
+- The Safe Harbor T2 and admitted-matrix modules now refuse to import outside the launcher,
+  so they're covered by the full run instead.
+
+**Full suite through main's CI launcher: 0 tip-only failures.** Failed ids come from the
+`FAILED` summary lines.
+
+| Run | Failed | Passed | Skipped | Errors |
+|-----|--------|--------|---------|--------|
+| Mine, tree `c7d4b78e` (clean worktree under `~/.cache`, 56 min) | 5 | 3451 | 11 | 0 |
+| Cursor, `a5fb7d7` (same tree) | 6 | 3449 | 12 | 0 |
+| Cursor, main `c6f0724` | 6 | 3284 | 11 | 0 |
+
+- My 5 failures are a subset of main's 6: golden eval (#320, needs the live corpus),
+  export compaction's large-index temp test, and the three D1 live-diagnosis tests.
+- Cursor's sixth, on both tip and main, is the OpenClaw watch-coverage subprocess test.
+- Compared with round 28, there are 7 more passes: Astra's 4 recovery cases and my 3
+  outage cases.
+- Z1 (the ext4 inode flake) didn't trip.
+
+## Next
+
+1. **Astra round 8** on tree `c7d4b78e` (`a5fb7d7`, carried to `d5f765a`): R7-F1 with her
+   probe unchanged, the deferral path, and lock order with the T4 race signals.
+2. **If Astra passes:** the PR draft.
+   - Kiro's CO-2: the R2b owner acknowledges the `review-bundles/` and `artifacts/` skip
+     prefixes.
+   - Kiro's CO-3: "PASS with conditions", the final suite numbers, and Z1 as a pre-existing
+     flake.
+   - The Safe Harbor lane reviews the recovery changes (correctives 21 and 22) and the T4
+     helper changes.
+   - Ryan opens and merges. Squash is fine: main is now an ancestor, so the squashed commit's
+     tree is exactly `c7d4b78e`.
+3. **After the merge, separate Ryan grants:** runtime-main promotion, the protocol-surface
+   deploy, canary 2 (CO-5, CO-6).
+
+# Round 29: `d0510f8`, FAIL (R7-F1), corrective 22 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-16

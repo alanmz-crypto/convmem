@@ -310,6 +310,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-16 | Claude | Round 27 at `3e0caf9`: FAIL under main's CI launcher. R6-F1 closed; the merge with main breaks approval recovery (C1 taken inside a Chroma session) and 87 config-dependent tests (branch conftest); corrective 21 is a tested diff, run under the launcher |
 | 2026-10-16 | Claude | Round 28 at `d0510f8`: PASS. Corrective 21 matches the tested diff; 0 tip-only failures under main's CI launcher; Astra round 7 next |
 | 2026-10-16 | Claude | Round 29: Astra's R7-F1 reproduced at `d0510f8` (recovery needing an embedding refuses under C1/session); round 28 PASS withdrawn; corrective 22 tested under main's launcher |
+| 2026-10-16 | Claude | Round 30 at `d5f765a`: PASS. Corrective 22 closes R7-F1; corrective 23 makes main a real parent (PR now conflict-free); 0 tip-only failures under main's launcher; Astra's round 8 next |
 
 ## TL;DR
 
