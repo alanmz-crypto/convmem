@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS`: corrective 21 (`be8ec2d`, inventories `d0510f8`) lands exactly the round-27 tested diff. Claude's round 28 PASSes `d0510f8`: retained checks, static check and leak census clean, and the full suite through main's CI launcher has 0 tip-only failures (tip and main fail the same pre-existing tests). Next: Astra round 7 on `d0510f8`, then the PR draft with Kiro's CO-2/CO-3; Ryan merges. See round 28 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
+| **State** | `IN_PROGRESS`: Astra's round 7 FAILs `d0510f8` (R7-F1, High): main's Safe Harbor recovery embeds inside its Chroma session, which the branch's no-provider-under-C1/session rule refuses, so every recovery that must rebuild a Chroma row fails. Claude's round 29 reproduces it, withdraws round 28's PASS, and gives corrective 22 (a tested diff: embed the signed intent under the governed lock before C1, pass it in as a precomputed embedding; inventories last). See round 29 of `docs/inter-model/CLAUDE-2026-10-12-issue-286-stage2-fixes-verify.md`. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

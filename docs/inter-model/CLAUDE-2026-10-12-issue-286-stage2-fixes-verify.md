@@ -1,4 +1,522 @@
-# Verify: Stage 2 wedge fixes, round 28 at `d0510f8`: PASS; corrective 21 landed exactly as tested and the full suite under main's CI launcher has no tip-only failures
+# Verify: Stage 2 wedge fixes, round 29 at `d0510f8`: round 28's PASS withdrawn; Astra's round-7 R7-F1 reproduced (recovery that needs an embedding always refuses on the branch); corrective 22 (tested under main's CI launcher)
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-16
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `d0510f8` (unchanged since round 28).
+**Input:** Astra's round-7 safety re-audit, **FAIL**, one High finding
+(`docs/2026-10-16-issue-286-stage2-fixes-audit-r7`, `54eed17`,
+`docs/inter-model/CODEX-2026-10-16-issue-286-stage2-fixes-audit-r7.md`).
+**Method:**
+- I ran Astra's real-embedding recovery probe unchanged (`test_r7_recovery_provider.py`,
+  `_r7_recovery_probe.py`) through main's launcher, with her target-selection adapter, in
+  my own worktrees at `d0510f8` and at main `c6f0724`.
+- I checked every provider-reaching call that main's Safe Harbor merge (`458b9f6..c6f0724`)
+  added, against the branch's rule that no provider call runs under C1 or a Chroma write
+  session.
+- I wrote corrective 22 in a scratch worktree at `d0510f8`, plus an outage probe, and ran
+  Astra's probe, my probe and Astra's recovery and regression selections under main's
+  launcher.
+
+## Burn status
+
+**No burn.** The branch isn't deployed; the watcher, refine and monitor units are inactive.
+
+## Verdict (round 29)
+
+**Round 28's PASS is withdrawn. R7-F1 reproduces exactly:**
+
+| Case | Tip `d0510f8` | Main `c6f0724` |
+|------|---------------|----------------|
+| `create_absence` (row missing, needs an embedding) | FAIL: "provider calls are forbidden under the index write lock or a Chroma write session", depths (C1 1, session 1), 0 transport calls | PASS, `retry_chroma`, 1 call |
+| `base_retry` (row at base, needs an embedding) | FAIL, same error and depths | PASS, `retry_chroma`, 1 call |
+| `event_only` | PASS, `approve` | PASS |
+| `marker_repair` | PASS, `repair_marker` | PASS |
+
+- **Cause:** main's recovery embeds inside its Chroma session (`_recovery_apply_intent` →
+  `ingest_observation` → `ollama_embed`). The branch's `ollama_embed` refuses provider
+  calls under C1 or a production Chroma session (`reject_provider_under_write_scope`).
+  This is a merge conflict between main's Safe Harbor recovery and the branch's
+  no-provider-under-the-lock rule (the rule behind the #286 wedge fix). Before corrective
+  21 it was hidden behind R27-F1, which failed earlier.
+- **Why I missed it in rounds 27 and 28:** Safe Harbor's T2 and T4 fixtures replace
+  `llm.ollama_embed` with a fake, so the check never runs in any recovery test. My round-27
+  review of the merge checked lock order only, not main's new code paths against the
+  branch's provider rule. New rule in my verify checklist: probe any path whose fixture
+  fakes a whole guarded function through the real function, faking only the transport.
+- **No other instances:** main's merge adds exactly one provider-reaching call,
+  recovery's `ingest_observation`. The branch's own provider paths already prepare
+  outside C1 (corrective 1 onward).
+
+## Finding (round 29)
+
+- **R7-F1 (High, merge-blocking; Astra's finding, reproduced):** an `APPROVAL_STARTED`
+  recovery that must create a missing row or update a base row raises before any write, on
+  every attempt. Event-only and marker-only recovery work. No corruption and no paid call;
+  this is a recovery availability regression for `convmem record --recover`.
+
+## Corrective 22 for Cursor
+
+Apply the appendix diff to `d0510f8` as one commit (`git apply --check` passes), then
+regenerate the inventories as the last commit.
+
+- **`_prepare_recovery_embedding(intent_row, models)`** (new, `propose_decision.py`):
+  - Takes the document from `observe.ledger_record_document_text({**intent_row,
+    "_governed_protocol": True})`. That's the exact text `ingest_observation` stores, so
+    the vector matches the stored document.
+  - Embeds it with the same model and host defaults as `_recovery_apply_intent`.
+  - Best effort: returns `(embedding, "")`, or `(None, "<error type>: <message>")` if the
+    provider fails.
+- **`_recover_approval_impl`:**
+  - Loads the event authority and the signed intent under `governed_lock` (unchanged).
+  - For `APPROVAL_STARTED` only, calls `_prepare_recovery_embedding` there: outside C1 and
+    any Chroma session. `APPROVED` recovery never writes Chroma, so it never embeds.
+  - Then takes `index_write_flock` and calls the new `_recover_approval_locked`, which is
+    the old session, native guard and serialized block moved unchanged into its own
+    function.
+- **`_execute_recovery_inside_guard`:** takes `embedding` and `embed_error`.
+  - In the `retry_chroma` branch, the first write, if there's no embedding it raises
+    `ValueError("Proposal … recovery deferred (embedding unavailable: …); nothing was
+    written, retry")`.
+  - Everything before that point is read-only, and leaving the native recovery section
+    before any write needs no finalize.
+  - Otherwise `_recovery_apply_intent` passes `precomputed_embedding=embedding` to
+    `ingest_observation`, so no provider call runs inside.
+- **Unchanged:** admitted authority, the live-state classification under the native
+  guard, and the serialized apply/validate/export/publish sequence. Lock order is still
+  governed → C1 → session → native guard.
+- **Trade-off:** an `APPROVAL_STARTED` recovery that turns out to be event-only or
+  marker-only now makes one local Ollama embed call it doesn't use. That isn't the paid
+  DeepSeek route, and recovery is a rare manual command. In exchange there's a single
+  pass through the native section, so the Safe Harbor T4 barriers and observer see the
+  same sequence as before. A lazy two-pass design would enter the native section twice.
+- **Tests added:**
+  - Astra's harness unchanged as `tests/test_zz_codex_audit_r7.py` plus
+    `tests/_r7_recovery_probe.py`.
+  - My outage probe as `tests/test_zz_claude_verify29.py` plus
+    `tests/_c22_recovery_outage_probe.py`.
+  - Both go through the real `ollama_embed` and its lock check, and fake only
+    `llm.requests.post`.
+
+**Tested in my scratch worktree (`d0510f8` + the diff), under main's launcher:**
+- Astra's probe: **4 passed**. Each case makes one embed call at depths (0, 0).
+- My outage probe: **3 passed**.
+  - `create_absence` with the provider down refuses with "recovery deferred", the full
+    state dump is unchanged and the lifecycle stays `APPROVAL_STARTED`.
+  - With the provider back, the same recovery completes (`retry_chroma`, APPROVED, the
+    content hash matches, the stored embedding matches the stored document).
+  - Event-only and marker repair complete while the provider is down.
+- Astra's recovery and regression selections plus Safe Harbor T2 (15 modules: T4 matrix,
+  real concurrency, terminal, order, refusal, publication, file-generation dedupe,
+  propose-decision, write guard, source-purge locks, corrective 6/7/12, T2): **221
+  passed, 5 subtests, 0 failed** (23 min).
+- Lint: no new findings (two pre-existing warnings elsewhere in the file).
+- **Sensitivity:** at `d0510f8` without the fix, Astra's probe fails both rebuild cases
+  (above).
+
+**Cursor's steps:**
+1. Apply the appendix diff with `git apply` as one commit. Change it only as lint requires.
+2. **LAST commit:** regenerate the R2b and Shadow inventories. The `propose_decision.py`
+   writer sites move. Then run the inventory routing, R2b identity
+   (`test_r2b_v2_implementation_revision.py`, `test_r2b_v2_corrective_viii.py`), canary
+   baseline and Shadow writer-scan tests at that tip.
+3. Run the full suite through main's launcher at the final tip, from a disk-backed
+   worktree. Compare with Cursor's main `c6f0724` evidence from corrective 21
+   (`~/.cache/issue286-c21-suite-evidence/main/`); no need to rerun main. Delete your own
+   `/tmp/safe-harbor-t3-suite-*` dir after copying its logs. Take ids from the traceback
+   headers. Tip-only target: Z1 at most.
+4. Push with an explicit refspec; no PR, no merge.
+
+## Next
+
+1. Cursor: corrective 22.
+2. Claude round 30 and Astra round 8 on Cursor's tip, in parallel. Round 30 covers diff
+   identity, the inventories, my own full launcher run and the retained checks. Astra's
+   round 8 covers R7-F1 with her probe unchanged, plus whatever she wants on the deferral
+   path.
+3. If both pass: the PR draft with Kiro's CO-2 and CO-3; the Safe Harbor lane reviews the
+   recovery changes. Ryan opens and merges.
+
+## Appendix (round 29): corrective 22 diff (applies to `d0510f8`)
+
+```diff
+diff --git a/propose_decision.py b/propose_decision.py
+index a05b852..7d14323 100644
+--- a/propose_decision.py
++++ b/propose_decision.py
+@@ -584,7 +584,31 @@ def _repair_marker_only(
+     store.update_unit_metadata(chroma_id, new_meta)
+ 
+ 
+-def _recovery_apply_intent(store, intent_row: dict, models: dict) -> dict:
++def _prepare_recovery_embedding(intent_row: dict, models: dict) -> tuple[list[float] | None, str]:
++    """Embed the approved intent's document before C1 and any Chroma session.
++
++    Best effort: a failure only matters if recovery turns out to need a Chroma write,
++    so event-only and marker-only recovery still complete without the provider.
++    """
++    from llm import ollama_embed
++    from observe import ledger_record_document_text
++
++    doc = ledger_record_document_text({**intent_row, "_governed_protocol": True})
++    if doc is None:
++        return None, "ingestion rejected approved intent"
++    try:
++        embedding = ollama_embed(
++            doc,
++            model=models.get("embed_model", "nomic-embed-text"),
++            host=models.get("ollama_host", ""),
++        )
++    except Exception as exc:  # pylint: disable=broad-exception-caught
++        # Provider boundary: defer the error to the one action that needs the vector.
++        return None, f"{type(exc).__name__}: {exc}"
++    return embedding, ""
++
++
++def _recovery_apply_intent(store, intent_row: dict, models: dict, embedding: list[float]) -> dict:
+     # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
+     from ledger import build_ledger_index, invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
+     from observe import ingest_observation
+@@ -600,6 +624,7 @@ def _recovery_apply_intent(store, intent_row: dict, models: dict) -> dict:
+         upsert=True,
+         units_export=None,
+         by_ledger_id=by_ledger_id,
++        precomputed_embedding=embedding,
+     )
+     if unit is None:
+         raise ValueError("ingestion rejected approved intent")
+@@ -822,7 +847,9 @@ def _recovery_authority_from_states(
+     return _RecoveryIntent(lifecycle, target, base_hash, intent_row, proposed_hash)
+ 
+ 
+-def _execute_recovery_inside_guard(op, proposal_id, intent, store, guard, *, durability_root) -> str:
++def _execute_recovery_inside_guard(
++    op, proposal_id, intent, store, guard, *, durability_root, embedding=None, embed_error=""
++) -> str:
+     """One serialized inspect/apply/validate/export/approve sequence."""
+     from chroma_write_store import admitted_units_export_path, verify_admitted_operation_unchanged
+ 
+@@ -842,7 +869,12 @@ def _execute_recovery_inside_guard(op, proposal_id, intent, store, guard, *, dur
+     if action == "repair_marker":
+         _repair_marker_only(store, live["unit"], proposal_id, intent.row)
+     elif action == "retry_chroma":
+-        _recovery_apply_intent(store, intent.row, cfg.get("models") or {})
++        if embedding is None:
++            raise ValueError(
++                f"Proposal {proposal_id} recovery deferred (embedding unavailable: "
++                f"{embed_error or 'not prepared'}); nothing was written, retry"
++            )
++        _recovery_apply_intent(store, intent.row, cfg.get("models") or {}, embedding)
+ 
+     after = _recovery_classify_live(store, intent.target)
+     if after.get("review") or after.get("absent"):
+@@ -865,22 +897,15 @@ def _execute_recovery_inside_guard(op, proposal_id, intent, store, guard, *, dur
+ 
+ 
+ def _recover_approval_impl(op, proposal_id: str) -> str:
+-    from chroma_write_guard import ChromaWriteGuardError, ChromaWriteQuarantinedError
+-    from chroma_write_store import (
+-        recovery_durability_root,
+-        open_production_recovery_write_store,
+-        verify_admitted_operation_unchanged,
+-        verify_admitted_targets_unchanged,
+-        verify_recovery_config_binding,
+-    )
+-    from conflict_events import EventPublicationError, governed_lock
++    from chroma_write_store import recovery_durability_root, verify_recovery_config_binding
++    from conflict_events import governed_lock
+     from purge_locks import index_write_flock
+ 
+     proposal_id = proposal_id.strip()
+     cfg = op.config()
+     verify_recovery_config_binding(op, cfg)
+     durability_root = recovery_durability_root(op)
+-    with governed_lock(cfg), index_write_flock(cfg):
++    with governed_lock(cfg):
+         try:
+             states = _load_recovery_event_states(cfg)
+         except ValueError as exc:
+@@ -888,35 +913,61 @@ def _recover_approval_impl(op, proposal_id: str) -> str:
+         intent = _recovery_authority_from_states(
+             states, cfg, proposal_id
+         )
++        # Provider work stays outside C1 and the Chroma session; APPROVED never writes Chroma.
++        embedding, embed_error = None, ""
++        if intent.lifecycle == "APPROVAL_STARTED":
++            embedding, embed_error = _prepare_recovery_embedding(
++                intent.row, cfg.get("models") or {}
++            )
++        with index_write_flock(cfg):
++            return _recover_approval_locked(
++                op, proposal_id, intent, cfg, durability_root=durability_root,
++                embedding=embedding, embed_error=embed_error,
++            )
+ 
+-        verify_admitted_operation_unchanged(op)
+-        session = open_production_recovery_write_store(entrypoint=op.entrypoint)
+-        store = session.store
+-        action = "review"
+-        try:
+-            guard = store._write_guard  # pylint: disable=protected-access
+-            if guard is None:
+-                raise ValueError(
+-                    f"Proposal {proposal_id} needs human review (write guard required)"
+-                )
+-            with guard.approval_recovery_critical_section(
+-                reload_client=store._reload_client,  # pylint: disable=protected-access
+-            ) as recovery_guard:
+-                verify_recovery_config_binding(op, cfg)
+-                verify_admitted_operation_unchanged(op)
+-                verify_admitted_targets_unchanged(op)
+-                action = _execute_recovery_inside_guard(
+-                    op, proposal_id, intent, store, recovery_guard, durability_root=durability_root
+-                )
+-        except (EventPublicationError, OSError) as exc:
+-            raise RecoveryCompletionUnknown(
+-                f"recovery completion outcome unknown for {proposal_id}: {exc}"
+-            ) from exc
+-        except (ChromaWriteQuarantinedError, ChromaWriteGuardError) as exc:
+-            raise ValueError(f"Proposal {proposal_id} needs human review ({exc})") from exc
+-        finally:
+-            store.close()
+-        return action
++
++def _recover_approval_locked(
++    op, proposal_id, intent, cfg, *, durability_root, embedding, embed_error
++) -> str:
++    """Session, native guard and the serialized sequence, under governed lock and C1."""
++    from chroma_write_guard import ChromaWriteGuardError, ChromaWriteQuarantinedError
++    from chroma_write_store import (
++        open_production_recovery_write_store,
++        verify_admitted_operation_unchanged,
++        verify_admitted_targets_unchanged,
++        verify_recovery_config_binding,
++    )
++    from conflict_events import EventPublicationError
++
++    verify_admitted_operation_unchanged(op)
++    session = open_production_recovery_write_store(entrypoint=op.entrypoint)
++    store = session.store
++    action = "review"
++    try:
++        guard = store._write_guard  # pylint: disable=protected-access
++        if guard is None:
++            raise ValueError(
++                f"Proposal {proposal_id} needs human review (write guard required)"
++            )
++        with guard.approval_recovery_critical_section(
++            reload_client=store._reload_client,  # pylint: disable=protected-access
++        ) as recovery_guard:
++            verify_recovery_config_binding(op, cfg)
++            verify_admitted_operation_unchanged(op)
++            verify_admitted_targets_unchanged(op)
++            action = _execute_recovery_inside_guard(
++                op, proposal_id, intent, store, recovery_guard, durability_root=durability_root,
++                embedding=embedding, embed_error=embed_error,
++            )
++    except (EventPublicationError, OSError) as exc:
++        raise RecoveryCompletionUnknown(
++            f"recovery completion outcome unknown for {proposal_id}: {exc}"
++        ) from exc
++    except (ChromaWriteQuarantinedError, ChromaWriteGuardError) as exc:
++        raise ValueError(f"Proposal {proposal_id} needs human review ({exc})") from exc
++    finally:
++        store.close()
++    return action
+ 
+ 
+ def recover_approval(cfg: dict | None, proposal_id: str) -> str:
+diff --git a/tests/_c22_recovery_outage_probe.py b/tests/_c22_recovery_outage_probe.py
+new file mode 100644
+index 0000000..2e861c2
+--- /dev/null
++++ b/tests/_c22_recovery_outage_probe.py
+@@ -0,0 +1,72 @@
++"""Claude round 29: recovery with the embedding provider down, then back (real embed gate, fake transport)."""
++import importlib.util
++import json
++import os
++import sys
++import traceback
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++spec = importlib.util.spec_from_file_location('c22_common', ROOT/'tests/_safe_harbor_t4_common.py')
++helpers = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(helpers)
++helpers._require_child_isolation()
++helpers._refuse_outside_fixture(Path(os.environ['CONVMEM_CONFIG']))
++import llm
++real_embed = llm.ollama_embed
++helpers._install_fakes()
++fake_embed = llm.ollama_embed
++state = {'down': True, 'http': 0, 'depths': []}
++
++def post(url, *, json, timeout):
++    state['http'] += 1
++    if state['down']:
++        raise ConnectionError('ollama down (probe)')
++    class Response:
++        def raise_for_status(self): pass
++        def json(self): return {'embedding': fake_embed(json['prompt'])}
++    return Response()
++
++def embed(*args, **kwargs):
++    import purge_locks
++    import chroma_write_store
++    state['depths'].append((purge_locks.index_write_lock_depth(),
++                            chroma_write_store.production_chroma_store_session_depth()))
++    return real_embed(*args, **kwargs)
++
++llm.requests.post = post
++llm.ollama_embed = embed
++case = sys.argv[1]
++out = {'case': case}
++try:
++    cfg = helpers._load_cfg()
++    if case == 'create_absence_down_then_up':
++        pid = helpers._setup_approval_started(cfg)
++        before = helpers._dump_state(cfg)
++        try:
++            helpers._recover(cfg, pid)
++            raise AssertionError('recovery succeeded with the provider down')
++        except ValueError as exc:
++            out['down_error'] = str(exc)
++            assert 'recovery deferred (embedding unavailable' in str(exc), exc
++        mid = helpers._dump_state(cfg)
++        assert mid == before, 'deferred recovery changed state'
++        assert helpers._lifecycle_state(cfg, pid) == 'APPROVAL_STARTED'
++        state['down'] = False
++        out['action'] = helpers._recover(cfg, pid)
++        assert out['action'] == 'retry_chroma'
++        assert helpers._lifecycle_state(cfg, pid) == 'APPROVED'
++        unit = helpers._unit_for_pid(helpers._dump_state(cfg), pid)
++        assert unit['metadata'].get('content_hash') == helpers._independent_ingest_hash(helpers._approved_row(cfg, pid))
++        assert unit.get('embedding_sha') == helpers._expected_embedding_sha(unit.get('document') or '')
++    elif case in ('event_only_down', 'marker_repair_down'):
++        out.update(getattr(helpers, '_matrix_' + case[:-5])(cfg))
++    else:
++        raise AssertionError(case)
++    assert all(d == (0, 0) for d in state['depths']), state['depths']
++    out.setdefault('verdict', 'PASS')
++except Exception as exc:  # noqa: BLE001
++    out.update(verdict='FAIL', error=str(exc), type=type(exc).__name__, traceback=traceback.format_exc())
++out.update(http=state['http'], depths=state['depths'])
++print(json.dumps(out, sort_keys=True))
++raise SystemExit(0 if out['verdict'] == 'PASS' else 1)
+diff --git a/tests/_r7_recovery_probe.py b/tests/_r7_recovery_probe.py
+new file mode 100644
+index 0000000..ff7159b
+--- /dev/null
++++ b/tests/_r7_recovery_probe.py
+@@ -0,0 +1,48 @@
++"""Preserve real embedding admission; fake only the HTTP transport in T4 recovery."""
++import importlib.util
++import json
++import os
++import sys
++import traceback
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++spec = importlib.util.spec_from_file_location('r7_common', ROOT/'tests/_safe_harbor_t4_common.py')
++helpers = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(helpers)
++helpers._require_child_isolation()
++helpers._refuse_outside_fixture(Path(os.environ['CONVMEM_CONFIG']))
++import llm
++real_embed = llm.ollama_embed
++helpers._install_fakes()
++fake_embed = llm.ollama_embed
++calls = []
++transport = []
++
++def post(url, *, json, timeout):
++    assert url.endswith('/api/embeddings'), url
++    transport.append(url)
++    class Response:
++        def raise_for_status(self): pass
++        def json(self): return {'embedding': fake_embed(json['prompt'])}
++    return Response()
++
++def embed(*args, **kwargs):
++    import purge_locks
++    import chroma_write_store
++    calls.append({'c1_depth': getattr(purge_locks,'index_write_lock_depth',lambda:0)(),
++                  'session_depth': getattr(chroma_write_store,'production_chroma_store_session_depth',lambda:0)()})
++    return real_embed(*args, **kwargs)
++
++llm.requests.post = post
++llm.ollama_embed = embed
++try:
++    cfg = helpers._load_cfg()
++    payload = getattr(helpers, '_matrix_' + sys.argv[1])(cfg)
++except Exception as exc:
++    payload = {'verdict':'FAIL','error':str(exc),'type':type(exc).__name__,'traceback':traceback.format_exc()}
++payload.update(embed_entries=calls, fake_http_calls=len(transport), case=sys.argv[1])
++print(json.dumps(payload,sort_keys=True))
++raise SystemExit(0 if payload['verdict']=='PASS' else 1)
++
++# src: /home/lauer/.cache/audit-286-r7/code/tests/_safe_harbor_t4_common.py — existing isolated recovery scenarios
+diff --git a/tests/test_zz_claude_verify29.py b/tests/test_zz_claude_verify29.py
+new file mode 100644
+index 0000000..a0399ed
+--- /dev/null
++++ b/tests/test_zz_claude_verify29.py
+@@ -0,0 +1,23 @@
++"""Claude verify probes, round 29 (corrective 22): recovery embeds outside C1 and survives a provider outage."""
++import json
++import sys
++from pathlib import Path
++
++import pytest
++
++from tests._safe_harbor_t4_pytest import isolated_t4_child_network  # noqa: F401  (fixture)
++from tests.test_safe_harbor_t2 import cli, isolated, scratch  # noqa: F401  (fixtures)
++from tests.test_safe_harbor_t4_matrix import _matrix_env
++from tests._safe_harbor_t4_harness import probe_env, run_fixture_child
++
++
++@pytest.mark.parametrize('case', ['create_absence_down_then_up', 'event_only_down', 'marker_repair_down'])
++def test_recovery_provider_outage(cli, case):  # noqa: F811
++    env = probe_env(cli, case=case, extra=_matrix_env(cli))
++    probe = Path(__file__).with_name('_c22_recovery_outage_probe.py')
++    proc = run_fixture_child([sys.executable, '-s', '-B', str(probe), case], env=env, timeout=300)
++    assert proc.stdout.strip(), (proc.returncode, proc.stderr[-3000:])
++    payload = json.loads(proc.stdout.strip().splitlines()[-1])
++    print('OUTAGE_RECOVERY:', json.dumps(payload, sort_keys=True))
++    assert proc.returncode == 0, payload
++    assert payload['verdict'] == 'PASS', payload
+diff --git a/tests/test_zz_codex_audit_r7.py b/tests/test_zz_codex_audit_r7.py
+new file mode 100644
+index 0000000..70bc503
+--- /dev/null
++++ b/tests/test_zz_codex_audit_r7.py
+@@ -0,0 +1,21 @@
++"""Recovery must reach a fake HTTP transport through the real embedding gate."""
++import json
++import sys
++from pathlib import Path
++import pytest
++from tests._safe_harbor_t4_pytest import isolated_t4_child_network
++from tests.test_safe_harbor_t2 import cli, isolated, scratch
++from tests.test_safe_harbor_t4_matrix import _matrix_env
++from tests._safe_harbor_t4_harness import probe_env, run_fixture_child
++
++@pytest.mark.parametrize('case', ['create_absence', 'base_retry', 'event_only', 'marker_repair'])
++def test_recovery_with_real_embed_gate(cli, case):
++    env = probe_env(cli, case=case, extra=_matrix_env(cli))
++    probe = Path(__file__).with_name('_r7_recovery_probe.py')
++    proc = run_fixture_child([sys.executable,'-s','-B',str(probe),case],env=env,timeout=300)
++    payload = json.loads(proc.stdout.strip().splitlines()[-1])
++    print('REAL_EMBED_RECOVERY:',json.dumps(payload,sort_keys=True))
++    assert proc.returncode == 0, payload
++    assert payload['verdict'] == 'PASS', payload
++
++# src: ./_r7_recovery_probe.py — real embedding gate with fake HTTP transport
+```
+
+# Round 28: `d0510f8`, PASS withdrawn in round 29 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-16
