@@ -4,8 +4,13 @@ Background (Arc Poison Pill, 2026-09-24): the "Chroma upsert heap corruption" cr
 were defective CPU cores, not Chroma: an i7-13700K with Raptor Lake Vmin shift.
 CPU 8 failed first; CPU 4 failed the next morning once CPU 8 was offline. Both
 favoured cores are now kept offline with their sibling threads (CPUs 4, 5, 8, 9).
-Degradation spreads, so this check alerts on *any* native fault this boot, and on
-a known-bad CPU coming back online.
+
+Policy (Ryan, 2026-10-17, after the Poison Pill CPU was fixed): FAIL only on
+*unambiguous hardware* signals -- a machine-check event, a fault the kernel pinned
+to a CPU that is not already known-bad, or a known-bad CPU coming back online.
+Ambiguous userspace faults with no CPU attribution (a desktop app, or even convmem's
+own native code) are demoted to a visible WARN: still surfaced, no longer a hard
+stop that stalls every agent at session start. FAIL always dominates WARN.
 
 Signals, all readable without root:
 
@@ -170,17 +175,42 @@ def evaluate(
     online: set[int] | None,
     known_bad: set[int],
 ) -> Verdict:
-    """FAIL on a known-bad CPU back online or any fault not pinned to a known-bad CPU."""
-    problems: list[str] = []
+    """FAIL only on unambiguous hardware signals; demote ambiguous userspace faults to WARN.
+
+    Hardware (FAIL): a known-bad CPU back online, a fault the kernel pinned to a CPU that is
+    not already known-bad, or any machine-check event. Everything else -- userspace faults
+    with no CPU attribution and orphan crash dumps -- is a visible WARN, not a gate-failing
+    FAIL (Ryan, 2026-10-17: Poison Pill CPU fixed, so unexplained userspace faults are no
+    longer treated as possible silent-silicon corruption). FAIL always dominates WARN.
+    """
+    problems: list[str] = []  # FAIL-level: unambiguous hardware
+    warn_notes: list[str] = []  # WARN-level: ambiguous userspace, non-blocking
+
     back_online = sorted(known_bad & online) if online is not None else []
     if back_online:
         problems.append(
             f"known-bad CPU(s) {back_online} are ONLINE again -- is offline-bad-core.service running?"
         )
-    unexplained = [f for f in faults if f.cpu is None or f.cpu not in known_bad]
-    if unexplained:
-        sample = "; ".join(f.describe() for f in unexplained[:_SAMPLES])
-        problems.append(f"{len(unexplained)} native fault(s) not on a known-bad CPU: {sample}")
+
+    # Hardware faults: kernel-attributed to a healthy CPU, or any machine-check event.
+    hardware_faults = [
+        f
+        for f in faults
+        if (f.cpu is not None and f.cpu not in known_bad) or f.kind == "machine_check"
+    ]
+    if hardware_faults:
+        sample = "; ".join(f.describe() for f in hardware_faults[:_SAMPLES])
+        problems.append(f"{len(hardware_faults)} hardware fault(s) not on a known-bad CPU: {sample}")
+
+    # Userspace faults: no CPU attribution and not a machine check. Advisory only.
+    userspace_faults = [f for f in faults if f.cpu is None and f.kind != "machine_check"]
+    if userspace_faults:
+        sample = "; ".join(f.describe() for f in userspace_faults[:_SAMPLES])
+        warn_notes.append(
+            f"{len(userspace_faults)} userspace fault(s) this boot, no CPU attribution (advisory): {sample}"
+        )
+
+    # Orphan crash dumps (hardware signal, no matching kernel line): advisory, not blocking.
     reported_pids = {f.pid for f in faults if f.pid is not None}
     orphan_dumps = [
         d for d in coredumps if d.get("sig") in HARDWARE_SIGNALS and d.get("pid") not in reported_pids
@@ -190,16 +220,23 @@ def evaluate(
             f"{Path(str(d.get('exe') or '?')).name}[{d.get('pid')}] {HARDWARE_SIGNALS[d['sig']]}"
             for d in orphan_dumps[:_SAMPLES]
         )
-        problems.append(f"{len(orphan_dumps)} crash dump(s) with no CPU in the kernel log: {sample}")
+        warn_notes.append(f"{len(orphan_dumps)} crash dump(s) with no CPU in the kernel log: {sample}")
+
     if problems:
         return Verdict("fail", "; ".join(problems) + " -- see: journalctl -k -b 0 | grep 'likely on CPU'")
-    if faults:
-        cpus = sorted({f.cpu for f in faults if f.cpu is not None})
-        return Verdict(
-            "warn",
-            f"{len(faults)} fault(s) this boot, all on known-bad CPU(s) {cpus} before they went offline "
-            f"(latest: {faults[-1].describe()})",
+
+    # Faults confined to known-bad CPUs (before they went offline) stay a WARN with their own note.
+    known_bad_faults = [f for f in faults if f.cpu is not None and f.cpu in known_bad]
+    if known_bad_faults:
+        cpus = sorted({f.cpu for f in known_bad_faults})
+        warn_notes.append(
+            f"{len(known_bad_faults)} fault(s) this boot, all on known-bad CPU(s) {cpus} before they "
+            f"went offline (latest: {known_bad_faults[-1].describe()})"
         )
+
+    if warn_notes:
+        return Verdict("warn", "; ".join(warn_notes))
+
     offline_note = f"; known-bad CPU(s) {sorted(known_bad)} offline" if known_bad else ""
     return Verdict("pass", f"0 native faults this boot{offline_note}")
 
