@@ -573,6 +573,7 @@ class IncrementalJsonlCoordinator:
             )
         )
         self.codex_admitted_live = production_codex
+        self.production_boundary_live = isinstance(boundary, ProductionBoundary)
         self.routed_formats = routed_formats(
             isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT")),
             production_codex_rollout=production_codex,
@@ -1065,7 +1066,7 @@ class IncrementalJsonlCoordinator:
             planned.add(int(chunk["start_offset"]))
         return planned
 
-    def _codex_projection_fingerprint(self) -> str:
+    def _projection_fingerprint(self) -> str:
         with self._session() as session:
             summaries = session.store.snapshot_source_rows(SUMMARIES, self.path_key)
             units = session.store.snapshot_source_rows(UNITS, self.path_key)
@@ -1089,9 +1090,9 @@ class IncrementalJsonlCoordinator:
         }
         return hashlib.sha256(_canonical_json(payload).encode()).hexdigest()
 
-    def _codex_projection_checkpoint_mismatch(self, checkpoint: dict | None) -> str | None:
+    def _projection_checkpoint_mismatch(self, checkpoint: dict | None) -> str | None:
         """D8: legacy re-index drops incremental processed lineage for the path."""
-        if not self.codex_admitted_live or checkpoint is None:
+        if not self.production_boundary_live or checkpoint is None:
             return None
         expected = checkpoint.get("processed_lineage_digest")
         if not expected:
@@ -1119,7 +1120,7 @@ class IncrementalJsonlCoordinator:
                     units.add(str(unit.get("id")))
         return summaries, units
 
-    def _codex_recovery_bootstrap_required(
+    def _recovery_bootstrap_required(
         self, transaction: dict, rollback: dict | None
     ) -> bool:
         """C1b: checkpointless recovery applies the fresh-run bootstrap rule."""
@@ -1173,7 +1174,7 @@ class IncrementalJsonlCoordinator:
             return "transform_chunk_cap"
         return None
 
-    def _codex_roll_forward_refusal(
+    def _roll_forward_refusal(
         self,
         snapshot: dict,
         *,
@@ -1181,38 +1182,41 @@ class IncrementalJsonlCoordinator:
         phase: str,
         rollback: dict | None,
     ) -> str | None:
-        if not self.codex_admitted_live:
+        if not self.production_boundary_live:
             return None
-        identity_refusal = verify_session_meta_identity(
-            self.source, snapshot.get("raw") or b""
-        )
-        if identity_refusal:
-            return identity_refusal
-        admission = self.settings.codex_rollout_admission
-        if admission is not None:
-            try:
-                fd = open_source_readonly(self.source)
+        if self.codex_admitted_live:
+            identity_refusal = verify_session_meta_identity(
+                self.source, snapshot.get("raw") or b""
+            )
+            if identity_refusal:
+                return identity_refusal
+            admission = self.settings.codex_rollout_admission
+            if admission is not None:
                 try:
-                    info = validate_regular_source(fd)
-                finally:
-                    os.close(fd)
-            except OSError:
-                return "source_too_large"
-            if int(info.st_size) > admission.max_source_bytes:
-                return "source_too_large"
-            snapshot = {**snapshot, "size": int(info.st_size)}
+                    fd = open_source_readonly(self.source)
+                    try:
+                        info = validate_regular_source(fd)
+                    finally:
+                        os.close(fd)
+                except OSError:
+                    return "source_too_large"
+                if int(info.st_size) > admission.max_source_bytes:
+                    return "source_too_large"
+                snapshot = {**snapshot, "size": int(info.st_size)}
         checkpoint = None
         try:
             checkpoint = self.checkpoint()
         except IncrementalJsonlError:
             return "invalid_state"
-        projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
+        projection_mismatch = self._projection_checkpoint_mismatch(checkpoint)
         if projection_mismatch:
             return f"rebuild_required:{projection_mismatch}"
-        if checkpoint is None and self._codex_recovery_bootstrap_required(
+        if checkpoint is None and self._recovery_bootstrap_required(
             transaction, rollback
         ):
             return "bootstrap_required"
+        if not self.codex_admitted_live:
+            return None
         continuity = _continuity_reason(
             checkpoint, snapshot, self.transform_fingerprint
         )
@@ -2075,8 +2079,8 @@ class IncrementalJsonlCoordinator:
 
         committed = {"ok": False}
         lineage = (
-            self._codex_projection_fingerprint()
-            if self.codex_admitted_live
+            self._projection_fingerprint()
+            if self.production_boundary_live
             else None
         )
 
@@ -2198,7 +2202,7 @@ class IncrementalJsonlCoordinator:
                     self._require_rollback_authority(rollback_authority_sha256)
                 self._verify_non_source_collections(attempt_non_source)
                 self._revalidate_live_prefix(snapshot)
-                projection_fingerprint = self._codex_projection_fingerprint()
+                projection_fingerprint = self._projection_fingerprint()
                 checkpoint = {
                 "version": CHECKPOINT_VERSION,
                 "commit_state": "complete",
@@ -2216,7 +2220,7 @@ class IncrementalJsonlCoordinator:
                 "unit_ids": sorted(keep_units),
                 "projection_fingerprint": projection_fingerprint,
                 "processed_lineage_digest": (
-                    projection_fingerprint if self.codex_admitted_live else None
+                    projection_fingerprint if self.production_boundary_live else None
                 ),
                 "processed_hash": snapshot["prefix_sha256"],
                 "raw_line_coverage": snapshot["raw_line_coverage"],
@@ -2375,7 +2379,7 @@ class IncrementalJsonlCoordinator:
             "snapshot_path": snapshot_path,
             "snapshot_dir": snapshot_dir,
         }
-        roll_refusal = self._codex_roll_forward_refusal(
+        roll_refusal = self._roll_forward_refusal(
             snapshot, transaction=transaction, phase=phase, rollback=rollback
         )
         if roll_refusal:
@@ -2567,7 +2571,7 @@ class IncrementalJsonlCoordinator:
             outcome = "eligible_bootstrap_existing"
         if outcome in {"bootstrap_required", "invalid_state"}:
             return outcome
-        projection_mismatch = self._codex_projection_checkpoint_mismatch(checkpoint)
+        projection_mismatch = self._projection_checkpoint_mismatch(checkpoint)
         if projection_mismatch:
             return f"rebuild_required:{projection_mismatch}"
         continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
