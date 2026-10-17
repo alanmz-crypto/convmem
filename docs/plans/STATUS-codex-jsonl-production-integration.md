@@ -151,10 +151,15 @@ Codex rollouts (separate track):
    `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
    Don't add the incremental table to the shared live config while
    `runtime-main` is still on `a92a74e`.
-2. Canary 2 is running (from 2026-10-16 21:47 CDT, 24 h, 200 paid calls).
-   Report the burn, Kiro's CO-5 and CO-6 observations, and how the 11 stale
-   incremental transactions recover. Leaving the watcher on permanently
-   is a further Ryan grant.
+2. **Canary 2 was stopped at 21:53 (0 paid calls, 0 indexed).** #395's
+   `index --file` deferral also defers the watcher's own child: the watcher
+   spawns `index --file <path>` without `--now`, and the child sees the live
+   watcher's lock and exits 0. While the watcher runs, it indexes nothing.
+   `repository_knowledge_sync.py` builds the same argv. Fix: pass `--now` from
+   both internal callers, with a regression test (Cursor, from `main`). Then
+   verify, merge, re-promote `runtime-main`, and restart canary 2 under the
+   same grant (24 h, 200 calls). Watcher disabled meanwhile; manual Track A
+   indexes directly, under the new locks.
 3. Before any Kiro exact-path live incremental run, land the exact-path
    recovery parity fix. Its design is on
    `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
@@ -328,6 +333,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-16 | Claude | Round 31 at `1a70c41`: PASS. Corrective 24 (comment-only pylint suppressions, r6 crash workaround, 7 lazy-cycle allowlist pairs) is AST-identical in production; pylint CI green; pytest CI pending |
 | 2026-10-16 | Ryan / Claude | PR #395 squash-merged as `3e705e4` (tree = verified `1a70c41`); all 6 checks green, CO-2 acknowledged, Kiro Safe Harbor PASS. Not deployed; runtime-main, protocol deploy and canary 2 are separate grants |
 | 2026-10-16 | Claude | Ryan grants: runtime-main `8a7cdab`→`3e705e4` (with Safe Harbor T1–T4, per the approved deploy procedure); Track A protocol change on 7 surfaces; canary 2 started 21:47 (24 h, 200 paid calls) |
+| 2026-10-16 | Claude | Canary 2 stopped at 21:53: the watcher's own index child defers to the watcher (#395 regression; 1 spawn, 0 indexed, 0 paid). Watcher disabled; `--now` fix for the internal callers goes to Cursor |
 
 ## TL;DR
 
