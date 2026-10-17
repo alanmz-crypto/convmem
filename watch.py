@@ -323,7 +323,9 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
         ) from exc
     if timeout <= 0 or not math.isfinite(timeout):
         raise ValueError("watch.subprocess_timeout_seconds must be a positive number")
-    inner_cmd = _convmem_cli_argv() + ["index", "--file", path]
+    from repository_knowledge_sync import watcher_child_index_argv
+
+    inner_cmd = watcher_child_index_argv(path)
     cmd = _scoped_index_cmd(inner_cmd, cfg, verbose=verbose)
     if verbose:
         print(f"[watch] spawn: {' '.join(inner_cmd[-3:])}", file=sys.stderr)

@@ -438,7 +438,8 @@ class IsolatedWatchCoverageTests(unittest.TestCase):
                 reconcile_manifest(str(man), cfg, dispatch=dispatch, recorded_argv=recorded)
 
             argv_ok = recorded and all(
-                row[-3:] == ["index", "--file", path] for row, path in zip(recorded, dispatched)
+                row[-4:] == ["index", "--file", path, "--now"]
+                for row, path in zip(recorded, dispatched)
             )
 
             def retrieve(nonce: str) -> list[dict]:

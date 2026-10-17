@@ -46,7 +46,7 @@ class SyncRoutingTests(unittest.TestCase):
     def test_public_argv_and_control_token(self) -> None:
         abs_file = "/tmp/example.md"
         argv = public_index_argv(abs_file)
-        self.assertEqual(argv[-3:], ["index", "--file", abs_file])
+        self.assertEqual(argv[-4:], ["index", "--file", abs_file, "--now"])
         self.assertTrue(argv[1].endswith("convmem.py"))
         token = reconcile_token("/abs/scope.json")
         self.assertTrue(is_reconcile_token(token))
@@ -101,12 +101,14 @@ class SyncRoutingTests(unittest.TestCase):
         def capture(abs_file, cfg, argv):
             del cfg
             dispatched.append(abs_file)
-            self.assertEqual(argv[-3:], ["index", "--file", abs_file])
+            self.assertEqual(argv[-4:], ["index", "--file", abs_file, "--now"])
 
         result = reconcile_manifest(str(man), cfg, dispatch=capture, recorded_argv=recorded)
         self.assertEqual(result["indexed"], ["docs/plan.md"])
         self.assertEqual(len(dispatched), 1)
-        self.assertEqual(recorded[0][-3:], ["index", "--file", dispatched[0]])
+        self.assertEqual(
+            recorded[0][-4:], ["index", "--file", dispatched[0], "--now"]
+        )
 
         store = ChromaStore(cfg["index"]["chroma_dir"])
         other_id = "other-source-unit"
