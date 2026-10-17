@@ -69,6 +69,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": ("refine.py:628",),
     },
     {
         "route_id": "monitor_reconcile",
@@ -87,11 +88,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
-        # Line pin refreshed 2026-09-23: unchanged ChromaStore ctor call site,
-        # shifted by the Arc Poison Pill --clear-quarantine CLI flags added
-        # above it in convmem.py's watch() command. Refreshed 2026-10-11:
-        # same site, shifted by the issue #268 D1 env-gated index bootstrap.
-        "governed_mutation_sinks": ("convmem.py:699",),
+        "governed_mutation_sinks": (),
     },
     {
         "route_id": "cg2_file_generation_pointer",
@@ -310,10 +307,30 @@ _SKIP_SCAN_PREFIXES = (
     "tests/",
     "docs/",
     ".worktrees/",
+    "review-bundles/",
+    "artifacts/",
     ".tmp/",
     ".git/",
     "node_modules/",
 )
+
+
+def _skip_repo_scan_path(rel: str) -> bool:
+    import subprocess
+
+    for tracked_prefix in ("review-bundles/", "artifacts/"):
+        if rel.startswith(tracked_prefix):
+            proc = subprocess.run(
+                ["git", "-C", str(ROOT), "ls-files", "--error-unmatch", rel],
+                capture_output=True,
+                check=False,
+            )
+            return proc.returncode != 0
+    return any(
+        rel.startswith(prefix)
+        for prefix in _SKIP_SCAN_PREFIXES
+        if prefix not in ("review-bundles/", "artifacts/")
+    )
 
 
 def _scan_repo_pattern(
@@ -324,7 +341,7 @@ def _scan_repo_pattern(
     hits: list[str] = []
     for path in sorted(ROOT.rglob("*.py")):
         rel = str(path.relative_to(ROOT))
-        if skip_tests and any(rel.startswith(prefix) for prefix in _SKIP_SCAN_PREFIXES):
+        if skip_tests and _skip_repo_scan_path(rel):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for i, line in enumerate(text.splitlines(), 1):
@@ -492,7 +509,7 @@ def _scan_chroma_ctor_uncached() -> list[str]:
     hits: list[str] = []
     for path in sorted(ROOT.rglob("*.py")):
         rel = str(path.relative_to(ROOT))
-        if any(rel.startswith(prefix) for prefix in _SKIP_SCAN_PREFIXES):
+        if _skip_repo_scan_path(rel):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for i, line in enumerate(text.splitlines(), 1):

@@ -584,7 +584,31 @@ def _repair_marker_only(
     store.update_unit_metadata(chroma_id, new_meta)
 
 
-def _recovery_apply_intent(store, intent_row: dict, models: dict) -> dict:
+def _prepare_recovery_embedding(intent_row: dict, models: dict) -> tuple[list[float] | None, str]:
+    """Embed the approved intent's document before C1 and any Chroma session.
+
+    Best effort: a failure only matters if recovery turns out to need a Chroma write,
+    so event-only and marker-only recovery still complete without the provider.
+    """
+    from llm import ollama_embed
+    from observe import ledger_record_document_text  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+
+    doc = ledger_record_document_text({**intent_row, "_governed_protocol": True})
+    if doc is None:
+        return None, "ingestion rejected approved intent"
+    try:
+        embedding = ollama_embed(
+            doc,
+            model=models.get("embed_model", "nomic-embed-text"),
+            host=models.get("ollama_host", ""),
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        # Provider boundary: defer the error to the one action that needs the vector.
+        return None, f"{type(exc).__name__}: {exc}"
+    return embedding, ""
+
+
+def _recovery_apply_intent(store, intent_row: dict, models: dict, embedding: list[float]) -> dict:
     # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
     from ledger import build_ledger_index, invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
     from observe import ingest_observation
@@ -592,7 +616,7 @@ def _recovery_apply_intent(store, intent_row: dict, models: dict) -> dict:
     invalidate_ledger_index_cache(store.chroma_dir)
     by_ledger_id, _ = build_ledger_index(store)
     protocol_row = {**intent_row, "_governed_protocol": True}
-    unit = ingest_observation(
+    unit = ingest_observation(  # pylint: disable=unexpected-keyword-arg
         protocol_row,
         store=store,
         embed_model=models.get("embed_model", "nomic-embed-text"),
@@ -600,6 +624,7 @@ def _recovery_apply_intent(store, intent_row: dict, models: dict) -> dict:
         upsert=True,
         units_export=None,
         by_ledger_id=by_ledger_id,
+        precomputed_embedding=embedding,
     )
     if unit is None:
         raise ValueError("ingestion rejected approved intent")
@@ -822,7 +847,9 @@ def _recovery_authority_from_states(
     return _RecoveryIntent(lifecycle, target, base_hash, intent_row, proposed_hash)
 
 
-def _execute_recovery_inside_guard(op, proposal_id, intent, store, guard, *, durability_root) -> str:
+def _execute_recovery_inside_guard(
+    op, proposal_id, intent, store, guard, *, durability_root, embedding=None, embed_error=""
+) -> str:
     """One serialized inspect/apply/validate/export/approve sequence."""
     from chroma_write_store import admitted_units_export_path, verify_admitted_operation_unchanged
 
@@ -842,7 +869,12 @@ def _execute_recovery_inside_guard(op, proposal_id, intent, store, guard, *, dur
     if action == "repair_marker":
         _repair_marker_only(store, live["unit"], proposal_id, intent.row)
     elif action == "retry_chroma":
-        _recovery_apply_intent(store, intent.row, cfg.get("models") or {})
+        if embedding is None:
+            raise ValueError(
+                f"Proposal {proposal_id} recovery deferred (embedding unavailable: "
+                f"{embed_error or 'not prepared'}); nothing was written, retry"
+            )
+        _recovery_apply_intent(store, intent.row, cfg.get("models") or {}, embedding)
 
     after = _recovery_classify_live(store, intent.target)
     if after.get("review") or after.get("absent"):
@@ -865,15 +897,9 @@ def _execute_recovery_inside_guard(op, proposal_id, intent, store, guard, *, dur
 
 
 def _recover_approval_impl(op, proposal_id: str) -> str:
-    from chroma_write_guard import ChromaWriteGuardError, ChromaWriteQuarantinedError
-    from chroma_write_store import (
-        recovery_durability_root,
-        open_production_recovery_write_store,
-        verify_admitted_operation_unchanged,
-        verify_admitted_targets_unchanged,
-        verify_recovery_config_binding,
-    )
-    from conflict_events import EventPublicationError, governed_lock
+    from chroma_write_store import recovery_durability_root, verify_recovery_config_binding
+    from conflict_events import governed_lock
+    from purge_locks import index_write_flock
 
     proposal_id = proposal_id.strip()
     cfg = op.config()
@@ -887,35 +913,61 @@ def _recover_approval_impl(op, proposal_id: str) -> str:
         intent = _recovery_authority_from_states(
             states, cfg, proposal_id
         )
+        # Provider work stays outside C1 and the Chroma session; APPROVED never writes Chroma.
+        embedding, embed_error = None, ""
+        if intent.lifecycle == "APPROVAL_STARTED":
+            embedding, embed_error = _prepare_recovery_embedding(
+                intent.row, cfg.get("models") or {}
+            )
+        with index_write_flock(cfg):
+            return _recover_approval_locked(
+                op, proposal_id, intent, cfg, durability_root=durability_root,
+                embedding=embedding, embed_error=embed_error,
+            )
 
-        verify_admitted_operation_unchanged(op)
-        session = open_production_recovery_write_store(entrypoint=op.entrypoint)
-        store = session.store
-        action = "review"
-        try:
-            guard = store._write_guard  # pylint: disable=protected-access
-            if guard is None:
-                raise ValueError(
-                    f"Proposal {proposal_id} needs human review (write guard required)"
-                )
-            with guard.approval_recovery_critical_section(
-                reload_client=store._reload_client,  # pylint: disable=protected-access
-            ) as recovery_guard:
-                verify_recovery_config_binding(op, cfg)
-                verify_admitted_operation_unchanged(op)
-                verify_admitted_targets_unchanged(op)
-                action = _execute_recovery_inside_guard(
-                    op, proposal_id, intent, store, recovery_guard, durability_root=durability_root
-                )
-        except (EventPublicationError, OSError) as exc:
-            raise RecoveryCompletionUnknown(
-                f"recovery completion outcome unknown for {proposal_id}: {exc}"
-            ) from exc
-        except (ChromaWriteQuarantinedError, ChromaWriteGuardError) as exc:
-            raise ValueError(f"Proposal {proposal_id} needs human review ({exc})") from exc
-        finally:
-            store.close()
-        return action
+
+def _recover_approval_locked(
+    op, proposal_id, intent, cfg, *, durability_root, embedding, embed_error
+) -> str:
+    """Session, native guard and the serialized sequence, under governed lock and C1."""
+    from chroma_write_guard import ChromaWriteGuardError, ChromaWriteQuarantinedError
+    from chroma_write_store import (
+        open_production_recovery_write_store,
+        verify_admitted_operation_unchanged,
+        verify_admitted_targets_unchanged,
+        verify_recovery_config_binding,
+    )
+    from conflict_events import EventPublicationError
+
+    verify_admitted_operation_unchanged(op)
+    session = open_production_recovery_write_store(entrypoint=op.entrypoint)
+    store = session.store
+    action = "review"
+    try:
+        guard = store._write_guard  # pylint: disable=protected-access
+        if guard is None:
+            raise ValueError(
+                f"Proposal {proposal_id} needs human review (write guard required)"
+            )
+        with guard.approval_recovery_critical_section(
+            reload_client=store._reload_client,  # pylint: disable=protected-access
+        ) as recovery_guard:
+            verify_recovery_config_binding(op, cfg)
+            verify_admitted_operation_unchanged(op)
+            verify_admitted_targets_unchanged(op)
+            action = _execute_recovery_inside_guard(
+                op, proposal_id, intent, store, recovery_guard, durability_root=durability_root,
+                embedding=embedding, embed_error=embed_error,
+            )
+    except (EventPublicationError, OSError) as exc:
+        raise RecoveryCompletionUnknown(
+            f"recovery completion outcome unknown for {proposal_id}: {exc}"
+        ) from exc
+    except (ChromaWriteQuarantinedError, ChromaWriteGuardError) as exc:
+        raise ValueError(f"Proposal {proposal_id} needs human review ({exc})") from exc
+    finally:
+        store.close()
+    return action
 
 
 def recover_approval(cfg: dict | None, proposal_id: str) -> str:
@@ -1196,75 +1248,129 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
     """Upsert decisions-approved.jsonl into Chroma."""
 
     from chroma_write_store import open_production_write_store
-    from observe import ingest_observation_file
+    from observe import ingest_observation_file  # pylint: disable=unused-import
+    from purge_locks import index_write_flock
 
     models = cfg.get("models")
     if not models:
         from config import load_config
 
         models = load_config()["models"]
-    _pw = open_production_write_store(entrypoint="propose_decision.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    models = cfg["models"]
-    units_export = cfg["index"].get("units_export")
-    units_export_path = Path(units_export).expanduser() if units_export else None
-    try:
-        return ingest_observation_file(
-            str(approved_path(cfg)),
-            store=store,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            upsert=True,
-            verbose=verbose,
-            units_export=units_export_path,
-        )
-    finally:
-        store.close()
+    lock_cfg = cfg if cfg.get("index") else None
+    if lock_cfg is None:
+        from config import load_config
+
+        lock_cfg = load_config()
+    from chroma_readonly import open_readonly_unit_store
+    from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+
+    approved = str(approved_path(cfg))
+    embed_store = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
+
+    def open_write_commit(commit_fn):
+        with index_write_flock(lock_cfg):
+            _pw = open_production_write_store(entrypoint="propose_decision.write")
+            store = _pw.store
+            live = _pw.live_cfg
+            units_export = live["index"].get("units_export")
+            units_export_path = Path(units_export).expanduser() if units_export else None
+            try:
+                return commit_fn(store, units_export_path)
+            finally:
+                store.close()
+
+    return ingest_observation_file_with_drift_retry(
+        approved,
+        embed_store=embed_store,
+        open_write_commit=open_write_commit,
+        embed_model=models["embed_model"],
+        ollama_host=models["ollama_host"],
+        upsert=True,
+        verbose=verbose,
+    )
 
 
 def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) -> dict:
     """Index one approved decision (fast path for record --approve-last)."""
 
+    from chroma_readonly import open_readonly_unit_store
     from chroma_write_store import open_production_write_store
     # Whole-repo Pylint also loads stale docs/chatgpt-pack modules with these names.
     from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module
-    from observe import ingest_observation
+    from observe import (  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+        ObservationIngestDriftError,
+        ObservationIngestDriftRefusedError,
+        commit_observation_ingest,
+        prepare_observation_ingest,
+    )
+    from purge_locks import index_write_flock
 
     models = cfg.get("models")
     if not models:
         from config import load_config
 
         models = load_config()["models"]
-    _pw = open_production_write_store(entrypoint="propose_decision.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    models = cfg["models"]
-    units_export = cfg["index"].get("units_export")
-    units_export_path = Path(units_export).expanduser() if units_export else None
+    lock_cfg = cfg if cfg.get("index") else None
+    if lock_cfg is None:
+        from config import load_config
+
+        lock_cfg = load_config()
     protocol_ledger = {**ledger, "_governed_protocol": True}
-    try:
-        unit = ingest_observation(
-            protocol_ledger,
-            store=store,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            upsert=True,
-            units_export=units_export_path,
-        )
-        stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
-        if unit is None:
-            stats["rejected"] = 1
-        elif unit.pop("_upserted", False):
-            stats["updated"] = 1
-        elif unit.pop("_skipped", False):
-            stats["skipped"] = 1
-        else:
-            stats["accepted"] = 1
-        invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
+    reader = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
+    prepared = prepare_observation_ingest(
+        protocol_ledger,
+        store=reader,
+        embed_model=models["embed_model"],
+        ollama_host=models["ollama_host"],
+        upsert=True,
+    )
+    stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
+    if prepared is None:
+        stats["rejected"] = 1
         return stats
-    finally:
-        store.close()
+    unit = None
+    for attempt in range(2):
+        try:
+            with index_write_flock(lock_cfg):
+                _pw = open_production_write_store(entrypoint="propose_decision.write")
+                store = _pw.store
+                live = _pw.live_cfg
+                units_export = live["index"].get("units_export")
+                units_export_path = Path(units_export).expanduser() if units_export else None
+                try:
+                    unit = commit_observation_ingest(
+                        prepared,
+                        store=store,
+                        units_export=units_export_path,
+                    )
+                finally:
+                    store.close()
+            break
+        except ObservationIngestDriftError:
+            if attempt == 1:
+                raise ObservationIngestDriftRefusedError("approved ledger ingest drift") from None
+            invalidate_ledger_index_cache(lock_cfg["index"]["chroma_dir"])
+            fresh_reader = open_readonly_unit_store(lock_cfg["index"]["chroma_dir"])
+            prepared = prepare_observation_ingest(
+                protocol_ledger,
+                store=fresh_reader,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                upsert=True,
+            )
+            if prepared is None:
+                stats["rejected"] = 1
+                return stats
+    if unit is None:
+        stats["rejected"] = 1
+    elif unit.pop("_upserted", False):
+        stats["updated"] = 1
+    elif unit.pop("_skipped", False):
+        stats["skipped"] = 1
+    else:
+        stats["accepted"] = 1
+    invalidate_ledger_index_cache(lock_cfg["index"]["chroma_dir"])
+    return stats
 
 
 def _approve_unlocked(

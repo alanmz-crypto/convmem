@@ -437,12 +437,19 @@ def test_network_denied_under_hermetic(layout: dict, monkeypatch: pytest.MonkeyP
         "CONVMEM_LIVE_DIAG_INDEX_PID_PATH",
         str(layout["index_pid_path"]),
     )
+    import brief
+    import ingest
+
+    # bootstrap_index_child() is a child-process entry hook: its patches never stop.
+    monkeypatch.setattr(brief, "DEFAULT_BRIEF_PATH", brief.DEFAULT_BRIEF_PATH)
+    monkeypatch.setattr(ingest, "_LIVE_DIAG_PATCHED", False, raising=False)
     try:
         bootstrap_index_child()
         with pytest.raises(LiveDiagnosisRefused, match="network_denied"):
             socket.create_connection(("127.0.0.1", 9), timeout=0.2)
     finally:
         teardown_hermetic_guards()
+        patch.stopall()
 
 
 def test_canary_drift_fail_closed() -> None:

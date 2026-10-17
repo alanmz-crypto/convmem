@@ -178,8 +178,12 @@ def test_selected_refusal_is_visible_without_legacy_fallback(
     monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
 
     class RefusingCoordinator:
+        paths: dict = {}
+        last_evidence: dict = {}
+
         def __init__(self, *_args, **_kwargs):
-            pass
+            self.paths = {}
+            self.last_evidence = {}
 
         def run(self):
             return SimpleNamespace(outcome="bootstrap_required")
@@ -867,7 +871,7 @@ def test_bootstrap_dimension_uses_existing_collection_rows_as_authority(
         coordinator.require_existing_embedding_dimension(8)
 
 
-def test_replay_detects_foreign_mutation_without_rebaselining_rollback(
+def test_replay_commits_when_foreign_changed_between_attempts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     isolated, env = isolated_env(tmp_path)
@@ -914,7 +918,6 @@ def test_replay_detects_foreign_mutation_without_rebaselining_rollback(
     with pytest.raises(RuntimeError, match="initial partial apply"):
         first.run()
     rollback_path = first.paths["rollback"]
-    original_rollback = rollback_path.read_bytes()
 
     with first._session() as session:
         session.store.add_summary(
@@ -931,17 +934,11 @@ def test_replay_detects_foreign_mutation_without_rebaselining_rollback(
         chunk_size=2,
         **_bootstrap_binding(),
     )
-    with pytest.raises(
-        incremental_jsonl.IncrementalJsonlError,
-        match="non_source_isolation_changed",
-    ):
-        replay.run()
-    assert rollback_path.read_bytes() == original_rollback
-    assert json.loads(replay.paths["transaction"].read_text(encoding="utf-8"))[
-        "phase"
-    ] == "APPLYING"
+    result = replay.run()
+    assert result.outcome == "committed"
+    assert not rollback_path.exists()
+    assert not replay.paths["transaction"].exists()
     with replay._session() as session:
-        assert "legacy-summary" in session.store.ids_for_source(SUMMARIES, str(source))
         foreign = session.store.snapshot_source_rows(SUMMARIES, "/other")
     assert foreign[0]["document"] == "tampered"
 

@@ -52,12 +52,19 @@ EXPECTED = {
         1,
         "excluded-administrative",
     ),
-    ("convmem.py", "monitor_command", "ChromaStore"): (1, "excluded-administrative"),
     (
         "incremental_jsonl_canary.py",
         "_default_zero_adoption",
         "ChromaStore",
     ): (1, "excluded-administrative"),
+    (
+        "refine.py",
+        "job_semantic_dedupe",
+        "ChromaStore",
+    ): (
+        1,
+        "excluded-administrative",
+    ),
     ("eval_corpus/capture.py", "_connect_readonly", "sqlite3.connect[chroma]"): (
         1,
         "excluded-administrative",

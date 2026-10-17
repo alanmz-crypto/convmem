@@ -113,16 +113,16 @@ def test_all_writer_session_sites_inventoried() -> None:
     )
     session_sites = inv["production_chroma_write_session_call_sites"]
     open_sites = inv["open_production_write_store_call_sites"]
-    scratch_prototype = "scratch_jsonl_prototype/chroma_projection.py:66"
-    internal_recovery_delegate = "chroma_write_store.py:1174"
+    scratch_prototype = "scratch_jsonl_prototype/chroma_projection.py:69"
+    internal_recovery_delegate = "chroma_write_store.py:1262"
     assert scratch_prototype in session_sites
     assert internal_recovery_delegate in open_sites
     external_sessions = [s for s in session_sites if s != scratch_prototype]
     external_opens = [s for s in open_sites if s != internal_recovery_delegate]
-    assert len(external_sessions) == 11
-    assert len(external_opens) == 6
-    assert len(external_sessions) + len(external_opens) == 17
-    assert len(session_sites) + len(open_sites) == 19
+    assert len(external_sessions) == 14
+    assert len(external_opens) == 5
+    assert len(external_sessions) + len(external_opens) == 19
+    assert len(session_sites) + len(open_sites) == 21
     assert inv["must_use_factory_count"] == 0
 
 

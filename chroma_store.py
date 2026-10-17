@@ -409,6 +409,23 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
             offset += len(ids)
         return out
 
+    def active_units_for_ledger_id(self, ledger_id: str) -> list[dict]:
+        """Active (non-superseded) unit metadata rows for one ledger id."""
+        lid = (ledger_id or "").strip()
+        if not lid:
+            return []
+        col = self._collection(UNITS)
+        res = col.get(where={"ledger_id": lid}, include=["metadatas"])
+        ids = res.get("ids") or []
+        metas = res.get("metadatas") or []
+        out: list[dict] = []
+        for chroma_id, meta in zip(ids, metas):
+            row = dict(meta or {})
+            row["id"] = chroma_id
+            if not is_superseded(row):
+                out.append(row)
+        return out
+
     def get_units_with_embeddings(
         self, *, include_superseded: bool = False
     ) -> list[dict]:

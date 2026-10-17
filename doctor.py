@@ -448,7 +448,7 @@ def _check_synthesis_gate() -> DoctorCheck:
         ignored (not counted as ask, to avoid false-alarms on legacy entries).
     """
     import json as _json
-    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td  # pylint: disable=reimported
 
     log_path = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
     if not log_path.is_file():
@@ -573,7 +573,7 @@ def _check_summarization_canary(cfg: dict) -> DoctorCheck:
 def _check_index_gate() -> DoctorCheck:
     """Detect approved decisions whose Chroma indexing failed (delayed-index)."""
     import json as _json
-    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td  # pylint: disable=reimported
 
     log_path = Path("~/.local/share/convmem/index_failures.jsonl").expanduser()
     if not log_path.is_file():
@@ -604,6 +604,117 @@ def _check_index_gate() -> DoctorCheck:
             "index_gate", True, f"{count} index failures in 7d (latest: {latest_id})"
         )
     return DoctorCheck("index_gate", True, "0 index failures in 7d")
+
+
+def _check_incremental_rollback_tamper(cfg: dict) -> DoctorCheck:
+    from datetime import datetime, timedelta, timezone  # pylint: disable=redefined-outer-name, reimported
+
+    from config import incremental_jsonl_settings
+
+    settings = incremental_jsonl_settings(cfg)
+    if not settings.enabled:
+        return DoctorCheck("incremental_rollback_tamper", True, "incremental disabled")
+    root = Path(settings.state_dir).expanduser()
+    if not root.is_dir():
+        return DoctorCheck("incremental_rollback_tamper", True, "0 rollback tamper records")
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    rows: list[str] = []
+    for path in sorted(root.glob("**/rollback_export_tamper.jsonl")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            recorded = str(payload.get("recorded_at") or "")
+            try:
+                when = datetime.strptime(recorded, "%Y-%m-%dT%H:%M:%SZ").replace(
+                    tzinfo=timezone.utc
+                )
+            except ValueError:
+                continue
+            if when >= cutoff:
+                rows.append(
+                    f"{payload.get('source_path')} tx={payload.get('transaction_id')} "
+                    f"dropped={payload.get('dropped_unexpected_export_lines')}"
+                )
+    if not rows:
+        return DoctorCheck("incremental_rollback_tamper", True, "0 rollback tamper records (7d)")
+    detail = "; ".join(rows[:5])
+    if len(rows) > 5:
+        detail += f"; +{len(rows) - 5} more"
+    return DoctorCheck(
+        "incremental_rollback_tamper",
+        True,
+        f"{len(rows)} rollback tamper record(s) in 7d: {detail}",
+        status="warn",
+    )
+
+
+def _check_wedged_incremental_transactions(cfg: dict) -> DoctorCheck:
+    from incremental_retry_state import (
+        iter_retry_state_unavailable,
+        iter_stale_incremental_transactions,
+        iter_wedged_incremental_states,
+    )
+
+    rows = iter_wedged_incremental_states(cfg)
+    stale = iter_stale_incremental_transactions(cfg)
+    unavailable = iter_retry_state_unavailable(cfg)
+    if unavailable:
+        parts = [
+            f"retry_state_unavailable at {row.get('path', '?')}" for row in unavailable[:3]
+        ]
+        if len(unavailable) > 3:
+            parts.append(f"+{len(unavailable) - 3} more unavailable retry states")
+        return DoctorCheck(
+            "wedged_incremental_transaction",
+            True,
+            "; ".join(parts),
+            status="warn",
+        )
+    if not rows and not stale:
+        return DoctorCheck(
+            "wedged_incremental_transaction",
+            True,
+            "0 wedged incremental transactions",
+        )
+    parts: list[str] = []
+    for row in rows[:3]:
+        parts.append(
+            "source={source_path} transaction={transaction_id} code={error_code} "  # pylint: disable=consider-using-f-string
+            "remedy=convmem watch --clear-quarantine <path> "
+            "(clears circuit breaker and retry-state hold)".format(
+                source_path=row.get("source_path", "?"),
+                transaction_id=row.get("transaction_id", "?"),
+                error_code=row.get("error_code", "?"),
+            )
+        )
+    if len(rows) > 3:
+        parts.append(f"+{len(rows) - 3} more retry-state wedges")
+    for row in stale[:3]:
+        parts.append(
+            "source={source_path} transaction={transaction_id} phase={phase} "  # pylint: disable=consider-using-f-string
+            "age={age_seconds}s remedy=stale incremental transaction; see doctor".format(
+                source_path=row.get("source_path", "?"),
+                transaction_id=row.get("transaction_id", "?"),
+                phase=row.get("phase", "?"),
+                age_seconds=row.get("age_seconds", "?"),
+            )
+        )
+    if len(stale) > 3:
+        parts.append(f"+{len(stale) - 3} more stale transactions")
+    return DoctorCheck(
+        "wedged_incremental_transaction",
+        True,
+        "; ".join(parts),
+        status="warn",
+    )
 
 
 def _check_incremental_refusals(cfg: dict) -> DoctorCheck:
@@ -1685,6 +1796,8 @@ def run_doctor(
         _check_index_gate(),
         _check_native_crash_gate(),
         _check_incremental_refusals(cfg),
+        _check_incremental_rollback_tamper(cfg),
+        _check_wedged_incremental_transactions(cfg),
         _check_chroma_write_guard(cfg),
         _check_chroma_audit(cfg),
         _check_cpu_tripwire(cfg),

@@ -13,6 +13,7 @@ import os
 import select
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -21,6 +22,42 @@ REPO = Path(__file__).resolve().parents[1]
 MCP_SERVER = REPO / "mcp_server.py"
 # Hang class waited up to 60s on nested list_roots; healthy stats is ~1s.
 STATS_DEADLINE_S = 12.0
+
+
+def _write_scratch_config(path: Path, chroma_dir: Path) -> None:
+    path.write_text(
+        "[index]\n"
+        f'chroma_dir = "{chroma_dir}"\n'
+        'processed_log = "{processed}"\n'
+        'units_export = "{export}"\n'
+        "[models]\n"
+        'embed_model = "nomic-embed-text"\n'
+        'ollama_host = "http://127.0.0.1:11434"\n'
+        "[shadow_ledger]\n"
+        "enabled = false\n".format(
+            processed=chroma_dir.parent / "processed.json",
+            export=chroma_dir.parent / "units.jsonl",
+        ),
+        encoding="utf-8",
+    )
+
+
+def _mcp_subprocess_env(scratch_home: Path) -> dict[str, str]:
+    chroma = scratch_home / "data" / "chroma"
+    chroma.parent.mkdir(parents=True, exist_ok=True)
+    cfg_path = scratch_home / "config" / "config.toml"
+    cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_scratch_config(cfg_path, chroma)
+    env = {
+        "HOME": str(scratch_home),
+        "CONVMEM_CONFIG": str(cfg_path),
+        "CONVMEM_MCP_PROFILE": "shell",
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "PYTHONNOUSERSITE": "1",
+    }
+    if "USER" in os.environ:
+        env["USER"] = os.environ["USER"]
+    return env
 
 
 class CrushMcpStdioSequence(unittest.TestCase):
@@ -39,96 +76,105 @@ class CrushMcpStdioSequence(unittest.TestCase):
         proc.stdin.flush()
 
     def test_shell_profile_stats_after_crush_handshake(self):
-        env = os.environ.copy()
-        env["CONVMEM_MCP_PROFILE"] = "shell"
-        env.setdefault("HOME", str(Path.home()))
-        with subprocess.Popen(
-            [sys.executable, "-u", str(MCP_SERVER)],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            bufsize=1,
-            env=env,
-            cwd=str(REPO),
-        ) as proc:
-            try:
-                self._send(
-                    proc,
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 1,
-                        "method": "initialize",
-                        "params": {
-                            "clientInfo": {
-                                "name": "crush",
-                                "title": "Crush",
-                                "version": "v0.86.0",
+        with tempfile.TemporaryDirectory(prefix="convmem-mcp-crush-") as scratch:
+            env = _mcp_subprocess_env(Path(scratch))
+            with subprocess.Popen(
+                [sys.executable, "-u", str(MCP_SERVER)],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                bufsize=1,
+                env=env,
+                cwd=str(REPO),
+            ) as proc:
+                try:
+                    self._send(
+                        proc,
+                        {
+                            "jsonrpc": "2.0",
+                            "id": 1,
+                            "method": "initialize",
+                            "params": {
+                                "clientInfo": {
+                                    "name": "crush",
+                                    "title": "Crush",
+                                    "version": "v0.86.0",
+                                },
+                                "protocolVersion": "2025-11-25",
+                                "capabilities": {"roots": {"listChanged": True}},
                             },
-                            "protocolVersion": "2025-11-25",
-                            "capabilities": {"roots": {"listChanged": True}},
                         },
-                    },
-                )
-                init = self._recv(proc, 20.0)
-                self.assertIsNotNone(init, "initialize timed out")
-                self.assertEqual(init.get("id"), 1)
-                self.assertIn("result", init)
+                    )
+                    init = self._recv(proc, 20.0)
+                    self.assertIsNotNone(init, "initialize timed out")
+                    self.assertEqual(init.get("id"), 1)
+                    self.assertIn("result", init)
 
-                self._send(
-                    proc,
-                    {
-                        "jsonrpc": "2.0",
-                        "method": "notifications/initialized",
-                        "params": {},
-                    },
-                )
-                self._send(
-                    proc,
-                    {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
-                )
-                self.assertIsNotNone(self._recv(proc, 20.0), "tools/list timed out")
-                self._send(
-                    proc,
-                    {"jsonrpc": "2.0", "id": 3, "method": "prompts/list", "params": {}},
-                )
-                self.assertIsNotNone(self._recv(proc, 10.0), "prompts/list timed out")
-                self._send(proc, {"jsonrpc": "2.0", "id": 4, "method": "ping"})
-                self.assertIsNotNone(self._recv(proc, 10.0), "ping timed out")
+                    self._send(
+                        proc,
+                        {
+                            "jsonrpc": "2.0",
+                            "method": "notifications/initialized",
+                            "params": {},
+                        },
+                    )
+                    self._send(
+                        proc,
+                        {
+                            "jsonrpc": "2.0",
+                            "id": 2,
+                            "method": "tools/list",
+                            "params": {},
+                        },
+                    )
+                    self.assertIsNotNone(self._recv(proc, 20.0), "tools/list timed out")
+                    self._send(
+                        proc,
+                        {
+                            "jsonrpc": "2.0",
+                            "id": 3,
+                            "method": "prompts/list",
+                            "params": {},
+                        },
+                    )
+                    self.assertIsNotNone(self._recv(proc, 10.0), "prompts/list timed out")
+                    self._send(proc, {"jsonrpc": "2.0", "id": 4, "method": "ping"})
+                    self.assertIsNotNone(self._recv(proc, 10.0), "ping timed out")
 
-                t0 = time.monotonic()
-                self._send(
-                    proc,
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 5,
-                        "method": "tools/call",
-                        "params": {"name": "stats", "arguments": {}},
-                    },
-                )
-                call = self._recv(proc, STATS_DEADLINE_S)
-                elapsed = time.monotonic() - t0
-                self.assertIsNotNone(
-                    call,
-                    f"tools/call stats timed out after {STATS_DEADLINE_S}s "
-                    "(Crush hang class: tools/call ↔ roots/list deadlock)",
-                )
-                self.assertLess(
-                    elapsed,
-                    STATS_DEADLINE_S,
-                    f"stats too slow ({elapsed:.2f}s) — possible regression toward hang",
-                )
-                self.assertEqual(call.get("id"), 5)
-                result = call.get("result") or {}
-                content = result.get("content") or []
-                self.assertTrue(content, f"empty tools/call result: {call}")
-                text = content[0].get("text") or ""
-                payload = json.loads(text)
-                self.assertIn("total_units", payload)
-                self.assertGreaterEqual(payload["total_units"], 0)
-            finally:
-                if proc.poll() is None:
-                    proc.kill()
+                    t0 = time.monotonic()
+                    self._send(
+                        proc,
+                        {
+                            "jsonrpc": "2.0",
+                            "id": 5,
+                            "method": "tools/call",
+                            "params": {"name": "stats", "arguments": {}},
+                        },
+                    )
+                    call = self._recv(proc, STATS_DEADLINE_S)
+                    elapsed = time.monotonic() - t0
+                    self.assertIsNotNone(
+                        call,
+                        f"tools/call stats timed out after {STATS_DEADLINE_S}s "
+                        "(Crush hang class: tools/call ↔ roots/list deadlock)",
+                    )
+                    self.assertLess(
+                        elapsed,
+                        STATS_DEADLINE_S,
+                        f"stats too slow ({elapsed:.2f}s) — possible regression toward hang",
+                    )
+                    self.assertEqual(call.get("id"), 5)
+                    result = call.get("result") or {}
+                    content = result.get("content") or []
+                    self.assertTrue(content, f"empty tools/call result: {call}")
+                    text = content[0].get("text") or ""
+                    payload = json.loads(text)
+                    self.assertIn("total_units", payload)
+                    self.assertGreaterEqual(payload["total_units"], 0)
+                finally:
+                    if proc.poll() is None:
+                        proc.kill()
 
 
 if __name__ == "__main__":

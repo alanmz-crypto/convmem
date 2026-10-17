@@ -34,6 +34,14 @@ class FakeStore:
     def get_unit(self, uid: str):
         return self._units.get(uid)
 
+    def active_units_for_ledger_id(self, ledger_id: str):
+        lid = (ledger_id or "").strip()
+        return [
+            dict(m)
+            for m in self._metas
+            if (m.get("ledger_id") or "").strip() == lid
+        ]
+
     def add_unit(self, unit_id, document, embedding, metadata):
         meta = dict(metadata)
         meta["id"] = unit_id
@@ -139,15 +147,26 @@ class MonitorProbeTests(unittest.TestCase):
         self.assertTrue(has_kiro_verification(store, "obs_staging2_wpsec_csp-missing"))
         self.assertFalse(has_kiro_verification(store, "obs_other"))
 
-    @mock.patch("observe.ingest_observation")
+    @mock.patch("observe.commit_observation_ingest")
+    @mock.patch("observe.prepare_observation_ingest")
     @mock.patch("monitor.fetch_https_headers")
     @mock.patch("monitor.check_tls_redirect")
     def test_run_monitor_emits_verification(
-        self, mock_tls, mock_fetch, mock_ingest
+        self, mock_tls, mock_fetch, mock_prepare, mock_commit
     ):
         mock_fetch.return_value = ({}, None)
         mock_tls.return_value = False
-        mock_ingest.return_value = {"id": "u1", "ledger_id": "ver_x"}
+        from observe import PreparedObservationIngest  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+
+        mock_prepare.return_value = PreparedObservationIngest(
+            record={"id": "ver_x"},
+            unit={"id": "u1", "ledger_id": "ver_x"},
+            doc="doc",
+            embedding=[0.1],
+            upsert=True,
+            target_digest="missing",
+        )
+        mock_commit.return_value = {"id": "u1", "ledger_id": "ver_x"}
 
         store = FakeStore(
             [
@@ -170,16 +189,17 @@ class MonitorProbeTests(unittest.TestCase):
         )
         self.assertGreater(stats["verifications"], 0)
         self.assertEqual(stats["skipped_kiro"], 0)
-        first_call = mock_ingest.call_args_list[0][0][0]
+        first_call = mock_prepare.call_args_list[0][0][0]
         self.assertEqual(first_call["kind"], "verification")
         self.assertEqual(first_call["relates_to"], "obs_staging2_willowyhollow_com_006")
         self.assertEqual(first_call["author_model"], AUTHOR_MODEL)
         self.assertEqual(first_call["confidence"], 0.4)
 
-    @mock.patch("observe.ingest_observation")
+    @mock.patch("observe.commit_observation_ingest")
+    @mock.patch("observe.prepare_observation_ingest")
     @mock.patch("monitor.fetch_https_headers")
     @mock.patch("monitor.check_tls_redirect")
-    def test_run_monitor_skips_kiro(self, mock_tls, mock_fetch, mock_ingest):
+    def test_run_monitor_skips_kiro(self, mock_tls, mock_fetch, mock_prepare, mock_commit):  # pylint: disable=unused-argument
         mock_fetch.return_value = ({"Content-Security-Policy": "x"}, None)
         mock_tls.return_value = True
         store = FakeStore(
@@ -210,7 +230,7 @@ class MonitorProbeTests(unittest.TestCase):
         self.assertGreater(stats["skipped_kiro"], 0)
         csp_verifications = [
             call[0][0]
-            for call in mock_ingest.call_args_list
+            for call in mock_prepare.call_args_list
             if call[0][0].get("relates_to") == "obs_staging2_willowyhollow_com_006"
         ]
         self.assertEqual(csp_verifications, [])

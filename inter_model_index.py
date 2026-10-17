@@ -301,33 +301,36 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
                 return True
         return False
 
+    from purge_locks import index_write_flock
+
     with source_flock(cfg, path_key):
         processed = _load_processed(processed_log)
         if _path_excluded(processed, path_key):
             if verbose:
                 print(f"  [skip] excluded during inter-model write {Path(path).name}")
             raise InterModelIndexError("source excluded during inter-model write")
-        with production_chroma_write_session(entrypoint="inter_model_index") as _pw:
-            store = _pw.store
-            cfg = _pw.live_cfg
-            from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
+        with index_write_flock(cfg):
+            with production_chroma_write_session(entrypoint="inter_model_index") as _pw:
+                store = _pw.store
+                cfg = _pw.live_cfg
+                from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
 
-            replayed_batch: list[tuple] = []
-            for row in units_batch:
-                replayed = _replay_unchanged_inter_model_projection(store, *row)
-                _guard_changed_inter_model_replace(store, *replayed)
-                replayed_batch.append(replayed)
+                replayed_batch: list[tuple] = []
+                for row in units_batch:
+                    replayed = _replay_unchanged_inter_model_projection(store, *row)
+                    _guard_changed_inter_model_replace(store, *replayed)
+                    replayed_batch.append(replayed)
 
-            dedupe = evaluate_ingest_batch(store, cfg, replayed_batch)
-            for unit, doc, embedding, meta in dedupe.accepted:
-                store.add_unit(unit["id"], doc, embedding, meta)
-                export_path.parent.mkdir(parents=True, exist_ok=True)
-                with export_flock_path(export_path):
-                    with open(export_path, "a", encoding="utf-8") as uf:
-                        uf.write(json.dumps(unit, ensure_ascii=False) + "\n")
-            if unit_ids_out is not None:
-                unit_ids_out.update(row[0]["id"] for row in dedupe.accepted)
-            persist_ingest_dedupe(cfg, dedupe)
+                dedupe = evaluate_ingest_batch(store, cfg, replayed_batch)
+                for unit, doc, embedding, meta in dedupe.accepted:
+                    store.add_unit(unit["id"], doc, embedding, meta)
+                    export_path.parent.mkdir(parents=True, exist_ok=True)
+                    with export_flock_path(export_path):
+                        with open(export_path, "a", encoding="utf-8") as uf:
+                            uf.write(json.dumps(unit, ensure_ascii=False) + "\n")
+                if unit_ids_out is not None:
+                    unit_ids_out.update(row[0]["id"] for row in dedupe.accepted)
+                persist_ingest_dedupe(cfg, dedupe)
 
     label = "kiro-steering" if source_type == "kiro_steering" else "inter-model"
     if verbose:

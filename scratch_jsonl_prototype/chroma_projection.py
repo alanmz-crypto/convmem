@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
@@ -62,14 +63,29 @@ class ScratchChromaProjection:
         # Local imports are intentional: callers establish the pre-import
         # boundary/network denial before constructing this adapter.
         from chroma_write_store import production_chroma_write_session
+        from config import load_config
+        from purge_locks import index_write_flock, index_write_lock_depth
 
-        return production_chroma_write_session(
+        lease = production_chroma_write_session(
             self.config_path,
             lock_path=self.lock_path,
             attest_dir=self.attest_dir,
             census_dir=self.census_dir,
             entrypoint="scratch_jsonl_chroma_projection",
         )
+        cfg = load_config(self.config_path)
+
+        @contextmanager
+        def _scoped():
+            if index_write_lock_depth() > 0:
+                with lease as session:
+                    yield session
+                return
+            with index_write_flock(cfg):
+                with lease as session:
+                    yield session
+
+        return _scoped()
 
     def upsert(self, rows: Iterable[dict[str, Any]], generation: str) -> int:
         """Upsert deterministic summary and unit rows for one generation."""

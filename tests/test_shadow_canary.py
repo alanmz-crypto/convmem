@@ -86,8 +86,11 @@ def test_c6_derives_writer_metrics_from_final_census_report(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from datetime import datetime, timezone
-    from chroma_write_store import DEFAULT_WRITER_LOCK
+    import chroma_write_store
 
+    writer_lock = tmp_path / "locks" / "chroma_writer_gate.lock"
+    monkeypatch.setattr(chroma_write_store, "DEFAULT_WRITER_LOCK", writer_lock)
+    monkeypatch.setattr("shadow_canary.DEFAULT_WRITER_LOCK", writer_lock)
     monkeypatch.setattr("chroma_write_store.current_code_revision", lambda: "c6-revision")
     chroma = tmp_path / "chroma"
     chroma.mkdir()
@@ -95,7 +98,7 @@ def test_c6_derives_writer_metrics_from_final_census_report(
     now = datetime(2030, 1, 1, tzinfo=timezone.utc)
     start_writer_census(
         census_dir=census_dir, chroma_root=chroma,
-        writer_gate_path=DEFAULT_WRITER_LOCK.expanduser(), now=now,
+        writer_gate_path=writer_lock, now=now,
     )
     report = build_writer_census_report(
         census_dir=census_dir, now=datetime(2030, 1, 9, tzinfo=timezone.utc)
