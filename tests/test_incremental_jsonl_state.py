@@ -248,11 +248,18 @@ def test_coverage_inventory_requires_both_sides() -> None:
 
 
 def test_watch_parent_has_no_checkpoint_imports() -> None:
+    from repository_knowledge_sync import watcher_child_index_argv
+
     text = Path("watch.py").read_text(encoding="utf-8")
     assert "incremental_jsonl" not in text
     assert "checkpoint.json" not in text
-    assert '["index", "--file"' in text or '"index", "--file"' in text or "index --file" in text.replace(" ", "")
-    assert "index" in text and "--file" in text
+    assert "watcher_child_index_argv" in text
+    assert watcher_child_index_argv("/x")[-4:] == [
+        "index",
+        "--file",
+        "/x",
+        "--now",
+    ]
 
 
 def test_prepared_crash_replays_with_zero_calls(tmp_path: Path) -> None:
