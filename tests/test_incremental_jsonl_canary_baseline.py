@@ -34,7 +34,8 @@ BASELINE_HASHES = {
     # recovery bootstrap_required refusal.
     # Refreshed for issue #286 stage-2 corrective 20 (R6-F1 capture-error escape accounting).
     # Refreshed for issue #286 corrective 24 pylint comment-only suppressions (no semantics).
-    "incremental_jsonl.py": "3330dbbb3308f17f12b51bc8036493bf45857ffb3c4c246e692110b363f6339d",
+    # Refreshed for issue #286 Kiro exact-path recovery parity (R1-R3).
+    "incremental_jsonl.py": "778a22d0f8a8b3f92a4748334f3d25f7022cc5077b4938b9858f1dfc210ea7f1",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
@@ -50,3 +51,5 @@ def test_p1_a14_evidence_is_reproducible_structure() -> None:
     payload = assemble_evidence(t0={"baseline": BASELINE_HASHES}, hermetic=True)
     assert payload["hermetic"] is True
     assert payload["sections"]["t0"]["baseline"] == BASELINE_HASHES
+
+# src: ../incremental_jsonl.py — pins the reviewed production runtime identity
