@@ -24,6 +24,16 @@ from incremental_transform_contract import (
 MIGRATION_RECEIPT_VERSION = 1
 STAGED_PREPARED_DIRNAME = "prepared_staged"
 
+MIGRATION_PUBLISH_FAULT_POINTS = (
+    "before_staged_prepare",
+    "before_staged_artifact_write",
+    "after_staged_artifact_write",
+    "before_receipt_publish",
+    "after_receipt_publish",
+    "before_checkpoint_publish",
+    "after_checkpoint_publish",
+)
+
 
 class MigrationError(RuntimeError):
     def __init__(self, code: str, detail: str = ""):
@@ -91,6 +101,61 @@ def assert_quiescent_for_migration(
         raise MigrationError("migration_checkpoint_missing")
     if int(checkpoint.get("version") or 0) != CHECKPOINT_VERSION_V1:
         raise MigrationError("migration_checkpoint_not_v1")
+
+
+def _publish_guards_from_checkpoint(checkpoint: dict[str, Any], checkpoint_bytes: bytes) -> dict[str, Any]:
+    return {
+        "checkpoint_digest": _sha(checkpoint_bytes),
+        "source_identity": str(checkpoint.get("source_identity") or ""),
+        "prefix_sha256": str(checkpoint.get("prefix_sha256") or ""),
+        "complete_boundary": int(checkpoint.get("complete_boundary") or 0),
+    }
+
+
+def _assert_publish_preconditions(
+    *,
+    checkpoint_path: Path,
+    transaction_path: Path,
+    rollback_path: Path,
+    guards: dict[str, Any],
+) -> dict[str, Any]:
+    assert_quiescent_for_migration(
+        checkpoint_path.parent,
+        checkpoint_path=checkpoint_path,
+        transaction_path=transaction_path,
+        rollback_path=rollback_path,
+    )
+    current_bytes = checkpoint_path.read_bytes()
+    if _sha(current_bytes) != guards["checkpoint_digest"]:
+        raise MigrationError("migration_checkpoint_changed")
+    checkpoint = _read_json(checkpoint_path)
+    if checkpoint is None:
+        raise MigrationError("migration_checkpoint_missing")
+    if str(checkpoint.get("source_identity") or "") != guards["source_identity"]:
+        raise MigrationError("migration_source_identity_changed")
+    if str(checkpoint.get("prefix_sha256") or "") != guards["prefix_sha256"]:
+        raise MigrationError("migration_prefix_hash_changed")
+    if int(checkpoint.get("complete_boundary") or 0) != int(guards["complete_boundary"]):
+        raise MigrationError("migration_boundary_changed")
+    return checkpoint
+
+
+def _v2_publication_if_complete(state_dir: Path, checkpoint_path: Path) -> dict[str, Any] | None:
+    checkpoint = _read_json(checkpoint_path)
+    if checkpoint is None:
+        return None
+    if int(checkpoint.get("version") or 0) != CHECKPOINT_VERSION_V2:
+        return None
+    receipt_digest = str(checkpoint.get("migration_receipt_digest") or "")
+    if len(receipt_digest) != 64:
+        raise MigrationError("migration_checkpoint_incomplete_v2")
+    receipt_path = state_dir / f"migration_receipt_{receipt_digest}.json"
+    if not receipt_path.is_file():
+        raise MigrationError("migration_checkpoint_incomplete_v2")
+    staged_root = state_dir / str(checkpoint.get("prepared_namespace") or "")
+    if not staged_root.is_dir():
+        raise MigrationError("migration_checkpoint_incomplete_v2")
+    return checkpoint
 
 
 @dataclass
@@ -181,6 +246,7 @@ def dry_run_migration(
         transaction_path=transaction_path,
         rollback_path=rollback_path,
     )
+    checkpoint_bytes = checkpoint_path.read_bytes()
     checkpoint = _read_json(checkpoint_path)
     if checkpoint is None:
         raise MigrationError("migration_checkpoint_missing")
@@ -230,24 +296,28 @@ def dry_run_migration(
     receipt = build_migration_receipt(
         source_path=source_path,
         source_identity=source_identity,
-        old_checkpoint_digest=_sha(checkpoint_path.read_bytes()),
+        old_checkpoint_digest=_sha(checkpoint_bytes),
         old_transform_fingerprint=old_fp,
         legacy_producer_implementation_revision=legacy_producer_implementation_revision,
         target_descriptor=target,
         artifact_mappings=mappings,
         converter_revision=converter_revision,
     )
+    publish_guards = _publish_guards_from_checkpoint(checkpoint, checkpoint_bytes)
     return {
         "dry_run": True,
         "receipt_digest": receipt.receipt_digest,
         "receipt": receipt.body,
         "artifact_count": len(mappings),
         "target_transform_fingerprint": target.digest,
+        "publish_guards": publish_guards,
     }
 
 
 def publish_migration(
     *,
+    cfg: dict,
+    path_key: str,
     state_dir: Path,
     source_path: str,
     source_identity: str,
@@ -261,83 +331,109 @@ def publish_migration(
     legacy_producer_implementation_revision: str,
     coordinator_implementation_revision: str,
     converter_revision: str = "incremental_checkpoint_migration-v1",
+    dry_run_report: dict[str, Any] | None = None,
     fault: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     require_hermetic_migration_context()
     fault = fault or (lambda _point: None)
-    report = dry_run_migration(
-        state_dir=state_dir,
-        source_path=source_path,
-        source_identity=source_identity,
-        chunk_size=chunk_size,
-        overlap=overlap,
-        min_confidence=min_confidence,
-        models=models,
-        embed_dimension=embed_dimension,
-        adapter_format=adapter_format,
-        adapter_contract_version=adapter_contract_version,
-        legacy_producer_implementation_revision=legacy_producer_implementation_revision,
-        converter_revision=converter_revision,
-    )
-    receipt_body = report["receipt"]
-    receipt_digest = report["receipt_digest"]
+    from purge_locks import index_write_flock, source_flock
+
     checkpoint_path = state_dir / "checkpoint.json"
-    checkpoint = _read_json(checkpoint_path)
-    if checkpoint is None:
-        raise MigrationError("migration_checkpoint_missing")
-    target = build_transform_descriptor(
-        chunk_size=chunk_size,
-        overlap=overlap,
-        min_confidence=min_confidence,
-        models=models,
-        embed_dimension=embed_dimension,
-        adapter_format=adapter_format,
-        adapter_contract_version=adapter_contract_version,
-    )
-    staged_root = state_dir / STAGED_PREPARED_DIRNAME / receipt_digest
-    fault("before_staged_prepare")
-    if staged_root.exists():
-        shutil.rmtree(staged_root)
-    staged_root.mkdir(parents=True, exist_ok=True)
-    os.chmod(staged_root, 0o700)
-    prepared_dir = state_dir / "prepared"
-    for mapping in receipt_body["artifact_mappings"]:
-        old_key = mapping["old_cache_key"]
-        old_path = prepared_dir / f"{old_key}.json"
-        payload = _read_json(old_path)
-        if payload is None:
-            raise MigrationError("migration_prepared_missing", old_key)
-        new_key = mapping["new_cache_key"]
-        migrated = dict(payload)
-        migrated["cache_key"] = new_key
-        migrated["transform_fingerprint"] = target.digest
-        migrated["migration_receipt_digest"] = receipt_digest
-        migrated["migrated_from_artifact_digest"] = mapping["old_artifact_digest"]
-        body = {name: value for name, value in migrated.items() if name != "digest"}
-        migrated["digest"] = _sha(_canonical_json(body))
-        fault("before_staged_artifact_write")
-        _atomic_json(staged_root / f"{new_key}.json", migrated)
-    receipt_path = state_dir / f"migration_receipt_{receipt_digest}.json"
-    fault("before_receipt_publish")
-    _atomic_json(receipt_path, receipt_body)
-    fault("after_receipt_publish")
-    new_checkpoint = dict(checkpoint)
-    new_checkpoint.update(descriptor_to_checkpoint_fields(target))
-    new_checkpoint["version"] = CHECKPOINT_VERSION_V2
-    new_checkpoint["prepared_namespace"] = f"{STAGED_PREPARED_DIRNAME}/{receipt_digest}"
-    new_checkpoint["migration_receipt_digest"] = receipt_digest
-    new_checkpoint["coordinator_implementation_revision"] = coordinator_implementation_revision
-    new_checkpoint["generation_scheme"] = "legacy-v1-generation-preserved"
-    validate_descriptor_digest(
-        new_checkpoint["transform_descriptor"],
-        str(new_checkpoint["transform_fingerprint"]),
-    )
-    fault("before_checkpoint_publish")
-    _atomic_json(checkpoint_path, new_checkpoint)
-    fault("after_checkpoint_publish")
-    return {
-        "published": True,
-        "receipt_digest": receipt_digest,
-        "prepared_namespace": new_checkpoint["prepared_namespace"],
-        "checkpoint_version": CHECKPOINT_VERSION_V2,
-    }
+    transaction_path = state_dir / "transaction.json"
+    rollback_path = state_dir / "rollback.json"
+
+    with source_flock(cfg, path_key):
+        with index_write_flock(cfg):
+            complete = _v2_publication_if_complete(state_dir, checkpoint_path)
+            if complete is not None:
+                receipt_digest = str(complete.get("migration_receipt_digest") or "")
+                if dry_run_report and dry_run_report.get("receipt_digest") != receipt_digest:
+                    raise MigrationError("migration_already_published_different_receipt")
+                return {
+                    "published": True,
+                    "idempotent": True,
+                    "receipt_digest": receipt_digest,
+                    "prepared_namespace": str(complete.get("prepared_namespace") or ""),
+                    "checkpoint_version": CHECKPOINT_VERSION_V2,
+                }
+
+            report = dry_run_report or dry_run_migration(
+                state_dir=state_dir,
+                source_path=source_path,
+                source_identity=source_identity,
+                chunk_size=chunk_size,
+                overlap=overlap,
+                min_confidence=min_confidence,
+                models=models,
+                embed_dimension=embed_dimension,
+                adapter_format=adapter_format,
+                adapter_contract_version=adapter_contract_version,
+                legacy_producer_implementation_revision=legacy_producer_implementation_revision,
+                converter_revision=converter_revision,
+            )
+            receipt_body = report["receipt"]
+            receipt_digest = report["receipt_digest"]
+            guards = report["publish_guards"]
+            target = build_transform_descriptor(
+                chunk_size=chunk_size,
+                overlap=overlap,
+                min_confidence=min_confidence,
+                models=models,
+                embed_dimension=embed_dimension,
+                adapter_format=adapter_format,
+                adapter_contract_version=adapter_contract_version,
+            )
+            staged_root = state_dir / STAGED_PREPARED_DIRNAME / receipt_digest
+            fault("before_staged_prepare")
+            if staged_root.exists():
+                shutil.rmtree(staged_root)
+            staged_root.mkdir(parents=True, exist_ok=True)
+            os.chmod(staged_root, 0o700)
+            prepared_dir = state_dir / "prepared"
+            for mapping in receipt_body["artifact_mappings"]:
+                old_key = mapping["old_cache_key"]
+                old_path = prepared_dir / f"{old_key}.json"
+                payload = _read_json(old_path)
+                if payload is None:
+                    raise MigrationError("migration_prepared_missing", old_key)
+                new_key = mapping["new_cache_key"]
+                migrated = dict(payload)
+                migrated["cache_key"] = new_key
+                migrated["transform_fingerprint"] = target.digest
+                migrated["migration_receipt_digest"] = receipt_digest
+                migrated["migrated_from_artifact_digest"] = mapping["old_artifact_digest"]
+                body = {name: value for name, value in migrated.items() if name != "digest"}
+                migrated["digest"] = _sha(_canonical_json(body))
+                fault("before_staged_artifact_write")
+                _atomic_json(staged_root / f"{new_key}.json", migrated)
+                fault("after_staged_artifact_write")
+            receipt_path = state_dir / f"migration_receipt_{receipt_digest}.json"
+            fault("before_receipt_publish")
+            _atomic_json(receipt_path, receipt_body)
+            fault("after_receipt_publish")
+            checkpoint = _assert_publish_preconditions(
+                checkpoint_path=checkpoint_path,
+                transaction_path=transaction_path,
+                rollback_path=rollback_path,
+                guards=guards,
+            )
+            new_checkpoint = dict(checkpoint)
+            new_checkpoint.update(descriptor_to_checkpoint_fields(target))
+            new_checkpoint["version"] = CHECKPOINT_VERSION_V2
+            new_checkpoint["prepared_namespace"] = f"{STAGED_PREPARED_DIRNAME}/{receipt_digest}"
+            new_checkpoint["migration_receipt_digest"] = receipt_digest
+            new_checkpoint["coordinator_implementation_revision"] = coordinator_implementation_revision
+            new_checkpoint["generation_scheme"] = "legacy-v1-generation-preserved"
+            validate_descriptor_digest(
+                new_checkpoint["transform_descriptor"],
+                str(new_checkpoint["transform_fingerprint"]),
+            )
+            fault("before_checkpoint_publish")
+            _atomic_json(checkpoint_path, new_checkpoint)
+            fault("after_checkpoint_publish")
+            return {
+                "published": True,
+                "receipt_digest": receipt_digest,
+                "prepared_namespace": new_checkpoint["prepared_namespace"],
+                "checkpoint_version": CHECKPOINT_VERSION_V2,
+            }

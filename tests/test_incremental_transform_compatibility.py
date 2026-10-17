@@ -12,6 +12,7 @@ import pytest
 import incremental_jsonl
 from incremental_jsonl import CHECKPOINT_VERSION, TRANSACTION_VERSION
 from incremental_checkpoint_migration import (
+    MIGRATION_PUBLISH_FAULT_POINTS,
     MigrationError,
     assert_quiescent_for_migration,
     dry_run_migration,
@@ -19,6 +20,7 @@ from incremental_checkpoint_migration import (
 )
 from incremental_jsonl_production import ProductionBoundary
 from incremental_transform_contract import (
+    CHECKPOINT_VERSION_V1,
     CHECKPOINT_VERSION_V2,
     RECOVERY_PROTOCOL_VERSION,
     TRANSACTION_VERSION_V2,
@@ -29,7 +31,7 @@ from incremental_transform_contract import (
 )
 from tests.incremental_jsonl_helpers import (
     codex_rollout_record,
-    enable_incremental,
+    install_build_chunk_tracker,
     install_fakes,
     isolated_env,
     write_codex_rollout_source,
@@ -40,6 +42,81 @@ from tests.test_incremental_jsonl_codex_rollout_route import (
     _sessions_root,
     _write_user_config,
 )
+
+
+def _downgrade_checkpoint_to_legacy_v1(
+    coord: incremental_jsonl.IncrementalJsonlCoordinator,
+    *,
+    legacy_producer_revision: str,
+) -> None:
+    ckpt_path = coord.paths["checkpoint"]
+    payload = json.loads(ckpt_path.read_text(encoding="utf-8"))
+    payload["version"] = CHECKPOINT_VERSION
+    for field in (
+        "transform_descriptor",
+        "fingerprint_scheme",
+        "transform_contract_version",
+        "prepared_namespace",
+        "migration_receipt_digest",
+        "coordinator_implementation_revision",
+        "generation_scheme",
+    ):
+        payload.pop(field, None)
+    payload["transform_fingerprint"] = compute_legacy_v1_transform_fingerprint(
+        chunk_size=coord.chunk_size,
+        overlap=coord.overlap,
+        min_confidence=coord.min_confidence,
+        models=coord.models,
+        embed_dimension=coord.embed_dimension,
+        implementation_revision=legacy_producer_revision,
+        adapter_format=coord.format_spec.format_id,
+        adapter_contract_version=coord.format_spec.adapter_contract_version,
+    )
+    ckpt_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+
+def _migration_base_kwargs(
+    coord: incremental_jsonl.IncrementalJsonlCoordinator,
+    *,
+    legacy_producer_revision: str,
+) -> dict:
+    return {
+        "state_dir": coord.state_dir,
+        "source_path": str(coord.source),
+        "source_identity": coord.source_id,
+        "chunk_size": coord.chunk_size,
+        "overlap": coord.overlap,
+        "min_confidence": coord.min_confidence,
+        "models": coord.models,
+        "embed_dimension": coord.embed_dimension,
+        "adapter_format": coord.format_spec.format_id,
+        "adapter_contract_version": coord.format_spec.adapter_contract_version,
+        "legacy_producer_implementation_revision": legacy_producer_revision,
+    }
+
+
+def _publish_kwargs(
+    coord: incremental_jsonl.IncrementalJsonlCoordinator,
+    *,
+    legacy_producer_revision: str,
+    coordinator_revision: str = "converter-runtime",
+    dry_run_report: dict | None = None,
+    fault=None,
+) -> dict:
+    return {
+        "cfg": coord.cfg,
+        "path_key": coord.path_key,
+        "coordinator_implementation_revision": coordinator_revision,
+        "dry_run_report": dry_run_report,
+        "fault": fault,
+        **_migration_base_kwargs(coord, legacy_producer_revision=legacy_producer_revision),
+    }
+
+
+def _checkpoint_version(state_dir: Path) -> int:
+    payload = json.loads((state_dir / "checkpoint.json").read_text(encoding="utf-8"))
+    return int(payload.get("version") or 0)
+
 
 def test_version_constants_are_distinct_c8() -> None:
     from incremental_transform_contract import FINGERPRINT_SCHEME
@@ -142,8 +219,6 @@ def test_deploy_identity_ab_unchanged_without_provider_calls(
     )
     fp = first.transform_fingerprint
     assert first.run().outcome == "committed"
-    import chroma_write_store
-
     monkeypatch.setattr(
         chroma_write_store,
         "current_implementation_revision",
@@ -193,23 +268,7 @@ def test_legacy_v1_checkpoint_refuses_migration_required(
         processed={},
     )
     coord.run()
-    ckpt_path = coord.paths["checkpoint"]
-    payload = json.loads(ckpt_path.read_text(encoding="utf-8"))
-    payload["version"] = CHECKPOINT_VERSION
-    payload.pop("transform_descriptor", None)
-    payload.pop("fingerprint_scheme", None)
-    payload.pop("transform_contract_version", None)
-    payload["transform_fingerprint"] = compute_legacy_v1_transform_fingerprint(
-        chunk_size=4,
-        overlap=0,
-        min_confidence=0.6,
-        models=cfg["models"],
-        embed_dimension=8,
-        implementation_revision=coord.coordinator_implementation_revision,
-        adapter_format="jsonl_codex_rollout",
-        adapter_contract_version="codex-rollout-complete-prefix-v1",
-    )
-    ckpt_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="a" * 64)
     result = incremental_jsonl.IncrementalJsonlCoordinator(
         boundary,
         source,
@@ -222,6 +281,93 @@ def test_legacy_v1_checkpoint_refuses_migration_required(
         processed={},
     ).run()
     assert result.outcome == "migration_required"
+
+
+def test_production_codex_v1_migrates_then_continues_without_rebuild(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("CONVMEM_INCREMENTAL_ROOT", str(tmp_path))
+    sessions = _sessions_root(tmp_path)
+    sessions.mkdir(parents=True)
+    admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    source = _admitted_rollout(sessions, admitted)
+    cfg = _production_cfg(tmp_path, sessions, admitted)
+    cfg_path = tmp_path / "config.toml"
+    _write_user_config(cfg_path, cfg)
+    install_fakes(monkeypatch)
+    build_calls = install_build_chunk_tracker(monkeypatch)
+    boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
+    legacy_rev = "a" * 64
+    import chroma_write_store
+
+    monkeypatch.setattr(
+        chroma_write_store,
+        "current_implementation_revision",
+        lambda: legacy_rev,
+        raising=False,
+    )
+    coord = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    )
+    assert coord.run().outcome == "committed"
+    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision=legacy_rev)
+    refused = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert refused.outcome == "migration_required"
+    report = dry_run_migration(**_migration_base_kwargs(coord, legacy_producer_revision=legacy_rev))
+    publish_migration(**_publish_kwargs(coord, legacy_producer_revision=legacy_rev, dry_run_report=report))
+    unchanged = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert unchanged.outcome == "unchanged"
+    assert unchanged.counters.total == 0
+    prior_count = int(
+        json.loads((coord.state_dir / "checkpoint.json").read_text(encoding="utf-8"))["record_count"]
+    )
+    with source.open("ab") as handle:
+        for index in range(prior_count, prior_count + 4):
+            handle.write(codex_rollout_record(index))
+    build_calls.clear()
+    appended = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert appended.outcome == "committed"
+    assert appended.counters.total > 0
+    assert build_calls
 
 
 def test_recovery_protocol_refused_c6(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -249,68 +395,6 @@ def test_recovery_protocol_refused_c6(tmp_path: Path, monkeypatch: pytest.Monkey
         coord._roll_forward(json.loads((state / "transaction.json").read_text(encoding="utf-8")))
 
 
-def test_migration_converter_dry_run_and_publish(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    boundary, env = isolated_env(tmp_path)
-    from tests.incremental_jsonl_helpers import apply_env
-    apply_env(monkeypatch, env)
-    source = write_codex_rollout_source(boundary.root, 8)
-    install_fakes(monkeypatch)
-    enable_incremental(boundary)
-    coord = incremental_jsonl.IncrementalJsonlCoordinator.from_isolated_boundary(
-        boundary, source, enabled=True, embed_dimension=8, chunk_size=4, overlap=0
-    )
-    outcome = coord.run()
-    assert outcome.outcome == "committed"
-    state = coord.state_dir
-    ckpt = json.loads((state / "checkpoint.json").read_text(encoding="utf-8"))
-    ckpt["version"] = CHECKPOINT_VERSION
-    legacy_fp = compute_legacy_v1_transform_fingerprint(
-        chunk_size=4,
-        overlap=0,
-        min_confidence=0.6,
-        models=coord.models,
-        embed_dimension=8,
-        implementation_revision="legacy-producer",
-        adapter_format=coord.format_spec.format_id,
-        adapter_contract_version=coord.format_spec.adapter_contract_version,
-    )
-    ckpt["transform_fingerprint"] = legacy_fp
-    (state / "checkpoint.json").write_text(json.dumps(ckpt, sort_keys=True), encoding="utf-8")
-    report = dry_run_migration(
-        state_dir=state,
-        source_path=str(source),
-        source_identity=coord.source_id,
-        chunk_size=4,
-        overlap=0,
-        min_confidence=0.6,
-        models=coord.models,
-        embed_dimension=8,
-        adapter_format=coord.format_spec.format_id,
-        adapter_contract_version=coord.format_spec.adapter_contract_version,
-        legacy_producer_implementation_revision="legacy-producer",
-    )
-    assert report["dry_run"] is True
-    published = publish_migration(
-        state_dir=state,
-        source_path=str(source),
-        source_identity=coord.source_id,
-        chunk_size=4,
-        overlap=0,
-        min_confidence=0.6,
-        models=coord.models,
-        embed_dimension=8,
-        adapter_format=coord.format_spec.format_id,
-        adapter_contract_version=coord.format_spec.adapter_contract_version,
-        legacy_producer_implementation_revision="legacy-producer",
-        coordinator_implementation_revision="converter-runtime",
-    )
-    assert published["checkpoint_version"] == CHECKPOINT_VERSION_V2
-    new_ckpt = json.loads((state / "checkpoint.json").read_text(encoding="utf-8"))
-    assert new_ckpt["version"] == CHECKPOINT_VERSION_V2
-
-
 def test_quiescence_blocks_migration_c4(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     boundary, _env = isolated_env(tmp_path)
     monkeypatch.setenv("CONVMEM_INCREMENTAL_ROOT", str(boundary.root))
@@ -328,3 +412,77 @@ def test_quiescence_blocks_migration_c4(tmp_path: Path, monkeypatch: pytest.Monk
             transaction_path=state / "transaction.json",
             rollback_path=state / "rollback.json",
         )
+
+
+def test_publish_refuses_when_transaction_appears_after_dry_run_c4(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boundary, env = isolated_env(tmp_path)
+    from tests.incremental_jsonl_helpers import apply_env
+
+    apply_env(monkeypatch, env)
+    source = write_codex_rollout_source(boundary.root, 8)
+    install_fakes(monkeypatch)
+    coord = incremental_jsonl.IncrementalJsonlCoordinator.from_isolated_boundary(
+        boundary, source, enabled=True, embed_dimension=8, chunk_size=4, overlap=0
+    )
+    coord.run()
+    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="legacy-producer")
+    report = dry_run_migration(**_migration_base_kwargs(coord, legacy_producer_revision="legacy-producer"))
+    (coord.state_dir / "transaction.json").write_text('{"phase":"PREPARING"}', encoding="utf-8")
+    with pytest.raises(MigrationError, match="pending_transaction"):
+        publish_migration(
+            **_publish_kwargs(
+                coord,
+                legacy_producer_revision="legacy-producer",
+                dry_run_report=report,
+            )
+        )
+    assert _checkpoint_version(coord.state_dir) == CHECKPOINT_VERSION_V1
+
+
+@pytest.mark.parametrize("point", MIGRATION_PUBLISH_FAULT_POINTS)
+def test_migration_publish_crash_fault_matrix_is_safe_and_idempotent(
+    tmp_path: Path, point: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boundary, env = isolated_env(tmp_path)
+    from tests.incremental_jsonl_helpers import apply_env
+
+    apply_env(monkeypatch, env)
+    source = write_codex_rollout_source(boundary.root, 8)
+    install_fakes(monkeypatch)
+    coord = incremental_jsonl.IncrementalJsonlCoordinator.from_isolated_boundary(
+        boundary, source, enabled=True, embed_dimension=8, chunk_size=4, overlap=0
+    )
+    coord.run()
+    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="legacy-producer")
+    report = dry_run_migration(**_migration_base_kwargs(coord, legacy_producer_revision="legacy-producer"))
+
+    def fault(name: str) -> None:
+        if name == point:
+            raise RuntimeError(f"injected fault at {name}")
+
+    with pytest.raises(RuntimeError, match="injected fault"):
+        publish_migration(
+            **_publish_kwargs(
+                coord,
+                legacy_producer_revision="legacy-producer",
+                dry_run_report=report,
+                fault=fault,
+            )
+        )
+    version = _checkpoint_version(coord.state_dir)
+    assert version in {CHECKPOINT_VERSION_V1, CHECKPOINT_VERSION_V2}
+    if version == CHECKPOINT_VERSION_V2:
+        payload = json.loads((coord.state_dir / "checkpoint.json").read_text(encoding="utf-8"))
+        receipt_digest = str(payload.get("migration_receipt_digest") or "")
+        assert (coord.state_dir / f"migration_receipt_{receipt_digest}.json").is_file()
+
+    publish_migration(
+        **_publish_kwargs(
+            coord,
+            legacy_producer_revision="legacy-producer",
+            dry_run_report=report,
+        )
+    )
+    assert _checkpoint_version(coord.state_dir) == CHECKPOINT_VERSION_V2

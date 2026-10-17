@@ -73,7 +73,21 @@ def contract_inventory_digest() -> str:
     return _sha(_canonical_json(contract_inventory_sources()))
 
 
-PINNED_CONTRACT_INVENTORY_DIGEST = contract_inventory_digest()
+EPOCH_BUMP_CHECKLIST_REL = "docs/plans/incremental_transform_epoch_bump_checklist.md"
+
+
+def contract_inventory_drift_message(live: str, pinned: str) -> str:
+    return (
+        "transform contract inventory drifted without epoch bump; "
+        f"live={live} pinned={pinned}; "
+        f"update transform_contract_version or descriptor per {EPOCH_BUMP_CHECKLIST_REL}"
+    )
+
+
+def assert_contract_inventory_matches(pinned_digest: str) -> None:
+    live = contract_inventory_digest()
+    if live != pinned_digest:
+        raise AssertionError(contract_inventory_drift_message(live, pinned_digest))
 
 
 @dataclass(frozen=True)
@@ -245,14 +259,5 @@ def recovery_protocol_supported(version: int | None) -> bool:
     return int(version) in SUPPORTED_RECOVERY_PROTOCOL_VERSIONS
 
 
-def assert_contract_inventory_current() -> None:
-    live = contract_inventory_digest()
-    if live != PINNED_CONTRACT_INVENTORY_DIGEST:
-        raise AssertionError(
-            "transform contract inventory drifted without epoch bump; "
-            f"live={live} pinned={PINNED_CONTRACT_INVENTORY_DIGEST}"
-        )
-
-
 def checklist_path() -> Path:
-    return Path(__file__).resolve().parent / "docs/plans/incremental_transform_epoch_bump_checklist.md"
+    return Path(__file__).resolve().parent / EPOCH_BUMP_CHECKLIST_REL

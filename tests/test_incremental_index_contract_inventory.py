@@ -136,16 +136,36 @@ def test_codex_formats_detect_and_parse_without_prefix_route(
     assert len(rollout_messages) == 1
     assert rollout_messages[0]["source_type"] == "codex_rollout"
 
+PINNED_TRANSFORM_CONTRACT_INVENTORY_DIGEST = (
+    "9f40605f88b9a772dee9c6645cc245b223726a7312dba0f09a2533355ac6f2b3"
+)
+
+
 def test_transform_contract_inventory_is_pinned_c1_c2() -> None:
     from incremental_transform_contract import (
-        PINNED_CONTRACT_INVENTORY_DIGEST,
-        assert_contract_inventory_current,
+        assert_contract_inventory_matches,
         contract_inventory_digest,
         contract_inventory_sources,
     )
 
-    assert_contract_inventory_current()
+    assert_contract_inventory_matches(PINNED_TRANSFORM_CONTRACT_INVENTORY_DIGEST)
     sources = contract_inventory_sources()
     assert "incremental_jsonl.py" not in str(sources)
-    assert contract_inventory_digest() == PINNED_CONTRACT_INVENTORY_DIGEST
+    assert contract_inventory_digest() == PINNED_TRANSFORM_CONTRACT_INVENTORY_DIGEST
+
+
+def test_prompt_template_drift_fails_contract_inventory_c1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import incremental_transform_contract as contract
+
+    monkeypatch.setattr(
+        contract,
+        "SUMMARIZE_PROMPT",
+        contract.SUMMARIZE_PROMPT + "drift",
+    )
+    from incremental_transform_contract import assert_contract_inventory_matches
+
+    with pytest.raises(AssertionError, match="incremental_transform_epoch_bump_checklist.md"):
+        assert_contract_inventory_matches(PINNED_TRANSFORM_CONTRACT_INVENTORY_DIGEST)
 
