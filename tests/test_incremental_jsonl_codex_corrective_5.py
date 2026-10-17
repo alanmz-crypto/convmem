@@ -149,7 +149,7 @@ def _admitted_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 def _projection_state(coord: incremental_jsonl.IncrementalJsonlCoordinator, cfg: dict):
     processed = Path(cfg["index"]["processed_log"])
     return (
-        coord._codex_projection_fingerprint(),
+        coord._projection_fingerprint(),
         processed.read_bytes() if processed.exists() else None,
     )
 
