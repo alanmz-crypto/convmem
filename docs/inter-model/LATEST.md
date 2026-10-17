@@ -9,6 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **cpu_tripwire fix live on runtime, PR #398 open (2026-10-17, Kiro):** `convmem doctor`
+  was exiting 1 on a benign Typora userspace crash because the CPU tripwire FAILed on any
+  unattributed native fault. Fix reclassifies the verdict (hardware → FAIL, userspace →
+  WARN); PR [#398](https://github.com/alanmz-crypto/convmem/pull/398) is open, MERGEABLE,
+  CI green except in-flight pytest, carries a **Ryan GATE** (narrows a safety tripwire).
+  **TEMPORARY:** `.worktrees/runtime-main` is switched to branch
+  `fix/2026-10-17-cpu-tripwire-advisory-userspace` (tip `c037163`) so doctor exits 0 now.
+  **After merge, self-heal:** `git -C ~/Projects/convmem/.worktrees/runtime-main checkout main && git -C ~/Projects/convmem/.worktrees/runtime-main pull --ff-only`.
+  See [handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md). **Next lane: Ryan** (merge).
+
 - **cpu_tripwire — stop blocking agents on benign userspace crashes (2026-10-17):**
   `convmem doctor` currently exits 1 (stalling every agent at session start)
   whenever a desktop app faults during the boot, because the Poison Pill

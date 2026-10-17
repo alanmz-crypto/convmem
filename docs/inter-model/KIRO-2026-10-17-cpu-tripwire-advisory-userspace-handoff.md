@@ -4,7 +4,15 @@
 **Author:** Kiro (design/review — not implemented; Kiro is review-required)
 **For:** Cursor (implementation) → Ryan review / PR
 **Arc:** none (ad-hoc) — safety-check policy change
-**Resume state:** `NOT_STARTED` — design only; no code written, no branch cut.
+**Resume state:** `READY_FOR_PR` — implemented, pushed, PR [#398](https://github.com/alanmz-crypto/convmem/pull/398) open and MERGEABLE (blocked only on in-flight pytest CI; Ryan GATE on merge). Tip `c037163`.
+
+> **TEMPORARY RUNTIME STATE (2026-10-17, Kiro):** to unblock `convmem doctor` (exit 0)
+> before #398 merges, the `.worktrees/runtime-main` worktree was switched from `main` to
+> this fix branch `fix/2026-10-17-cpu-tripwire-advisory-userspace` (tip `c037163`). The live
+> CLI therefore runs this branch, which differs from `main` only by this one tripwire fix.
+> **Self-heal after #398 merges:**
+> `git -C ~/Projects/convmem/.worktrees/runtime-main checkout main && git -C ~/Projects/convmem/.worktrees/runtime-main pull --ff-only`
+> To revert immediately (restores the FAIL until merge): same `checkout main`.
 **Supersedes:** an earlier GUI-allowlist approach (drafted then discarded 2026-10-17 when the CPU
 fix retired its premise; see "Why this replaces the allowlist design"). No allowlist doc remains.
 
