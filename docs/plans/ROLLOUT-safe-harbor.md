@@ -7,6 +7,14 @@ No production service change, corpus write, backup, restore, audit, repair or
 release was run. The later authorized synthetic readiness evidence is recorded
 below; it changes neither the deployed runtime nor this draft's execution status.
 
+**October 17 qualification:** the observations and source/service comparisons
+below are historical. A later bounded static inspection found runtime-main at
+`3e705e4197829f53ebbbd8433b59b60b648309d2`; this procedure has not been rebound to
+that runtime or its loaded processes. Ryan retained the Typora CPU-tripwire
+warning and authorized static planning/review only. The warning remains visible;
+no causal link to ConvMem or hardware cause was established. EXECUTION §22 is the
+current initializer review subject, and all live transitions remain ungranted.
+
 **Goal:** bring the accepted recovery/incident contracts into service without losing
 the ability to recover or allowing old processes to undermine incident authority.
 **Author:** Codex. **Next reviewers:** Kiro for the operational procedure; Ryan for

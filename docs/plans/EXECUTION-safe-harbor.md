@@ -898,6 +898,12 @@ unauthorized. No other arc ownership or accepted T1–T5 contract changes.
 
 ### Decision and boundary
 
+**2026-10-17 authority:** Ryan retained the CPU tripwire warning and explicitly
+allowed Safe Harbor's static planning/review to continue. This is an exception to
+the startup gate for this bounded work, not a healthy-host determination or an
+implementation/live-operation grant. The Typora event has no demonstrated link
+to ConvMem; its hardware cause is unestablished. Do not clear or suppress it.
+
 The missing operation is deliberate creation of evidence-bearing local segment
 saves when unchanged legacy CURRENT generations lack evidence. Ordinary reconcile
 skips them; an old source cannot be used for bounded repair without that evidence.
@@ -907,7 +913,7 @@ not a migration framework, new recovery authority or change to ordinary writes.
 Proposed entrypoint: `scripts/chroma_guard.py initialize-legacy`. Default behavior
 is a read-only preview; applying it requires explicit canonical Chroma root, a
 fresh archive destination, the preview's expected-state digest and an apply
-flag. Exact arguments/output schema require the scope's governing review. There
+flag. The concrete interface below is proposed for governing review. There
 is no implicit config-selected production target, startup hook, timer, environment
 bypass or automatic first-write initialization. A digest binds state; it is not
 an owner authorization token.
@@ -917,15 +923,38 @@ deleting CURRENT or changing signatures to force it conceals the intended
 operation and risks pruning originals. A private-method production one-liner
 omits a supported admission/preservation contract. These are not permitted routes.
 
+### Proposed command contract
+
+- Preview: `initialize-legacy --chroma-dir <absolute-canonical-root>
+  --archive-dir <absolute-fresh-destination>`. Both paths are explicit, including
+  in preview; reject missing arguments before the existing config fallback.
+- Apply adds `--apply --expect-state <preview-digest>`. The digest also binds the
+  archive destination. An apply flag without the digest, or digest without apply,
+  is a usage error. No other command inherits these flags or behavior.
+- Emit one structured JSON result with `status`, `reason`, `target`, `archive`,
+  `state_digest`, and per-segment original/prepared/observed CURRENT references.
+  Status is `preview_ready`, `refused`, `complete`, `partial_or_uncertain`, or
+  `unavailable`. Exit 0 means ready preview or complete apply, 1 means a known
+  refusal, and 2 means usage/unavailable/partial-or-uncertain failure. Preview
+  readiness is explicitly not a completed mutation or owner authorization.
+- This first operation accepts only a complete legacy set. Mixed legacy/new or
+  already-initialized sets are inspection results and refuse apply; a failed
+  previous attempt needs a new disposition, not an automatic retry. Unknown
+  staging/generation state is reported and retained, never cleaned up implicitly.
+
 ### Required behavior
 
 1. **Preview and binding.** Inspect existing state without opening a Chroma client
    or changing corpus/guard files. Enumerate the complete expected segment set,
-   CURRENT bytes, generation manifests/files and backend identity. Bind the
-   preview digest to canonical target plus these inputs; show existing eligible,
+   CURRENT bytes, generation manifests/files, live segment hashes, SQL collection/
+   segment identities, watermarks, pending-operation digest and backend identity.
+   Bind the preview digest to canonical target/archive plus these inputs; show existing eligible,
    legacy, unavailable and unexpected states distinctly. Refuse ambiguous paths,
    symlinks, incomplete generations or unknown schema. Do not reinterpret an
    already initialized or partially initialized store as a new legacy operation.
+   Preview must not create the native lock, an event, archive or staging directory.
+   Use read-only SQLite and before/after file checks; report concurrent change
+   rather than claiming preview is atomic. Apply always rechecks under its locks.
 2. **Admission and complete precheck.** A later apply acquires the existing native
    lock, rechecks quarantine/target/digest, and keeps a read-only SQLite transaction
    across validation and capture. All affected segments must pass structural,
@@ -944,8 +973,15 @@ omits a supported admission/preservation contract. These are not permitted route
    authority or a substitute for the qualified recovery artifact.
 4. **Create new saves, leave the corpus alone.** Reuse existing snapshot capture
    and validation under the locks after complete archival. Do not add release
-   evidence to an old manifest. Create new generations, verify their identities,
-   digests and strict evidence, and then publish their CURRENT pointers. Preserve
+   evidence to an old manifest. Prepare **all** new generations and verify their
+   identities, digests and strict evidence before publishing **any** CURRENT.
+   Recheck the bound SQL/live-file/original state immediately before publication.
+   The existing `_refresh_snapshot` combines capture, CURRENT publication and
+   pruning and can record unavailable evidence; calling it then checking the
+   result cannot satisfy this contract. Factor a preparation/publication boundary
+   or equivalent internal helpers within the two allowed runtime files. This
+   initializer performs **no pruning**, including after success; ordinary capture
+   retains its existing policy and the durable archive remains outside its reach. Preserve
    existing ordinary capture behavior; any helper factoring must keep it covered.
    No queue flush, embedding/indexing, repair, automatic release or SQLite write.
 5. **Multiple segments and interruption.** Success means every expected segment's
@@ -986,6 +1022,9 @@ Minimum isolated acceptance evidence:
   also refuse without erasing source/incident state.
 - Archive short write/hash mismatch/file and directory fsync failures: no publish
   or prune. A real faulty omit-archive control must fail the retention assertion.
+- Failure preparing/validating the second segment must leave both original
+  CURRENT references unchanged. An injected publish-during-preparation control
+  must fail that assertion; check that successful initialization also prunes none.
 - Interrupt before archival completion, before first CURRENT publication and
   after the first of two publications. Restart inspection distinguishes old,
   partial and complete state; retained originals survive; neither retry nor a

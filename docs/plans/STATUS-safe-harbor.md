@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** Kiro PASSed the 83+5 readiness evidence at `f45b051`; operational readiness remains OPEN. [The initializer scope](EXECUTION-safe-harbor.md#22-bounded-legacy-source-initialization--proposed-scope-not-a-grant) is drafted for governing review, not implementation. Recovery inputs and rollout authorization remain pending. Merged code is not deployed runtime.
+> **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** Kiro PASSed the 83+5 readiness evidence at `f45b051`; operational readiness remains OPEN. [The initializer scope](EXECUTION-safe-harbor.md#22-bounded-legacy-source-initialization--proposed-scope-not-a-grant) is drafted for governing review, not implementation. Recovery inputs and rollout authorization remain pending. A merge alone does not establish deployed or loaded identities.
 
 ## 1. What This Is For (product goal)
 
@@ -37,9 +37,9 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 - **T1–T5 are on main:** incident retention/canonical identity (#387), target-bound preflight (#389), preservation and strict release (#391), serialized approval recovery (#392), and integrated evidence/operator handoff (#394).
 - **Latest squash:** `c6f07241ccf1a71d9d874fee963a37b04091b3ce`; its tree equals accepted PR #394 head `188184b28707eb87c042d579aa7bbcba043dd5d0`. [VERIFY closeout](VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping) records CI, pinned reviews and Ryan's exact-head outage exception.
-- **Observed deployed checkout:** clean runtime-main at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`, four Safe Harbor commits behind the candidate. Long-lived MCP processes predate its last update; disk identity does not establish loaded code identity.
-- **Operational preflight/draft:** [ROLLOUT](ROLLOUT-safe-harbor.md) records the October 14 local observations and conditional sequence. Watch is stopped/disabled; reconcile/backup/digest timers are active. Backups still run the shared feature checkout under system Python. Audit units are absent.
-- **Existing guard state:** two matching legacy snapshot generations lack release evidence; no quarantine marker was present at inspection. Candidate reconciliation skips unchanged signatures, so it does not initialize these generations automatically. No production validation/adoption ran.
+- **Historical deployed checkout:** the October 14 preflight observed runtime-main at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`. October 17's bounded static inspection found it at `3e705e4197829f53ebbbd8433b59b60b648309d2`; the old deployment comparison is stale and has not been requalified. Disk identity does not establish loaded process identity.
+- **Operational preflight/draft:** [ROLLOUT](ROLLOUT-safe-harbor.md) records October 14 observations and a conditional sequence. Those service/timer observations are historical, not current guarantees. No rollout transition has been performed by this lane.
+- **Guard state at October 14 inspection:** two matching legacy snapshot generations lacked release evidence; no quarantine marker was present. Candidate reconciliation skips unchanged signatures, so it does not initialize these generations automatically. This lane performed no production validation/adoption.
 - **New isolated readiness evidence:** `tests/_safe_harbor_rollout_evidence.py` runs a fixed selection under the reviewed bootstrap; `tests/test_safe_harbor_rollout_legacy.py` rehearses representative old manifests. [VERIFY readiness](VERIFY-safe-harbor.md#isolated-rollout-readiness--installed-interpreter-and-legacy-state) records source pins, results and limitations. Runtime is unchanged; no production initialization command was added.
 - **Independent review and new proposal:** [Kiro's pinned PASS](VERIFY-safe-harbor.md#independent-readiness-review--kiro-pass-exact-subject-retained) covers `f45b051` after same-session coverage completion. EXECUTION §22 proposes one manual initializer on the existing guard/CLI, with durable originals before prune and whole-set eligibility checks. That later proposal is unreviewed and unimplemented.
 
@@ -52,12 +52,13 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Deployment readiness OPEN:** old processes, timer routing, recovery inputs and an operational legacy initializer still require the named dispositions in ROLLOUT. The scratch refresh can create admissible evidence for synced state, but pending work still blocks release. Archival byte retention in tests is not a durable production archival procedure.
 - The key-copy file is now present on the mounted BIT-Brg drive; contents/equality/off-machine use were not checked. The new ext4 destination is mounted and empty at top level. No current Rescuezilla artifact or accepted lost-work interval is established by this preflight.
 - Limits remain: historical T5-F1 exact causal timeline unproven; fixture restart/IO injection is not hardware power-loss proof; strict release may refuse recoverable states; auxiliary sink and incidental-writer limits remain as accepted.
+- **Startup exception (October 17):** doctor exited 1 on the retained Typora CPU-tripwire warning. Bounded read-only inspection established no ConvMem link or hardware cause. Ryan explicitly allowed static Safe Harbor planning/review to continue with the warning intact; this supplies no live-operation or healthy-host claim.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** answer the pending recovery questions and decide the proposed initializer scope/review. Kiro's evidence review is complete. No implementation, deployment or live backup/restore operation is authorized.
+**Ryan:** answer the pending recovery questions and later decide the reviewed initializer implementation scope. Kiro's evidence review is complete. No implementation, deployment or live backup/restore operation is authorized.
 
-**Codex:** review/scoping work is returned in EXECUTION §§21–22. Preserve the evidence PASS at its exact subject; it does not extend to the new initializer interface. Kiro is the next governing reviewer if Ryan grants that proposed scope review. No further code/tests/live action is active.
+**Codex/Kiro:** continue the authorized static planning/governing review of EXECUTION §22. Preserve the earlier evidence PASS at its exact subject; it does not extend to the initializer interface. Assess the proposed command contract, all-segment preparation before publication, durable originals and truthful interruption handling. No code/tests/live action is active.
 
 ## 6. What Remains Before "Live" (sequential)
 
@@ -68,7 +69,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 7. Hard Stops (models cannot cross)
 
-- EXECUTION §§20–21's evidence/review/scoping work is complete. No service change, production corpus write, live backup/restore, deployment, runtime fix, further review trigger, PR creation, ledger write or session indexing. The proposed §22 is not an Execute grant. No new tests or production operations ran during the review/scoping turn.
+- EXECUTION §§20–21's evidence work is complete. October 17's grant permits §22 static planning/review while retaining the warning. No service change, production corpus write, live backup/restore, deployment, runtime fix, PR creation, ledger write or session indexing. The proposed §22 is not an Execute grant; no new tests are authorized.
 - Guard containment is cooperative. A publication/removal durability failure may require separately authorized process-level containment; do not claim a marker is a durable stop merely because bytes are visible.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
 - Gate PASS is availability/freshness/path evidence; zero missing vector IDs is not semantic integrity. Neither substitutes for exact-artifact recovery qualification.
@@ -96,6 +97,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-17 — Codex: recorded Ryan's static-only startup exception, retained the warning and dated runtime observations; clarified the initializer interface and prepare-before-publish contract for governing review.
 
 - 2026-10-15 — Codex: recorded Kiro readiness PASS at `f45b051` with corrected coverage and drafted the bounded initializer scope; recovery facts, scope review and implementation remain pending.
 
