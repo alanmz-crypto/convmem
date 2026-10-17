@@ -19,7 +19,8 @@ BASELINE_HASHES = {
     # until validated owner release (reviewed base458b9f6..e7b56011).
     # Refreshed for issue #286 stage-2 corrective 20 (main merge + R6-F1 escape accounting).
     # Refreshed for issue #286 watcher-child --now.
-    "watch.py": "39765b5e7f8f560fdcc01d86830e163b08962148fb8919a310e7bbe85bb95f57",
+    # Refreshed for issue #286 watcher child-event forwarding.
+    "watch.py": "257c11eb23a0d15d76b6f7046a502c4774410ae910fc1c7d301e7e3f5faa4244",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
