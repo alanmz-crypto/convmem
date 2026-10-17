@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 import copy
+import tomllib
 from pathlib import Path
 
 import pytest
-import tomllib
 
 import incremental_jsonl
 import ingest
@@ -63,7 +63,6 @@ def _kiro_legacy_reindex(cfg: dict, source: Path) -> None:
 
 
 def _leave_preparing_kiro_transaction(
-    boundary: ProductionBoundary,
     source: Path,
     cfg: dict,
     cfg_path: Path,
@@ -141,7 +140,7 @@ def test_kiro_recovery_after_legacy_reindex_refuses_projection_mismatch(
     assert _coordinator(boundary, source, cfg, chunk_size=2, overlap=0).run().outcome == "committed"
     with source.open("ab") as handle:
         handle.write(kiro_record(8))
-    _leave_preparing_kiro_transaction(boundary, source, cfg, cfg_path, monkeypatch)
+    _leave_preparing_kiro_transaction(source, cfg, cfg_path, monkeypatch)
     _kiro_legacy_reindex(cfg, source)
     with source.open("ab") as handle:
         handle.write(kiro_record(9))
@@ -271,3 +270,5 @@ def test_bootstrap_commit_records_production_lineage(
     processed = ingest.load_processed(cfg["index"]["processed_log"])
     entry = next(row for row in processed.values() if row.get("path") == str(source))
     assert entry.get("incremental_jsonl_lineage") == checkpoint["processed_lineage_digest"]
+
+# ref: ../incremental_jsonl.py — exercises Kiro production recovery parity
