@@ -151,15 +151,15 @@ Codex rollouts (separate track):
    `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
    Don't add the incremental table to the shared live config while
    `runtime-main` is still on `a92a74e`.
-2. **Canary 2 was stopped at 21:53 (0 paid calls, 0 indexed).** #395's
-   `index --file` deferral also defers the watcher's own child: the watcher
-   spawns `index --file <path>` without `--now`, and the child sees the live
-   watcher's lock and exits 0. While the watcher runs, it indexes nothing.
-   `repository_knowledge_sync.py` builds the same argv. Fix: pass `--now` from
-   both internal callers, with a regression test (Cursor, from `main`). Then
-   verify, merge, re-promote `runtime-main`, and restart canary 2 under the
-   same grant (24 h, 200 calls). Watcher disabled meanwhile; manual Track A
-   indexes directly, under the new locks.
+2. **Canary 2 is running on `bd37946`** (restarted 2026-10-17 01:12:57 CDT, 24 h,
+   200 paid calls, auto-stop guard, plus a stop on any watcher child that defers).
+   PR #397 fixed the self-deferral that stopped the first attempt: the watcher's
+   internal callers pass `--now`. Ryan admin-merged it after the full CI suite passed
+   on identical production code; the only failure was a stale text-search test,
+   since fixed. `runtime-main` `3e705e4` → `bd37946` (only #397). Next: report the
+   burn, CO-5 and CO-6, and how the 11 stale transactions recover. Then backfill the
+   Codex sessions from Oct 12 on (26 partly indexed, 44 MB behind; ~24 with no
+   new-route progress) inside the ceiling.
 3. Before any Kiro exact-path live incremental run, land the exact-path
    recovery parity fix. Its design is on
    `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
@@ -334,6 +334,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-16 | Ryan / Claude | PR #395 squash-merged as `3e705e4` (tree = verified `1a70c41`); all 6 checks green, CO-2 acknowledged, Kiro Safe Harbor PASS. Not deployed; runtime-main, protocol deploy and canary 2 are separate grants |
 | 2026-10-16 | Claude | Ryan grants: runtime-main `8a7cdab`→`3e705e4` (with Safe Harbor T1–T4, per the approved deploy procedure); Track A protocol change on 7 surfaces; canary 2 started 21:47 (24 h, 200 paid calls) |
 | 2026-10-16 | Claude | Canary 2 stopped at 21:53: the watcher's own index child defers to the watcher (#395 regression; 1 spawn, 0 indexed, 0 paid). Watcher disabled; `--now` fix for the internal callers goes to Cursor |
+| 2026-10-17 | Ryan / Claude | PR #397 admin-merged as `bd37946`; runtime-main `3e705e4`→`bd37946`; canary 2 restarted 01:12:57 (24 h, 200 paid calls) |
 
 ## TL;DR
 
