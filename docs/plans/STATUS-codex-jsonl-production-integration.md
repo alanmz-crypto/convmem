@@ -151,19 +151,22 @@ Codex rollouts (separate track):
    `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
    Don't add the incremental table to the shared live config while
    `runtime-main` is still on `a92a74e`.
-2. **Canary 2 is running on `bd37946`** (restarted 2026-10-17 01:12:57 CDT, 24 h,
-   200 paid calls, auto-stop guard, plus a stop on any watcher child that defers).
-   PR #397 fixed the self-deferral that stopped the first attempt: the watcher's
-   internal callers pass `--now`. Ryan admin-merged it after the full CI suite passed
-   on identical production code; the only failure was a stale text-search test,
-   since fixed. `runtime-main` `3e705e4` → `bd37946` (only #397). Next: report the
-   burn, CO-5 and CO-6, and how the 11 stale transactions recover. Then backfill the
-   Codex sessions from Oct 12 on (26 partly indexed, 44 MB behind; ~24 with no
-   new-route progress) inside the ceiling.
-3. Before any Kiro exact-path live incremental run, land the exact-path
-   recovery parity fix. Its design is on
-   `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
-   separate prerequisite.
+2. **Canary 2, run 1 ended at its 200-call ceiling** (2026-10-17 01:12:57 → 14:33,
+   guard auto-stop, no faults). New-route Codex cost ~56 calls; legacy full
+   re-indexes ~144, of which ~80 came from two re-indexes of the 134 MB Oct 9 Codex
+   thread (now soft-excluded). **Run 2 is on `633f1d1`** (#396 + #398 over `bd37946`),
+   watcher started 16:02:43; its 24 h / 200-call guard must be started by Ryan.
+3. **Transform-compatibility fix is next.** The incremental fingerprint includes the R2b
+   implementation identity, so any deploy touching its closure (even `cpu_tripwire.py`)
+   makes admitted Codex sessions refuse `rebuild_required:transform_fingerprint_changed`
+   (no cost; coverage lost until a rebuild or conversion). Two sessions are refused
+   today. Design `docs/plans/DESIGN-issue-286-transform-compatibility.md` (branch
+   `docs/2026-10-17-issue-286-transform-compatibility`); Kiro PASS-with-conditions
+   C1–C8 (`docs/2026-10-17-issue-286-transform-compatibility-review`). Interim: deploy
+   non-transform changes only when no Codex session is active (Kiro item 4).
+4. Commit-cost slice 1 (reuse the pre-write digest, add phase timing; ~73 s of the
+   ~5 min commit) has Kiro PASS and goes to Cursor. The watcher run-outcome event
+   (`fix/2026-10-17-watch-forward-run-outcome`, `8808b7c`) is verified; PR not yet opened.
 
 ## 7. Hard Stops
 
@@ -335,6 +338,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-16 | Claude | Ryan grants: runtime-main `8a7cdab`→`3e705e4` (with Safe Harbor T1–T4, per the approved deploy procedure); Track A protocol change on 7 surfaces; canary 2 started 21:47 (24 h, 200 paid calls) |
 | 2026-10-16 | Claude | Canary 2 stopped at 21:53: the watcher's own index child defers to the watcher (#395 regression; 1 spawn, 0 indexed, 0 paid). Watcher disabled; `--now` fix for the internal callers goes to Cursor |
 | 2026-10-17 | Ryan / Claude | PR #397 admin-merged as `bd37946`; runtime-main `3e705e4`→`bd37946`; canary 2 restarted 01:12:57 (24 h, 200 paid calls) |
+| 2026-10-17 | Ryan / Claude / Kiro | Canary 2 run 1 hit the 200-call ceiling at 14:33; Oct 9 Codex thread excluded; runtime-main → `633f1d1` (#396, #398), watcher restarted 16:02:43; transform-compatibility design PASS-with-conditions |
 
 ## TL;DR
 
