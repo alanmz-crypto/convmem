@@ -328,7 +328,7 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
     inner_cmd = watcher_child_index_argv(path)
     cmd = _scoped_index_cmd(inner_cmd, cfg, verbose=verbose)
     if verbose:
-        print(f"[watch] spawn: {' '.join(inner_cmd[-3:])}", file=sys.stderr)
+        print(f"[watch] spawn: {' '.join(inner_cmd[-4:])}", file=sys.stderr)
     with subprocess.Popen(
         cmd,
         text=True,
