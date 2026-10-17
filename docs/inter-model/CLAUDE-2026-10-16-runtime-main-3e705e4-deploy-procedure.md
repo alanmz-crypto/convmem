@@ -3,7 +3,37 @@
 **Arc: Codex (#286)**, crossing into **Arc Safe Harbor** (T1–T4 runtime).
 **Date:** 2026-10-16
 **Author:** Claude (Opus 5.5). **Approver:** Ryan, the owner of both arcs.
-**Status:** PROPOSED. Nothing in it has been executed.
+**Status:** EXECUTED 2026-10-16. Ryan approved the procedure, and it ran 21:39–21:42 CDT.
+- `runtime-main` `8a7cdab` → `3e705e4` (fast-forward, clean worktree).
+- The reconcile timer was paused for the checkout. The first sweep on the new code
+  (21:42:07) logged `findings=1 queued=1`, as before.
+- Post-deploy `convmem doctor` exit 0. Compared with before, the only changes are the
+  new `incremental_rollback_tamper` PASS and `wedged_incremental_transaction` WARN.
+  `write_guard`, `restic_gate` and `chroma_write_guard` PASS.
+
+**Protocol surfaces (Ryan grant, 21:44 CDT).** The Track A paragraph change was applied
+surgically to 7 surfaces, backed up first to
+`~/.config/convmem/backups/protocol-deploy-2026-10-16/`. `scripts/deploy-agent-protocol.sh`
+was **not** run. It `cp`s over `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`, which would
+have deleted 94 and 97 hand-written lines.
+- **CLAUDE.md and Codex AGENTS.md:** patched with the `8a7cdab..3e705e4` source diff
+  (3 hunks); nothing else changed.
+- **Kiro steering, Cursor .mdc, both Copilot files and Crush `convmem.md`:** replaced by
+  the generated file. Their only live-only line was the old Track A line.
+- **opencode:** reads the generated file from `~/Projects/convmem` by path.
+- **MCP configs:** unchanged in source, so not touched.
+
+**Canary 2 (Ryan grant: 24 h, 200 paid calls).** The watcher was enabled and started at
+T0 = 2026-10-16 21:47:14 on `3e705e4` (RSS 103 MB). A background guard measures every
+120 s and disables the watcher on any stop condition:
+- paid estimate ≥ 200;
+- a new Codex rollout on the legacy route;
+- any session failing more than 5 times;
+- more than 10 refusal markers;
+- an OOM kill;
+- watcher RSS above 2048 MB;
+- the service not active.
+
 
 ## Why this needs a procedure
 
