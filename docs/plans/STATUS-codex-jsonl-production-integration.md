@@ -119,6 +119,15 @@ session started Sep 21, stay on the legacy route and need the packet's
 residual-burn decision before Stage 2. This track authorizes no live
 bootstrap, config, runtime, or watcher action.
 
+**Stage 2 fixes merged, not deployed:** after the Stage 2 canary hit its
+paid ceiling, Ryan squash-merged PR #395 as `3e705e4` (2026-10-16), with the
+tree identical to the verified head `1a70c41`. It adds the store-wide index write
+lock, source-scoped recovery, bounded paid retries, watcher intake that
+ignores plain opens, and `index --file` deferring to a running watcher.
+Claude round 31, Astra round 8 and Kiro's Safe Harbor review all PASS; Kiro
+round 4 passed with conditions, CO-2 acknowledged. `runtime-main` and the
+watcher are unchanged and the watcher is still off.
+
 ## 6. What Remains Before Live (sequential)
 
 1. Ryan decides whether to create and merge the test-isolation PR.
@@ -138,10 +147,10 @@ Codex rollouts (separate track):
    `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
    Don't add the incremental table to the shared live config while
    `runtime-main` is still on `a92a74e`.
-2. Before Stage 2, decide the residual burn (retire or exclude active
-   pre-activation rollouts), fix #308 (the inter-model rejection loop) and
-   reconcile the 4G watch drop-in. Then Ryan grants Stage 2 (a 24 h watcher
-   canary); activation is a separate grant.
+2. Stage 2 fixes are on `main` (PR #395, `3e705e4`). Next, each by a
+   separate Ryan grant: promote `runtime-main` to `3e705e4`, deploy the
+   regenerated protocol surfaces (the Track A rule change), then canary 2,
+   which watches Kiro's CO-5 and CO-6. Activation is a further grant.
 3. Before any Kiro exact-path live incremental run, land the exact-path
    recovery parity fix. Its design is on
    `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
@@ -313,6 +322,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-16 | Claude | Round 30 at `d5f765a`: PASS. Corrective 22 closes R7-F1; corrective 23 makes main a real parent (PR now conflict-free); 0 tip-only failures under main's launcher; Astra's round 8 next |
 | 2026-10-16 | Astra | Round 8 at `a5fb7d7` (tree = `d5f765a`): PASS; R7-F1 closed. Branch READY_FOR_PR |
 | 2026-10-16 | Claude | Round 31 at `1a70c41`: PASS. Corrective 24 (comment-only pylint suppressions, r6 crash workaround, 7 lazy-cycle allowlist pairs) is AST-identical in production; pylint CI green; pytest CI pending |
+| 2026-10-16 | Ryan / Claude | PR #395 squash-merged as `3e705e4` (tree = verified `1a70c41`); all 6 checks green, CO-2 acknowledged, Kiro Safe Harbor PASS. Not deployed; runtime-main, protocol deploy and canary 2 are separate grants |
 
 ## TL;DR
 

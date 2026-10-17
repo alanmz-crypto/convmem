@@ -12,7 +12,7 @@ Stage 2 report and the Track A rule change. P4–P7 are not authorized here.
 
 | Field | Value |
 |-------|--------|
-| **State** | `READY_FOR_PR`: tip `d5f765a` (tree `c7d4b78e`; main `c6f0724` is a real parent). Claude round 30 PASS; Astra round 8 PASS (`docs/2026-10-16-issue-286-stage2-fixes-audit-r8`, `483875d`); Kiro round 4 PASS with conditions (CO-2, CO-3 in the PR body; CO-5, CO-6 at canary 2). Full suite under main's CI launcher: 0 tip-only failures. Next: PR #395 CI; the R2b owner acknowledges CO-2; the Safe Harbor lane reviews the recovery changes (correctives 21, 22); Ryan merges. |
+| **State** | `MERGED`: PR #395 squash-merged as `3e705e4` on 2026-10-16. Its tree equals the verified head `1a70c41` (corrective 24 cleared the pylint check). Claude round 31 PASS; Astra round 8 PASS; Kiro round 4 PASS with conditions (CO-2 acknowledged by Ryan; CO-5 and CO-6 are for canary 2); Kiro's Safe Harbor review PASS. Not deployed. Next, each by a separate Ryan grant: promote runtime-main, deploy the protocol surfaces, run canary 2. |
 | **Branch** | `fix/2026-10-12-issue-286-stage2-wedge-fixes`, created from `origin/main` |
 | **Tip SHA** | base `origin/main` `8a7cdab` |
 | **Push status** | handoff pushed on `docs/2026-10-12-issue-286-stage2-fixes-handoff` |

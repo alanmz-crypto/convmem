@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-11
+**Updated:** 2026-10-16
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,7 +9,10 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex Stage 2 fixes AUTHORIZED (not yet implemented) (2026-10-12):**
+- **Arc Codex Stage 2 fixes MERGED, NOT DEPLOYED (2026-10-16):** PR #395
+  landed as `3e705e4`. Next, each by a separate Ryan grant: runtime-main
+  promotion, the protocol-surface deploy, canary 2. Original authorization
+  (2026-10-12):
   The Stage 2 watcher canary stopped at the paid ceiling after 12.8 h. New
   Codex sessions cost about 12 calls; old sessions, Kiro and Cursor cost the
   rest. Two new sessions are wedged because agents indexed their own
