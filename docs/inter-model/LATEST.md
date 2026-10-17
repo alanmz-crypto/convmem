@@ -9,6 +9,20 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **cpu_tripwire — stop blocking agents on benign userspace crashes (2026-10-17):**
+  `convmem doctor` currently exits 1 (stalling every agent at session start)
+  whenever a desktop app faults during the boot, because the Poison Pill
+  tripwire FAILs on *any* unexplained native fault. Ryan has decided the CPU is
+  fixed, so this is now false-positive noise. **Design is ready, not yet
+  implemented** — Kiro authored an Option B handoff:
+  [`KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md`](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md).
+  It keeps FAIL only for unambiguous hardware signals (machine-check events,
+  known-bad CPU back online, kernel-CPU-attributed faults) and demotes all
+  userspace faults — including the old `libhnsw.so` GPF signature — to a visible
+  WARN. **Resume state: `NOT_STARTED`. Next lane: Cursor** implements on
+  `fix/2026-10-17-cpu-tripwire-advisory-userspace`, then Ryan reviews/merges.
+  Ad-hoc (no arc). Stopgap until merged: a reboot clears the current FAIL.
+
 - **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
   Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
   **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
