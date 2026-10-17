@@ -135,3 +135,17 @@ def test_codex_formats_detect_and_parse_without_prefix_route(
     rollout_messages = get_parser(rollout)(str(rollout))
     assert len(rollout_messages) == 1
     assert rollout_messages[0]["source_type"] == "codex_rollout"
+
+def test_transform_contract_inventory_is_pinned_c1_c2() -> None:
+    from incremental_transform_contract import (
+        PINNED_CONTRACT_INVENTORY_DIGEST,
+        assert_contract_inventory_current,
+        contract_inventory_digest,
+        contract_inventory_sources,
+    )
+
+    assert_contract_inventory_current()
+    sources = contract_inventory_sources()
+    assert "incremental_jsonl.py" not in str(sources)
+    assert contract_inventory_digest() == PINNED_CONTRACT_INVENTORY_DIGEST
+
