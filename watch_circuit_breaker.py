@@ -99,6 +99,34 @@ class CircuitBreakerState:
                 return True
         return False
 
+    def has_wedged_quarantine_for_path(self, path: str) -> bool:
+        for entry in self._data.get("refusals", {}).values():
+            if not entry.get("quarantined") or entry.get("path") != path:
+                continue
+            if str(entry.get("outcome") or "").startswith(
+                "wedged_incremental_transaction_"
+            ):
+                return True
+        return False
+
+    def should_skip_refusal_quarantine(
+        self, path: str, live_prefix_digest: str | None
+    ) -> bool:
+        """Skip indexing when a refusal quarantine still applies for this path."""
+        for entry in self._data.get("refusals", {}).values():
+            if not entry.get("quarantined") or entry.get("path") != path:
+                continue
+            outcome = str(entry.get("outcome") or "")
+            stored_prefix = str(entry.get("prefix_sha256") or "")
+            if outcome.startswith("wedged_incremental_transaction_"):
+                if not live_prefix_digest:
+                    return True
+                if stored_prefix == live_prefix_digest:
+                    return True
+                continue
+            return True
+        return False
+
     def record_refusal(
         self,
         path: str,

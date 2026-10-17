@@ -3,11 +3,13 @@
 Probes staging2 (or any site) for header/TLS posture, then emits ledger
 observations or low-confidence verifications per F2b-MONITOR-POLICY.md.
 """
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -359,8 +361,8 @@ def _tls_verification(site: str, relates_to: str, passed: bool) -> dict:
     }
 
 
-def run_monitor(
-    store,
+def run_monitor(  # pylint: disable=too-many-arguments, too-many-branches, too-many-locals, too-many-statements
+    store=None,
     *,
     site: str,
     embed_model: str,
@@ -369,14 +371,54 @@ def run_monitor(
     dry_run: bool = False,
     verbose: bool = True,
     session: requests.Session | None = None,
+    live_cfg: dict | None = None,
 ) -> dict:
-    from observe import ingest_observation
+    from chroma_readonly import open_readonly_unit_store
+    from observe import (  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+        PreparedObservationIngest,
+        commit_observation_ingest,
+        prepare_observation_ingest,
+    )
+
+    owned_store = False
+    if store is None:
+        if live_cfg is None:
+            raise ValueError("run_monitor requires store or live_cfg")
+        store = open_readonly_unit_store(live_cfg["index"]["chroma_dir"])
+        owned_store = True
+
+    pending_ingests: list[PreparedObservationIngest] = []
+
+    def _ingest_locked(record, **kwargs):  # type: ignore[no-untyped-def]
+        upsert = bool(kwargs.get("upsert"))
+        by_ledger_id = kwargs.get("by_ledger_id")
+        prepared = prepare_observation_ingest(
+            record,
+            store=store,
+            embed_model=embed_model,
+            ollama_host=ollama_host,
+            min_confidence=float(kwargs.get("min_confidence", 0.0)),
+            upsert=upsert,
+            by_ledger_id=by_ledger_id,
+        )
+        if prepared is None:
+            return None
+        if live_cfg is None:
+            return commit_observation_ingest(
+                prepared,
+                store=kwargs["store"],
+                units_export=kwargs.get("units_export"),
+            )
+        pending_ingests.append(prepared)
+        unit = prepared.unit
+        return {"id": unit.get("id"), "ledger_id": unit.get("ledger_id")}
 
     stats = {
         "observations": 0,
         "verifications": 0,
         "skipped_kiro": 0,
         "errors": 0,
+        "drift_refused": 0,
         "dry_run": dry_run,
     }
 
@@ -413,7 +455,7 @@ def run_monitor(
                 if verbose:
                     print(f"[monitor] dry-run verification → {anchor} {record['result']}")
                 continue
-            unit = ingest_observation(
+            unit = _ingest_locked(
                 record,
                 store=store,
                 embed_model=embed_model,
@@ -452,7 +494,7 @@ def run_monitor(
                 if verbose:
                     print(f"[monitor] dry-run observation {record['id']}")
                 continue
-            unit = ingest_observation(
+            unit = _ingest_locked(
                 record,
                 store=store,
                 embed_model=embed_model,
@@ -499,7 +541,7 @@ def run_monitor(
             if dry_run:
                 stats["verifications"] += 1
             else:
-                unit = ingest_observation(
+                unit = _ingest_locked(
                     record,
                     store=store,
                     embed_model=embed_model,
@@ -522,7 +564,7 @@ def run_monitor(
         if dry_run:
             stats["observations"] += 1
         else:
-            unit = ingest_observation(
+            unit = _ingest_locked(
                 record,
                 store=store,
                 embed_model=embed_model,
@@ -538,5 +580,57 @@ def run_monitor(
                     print(f"[monitor] observation {record['id']} (tls)")
             else:
                 stats["errors"] += 1
+
+    if pending_ingests and live_cfg is not None and not dry_run:
+        from chroma_write_store import production_chroma_write_session
+        from config import load_config
+        from observe import ObservationIngestDriftError  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+        from purge_locks import index_write_flock
+
+        session_cfg = load_config()
+        export_raw = session_cfg["index"].get("units_export")
+        units_path = Path(export_raw).expanduser() if export_raw else units_export
+        for prepared in pending_ingests:
+            current = prepared
+            committed = False  # pylint: disable=unused-variable
+            for attempt in range(2):
+                try:
+                    with index_write_flock(session_cfg):
+                        with production_chroma_write_session(
+                            entrypoint="convmem.monitor"
+                        ) as session:  # pylint: disable=redefined-argument-from-local
+                            commit_observation_ingest(
+                                current,
+                                store=session.store,
+                                units_export=units_path,
+                            )
+                    committed = True
+                    break
+                except ObservationIngestDriftError:
+                    if attempt == 1:
+                        stats["drift_refused"] += 1
+                        break
+                    from chroma_readonly import open_readonly_unit_store  # pylint: disable=reimported
+                    from ledger import invalidate_ledger_index_cache  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+
+                    chroma_dir = session_cfg["index"]["chroma_dir"]
+                    invalidate_ledger_index_cache(chroma_dir)
+                    fresh_reader = open_readonly_unit_store(chroma_dir)
+                    by_ledger_id_fresh, _ = build_ledger_index(fresh_reader)
+                    current = prepare_observation_ingest(
+                        current.record,
+                        store=fresh_reader,
+                        embed_model=embed_model,
+                        ollama_host=ollama_host,
+                        upsert=True,
+                        by_ledger_id=by_ledger_id_fresh,
+                        precomputed_embedding=current.embedding or None,
+                    )
+                    if current is None:
+                        stats["errors"] += 1
+                        break
+
+    if owned_store:
+        pass
 
     return stats

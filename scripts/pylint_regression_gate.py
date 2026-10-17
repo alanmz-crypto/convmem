@@ -116,6 +116,17 @@ _ALLOWED_CYCLIC_PAIRS = frozenset(
         # Arc Codex production integration: Kiro reviewed this deliberate lazy
         # routing cycle at exact implementation tip 162d67f on 2026-09-10.
         ("incremental_jsonl", "ingest"),
+        # Issue #286 stage-2: doctor wedged-transaction checks import retry state
+        # inside the check helper; retry state imports incremental_jsonl/ingest lazily.
+        ("doctor", "incremental_retry_state"),
+        ("incremental_jsonl", "incremental_retry_state"),
+        ("incremental_retry_state", "ingest"),
+        # Issue #286 stage-2: incremental_jsonl asks watch for prefix digests via
+        # lazy import; watch startup reconciliation imports source_reconciler lazily.
+        ("incremental_jsonl", "watch"),
+        ("ingest", "watch"),
+        ("live_diagnosis", "watch"),
+        ("source_reconciler", "watch"),
         ("ledger_recent", "observe"),
         ("ledger_recent", "propose_decision"),
         ("ledger_recent", "query"),

@@ -607,8 +607,10 @@ def resolve_deepseek_key() -> str:
     return ""
 
 
-def load_config(path: Path | str = CONFIG_PATH) -> dict:
+def load_config(path: Path | str | None = None) -> dict:
     """Read the TOML config and expand user paths in known fields."""
+    if path is None:
+        path = CONFIG_PATH
     path = Path(path).expanduser()
     if not path.exists():
         raise FileNotFoundError(

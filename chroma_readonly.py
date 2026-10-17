@@ -144,6 +144,41 @@ def iter_collection_metadata_rows(
         conn.close()
 
 
+def unit_document_text(chroma_dir: str | Path, chroma_id: str) -> str | None:
+    """Return stored document text for one unit id, or None if missing."""
+    from chroma_store import UNITS
+
+    want = (chroma_id or "").strip()
+    if not want:
+        return None
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return None
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT em.string_value
+            FROM embeddings e
+            JOIN segments s ON e.segment_id = s.id
+            JOIN collections c ON s.collection = c.id
+            JOIN embedding_metadata em ON em.id = e.id
+            WHERE c.name = ? AND s.scope = 'METADATA'
+              AND e.embedding_id = ?
+              AND em.key = 'chroma:document'
+            LIMIT 1
+            """,
+            (UNITS, want),
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        return None
+    return row[0] or ""
+
+
 def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> list[dict]:
     """Return one dict per embedding_id from the metadata segment of a collection."""
     return list(iter_collection_metadata_rows(chroma_dir, collection_name))
@@ -270,6 +305,10 @@ class ReadonlyUnitStore:
         self.chroma_dir = str(Path(chroma_dir).expanduser())
         metas: list[dict] = []
         units: dict[str, dict] = {}
+        if not _db_path(self.chroma_dir).is_file():
+            self._metas = metas
+            self._units = units
+            return
         for meta in collection_metadata_rows(self.chroma_dir, UNITS):
             if is_superseded(meta):
                 continue
@@ -293,6 +332,16 @@ class ReadonlyUnitStore:
         from chroma_store import is_superseded
 
         return [dict(m) for m in self._metas if not is_superseded(m)]
+
+    def active_units_for_ledger_id(self, ledger_id: str) -> list[dict]:
+        from chroma_store import is_superseded
+
+        lid = (ledger_id or "").strip()
+        return [
+            dict(m)
+            for m in self._metas
+            if (m.get("ledger_id") or "").strip() == lid and not is_superseded(m)
+        ]
 
     def get_unit(self, unit_id: str) -> dict | None:
         hit = self._units.get(unit_id.strip())

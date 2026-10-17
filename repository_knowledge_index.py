@@ -265,26 +265,29 @@ def index_repository_knowledge_messages(  # pylint: disable=too-many-locals,too-
     ):
         raise RepositoryKnowledgeIndexError("identity changed before publication")
 
+    from purge_locks import index_write_flock
+
     with source_flock(cfg, path_key):
         processed = _load_processed(processed_log)
         if _path_excluded(processed, path_key):
             raise RepositoryKnowledgeIndexError("source excluded during repository-knowledge write")
-        with production_chroma_write_session(entrypoint="repository_knowledge_index") as session:
-            store = session.store
-            cfg = session.live_cfg
-            from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
+        with index_write_flock(cfg):
+            with production_chroma_write_session(entrypoint="repository_knowledge_index") as session:
+                store = session.store
+                cfg = session.live_cfg
+                from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
 
-            replayed_batch = [_replay_unchanged(store, *row) for row in units_batch]
-            dedupe = evaluate_ingest_batch(store, cfg, replayed_batch)
-            for unit, doc, embedding, meta in dedupe.accepted:
-                store.add_unit(unit["id"], doc, embedding, meta)
-                export_path.parent.mkdir(parents=True, exist_ok=True)
-                with export_flock_path(export_path):
-                    with open(export_path, "a", encoding="utf-8") as handle:
-                        handle.write(json.dumps(unit, ensure_ascii=False) + "\n")
-            if unit_ids_out is not None:
-                unit_ids_out.update(row[0]["id"] for row in dedupe.accepted)
-            persist_ingest_dedupe(cfg, dedupe)
+                replayed_batch = [_replay_unchanged(store, *row) for row in units_batch]
+                dedupe = evaluate_ingest_batch(store, cfg, replayed_batch)
+                for unit, doc, embedding, meta in dedupe.accepted:
+                    store.add_unit(unit["id"], doc, embedding, meta)
+                    export_path.parent.mkdir(parents=True, exist_ok=True)
+                    with export_flock_path(export_path):
+                        with open(export_path, "a", encoding="utf-8") as handle:
+                            handle.write(json.dumps(unit, ensure_ascii=False) + "\n")
+                if unit_ids_out is not None:
+                    unit_ids_out.update(row[0]["id"] for row in dedupe.accepted)
+                persist_ingest_dedupe(cfg, dedupe)
 
     if verbose:
         print(

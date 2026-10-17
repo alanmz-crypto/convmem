@@ -150,6 +150,9 @@ def summarize_prompt(chunk_text: str) -> str:
 
 def ollama_embed(text: str, model: str, host: str) -> list[float]:
     """Return an embedding vector for `text` from a local Ollama model."""
+    from purge_locks import reject_provider_under_write_scope
+
+    reject_provider_under_write_scope()
     event = _permit_provider_http_attempt(
         provider="ollama",
         operation="embed",
@@ -530,6 +533,9 @@ def summarize(
     deepseek_base_url: str = "https://api.deepseek.com",
 ) -> str:
     """Summarize a conversation chunk into 3 sentences + a Keywords line."""
+    from purge_locks import reject_provider_under_write_scope
+
+    reject_provider_under_write_scope()
     prompt = summarize_prompt(chunk_text)
 
     if "deepseek-v4" in model and os.environ.get("DEEPSEEK_API_KEY"):

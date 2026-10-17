@@ -41,17 +41,27 @@ Equivalent external wrapper (runs the same gate, then `convmem`):
 ~/Projects/convmem/scripts/convmem-live-write.sh add --file … --upsert
 ```
 
-Tests may set `CONVMEM_SKIP_RESTIC_GATE=1`. The wrapper calls `scripts/restic-ensure-chroma-snapshot.sh` first. **Fail-closed:** any Restic error (binary missing, bad repo, password missing, backup failure) **blocks** the live write — no warn-and-continue.
+The wrapper calls `scripts/restic-ensure-chroma-snapshot.sh` first. **Fail-closed:** any Restic error (binary missing, bad repo, password missing, backup failure) **blocks** the live write — no warn-and-continue.
 
-**Scope boundary (adopted, not accidental):** the gate protects *overwrite / durable-merge* writes — `record --approve-last` and `add --upsert` (replace-by-id, where a bad merge is unrecoverable). `convmem index` and plain `convmem add` (no `--upsert`) are **intentionally ungated**: they are append-only and reindexable (corpus recovery = "restore or reindex"), so a snapshot is not a precondition. Gating every Chroma mutation ("gate everything") was considered and **declined** — this is the standing invariant, not a gap. `CONVMEM_SKIP_RESTIC_GATE=1` is the one deliberate escape hatch (tests / lab). Enforcement is inline in the bare CLI (`restic_gate.ensure_chroma_snapshot_for_live_write()` at both call sites) — a behavioral regression test (`tests/test_write_gate_effect.py`) asserts a forced gate failure blocks each path and leaves the corpus unchanged, so the wiring cannot silently regress.
+**Scope boundary (adopted, not accidental):** the Restic gate protects indexed `record --approve-last` / `record --approve <id>`, `add --upsert`, and approval recovery through `record --recover <id>` / `propose_decision --recover <id>`. T4’s direct `recover_approval()` entry also binds the same preflight before recovery effects. These are named consumers of the existing gate, not a parallel protection mechanism. The July 7 `index` / plain `add` exemptions and existing `--no-index` approval behavior remain: these calls do not gain a Restic precondition. Retaining that scope does **not** endorse a blanket append-only/reindexable premise: replacement indexing can supersede or delete existing units. `forget` and refine gain no new gate or exemption here. Broader scope changes require Ryan’s decision and synchronized ROADMAP/RECOVER/role-mapping updates. Guarded writes still benefit from validated local segment saves; those HNSW repair sources do not replace an independently usable complete-data backup or establish an acceptable loss window.
 
-**Stale threshold (pinned):** latest snapshot tagged `convmem-chroma` must have a snapshot time on the **same local calendar day** as now (≥ local midnight today). Not last git commit, not last approved write.
+**Merged recovery behavior (Safe Harbor T4):** fresh tombstone/authority checks and the native lock cover decision, mutation, export and completion publication. An uncertain completion may already contain APPROVED; retry reloads authoritative state rather than assuming rollback. Every automatic segment restore retains an incident and aborts the initiating write, even if validation passes. [Incident handling and rollout](RECOVER.md#safe-harbor-incident-handling-and-rollout) documents the approved operator cost and conservative release limits. Merged source does not mean it has been deployed.
+
+**Bound to the operation (Safe Harbor T2):** each gated command resolves its config once under the shared writer lease, then runs the preflight against that operation before Chroma opens or approval state changes. The Restic profile must be **explicit `complete-data-v2`** with an explicit data root — a legacy or v3 profile refuses these writes, so an explicit v2 profile is a rollout prerequisite. The profile's Chroma directory must equal the operation's target, and every affected path (Chroma, write-guard directory, export, approval events/queue/approved rows/locks and schema-gate files) must sit inside the data root; a symlinked export escaping it refuses. Config or profile edits after admission refuse; nested write sessions reuse the admitted config. A behavioral regression test (`tests/test_write_gate_effect.py`) plus `tests/test_safe_harbor_t2.py` assert refusals leave the corpus, approval files and export unchanged.
+
+**Skip variable:** `CONVMEM_SKIP_RESTIC_GATE=1` is **refused** on these paths unless `CONVMEM_RESTIC_GATE_EXCEPTION` names an explicit isolated context (`isolated-test` or `isolated-lab`) and every affected path and the config are canonically outside the production data/config roots of both `$HOME` and the account's passwd home (`isolated-lab` also requires the lab data root). cwd, `convmem-lab` names, confirm variables and `CONVMEM_ROOT` do not qualify. This is a cooperative safeguard, not protection against a same-user actor.
+
+**Freshness (B-E4.1):** the newest correct-path `convmem-data-v2` snapshot must be on the **same local calendar day** as one evaluation instant captured per resolution, and not later than it. Not last git commit, not last approved write.
 
 | Condition | Action |
 |-----------|--------|
-| **Current** | Wrapper proceeds to `convmem` |
-| **Stale** | Wrapper runs `restic backup` of `chroma/`, then proceeds |
-| **Any Restic failure** | **Block** — exit 1, no live write |
+| **Current** | Proceed |
+| **Old or missing** | `restic backup` of the data root, then exact re-resolution at a fresh instant, then proceed |
+| **Future-dated** (`future_snapshot_time`) | **Block** — exit 25; no backup, no dry-run pass, no fallback to an older snapshot |
+| **Local day changed during admission** | One fresh resolution; still crossed → block, exit 25 (`day_boundary_crossed`) |
+| **Any Restic failure** | **Block** — nonzero exit (config/profile 20, target/path 24, freshness 25, Restic codes propagate), no live write |
+
+The check-only probe (`--check-only`, doctor reachability) reports eligibility **unchecked** and never licenses a write. Local health fails a future snapshot (25); offsite health warns (25); offsite copy refuses before copying (25).
 
 Setup: `bash ~/Projects/convmem/scripts/setup-restic-chroma.sh` (once). Manual secret: `~/.config/convmem/restic.password` — see `config/restic.env.example`.
 

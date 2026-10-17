@@ -289,6 +289,11 @@ def index(
         "--supersede",
         help="With --file: tombstone prior units for this path instead of deleting",
     ),
+    now: bool = typer.Option(
+        False,
+        "--now",
+        help="With --file: index even when the watcher is running (serialized by index locks)",
+    ),
 ):
     """Ingest all sources (skip unchanged), or one file (--file; add --force to re-ingest)."""
     if os.environ.get("CONVMEM_LIVE_DIAG_HERMETIC") == "1":
@@ -303,6 +308,17 @@ def index(
     )
     from incremental_jsonl import IncrementalJsonlError, LIVE_ROUTE_REFUSED_EXIT
     from query import render_error
+
+    if file and not now:
+        try:
+            from config import load_config
+            from watch import should_defer_index_file
+
+            if should_defer_index_file(load_config(), file):
+                typer.echo(f"[index] deferred: the convmem watcher captures {file}")
+                raise typer.Exit(0)
+        except (OSError, FileNotFoundError, KeyError, ValueError):
+            pass
 
     try:
         stats = run_index(
@@ -321,16 +337,25 @@ def index(
         )
         raise typer.Exit(1) from exc
     except IncrementalJsonlError as exc:
-        if exc.code == "live_route_refused":
+        if exc.code in ("live_route_refused", "retry_state_unavailable"):
             from incremental_jsonl import format_live_route_refused
 
+            if exc.code == "retry_state_unavailable":
+                print(format_live_route_refused("retry_state_unavailable"), file=sys.stderr)
+                if exc.detail:
+                    print(str(exc.detail), file=sys.stderr)
+                raise typer.Exit(LIVE_ROUTE_REFUSED_EXIT) from exc
             detail = str(exc.detail or "")
-            tail = detail.rsplit(":", maxsplit=1)[-1]
-            if ":" in detail and len(tail) == 64:
-                outcome, digest = detail.rsplit(":", maxsplit=1)
+            lines = detail.splitlines()
+            head = lines[0]
+            tail = head.rsplit(":", maxsplit=1)[-1]
+            if ":" in head and len(tail) == 64:
+                outcome, digest = head.rsplit(":", maxsplit=1)
             else:
-                outcome, digest = detail, ""
+                outcome, digest = head, ""
             print(format_live_route_refused(outcome, digest), file=sys.stderr)
+            if len(lines) > 1:
+                print(lines[1], file=sys.stderr)
             raise typer.Exit(LIVE_ROUTE_REFUSED_EXIT) from exc
         render_error(str(exc))
         raise typer.Exit(1) from exc
@@ -366,7 +391,7 @@ def stats():
 
 
 @app.command()
-def add(
+def add(  # pylint: disable=too-many-locals
     file: str | None = typer.Option(
         None, "--file", help="JSONL file of observation records to batch-ingest"
     ),
@@ -408,41 +433,20 @@ def add(
     single record via flags, or --file a JSONL batch (one record per line).
     """
     _guard_write()
-    from chroma_write_store import production_chroma_write_session
-    from observe import ingest_observation, ingest_observation_file
+    from contextlib import nullcontext
+    from config import load_config
+    from chroma_write_store import admitted_units_export_path, production_chroma_write_session
+    from observe import ingest_observation  # pylint: disable=unused-import
+    from purge_locks import index_write_flock
     from query import render_error
-    from pathlib import Path
 
-    if upsert:
-        from restic_gate import ensure_chroma_snapshot_for_live_write
-
-        ensure_chroma_snapshot_for_live_write()
-
-    with production_chroma_write_session(entrypoint="convmem.add") as session:
-        store = session.store
-        cfg = session.live_cfg
-        models = cfg["models"]
-        units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
-
-        if file:
-            result = ingest_observation_file(
-                file,
-                store=store,
-                embed_model=models["embed_model"],
-                ollama_host=models["ollama_host"],
-                units_export=units_export_path,
-                upsert=upsert,
-            )
-            parts = [
-                f"accepted={result['accepted']}",
-                f"rejected={result['rejected']}",
-            ]
-            if upsert:
-                parts.append(f"updated={result['updated']}")
-            typer.echo(f"\nDone. {' '.join(parts)}")
-            return
-
+    cfg_pre = load_config()
+    models_pre = cfg_pre["models"]
+    precomputed_embedding = None
+    prepared_record = None
+    prepared_file_rows = None  # pylint: disable=unused-variable
+    file_prep_stats = None  # pylint: disable=unused-variable
+    if not file:
         if not title or not summary or not author:
             render_error(
                 "Provide --title, --summary, and --author (or use --file for batch ingest)."
@@ -460,8 +464,7 @@ def add(
                     "--severity must be one of: " + ", ".join(sorted(_SEVERITIES)) + "."
                 )
                 raise typer.Exit(1)
-
-        record = {
+        prepared_record = {
             "title": title,
             "summary": summary,
             "keywords": keyword,
@@ -473,20 +476,97 @@ def add(
             "source_path": source_path,
             "severity": severity,
         }
-        unit = ingest_observation(
-            record,
-            store=store,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            units_export=units_export_path,
+        from chroma_store import ChromaStore  # pylint: disable=unused-import
+        from chroma_readonly import open_readonly_unit_store
+        from observe import embed_ledger_record_for_storage  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+
+        read_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
+        precomputed_embedding = embed_ledger_record_for_storage(
+            prepared_record,
+            store=read_store,
+            embed_model=models_pre["embed_model"],
+            ollama_host=models_pre["ollama_host"],
+            upsert=upsert,
         )
-        if unit is None:
-            render_error("Record rejected — check required fields.")
-            raise typer.Exit(1)
-        typer.echo(
-            f"Added [{unit['domain']}] {unit['title']}  "
-            f"(ledger: {unit.get('ledger_id', unit['id'])})"
+
+    if file:
+        from chroma_readonly import open_readonly_unit_store
+        from observe import ingest_observation_file_with_drift_retry  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+
+        embed_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
+
+        def open_write_commit(commit_fn):
+            admission = (
+                _admitted_operation("convmem.add") if upsert else nullcontext()
+            )
+            with admission:
+                with index_write_flock(cfg_pre):
+                    with production_chroma_write_session(entrypoint="convmem.add") as session:
+                        live = session.live_cfg
+                        units_export = live["index"].get("units_export")
+                        units_export_path = (
+                            admitted_units_export_path(live) if units_export else None
+                        )
+                        return commit_fn(session.store, units_export_path)
+
+        result = ingest_observation_file_with_drift_retry(
+            file,
+            embed_store=embed_store,
+            open_write_commit=open_write_commit,
+            embed_model=models_pre["embed_model"],
+            ollama_host=models_pre["ollama_host"],
+            upsert=upsert,
         )
+        parts = [
+            f"accepted={result['accepted']}",
+            f"rejected={result['rejected']}",
+        ]
+        if upsert:
+            parts.append(f"updated={result['updated']}")
+        typer.echo(f"\nDone. {' '.join(parts)}")
+        return
+
+    admission = (
+        _admitted_operation("convmem.add") if upsert else nullcontext()
+    )
+
+    from observe import commit_observation_ingest, prepare_observation_ingest  # pylint: disable=line-too-long, no-name-in-module# stale docs/chatgpt-pack observe/ledger names
+
+    read_store = open_readonly_unit_store(cfg_pre["index"]["chroma_dir"])
+    prepared_single = prepare_observation_ingest(
+        prepared_record,
+        store=read_store,
+        embed_model=models_pre["embed_model"],
+        ollama_host=models_pre["ollama_host"],
+        upsert=upsert,
+        precomputed_embedding=precomputed_embedding,
+    )
+
+    with admission:
+        with index_write_flock(cfg_pre):
+            with production_chroma_write_session(entrypoint="convmem.add") as session:
+                store = session.store
+                cfg = session.live_cfg
+                models = cfg["models"]  # pylint: disable=unused-variable
+                units_export = cfg["index"].get("units_export")
+                units_export_path = admitted_units_export_path(cfg) if units_export else None
+
+                unit = (
+                    commit_observation_ingest(
+                        prepared_single,
+                        store=store,
+                        units_export=units_export_path,
+                    )
+                    if prepared_single is not None
+                    else None
+                )
+                if unit is None:
+                    render_error("Record rejected — check required fields.")
+                    raise typer.Exit(1)
+                typer.echo(
+                    f"Added [{unit['domain']}] {unit['title']}  "
+                    f"(ledger: {unit.get('ledger_id', unit['id'])})"
+                )
 
 
 @app.command("verify")
@@ -516,31 +596,35 @@ def verify_command(
     """Record a verifier's check on an existing observation (metadata + ledger record)."""
     _guard_write()
     import json
-    from pathlib import Path
 
     from chroma_write_store import production_chroma_write_session
+    from purge_locks import index_write_flock
     from query import render_error
     from verify import verify_unit
 
-    with production_chroma_write_session(entrypoint="convmem.verify") as session:
-        store = session.store
-        cfg = session.live_cfg
-        models = cfg["models"]
-        units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
+    from config import load_config
 
-        meta = verify_unit(
-            store,
-            unit_id,
-            verifier_model=model,
-            confidence=confidence,
-            notes=notes,
-            result=result,
-            record_ledger=not no_record,
-            embed_model=models["embed_model"],
-            ollama_host=models["ollama_host"],
-            units_export=units_export_path,
-        )
+    cfg_pre = load_config()
+    with index_write_flock(cfg_pre):
+        with production_chroma_write_session(entrypoint="convmem.verify") as session:
+            store = session.store
+            cfg = session.live_cfg
+            models = cfg["models"]
+            units_export = cfg["index"].get("units_export")
+            units_export_path = Path(units_export).expanduser() if units_export else None
+
+            meta = verify_unit(
+                store,
+                unit_id,
+                verifier_model=model,
+                confidence=confidence,
+                notes=notes,
+                result=result,
+                record_ledger=not no_record,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                units_export=units_export_path,
+            )
     if meta is None:
         render_error(f"No unit found with id {unit_id}.")
         raise typer.Exit(1)
@@ -601,13 +685,26 @@ def watch(
 
         cfg = load_config()
         breaker = CircuitBreakerState(_circuit_breaker_state_path_from_config(cfg))
+        from incremental_retry_state import (
+            clear_all_incremental_retry_states,
+            clear_incremental_retry_states_for_source,
+        )
+
         if clear_quarantine_all:
             breaker.clear()
-            typer.echo("Cleared all circuit-breaker quarantine state.")
+            n_retry = clear_all_incremental_retry_states(cfg)
+            typer.echo(
+                "Cleared all circuit-breaker quarantine state "
+                f"and {n_retry} incremental retry-state file(s)."
+            )
         else:
             resolved = str(Path(clear_quarantine).expanduser().resolve())
             breaker.clear(resolved)
-            typer.echo(f"Cleared circuit-breaker quarantine for {resolved}.")
+            n_retry = clear_incremental_retry_states_for_source(cfg, resolved)
+            typer.echo(
+                f"Cleared circuit-breaker quarantine for {resolved} "
+                f"and {n_retry} retry-state hold(s)."
+            )
         return
 
     _guard_write()
@@ -687,8 +784,7 @@ def monitor_command(
     from pathlib import Path
 
     from config import load_config
-    from chroma_write_store import production_chroma_write_session
-    from chroma_store import ChromaStore
+    from chroma_readonly import open_readonly_unit_store
     from monitor import run_monitor
 
     if dry_run:
@@ -696,41 +792,36 @@ def monitor_command(
         models = cfg["models"]
         units_export = cfg["index"].get("units_export")
         units_export_path = Path(units_export).expanduser() if units_export else None
-        store = ChromaStore(str(cfg["index"]["chroma_dir"]), mutation_sink=None)
-        try:
-            stats = run_monitor(
-                store,
-                site=site,
-                embed_model=models["embed_model"],
-                ollama_host=models["ollama_host"],
-                units_export=units_export_path,
-                dry_run=True,
-                verbose=True,
-            )
-        finally:
-            store.close()
-        typer.echo(json.dumps(stats, indent=2))
-        return
-
-    with production_chroma_write_session(entrypoint="convmem.monitor") as session:
-        store = session.store
-        cfg = session.live_cfg
-        models = cfg["models"]
-        units_export = cfg["index"].get("units_export")
-        units_export_path = Path(units_export).expanduser() if units_export else None
+        store = open_readonly_unit_store(cfg["index"]["chroma_dir"])
         stats = run_monitor(
             store,
             site=site,
             embed_model=models["embed_model"],
             ollama_host=models["ollama_host"],
             units_export=units_export_path,
-            dry_run=False,
+            dry_run=True,
             verbose=True,
         )
+        typer.echo(json.dumps(stats, indent=2))
+        return
+
+    cfg_pre = load_config()
+    models = cfg_pre["models"]
+    units_export = cfg_pre["index"].get("units_export")
+    units_export_path = Path(units_export).expanduser() if units_export else None
+    stats = run_monitor(
+        site=site,
+        embed_model=models["embed_model"],
+        ollama_host=models["ollama_host"],
+        units_export=units_export_path,
+        dry_run=False,
+        verbose=True,
+        live_cfg=cfg_pre,
+    )
     typer.echo(json.dumps(stats, indent=2))
     from brief import refresh_brief_after_change
 
-    refresh_brief_after_change(cfg)
+    refresh_brief_after_change(cfg_pre)
 
 
 @app.command()
@@ -1193,6 +1284,14 @@ def _pending_record_hint() -> None:
     after_record_pending()
 
 
+def _recovery_failure_message(exc: Exception) -> str:
+    from propose_decision import RecoveryCompletionUnknown
+
+    if isinstance(exc, RecoveryCompletionUnknown):
+        return f"\n⚠ Recovery completion outcome unknown: {exc}"
+    return f"\n⚠ Recovery deferred for review: {exc}"
+
+
 @app.command("propose_decision")
 def propose_decision_command(
     list_: bool = typer.Option(False, "--list", help="Show pending drafts"),
@@ -1339,17 +1438,17 @@ def propose_decision_command(
     if isinstance(recover, str) and recover:
         _guard_write()
         try:
-            action = recover_approval(cfg, recover)
+            with _admitted_operation("propose_decision.write", governed=True, expected_cfg=cfg) as op:
+                action = recover_approval(op.config(), recover)
         except ValueError as e:
             render_error(str(e))
             raise typer.Exit(1) from e
         except Exception as e:
             _log_index_failure(recover, e)
-            typer.echo(f"\n⚠ Recovery deferred for review: {e}")
+            typer.echo(_recovery_failure_message(e))
             raise typer.Exit(1) from e
         typer.echo(f"Recovered {recover}: {action}")
         return
-
     if isinstance(rebase, str) and rebase:
         _guard_write()
         try:
@@ -1392,9 +1491,9 @@ def propose_decision_command(
             if no_index:
                 proposal, ledger = do_approve(cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id)
             else:
-                from restic_gate import ensure_chroma_snapshot_for_live_write
-                ensure_chroma_snapshot_for_live_write()
-                proposal, ledger, ingest_result = approve_and_ingest(cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id)
+                with _admitted_operation("propose_decision.write", governed=True, expected_cfg=cfg) as op:
+                    proposal, ledger, ingest_result = approve_and_ingest(op.config(), approve_id,
+                                                                         signer=resolved_signer, ledger_id=ledger_id)
         except ValueError as e:
             render_error(str(e))
             raise typer.Exit(1) from e
@@ -1518,7 +1617,8 @@ def propose_decision_command(
 
 
 @app.command("record")
-def record_command(
+# Typer exposes one parameter per explicit option; keep both command aliases typed.
+def record_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     list_: bool = typer.Option(False, "--list", help="Show pending drafts"),
     all_: bool = typer.Option(False, "--all", help="With --list: include approved/rejected"),
     json_out: bool = typer.Option(False, "--json", help="With --list: emit raw JSONL records"),
@@ -1538,6 +1638,11 @@ def record_command(
     reject: str | None = typer.Option(None, "--reject", help="Reject a draft id"),
     signer: str | None = typer.Option(None, "--signer", help="Signer (default on approve: ryan)"),
     reason: str | None = typer.Option(None, "--reason", help="Required for --reject"),
+    recover: str | None = typer.Option(
+        None,
+        "--recover",
+        help="Reconcile APPROVAL_STARTED proposal (no blind retry)",
+    ),
     ledger_id: str | None = typer.Option(None, "--ledger-id", help="Canonical ledger id on approve"),
     parse_doc: str | None = typer.Option(None, "--parse-doc", hidden=True),
     relates_to: str | None = typer.Option(None, "--relates-to"),
@@ -1553,7 +1658,7 @@ def record_command(
     confidence: float = typer.Option(0.8, "--confidence"),
     proposal_id: str | None = typer.Option(None, "--id"),
 ):
-    """Record a durable fact for all agents (`record -i` → `record --approve-last`)."""
+    """Record a durable fact (`record -i` → `record --approve-last`; `record --recover` shared)."""
     # Pass recover/rebase explicitly: Typer Option defaults are OptionInfo objects
     # when this wrapper calls the shared command as a plain Python function.
     propose_decision_command(
@@ -1567,7 +1672,7 @@ def record_command(
         reject=reject,
         signer=signer,
         reason=reason,
-        recover=None,
+        recover=recover if isinstance(recover, str) else None,
         rebase=None,
         ledger_id=ledger_id,
         parse_doc=parse_doc,
@@ -1772,7 +1877,9 @@ def forget_command(
         raise typer.Exit(1)
 
     _guard_write()
+    from config import load_config
     from chroma_write_store import production_chroma_write_session
+    from purge_locks import index_write_flock
 
     with production_chroma_write_session(entrypoint="convmem.forget") as session:
         store = session.store
@@ -1783,7 +1890,6 @@ def forget_command(
 
         meta = dict(unit["metadata"] or {})
         doc = unit["document"] or ""
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         typer.echo(f"unit:       {unit_id}")
         typer.echo(f"source:     {meta.get('source_path')}")
@@ -1795,33 +1901,40 @@ def forget_command(
             if not is_superseded(meta):
                 typer.echo("Unit is not superseded — nothing to undo.")
                 return
-            # Chroma update() merges metadata keys rather than replacing the dict,
-            # so popping keys leaves the stored superseded=True intact. Overwrite
-            # with a not-superseded value instead (is_superseded checks `is True`).
-            meta["superseded"] = False
-            meta["superseded_by"] = ""
-            meta["updated_at"] = now
-            store.update_unit_metadata(unit_id, meta)
-            invalidate_superseded_cache(store.chroma_dir)
-            typer.echo("Restored: unit is active again (superseded cleared).")
-            return
-
-        if is_superseded(meta):
+        elif is_superseded(meta):
             typer.echo("Already superseded — nothing to do.")
             return
-
-        if not yes and not typer.confirm("Tombstone this unit (exclude from search)?"):
+        elif not yes and not typer.confirm("Tombstone this unit (exclude from search)?"):
             typer.echo("Aborted.")
             raise typer.Exit(1)
 
-        meta["superseded"] = True
-        meta["superseded_by"] = f"forget-cli:{reason or 'manual'}"
-        meta["updated_at"] = now
-        store.update_unit_metadata(unit_id, meta)
-        invalidate_superseded_cache(store.chroma_dir)
-        typer.echo(
-            f"Tombstoned {unit_id} — excluded from search results (reversible with --undo)."
-        )
+    cfg_pre = load_config()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with index_write_flock(cfg_pre):
+        with production_chroma_write_session(entrypoint="convmem.forget") as session:
+            store = session.store
+            unit = store.get_unit(unit_id)
+            if unit is None:
+                render_error(f"No unit found with id {unit_id}.")
+                raise typer.Exit(1)
+            meta = dict(unit["metadata"] or {})
+            if undo:
+                meta["superseded"] = False
+                meta["superseded_by"] = ""
+                meta["updated_at"] = now
+                store.update_unit_metadata(unit_id, meta)
+                invalidate_superseded_cache(store.chroma_dir)
+                typer.echo("Restored: unit is active again (superseded cleared).")
+                return
+
+            meta["superseded"] = True
+            meta["superseded_by"] = f"forget-cli:{reason or 'manual'}"
+            meta["updated_at"] = now
+            store.update_unit_metadata(unit_id, meta)
+            invalidate_superseded_cache(store.chroma_dir)
+            typer.echo(
+                f"Tombstoned {unit_id} — excluded from search results (reversible with --undo)."
+            )
 
 
 @app.command("shadow-activate")
@@ -2057,6 +2170,52 @@ def writer_census_report_command(
         typer.echo(json.dumps({"verdict": "REFUSED", "refusal_code": exc.code}, sort_keys=True))
         raise typer.Exit(2) from exc
     typer.echo(json.dumps({"verdict": "PASS", **report}, sort_keys=True))
+
+
+def _governed_affected_paths(cfg):
+    """Existing admission consumer of the governed proposal file set."""
+    from propose_decision import _governed_recovery_affected_paths
+    return _governed_recovery_affected_paths(cfg)
+
+
+def _admission_steps(entrypoint: str, governed: bool, expected_cfg):
+    """Generator body of ``_admitted_operation``.
+
+    ``expected_cfg`` is a config read before admission (e.g. for a preview);
+    its Chroma target must match the admitted one. Refusals raised after
+    admission propagate to the caller's own failure handling. A refusal before
+    admission exits with SystemExit so broad ``except Exception`` handlers in
+    callers cannot turn it into a deferred-recovery message.
+    """
+    from chroma_write_store import admitted_write_operation
+    from restic_gate import OperationAdmissionRefused, report_refusal
+    from restic_snapshot import EXIT_WRONG_PATH
+
+    try:
+        with admitted_write_operation(
+            entrypoint=entrypoint,
+            extra_affected_paths=_governed_affected_paths if governed else None,
+        ) as op:
+            if expected_cfg is not None:
+                seen = Path(expected_cfg["index"]["chroma_dir"]).expanduser().resolve()
+                if seen != op.chroma_dir:
+                    raise OperationAdmissionRefused(
+                        f"{entrypoint}: target changed from {seen} to "
+                        f"{op.chroma_dir} before admission",
+                        EXIT_WRONG_PATH,
+                        "operation_config_changed",
+                    )
+            yield op
+    except OperationAdmissionRefused as exc:
+        report_refusal(exc)
+        raise SystemExit(exc.exit_code or 1) from exc
+
+
+def _admitted_operation(entrypoint: str, *, governed: bool = False, expected_cfg=None):
+    """Bound Restic preflight for a gated write; exit nonzero on refusal."""
+    from contextlib import contextmanager
+
+    return contextmanager(_admission_steps)(entrypoint, governed, expected_cfg)
 
 
 def main():

@@ -145,8 +145,13 @@ class ProposeDecisionTests(unittest.TestCase):
         )
         _, ledger = approve(self.cfg, rec["id"], signer="ryan", ledger_id="dec_shared")
         self.assertEqual(approved_for_proposal(self.cfg, rec["id"]), ledger)
-        self.assertEqual(recovery_action(self.cfg, rec["id"], base_hash="b", proposed_hash="p"), "retry_chroma")
-        self.assertEqual(recovery_action(self.cfg, rec["id"], live_hash="p", proposed_hash="p"), "repair_marker")
+        self.assertEqual(recovery_action(self.cfg, rec["id"], proposed_hash="a" * 64), "review")
+        self.assertEqual(recovery_action(
+            self.cfg, rec["id"], live_absent=True, proposed_hash="a" * 64
+        ), "retry_chroma")
+        self.assertEqual(recovery_action(
+            self.cfg, rec["id"], live_hash="a" * 64, proposed_hash="a" * 64
+        ), "repair_marker")
 
     def test_governed_apply_rejects_sibling_stale_and_create_collision(self):
         from propose_decision import validate_governed_apply
@@ -156,9 +161,11 @@ class ProposeDecisionTests(unittest.TestCase):
         common["unresolved_targets"] = {"dec_a"}
         assert validate_governed_apply(target_ledger_id="dec_a", live_hash="old", base_hash="old", **common) == "pending_sibling"
 
-    @patch("observe.ingest_observation")
-    def test_ingest_approved_ledger_indexes_one(self, mock_ingest):
-        mock_ingest.return_value = {"id": "u1", "ledger_id": "dec_test_approved"}
+    @patch("observe.commit_observation_ingest")
+    @patch("observe.prepare_observation_ingest")
+    def test_ingest_approved_ledger_indexes_one(self, mock_prepare, mock_commit):
+        from observe import PreparedObservationIngest  # pylint: disable=no-name-in-module  # stale docs/chatgpt-pack observe/ledger names
+
         ledger = {
             "id": "dec_test_approved",
             "kind": "decision",
@@ -168,10 +175,20 @@ class ProposeDecisionTests(unittest.TestCase):
             "rationale": "One record only",
             "author_model": "ryan",
         }
+        mock_prepare.return_value = PreparedObservationIngest(
+            record=ledger,
+            unit={**ledger, "ledger_id": "dec_test_approved"},
+            doc="Fast index",
+            embedding=[0.1],
+            upsert=True,
+            target_digest="missing",
+        )
+        mock_commit.return_value = {"id": "u1", "ledger_id": "dec_test_approved"}
         with patch_live_config(self.cfg):
             stats = ingest_approved_ledger(self.cfg, ledger)
         self.assertEqual(stats["accepted"], 1)
-        mock_ingest.assert_called_once()
+        mock_prepare.assert_called_once()
+        mock_commit.assert_called_once()
 
     def test_reject_requires_reason(self):
         rec = propose(

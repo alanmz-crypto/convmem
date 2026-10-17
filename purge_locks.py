@@ -32,8 +32,40 @@ def export_lock_depth() -> int:
     return _export_depth()
 
 
+def index_write_lock_depth() -> int:
+    """Current thread's store-wide index write lock nesting depth."""
+    return int(getattr(_tls, "index_write_depth", 0) or 0)
+
+
+def index_write_lock_chroma_dir() -> Path | None:
+    """Chroma directory bound to the outermost held index write lock, if any."""
+    raw = getattr(_tls, "index_write_bound_chroma", None)
+    return Path(raw) if raw is not None else None
+
+
 def _source_depth() -> int:
     return int(getattr(_tls, "source_depth", 0) or 0)
+
+
+def _index_write_depth() -> int:
+    return int(getattr(_tls, "index_write_depth", 0) or 0)
+
+
+def data_root_from_cfg(cfg: dict) -> Path:
+    idx = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
+    for key in ("processed_log", "chroma_dir", "units_export"):
+        raw = idx.get(key)
+        if raw:
+            return Path(str(raw)).expanduser().resolve().parent
+    raise KeyError("cfg[index] lacks processed_log, chroma_dir, or units_export")
+
+
+def index_write_lock_path(cfg: dict) -> Path:
+    return data_root_from_cfg(cfg) / "locks" / "index_write.lock"
+
+
+def index_write_lock_path_for_export(export_path: Path | str) -> Path:
+    return index_write_lock_path({"index": {"units_export": str(export_path)}})
 
 
 def assert_lock_ordering_ok(*, acquiring: str) -> None:
@@ -41,11 +73,62 @@ def assert_lock_ordering_ok(*, acquiring: str) -> None:
         raise RuntimeError(
             "lock ordering violation: cannot acquire source lock while holding export lock"
         )
+    if acquiring == "source" and _index_write_depth() > 0:
+        raise RuntimeError(
+            "lock ordering violation: cannot acquire source lock while holding index write lock"
+        )
+    if acquiring == "index_write" and _export_depth() > 0:
+        raise RuntimeError(
+            "lock ordering violation: cannot acquire index write lock while holding export lock"
+        )
+    if acquiring == "index_write":
+        from chroma_write_store import production_chroma_store_session_depth
+
+        if production_chroma_store_session_depth() > 0:
+            raise RuntimeError(
+                "lock ordering violation: cannot acquire index write lock "
+                "while holding a Chroma writer session"
+            )
+    if acquiring == "export" and _index_write_depth() == 0:
+        raise RuntimeError(
+            "lock ordering violation: cannot acquire export lock without index write lock"
+        )
+
+
+def reject_provider_under_write_scope() -> None:
+    """Refuse paid provider work while C1 or a production Chroma session is held."""
+    from chroma_write_store import production_chroma_store_session_depth
+
+    if index_write_lock_depth() > 0 or production_chroma_store_session_depth() > 0:
+        raise RuntimeError(
+            "provider calls are forbidden under the index write lock or a Chroma write session"
+        )
+
+
+def require_index_write_lock_held(*, chroma_dir: str | Path | None = None) -> None:
+    if index_write_lock_depth() == 0:
+        raise RuntimeError(
+            "production Chroma mutation requires the store-wide index write lock"
+        )
+    if chroma_dir is None:
+        return
+    held = index_write_lock_chroma_dir()
+    if held is None:
+        raise RuntimeError(
+            "production Chroma mutation requires the store-wide index write lock "
+            "to be bound to a Chroma directory"
+        )
+    from chroma_store import canonical_target
+
+    requested = Path(canonical_target(chroma_dir)).resolve()
+    if held != requested:
+        raise RuntimeError(
+            f"index write lock belongs to Chroma dir {held}, not {requested}"
+        )
 
 
 def source_lock_dir(cfg: dict) -> Path:
-    data_root = Path(cfg["index"]["processed_log"]).expanduser().resolve().parent
-    return data_root / "locks" / "source"
+    return data_root_from_cfg(cfg) / "locks" / "source"
 
 
 def source_lock_path(cfg: dict, canonical_path: str) -> Path:
@@ -95,7 +178,8 @@ def source_flock(cfg: dict, canonical_path: str) -> Iterator[Path]:
 
 
 @contextmanager
-def export_flock_path(export_path: Path | str) -> Iterator[Path]:
+def _export_flock_path_inner(export_path: Path | str) -> Iterator[Path]:
+    assert_lock_ordering_ok(acquiring="export")
     lock = export_lock_path_for_file(export_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
     with _open_private_lock(lock) as handle:
@@ -109,8 +193,51 @@ def export_flock_path(export_path: Path | str) -> Iterator[Path]:
 
 
 @contextmanager
+def index_write_flock(cfg: dict) -> Iterator[Path]:
+    if _index_write_depth() == 0:
+        assert_lock_ordering_ok(acquiring="index_write")
+    lock = index_write_lock_path(cfg)
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    depth_before = _index_write_depth()
+    handle: TextIO | None = None
+    if depth_before == 0:
+        handle = _open_private_lock(lock)
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        chroma_raw = (cfg.get("index") or {}).get("chroma_dir")
+        _tls.index_write_bound_chroma = (
+            Path(chroma_raw).expanduser().resolve() if chroma_raw else None
+        )
+    _tls.index_write_depth = depth_before + 1
+    try:
+        yield lock
+    finally:
+        _tls.index_write_depth = max(0, _index_write_depth() - 1)
+        if depth_before == 0 and handle is not None:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            handle.close()
+            _tls.index_write_bound_chroma = None
+
+
+@contextmanager
+def index_write_flock_for_export(export_path: Path | str) -> Iterator[Path]:
+    with index_write_flock({"index": {"units_export": str(export_path)}}) as lock:
+        yield lock
+
+
+@contextmanager
+def export_flock_path(export_path: Path | str) -> Iterator[Path]:
+    if _index_write_depth() == 0:
+        with index_write_flock_for_export(export_path):
+            with _export_flock_path_inner(export_path) as lock:
+                yield lock
+        return
+    with _export_flock_path_inner(export_path) as lock:
+        yield lock
+
+
+@contextmanager
 def export_flock(cfg: dict) -> Iterator[Path]:
-    with export_flock_path(cfg["index"]["units_export"]) as lock:
+    with export_flock_path(cfg["index"]["units_export"]) as lock:  # pylint: disable=contextmanager-generator-missing-cleanup
         yield lock
 
 

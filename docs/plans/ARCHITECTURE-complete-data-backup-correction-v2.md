@@ -297,7 +297,7 @@ paths, Restic version, evidence comparisons, classifications, and steps.
 | `22` | Repository invocation or snapshot JSON failure |
 | `23` | No required v2 tagged snapshot |
 | `24` | Tagged snapshots exist but none matches the exact data root |
-| `25` | Correct-path snapshot exists but is stale |
+| `25` | Correct-path snapshot is not current: stale (reason `stale_snapshot`) or later than the evaluation instant (reason `future_snapshot_time`; never backed up or replaced by an older candidate). Safe Harbor T2 also uses 25 with `day_boundary_crossed` when admission straddles local midnight |
 | `26` | Requested ID is absent, abbreviated, ambiguous, or invalid |
 | `27` | Destination lineage is absent, ambiguous, or inconsistent |
 | `28` | Snapshot, copy, check, or restore action failed outside reserved Restic codes |

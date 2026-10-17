@@ -27,6 +27,18 @@ EXPECTED = {
     ("chroma_store.py", "query_units", "raw.query"): (2, "core-storage"),
     # Write guard's read-only silent-loss census (metadata rows vs HNSW ids).
     ("chroma_write_guard.py", "vector_census", "sqlite3.connect[chroma]"): (1, "core-storage"),
+    # T3 client-free backend identity / schema fingerprint (read-only preservation oracle).
+    ("chroma_write_guard.py", "sqlite_schema_digest", "sqlite3.connect[chroma]"): (1, "core-storage"),
+    ("chroma_write_guard.py", "live_backend_identity", "sqlite3.connect[chroma]"): (1, "core-storage"),
+    # T3 release-evidence capture and strict empty-changed-set evaluation (read-only SQLite).
+    ("chroma_write_guard.py", "build_release_evidence_for_collection", "sqlite3.connect[chroma]"): (
+        1,
+        "core-storage",
+    ),
+    ("chroma_write_guard.py", "evaluate_release_evidence", "sqlite3.connect[chroma]"): (1, "core-storage"),
+    # T3 validated release and snapshot refresh read metadata without opening a Chroma client.
+    ("chroma_write_guard.py", "release_quarantine", "sqlite3.connect[chroma]"): (1, "core-storage"),
+    ("chroma_write_guard.py", "_refresh_snapshot", "sqlite3.connect[chroma]"): (1, "core-storage"),
     ("chroma_write_store.py", "open_chroma_for_write", "ChromaStore"): (
         1,
         "stable-governed-infrastructure",
@@ -40,12 +52,19 @@ EXPECTED = {
         1,
         "excluded-administrative",
     ),
-    ("convmem.py", "monitor_command", "ChromaStore"): (1, "excluded-administrative"),
     (
         "incremental_jsonl_canary.py",
         "_default_zero_adoption",
         "ChromaStore",
     ): (1, "excluded-administrative"),
+    (
+        "refine.py",
+        "job_semantic_dedupe",
+        "ChromaStore",
+    ): (
+        1,
+        "excluded-administrative",
+    ),
     ("eval_corpus/capture.py", "_connect_readonly", "sqlite3.connect[chroma]"): (
         1,
         "excluded-administrative",
