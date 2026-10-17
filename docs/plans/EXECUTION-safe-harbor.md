@@ -1069,9 +1069,23 @@ and stop/continuation procedure are reviewed and separately granted. If real
 pending work prevents the strict precheck, return that concrete state for a
 separate decision; there is no implicit repair/flush permission.
 
-**Next decision:** governing review of this proposed scope and Ryan's recovery
-inputs; then a separate bounded implementation/evidence grant if accepted. Kiro's
-PASS at `f45b051` validates the preceding evidence only, not this new interface.
+### Governing review and next decision (2026-10-17)
+
+Kiro PASSed the initial scope at `8e0cfda97a56b9ebb3cd4ff5fd688011a3e54368`
+and the B1–B3 clarification delta at
+`c46fbc607eeb3d4778cc7099dc0cb0487c972d63`, with high qualitative confidence.
+The [review record](VERIFY-safe-harbor.md#legacy-initializer-scope--governing-review)
+preserves coverage, limitations and exact subjects. Preview no-effect evidence,
+live/original source comparison against bound facts and apply-time backend
+rechecking are explicit contract/evidence obligations, not completed tests.
+There are no remaining scope-decision conditions from that review.
+
+**Next decision:** Ryan may grant Cursor the bounded isolated initializer
+implementation/evidence in this section, with Codex supervision and results
+returned for independent review. No such implementation grant has been received.
+PR creation, live operations and deployment remain separate. Recovery inputs stay
+open for live apply. Kiro's PASS at `f45b051` continues to validate only the earlier
+readiness evidence; the new scope PASS does not establish implementation behavior.
 
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->

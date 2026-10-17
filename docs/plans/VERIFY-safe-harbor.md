@@ -1935,5 +1935,85 @@ Maximum lost work, newest image completion/scope/location, independent key acces
 and restore/check history remain unanswered. Scoping uses explicit prerequisites,
 not inferred acceptance or invented recovery facts.
 
+## Legacy initializer scope — governing review
+
+**Arc: Safe Harbor. 2026-10-17; static planning/review only.** Ryan retained the
+Typora CPU-tripwire warning and allowed this work despite the startup failure.
+The earlier bounded event inspection established neither a ConvMem connection nor
+a hardware cause. This exception is not a healthy-host finding or live grant.
+
+Kiro's first governing review **PASSed** EXECUTION §22 at
+`8e0cfda97a56b9ebb3cd4ff5fd688011a3e54368`. Its same-session bounded delta
+**PASSed** the successor at `c46fbc607eeb3d4778cc7099dc0cb0487c972d63`, with
+high qualitative confidence. Earlier readiness and T1–T5 verdicts remain pinned;
+none supplies evidence that the new initializer has been implemented.
+
+The source-backed contract separates preparation from publication: the existing
+`_refresh_snapshot` publishes CURRENT, may record unavailable evidence and prunes
+old generations. The initializer must prepare and validate all segments before
+publishing any, preserve durable originals externally, and prune none. Mixed,
+pending or unknown state refuses; partial publication is reported without
+inventing atomicity, rollback or consumer-resumption authority.
+
+Three first-review refinements were incorporated and closed by the delta:
+
+- **B1:** preview uses only read-only paths. Future public-CLI evidence must
+  inspect unchanged file bytes/directory entries, including a faulty-preview
+  control that creates staging and fails that assertion.
+- **B2:** archival and pre-publication checks compare live/original source facts
+  and pointer/manifest bytes against preview-bound facts, not the archive alone.
+  Future evidence changes sources while the archive remains valid and requires
+  refusal before CURRENT publication.
+- **B3:** apply rechecks supported/backend identity under its native lock against
+  preview identity before capture; future evidence must exercise mismatch refusal.
+
+The initial review called these both "blockers" and non-blocking refinements.
+The delta explicitly clarified that **no condition remains before Ryan can decide
+the bounded isolated implementation grant**. They are closed as plan obligations,
+not implemented behavior. A review phrase describing the runtime surface as
+"already-granted" is not adopted: those two files are proposed implementation
+scope; Ryan has not granted implementation. All live prerequisites remain open.
+
+Actual inspection: relevant snapshot capture/publication/prune, strict-evidence,
+durable-copy/preservation, lock and quarantine-admission source; the complete
+guard CLI and five-case legacy test file; scope/STATUS/guardrail docs and relevant
+readiness text. The delta read the correction patch and full successor §22.
+Kiro did not rerun tests, inspect production, or re-review the complete runtime;
+static inspection is not archive, interruption, multi-segment or power-loss proof.
+The historical 83+5 test results remain historical and are not new scope evidence.
+
+Both reviews used a custom file-only Kiro v3 profile in a pinned-source packet:
+shell/write/MCP/powers/hooks disabled, no startup/indexing rituals. Codex inspected
+the tool transcript: packet-local reads/search/listing and a static document-symbol
+query only. Both invocations exited 0; all 1,584 source hashes in each copied tree
+were unchanged. Runtime/tests were not changed and no new tests were executed.
+
+Local packet: `/tmp/safe-harbor-initializer-review-kse_4n_q`; same Kiro session
+`sess_6c2a3cf4-437c-4406-bc1a-965b765ab210`. This committed record survives if
+temporary artifacts disappear. SHA-256:
+
+- Initial stream `review.jsonl`:
+  `4dc05eb7116aad63427194135fccab57adf55e8b593f8c0fc5671bd93cc7a088`.
+- Initial text `review-text.txt`:
+  `99c4061a6232278ce4280e10d2a7d0c3a2fe697b623f7e018f1ba9824bb22931`.
+- Initial supervisor result `result.json`:
+  `94c9441a17a741cb92d63e128ee9827643b4d0c95aa79e9f3613ac34cb655b0c`.
+- Delta stream `delta.jsonl`:
+  `fe28a69be0aae190066007c0fe0095b04901bba26fdce49960afd4c580fca8ee`.
+- Delta text `delta-text.txt`:
+  `42101f9ef1aa61ebc69293d502ef02b1e7f24d2a274fe96d1c0537a6e2d83b18`.
+- Delta supervisor result `delta-result.json`:
+  `d9825c02df0f8445e30cdfdf94c174c76e1733f56f34ed7654c2c3d84957017c`.
+
+Publication correction: Codex briefly created the unintended remote branch
+`feat-2026-10-15-safe-harbor-rollout-evidence` through a refspec typo. Both copies
+were confirmed at the same `c46fbc6`; the intended `feat/2026-10-15-safe-harbor-rollout-evidence`
+was updated, tracking restored, and the accidental copy deleted. No force-push,
+PR or runtime change resulted. The intended branch remains the fallback.
+
+**Next:** Ryan's bounded isolated implementation/evidence decision; recovery
+inputs are still pending for eventual live apply. No further unchanged-artifact
+review, implementation, new tests, PR or live action is authorized here.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md, ../../tests/_safe_harbor_rollout_evidence.py, ../../tests/test_safe_harbor_rollout_legacy.py — operational readiness evidence and current routing -->
 <!-- src: EXECUTION-safe-harbor.md — grants and retained limits -->

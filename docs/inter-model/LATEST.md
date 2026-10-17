@@ -9,15 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — static initializer planning/review active (2026-10-17):**
+- **Arc Safe Harbor — initializer scope PASS; implementation decision next (2026-10-17):**
   PR #394 is tree-identical to the accepted candidate; [VERIFY closeout](../plans/VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping)
   records hosted CI and Ryan's exact-tip outage exception.
   Kiro PASSed bounded readiness evidence at `f45b051`, with coverage corrected in
   the same session. Codex drafted [the initializer scope](../plans/EXECUTION-safe-harbor.md#22-bounded-legacy-source-initialization--proposed-scope-not-a-grant).
-  Ryan retained the CPU tripwire warning and allowed static planning/review to
-  continue. **Next lane: Codex/Kiro**, for the concrete initializer contract;
-  recovery/loss-window facts remain with Ryan. The proposal is not implemented
-  or covered by the earlier evidence PASS.
+  Ryan retained the CPU tripwire warning and allowed static planning/review.
+  Kiro PASSed the initializer scope and three-clarification delta at `c46fbc6`.
+  **Next lane: Ryan**, for a bounded isolated Cursor implementation/evidence grant;
+  recovery/loss-window facts remain open for live apply. The proposal is unimplemented.
   [STATUS](../plans/STATUS-safe-harbor.md) carries results and current gates.
   No implementation, PR, service change, live backup/restore or deployment is granted.
 

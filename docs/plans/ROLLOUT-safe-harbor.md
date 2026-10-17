@@ -341,14 +341,16 @@ installed-interpreter and legacy mechanisms now have focused evidence; recovery
 qualification, an operational initialization entrypoint and rollout approval remain
 open. These are concrete remaining steps, not a request to redo T1–T5 reviews.
 
-Kiro's bounded evidence review is complete. Next: Ryan's recovery inputs
+Kiro's bounded evidence and initializer-scope reviews are complete; the scope
+PASS is pinned to `c46fbc6` (EXECUTION §22). Next: Ryan's isolated implementation
+decision and recovery inputs
 (acceptable lost-work interval, newest image completion/scope/location,
-independent access and restore/check history), and governing review of the new
-EXECUTION §22 initializer scope. No recovery answer has been inferred. Later
+independent access and restore/check history). No recovery answer has been inferred. Later
 implementation and evidence must address durable preservation, multiple segments
 and refusal when the strict oracle cannot pass. Then finish operational review
 and request an exact execution decision. No further reviewer, PR, live operation
-or runtime fix is invoked by recording this recommendation.
+or runtime fix is invoked by recording this recommendation. The static-only
+startup exception retains the warning and grants none of the live steps above.
 
 **Suggested documentation PR title:** Prepare Safe Harbor rollout against the current runtime
 
