@@ -48,7 +48,7 @@
     "monitor.py:599",
     "refine.py:49",
     "repository_knowledge_index.py:275",
-    "repository_knowledge_sync.py:276",
+    "repository_knowledge_sync.py:288",
     "scratch_jsonl_prototype/chroma_projection.py:69"
   ],
   "proof_class": "code_path static + hermetic (C3 writer gate)",
@@ -193,7 +193,7 @@
     {
       "class": "retires_repository_knowledge_units",
       "file": "repository_knowledge_sync.py",
-      "line": 247,
+      "line": 288,
       "required_routing": "production_chroma_write_session",
       "snippet": "with production_chroma_write_session(entrypoint=\"repository_knowledge_retire\") as session:",
       "uses_open_chroma_for_write": false,
