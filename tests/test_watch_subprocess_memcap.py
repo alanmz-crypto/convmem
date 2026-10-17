@@ -12,7 +12,14 @@ from watch import _flush_path_subprocess, _scoped_index_cmd
 
 
 class ScopedIndexCmdTests(unittest.TestCase):
-    _INNER = ["/usr/bin/python", "convmem.py", "index", "--file", "/tmp/x.jsonl"]
+    _INNER = [
+        "/usr/bin/python",
+        "convmem.py",
+        "index",
+        "--file",
+        "/tmp/x.jsonl",
+        "--now",
+    ]
 
     def setUp(self) -> None:
         for key in list(os.environ):
@@ -59,6 +66,8 @@ class FlushPathSubprocessTests(unittest.TestCase):
             mock.patch("subprocess.Popen", return_value=completed) as popen,
         ):
             _flush_path_subprocess("/tmp/x.jsonl", verbose=False)
+        inner = popen.call_args.args[0]
+        self.assertEqual(inner[-4:], ["index", "--file", "/tmp/x.jsonl", "--now"])
         self.assertEqual(completed.communicate.call_args.kwargs["timeout"], 900)
         self.assertTrue(popen.call_args.kwargs["start_new_session"])
 

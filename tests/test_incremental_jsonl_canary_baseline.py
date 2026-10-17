@@ -18,7 +18,8 @@ BASELINE_HASHES = {
     # segment_restored message now states restored-under-containment / writes quarantined
     # until validated owner release (reviewed base458b9f6..e7b56011).
     # Refreshed for issue #286 stage-2 corrective 20 (main merge + R6-F1 escape accounting).
-    "watch.py": "335e14af7c3d1e42cc6d28711e05ade486838dccb4a055b5d3f09d59a9e8f032",
+    # Refreshed for issue #286 watcher-child --now.
+    "watch.py": "39765b5e7f8f560fdcc01d86830e163b08962148fb8919a310e7bbe85bb95f57",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.

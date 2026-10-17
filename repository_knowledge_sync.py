@@ -50,9 +50,21 @@ def token_manifest_path(token: str) -> str:
     return token[len(RECONCILE_PREFIX) :]
 
 
-def public_index_argv(abs_file: str) -> list[str]:
+def watcher_child_index_argv(abs_file: str) -> list[str]:
+    """CLI argv for watch subprocess index children (includes --now to avoid self-deferral)."""
     repo = Path(__file__).resolve().parent
-    return [sys.executable, str(repo / "convmem.py"), "index", "--file", abs_file]
+    return [
+        sys.executable,
+        str(repo / "convmem.py"),
+        "index",
+        "--file",
+        abs_file,
+        "--now",
+    ]
+
+
+def public_index_argv(abs_file: str) -> list[str]:
+    return watcher_child_index_argv(abs_file)
 
 
 def default_index_dispatch(
