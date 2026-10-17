@@ -312,6 +312,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-16 | Claude | Round 29: Astra's R7-F1 reproduced at `d0510f8` (recovery needing an embedding refuses under C1/session); round 28 PASS withdrawn; corrective 22 tested under main's launcher |
 | 2026-10-16 | Claude | Round 30 at `d5f765a`: PASS. Corrective 22 closes R7-F1; corrective 23 makes main a real parent (PR now conflict-free); 0 tip-only failures under main's launcher; Astra's round 8 next |
 | 2026-10-16 | Astra | Round 8 at `a5fb7d7` (tree = `d5f765a`): PASS; R7-F1 closed. Branch READY_FOR_PR |
+| 2026-10-16 | Claude | Round 31 at `1a70c41`: PASS. Corrective 24 (comment-only pylint suppressions, r6 crash workaround, 7 lazy-cycle allowlist pairs) is AST-identical in production; pylint CI green; pytest CI pending |
 
 ## TL;DR
 

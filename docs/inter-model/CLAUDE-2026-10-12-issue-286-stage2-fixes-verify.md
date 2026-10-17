@@ -1,4 +1,64 @@
-# Verify: Stage 2 wedge fixes, round 30 at `d5f765a`: PASS; corrective 22 landed exactly as tested, corrective 23 makes main a real parent, and the full suite under main's CI launcher has no tip-only failures
+# Verify: Stage 2 wedge fixes, round 31 at `1a70c41`: PASS; corrective 24 clears PR #395's pylint check without changing behavior
+
+**Arc: Codex (#286), after Stage 2.**
+**Date:** 2026-10-16
+**Verifier:** Claude (Opus 5.5)
+**Target:** `fix/2026-10-12-issue-286-stage2-wedge-fixes` at `1a70c41`, which is Cursor's
+corrective 24:
+- `8b433e9` works around a pylint 4.0.6 crash in `tests/test_zz_codex_audit_r6.py`;
+- `6d49816` adds comment-only suppressions and seven cyclic-import allowlist pairs;
+- `1a70c41` refreshes the R2b and Shadow inventories.
+
+**Why this round:** PR #395's pylint check failed at `d5f765a`. pylint crashed on
+`read_text = Path.read_text` (r6:87), and the regression gate then reported 221
+findings plus 6 new cycle pairs, none of them bugs.
+
+## Burn status
+
+**No burn.** The branch isn't deployed. The watch, refine and monitor units are inactive.
+
+## Verdict (round 31)
+
+**PASS.** There are no findings.
+
+- **Behavior unchanged.** `astsame.py d5f765a 1a70c41` reports the AST as the same for all
+  41 other changed `.py` files, every production file among them. Only three ASTs change,
+  all expected:
+  - **r6 test:** `vars(Path)["read_text"]`. The test passes, and it is the same function
+    object.
+  - **Gate script:** the allowlist only.
+  - **Canary baseline test:** the `incremental_jsonl.py` T0 hash. The new value
+    `3330dbbb…` is the sha256 of the file at `1a70c41`. A refreshed hash is how the T0
+    baseline records an approved byte change.
+- **The suppressions hide no real error.** The production E-class suppressions are
+  `no-name-in-module` (31 names) and one `unexpected-keyword-arg`.
+  - **`no-name-in-module`:** each of the 31 names is defined at the top level of the real
+    `observe.py` or `ledger.py`. pylint resolves those modules to the stale
+    `docs/chatgpt-pack/` copies.
+  - **`unexpected-keyword-arg`:** it is at `propose_decision.py:619`. Every keyword
+    passed there, `precomputed_embedding` included, is in `ingest_observation`'s
+    signature.
+- **Cycle allowlist.** The allowlist adds the 6 pairs that were new at `d5f765a`, plus
+  `(ingest, watch)`. That pair is a real lazy edge (`watch.py` imports `ingest` at lines
+  105, 119, 453 and 514). It insures against pylint naming the same cycle in a different
+  scan order. The gate still fails on any other new pair.
+- **Inventories.** The only changes are line numbers, `code_revision` and
+  `inventory_digest`.
+- **Tests.** I ran a targeted set in a clean worktree at `1a70c41`: canary baseline, R2b
+  identity (implementation revision, corrective viii), R2b coverage, Shadow writer scan,
+  gate tests and r6. 78 passed.
+- **CI on PR #395 at `1a70c41`:** pylint (3.12) passed (9m58s). CodeQL and secret-scan
+  passed. pytest was still running when this was written. The full suite isn't rerun here
+  because behavior is AST-identical to round 30's tree.
+
+## Next
+
+1. PR #395's pytest goes green.
+2. The R2b owner acknowledges CO-2, and the Safe Harbor lane reviews correctives 21 and 22.
+3. Ryan merges. Squash is fine.
+4. Deploying needs separate grants.
+
+# Round 30: `d5f765a`, PASS; pylint CI failed, corrective 24 (kept for the record)
 
 **Arc: Codex (#286), after Stage 2.**
 **Date:** 2026-10-16
