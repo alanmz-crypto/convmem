@@ -953,11 +953,16 @@ omits a supported admission/preservation contract. These are not permitted route
    symlinks, incomplete generations or unknown schema. Do not reinterpret an
    already initialized or partially initialized store as a new legacy operation.
    Preview must not create the native lock, an event, archive or staging directory.
+   Its call graph uses only read-only inspection/oracle paths, never snapshot
+   preparation or publication helpers, including when preview refuses.
    Use read-only SQLite and before/after file checks; report concurrent change
    rather than claiming preview is atomic. Apply always rechecks under its locks.
 2. **Admission and complete precheck.** A later apply acquires the existing native
    lock, rechecks quarantine/target/digest, and keeps a read-only SQLite transaction
-   across validation and capture. All affected segments must pass structural,
+   across validation and capture. Re-read the backend identity under the lock,
+   apply `_assert_supported_backend_identity`, and require exact equality with the
+   preview-bound identity before capture; a changed interpreter/native binding
+   cannot inherit preview admission. All affected segments must pass structural,
    identity, census and the **existing strict empty-changed-set predicate** before
    the first CURRENT publication or prune. A mixed eligible/ineligible set refuses
    as a whole before publication. Old clients/incidental writers still require the
@@ -968,7 +973,12 @@ omits a supported admission/preservation contract. These are not permitted route
    never overwrite/reuse an existing archive. Copy/verify originals, fsync files
    and created directory entries, then publish/fsync a write-once completion
    manifest binding target, original inputs and digests. Recheck original state
-   before accepting completion. Any copy/hash/space/fsync failure prevents CURRENT
+   before accepting completion: re-read the live/original source files and exact
+   CURRENT/manifest bytes, comparing with the preview-bound facts/digests using
+   the existing source-facts comparison semantics (`_source_facts_equal` and
+   `_require_live_source_facts_match`, extended only to the named manifest/pointer
+   inputs as needed). Rechecking the archive copy alone is insufficient. Repeat
+   this comparison at item 4's pre-publication boundary. Any copy/hash/space/fsync failure prevents CURRENT
    changes and pruning. The archive is evidence/rollback material, not a second
    authority or a substitute for the qualified recovery artifact.
 4. **Create new saves, leave the corpus alone.** Reuse existing snapshot capture
@@ -1013,6 +1023,10 @@ A needed surface/contract expansion returns before implementation.
 
 Minimum isolated acceptance evidence:
 
+- Preview success and refusal leave corpus/guard file bytes and directory-entry
+  sets unchanged, including the lock, CURRENT, staging and archive paths. A
+  faulty preview that calls preparation must fail this assertion. Use actual CLI
+  invocations and inspect effects outside the output/result object.
 - Two populated legacy segments: complete preview, durable archive, both fresh
   sources strict-admissible; corpus bytes unchanged; original archived bytes and
   CURRENT references retained. Test the actual public command, not only helpers.
@@ -1020,6 +1034,10 @@ Minimum isolated acceptance evidence:
   CURRENT changes; never force eligibility. Unknown authority, changed digest,
   wrong target, alias retarget, unexpected segment/schema and existing destination
   also refuse without erasing source/incident state.
+- Change live/original source facts after preview or during archival while leaving
+  archived bytes valid: require refusal before CURRENT publication. Change the
+  backend identity between preview and apply: require the under-lock recheck to
+  refuse. These assert the source and identity comparisons, not archive validity alone.
 - Archive short write/hash mismatch/file and directory fsync failures: no publish
   or prune. A real faulty omit-archive control must fail the retention assertion.
 - Failure preparing/validating the second segment must leave both original
