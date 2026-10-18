@@ -1,11 +1,11 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 scoped mechanical **COMPLETE** (V0–V2 **PASS** under bwrap). V3–V8 **NOT RUN**. v2 live execution **closed**.
+**State:** T1 scoped mechanical **COMPLETE** (V0–V2 **PASS** under bwrap at tested code below). V3–V8 **NOT RUN**. v2 live execution **closed**.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` (T1 implementation + contract + bwrap gate). **Documentation evidence tip:** `2654d71da5caf25413af2f728947083457913fc3`. **PR:** none authorized.
+**Tested code SHA:** `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** *(set on doc commit after this SHA)*. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -42,7 +42,7 @@ to this mechanical verification. V0–V2 rows below are filled from hermetic Exe
 |----|-------|--------|
 | V0a | Ryan Execute grant (T1–T5 + hermetic verification) | PASS — execute handoff on branch |
 | V0b | Reviewed execution plan SHA | PASS — `942390001bca407c1c28e9972c443ee7612e1c1b` |
-| V0c | T1 code baseline | PASS — includes `439b851` v2 grant/dry-run + later T1 contract/bwrap harness at `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` |
+| V0c | T1 code baseline | PASS — includes `439b851` v2 grant/dry-run + later T1 contract/bwrap harness at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` |
 | V0d | External network enforcement | PASS — `bwrap --unshare-net`; parent loopback positive control; dual AF_INET probe artifacts written **inside** bwrap both `connect_failed` (`tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_external_network_namespace_denied`) |
 | V0e | External filesystem enforcement | PASS — narrow production-path `ro-bind` masks + scratch bind; capability probe (`test_external_filesystem_masks_production_paths`) |
 | V0f | Worker probe without Python network monkeypatch | PASS — `boundary-probe` uses real `socket.connect`; errno recorded (`test_worker_boundary_probe_without_python_network_hooks`) |
@@ -55,7 +55,7 @@ Execute fields (no PR-native review yet):
 |-------|-------|
 | `gate_applicability` | `pending` |
 | `reason` | No PR authorized |
-| `subject_tip_sha` | `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` |
+| `subject_tip_sha` | `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` |
 | `bugbot_reviewed_sha` | `n/a` |
 | `result` | `n/a` |
 | `finding_disposition` | `none` |
@@ -70,7 +70,7 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 
 ## V1 — Format, grant, and v1 compatibility (T1)
 
-**PASS (scoped, tested at `517d014a0be11c6d70c985aa35a8c3cbdac4fe71`).** Functional proofs executed inside the bwrap worker bundle (`test_t1_and_v1_regressions_in_bwrap`: **25 passed**, exit 0). Gate parent: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py`.
+**PASS (scoped, tested at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`).** Functional proofs executed inside the bwrap worker bundle (`test_t1_and_v1_regressions_in_bwrap`: **38 passed**, exit 0). Gate parent: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py`.
 
 | ID | T1 obligation | Test node(s) | Result |
 |----|---------------|--------------|--------|
@@ -102,20 +102,20 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 | `source_state_id` (format-bound) | `92a0cc170c15b58240963d3e7d9abc27e2432966246da9f230484665198520d9` |
 | `kiro_default_state_id` (negative reference) | `141a770cbd3ee9a3f167ee5e839956e8f57788468c91034fc2c29110d26cf39c` |
 
-**Not claimed tested at T1 (honest gaps):**
+**Remaining T1 deferrals (honest):**
 
 | Item | Status |
 |------|--------|
-| Per-check isolated proofs for admission checks 1, 3, 4 (format/basename/admitted-after) as separate named rows | **Partial** — covered indirectly via predicate/blocker tests; no dedicated per-check catalog beyond rows above |
-| Rejected history / cross-format / alias grant corpora | **NOT RUN** — no dedicated negative corpus in bundle |
-| Descriptor digest equality across grant, prepared cache, transaction, checkpoint, receipts | **Deferred T2/T4** — not built yet |
-| State-directory convergence under live coordinator paths | **Deferred T2** |
+| Descriptor digest equality across grant, prepared cache, transaction, checkpoint, receipts | **Deferred T2/T4** — cross-artifact surfaces not built at T1 |
+| Live coordinator construction / prepared-transaction integration | **Deferred T2/T4** — T1 proves pure state-id + `coordinator_state_dir` convergence only |
+
+**V1 gate catalog (admission 1/3/4, alias, cross-format, strict types, symlink, state dir)** — `tests/test_issue_286_codex_bootstrap_v2_t1_gate.py` (13 tests in bwrap bundle): check 1 `::test_admission_check_1_rejects_wrong_detected_format`; check 3 `::test_admission_check_3_rejects_invalid_rollout_basename`; check 4 `::test_admission_check_4_rejects_before_admitted_after`; alias `::test_admission_rejects_duplicate_session_prefix_alias`; cross-format `::test_v2_validate_rejects_cross_format_kiro_source`; checkpoint history `::test_v2_preflight_rejects_invalid_checkpoint_history`; bool-as-int `::test_validate_rejects_bool_masquerading_as_int`, `::test_validate_rejects_grant_version_bool`; descriptor `::test_validate_rejects_descriptor_digest_mismatch`; symlink `::test_validate_rejects_symlink_source`; state convergence `::test_state_directory_matches_coordinator_derivation`. | **PASS** |
 
 ```bash
 # At 517d014 — already executed; do not treat re-run as new evidence
 # Parent: tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t1_and_v1_regressions_in_bwrap
 # Worker argv ends with: pytest -q <ISOLATED_PYTEST_TARGETS>
-# Observed: 25 passed, exit 0
+# Observed: 38 passed, exit 0
 ```
 
 ## V2 — Read-only preflight (T1)
@@ -128,13 +128,13 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 | V2b | Dry-run packet `ready=True` on admitted synthetic fixture | same test (`assert packet["ready"] is True`) | PASS |
 | V2c | Format-bound vs Kiro-default state IDs in packet | same test (`source_state_id` ≠ `kiro_default_state_id`) | PASS |
 | V2d | Proposed chunk count only (no execution) | `test_preflight_ready_for_bootstrap_required` (`proposed_chunk_count` ≥ 1, `blockers` empty) | PASS |
-| V2e | Provider/embedding HTTP attempts | No transport intercept at T1; dry-run/preflight path uses validators + metadata reads only — **0 provider calls by construction** (not independently counted) | PASS (design-bound) |
-| V2f | No lock-file / coordinator / journal construction in dry-run | Implied by V2a immutability oracle; no dedicated lock-path negative | **Partial** — mtime oracle only |
+| V2e | Provider/embedding HTTP attempts | `test_issue_286_codex_bootstrap_v2_t1_gate.py::test_dry_run_audit_ready_path_zero_calls_and_no_mutations` + refusal path (`CONVMEM_BOOTSTRAP_V2_DRY_RUN_AUDIT=1`; `llm._permit_provider_http_attempt` counter) | PASS |
+| V2f | No coordinator / journal / surface mkdir in dry-run | Same gate audit tests; byte oracle via `bootstrap_codex_v2_dry_run_audit.snapshot_surface` (processed/chroma/export/locks/state); blocks coordinator/journal `__init__` and guarded `Path.mkdir` on mutation surfaces | PASS |
 
 **Deferred:** cross-artifact immutability of descriptor digests on prepared/transaction surfaces — **T2/T4**.
 
 ```bash
-# Dry-run immutability: included in 25-test bwrap bundle (test_dry_run_no_writes)
+# Dry-run immutability: included in 38-test bwrap bundle (test_dry_run_no_writes)
 # Provider call count: not instrumented; reliance on read-only code path at T1 scope
 ```
 
@@ -203,12 +203,12 @@ corrections or cleanup. Review findings go through the established lane route.
 
 | Date | SHA role | Command | Exit | Result | Notes |
 |------|----------|---------|------|--------|-------|
-| 2026-10-18 | `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 4 tests; external bwrap net+fs |
-| 2026-10-18 | `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` | bwrap worker pytest bundle | 0 | PASS | 25 passed (T1 contract + v1 regressions) |
+| 2026-10-18 | `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 4 tests; external bwrap net+fs |
+| 2026-10-18 | `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` | bwrap worker pytest bundle | 0 | PASS | 38 passed (T1 contract + v1 regressions) |
 | 2026-10-18 | `5d5ec91` / `45b07d6` | prior in-process hook gate | — | **invalid** | withdrawn — not external enforcement |
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 
-**TL;DR:** [Arc Codex] T1 V0–V2 PASS at tested code `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` with bwrap boundary. V3–V8 NOT RUN. Documentation tip `2654d71da5caf25413af2f728947083457913fc3`.
+**TL;DR:** [Arc Codex] T1 V0–V2 PASS at tested code `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` with bwrap boundary. V3–V8 NOT RUN. Documentation tip `2654d71da5caf25413af2f728947083457913fc3`.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
