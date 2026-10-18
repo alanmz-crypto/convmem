@@ -35,6 +35,21 @@ from ingest import chunk_messages, load_processed
 
 CODEX_ROLLOUT_FORMAT = "jsonl_codex_rollout"
 COORDINATION_PROTOCOL_VERSION = 1
+
+
+def coordinator_source_state_id_for_path(canonical_path: str) -> str:
+    """Match IncrementalJsonlCoordinator source_id derivation for a detected format."""
+    detected = detect_format(Path(canonical_path))
+    spec = get_format_spec(detected)
+    format_id = spec.format_id if spec is not None else CODEX_ROLLOUT_FORMAT
+    return incremental_source_state_id(canonical_path, format_id=format_id)
+
+
+def v2_source_state_directory(state_root: Path, grant: dict[str, Any]) -> Path:
+    path_key = str(Path(grant["source"]))
+    state_id = incremental_source_state_id(path_key, format_id=CODEX_ROLLOUT_FORMAT)
+    return state_root / state_id
+
 MAX_LOCK_WAIT_SECONDS = 3600
 
 _GRANT_V2_EXTENSION_FIELDS = frozenset(
@@ -119,7 +134,10 @@ def _validate_v2_extensions(grant: dict[str, Any], source: Path) -> None:
     descriptor = grant["transform_descriptor"]
     if not isinstance(descriptor, dict):
         raise BootstrapGrantError("grant transform_descriptor must be a JSON object")
-    validate_descriptor_digest(descriptor, grant["transform_fingerprint"])
+    try:
+        validate_descriptor_digest(descriptor, grant["transform_fingerprint"])
+    except ValueError as exc:
+        raise BootstrapGrantError(str(exc)) from exc
     protocol = grant["recovery_protocol_version"]
     if type(protocol) is not int or not recovery_protocol_supported(protocol):
         raise BootstrapGrantError("grant recovery_protocol_version is unsupported")
@@ -219,7 +237,7 @@ def _codex_admission_settings(cfg: dict) -> CodexRolloutAdmissionSettings | None
     return settings.codex_rollout_admission
 
 
-def dry_run_preflight(
+def _dry_run_preflight_impl(
     grant: dict[str, Any],
     *,
     cfg: dict,
@@ -279,15 +297,40 @@ def dry_run_preflight(
     if retry_outcome and retry_outcome not in {"", "bootstrap_required"}:
         blockers.append(f"retry_state:{retry_outcome}")
     kiro_state_id = incremental_source_state_id(path_key)
+    coordinator_state_dir = str(source_state)
     return {
         "grant_version": 2,
         "operation_id": grant["operation_id"],
         "grant_fingerprint_v2": grant_fingerprint_v2(grant),
         "source_state_id": computed_state_id,
         "kiro_default_state_id": kiro_state_id,
+        "coordinator_state_dir": coordinator_state_dir,
         "proposed_chunk_count": chunks,
         "complete_boundary": grant["complete_boundary"],
         "prefix_sha256": grant["prefix_sha256"],
         "blockers": blockers,
         "ready": not blockers,
     }
+
+
+def dry_run_preflight(
+    grant: dict[str, Any],
+    *,
+    cfg: dict,
+    state_root: Path,
+    chroma_row_count: int = 0,
+) -> dict[str, Any]:
+    def _run() -> dict[str, Any]:
+        return _dry_run_preflight_impl(
+            grant,
+            cfg=cfg,
+            state_root=state_root,
+            chroma_row_count=chroma_row_count,
+        )
+
+    from bootstrap_codex_v2_dry_run_audit import audit_active, run_audited
+
+    if audit_active():
+        return run_audited(_run, cfg=cfg, state_root=state_root)
+    return _run()
+

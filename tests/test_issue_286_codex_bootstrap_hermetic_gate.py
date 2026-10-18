@@ -35,12 +35,13 @@ WORKER = Path(__file__).with_name("issue_286_codex_bootstrap_isolation_worker.py
 ISOLATED_PYTEST_TARGETS = (
     "tests/test_issue_286_codex_bootstrap_v2_t1.py",
     "tests/test_issue_286_codex_bootstrap_v2_t1_contract.py",
+    "tests/test_issue_286_codex_bootstrap_v2_t1_gate.py",
     "tests/test_incremental_jsonl_bootstrap_command.py",
     "tests/test_incremental_jsonl_bootstrap_safety.py::test_paid_transport_disables_automatic_redirects",
     "tests/test_incremental_jsonl_bootstrap_safety.py::test_invocation_journal_allows_exactly_one_recovery",
     "tests/test_incremental_jsonl_bootstrap_supersession.py::test_admissible_supersession_archives_exact_bytes_and_preserves_evidence",
 )
-EXPECTED_ISOLATED_PASS_COUNT = 25
+EXPECTED_ISOLATED_PASS_COUNT = 38
 
 
 def _worker_env(tmp_path: Path) -> tuple[IsolationBoundary, dict[str, str]]:
