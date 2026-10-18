@@ -12,6 +12,11 @@ from typing import Any, Callable, Iterator
 
 from bootstrap_codex_v2 import grant_fingerprint_v2, operation_identity_v2, validate_grant_v2
 from bootstrap_codex_v2_owner import require_owner_lock
+from bootstrap_codex_v3_preparation_lease import (
+    SOURCE_WRITER_BUSY_CODE,
+    BootstrapPreparationLeaseError,
+    bootstrap_exclusive_preparation_lease,
+)
 from bootstrap_codex_v2_publication import append_jsonl_line, atomic_publish_json
 from bootstrap_safety import (
     BootstrapGrantError,
@@ -237,20 +242,27 @@ def claim_initial_authority(state_dir: Path, grant: dict[str, Any]) -> Authority
     if validated["operation_id"] != operation_identity_v2(validated):
         raise CodexBootstrapV2AuthorityError("grant operation_id mismatch")
     with _authority_lock(state_dir):
-        blockers = inspect_initial_claim_blockers(state_dir, validated)
-        if blockers:
-            raise CodexBootstrapV2AuthorityError("initial_claim_refused:" + ",".join(blockers))
-        record = _authority_record(
-            validated,
-            revision=1,
-            invocation_ordinal=1,
-            reservation_state="RESERVED",
-            reservation_active=True,
-        )
-        path = authority_path(state_dir)
-        _publish_authority(path, record, stage="initial_authority")
-        _crash_after("after_initial_claim_lock_release")
-        return AuthorityView(path=path, record=record)
+        try:
+            prep_ctx = bootstrap_exclusive_preparation_lease(state_dir)
+        except BootstrapPreparationLeaseError as exc:
+            if str(exc) == SOURCE_WRITER_BUSY_CODE:
+                raise CodexBootstrapV2AuthorityError(SOURCE_WRITER_BUSY_CODE) from exc
+            raise
+        with prep_ctx:
+            blockers = inspect_initial_claim_blockers(state_dir, validated)
+            if blockers:
+                raise CodexBootstrapV2AuthorityError("initial_claim_refused:" + ",".join(blockers))
+            record = _authority_record(
+                validated,
+                revision=1,
+                invocation_ordinal=1,
+                reservation_state="RESERVED",
+                reservation_active=True,
+            )
+            path = authority_path(state_dir)
+            _publish_authority(path, record, stage="initial_authority")
+            _crash_after("after_initial_claim_lock_release")
+            return AuthorityView(path=path, record=record)
 
 
 def claim_recovery_authority(state_dir: Path, grant: dict[str, Any]) -> AuthorityView:

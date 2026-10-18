@@ -52,6 +52,11 @@ ISOLATED_PYTEST_TARGETS_T2 = (
 )
 EXPECTED_ISOLATED_T2_PASS_COUNT = 87
 
+ISOLATED_PYTEST_TARGETS_T3 = (
+    "tests/test_issue_286_codex_bootstrap_v2_t3_writer_coordination.py",
+)
+EXPECTED_ISOLATED_T3_PASS_COUNT = 8
+
 
 
 
@@ -180,3 +185,21 @@ def test_t2_authority_accounting_and_crash_matrix_in_bwrap(tmp_path: Path) -> No
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     combined = result.stdout + result.stderr
     assert f"{EXPECTED_ISOLATED_T2_PASS_COUNT} passed" in combined
+
+
+@pytest.mark.skipif(
+    not issue_286_bwrap_integration_available(),
+    reason="issue_286_bwrap_unavailable",
+)
+def test_t3_writer_mediation_in_bwrap(tmp_path: Path) -> None:
+    boundary, env = _worker_env(tmp_path)
+    args = ["pytest", "-q", *ISOLATED_PYTEST_TARGETS_T3]
+    result = run_bwrap(
+        [sys.executable, "-I", str(WORKER), *args],
+        scratch_root=boundary.root,
+        extra_env=env,
+        timeout=300.0,
+    )
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    combined = result.stdout + result.stderr
+    assert f"{EXPECTED_ISOLATED_T3_PASS_COUNT} passed" in combined

@@ -307,6 +307,7 @@ def index(
         index as run_index,
     )
     from incremental_jsonl import IncrementalJsonlError, LIVE_ROUTE_REFUSED_EXIT
+    from bootstrap_codex_v3_writer_coordination import COORDINATION_DEFERRAL_EXIT
     from query import render_error
 
     if file and not now:
@@ -337,6 +338,10 @@ def index(
         )
         raise typer.Exit(1) from exc
     except IncrementalJsonlError as exc:
+        if exc.code == "coordination_deferral":
+            if exc.detail:
+                print(str(exc.detail), file=sys.stderr)
+            raise typer.Exit(COORDINATION_DEFERRAL_EXIT) from exc
         if exc.code in ("live_route_refused", "retry_state_unavailable"):
             from incremental_jsonl import format_live_route_refused
 

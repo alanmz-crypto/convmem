@@ -29,6 +29,7 @@ from watch_circuit_breaker import (
 )
 
 _LIVE_ROUTE_REFUSED_EXIT = 91
+_COORDINATION_DEFERRAL_EXIT = 93
 
 
 class IndexSubprocessError(RuntimeError):
@@ -200,6 +201,10 @@ class DebounceScheduler:
 
     def pending_count(self) -> int:
         return len(self._last_event)
+
+    def defer(self, path: str, backoff_seconds: float) -> None:
+        """Requeue a path after coordination deferral without treating it as success."""
+        self._last_event[path] = time.monotonic() + backoff_seconds - self.debounce_seconds
 
 
 def _convmem_cli_argv() -> list[str]:
@@ -702,7 +707,7 @@ def _process_ready_path(
     cfg: dict,
     breaker: CircuitBreakerState,
     verbose: bool,
-) -> None:
+) -> bool:
     """Run watch's per-path body once: reconcile token, quarantine skip, or index.
 
     Extracted from run_watch's main loop to keep that loop's branch/nesting
@@ -717,7 +722,7 @@ def _process_ready_path(
     try:
         if is_reconcile_token(path):
             reconcile_manifest(token_manifest_path(path), cfg)
-            return
+            return True
         if breaker.is_quarantined(path):
             if verbose:
                 print(f"[watch] skip (quarantined): {path}", file=sys.stderr)
@@ -729,11 +734,12 @@ def _process_ready_path(
             if breaker.should_skip_refusal_quarantine(path, prefix_digest):
                 if verbose:
                     print(f"[watch] skip (refusal quarantined): {path}", file=sys.stderr)
-                return
+                return True
         flush_path(path, verbose=verbose, use_subprocess=True)
         breaker.record_success(path)
+        return True
     except Exception as e:  # pylint: disable=broad-exception-caught
-        _record_ready_path_failure(path, e, breaker=breaker, verbose=verbose)
+        return _record_ready_path_failure(path, e, breaker=breaker, verbose=verbose)
 
 
 def _record_ready_path_failure(
@@ -742,13 +748,33 @@ def _record_ready_path_failure(
     *,
     breaker: CircuitBreakerState,
     verbose: bool,
-) -> None:
+) -> bool:
     from repository_knowledge_sync import is_reconcile_token
+    from bootstrap_codex_v3_writer_coordination import (
+        parse_coordination_deferral,
+        validate_child_deferral_signal,
+    )
 
     message = str(exc)
     subprocess_rc = (
         exc.returncode if isinstance(exc, IndexSubprocessError) else None
     )
+    if subprocess_rc == _COORDINATION_DEFERRAL_EXIT and isinstance(exc, IndexSubprocessError):
+        signal = parse_coordination_deferral(exc.stderr_text or "")
+        if signal is None:
+            print(f"[watch] malformed coordination deferral for {path}: {exc}", file=sys.stderr)
+            return True
+        try:
+            validate_child_deferral_signal(signal, launched_path=path)
+        except Exception as malformed:  # pylint: disable=broad-exception-caught
+            print(f"[watch] invalid coordination deferral for {path}: {malformed}", file=sys.stderr)
+            return True
+        if verbose:
+            print(
+                f"[watch] coordination deferral (requeue): {path}",
+                file=sys.stderr,
+            )
+        return False
     refusal_text = (
         exc.stderr_text if isinstance(exc, IndexSubprocessError) else message
     )
@@ -766,7 +792,7 @@ def _record_ready_path_failure(
                 file=sys.stderr,
             )
         print(f"[watch] error processing {path}: {exc}", file=sys.stderr)
-        return
+        return True
     returncode = (
         subprocess_rc
         if subprocess_rc is not None
@@ -786,6 +812,7 @@ def _record_ready_path_failure(
             if quarantined and verbose:
                 print(f"[watch] quarantined after repeated failures: {path}", file=sys.stderr)
     print(f"[watch] error processing {path}: {exc}", file=sys.stderr)
+    return True
 
 
 def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
@@ -926,8 +953,11 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
                             file=sys.stderr,
                         )
                     break  # leave remaining ready paths pending; retry after the window ages out
-                _process_ready_path(path, cfg=cfg, breaker=breaker, verbose=verbose)
-                scheduler.forget(path)
+                forget = _process_ready_path(path, cfg=cfg, breaker=breaker, verbose=verbose)
+                if forget:
+                    scheduler.forget(path)
+                else:
+                    scheduler.defer(path, backoff_seconds=5.0)
             time.sleep(1)
     except KeyboardInterrupt:
         if verbose:

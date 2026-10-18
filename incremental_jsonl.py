@@ -80,6 +80,7 @@ from ingest import (
 LIVE_ROUTE_REFUSED_EXIT = 91
 
 
+
 def format_live_route_refused(outcome: str, prefix_sha256: str = "") -> str:
     if prefix_sha256:
         return f"live_route_refused:{outcome}:{prefix_sha256}"
@@ -3120,6 +3121,10 @@ def _raise_incremental_retry_refusal(
     re_raise: IncrementalJsonlError | None = None,
     fallback_outcome: str | None = None,
 ) -> None:
+    if failure_code == "coordination_deferral":
+        if re_raise is not None:
+            raise re_raise
+        raise IncrementalJsonlError("coordination_deferral", failure_code)
     digest = str(
         (getattr(coordinator, "last_evidence", {}) or {}).get("prefix_sha256") or ""
     )

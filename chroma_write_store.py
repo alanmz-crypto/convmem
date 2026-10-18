@@ -557,6 +557,9 @@ def production_writer_boundary(
     census_dir: Path | None = None,
     entrypoint: str = "production.writer",
     timeout_ms: int = 30_000,
+    affected_sources: tuple[str, ...] | None = None,
+    maintenance_unscoped: bool = False,
+    coordination_cfg: dict | None = None,
 ) -> Iterator[WriterAttestation]:
     """Cover a provenance-relevant mutation with the shared writer gate.
 
@@ -564,6 +567,41 @@ def production_writer_boundary(
     Re-entry is deliberately safe so a composite route cannot open a second
     independent consistency system around an already leased store.
     """
+
+    from bootstrap_codex_v3_writer_coordination import (
+        COORDINATION_DEFERRAL_CODE,
+        BootstrapWriterCoordinationError,
+        WriterSourceScope,
+        enforce_writer_scope,
+        writer_source_scope,
+    )
+
+    cfg = coordination_cfg
+    if cfg is None:
+        try:
+            import config as config_mod
+
+            cfg = config_mod.load_config()
+        except Exception:  # pylint: disable=broad-exception-caught
+            cfg = {}
+    scope = WriterSourceScope(
+        entrypoint=entrypoint,
+        affected_sources=tuple(affected_sources or ()),
+        maintenance_unscoped=maintenance_unscoped,
+    )
+    with writer_source_scope(scope):
+        try:
+            enforce_writer_scope(cfg, scope)
+        except BootstrapWriterCoordinationError as exc:
+            if str(exc) == COORDINATION_DEFERRAL_CODE and scope.affected_sources:
+                from incremental_jsonl import IncrementalJsonlError
+
+                from bootstrap_codex_v3_writer_coordination import active_reservation_signal
+
+                signal = active_reservation_signal(cfg, scope.affected_sources[0])
+                if signal is not None:
+                    raise IncrementalJsonlError(COORDINATION_DEFERRAL_CODE, signal.to_stderr_line()) from exc
+            raise
 
     with shared_writer_lease(
         lock_path=lock_path,
@@ -1084,6 +1122,16 @@ class _IndexWriteGuardedChromaStore:
 
         def _guarded(*args: Any, **kwargs: Any) -> Any:
             require_index_write_lock_held(chroma_dir=self._inner.chroma_dir)
+            from bootstrap_codex_v3_writer_coordination import (
+                enforce_writer_scope,
+                inspect_chroma_mutation_scope,
+            )
+            import config as config_mod
+
+            scope = inspect_chroma_mutation_scope(
+                config_mod.load_config(), method=name, args=args, kwargs=kwargs
+            )
+            enforce_writer_scope(config_mod.load_config(), scope)
             return inner_attr(*args, **kwargs)
 
         return _guarded

@@ -212,17 +212,32 @@ def _processed_lock(processed_path: str):
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-def mutate_processed(processed_path: str, mutator: Callable[[dict], None]) -> dict:
+def mutate_processed(
+    processed_path: str,
+    mutator: Callable[[dict], None],
+    *,
+    affected_sources: tuple[str, ...] | None = None,
+    maintenance_unscoped: bool = False,
+) -> dict:
     """Lock, reload on-disk state, mutate, atomic-save, unlock.
 
     Hold only for read+mutate+write. Never across parse/LLM/embed/Chroma work.
     Always releases the lock on exception paths (via `_processed_lock`).
     """
+    cfg = load_config()
     with production_writer_boundary(
         entrypoint="ingest.processed",
+        affected_sources=affected_sources,
+        maintenance_unscoped=maintenance_unscoped,
+        coordination_cfg=cfg,
     ):
         with _processed_lock(processed_path):
             data = load_processed(processed_path)
+            if affected_sources:
+                from bootstrap_codex_v3_writer_coordination import recheck_reservation_before_commit
+
+                for source in affected_sources:
+                    recheck_reservation_before_commit(cfg, source)
             mutator(data)
             save_processed(processed_path, data)
             return data
@@ -423,7 +438,7 @@ def commit_processed_index_entry(
         _purge_stale_same_path(data, path_key, file_hash, preserve_exclusions=True)
         result["committed"] = True
 
-    mutate_processed(processed_path, mutator)
+    mutate_processed(processed_path, mutator, affected_sources=(path_key,))
     return result["committed"]
 
 
@@ -502,7 +517,7 @@ def undo_exclude_processed_path(processed_path: str, target: str) -> bool:
                 entry.pop("exclude_reason", None)
                 found["ok"] = True
 
-    mutate_processed(processed_path, mutator)
+    mutate_processed(processed_path, mutator, affected_sources=(path_key,))
     return found["ok"]
 
 
@@ -1383,6 +1398,18 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         return "skipped", 0, 0, 0, 0
 
     fmt = detect_format(path)
+    try:
+        from bootstrap_codex_v3_writer_coordination import (
+            raise_incremental_coordination_deferral,
+            should_defer_ordinary_writer,
+        )
+
+        if fmt in ("jsonl_codex_rollout", "jsonl_codex") and should_defer_ordinary_writer(
+            cfg, path_key
+        ):
+            raise_incremental_coordination_deferral(cfg, path_key)
+    except ImportError:
+        pass
     # Repository-knowledge identity includes Git HEAD and the manifest hash,
     # not only file bytes. Reconciliation intentionally dispatches the public
     # ``index --file`` path when either identity changes, so the generic
