@@ -68,6 +68,77 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 # exit 0; 4 passed (requires host bwrap + user namespaces)
 ```
 
+## V1 — Format, grant, and v1 compatibility (T1)
+
+**PASS (scoped, tested at `517d014a0be11c6d70c985aa35a8c3cbdac4fe71`).** Functional proofs executed inside the bwrap worker bundle (`test_t1_and_v1_regressions_in_bwrap`: **25 passed**, exit 0). Gate parent: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py`.
+
+| ID | T1 obligation | Test node(s) | Result |
+|----|---------------|--------------|--------|
+| V1a | v2 field set + operation/grant hash domains | `test_issue_286_codex_bootstrap_v2_t1.py::test_v2_hash_vectors_independent_oracle` | PASS |
+| V1b | Kiro-default `source_state_id` negative control | `::test_v2_rejects_kiro_default_state_id` | PASS |
+| V1c | v1 grant parse/hash unchanged | `::test_v1_grant_parse_unchanged` | PASS |
+| V1d | v1 strict grant shape/hash | `test_incremental_jsonl_bootstrap_command.py` (3 tests in bundle) | PASS |
+| V1e | Provider binding (paid transport) | `test_incremental_jsonl_bootstrap_safety.py::test_paid_transport_disables_automatic_redirects` | PASS |
+| V1f | One-recovery invocation journal | `::test_invocation_journal_allows_exactly_one_recovery` | PASS |
+| V1g | Predecessor-preserving supersession | `test_incremental_jsonl_bootstrap_supersession.py::test_admissible_supersession_archives_exact_bytes_and_preserves_evidence` | PASS |
+| V1h | Admission check 2 (outside sessions root) | `test_issue_286_codex_bootstrap_v2_t1_contract.py::test_admission_predicate_rejects_outside_sessions_root` | PASS |
+| V1i | Admission checks via preflight blocker | `::test_preflight_codex_admission_rejected_blocker` | PASS |
+| V1j | Admission / identity check 5 (session meta) | `::test_preflight_session_identity_check_5` | PASS |
+| V1k | Wrong-format source refused at validation | `::test_preflight_admission_rejected_outside_root` (expects `BootstrapGrantError`) | PASS |
+| V1l | Complete-line / prefix binding | `::test_preflight_prefix_mismatch` | PASS |
+| V1m | Chunk cap | `::test_preflight_chunk_cap_exceeded` | PASS |
+| V1n | Device/inode ownership binding | `::test_validate_rejects_inode_mismatch` | PASS |
+| V1o | `max_source_bytes` ceiling | `::test_validate_rejects_source_over_max_bytes` | PASS |
+| V1p | Strict grant version/fields/types | `::test_validate_rejects_extra_field`, `::test_validate_rejects_wrong_grant_version`, `::test_validate_rejects_v2_supersession_document` | PASS |
+| V1q | Checkpoint / transaction / retry / supersession artifacts | `::test_preflight_checkpoint_and_transaction_refused`, `::test_preflight_retry_state_refused`, `::test_preflight_supersession_evidence_refused` | PASS |
+| V1r | Ready preflight for `bootstrap_required` fixture | `::test_preflight_ready_for_bootstrap_required` | PASS |
+
+**Canonical synthetic v2 hash oracle** (independent worker `hash-oracle` at `517d014` gate; metadata digests only — no transcript content):
+
+| Field | Value |
+|-------|-------|
+| `operation_id` | `72ed0df0e35939ad0e8f9446505821ff520d4b3d81267175f106eacae8ab209f` |
+| `grant_fingerprint_v2` | `d4cc0d72de7c0817350f5ea8c437fa8ad553cb7ca4b7078a0589ebcbcd73d8e0` |
+| `source_state_id` (format-bound) | `92a0cc170c15b58240963d3e7d9abc27e2432966246da9f230484665198520d9` |
+| `kiro_default_state_id` (negative reference) | `141a770cbd3ee9a3f167ee5e839956e8f57788468c91034fc2c29110d26cf39c` |
+
+**Not claimed tested at T1 (honest gaps):**
+
+| Item | Status |
+|------|--------|
+| Per-check isolated proofs for admission checks 1, 3, 4 (format/basename/admitted-after) as separate named rows | **Partial** — covered indirectly via predicate/blocker tests; no dedicated per-check catalog beyond rows above |
+| Rejected history / cross-format / alias grant corpora | **NOT RUN** — no dedicated negative corpus in bundle |
+| Descriptor digest equality across grant, prepared cache, transaction, checkpoint, receipts | **Deferred T2/T4** — not built yet |
+| State-directory convergence under live coordinator paths | **Deferred T2** |
+
+```bash
+# At 517d014 — already executed; do not treat re-run as new evidence
+# Parent: tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t1_and_v1_regressions_in_bwrap
+# Worker argv ends with: pytest -q <ISOLATED_PYTEST_TARGETS>
+# Observed: 25 passed, exit 0
+```
+
+## V2 — Read-only preflight (T1)
+
+**PASS (scoped, same `517d014` bwrap bundle).**
+
+| ID | T1 obligation | Test node / oracle | Result |
+|----|---------------|-------------------|--------|
+| V2a | Dry-run creates no state/processed/chroma writes | `test_issue_286_codex_bootstrap_v2_t1.py::test_dry_run_no_writes` (mtime before/after on state, processed, chroma) | PASS |
+| V2b | Dry-run packet `ready=True` on admitted synthetic fixture | same test (`assert packet["ready"] is True`) | PASS |
+| V2c | Format-bound vs Kiro-default state IDs in packet | same test (`source_state_id` ≠ `kiro_default_state_id`) | PASS |
+| V2d | Proposed chunk count only (no execution) | `test_preflight_ready_for_bootstrap_required` (`proposed_chunk_count` ≥ 1, `blockers` empty) | PASS |
+| V2e | Provider/embedding HTTP attempts | No transport intercept at T1; dry-run/preflight path uses validators + metadata reads only — **0 provider calls by construction** (not independently counted) | PASS (design-bound) |
+| V2f | No lock-file / coordinator / journal construction in dry-run | Implied by V2a immutability oracle; no dedicated lock-path negative | **Partial** — mtime oracle only |
+
+**Deferred:** cross-artifact immutability of descriptor digests on prepared/transaction surfaces — **T2/T4**.
+
+```bash
+# Dry-run immutability: included in 25-test bwrap bundle (test_dry_run_no_writes)
+# Provider call count: not instrumented; reliance on read-only code path at T1 scope
+```
+
+
 ## V3 — Authority crash matrix (T2)
 
 **NOT RUN.** Concurrent claims; reservation with consumed initial invocation
