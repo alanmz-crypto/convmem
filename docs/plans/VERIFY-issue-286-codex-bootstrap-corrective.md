@@ -1,11 +1,11 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 mechanical gates V0–V2 **PASS** (hermetic). V3–V8 **NOT RUN**. v2 live execution remains **closed**.
+**State:** T1 scoped mechanical **COMPLETE** (V0–V2 **PASS** under bwrap). V3–V8 **NOT RUN**. v2 live execution **closed**.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Implementation subject SHA:** `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` (includes T1 hermetic harness + this evidence). **PR:** none authorized.
+**Tested code SHA:** `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` (T1 implementation + contract + bwrap gate). **Documentation evidence tip:** `DOC_EVIDENCE_SHA`. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -36,81 +36,36 @@ to this mechanical verification. V0–V2 rows below are filled from hermetic Exe
 
 ## V0 — Authority, baseline, isolation, and review inputs
 
-**PASS (hermetic, T1 scope).** Prior pytest runs on commit `439b851` without the boundary worker are **not** claimed as hermetic evidence.
+**PASS (external bwrap boundary).** Prior evidence rows that relied on in-process `install_network_denial()` hooks (`5d5ec91`, `45b07d6`) are **withdrawn** — they do not satisfy execution plan §6.
 
 | ID | Check | Result |
 |----|-------|--------|
-| V0a | Ryan Execute grant for Cursor T1–T5 + hermetic verification | PASS — [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md) |
+| V0a | Ryan Execute grant (T1–T5 + hermetic verification) | PASS — execute handoff on branch |
 | V0b | Reviewed execution plan SHA | PASS — `942390001bca407c1c28e9972c443ee7612e1c1b` |
-| V0c | Implementation code baseline (handoff pin) | PASS — branch rooted at handoff; T1 code parent `483373f1cef2142847fcd9c276196593a72a0ecf` |
-| V0d | Subject tip SHA (implementation + evidence) | PASS — `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` |
-| V0e | Python interpreter | PASS — `Python 3.13.12`, `pytest 9.1.1` |
-| V0f | Externally enforced isolation before imports | PASS — worker `tests/issue_286_codex_bootstrap_isolation_worker.py` installs network/service denial and `IsolationBoundary` with forbidden production roots via `sanitized_worker_env()`; parent gate `tests/test_issue_286_codex_bootstrap_hermetic_gate.py` |
-| V0g | Negative boundary probes | PASS — `boundary-probe`: `network=IsolationViolation`, `watcher=IsolationViolation`, `forbidden_root=IsolationViolation`, `root_escape=IsolationViolation`; empty credential and production override env lists |
-| V0h | Temporary HOME/config/data + synthesis failure log redirect | PASS — worker `pytest` sets `HOME`/`XDG_*` under tokenized root; redirects `ingest._SYNTHESIS_FAIL_LOG` to `<root>/logs/synthesis_failures.jsonl` before pytest collects tests |
-| V0i | Worktree discipline | PASS — isolated worktree `/home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap`, branch `fix/2026-10-18-issue-286-codex-bootstrap` |
+| V0c | T1 code baseline | PASS — includes `439b851` v2 grant/dry-run + later T1 contract/bwrap harness at `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` |
+| V0d | External network enforcement | PASS — `bwrap --unshare-net`; parent loopback positive control; dual AF_INET probe artifacts written **inside** bwrap both `connect_failed` (`tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_external_network_namespace_denied`) |
+| V0e | External filesystem enforcement | PASS — narrow production-path `ro-bind` masks + scratch bind; capability probe (`test_external_filesystem_masks_production_paths`) |
+| V0f | Worker probe without Python network monkeypatch | PASS — `boundary-probe` uses real `socket.connect`; errno recorded (`test_worker_boundary_probe_without_python_network_hooks`) |
+| V0g | Temporary HOME/config/data + synthesis log redirect | PASS — `sanitized_worker_env()` + worker sets `ingest._SYNTHESIS_FAIL_LOG` under isolation root before pytest |
+| V0h | Host bwrap availability | PASS — `bwrap` + user-ns probe available on runner |
 
-Execute evidence (`EXECUTE-TASK.md` fields recorded here; no PR-native review yet):
+Execute fields (no PR-native review yet):
 
 | Field | Value |
 |-------|-------|
 | `gate_applicability` | `pending` |
-| `reason` | No PR authorized; runtime/concurrency review is a later merge gate |
-| `subject_tip_sha` | `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` |
+| `reason` | No PR authorized |
+| `subject_tip_sha` | `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` |
 | `bugbot_reviewed_sha` | `n/a` |
 | `result` | `n/a` |
 | `finding_disposition` | `none` |
-| `authority_reference` | Ryan grant in CODEX-2026-10-18 execute handoff |
+| `authority_reference` | Ryan grant — CODEX-2026-10-18 execute handoff |
 
 ```bash
 cd /home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap
-git rev-parse HEAD
+git checkout 517d014a0be11c6d70c985aa35a8c3cbdac4fe71
 python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
-# exit 0; 3 passed
-```
-
-## V1 — Format, grant, and v1 compatibility (T1)
-
-**PASS (hermetic).** Scoped tests run inside the isolation worker subprocess (10 tests). Synthetic fixtures only; no real transcript reads.
-
-| ID | Check | Result |
-|----|-------|--------|
-| V1a | v2 grant field set + independent hash oracle | PASS — `tests/test_issue_286_codex_bootstrap_v2_t1.py::test_v2_hash_vectors_independent_oracle` |
-| V1b | Negative control: Kiro-default `source_state_id` rejected | PASS — `test_v2_rejects_kiro_default_state_id` |
-| V1c | v1 grant parse/hash compatibility | PASS — `test_v1_grant_parse_unchanged` |
-| V1d | v1 strict grant shape/hash fixtures | PASS — `tests/test_incremental_jsonl_bootstrap_command.py` (3 tests) |
-| V1e | Provider binding (paid transport) | PASS — `test_paid_transport_disables_automatic_redirects` |
-| V1f | One-recovery invocation journal | PASS — `test_invocation_journal_allows_exactly_one_recovery` |
-| V1g | Predecessor-preserving supersession | PASS — `test_admissible_supersession_archives_exact_bytes_and_preserves_evidence` |
-
-Published synthetic v2 hash oracle (independent worker `hash-oracle`; metadata digests only):
-
-| Field | Value |
-|-------|-------|
-| `operation_id` | `72ed0df0e35939ad0e8f9446505821ff520d4b3d81267175f106eacae8ab209f` |
-| `grant_fingerprint_v2` | `d4cc0d72de7c0817350f5ea8c437fa8ad553cb7ca4b7078a0589ebcbcd73d8e0` |
-| `source_state_id` (format-bound) | `92a0cc170c15b58240963d3e7d9abc27e2432966246da9f230484665198520d9` |
-| `kiro_default_state_id` (negative reference) | `141a770cbd3ee9a3f167ee5e839956e8f57788468c91034fc2c29110d26cf39c` |
-
-```bash
-python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t1_and_v1_regressions_in_isolated_worker
-# exit 0; worker subprocess reports: 10 passed
-```
-
-## V2 — Read-only preflight (T1)
-
-**PASS (hermetic).** Dry-run performs no writes under isolated config roots.
-
-| ID | Check | Result |
-|----|-------|--------|
-| V2a | `--dry-run` / `dry_run_v2` immutability oracle | PASS — `test_dry_run_no_writes` (mtime unchanged for state, processed, chroma paths) |
-| V2b | Proposed packet exposes format-bound vs Kiro-default state IDs | PASS — `packet["source_state_id"] != packet["kiro_default_state_id"]` |
-| V2c | Provider/embedding attempts | PASS — zero (validators + metadata reads only; no coordinator construction) |
-
-**Remaining T1 gaps (not V2 failures):** Codex admission matrix beyond dry-run happy path, descriptor cross-surface equality across transaction artifacts, and explicit rejected-grant corpora are partially covered by unit tests but not exhaustively catalogued here. T2+ surfaces remain unimplemented.
-
-```bash
-# Covered by the same isolated 10-test bundle as V1 (includes test_dry_run_no_writes)
+# exit 0; 4 passed (requires host bwrap + user namespaces)
 ```
 
 ## V3 — Authority crash matrix (T2)
@@ -165,7 +120,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED by Ryan; T1 hermetic gate PASS; T2–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 scoped mechanical COMPLETE; T2–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
@@ -175,13 +130,14 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Evidence log (fill after Execute)
 
-| Date | Subject SHA | Command | Exit | Result | Notes |
-|------|-------------|---------|------|--------|-------|
-| 2026-10-18 | `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 3 gate tests; spawns isolated worker with boundary probe + 10 scoped T1/v1 tests |
-| 2026-10-18 | `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` | worker `boundary-probe` | 0 | PASS | All negative probes return `IsolationViolation` |
-| 2026-10-18 | `439b851` | (ad hoc, pre-isolation) | — | **not hermetic** | T1 code landed; evidence gate intentionally not filed |
+| Date | SHA role | Command | Exit | Result | Notes |
+|------|----------|---------|------|--------|-------|
+| 2026-10-18 | `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 4 tests; external bwrap net+fs |
+| 2026-10-18 | `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` | bwrap worker pytest bundle | 0 | PASS | 25 passed (T1 contract + v1 regressions) |
+| 2026-10-18 | `5d5ec91` / `45b07d6` | prior in-process hook gate | — | **invalid** | withdrawn — not external enforcement |
+| 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 
-**TL;DR:** [Arc Codex] T1 hermetic V0–V2 PASS at `5d5ec91ad6d1b8e8f7258675508e1612552ae01a`. V3–V8 and live readiness remain NOT RUN / not authorized.
+**TL;DR:** [Arc Codex] T1 V0–V2 PASS at tested code `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` with bwrap boundary. V3–V8 NOT RUN. Documentation tip `DOC_EVIDENCE_SHA`.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
