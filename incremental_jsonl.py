@@ -48,6 +48,21 @@ from incremental_jsonl_isolation import (
     open_source_readonly,
     validate_regular_source,
 )
+
+from incremental_transform_contract import (
+    CHECKPOINT_VERSION_V2,
+    RECOVERY_PROTOCOL_VERSION,
+    TRANSACTION_VERSION_V2,
+    TransformDescriptor,
+    build_transform_descriptor,
+    compute_legacy_v1_transform_fingerprint,
+    descriptor_to_checkpoint_fields,
+    generation_id_v1,
+    generation_id_v2,
+    prepared_cache_key,
+    recovery_protocol_supported,
+    validate_descriptor_digest,
+)
 from incremental_jsonl_codex_admission import (
     admits_path_checks_1_4,
     is_production_source_granted,
@@ -281,29 +296,16 @@ def compute_transform_fingerprint(
     adapter_format: str = ELIGIBLE_FORMAT,
     adapter_contract_version: str = ADAPTER_CONTRACT_VERSION,
 ) -> str:
-    payload = {
-        "adapter_format": adapter_format,
-        "adapter_contract_version": adapter_contract_version,
-        "chunk_size": chunk_size,
-        "overlap": overlap,
-        "rendering_limits": {"summary_max_chars": 8000, "distill_max_chars": 8000},
-        "message_selection": "chunk_messages",
-        "summary_prompt_version": "locked-summarize-prompt-v1",
-        "distill_prompt_version": "locked-distill-prompt-v1",
-        "summary_temperature": 0.2,
-        "distill_temperature": 0.2,
-        "summarize_model": models.get("summarize_model"),
-        "distill_model": models.get("distill_model"),
-        "embed_model": models.get("embed_model"),
-        "embed_dimension": embed_dimension,
-        "normalization_contract": "normalize_unit-v1",
-        "confidence_threshold": min_confidence,
-        "provenance_envelope": "build_ingest_envelope-v1",
-        "id_contract": "make_unit_id-v1",
-        "dedupe_contract": "ingest_dedupe-v1",
-        "implementation_revision": implementation_revision,
-    }
-    return _sha(_canonical_json(payload))
+    return compute_legacy_v1_transform_fingerprint(
+        chunk_size=chunk_size,
+        overlap=overlap,
+        min_confidence=min_confidence,
+        models=models,
+        embed_dimension=embed_dimension,
+        implementation_revision=implementation_revision,
+        adapter_format=adapter_format,
+        adapter_contract_version=adapter_contract_version,
+    )
 
 
 def _read_json(path: Path) -> dict | None:
@@ -358,8 +360,25 @@ def validate_checkpoint(
 ) -> dict:
     if not isinstance(payload, dict):
         raise IncrementalJsonlError("invalid_state", "checkpoint is not an object")
-    if payload.get("version") != CHECKPOINT_VERSION:
+    version = int(payload.get("version") or 0)
+    if version not in {CHECKPOINT_VERSION, CHECKPOINT_VERSION_V2}:
         raise IncrementalJsonlError("invalid_state", "unsupported checkpoint version")
+    if version == CHECKPOINT_VERSION_V2:
+        for field in (
+            "fingerprint_scheme",
+            "transform_contract_version",
+            "transform_descriptor",
+            "transform_fingerprint",
+        ):
+            if field not in payload:
+                raise IncrementalJsonlError("invalid_state", f"checkpoint missing {field}")
+        try:
+            validate_descriptor_digest(
+                payload["transform_descriptor"],
+                str(payload["transform_fingerprint"]),
+            )
+        except ValueError as exc:
+            raise IncrementalJsonlError("invalid_state", str(exc)) from exc
     missing = [name for name in REQUIRED_CHECKPOINT_FIELDS if name not in payload]
     if missing:
         raise IncrementalJsonlError("invalid_state", f"checkpoint missing {missing}")
@@ -615,16 +634,31 @@ class IncrementalJsonlCoordinator:
             revision = current_implementation_revision()
         except Exception:  # pylint: disable=broad-exception-caught
             revision = "hermetic-test"
-        self.transform_fingerprint = transform_fingerprint or compute_transform_fingerprint(
-            chunk_size=self.chunk_size,
-            overlap=self.overlap,
-            min_confidence=self.min_confidence,
-            models=self.models,
-            embed_dimension=self.embed_dimension,
-            implementation_revision=str(revision),
-            adapter_format=self.format_spec.format_id,
-            adapter_contract_version=self.format_spec.adapter_contract_version,
-        )
+        self.coordinator_implementation_revision = str(revision)
+        self.transform_v2 = bool(self.codex_admitted_live)
+        self.transform_descriptor: TransformDescriptor | None = None
+        if self.transform_v2:
+            self.transform_descriptor = build_transform_descriptor(
+                chunk_size=self.chunk_size,
+                overlap=self.overlap,
+                min_confidence=self.min_confidence,
+                models=self.models,
+                embed_dimension=self.embed_dimension,
+                adapter_format=self.format_spec.format_id,
+                adapter_contract_version=self.format_spec.adapter_contract_version,
+            )
+            self.transform_fingerprint = transform_fingerprint or self.transform_descriptor.digest
+        else:
+            self.transform_fingerprint = transform_fingerprint or compute_transform_fingerprint(
+                chunk_size=self.chunk_size,
+                overlap=self.overlap,
+                min_confidence=self.min_confidence,
+                models=self.models,
+                embed_dimension=self.embed_dimension,
+                implementation_revision=self.coordinator_implementation_revision,
+                adapter_format=self.format_spec.format_id,
+                adapter_contract_version=self.format_spec.adapter_contract_version,
+            )
         self.last_result: IncrementalRunResult | None = None
         self.last_evidence: dict[str, Any] = {}
         self._run_started = 0.0
@@ -672,6 +706,15 @@ class IncrementalJsonlCoordinator:
             source_path=self.path_key,
             adapter_format=self.format_spec.format_id,
         )
+
+    def _prepared_root(self, checkpoint: dict | None = None) -> Path:
+        payload = checkpoint
+        if payload is None:
+            payload = _read_json(self.paths["checkpoint"]) or {}
+        namespace = payload.get("prepared_namespace")
+        if isinstance(namespace, str) and namespace:
+            return self.state_dir / namespace
+        return self.paths["prepared"]
 
     @contextmanager
     def _session(self):
@@ -872,17 +915,24 @@ class IncrementalJsonlCoordinator:
         self._transition("source_revalidate", revalidate)
 
     def _prepared_key(self, chunk_start: int, input_digest: str) -> str:
-        return _sha(
-            f"{self.source_id}:{input_digest}:{self.transform_fingerprint}:{chunk_start}"
+        return prepared_cache_key(
+            source_id=self.source_id,
+            input_digest=input_digest,
+            transform_fingerprint=self.transform_fingerprint,
+            chunk_start=chunk_start,
         )
 
-    def _prepared_path(self, key: str) -> Path:
-        return self.paths["prepared"] / f"{key}.json"
+    def _prepared_path(self, key: str, checkpoint: dict | None = None) -> Path:
+        return self._prepared_root(checkpoint) / f"{key}.json"
 
     def _write_prepared(self, artifact: dict) -> None:
         key = artifact["cache_key"]
         path = self._prepared_path(key)
         staged = dict(artifact)
+        if self.transform_v2 and "producer_implementation_revision" not in staged:
+            staged["producer_implementation_revision"] = (
+                self.coordinator_implementation_revision
+            )
         body = {name: value for name, value in staged.items() if name != "digest"}
         staged["digest"] = _sha(_canonical_json(body))
 
@@ -1284,6 +1334,22 @@ class IncrementalJsonlCoordinator:
             "cache_key": self._prepared_key(chunk_start, built.input_digest),
         }
         self._max_units_in_flight = max(self._max_units_in_flight, len(units) + 1)
+        return payload
+
+    def _transaction_payload(self, **fields: Any) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "version": TRANSACTION_VERSION_V2 if self.transform_v2 else TRANSACTION_VERSION,
+            "coordinator_implementation_revision": self.coordinator_implementation_revision,
+            **fields,
+        }
+        if self.transform_v2 and self.transform_descriptor is not None:
+            payload.update(
+                {
+                    "recovery_protocol_version": RECOVERY_PROTOCOL_VERSION,
+                    "transform_fingerprint": self.transform_fingerprint,
+                    "transform_descriptor": self.transform_descriptor.body,
+                }
+            )
         return payload
 
     def _write_transaction(self, payload: dict) -> None:
@@ -2158,11 +2224,20 @@ class IncrementalJsonlCoordinator:
         from ingest import _path_is_excluded
         from purge_locks import index_write_flock, source_flock
 
-        generation = _sha(
-            "jsonl-incremental-generation-v1:"
-            f"{self.source_id}:{snapshot['prefix_sha256']}:{snapshot['complete_boundary']}:"
-            f"{self.transform_fingerprint}"
-        )
+        if self.transform_v2:
+            generation = generation_id_v2(
+                source_id=self.source_id,
+                prefix_sha256=snapshot["prefix_sha256"],
+                complete_boundary=snapshot["complete_boundary"],
+                transform_fingerprint=self.transform_fingerprint,
+            )
+        else:
+            generation = generation_id_v1(
+                source_id=self.source_id,
+                prefix_sha256=snapshot["prefix_sha256"],
+                complete_boundary=snapshot["complete_boundary"],
+                transform_fingerprint=self.transform_fingerprint,
+            )
         self._revalidate_live_prefix(snapshot)
         with source_flock(self.cfg, self.path_key):
             with index_write_flock(self.cfg):
@@ -2175,9 +2250,10 @@ class IncrementalJsonlCoordinator:
                     rollback_authority_sha256 = hashlib.sha256(
                         self.paths["rollback"].read_bytes()
                     ).hexdigest()
-                    self._write_transaction(
-                        {
-                            "version": TRANSACTION_VERSION,
+                    tx_payload = {
+                            "version": TRANSACTION_VERSION_V2
+                            if self.transform_v2
+                            else TRANSACTION_VERSION,
                             "transaction_id": transaction_id,
                             "phase": "APPLYING",
                             "bootstrap_existing": self.bootstrap_existing,
@@ -2191,8 +2267,19 @@ class IncrementalJsonlCoordinator:
                             "prefix_sha256": snapshot["prefix_sha256"],
                             "session_meta_digest": snapshot["session_meta_digest"],
                             "rollback_authority_sha256": rollback_authority_sha256,
+                            "coordinator_implementation_revision": (
+                                self.coordinator_implementation_revision
+                            ),
                         }
-                    )
+                    if self.transform_v2 and self.transform_descriptor is not None:
+                        tx_payload.update(
+                            {
+                                "recovery_protocol_version": RECOVERY_PROTOCOL_VERSION,
+                                "transform_fingerprint": self.transform_fingerprint,
+                                "transform_descriptor": self.transform_descriptor.body,
+                            }
+                        )
+                    self._write_transaction(tx_payload)
                 else:
                     self._require_rollback_authority(rollback_authority_sha256)
                 chunks, units, events, keep_summaries, keep_units = self._apply_prepared(
@@ -2204,7 +2291,7 @@ class IncrementalJsonlCoordinator:
                 self._revalidate_live_prefix(snapshot)
                 projection_fingerprint = self._projection_fingerprint()
                 checkpoint = {
-                "version": CHECKPOINT_VERSION,
+                "version": CHECKPOINT_VERSION_V2 if self.transform_v2 else CHECKPOINT_VERSION,
                 "commit_state": "complete",
                 "adapter_format": self.format_spec.format_id,
                 "source_identity": self.source_id,
@@ -2225,7 +2312,12 @@ class IncrementalJsonlCoordinator:
                 "processed_hash": snapshot["prefix_sha256"],
                 "raw_line_coverage": snapshot["raw_line_coverage"],
                 "fallback_reason": fallback,
+                "coordinator_implementation_revision": (
+                    self.coordinator_implementation_revision
+                ),
                 }
+                if self.transform_v2 and self.transform_descriptor is not None:
+                    checkpoint.update(descriptor_to_checkpoint_fields(self.transform_descriptor))
                 self._write_checkpoint(checkpoint)
                 self._reconcile_export()
                 exact, semantic = self._reconcile_dedupe(transaction_id, events)
@@ -2295,6 +2387,20 @@ class IncrementalJsonlCoordinator:
             self._cleanup(snapshot_dir)
 
     def _roll_forward(self, transaction: dict) -> IncrementalRunResult:
+        tx_version = int(transaction.get("version") or TRANSACTION_VERSION)
+        if tx_version >= TRANSACTION_VERSION_V2:
+            protocol = transaction.get("recovery_protocol_version")
+            if not recovery_protocol_supported(
+                int(protocol) if protocol is not None else None
+            ):
+                raise IncrementalJsonlError(
+                    "recovery_unproven", "unsupported recovery protocol version"
+                )
+        elif tx_version == TRANSACTION_VERSION and self.transform_v2:
+            # C7: v1 pending transactions must be recovered under their authoring runtime.
+            raise IncrementalJsonlError(
+                "recovery_unproven", "v1 transaction requires original runtime"
+            )
         phase = str(transaction.get("phase") or "")
         if phase not in {"PREPARING", "transform_failed", "APPLYING"}:
             raise IncrementalJsonlError("recovery_unproven", "unknown transaction phase")
@@ -2539,6 +2645,8 @@ class IncrementalJsonlCoordinator:
     ) -> str | None:
         """Guards shared by the pre-capture shortcut and the full-path unchanged return."""
         if self.codex_admitted_live:
+            if checkpoint is not None and int(checkpoint.get("version") or 0) == CHECKPOINT_VERSION:
+                return "migration_required"
             identity_refusal = verify_session_meta_identity(self.source, snapshot["raw"])
             if identity_refusal:
                 return identity_refusal
@@ -2783,22 +2891,21 @@ class IncrementalJsonlCoordinator:
                 )
                 return result
             self._write_transaction(
-                {
-                    "version": TRANSACTION_VERSION,
-                    "transaction_id": transaction_id,
-                    "phase": "PREPARING",
-                    "bootstrap_existing": self.bootstrap_existing,
+                self._transaction_payload(
+                    transaction_id=transaction_id,
+                    phase="PREPARING",
+                    bootstrap_existing=self.bootstrap_existing,
                     **self._bootstrap_transaction_binding(),
-                    "source_path": self.path_key,
-                    "source_identity": self.source_id,
-                    "generation_identity": snapshot["generation_identity"],
-                    "complete_boundary": snapshot["complete_boundary"],
-                    "prefix_sha256": snapshot["prefix_sha256"],
-                    "session_meta_digest": snapshot["session_meta_digest"],
-                    "prior_checkpoint_digest": _sha(_canonical_json(checkpoint))
+                    source_path=self.path_key,
+                    source_identity=self.source_id,
+                    generation_identity=snapshot["generation_identity"],
+                    complete_boundary=snapshot["complete_boundary"],
+                    prefix_sha256=snapshot["prefix_sha256"],
+                    session_meta_digest=snapshot["session_meta_digest"],
+                    prior_checkpoint_digest=_sha(_canonical_json(checkpoint))
                     if checkpoint
                     else None,
-                }
+                )
             )
             try:
                 prepared, reused = self._build_frontier(
@@ -2834,23 +2941,22 @@ class IncrementalJsonlCoordinator:
                     )
                 raise
             self._write_transaction(
-                {
-                    "version": TRANSACTION_VERSION,
-                    "transaction_id": transaction_id,
-                    "phase": "PREPARING",
-                    "bootstrap_existing": self.bootstrap_existing,
+                self._transaction_payload(
+                    transaction_id=transaction_id,
+                    phase="PREPARING",
+                    bootstrap_existing=self.bootstrap_existing,
                     **self._bootstrap_transaction_binding(),
-                    "source_path": self.path_key,
-                    "source_identity": self.source_id,
-                    "generation_identity": snapshot["generation_identity"],
-                    "complete_boundary": snapshot["complete_boundary"],
-                    "prefix_sha256": snapshot["prefix_sha256"],
-                    "session_meta_digest": snapshot["session_meta_digest"],
-                    "prepared_keys": [item["cache_key"] for item in prepared],
-                    "prior_checkpoint_digest": _sha(_canonical_json(checkpoint))
+                    source_path=self.path_key,
+                    source_identity=self.source_id,
+                    generation_identity=snapshot["generation_identity"],
+                    complete_boundary=snapshot["complete_boundary"],
+                    prefix_sha256=snapshot["prefix_sha256"],
+                    session_meta_digest=snapshot["session_meta_digest"],
+                    prepared_keys=[item["cache_key"] for item in prepared],
+                    prior_checkpoint_digest=_sha(_canonical_json(checkpoint))
                     if checkpoint
                     else None,
-                }
+                )
             )
             return self._commit_generation(
                 snapshot=snapshot,

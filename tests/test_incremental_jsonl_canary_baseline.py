@@ -35,7 +35,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 stage-2 corrective 20 (R6-F1 capture-error escape accounting).
     # Refreshed for issue #286 corrective 24 pylint comment-only suppressions (no semantics).
     # Refreshed for issue #286 Kiro exact-path recovery parity (R1-R3).
-    "incremental_jsonl.py": "778a22d0f8a8b3f92a4748334f3d25f7022cc5077b4938b9858f1dfc210ea7f1",
+    # Refreshed for issue #286 transform contract v2 (semantic fingerprint).
+    "incremental_jsonl.py": "8cdf4bf2558036b98c9114a77a98260114f694705f9dd9783bee89e07fc8cc90",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
