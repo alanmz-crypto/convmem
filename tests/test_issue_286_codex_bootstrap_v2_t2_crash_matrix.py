@@ -90,3 +90,10 @@ def test_journal_mirror_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
     rows = _read_jsonl(operation_root(state_dir, grant) / "invocations.jsonl")
     assert len([r for r in rows if r.get("record_type") == "start"]) == 1
+
+def test_crash_after_journal_mirror_still_authority_ordinal1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    state_dir, grant = _fixture(tmp_path, monkeypatch)
+    claim_initial_authority(state_dir, grant)
+    result = _run_child(state_dir, grant, crash_point="after_journal_mirror_fsync", action="mirror")
+    assert result.returncode == 91
+    assert load_authority(state_dir).invocation_ordinal == 1

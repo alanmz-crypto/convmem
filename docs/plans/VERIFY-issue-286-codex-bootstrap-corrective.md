@@ -141,7 +141,7 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 
 ## V3 — Authority crash matrix (T2)
 
-**PASS (scoped, tested at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` inside bwrap).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` (**18 passed**, exit 0). T1 bundle at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` not re-run at T2 SHA.
+**PASS (scoped, tested at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` inside bwrap).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` (**19 passed**, exit 0). T1 bundle at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` not re-run at T2 SHA.
 
 | ID | Obligation | Test node | rc | Result |
 |----|------------|-----------|-----|--------|
@@ -157,13 +157,14 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 | V3j | Crash after authority fsync (child exit 91) | `test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py::test_crash_after_authority_leaves_ordinal1_for_recovery` | 0 | PASS |
 | V3k | Reservation without transaction → ordinal 2 | `::test_reservation_without_transaction_recovery` | 0 | PASS |
 | V3l | Journal mirror idempotent | `::test_journal_mirror_idempotent` | 0 | PASS |
+| V3n | Crash after journal mirror fsync (child exit 91) | `test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py::test_crash_after_journal_mirror_still_authority_ordinal1` | 0 | PASS |
 | V3m | Broken ordinal-3 negative control | `test_issue_286_codex_bootstrap_v2_t2_authority.py::test_broken_ordinal3_allowance_would_fail` | 0 | PASS |
 
 ```bash
 cd /home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap
 git checkout 8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef
 python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap
-# exit 0; 18 passed in bwrap worker
+# exit 0; 19 passed in bwrap worker
 ```
 
 ## V4 — Provider permits and caps (T2)
