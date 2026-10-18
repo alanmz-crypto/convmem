@@ -13,7 +13,7 @@ from bootstrap_codex_v2_permits import (
     compose_provider_permits,
     outer_budget_permit_factory,
 )
-from bootstrap_safety import ProviderAttemptBudgetExceeded
+from bootstrap_safety import BootstrapGrantError, ProviderAttemptBudgetExceeded
 from bootstrap_codex_v2 import operation_identity_v2
 from tests.test_incremental_jsonl_bootstrap_safety import (
     _deepseek_post_response,
@@ -126,3 +126,66 @@ def test_broken_permit_order_negative_control() -> None:
     with pytest.raises(AssertionError):
         send_before_permit()
         assert False
+
+
+def test_ledger_survives_process_restart(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=2)
+    ledger.consume_provider_http_attempt(_valid_attempt_event())
+    reloaded = CodexV2PaidLedger(state_dir, grant)
+    assert reloaded.accounting()["cumulative_permitted_http_attempts"] == 1
+
+
+def test_lost_response_still_counts_without_usage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=1)
+    ledger.consume_provider_http_attempt(_valid_attempt_event())
+    with pytest.raises(ProviderAttemptBudgetExceeded):
+        ledger.consume_provider_http_attempt(_valid_attempt_event())
+
+
+def test_operation_guard_refusal_blocks_inner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=1)
+    ledger.consume_provider_http_attempt(_valid_attempt_event())
+    with pytest.raises(ProviderAttemptBudgetExceeded, match="exhausted"):
+        ledger.consume_provider_http_attempt(_valid_attempt_event())
+
+
+def test_ollama_embed_cap_exempt_observed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.test_incremental_jsonl_bootstrap_safety import _ollama_embed_post_response
+
+    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=1)
+    transports: list[str] = []
+
+    def fake_post(url, **_kwargs):
+        transports.append(url)
+        return _ollama_embed_post_response()
+
+    monkeypatch.setattr(llm.requests, "post", fake_post)
+    event = {
+        "provider": "ollama",
+        "operation": "embed",
+        "model": grant["embedding_model"],
+        "base_url": grant["embedding_base_url"],
+    }
+    ledger.consume_provider_http_attempt(event)
+    ledger.consume_provider_http_attempt(event)
+    assert ledger.accounting()["permitted_http_attempts"] == 0
+    assert ledger.accounting()["observed_provider_http_attempts"] == 2
+
+
+def test_cumulative_lifetime_across_recovery_without_reset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=1)
+    ledger.consume_provider_http_attempt(_valid_attempt_event())
+    claim_recovery_authority(state_dir, grant)
+    ledger2 = CodexV2PaidLedger(state_dir, grant)
+    ledger2.consume_provider_http_attempt(_valid_attempt_event())
+    assert ledger2.accounting()["cumulative_permitted_http_attempts"] == 2
+    with pytest.raises(ProviderAttemptBudgetExceeded):
+        ledger2.consume_provider_http_attempt(_valid_attempt_event())
+
+
+def test_corrupt_permit_journal_refuses_consume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=2)
+    ledger.permits_path.parent.mkdir(parents=True, exist_ok=True)
+    ledger.permits_path.write_text("{not-jsonl\n", encoding="utf-8")
+    with pytest.raises(BootstrapGrantError):
+        ledger.consume_provider_http_attempt(_valid_attempt_event())

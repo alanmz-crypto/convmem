@@ -32,6 +32,13 @@ def _state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
     return state_dir, grant
 
 
+def test_authority_progress_binding_fields(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    state_dir, grant = _state_dir(tmp_path, monkeypatch)
+    view = claim_initial_authority(state_dir, grant)
+    for key in ("transaction_lineage_digest", "prepared_lineage_digest", "rollback_digest", "checkpoint_digest"):
+        assert key in view.record["progress"]
+
+
 def test_initial_claim_publishes_ordinal1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     state_dir, grant = _state_dir(tmp_path, monkeypatch)
     view = claim_initial_authority(state_dir, grant)

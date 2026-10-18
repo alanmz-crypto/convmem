@@ -11,14 +11,21 @@ from pathlib import Path
 from typing import Any, Callable, Iterator
 
 from bootstrap_codex_v2 import grant_fingerprint_v2, operation_identity_v2, validate_grant_v2
+from bootstrap_codex_v2_publication import append_jsonl_line, atomic_publish_json
 from bootstrap_safety import (
     BootstrapGrantError,
     ProviderAttemptBudgetExceeded,
-    _append_jsonl,
-    _atomic_json,
     _read_jsonl,
     utc_now,
 )
+
+PROGRESS_FIELDS = (
+    "transaction_lineage_digest",
+    "prepared_lineage_digest",
+    "rollback_digest",
+    "checkpoint_digest",
+)
+
 
 AUTHORITY_FILENAME = "bootstrap_v2_authority.json"
 AUTHORITY_SCHEMA_VERSION = 1
@@ -67,8 +74,8 @@ def _crash_after(point: str) -> None:
         os._exit(91)
 
 
-def _publish_authority(path: Path, record: dict[str, Any]) -> None:
-    _atomic_json(path, record)
+def _publish_authority(path: Path, record: dict[str, Any], *, stage: str = "authority") -> None:
+    atomic_publish_json(path, record, stage=stage)
     _crash_after("after_authority_fsync")
 
 
@@ -106,6 +113,12 @@ def _validate_record_shape(record: dict[str, Any]) -> dict[str, Any]:
         raise CodexBootstrapV2AuthorityError("authority invocation_ordinal invalid")
     if not isinstance(record["grant_snapshot"], dict):
         raise CodexBootstrapV2AuthorityError("authority grant_snapshot invalid")
+    progress = record.get("progress")
+    if not isinstance(progress, dict):
+        raise CodexBootstrapV2AuthorityError("authority progress invalid")
+    for key in PROGRESS_FIELDS:
+        if key not in progress:
+            raise CodexBootstrapV2AuthorityError("authority progress missing binding")
     return record
 
 
@@ -119,6 +132,15 @@ def load_authority(state_dir: Path) -> AuthorityView | None:
         raise CodexBootstrapV2AuthorityError("authority is unreadable") from exc
     record = _validate_record_shape(record)
     return AuthorityView(path=path, record=record)
+
+
+def _progress_binding(existing: dict[str, Any] | None = None) -> dict[str, Any]:
+    base = {key: None for key in PROGRESS_FIELDS}
+    if existing:
+        for key in PROGRESS_FIELDS:
+            if key in existing:
+                base[key] = existing[key]
+    return base
 
 
 def _grant_snapshot(grant: dict[str, Any]) -> dict[str, Any]:
@@ -153,7 +175,7 @@ def inspect_initial_claim_blockers(state_dir: Path, grant: dict[str, Any]) -> li
     manifest = op_root / "manifest.json"
     if manifest.is_file() and existing is None:
         blockers.append("orphan_operation_manifest")
-    tmp = authority_path(state_dir).with_suffix(".json.tmp")
+    tmp = authority_path(state_dir).with_name(authority_path(state_dir).name + ".tmp")
     if tmp.exists():
         blockers.append("ambiguous_authority_temp")
     return blockers
@@ -194,7 +216,7 @@ def _authority_record(
         "reservation_active": reservation_active,
         "invocation_ordinal": invocation_ordinal,
         "grant_snapshot": validated,
-        "progress": progress or {},
+        "progress": _progress_binding(progress),
         "published_at": utc_now(),
     }
     if terminal_receipt_digest is not None:
@@ -218,7 +240,7 @@ def claim_initial_authority(state_dir: Path, grant: dict[str, Any]) -> Authority
             reservation_active=True,
         )
         path = authority_path(state_dir)
-        _publish_authority(path, record)
+        _publish_authority(path, record, stage="initial_authority")
         _crash_after("after_initial_claim_lock_release")
         return AuthorityView(path=path, record=record)
 
@@ -245,7 +267,7 @@ def claim_recovery_authority(state_dir: Path, grant: dict[str, Any]) -> Authorit
             reservation_active=True,
             progress=dict(existing.record.get("progress") or {}),
         )
-        _publish_authority(existing.path, record)
+        _publish_authority(existing.path, record, stage="recovery_authority")
         return AuthorityView(path=existing.path, record=record)
 
 
@@ -265,7 +287,11 @@ def publish_terminal_authority(
         if existing.terminal:
             return existing
         if receipt_path is not None:
-            _atomic_json(receipt_path, {"receipt_digest": receipt_digest, "operation_id": validated["operation_id"]})
+            atomic_publish_json(
+                receipt_path,
+                {"receipt_digest": receipt_digest, "operation_id": validated["operation_id"]},
+                stage="terminal_receipt",
+            )
             _crash_after("after_receipt_fsync")
         record = _authority_record(
             validated,
@@ -276,7 +302,7 @@ def publish_terminal_authority(
             progress=dict(existing.record.get("progress") or {}),
             terminal_receipt_digest=receipt_digest,
         )
-        _publish_authority(existing.path, record)
+        _publish_authority(existing.path, record, stage="terminal_authority")
         return AuthorityView(path=existing.path, record=record)
 
 
@@ -308,7 +334,7 @@ def mirror_invocation_start(state_dir: Path, grant: dict[str, Any]) -> None:
         for row in rows
     ):
         return
-    _append_jsonl(
+    append_jsonl_line(
         invocations,
         {
             "record_type": "start",
@@ -319,6 +345,7 @@ def mirror_invocation_start(state_dir: Path, grant: dict[str, Any]) -> None:
             "authority_revision": authority.revision,
             "mirror": True,
         },
+        stage="journal_mirror",
     )
     _crash_after("after_journal_mirror_fsync")
 

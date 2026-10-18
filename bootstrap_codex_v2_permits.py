@@ -13,9 +13,10 @@ from bootstrap_codex_v2_authority import (
     load_authority,
     operation_root,
 )
+from bootstrap_codex_v2_publication import append_jsonl_line
 from bootstrap_safety import (
     ProviderAttemptBudgetExceeded,
-    _append_jsonl,
+    _new_provider_attempt_paid_cap_consumed,
     _provider_attempt_paid_cap_consumed,
     _read_jsonl,
     _validate_provider_attempt_event,
@@ -58,6 +59,8 @@ class CodexV2PaidLedger:
         self.operation_dir = operation_root(state_dir, self.grant)
         self.permits_path = self.operation_dir / "v2_provider_permits.jsonl"
         self.max_attempts = int(self.grant["max_provider_http_attempts"])
+        self.max_recoveries = int(self.grant["max_recovery_invocations"])
+        self.lifetime_paid_cap = self.max_attempts * (1 + self.max_recoveries)
         self._authority: AuthorityView | None = None
 
     def bind_authority(self) -> AuthorityView:
@@ -82,7 +85,7 @@ class CodexV2PaidLedger:
         if not authority.reservation_active:
             raise ProviderAttemptBudgetExceeded("reservation_inactive")
         _validate_provider_attempt_event(event)
-        paid = _provider_attempt_paid_cap_consumed(event)
+        paid = _new_provider_attempt_paid_cap_consumed(event)
         with operation_accounting_lock(self.operation_dir):
             rows = _read_jsonl(self.permits_path)
             ordinal = authority.invocation_ordinal
@@ -93,12 +96,11 @@ class CodexV2PaidLedger:
                 raise ProviderAttemptBudgetExceeded(
                     f"provider_http_budget_exhausted:{paid_local}/{self.max_attempts}"
                 )
-            lifetime = self.max_attempts
-            if paid and paid_total >= lifetime:
+            if paid and paid_total >= self.lifetime_paid_cap:
                 raise ProviderAttemptBudgetExceeded(
-                    f"provider_http_budget_exhausted:{paid_total}/{lifetime}"
+                    f"provider_http_budget_exhausted:{paid_total}/{self.lifetime_paid_cap}"
                 )
-            _append_jsonl(
+            append_jsonl_line(
                 self.permits_path,
                 {
                     "record_type": "permit_consumed",
@@ -111,6 +113,7 @@ class CodexV2PaidLedger:
                     "paid_cap_consumed": paid,
                     **event,
                 },
+                stage="v2_permit",
             )
 
     def accounting(self) -> dict[str, Any]:
@@ -126,6 +129,7 @@ class CodexV2PaidLedger:
             "permitted_http_attempts": paid_current,
             "cumulative_permitted_http_attempts": paid_total,
             "observed_provider_http_attempts": len(ordinal_rows),
+            "lifetime_paid_cap": self.lifetime_paid_cap,
         }
 
 
