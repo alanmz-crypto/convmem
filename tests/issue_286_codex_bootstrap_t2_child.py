@@ -12,11 +12,13 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from bootstrap_codex_v2_authority import (
     claim_initial_authority,
-    load_authority,
     claim_recovery_authority,
+    load_authority,
     mirror_invocation_start,
+    publish_authority_progress,
     publish_terminal_authority,
 )
+from bootstrap_codex_v2_permits import CodexV2PaidLedger
 
 
 def main() -> int:
@@ -39,6 +41,22 @@ def main() -> int:
             receipt_digest="c" * 64,
             receipt_path=state_dir / "terminal_receipt.json",
         )
+    elif action == "permit":
+        if load_authority(state_dir) is None:
+            claim_initial_authority(state_dir, grant)
+        ledger = CodexV2PaidLedger(state_dir, grant)
+        ledger.consume_provider_http_attempt(
+            {
+                "provider": "deepseek",
+                "operation": "generate",
+                "model": grant["distill_model"],
+                "base_url": grant["distill_base_url"],
+            }
+        )
+    elif action == "progress":
+        if load_authority(state_dir) is None:
+            claim_initial_authority(state_dir, grant)
+        publish_authority_progress(state_dir, grant, progress={"checkpoint_digest": "a" * 64})
     elif action == "ordinal3":
         claim_initial_authority(state_dir, grant)
         claim_recovery_authority(state_dir, grant)

@@ -27,16 +27,19 @@ from tests.test_issue_286_codex_bootstrap_v2_t1 import _rollout_fixture, _v2_gra
 REPO = Path(__file__).resolve().parents[1]
 CHILD = Path(__file__).with_name("issue_286_codex_bootstrap_t2_child.py")
 
-KILL_STAGES = [
-    "initial_authority.before_tmp_fsync",
-    "initial_authority.before_dir_fsync",
-    "initial_authority.after_dir_fsync",
-    "journal_mirror.before_file_fsync",
-    "journal_mirror.after_dir_fsync",
-    "recovery_authority.after_dir_fsync",
-    "terminal_receipt.after_dir_fsync",
-    "terminal_authority.after_dir_fsync",
-]
+from bootstrap_codex_v2_publication_catalog import all_barrier_stage_names, PUBLICATION_SITES
+
+KILL_STAGES = all_barrier_stage_names()
+
+SITE_ACTION = {
+    "initial_authority": "initial",
+    "recovery_authority": "recovery",
+    "progress_authority": "progress",
+    "terminal_receipt": "terminal",
+    "terminal_authority": "terminal",
+    "journal_mirror": "mirror",
+    "v2_permit": "permit",
+}
 
 
 def _fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -75,12 +78,18 @@ def _parent_kill(
         env=env,
     )
     killed = False
-    for _ in range(800):
-        if (barrier / f"stage.{kill_stage}").exists():
-            proc.kill()
-            killed = True
-            break
-        if proc.poll() is not None:
+    for _ in range(2000):
+        if barrier.exists():
+            for stage_marker in sorted(barrier.glob("stage.*")):
+                stage_name = stage_marker.name.removeprefix("stage.")
+                if stage_name == kill_stage:
+                    proc.kill()
+                    killed = True
+                    break
+                ack_path = barrier / f"ack.{stage_name}"
+                if not ack_path.exists():
+                    ack_path.write_text("1", encoding="ascii")
+        if killed or proc.poll() is not None:
             break
         time.sleep(0.01)
     try:
@@ -98,24 +107,35 @@ def test_parent_sigkill_at_publication_stage(
     state_dir, grant, _ = _fixture(tmp_path, monkeypatch)
 
     def setup() -> None:
-        if kill_stage.startswith("journal_mirror") or kill_stage.startswith("recovery"):
+        site, _stage = kill_stage.split(".", 1)
+        if site in {"journal_mirror", "recovery_authority", "progress_authority", "terminal_receipt", "terminal_authority", "v2_permit"}:
             claim_initial_authority(state_dir, grant)
+        if site == "recovery_authority":
+            return
 
-    if kill_stage.startswith("journal_mirror"):
-        action = "mirror"
-    elif kill_stage.startswith("recovery"):
-        action = "recovery"
-    elif kill_stage.startswith("terminal"):
-        action = "terminal"
-    else:
-        action = "initial"
+    site, stage = kill_stage.split(".", 1)
+    action = SITE_ACTION[site]
 
-    killed, rc, snap = _parent_kill(tmp_path, state_dir, grant, action=action, kill_stage=kill_stage, setup=setup)
+    killed, rc, snap = _parent_kill(
+        tmp_path, state_dir, grant, action=action, kill_stage=kill_stage, setup=setup, wait_barrier=True
+    )
     assert killed is True
     assert rc != 0
-    if kill_stage.endswith("after_dir_fsync") and action == "initial":
-        assert authority_path(state_dir).is_file()
-        assert load_authority(state_dir).invocation_ordinal == 1
+    from bootstrap_codex_v2_authority import operation_root
+    from tests.fixtures.issue_286_t2_parent_oracle import count_oracle_rows
+
+    if site in {"initial_authority", "recovery_authority", "progress_authority", "terminal_authority"}:
+        durable = stage in {"after_dir_fsync", "after_replace"}
+        if durable:
+            assert load_authority(state_dir) is not None
+        elif site == "initial_authority" and stage in {"before_tmp_write", "before_tmp_fsync", "before_replace"}:
+            assert load_authority(state_dir) is None
+    if site == "recovery_authority" and stage == "after_dir_fsync":
+        assert load_authority(state_dir).invocation_ordinal == 2
+    if site == "v2_permit" and stage == "after_dir_fsync":
+        assert count_oracle_rows(operation_root(state_dir, grant) / "v2_provider_permits.jsonl") == 1
+    if site == "journal_mirror" and stage == "after_dir_fsync":
+        assert count_oracle_rows(operation_root(state_dir, grant) / "invocations.jsonl") == 1
 
 
 def test_injected_replace_fail_leaves_no_durable_authority(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -183,3 +203,61 @@ def test_authority_claim_does_not_mutate_chroma(tmp_path: Path, monkeypatch: pyt
     claim_initial_authority(state_dir, grant)
     after = snapshot_tree(chroma)
     assert before == after
+
+
+INJECT_CASES = [
+    ("initial_authority.before_tmp_fsync", "initial", "ambiguous_authority_temp"),
+    ("initial_authority.before_replace", "initial", "no_authority"),
+    ("journal_mirror.before_file_fsync", "mirror", "mirror_row_present"),
+    ("v2_permit.before_file_fsync", "permit", "permit_row_present"),
+]
+
+
+@pytest.mark.parametrize("inject_stage,action,expect", INJECT_CASES)
+def test_injected_publication_failure_matrix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, inject_stage: str, action: str, expect: str
+) -> None:
+    from bootstrap_codex_v2_authority import operation_root
+    from tests.fixtures.issue_286_t2_parent_oracle import count_oracle_rows
+
+    state_dir, grant, _ = _fixture(tmp_path, monkeypatch)
+    if action != "initial":
+        claim_initial_authority(state_dir, grant)
+    site, barrier = inject_stage.split(".", 1)
+    if barrier == "before_replace":
+        monkeypatch.setenv("CONVMEM_BOOTSTRAP_V2_INJECT_REPLACE_FAIL", f"{site}.replace")
+        monkeypatch.delenv("CONVMEM_BOOTSTRAP_V2_INJECT_FSYNC_FAIL", raising=False)
+    elif barrier == "before_tmp_fsync":
+        monkeypatch.setenv("CONVMEM_BOOTSTRAP_V2_INJECT_FSYNC_FAIL", f"{site}.tmp_fsync")
+        monkeypatch.delenv("CONVMEM_BOOTSTRAP_V2_INJECT_REPLACE_FAIL", raising=False)
+    elif barrier == "before_file_fsync":
+        monkeypatch.setenv("CONVMEM_BOOTSTRAP_V2_INJECT_FSYNC_FAIL", f"{site}.file_fsync")
+        monkeypatch.delenv("CONVMEM_BOOTSTRAP_V2_INJECT_REPLACE_FAIL", raising=False)
+    from bootstrap_codex_v2_publication import PublicationFailure
+
+    with pytest.raises(PublicationFailure):
+        if action == "initial":
+            claim_initial_authority(state_dir, grant)
+        elif action == "mirror":
+            mirror_invocation_start(state_dir, grant)
+        else:
+            from bootstrap_codex_v2_permits import CodexV2PaidLedger
+
+            CodexV2PaidLedger(state_dir, grant).consume_provider_http_attempt(
+                {
+                    "provider": "deepseek",
+                    "operation": "generate",
+                    "model": grant["distill_model"],
+                    "base_url": grant["distill_base_url"],
+                }
+            )
+    if expect == "no_authority":
+        assert load_authority(state_dir) is None
+    elif expect == "no_mirror_rows":
+        assert count_oracle_rows(operation_root(state_dir, grant) / "invocations.jsonl") == 0
+    elif expect == "no_permit_rows":
+        assert count_oracle_rows(operation_root(state_dir, grant) / "v2_provider_permits.jsonl") == 0
+    elif expect == "mirror_row_present":
+        assert count_oracle_rows(operation_root(state_dir, grant) / "invocations.jsonl") == 1
+    elif expect == "permit_row_present":
+        assert count_oracle_rows(operation_root(state_dir, grant) / "v2_provider_permits.jsonl") == 1

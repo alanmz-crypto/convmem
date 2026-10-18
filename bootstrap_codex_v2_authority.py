@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Any, Callable, Iterator
 
 from bootstrap_codex_v2 import grant_fingerprint_v2, operation_identity_v2, validate_grant_v2
+from contextlib import nullcontext
+
+from bootstrap_codex_v2_owner import ENFORCE_ENV, require_owner_lock
 from bootstrap_codex_v2_publication import append_jsonl_line, atomic_publish_json
 from bootstrap_safety import (
     BootstrapGrantError,
@@ -67,6 +70,13 @@ def operation_root(state_dir: Path, grant: dict[str, Any]) -> Path:
     fingerprint = grant_fingerprint_v2(grant)
     root = state_dir / "operations" / fingerprint
     return root
+
+
+def _authority_lock(state_dir: Path):
+    if os.environ.get(ENFORCE_ENV, "").strip() == "1":
+        require_owner_lock()
+        return nullcontext()
+    return claim_lock(state_dir)
 
 
 def _crash_after(point: str) -> None:
@@ -228,7 +238,7 @@ def claim_initial_authority(state_dir: Path, grant: dict[str, Any]) -> Authority
     validated = validate_grant_v2(grant)
     if validated["operation_id"] != operation_identity_v2(validated):
         raise CodexBootstrapV2AuthorityError("grant operation_id mismatch")
-    with claim_lock(state_dir):
+    with _authority_lock(state_dir):
         blockers = inspect_initial_claim_blockers(state_dir, validated)
         if blockers:
             raise CodexBootstrapV2AuthorityError("initial_claim_refused:" + ",".join(blockers))
@@ -247,7 +257,7 @@ def claim_initial_authority(state_dir: Path, grant: dict[str, Any]) -> Authority
 
 def claim_recovery_authority(state_dir: Path, grant: dict[str, Any]) -> AuthorityView:
     validated = validate_grant_v2(grant)
-    with claim_lock(state_dir):
+    with _authority_lock(state_dir):
         existing = load_authority(state_dir)
         if existing is None:
             raise CodexBootstrapV2AuthorityError("recovery_without_authority")
@@ -271,6 +281,37 @@ def claim_recovery_authority(state_dir: Path, grant: dict[str, Any]) -> Authorit
         return AuthorityView(path=existing.path, record=record)
 
 
+
+def publish_authority_progress(
+    state_dir: Path,
+    grant: dict[str, Any],
+    *,
+    progress: dict[str, Any],
+) -> AuthorityView:
+    validated = validate_grant_v2(grant)
+    with _authority_lock(state_dir):
+        existing = load_authority(state_dir)
+        if existing is None:
+            raise CodexBootstrapV2AuthorityError("progress_without_authority")
+        validated = _assert_identical_grant(existing, validated)
+        if existing.terminal:
+            raise CodexBootstrapV2AuthorityError("already_terminal")
+        merged = _progress_binding(dict(existing.record.get("progress") or {}))
+        for key in PROGRESS_FIELDS:
+            if key in progress:
+                merged[key] = progress[key]
+        record = _authority_record(
+            validated,
+            revision=existing.revision + 1,
+            invocation_ordinal=existing.invocation_ordinal,
+            reservation_state=str(existing.record.get("reservation_state") or "RESERVED"),
+            reservation_active=True,
+            progress=merged,
+        )
+        _publish_authority(existing.path, record, stage="progress_authority")
+        return AuthorityView(path=existing.path, record=record)
+
+
 def publish_terminal_authority(
     state_dir: Path,
     grant: dict[str, Any],
@@ -279,7 +320,7 @@ def publish_terminal_authority(
     receipt_path: Path | None = None,
 ) -> AuthorityView:
     validated = validate_grant_v2(grant)
-    with claim_lock(state_dir):
+    with _authority_lock(state_dir):
         existing = load_authority(state_dir)
         if existing is None:
             raise CodexBootstrapV2AuthorityError("terminal_without_authority")

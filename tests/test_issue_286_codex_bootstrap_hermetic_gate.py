@@ -48,8 +48,9 @@ ISOLATED_PYTEST_TARGETS_T2 = (
     "tests/test_issue_286_codex_bootstrap_v2_t2_accounting.py",
     "tests/test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py",
     "tests/test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py",
+    "tests/test_issue_286_codex_bootstrap_v2_t2_contract_evidence.py",
 )
-EXPECTED_ISOLATED_T2_PASS_COUNT = 40
+EXPECTED_ISOLATED_T2_PASS_COUNT = 85
 
 
 

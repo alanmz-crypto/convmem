@@ -32,9 +32,12 @@ def publication_barrier(stage: str) -> None:
     if prefix is None:
         return
     prefix.mkdir(parents=True, exist_ok=True)
-    (prefix / f"stage.{stage}").write_text("1", encoding="ascii")
+    marker = prefix / f"stage.{stage}"
+    marker.write_text("1", encoding="ascii")
     if os.environ.get("CONVMEM_BOOTSTRAP_V2_BARRIER_WAIT", "").strip() == "1":
-        time.sleep(1.5)
+        ack = prefix / f"ack.{stage}"
+        while not ack.exists():
+            time.sleep(0.005)
     if os.environ.get(PARENT_KILL_STAGE_ENV, "").strip() == stage:
         os._exit(92)
 

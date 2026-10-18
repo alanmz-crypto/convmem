@@ -26,6 +26,30 @@ from bootstrap_safety import (
 ProviderPermit = Callable[[dict[str, object]], None]
 
 
+def _allowed_grant_bindings(grant: dict[str, Any], event: dict[str, object]) -> list[tuple[str, str]]:
+    provider = str(event.get("provider") or "")
+    if provider == "deepseek":
+        return [
+            (str(grant["distill_model"]), str(grant["distill_base_url"])),
+            (str(grant["summarize_model"]), str(grant["summarize_base_url"])),
+        ]
+    if provider == "ollama":
+        return [
+            (str(grant["embedding_model"]), str(grant["embedding_base_url"])),
+            (str(grant["summarize_model"]), str(grant["summarize_base_url"])),
+        ]
+    raise ProviderAttemptBudgetExceeded("provider_binding_unsupported")
+
+
+def validate_permit_event_against_grant(grant: dict[str, Any], event: dict[str, object]) -> None:
+    model = str(event.get("model") or "")
+    url = str(event.get("base_url") or "").rstrip("/")
+    for expected_model, expected_url in _allowed_grant_bindings(grant, event):
+        if model == expected_model and url == expected_url.rstrip("/"):
+            return
+    raise ProviderAttemptBudgetExceeded("provider_binding_mismatch")
+
+
 def compose_provider_permits(*permits: ProviderPermit) -> ProviderPermit:
     """Run every guard before transport; do not replace ContextVar callbacks."""
 
@@ -60,7 +84,8 @@ class CodexV2PaidLedger:
         self.permits_path = self.operation_dir / "v2_provider_permits.jsonl"
         self.max_attempts = int(self.grant["max_provider_http_attempts"])
         self.max_recoveries = int(self.grant["max_recovery_invocations"])
-        self.lifetime_paid_cap = self.max_attempts * (1 + self.max_recoveries)
+        # v1 default: lifetime paid ceiling equals grant max_provider_http_attempts (not multiplied).
+        self.lifetime_paid_cap = self.max_attempts
         self._authority: AuthorityView | None = None
 
     def bind_authority(self) -> AuthorityView:
@@ -85,6 +110,7 @@ class CodexV2PaidLedger:
         if not authority.reservation_active:
             raise ProviderAttemptBudgetExceeded("reservation_inactive")
         _validate_provider_attempt_event(event)
+        validate_permit_event_against_grant(self.grant, event)
         paid = _new_provider_attempt_paid_cap_consumed(event)
         with operation_accounting_lock(self.operation_dir):
             rows = _read_jsonl(self.permits_path)

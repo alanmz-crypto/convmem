@@ -173,12 +173,11 @@ def test_ollama_embed_cap_exempt_observed(tmp_path: Path, monkeypatch: pytest.Mo
 
 
 def test_cumulative_lifetime_across_recovery_without_reset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=1)
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=2)
+    ledger.consume_provider_http_attempt(_valid_attempt_event())
     ledger.consume_provider_http_attempt(_valid_attempt_event())
     claim_recovery_authority(state_dir, grant)
     ledger2 = CodexV2PaidLedger(state_dir, grant)
-    ledger2.consume_provider_http_attempt(_valid_attempt_event())
-    assert ledger2.accounting()["cumulative_permitted_http_attempts"] == 2
     with pytest.raises(ProviderAttemptBudgetExceeded):
         ledger2.consume_provider_http_attempt(_valid_attempt_event())
 
