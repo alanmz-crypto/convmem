@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import io
+import json
 import os
 import signal
 import subprocess
 import unittest
 from unittest import mock
 
-from watch import _flush_path_subprocess, _scoped_index_cmd
+from watch import IndexSubprocessError, _flush_path_subprocess, _scoped_index_cmd
 
 
 class ScopedIndexCmdTests(unittest.TestCase):
@@ -106,6 +108,95 @@ class FlushPathSubprocessTests(unittest.TestCase):
         ):
             with self.assertRaises(RuntimeError):
                 _flush_path_subprocess("/tmp/x.jsonl", verbose=False)
+
+
+def _admitted_event(**overrides):
+    payload = {
+        "chunks_reused": 0,
+        "chunks_transformed": 1,
+        "elapsed_seconds": 0.125,
+        "event": "incremental_codex_admitted_run",
+        "format": "codex_jsonl",
+        "outcome": "committed",
+        "provider_requests": {"summarize": 1},
+        "source_bytes": 42,
+    }
+    payload.update(overrides)
+    return json.dumps(payload, sort_keys=True)
+
+
+def _padded_admitted_event(length: int) -> str:
+    prefix = '{"event":"incremental_codex_admitted_run","pad":"'
+    suffix = '"}'
+    pad = length - len(prefix) - len(suffix)
+    if pad < 0:
+        raise ValueError("length too small for admitted-run event")
+    return prefix + ("x" * pad) + suffix
+
+
+class FlushPathChildEventForwardTests(unittest.TestCase):
+    def _run(self, *, returncode=0, stdout="", stderr="", verbose=False):
+        completed = mock.MagicMock(returncode=returncode)
+        completed.communicate.return_value = (stdout, stderr)
+        completed.__enter__.return_value = completed
+        buf = io.StringIO()
+        with (
+            mock.patch("config.load_config", return_value={"watch": {}}),
+            mock.patch(
+                "watch._scoped_index_cmd", side_effect=lambda inner, _cfg, **_: inner
+            ),
+            mock.patch("subprocess.Popen", return_value=completed),
+            mock.patch("sys.stderr", buf),
+        ):
+            if returncode != 0:
+                with self.assertRaises(IndexSubprocessError) as ctx:
+                    _flush_path_subprocess("/tmp/x.jsonl", verbose=verbose)
+                return buf.getvalue(), ctx.exception
+            result = _flush_path_subprocess("/tmp/x.jsonl", verbose=verbose)
+        return buf.getvalue(), result
+
+    def test_allowlisted_json_event_is_forwarded(self):
+        event = _admitted_event()
+        captured, result = self._run(stderr=event + "\n")
+        self.assertEqual(result["subprocess"], True)
+        self.assertIn("[watch] child-event: " + event, captured.splitlines())
+        self.assertEqual(captured.count("[watch] child-event: "), 1)
+
+    def test_non_json_stderr_is_dropped(self):
+        captured, _result = self._run(
+            stderr="Traceback (most recent call last):\nValueError: chunk text\n"
+        )
+        self.assertEqual(captured, "")
+
+    def test_non_allowlisted_json_is_dropped(self):
+        other = json.dumps({"event": "not_on_the_allowlist", "outcome": "committed"})
+        array = json.dumps(["incremental_codex_admitted_run"])
+        captured, _result = self._run(stderr=other + "\n" + array + "\n")
+        self.assertEqual(captured, "")
+
+    def test_line_and_count_caps_hold(self):
+        event = _admitted_event()
+        oversize = _padded_admitted_event(2049)
+        self.assertEqual(len(_padded_admitted_event(2048)), 2048)
+        self.assertEqual(len(oversize), 2049)
+        stderr = "\n".join([oversize, event, event, event, event, event, event]) + "\n"
+        captured, _result = self._run(stderr=stderr)
+        lines = [
+            line
+            for line in captured.splitlines()
+            if line.startswith("[watch] child-event: ")
+        ]
+        self.assertEqual(len(lines), 5)
+        self.assertTrue(all(line == "[watch] child-event: " + event for line in lines))
+        self.assertNotIn(oversize, captured)
+
+    def test_failure_path_does_not_forward_child_events(self):
+        event = _admitted_event(outcome="rolled_back")
+        captured, exc = self._run(returncode=1, stderr=event + "\nsecret content\n")
+        self.assertNotIn("child-event", captured)
+        self.assertIn("secret content", exc.stderr_text)
+        self.assertIn(event, exc.stderr_text)
+        self.assertEqual(exc.returncode, 1)
 
 
 if __name__ == "__main__":

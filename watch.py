@@ -64,6 +64,12 @@ _DEFAULT_CB_GLOBAL_THRESHOLD = 5  # global native faults within the window
 _DEFAULT_CB_GLOBAL_WINDOW_SECONDS = 30 * 60  # 30 minutes
 _NATIVE_FAULT_LOG = Path("~/.local/share/convmem/native_crash_failures.jsonl").expanduser()
 
+# Successful index children may emit structured JSON on stderr. Forward only
+# allowlisted events so the journal sees run outcomes without leaking content.
+_CHILD_EVENT_ALLOWLIST = frozenset({"incremental_codex_admitted_run"})
+_CHILD_EVENT_FORWARD_MAX_LINES = 5
+_CHILD_EVENT_FORWARD_MAX_CHARS = 2048
+
 # Live databases that change constantly — watch re-index causes OOM + duplication.
 _LIVE_WATCH_SKIP_SUFFIXES = (
     "kiro-cli/data.sqlite3",
@@ -305,6 +311,36 @@ def _scoped_index_cmd(
     return cmd
 
 
+def _forward_allowlisted_child_events(stderr: str | None) -> None:
+    """Copy allowlisted JSON events from a successful index child's stderr.
+
+    Tracebacks and other text may carry source content, so only a JSON object
+    whose ``event`` is in ``_CHILD_EVENT_ALLOWLIST`` is forwarded. Caps keep a
+    noisy child from flooding the watcher journal.
+    """
+    if not stderr:
+        return
+    forwarded = 0
+    for raw_line in stderr.splitlines():
+        if forwarded >= _CHILD_EVENT_FORWARD_MAX_LINES:
+            break
+        if len(raw_line) > _CHILD_EVENT_FORWARD_MAX_CHARS:
+            continue
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("event") not in _CHILD_EVENT_ALLOWLIST:
+            continue
+        print(f"[watch] child-event: {line}", file=sys.stderr)
+        forwarded += 1
+
+
 def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
     """Run index in a child process so ML/Chroma memory is released after each file."""
     import subprocess
@@ -369,6 +405,7 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
                 stderr=err_text,
                 stdout=out_text,
             )
+        _forward_allowlisted_child_events(stderr)
         if verbose and stdout:
             for line in stdout.splitlines():
                 print(line, file=sys.stderr)
