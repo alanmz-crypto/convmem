@@ -20,7 +20,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 stage-2 corrective 20 (main merge + R6-F1 escape accounting).
     # Refreshed for issue #286 watcher-child --now.
     # Refreshed for issue #286 watcher child-event forwarding.
-    "watch.py": "257c11eb23a0d15d76b6f7046a502c4774410ae910fc1c7d301e7e3f5faa4244",
+    # Refreshed for issue #286 commit digest reuse phase-timing event.
+    "watch.py": "29b00777ec7648665b5e4f9d65129f1cbcb93267ba37ec1d446bebb206860efd",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
@@ -38,7 +39,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 transform contract v2 (semantic fingerprint).
     # Refreshed for issue #286 v1 checkpoint full-rebuild when allow_full_rebuild.
     # Refreshed for issue #286 full-rebuild Codex admission frontier fix.
-    "incremental_jsonl.py": "59dd4f86a552432fe3febf2dfea19249023acae74f867c0e787e44c6e4c98560",
+    # Refreshed for issue #286 commit digest reuse (slice 1).
+    "incremental_jsonl.py": "c2bcbb7412337f777c2919df2fb7cb81074c1c5bb8b6930e81b17cf00adec272",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

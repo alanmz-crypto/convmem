@@ -66,7 +66,7 @@ _NATIVE_FAULT_LOG = Path("~/.local/share/convmem/native_crash_failures.jsonl").e
 
 # Successful index children may emit structured JSON on stderr. Forward only
 # allowlisted events so the journal sees run outcomes without leaking content.
-_CHILD_EVENT_ALLOWLIST = frozenset({"incremental_codex_admitted_run"})
+_CHILD_EVENT_ALLOWLIST = frozenset({"incremental_codex_admitted_run", "incremental_commit_phase_timing"})
 _CHILD_EVENT_FORWARD_MAX_LINES = 5
 _CHILD_EVENT_FORWARD_MAX_CHARS = 2048
 
