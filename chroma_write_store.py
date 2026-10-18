@@ -1149,6 +1149,8 @@ def production_chroma_write_session(
     attest_dir: Path | None = None,
     census_dir: Path | None = None,
     entrypoint: str = "production_chroma_write_session",
+    affected_sources: tuple[str, ...] | None = None,
+    maintenance_unscoped: bool = False,
 ) -> Iterator[ProductionWriteSession]:
     """Shared lease → load live config → open store; yield store+live_cfg.
 
@@ -1163,31 +1165,44 @@ def production_chroma_write_session(
         entrypoint=entrypoint,
     ):
         live_cfg = _session_config(path)
-        op = _bound_operation()
-        if op is not None:
-            chroma_dir = op.chroma_dir
-        else:
-            index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
-            chroma_dir = index.get("chroma_dir")
-            verify_competing_guard_locations(None, live_cfg)
-        if not chroma_dir:
-            raise ValueError("live config missing index.chroma_dir")
-        store, decision = open_chroma_for_write(
-            live_cfg,
-            chroma_dir,
-            purpose="production",
-            create_collections=create_collections,
-            use_strict_validator=True,
+        from bootstrap_codex_v3_writer_coordination import (
+            WriterSourceScope,
+            enforce_writer_scope,
+            writer_source_scope,
         )
-        guarded = _IndexWriteGuardedChromaStore(store)
-        _enter_chroma_store_session()
-        try:
-            yield ProductionWriteSession(
-                store=guarded, live_cfg=live_cfg, decision=decision
+
+        scope = WriterSourceScope(
+            entrypoint=entrypoint,
+            affected_sources=tuple(affected_sources or ()),
+            maintenance_unscoped=maintenance_unscoped,
+        )
+        with writer_source_scope(scope):
+            enforce_writer_scope(live_cfg, scope)
+            op = _bound_operation()
+            if op is not None:
+                chroma_dir = op.chroma_dir
+            else:
+                index = live_cfg.get("index") if isinstance(live_cfg.get("index"), dict) else {}
+                chroma_dir = index.get("chroma_dir")
+                verify_competing_guard_locations(None, live_cfg)
+            if not chroma_dir:
+                raise ValueError("live config missing index.chroma_dir")
+            store, decision = open_chroma_for_write(
+                live_cfg,
+                chroma_dir,
+                purpose="production",
+                create_collections=create_collections,
+                use_strict_validator=True,
             )
-        finally:
-            _exit_chroma_store_session()
-            store.close()
+            guarded = _IndexWriteGuardedChromaStore(store)
+            _enter_chroma_store_session()
+            try:
+                yield ProductionWriteSession(
+                    store=guarded, live_cfg=live_cfg, decision=decision
+                )
+            finally:
+                _exit_chroma_store_session()
+                store.close()
 
 
 def verify_recovery_config_binding(

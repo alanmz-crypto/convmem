@@ -1684,17 +1684,21 @@ class IncrementalJsonlCoordinator:
         _atomic_bytes(path, payload.encode("utf-8"))
 
     def _restore_processed(self, processed_preimage: dict) -> None:
-        from ingest import save_processed
+        from ingest import mutate_processed
 
         processed_path = str(self.cfg["index"]["processed_log"])
-        current = load_processed(processed_path)
-        restored = {
-            key: value
-            for key, value in current.items()
-            if not (isinstance(value, dict) and value.get("path") == self.path_key)
-        }
-        restored.update(processed_preimage)
-        save_processed(processed_path, restored)
+
+        def mutator(data: dict) -> None:
+            for key, value in list(data.items()):
+                if isinstance(value, dict) and value.get("path") == self.path_key:
+                    del data[key]
+            data.update(processed_preimage)
+
+        mutate_processed(
+            processed_path,
+            mutator,
+            affected_sources=(self.path_key,),
+        )
 
     def _restore_state_files(
         self,
@@ -2254,11 +2258,7 @@ class IncrementalJsonlCoordinator:
         with source_flock(self.cfg, self.path_key):
             from bootstrap_codex_v3_writer_coordination import recheck_reservation_before_commit
 
-            recheck_reservation_before_commit(
-                self.cfg,
-                self.path_key,
-                acting_operation_id=self.bootstrap_operation_id,
-            )
+            recheck_reservation_before_commit(self.cfg, self.path_key)
             with index_write_flock(self.cfg):
                 if _path_is_excluded(self._processed(), self.path_key):
                     return self._refusal("excluded", snapshot=snapshot)

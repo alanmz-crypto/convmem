@@ -83,10 +83,23 @@ def validate_child_deferral_signal(
     signal: CoordinationDeferralSignal,
     *,
     launched_path: str,
+    cfg: dict[str, Any] | None = None,
 ) -> None:
     launched = str(Path(launched_path).expanduser().resolve())
     if signal.canonical_source != launched:
         raise BootstrapWriterCoordinationError("coordination_deferral_path_mismatch")
+    if cfg is None:
+        return
+    authority = authority_for_source(cfg, signal.canonical_source)
+    if authority is None or not authority.reservation_active:
+        raise BootstrapWriterCoordinationError("coordination_deferral_without_reservation")
+    if authority.terminal:
+        raise BootstrapWriterCoordinationError("coordination_deferral_terminal_authority")
+    record_op = str(authority.record.get("operation_id") or "")
+    if record_op != signal.operation_id:
+        raise BootstrapWriterCoordinationError("coordination_deferral_operation_mismatch")
+    if int(authority.revision) != int(signal.authority_revision):
+        raise BootstrapWriterCoordinationError("coordination_deferral_revision_mismatch")
 
 
 def _canonical_source(path: str | Path) -> str:
@@ -210,6 +223,22 @@ def iter_active_reservations(cfg: dict[str, Any]) -> list[CoordinationDeferralSi
     return signals
 
 
+def active_reservation_signal_from_authority(authority) -> CoordinationDeferralSignal | None:
+    if authority is None or not authority.reservation_active or authority.terminal:
+        return None
+    snap = authority.record.get("grant_snapshot") or {}
+    source = snap.get("source")
+    if not source:
+        return None
+    operation_id = str(authority.record.get("operation_id") or "")
+    if len(operation_id) != 64:
+        return None
+    return CoordinationDeferralSignal(
+        canonical_source=_canonical_source(str(source)),
+        operation_id=operation_id,
+        authority_revision=int(authority.revision),
+    )
+
 
 @contextmanager
 def legacy_source_preparation_participation(
@@ -242,20 +271,17 @@ def map_coordination_error_to_incremental(
     raise exc
 
 
-def recheck_reservation_before_commit(
-    cfg: dict[str, Any],
-    source_path: str | Path,
-    *,
-    acting_operation_id: str | None = None,
-) -> None:
+def recheck_reservation_before_commit(cfg: dict[str, Any], source_path: str | Path) -> None:
     signal = active_reservation_signal(cfg, source_path)
     if signal is None:
         return
     owner = _OWNER_OPERATION.get()
     if owner is not None and owner.operation_id == signal.operation_id:
-        return
-    if acting_operation_id and acting_operation_id == signal.operation_id:
-        return
+        if owner.authority_revision == signal.authority_revision:
+            return
+        raise BootstrapWriterCoordinationError(
+            "stale_preparation_after_reservation:authority_revision_mismatch"
+        )
     raise BootstrapWriterCoordinationError(
         f"stale_preparation_after_reservation:{signal.operation_id}"
     )
@@ -273,7 +299,16 @@ def _validated_owner_operation(authority) -> ValidatedOwnerOperation:
 
 
 def install_owner_operation_identity(authority) -> contextvars.Token:
-    return _OWNER_OPERATION.set(_validated_owner_operation(authority))
+    require_owner_lock()
+    validated = _validated_owner_operation(authority)
+    signal = active_reservation_signal_from_authority(authority)
+    if signal is None:
+        raise BootstrapWriterCoordinationError("owner_operation_without_reservation")
+    if validated.operation_id != signal.operation_id:
+        raise BootstrapWriterCoordinationError("owner_operation_identity_mismatch")
+    if validated.authority_revision != signal.authority_revision:
+        raise BootstrapWriterCoordinationError("owner_operation_revision_mismatch")
+    return _OWNER_OPERATION.set(validated)
 
 
 def clear_owner_operation_identity(token: contextvars.Token) -> None:
@@ -358,6 +393,10 @@ def inspect_chroma_mutation_scope(
         "snapshot_source_rows",
     }:
         source_keys.append(_canonical_source(args[0]))
+    if method in {"add_summary", "add_unit"} and len(args) >= 4:
+        meta = args[3]
+        if isinstance(meta, dict) and meta.get("source_path"):
+            source_keys.append(_canonical_source(str(meta["source_path"])))
     if source_keys:
         return WriterSourceScope(
             entrypoint=f"chroma.{method}",

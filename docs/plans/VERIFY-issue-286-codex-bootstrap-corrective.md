@@ -1,6 +1,6 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **COMPLETE** (V3–V4 at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1`; unconditional owner/source lock on all mutating authority APIs; no `CONVMEM_BOOTSTRAP_V2_ENFORCE_OWNER_LOCK`). V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
+**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **COMPLETE** (V3–V4 at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1`). **T3 INCOMPLETE** — V5–V6 hermetic worker bundle **31 passed** + parent gate **6 passed** at tip commit; §5 inventory rows still omit repository-knowledge/inter-model, retry-state migration/cleanup, raw processed publication/exclusion undo, incremental restore/live-retry, and several compaction/export/dedupe concrete nodes. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
@@ -17,7 +17,7 @@ run. A1 stays parked, and A2 remains stopped.
 
 Scope is the execution plan's T1–T5 only. No production paths, provider calls,
 watcher controls, quarantine release, deployment, PR, or global restore belongs
-to this mechanical verification. V0–V4 rows below are filled from hermetic Execute evidence. V5–V6 **PASS** (hermetic bwrap at T3 tip). V7–V8 **NOT RUN** (T4–T5).
+to this mechanical verification. V0–V4 rows below are filled from hermetic Execute evidence. V5–V6 **INCOMPLETE** (hermetic bwrap; no whole-task PASS while applicable rows remain partial). V7–V8 **NOT RUN** (T4–T5).
 
 ## Verification design
 
@@ -272,7 +272,7 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test
 
 ## V5 — Complete writer mediation (T3)
 
-**PASS (hermetic, external bwrap).** Subject SHA: fill at commit (`git rev-parse HEAD` on
+**INCOMPLETE (hermetic, external bwrap).** Subject SHA: set at commit (`git rev-parse HEAD` on
 `fix/2026-10-18-issue-286-codex-bootstrap`). v2 live execution remains **closed**; rows
 mark **hermetic** vs **live NO_GO**.
 
@@ -280,7 +280,7 @@ mark **hermetic** vs **live NO_GO**.
 → **exit 0**, **6 passed** (T1+T2+T3 bwrap bundles).
 
 **T3 worker bundle (independent count):** bwrap worker pytest on
-`tests/test_issue_286_codex_bootstrap_v2_t3_*.py` → **20 passed**, **exit 0**.
+`tests/test_issue_286_codex_bootstrap_v2_t3_*.py` → **31 passed**, **exit 0**.
 
 ### §5 writer inventory (execution plan)
 
@@ -289,12 +289,12 @@ mark **hermetic** vs **live NO_GO**.
 | `claim_initial_authority` | v2 grant source state dir | exclusive prep lease try-only under owner lock | owner lock + authority lock | `test_initial_claim_under_prep_lease`, `test_race_legacy_prep_blocks_exclusive_claim` | `test_race_legacy_prep_before_bootstrap_claim_parent_oracle` (busy once) | NO_GO (execute closed) |
 | Legacy provider prep → commit (`ingest._process_file_chunks`, `_commit_chunk_to_stores`, `_prune_completed_reindex`) | `jsonl_codex_rollout` path key | `legacy_shared_preparation_lease` through provider work | `recheck_reservation_before_commit` under source/C1 locks; `production_writer_boundary` | race matrix + ingest wiring | `test_race_reservation_before_stale_legacy_recheck`, subprocess `recheck_commit` child | hermetic PASS |
 | `mutate_processed` / `commit_processed_index_entry` | `affected_sources` tuple | n/a (leaf) | processed lock + `enforce_writer_scope` | `test_disjoint_source_processed_while_reservation_active` | stale recheck without `acting_operation_id` | hermetic PASS |
-| `IncrementalJsonlCoordinator._commit_generation` / `_publish_processed` | `bootstrap_operation_id` when set | owner prep at claim (exclusive) | `recheck` with `acting_operation_id`; source/C1 locks unchanged | owner processed commit via `acting_operation_id` | coordinator recheck path (stale legacy) | NO_GO until execute authorized |
+| `IncrementalJsonlCoordinator._commit_generation` / `_publish_processed` | `bootstrap_operation_id` when set | owner prep at claim (exclusive) | `recheck` under owner lock + validated authority; source/C1 locks unchanged | `test_owner_bound_identity_allows_same_source_processed` | stale legacy recheck (`test_stale_legacy_commit_chunk_to_stores_refused`) | NO_GO until execute authorized |
 | `production_writer_boundary` / `enforce_writer_scope` | per-call `affected_sources` or `maintenance_unscoped` | n/a | defers on active foreign reservation | `test_active_reservation_defers_ordinary_writer` | maintenance defer when reservations active (shared rule) | hermetic PASS |
 | `chroma_write_store._IndexWriteGuardedChromaStore` | `inspect_chroma_mutation_scope` | n/a | scope → `enforce_writer_scope` before mutate | chroma guard unit coverage via T3 defer tests | unknown-scope → maintenance defer under reservation | hermetic PASS |
 | `source_purge.execute` | purge targets | n/a | `production_writer_boundary` | shared deny rule (boundary) | defer under active reservation | hermetic PASS |
-| `refine.write`, `propose_decision.write`, `conflict_events`, `incremental_jsonl_canary` | entrypoint-scoped / maintenance | n/a | shared `production_writer_boundary` | shared boundary defer tests | same | hermetic PASS (boundary only; business logic untouched) |
-| Export / dedupe / compaction (`ingest.export`, `ingest_dedupe`, `_compact_units_export_after_index`) | source or maintenance | n/a | boundary + maintenance defer | ingest export boundary wiring | maintenance defer under reservation | hermetic PASS (partial; compaction defer via `maintenance_unscoped`) |
+| `refine.write`, `propose_decision.write`, `conflict_events`, `incremental_jsonl_canary` | entrypoint-scoped / maintenance | n/a | shared `production_writer_boundary` | shared boundary defer tests | same | **INCOMPLETE** — repository-knowledge / inter-model / retry-state callers not mapped to concrete tests |
+| Export / dedupe / compaction (`ingest.export`, `ingest_dedupe`, `_compact_units_export_after_index`) | source or maintenance | n/a | boundary + maintenance defer | ingest export boundary wiring | maintenance defer under reservation | **INCOMPLETE** — no dedicated positive/negative oracle per export/dedupe/compaction node |
 | Recovery / cutover callers | existing shared stores | n/a | refuse via shared boundary when reservation conflicts | boundary deny proof | not expanded (recovery arc policy unchanged) | NO_GO |
 
 **Race / disjoint evidence (parent oracle):** `test_issue_286_codex_bootstrap_v2_t3_race_matrix.py`
@@ -307,15 +307,15 @@ stale recheck (`test_race_reservation_before_stale_legacy_recheck`).
 
 ## V6 — Watcher/CLI deferral (T3)
 
-**PASS (hermetic).** Same subject SHA as V5.
+**INCOMPLETE (hermetic).** Same subject SHA as V5. Real `convmem.py index --file --now` child under bwrap (not mocked `Popen`) in `test_issue_286_codex_bootstrap_v2_t3_cli_watch_e2e.py`; production `bootstrap_required` route requires unsetting `CONVMEM_INCREMENTAL_ROOT` in child env so `maybe_route_incremental` uses `ProductionBoundary`, not isolation worker.
 
 | Check | Evidence |
 |---|---|
 | Exit **93** disjoint from 0/1/91/timeout/native | `test_exit93_disjoint_from_timeout_and_native_parsing`, `test_exit_code_disjoint_from_91_and_native` |
 | Child stderr marker → parent requeue, no breaker/refusal | `test_subprocess_exit93_requeues_without_breaker_side_effects`, `test_watch_coordination_deferral_requeues_without_refusal` |
-| `_flush_path_subprocess` → `_record_ready_path_failure` chain | `test_flush_path_subprocess_exit93_maps_to_requeue` (mocked `Popen`, real handler) |
-| `_process_ready_path` retains scheduler event on deferral | `test_process_ready_path_defer_does_not_forget_scheduler` |
-| Ordinary `bootstrap_required` still exit **91** quarantine | `test_broken_exit91_mapping_control_would_quarantine` |
+| `_flush_path_subprocess` → `_record_ready_path_failure` chain | `test_flush_path_subprocess_real_child_then_parent_requeue` (real CLI child) |
+| `_process_ready_path` retains scheduler event on deferral | `test_process_ready_path_real_subprocess_defer_scheduler_backoff`, `test_process_ready_path_defer_does_not_forget_scheduler` |
+| Ordinary `bootstrap_required` still exit **91** quarantine | `test_real_cli_bootstrap_required_exit91_unreserved_route` (+ `test_broken_exit91_mapping_control_would_quarantine` negative control) |
 | Malformed / path mismatch deferral → failure | `test_malformed_deferral_is_failure_not_requeue`, `test_path_mismatch_refused` |
 
 **Not run:** live watcher parent deployment compatibility (§7 gate).
@@ -341,7 +341,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff`); T3 COMPLETE (V5–V6 hermetic at branch tip); T4–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff`); T3 INCOMPLETE (V5–V6 hermetic bundle green; inventory/oracle contract not closed); T4–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
@@ -357,9 +357,9 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` | bwrap worker pytest bundle | 0 | PASS | 38 passed (T1 contract + v1 regressions) |
 | 2026-10-18 | `5d5ec91` / `45b07d6` | prior in-process hook gate | — | **invalid** | withdrawn — not external enforcement |
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
-| 2026-10-18 | T3 tip | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker 20 passed in bwrap |
+| 2026-10-18 | T3 reconciliation tip | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **31 passed** in bwrap |
 
-**TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **COMPLETE** (V5–V6 bwrap). T4–T5 NOT RUN.
+**TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **INCOMPLETE** (31/31 bwrap worker + gate green; VERIFY §5 gaps remain). T4–T5 NOT RUN.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->

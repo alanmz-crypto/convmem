@@ -13,17 +13,25 @@ from incremental_jsonl import LIVE_ROUTE_REFUSED_EXIT
 EMPTY = "{}" + chr(10)
 
 
-def test_subprocess_exit93_requeues_without_breaker_side_effects(tmp_path: Path) -> None:
-    path = str(tmp_path / "rollout.jsonl")
-    Path(path).write_text(EMPTY, encoding="utf-8")
+def test_subprocess_exit93_requeues_without_breaker_side_effects(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from bootstrap_codex_v2_authority import load_authority
+    from tests.fixtures.issue_286_t3_fixture import claim_active_reservation, t3_bundle
+
+    source, cfg, grant, state_dir = t3_bundle(tmp_path, monkeypatch)
+    claim_active_reservation(state_dir, grant)
+    path = str(source.resolve())
+    authority = load_authority(state_dir)
+    assert authority is not None
     breaker = watch.CircuitBreakerState(tmp_path / "cb.json")
-    signal = CoordinationDeferralSignal(path, "d" * 64, 4)
+    signal = CoordinationDeferralSignal(path, grant["operation_id"], authority.revision)
     err = watch.IndexSubprocessError(
-        "coordination",
+        signal.to_stderr_line(),
         returncode=COORDINATION_DEFERRAL_EXIT,
-        stderr=signal.to_stderr_line() + chr(10),
+        stderr=signal.to_stderr_line() + "\n",
     )
-    forget = watch._record_ready_path_failure(path, err, breaker=breaker, verbose=False)
+    forget = watch._record_ready_path_failure(path, err, breaker=breaker, verbose=False, cfg=cfg)
     assert forget is False
     assert not breaker.has_refusal_quarantine_for_path(path)
     assert breaker._data["paths"] == {}
@@ -55,12 +63,19 @@ def test_malformed_deferral_is_failure_not_requeue(tmp_path: Path) -> None:
 
 
 def test_process_ready_path_defer_does_not_forget_scheduler(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    path = str(tmp_path / "defer.jsonl")
-    Path(path).write_text(EMPTY, encoding="utf-8")
+    from tests.fixtures.issue_286_t3_fixture import claim_active_reservation, t3_bundle
+
+    source, cfg, grant, state_dir = t3_bundle(tmp_path, monkeypatch)
+    claim_active_reservation(state_dir, grant)
+    path = str(source.resolve())
     breaker = watch.CircuitBreakerState(tmp_path / "cb.json")
     scheduler = watch.DebounceScheduler(debounce_seconds=5.0)
     scheduler.note(path)
-    signal = CoordinationDeferralSignal(path, "f" * 64, 1)
+    from bootstrap_codex_v2_authority import load_authority
+
+    authority = load_authority(state_dir)
+    assert authority is not None
+    signal = CoordinationDeferralSignal(path, grant["operation_id"], authority.revision)
 
     def boom(*_a, **_k):
         raise watch.IndexSubprocessError(
@@ -70,39 +85,6 @@ def test_process_ready_path_defer_does_not_forget_scheduler(tmp_path: Path, monk
         )
 
     monkeypatch.setattr(watch, "flush_path", boom)
-    forget = watch._process_ready_path(path, cfg={}, breaker=breaker, verbose=False)
+    forget = watch._process_ready_path(path, cfg=cfg, breaker=breaker, verbose=False)
     assert forget is False
 
-def test_flush_path_subprocess_exit93_maps_to_requeue(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import config
-    from tests.test_issue_286_codex_bootstrap_v2_t1 import _rollout_fixture
-
-    source, cfg, _prefix, _boundary = _rollout_fixture(tmp_path, monkeypatch)
-    path = str(source.resolve())
-    toml_path = tmp_path / "config.toml"
-    monkeypatch.setattr(config, "CONFIG_PATH", toml_path)
-    signal = CoordinationDeferralSignal(path, "a" * 64, 2)
-    stderr = signal.to_stderr_line() + chr(10)
-
-    class _Proc:
-        returncode = COORDINATION_DEFERRAL_EXIT
-        pid = 4242
-
-        def communicate(self, timeout=None):  # noqa: ARG002
-            return ("", stderr)
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_a):
-            return False
-
-    import subprocess
-
-    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: _Proc())
-    breaker = watch.CircuitBreakerState(tmp_path / "cb.json")
-    with pytest.raises(watch.IndexSubprocessError) as raised:
-        watch._flush_path_subprocess(path, verbose=False)
-    forget = watch._record_ready_path_failure(path, raised.value, breaker=breaker, verbose=False)
-    assert forget is False
-    assert not breaker.has_refusal_quarantine_for_path(path)

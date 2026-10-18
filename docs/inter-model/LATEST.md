@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Cursor T3 COMPLETE (V5–V6 hermetic bwrap)
+- **Arc Codex / issue #286 — Cursor T3 INCOMPLETE (31/31 bwrap worker + gate; VERIFY §5 gaps)**
   (2026-10-18):** T1 `ec11b10`, T2 `1dc1eff`; T3 writer mediation + watcher deferral
   evidence on branch `fix/2026-10-18-issue-286-codex-bootstrap` (20-test T3 worker bundle)
   notes. **Next lane: Cursor.** Read the

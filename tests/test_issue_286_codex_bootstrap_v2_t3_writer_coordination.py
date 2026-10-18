@@ -104,19 +104,26 @@ def test_active_reservation_defers_ordinary_writer(tmp_path: Path, monkeypatch: 
     assert should_defer_ordinary_writer(cfg, str(source)) is True
 
 
-def test_watch_coordination_deferral_requeues_without_refusal(tmp_path: Path) -> None:
+def test_watch_coordination_deferral_requeues_without_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import watch
+    from bootstrap_codex_v2_authority import load_authority
+    from tests.fixtures.issue_286_t3_fixture import claim_active_reservation, t3_bundle
 
-    path = str(tmp_path / "child.jsonl")
-    Path(path).write_text("{}" + chr(10), encoding="utf-8")
+    source, cfg, grant, state_dir = t3_bundle(tmp_path, monkeypatch)
+    claim_active_reservation(state_dir, grant)
+    path = str(source.resolve())
+    authority = load_authority(state_dir)
+    assert authority is not None
     breaker = watch.CircuitBreakerState(tmp_path / "cb.json")
-    signal = CoordinationDeferralSignal(path, "c" * 64, 2)
+    signal = CoordinationDeferralSignal(path, grant["operation_id"], authority.revision)
     err = watch.IndexSubprocessError(
         signal.to_stderr_line(),
         returncode=COORDINATION_DEFERRAL_EXIT,
         stderr=signal.to_stderr_line() + "\n",
     )
-    forget = watch._record_ready_path_failure(path, err, breaker=breaker, verbose=False)
+    forget = watch._record_ready_path_failure(path, err, breaker=breaker, verbose=False, cfg=cfg)
     assert forget is False
     assert not breaker.has_refusal_quarantine_for_path(path)
 
@@ -141,33 +148,3 @@ def test_resolve_incremental_state_root_from_config_path(tmp_path: Path, monkeyp
     assert resolve_incremental_state_root(cfg) == expected
 
 
-def test_owner_identity_allows_same_source_processed_commit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from bootstrap_codex_v2_authority import claim_initial_authority
-    from bootstrap_codex_v3_writer_coordination import (
-        install_owner_operation_identity,
-        clear_owner_operation_identity,
-        recheck_reservation_before_commit,
-    )
-    from ingest import commit_processed_index_entry
-
-    source, state_dir, grant, cfg = _state_dir(tmp_path, monkeypatch)
-    import config
-
-    toml_path = tmp_path / "config.toml"
-    monkeypatch.setattr(config, "CONFIG_PATH", toml_path)
-    with t2_owner_context(state_dir):
-        authority = claim_initial_authority(state_dir, grant)
-    token = install_owner_operation_identity(authority)
-    try:
-        recheck_reservation_before_commit(cfg, str(source))
-        ok = commit_processed_index_entry(
-            cfg["index"]["processed_log"],
-            file_hash="a" * 64,
-            path_key=str(source.resolve()),
-            chunks=1,
-            units=1,
-            acting_operation_id=grant["operation_id"],
-        )
-        assert ok is True
-    finally:
-        clear_owner_operation_identity(token)

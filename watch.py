@@ -211,6 +211,26 @@ def _convmem_cli_argv() -> list[str]:
     return [sys.executable, str(Path(__file__).resolve().parent / "convmem.py")]
 
 
+def _sanitize_index_child_env(env: dict[str, str] | None = None) -> dict[str, str]:
+    """Drop production overrides and inherited credentials from index child env."""
+    from incremental_jsonl_isolation import ISOLATION_TOKEN_ENV, PRODUCTION_OVERRIDE_ENV
+
+    base = dict(env or os.environ)
+    for name in PRODUCTION_OVERRIDE_ENV:
+        base.pop(name, None)
+    for name in list(base):
+        if name == ISOLATION_TOKEN_ENV:
+            continue
+        upper = name.upper()
+        if any(marker in upper for marker in ("SECRET", "API_KEY", "PASSWORD", "CREDENTIAL")):
+            base.pop(name, None)
+        if "TOKEN" in upper and not name.startswith("CONVMEM_INCREMENTAL_"):
+            base.pop(name, None)
+    return base
+
+
+
+
 def _user_systemd_session_available() -> bool:
     runtime = os.environ.get("XDG_RUNTIME_DIR", "")
     return bool(runtime) and Path(runtime).is_dir()
@@ -376,6 +396,7 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         start_new_session=True,
+        env=_sanitize_index_child_env(),
     ) as proc:
         try:
             stdout, stderr = proc.communicate(timeout=timeout)
@@ -748,8 +769,10 @@ def _record_ready_path_failure(
     *,
     breaker: CircuitBreakerState,
     verbose: bool,
+    cfg: dict | None = None,
 ) -> bool:
     from repository_knowledge_sync import is_reconcile_token
+    from config import load_config
     from bootstrap_codex_v3_writer_coordination import (
         parse_coordination_deferral,
         validate_child_deferral_signal,
@@ -765,7 +788,8 @@ def _record_ready_path_failure(
             print(f"[watch] malformed coordination deferral for {path}: {exc}", file=sys.stderr)
             return True
         try:
-            validate_child_deferral_signal(signal, launched_path=path)
+            active_cfg = cfg if cfg is not None else load_config()
+            validate_child_deferral_signal(signal, launched_path=path, cfg=active_cfg)
         except Exception as malformed:  # pylint: disable=broad-exception-caught
             print(f"[watch] invalid coordination deferral for {path}: {malformed}", file=sys.stderr)
             return True

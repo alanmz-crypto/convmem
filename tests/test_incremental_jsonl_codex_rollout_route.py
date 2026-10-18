@@ -28,6 +28,8 @@ def _write_user_config(path: Path, cfg: dict, *, allow_full_rebuild: bool = Fals
     rebuild_line = (
         f"allow_full_rebuild = {'true' if allow_full_rebuild else 'false'}\n"
     )
+    live_sources = index["incremental_jsonl"].get("live_sources") or []
+    live_sources_line = "live_sources = [" + ", ".join(f'"{src}"' for src in live_sources) + "]"
     path.write_text(
         "\n".join(
             [
@@ -43,7 +45,7 @@ def _write_user_config(path: Path, cfg: dict, *, allow_full_rebuild: bool = Fals
                 rebuild_line.rstrip(),
                 f'state_dir = "{index["incremental_jsonl"]["state_dir"]}"',
                 f"embed_dimension = {index['incremental_jsonl']['embed_dimension']}",
-                "live_sources = []",
+                live_sources_line,
                 "",
                 "[index.incremental_jsonl.codex_rollout_admission]",
                 f'root = "{admission["root"]}"',

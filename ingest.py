@@ -10,12 +10,13 @@ For each source file:
       distill   -> embed -> knowledge_units       (primary search, Step 5+)
 """
 
+import contextvars
 import fcntl
 import hashlib
 import json
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -188,7 +189,23 @@ def load_processed(path: str) -> dict:
         raise RuntimeError(f"processed.json corrupt at {p}: {e}") from e
 
 
+_PROCESSED_MUTATION_DEPTH = contextvars.ContextVar("processed_mutation_depth", default=0)
+
+
+@contextmanager
+def _processed_mutation_context() -> Iterator[None]:
+    token = _PROCESSED_MUTATION_DEPTH.set(_PROCESSED_MUTATION_DEPTH.get() + 1)
+    try:
+        yield
+    finally:
+        _PROCESSED_MUTATION_DEPTH.reset(token)
+
+
 def save_processed(path: str, data: dict) -> None:
+    if _PROCESSED_MUTATION_DEPTH.get() <= 0:
+        raise RuntimeError(
+            "processed publication must use mutate_processed (coordination lock order)"
+        )
     p = Path(path)
     atomic_write_text(p, json.dumps(data, indent=2), encoding="utf-8")
 
@@ -218,7 +235,6 @@ def mutate_processed(
     *,
     affected_sources: tuple[str, ...] | None = None,
     maintenance_unscoped: bool = False,
-    acting_operation_id: str | None = None,
 ) -> dict:
     """Lock, reload on-disk state, mutate, atomic-save, unlock.
 
@@ -232,15 +248,13 @@ def mutate_processed(
         maintenance_unscoped=maintenance_unscoped,
         coordination_cfg=cfg,
     ):
-        with _processed_lock(processed_path):
+        with _processed_mutation_context(), _processed_lock(processed_path):
             data = load_processed(processed_path)
             if affected_sources:
                 from bootstrap_codex_v3_writer_coordination import recheck_reservation_before_commit
 
                 for source in affected_sources:
-                    recheck_reservation_before_commit(
-                        cfg, source, acting_operation_id=acting_operation_id
-                    )
+                    recheck_reservation_before_commit(cfg, source)
             mutator(data)
             save_processed(processed_path, data)
             return data
@@ -416,7 +430,6 @@ def commit_processed_index_entry(
     chunks: int,
     units: int,
     incremental_jsonl_lineage: str | None = None,
-    acting_operation_id: str | None = None,
 ) -> bool:
     """Merge one file's index metadata under the processed-state lock.
 
@@ -442,12 +455,7 @@ def commit_processed_index_entry(
         _purge_stale_same_path(data, path_key, file_hash, preserve_exclusions=True)
         result["committed"] = True
 
-    mutate_processed(
-        processed_path,
-        mutator,
-        affected_sources=(path_key,),
-        acting_operation_id=acting_operation_id,
-    )
+    mutate_processed(processed_path, mutator, affected_sources=(path_key,))
     return result["committed"]
 
 
@@ -526,12 +534,7 @@ def undo_exclude_processed_path(processed_path: str, target: str) -> bool:
                 entry.pop("exclude_reason", None)
                 found["ok"] = True
 
-    mutate_processed(
-        processed_path,
-        mutator,
-        affected_sources=(path_key,),
-        acting_operation_id=acting_operation_id,
-    )
+    mutate_processed(processed_path, mutator, affected_sources=(path_key,))
     return found["ok"]
 
 
@@ -691,7 +694,7 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
                     print(f"  [skip] excluded during batch-write {Path(path).name}")
                 return False, 0, 0, 0, 0
             n_units = 0
-            with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+            with production_chroma_write_session(entrypoint="ingest.write", affected_sources=(path_key,)) as _pw:
                 store = _pw.store
                 cfg = _pw.live_cfg
                 store.add_summary(doc_id, summary, summary_embedding, metadata)
@@ -1311,7 +1314,7 @@ def _snapshot_reindex_rows(
 
     snapshot = _ReindexSnapshot()
     with index_write_flock(cfg):
-        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+        with production_chroma_write_session(entrypoint="ingest.write", affected_sources=(path_key,)) as _pw:
             store = _pw.store
             for source_path in dict.fromkeys([path, path_key]):
                 snapshot.unit_ids[source_path] = store.ids_for_source(
@@ -1353,7 +1356,7 @@ def _prune_completed_reindex(  # pylint: disable=too-many-arguments
                 if verbose:
                     print(f"  [skip] excluded before reindex prune {Path(path).name}")
                 return False
-            with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+            with production_chroma_write_session(entrypoint="ingest.write", affected_sources=(path_key,)) as _pw:
                 store = _pw.store
                 n_units = 0
                 n_summaries = 0
