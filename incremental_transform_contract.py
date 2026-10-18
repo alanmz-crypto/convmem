@@ -91,7 +91,7 @@ def assert_contract_inventory_matches(pinned_digest: str) -> None:
 
 
 @dataclass(frozen=True)
-class TransformDescriptor:
+class TransformDescriptor:  # pylint: disable=too-many-instance-attributes
     scheme: str
     transform_contract_version: int
     adapter_format: str

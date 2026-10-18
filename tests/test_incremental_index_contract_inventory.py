@@ -168,4 +168,3 @@ def test_prompt_template_drift_fails_contract_inventory_c1(
 
     with pytest.raises(AssertionError, match="incremental_transform_epoch_bump_checklist.md"):
         assert_contract_inventory_matches(PINNED_TRANSFORM_CONTRACT_INVENTORY_DIGEST)
-

@@ -1,9 +1,10 @@
 """Hermetic tests for transform contract v2 (Arc Codex #286, design section 6)."""
 
+# pylint: disable=protected-access
+
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,6 +15,8 @@ from incremental_jsonl import CHECKPOINT_VERSION, TRANSACTION_VERSION
 from incremental_checkpoint_migration import (
     MIGRATION_PUBLISH_FAULT_POINTS,
     MigrationError,
+    MigrationPlan,
+    MigrationPublishContext,
     assert_quiescent_for_migration,
     dry_run_migration,
     publish_migration,
@@ -75,42 +78,40 @@ def _downgrade_checkpoint_to_legacy_v1(
     ckpt_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
 
 
-def _migration_base_kwargs(
+def _migration_plan(
     coord: incremental_jsonl.IncrementalJsonlCoordinator,
     *,
     legacy_producer_revision: str,
-) -> dict:
-    return {
-        "state_dir": coord.state_dir,
-        "source_path": str(coord.source),
-        "source_identity": coord.source_id,
-        "chunk_size": coord.chunk_size,
-        "overlap": coord.overlap,
-        "min_confidence": coord.min_confidence,
-        "models": coord.models,
-        "embed_dimension": coord.embed_dimension,
-        "adapter_format": coord.format_spec.format_id,
-        "adapter_contract_version": coord.format_spec.adapter_contract_version,
-        "legacy_producer_implementation_revision": legacy_producer_revision,
-    }
+) -> MigrationPlan:
+    return MigrationPlan(
+        state_dir=coord.state_dir,
+        source_path=str(coord.source),
+        source_identity=coord.source_id,
+        chunk_size=coord.chunk_size,
+        overlap=coord.overlap,
+        min_confidence=coord.min_confidence,
+        models=coord.models,
+        embed_dimension=coord.embed_dimension,
+        adapter_format=coord.format_spec.format_id,
+        adapter_contract_version=coord.format_spec.adapter_contract_version,
+        legacy_producer_implementation_revision=legacy_producer_revision,
+    )
 
 
-def _publish_kwargs(
+def _publish_context(
     coord: incremental_jsonl.IncrementalJsonlCoordinator,
     *,
     legacy_producer_revision: str,
     coordinator_revision: str = "converter-runtime",
     dry_run_report: dict | None = None,
-    fault=None,
-) -> dict:
-    return {
-        "cfg": coord.cfg,
-        "path_key": coord.path_key,
-        "coordinator_implementation_revision": coordinator_revision,
-        "dry_run_report": dry_run_report,
-        "fault": fault,
-        **_migration_base_kwargs(coord, legacy_producer_revision=legacy_producer_revision),
-    }
+) -> MigrationPublishContext:
+    return MigrationPublishContext(
+        plan=_migration_plan(coord, legacy_producer_revision=legacy_producer_revision),
+        cfg=coord.cfg,
+        path_key=coord.path_key,
+        coordinator_implementation_revision=coordinator_revision,
+        dry_run_report=dry_run_report,
+    )
 
 
 def _checkpoint_version(state_dir: Path) -> int:
@@ -332,8 +333,10 @@ def test_production_codex_v1_migrates_then_continues_without_rebuild(
         processed={},
     ).run()
     assert refused.outcome == "migration_required"
-    report = dry_run_migration(**_migration_base_kwargs(coord, legacy_producer_revision=legacy_rev))
-    publish_migration(**_publish_kwargs(coord, legacy_producer_revision=legacy_rev, dry_run_report=report))
+    report = dry_run_migration(_migration_plan(coord, legacy_producer_revision=legacy_rev))
+    publish_migration(
+        _publish_context(coord, legacy_producer_revision=legacy_rev, dry_run_report=report)
+    )
     unchanged = incremental_jsonl.IncrementalJsonlCoordinator(
         boundary,
         source,
@@ -407,7 +410,6 @@ def test_quiescence_blocks_migration_c4(tmp_path: Path, monkeypatch: pytest.Monk
     (state / "transaction.json").write_text('{"phase":"PREPARING"}', encoding="utf-8")
     with pytest.raises(MigrationError, match="pending_transaction"):
         assert_quiescent_for_migration(
-            state,
             checkpoint_path=state / "checkpoint.json",
             transaction_path=state / "transaction.json",
             rollback_path=state / "rollback.json",
@@ -428,11 +430,11 @@ def test_publish_refuses_when_transaction_appears_after_dry_run_c4(
     )
     coord.run()
     _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="legacy-producer")
-    report = dry_run_migration(**_migration_base_kwargs(coord, legacy_producer_revision="legacy-producer"))
+    report = dry_run_migration(_migration_plan(coord, legacy_producer_revision="legacy-producer"))
     (coord.state_dir / "transaction.json").write_text('{"phase":"PREPARING"}', encoding="utf-8")
     with pytest.raises(MigrationError, match="pending_transaction"):
         publish_migration(
-            **_publish_kwargs(
+            _publish_context(
                 coord,
                 legacy_producer_revision="legacy-producer",
                 dry_run_report=report,
@@ -456,7 +458,7 @@ def test_migration_publish_crash_fault_matrix_is_safe_and_idempotent(
     )
     coord.run()
     _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="legacy-producer")
-    report = dry_run_migration(**_migration_base_kwargs(coord, legacy_producer_revision="legacy-producer"))
+    report = dry_run_migration(_migration_plan(coord, legacy_producer_revision="legacy-producer"))
 
     def fault(name: str) -> None:
         if name == point:
@@ -464,12 +466,12 @@ def test_migration_publish_crash_fault_matrix_is_safe_and_idempotent(
 
     with pytest.raises(RuntimeError, match="injected fault"):
         publish_migration(
-            **_publish_kwargs(
+            _publish_context(
                 coord,
                 legacy_producer_revision="legacy-producer",
                 dry_run_report=report,
-                fault=fault,
-            )
+            ),
+            fault=fault,
         )
     version = _checkpoint_version(coord.state_dir)
     assert version in {CHECKPOINT_VERSION_V1, CHECKPOINT_VERSION_V2}
@@ -479,7 +481,7 @@ def test_migration_publish_crash_fault_matrix_is_safe_and_idempotent(
         assert (coord.state_dir / f"migration_receipt_{receipt_digest}.json").is_file()
 
     publish_migration(
-        **_publish_kwargs(
+        _publish_context(
             coord,
             legacy_producer_revision="legacy-producer",
             dry_run_report=report,
