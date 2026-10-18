@@ -365,7 +365,7 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 | 2026-10-18 | T3 reconciliation tip (superseded) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **31 passed** (superseded) in bwrap |
 
-| 2026-10-18 | `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903` (tested code) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **55 passed** in bwrap |
+| 2026-10-18 | `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903` (tested code) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **55 passed**; race `test_real_child_deferral_after_multi_progress_terminal_still_requeues` |
 
 **TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **COMPLETE** (`4a99eba47faf` V5–V6 bwrap 55/55). T4–T5 NOT RUN.
 
