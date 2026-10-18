@@ -513,7 +513,7 @@ def exclude_processed_path(
             entry.pop("purged_at", None)
         data[file_hash] = entry
 
-    mutate_processed(processed_path, mutator)
+    mutate_processed(processed_path, mutator, affected_sources=(path_key,))
 
 
 def undo_exclude_processed_path(processed_path: str, target: str) -> bool:
@@ -609,7 +609,11 @@ def watch_skip_reason(
 def _deduplicate_units_export(export_path: Path) -> int:
     """Compact the export inside the universal mutation boundary."""
 
-    with production_writer_boundary(entrypoint="ingest.export"):
+    with production_writer_boundary(
+        entrypoint="ingest.export",
+        maintenance_unscoped=True,
+        coordination_cfg=load_config(),
+    ):
         return _deduplicate_units_export_impl(export_path)
 
 
@@ -742,7 +746,7 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
             if dedupe_events is not None:
                 dedupe_events.append(dedupe)
             if persist_dedupe:
-                dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
+                dedupe_stats = persist_ingest_dedupe(cfg, dedupe, affected_sources=(path_key,))
             else:
                 dedupe_stats = {
                     "exact_suppressed": len(dedupe.exact_suppressions),
@@ -1769,7 +1773,18 @@ def _compact_units_export_after_index(units_export: Path | None, stats: dict) ->
         mark("export_compaction_begin")
     except ImportError:
         pass
-    removed = _deduplicate_units_export(units_export)
+    try:
+        removed = _deduplicate_units_export(units_export)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        from bootstrap_codex_v3_writer_coordination import (
+            MAINTENANCE_DEFERRAL_OUTCOME,
+            BootstrapWriterCoordinationError,
+        )
+
+        if isinstance(exc, BootstrapWriterCoordinationError) and str(exc) == MAINTENANCE_DEFERRAL_OUTCOME:
+            stats["export_compaction_deferred"] = True
+            return
+        raise
     if removed:
         stats["export_duplicates_removed"] = removed
     try:

@@ -286,7 +286,8 @@ def _apply_retirements(
         source_path = str((loaded.root / rec.path).resolve())
         with index_write_flock(lock_cfg):
             with production_chroma_write_session(
-                entrypoint="repository_knowledge_retire"
+                entrypoint="repository_knowledge_retire",
+                affected_sources=(source_path,),
             ) as session:
                 store = session.store
                 ids = store.ids_for_source("knowledge_units", source_path)

@@ -310,7 +310,9 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
                 print(f"  [skip] excluded during inter-model write {Path(path).name}")
             raise InterModelIndexError("source excluded during inter-model write")
         with index_write_flock(cfg):
-            with production_chroma_write_session(entrypoint="inter_model_index") as _pw:
+            with production_chroma_write_session(
+                entrypoint="inter_model_index", affected_sources=(path_key,)
+            ) as _pw:
                 store = _pw.store
                 cfg = _pw.live_cfg
                 from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe

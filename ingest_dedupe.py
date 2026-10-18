@@ -296,11 +296,34 @@ def _append_jsonl(
     return written
 
 
-def persist_ingest_dedupe(cfg: dict, result: IngestDedupeResult) -> dict:
+
+
+def _dedupe_affected_sources(result: IngestDedupeResult) -> tuple[str, ...]:
+    keys: list[str] = []
+    for row in result.accepted:
+        if len(row) >= 4 and isinstance(row[3], dict) and row[3].get("source_path"):
+            keys.append(str(Path(str(row[3]["source_path"])).expanduser().resolve()))
+    return tuple(dict.fromkeys(keys))
+
+
+def persist_ingest_dedupe(
+    cfg: dict,
+    result: IngestDedupeResult,
+    *,
+    affected_sources: tuple[str, ...] | None = None,
+) -> dict:
+    from chroma_write_store import production_writer_boundary
     from purge_locks import index_write_flock
 
-    with index_write_flock(cfg):
-        return _persist_ingest_dedupe_locked(cfg, result)
+    sources = affected_sources or _dedupe_affected_sources(result)
+    with production_writer_boundary(
+        entrypoint="ingest_dedupe.persist",
+        affected_sources=sources,
+        maintenance_unscoped=not sources,
+        coordination_cfg=cfg,
+    ):
+        with index_write_flock(cfg):
+            return _persist_ingest_dedupe_locked(cfg, result)
 
 
 def _persist_ingest_dedupe_locked(cfg: dict, result: IngestDedupeResult) -> dict:

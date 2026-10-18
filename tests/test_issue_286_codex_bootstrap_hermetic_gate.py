@@ -58,8 +58,9 @@ ISOLATED_PYTEST_TARGETS_T3 = (
     "tests/test_issue_286_codex_bootstrap_v2_t3_watch_integration.py",
     "tests/test_issue_286_codex_bootstrap_v2_t3_oracles.py",
     "tests/test_issue_286_codex_bootstrap_v2_t3_cli_watch_e2e.py",
+    "tests/test_issue_286_codex_bootstrap_v2_t3_inventory.py",
 )
-EXPECTED_ISOLATED_T3_PASS_COUNT = 31  # set after count
+EXPECTED_ISOLATED_T3_PASS_COUNT = 47  # set after count
 
 
 

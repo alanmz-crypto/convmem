@@ -76,6 +76,29 @@ def _write(path: Path, payload: dict[str, Any]) -> None:
     atomic_write_text(path, json.dumps(payload, sort_keys=True) + "\n")
 
 
+
+def _refuse_retry_state_clear_for_reserved_source(cfg: dict, canonical_path: str) -> None:
+    from bootstrap_codex_v3_writer_coordination import (
+        BootstrapWriterCoordinationError,
+        COORDINATION_DEFERRAL_CODE,
+        should_defer_ordinary_writer,
+    )
+
+    if should_defer_ordinary_writer(cfg, canonical_path):
+        raise BootstrapWriterCoordinationError(COORDINATION_DEFERRAL_CODE)
+
+
+def _refuse_global_retry_state_clear(cfg: dict) -> None:
+    from bootstrap_codex_v3_writer_coordination import (
+        BootstrapWriterCoordinationError,
+        MAINTENANCE_DEFERRAL_OUTCOME,
+        iter_active_reservations,
+    )
+
+    if iter_active_reservations(cfg):
+        raise BootstrapWriterCoordinationError(MAINTENANCE_DEFERRAL_OUTCOME)
+
+
 def clear_incremental_retry_state(paths: dict | None) -> None:
     path = _state_path(paths)
     if path is None:
@@ -114,10 +137,11 @@ def _retry_state_path_for_source(cfg: dict, canonical_path: str) -> Path | None:
 
 def clear_incremental_retry_states_for_source(cfg: dict, canonical_path: str) -> int:
     """Remove retry-state holds for one source path (issue #286 Q2(d) release)."""
+    resolved = str(Path(canonical_path).expanduser().resolve())
+    _refuse_retry_state_clear_for_reserved_source(cfg, resolved)
     root = _incremental_state_root(cfg)
     if root is None:
         return 0
-    resolved = str(Path(canonical_path).expanduser().resolve())
     cleared = 0
     computed = _retry_state_path_for_source(cfg, canonical_path)
     if computed is not None and computed.is_file():
@@ -137,6 +161,7 @@ def clear_incremental_retry_states_for_source(cfg: dict, canonical_path: str) ->
 
 
 def clear_all_incremental_retry_states(cfg: dict) -> int:
+    _refuse_global_retry_state_clear(cfg)
     root = _incremental_state_root(cfg)
     if root is None:
         return 0

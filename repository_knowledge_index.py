@@ -272,7 +272,10 @@ def index_repository_knowledge_messages(  # pylint: disable=too-many-locals,too-
         if _path_excluded(processed, path_key):
             raise RepositoryKnowledgeIndexError("source excluded during repository-knowledge write")
         with index_write_flock(cfg):
-            with production_chroma_write_session(entrypoint="repository_knowledge_index") as session:
+            with production_chroma_write_session(
+                entrypoint="repository_knowledge_index",
+                affected_sources=(path_key,),
+            ) as session:
                 store = session.store
                 cfg = session.live_cfg
                 from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
