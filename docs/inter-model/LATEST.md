@@ -9,9 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Cursor implementation authorized, NOT_STARTED
+- **Arc Codex / issue #286 — Cursor T2 COMPLETE (`8f82e1f5`), T3 next
   (2026-10-18):** Kiro passed the execution plan at `9423900`; Ryan authorized
-  Cursor T1–T5 implementation and hermetic verification with Kiro's precision
+  T1–T2 hermetic evidence landed; T3 writer mediation next (grant unchanged)
   notes. **Next lane: Cursor.** Read the
   [authorized Execute handoff](CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
   for the exact revision, scope, branch procedure, and evidence gates.

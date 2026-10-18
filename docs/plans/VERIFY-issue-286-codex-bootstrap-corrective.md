@@ -1,11 +1,11 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 scoped mechanical **COMPLETE** (V0–V2 **PASS** under bwrap at tested code below). V3–V8 **NOT RUN**. v2 live execution **closed**.
+**State:** T1 **COMPLETE** (V0–V2 PASS at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 scoped mechanical **COMPLETE** (V3–V4 PASS at tested code below). V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** `9002f77ee53ebfbb52ed77684848d101739ddb2c`. **PR:** none authorized.
+**Tested code SHA:** `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** *(this doc commit)*. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -141,10 +141,30 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 
 ## V3 — Authority crash matrix (T2)
 
-**NOT RUN.** Concurrent claims; reservation with consumed initial invocation
-but no mirror/transaction; identical-grant recovery; corrupted/rolled-back
-authority; terminal receipt/release windows; ordinal 3 denied. Record every
-durable boundary and both sides, with independent authority/count observations.
+**PASS (scoped, tested at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` inside bwrap).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` (**18 passed**, exit 0). T1 bundle at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` not re-run at T2 SHA.
+
+| ID | Obligation | Test node | rc | Result |
+|----|------------|-----------|-----|--------|
+| V3a | Initial claim publishes ordinal 1 authority | `test_issue_286_codex_bootstrap_v2_t2_authority.py::test_initial_claim_publishes_ordinal1` | 0 | PASS |
+| V3b | Ordinal 1 consumed without journal mirror | `::test_initial_claim_consumes_without_journal_mirror` | 0 | PASS |
+| V3c | Identical-grant recovery ordinal 2 | `::test_recovery_claim_ordinal2_identical_grant` | 0 | PASS |
+| V3d | Ordinal 3 denied | `::test_ordinal3_denied` | 0 | PASS |
+| V3e | Replacement grant refused | `::test_replacement_grant_refused` | 0 | PASS |
+| V3f | Terminal authority immutable | `::test_terminal_authority_immutable` | 0 | PASS |
+| V3g | Two concurrent initial claimants | `::test_concurrent_initial_claimants_one_wins` | 0 | PASS |
+| V3h | Orphan journal blocks fresh claim | `::test_orphan_journal_blocks_initial_claim` | 0 | PASS |
+| V3i | Authority revision rollback refused | `::test_authority_revision_rollback_refused` | 0 | PASS |
+| V3j | Crash after authority fsync (child exit 91) | `test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py::test_crash_after_authority_leaves_ordinal1_for_recovery` | 0 | PASS |
+| V3k | Reservation without transaction → ordinal 2 | `::test_reservation_without_transaction_recovery` | 0 | PASS |
+| V3l | Journal mirror idempotent | `::test_journal_mirror_idempotent` | 0 | PASS |
+| V3m | Broken ordinal-3 negative control | `test_issue_286_codex_bootstrap_v2_t2_authority.py::test_broken_ordinal3_allowance_would_fail` | 0 | PASS |
+
+```bash
+cd /home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap
+git checkout 8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef
+python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap
+# exit 0; 18 passed in bwrap worker
+```
 
 ## V4 — Provider permits and caps (T2)
 
@@ -191,7 +211,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 scoped mechanical COMPLETE; T2–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`8f82e1f`); T3–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and

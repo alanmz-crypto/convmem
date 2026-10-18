@@ -5,11 +5,11 @@
 
 ## Resume state
 
-- **State:** `NOT_STARTED`. This handoff records a grant; no implementation or tests have run.
+- **State:** `IN_PROGRESS` — T1 complete (`ec11b10`), T2 complete (`8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef`), T3–T5 not started.
 - **Reviewed plan branch:** `plan/2026-10-18-issue-286-codex-bootstrap-corrective`.
 - **Reviewed plan SHA:** `942390001bca407c1c28e9972c443ee7612e1c1b`.
 - **Code baseline:** `483373f1cef2142847fcd9c276196593a72a0ecf`.
-- **Implementation branch:** create `fix/2026-10-18-issue-286-codex-bootstrap` in an isolated worktree; not created by this handoff.
+- **Implementation branch:** `fix/2026-10-18-issue-286-codex-bootstrap` (worktree active; Kiro planning checkout separate).
 - **Planning push status:** reviewed plan is on origin; this handoff is delivered on the same planning branch. Use the exact handoff commit supplied by Ryan/Codex when picking up.
 - **PR:** not opened; no PR authority.
 - **Ryan GATE before T1:** satisfied by the grant above, subject to startup protocol and scope/baseline checks. Production gates remain closed.
@@ -81,7 +81,7 @@ Kiro's reported doctor PASS during direction review does not diagnose A2's earli
 
 Stop for exact-tip independent review. Return the implementation branch and full SHA, push status, T1–T5 evidence/results, the VERIFY path, and remaining live gates with owners. Do not claim live readiness from hermetic PASS. No PR or review-trigger comment is authorized here; obtain the applicable later grant before entering that lifecycle.
 
-**Next lane now:** Cursor. **Resume state:** `NOT_STARTED` until Cursor actually starts.
+**Next lane now:** Cursor T3. **Resume state:** `IN_PROGRESS` (T2 landed at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef`).
 
 **TL;DR:** [Arc Codex] Ryan authorizes Cursor's reviewed T1–T5 implementation and hermetic verification, including Kiro's precision notes. All production and PR prohibitions remain; A1 is parked and A2 is stopped.
 

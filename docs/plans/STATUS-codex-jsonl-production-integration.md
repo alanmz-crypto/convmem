@@ -17,7 +17,7 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
 the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
-T1–T5 implementation and hermetic verification. **T1 scoped mechanical COMPLETE** (bwrap V0–V2 at tested code `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`); T2–T5 NOT STARTED;
+T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10`); **T2 COMPLETE** (V3–V4 at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef`); **T3–T5 NOT STARTED**;
 live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
@@ -104,7 +104,7 @@ Key invariants:
   non-blocking precision notes.
 - **Execute handoff:** [Cursor's bounded grant](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
   records the scope, notes, branch procedure, and operational prohibitions.
-  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1 code + contract tests + bwrap gate landed; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md) documents V0–V2 PASS at tested-code SHA `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` (38-test bwrap bundle). Prior hook-only gate rows withdrawn. No production or PR authority.
+  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1 code + contract tests + bwrap gate landed; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md): V0–V2 at `ec11b10`; V3–V4 at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` (18-test bwrap). Live v2 execution closed. No PR/production authority.
 
 ## 4. Completion State
 
@@ -127,9 +127,7 @@ Key invariants:
 
 ## 5. Your Role
 
-**Cursor next:** read the [authorized Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md),
-then implement T1–T5 serially in an isolated worktree and supply hermetic
-verification. The reviewed plan revision is `942390001bca407c1c28e9972c443ee7612e1c1b`.
+**Cursor next:** implement **T3** writer mediation and watcher deferral per §5–§6 of the corrective execution plan; do not enable live v2 execution. The reviewed plan revision is `942390001bca407c1c28e9972c443ee7612e1c1b`.
 Incorporate Kiro's precision notes: no spin on a busy preparation lease, prove
 exit-status disjointness, and return cross-arc recovery/cutover gaps to Ryan.
 
@@ -144,9 +142,7 @@ of those operations is granted by the Cursor implementation authorization.
 
 ## 6. Remaining gates
 
-1. Cursor begins the authorized T1–T5 work and fills the
-   [VERIFY companion](VERIFY-issue-286-codex-bootstrap-corrective.md) at the
-   exact implementation SHA. Applicable skipped proofs block mechanical PASS.
+1. Cursor completes T3–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1–T2 evidence recorded at `ec11b10` / `8f82e1f`.
 2. Obtain exact-tip independent implementation review. PR creation, PR-native
    review triggers, merge and runtime/writer rollout remain separate gates.
 3. Resolve health readiness and outer-budget enforcement; revalidate exact
@@ -233,7 +229,7 @@ Keep this document a current-state snapshot, not a session diary.
 
 ### Update Log
 
-- 2026-10-18 | Cursor | T1 gate catalog complete (admission 1/3/4, audit oracle, state-dir convergence); tested code `ec11b10`.
+- 2026-10-18 | Cursor | T2 authority + permit ledger + V3/V4 bwrap evidence; tested code `8f82e1f5`.
 
 | Date | Who | Change |
 |---|---|---|
