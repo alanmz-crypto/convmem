@@ -51,8 +51,8 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 |---|---|
 | Existing `convmem watch` | Enabled and active as `convmem-watch.service`; runs from the dedicated clean `main` worktree at `dc79eeb` with effective limits `MemoryMax=4G`, `MemoryHigh=3G`, `MemorySwapMax=0` |
 | Repository-knowledge coverage (W0–W6 corrective) | Merged on `main` by GitHub PR `#322` at `dc79eeb`: root-bound IDs, exact JSON source spans, lossless bounded windows, identity-aware and retry-idempotent reconciliation/retirement, real watchdog/subprocess/public-query E2E |
-| Manifest inventory | Closure PR `#331` merged on `main` as `2e50ec3`: the current manifest classifies the five reviewed OpenClaw planning files added by PR `#327`, classifies the two opt-in guardrail and two circuit-breaker test files outside W0 as unrelated, removes three unrelated classifications retired by PR `#330`, and carries current hashes for all admitted files changed through PR `#328`; Git-clean audit PASS is restored at 75 include / 169 exclude / 1227 unrelated / 68 `required_when_present` (2 present, 66 absent) / 0 unclassified across 1471 tracked paths |
-| Live configuration | `watch.repository_knowledge_manifests` points to the manifest in `/home/lauer/Projects/convmem/.worktrees/runtime-main`; rollback backups were captured before activation |
+| Manifest inventory | On `fix/2026-10-17-repository-manifest-failure-cache`, the committed manifest classifies every tracked path (75 include / 169 exclude / 1374 unrelated / 68 `required_when_present`) and refreshes the 28 stale include hashes at `origin/main` `633f1d1`. A CI guard refuses a silent stale inventory. Live bytes remain the previously reviewed include set. |
+| Live configuration | `watch.repository_knowledge_manifests` was removed from the live config on 2026-10-12 after an invalid manifest re-validated on every file event and leaked (~4 GiB in 16 min). Putting the manifest back is a separate Ryan grant after this branch merges. |
 | OpenClaw planning bytes | Architecture, execution, milestone overlay, README, and STATUS are on `main` through PR `#327`; PR `#331` admits them as documentary repository knowledge. The separate partial implementation branch remains unaccepted and is not admitted |
 | Writer-coverage inventory | Ryan-authorized correction complete; 18 routes inventoried and A12 passes |
 | Live watch activation | PASS at the deployed `dc79eeb` boundary: startup reconciliation indexed all 70 then-admitted paths into 1,115 units; vector retrieval returned the architecture; excluded-path hits are zero; governance/authority hashes are unchanged. The runtime worktree has not been advanced to later `main` commits |
@@ -75,27 +75,28 @@ decision-shaped text; no live OpenClaw profile/data/config; no T0–T5 change.
 | Reviewed OpenClaw planning bytes | PRESENT and classified in the current manifest | live runtime promotion remains separate |
 | OpenClaw T0–T5 implementation bytes | PARTIAL / UNACCEPTED on a separate branch | separate OpenClaw Execute and acceptance gates |
 | Live activation | PASS | — |
-| `WATCH_COVERAGE=PASS` | BLOCKED | 66 required-when-present implementation/Gate W paths remain absent; deployed runtime is intentionally still at `dc79eeb` |
+| Manifest failure-cache + inventory refresh | IMPLEMENTED on `fix/2026-10-17-repository-manifest-failure-cache` | verification / PR / live-config restore remain gated |
+| `WATCH_COVERAGE=PASS` | BLOCKED | 66 required-when-present implementation/Gate W paths remain absent; live manifest remains out of config until a separate Ryan grant |
 
 ## 5. Your Role
 
-**If Ryan sent you after this closure:** preserve the clean runtime worktree and
-live service configuration. Do not fast-forward the runtime worktree merely
-because repository `main` advanced: the manifest and every newly admitted file
-must first pass together in one reviewed clean commit, followed by a separately
-authorized runtime promotion and retrieval/exclusion check. The next code work
-belongs to the separate OpenClaw T0–T5 arc.
+**If Ryan sent you after the failure-cache branch:** verify the exact tip
+(invalid-manifest leak stays flat; CI guard names the first stale path), then
+targeted Copilot audit and Kiro review. Do not restore
+`watch.repository_knowledge_manifests` or fast-forward `runtime-main` without a
+separate Ryan grant. After merge, the live-config restore is still gated. OpenClaw
+T0–T5 implementation bytes remain a separate arc.
 
 ## 6. What Remains Before Live Coverage
 
-1. Any promotion of the dedicated runtime worktree beyond `dc79eeb` receives a
-   separate exact authorization and repeats manifest, retrieval, exclusion,
-   service-health, and governance checks.
-2. Approved OpenClaw T0–T5 implementation bytes complete their separate
+1. Verify and merge `fix/2026-10-17-repository-manifest-failure-cache` (failure
+   cache, refreshed inventory, CI guard). Do not restore live config in that PR.
+2. A separate Ryan grant puts `watch.repository_knowledge_manifests` back and
+   may promote the runtime worktree; repeat retrieval, exclusion, service-health,
+   and governance checks.
+3. Approved OpenClaw T0–T5 implementation bytes complete their separate
    Execute and acceptance gates and land with matching manifest entries/hashes
-   in the same reviewed commit.
-3. The runtime worktree advances to that accepted merge and the live watcher
-   reconciles it; only then may the remaining coverage verdict be reconsidered.
+   in the same reviewed commit. Only then may `WATCH_COVERAGE=PASS` be reconsidered.
 
 ## 7. Hard Stops
 
@@ -149,9 +150,10 @@ milestone-level line below. A fresh model should orient from this file alone.
 | 2026-09-21 | Ryan / Codex | PR `#322` merged at `dc79eeb`; exact-grant live activation indexed all 70 admitted paths, passed retrieval/exclusion/non-bypass checks, and left only absent OpenClaw T0–T5 bytes blocking complete coverage. |
 | 2026-09-24 | Codex | Post-activation review kept the manifest exact across PRs `#327`–`#330`, restored the cleanly stopped service after Switchboard verification finished, and documented the separate merge, runtime-promotion, and T0–T5 gates. |
 | 2026-09-24 | Ryan / Codex | PR `#331` merged as `2e50ec3`; the exact inventory/planning closure is on `main`, while the live runtime intentionally remains pinned at `dc79eeb`. |
+| 2026-10-17 | Cursor | Implemented the authorized failure-cache, 633f1d1 inventory refresh (133 unrelated rows, 28 include hashes), and CI guard on `fix/2026-10-17-repository-manifest-failure-cache`. Live config restore remains gated. |
 
-**TL;DR [Arc OpenClaw Watch Coverage]:** W0–W6 is merged and live at the
-deployed `dc79eeb` boundary. This closure classifies the five later reviewed
-OpenClaw planning files on `main` via PR `#331` without advancing production.
-Full coverage remains blocked on accepted T0–T5 bytes, matching manifest
-hashes, and a separately authorized runtime promotion.
+**TL;DR [Arc OpenClaw Watch Coverage]:** W0–W6 remains merged. Live repository-file
+coverage is off because the 2026-10-12 invalid-manifest leak forced the live
+manifest config out. This branch caches invalid-manifest failures, refreshes the
+inventory at `633f1d1`, and adds a CI guard. Putting the manifest back is a
+separate Ryan grant. Full coverage still waits on accepted T0–T5 bytes.
