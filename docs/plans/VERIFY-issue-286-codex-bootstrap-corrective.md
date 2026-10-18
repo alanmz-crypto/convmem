@@ -1,11 +1,11 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** NOT RUN. Planning companion only; no implementation or live-readiness verdict.
+**State:** T1 mechanical gates V0–V2 **PASS** (hermetic). V3–V8 **NOT RUN**. v2 live execution remains **closed**.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Implementation subject SHA:** NOT IMPLEMENTED. **PR:** none authorized.
+**Implementation subject SHA:** `SUBJECT_TIP_SHA` (includes T1 hermetic harness + this evidence). **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -17,7 +17,7 @@ run. A1 stays parked, and A2 remains stopped.
 
 Scope is the execution plan's T1–T5 only. No production paths, provider calls,
 watcher controls, quarantine release, deployment, PR, or global restore belongs
-to this mechanical verification. All initial results below are **NOT RUN**.
+to this mechanical verification. V0–V2 rows below are filled from hermetic Execute evidence. V3–V8 remain **NOT RUN** until dependent tasks land.
 
 ## Verification design
 
@@ -36,27 +36,82 @@ to this mechanical verification. All initial results below are **NOT RUN**.
 
 ## V0 — Authority, baseline, isolation, and review inputs
 
-**NOT RUN.** Record Ryan's exact Execute grant, reviewed plan SHA, implementation
-base/tip, clean worktree, Python environment, externally enforced network and
-filesystem isolation, and failure-log redirection before imports.
+**PASS (hermetic, T1 scope).** Prior pytest runs on commit `439b851` without the boundary worker are **not** claimed as hermetic evidence.
 
-Execute must record `gate_applicability`, `reason`, `subject_tip_sha`,
-`bugbot_reviewed_sha`, `result`, `finding_disposition`, and `authority_reference`
-under `EXECUTE-TASK.md`. Runtime/concurrency changes require the later PR-native
-review gate. No PR is currently authorized; absent evidence is a pending merge
-gate, never an exemption or an invented PASS. An applicable SHA mismatch is FAIL.
+| ID | Check | Result |
+|----|-------|--------|
+| V0a | Ryan Execute grant for Cursor T1–T5 + hermetic verification | PASS — [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md) |
+| V0b | Reviewed execution plan SHA | PASS — `942390001bca407c1c28e9972c443ee7612e1c1b` |
+| V0c | Implementation code baseline (handoff pin) | PASS — branch rooted at handoff; T1 code parent `483373f1cef2142847fcd9c276196593a72a0ecf` |
+| V0d | Subject tip SHA (implementation + evidence) | PASS — `SUBJECT_TIP_SHA` |
+| V0e | Python interpreter | PASS — `Python 3.13.12`, `pytest 9.1.1` |
+| V0f | Externally enforced isolation before imports | PASS — worker `tests/issue_286_codex_bootstrap_isolation_worker.py` installs network/service denial and `IsolationBoundary` with forbidden production roots via `sanitized_worker_env()`; parent gate `tests/test_issue_286_codex_bootstrap_hermetic_gate.py` |
+| V0g | Negative boundary probes | PASS — `boundary-probe`: `network=IsolationViolation`, `watcher=IsolationViolation`, `forbidden_root=IsolationViolation`, `root_escape=IsolationViolation`; empty credential and production override env lists |
+| V0h | Temporary HOME/config/data + synthesis failure log redirect | PASS — worker `pytest` sets `HOME`/`XDG_*` under tokenized root; redirects `ingest._SYNTHESIS_FAIL_LOG` to `<root>/logs/synthesis_failures.jsonl` before pytest collects tests |
+| V0i | Worktree discipline | PASS — isolated worktree `/home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap`, branch `fix/2026-10-18-issue-286-codex-bootstrap` |
+
+Execute evidence (`EXECUTE-TASK.md` fields recorded here; no PR-native review yet):
+
+| Field | Value |
+|-------|-------|
+| `gate_applicability` | `pending` |
+| `reason` | No PR authorized; runtime/concurrency review is a later merge gate |
+| `subject_tip_sha` | `SUBJECT_TIP_SHA` |
+| `bugbot_reviewed_sha` | `n/a` |
+| `result` | `n/a` |
+| `finding_disposition` | `none` |
+| `authority_reference` | Ryan grant in CODEX-2026-10-18 execute handoff |
+
+```bash
+cd /home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap
+git rev-parse HEAD
+python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
+# exit 0; 3 passed
+```
 
 ## V1 — Format, grant, and v1 compatibility (T1)
 
-**NOT RUN.** Exact v2 schema/hash vectors; state-directory equality; descriptor
-identity; all Codex admission checks; rejected history/cross-format/alias and
-invalid grants; byte-compatible v1 hashes, Kiro dispatch, and supersession.
+**PASS (hermetic).** Scoped tests run inside the isolation worker subprocess (10 tests). Synthetic fixtures only; no real transcript reads.
+
+| ID | Check | Result |
+|----|-------|--------|
+| V1a | v2 grant field set + independent hash oracle | PASS — `tests/test_issue_286_codex_bootstrap_v2_t1.py::test_v2_hash_vectors_independent_oracle` |
+| V1b | Negative control: Kiro-default `source_state_id` rejected | PASS — `test_v2_rejects_kiro_default_state_id` |
+| V1c | v1 grant parse/hash compatibility | PASS — `test_v1_grant_parse_unchanged` |
+| V1d | v1 strict grant shape/hash fixtures | PASS — `tests/test_incremental_jsonl_bootstrap_command.py` (3 tests) |
+| V1e | Provider binding (paid transport) | PASS — `test_paid_transport_disables_automatic_redirects` |
+| V1f | One-recovery invocation journal | PASS — `test_invocation_journal_allows_exactly_one_recovery` |
+| V1g | Predecessor-preserving supersession | PASS — `test_admissible_supersession_archives_exact_bytes_and_preserves_evidence` |
+
+Published synthetic v2 hash oracle (independent worker `hash-oracle`; metadata digests only):
+
+| Field | Value |
+|-------|-------|
+| `operation_id` | `72ed0df0e35939ad0e8f9446505821ff520d4b3d81267175f106eacae8ab209f` |
+| `grant_fingerprint_v2` | `d4cc0d72de7c0817350f5ea8c437fa8ad553cb7ca4b7078a0589ebcbcd73d8e0` |
+| `source_state_id` (format-bound) | `92a0cc170c15b58240963d3e7d9abc27e2432966246da9f230484665198520d9` |
+| `kiro_default_state_id` (negative reference) | `141a770cbd3ee9a3f167ee5e839956e8f57788468c91034fc2c29110d26cf39c` |
+
+```bash
+python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t1_and_v1_regressions_in_isolated_worker
+# exit 0; worker subprocess reports: 10 passed
+```
 
 ## V2 — Read-only preflight (T1)
 
-**NOT RUN.** Zero provider/embedding attempts; unchanged protected files and
-metadata; no lock/cache/state directory creation; blockers and proposed counts
-only. Positive and refused preflights both satisfy the no-write oracle.
+**PASS (hermetic).** Dry-run performs no writes under isolated config roots.
+
+| ID | Check | Result |
+|----|-------|--------|
+| V2a | `--dry-run` / `dry_run_v2` immutability oracle | PASS — `test_dry_run_no_writes` (mtime unchanged for state, processed, chroma paths) |
+| V2b | Proposed packet exposes format-bound vs Kiro-default state IDs | PASS — `packet["source_state_id"] != packet["kiro_default_state_id"]` |
+| V2c | Provider/embedding attempts | PASS — zero (validators + metadata reads only; no coordinator construction) |
+
+**Remaining T1 gaps (not V2 failures):** Codex admission matrix beyond dry-run happy path, descriptor cross-surface equality across transaction artifacts, and explicit rejected-grant corpora are partially covered by unit tests but not exhaustively catalogued here. T2+ surfaces remain unimplemented.
+
+```bash
+# Covered by the same isolated 10-test bundle as V1 (includes test_dry_run_no_writes)
+```
 
 ## V3 — Authority crash matrix (T2)
 
@@ -110,7 +165,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED by Ryan; implementation NOT_STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED by Ryan; T1 hermetic gate PASS; T2–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
@@ -120,12 +175,13 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Evidence log (fill after Execute)
 
-Subject SHA / runner / date / command / exit code / result / independent oracle
-reference / residual owner: **NOT RUN**. Do not paste transcript or prompt
-content. Keep actual implementation evidence here rather than a new audit log.
+| Date | Subject SHA | Command | Exit | Result | Notes |
+|------|-------------|---------|------|--------|-------|
+| 2026-10-18 | `SUBJECT_TIP_SHA` | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 3 gate tests; spawns isolated worker with boundary probe + 10 scoped T1/v1 tests |
+| 2026-10-18 | `SUBJECT_TIP_SHA` | worker `boundary-probe` | 0 | PASS | All negative probes return `IsolationViolation` |
+| 2026-10-18 | `439b851` | (ad hoc, pre-isolation) | — | **not hermetic** | T1 code landed; evidence gate intentionally not filed |
 
-**TL;DR:** [Arc Codex] This is an unexecuted verification map for T1–T5. Neither
-the stub nor future hermetic PASS grants production execution.
+**TL;DR:** [Arc Codex] T1 hermetic V0–V2 PASS at `SUBJECT_TIP_SHA`. V3–V8 and live readiness remain NOT RUN / not authorized.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
