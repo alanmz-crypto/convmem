@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-14
+**Updated:** 2026-10-18
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -37,16 +37,20 @@ cross-arc snapshot and the linked arc brief below.
   Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
   **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
 
-- **Arc Codex / issue #286 — Codex rollout admission merged, default off;
-  Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
-  guarded incremental route instead of re-indexing the whole file on every
-  append, which is the paid "Codex burn". Copilot and Kiro both PASSed exact
-  tip `78b9295`. Production burn is unchanged until Ryan grants Stage 1 (see
-  the [Stage 1 packet](CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md))
-  and later Stage 2. Stage 2 also needs the residual-burn decision, the #308
-  fix and the 4G drop-in reconciliation. The Kiro bootstrap is a separate
-  track. No live config, runtime or watcher action is authorized. See the
-  [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
+- **Arc Codex / issue #286 — A1 corrective direction ready for Kiro review
+  (2026-10-18):** Codex drafted the
+  [bounded bootstrap correction](../plans/ARCHITECTURE-issue-286-codex-bootstrap-corrective.md)
+  for the three existing Codex rollouts. The current entrypoint is Kiro-only
+  and requires disabled incremental routing and a stopped watcher; **A1 stays
+  parked even after a bare “go A1.”** The direction adds explicit Codex identity
+  and parsing, durable source ownership beside compatible live writers, and
+  preserves paid/recovery limits. **Next lane: Kiro** reviews the exact revision;
+  Ryan approves direction and later authorizes Cursor implementation of the
+  reviewed execution plan. A2 remains stopped after the doctor failure
+  `ledger_documents: database is locked`; A3's offline baseline is complete.
+  See the [current arc brief](../plans/STATUS-codex-jsonl-production-integration.md).
+  No implementation, PR, deployment, config, watcher, or quarantine change is
+  authorized here.
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
@@ -298,3 +302,5 @@ its existing archive/reference location. Use
 | T4 | The next Recovery Authority execution stage; it is not currently authorized. |
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
+
+<!-- ref: ../plans/ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — current A1 review route -->
