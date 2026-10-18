@@ -16,8 +16,9 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 **Current slice:** make the one-shot bootstrap support the three existing
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
-the execution plan after Kiro passed the direction and Ryan approved it. Kiro
-reviews the plan; Ryan controls Cursor implementation and later live authority.
+the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
+T1–T5 implementation and hermetic verification. Implementation is NOT_STARTED;
+live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
 writer coordination and recovery, fresh source/backup/budget/health evidence,
@@ -97,9 +98,14 @@ Key invariants:
   review Ryan supplied. Ryan then explicitly approved direction and requested
   execution planning.
 - **Execution plan:** [five serial corrective tasks](EXECUTION-issue-286-codex-bootstrap-corrective.md)
-  are drafted for Kiro review, with an unexecuted
-  [VERIFY companion](VERIFY-issue-286-codex-bootstrap-corrective.md). No Cursor
-  implementation or new live authority has been granted.
+  received Kiro PASS with no blockers at
+  `942390001bca407c1c28e9972c443ee7612e1c1b`. Ryan explicitly authorized
+  Cursor T1–T5 implementation and hermetic verification, including Kiro's
+  non-blocking precision notes.
+- **Execute handoff:** [Cursor's bounded grant](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
+  records the scope, notes, branch procedure, and operational prohibitions.
+  Resume state is `NOT_STARTED`; the [VERIFY companion](VERIFY-issue-286-codex-bootstrap-corrective.md)
+  remains NOT RUN. No production or PR authority has been granted.
 
 ## 4. Completion State
 
@@ -122,40 +128,34 @@ Key invariants:
 
 ## 5. Your Role
 
-**Kiro next:** review the execution plan and VERIFY stub at their exact committed
-revision. Focus on the atomic reservation/invocation protocol, preparation-lease
-and mutation-lock ordering, complete writer mediation, scoped watcher deferral,
-and source-only recovery. Direction PASS at `e0e91bd` is not execution-plan PASS.
-Return the verdict and bounded findings to Ryan. A rejection routes to Ryan
-before Codex revises.
+**Cursor next:** read the [authorized Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md),
+then implement T1–T5 serially in an isolated worktree and supply hermetic
+verification. The reviewed plan revision is `942390001bca407c1c28e9972c443ee7612e1c1b`.
+Incorporate Kiro's precision notes: no spin on a busy preparation lease, prove
+exit-status disjointness, and return cross-arc recovery/cutover gaps to Ryan.
 
-**Cursor:** implement T1–T5 only after Ryan explicitly authorizes the reviewed
-plan and hermetic verification. **Codex:** planning author; no implementation
-or self-approval. Neither lane may infer deployment or live permission.
+**Kiro:** exact-tip implementation review after Cursor's evidence handoff.
+**Codex:** upstream planning/authority handoff; no implementation or self-review
+substitution. Material scope or baseline drift returns to Ryan/Codex.
 
-**Ryan/Claude operational ownership:** resolve the A2 health incident through
-evidence, establish compatible writer participation, identify enforceable outer
-paid-budget composition and backup/source recovery disposition, and approve
-later exact live actions. The current grant permits planning documents only.
+**Ryan/Claude operational ownership:** resolve A2 health readiness, establish
+compatible writer participation, supply enforceable outer paid-budget and
+backup/source recovery authority, and approve later exact live actions. None
+of those operations is granted by the Cursor implementation authorization.
 
 ## 6. Remaining gates
 
-1. Kiro reviews the [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md)
-   and [VERIFY stub](VERIFY-issue-286-codex-bootstrap-corrective.md); Ryan
-   authorizes Cursor implementation of the reviewed exact revision.
-2. Cursor implements five serial tasks and supplies hermetic evidence for
-   identity/preflight, durable authority/accounting, writer/watcher cooperation,
-   coordinator recovery, and integration. Applicable skipped proofs block PASS.
-3. Obtain exact-tip independent implementation review and separately authorized
-   PR/review/merge and compatible runtime/writer rollout. No deployment, config
-   change, watcher stop/restart, quarantine release, or source change follows
-   from the planning approval.
-4. Resolve health readiness and outer-budget enforcement; revalidate exact
+1. Cursor begins the authorized T1–T5 work and fills the
+   [VERIFY companion](VERIFY-issue-286-codex-bootstrap-corrective.md) at the
+   exact implementation SHA. Applicable skipped proofs block mechanical PASS.
+2. Obtain exact-tip independent implementation review. PR creation, PR-native
+   review triggers, merge and runtime/writer rollout remain separate gates.
+3. Resolve health readiness and outer-budget enforcement; revalidate exact
    source/runtime/config/provider identities, verified local/offsite backups,
    source recovery disposition, and actual writer compatibility.
-5. Refresh the A1 packet. Only a compatible reviewed runtime plus Ryan's exact
+4. Refresh the A1 packet. Only a compatible reviewed runtime plus Ryan's exact
    execution authority permits serial bootstrap. Preserve the 4 GB RSS and
-   new-doctor-FAIL stops, and the initial-plus-one-recovery limit.
+   new-doctor-FAIL stops and initial-plus-one recovery. A2 remains stopped.
 
 ## 7. Hard Stops
 
@@ -200,6 +200,7 @@ visible to readers.
 | Bounded implementation plan | `docs/plans/EXECUTION-codex-jsonl-production-integration.md` |
 | Production-canary architecture | `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` |
 | Production-canary execution plan | `docs/plans/EXECUTION-codex-jsonl-production-canary.md` |
+| Authorized Cursor T1–T5 handoff | `docs/inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md` |
 | A1 corrective execution plan / verification | `docs/plans/EXECUTION-issue-286-codex-bootstrap-corrective.md`, `docs/plans/VERIFY-issue-286-codex-bootstrap-corrective.md` |
 | A1 Codex bootstrap corrective direction | `docs/plans/ARCHITECTURE-issue-286-codex-bootstrap-corrective.md` |
 | Current arc snapshot | `docs/plans/STATUS-codex-jsonl-production-integration.md` |
@@ -295,17 +296,18 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-18 | Codex | A1 corrective direction drafted for Kiro review; A1 remains parked and A2 is stopped on unresolved doctor failure |
 | 2026-10-18 | Codex / Ryan | Kiro direction PASS at e0e91bd supplied; Ryan approved direction; execution plan and VERIFY stub drafted for Kiro review, implementation ungranted |
+| 2026-10-18 | Ryan / Codex | Kiro plan PASS at 9423900 supplied; Ryan authorized Cursor T1–T5 and hermetic verification with precision notes; Execute handoff ready, NOT_STARTED |
 
 ## TL;DR
 
 - [Arc Codex] A1 stays parked: the current bootstrap is Kiro-only and requires
   operational conditions incompatible with the live watcher/config.
-- Kiro passed the direction and Ryan approved execution planning. The five-task
-  plan and VERIFY stub now await Kiro review; Cursor implementation and live
-  execution remain separately gated.
+- Kiro passed the execution plan at `9423900`; Ryan authorized Cursor T1–T5
+  implementation and hermetic verification. The Execute handoff is ready;
+  implementation remains NOT_STARTED and live execution remains gated.
 - A2 remains stopped on an unresolved doctor failure. A3's 38-sample baseline
   is complete. No source, runtime, config, watcher, or quarantine change is
-  authorized by this planning work.
+  authorized by the implementation grant.
 
-<!-- ref: ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md, ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./VERIFY-issue-286-codex-bootstrap-corrective.md — current A1 plan and gates -->
+<!-- ref: ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md, ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./VERIFY-issue-286-codex-bootstrap-corrective.md, ../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md — current A1 plan and gates -->
 <!-- src: /tmp/convmem-286-free-window-20261018/A1-dry-run-packet.md, /tmp/convmem-286-free-window-20261018/A2-report.json, /tmp/convmem-286-free-window-20261018/a3-baseline.json — dated operational evidence -->

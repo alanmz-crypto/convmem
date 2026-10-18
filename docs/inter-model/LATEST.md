@@ -9,6 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Codex / issue #286 — Cursor implementation authorized, NOT_STARTED
+  (2026-10-18):** Kiro passed the execution plan at `9423900`; Ryan authorized
+  Cursor T1–T5 implementation and hermetic verification with Kiro's precision
+  notes. **Next lane: Cursor.** Read the
+  [authorized Execute handoff](CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
+  for the exact revision, scope, branch procedure, and evidence gates.
+  A1 stays parked; A2 stays stopped. No production/provider calls, deployment,
+  runtime/config change, watcher action, quarantine clearing, PR, or Part B
+  authority is granted. [Current arc brief](../plans/STATUS-codex-jsonl-production-integration.md).
+
 - **cpu_tripwire fix live on runtime, PR #398 open (2026-10-17, Kiro):** `convmem doctor`
   was exiting 1 on a benign Typora userspace crash because the CPU tripwire FAILed on any
   unattributed native fault. Fix reclassifies the verdict (hardware → FAIL, userspace →
@@ -36,19 +46,6 @@ cross-arc snapshot and the linked arc brief below.
 - **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
   Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
   **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
-
-- **Arc Codex / issue #286 — execution plan ready for Kiro review
-  (2026-10-18):** Kiro passed the corrective direction at `e0e91bd`; Ryan
-  approved direction and requested execution planning. Codex drafted
-  [five serial implementation tasks](../plans/EXECUTION-issue-286-codex-bootstrap-corrective.md)
-  and an unexecuted [VERIFY companion](../plans/VERIFY-issue-286-codex-bootstrap-corrective.md).
-  **Next lane: Kiro** reviews this plan's exact revision, then Ryan decides
-  Cursor implementation authority. **A1 stays parked**, including after a bare
-  “go A1”; the current runtime remains incompatible. A2 remains stopped after
-  its doctor failure; Kiro's later reported doctor PASS is not a resumption
-  grant. See the [arc brief](../plans/STATUS-codex-jsonl-production-integration.md).
-  No implementation, PR, deployment, config, watcher, or quarantine change is
-  authorized by the planning approval.
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
@@ -301,4 +298,4 @@ its existing archive/reference location. Use
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
 
-<!-- ref: ../plans/EXECUTION-issue-286-codex-bootstrap-corrective.md — current A1 execution-plan review route -->
+<!-- ref: ./CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md — authorized Cursor implementation route -->
