@@ -178,17 +178,56 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
 
     def _native(self, collection: str, operation: str, **kwargs: Any) -> Any:
         """Run one native Chroma mutation, under the write guard when one is attached."""
+        from incremental_mutation_proof import active_session
+
+        session = active_session()
+        if session is not None:
+            if session.store is None:
+                session.bind_store(self)
+            session.on_native_before(collection, operation, **kwargs)
         guard = self._write_guard
         if guard is None:
-            # Keep the process-wide record of what this Chroma system has seen current,
-            # so a guarded store sharing it does not mistake this save for a stranger's.
             before = store_signature(self.chroma_dir)
-            result = getattr(self._collection(collection), operation)(**kwargs)
+            try:
+                result = getattr(self._collection(collection), operation)(**kwargs)
+            except Exception:
+                if session is not None:
+                    session.on_native_after(
+                        collection=collection,
+                        operation=operation,
+                        succeeded=False,
+                        guard_finalized=True,
+                    )
+                raise
             note_unguarded_write(self.chroma_dir, before)
+            if session is not None:
+                session.on_native_after(
+                    collection=collection,
+                    operation=operation,
+                    succeeded=True,
+                    guard_finalized=True,
+                )
             return result
         with guard.native_write(identifier=self.chroma_dir, reload_client=self._reload_client):
-            # Fetch the collection inside the guard: a reload replaces the client.
-            return getattr(self._collection(collection), operation)(**kwargs)
+            try:
+                result = getattr(self._collection(collection), operation)(**kwargs)
+            except Exception:
+                if session is not None:
+                    session.on_native_after(
+                        collection=collection,
+                        operation=operation,
+                        succeeded=False,
+                        guard_finalized=False,
+                    )
+                raise
+        if session is not None:
+            session.on_native_after(
+                collection=collection,
+                operation=operation,
+                succeeded=True,
+                guard_finalized=True,
+            )
+        return result
 
     def _require_authorized_writer(self) -> None:
         if not self._require_writer_boundary:
