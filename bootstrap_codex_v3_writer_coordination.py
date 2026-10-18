@@ -91,15 +91,22 @@ def validate_child_deferral_signal(
     if cfg is None:
         return
     authority = authority_for_source(cfg, signal.canonical_source)
-    if authority is None or not authority.reservation_active:
+    if authority is None:
         raise BootstrapWriterCoordinationError("coordination_deferral_without_reservation")
-    if authority.terminal:
-        raise BootstrapWriterCoordinationError("coordination_deferral_terminal_authority")
     record_op = str(authority.record.get("operation_id") or "")
     if record_op != signal.operation_id:
         raise BootstrapWriterCoordinationError("coordination_deferral_operation_mismatch")
-    if int(authority.revision) != int(signal.authority_revision):
-        raise BootstrapWriterCoordinationError("coordination_deferral_revision_mismatch")
+    signal_rev = int(signal.authority_revision)
+    auth_rev = int(authority.revision)
+    if signal_rev != auth_rev:
+        # Terminal publication bumps revision; a valid child deferral may carry the
+        # pre-terminal revision while authority is already TERMINAL.
+        if not (authority.terminal and signal_rev + 1 == auth_rev):
+            raise BootstrapWriterCoordinationError("coordination_deferral_revision_mismatch")
+    if authority.terminal:
+        return
+    if not authority.reservation_active:
+        raise BootstrapWriterCoordinationError("coordination_deferral_without_reservation")
 
 
 def _canonical_source(path: str | Path) -> str:

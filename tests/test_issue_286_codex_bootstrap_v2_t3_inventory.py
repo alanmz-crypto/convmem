@@ -318,3 +318,96 @@ def test_disjoint_processed_merge_while_other_reserved(
     assert ok is True
     data = load_processed(cfg["index"]["processed_log"])
     assert data["d" * 64]["path"] == path_key
+
+
+def test_source_purge_defers_at_processed_exclusion_before_chroma(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from source_purge import execute_purge
+
+    source, cfg, grant, state_dir = t3_bundle(tmp_path, monkeypatch)
+    claim_active_reservation(state_dir, grant)
+    path_key = str(source.resolve())
+    chroma_entered = {"value": False}
+
+    def after_exclusion() -> None:
+        chroma_entered["value"] = True
+        raise AssertionError("chroma boundary should not run when exclusion defers")
+
+    with pytest.raises((BootstrapWriterCoordinationError, IncrementalJsonlError), match="coordination_deferral"):
+        execute_purge(
+            cfg,
+            path_key,
+            reason="test",
+            _hooks={"after_exclusion": after_exclusion},
+        )
+    assert chroma_entered["value"] is False
+
+
+def test_incremental_cleanup_preserves_v2_authority_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from bootstrap_codex_v2_authority import authority_path
+    from incremental_jsonl import DURABLE_TRANSITIONS, IncrementalJsonlCoordinator, IncrementalJsonlError
+
+    source, cfg, grant, state_dir = t3_bundle(tmp_path, monkeypatch)
+    claim_active_reservation(state_dir, grant)
+    auth_path = authority_path(state_dir)
+    assert auth_path.is_file()
+    before_auth = auth_path.read_bytes()
+    tx_path = state_dir / "transaction.json"
+    tx_path.write_text('{"transaction_id": "t1"}\n', encoding="utf-8")
+    rb_path = state_dir / "rollback.json"
+    rb_path.write_text("{}", encoding="utf-8")
+    snap_dir = state_dir / "snap-test"
+    snap_dir.mkdir(parents=True)
+    (snap_dir / "piece.json").write_text("{}", encoding="utf-8")
+
+    class _CleanupProbe:
+        paths = {"transaction": tx_path, "rollback": rb_path}
+
+        def fault(self, _name: str) -> None:
+            return None
+
+        def _transition(self, name: str, action) -> None:
+            if name not in DURABLE_TRANSITIONS:
+                raise IncrementalJsonlError("undeclared_transition", name)
+            action()
+
+    IncrementalJsonlCoordinator._cleanup(_CleanupProbe(), snap_dir)
+    assert auth_path.read_bytes() == before_auth
+    assert not tx_path.exists()
+    assert not rb_path.exists()
+    assert not snap_dir.exists()
+
+
+def test_enforce_incremental_retry_gates_check_before_reserve(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from incremental_retry_state import enforce_incremental_retry_gates
+
+    order: list[str] = []
+
+    def track_check(*_a, **_k):
+        order.append("check")
+
+    def track_reserve(*_a, **_k):
+        order.append("reserve")
+
+    monkeypatch.setattr(
+        "incremental_retry_state.check_incremental_retry_gates",
+        track_check,
+    )
+    monkeypatch.setattr(
+        "incremental_retry_state.reserve_incremental_retry_attempt",
+        track_reserve,
+    )
+    paths = {"transaction": str(tmp_path / "state" / "transaction.json")}
+    Path(paths["transaction"]).parent.mkdir(parents=True)
+    enforce_incremental_retry_gates(
+        paths,
+        path_key=str(tmp_path / "x.jsonl"),
+        prefix_digest="f" * 64,
+        transaction_id="tx-1",
+    )
+    assert order == ["check", "reserve"]

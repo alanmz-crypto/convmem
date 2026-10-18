@@ -87,7 +87,9 @@ def test_process_ready_path_real_subprocess_defer_scheduler_backoff(
     assert path not in scheduler.ready()
 
 
-def test_terminal_authority_mismatch_refuses_deferral_requeue(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fabricated_deferral_revision_mismatch_after_terminal_refuses_requeue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import config
     from tests.fixtures.issue_286_t2_owner_context import t2_owner_context
 
@@ -95,20 +97,63 @@ def test_terminal_authority_mismatch_refuses_deferral_requeue(tmp_path: Path, mo
     claim_active_reservation(state_dir, grant)
     path = str(source.resolve())
     monkeypatch.setattr(config, "CONFIG_PATH", tmp_path / "config.toml")
-    authority = load_authority(state_dir)
-    assert authority is not None
-    stale_revision = authority.revision
     with t2_owner_context(state_dir):
         publish_terminal_authority(state_dir, grant, receipt_digest="a" * 64)
-    signal = CoordinationDeferralSignal(path, grant["operation_id"], stale_revision)
+    authority = load_authority(state_dir)
+    assert authority is not None and authority.terminal
+    fabricated_revision = int(authority.revision) - 5
+    signal = CoordinationDeferralSignal(path, grant["operation_id"], fabricated_revision)
     err = watch.IndexSubprocessError(
         signal.to_stderr_line(),
         returncode=COORDINATION_DEFERRAL_EXIT,
         stderr=signal.to_stderr_line() + "\n",
     )
     breaker = CircuitBreakerState(tmp_path / "cb.json")
-    forget = watch._record_ready_path_failure(path, err, breaker=breaker, verbose=False)
+    breaker_path = tmp_path / "cb.json"
+    breaker_path.write_text(json.dumps({"paths": {}, "global": {}}), encoding="utf-8")
+    before = breaker_path.read_bytes()
+    forget = watch._record_ready_path_failure(path, err, breaker=breaker, verbose=False, cfg=cfg)
     assert forget is True
+    assert breaker_path.read_bytes() == before
+
+
+def test_real_child_deferral_after_terminal_authority_still_requeues(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import config
+    from tests.fixtures.issue_286_t2_owner_context import t2_owner_context
+
+    source, cfg, grant, state_dir = t3_bundle(tmp_path, monkeypatch)
+    claim_active_reservation(state_dir, grant)
+    path = str(source.resolve())
+    monkeypatch.setattr(config, "CONFIG_PATH", tmp_path / "config.toml")
+    env = os.environ.copy()
+    env["CONVMEM_CONFIG"] = str(config.CONFIG_PATH)
+    proc = _run_index_child(path, env=env)
+    assert proc.returncode == COORDINATION_DEFERRAL_EXIT
+    authority = load_authority(state_dir)
+    assert authority is not None
+    with t2_owner_context(state_dir):
+        publish_terminal_authority(state_dir, grant, receipt_digest="b" * 64)
+    err = watch.IndexSubprocessError(
+        (proc.stderr or "").strip(),
+        returncode=proc.returncode,
+        stderr=proc.stderr or "",
+    )
+    breaker = CircuitBreakerState(tmp_path / "cb-term-race.json")
+    breaker_path = tmp_path / "cb-term-race.json"
+    breaker_path.write_text(json.dumps({"paths": {}, "global": {}}), encoding="utf-8")
+    before = breaker_path.read_bytes()
+    scheduler = DebounceScheduler(debounce_seconds=30.0)
+    scheduler.note(path)
+    forget = watch._record_ready_path_failure(
+        path, err, breaker=breaker, verbose=False, cfg=cfg
+    )
+    assert forget is False
+    assert breaker_path.read_bytes() == before
+    assert not breaker.has_refusal_quarantine_for_path(path)
+    assert scheduler.pending_count() == 1
+    assert path not in scheduler.ready()
 
 
 def test_preexisting_refusal_quarantine_skips_real_spawn(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
