@@ -9,9 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Cursor T3 COMPLETE (`cce899cd857d` — 47/47 bwrap worker + gate)**
+- **Arc Codex / issue #286 — Cursor T3 COMPLETE (`36c40caf21d5` — 53/53 bwrap worker + gate)**
   (2026-10-18):** T1 `ec11b10`, T2 `1dc1eff`; T3 writer mediation + watcher deferral
-  evidence on branch `fix/2026-10-18-issue-286-codex-bootstrap` (20-test T3 worker bundle)
+  evidence on branch `fix/2026-10-18-issue-286-codex-bootstrap` (53-test T3 worker bundle)
   notes. **Next lane: Cursor.** Read the
   [authorized Execute handoff](CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
   for the exact revision, scope, branch procedure, and evidence gates.

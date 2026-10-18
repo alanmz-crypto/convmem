@@ -5,7 +5,7 @@
 
 ## Resume state
 
-- **State:** `IN_PROGRESS` — T1 complete (`ec11b10`), T2 complete (`1dc1eff`), T3 complete (V5–V6 hermetic bwrap), T4–T5 not started.
+- **State:** `T3_COMPLETE` — T1 complete (`ec11b10`), T2 complete (`1dc1eff`), T3 COMPLETE (V5–V6 hermetic bwrap 53/53 at `36c40ca`), T4–T5 not started.
 - **Reviewed plan branch:** `plan/2026-10-18-issue-286-codex-bootstrap-corrective`.
 - **Reviewed plan SHA:** `942390001bca407c1c28e9972c443ee7612e1c1b`.
 - **Code baseline:** `483373f1cef2142847fcd9c276196593a72a0ecf`.
@@ -81,7 +81,7 @@ Kiro's reported doctor PASS during direction review does not diagnose A2's earli
 
 Stop for exact-tip independent review. Return the implementation branch and full SHA, push status, T1–T5 evidence/results, the VERIFY path, and remaining live gates with owners. Do not claim live readiness from hermetic PASS. No PR or review-trigger comment is authorized here; obtain the applicable later grant before entering that lifecycle.
 
-**Next lane now:** Cursor T4. **Resume state:** `IN_PROGRESS` (T3 V5–V6 PASS on branch tip).
+**Next lane now:** T4 not authorized — hold. **Resume state:** `T3_COMPLETE` (V5–V6 PASS at tested code `36c40ca`; T4–T5 not started).
 
 **TL;DR:** [Arc Codex] Ryan authorizes Cursor's reviewed T1–T5 implementation and hermetic verification, including Kiro's precision notes. All production and PR prohibitions remain; A1 is parked and A2 is stopped.
 
