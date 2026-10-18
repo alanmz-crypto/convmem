@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -17,8 +16,6 @@ from incremental_jsonl_isolation import (  # noqa: E402
     ISOLATION_ENV_ALLOWLIST,
     IsolationBoundary,
     IsolationViolation,
-    install_network_denial,
-    install_service_denial,
 )
 
 _SITE = os.environ.get("CONVMEM_INCREMENTAL_SITE", "")
@@ -26,30 +23,22 @@ if _SITE:
     sys.path.append(_SITE)
 
 
-def _bootstrap_isolation() -> tuple[IsolationBoundary, list[str]]:
-    service_log: list[str] = []
-    boundary = IsolationBoundary.from_environment()
-    install_network_denial()
-    install_service_denial(service_log)
-    return boundary, service_log
+def _bootstrap_isolation() -> IsolationBoundary:
+    return IsolationBoundary.from_environment()
 
 
-def _probe_network() -> str:
+def _probe_network() -> dict[str, object]:
     import socket
 
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1.0)
     try:
-        socket.create_connection(("203.0.113.1", 9), timeout=0.01)
-        return "unexpected-success"
-    except Exception as exc:  # noqa: BLE001
-        return type(exc).__name__
-
-
-def _probe_watcher() -> str:
-    try:
-        subprocess.Popen(["convmem-watch", "--once"])  # noqa: S603
-        return "unexpected-success"
-    except IsolationViolation:
-        return "IsolationViolation"
+        sock.connect(("127.0.0.1", 9))
+        return {"status": "unexpected-success", "errno": None}
+    except OSError as exc:
+        return {"status": "connect_failed", "errno": exc.errno}
+    finally:
+        sock.close()
 
 
 def _probe_forbidden_filesystem(boundary: IsolationBoundary) -> str:
@@ -77,19 +66,17 @@ def _probe_escape_root(boundary: IsolationBoundary) -> str:
 def main() -> int:
     command = sys.argv[1] if len(sys.argv) > 1 else ""
     if command == "boundary-probe":
-        boundary, service_log = _bootstrap_isolation()
+        boundary = _bootstrap_isolation()
         print(
             json.dumps(
                 {
                     "root": str(boundary.root),
                     "network": _probe_network(),
-                    "watcher": _probe_watcher(),
                     "forbidden_root": _probe_forbidden_filesystem(boundary),
                     "root_escape": _probe_escape_root(boundary),
                     "cwd": os.getcwd(),
                     "home": os.environ.get("HOME"),
                     "xdg_config": os.environ.get("XDG_CONFIG_HOME"),
-                    "service_log": service_log,
                     "credential_names": [
                         name
                         for name in os.environ
@@ -112,7 +99,7 @@ def main() -> int:
         return 0
 
     if command == "hash-oracle":
-        boundary, _service_log = _bootstrap_isolation()
+        boundary = _bootstrap_isolation()
         from tests.fixtures.issue_286_codex_bootstrap_v2_hash_oracle import (  # noqa: PLC0415
             build_oracle_grant,
         )
@@ -132,7 +119,7 @@ def main() -> int:
         return 0
 
     if command == "pytest":
-        boundary, _service_log = _bootstrap_isolation()
+        boundary = _bootstrap_isolation()
         failure_log = boundary.root / "logs" / "synthesis_failures.jsonl"
         failure_log.parent.mkdir(parents=True, exist_ok=True)
         import ingest  # noqa: PLC0415

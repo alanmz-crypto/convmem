@@ -204,3 +204,4 @@ def test_dry_run_no_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     assert before == after
     assert packet["source_state_id"] != packet["kiro_default_state_id"]
     assert packet["grant_fingerprint_v2"] == grant_fingerprint_v2(grant)
+    assert packet["ready"] is True

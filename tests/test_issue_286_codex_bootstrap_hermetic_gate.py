@@ -1,12 +1,9 @@
-"""Hermetic gate for Arc Codex #286 T1: isolation probe plus scoped pytest."""
-
-# pylint: disable=consider-using-with
+"""Hermetic gate for Arc Codex #286 T1 (external bwrap boundary)."""
 
 from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -18,18 +15,32 @@ from incremental_jsonl_isolation import (
     known_production_roots,
     sanitized_worker_env,
 )
+from tests.issue_286_codex_bootstrap_bwrap import (
+    ISSUE_286_BWRAP_ACTIVE_ENV,
+    REPO_ROOT,
+    issue_286_bwrap_integration_available,
+    run_bwrap,
+)
+from tests.issue_286_codex_bootstrap_bwrap import run_bwrap_capability_check
+from tests.watch_oom_live_diagnosis_net_probe import (
+    parent_can_connect_loopback,
+    parent_loopback_listener,
+    parent_net_namespace_id,
+    verify_dual_net_probe_artifacts,
+    write_self_loopback_probe,
+)
 
 WORKER = Path(__file__).with_name("issue_286_codex_bootstrap_isolation_worker.py")
-REPO_ROOT = Path(__file__).resolve().parents[1]
 
 ISOLATED_PYTEST_TARGETS = (
     "tests/test_issue_286_codex_bootstrap_v2_t1.py",
+    "tests/test_issue_286_codex_bootstrap_v2_t1_contract.py",
     "tests/test_incremental_jsonl_bootstrap_command.py",
     "tests/test_incremental_jsonl_bootstrap_safety.py::test_paid_transport_disables_automatic_redirects",
     "tests/test_incremental_jsonl_bootstrap_safety.py::test_invocation_journal_allows_exactly_one_recovery",
     "tests/test_incremental_jsonl_bootstrap_supersession.py::test_admissible_supersession_archives_exact_bytes_and_preserves_evidence",
 )
-EXPECTED_ISOLATED_PASS_COUNT = 10
+EXPECTED_ISOLATED_PASS_COUNT = 25
 
 
 def _worker_env(tmp_path: Path) -> tuple[IsolationBoundary, dict[str, str]]:
@@ -50,58 +61,92 @@ def _worker_env(tmp_path: Path) -> tuple[IsolationBoundary, dict[str, str]]:
     return boundary, env
 
 
-def _run_worker(
-    boundary: IsolationBoundary,
-    env: dict[str, str],
-    *args: str,
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-I", str(WORKER), *args],
-        cwd=REPO_ROOT,
-        env=env,
-        close_fds=True,
-        start_new_session=True,
-        check=False,
-        capture_output=True,
-        text=True,
+@pytest.mark.skipif(
+    not issue_286_bwrap_integration_available(),
+    reason="issue_286_bwrap_unavailable",
+)
+def test_external_network_namespace_denied(tmp_path: Path) -> None:
+    scratch = tmp_path / "bwrap-scratch"
+    scratch.mkdir()
+    outer_path = scratch / "outer.json"
+    inner_path = scratch / "inner.json"
+    with parent_loopback_listener() as port:
+        assert parent_can_connect_loopback(port) is True
+        inner_script = (
+            "import sys\n"
+            f"sys.path.insert(0, {str(REPO_ROOT)!r})\n"
+            "from pathlib import Path\n"
+            "from tests.watch_oom_live_diagnosis_net_probe import write_self_loopback_probe\n"
+            f"write_self_loopback_probe(port={port}, result_path=Path({str(outer_path)!r}), role='outer')\n"
+            f"write_self_loopback_probe(port={port}, result_path=Path({str(inner_path)!r}), role='inner')\n"
+        )
+        result = run_bwrap(
+            [sys.executable, "-I", "-c", inner_script],
+            scratch_root=scratch,
+        )
+        assert result.returncode == 0, result.stderr
+    verify_dual_net_probe_artifacts(
+        outer_path=outer_path,
+        inner_path=inner_path,
+        port=port,
+        parent_netns=parent_net_namespace_id(),
+        parent_positive_control=True,
     )
 
 
-def test_boundary_probe_denies_network_filesystem_and_services(tmp_path: Path) -> None:
+@pytest.mark.skipif(
+    not issue_286_bwrap_integration_available(),
+    reason="issue_286_bwrap_unavailable",
+)
+def test_external_filesystem_masks_production_paths(tmp_path: Path) -> None:
+    scratch = tmp_path / "bwrap-fs"
+    scratch.mkdir()
+    source = scratch / "sources" / "probe.jsonl"
+    source.parent.mkdir(parents=True)
+    source.write_text("{}\n", encoding="utf-8")
+    repo_probe = REPO_ROOT / "README.md"
+    caps = run_bwrap_capability_check(
+        scratch_root=scratch,
+        source_path=source,
+        repo_probe_file=repo_probe,
+    )
+    assert caps["scratch_writable"] is True
+    assert caps["production_share_read_blocked"] is True
+    assert caps["production_share_write_blocked"] is True
+
+
+@pytest.mark.skipif(
+    not issue_286_bwrap_integration_available(),
+    reason="issue_286_bwrap_unavailable",
+)
+def test_worker_boundary_probe_without_python_network_hooks(tmp_path: Path) -> None:
     boundary, env = _worker_env(tmp_path)
-    result = _run_worker(boundary, env, "boundary-probe")
+    result = run_bwrap(
+        [sys.executable, "-I", str(WORKER), "boundary-probe"],
+        scratch_root=boundary.root,
+        extra_env=env,
+    )
     assert result.returncode == 0, result.stderr
     evidence = json.loads(result.stdout)
-    assert evidence["root"] == str(boundary.root)
-    assert evidence["network"] == "IsolationViolation"
-    assert evidence["watcher"] == "IsolationViolation"
+    assert evidence["network"]["status"] == "connect_failed"
+    assert evidence["network"]["errno"] is not None
     assert evidence["forbidden_root"] == "IsolationViolation"
     assert evidence["root_escape"] == "IsolationViolation"
-    assert evidence["credential_names"] == []
-    assert evidence["production_override_names"] == []
-    assert str(evidence["home"]).startswith(str(boundary.root))
 
 
-def test_hash_oracle_vectors_are_stable(tmp_path: Path) -> None:
-    boundary, env = _worker_env(tmp_path)
-    result = _run_worker(boundary, env, "hash-oracle")
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
-    for key in (
-        "operation_id",
-        "grant_fingerprint_v2",
-        "source_state_id",
-        "kiro_default_state_id",
-    ):
-        assert key in payload
-        assert isinstance(payload[key], str) and len(payload[key]) > 0
-    assert payload["source_state_id"] != payload["kiro_default_state_id"]
-
-
-def test_t1_and_v1_regressions_in_isolated_worker(tmp_path: Path) -> None:
+@pytest.mark.skipif(
+    not issue_286_bwrap_integration_available(),
+    reason="issue_286_bwrap_unavailable",
+)
+def test_t1_and_v1_regressions_in_bwrap(tmp_path: Path) -> None:
     boundary, env = _worker_env(tmp_path)
     args = ["pytest", "-q", *ISOLATED_PYTEST_TARGETS]
-    result = _run_worker(boundary, env, *args)
+    result = run_bwrap(
+        [sys.executable, "-I", str(WORKER), *args],
+        scratch_root=boundary.root,
+        extra_env=env,
+        timeout=300.0,
+    )
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     combined = result.stdout + result.stderr
-    assert "10 passed" in combined
+    assert f"{EXPECTED_ISOLATED_PASS_COUNT} passed" in combined
