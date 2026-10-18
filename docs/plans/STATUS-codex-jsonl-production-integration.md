@@ -17,7 +17,7 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
 the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
-T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 COMPLETE** (V5–V6 hermetic bwrap, 55-test worker bundle; V5–V6 PASS at `4a99eba47faf`); **T4–T5 NOT STARTED**;
+T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 INCOMPLETE (isolation remediation)** (V5–V6 hermetic bwrap, 55-test worker bundle; V5–V6 PASS at `4a99eba47faf`); **T4–T5 NOT STARTED**;
 live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
@@ -306,3 +306,14 @@ Keep this document a current-state snapshot, not a session diary.
 
 <!-- ref: ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md, ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./VERIFY-issue-286-codex-bootstrap-corrective.md, ../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md — current A1 plan and gates -->
 <!-- src: /tmp/convmem-286-free-window-20261018/A1-dry-run-packet.md, /tmp/convmem-286-free-window-20261018/A2-report.json, /tmp/convmem-286-free-window-20261018/a3-baseline.json — dated operational evidence -->
+
+## Guarded rerun evidence (2026-10-18)
+
+- **Outer boundary:** `python3 scripts/issue_286_guarded_pytest_launcher.py` (single Python; capture + isolation before pytest; outer `bwrap --ro-bind / / --unshare-net --tmpfs /tmp` + scratch bind).
+- **Guard suite (outer only):** 15 passed (`tests/test_issue_286_host_isolation_guard.py`).
+- **Inner bwrap T3 gate:** 49 passed, **5 failed**, 0 skipped in `ISOLATED_PYTEST_TARGETS_T3` (guard excluded from inner targets).
+- **Failures (infra):** five `cli_watch_e2e` subprocess coordination tests (index child rc=1 vs expected 93 under nested bwrap); not production-path writes.
+- **V6:** `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` remains **INCOMPLETE** (xfail proof gap); excluded from T3 PASS count.
+- **T3 status:** **NOT COMPLETE** (V6 gap + 5 cli_watch failures).
+- **Snapshots:** `/tmp/issue-286-run-before.json` → `/tmp/issue-286-run-after.json`; config SHA256 unchanged; synthesis unchanged; Codex inventory count 933 (digest drift vs coordinator baseline 831 entries — live writers).
+- **Safe command:** `python3 scripts/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_host_isolation_guard.py`

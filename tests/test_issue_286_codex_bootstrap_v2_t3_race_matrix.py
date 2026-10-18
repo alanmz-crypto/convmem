@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from tests.fixtures.issue_286_host_isolation import enforce_issue_286_import_guard
+
+enforce_issue_286_import_guard()
+
+from tests.fixtures.issue_286_host_isolation import subprocess_env_for_issue_286
+
 import json
 import subprocess
 import sys
@@ -72,7 +78,7 @@ def test_race_bootstrap_reservation_before_legacy_subprocess(tmp_path: Path, mon
     barrier.write_text("ready", encoding="utf-8")
     proc = subprocess.run(
         [sys.executable, str(CHILD), "recheck_commit", str(cfg_path), str(source), str(grant_path), str(barrier)],
-        env=os.environ.copy(),
+        env=subprocess_env_for_issue_286(),
         capture_output=True,
         text=True,
         timeout=10,

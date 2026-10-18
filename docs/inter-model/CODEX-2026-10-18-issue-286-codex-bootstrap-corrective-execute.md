@@ -5,7 +5,7 @@
 
 ## Resume state
 
-- **State:** `T3_COMPLETE` — T1 complete (`ec11b10`), T2 complete (`1dc1eff`), T3 COMPLETE (V5–V6 hermetic bwrap 53/53 at `4a99eba`), T4–T5 not started.
+- **State:** `T3_ISOLATION_REMEDIATION` — T1 complete (`ec11b10`), T2 complete (`1dc1eff`), T3 NOT COMPLETE (guarded rerun) (V5–V6 hermetic bwrap 53/53 at `4a99eba`), T4–T5 not started.
 - **Reviewed plan branch:** `plan/2026-10-18-issue-286-codex-bootstrap-corrective`.
 - **Reviewed plan SHA:** `942390001bca407c1c28e9972c443ee7612e1c1b`.
 - **Code baseline:** `483373f1cef2142847fcd9c276196593a72a0ecf`.
@@ -81,9 +81,20 @@ Kiro's reported doctor PASS during direction review does not diagnose A2's earli
 
 Stop for exact-tip independent review. Return the implementation branch and full SHA, push status, T1–T5 evidence/results, the VERIFY path, and remaining live gates with owners. Do not claim live readiness from hermetic PASS. No PR or review-trigger comment is authorized here; obtain the applicable later grant before entering that lifecycle.
 
-**Next lane now:** Cursor T4 Execute under existing Ryan T1–T5 grant (live/PR gates separate; do not start without Execute handoff). **Resume state:** `T3_COMPLETE` (V5–V6 PASS; T4–T5 not started).
+**Next lane now:** Authorized isolation rerun (boundary script before/after), then T3 re-close; T4 Execute under existing Ryan T1–T5 grant (live/PR gates separate; do not start without Execute handoff). **Resume state:** `T3_ISOLATION_REMEDIATION` (V5–V6 PASS; T4–T5 not started).
 
 **TL;DR:** [Arc Codex] Ryan authorizes Cursor's reviewed T1–T5 implementation and hermetic verification, including Kiro's precision notes. All production and PR prohibitions remain; A1 is parked and A2 is stopped.
 
 <!-- src: ../plans/EXECUTION-issue-286-codex-bootstrap-corrective.md — reviewed at 942390001bca407c1c28e9972c443ee7612e1c1b -->
 <!-- ref: ../plans/VERIFY-issue-286-codex-bootstrap-corrective.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — execution evidence and routing -->
+
+## Guarded rerun evidence (2026-10-18)
+
+- **Outer boundary:** `python3 scripts/issue_286_guarded_pytest_launcher.py` (single Python; capture + isolation before pytest; outer `bwrap --ro-bind / / --unshare-net --tmpfs /tmp` + scratch bind).
+- **Guard suite (outer only):** 15 passed (`tests/test_issue_286_host_isolation_guard.py`).
+- **Inner bwrap T3 gate:** 49 passed, **5 failed**, 0 skipped in `ISOLATED_PYTEST_TARGETS_T3` (guard excluded from inner targets).
+- **Failures (infra):** five `cli_watch_e2e` subprocess coordination tests (index child rc=1 vs expected 93 under nested bwrap); not production-path writes.
+- **V6:** `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` remains **INCOMPLETE** (xfail proof gap); excluded from T3 PASS count.
+- **T3 status:** **NOT COMPLETE** (V6 gap + 5 cli_watch failures).
+- **Snapshots:** `/tmp/issue-286-run-before.json` → `/tmp/issue-286-run-after.json`; config SHA256 unchanged; synthesis unchanged; Codex inventory count 933 (digest drift vs coordinator baseline 831 entries — live writers).
+- **Safe command:** `python3 scripts/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_host_isolation_guard.py`

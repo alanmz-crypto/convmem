@@ -184,14 +184,22 @@ def sanitized_worker_env(
     """Return an allowlisted environment with relocated discovery roots."""
     root = root.resolve(strict=True)
     layout = _layout(root)
-    write_hermetic_config(root)
     forbidden = forbidden_roots or known_production_roots()
+    config_path = write_hermetic_config(root)
     env = {
         "PATH": os.defpath,
         "HOME": str(layout["home"]),
         "XDG_CONFIG_HOME": str(layout["xdg_config"]),
         "XDG_DATA_HOME": str(layout["xdg_data"]),
         "XDG_CACHE_HOME": str(layout["xdg_cache"]),
+        "XDG_STATE_HOME": str(root / "xdg-state"),
+        "XDG_RUNTIME_DIR": str(root / "xdg-run"),
+        "TMPDIR": str(root / "tmp"),
+        "TEMP": str(root / "tmp"),
+        "TMP": str(root / "tmp"),
+        "CONVMEM_ISSUE_286_HOST_ISOLATION_INSTALLED": "1",
+        "CONVMEM_ISSUE_286_INNER_BWRAP_WORKER": "1",
+        "CONVMEM_ISSUE_286_HOST_ROOT": str(root),
         "PYTHONIOENCODING": "utf-8",
         "PYTHONDONTWRITEBYTECODE": "1",
         "LC_ALL": "C.UTF-8",
@@ -202,6 +210,12 @@ def sanitized_worker_env(
             [str(path.expanduser()) for path in forbidden]
         ),
     }
+    (root / "tmp").mkdir(parents=True, exist_ok=True)
+    (root / "xdg-state").mkdir(parents=True, exist_ok=True)
+    real_home = os.environ.get("CONVMEM_TEST_REAL_HOME")
+    if real_home and str(real_home).strip():
+        env["CONVMEM_TEST_REAL_HOME"] = str(Path(real_home).expanduser().resolve())
+    (root / "xdg-run").mkdir(parents=True, exist_ok=True)
     # python -I ignores PYTHONPATH and user site. Pass the host third-party
     # install so crash workers can import Chroma without reading production state.
     try:

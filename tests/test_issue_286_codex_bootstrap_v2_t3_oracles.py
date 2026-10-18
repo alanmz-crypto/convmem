@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from tests.fixtures.issue_286_host_isolation import enforce_issue_286_import_guard
+
+enforce_issue_286_import_guard()
+
 import hashlib
 from pathlib import Path
 

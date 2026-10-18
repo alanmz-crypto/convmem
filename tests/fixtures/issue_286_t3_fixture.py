@@ -7,6 +7,10 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.issue_286_host_isolation import enforce_issue_286_import_guard
+
+enforce_issue_286_import_guard()
+
 import config
 from bootstrap_codex_v2_authority import claim_initial_authority
 from bootstrap_codex_v3_writer_coordination import source_state_dir_for_path
@@ -16,8 +20,19 @@ from tests.test_issue_286_codex_bootstrap_v2_t1 import _rollout_fixture, _v2_gra
 
 
 def worker_config_path() -> Path:
-    home = Path(os.environ["HOME"]).expanduser()
-    return home / ".config" / "convmem" / "config.toml"
+    """Config path under isolated layout HOME (never operator ~/.config/convmem)."""
+    if os.environ.get("CONVMEM_ISSUE_286_INNER_BWRAP_WORKER") == "1":
+        from incremental_jsonl_isolation import _layout
+
+        root = Path(os.environ["CONVMEM_INCREMENTAL_ROOT"]).resolve()
+        return _layout(root)["user_config"]
+    enforce_issue_286_import_guard()
+    from tests.fixtures.issue_286_host_isolation import isolated_default_config_path
+
+    configured = os.environ.get("CONVMEM_CONFIG")
+    if configured:
+        return Path(configured).expanduser().resolve()
+    return isolated_default_config_path()
 
 
 def t3_bundle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

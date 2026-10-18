@@ -1,6 +1,8 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **COMPLETE** (V3–V4 at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1`). **T3 COMPLETE** (V5–V6 hermetic at `4a99eba47faf`). V7–V8 **NOT RUN** (T4–T5). v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
+**T3 hermetic evidence status (2026-10-18):** Prior PASS rows through `1723dd0` are **WITHDRAWN — host isolation leak** (operator config + Codex sessions touched during direct/bwrap pytest). Remediation staged; **no rerun PASS** until boundary script matches.
+
+**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **COMPLETE** (V3–V4 at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1`). **T3 INCOMPLETE** (isolation remediation staged; prior PASS withdrawn). V7–V8 **NOT RUN** (T4–T5). v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
@@ -347,7 +349,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff`); T3 COMPLETE (V5–V6 hermetic bwrap 55/55 at `4a99eba`); T4–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff`); T3 INCOMPLETE (host isolation fix staged; rerun pending); T4–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
@@ -367,7 +369,28 @@ corrections or cleanup. Review findings go through the established lane route.
 
 | 2026-10-18 | `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903` (tested code) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **55 passed**; race `test_real_child_deferral_after_multi_progress_terminal_still_requeues` |
 
-**TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **COMPLETE** (`4a99eba47faf` V5–V6 bwrap 55/55). T4–T5 NOT RUN.
+**TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **INCOMPLETE** (isolation fix staged; authorized rerun pending). T4–T5 parked.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
+
+
+## V6 production-route CLI proof gap
+
+`test_real_cli_bootstrap_required_exit91_unreserved_route` is **skipped** (not PASS) until a
+faithful harness exists. Production `maybe_route_incremental` selects the isolated path when
+`CONVMEM_INCREMENTAL_ROOT` is set; exit-91 live-route refusal requires the production branch
+(`ROOT` unset). Keeping `ROOT` for isolation safety cannot simultaneously prove production-route
+exit-91 without weakening production security or falsifying assertions. This is a **proof gap**,
+not isolation success and not a new grant.
+
+## Guarded rerun evidence (2026-10-18)
+
+- **Outer boundary:** `python3 scripts/issue_286_guarded_pytest_launcher.py` (single Python; capture + isolation before pytest; outer `bwrap --ro-bind / / --unshare-net --tmpfs /tmp` + scratch bind).
+- **Guard suite (outer only):** 15 passed (`tests/test_issue_286_host_isolation_guard.py`).
+- **Inner bwrap T3 gate:** 49 passed, **5 failed**, 0 skipped in `ISOLATED_PYTEST_TARGETS_T3` (guard excluded from inner targets).
+- **Failures (infra):** five `cli_watch_e2e` subprocess coordination tests (index child rc=1 vs expected 93 under nested bwrap); not production-path writes.
+- **V6:** `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` remains **INCOMPLETE** (xfail proof gap); excluded from T3 PASS count.
+- **T3 status:** **NOT COMPLETE** (V6 gap + 5 cli_watch failures).
+- **Snapshots:** `/tmp/issue-286-run-before.json` → `/tmp/issue-286-run-after.json`; config SHA256 unchanged; synthesis unchanged; Codex inventory count 933 (digest drift vs coordinator baseline 831 entries — live writers).
+- **Safe command:** `python3 scripts/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_host_isolation_guard.py`
