@@ -125,9 +125,14 @@ def main() -> int:
         import ingest  # noqa: PLC0415
 
         ingest._SYNTHESIS_FAIL_LOG = failure_log
+        from bootstrap_codex_v2_owner import set_worker_isolation_boundary  # noqa: PLC0415
+
+        set_worker_isolation_boundary(boundary)
         import pytest  # noqa: PLC0415
 
-        return int(pytest.main(sys.argv[2:]))
+        basetemp = boundary.root / "pytest-tmp"
+        basetemp.mkdir(parents=True, exist_ok=True)
+        return int(pytest.main(["--basetemp", str(basetemp), *sys.argv[2:]]))
 
     raise SystemExit(f"unknown worker command: {command}")
 

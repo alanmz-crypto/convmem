@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.issue_286_t2_owner_context import t2_owner_context
+
 from bootstrap_codex_v2_authority import (
     authority_path,
     claim_initial_authority,
@@ -30,6 +32,28 @@ CHILD = Path(__file__).with_name("issue_286_codex_bootstrap_t2_child.py")
 from bootstrap_codex_v2_publication_catalog import all_barrier_stage_names, PUBLICATION_SITES
 
 KILL_STAGES = all_barrier_stage_names()
+
+
+
+def _initial(state_dir, grant):
+    with t2_owner_context(state_dir):
+        return claim_initial_authority(state_dir, grant)
+
+
+def _recovery(state_dir, grant):
+    with t2_owner_context(state_dir):
+        return claim_recovery_authority(state_dir, grant)
+
+
+def _mirror(state_dir, grant):
+    with t2_owner_context(state_dir):
+        mirror_invocation_start(state_dir, grant)
+
+
+def _terminal(state_dir, grant, **kwargs):
+    with t2_owner_context(state_dir):
+        return publish_terminal_authority(state_dir, grant, **kwargs)
+
 
 SITE_ACTION = {
     "initial_authority": "initial",
@@ -100,6 +124,9 @@ def _parent_kill(
     return killed, rc, snapshot_tree(state_dir)
 
 
+    with t2_owner_context(state_dir):
+        return publish_terminal_authority(state_dir, grant, **kwargs)
+
 @pytest.mark.parametrize("kill_stage", KILL_STAGES)
 def test_parent_sigkill_at_publication_stage(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kill_stage: str
@@ -109,7 +136,7 @@ def test_parent_sigkill_at_publication_stage(
     def setup() -> None:
         site, _stage = kill_stage.split(".", 1)
         if site in {"journal_mirror", "recovery_authority", "progress_authority", "terminal_receipt", "terminal_authority", "v2_permit"}:
-            claim_initial_authority(state_dir, grant)
+            _initial(state_dir, grant)
         if site == "recovery_authority":
             return
 
@@ -142,7 +169,7 @@ def test_injected_replace_fail_leaves_no_durable_authority(tmp_path: Path, monke
     state_dir, grant, _ = _fixture(tmp_path, monkeypatch)
     monkeypatch.setenv("CONVMEM_BOOTSTRAP_V2_INJECT_REPLACE_FAIL", "initial_authority.replace")
     with pytest.raises(PublicationFailure):
-        claim_initial_authority(state_dir, grant)
+        _initial(state_dir, grant)
     assert load_authority(state_dir) is None
 
 
@@ -150,7 +177,7 @@ def test_injected_fsync_fail_before_authority_dir(tmp_path: Path, monkeypatch: p
     state_dir, grant, _ = _fixture(tmp_path, monkeypatch)
     monkeypatch.setenv("CONVMEM_BOOTSTRAP_V2_INJECT_FSYNC_FAIL", "initial_authority.dir_fsync")
     with pytest.raises(PublicationFailure):
-        claim_initial_authority(state_dir, grant)
+        _initial(state_dir, grant)
     assert authority_path(state_dir).is_file() or authority_path(state_dir).with_suffix(".json.tmp").exists()
 
 
@@ -159,7 +186,7 @@ def test_ambiguous_authority_temp_blocks_initial(tmp_path: Path, monkeypatch: py
     state_dir.mkdir(parents=True, exist_ok=True)
     authority_path(state_dir).with_name(authority_path(state_dir).name + ".tmp").write_text("{}", encoding="utf-8")
     with pytest.raises(CodexBootstrapV2AuthorityError, match="initial_claim_refused:.*ambiguous_authority_temp"):
-        claim_initial_authority(state_dir, grant)
+        _initial(state_dir, grant)
 
 
 def test_parent_kill_ordinal3_child_exits_nonzero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -180,7 +207,7 @@ def test_terminal_receipt_before_release_parent_kill_preserves_active_reservatio
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     state_dir, grant, _ = _fixture(tmp_path, monkeypatch)
-    claim_initial_authority(state_dir, grant)
+    _initial(state_dir, grant)
     killed, rc, _ = _parent_kill(
         tmp_path,
         state_dir,
@@ -200,7 +227,7 @@ def test_authority_claim_does_not_mutate_chroma(tmp_path: Path, monkeypatch: pyt
     state_dir, grant, chroma = _fixture(tmp_path, monkeypatch)
     chroma.mkdir(parents=True, exist_ok=True)
     before = snapshot_tree(chroma)
-    claim_initial_authority(state_dir, grant)
+    _initial(state_dir, grant)
     after = snapshot_tree(chroma)
     assert before == after
 
@@ -222,7 +249,7 @@ def test_injected_publication_failure_matrix(
 
     state_dir, grant, _ = _fixture(tmp_path, monkeypatch)
     if action != "initial":
-        claim_initial_authority(state_dir, grant)
+        _initial(state_dir, grant)
     site, barrier = inject_stage.split(".", 1)
     if barrier == "before_replace":
         monkeypatch.setenv("CONVMEM_BOOTSTRAP_V2_INJECT_REPLACE_FAIL", f"{site}.replace")
@@ -236,21 +263,22 @@ def test_injected_publication_failure_matrix(
     from bootstrap_codex_v2_publication import PublicationFailure
 
     with pytest.raises(PublicationFailure):
-        if action == "initial":
-            claim_initial_authority(state_dir, grant)
-        elif action == "mirror":
-            mirror_invocation_start(state_dir, grant)
-        else:
-            from bootstrap_codex_v2_permits import CodexV2PaidLedger
+        with t2_owner_context(state_dir):
+            if action == "initial":
+                claim_initial_authority(state_dir, grant)
+            elif action == "mirror":
+                mirror_invocation_start(state_dir, grant)
+            else:
+                from bootstrap_codex_v2_permits import CodexV2PaidLedger
 
-            CodexV2PaidLedger(state_dir, grant).consume_provider_http_attempt(
-                {
-                    "provider": "deepseek",
-                    "operation": "generate",
-                    "model": grant["distill_model"],
-                    "base_url": grant["distill_base_url"],
-                }
-            )
+                CodexV2PaidLedger(state_dir, grant).consume_provider_http_attempt(
+                    {
+                        "provider": "deepseek",
+                        "operation": "generate",
+                        "model": grant["distill_model"],
+                        "base_url": grant["distill_base_url"],
+                    }
+                )
     if expect == "no_authority":
         assert load_authority(state_dir) is None
     elif expect == "no_mirror_rows":

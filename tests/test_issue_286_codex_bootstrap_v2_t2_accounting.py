@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.issue_286_t2_owner_context import t2_owner_context
+
 import llm
 from bootstrap_codex_v2_authority import claim_initial_authority, claim_recovery_authority
 from bootstrap_codex_v2_permits import (
@@ -31,6 +33,12 @@ from tests.test_issue_286_codex_bootstrap_v2_t1 import _rollout_fixture, _v2_gra
 from tests.test_issue_286_codex_bootstrap_v2_t1_contract import _rebind_grant
 
 
+def _consume(ledger: CodexV2PaidLedger, state_dir: Path, event: dict[str, object] | None = None) -> None:
+    payload = event if event is not None else _valid_attempt_event()
+    with t2_owner_context(state_dir):
+        ledger.consume_provider_http_attempt(payload)
+
+
 def _ledger(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, budget: int = 2):
     source, cfg, prefix, boundary = _rollout_fixture(tmp_path, monkeypatch)
     grant = _with_budget_v2(_v2_grant(source, cfg, prefix_sha256=prefix, complete_boundary=boundary), budget)
@@ -38,12 +46,13 @@ def _ledger(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, budget: int = 2):
     from bootstrap_codex_v2 import v2_source_state_directory
 
     state_dir = v2_source_state_directory(state_root, grant)
-    claim_initial_authority(state_dir, grant)
+    with t2_owner_context(state_dir):
+        claim_initial_authority(state_dir, grant)
     return CodexV2PaidLedger(state_dir, grant), grant, state_dir
 
 
 def test_permit_before_send_blocks_transport(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=1)
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=1)
     transports: list[str] = []
 
     def fake_post(url, **_kwargs):
@@ -52,28 +61,29 @@ def test_permit_before_send_blocks_transport(tmp_path: Path, monkeypatch: pytest
 
     monkeypatch.setenv("DEEPSEEK_API_KEY", "hermetic-test-key")
     monkeypatch.setattr(llm.requests, "post", fake_post)
-    with llm.provider_http_accounting(ledger.consume_provider_http_attempt, lambda *_a, **_k: None):
-        assert (
-            llm._deepseek_generate(
-                "one",
-                grant["summarize_model"],
-                grant["summarize_base_url"],
-                max_attempts=1,
+    with t2_owner_context(state_dir):
+        with llm.provider_http_accounting(ledger.consume_provider_http_attempt, lambda *_a, **_k: None):
+            assert (
+                llm._deepseek_generate(
+                    "one",
+                    grant["summarize_model"],
+                    grant["summarize_base_url"],
+                    max_attempts=1,
+                )
+                == "ok"
             )
-            == "ok"
-        )
-        with pytest.raises(llm.ProviderAttemptBudgetExceeded, match="exhausted"):
-            llm._deepseek_generate(
-                "two",
-                grant["summarize_model"],
-                grant["summarize_base_url"],
-                max_attempts=1,
-            )
+            with pytest.raises(llm.ProviderAttemptBudgetExceeded, match="exhausted"):
+                llm._deepseek_generate(
+                    "two",
+                    grant["summarize_model"],
+                    grant["summarize_base_url"],
+                    max_attempts=1,
+                )
     assert len(transports) == 1
 
 
 def test_composed_outer_and_operation_guards_both_execute(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=5)
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=5)
     outer_calls: list[str] = []
     inner_calls: list[str] = []
 
@@ -86,13 +96,14 @@ def test_composed_outer_and_operation_guards_both_execute(tmp_path: Path, monkey
 
     composed = compose_provider_permits(outer, inner)
     event = _valid_attempt_event()
-    composed(event)
+    with t2_owner_context(state_dir):
+        composed(event)
     assert outer_calls == ["outer"]
     assert inner_calls == ["inner"]
 
 
 def test_outer_refusal_blocks_before_operation_counter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=5)
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=5)
     outer = outer_budget_permit_factory(0)
     composed = compose_provider_permits(outer, ledger.consume_provider_http_attempt)
     with pytest.raises(ProviderAttemptBudgetExceeded, match="outer_budget"):
@@ -101,12 +112,18 @@ def test_outer_refusal_blocks_before_operation_counter(tmp_path: Path, monkeypat
 
 
 def test_recovery_ordinal_uses_separate_permit_bucket(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.fixtures.issue_286_t2_owner_context import t2_owner_context as _ctx
+    from bootstrap_codex_v2_authority import claim_recovery_authority as _recovery_raw
+
     ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=2)
-    with llm.provider_http_accounting(ledger.consume_provider_http_attempt, lambda *_a, **_k: None):
-        ledger.consume_provider_http_attempt(_valid_attempt_event())
-    claim_recovery_authority(state_dir, grant)
+    with _ctx(state_dir):
+        with llm.provider_http_accounting(ledger.consume_provider_http_attempt, lambda *_a, **_k: None):
+            ledger.consume_provider_http_attempt(_valid_attempt_event())
+    with _ctx(state_dir):
+        _recovery_raw(state_dir, grant)
     ledger2 = CodexV2PaidLedger(state_dir, grant)
-    ledger2.consume_provider_http_attempt(_valid_attempt_event())
+    with _ctx(state_dir):
+        ledger2.consume_provider_http_attempt(_valid_attempt_event())
     assert ledger2.accounting()["invocation_ordinal"] == 2
     assert ledger2.accounting()["permitted_http_attempts"] == 1
 
@@ -130,29 +147,31 @@ def test_broken_permit_order_negative_control() -> None:
 
 def test_ledger_survives_process_restart(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=2)
-    ledger.consume_provider_http_attempt(_valid_attempt_event())
+    _consume(ledger, state_dir, _valid_attempt_event())
     reloaded = CodexV2PaidLedger(state_dir, grant)
     assert reloaded.accounting()["cumulative_permitted_http_attempts"] == 1
 
 
 def test_lost_response_still_counts_without_usage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=1)
-    ledger.consume_provider_http_attempt(_valid_attempt_event())
-    with pytest.raises(ProviderAttemptBudgetExceeded):
-        ledger.consume_provider_http_attempt(_valid_attempt_event())
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=1)
+    _consume(ledger, state_dir, _valid_attempt_event())
+    with t2_owner_context(state_dir):
+        with pytest.raises(ProviderAttemptBudgetExceeded):
+            ledger.consume_provider_http_attempt(_valid_attempt_event())
 
 
 def test_operation_guard_refusal_blocks_inner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=1)
-    ledger.consume_provider_http_attempt(_valid_attempt_event())
-    with pytest.raises(ProviderAttemptBudgetExceeded, match="exhausted"):
-        ledger.consume_provider_http_attempt(_valid_attempt_event())
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=1)
+    _consume(ledger, state_dir, _valid_attempt_event())
+    with t2_owner_context(state_dir):
+        with pytest.raises(ProviderAttemptBudgetExceeded, match="exhausted"):
+            ledger.consume_provider_http_attempt(_valid_attempt_event())
 
 
 def test_ollama_embed_cap_exempt_observed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from tests.test_incremental_jsonl_bootstrap_safety import _ollama_embed_post_response
 
-    ledger, grant, _ = _ledger(tmp_path, monkeypatch, budget=1)
+    ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=1)
     transports: list[str] = []
 
     def fake_post(url, **_kwargs):
@@ -166,25 +185,27 @@ def test_ollama_embed_cap_exempt_observed(tmp_path: Path, monkeypatch: pytest.Mo
         "model": grant["embedding_model"],
         "base_url": grant["embedding_base_url"],
     }
-    ledger.consume_provider_http_attempt(event)
-    ledger.consume_provider_http_attempt(event)
+    with t2_owner_context(state_dir):
+        ledger.consume_provider_http_attempt(event)
+        ledger.consume_provider_http_attempt(event)
     assert ledger.accounting()["permitted_http_attempts"] == 0
     assert ledger.accounting()["observed_provider_http_attempts"] == 2
 
 
 def test_cumulative_lifetime_across_recovery_without_reset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=2)
-    ledger.consume_provider_http_attempt(_valid_attempt_event())
-    ledger.consume_provider_http_attempt(_valid_attempt_event())
-    claim_recovery_authority(state_dir, grant)
+    _consume(ledger, state_dir, _valid_attempt_event())
+    _consume(ledger, state_dir, _valid_attempt_event())
     ledger2 = CodexV2PaidLedger(state_dir, grant)
-    with pytest.raises(ProviderAttemptBudgetExceeded):
-        ledger2.consume_provider_http_attempt(_valid_attempt_event())
+    with t2_owner_context(state_dir):
+        with pytest.raises(ProviderAttemptBudgetExceeded):
+            ledger2.consume_provider_http_attempt(_valid_attempt_event())
 
 
 def test_corrupt_permit_journal_refuses_consume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ledger, grant, state_dir = _ledger(tmp_path, monkeypatch, budget=2)
     ledger.permits_path.parent.mkdir(parents=True, exist_ok=True)
     ledger.permits_path.write_text("{not-jsonl\n", encoding="utf-8")
-    with pytest.raises(BootstrapGrantError):
-        ledger.consume_provider_http_attempt(_valid_attempt_event())
+    with t2_owner_context(state_dir):
+        with pytest.raises(BootstrapGrantError):
+            ledger.consume_provider_http_attempt(_valid_attempt_event())

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterator
 
 from bootstrap_codex_v2 import grant_fingerprint_v2, validate_grant_v2
+from bootstrap_codex_v2_owner import require_owner_lock
 from bootstrap_codex_v2_authority import (
     AuthorityView,
     load_authority,
@@ -106,6 +107,14 @@ class CodexV2PaidLedger:
         return self._authority
 
     def consume_provider_http_attempt(self, event: dict[str, object]) -> None:
+        from chroma_write_store import (
+            production_chroma_store_session_depth,
+            production_write_session_depth,
+        )
+
+        require_owner_lock()
+        if production_chroma_store_session_depth() > 0 or production_write_session_depth() > 0:
+            raise ProviderAttemptBudgetExceeded("provider_permit_under_c1_session")
         authority = self.authority
         if not authority.reservation_active:
             raise ProviderAttemptBudgetExceeded("reservation_inactive")

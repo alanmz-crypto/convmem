@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.issue_286_t2_owner_context import t2_owner_context
+
 from bootstrap_codex_v2_authority import (
     CRASH_POINT_ENV,
     claim_initial_authority,
@@ -30,15 +32,19 @@ def _run_child(state_dir: Path, grant: dict, *, crash_point: str, action: str) -
         "payload = json.loads(sys.argv[1])\n"
         "sys.path.insert(0, os.getcwd())\n"
         "from bootstrap_codex_v2_authority import claim_initial_authority, claim_recovery_authority, mirror_invocation_start, load_authority\n"
+        "from tests.fixtures.issue_286_t2_owner_context import t2_owner_context\n"
         "state_dir = Path(payload['state_dir'])\n"
         "grant = payload['grant']\n"
         "action = payload['action']\n"
         "if action == 'initial':\n"
-        "    claim_initial_authority(state_dir, grant)\n"
+        "    with t2_owner_context(state_dir):\n"
+        "        claim_initial_authority(state_dir, grant)\n"
         "elif action == 'mirror':\n"
-        "    mirror_invocation_start(state_dir, grant)\n"
+        "    with t2_owner_context(state_dir):\n"
+        "        mirror_invocation_start(state_dir, grant)\n"
         "elif action == 'recovery':\n"
-        "    claim_recovery_authority(state_dir, grant)\n"
+        "    with t2_owner_context(state_dir):\n"
+        "        claim_recovery_authority(state_dir, grant)\n"
         "print(json.dumps({'ordinal': load_authority(state_dir).invocation_ordinal if load_authority(state_dir) else None}))\n"
     )
     return subprocess.run(
@@ -60,6 +66,23 @@ def _fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     return v2_source_state_directory(state_root, grant), grant
 
 
+
+def _initial(state_dir, grant):
+    with t2_owner_context(state_dir):
+        return claim_initial_authority(state_dir, grant)
+
+
+def _recovery(state_dir, grant):
+    with t2_owner_context(state_dir):
+        return claim_recovery_authority(state_dir, grant)
+
+
+def _mirror(state_dir, grant):
+    with t2_owner_context(state_dir):
+        mirror_invocation_start(state_dir, grant)
+
+
+
 def test_crash_after_authority_leaves_ordinal1_for_recovery(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     state_dir, grant = _fixture(tmp_path, monkeypatch)
     result = _run_child(state_dir, grant, crash_point="after_authority_fsync", action="initial")
@@ -67,24 +90,24 @@ def test_crash_after_authority_leaves_ordinal1_for_recovery(tmp_path: Path, monk
     view = load_authority(state_dir)
     assert view is not None
     assert view.invocation_ordinal == 1
-    claim_recovery_authority(state_dir, grant)
+    _recovery(state_dir, grant)
     assert load_authority(state_dir).invocation_ordinal == 2
 
 
 def test_reservation_without_transaction_recovery(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     state_dir, grant = _fixture(tmp_path, monkeypatch)
-    claim_initial_authority(state_dir, grant)
+    _initial(state_dir, grant)
     assert not (state_dir / "transaction.json").exists()
-    claim_recovery_authority(state_dir, grant)
-    mirror_invocation_start(state_dir, grant)
+    _recovery(state_dir, grant)
+    _mirror(state_dir, grant)
     assert load_authority(state_dir).invocation_ordinal == 2
 
 
 def test_journal_mirror_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     state_dir, grant = _fixture(tmp_path, monkeypatch)
-    claim_initial_authority(state_dir, grant)
-    mirror_invocation_start(state_dir, grant)
-    mirror_invocation_start(state_dir, grant)
+    _initial(state_dir, grant)
+    _mirror(state_dir, grant)
+    _mirror(state_dir, grant)
     from bootstrap_codex_v2_authority import operation_root
     from bootstrap_safety import _read_jsonl
 
@@ -93,7 +116,7 @@ def test_journal_mirror_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
 def test_crash_after_journal_mirror_still_authority_ordinal1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     state_dir, grant = _fixture(tmp_path, monkeypatch)
-    claim_initial_authority(state_dir, grant)
+    _initial(state_dir, grant)
     result = _run_child(state_dir, grant, crash_point="after_journal_mirror_fsync", action="mirror")
     assert result.returncode == 91
     assert load_authority(state_dir).invocation_ordinal == 1

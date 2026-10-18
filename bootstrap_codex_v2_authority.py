@@ -11,9 +11,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterator
 
 from bootstrap_codex_v2 import grant_fingerprint_v2, operation_identity_v2, validate_grant_v2
-from contextlib import nullcontext
-
-from bootstrap_codex_v2_owner import ENFORCE_ENV, require_owner_lock
+from bootstrap_codex_v2_owner import require_owner_lock
 from bootstrap_codex_v2_publication import append_jsonl_line, atomic_publish_json
 from bootstrap_safety import (
     BootstrapGrantError,
@@ -72,11 +70,11 @@ def operation_root(state_dir: Path, grant: dict[str, Any]) -> Path:
     return root
 
 
-def _authority_lock(state_dir: Path):
-    if os.environ.get(ENFORCE_ENV, "").strip() == "1":
-        require_owner_lock()
-        return nullcontext()
-    return claim_lock(state_dir)
+@contextmanager
+def _authority_lock(state_dir: Path) -> Iterator[None]:
+    require_owner_lock()
+    with claim_lock(state_dir):
+        yield
 
 
 def _crash_after(point: str) -> None:
@@ -360,35 +358,36 @@ def refuse_third_invocation(state_dir: Path, grant: dict[str, Any]) -> str:
 
 def mirror_invocation_start(state_dir: Path, grant: dict[str, Any]) -> None:
     validated = validate_grant_v2(grant)
-    authority = load_authority(state_dir)
-    if authority is None:
-        raise CodexBootstrapV2AuthorityError("mirror_without_authority")
-    _assert_identical_grant(authority, validated)
-    root = operation_root(state_dir, validated)
-    root.mkdir(parents=True, exist_ok=True)
-    os.chmod(root, 0o700)
-    invocations = root / "invocations.jsonl"
-    rows = _read_jsonl(invocations)
-    if any(
-        row.get("record_type") == "start"
-        and int(row.get("invocation_ordinal") or 0) == authority.invocation_ordinal
-        for row in rows
-    ):
-        return
-    append_jsonl_line(
-        invocations,
-        {
-            "record_type": "start",
-            "recorded_at": utc_now(),
-            "operation_id": validated["operation_id"],
-            "grant_fingerprint": grant_fingerprint_v2(validated),
-            "invocation_ordinal": authority.invocation_ordinal,
-            "authority_revision": authority.revision,
-            "mirror": True,
-        },
-        stage="journal_mirror",
-    )
-    _crash_after("after_journal_mirror_fsync")
+    with _authority_lock(state_dir):
+        authority = load_authority(state_dir)
+        if authority is None:
+            raise CodexBootstrapV2AuthorityError("mirror_without_authority")
+        _assert_identical_grant(authority, validated)
+        root = operation_root(state_dir, validated)
+        root.mkdir(parents=True, exist_ok=True)
+        os.chmod(root, 0o700)
+        invocations = root / "invocations.jsonl"
+        rows = _read_jsonl(invocations)
+        if any(
+            row.get("record_type") == "start"
+            and int(row.get("invocation_ordinal") or 0) == authority.invocation_ordinal
+            for row in rows
+        ):
+            return
+        append_jsonl_line(
+            invocations,
+            {
+                "record_type": "start",
+                "recorded_at": utc_now(),
+                "operation_id": validated["operation_id"],
+                "grant_fingerprint": grant_fingerprint_v2(validated),
+                "invocation_ordinal": authority.invocation_ordinal,
+                "authority_revision": authority.revision,
+                "mirror": True,
+            },
+            stage="journal_mirror",
+        )
+        _crash_after("after_journal_mirror_fsync")
 
 
 def detect_authority_corruption(state_dir: Path, grant: dict[str, Any]) -> list[str]:
