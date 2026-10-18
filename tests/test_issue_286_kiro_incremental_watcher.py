@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from watch import expand_selected_kiro_session_meta_paths
+from watch_circuit_breaker import CircuitBreakerState
 
 
 def test_session_json_maps_to_messages_for_selected_kiro(tmp_path: Path) -> None:
@@ -38,3 +39,13 @@ def test_session_json_maps_to_messages_for_selected_kiro(tmp_path: Path) -> None
     }
     expanded = expand_selected_kiro_session_meta_paths(cfg, [str(session_json)])
     assert str(messages.resolve()) in expanded
+
+def test_kiro_prefix_change_does_not_clear_terminal_refusal_quarantine(tmp_path: Path) -> None:
+    """C-KI5: prefix digest change must not forgive a terminal refusal hold."""
+    messages = tmp_path / "sess_q" / "messages.jsonl"
+    messages.parent.mkdir(parents=True)
+    messages.write_bytes(b"\n")
+    path_key = str(messages.resolve())
+    breaker = CircuitBreakerState(tmp_path / "breaker.json")
+    breaker.record_refusal(path_key, outcome="rolled_back", prefix_digest="a" * 64)
+    assert breaker.should_skip_refusal_quarantine(path_key, "b" * 64)

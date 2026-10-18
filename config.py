@@ -56,7 +56,7 @@ class IncrementalJsonlConfigError(ValueError):
 
 
 @dataclass(frozen=True)
-class IncrementalJsonlSettings:
+class IncrementalJsonlSettings:  # pylint: disable=too-many-instance-attributes
     enabled: bool
     state_dir: str
     allow_full_rebuild: bool
@@ -110,7 +110,10 @@ def _parse_kiro_session_policy_table(
     from adapters.detect import detect_format
 
     selected_kiro = any(detect_format(source) == "jsonl_kiro_session" for source in live_sources)
+    kiro_policy_context = selected_kiro or detected_requires
     if raw_kiro is None:
+        return None
+    if not kiro_policy_context:
         return None
     if not isinstance(raw_kiro, dict):
         raise IncrementalJsonlConfigError(

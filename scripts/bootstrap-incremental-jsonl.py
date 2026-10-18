@@ -37,6 +37,10 @@ from bootstrap_safety import (  # pylint: disable=wrong-import-position
     sha256_file,
     validate_grant,
 )
+from incremental_jsonl_formats import get_format_spec  # pylint: disable=wrong-import-position
+from incremental_transform_contract import (  # pylint: disable=wrong-import-position
+    build_transform_descriptor,
+)
 from bootstrap_supersession import (  # pylint: disable=wrong-import-position
     activate_bootstrap_supersession,
     bootstrap_mutation_inventory,

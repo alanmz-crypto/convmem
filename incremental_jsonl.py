@@ -160,6 +160,12 @@ REQUIRED_CHECKPOINT_FIELDS = (
 FaultHook = Callable[[str], None]
 
 
+def _models_support_transform_descriptor(models: dict[str, Any]) -> bool:
+    return all(models.get(key) for key in ("summarize_model", "distill_model", "embed_model"))
+
+
+
+
 class IncrementalJsonlError(RuntimeError):
     """Stable recovery/refusal code for the incremental route."""
 
@@ -655,7 +661,7 @@ class IncrementalJsonlCoordinator:
         else:
             self.transform_v2 = bool(self.codex_admitted_live or self.kiro_admitted_live)
         self.transform_descriptor: TransformDescriptor | None = None
-        if self.transform_v2:
+        if self.transform_v2 and _models_support_transform_descriptor(self.models):
             self.transform_descriptor = build_transform_descriptor(
                 chunk_size=self.chunk_size,
                 overlap=self.overlap,
@@ -939,11 +945,24 @@ class IncrementalJsonlCoordinator:
             digest = None
             if self.format_spec.session_meta_path:
                 sibling = self.source.parent / self.format_spec.session_meta_path
-                digest = (
-                    _sha(sibling.read_bytes())
-                    if sibling.is_file() and not sibling.is_symlink()
-                    else None
-                )
+                if sibling.is_file() and not sibling.is_symlink():
+                    if self.kiro_admitted_live:
+                        from adapters.kiro_session_jsonl import (
+                            load_bounded_session_meta_bytes,
+                            semantic_session_meta_digest,
+                            validated_kiro_session_identity,
+                        )
+
+                        try:
+                            raw_meta = load_bounded_session_meta_bytes(sibling.parent)
+                            session_id, workspace = validated_kiro_session_identity(
+                                sibling.parent, raw_meta
+                            )
+                            digest = semantic_session_meta_digest(session_id, workspace)
+                        except ValueError:
+                            digest = None
+                    else:
+                        digest = _sha(sibling.read_bytes())
             if digest != snapshot["session_meta_digest"]:
                 raise SourceCaptureError("source_identity_changed", "session metadata changed")
 

@@ -92,7 +92,12 @@ def validated_kiro_session_identity(session_dir: Path, raw: bytes) -> tuple[str,
     if not isinstance(session_id, str) or not session_id:
         raise ValueError("session_meta_identity_missing")
     if session_id != session_dir.name:
-        raise ValueError("session_meta_identity_mismatch")
+        # Live transcripts live under sess_<uuid>/; snapshot copies keep the
+        # original id while residing under transaction snapshot directories.
+        if session_dir.name.startswith("sess_"):
+            raise ValueError("session_meta_identity_mismatch")
+        if not session_id.startswith("sess_"):
+            raise ValueError("session_meta_identity_mismatch")
     workspaces = data.get("workspacePaths")
     workspace = ""
     if not isinstance(workspaces, list) or not workspaces:

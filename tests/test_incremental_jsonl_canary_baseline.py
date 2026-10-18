@@ -42,7 +42,7 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 full-rebuild Codex admission frontier fix.
     # Refreshed for issue #286 commit digest reuse (slice 1).
     # Refreshed for issue #286 Kiro incremental v2 routing and policy guards.
-    "incremental_jsonl.py": "f2dae4e7227c1b806c592bdaa331db706096ef4320fde55c31c1e9cbec9441a2",
+    "incremental_jsonl.py": "503161fe5a24aca0ef397769064dc125ef2442e7adcaa1de53c89fbdf616fe3e",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

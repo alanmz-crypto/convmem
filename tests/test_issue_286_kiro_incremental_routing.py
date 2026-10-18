@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -126,7 +125,7 @@ def test_missing_kiro_policy_refuses_before_route(tmp_path: Path, monkeypatch: p
 
 def test_isolated_kiro_uses_transform_v2_descriptor(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     install_fakes(monkeypatch)
-    from tests.incremental_jsonl_helpers import isolated_env, write_source
+    from tests.incremental_jsonl_helpers import isolated_env
 
     boundary, env = isolated_env(tmp_path)
     for key, value in env.items():
