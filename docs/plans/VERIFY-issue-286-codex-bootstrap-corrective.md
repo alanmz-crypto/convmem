@@ -5,7 +5,7 @@
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` (T1 implementation + contract + bwrap gate). **Documentation evidence tip:** `DOC_EVIDENCE_SHA`. **PR:** none authorized.
+**Tested code SHA:** `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` (T1 implementation + contract + bwrap gate). **Documentation evidence tip:** `0c0cc8c47bd3f6f2bf5fd9f35b11d11eda11f654`. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -137,7 +137,7 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `5d5ec91` / `45b07d6` | prior in-process hook gate | — | **invalid** | withdrawn — not external enforcement |
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 
-**TL;DR:** [Arc Codex] T1 V0–V2 PASS at tested code `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` with bwrap boundary. V3–V8 NOT RUN. Documentation tip `DOC_EVIDENCE_SHA`.
+**TL;DR:** [Arc Codex] T1 V0–V2 PASS at tested code `517d014a0be11c6d70c985aa35a8c3cbdac4fe71` with bwrap boundary. V3–V8 NOT RUN. Documentation tip `0c0cc8c47bd3f6f2bf5fd9f35b11d11eda11f654`.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
