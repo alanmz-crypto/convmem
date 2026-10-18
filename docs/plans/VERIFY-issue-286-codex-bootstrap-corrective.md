@@ -5,7 +5,7 @@
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Implementation subject SHA:** `SUBJECT_TIP_SHA` (includes T1 hermetic harness + this evidence). **PR:** none authorized.
+**Implementation subject SHA:** `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` (includes T1 hermetic harness + this evidence). **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -43,7 +43,7 @@ to this mechanical verification. V0–V2 rows below are filled from hermetic Exe
 | V0a | Ryan Execute grant for Cursor T1–T5 + hermetic verification | PASS — [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md) |
 | V0b | Reviewed execution plan SHA | PASS — `942390001bca407c1c28e9972c443ee7612e1c1b` |
 | V0c | Implementation code baseline (handoff pin) | PASS — branch rooted at handoff; T1 code parent `483373f1cef2142847fcd9c276196593a72a0ecf` |
-| V0d | Subject tip SHA (implementation + evidence) | PASS — `SUBJECT_TIP_SHA` |
+| V0d | Subject tip SHA (implementation + evidence) | PASS — `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` |
 | V0e | Python interpreter | PASS — `Python 3.13.12`, `pytest 9.1.1` |
 | V0f | Externally enforced isolation before imports | PASS — worker `tests/issue_286_codex_bootstrap_isolation_worker.py` installs network/service denial and `IsolationBoundary` with forbidden production roots via `sanitized_worker_env()`; parent gate `tests/test_issue_286_codex_bootstrap_hermetic_gate.py` |
 | V0g | Negative boundary probes | PASS — `boundary-probe`: `network=IsolationViolation`, `watcher=IsolationViolation`, `forbidden_root=IsolationViolation`, `root_escape=IsolationViolation`; empty credential and production override env lists |
@@ -56,7 +56,7 @@ Execute evidence (`EXECUTE-TASK.md` fields recorded here; no PR-native review ye
 |-------|-------|
 | `gate_applicability` | `pending` |
 | `reason` | No PR authorized; runtime/concurrency review is a later merge gate |
-| `subject_tip_sha` | `SUBJECT_TIP_SHA` |
+| `subject_tip_sha` | `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` |
 | `bugbot_reviewed_sha` | `n/a` |
 | `result` | `n/a` |
 | `finding_disposition` | `none` |
@@ -177,11 +177,11 @@ corrections or cleanup. Review findings go through the established lane route.
 
 | Date | Subject SHA | Command | Exit | Result | Notes |
 |------|-------------|---------|------|--------|-------|
-| 2026-10-18 | `SUBJECT_TIP_SHA` | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 3 gate tests; spawns isolated worker with boundary probe + 10 scoped T1/v1 tests |
-| 2026-10-18 | `SUBJECT_TIP_SHA` | worker `boundary-probe` | 0 | PASS | All negative probes return `IsolationViolation` |
+| 2026-10-18 | `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 3 gate tests; spawns isolated worker with boundary probe + 10 scoped T1/v1 tests |
+| 2026-10-18 | `5d5ec91ad6d1b8e8f7258675508e1612552ae01a` | worker `boundary-probe` | 0 | PASS | All negative probes return `IsolationViolation` |
 | 2026-10-18 | `439b851` | (ad hoc, pre-isolation) | — | **not hermetic** | T1 code landed; evidence gate intentionally not filed |
 
-**TL;DR:** [Arc Codex] T1 hermetic V0–V2 PASS at `SUBJECT_TIP_SHA`. V3–V8 and live readiness remain NOT RUN / not authorized.
+**TL;DR:** [Arc Codex] T1 hermetic V0–V2 PASS at `5d5ec91ad6d1b8e8f7258675508e1612552ae01a`. V3–V8 and live readiness remain NOT RUN / not authorized.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
