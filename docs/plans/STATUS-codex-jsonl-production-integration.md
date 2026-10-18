@@ -16,8 +16,8 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 **Current slice:** make the one-shot bootstrap support the three existing
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
-the bounded corrective direction; Kiro reviews; Ryan controls implementation
-and later live authority.
+the execution plan after Kiro passed the direction and Ryan approved it. Kiro
+reviews the plan; Ryan controls Cursor implementation and later live authority.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
 writer coordination and recovery, fresh source/backup/budget/health evidence,
@@ -93,8 +93,13 @@ Key invariants:
   rollback files were observed. These counts and hashes are not a grant.
 - **Corrective direction:**
   [existing Codex rollout bootstrap](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md)
-  is drafted for Kiro review. No implementation, execution plan, or new live
-  authority has been issued.
+  received Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff` in the
+  review Ryan supplied. Ryan then explicitly approved direction and requested
+  execution planning.
+- **Execution plan:** [five serial corrective tasks](EXECUTION-issue-286-codex-bootstrap-corrective.md)
+  are drafted for Kiro review, with an unexecuted
+  [VERIFY companion](VERIFY-issue-286-codex-bootstrap-corrective.md). No Cursor
+  implementation or new live authority has been granted.
 
 ## 4. Completion State
 
@@ -105,8 +110,10 @@ Key invariants:
   overcome the current entrypoint's technical restrictions.
 - A2 indexed one stale Crush database and stopped after its post-file doctor
   returned rc 1: `[FAIL] ledger_documents: database is locked`. A final
-  diagnostic also returned rc 1. The cause remains unresolved; remaining
-  Crush/Kiro database work and manual indexing remain stopped.
+  diagnostic also returned rc 1. Kiro subsequently reported doctor rc 0 during
+  direction review; that observation does not diagnose the earlier failure or
+  authorize resumption. Remaining Crush/Kiro work and manual indexing remain
+  stopped.
 - A3's offline baseline is complete: 38 committed one-chunk samples, median
   294.7305 s, nearest-rank p95 368.188 s, maximum 607.420 s. These are end-to-end
   event times including provider/queue work, not isolated C1 or commit timings.
@@ -115,36 +122,40 @@ Key invariants:
 
 ## 5. Your Role
 
-**Kiro next:** review the corrective direction at its exact committed revision.
-Check format/state/descriptor binding, v1 compatibility, source reservation
-coverage across live writers, paid-cap composition, and recovery that preserves
-unrelated writes. Return a written verdict and bounded corrections to Ryan.
+**Kiro next:** review the execution plan and VERIFY stub at their exact committed
+revision. Focus on the atomic reservation/invocation protocol, preparation-lease
+and mutation-lock ordering, complete writer mediation, scoped watcher deferral,
+and source-only recovery. Direction PASS at `e0e91bd` is not execution-plan PASS.
+Return the verdict and bounded findings to Ryan. A rejection routes to Ryan
+before Codex revises.
 
-**Codex:** after Kiro review and Ryan direction approval, shape the bounded
-execution plan. **Cursor:** implement only after Ryan authorizes the reviewed
-plan. No lane may infer deployment or live execution permission from review.
+**Cursor:** implement T1–T5 only after Ryan explicitly authorizes the reviewed
+plan and hermetic verification. **Codex:** planning author; no implementation
+or self-approval. Neither lane may infer deployment or live permission.
 
-**Ryan/Claude operational ownership:** clear the unresolved doctor condition
-through evidence, establish compatible writer participation and backup/source
-recovery disposition, and approve numeric budgets and later exact live actions.
-The current session grants none of those mutations.
+**Ryan/Claude operational ownership:** resolve the A2 health incident through
+evidence, establish compatible writer participation, identify enforceable outer
+paid-budget composition and backup/source recovery disposition, and approve
+later exact live actions. The current grant permits planning documents only.
 
 ## 6. Remaining gates
 
-1. Kiro reviews the [corrective direction](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md);
-   Ryan approves the architecture direction.
-2. Codex shapes the execution plan; Ryan authorizes Cursor implementation of
-   the reviewed bounded plan. Hermetic evidence must cover source identity,
-   complete writer mediation, caps, and every crash/recovery boundary.
-3. Separately review/land the implementation and authorize any compatible
-   runtime/writer rollout. No deployment, config change, watcher stop/restart,
-   quarantine release, PR, or source change is granted by this planning work.
-4. Resolve the doctor failure; revalidate exact source/runtime/config/provider
-   identities, verified local/offsite backup coverage, source recovery
-   disposition, writer compatibility, and operation/outer-canary paid caps.
-5. Refresh the A1 exact-source packet. Only a compatible reviewed runtime plus
-   Ryan's exact execution authority can permit serial bootstrap. Preserve
-   the 4 GB RSS and new-doctor-FAIL stops, and the one-recovery limit.
+1. Kiro reviews the [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md)
+   and [VERIFY stub](VERIFY-issue-286-codex-bootstrap-corrective.md); Ryan
+   authorizes Cursor implementation of the reviewed exact revision.
+2. Cursor implements five serial tasks and supplies hermetic evidence for
+   identity/preflight, durable authority/accounting, writer/watcher cooperation,
+   coordinator recovery, and integration. Applicable skipped proofs block PASS.
+3. Obtain exact-tip independent implementation review and separately authorized
+   PR/review/merge and compatible runtime/writer rollout. No deployment, config
+   change, watcher stop/restart, quarantine release, or source change follows
+   from the planning approval.
+4. Resolve health readiness and outer-budget enforcement; revalidate exact
+   source/runtime/config/provider identities, verified local/offsite backups,
+   source recovery disposition, and actual writer compatibility.
+5. Refresh the A1 packet. Only a compatible reviewed runtime plus Ryan's exact
+   execution authority permits serial bootstrap. Preserve the 4 GB RSS and
+   new-doctor-FAIL stops, and the initial-plus-one-recovery limit.
 
 ## 7. Hard Stops
 
@@ -189,6 +200,7 @@ visible to readers.
 | Bounded implementation plan | `docs/plans/EXECUTION-codex-jsonl-production-integration.md` |
 | Production-canary architecture | `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` |
 | Production-canary execution plan | `docs/plans/EXECUTION-codex-jsonl-production-canary.md` |
+| A1 corrective execution plan / verification | `docs/plans/EXECUTION-issue-286-codex-bootstrap-corrective.md`, `docs/plans/VERIFY-issue-286-codex-bootstrap-corrective.md` |
 | A1 Codex bootstrap corrective direction | `docs/plans/ARCHITECTURE-issue-286-codex-bootstrap-corrective.md` |
 | Current arc snapshot | `docs/plans/STATUS-codex-jsonl-production-integration.md` |
 | Corrected exact-source decision packet | `docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-review-packet.md` at reviewed commit `4aecb96` |
@@ -282,17 +294,18 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-18 | Codex | A1 corrective direction drafted for Kiro review; A1 remains parked and A2 is stopped on unresolved doctor failure |
+| 2026-10-18 | Codex / Ryan | Kiro direction PASS at e0e91bd supplied; Ryan approved direction; execution plan and VERIFY stub drafted for Kiro review, implementation ungranted |
 
 ## TL;DR
 
 - [Arc Codex] A1 stays parked: the current bootstrap is Kiro-only and requires
   operational conditions incompatible with the live watcher/config.
-- Codex has drafted a bounded corrective direction for Kiro review. Ryan
-  approves direction and later Cursor implementation; live execution remains
-  a separate exact-source gate.
+- Kiro passed the direction and Ryan approved execution planning. The five-task
+  plan and VERIFY stub now await Kiro review; Cursor implementation and live
+  execution remain separately gated.
 - A2 remains stopped on an unresolved doctor failure. A3's 38-sample baseline
   is complete. No source, runtime, config, watcher, or quarantine change is
   authorized by this planning work.
 
-<!-- ref: ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — current A1 direction and gates -->
+<!-- ref: ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md, ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./VERIFY-issue-286-codex-bootstrap-corrective.md — current A1 plan and gates -->
 <!-- src: /tmp/convmem-286-free-window-20261018/A1-dry-run-packet.md, /tmp/convmem-286-free-window-20261018/A2-report.json, /tmp/convmem-286-free-window-20261018/a3-baseline.json — dated operational evidence -->

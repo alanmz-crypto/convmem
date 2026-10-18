@@ -1,6 +1,7 @@
 # [Arc Codex #286] Corrective direction for existing Codex rollout bootstrap
 
-**Author:** Codex, 2026-10-18. **State:** Draft for Kiro review; awaiting Ryan's direction approval.
+**Author:** Codex, 2026-10-18. **State:** Direction approved; execution plan drafted for Kiro review.
+**Acceptance:** Ryan supplied Kiro's written PASS for exact revision `e0e91bd32f96bce1f8c109a84005ed547d8655ff`, then explicitly approved direction and requested execution planning. The design contracts below remain the reviewed direction; this acceptance does not approve the subsequent execution-plan details.
 **Source:** Ryan's instruction to prepare a bounded correction supporting Codex identity/parsing and coordination with live writers while preserving paid caps and recovery.
 **Baseline:** fetched `origin/main` at `483373f1cef2142847fcd9c276196593a72a0ecf`.
 **Problem:** The three A1 sources are Codex rollouts, but the shipped one-shot bootstrap selects Kiro parsing/state identity and requires incremental routing disabled and the watcher stopped.
@@ -9,7 +10,7 @@
 
 Recommend a **versioned, exact-source Codex bootstrap through the existing coordinator**, with a durable reservation for the selected source and enforced cooperation at writer admission and mutation boundaries. Unrelated, compatible writers may continue; C1 still serializes shared mutations. Preserve the original Kiro grant and stopped-watcher route unchanged.
 
-This document chooses the architecture direction. It contains acceptance obligations, not an Execute task list. Planning is authorized. Kiro reviews this exact revision; Ryan approves the direction before Codex shapes the execution plan. Cursor implementation requires Ryan's later explicit authorization of that reviewed plan. No live action follows from review, implementation, merge, or a bare “go A1.”
+This document chooses the architecture direction. It contains acceptance obligations, not an Execute task list. Kiro passed the direction and Ryan approved execution planning. The [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md) now awaits Kiro review; Cursor implementation requires Ryan's later explicit authorization of that reviewed plan. No live action follows from review, implementation, merge, or a bare “go A1.”
 
 **A1 remains parked.** Current authority permits no deployment, runtime-main/config change, watcher stop/restart, quarantine clearing, transcript/source changes, implementation, PR, or Part B work. The new authorization permits these planning documents only. Existing A2 indexing remains stopped after its doctor failure.
 
@@ -126,12 +127,12 @@ Chroma still has a cross-collection visibility seam; this plan preserves replay/
 
 **Health:** A2's post-file doctor returned rc 1 with `[FAIL] ledger_documents: database is locked`; a final diagnostic also returned rc 1. The cause is unresolved. Do not label this corruption or a harmless transient without evidence. Read-only diagnosis and a fresh healthy baseline are prerequisites to any resumed indexing, including A1. Stop the owned run if any observed index process exceeds 4 GB RSS or doctor reports a new FAIL; do not kill another lane's process. Retain journals for recovery.
 
-**Next gate:** Kiro reviews this direction at its exact committed revision, especially v1 compatibility, Codex descriptor identity, complete writer mediation, cap composition, and foreign-write-preserving recovery. Kiro PASS plus Ryan direction approval permits Codex execution planning. Ryan then authorizes Cursor implementation of the reviewed bounded plan. Review/merge, deployment, compatible-writer rollout, backup/source revalidation, numeric caps, health clearance, and exact A1 execution are distinct later gates.
+**Next gate:** Kiro reviews the execution plan at its exact committed revision. It incorporates Kiro's direction-review precision corrections: entrypoint state-ID convergence, reservation-without-transaction recovery, and watcher deferral classification. Ryan then authorizes Cursor implementation of the reviewed bounded plan. Review/merge, deployment, compatible-writer rollout, backup/source revalidation, numeric caps, health clearance, and exact A1 execution are distinct later gates.
 
-**Stop: Await HITL — direction review/approval.** No execution plan or implementation is authorized by this draft. The exact A1 packet must be refreshed against the eventual reviewed runtime; “go A1” cannot make today's incompatible entrypoint work.
+**Stop: Await HITL — execution-plan review and Cursor implementation authorization.** Direction approval grants planning, not implementation. The exact A1 packet must be refreshed against the eventual reviewed runtime; “go A1” cannot make today's incompatible entrypoint work.
 
 **TL;DR:** [Arc Codex] Recommend a v2 exact-source Codex bootstrap with durable source ownership and existing governed writes. Preserve v1, paid-attempt caps, one recovery, and unrelated writers' data. A1 stays parked pending review, approved implementation, compatible deployment, and fresh exact execution authority.
 
 <!-- src: /tmp/convmem-286-free-window-20261018/A1-dry-run-packet.md — packet-time observations, not authority -->
 <!-- src: ../../scripts/bootstrap-incremental-jsonl.py, ../../bootstrap_safety.py, ../../incremental_jsonl.py, ../../incremental_jsonl_formats.py, ../../purge_locks.py — baseline contracts -->
-<!-- ref: ./STATUS-codex-jsonl-production-integration.md, ../planning/ARCHITECTURE-PLANNING.md — arc routing and direction gate -->
+<!-- ref: ./STATUS-codex-jsonl-production-integration.md, ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ../planning/ARCHITECTURE-PLANNING.md — arc routing and phase gates -->
