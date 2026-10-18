@@ -1,11 +1,11 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **COMPLETE** (V3–V4 at `d446122772839f25cc30847b653cb9282b79004d`). V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
+**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **INCOMPLETE** — V3/V4 mechanical proofs **PASS** (see evidence log SHA); **blocker:** authority mutation APIs remain callable without mandatory `owner_claim_lock` until T3 complete-writer mediation (`CONVMEM_BOOTSTRAP_V2_ENFORCE_OWNER_LOCK=1` is test-only today). V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `d446122772839f25cc30847b653cb9282b79004d` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** `bd5499463d47cc69d91c0ca27e2b55e73479b010`. **PR:** none authorized.
+**Tested code SHA:** `6ad76d61ab18041d0f11e6f49af0f400bd256c05` (T2 V3/V4 proofs). **Documentation evidence tip:** docs commit on branch. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -141,30 +141,102 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 
 ## V3 — Authority crash matrix (T2)
 
-**PASS (tested at `d446122772839f25cc30847b653cb9282b79004d` inside bwrap).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` — **40 passed**, exit 0. Independent oracle: `tests/fixtures/issue_286_t2_parent_oracle.py::snapshot_tree` byte hashes per file.
+**PASS (exhaustive publication barriers; tested inside bwrap at T2 code SHA recorded in evidence log).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` — **85 passed**, exit 0. Oracle: `tests/fixtures/issue_286_t2_parent_oracle.py` (`snapshot_tree`, `count_oracle_rows`, `load_authority` ordinal/reservation fields).
 
-| ID | Obligation | Test node | rc | Oracle |
-|----|------------|-----------|-----|--------|
-| V3a | Initial claim ordinal 1 + progress bindings | `test_issue_286_codex_bootstrap_v2_t2_authority.py::test_initial_claim_publishes_ordinal1`, `::test_authority_progress_binding_fields` | 0 | authority file digest |
-| V3b–V3i | Protocol refusals / concurrency / orphan / revision rollback | `test_issue_286_codex_bootstrap_v2_t2_authority.py` (rows V3b–V3i from prior table) | 0 | snapshot_tree |
-| V3j–V3n | Child `_exit(91)` hooks + reservation-without-transaction | `test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py` | 0 | load_authority ordinal |
-| V3p1–V3p8 | **Parent SIGKILL** at each publication fsync boundary | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[…]` (8 stages: initial tmp/dir, journal, recovery, terminal receipt/authority) | 0 | killed=True; post-snapshot |
-| V3q | Injected replace/fsync failure (no durable authority) | `::test_injected_replace_fail_leaves_no_durable_authority`, `::test_injected_fsync_fail_before_authority_dir` | 0 | authority absent or tmp only |
-| V3r | Temp/orphan ambiguity | `::test_ambiguous_authority_temp_blocks_initial`, `::test_orphan_journal_blocks_initial_claim` | 0 | blockers list |
-| V3s | Ordinal 3 child refusal | `::test_parent_kill_ordinal3_child_exits_nonzero` | ≠0 | ordinal stays 2 |
-| V3t | Terminal receipt-before-release window | `::test_terminal_receipt_before_release_parent_kill_preserves_active_reservation` | 0 | reservation_active True |
-| V3u | No Chroma mutation on claim | `::test_authority_claim_does_not_mutate_chroma` | 0 | chroma snapshot unchanged |
+| Publication site | Kind | Parent SIGKILL node | Parent action | Post-kill oracle |
+|------------------|------|---------------------|---------------|------------------|
+| initial_authority.before_tmp_write | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[initial_authority.before_tmp_write]` | SIGKILL at ack-barrier; killed=True | no durable authority |
+| initial_authority.before_tmp_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[initial_authority.before_tmp_fsync]` | SIGKILL at ack-barrier; killed=True | no durable authority |
+| initial_authority.before_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[initial_authority.before_replace]` | SIGKILL at ack-barrier; killed=True | no durable authority |
+| initial_authority.after_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[initial_authority.after_replace]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| initial_authority.before_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[initial_authority.before_dir_fsync]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| initial_authority.after_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[initial_authority.after_dir_fsync]` | SIGKILL at ack-barrier; killed=True | load_authority durable; ordinal per site |
+| recovery_authority.before_tmp_write | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[recovery_authority.before_tmp_write]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| recovery_authority.before_tmp_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[recovery_authority.before_tmp_fsync]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| recovery_authority.before_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[recovery_authority.before_replace]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| recovery_authority.after_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[recovery_authority.after_replace]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| recovery_authority.before_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[recovery_authority.before_dir_fsync]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| recovery_authority.after_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[recovery_authority.after_dir_fsync]` | SIGKILL at ack-barrier; killed=True | load_authority durable; ordinal per site |
+| progress_authority.before_tmp_write | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[progress_authority.before_tmp_write]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| progress_authority.before_tmp_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[progress_authority.before_tmp_fsync]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| progress_authority.before_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[progress_authority.before_replace]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| progress_authority.after_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[progress_authority.after_replace]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| progress_authority.before_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[progress_authority.before_dir_fsync]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| progress_authority.after_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[progress_authority.after_dir_fsync]` | SIGKILL at ack-barrier; killed=True | load_authority durable; ordinal per site |
+| terminal_receipt.before_tmp_write | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_receipt.before_tmp_write]` | SIGKILL at ack-barrier; killed=True | receipt/authority per stage; terminal test preserves active reservation |
+| terminal_receipt.before_tmp_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_receipt.before_tmp_fsync]` | SIGKILL at ack-barrier; killed=True | receipt/authority per stage; terminal test preserves active reservation |
+| terminal_receipt.before_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_receipt.before_replace]` | SIGKILL at ack-barrier; killed=True | receipt/authority per stage; terminal test preserves active reservation |
+| terminal_receipt.after_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_receipt.after_replace]` | SIGKILL at ack-barrier; killed=True | receipt/authority per stage; terminal test preserves active reservation |
+| terminal_receipt.before_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_receipt.before_dir_fsync]` | SIGKILL at ack-barrier; killed=True | receipt/authority per stage; terminal test preserves active reservation |
+| terminal_receipt.after_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_receipt.after_dir_fsync]` | SIGKILL at ack-barrier; killed=True | receipt file durable; reservation_active may stay True if killed before terminal_authority |
+| terminal_authority.before_tmp_write | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_authority.before_tmp_write]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| terminal_authority.before_tmp_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_authority.before_tmp_fsync]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| terminal_authority.before_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_authority.before_replace]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| terminal_authority.after_replace | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_authority.after_replace]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| terminal_authority.before_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_authority.before_dir_fsync]` | SIGKILL at ack-barrier; killed=True | authority bytes + snapshot_tree |
+| terminal_authority.after_dir_fsync | atomic | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[terminal_authority.after_dir_fsync]` | SIGKILL at ack-barrier; killed=True | load_authority durable; ordinal per site |
+| journal_mirror.before_append | append | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[journal_mirror.before_append]` | SIGKILL at ack-barrier; killed=True | mirror row count per durability stage |
+| journal_mirror.before_file_fsync | append | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[journal_mirror.before_file_fsync]` | SIGKILL at ack-barrier; killed=True | mirror row count per durability stage |
+| journal_mirror.before_dir_fsync | append | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[journal_mirror.before_dir_fsync]` | SIGKILL at ack-barrier; killed=True | mirror row count per durability stage |
+| journal_mirror.after_dir_fsync | append | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[journal_mirror.after_dir_fsync]` | SIGKILL at ack-barrier; killed=True | invocations.jsonl row count==1 |
+| v2_permit.before_append | append | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[v2_permit.before_append]` | SIGKILL at ack-barrier; killed=True | permit row count per stage |
+| v2_permit.before_file_fsync | append | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[v2_permit.before_file_fsync]` | SIGKILL at ack-barrier; killed=True | permit row count per stage |
+| v2_permit.before_dir_fsync | append | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[v2_permit.before_dir_fsync]` | SIGKILL at ack-barrier; killed=True | permit row count per stage |
+| v2_permit.after_dir_fsync | append | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[v2_permit.after_dir_fsync]` | SIGKILL at ack-barrier; killed=True | v2_provider_permits.jsonl row count==1 |
+
+Additional V3 nodes (non-parametrized):
+
+| ID | Obligation | Test node | Oracle |
+|----|------------|-----------|--------|
+| V3-auth | Initial/recovery/terminal/progress protocol | `tests/test_issue_286_codex_bootstrap_v2_t2_authority.py` (11 tests) | authority bytes + refusals |
+| V3-crash | In-process `_exit(91)` hooks | `tests/test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py` (4 tests) | ordinal + reservation |
+| V3-inject | Injected fsync/replace failures | `test_injected_publication_failure_matrix[…]` (4 cases), `test_injected_replace_fail_leaves_no_durable_authority`, `test_injected_fsync_fail_before_authority_dir` | no durable / tmp ambiguity |
+| V3-ambig | Temp/journal ambiguity | `test_ambiguous_authority_temp_blocks_initial`, `test_orphan_journal_blocks_initial` | blockers |
+| V3-ord3 | Third invocation denied | `test_parent_kill_ordinal3_child_exits_nonzero` | ordinal stays 2 |
+| V3-term | Receipt-before-terminal window | `test_terminal_receipt_before_release_parent_kill_preserves_active_reservation` | reservation_active True |
+| V3-chroma | No Chroma on claim | `test_authority_claim_does_not_mutate_chroma` | chroma snapshot unchanged |
 
 ```bash
 cd /home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap
-git checkout d446122772839f25cc30847b653cb9282b79004d
+python3 -m pytest -q tests/test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py
 python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap
-# exit 0; 40 passed in bwrap worker
+# exit 0; 85 passed in bwrap worker
 ```
 
-**Parent hermetic file honesty:** `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` runs **5** parent tests (3 boundary + `test_t1_and_v1_regressions_in_bwrap` **38** + `test_t2_…` **40**). The T1 bundle re-executes when the full parent file is run; T1 evidence SHA remains `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`.
+```bash
+python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
+# exit 0; 5 passed (3 boundary + T1 bundle 38 + T2 bundle 85)
+```
 
 ## V4 — Provider permits and caps (T2)
+
+**PASS (same bwrap T2 bundle).** `lifetime_paid_cap == max_provider_http_attempts` (no `max_attempts * (1+recovery)` multiplier). Recovery adds per-ordinal bucket only; cumulative lifetime does not reset.
+
+| ID | Obligation | Test node | Oracle |
+|----|------------|-----------|--------|
+| V4a | Permit-before-send | `test_issue_286_codex_bootstrap_v2_t2_accounting.py::test_permit_before_send_blocks_transport` | intercepted POST count==1 |
+| V4b | Composed nested guards | `::test_composed_outer_and_operation_guards_both_execute`, `::test_operation_guard_refusal_blocks_inner` | call order + exhaustion |
+| V4c | Outer denial before ledger | `::test_outer_refusal_blocks_before_operation_counter` | permit rows==0 |
+| V4d | Per-ordinal bucket + lifetime cap | `::test_recovery_ordinal_uses_separate_permit_bucket`, `::test_cumulative_lifetime_across_recovery_without_reset` | permit rows + exhaustion |
+| V4e | Lost response still consumes | `::test_lost_response_still_counts_without_usage` | exhausted after 1 |
+| V4f | Restart preserves ledger | `::test_ledger_survives_process_restart` | cumulative==1 |
+| V4g | Ollama embed cap-exempt | `::test_ollama_embed_cap_exempt_observed` | permitted==0 observed==2 |
+| V4h | Corrupt permit journal | `::test_corrupt_permit_journal_refuses_consume` | BootstrapGrantError |
+| V4i | Broken permit-order control | `::test_broken_permit_order_negative_control` | AssertionError |
+| V4j | Provider binding (no fallback) | `test_issue_286_codex_bootstrap_v2_t2_contract_evidence.py::test_provider_binding_rejects_model_mismatch` | binding_mismatch |
+| V4k | Prepared reuse (no second permit) | `::test_prepared_reuse_does_not_append_second_permit` | permit count stable |
+| V4l | Lifetime cap equals grant max | `::test_lifetime_cap_equals_grant_max_not_multiplied` | cap==max_attempts |
+| V4m | Recovery does not reset cumulative | `::test_recovery_does_not_reset_cumulative_paid_allowance` | exhausted after lifetime spent |
+| V4n | v1 journal default lifetime parity | `::test_v1_journal_default_lifetime_matches_v2_ledger` | equal caps |
+| V4o | No Chroma during permit append | `::test_no_chroma_mutation_during_permit_append` | chroma snapshot |
+| V4p | Journal ahead / rolled-back revision | `::test_journal_ahead_of_authority_blocks_fresh_claim`, `::test_rolled_back_authority_revision_rejected` | corruption detectors |
+| V4q | v1 paid-cap regression (T1 bundle) | `test_incremental_jsonl_bootstrap_safety.py` in T1 bwrap at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` | not re-run at T2-only worker |
+
+```bash
+python3 -m pytest -q tests/test_issue_286_codex_bootstrap_v2_t2_accounting.py tests/test_issue_286_codex_bootstrap_v2_t2_contract_evidence.py
+# exit 0; 21 passed (10 accounting + 11 contract)
+```
+
 
 **PASS (same `d446122772839f25cc30847b653cb9282b79004d` bwrap bundle).** Transport interception uses fake endpoints only; production outer budget remains `outer_budget_unverified` (§7).
 
@@ -225,7 +297,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`f3ed021`); T3–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 INCOMPLETE (V3/V4 PASS, owner-lock mediation blocker); T3–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
@@ -242,7 +314,7 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `5d5ec91` / `45b07d6` | prior in-process hook gate | — | **invalid** | withdrawn — not external enforcement |
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 
-**TL;DR:** [Arc Codex] T1 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`; T2 V3–V4 PASS at `d446122772839f25cc30847b653cb9282b79004d` (40-test bwrap bundle). V5–V8 NOT RUN.
+**TL;DR:** [Arc Codex] T1 at `ec11b10`; T2 V3/V4 exhaustive proofs PASS in 85-test bwrap bundle; T2 gate **INCOMPLETE** pending mandatory owner-lock mediation (T3). V5–V8 NOT RUN.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
