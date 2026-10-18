@@ -1,31 +1,27 @@
 """Arc #286 scoped mutation proof shadow mode tests (design section 8)."""
 
-# pylint: disable=protected-access,duplicate-code
+# pylint: disable=protected-access,duplicate-code,unused-argument
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from chroma_store import SUMMARIES, UNITS, ChromaStore
+from chroma_store import SUMMARIES, UNITS
 from complete_data_restore import classify_scoped_shadow_diagnostic, OUTCOME_ADVISORY
 from config import IncrementalJsonlConfigError, incremental_jsonl_settings
 from incremental_jsonl import IncrementalJsonlCoordinator
 from incremental_mutation_proof import (
     _notify_coverage,
-    DIAGNOSTIC_SCHEMA,
     classify_comparison,
     clear_coverage_spies,
     evaluate_call_policy,
     extract_target_ids,
     load_terminal_record,
-    receipt_path,
     register_coverage_spy,
     receipts_complete,
     set_test_observer_io_error,
@@ -112,7 +108,7 @@ def test_c_sh1_off_shadow_parity_under_observer_failure(
 def test_c_sh2_writer_inventory_machine_checked() -> None:
     """C-SH2=CC-1: regenerated writer inventory matches committed artifact."""
     root = Path(__file__).resolve().parents[1]
-    script = root / "scripts/generate-scoped-proof-writer-inventory.py"
+    script = root / "scripts/generate_scoped_proof_writer_inventory.py"
     artifact = root / "docs/plans/SCOPED-PROOF-WRITER-INVENTORY.json"
     before = artifact.read_text(encoding="utf-8")
     subprocess.run([sys.executable, str(script)], check=True, cwd=root)
@@ -131,7 +127,7 @@ def test_c_sh3_enumerated_bypass_coverage(
     coord = IncrementalJsonlCoordinator(boundary, source)
     observed: list[tuple[str, str]] = []
 
-    def spy(collection: str, operation: str, kwargs) -> None:  # type: ignore[no-untyped-def]
+    def spy(collection: str, operation: str, _kwargs) -> None:  # type: ignore[no-untyped-def]
         observed.append((collection, operation))
 
     register_coverage_spy(spy)
@@ -177,7 +173,8 @@ def test_c_sh4_restart_ignores_shadow_receipts(
     coord = IncrementalJsonlCoordinator(boundary, source)
     coord.run()
     receipt = next((coord.state_dir / "scoped-shadow").rglob("*.jsonl"))
-    forged = receipt.read_text(encoding="utf-8") + json.dumps({"record_kind": "terminal", "comparison": "observed_agreement"}) + "\n"
+    extra = json.dumps({"record_kind": "terminal", "comparison": "observed_agreement"})
+    forged = receipt.read_text(encoding="utf-8") + extra + "\n"
     receipt.write_text(forged, encoding="utf-8")
     replay = IncrementalJsonlCoordinator(boundary, source)
     result = replay.run()
@@ -235,17 +232,8 @@ def test_c_sh6_observer_timing_not_double_counted(
     """C-SH6=MC-1: observer seconds reported separately from phase totals."""
     boundary, source = _prepare(tmp_path, monkeypatch, mode="shadow")
     coord = IncrementalJsonlCoordinator(boundary, source)
-    cap = subprocess.run(
-        [sys.executable, "-c", "import runpy; runpy.run_path('noop')"],
-        capture_output=True,
-        text=True,
-    )
-    _ = cap
     result = coord.run()
     assert result.outcome in {"committed", "excluded_after_checkpoint", "unchanged"}
-    events = []
-    # timing event is on stderr via coordinator run in-process
-    # re-run lightweight: inspect last evidence via a second coordinator is heavy; assert receipt exists
     receipt = next((coord.state_dir / "scoped-shadow").rglob("*.jsonl"), None)
     assert receipt is not None
     terminal = load_terminal_record(receipt)
