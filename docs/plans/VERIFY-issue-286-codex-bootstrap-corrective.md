@@ -1,11 +1,11 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 **COMPLETE** (V0–V2 PASS at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 scoped mechanical **COMPLETE** (V3–V4 PASS at tested code below). V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
+**State:** T1 **COMPLETE** (V0–V2 PASS at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 protocol **COMPLETE** at tested code below; V3 **PASS (scoped table)**; V4 **PASS (scoped table)**. V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** `c8d4412ea9ae9b80c5c7b23f9e4f38c2f6f090fa`. **PR:** none authorized.
+**Tested code SHA:** `f3ed0219f8c152784fe3798936bccca656878dc3` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** `c8d4412ea9ae9b80c5c7b23f9e4f38c2f6f090fa`. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -141,7 +141,7 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 
 ## V3 — Authority crash matrix (T2)
 
-**PASS (scoped, tested at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` inside bwrap).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` (**19 passed**, exit 0). T1 bundle at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` not re-run at T2 SHA.
+**PASS (scoped, tested at `f3ed0219f8c152784fe3798936bccca656878dc3` inside bwrap).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` (**19 passed**, exit 0). T1 bundle at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` not re-run at T2 SHA.
 
 | ID | Obligation | Test node | rc | Result |
 |----|------------|-----------|-----|--------|
@@ -160,9 +160,19 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 | V3n | Crash after journal mirror fsync (child exit 91) | `test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py::test_crash_after_journal_mirror_still_authority_ordinal1` | 0 | PASS |
 | V3m | Broken ordinal-3 negative control | `test_issue_286_codex_bootstrap_v2_t2_authority.py::test_broken_ordinal3_allowance_would_fail` | 0 | PASS |
 
+
+**V3 deferrals (honest — full §3 crash inventory not exhaustively proven):**
+
+| Item | Status |
+|------|--------|
+| Kill before/after every authority/mirror/receipt/directory fsync slot | **Partial** — child exit-91 hooks at authority publish and journal mirror only |
+| Failed fsync/replace injection | **NOT RUN** |
+| Terminal receipt/release window races | **NOT RUN** at T2 (terminal publish covered without kill matrix) |
+| Temp/orphan ambiguity beyond journal-without-authority | **Partial** — `ambiguous_authority_temp` blocker + orphan journal row |
+
 ```bash
 cd /home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap
-git checkout 8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef
+git checkout f3ed02158c41b65207ec0d432498c8fbcf7ed2ef
 python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap
 # exit 0; 19 passed in bwrap worker
 ```
@@ -212,7 +222,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`8f82e1f`); T3–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`f3ed021`); T3–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
