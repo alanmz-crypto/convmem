@@ -536,6 +536,7 @@ class IncrementalJsonlCoordinator:
         self.enabled = bool(settings.enabled if cfg is not None else enabled)
         self.fault = fault or (lambda _point: None)
         self.last_failure_code = ""
+        self._commit_inventory_passes: dict[str, int] | None = None
         self.counters = counters or CallCounters()
         self.retry_sleep = retry_sleep
         self.embed_dimension = embed_dimension
@@ -1318,6 +1319,26 @@ class IncrementalJsonlCoordinator:
         }
         print(json.dumps(payload, sort_keys=True), file=sys.stderr)
 
+    def _emit_commit_phase_timing(
+        self,
+        *,
+        phases: dict[str, float],
+        c1_hold_seconds: float,
+        inventory_passes: dict[str, int],
+    ) -> None:
+        payload = {
+            "event": "incremental_commit_phase_timing",
+            "c1_hold_seconds": round(float(c1_hold_seconds), 6),
+            "full_inventory_passes": {
+                SUMMARIES: int(inventory_passes.get(SUMMARIES, 0)),
+                UNITS: int(inventory_passes.get(UNITS, 0)),
+            },
+            "phases": {
+                name: round(float(value), 6) for name, value in sorted(phases.items())
+            },
+        }
+        print(json.dumps(payload, sort_keys=True), file=sys.stderr)
+
     def _artifact_from_build(self, built: ChunkArtifact, chunk_start: int) -> dict:
         units = []
         for unit, document, embedding, metadata in built.units_to_add:
@@ -1566,14 +1587,37 @@ class IncrementalJsonlCoordinator:
             "source_lines": source_lines,
         }
 
-    def _snapshot_before_images(self) -> dict:
+    @staticmethod
+    def _copy_non_source_digest(value: dict) -> dict:
+        """Return an independent JSON copy of a non-source digest mapping."""
+        return json.loads(json.dumps(value, sort_keys=True, separators=(",", ":")))
+
+    def _note_full_inventory_pass(self, collection_name: str) -> None:
+        passes = self._commit_inventory_passes
+        if passes is None:
+            return
+        passes[collection_name] = int(passes.get(collection_name, 0)) + 1
+
+    def _snapshot_before_images(
+        self, non_source_collections: dict | None = None
+    ) -> dict:
+        reused = non_source_collections is not None
+        if reused:
+            non_source_collections = self._copy_non_source_digest(non_source_collections)
         with self._session() as session:
             summaries = session.store.snapshot_source_rows(SUMMARIES, self.path_key)
             units = session.store.snapshot_source_rows(UNITS, self.path_key)
-            non_source_collections = {
-                name: session.store.non_source_inventory_digest(name, self.path_key)
-                for name in (SUMMARIES, UNITS)
-            }
+            if not reused:
+                non_source_collections = {
+                    name: session.store.non_source_inventory_digest(name, self.path_key)
+                    for name in (SUMMARIES, UNITS)
+                }
+                for name in (SUMMARIES, UNITS):
+                    self._note_full_inventory_pass(name)
+        if non_source_collections is None:
+            raise IncrementalJsonlError(
+                "recovery_unproven", "non-source digest missing from before-images"
+            )
         processed = self._processed()
         processed_preimage = {
             key: value
@@ -1602,10 +1646,13 @@ class IncrementalJsonlCoordinator:
 
     def _non_source_collection_digest(self) -> dict:
         with self._session() as session:
-            return {
-                name: session.store.non_source_inventory_digest(name, self.path_key)
-                for name in (SUMMARIES, UNITS)
-            }
+            digest = {}
+            for name in (SUMMARIES, UNITS):
+                digest[name] = session.store.non_source_inventory_digest(
+                    name, self.path_key
+                )
+                self._note_full_inventory_pass(name)
+            return digest
 
     def _verify_non_source_collections(self, expected: dict) -> None:
         current = self._non_source_collection_digest()
@@ -2249,117 +2296,163 @@ class IncrementalJsonlCoordinator:
                 complete_boundary=snapshot["complete_boundary"],
                 transform_fingerprint=self.transform_fingerprint,
             )
-        self._revalidate_live_prefix(snapshot)
-        with source_flock(self.cfg, self.path_key):
-            with index_write_flock(self.cfg):
-                if _path_is_excluded(self._processed(), self.path_key):
-                    return self._refusal("excluded", snapshot=snapshot)
-                attempt_non_source = self._non_source_collection_digest()
-                if rollback_authority_sha256 is None:
-                    rollback = self._snapshot_before_images()
-                    self._write_rollback(rollback)
-                    rollback_authority_sha256 = hashlib.sha256(
-                        self.paths["rollback"].read_bytes()
-                    ).hexdigest()
-                    tx_payload = {
-                            "version": TRANSACTION_VERSION_V2
-                            if self.transform_v2
-                            else TRANSACTION_VERSION,
-                            "transaction_id": transaction_id,
-                            "phase": "APPLYING",
-                            "bootstrap_existing": self.bootstrap_existing,
-                            **self._bootstrap_transaction_binding(),
-                            "source_path": self.path_key,
+        phases: dict[str, float] = {}
+
+        @contextmanager
+        def phase_span(name: str):
+            started = time.monotonic()
+            try:
+                yield
+            finally:
+                phases[name] = phases.get(name, 0.0) + (time.monotonic() - started)
+
+        self._commit_inventory_passes = {SUMMARIES: 0, UNITS: 0}
+        c1_hold_seconds = 0.0
+        emit_timing = False
+        try:
+            self._revalidate_live_prefix(snapshot)
+            with source_flock(self.cfg, self.path_key):
+                with index_write_flock(self.cfg):
+                    c1_started = time.monotonic()
+                    try:
+                        if _path_is_excluded(self._processed(), self.path_key):
+                            return self._refusal("excluded", snapshot=snapshot)
+                        emit_timing = True
+                        with phase_span("non_source_digest"):
+                            attempt_non_source = self._copy_non_source_digest(
+                                self._non_source_collection_digest()
+                            )
+                        if rollback_authority_sha256 is None:
+                            with phase_span("before_images"):
+                                rollback = self._snapshot_before_images(
+                                    non_source_collections=attempt_non_source
+                                )
+                            with phase_span("journal"):
+                                self._write_rollback(rollback)
+                                rollback_authority_sha256 = hashlib.sha256(
+                                    self.paths["rollback"].read_bytes()
+                                ).hexdigest()
+                                tx_payload = {
+                                        "version": TRANSACTION_VERSION_V2
+                                        if self.transform_v2
+                                        else TRANSACTION_VERSION,
+                                        "transaction_id": transaction_id,
+                                        "phase": "APPLYING",
+                                        "bootstrap_existing": self.bootstrap_existing,
+                                        **self._bootstrap_transaction_binding(),
+                                        "source_path": self.path_key,
+                                        "source_identity": self.source_id,
+                                        "generation": generation,
+                                        "prepared_keys": [item["cache_key"] for item in prepared],
+                                        "generation_identity": snapshot["generation_identity"],
+                                        "complete_boundary": snapshot["complete_boundary"],
+                                        "prefix_sha256": snapshot["prefix_sha256"],
+                                        "session_meta_digest": snapshot["session_meta_digest"],
+                                        "rollback_authority_sha256": rollback_authority_sha256,
+                                        "coordinator_implementation_revision": (
+                                            self.coordinator_implementation_revision
+                                        ),
+                                    }
+                                if self.transform_v2 and self.transform_descriptor is not None:
+                                    tx_payload.update(
+                                        {
+                                            "recovery_protocol_version": RECOVERY_PROTOCOL_VERSION,
+                                            "transform_fingerprint": self.transform_fingerprint,
+                                            "transform_descriptor": self.transform_descriptor.body,
+                                        }
+                                    )
+                                self._write_transaction(tx_payload)
+                        else:
+                            self._require_rollback_authority(rollback_authority_sha256)
+                        with phase_span("apply"):
+                            chunks, units, events, keep_summaries, keep_units = (
+                                self._apply_prepared(prepared)
+                            )
+                        if rollback_authority_sha256 is not None:
+                            self._require_rollback_authority(rollback_authority_sha256)
+                        with phase_span("verify_non_source"):
+                            self._verify_non_source_collections(attempt_non_source)
+                        self._revalidate_live_prefix(snapshot)
+                        with phase_span("projection_fingerprint"):
+                            projection_fingerprint = self._projection_fingerprint()
+                        checkpoint = {
+                            "version": CHECKPOINT_VERSION_V2 if self.transform_v2 else CHECKPOINT_VERSION,
+                            "commit_state": "complete",
+                            "adapter_format": self.format_spec.format_id,
                             "source_identity": self.source_id,
-                            "generation": generation,
-                            "prepared_keys": [item["cache_key"] for item in prepared],
+                            "source_path": self.path_key,
                             "generation_identity": snapshot["generation_identity"],
                             "complete_boundary": snapshot["complete_boundary"],
                             "prefix_sha256": snapshot["prefix_sha256"],
-                            "session_meta_digest": snapshot["session_meta_digest"],
-                            "rollback_authority_sha256": rollback_authority_sha256,
+                            "transform_fingerprint": self.transform_fingerprint,
+                            "record_count": len(snapshot["messages"]),
+                            "chunk_frontier": frontier,
+                            "active_generation": generation,
+                            "summary_ids": sorted(keep_summaries),
+                            "unit_ids": sorted(keep_units),
+                            "projection_fingerprint": projection_fingerprint,
+                            "processed_lineage_digest": (
+                                projection_fingerprint if self.production_boundary_live else None
+                            ),
+                            "processed_hash": snapshot["prefix_sha256"],
+                            "raw_line_coverage": snapshot["raw_line_coverage"],
+                            "fallback_reason": fallback,
                             "coordinator_implementation_revision": (
                                 self.coordinator_implementation_revision
                             ),
                         }
-                    if self.transform_v2 and self.transform_descriptor is not None:
-                        tx_payload.update(
-                            {
-                                "recovery_protocol_version": RECOVERY_PROTOCOL_VERSION,
-                                "transform_fingerprint": self.transform_fingerprint,
-                                "transform_descriptor": self.transform_descriptor.body,
-                            }
-                        )
-                    self._write_transaction(tx_payload)
-                else:
-                    self._require_rollback_authority(rollback_authority_sha256)
-                chunks, units, events, keep_summaries, keep_units = self._apply_prepared(
-                    prepared
+                        if self.transform_v2 and self.transform_descriptor is not None:
+                            checkpoint.update(
+                                descriptor_to_checkpoint_fields(self.transform_descriptor)
+                            )
+                        with phase_span("checkpoint"):
+                            self._write_checkpoint(checkpoint)
+                        with phase_span("export_reconcile"):
+                            self._reconcile_export()
+                        with phase_span("dedupe"):
+                            exact, semantic = self._reconcile_dedupe(transaction_id, events)
+                    finally:
+                        c1_hold_seconds = time.monotonic() - c1_started
+            with phase_span("processed"):
+                committed = self._publish_processed(
+                    snapshot["prefix_sha256"], chunks, units
                 )
-                if rollback_authority_sha256 is not None:
-                    self._require_rollback_authority(rollback_authority_sha256)
-                self._verify_non_source_collections(attempt_non_source)
-                self._revalidate_live_prefix(snapshot)
-                projection_fingerprint = self._projection_fingerprint()
-                checkpoint = {
-                "version": CHECKPOINT_VERSION_V2 if self.transform_v2 else CHECKPOINT_VERSION,
-                "commit_state": "complete",
-                "adapter_format": self.format_spec.format_id,
-                "source_identity": self.source_id,
-                "source_path": self.path_key,
-                "generation_identity": snapshot["generation_identity"],
-                "complete_boundary": snapshot["complete_boundary"],
-                "prefix_sha256": snapshot["prefix_sha256"],
-                "transform_fingerprint": self.transform_fingerprint,
-                "record_count": len(snapshot["messages"]),
-                "chunk_frontier": frontier,
-                "active_generation": generation,
-                "summary_ids": sorted(keep_summaries),
-                "unit_ids": sorted(keep_units),
-                "projection_fingerprint": projection_fingerprint,
-                "processed_lineage_digest": (
-                    projection_fingerprint if self.production_boundary_live else None
-                ),
-                "processed_hash": snapshot["prefix_sha256"],
-                "raw_line_coverage": snapshot["raw_line_coverage"],
-                "fallback_reason": fallback,
-                "coordinator_implementation_revision": (
-                    self.coordinator_implementation_revision
-                ),
-                }
-                if self.transform_v2 and self.transform_descriptor is not None:
-                    checkpoint.update(descriptor_to_checkpoint_fields(self.transform_descriptor))
-                self._write_checkpoint(checkpoint)
-                self._reconcile_export()
-                exact, semantic = self._reconcile_dedupe(transaction_id, events)
-        committed = self._publish_processed(snapshot["prefix_sha256"], chunks, units)
-        self._cleanup(snapshot["snapshot_dir"])
-        result = IncrementalRunResult(
-            outcome="committed" if committed else "excluded_after_checkpoint",
-            mode=mode,
-            fallback_reason=fallback,
-            adapter_format=self.format_spec.format_id,
-            selected_boundary=snapshot["complete_boundary"],
-            records=len(snapshot["messages"]),
-            frontier_record=frontier,
-            counters=self.counters,
-            reused_artifacts=reused,
-            max_units_in_flight=self._max_units_in_flight,
-            active_generation=generation,
-            chunks=chunks,
-            units=units,
-            exact_suppressed=exact,
-            semantic_queued=semantic,
-            ingest_status="processed" if committed else "skipped",
-        )
-        self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
-        self.last_result = result
-        self._emit_codex_admitted_log(
-            result,
-            snapshot=snapshot,
-            elapsed_seconds=time.monotonic() - self._run_started,
-        )
-        return result
+            with phase_span("cleanup"):
+                self._cleanup(snapshot["snapshot_dir"])
+            result = IncrementalRunResult(
+                outcome="committed" if committed else "excluded_after_checkpoint",
+                mode=mode,
+                fallback_reason=fallback,
+                adapter_format=self.format_spec.format_id,
+                selected_boundary=snapshot["complete_boundary"],
+                records=len(snapshot["messages"]),
+                frontier_record=frontier,
+                counters=self.counters,
+                reused_artifacts=reused,
+                max_units_in_flight=self._max_units_in_flight,
+                active_generation=generation,
+                chunks=chunks,
+                units=units,
+                exact_suppressed=exact,
+                semantic_queued=semantic,
+                ingest_status="processed" if committed else "skipped",
+            )
+            self.last_evidence["prefix_sha256"] = snapshot["prefix_sha256"]
+            self.last_result = result
+            if emit_timing:
+                self._emit_commit_phase_timing(
+                    phases=phases,
+                    c1_hold_seconds=c1_hold_seconds,
+                    inventory_passes=dict(self._commit_inventory_passes),
+                )
+            self._emit_codex_admitted_log(
+                result,
+                snapshot=snapshot,
+                elapsed_seconds=time.monotonic() - self._run_started,
+            )
+            return result
+        finally:
+            self._commit_inventory_passes = None
 
     def _require_rollback_authority(self, expected_sha256: str) -> dict:
         try:

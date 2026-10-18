@@ -162,6 +162,26 @@ class FlushPathChildEventForwardTests(unittest.TestCase):
         self.assertIn("[watch] child-event: " + event, captured.splitlines())
         self.assertEqual(captured.count("[watch] child-event: "), 1)
 
+    def test_commit_phase_timing_event_is_forwarded(self):
+        from watch import _CHILD_EVENT_ALLOWLIST
+
+        event = json.dumps(
+            {
+                "c1_hold_seconds": 1.25,
+                "event": "incremental_commit_phase_timing",
+                "full_inventory_passes": {
+                    "conversation_summaries": 2,
+                    "knowledge_units": 2,
+                },
+                "phases": {"apply": 0.2, "non_source_digest": 0.8},
+            },
+            sort_keys=True,
+        )
+        self.assertIn("incremental_commit_phase_timing", _CHILD_EVENT_ALLOWLIST)
+        captured, result = self._run(stderr=event + "\n")
+        self.assertEqual(result["subprocess"], True)
+        self.assertIn("[watch] child-event: " + event, captured.splitlines())
+
     def test_non_json_stderr_is_dropped(self):
         captured, _result = self._run(
             stderr="Traceback (most recent call last):\nValueError: chunk text\n"
