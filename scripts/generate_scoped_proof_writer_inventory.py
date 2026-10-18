@@ -41,6 +41,20 @@ def build() -> dict:
                 "disposition": "nested_session_inherits_attempt",
                 "coverage_status": "shadow_observed",
             },
+            {
+                "route_id": "thread_fork_attempt_token_copy",
+                "entrypoint": "incremental_mutation_proof.py:293",
+                "owner": "shadow_proof_session",
+                "disposition": "coverage_unqualified_cross_thread_or_fork",
+                "coverage_status": "coverage_unqualified",
+            },
+            {
+                "route_id": "stale_chroma_client_outside_reload",
+                "entrypoint": "chroma_store.py:168",
+                "owner": "chroma_store",
+                "disposition": "coverage_unqualified_stale_client",
+                "coverage_status": "coverage_unqualified",
+            },
         ]
     )
     return {
