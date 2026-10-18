@@ -151,7 +151,8 @@ Codex rollouts (separate track):
    `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
    Don't add the incremental table to the shared live config while
    `runtime-main` is still on `a92a74e`.
-2. **Live state (2026-10-17 ~23:30 CDT).** `runtime-main` is on `633f1d1` (#396 + #398),
+2. **Live state (deployed 2026-10-18 ~03:45 CDT).** `runtime-main` is on `395e523` (#399–#403 over `633f1d1`;
+   Kiro DEPLOY PASS with D1–D4 and converter preconditions P1/P2), `doctor` exit 0;
    watcher running since 16:02:43 under the canary guard (ceiling raised to 3,000 for
    the free-provider window; fault stops unchanged). DeepSeek is temporarily free, so
    Ryan granted an aggressive backfill:
@@ -165,7 +166,7 @@ Codex rollouts (separate track):
      Remove it the moment billing resumes: `sed -i '/^allow_full_rebuild = true$/d'
      ~/.config/convmem/config.toml`. While on, any fingerprint-refused session is fully
      re-transformed on its next write.
-3. **On `main`, not deployed:** #399 transform compatibility (`9be0a4f`; semantic v2
+3. **Deployed 2026-10-18 (history):** #399 transform compatibility (`9be0a4f`; semantic v2
    fingerprints, hermetic-only converter), #400 watcher run-outcome events. #401 (Claude
    adapter: transcripts with >10 metadata lines were silently not ingested) is open.
    **Deploy blocker:** on `main`, every admitted-Codex v1 checkpoint refuses
@@ -358,6 +359,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-17 | Ryan / Claude / Kiro | Canary 2 run 1 hit the 200-call ceiling at 14:33; Oct 9 Codex thread excluded; runtime-main → `633f1d1` (#396, #398), watcher restarted 16:02:43; transform-compatibility design PASS-with-conditions |
 | 2026-10-17 | Ryan / Claude / Cursor | #399, #400 merged (not deployed); #401 open; free-provider backfill + rebuilds (41 sessions); `allow_full_rebuild` live flag ON (revert when billing resumes); deploy blocked on v1-rebuild fix |
 | 2026-10-18 | Ryan / Claude | #401 merged, #402 (v1 rebuild + frontier fix) open; Codex handoff for free-window coverage (Crush/Kiro CLI DBs, timing baseline, 3-session bootstrap packet) |
+| 2026-10-18 | Ryan / Claude / Kiro | #402, #403 merged; runtime-main `633f1d1` → `395e523` (#399–#403), watcher restarted, doctor 0; overnight transcript queue 77/84, 7 re-queued after the adapter fix |
 
 ## TL;DR
 
