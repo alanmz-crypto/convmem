@@ -251,9 +251,159 @@ def test_legacy_v1_checkpoint_refuses_migration_required(
     sessions.mkdir(parents=True)
     admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
     source = _admitted_rollout(sessions, admitted)
-    cfg = _production_cfg(tmp_path, sessions, admitted)
+    cfg = _production_cfg(tmp_path, sessions, admitted, allow_full_rebuild=False)
     cfg_path = tmp_path / "config.toml"
-    _write_user_config(cfg_path, cfg)
+    _write_user_config(cfg_path, cfg, allow_full_rebuild=False)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    build_calls = install_build_chunk_tracker(monkeypatch)
+    boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
+    coord = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    )
+    coord.run()
+    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="a" * 64)
+    build_calls.clear()
+    result = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert result.outcome == "migration_required"
+    assert result.counters.total == 0
+    assert not build_calls
+
+
+def test_legacy_v1_checkpoint_rebuilds_when_full_rebuild_allowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("CONVMEM_INCREMENTAL_ROOT", str(tmp_path))
+    sessions = _sessions_root(tmp_path)
+    sessions.mkdir(parents=True)
+    admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    source = _admitted_rollout(sessions, admitted)
+    cfg = _production_cfg(tmp_path, sessions, admitted, allow_full_rebuild=True)
+    cfg_path = tmp_path / "config.toml"
+    _write_user_config(cfg_path, cfg, allow_full_rebuild=True)
+    install_fakes(monkeypatch)
+    build_calls = install_build_chunk_tracker(monkeypatch)
+    boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
+    legacy_rev = "a" * 64
+    import chroma_write_store
+
+    monkeypatch.setattr(
+        chroma_write_store,
+        "current_implementation_revision",
+        lambda: legacy_rev,
+        raising=False,
+    )
+    coord = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    )
+    assert coord.run().outcome == "committed"
+    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision=legacy_rev)
+    build_calls.clear()
+    rebuilt = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert rebuilt.outcome == "committed"
+    assert rebuilt.mode == "full_rebuild_fallback"
+    assert rebuilt.fallback_reason == "transform_fingerprint_changed"
+    assert _checkpoint_version(coord.state_dir) == CHECKPOINT_VERSION_V2
+    v2_checkpoint = json.loads((coord.state_dir / "checkpoint.json").read_text(encoding="utf-8"))
+    assert v2_checkpoint.get("transform_descriptor")
+    rebuild_coord = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    )
+    assert v2_checkpoint.get("transform_fingerprint") == rebuild_coord.transform_fingerprint
+    build_calls.clear()
+    unchanged = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert unchanged.outcome == "unchanged"
+    assert unchanged.counters.total == 0
+    assert not build_calls
+    prior_count = int(
+        json.loads((coord.state_dir / "checkpoint.json").read_text(encoding="utf-8"))["record_count"]
+    )
+    with source.open("ab") as handle:
+        for index in range(prior_count, prior_count + 4):
+            handle.write(codex_rollout_record(index))
+    build_calls.clear()
+    appended = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert appended.outcome == "committed"
+    assert appended.counters.total > 0
+    assert build_calls
+
+
+def test_pending_v1_transaction_refused_when_full_rebuild_allowed_c7(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    sessions = _sessions_root(tmp_path)
+    sessions.mkdir(parents=True)
+    admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    source = _admitted_rollout(sessions, admitted)
+    cfg = _production_cfg(tmp_path, sessions, admitted, allow_full_rebuild=True)
+    cfg_path = tmp_path / "config.toml"
+    _write_user_config(cfg_path, cfg, allow_full_rebuild=True)
     monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
     install_fakes(monkeypatch)
     boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
@@ -269,19 +419,31 @@ def test_legacy_v1_checkpoint_refuses_migration_required(
         processed={},
     )
     coord.run()
-    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="a" * 64)
-    result = incremental_jsonl.IncrementalJsonlCoordinator(
-        boundary,
-        source,
-        cfg=cfg,
-        enabled=True,
-        chunk_size=4,
-        overlap=0,
-        min_confidence=0.6,
-        embed_dimension=8,
-        processed={},
-    ).run()
-    assert result.outcome == "migration_required"
+    (coord.state_dir / "transaction.json").write_text(
+        json.dumps(
+            {
+                "version": TRANSACTION_VERSION,
+                "transaction_id": "0" * 32,
+                "phase": "PREPARING",
+                "source_path": coord.path_key,
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        incremental_jsonl.IncrementalJsonlError, match="v1 transaction requires original runtime"
+    ):
+        incremental_jsonl.IncrementalJsonlCoordinator(
+            boundary,
+            source,
+            cfg=cfg,
+            enabled=True,
+            chunk_size=4,
+            overlap=0,
+            min_confidence=0.6,
+            embed_dimension=8,
+            processed={},
+        ).run()
 
 
 def test_production_codex_v1_migrates_then_continues_without_rebuild(

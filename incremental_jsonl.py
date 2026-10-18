@@ -2645,7 +2645,11 @@ class IncrementalJsonlCoordinator:
     ) -> str | None:
         """Guards shared by the pre-capture shortcut and the full-path unchanged return."""
         if self.codex_admitted_live:
-            if checkpoint is not None and int(checkpoint.get("version") or 0) == CHECKPOINT_VERSION:
+            if (
+                checkpoint is not None
+                and int(checkpoint.get("version") or 0) == CHECKPOINT_VERSION
+                and not self.settings.allow_full_rebuild
+            ):
                 return "migration_required"
             identity_refusal = verify_session_meta_identity(self.source, snapshot["raw"])
             if identity_refusal:
