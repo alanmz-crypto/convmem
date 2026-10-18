@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-16
+**Updated:** 2026-10-18
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,10 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Codex free-window coverage — AUTHORIZED, not yet implemented (2026-10-18):** Codex indexes the
+  stale Crush DBs and the Kiro CLI DB, builds the real-provider commit-time baseline, and prepares an
+  exact-source bootstrap packet for 3 `bootstrap_required` rollouts (execution needs Ryan "go A1").
+  Handoff: `docs/inter-model/CODEX-2026-10-18-issue-286-free-window-coverage-handoff.md`.
 - **Arc Codex Stage 2 fixes MERGED, NOT DEPLOYED (2026-10-16):** PR #395
   landed as `3e705e4`. Next, each by a separate Ryan grant: runtime-main
   promotion, the protocol-surface deploy, canary 2. Original authorization

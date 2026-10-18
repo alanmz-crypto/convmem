@@ -357,6 +357,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-17 | Ryan / Claude | PR #397 admin-merged as `bd37946`; runtime-main `3e705e4`→`bd37946`; canary 2 restarted 01:12:57 (24 h, 200 paid calls) |
 | 2026-10-17 | Ryan / Claude / Kiro | Canary 2 run 1 hit the 200-call ceiling at 14:33; Oct 9 Codex thread excluded; runtime-main → `633f1d1` (#396, #398), watcher restarted 16:02:43; transform-compatibility design PASS-with-conditions |
 | 2026-10-17 | Ryan / Claude / Cursor | #399, #400 merged (not deployed); #401 open; free-provider backfill + rebuilds (41 sessions); `allow_full_rebuild` live flag ON (revert when billing resumes); deploy blocked on v1-rebuild fix |
+| 2026-10-18 | Ryan / Claude | #401 merged, #402 (v1 rebuild + frontier fix) open; Codex handoff for free-window coverage (Crush/Kiro CLI DBs, timing baseline, 3-session bootstrap packet) |
 
 ## TL;DR
 
