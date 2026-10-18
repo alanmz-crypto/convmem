@@ -5,7 +5,7 @@
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** *(this doc commit)*. **PR:** none authorized.
+**Tested code SHA:** `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** `c8d4412ea9ae9b80c5c7b23f9e4f38c2f6f090fa`. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
