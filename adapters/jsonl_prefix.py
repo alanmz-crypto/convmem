@@ -33,6 +33,7 @@ class CompletePrefixView:  # pylint: disable=too-many-instance-attributes
     raw_prefix: bytes
     session_meta: dict | None = None
     session_meta_digest: str | None = None
+    session_meta_raw_digest: str | None = None
 
 
 def prefix_boundary(raw: bytes) -> int:

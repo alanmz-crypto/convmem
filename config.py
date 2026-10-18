@@ -18,6 +18,11 @@ from incremental_jsonl_codex_admission import (
     DEFAULT_MAX_TRANSFORM_CHUNKS_PER_RUN,
     CodexRolloutAdmissionSettings,
 )
+from incremental_jsonl_kiro_admission import (
+    DEFAULT_KIRO_MAX_SOURCE_BYTES,
+    DEFAULT_KIRO_MAX_TRANSFORM_CHUNKS_PER_RUN,
+    KiroSessionPolicySettings,
+)
 
 from shadow_authorization import open_directory_nofollow
 
@@ -59,6 +64,7 @@ class IncrementalJsonlSettings:
     live_sources: tuple[str, ...] = ()
     embed_dimension: int | None = None
     codex_rollout_admission: CodexRolloutAdmissionSettings | None = None
+    kiro_session: KiroSessionPolicySettings | None = None
 
 
 def _canonical_config_path(raw: str, *, label: str) -> Path:
@@ -91,6 +97,56 @@ def _canonical_config_path(raw: str, *, label: str) -> Path:
             )
     return path.resolve(strict=False)
 
+
+
+
+def _parse_kiro_session_policy_table(
+    raw_kiro: object,
+    *,
+    enabled: bool,
+    live_sources: tuple[str, ...],
+    detected_requires: bool,
+) -> KiroSessionPolicySettings | None:
+    from adapters.detect import detect_format
+
+    selected_kiro = any(detect_format(source) == "jsonl_kiro_session" for source in live_sources)
+    if raw_kiro is None:
+        return None
+    if not isinstance(raw_kiro, dict):
+        raise IncrementalJsonlConfigError(
+            "invalid_kiro_session_policy",
+            "index.incremental_jsonl.kiro_session must be a table",
+        )
+    if not enabled:
+        raise IncrementalJsonlConfigError(
+            "kiro_policy_requires_enabled",
+            "kiro_session policy requires index.incremental_jsonl.enabled = true",
+        )
+    max_chunks = raw_kiro.get(
+        "max_transform_chunks_per_run", DEFAULT_KIRO_MAX_TRANSFORM_CHUNKS_PER_RUN
+    )
+    if type(max_chunks) is not int or max_chunks < 1:  # pylint: disable=unidiomatic-typecheck
+        raise IncrementalJsonlConfigError(
+            "invalid_kiro_max_transform_chunks",
+            "kiro_session.max_transform_chunks_per_run must be a positive integer",
+        )
+    max_bytes = raw_kiro.get("max_source_bytes", DEFAULT_KIRO_MAX_SOURCE_BYTES)
+    if type(max_bytes) is not int or max_bytes < 1:  # pylint: disable=unidiomatic-typecheck
+        raise IncrementalJsonlConfigError(
+            "invalid_kiro_max_source_bytes",
+            "kiro_session.max_source_bytes must be a positive integer",
+        )
+    rebuild = raw_kiro.get("allow_full_rebuild", False)
+    if rebuild is not False:
+        raise IncrementalJsonlConfigError(
+            "kiro_rebuild_forbidden",
+            "kiro_session.allow_full_rebuild must be false in this slice",
+        )
+    return KiroSessionPolicySettings(
+        max_transform_chunks_per_run=max_chunks,
+        max_source_bytes=max_bytes,
+        allow_full_rebuild=False,
+    )
 
 def _parse_codex_rollout_admission_table(
     raw_codex: object,
@@ -557,6 +613,12 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
         table.get("codex_rollout_admission"),
         enabled=bool(enabled),
     )
+    kiro_policy = _parse_kiro_session_policy_table(
+        table.get("kiro_session"),
+        enabled=bool(enabled),
+        live_sources=live_sources,
+        detected_requires=bool(enabled and live_sources),
+    )
     if codex_admission is not None and embed_dimension is None:
         raise IncrementalJsonlConfigError(
             "live_embed_dimension_required",
@@ -570,6 +632,7 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
         live_sources=live_sources,
         embed_dimension=embed_dimension,
         codex_rollout_admission=codex_admission,
+        kiro_session=kiro_policy,
     )
 
 

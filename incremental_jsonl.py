@@ -68,6 +68,7 @@ from incremental_jsonl_codex_admission import (
     is_production_source_granted,
     verify_session_meta_identity,
 )
+from incremental_jsonl_kiro_admission import kiro_admitted_live, selected_kiro_path
 from incremental_jsonl_production import ProductionBoundary
 from ingest import (
     ChunkArtifact,
@@ -99,7 +100,7 @@ def wedged_incremental_diagnostic(transaction_id: str, source_path: str) -> str:
 
 
 ELIGIBLE_FORMAT = "jsonl_kiro_session"
-ADAPTER_CONTRACT_VERSION = "kiro-complete-prefix-v1"
+ADAPTER_CONTRACT_VERSION = "kiro-complete-prefix-v2"
 CHECKPOINT_VERSION = 1
 TRANSACTION_VERSION = 1
 PREPARED_VERSION = 1
@@ -583,6 +584,7 @@ class IncrementalJsonlCoordinator:
         self.path_key = str(self.source)
         detected_format = detect_format(self.source)
         self.format_spec: IncrementalFormatSpec | None = get_format_spec(detected_format)
+        isolated_boundary = isinstance(boundary, IsolationBoundary)
         production_codex = (
             isinstance(boundary, ProductionBoundary)
             and settings.codex_rollout_admission is not None
@@ -593,6 +595,15 @@ class IncrementalJsonlCoordinator:
             )
         )
         self.codex_admitted_live = production_codex
+        self.kiro_admitted_live = False
+        if not isolated_boundary:
+            self.kiro_admitted_live = kiro_admitted_live(
+                production_boundary=isinstance(boundary, ProductionBoundary),
+                path_key=self.path_key,
+                live_sources=settings.live_sources,
+                detected_format=detected_format,
+                policy=settings.kiro_session,
+            )
         self.production_boundary_live = isinstance(boundary, ProductionBoundary)
         self.routed_formats = routed_formats(
             isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT")),
@@ -636,7 +647,13 @@ class IncrementalJsonlCoordinator:
         except Exception:  # pylint: disable=broad-exception-caught
             revision = "hermetic-test"
         self.coordinator_implementation_revision = str(revision)
-        self.transform_v2 = bool(self.codex_admitted_live)
+        if isolated_boundary:
+            self.transform_v2 = detected_format in {
+                "jsonl_kiro_session",
+                "jsonl_codex_rollout",
+            }
+        else:
+            self.transform_v2 = bool(self.codex_admitted_live or self.kiro_admitted_live)
         self.transform_descriptor: TransformDescriptor | None = None
         if self.transform_v2:
             self.transform_descriptor = build_transform_descriptor(
@@ -665,6 +682,22 @@ class IncrementalJsonlCoordinator:
         self._run_started = 0.0
         self._lock: SourceAdvisoryLock | None = None
         self._max_units_in_flight = 0
+
+
+    def _effective_allow_full_rebuild(self) -> bool:
+        if self.kiro_admitted_live and self.settings.kiro_session is not None:
+            return bool(self.settings.kiro_session.allow_full_rebuild)
+        return bool(self.settings.allow_full_rebuild)
+
+    def _active_resource_policy(self):
+        if self.codex_admitted_live and self.settings.codex_rollout_admission is not None:
+            return self.settings.codex_rollout_admission
+        if self.kiro_admitted_live and self.settings.kiro_session is not None:
+            return self.settings.kiro_session
+        return None
+
+    def _resource_policy_live(self) -> bool:
+        return bool(self.codex_admitted_live or self.kiro_admitted_live)
 
     @classmethod
     def from_isolated_boundary(
@@ -823,9 +856,9 @@ class IncrementalJsonlCoordinator:
         fd = open_source_readonly(self.source)
         try:
             info = validate_regular_source(fd)
-            admission = self.settings.codex_rollout_admission
+            admission = self._active_resource_policy()
             if (
-                self.codex_admitted_live
+                self._resource_policy_live()
                 and admission is not None
                 and info.st_size > admission.max_source_bytes
             ):
@@ -852,6 +885,8 @@ class IncrementalJsonlCoordinator:
         self._transition("source_snapshot_publish", publish)
         view = self.format_spec.parse_complete_prefix(str(snapshot_path), raw=prefix)
         self._validate_incremental_prefix_view(view)
+        if self.kiro_admitted_live and not view.session_meta_digest:
+            raise IncrementalJsonlError("kiro_session_meta_missing")
         if len(view.messages) != len(view.byte_ranges):
             raise IncrementalJsonlError("invalid_state", "adapter output/byte-range disagreement")
         snapshot = {
@@ -866,6 +901,7 @@ class IncrementalJsonlCoordinator:
             ),
             "generation_identity": {"device": int(info.st_dev), "inode": int(info.st_ino)},
             "session_meta_digest": view.session_meta_digest,
+            "session_meta_raw_digest": view.session_meta_raw_digest,
             "source_identity": self.source_id,
             "snapshot_path": snapshot_path,
             "snapshot_dir": snapshot_dir,
@@ -875,9 +911,7 @@ class IncrementalJsonlCoordinator:
         return snapshot
 
     def _revalidate_live_prefix(self, snapshot: dict) -> None:
-        admission = (
-            self.settings.codex_rollout_admission if self.codex_admitted_live else None
-        )
+        admission = self._active_resource_policy() if self._resource_policy_live() else None
 
         def revalidate() -> None:
             fd = open_source_readonly(self.source)
@@ -1207,7 +1241,7 @@ class IncrementalJsonlCoordinator:
         prior_count = int(checkpoint.get("record_count") or 0)
         if continuity == "initial_full":
             return 0
-        if self.settings.allow_full_rebuild and continuity:
+        if self._effective_allow_full_rebuild() and continuity:
             return 0
         return prior_count
 
@@ -1219,8 +1253,8 @@ class IncrementalJsonlCoordinator:
         continuity: str | None,
         cache_required_before: int,
     ) -> str | None:
-        admission = self.settings.codex_rollout_admission
-        if not self.codex_admitted_live or admission is None:
+        admission = self._active_resource_policy()
+        if not self._resource_policy_live() or admission is None:
             return None
         if int(snapshot.get("size") or 0) > admission.max_source_bytes:
             return "source_too_large"
@@ -1265,6 +1299,20 @@ class IncrementalJsonlCoordinator:
                 if int(info.st_size) > admission.max_source_bytes:
                     return "source_too_large"
                 snapshot = {**snapshot, "size": int(info.st_size)}
+        if self.kiro_admitted_live:
+            admission = self._active_resource_policy()
+            if admission is not None:
+                try:
+                    fd = open_source_readonly(self.source)
+                    try:
+                        info = validate_regular_source(fd)
+                    finally:
+                        os.close(fd)
+                except OSError:
+                    return "source_too_large"
+                if int(info.st_size) > admission.max_source_bytes:
+                    return "source_too_large"
+                snapshot = {**snapshot, "size": int(info.st_size)}
         checkpoint = None
         try:
             checkpoint = self.checkpoint()
@@ -1277,7 +1325,9 @@ class IncrementalJsonlCoordinator:
             transaction, rollback
         ):
             return "bootstrap_required"
-        if not self.codex_admitted_live:
+        if self.kiro_admitted_live and not snapshot.get("session_meta_digest"):
+            return "kiro_session_meta_missing"
+        if not self._resource_policy_live():
             return None
         continuity = _continuity_reason(
             checkpoint, snapshot, self.transform_fingerprint
@@ -2585,6 +2635,7 @@ class IncrementalJsonlCoordinator:
             "generation_identity": transaction.get("generation_identity")
             or {"device": view.device, "inode": view.inode},
             "session_meta_digest": view.session_meta_digest,
+            "session_meta_raw_digest": view.session_meta_raw_digest,
             "source_identity": self.source_id,
             "snapshot_path": snapshot_path,
             "snapshot_dir": snapshot_dir,
@@ -2752,7 +2803,7 @@ class IncrementalJsonlCoordinator:
             if (
                 checkpoint is not None
                 and int(checkpoint.get("version") or 0) == CHECKPOINT_VERSION
-                and not self.settings.allow_full_rebuild
+                and not self._effective_allow_full_rebuild()
             ):
                 return "migration_required"
             identity_refusal = verify_session_meta_identity(self.source, snapshot["raw"])
@@ -2791,7 +2842,7 @@ class IncrementalJsonlCoordinator:
         if projection_mismatch:
             return f"rebuild_required:{projection_mismatch}"
         continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
-        if continuity and continuity != "initial_full" and not self.settings.allow_full_rebuild:
+        if continuity and continuity != "initial_full" and not self._effective_allow_full_rebuild():
             return f"rebuild_required:{continuity}"
         return None
 
@@ -2821,9 +2872,9 @@ class IncrementalJsonlCoordinator:
             fd = open_source_readonly(self.source)
             try:
                 info = validate_regular_source(fd)
-                admission = self.settings.codex_rollout_admission
+                admission = self._active_resource_policy()
                 if (
-                    self.codex_admitted_live
+                    self._resource_policy_live()
                     and admission is not None
                     and info.st_size > admission.max_source_bytes
                 ):
@@ -3119,6 +3170,15 @@ def maybe_route_incremental(
             detected_format=detected_format,
         ):
             return None
+        if selected_kiro_path(
+            path_key=path_key,
+            live_sources=settings.live_sources,
+            detected_format=detected_format,
+        ) and settings.kiro_session is None:
+            raise IncrementalJsonlConfigError(
+                "kiro_policy_required",
+                "selected Kiro sources require index.incremental_jsonl.kiro_session",
+            )
         production_codex = (
             settings.codex_rollout_admission is not None
             and detected_format == "jsonl_codex_rollout"

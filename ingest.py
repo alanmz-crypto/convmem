@@ -1388,9 +1388,18 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     # ``index --file`` path when either identity changes, so the generic
     # content-hash shortcut must not discard that request.
     if not force_reindex and file_hash in processed and fmt != "repository_knowledge_v1":
-        if verbose:
-            print(f"  [skip] unchanged {Path(path).name}")
-        return "skipped", 0, 0, 0, 0
+        from config import incremental_jsonl_settings
+        from incremental_jsonl_kiro_admission import selected_kiro_path
+
+        incremental_settings = incremental_jsonl_settings(cfg)
+        if not selected_kiro_path(
+            path_key=path_key,
+            live_sources=incremental_settings.live_sources,
+            detected_format=fmt,
+        ):
+            if verbose:
+                print(f"  [skip] unchanged {Path(path).name}")
+            return "skipped", 0, 0, 0, 0
 
     tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
     chroma_dir = idx["chroma_dir"]

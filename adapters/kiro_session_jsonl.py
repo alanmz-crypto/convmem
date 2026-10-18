@@ -53,6 +53,56 @@ def is_kiro_session_jsonl(path: Path | str) -> bool:
     return parent.startswith("sess_")
 
 
+
+SESSION_META_BYTE_CAP = 1024 * 1024
+KIRO_SEMANTIC_META_VERSION = "kiro-complete-prefix-v2"
+
+
+def _canonical_json(payload: dict) -> str:
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def semantic_session_meta_digest(session_id: str, workspace_directory: str) -> str:
+    body = {
+        "version": KIRO_SEMANTIC_META_VERSION,
+        "session_id": session_id,
+        "workspace_directory": workspace_directory,
+    }
+    return hashlib.sha256(_canonical_json(body).encode("utf-8")).hexdigest()
+
+
+def load_bounded_session_meta_bytes(session_dir: Path) -> bytes:
+    session_json = session_dir / "session.json"
+    if not session_json.is_file() or session_json.is_symlink():
+        raise ValueError("session_meta_missing")
+    raw = session_json.read_bytes()
+    if len(raw) > SESSION_META_BYTE_CAP:
+        raise ValueError("session_meta_too_large")
+    return raw
+
+
+def validated_kiro_session_identity(session_dir: Path, raw: bytes) -> tuple[str, str]:
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("session_meta_malformed") from exc
+    if not isinstance(data, dict):
+        raise ValueError("session_meta_malformed")
+    session_id = data.get("id")
+    if not isinstance(session_id, str) or not session_id:
+        raise ValueError("session_meta_identity_missing")
+    if session_id != session_dir.name:
+        raise ValueError("session_meta_identity_mismatch")
+    workspaces = data.get("workspacePaths")
+    workspace = ""
+    if not isinstance(workspaces, list) or not workspaces:
+        raise ValueError("session_meta_workspace_missing")
+    first = workspaces[0]
+    if not isinstance(first, str) or not first.strip():
+        raise ValueError("session_meta_workspace_missing")
+    workspace = first
+    return session_id, workspace
+
 def read_session_meta(filepath: str) -> dict:
     """Read sibling session.json for title and workspace paths."""
     session_dir = Path(filepath).parent
@@ -179,11 +229,23 @@ def parse_complete_prefix(filepath: str, *, raw: bytes | None = None) -> Complet
     messages, ranges, outcomes = _scan_prefix_records(
         prefix, session_id=session_id, workspace=workspace
     )
-    session_json = path.parent / "session.json"
+    session_dir = path.parent
     session_meta = read_session_meta(str(path))
     meta_digest = None
-    if session_json.is_file() and not session_json.is_symlink():
-        meta_digest = hashlib.sha256(session_json.read_bytes()).hexdigest()
+    meta_raw_digest = None
+    try:
+        raw_meta = load_bounded_session_meta_bytes(session_dir)
+        session_id, workspace = validated_kiro_session_identity(session_dir, raw_meta)
+        meta_raw_digest = hashlib.sha256(raw_meta).hexdigest()
+        meta_digest = semantic_session_meta_digest(session_id, workspace)
+        session_meta = {
+            "session_id": session_id,
+            "workspace_directory": workspace,
+            "title": session_meta.get("title", ""),
+        }
+    except ValueError:
+        meta_digest = None
+        meta_raw_digest = None
     return CompletePrefixView(
         messages=messages,
         byte_ranges=ranges,
@@ -194,5 +256,6 @@ def parse_complete_prefix(filepath: str, *, raw: bytes | None = None) -> Complet
         inode=int(stat_info.st_ino),
         session_meta=session_meta,
         session_meta_digest=meta_digest,
+        session_meta_raw_digest=meta_raw_digest,
         raw_prefix=prefix,
     )
