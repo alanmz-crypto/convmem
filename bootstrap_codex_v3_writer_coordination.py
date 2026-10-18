@@ -93,20 +93,53 @@ def _canonical_source(path: str | Path) -> str:
     return str(Path(path).expanduser().resolve())
 
 
-def resolve_incremental_state_root(cfg: dict[str, Any]) -> Path:
-    from bootstrap_codex_v2_owner import resolve_isolation_boundary
+def _configured_incremental_state_dir(cfg: dict[str, Any]) -> str:
+    try:
+        from config import incremental_jsonl_settings
 
-    settings = cfg.get("incremental_jsonl") or {}
-    index_incr = (cfg.get("index") or {}).get("incremental_jsonl") or {}
-    raw = (
-        settings.get("state_dir")
-        or index_incr.get("state_dir")
-        or (cfg.get("index") or {}).get("incremental_state_dir")
-    )
+        settings = incremental_jsonl_settings(cfg)
+        raw = settings.state_dir
+    except Exception:  # pylint: disable=broad-exception-caught
+        settings = cfg.get("incremental_jsonl") or {}
+        index_incr = (cfg.get("index") or {}).get("incremental_jsonl") or {}
+        raw = (
+            settings.get("state_dir")
+            or index_incr.get("state_dir")
+            or (cfg.get("index") or {}).get("incremental_state_dir")
+        )
     if not raw:
         raise BootstrapWriterCoordinationError("incremental_state_root_missing")
-    boundary = resolve_isolation_boundary()
-    return boundary.resolve_mutable(str(raw), label="incremental state")
+    return str(raw)
+
+
+def resolve_incremental_state_root(cfg: dict[str, Any]) -> Path:
+    """Resolve configured incremental state root (production path or hermetic boundary)."""
+    import os
+
+    from incremental_jsonl_isolation import ISOLATION_ROOT_ENV, ISOLATION_TOKEN_ENV
+
+    raw = _configured_incremental_state_dir(cfg)
+    root_env = os.environ.get(ISOLATION_ROOT_ENV, "").strip()
+    token_env = os.environ.get(ISOLATION_TOKEN_ENV, "").strip()
+    if root_env and token_env:
+        from bootstrap_codex_v2_owner import resolve_isolation_boundary
+
+        boundary = resolve_isolation_boundary()
+        return boundary.resolve_mutable(raw, label="incremental state")
+    return Path(raw).expanduser().resolve()
+
+
+def source_state_dir_for_path(cfg: dict[str, Any], source_path: str | Path) -> Path:
+    from adapters.detect import detect_format
+    from incremental_jsonl import source_state_id
+    from incremental_jsonl_formats import get_format_spec
+
+    path_key = _canonical_source(source_path)
+    detected = detect_format(Path(path_key))
+    spec = get_format_spec(detected)
+    format_id = spec.format_id if spec is not None else detected
+    state_id = source_state_id(path_key, format_id=format_id)
+    return resolve_incremental_state_root(cfg) / state_id
 
 
 def authority_for_source(
@@ -177,29 +210,80 @@ def iter_active_reservations(cfg: dict[str, Any]) -> list[CoordinationDeferralSi
     return signals
 
 
-def recheck_reservation_before_commit(cfg: dict[str, Any], source_path: str | Path) -> None:
+
+@contextmanager
+def legacy_source_preparation_participation(
+    cfg: dict[str, Any], source_path: str | Path
+) -> Iterator[None]:
+    """Shared prep lease for ordinary legacy indexing through commit."""
+    from adapters.detect import detect_format
+
+    path = Path(_canonical_source(source_path))
+    if detect_format(path) != "jsonl_codex_rollout":
+        yield
+        return
+    state_dir = source_state_dir_for_path(cfg, path)
+    from bootstrap_codex_v3_preparation_lease import legacy_shared_preparation_lease
+
+    with legacy_shared_preparation_lease(state_dir):
+        yield
+
+
+def map_coordination_error_to_incremental(
+    cfg: dict[str, Any], exc: BootstrapWriterCoordinationError, source_path: str | Path
+) -> None:
+    code = str(exc)
+    if code == COORDINATION_DEFERRAL_CODE:
+        raise_incremental_coordination_deferral(cfg, source_path)
+    if code.startswith("stale_preparation_after_reservation"):
+        from incremental_jsonl import IncrementalJsonlError
+
+        raise IncrementalJsonlError("bootstrap_reservation_conflict", code) from exc
+    raise exc
+
+
+def recheck_reservation_before_commit(
+    cfg: dict[str, Any],
+    source_path: str | Path,
+    *,
+    acting_operation_id: str | None = None,
+) -> None:
     signal = active_reservation_signal(cfg, source_path)
     if signal is None:
         return
     owner = _OWNER_OPERATION.get()
     if owner is not None and owner.operation_id == signal.operation_id:
         return
+    if acting_operation_id and acting_operation_id == signal.operation_id:
+        return
     raise BootstrapWriterCoordinationError(
         f"stale_preparation_after_reservation:{signal.operation_id}"
     )
 
 
-@contextmanager
-def owner_operation_context(authority) -> Iterator[ValidatedOwnerOperation]:
-    require_owner_lock()
+def _validated_owner_operation(authority) -> ValidatedOwnerOperation:
     operation_id = str(authority.record.get("operation_id") or "")
     if len(operation_id) != 64:
         raise BootstrapWriterCoordinationError("owner_operation_identity_invalid")
-    validated = ValidatedOwnerOperation(
+    return ValidatedOwnerOperation(
         operation_id=operation_id,
         authority_revision=authority.revision,
         grant_fingerprint_v2=str(authority.record.get("grant_fingerprint_v2") or ""),
     )
+
+
+def install_owner_operation_identity(authority) -> contextvars.Token:
+    return _OWNER_OPERATION.set(_validated_owner_operation(authority))
+
+
+def clear_owner_operation_identity(token: contextvars.Token) -> None:
+    _OWNER_OPERATION.reset(token)
+
+
+@contextmanager
+def owner_operation_context(authority) -> Iterator[ValidatedOwnerOperation]:
+    require_owner_lock()
+    validated = _validated_owner_operation(authority)
     token = _OWNER_OPERATION.set(validated)
     try:
         yield validated

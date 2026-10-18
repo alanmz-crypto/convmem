@@ -2252,6 +2252,13 @@ class IncrementalJsonlCoordinator:
             )
         self._revalidate_live_prefix(snapshot)
         with source_flock(self.cfg, self.path_key):
+            from bootstrap_codex_v3_writer_coordination import recheck_reservation_before_commit
+
+            recheck_reservation_before_commit(
+                self.cfg,
+                self.path_key,
+                acting_operation_id=self.bootstrap_operation_id,
+            )
             with index_write_flock(self.cfg):
                 if _path_is_excluded(self._processed(), self.path_key):
                     return self._refusal("excluded", snapshot=snapshot)

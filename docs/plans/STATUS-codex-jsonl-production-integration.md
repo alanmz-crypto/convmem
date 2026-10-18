@@ -17,7 +17,7 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
 the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
-T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`; owner lock + 87-test bwrap); **T3–T5 NOT STARTED**;
+T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 COMPLETE** (V5–V6 hermetic bwrap, 20-test worker bundle); **T4–T5 NOT STARTED**;
 live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
@@ -104,7 +104,7 @@ Key invariants:
   non-blocking precision notes.
 - **Execute handoff:** [Cursor's bounded grant](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
   records the scope, notes, branch procedure, and operational prohibitions.
-  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1 code + contract tests + bwrap gate landed; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md): V0–V2 at `ec11b10d`; V3–V4 at `1dc1eff` (87-test bwrap). Live v2 execution closed. No PR/production authority.
+  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1–T3 hermetic evidence on branch tip; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md) V0–V6 (T3 writer inventory + watcher deferral). Live v2 execution closed. No PR/production authority.
 
 ## 4. Completion State
 
@@ -127,9 +127,7 @@ Key invariants:
 
 ## 5. Your Role
 
-**Cursor next:** implement **T3** writer mediation and watcher deferral per §5–§6 of the corrective execution plan; do not enable live v2 execution. The reviewed plan revision is `942390001bca407c1c28e9972c443ee7612e1c1b`.
-Incorporate Kiro's precision notes: no spin on a busy preparation lease, prove
-exit-status disjointness, and return cross-arc recovery/cutover gaps to Ryan.
+**Cursor next:** implement **T4** bounded-prefix coordinator execution and source-only recovery per the corrective execution plan; do not enable live v2 execution or start T5 until T4 evidence is green.
 
 **Kiro:** exact-tip implementation review after Cursor's evidence handoff.
 **Codex:** upstream planning/authority handoff; no implementation or self-review
@@ -142,7 +140,7 @@ of those operations is granted by the Cursor implementation authorization.
 
 ## 6. Remaining gates
 
-1. Cursor completes T3–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1 at `ec11b10`; T2 V3/V4 exhaustive proofs in VERIFY; T2 COMPLETE at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1`; T3 next.
+1. Cursor completes T4–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1–T3 COMPLETE (hermetic bwrap); T4 next.
 2. Obtain exact-tip independent implementation review. PR creation, PR-native
    review triggers, merge and runtime/writer rollout remain separate gates.
 3. Resolve health readiness and outer-budget enforcement; revalidate exact

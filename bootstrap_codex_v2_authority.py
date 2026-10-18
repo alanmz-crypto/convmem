@@ -243,26 +243,27 @@ def claim_initial_authority(state_dir: Path, grant: dict[str, Any]) -> Authority
         raise CodexBootstrapV2AuthorityError("grant operation_id mismatch")
     with _authority_lock(state_dir):
         try:
-            prep_ctx = bootstrap_exclusive_preparation_lease(state_dir)
+            with bootstrap_exclusive_preparation_lease(state_dir):
+                blockers = inspect_initial_claim_blockers(state_dir, validated)
+                if blockers:
+                    raise CodexBootstrapV2AuthorityError(
+                        "initial_claim_refused:" + ",".join(blockers)
+                    )
+                record = _authority_record(
+                    validated,
+                    revision=1,
+                    invocation_ordinal=1,
+                    reservation_state="RESERVED",
+                    reservation_active=True,
+                )
+                path = authority_path(state_dir)
+                _publish_authority(path, record, stage="initial_authority")
+                _crash_after("after_initial_claim_lock_release")
+                return AuthorityView(path=path, record=record)
         except BootstrapPreparationLeaseError as exc:
             if str(exc) == SOURCE_WRITER_BUSY_CODE:
                 raise CodexBootstrapV2AuthorityError(SOURCE_WRITER_BUSY_CODE) from exc
             raise
-        with prep_ctx:
-            blockers = inspect_initial_claim_blockers(state_dir, validated)
-            if blockers:
-                raise CodexBootstrapV2AuthorityError("initial_claim_refused:" + ",".join(blockers))
-            record = _authority_record(
-                validated,
-                revision=1,
-                invocation_ordinal=1,
-                reservation_state="RESERVED",
-                reservation_active=True,
-            )
-            path = authority_path(state_dir)
-            _publish_authority(path, record, stage="initial_authority")
-            _crash_after("after_initial_claim_lock_release")
-            return AuthorityView(path=path, record=record)
 
 
 def claim_recovery_authority(state_dir: Path, grant: dict[str, Any]) -> AuthorityView:

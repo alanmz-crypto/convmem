@@ -60,7 +60,7 @@ def _state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 
 def _write_rollout(path: Path) -> None:
-    path.write_text("{}\n", encoding="utf-8")
+    path.write_text("{}" + chr(10), encoding="utf-8")
 
 
 def test_exclusive_prep_lease_busy_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -108,7 +108,7 @@ def test_watch_coordination_deferral_requeues_without_refusal(tmp_path: Path) ->
     import watch
 
     path = str(tmp_path / "child.jsonl")
-    Path(path).write_text("{}\n", encoding="utf-8")
+    Path(path).write_text("{}" + chr(10), encoding="utf-8")
     breaker = watch.CircuitBreakerState(tmp_path / "cb.json")
     signal = CoordinationDeferralSignal(path, "c" * 64, 2)
     err = watch.IndexSubprocessError(
@@ -119,3 +119,55 @@ def test_watch_coordination_deferral_requeues_without_refusal(tmp_path: Path) ->
     forget = watch._record_ready_path_failure(path, err, breaker=breaker, verbose=False)
     assert forget is False
     assert not breaker.has_refusal_quarantine_for_path(path)
+
+
+def test_resolve_incremental_state_root_from_config_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import config
+    from tests.test_issue_286_codex_bootstrap_v2_t1 import _production_cfg, _write_user_config
+
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    admitted = __import__("datetime").datetime(2026, 6, 1, tzinfo=__import__("datetime").timezone.utc)
+    cfg = _production_cfg(tmp_path, sessions, admitted)
+    toml_path = tmp_path / "config.toml"
+    _write_user_config(toml_path, cfg)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_TOKEN", raising=False)
+    monkeypatch.setenv("CONVMEM_CONFIG", str(toml_path))
+    monkeypatch.setattr(config, "CONFIG_PATH", toml_path)
+    from bootstrap_codex_v3_writer_coordination import resolve_incremental_state_root
+
+    expected = Path(cfg["index"]["incremental_jsonl"]["state_dir"]).expanduser().resolve()
+    assert resolve_incremental_state_root(cfg) == expected
+
+
+def test_owner_identity_allows_same_source_processed_commit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from bootstrap_codex_v2_authority import claim_initial_authority
+    from bootstrap_codex_v3_writer_coordination import (
+        install_owner_operation_identity,
+        clear_owner_operation_identity,
+        recheck_reservation_before_commit,
+    )
+    from ingest import commit_processed_index_entry
+
+    source, state_dir, grant, cfg = _state_dir(tmp_path, monkeypatch)
+    import config
+
+    toml_path = tmp_path / "config.toml"
+    monkeypatch.setattr(config, "CONFIG_PATH", toml_path)
+    with t2_owner_context(state_dir):
+        authority = claim_initial_authority(state_dir, grant)
+    token = install_owner_operation_identity(authority)
+    try:
+        recheck_reservation_before_commit(cfg, str(source))
+        ok = commit_processed_index_entry(
+            cfg["index"]["processed_log"],
+            file_hash="a" * 64,
+            path_key=str(source.resolve()),
+            chunks=1,
+            units=1,
+            acting_operation_id=grant["operation_id"],
+        )
+        assert ok is True
+    finally:
+        clear_owner_operation_identity(token)

@@ -218,6 +218,7 @@ def mutate_processed(
     *,
     affected_sources: tuple[str, ...] | None = None,
     maintenance_unscoped: bool = False,
+    acting_operation_id: str | None = None,
 ) -> dict:
     """Lock, reload on-disk state, mutate, atomic-save, unlock.
 
@@ -237,7 +238,9 @@ def mutate_processed(
                 from bootstrap_codex_v3_writer_coordination import recheck_reservation_before_commit
 
                 for source in affected_sources:
-                    recheck_reservation_before_commit(cfg, source)
+                    recheck_reservation_before_commit(
+                        cfg, source, acting_operation_id=acting_operation_id
+                    )
             mutator(data)
             save_processed(processed_path, data)
             return data
@@ -413,6 +416,7 @@ def commit_processed_index_entry(
     chunks: int,
     units: int,
     incremental_jsonl_lineage: str | None = None,
+    acting_operation_id: str | None = None,
 ) -> bool:
     """Merge one file's index metadata under the processed-state lock.
 
@@ -438,7 +442,12 @@ def commit_processed_index_entry(
         _purge_stale_same_path(data, path_key, file_hash, preserve_exclusions=True)
         result["committed"] = True
 
-    mutate_processed(processed_path, mutator, affected_sources=(path_key,))
+    mutate_processed(
+        processed_path,
+        mutator,
+        affected_sources=(path_key,),
+        acting_operation_id=acting_operation_id,
+    )
     return result["committed"]
 
 
@@ -517,7 +526,12 @@ def undo_exclude_processed_path(processed_path: str, target: str) -> bool:
                 entry.pop("exclude_reason", None)
                 found["ok"] = True
 
-    mutate_processed(processed_path, mutator, affected_sources=(path_key,))
+    mutate_processed(
+        processed_path,
+        mutator,
+        affected_sources=(path_key,),
+        acting_operation_id=acting_operation_id,
+    )
     return found["ok"]
 
 
@@ -665,6 +679,9 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
     from purge_locks import export_flock, index_write_flock, source_flock
 
     with source_flock(cfg, path_key):
+        from bootstrap_codex_v3_writer_coordination import recheck_reservation_before_commit
+
+        recheck_reservation_before_commit(cfg, path_key)
         with index_write_flock(cfg):
             processed = load_processed(idx["processed_log"])
             if _path_is_excluded(processed, path_key) or (
@@ -1163,6 +1180,44 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
     verbose: bool,
 ) -> _ChunkBuildResult:
     """Build a file unlocked and return its complete replacement manifest."""
+    from bootstrap_codex_v3_writer_coordination import legacy_source_preparation_participation
+
+    with legacy_source_preparation_participation(cfg, path_key):
+        return _process_file_chunks_impl(
+            cfg=cfg,
+            idx=idx,
+            path=path,
+            path_key=path_key,
+            file_hash=file_hash,
+            messages=messages,
+            models=models,
+            tool=tool,
+            chroma_dir=chroma_dir,
+            units_export=units_export,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            min_confidence=min_confidence,
+            verbose=verbose,
+        )
+
+
+def _process_file_chunks_impl(  # pylint: disable=too-many-arguments,too-many-locals
+    *,
+    cfg: dict,
+    idx: dict,
+    path: str,
+    path_key: str,
+    file_hash: str,
+    messages: list,
+    models: dict,
+    tool: str,
+    chroma_dir: str,
+    units_export: Path | None,
+    chunk_size: int,
+    overlap: int,
+    min_confidence: float,
+    verbose: bool,
+) -> _ChunkBuildResult:
     try:
         from live_diagnosis import mark
 
@@ -1285,6 +1340,9 @@ def _prune_completed_reindex(  # pylint: disable=too-many-arguments
     from purge_locks import index_write_flock, source_flock
 
     with source_flock(cfg, path_key):
+        from bootstrap_codex_v3_writer_coordination import recheck_reservation_before_commit
+
+        recheck_reservation_before_commit(cfg, path_key)
         with index_write_flock(cfg):
             if sha256_file(path) != file_hash:
                 if verbose:

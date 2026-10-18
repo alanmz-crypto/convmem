@@ -9,9 +9,9 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Cursor T2 COMPLETE (`1dc1eff`), T3 INCOMPLETE (e6a42f5)
-  (2026-10-18):** Kiro passed the execution plan at `9423900`; Ryan authorized
-  T1–T2 hermetic evidence landed; T3 writer mediation next (grant unchanged)
+- **Arc Codex / issue #286 — Cursor T3 COMPLETE (V5–V6 hermetic bwrap)
+  (2026-10-18):** T1 `ec11b10`, T2 `1dc1eff`; T3 writer mediation + watcher deferral
+  evidence on branch `fix/2026-10-18-issue-286-codex-bootstrap` (20-test T3 worker bundle)
   notes. **Next lane: Cursor.** Read the
   [authorized Execute handoff](CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
   for the exact revision, scope, branch procedure, and evidence gates.

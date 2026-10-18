@@ -54,8 +54,10 @@ EXPECTED_ISOLATED_T2_PASS_COUNT = 87
 
 ISOLATED_PYTEST_TARGETS_T3 = (
     "tests/test_issue_286_codex_bootstrap_v2_t3_writer_coordination.py",
+    "tests/test_issue_286_codex_bootstrap_v2_t3_race_matrix.py",
+    "tests/test_issue_286_codex_bootstrap_v2_t3_watch_integration.py",
 )
-EXPECTED_ISOLATED_T3_PASS_COUNT = 8
+EXPECTED_ISOLATED_T3_PASS_COUNT = 20
 
 
 
