@@ -17,7 +17,7 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
 the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
-T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 INCOMPLETE** (V5–V6 hermetic bwrap, 31-test worker bundle green; §5 VERIFY inventory gaps); **T4–T5 NOT STARTED**;
+T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 COMPLETE** (V5–V6 hermetic bwrap, 47-test worker bundle; V5–V6 PASS at `cce899cd857d`); **T4–T5 NOT STARTED**;
 live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
@@ -140,7 +140,7 @@ of those operations is granted by the Cursor implementation authorization.
 
 ## 6. Remaining gates
 
-1. Cursor completes T4–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1–T2 COMPLETE; T3 INCOMPLETE (inventory); T4 not started.
+1. Cursor completes T4–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1–T3 COMPLETE (hermetic bwrap); T4 next.
 2. Obtain exact-tip independent implementation review. PR creation, PR-native
    review triggers, merge and runtime/writer rollout remain separate gates.
 3. Resolve health readiness and outer-budget enforcement; revalidate exact
