@@ -272,7 +272,7 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test
 
 ## V5 — Complete writer mediation (T3)
 
-**INCOMPLETE (hermetic, external bwrap).** Subject SHA: set at commit (`git rev-parse HEAD` on
+**INCOMPLETE (hermetic, external bwrap).** Subject SHA: `f720b6bba71db1ac8e585c900f78386998ae012b` (`git rev-parse HEAD` on
 `fix/2026-10-18-issue-286-codex-bootstrap`). v2 live execution remains **closed**; rows
 mark **hermetic** vs **live NO_GO**.
 
