@@ -422,6 +422,10 @@ def bootstrap_issue_286_host_isolation_at_import() -> None:
 def enforce_issue_286_import_guard() -> None:
     if os.environ.get("CONVMEM_ISSUE_286_INNER_BWRAP_WORKER") == "1":
         return
+    if os.environ.get("CONVMEM_ISSUE_286_OUTER_BWRAP_ACTIVE") != "1":
+        raise RuntimeError(
+            "issue_286_unguarded_entry: use scripts/issue_286_guarded_pytest_launcher.py"
+        )
     _ensure_host_isolation_installed()
     validate_isolated_env(strict=True)
 

@@ -40,22 +40,22 @@ def _sessions_metadata(codex: Path) -> list[list[object]]:
     def onerror(exc: OSError) -> None:
         raise exc
 
-    for dirpath, dirnames, filenames in os.walk(codex, topdown=True, onerror=onerror, followlinks=False):
+    seen: set[str] = set()
+    for dirpath, _dirnames, filenames in os.walk(codex, topdown=True, onerror=onerror, followlinks=False):
         base = Path(dirpath)
         rel_dir = "." if base == codex else str(base.relative_to(codex))
-        if rel_dir != ".":
+        if rel_dir != "." and rel_dir not in seen:
             st = base.lstat()
             rows.append([rel_dir, st.st_ino, st.st_size, st.st_mtime_ns, st.st_dev])
-        for name in sorted(dirnames):
-            entry = base / name
-            st = entry.lstat()
-            rel = str(entry.relative_to(codex))
-            rows.append([rel, st.st_ino, st.st_size, st.st_mtime_ns, st.st_dev])
+            seen.add(rel_dir)
         for name in sorted(filenames):
             entry = base / name
-            st = entry.lstat()
             rel = str(entry.relative_to(codex))
+            if rel in seen:
+                continue
+            st = entry.lstat()
             rows.append([rel, st.st_ino, st.st_size, st.st_mtime_ns, st.st_dev])
+            seen.add(rel)
     rows.sort(key=lambda item: str(item[0]))
     return rows
 
@@ -84,6 +84,7 @@ def capture(out_path: Path) -> dict:
         "sessions_metadata": sessions_metadata,
         "sessions_metadata_sha256": hashlib.sha256(digest_src.encode()).hexdigest(),
         "sessions_entries": len(sessions_metadata),
+        "sessions_unique_entries": len({str(row[0]) for row in sessions_metadata}),
     }
     out_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return payload

@@ -51,11 +51,20 @@ def _run_index_child(path: str, *, env: dict[str, str] | None = None) -> subproc
 @pytest.fixture(autouse=True)
 def _watch_index_child_uses_isolated_subprocess_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Parent watch helpers must spawn index children with the same isolated envelope as _run_index_child."""
+    orig_sanitize = watch._sanitize_index_child_env
 
     def _child_env(env: dict[str, str] | None = None) -> dict[str, str]:
-        return watch._sanitize_index_child_env(subprocess_env_for_issue_286())
+        base = subprocess_env_for_issue_286()
+        if env:
+            base.update(env)
+        return orig_sanitize(base)
 
     monkeypatch.setattr(watch, "_sanitize_index_child_env", _child_env)
+    monkeypatch.setattr(
+        watch,
+        "_scoped_index_cmd",
+        lambda inner_cmd, cfg, verbose=False: list(inner_cmd),
+    )
 
 def _isolated_index_child_config_path(monkeypatch: pytest.MonkeyPatch, toml: Path) -> Path:
     target = worker_config_path()

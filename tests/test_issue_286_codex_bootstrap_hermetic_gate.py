@@ -68,7 +68,7 @@ ISOLATED_PYTEST_TARGETS_T3 = (
     "tests/test_issue_286_codex_bootstrap_v2_t3_cli_watch_e2e.py",
     "tests/test_issue_286_codex_bootstrap_v2_t3_inventory.py",
 )
-EXPECTED_ISOLATED_T3_PASS_COUNT = 49  # 2026-10-18 guarded run: 49 passed, 5 failed (cli_watch subprocess), 0 skipped
+EXPECTED_ISOLATED_T3_PASS_COUNT = 54  # 2026-10-18 guarded inner-bwrap T3 targets (excl. guard + V6)
 
 
 

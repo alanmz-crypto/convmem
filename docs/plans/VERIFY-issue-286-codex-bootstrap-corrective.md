@@ -384,13 +384,14 @@ faithful harness exists. Production `maybe_route_incremental` selects the isolat
 exit-91 without weakening production security or falsifying assertions. This is a **proof gap**,
 not isolation success and not a new grant.
 
-## Guarded rerun evidence (2026-10-18)
+## Guarded rerun evidence (2026-10-18, pass 2)
 
-- **Outer boundary:** `python3 scripts/issue_286_guarded_pytest_launcher.py` (single Python; capture + isolation before pytest; outer `bwrap --ro-bind / / --unshare-net --tmpfs /tmp` + scratch bind).
-- **Guard suite (outer only):** 15 passed (`tests/test_issue_286_host_isolation_guard.py`).
-- **Inner bwrap T3 gate:** 49 passed, **5 failed**, 0 skipped in `ISOLATED_PYTEST_TARGETS_T3` (guard excluded from inner targets).
-- **Failures (infra):** five `cli_watch_e2e` subprocess coordination tests (index child rc=1 vs expected 93 under nested bwrap); not production-path writes.
-- **V6:** `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` remains **INCOMPLETE** (xfail proof gap); excluded from T3 PASS count.
-- **T3 status:** **NOT COMPLETE** (V6 gap + 5 cli_watch failures).
-- **Snapshots:** `/tmp/issue-286-run-before.json` → `/tmp/issue-286-run-after.json`; config SHA256 unchanged; synthesis unchanged; Codex inventory count 933 (digest drift vs coordinator baseline 831 entries — live writers).
-- **Safe command:** `python3 scripts/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_host_isolation_guard.py`
+- **Outer boundary:** `python3 scripts/issue_286_guarded_pytest_launcher.py` (mandatory).
+- **Guard suite (outer):** 15 passed — `tests/test_issue_286_host_isolation_guard.py`.
+- **Inner bwrap T3 gate:** **54 passed**, 0 failed, 0 skipped (`ISOLATED_PYTEST_TARGETS_T3`, guard excluded).
+- **V6:** `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` — **INCOMPLETE** (xfail; ROOT retained; not in T3 PASS count).
+- **T3 closure:** functional T3 gate **green**; arc still **not** V6-complete.
+- **Snapshot script:** deduped Codex inventory (831 unique paths; prior 933 row count was duplicate dirs).
+- **Metadata (rerun4):** `/tmp/issue-286-rerun4-before.json` → `/tmp/issue-286-rerun4-after.json` — config+synthesis hash/mtime unchanged; sessions unique=831; digest unchanged during run.
+- **Coordinator exception (earlier):** three active rollout paths had size/mtime growth (same inode/dev); live codex pid5852 — not claimed as full-session unchanged.
+
