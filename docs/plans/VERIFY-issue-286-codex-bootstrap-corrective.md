@@ -1,11 +1,11 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 **COMPLETE** (V0–V2 PASS at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 protocol **COMPLETE** at tested code below; V3 **PASS (scoped table)**; V4 **PASS (scoped table)**. V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
+**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **COMPLETE** (V3–V4 at `d446122772839f25cc30847b653cb9282b79004d`). V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `f3ed0219f8c152784fe3798936bccca656878dc3` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** `c8d4412ea9ae9b80c5c7b23f9e4f38c2f6f090fa`. **PR:** none authorized.
+**Tested code SHA:** `d446122772839f25cc30847b653cb9282b79004d` (T1 gate proofs + dry-run audit oracle + bwrap harness). **Documentation evidence tip:** `c8d4412ea9ae9b80c5c7b23f9e4f38c2f6f090fa`. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -17,7 +17,7 @@ run. A1 stays parked, and A2 remains stopped.
 
 Scope is the execution plan's T1–T5 only. No production paths, provider calls,
 watcher controls, quarantine release, deployment, PR, or global restore belongs
-to this mechanical verification. V0–V2 rows below are filled from hermetic Execute evidence. V3–V8 remain **NOT RUN** until dependent tasks land.
+to this mechanical verification. V0–V4 rows below are filled from hermetic Execute evidence. V5–V8 remain **NOT RUN** until dependent tasks land.
 
 ## Verification design
 
@@ -141,49 +141,52 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 
 ## V3 — Authority crash matrix (T2)
 
-**PASS (scoped, tested at `f3ed0219f8c152784fe3798936bccca656878dc3` inside bwrap).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` (**19 passed**, exit 0). T1 bundle at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` not re-run at T2 SHA.
+**PASS (tested at `d446122772839f25cc30847b653cb9282b79004d` inside bwrap).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` — **40 passed**, exit 0. Independent oracle: `tests/fixtures/issue_286_t2_parent_oracle.py::snapshot_tree` byte hashes per file.
 
-| ID | Obligation | Test node | rc | Result |
+| ID | Obligation | Test node | rc | Oracle |
 |----|------------|-----------|-----|--------|
-| V3a | Initial claim publishes ordinal 1 authority | `test_issue_286_codex_bootstrap_v2_t2_authority.py::test_initial_claim_publishes_ordinal1` | 0 | PASS |
-| V3b | Ordinal 1 consumed without journal mirror | `::test_initial_claim_consumes_without_journal_mirror` | 0 | PASS |
-| V3c | Identical-grant recovery ordinal 2 | `::test_recovery_claim_ordinal2_identical_grant` | 0 | PASS |
-| V3d | Ordinal 3 denied | `::test_ordinal3_denied` | 0 | PASS |
-| V3e | Replacement grant refused | `::test_replacement_grant_refused` | 0 | PASS |
-| V3f | Terminal authority immutable | `::test_terminal_authority_immutable` | 0 | PASS |
-| V3g | Two concurrent initial claimants | `::test_concurrent_initial_claimants_one_wins` | 0 | PASS |
-| V3h | Orphan journal blocks fresh claim | `::test_orphan_journal_blocks_initial_claim` | 0 | PASS |
-| V3i | Authority revision rollback refused | `::test_authority_revision_rollback_refused` | 0 | PASS |
-| V3j | Crash after authority fsync (child exit 91) | `test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py::test_crash_after_authority_leaves_ordinal1_for_recovery` | 0 | PASS |
-| V3k | Reservation without transaction → ordinal 2 | `::test_reservation_without_transaction_recovery` | 0 | PASS |
-| V3l | Journal mirror idempotent | `::test_journal_mirror_idempotent` | 0 | PASS |
-| V3n | Crash after journal mirror fsync (child exit 91) | `test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py::test_crash_after_journal_mirror_still_authority_ordinal1` | 0 | PASS |
-| V3m | Broken ordinal-3 negative control | `test_issue_286_codex_bootstrap_v2_t2_authority.py::test_broken_ordinal3_allowance_would_fail` | 0 | PASS |
-
-
-**V3 deferrals (honest — full §3 crash inventory not exhaustively proven):**
-
-| Item | Status |
-|------|--------|
-| Kill before/after every authority/mirror/receipt/directory fsync slot | **Partial** — child exit-91 hooks at authority publish and journal mirror only |
-| Failed fsync/replace injection | **NOT RUN** |
-| Terminal receipt/release window races | **NOT RUN** at T2 (terminal publish covered without kill matrix) |
-| Temp/orphan ambiguity beyond journal-without-authority | **Partial** — `ambiguous_authority_temp` blocker + orphan journal row |
+| V3a | Initial claim ordinal 1 + progress bindings | `test_issue_286_codex_bootstrap_v2_t2_authority.py::test_initial_claim_publishes_ordinal1`, `::test_authority_progress_binding_fields` | 0 | authority file digest |
+| V3b–V3i | Protocol refusals / concurrency / orphan / revision rollback | `test_issue_286_codex_bootstrap_v2_t2_authority.py` (rows V3b–V3i from prior table) | 0 | snapshot_tree |
+| V3j–V3n | Child `_exit(91)` hooks + reservation-without-transaction | `test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py` | 0 | load_authority ordinal |
+| V3p1–V3p8 | **Parent SIGKILL** at each publication fsync boundary | `test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py::test_parent_sigkill_at_publication_stage[…]` (8 stages: initial tmp/dir, journal, recovery, terminal receipt/authority) | 0 | killed=True; post-snapshot |
+| V3q | Injected replace/fsync failure (no durable authority) | `::test_injected_replace_fail_leaves_no_durable_authority`, `::test_injected_fsync_fail_before_authority_dir` | 0 | authority absent or tmp only |
+| V3r | Temp/orphan ambiguity | `::test_ambiguous_authority_temp_blocks_initial`, `::test_orphan_journal_blocks_initial_claim` | 0 | blockers list |
+| V3s | Ordinal 3 child refusal | `::test_parent_kill_ordinal3_child_exits_nonzero` | ≠0 | ordinal stays 2 |
+| V3t | Terminal receipt-before-release window | `::test_terminal_receipt_before_release_parent_kill_preserves_active_reservation` | 0 | reservation_active True |
+| V3u | No Chroma mutation on claim | `::test_authority_claim_does_not_mutate_chroma` | 0 | chroma snapshot unchanged |
 
 ```bash
 cd /home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap
-git checkout f3ed02158c41b65207ec0d432498c8fbcf7ed2ef
+git checkout d446122772839f25cc30847b653cb9282b79004d
 python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap
-# exit 0; 19 passed in bwrap worker
+# exit 0; 40 passed in bwrap worker
 ```
+
+**Parent hermetic file honesty:** `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` runs **5** parent tests (3 boundary + `test_t1_and_v1_regressions_in_bwrap` **38** + `test_t2_…` **40**). The T1 bundle re-executes when the full parent file is run; T1 evidence SHA remains `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`.
 
 ## V4 — Provider permits and caps (T2)
 
-**NOT RUN.** Permit fsync before send; retry/lost-response accounting; preserved
-cumulative cap; prepared reuse; provider-binding/no-fallback checks; Ollama
-observation; nested outer/operation permit composition and either-gate denial.
-Production guard composition is a separate operational gate, not inferred from
-a fake outer-permit implementation.
+**PASS (same `d446122772839f25cc30847b653cb9282b79004d` bwrap bundle).** Transport interception uses fake endpoints only; production outer budget remains `outer_budget_unverified` (§7).
+
+| ID | Obligation | Test node | rc | Oracle |
+|----|------------|-----------|-----|--------|
+| V4a | Permit-before-send (intercepted POST count) | `test_issue_286_codex_bootstrap_v2_t2_accounting.py::test_permit_before_send_blocks_transport` | 0 | transports==1 |
+| V4b | Composed outer+operation guards | `::test_composed_outer_and_operation_guards_both_execute` | 0 | both called |
+| V4c | Outer denial before operation ledger | `::test_outer_refusal_blocks_before_operation_counter` | 0 | permits rows==0 |
+| V4d | Recovery ordinal permit bucket + lifetime cumulative | `::test_recovery_ordinal_uses_separate_permit_bucket`, `::test_cumulative_lifetime_across_recovery_without_reset` | 0 | ledger file rows |
+| V4e | Lost-response / retry consumes permit | `::test_lost_response_still_counts_without_usage` | 0 | exhausted after 1 |
+| V4f | Process restart preserves permits | `::test_ledger_survives_process_restart` | 0 | cumulative==1 |
+| V4g | Ollama embed cap-exempt observations | `::test_ollama_embed_cap_exempt_observed` | 0 | permitted==0, observed==2 |
+| V4h | Operation guard refusal | `::test_operation_guard_refusal_blocks_inner` | 0 | exhausted |
+| V4i | Corrupt permit journal | `::test_corrupt_permit_journal_refuses_consume` | 0 | BootstrapGrantError |
+| V4j | Broken permit-order negative control | `::test_broken_permit_order_negative_control` | 0 | AssertionError expected |
+| V4k | v1 paid-cap regression (bundle) | `test_incremental_jsonl_bootstrap_safety.py` nodes in T1 bwrap bundle at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` | 0 | not re-run at `d446122772839f25cc30847b653cb9282b79004d` unless full parent file |
+
+```bash
+git checkout d446122772839f25cc30847b653cb9282b79004d
+python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap
+# includes all V4 rows above
+```
 
 ## V5 — Complete writer mediation (T3)
 
@@ -239,7 +242,7 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `5d5ec91` / `45b07d6` | prior in-process hook gate | — | **invalid** | withdrawn — not external enforcement |
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 
-**TL;DR:** [Arc Codex] T1 V0–V2 PASS at tested code `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` with bwrap boundary. V3–V8 NOT RUN. Documentation tip `2654d71da5caf25413af2f728947083457913fc3`.
+**TL;DR:** [Arc Codex] T1 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`; T2 V3–V4 PASS at `d446122772839f25cc30847b653cb9282b79004d` (40-test bwrap bundle). V5–V8 NOT RUN.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->

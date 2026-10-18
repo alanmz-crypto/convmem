@@ -17,7 +17,7 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
 the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
-T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10`); **T2 COMPLETE** (V3–V4 at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef`); **T3–T5 NOT STARTED**;
+T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (V3–V4 at `d4461227`); **T3–T5 NOT STARTED**;
 live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
@@ -104,7 +104,7 @@ Key invariants:
   non-blocking precision notes.
 - **Execute handoff:** [Cursor's bounded grant](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
   records the scope, notes, branch procedure, and operational prohibitions.
-  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1 code + contract tests + bwrap gate landed; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md): V0–V2 at `ec11b10`; V3–V4 at `8f82e1f58c41b65207ec0d432498c8fbcf7ed2ef` (18-test bwrap). Live v2 execution closed. No PR/production authority.
+  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1 code + contract tests + bwrap gate landed; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md): V0–V2 at `ec11b10d`; V3–V4 at `d4461227` (40-test bwrap). Live v2 execution closed. No PR/production authority.
 
 ## 4. Completion State
 
