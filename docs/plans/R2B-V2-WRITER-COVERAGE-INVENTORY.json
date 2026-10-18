@@ -213,14 +213,14 @@
       "category": "chroma_writers",
       "code_revision": "dac82d904fdbbe697067beab2477d30f8858bd19",
       "coverage_status": "gated",
-      "entrypoint": "incremental_jsonl.py:725",
+      "entrypoint": "incremental_jsonl.py:726",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
       "gate_protocol": 1,
       "mutation_surfaces": [
         "chroma"
       ],
       "route_id": "chroma_site_incremental_jsonl.py_725",
-      "shadow_inventory_ref": "incremental_jsonl.py:725"
+      "shadow_inventory_ref": "incremental_jsonl.py:726"
     },
     {
       "category": "chroma_writers",

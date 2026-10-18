@@ -41,7 +41,7 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 full-rebuild Codex admission frontier fix.
     # Refreshed for issue #286 commit digest reuse (slice 1).
     # Refreshed for issue #286 scoped proof shadow observer wiring.
-    "incremental_jsonl.py": "5864087e999a3346f3a8798fbe4a9df65b2d04a74525fafaa4fc730f2f3ecace",
+    "incremental_jsonl.py": "317c2e5c3204a0b504463a2eb84211bb6663ecdf32c4c1d205e0e3b2c8e31e06",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
