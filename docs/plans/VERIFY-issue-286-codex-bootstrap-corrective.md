@@ -307,7 +307,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff3dcfdae43e68624adc7f2749de1f377f1`); T3–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff3dcfdae43e68624adc7f2749de1f377f1`); T3 INCOMPLETE (`e6a42f5a3d3c6887d9faaeed3b88a572b354b1db`); T4–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
@@ -324,7 +324,7 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `5d5ec91` / `45b07d6` | prior in-process hook gate | — | **invalid** | withdrawn — not external enforcement |
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 
-**TL;DR:** [Arc Codex] T1 at `ec11b10`; T2 **COMPLETE** at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1` — 87-test bwrap bundle, unconditional owner lock. T3–T5 NOT RUN.
+**TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **INCOMPLETE** at `e6a42f5a3d3c6887d9faaeed3b88a572b354b1db`. T4–T5 NOT RUN.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->

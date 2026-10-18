@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Cursor T2 COMPLETE (`1dc1eff`), T3 next
+- **Arc Codex / issue #286 — Cursor T2 COMPLETE (`1dc1eff`), T3 INCOMPLETE (e6a42f5)
   (2026-10-18):** Kiro passed the execution plan at `9423900`; Ryan authorized
   T1–T2 hermetic evidence landed; T3 writer mediation next (grant unchanged)
   notes. **Next lane: Cursor.** Read the
