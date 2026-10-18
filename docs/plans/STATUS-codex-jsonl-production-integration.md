@@ -142,7 +142,7 @@ of those operations is granted by the Cursor implementation authorization.
 
 ## 6. Remaining gates
 
-1. Cursor completes T3–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1–T2 evidence recorded at `ec11b10` / `8f82e1f`.
+1. Cursor completes T3–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1–T2 evidence recorded at `ec11b10` / `d446122`.
 2. Obtain exact-tip independent implementation review. PR creation, PR-native
    review triggers, merge and runtime/writer rollout remain separate gates.
 3. Resolve health readiness and outer-budget enforcement; revalidate exact
@@ -229,7 +229,7 @@ Keep this document a current-state snapshot, not a session diary.
 
 ### Update Log
 
-- 2026-10-18 | Cursor | T2 authority + permit ledger + V3/V4 bwrap evidence; tested code `8f82e1f5`.
+- 2026-10-18 | Cursor | T2 authority + permit ledger + V3/V4 bwrap evidence; tested code `d446122`.
 
 | Date | Who | Change |
 |---|---|---|

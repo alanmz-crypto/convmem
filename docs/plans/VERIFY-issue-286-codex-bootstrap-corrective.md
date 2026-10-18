@@ -134,8 +134,8 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 **Deferred:** cross-artifact immutability of descriptor digests on prepared/transaction surfaces — **T2/T4**.
 
 ```bash
-# Dry-run immutability: included in 38-test bwrap bundle (test_dry_run_no_writes)
-# Provider call count: not instrumented; reliance on read-only code path at T1 scope
+# Dry-run immutability + audit: 38-test T1 bwrap bundle (ec11b10 evidence SHA)
+# V4 permit-before-send: test_issue_286_codex_bootstrap_v2_t2_accounting.py at d446122
 ```
 
 
