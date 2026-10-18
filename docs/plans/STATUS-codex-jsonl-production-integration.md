@@ -17,7 +17,7 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
 the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
-T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 COMPLETE** (V5–V6 hermetic bwrap, 53-test worker bundle; V5–V6 PASS at `36c40caf21d5`); **T4–T5 NOT STARTED**;
+T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 COMPLETE** (V5–V6 hermetic bwrap, 55-test worker bundle; V5–V6 PASS at `4a99eba47faf`); **T4–T5 NOT STARTED**;
 live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
