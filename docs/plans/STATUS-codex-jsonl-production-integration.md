@@ -17,7 +17,7 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
 the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
-T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 INCOMPLETE** (V3/V4 PASS at latest evidence SHA; owner-lock mediation blocker until T3); **T3–T5 NOT STARTED**;
+T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`; owner lock + 87-test bwrap); **T3–T5 NOT STARTED**;
 live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
@@ -104,7 +104,7 @@ Key invariants:
   non-blocking precision notes.
 - **Execute handoff:** [Cursor's bounded grant](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
   records the scope, notes, branch procedure, and operational prohibitions.
-  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1 code + contract tests + bwrap gate landed; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md): V0–V2 at `ec11b10d`; V3–V4 at `d4461227` (40-test bwrap). Live v2 execution closed. No PR/production authority.
+  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1 code + contract tests + bwrap gate landed; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md): V0–V2 at `ec11b10d`; V3–V4 at `1dc1eff` (87-test bwrap). Live v2 execution closed. No PR/production authority.
 
 ## 4. Completion State
 
@@ -142,7 +142,7 @@ of those operations is granted by the Cursor implementation authorization.
 
 ## 6. Remaining gates
 
-1. Cursor completes T3–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1 at `ec11b10`; T2 V3/V4 exhaustive proofs in VERIFY; T2 gate INCOMPLETE (owner lock).
+1. Cursor completes T3–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1 at `ec11b10`; T2 V3/V4 exhaustive proofs in VERIFY; T2 COMPLETE at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1`; T3 next.
 2. Obtain exact-tip independent implementation review. PR creation, PR-native
    review triggers, merge and runtime/writer rollout remain separate gates.
 3. Resolve health readiness and outer-budget enforcement; revalidate exact
@@ -229,7 +229,7 @@ Keep this document a current-state snapshot, not a session diary.
 
 ### Update Log
 
-- 2026-10-18 | Cursor | T2 V3 38-stage SIGKILL matrix + V4 contract proofs; T2 INCOMPLETE pending mandatory owner_claim_lock.
+- 2026-10-18 | Cursor | T2 COMPLETE: unconditional owner lock; bwrap 87 passed at `1dc1eff`.
 
 | Date | Who | Change |
 |---|---|---|

@@ -1,11 +1,11 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **INCOMPLETE** — V3/V4 mechanical proofs **PASS** (see evidence log SHA); **blocker:** authority mutation APIs remain callable without mandatory `owner_claim_lock` until T3 complete-writer mediation (`CONVMEM_BOOTSTRAP_V2_ENFORCE_OWNER_LOCK=1` is test-only today). V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
+**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **COMPLETE** (V3–V4 at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1`; unconditional owner/source lock on all mutating authority APIs; no `CONVMEM_BOOTSTRAP_V2_ENFORCE_OWNER_LOCK`). V5–V8 **NOT RUN**. v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `6ad76d61ab18041d0f11e6f49af0f400bd256c05` (T2 V3/V4 proofs). **Documentation evidence tip:** docs commit on branch. **PR:** none authorized.
+**Tested code SHA:** `1dc1eff3dcfdae43e68624adc7f2749de1f377f1` (T2 complete: owner lock + V3/V4 bwrap bundle). **Documentation evidence tip:** docs commit on branch. **PR:** none authorized.
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -141,7 +141,17 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 
 ## V3 — Authority crash matrix (T2)
 
-**PASS (exhaustive publication barriers; tested inside bwrap at T2 code SHA recorded in evidence log).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` — **85 passed**, exit 0. Oracle: `tests/fixtures/issue_286_t2_parent_oracle.py` (`snapshot_tree`, `count_oracle_rows`, `load_authority` ordinal/reservation fields).
+**PASS (exhaustive publication barriers; tested inside bwrap at T2 code SHA recorded in evidence log).** Parent gate: `tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap` — **87 passed**, exit 0. Oracle: `tests/fixtures/issue_286_t2_parent_oracle.py` (`snapshot_tree`, `count_oracle_rows`, `load_authority` ordinal/reservation fields).
+
+**Unconditional owner lock (production; no opt-in env):**
+
+| ID | Obligation | Test node | Oracle |
+|----|------------|-----------|--------|
+| V3-own-neg | Mutating authority without owner context refused before durable change | `test_issue_286_codex_bootstrap_v2_t2_contract_evidence.py::test_owner_lock_required_without_context` | `OwnerLockRequired`; authority file absent |
+| V3-own-pos | Verified owner + source lock allows claim | `::test_owner_lock_positive_allows_claim` | authority durable |
+| V3-own-acct | Accounting lock does not substitute for owner claim | `::test_accounting_lock_separate_from_owner_claim` | refusal without owner |
+| V3-c1-deny | No provider permit consume under C1/Chroma session | `::test_provider_permit_refused_under_c1_session` | `provider_permit_under_c1_session` |
+
 
 | Publication site | Kind | Parent SIGKILL node | Parent action | Post-kill oracle |
 |------------------|------|---------------------|---------------|------------------|
@@ -200,12 +210,12 @@ Additional V3 nodes (non-parametrized):
 cd /home/lauer/.local/share/convmem/worktrees/fix-2026-10-18-issue-286-codex-bootstrap
 python3 -m pytest -q tests/test_issue_286_codex_bootstrap_v2_t2_process_kill_matrix.py
 python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t2_authority_accounting_and_crash_matrix_in_bwrap
-# exit 0; 85 passed in bwrap worker
+# exit 0; 87 passed in bwrap worker
 ```
 
 ```bash
 python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
-# exit 0; 5 passed (3 boundary + T1 bundle 38 + T2 bundle 85)
+# exit 0; 5 passed (3 boundary + T1 bundle 38 + T2 bundle 87)
 ```
 
 ## V4 — Provider permits and caps (T2)
@@ -230,11 +240,11 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py
 | V4n | v1 journal default lifetime parity | `::test_v1_journal_default_lifetime_matches_v2_ledger` | equal caps |
 | V4o | No Chroma during permit append | `::test_no_chroma_mutation_during_permit_append` | chroma snapshot |
 | V4p | Journal ahead / rolled-back revision | `::test_journal_ahead_of_authority_blocks_fresh_claim`, `::test_rolled_back_authority_revision_rejected` | corruption detectors |
+| V4c1 | Permit refused under C1 session | `test_issue_286_codex_bootstrap_v2_t2_contract_evidence.py::test_provider_permit_refused_under_c1_session` | no permit row |
 | V4q | v1 paid-cap regression (T1 bundle) | `test_incremental_jsonl_bootstrap_safety.py` in T1 bwrap at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa` | not re-run at T2-only worker |
 
 ```bash
-python3 -m pytest -q tests/test_issue_286_codex_bootstrap_v2_t2_accounting.py tests/test_issue_286_codex_bootstrap_v2_t2_contract_evidence.py
-# exit 0; 21 passed (10 accounting + 11 contract)
+# V4 accounting/contract nodes run inside the bwrap T2 worker bundle only.
 ```
 
 
@@ -297,7 +307,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 INCOMPLETE (V3/V4 PASS, owner-lock mediation blocker); T3–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff3dcfdae43e68624adc7f2749de1f377f1`); T3–T5 NOT STARTED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
@@ -314,7 +324,7 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `5d5ec91` / `45b07d6` | prior in-process hook gate | — | **invalid** | withdrawn — not external enforcement |
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 
-**TL;DR:** [Arc Codex] T1 at `ec11b10`; T2 V3/V4 exhaustive proofs PASS in 85-test bwrap bundle; T2 gate **INCOMPLETE** pending mandatory owner-lock mediation (T3). V5–V8 NOT RUN.
+**TL;DR:** [Arc Codex] T1 at `ec11b10`; T2 **COMPLETE** at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1` — 87-test bwrap bundle, unconditional owner lock. T3–T5 NOT RUN.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
