@@ -37,6 +37,7 @@ from bootstrap_safety import (  # pylint: disable=wrong-import-position
     sha256_file,
     validate_grant,
 )
+from bootstrap_codex_v2 import dry_run_preflight  # pylint: disable=wrong-import-position
 from bootstrap_supersession import (  # pylint: disable=wrong-import-position
     activate_bootstrap_supersession,
     bootstrap_mutation_inventory,
@@ -365,6 +366,10 @@ def bootstrap(
 ) -> dict[str, Any]:
     """Apply one reviewed grant with durable budget and invocation accounting."""
 
+    if grant.get("grant_version") == 2:
+        raise BootstrapGrantError(
+            "v2 live execution remains closed until coordination authority is complete"
+        )
     grant = validate_grant(grant)
     source = Path(grant["source"])
     cfg = load_config()
@@ -553,13 +558,43 @@ def bootstrap(
         raise
 
 
+
+def dry_run_v2(grant_path: Path) -> dict[str, Any]:
+    grant, _ = _read_grant(grant_path)
+    if grant.get("grant_version") != 2:
+        raise BootstrapGrantError("dry-run requires grant_version=2")
+    cfg = load_config()
+    config_path = Path(CONFIG_PATH).expanduser().absolute()
+    source = Path(grant["source"])
+    boundary = ProductionBoundary(cfg, source, config_path=config_path)
+    settings = incremental_jsonl_settings(cfg)
+    state_root = boundary.resolve_mutable(settings.state_dir, label="incremental state")
+    return dry_run_preflight(grant, cfg=cfg, state_root=state_root)
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--grant-file", type=Path, required=True)
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="read-only v2 preflight (mutually exclusive with --execute)",
+    )
     parser.add_argument("--execute", action="store_true", help="run the reviewed one-shot bootstrap")
     args = parser.parse_args()
+    if args.dry_run and args.execute:
+        parser.error("--dry-run and --execute are mutually exclusive")
+    if args.dry_run:
+        try:
+            packet = dry_run_v2(args.grant_file)
+        except Exception as exc:
+            if isinstance(exc, BootstrapGrantError):
+                print(json.dumps({"ready": False, "error": str(exc)}, sort_keys=True))
+                return 1
+            raise
+        print(json.dumps(packet, sort_keys=True))
+        return 0 if packet.get("ready") else 1
     if not args.execute:
-        parser.error("--execute is required for the reviewed one-shot bootstrap")
+        parser.error("--execute or --dry-run is required")
     try:
         grant, supersession = _read_grant(args.grant_file)
         receipt = bootstrap(grant, supersession_authority=supersession)

@@ -155,15 +155,9 @@ def _require_canonical_url(value: str, field: str) -> None:
         raise BootstrapGrantError(f"grant {field} must be a canonical HTTP base URL")
 
 
-def validate_grant(grant: dict[str, Any]) -> dict[str, Any]:
-    """Validate exact shape and canonical values without resolving credentials."""
+def validate_grant_common_fields(grant: dict[str, Any]) -> None:
+    """Validate shared bootstrap grant fields without shape or operation identity."""
 
-    if not isinstance(grant, dict):
-        raise BootstrapGrantError("grant must be a JSON object")
-    if set(grant) != GRANT_FIELDS:
-        raise BootstrapGrantError(
-            "grant must contain exactly " + ", ".join(sorted(GRANT_FIELDS))
-        )
     for field in (
         "source",
         "backup_snapshot",
@@ -233,6 +227,18 @@ def validate_grant(grant: dict[str, Any]) -> dict[str, Any]:
     for field in ("summarize_provider", "distill_provider", "embedding_provider"):
         if grant[field] not in {"deepseek", "ollama"}:
             raise BootstrapGrantError(f"grant {field} is unsupported")
+
+
+def validate_grant(grant: dict[str, Any]) -> dict[str, Any]:
+    """Validate exact shape and canonical values without resolving credentials."""
+
+    if not isinstance(grant, dict):
+        raise BootstrapGrantError("grant must be a JSON object")
+    if set(grant) != GRANT_FIELDS:
+        raise BootstrapGrantError(
+            "grant must contain exactly " + ", ".join(sorted(GRANT_FIELDS))
+        )
+    validate_grant_common_fields(grant)
     expected_operation = operation_identity(grant)
     if grant["operation_id"] != expected_operation:
         raise BootstrapGrantError("grant operation_id does not match its immutable body")

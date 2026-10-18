@@ -146,6 +146,13 @@ def parse_grant_document(document: dict[str, Any]) -> tuple[dict[str, Any], dict
 
     if not isinstance(document, dict):
         raise BootstrapGrantError("grant must be a JSON object")
+    version = document.get("grant_version")
+    if version == 2:
+        from bootstrap_codex_v2 import parse_v2_grant_document
+
+        return parse_v2_grant_document(document)
+    if version is not None:
+        raise BootstrapGrantError("unsupported grant_version")
     extra = set(document) - GRANT_FIELDS
     if not extra:
         return validate_grant(document), None
