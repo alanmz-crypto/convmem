@@ -74,7 +74,7 @@ Key invariants:
 | Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
 | Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
 | Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the packet as an accurate `NO-GO`. The first implementation received exact-revision Kiro PASS and Copilot FAIL at b68daea; Sol-High accepted Copilot's replay/rollback finding. Cursor corrected it at b108ab6, and Kiro/Copilot both passed exact revision 318c2f9 with no blockers. |
-| Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
+| Watcher | Running on `runtime-main` `633f1d1` since 2026-10-17 16:02:43 under the canary guard; see §6 Codex item 2. |
 
 ## 4. Completion State
 
@@ -119,7 +119,7 @@ session started Sep 21, stay on the legacy route and need the packet's
 residual-burn decision before Stage 2. This track authorizes no live
 bootstrap, config, runtime, or watcher action.
 
-**Stage 2 fixes merged, not deployed:** after the Stage 2 canary hit its
+**Stage 2 fixes (deployed; runtime now `633f1d1`, see §6):** after the Stage 2 canary hit its
 paid ceiling, Ryan squash-merged PR #395 as `3e705e4` (2026-10-16), with the
 tree identical to the verified head `1a70c41`. It adds the store-wide index write
 lock, source-scoped recovery, bounded paid retries, watcher intake that
@@ -151,22 +151,39 @@ Codex rollouts (separate track):
    `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
    Don't add the incremental table to the shared live config while
    `runtime-main` is still on `a92a74e`.
-2. **Canary 2, run 1 ended at its 200-call ceiling** (2026-10-17 01:12:57 → 14:33,
-   guard auto-stop, no faults). New-route Codex cost ~56 calls; legacy full
-   re-indexes ~144, of which ~80 came from two re-indexes of the 134 MB Oct 9 Codex
-   thread (now soft-excluded). **Run 2 is on `633f1d1`** (#396 + #398 over `bd37946`),
-   watcher started 16:02:43; its 24 h / 200-call guard must be started by Ryan.
-3. **Transform-compatibility fix is next.** The incremental fingerprint includes the R2b
-   implementation identity, so any deploy touching its closure (even `cpu_tripwire.py`)
-   makes admitted Codex sessions refuse `rebuild_required:transform_fingerprint_changed`
-   (no cost; coverage lost until a rebuild or conversion). Two sessions are refused
-   today. Design `docs/plans/DESIGN-issue-286-transform-compatibility.md` (branch
-   `docs/2026-10-17-issue-286-transform-compatibility`); Kiro PASS-with-conditions
-   C1–C8 (`docs/2026-10-17-issue-286-transform-compatibility-review`). Interim: deploy
-   non-transform changes only when no Codex session is active (Kiro item 4).
-4. Commit-cost slice 1 (reuse the pre-write digest, add phase timing; ~73 s of the
-   ~5 min commit) has Kiro PASS and goes to Cursor. The watcher run-outcome event
-   (`fix/2026-10-17-watch-forward-run-outcome`, `8808b7c`) is verified; PR not yet opened.
+2. **Live state (2026-10-17 ~23:30 CDT).** `runtime-main` is on `633f1d1` (#396 + #398),
+   watcher running since 16:02:43 under the canary guard (ceiling raised to 3,000 for
+   the free-provider window; fault stops unchanged). DeepSeek is temporarily free, so
+   Ryan granted an aggressive backfill:
+   - Backfill of all 59 new-route Codex rollouts: 26 indexed (52 calls); rebuild pass:
+     15 sessions rebuilt (38 calls). Oct 9 and Oct 10 pre-cutoff threads refreshed once,
+     then soft-excluded (index kept).
+   - Largest-first queue of 84 stale/never-indexed transcripts (Claude 55, Copilot 28,
+     Cursor 1; 671 MB) runs overnight from the Claude scratchpad.
+   - **LIVE FLAG TO REVERT:** `allow_full_rebuild = true` under `[index.incremental_jsonl]`
+     in `~/.config/convmem/config.toml` (backup `config.toml.pre-allow-full-rebuild-2026-10-17`).
+     Remove it the moment billing resumes: `sed -i '/^allow_full_rebuild = true$/d'
+     ~/.config/convmem/config.toml`. While on, any fingerprint-refused session is fully
+     re-transformed on its next write.
+3. **On `main`, not deployed:** #399 transform compatibility (`9be0a4f`; semantic v2
+   fingerprints, hermetic-only converter), #400 watcher run-outcome events. #401 (Claude
+   adapter: transcripts with >10 metadata lines were silently not ingested) is open.
+   **Deploy blocker:** on `main`, every admitted-Codex v1 checkpoint refuses
+   `migration_required` even with `allow_full_rebuild`, and ~40 live sessions hold v1
+   checkpoints, so deploying `main` would stop all Codex indexing. Cursor is implementing
+   "allow_full_rebuild also rebuilds v1 checkpoints" (branch
+   `fix/2026-10-17-issue-286-v1-rebuild-when-allowed`); then a short Kiro check, Kiro's
+   #399 implementation review, and Ryan's grant to promote `runtime-main` to `main`.
+4. **Known stuck sources (old content indexed; new appends refused, no cost):**
+   `projection_checkpoint_mismatch` (rollouts 2026-10-12T20-20-37, 2026-10-15T02-15-37:
+   a legacy re-index overwrote the processed lineage), `frontier_violation`
+   (2026-10-13T21-08-50, 2026-10-15T11-20-29: the run would re-transform history),
+   `bootstrap_required` (3 sessions; needs the Stage 1 bootstrap grant), and the wedged
+   Oct 13 transaction `46313d43…` (`recovery_unproven`). Fold their repair into the
+   real-data converter slice (dry run, per-source grant, coordinator source lock).
+5. Then: commit-cost slice 1 (Kiro PASS; ~73 s off each ~5 min commit) to Cursor, and the
+   repository-manifest fix (`fix/2026-10-17-repository-manifest-failure-cache`, Cursor
+   report pending).
 
 ## 7. Hard Stops
 
@@ -339,6 +356,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-16 | Claude | Canary 2 stopped at 21:53: the watcher's own index child defers to the watcher (#395 regression; 1 spawn, 0 indexed, 0 paid). Watcher disabled; `--now` fix for the internal callers goes to Cursor |
 | 2026-10-17 | Ryan / Claude | PR #397 admin-merged as `bd37946`; runtime-main `3e705e4`→`bd37946`; canary 2 restarted 01:12:57 (24 h, 200 paid calls) |
 | 2026-10-17 | Ryan / Claude / Kiro | Canary 2 run 1 hit the 200-call ceiling at 14:33; Oct 9 Codex thread excluded; runtime-main → `633f1d1` (#396, #398), watcher restarted 16:02:43; transform-compatibility design PASS-with-conditions |
+| 2026-10-17 | Ryan / Claude / Cursor | #399, #400 merged (not deployed); #401 open; free-provider backfill + rebuilds (41 sessions); `allow_full_rebuild` live flag ON (revert when billing resumes); deploy blocked on v1-rebuild fix |
 
 ## TL;DR
 
