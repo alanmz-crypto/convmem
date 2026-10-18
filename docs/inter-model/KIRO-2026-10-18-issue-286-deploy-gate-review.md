@@ -1,444 +1,359 @@
-# [Arc Codex #286] Kiro review — transform-compatibility implementation, DEPLOY gate
+# [Arc Codex #286] Kiro deploy-gate review — PR #402 (v1 full-rebuild when allowed)
 
-**Arc: Codex.**
-**Reviewer:** Kiro (design review / sign-off lane; review-only, no implementation).
-**Date:** 2026-10-18.
-**Verdict for DEPLOY: PASS with conditions.**
-
-## Artifacts under review
-
-1. **#399 (transform compatibility)** — squash-merged to `main` as `9be0a4f`;
-   reviewed tip `f8140b1` is byte-identical to `9be0a4f` (empty diff, confirmed).
-   Current `main` tip is `c2ca17d`; the only commits above `9be0a4f`
-   (`a00a152` #400, `c2ca17d` #401) are a watcher-journal change and a Claude
-   adapter fix — both outside the #286 transform/admission closure, so this
-   review of the arc code holds at the live `main` tip.
-2. **Follow-up branch** `fix/2026-10-17-issue-286-v1-rebuild-when-allowed` at
-   `b3dccb9` (two commits: `ee6df2b`, `b3dccb9`), PR to follow.
-
-**Baseline grounded against:** the merged code on `main` (`9be0a4f`) and the
-follow-up branch tip `b3dccb9`, both read directly. 423 arc tests run and pass
-locally on `b3dccb9` (see Verification). Prior design review:
-`KIRO-2026-10-17-issue-286-transform-compatibility-review.md` (C1–C8 + G1/G2).
-
-**Scope:** review-only. This document authorizes no implementation, migration,
-grant, quarantine release, config change, or runtime promotion. It does not
-touch `.worktrees/runtime-main`.
+**Reviewer:** Kiro (design review / sign-off lane; review-only, no implementation)
+**Date:** 2026-10-18
+**Artifact under review:** PR #402, branch `fix/2026-10-17-issue-286-v1-rebuild-when-allowed`,
+tip `b3dccb9` ("fix: admit full Codex rebuilds across multi-chunk frontiers").
+**Base of the branch:** `a00a152` (#400, which includes #399 `9be0a4f`).
+**Deploy target under gate:** `main` (`c2ca17d`, #401) **+ #402**.
+**Prior reviews this builds on:**
+- `docs/inter-model/KIRO-2026-10-17-issue-286-transform-compatibility-review.md` (design, C1–C8)
+- `docs/inter-model/KIRO-2026-10-17-issue-286-transform-compatibility-impl-review.md` (PR #399 DEPLOY PASS)
+**Scope:** review-only. This document authorizes no deploy, migration, grant, quarantine
+release, config change, or runtime promotion. It did not touch `.worktrees/runtime-main`.
 
 ---
 
 ## Consequence first (for Ryan)
 
-**What this gates:** whether the merged transform-compatibility code (#399) plus
-the small v1-rebuild follow-up are safe to carry into the runtime deploy that is
-otherwise waiting. The deploy's whole point is that an unrelated code change no
-longer strands admitted-Codex checkpoints.
+**What this is:** the companion fix that must ship *with* #399. #399 made admitted Codex
+checkpoints deploy-durable and added the v1→v2 migration path, but it left a live-route
+hole: when `allow_full_rebuild` is on, a v1 checkpoint still refused with
+`migration_required`, and a *multi-chunk* v1 history that reached the full-rebuild path was
+rejected by the frontier-admission guard with `frontier_violation`. Net effect without #402:
+~40 live v1 checkpoints cannot migrate or rebuild, and Codex indexing stalls on them.
 
-**My verdict: PASS with conditions.** Every C1–C4 and C6–C8 condition from the
-design review is present in the merged code at the file:line I cite below, and
-the behaviors Claude described (v1 + rebuild → v2, unchanged → 0 calls, append
-reuses, rebuild-off → `migration_required`; #399 converter dry-run + publish →
-0-call continuation with working negative controls) match what the code and
-tests actually do. The follow-up's choice to let `allow_full_rebuild` bypass
-`migration_required` is **acceptable and correctly bounded** by the admission
-chunk cap, which refuses before any paid call.
-
-**The one thing to carry out of this review (not a blocker):** the live config
-currently has `allow_full_rebuild = true` **and** `live_sources = []`. The empty
-`live_sources` is what makes the forgotten-flag risk near-zero *today* — nothing
-is routed to the incremental coordinator, so no rebuild can fire. The risk
-becomes real the moment a source is added to `live_sources` while the flag is
-still on and billing has resumed. My conditions D1–D3 make that transition safe
-rather than silent.
+**My verdict for DEPLOY of `main` + #402: PASS with conditions.** The two code changes are
+correct, minimal, confined to the admitted-Codex route, and backed by tests I ran
+independently (33 governing + 81 focused, all green). The conditions are **not** blockers on
+the code — they are operational guardrails Ryan must hold at deploy/activation time, because
+this PR deliberately turns a cheap refusal into a *paid rebuild* when the flag is on. They
+restate the migration precondition my #399 review relied on (which this PR changes) and pin
+the billing risk.
 
 **Who / What / When / Why / How:**
-- **Who:** Cursor implemented #399 and the follow-up (co-authored commits);
-  Kiro (me) reviews; Ryan owns the deploy, config revert, and any live grant.
-- **What:** #399 replaced `implementation_revision` in the continuity key with a
-  versioned semantic descriptor and added a hermetic v1→v2 converter; the
-  follow-up lets `allow_full_rebuild=true` rebuild admitted v1 checkpoints
-  instead of refusing, and fixes a `frontier_violation` on multi-chunk rebuilds.
-- **When:** #399 on `main` since `9be0a4f`; follow-up on branch at `b3dccb9`,
-  2026-10-18.
-- **Why:** to unblock the deploy without stranding paid Codex work, and to let
-  production roll a v1 checkpoint forward during the temporary free-provider
-  window without running the converter by hand.
-- **How:** descriptor digest drives reuse; identity is provenance only; the
-  converter migrates on demand; `allow_full_rebuild` is the escape hatch while
-  providers are free.
-
+- **Who:** Claude authored/evidenced #402 under Codex's arc; Cursor-style implementation on
+  `incremental_jsonl.py`; Kiro (me) reviews; Ryan owns deploy/flag/billing grants.
+- **What:** (1) `_unchanged_prereturn_refusal` returns `migration_required` for a v1
+  checkpoint **only when `allow_full_rebuild` is false**; when true the v1 checkpoint takes
+  the existing full-rebuild path to v2. (2) `_codex_admission_prior_record_count` makes a
+  full rebuild under `allow_full_rebuild` compute admission as `initial_full`
+  (`prior_count = 0`), so multi-chunk rebuilds stop hitting `frontier_violation`.
+- **When:** branch tip `b3dccb9`, 2026-10-17; proposed to deploy alongside #399.
+- **Why:** without it ~40 live v1 checkpoints refuse `migration_required`/`frontier_violation`
+  and Codex indexing halts.
+- **How:** with the flag on, a v1 checkpoint rebuilds to v2 in place; `max_transform_chunks_
+  per_run` still caps the work (`transform_chunk_cap`); with the flag off, behavior is
+  byte-identical to #399 (`migration_required`).
 
 ---
 
-## Conditions C1–C4, C6–C8 ruled on `main` (file:line)
+## The change, grounded at `b3dccb9`
 
-I confirmed each design-review condition against the merged code. All are
-present. (C5 — staged-copy GC — was explicitly deferred by the design and is
-restated as deferred in the epoch checklist; nothing to rule on at deploy.)
+Two edits to `incremental_jsonl.py`, both inside the `codex_admitted_live` route; the Kiro
+and non-admitted routes are untouched.
 
-### C1 — contract-inventory check fails closed on template/settings drift
+### (1) `_unchanged_prereturn_refusal` (~:2656)
 
-**PASS.** The runtime semantic inputs are hashed as *bytes/values*, not module
-text, in `contract_inventory_sources()` and digested by
-`contract_inventory_digest()` (`incremental_transform_contract.py:52-78`). The
-test pins the digest and asserts fail-closed drift:
-`tests/test_incremental_index_contract_inventory.py:160-199` —
-`test_transform_contract_inventory_is_pinned_c1_c2` pins
-`9f40605f…f2b3` and `test_prompt_template_drift_fails_contract_inventory_c1`
-mutates `SUMMARIZE_PROMPT` and asserts `assert_contract_inventory_matches`
-raises, with the error message pointing at the epoch-bump checklist
-(`incremental_transform_contract.py:84-96`). This is the fail-closed behavior C1
-required: a prompt/settings change without a descriptor/epoch update breaks the
-suite.
+```python
+if self.codex_admitted_live:
+    if (
+        checkpoint is not None
+        and int(checkpoint.get("version") or 0) == CHECKPOINT_VERSION
+        and not self.settings.allow_full_rebuild
+    ):
+        return "migration_required"
+```
 
-### C2 — no module hashed wholesale into the runtime key
+`CHECKPOINT_VERSION = 1` (`incremental_jsonl.py:103`) is the legacy/v1 schema
+(`CHECKPOINT_VERSION_V1 = 1` in `incremental_transform_contract.py:16`). Before #402 this
+returned `migration_required` for any v1 checkpoint on the admitted route unconditionally.
+After #402 the refusal is suppressed when `allow_full_rebuild` is true, so control falls
+through. The very next guard in the same function already handled the fall-through correctly
+for #399:
 
-**PASS.** `contract_inventory_sources()` contains only scheme/version strings,
-prompt-template SHA-256s, and named contract labels — no module source. The test
-explicitly asserts `"incremental_jsonl.py" not in str(sources)`
-(`tests/test_incremental_index_contract_inventory.py:171`). The v2 descriptor
-(`build_transform_descriptor`, `incremental_transform_contract.py:112-172`)
-likewise hashes only semantic fields. The over-invalidating
-`implementation_revision` is gone from the v2 continuity key: a v2 coordinator's
-`transform_fingerprint` is `self.transform_descriptor.digest`
-(`incremental_jsonl.py:650`), independent of `implementation_revision`. Proven
-behaviorally by `test_deploy_identity_ab_unchanged_without_provider_calls`
-(`tests/test_incremental_transform_compatibility.py:230-287`): swapping the
-implementation revision from all-`a` to all-`b` leaves the fingerprint equal and
-the second run returns `unchanged` with `counters.total == 0`.
+```python
+continuity = _continuity_reason(checkpoint, snapshot, self.transform_fingerprint)
+if continuity and continuity != "initial_full" and not self.settings.allow_full_rebuild:
+    return f"rebuild_required:{continuity}"
+return None
+```
 
-### C3 — epoch-bump rules written in-repo as a normative checklist
+So with the flag on, both the `migration_required` gate and the `rebuild_required:continuity`
+gate are skipped, the function returns `None`, and the run proceeds to the full-rebuild path
+(`mode="full_rebuild_fallback"`, `fallback_reason="transform_fingerprint_changed"`). This is
+internally consistent — the flag relaxes both quiescent-refusal gates together, not one in
+isolation.
 
-**PASS.** `docs/plans/incremental_transform_epoch_bump_checklist.md` exists with
-a "Requires bump / Does not require a bump / Process" structure, is referenced
-by constant `EPOCH_BUMP_CHECKLIST_REL` and surfaced in the drift error message
-(`incremental_transform_contract.py:81-96`), and the C1 drift test asserts that
-message names the checklist file.
+### (2) `_codex_admission_prior_record_count` (~:1200)
 
-### C4 — converter enforces quiescence under the writer locks; refuse, don't wait
+```python
+def _codex_admission_prior_record_count(self, checkpoint, continuity) -> int:
+    if checkpoint is None:
+        return 0
+    prior_count = int(checkpoint.get("record_count") or 0)
+    if continuity == "initial_full":
+        return 0
+    if self.settings.allow_full_rebuild and continuity:
+        return 0
+    return prior_count
+```
 
-**PASS.** `assert_quiescent_for_migration`
-(`incremental_checkpoint_migration.py:92-108`) refuses on any
-`transaction.json` (`migration_blocked_pending_transaction`) or `rollback.json`
-(`migration_blocked_pending_rollback`) and requires a v1 checkpoint. It is
-re-checked *inside* the publish critical section under both locks immediately
-before the checkpoint swap: `publish_migration` opens
-`source_flock` + `index_write_flock` (`incremental_checkpoint_migration.py:303-305`),
-then `_assert_publish_preconditions` re-runs the quiescence check and re-reads
-the checkpoint digest/identity/prefix/boundary
-(`incremental_checkpoint_migration.py:114-137`), raising
-`migration_checkpoint_changed` etc. on any drift. This closes the
-dry-run→publish TOCTOU. Tests:
-`test_quiescence_blocks_migration_c4`,
-`test_publish_refuses_when_transaction_appears_after_dry_run_c4`
-(`tests/test_incremental_transform_compatibility.py:401-451`) — the second
-proves a transaction appearing after the dry-run forces refusal and leaves the
-checkpoint at v1.
+This feeds `_codex_admission_guard_code`, which computes `allowed =
+_allowed_transform_starts(messages, prior_count)` and `planned =
+_planned_transform_starts(...)`, then refuses `frontier_violation` if `planned` is not a
+subset of `allowed`. In `_allowed_transform_starts` (`:1085`), `prior_count <= 0` admits
+**every** chunk start; `prior_count > 0` admits only starts at/after
+`frontier_start(prior_count, ...)`. 
 
-### C6 — explicit `recovery_protocol_version`; `_roll_forward` refuses unsupported
+**Why the old code was broken for multi-chunk v1 rebuilds:** a v1 checkpoint with
+`record_count > 0` (e.g. a 2-chunk history) gave `prior_count > 0`, so `allowed` excluded
+chunk 0. But a full rebuild (fingerprint changed) *plans* all chunks, including chunk 0 —
+`planned` was not a subset of `allowed` → `frontier_violation`. The fix: when
+`allow_full_rebuild` is on **and** there is a continuity reason (i.e. this is a rebuild, not a
+pure append), treat admission as initial ingest (`prior_count = 0`) so all chunk starts are
+allowed and the rebuild is admitted. `max_transform_chunks_per_run` is unchanged, so an
+over-cap rebuild still refuses `transform_chunk_cap`.
 
-**PASS.** `RECOVERY_PROTOCOL_VERSION = 1` and
-`SUPPORTED_RECOVERY_PROTOCOL_VERSIONS = frozenset({1})` with
-`recovery_protocol_supported()` (`incremental_transform_contract.py:20-21,
-254-257`). `_roll_forward` refuses an unsupported protocol *before* any replay:
-`incremental_jsonl.py:2389-2398` — a v2 transaction (`version >=
-TRANSACTION_VERSION_V2`) with an unsupported `recovery_protocol_version` raises
-`recovery_unproven: unsupported recovery protocol version`. v2 commits persist
-the field (`incremental_jsonl.py:2277-2278`, `:1348-1349`). Test:
-`test_recovery_protocol_refused_c6`
-(`tests/test_incremental_transform_compatibility.py:453-473`) injects protocol
-`999` and asserts the raise.
-
-### C7 — v1 pending transaction under a v2-capable runtime
-
-**PASS.** `_roll_forward` refuses a v1 transaction when the current runtime is v2
-rather than best-effort replaying it:
-`incremental_jsonl.py:2399-2403` — `tx_version == TRANSACTION_VERSION and
-self.transform_v2` raises `recovery_unproven: v1 transaction requires original
-runtime`. This matches the design's rule that a pre-existing v1 journal is
-resolved under its authoring runtime, never converted over a live journal.
-
-### C8 — distinct version constants, used distinctly
-
-**PASS.** `FINGERPRINT_SCHEME="incremental-transform-v2"`,
-`CHECKPOINT_VERSION_V1=1`, `CHECKPOINT_VERSION_V2=2`, `TRANSACTION_VERSION_V1=1`,
-`TRANSACTION_VERSION_V2=2`, `RECOVERY_PROTOCOL_VERSION=1`
-(`incremental_transform_contract.py:14-21`) are separate constants.
-`validate_checkpoint` accepts both checkpoint versions and only demands the v2
-descriptor fields when `version == CHECKPOINT_VERSION_V2`
-(`incremental_jsonl.py:364-379`). The generation scheme is versioned separately
-(`GENERATION_SCHEME_V1/V2`). Test: `test_version_constants_are_distinct_c8`
-(`tests/test_incremental_transform_compatibility.py:154-162`).
+The guard early-returns `None` when `not self.codex_admitted_live`, so this helper has no
+effect on the Kiro or any non-admitted route.
 
 ---
 
-## The converter-lock caveat — ruled harmless, deferral accepted
+## Verification I performed
 
-**Claude's framing:** `publish_migration` holds `source_flock` + the C1
-contract-inventory relationship, but **not** the coordinator's
-`SourceAdvisoryLock`; Claude judged it harmless and deferred. I agree, and here
-is the exact lock topology I verified so the deferral is grounded, not assumed.
+- Fetched the branch; confirmed tip `b3dccb9` and that it branches from `a00a152` (#400),
+  which has `9be0a4f` (#399) as an ancestor. Confirmed `main` is `c2ca17d` (#401) and #399 is
+  on `main`. #401 touches only `adapters/claude_session_jsonl.py` + its test — **no overlap**
+  with #402's `incremental_jsonl.py`, so `main` + #402 is a clean combination.
+- Created a detached scratch worktree at `b3dccb9` (removed after; `.worktrees/runtime-main`
+  never touched) and ran:
+  - `test_incremental_transform_compatibility.py`,
+    `test_incremental_jsonl_codex_rollout_route.py`,
+    `test_incremental_index_contract_inventory.py`,
+    `test_incremental_jsonl_canary_baseline.py` → **33 passed**.
+  - The five PR-specific behavioral tests by name → **5 passed**.
+  - A focused non-subprocess codex/transform surface (admission, admission-predicate-extra,
+    rollout route, route corrective, config, contract inventory, codex incremental route,
+    codex rollout jsonl, transform compatibility) → **81 passed**.
+- I did not re-run full CI. Two unrelated modules (`test_governed_recovery_matrix_admitted.py`,
+  `test_safe_harbor_*`, `test_zz_codex_audit*`) abort collection with `SystemExit(5)` from
+  `require_t3_bootstrap()` — that is a Safe Harbor T3 environment gate, not a #402 regression.
+  The "497 tests pass" figure is Claude's full-suite evidence; my targeted runs corroborate
+  the behavioral surface #402 changes.
 
-There are two distinct source locks in the normal commit path:
+**New tests reviewed (all map to a claim):**
+- `test_legacy_v1_checkpoint_refuses_migration_required` — **retained**, now also asserts 0
+  counters and no build calls with the flag off (negative control: flag-off path unchanged).
+- `test_legacy_v1_checkpoint_rebuilds_when_full_rebuild_allowed` — v1 commit → flag-on second
+  run → `full_rebuild_fallback`/`committed`, checkpoint becomes v2 → third run `unchanged`
+  with 0 counters and no builds → append → `committed` reusing history. This is the exact
+  "4 calls, then 0, then append reuses" evidence.
+- `test_multi_chunk_fingerprint_rebuild_allowed_respects_frontier` — stale fingerprint forces
+  a multi-chunk rebuild that now commits instead of `frontier_violation`, then `unchanged`.
+- `test_full_rebuild_chunk_cap_refuses_multi_chunk_v1` — with `max_transform_chunks_per_run=1`
+  the rebuild refuses `transform_chunk_cap`, 0 counters, no builds, checkpoint stays v1. **The
+  cap still bounds paid work.**
+- `test_pending_v1_transaction_refused_when_full_rebuild_allowed_c7` — **key safety test:**
+  even with the flag on, a pending v1 `transaction.json` still raises `v1 transaction requires
+  original runtime`. The full-rebuild bypass does **not** weaken the C7 recovery-protocol gate.
 
-1. **`SourceAdvisoryLock`** — the coordinator's own per-source flock on
-   `state_dir/<source_id>/lock` (`incremental_jsonl.py:614-619, 665`; acquired
-   via `_acquire_source_lock`, `incremental_jsonl.py:2583-2588`; class at
-   `incremental_jsonl_isolation.py:374-404`).
-2. **`source_flock(cfg, path_key)`** — a global purge/source flock on
-   `source_lock_dir(cfg)/<path_hash>.lock` (`purge_locks.py:166-178`,
-   `source_lock_path` at `:134-136`), taken *together with* `index_write_flock`
-   around the checkpoint-mutating critical section
-   (`incremental_jsonl.py:2241-2242`).
+**Collateral diffs (benign):**
+- `tests/test_incremental_jsonl_canary_baseline.py`: `incremental_jsonl.py` baseline hash
+  refreshed with a documenting comment (expected when the file changes).
+- `tests/test_incremental_jsonl_codex_rollout_route.py`: test helpers gain an
+  `allow_full_rebuild` parameter defaulting to `false`.
+- `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`: `code_revision` + `inventory_digest`
+  re-stamped for the new `incremental_jsonl.py` content; every route keeps
+  `coverage_status: "gated"` and the same `gate_path`. No writer-boundary change.
 
-`publish_migration` takes **the same `source_flock` + `index_write_flock` on the
-same `cfg`/`path_key`** (`incremental_checkpoint_migration.py:303-305`). So the
-one window that matters — mutating the checkpoint — is **mutually exclusive**
-between a live commit and the converter via `source_flock`, even though the
-converter does not take the coordinator's `SourceAdvisoryLock`. The missing lock
-is the coordinator's *own* intra-run advisory lock, which guards a live
-coordinator against a second live coordinator on the same source; it does not
-guard the checkpoint file against the converter, because `source_flock` already
-does.
-
-Two further facts make the gap unreachable in practice:
-
-- **Migration is hermetic-only.** `publish_migration` and `dry_run_migration`
-  call `require_hermetic_migration_context()`, which refuses unless
-  `CONVMEM_INCREMENTAL_ROOT` is set (`incremental_checkpoint_migration.py:85-87`).
-  The converter cannot run in the production route at all; it runs in the
-  isolated bootstrap/migration context, so a live production coordinator and the
-  converter are not racing on the same checkpoint in the first place.
-- **C4 re-validation under the locks** re-reads the checkpoint digest and
-  refuses on any change between dry-run and publish
-  (`incremental_checkpoint_migration.py:114-137`). Even if a writer slipped in,
-  the publish refuses rather than corrupts.
-
-**Ruling:** harmless; deferral accepted. The converter's lock set is sufficient
-for the only shared mutation (the checkpoint), and the hermetic gate plus the
-C4 re-check remove the residual race. If a later slice ever lets the converter
-run in-process alongside a live coordinator (it must not, per the hermetic
-gate), it should additionally take `SourceAdvisoryLock` — I note this only as a
-guardrail on a future change, not a deploy blocker.
-
----
-
-## Letting `allow_full_rebuild` bypass `migration_required` — acceptable, bounded
-
-**What the follow-up changes.** On `main`, an admitted-Codex v1 checkpoint
-returns `migration_required` unconditionally
-(`incremental_jsonl.py:2645-2649`): the check fires before the
-`allow_full_rebuild` branch at `:2686`. The follow-up `ee6df2b` adds
-`and not self.settings.allow_full_rebuild` to that guard, so with the flag on a
-v1 checkpoint falls through to the normal full-rebuild path
-(`transform_fingerprint_changed` → `full_rebuild_fallback`) and re-transforms to
-a v2 checkpoint, instead of refusing. `b3dccb9` then fixes the admission math so
-a *multi-chunk* rebuild is admitted: `_codex_admission_prior_record_count`
-(`incremental_jsonl.py:1200-1212`) resets `prior_count` to 0 when
-`allow_full_rebuild and continuity`, so the planned full-history chunk starts are
-a subset of `allowed` and no longer trip `frontier_violation`.
-
-**Is the bypass acceptable?** Yes, for three reasons:
-
-1. **It is the same path a fingerprint change already takes.** A full rebuild on
-   `transform_fingerprint_changed` was already allowed under `allow_full_rebuild`
-   on `main`. The follow-up merely routes a v1 checkpoint through that same,
-   already-reviewed `full_rebuild_fallback` path instead of a hard
-   `migration_required`. It does not invent a new mutation path; the rebuilt
-   checkpoint is a normal v2 commit carrying the descriptor
-   (`incremental_jsonl.py:2294, 2302`; test asserts
-   `v2_checkpoint.get("transform_descriptor")`).
-2. **The cost is bounded before any paid call.** The admission guard runs and can
-   refuse with `transform_chunk_cap` *before* the PREPARING transaction and
-   before `_build_frontier` (where provider calls happen):
-   `incremental_jsonl.py:2878-2892` returns `self._refusal(guard_code, …)` ahead
-   of any transform. With the live `max_transform_chunks_per_run = 20`, a rebuild
-   whose frontier exceeds 20 chunks refuses with zero paid calls. So the escape
-   hatch cannot silently burn an unbounded full-history rebuild — it is capped
-   per run and terminal above the cap.
-3. **It is correct and tested.** `b3dccb9` adds
-   `test_legacy_v1_checkpoint_rebuilds_when_full_rebuild_allowed` (multi-chunk
-   source; v1 → `full_rebuild_fallback`/`transform_fingerprint_changed` → v2;
-   then `unchanged` with 0 calls and no build; then append → committed reuse),
-   `test_multi_chunk_fingerprint_rebuild_allowed_respects_frontier`, and
-   `test_full_rebuild_chunk_cap_refuses_multi_chunk_v1` (confirms the cap still
-   refuses). The migration-off path is still covered by
-   `test_legacy_v1_checkpoint_refuses_migration_required` on `main`
-   (`tests/test_incremental_transform_compatibility.py:289-331`).
-
-**Caveat worth stating plainly:** the bypass makes `allow_full_rebuild` a *paid*
-operation when a v1 checkpoint is encountered with providers billing — it
-re-transforms history (up to the cap per run) rather than reusing it via the
-free converter. During the stated free-provider window the marginal cost is
-zero. The converter remains the zero-paid-call recovery path and is unaffected;
-the bypass is an operational shortcut, not a replacement for it.
+**Production flag default (confirmed in `config.py`):** `allow_full_rebuild` parses to
+`False` by default (`config.py:495`, `:509`) and is validated to be a boolean, fail-closed
+(`:512-513`). So on `main` + #402 with no config change, the live route behaves exactly as
+#399: v1 checkpoints refuse `migration_required`. The new rebuild path is reachable only when
+someone explicitly sets `index.incremental_jsonl.allow_full_rebuild = true`.
 
 ---
 
-## The risk a forgotten flag later causes paid full rebuilds
+## Rulings requested
 
-**The scenario:** billing resumes, `allow_full_rebuild = true` is left in the
-live config, a v1 Codex checkpoint is encountered, and instead of refusing with
-`migration_required` the runtime silently re-transforms history for real money.
+### (a) Is letting `allow_full_rebuild` bypass `migration_required` acceptable?
 
-**Why it is small today (but not nil):** the live config has
-`live_sources = []` (`~/.config/convmem/config.toml`, `[index.incremental_jsonl]`).
-With no routed sources, the incremental coordinator does not run against any
-production source, so no rebuild — paid or free — can fire regardless of the
-flag. The flag is armed but has nothing to shoot. The exposure appears only when
-a source is added to `live_sources`.
+**Yes — acceptable, PASS.** Three reasons, grounded in code and the arc's authority model:
 
-**Why the blast radius is capped even then:** `max_transform_chunks_per_run = 20`
-makes any single rebuild run refuse (`transform_chunk_cap`, zero paid calls)
-above 20 frontier chunks. The uncapped worst case is therefore "up to ~20
-chunks' worth of summarize/distill/embed calls per encountered v1 source per
-run," not an unbounded full-corpus rebuild. That is a real but bounded cost.
+1. **It unifies two refusals that already share one meaning.** Before #402, the admitted
+   route had an asymmetry: `allow_full_rebuild` already suppressed the
+   `rebuild_required:transform_fingerprint_changed` refusal (the `continuity` gate below),
+   but the *earlier* `migration_required` gate ignored the flag, so a v1 checkpoint refused
+   before the full-rebuild path could ever run. #402 makes the two gates agree: when a full
+   rebuild is authorized, a v1 checkpoint rebuilds like any fingerprint-incompatible v2
+   checkpoint. `migration_required` was never meant to override an explicit rebuild
+   authorization — it is the signal "you must either migrate or rebuild," and the flag selects
+   rebuild. The bypass restores the intended semantics rather than widening them.
 
-**Residual risk I am flagging (not a deploy blocker):** nothing in the code ties
-`allow_full_rebuild` to provider-billing state. The revert is a human action
-("revert when billing resumes," per the prompt). A forgotten revert plus a new
-`live_sources` entry is the only path to surprise paid rebuilds. My conditions
-D1–D3 below convert that from a silent risk into an explicit, owned step. I am
-**not** requiring a code change before deploy, because today's `live_sources = []`
-removes the live exposure and the chunk cap bounds the worst case.
+2. **It does not weaken any safety gate.** The bypass is confined to the *quiescent
+   pre-build* refusal. Every stronger gate survives with the flag on: identity
+   (`verify_session_meta_identity`), projection-mismatch (`rebuild_required:<reason>`),
+   bootstrap-required, the chunk cap (`transform_chunk_cap`), and — critically — the C7
+   recovery-protocol gate (`_roll_forward` still refuses a pending v1 journal with
+   `v1 transaction requires original runtime`, proven by the new C7 test). So the flag changes
+   *what happens to a clean v1 checkpoint*, not *what happens to a v1 journal mid-flight*.
+
+3. **The result is a loud, bounded, re-runnable rebuild, not silent reuse.** The rebuild
+   emits `mode="full_rebuild_fallback"`, writes a fresh v2 checkpoint, and a subsequent run
+   returns `unchanged` with zero calls. There is no path here that reuses stale v2 outputs
+   under a changed contract — the C1–C8 contract machinery from #399 is untouched (I confirmed
+   the admitted key is still the semantic descriptor, not a module hash).
+
+This is acceptable **as code**. The acceptability of *operating* it is governed by rulings
+(b) and (c) and the conditions below.
+
+### (b) Restated precondition for the future real-data converter
+
+My #399 implementation review leaned on this precondition when I ruled the migrator-vs-
+coordinator lock caveat harmless:
+
+> "an admitted v2 run refuses a v1 checkpoint pre-build with `migration_required` … so a
+> v2-capable coordinator never commits over a v1 checkpoint."
+
+**#402 changes that assumption whenever `allow_full_rebuild` is on.** With the flag on, an
+admitted v2 coordinator no longer refuses a v1 checkpoint pre-build — it **rebuilds it in
+place to v2**. That removes the exact property that made the hermetic converter's lock set
+(source + index write flocks, no coordinator `SourceAdvisoryLock`) sufficient. If a real-data
+converter and a flag-on coordinator run against the same source, the converter could stage and
+publish a migrated v2 checkpoint while the coordinator independently rebuilds the same v1
+checkpoint to v2 — two writers racing to publish v2 state, no longer mutually excluded by the
+"coordinator refuses v1" invariant.
+
+**Restated precondition for the real-data converter slice (both required, pick at least one;
+I recommend both):**
+
+- **P1 — The real-data converter must acquire the coordinator's own `SourceAdvisoryLock`**
+  (the same inode the coordinator takes at `incremental_jsonl.py:2585-2588`,
+  `state_dir/<source_id>/lock.flock`), not only `source_flock` + `index_write_flock`. This was
+  already noted as the converter's first precondition in my #399 review; **#402 upgrades it
+  from "belt-and-braces" to load-bearing**, because the pre-build refusal can no longer be
+  relied on to keep a flag-on coordinator off a v1 checkpoint.
+- **P2 — The converter must refuse to run while `allow_full_rebuild` is on for its source**
+  (or the operator must disable the flag for the migration window). Converting and
+  flag-on-rebuilding are two different routes to v2 for the same checkpoint; running both
+  concurrently is the race. The clean operational rule is: *either* migrate via the reviewed
+  converter *or* rebuild via the flag — never both on the same source at once.
+
+Either P1 or P2 closes the race; together they are defense-in-depth. This is a **precondition
+on the future converter slice**, not a defect in #402 — #402 is hermetic and its own tests run
+with no live coordinator present. But the #399 lock ruling must now be read with this
+amendment, and the converter slice's handoff must carry P1+P2 as its first preconditions.
+
+### (c) Paid-rebuild risk if the flag is left on after billing resumes
+
+**This is the real operational risk and the reason my verdict is PASS *with conditions*.**
+
+With the flag **off** (the production default), a v1 checkpoint refuses `migration_required`
+and costs nothing — zero provider calls, as the retained negative-control test proves. With
+the flag **on**, that same v1 checkpoint triggers a full rebuild: every chunk is re-transformed
+(summaries + embeddings), which is **paid DeepSeek work** (Ollama embeds are observed but
+cap-exempt, per the arc's paid-accounting model). The chunk cap bounds a *single run*
+(`max_transform_chunks_per_run`, `transform_chunk_cap` over the cap), but it does **not** bound
+the aggregate: ~40 live v1 checkpoints each rebuilt is ~40 full rebuilds, and the largest live
+new-route session is 4 chunks. Left on indefinitely, the flag also means any *future*
+fingerprint-incompatible deploy silently re-bills a full rebuild for every admitted source
+instead of refusing cheaply.
+
+The danger window is specifically **"flag left on after billing resumes."** The migration
+backlog is the one-time reason to turn it on; once the backlog is drained, leaving it on
+converts the arc's cheap-refusal safety property into standing paid-rebuild exposure on every
+incompatible deploy.
+
+**Conditions (operational; Ryan/operator-owned, not code blockers):**
+
+- **D1 — Keep `allow_full_rebuild` off by default and treat "on" as a bounded, logged
+  window.** Enable it only for an explicit migration/rebuild window, with a known source set
+  and a cost expectation, then turn it back off. Do not ship it on in the standing live config.
+- **D2 — Do not enable the flag while provider billing is live unless the rebuild cost for the
+  target source set has been estimated and authorized.** The chunk cap limits per-run work, not
+  the fleet-wide total; ~40 rebuilds is a real paid number that should be sized before, not
+  discovered after.
+- **D3 — Prefer the reviewed converter over the flag for the two (and the ~40) legacy
+  checkpoints when a zero-paid-call migration is the goal.** The #399 converter migrates v1→v2
+  with **zero** provider calls by reusing the existing artifacts; the flag *rebuilds from
+  scratch* and **pays**. The flag is the right tool when artifacts can't be reused (genuine
+  contract change) or the converter isn't yet authorized for real data; it is the wrong tool
+  if the only goal is to clear `migration_required` on checkpoints whose outputs are still
+  valid. Choose per source, not fleet-wide.
+- **D4 — Pair D1 with the #399 G2 backlog discipline:** sources that refuse under a flag-off
+  deploy remain converter candidates; do not reach for `allow_full_rebuild` as a blanket
+  "unstick everything" switch, because that is the paid path.
 
 ---
 
-## Deploy-gate conditions (D1–D3) — operational, Ryan-owned
+## Deploy decision — `main` + #402
 
-These attach to the deploy; they are not implementation redesigns.
+**PASS with conditions.**
 
-- **D1 — Treat the free-provider window as the only sanctioned time for the
-  bypass.** `allow_full_rebuild = true` is acceptable *while providers are free*.
-  The revert to `false` must happen as part of the "billing resumes" change, in
-  the same edit that re-enables paid providers — not as a later cleanup. Record
-  the revert as a required step of resuming billing.
-- **D2 — Do not add any source to `live_sources` while `allow_full_rebuild =
-  true` and providers are billing.** The near-zero risk today rests on
-  `live_sources = []`. If a Codex source is routed live during a billing period,
-  flip `allow_full_rebuild` to `false` first (so a v1 checkpoint refuses with
-  `migration_required` and is migrated by the free converter), then route the
-  source. This keeps the paid-rebuild path unreachable in production.
-- **D3 — Keep `max_transform_chunks_per_run` as the cost ceiling and review it
-  before any live routing.** The cap is the backstop that bounds a forgotten-flag
-  rebuild to a terminal per-run refusal above the limit. Do not raise it as part
-  of enabling a live source without separately accounting for the paid-call
-  ceiling it implies.
+**On the code:** the two changes are correct, minimal, and confined to the admitted-Codex
+route. They make the full-rebuild path reachable for v1 checkpoints when explicitly
+authorized, fix the multi-chunk `frontier_violation`, and preserve every safety gate
+(identity, projection, bootstrap, chunk cap, and the C7 pending-journal refusal). The
+flag-off path is byte-identical to #399. `chroma_write_store.py`, `authority_manifest.py`,
+and `WRITER_GATE_PROTOCOL_VERSION` are untouched; the writer-coverage inventory change is a
+mechanical re-stamp with no boundary change. Tests I ran (33 governing + 81 focused + 5
+named) are green, corroborating Claude's 497-test/CI evidence on the surface that matters.
 
-None of D1–D3 blocks the deploy of the merged #399 code or the follow-up; they
-govern the *config state* carried alongside it and the later live-routing step.
+**Why "with conditions" and not clean PASS:** the conditions are **operational**, not code
+fixes. #402 is safe to *ship* in the default-off state and should ship together with #399 —
+without it the ~40 live v1 checkpoints have no non-refusing path. But two things must travel
+with the deploy:
 
----
+1. **The #399 migrator-vs-coordinator lock ruling is now amended** (ruling b): the "admitted
+   v2 run refuses a v1 checkpoint pre-build" invariant no longer holds with the flag on, so
+   the real-data converter slice must take the coordinator `SourceAdvisoryLock` (P1) and/or
+   refuse while the flag is on (P2). This is a precondition on a *future* slice, recorded here
+   so it is not lost.
+2. **The flag is a paid-rebuild switch** (ruling c): keep it off by default (D1), size and
+   authorize cost before enabling with live billing (D2), prefer the zero-paid-call converter
+   where artifacts are reusable (D3), and don't use it as a blanket unstick (D4).
 
-## Verification
+**What this PASS does and does not cover:** it covers deploying the merged code of #399 + #402
+to `main`. It does **not** authorize enabling `allow_full_rebuild` in the live config, running
+the converter against real sessions, or any watcher/runtime promotion — each remains a
+separate Ryan grant, consistent with the arc's hard stops (§7 of
+`STATUS-codex-jsonl-production-integration.md`).
 
-- **Reviewed-tip identity:** `git diff f8140b1 9be0a4f` is empty — the reviewed
-  tip is exactly what landed on `main`.
-- **Main-tip relevance:** commits above `9be0a4f` on `main` (`a00a152` #400,
-  `c2ca17d` #401) touch the watcher journal and the Claude adapter only; neither
-  is in the #286 transform/admission closure, so the arc review holds at the live
-  `main` tip.
-- **Tests on the follow-up tip `b3dccb9`:** I ran the arc-focused suite in a
-  throwaway worktree (Python 3.13, pytest 9.1.1):
-  `test_incremental_*`, `test_codex_*`, `test_kiro_session_jsonl`,
-  `test_claude_session_jsonl`, `test_copilot_session_jsonl`,
-  `test_incremental_transform_compatibility`,
-  `test_incremental_index_contract_inventory` — **423 passed**. The C1/C4/C6/C8
-  and v1-rebuild/frontier/chunk-cap tests cited above are in that set.
-  I did not reproduce the full "497 tests" figure from the prompt: that is
-  Claude's broader selection (adds the slower canary-operations/grant/serving/P2
-  and scratch-Chroma modules I excluded as environment-dependent, plus
-  Python-3.12 CI collection). The arc-behavioral evidence I verified is
-  sufficient for the DEPLOY gate; the full 3.12 suite remains CI's to confirm.
-- **Lint:** `pylint -E` on `incremental_transform_contract.py` and
-  `incremental_checkpoint_migration.py` → 10.00/10, no errors.
-- **Live config state confirmed:** `allow_full_rebuild = true`, `enabled = true`,
-  `live_sources = []`, `max_transform_chunks_per_run = 20`,
-  `admitted_after = 2026-10-12T04:04:00Z`.
-- **Not run / not verified:** the live deploy itself, any migration of real
-  checkpoints, Claude's cross-version probes against the live runtime (`633f1d1`)
-  — I reviewed the code and tests, not the live-runtime probe runs. The
-  cross-collection two-write atomicity seam remains the arc's known, separately
-  tracked open item and is not re-adjudicated here.
-
----
-
-## Overall verdict — DEPLOY: PASS with conditions
-
-The merged transform-compatibility code (#399 at `9be0a4f` = reviewed `f8140b1`)
-implements every design condition I set — C1 fail-closed inventory, C2 no module
-hashing, C3 in-repo epoch checklist, C4 quiescence under locks with a
-re-validated publish, C6 explicit recovery-protocol refusal, C7 v1-journal
-refusal under a v2 runtime, C8 distinct version constants — each confirmed at the
-file:line cited. The follow-up (`b3dccb9`) correctly and safely lets
-`allow_full_rebuild` roll a v1 checkpoint forward through the already-reviewed
-full-rebuild path, with the frontier fix and the chunk-cap backstop that refuses
-before any paid call. The converter-lock caveat is harmless because the converter
-shares the one lock that matters (`source_flock`), is hermetic-only, and
-re-validates under the locks before publishing; Claude's deferral is accepted.
-
-The only live exposure is operational, not code: `allow_full_rebuild = true` with
-providers billing *and* a routed `live_sources` entry would allow bounded paid
-rebuilds. Today's `live_sources = []` removes that exposure; conditions D1–D3
-keep it removed across the billing transition. On that basis I pass the deploy.
-
-**Separation held:** this review grants no implementation, migration, config
-change, hold release, or runtime promotion. The config revert (D1), the
-live-routing ordering (D2), and the cap review (D3) are Ryan-owned.
+**Separation held:** this review grants no deploy, flag enablement, migration, hold release,
+config, or runtime promotion. It did not touch `.worktrees/runtime-main`.
 
 ---
 
 ## Forward announcement
 
-I finished: Kiro DEPLOY-gate review of #286 transform-compatibility (#399 on
-`main`) and the v1-rebuild follow-up (`b3dccb9`).
-Next step:  Ryan decides the deploy and carries D1–D3 across the billing
-transition; the follow-up branch's PR can proceed.
-Next lane:  Ryan (deploy + config revert ownership); Cursor (open the follow-up
-PR if desired).
-See my work:
-`docs/inter-model/KIRO-2026-10-18-issue-286-deploy-gate-review.md` on branch
+I finished: Kiro deploy-gate review of PR #402 (`b3dccb9`) for deploying `main` + #402 —
+code rulings (a) full-rebuild bypass of `migration_required`, (b) amended converter
+precondition, (c) paid-rebuild risk; independent tests run; verdict PASS with conditions.
+Next step:  Ryan decides whether to deploy `main` + #402 together (my rec: yes, flag off),
+and carries P1+P2 to the real-data converter slice and D1–D4 to any flag-on window.
+Next lane:  Ryan (deploy + flag/billing decisions); then whoever is granted the real-data
+converter slice (must honor P1+P2).
+See my work: `docs/inter-model/KIRO-2026-10-18-issue-286-deploy-gate-review.md` on branch
 `kiro/2026-10-18-issue-286-deploy-gate-review`.
 
-**TL;DR:** [Arc Codex] **DEPLOY: PASS with conditions.** C1–C4 and C6–C8 are all
-present in the merged #399 code at the file:line cited (reviewed tip `f8140b1` ==
-`main` `9be0a4f`); the follow-up `b3dccb9` safely lets `allow_full_rebuild` roll
-a v1 checkpoint through the existing full-rebuild path, bounded by the
-`max_transform_chunks_per_run=20` cap that refuses before any paid call. The
-converter-lock caveat is harmless — the converter shares `source_flock` (the only
-lock guarding the checkpoint), is hermetic-only, and re-validates under the locks
-before publish — so Claude's deferral is accepted. Letting `allow_full_rebuild`
-bypass `migration_required` is acceptable. The forgotten-flag paid-rebuild risk
-is near-zero today because live `live_sources = []`; conditions D1–D3 (revert the
-flag when billing resumes; don't route a live source while the flag is on and
-billing; keep the chunk cap as the ceiling) keep it that way. 423 arc tests pass
-on the follow-up tip; the full 3.12 suite remains CI's to confirm.
+**TL;DR:** [Arc Codex #286] **DEPLOY verdict for `main` + #402: PASS with conditions.** The
+two edits are correct and confined to the admitted-Codex route: (1) `migration_required` is
+suppressed for a v1 checkpoint only when `allow_full_rebuild` is true, falling through to the
+existing full-rebuild path; (2) full rebuilds compute admission as `initial_full`
+(`prior_count=0`) so multi-chunk v1 histories stop hitting `frontier_violation`. The chunk cap
+and the C7 pending-v1-journal refusal both survive the flag; the flag-off path is identical to
+#399; config default is off and fail-closed. I ran 33 governing + 81 focused + 5 named tests —
+all green. **(a)** The bypass is acceptable — it unifies two refusals that already share one
+meaning and weakens no safety gate. **(b)** It invalidates my #399 assumption that a v2 run
+refuses a v1 checkpoint pre-build, so the real-data converter must take the coordinator
+`SourceAdvisoryLock` (P1) and/or refuse while the flag is on (P2). **(c)** With the flag on, a
+v1 checkpoint rebuilds and *pays* (DeepSeek) instead of refusing free; keep it off by default,
+size/authorize cost before any flag-on window with live billing, and prefer the zero-paid-call
+#399 converter where artifacts are reusable (D1–D4). PASS covers deploying the code, not
+enabling the flag or running live migration.
 
-<!-- ref: ./KIRO-2026-10-17-issue-286-transform-compatibility-review.md — the design review whose C1-C8/G1-G2 this gates against -->
-<!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — Arc Codex current-state brief -->
-<!-- ref: ../plans/incremental_transform_epoch_bump_checklist.md — C3 normative epoch-bump checklist -->
-<!-- src: ../../incremental_jsonl.py, ../../incremental_transform_contract.py, ../../incremental_checkpoint_migration.py, ../../purge_locks.py, ../../incremental_jsonl_isolation.py, ../../tests/test_incremental_transform_compatibility.py, ../../tests/test_incremental_index_contract_inventory.py — verified at main 9be0a4f and follow-up b3dccb9 -->
-
-## Jargon TL;DR
-
-| Term | Meaning |
-|------|---------|
-| Arc Codex | The #286 arc making Kiro/Codex JSONL ingestion incremental and crash-replayable; see `STATUS-codex-jsonl-production-integration.md`. |
-| C1–C8 | The eight conditions Kiro attached to the transform-compatibility design in the 2026-10-17 review. |
-| D1–D3 | The three deploy-gate (config/operational) conditions this review attaches. |
-| G1/G2 | The two interim-deploy guardrails from the prior design review (no-active-session window; preserve refusal backlog). |
-| transform fingerprint | Hash that keys reuse of paid transform work; in v2 it is the semantic descriptor digest, no longer the implementation revision. |
-| transform descriptor | The versioned set of semantic inputs (prompts, chunk size, models, dims, contracts) whose digest is the v2 fingerprint. |
-| `implementation_revision` | R2b content-manifest hash of the code closure; folded into the v1 fingerprint (the over-invalidation cause), now provenance/live-writer-authority only. |
-| continuity reason | `_continuity_reason` output describing why a checkpoint can't be reused as-is (e.g. `transform_fingerprint_changed`, `initial_full`). |
-| `migration_required` | Refusal returned for an admitted-Codex v1 checkpoint, directing it to the converter (unless `allow_full_rebuild` bypasses it). |
-| `allow_full_rebuild` | Config flag that lets a non-reusable checkpoint be re-transformed (paid when providers bill) instead of refusing. |
-| full_rebuild_fallback | Run mode where history is re-transformed because continuity could not be preserved. |
-| `frontier_violation` / `transform_chunk_cap` | Codex admission refusals: planned chunk starts outside the allowed frontier / run exceeds `max_transform_chunks_per_run`. |
-| converter | Hermetic-only v1→v2 checkpoint/cache migration in `incremental_checkpoint_migration.py`; no provider calls, no Chroma mutation. |
-| `source_flock` / `index_write_flock` | Global purge/source and index-write flocks from `purge_locks.py` taken around the checkpoint-mutating critical section. |
-| `SourceAdvisoryLock` | The coordinator's own per-source state-dir flock (distinct from `source_flock`). |
-| recovery_protocol_version | Versioned gate (`=1`) that `_roll_forward` checks before replaying a v2 transaction; unsupported values refuse. |
-| hermetic | Tokenized, network-denied, provider-free test/migration boundary gated by `CONVMEM_INCREMENTAL_ROOT`. |
-| `live_sources` | Config list of sources actually routed to the incremental coordinator; currently empty. |
-| Track A | Indexing this session's chat transcript into convmem at handoff. |
+<!-- ref: ./KIRO-2026-10-17-issue-286-transform-compatibility-impl-review.md — #399 DEPLOY PASS; its migrator/coordinator lock ruling is amended here -->
+<!-- ref: ./KIRO-2026-10-17-issue-286-transform-compatibility-review.md — #399 design review (C1–C8) -->
+<!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — Arc Codex current-state brief and hard stops -->
+<!-- src: ../../incremental_jsonl.py, ../../config.py, ../../incremental_transform_contract.py, ../../tests/test_incremental_transform_compatibility.py, ../../tests/test_incremental_jsonl_codex_rollout_route.py — reviewed at PR #402 tip b3dccb9 -->
