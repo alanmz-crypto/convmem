@@ -1,13 +1,13 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
-**T3 hermetic evidence status (2026-10-18):** Prior PASS rows through `1723dd0` are **WITHDRAWN — host isolation leak** (operator config + Codex sessions touched during direct/bwrap pytest). Remediation staged; **no rerun PASS** until boundary script matches.
+**T3 hermetic evidence status (2026-10-18):** Prior PASS rows through `1723dd0` / `4a99eba` (**55** inner tests) are **WITHDRAWN — host isolation leak**. Isolation fix **committed+pushed** at tested code `0b68bad9c43f6c182d8efac0cf02b65170f01913`; guarded rerun4: **guard 15** + **inner T3 subset 54** PASS; **full T3 INCOMPLETE** (mandatory V6 production-route proof **NOT RUN**).
 
-**State:** T1 **COMPLETE** (V0–V2 at `ec11b10d31f6fc23e7cc859b47fe2e4e9f6a5eaa`). T2 **COMPLETE** (V3–V4 at `1dc1eff3dcfdae43e68624adc7f2749de1f377f1`). **T3 INCOMPLETE** (isolation remediation staged; prior PASS withdrawn). V7–V8 **NOT RUN** (T4–T5). v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
+**State:** T1 **COMPLETE** (`ec11b10d`). T2 **COMPLETE** (`1dc1eff`). **T3 INCOMPLETE** (V5 subset green at `0b68bad9c43f6c182d8efac0cf02b65170f01913`; **V6 mandatory proof NOT RUN**). V7–V8 **NOT RUN** (T4–T5 parked). v2 live execution **closed**. `LIVE_READINESS=NO_GO`.
 **Author:** Codex, 2026-10-18.
 **Direction:** [architecture](ARCHITECTURE-issue-286-codex-bootstrap-corrective.md), Kiro PASS at `e0e91bd32f96bce1f8c109a84005ed547d8655ff`; Ryan approved direction in conversation.
 **Tasks and contracts:** [execution plan](EXECUTION-issue-286-codex-bootstrap-corrective.md).
 **Execution authority:** Ryan granted Cursor T1–T5 and hermetic verification after Kiro plan PASS at `9423900`; see the [Execute handoff](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
-**Tested code SHA:** `1dc1eff3dcfdae43e68624adc7f2749de1f377f1` (T2 complete: owner lock + V3/V4 bwrap bundle). **Documentation evidence tip:** docs commit on branch. **PR:** none authorized.
+**Tested code SHA:** `0b68bad9c43f6c182d8efac0cf02b65170f01913` (isolation + guarded T3 subset rerun). **Documentation SHA:** `6889d210fddab6d148d42d9b3a5398b9fe500059` (docs-only; distinct from tested code above).
 **Template:** [VERIFY-TEMPLATE.md](VERIFY-TEMPLATE.md), adapted as an unfilled check list.
 
 ## Consequence and scope
@@ -19,7 +19,7 @@ run. A1 stays parked, and A2 remains stopped.
 
 Scope is the execution plan's T1–T5 only. No production paths, provider calls,
 watcher controls, quarantine release, deployment, PR, or global restore belongs
-to this mechanical verification. V0–V4 rows below are filled from hermetic Execute evidence. V5–V6 **PASS** (hermetic bwrap at T3 tip; mechanical mediation complete). V7–V8 **NOT RUN** (T4–T5).
+to this mechanical verification. V0–V4 from earlier hermetic evidence. **V5 subset PASS** (54 inner tests at `0b68bad9c43f6c182d8efac0cf02b65170f01913`). **V6 production-route proof NOT RUN** (mandatory gap). V7–V8 **NOT RUN** (T4–T5 parked).
 
 ## Verification design
 
@@ -274,11 +274,13 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test
 
 ## V5 — Complete writer mediation (T3)
 
-**PASS (hermetic, external bwrap).** Subject SHA: `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903` on `fix/2026-10-18-issue-286-codex-bootstrap`. v2 live execution remains **closed**; **mechanical PASS** is separate from live compatibility (**NO_GO**).
+**PASS (subset, guarded rerun4).** Subject SHA: `0b68bad9c43f6c182d8efac0cf02b65170f01913`. v2 live execution remains **closed**; mechanical hermetic PASS is separate from live compatibility (**NO_GO**).
 
-**Gate command (parent oracle):** `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` → **exit 0**, **6 passed**.
+**Guard suite (outer bwrap, separate from inner worker):** `python3 scripts/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_host_isolation_guard.py` → **15 passed**.
 
-**T3 worker bundle:** bwrap worker pytest on `tests/test_issue_286_codex_bootstrap_v2_t3_*.py` → **55 passed**, **exit 0**.
+**Inner T3 worker oracle (nested bwrap):** `python3 scripts/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t3_writer_mediation_in_bwrap` → **54 passed**, 0 failed, 0 skipped (`ISOLATED_PYTEST_TARGETS_T3`; guard excluded).
+
+**Not verified in rerun4:** full parent file `tests/test_issue_286_codex_bootstrap_hermetic_gate.py` (six parent tests including V0–V2 bundles).
 
 ### §5 writer inventory (execution plan)
 
@@ -313,7 +315,7 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test
 **Deferral revision binding:** v2 authority revision increases by exactly one per `publish_authority_progress` and `publish_terminal_authority` (see `bootstrap_codex_v2_authority.py`); there is no one-step cap. Parent accepts child deferral when `operation_id` matches and `1 <= signal.authority_revision <= authority.revision`; future revisions refused.
 
 
-**PASS (hermetic).** Subject SHA: `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903`.
+**PASS (deferral subset only, hermetic).** Subject SHA: `0b68bad9c43f6c182d8efac0cf02b65170f01913`. Deferral/coordination nodes in the inner **54** bundle above.
 
 | Check | Evidence test node |
 |---|---|
@@ -322,7 +324,7 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test
 | `_process_ready_path` bounded backoff / no immediate relaunch | `test_process_ready_path_real_subprocess_defer_scheduler_backoff`, `test_process_ready_path_defer_does_not_forget_scheduler` |
 | Valid deferral after terminal → requeue; future revision → forget | `test_real_child_deferral_after_multi_progress_terminal_still_requeues`, `test_terminal_accepts_deferral_revision_behind_multi_progress`, `test_real_child_deferral_after_terminal_authority_still_requeues`; `test_fabricated_deferral_revision_mismatch_after_terminal_refuses_requeue` |
 | Pre-existing refusal quarantine skips spawn | `test_preexisting_refusal_quarantine_skips_real_spawn` |
-| Ordinary unreserved `bootstrap_required` → exit **91** + breaker | `test_real_cli_bootstrap_required_exit91_unreserved_route` (child env clears `CONVMEM_INCREMENTAL_ROOT` for production route) |
+| Ordinary unreserved `bootstrap_required` → exit **91** + breaker | `test_real_cli_bootstrap_required_exit91_unreserved_route` in `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` — **NOT RUN** (excluded; mandatory V6 harness gap; **ROOT retained**) |
 | Malformed / path / op / revision mismatch | `test_malformed_deferral_is_failure_not_requeue`, `test_path_mismatch_refused` |
 | Exit 91 negative control (no false quarantine) | `test_broken_exit91_mapping_control_would_quarantine` |
 
@@ -349,7 +351,7 @@ corrections or cleanup. Review findings go through the established lane route.
 
 ## Ryan gates — not mechanical PASS rows
 
-- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff`); T3 INCOMPLETE (host isolation fix staged; rerun pending); T4–T5 NOT STARTED**.
+- Exact Cursor T1–T5 and hermetic verification authorization: **GRANTED; T1 COMPLETE (`ec11b10`); T2 COMPLETE (`1dc1eff`); T3 INCOMPLETE (V6 mandatory proof NOT RUN; V5 subset 54+guard 15 at `0b68bad9c43f6c182d8efac0cf02b65170f01913`); T4–T5 PARKED**.
 - Kiro execution-plan review: **PASS at `942390001bca407c1c28e9972c443ee7612e1c1b`**, written verdict supplied by Ryan; precision notes incorporated in the Execute handoff.
 - Later PR/review/merge and deployment authority: **PENDING**.
 - Outer-budget enforcement, compatible writer rollout, health diagnosis and
@@ -367,9 +369,9 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 | 2026-10-18 | T3 reconciliation tip (superseded) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **31 passed** (superseded) in bwrap |
 
-| 2026-10-18 | `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903` (tested code) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **55 passed**; race `test_real_child_deferral_after_multi_progress_terminal_still_requeues` |
+| 2026-10-18 | `0b68bad9c43f6c182d8efac0cf02b65170f01913` (tested code) | `python3 scripts/issue_286_guarded_pytest_launcher.py` guard 15 + `::test_t3_writer_mediation_in_bwrap` inner 54 | 0 | PASS (subset) | Guard outer; inner T3 subset only; V6 module NOT RUN |
 
-**TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **INCOMPLETE** (isolation fix staged; authorized rerun pending). T4–T5 parked.
+**TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **INCOMPLETE** (V6 mandatory NOT RUN; V5 subset+guard PASS at `0b68bad9c43f6c182d8efac0cf02b65170f01913`). T4–T5 parked.
 
 <!-- src: ./VERIFY-TEMPLATE.md — evidence and review-gate structure -->
 <!-- ref: ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md — scoped contracts -->
@@ -384,14 +386,55 @@ faithful harness exists. Production `maybe_route_incremental` selects the isolat
 exit-91 without weakening production security or falsifying assertions. This is a **proof gap**,
 not isolation success and not a new grant.
 
-## Guarded rerun evidence (2026-10-18, pass 2)
+## Final guarded evidence (rerun4, metadata-only)
 
-- **Outer boundary:** `python3 scripts/issue_286_guarded_pytest_launcher.py` (mandatory).
-- **Guard suite (outer):** 15 passed — `tests/test_issue_286_host_isolation_guard.py`.
-- **Inner bwrap T3 gate:** **54 passed**, 0 failed, 0 skipped (`ISOLATED_PYTEST_TARGETS_T3`, guard excluded).
-- **V6:** `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` — **INCOMPLETE** (xfail; ROOT retained; not in T3 PASS count).
-- **T3 closure:** functional T3 gate **green**; arc still **not** V6-complete.
-- **Snapshot script:** deduped Codex inventory (831 unique paths; prior 933 row count was duplicate dirs).
-- **Metadata (rerun4):** `/tmp/issue-286-rerun4-before.json` → `/tmp/issue-286-rerun4-after.json` — config+synthesis hash/mtime unchanged; sessions unique=831; digest unchanged during run.
-- **Coordinator exception (earlier):** three active rollout paths had size/mtime growth (same inode/dev); live codex pid5852 — not claimed as full-session unchanged.
+**Tested code SHA (implementation):** `0b68bad9c43f6c182d8efac0cf02b65170f01913` on `fix/2026-10-18-issue-286-codex-bootstrap` (pushed; HEAD matches origin).
+
+**Entry (mandatory):** `python3 scripts/issue_286_guarded_pytest_launcher.py` — outer `bwrap` (`--ro-bind / /`, `--unshare-net`, scratch bind) then single-process capture/isolation before pytest. Unguarded host `pytest` on issue #286 paths **fail closed** (`issue_286_unguarded_pytest`).
+
+### What ran (final rerun4)
+
+| Layer | Command / node | Result |
+|-------|----------------|--------|
+| **Guard (outer only)** | `…/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_host_isolation_guard.py` | **15 passed** |
+| **T3 inner subset (nested bwrap worker)** | `…/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t3_writer_mediation_in_bwrap` | **54 passed**, 0 failed, 0 skipped (`ISOLATED_PYTEST_TARGETS_T3`; guard file excluded) |
+| **V6 production-route module** | `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` | **NOT RUN** (excluded from inner targets; mandatory proof gap while `CONVMEM_INCREMENTAL_ROOT` retained) |
+| **Full parent hermetic gate (6 tests)** | `tests/test_issue_286_codex_bootstrap_hermetic_gate.py` (entire file) | **NOT RUN** in rerun4 — only the targeted T3 worker oracle above |
+
+**Withdrawn:** prior T3 worker **55 passed** at `1723dd0` / `4a99eba` (**host isolation leak**); do not cite.
+
+### Production metadata snapshots (rerun4 window ~12.31s)
+
+| Artifact | Path |
+|----------|------|
+| Before | `/tmp/issue-286-rerun4-before.json` (`captured_ns`: `1792360071527129462`) |
+| After | `/tmp/issue-286-rerun4-after.json` (`captured_ns`: `1792360083834667963`) |
+| Coordinator baseline (reference) | `/tmp/issue-286-isolation-correction-before.json` |
+| Prior runs (preserved) | `/tmp/issue-286-run-before.json`, `/tmp/issue-286-run-after.json`, `/tmp/issue-286-rerun3-before.json`, `/tmp/issue-286-rerun3-after.json` |
+
+**Scope:** metadata only (config/synthesis file hashes+mtime; Codex session **path** inventory with inode/dev/size/mtime). **No** transcript body reads; **no** content/prefix proof.
+
+| Field | Before → after (rerun4) |
+|-------|-------------------------|
+| `config.mtime_ns` | `1792355640024833560` → **equal** |
+| `config.sha256` | `b9e06f1e9e5dc2e80f1ec01e2cedc63b59d90965d9757a8c15e2958d6d684721` → **equal** |
+| `config.size` | `5240` → **equal** |
+| `synthesis_failures.mtime_ns` | `1792355284777120051` → **equal** |
+| `synthesis_failures.sha256` | `2e3e68a08436a96f02ab40966014777fc1d67c4d00e96c91e1cf41b111b79039` → **equal** |
+| `synthesis_failures.size` | `636205` → **equal** |
+| Session **unique** paths | **831** → **831** (identical set) |
+| `sessions_metadata_sha256` | `212ed285526e28751dfe631d54bb39efa4ffc1449544c481e4ab1f0e3218d713` → **equal** |
+| Added / removed / changed paths | **0 / 0 / 0** |
+
+**Earlier counter corrections (not rerun4 drift):**
+
+- Duplicate directory rows in a pre-fix snapshot script produced **933** inventory rows vs **831** unique paths (**102** duplicate dir entries); not live session growth.
+- Coordinator metadata-only review (separate window) found **three** existing rollout paths with same inode/dev and increasing size/mtime while host `codex` (pid 5852) held writable fds — **not** claimed as full-session byte identity; rerun4 showed **no** path add/remove and **no** metadata row changes across the guarded window.
+
+### T3 arc status
+
+- **V5 writer-mediation subset (54 inner tests):** PASS at `0b68bad9c43f6c182d8efac0cf02b65170f01913` under guarded launcher.
+- **V6 production-route exit-91 proof:** **mandatory, unresolved** — module **NOT RUN**; requires harness design with **ROOT retained** (no `CONVMEM_INCREMENTAL_ROOT` stripping).
+- **Full T3 task:** **INCOMPLETE** until V6 is satisfied.
+- **T4–T5:** parked (not started).
 

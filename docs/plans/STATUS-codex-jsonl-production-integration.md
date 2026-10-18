@@ -17,7 +17,7 @@ separate bootstrap authority; ordinary indexing cannot silently adopt them.
 Codex rollouts in Ryan's A1 packet while preserving provider caps and recovery
 beside live writers. The current entrypoint cannot do this. Codex has drafted
 the execution plan, Kiro passed it at `9423900`, and Ryan authorized Cursor
-T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 INCOMPLETE (isolation remediation)** (V5–V6 hermetic bwrap, 55-test worker bundle; V5–V6 PASS at `4a99eba47faf`); **T4–T5 NOT STARTED**;
+T1–T5 implementation and hermetic verification. **T1 COMPLETE** (`ec11b10d`); **T2 COMPLETE** (`1dc1eff`); **T3 INCOMPLETE** (guard **15** + inner subset **54** at `0b68bad9c43f6c182d8efac0cf02b65170f01913`; prior **55** withdrawn; **V6 mandatory proof NOT RUN**); **T4–T5 PARKED**;
 live authority remains separate.
 
 **Done for this slice means:** a reviewed compatible implementation, proven
@@ -104,7 +104,7 @@ Key invariants:
   non-blocking precision notes.
 - **Execute handoff:** [Cursor's bounded grant](../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
   records the scope, notes, branch procedure, and operational prohibitions.
-  Cursor branch `fix/2026-10-18-issue-286-codex-bootstrap`: T1–T3 hermetic evidence on branch tip; [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md) V0–V6 (T3 writer inventory + watcher deferral). Live v2 execution closed. No PR/production authority.
+  Branch `fix/2026-10-18-issue-286-codex-bootstrap`: tested code `0b68bad9c43f6c182d8efac0cf02b65170f01913`; guarded rerun4 per [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md). Full T3 incomplete (V6). Live v2 closed. No PR/production authority.
 
 ## 4. Completion State
 
@@ -127,7 +127,7 @@ Key invariants:
 
 ## 5. Your Role
 
-**Cursor next:** implement **T4** bounded-prefix coordinator execution and source-only recovery per the corrective execution plan; do not enable live v2 execution or start T5 until T4 evidence is green.
+**Cursor next:** close **mandatory V6** production-route exit-91 proof with **CONVMEM_INCREMENTAL_ROOT retained** (harness design), then **T4** bounded-prefix coordinator execution per the corrective plan; T5 remains after T4; no live v2 execution.
 
 **Kiro:** exact-tip implementation review after Cursor's evidence handoff.
 **Codex:** upstream planning/authority handoff; no implementation or self-review
@@ -140,7 +140,7 @@ of those operations is granted by the Cursor implementation authorization.
 
 ## 6. Remaining gates
 
-1. Cursor completes T4–T5 and extends [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T1–T3 COMPLETE (hermetic bwrap); T4 next.
+1. Close **mandatory V6** production-route proof harness (**ROOT retained**), then T4–T5 per [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T3 remains **INCOMPLETE** until V6 runs.
 2. Obtain exact-tip independent implementation review. PR creation, PR-native
    review triggers, merge and runtime/writer rollout remain separate gates.
 3. Resolve health readiness and outer-budget enforcement; revalidate exact
@@ -227,6 +227,7 @@ Keep this document a current-state snapshot, not a session diary.
 
 ### Update Log
 
+- 2026-10-18 | Cursor | Docs reconciliation: rerun4 metadata at `0b68bad`; guard 15 / inner 54; V6 NOT RUN; full T3 incomplete.
 - 2026-10-18 | Cursor | T2 COMPLETE: unconditional owner lock; bwrap 87 passed at `1dc1eff`.
 
 | Date | Who | Change |
@@ -295,26 +296,10 @@ Keep this document a current-state snapshot, not a session diary.
 
 ## TL;DR
 
-- [Arc Codex] A1 stays parked: the current bootstrap is Kiro-only and requires
-  operational conditions incompatible with the live watcher/config.
-- Kiro passed the execution plan at `9423900`; Ryan authorized Cursor T1–T5
-  implementation and hermetic verification. The Execute handoff is ready;
-  implementation remains NOT_STARTED and live execution remains gated.
-- A2 remains stopped on an unresolved doctor failure. A3's 38-sample baseline
-  is complete. No source, runtime, config, watcher, or quarantine change is
-  authorized by the implementation grant.
+- [Arc Codex] T1–T2 complete; **T3 incomplete** (guard **15** + inner **54** at
+  `0b68bad`; prior 55 withdrawn). **V6 mandatory proof NOT RUN** (ROOT retained).
+- **Next:** V6 harness, then T4–T5 under existing grant. A1 parked; A2 stopped.
+  No PR, production, or merge authority from hermetic evidence.
 
 <!-- ref: ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md, ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./VERIFY-issue-286-codex-bootstrap-corrective.md, ../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md — current A1 plan and gates -->
 <!-- src: /tmp/convmem-286-free-window-20261018/A1-dry-run-packet.md, /tmp/convmem-286-free-window-20261018/A2-report.json, /tmp/convmem-286-free-window-20261018/a3-baseline.json — dated operational evidence -->
-
-## Guarded rerun evidence (2026-10-18, pass 2)
-
-- **Outer boundary:** `python3 scripts/issue_286_guarded_pytest_launcher.py` (mandatory).
-- **Guard suite (outer):** 15 passed — `tests/test_issue_286_host_isolation_guard.py`.
-- **Inner bwrap T3 gate:** **54 passed**, 0 failed, 0 skipped (`ISOLATED_PYTEST_TARGETS_T3`, guard excluded).
-- **V6:** `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` — **INCOMPLETE** (xfail; ROOT retained; not in T3 PASS count).
-- **T3 closure:** functional T3 gate **green**; arc still **not** V6-complete.
-- **Snapshot script:** deduped Codex inventory (831 unique paths; prior 933 row count was duplicate dirs).
-- **Metadata (rerun4):** `/tmp/issue-286-rerun4-before.json` → `/tmp/issue-286-rerun4-after.json` — config+synthesis hash/mtime unchanged; sessions unique=831; digest unchanged during run.
-- **Coordinator exception (earlier):** three active rollout paths had size/mtime growth (same inode/dev); live codex pid5852 — not claimed as full-session unchanged.
-

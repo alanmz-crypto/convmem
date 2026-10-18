@@ -5,7 +5,7 @@
 
 ## Resume state
 
-- **State:** `T3_ISOLATION_REMEDIATION` — T1 complete (`ec11b10`), T2 complete (`1dc1eff`), T3 NOT COMPLETE (guarded rerun) (V5–V6 hermetic bwrap 53/53 at `4a99eba`), T4–T5 not started.
+- **State:** `T3_INCOMPLETE_V6_GAP` — T1 complete (`ec11b10`), T2 complete (`1dc1eff`), isolation fix at `0b68bad9c43f6c182d8efac0cf02b65170f01913` (guard **15**, inner T3 subset **54**); **V6 mandatory proof NOT RUN**; T4–T5 parked.
 - **Reviewed plan branch:** `plan/2026-10-18-issue-286-codex-bootstrap-corrective`.
 - **Reviewed plan SHA:** `942390001bca407c1c28e9972c443ee7612e1c1b`.
 - **Code baseline:** `483373f1cef2142847fcd9c276196593a72a0ecf`.
@@ -81,20 +81,62 @@ Kiro's reported doctor PASS during direction review does not diagnose A2's earli
 
 Stop for exact-tip independent review. Return the implementation branch and full SHA, push status, T1–T5 evidence/results, the VERIFY path, and remaining live gates with owners. Do not claim live readiness from hermetic PASS. No PR or review-trigger comment is authorized here; obtain the applicable later grant before entering that lifecycle.
 
-**Next lane now:** Authorized isolation rerun (boundary script before/after), then T3 re-close; T4 Execute under existing Ryan T1–T5 grant (live/PR gates separate; do not start without Execute handoff). **Resume state:** `T3_ISOLATION_REMEDIATION` (V5–V6 PASS; T4–T5 not started).
+**Next lane now:** Design/run **mandatory V6** production-route proof harness with **CONVMEM_INCREMENTAL_ROOT retained**; then T4 under existing Ryan T1–T5 grant (no new grant for implementation already authorized). **Resume state:** `T3_INCOMPLETE_V6_GAP`.
 
 **TL;DR:** [Arc Codex] Ryan authorizes Cursor's reviewed T1–T5 implementation and hermetic verification, including Kiro's precision notes. All production and PR prohibitions remain; A1 is parked and A2 is stopped.
 
 <!-- src: ../plans/EXECUTION-issue-286-codex-bootstrap-corrective.md — reviewed at 942390001bca407c1c28e9972c443ee7612e1c1b -->
 <!-- ref: ../plans/VERIFY-issue-286-codex-bootstrap-corrective.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — execution evidence and routing -->
 
-## Guarded rerun evidence (2026-10-18)
+## Final guarded evidence (rerun4, metadata-only)
 
-- **Outer boundary:** `python3 scripts/issue_286_guarded_pytest_launcher.py` (single Python; capture + isolation before pytest; outer `bwrap --ro-bind / / --unshare-net --tmpfs /tmp` + scratch bind).
-- **Guard suite (outer only):** 15 passed (`tests/test_issue_286_host_isolation_guard.py`).
-- **Inner bwrap T3 gate:** 49 passed, **5 failed**, 0 skipped in `ISOLATED_PYTEST_TARGETS_T3` (guard excluded from inner targets).
-- **Failures (infra):** five `cli_watch_e2e` subprocess coordination tests (index child rc=1 vs expected 93 under nested bwrap); not production-path writes.
-- **V6:** `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` remains **INCOMPLETE** (xfail proof gap); excluded from T3 PASS count.
-- **T3 status:** **NOT COMPLETE** (V6 gap + 5 cli_watch failures).
-- **Snapshots:** `/tmp/issue-286-run-before.json` → `/tmp/issue-286-run-after.json`; config SHA256 unchanged; synthesis unchanged; Codex inventory count 933 (digest drift vs coordinator baseline 831 entries — live writers).
-- **Safe command:** `python3 scripts/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_host_isolation_guard.py`
+**Tested code SHA (implementation):** `0b68bad9c43f6c182d8efac0cf02b65170f01913` on `fix/2026-10-18-issue-286-codex-bootstrap` (pushed; HEAD matches origin).
+
+**Entry (mandatory):** `python3 scripts/issue_286_guarded_pytest_launcher.py` — outer `bwrap` (`--ro-bind / /`, `--unshare-net`, scratch bind) then single-process capture/isolation before pytest. Unguarded host `pytest` on issue #286 paths **fail closed** (`issue_286_unguarded_pytest`).
+
+### What ran (final rerun4)
+
+| Layer | Command / node | Result |
+|-------|----------------|--------|
+| **Guard (outer only)** | `…/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_host_isolation_guard.py` | **15 passed** |
+| **T3 inner subset (nested bwrap worker)** | `…/issue_286_guarded_pytest_launcher.py -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test_t3_writer_mediation_in_bwrap` | **54 passed**, 0 failed, 0 skipped (`ISOLATED_PYTEST_TARGETS_T3`; guard file excluded) |
+| **V6 production-route module** | `tests/test_issue_286_codex_bootstrap_v2_t3_v6_production_route_gap.py` | **NOT RUN** (excluded from inner targets; mandatory proof gap while `CONVMEM_INCREMENTAL_ROOT` retained) |
+| **Full parent hermetic gate (6 tests)** | `tests/test_issue_286_codex_bootstrap_hermetic_gate.py` (entire file) | **NOT RUN** in rerun4 — only the targeted T3 worker oracle above |
+
+**Withdrawn:** prior T3 worker **55 passed** at `1723dd0` / `4a99eba` (**host isolation leak**); do not cite.
+
+### Production metadata snapshots (rerun4 window ~12.31s)
+
+| Artifact | Path |
+|----------|------|
+| Before | `/tmp/issue-286-rerun4-before.json` (`captured_ns`: `1792360071527129462`) |
+| After | `/tmp/issue-286-rerun4-after.json` (`captured_ns`: `1792360083834667963`) |
+| Coordinator baseline (reference) | `/tmp/issue-286-isolation-correction-before.json` |
+| Prior runs (preserved) | `/tmp/issue-286-run-before.json`, `/tmp/issue-286-run-after.json`, `/tmp/issue-286-rerun3-before.json`, `/tmp/issue-286-rerun3-after.json` |
+
+**Scope:** metadata only (config/synthesis file hashes+mtime; Codex session **path** inventory with inode/dev/size/mtime). **No** transcript body reads; **no** content/prefix proof.
+
+| Field | Before → after (rerun4) |
+|-------|-------------------------|
+| `config.mtime_ns` | `1792355640024833560` → **equal** |
+| `config.sha256` | `b9e06f1e9e5dc2e80f1ec01e2cedc63b59d90965d9757a8c15e2958d6d684721` → **equal** |
+| `config.size` | `5240` → **equal** |
+| `synthesis_failures.mtime_ns` | `1792355284777120051` → **equal** |
+| `synthesis_failures.sha256` | `2e3e68a08436a96f02ab40966014777fc1d67c4d00e96c91e1cf41b111b79039` → **equal** |
+| `synthesis_failures.size` | `636205` → **equal** |
+| Session **unique** paths | **831** → **831** (identical set) |
+| `sessions_metadata_sha256` | `212ed285526e28751dfe631d54bb39efa4ffc1449544c481e4ab1f0e3218d713` → **equal** |
+| Added / removed / changed paths | **0 / 0 / 0** |
+
+**Earlier counter corrections (not rerun4 drift):**
+
+- Duplicate directory rows in a pre-fix snapshot script produced **933** inventory rows vs **831** unique paths (**102** duplicate dir entries); not live session growth.
+- Coordinator metadata-only review (separate window) found **three** existing rollout paths with same inode/dev and increasing size/mtime while host `codex` (pid 5852) held writable fds — **not** claimed as full-session byte identity; rerun4 showed **no** path add/remove and **no** metadata row changes across the guarded window.
+
+### T3 arc status
+
+- **V5 writer-mediation subset (54 inner tests):** PASS at `0b68bad9c43f6c182d8efac0cf02b65170f01913` under guarded launcher.
+- **V6 production-route exit-91 proof:** **mandatory, unresolved** — module **NOT RUN**; requires harness design with **ROOT retained** (no `CONVMEM_INCREMENTAL_ROOT` stripping).
+- **Full T3 task:** **INCOMPLETE** until V6 is satisfied.
+- **T4–T5:** parked (not started).
+

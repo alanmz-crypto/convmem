@@ -9,15 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — Cursor T3 INCOMPLETE — host isolation remediation staged (prior evidence withdrawn)**
-  (2026-10-18):** T1 `ec11b10`, T2 `1dc1eff`; T3 writer mediation + watcher deferral
-  evidence on branch `fix/2026-10-18-issue-286-codex-bootstrap` (55-test T3 worker bundle)
-  notes. **Next lane: Cursor.** Read the
-  [authorized Execute handoff](CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md)
-  for the exact revision, scope, branch procedure, and evidence gates.
-  A1 stays parked; A2 stays stopped. No production/provider calls, deployment,
-  runtime/config change, watcher action, quarantine clearing, PR, or Part B
-  authority is granted. [Current arc brief](../plans/STATUS-codex-jsonl-production-integration.md).
+- **Arc Codex / issue #286 — T3 INCOMPLETE; isolation fix at `0b68bad9c43f6c182d8efac0cf02b65170f01913` (2026-10-18):**
+  T1 `ec11b10`, T2 `1dc1eff`. Guarded rerun4: **15** guard + **54** inner T3 subset PASS
+  (`issue_286_guarded_pytest_launcher.py`); prior **55** withdrawn. **V6 production-route
+  proof NOT RUN** (mandatory; ROOT retained). **Next:** V6 harness design, then T4 under
+  existing T1–T5 grant. [Execute handoff](CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md),
+  [VERIFY](../plans/VERIFY-issue-286-codex-bootstrap-corrective.md). A1 parked; A2 stopped.
+  No production/provider/deployment/PR authority. [STATUS](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **cpu_tripwire fix live on runtime, PR #398 open (2026-10-17, Kiro):** `convmem doctor`
   was exiting 1 on a benign Typora userspace crash because the CPU tripwire FAILed on any
