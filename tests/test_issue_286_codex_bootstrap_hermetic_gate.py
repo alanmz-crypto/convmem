@@ -43,6 +43,15 @@ ISOLATED_PYTEST_TARGETS = (
 )
 EXPECTED_ISOLATED_PASS_COUNT = 38
 
+ISOLATED_PYTEST_TARGETS_T2 = (
+    "tests/test_issue_286_codex_bootstrap_v2_t2_authority.py",
+    "tests/test_issue_286_codex_bootstrap_v2_t2_accounting.py",
+    "tests/test_issue_286_codex_bootstrap_v2_t2_crash_matrix.py",
+)
+EXPECTED_ISOLATED_T2_PASS_COUNT = 18
+
+
+
 
 def _worker_env(tmp_path: Path) -> tuple[IsolationBoundary, dict[str, str]]:
     root, token = create_fresh_root(tmp_path)
@@ -151,3 +160,21 @@ def test_t1_and_v1_regressions_in_bwrap(tmp_path: Path) -> None:
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     combined = result.stdout + result.stderr
     assert f"{EXPECTED_ISOLATED_PASS_COUNT} passed" in combined
+
+
+@pytest.mark.skipif(
+    not issue_286_bwrap_integration_available(),
+    reason="issue_286_bwrap_unavailable",
+)
+def test_t2_authority_accounting_and_crash_matrix_in_bwrap(tmp_path: Path) -> None:
+    boundary, env = _worker_env(tmp_path)
+    args = ["pytest", "-q", *ISOLATED_PYTEST_TARGETS_T2]
+    result = run_bwrap(
+        [sys.executable, "-I", str(WORKER), *args],
+        scratch_root=boundary.root,
+        extra_env=env,
+        timeout=300.0,
+    )
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    combined = result.stdout + result.stderr
+    assert f"{EXPECTED_ISOLATED_T2_PASS_COUNT} passed" in combined
