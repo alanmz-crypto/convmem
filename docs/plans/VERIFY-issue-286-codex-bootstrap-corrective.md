@@ -272,7 +272,7 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test
 
 ## V5 — Complete writer mediation (T3)
 
-**PASS (hermetic, external bwrap).** Subject SHA: `4a99eba47faff52c5e4f54ab8ff9fab1f3168e70` on `fix/2026-10-18-issue-286-codex-bootstrap`. v2 live execution remains **closed**; **mechanical PASS** is separate from live compatibility (**NO_GO**).
+**PASS (hermetic, external bwrap).** Subject SHA: `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903` on `fix/2026-10-18-issue-286-codex-bootstrap`. v2 live execution remains **closed**; **mechanical PASS** is separate from live compatibility (**NO_GO**).
 
 **Gate command (parent oracle):** `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` → **exit 0**, **6 passed**.
 
@@ -311,14 +311,14 @@ python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py::test
 **Deferral revision binding:** v2 authority revision increases by exactly one per `publish_authority_progress` and `publish_terminal_authority` (see `bootstrap_codex_v2_authority.py`); there is no one-step cap. Parent accepts child deferral when `operation_id` matches and `1 <= signal.authority_revision <= authority.revision`; future revisions refused.
 
 
-**PASS (hermetic).** Subject SHA: `4a99eba47faff52c5e4f54ab8ff9fab1f3168e70`.
+**PASS (hermetic).** Subject SHA: `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903`.
 
 | Check | Evidence test node |
 |---|---|
 | Exit **93** disjoint from 0/1/91/timeout/native | `test_exit93_disjoint_from_timeout_and_native_parsing`, `test_exit_code_disjoint_from_91_and_native` |
 | Real CLI child → `_flush_path_subprocess` → parent requeue | `test_real_cli_child_coordination_deferral_exit93`, `test_flush_path_subprocess_real_child_then_parent_requeue` |
 | `_process_ready_path` bounded backoff / no immediate relaunch | `test_process_ready_path_real_subprocess_defer_scheduler_backoff`, `test_process_ready_path_defer_does_not_forget_scheduler` |
-| Valid deferral after terminal → requeue; fabricated revision → forget | `test_real_child_deferral_after_multi_progress_terminal_still_requeues, `test_terminal_accepts_deferral_revision_behind_multi_progress`, `test_real_child_deferral_after_terminal_authority_still_requeues` (valid race); `test_fabricated_deferral_revision_mismatch_after_terminal_refuses_requeue` |
+| Valid deferral after terminal → requeue; future revision → forget | `test_real_child_deferral_after_multi_progress_terminal_still_requeues`, `test_terminal_accepts_deferral_revision_behind_multi_progress`, `test_real_child_deferral_after_terminal_authority_still_requeues`; `test_fabricated_deferral_revision_mismatch_after_terminal_refuses_requeue` |
 | Pre-existing refusal quarantine skips spawn | `test_preexisting_refusal_quarantine_skips_real_spawn` |
 | Ordinary unreserved `bootstrap_required` → exit **91** + breaker | `test_real_cli_bootstrap_required_exit91_unreserved_route` (child env clears `CONVMEM_INCREMENTAL_ROOT` for production route) |
 | Malformed / path / op / revision mismatch | `test_malformed_deferral_is_failure_not_requeue`, `test_path_mismatch_refused` |
@@ -365,7 +365,7 @@ corrections or cleanup. Review findings go through the established lane route.
 | 2026-10-18 | `439b851` | ad hoc pytest without bwrap | — | **not hermetic** | implementation only |
 | 2026-10-18 | T3 reconciliation tip (superseded) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **31 passed** (superseded) in bwrap |
 
-| 2026-10-18 | `4a99eba47faff52c5e4f54ab8ff9fab1f3168e70` (tested code) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **55 passed** in bwrap |
+| 2026-10-18 | `4a99eba47faf44a5f9c17678c2cd8adbdb2e0903` (tested code) | `python3 -m pytest -q tests/test_issue_286_codex_bootstrap_hermetic_gate.py` | 0 | PASS | 6 parent tests; T3 worker **55 passed** in bwrap |
 
 **TL;DR:** [Arc Codex] T1 `ec11b10`; T2 `1dc1eff`; T3 **COMPLETE** (`4a99eba47faf` V5–V6 bwrap 55/55). T4–T5 NOT RUN.
 
