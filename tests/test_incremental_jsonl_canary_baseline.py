@@ -37,7 +37,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 Kiro exact-path recovery parity (R1-R3).
     # Refreshed for issue #286 transform contract v2 (semantic fingerprint).
     # Refreshed for issue #286 v1 checkpoint full-rebuild when allow_full_rebuild.
-    "incremental_jsonl.py": "14f36b7fbc5d955dcf73a41f5c6d745ceca7abe11dcb6c0efdef02ef085692b8",
+    # Refreshed for issue #286 full-rebuild Codex admission frontier fix.
+    "incremental_jsonl.py": "59dd4f86a552432fe3febf2dfea19249023acae74f867c0e787e44c6e4c98560",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

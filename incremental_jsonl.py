@@ -1197,6 +1197,19 @@ class IncrementalJsonlCoordinator:
             )
         return bool(foreign_summaries or foreign_units)
 
+    def _codex_admission_prior_record_count(
+        self, checkpoint: dict | None, continuity: str | None
+    ) -> int:
+        """Frontier admission uses full history for initial ingest and full rebuilds."""
+        if checkpoint is None:
+            return 0
+        prior_count = int(checkpoint.get("record_count") or 0)
+        if continuity == "initial_full":
+            return 0
+        if self.settings.allow_full_rebuild and continuity:
+            return 0
+        return prior_count
+
     def _codex_admission_guard_code(
         self,
         snapshot: dict,
@@ -1210,9 +1223,7 @@ class IncrementalJsonlCoordinator:
             return None
         if int(snapshot.get("size") or 0) > admission.max_source_bytes:
             return "source_too_large"
-        prior_count = int(checkpoint.get("record_count") or 0) if checkpoint else 0
-        if continuity == "initial_full":
-            prior_count = 0
+        prior_count = self._codex_admission_prior_record_count(checkpoint, continuity)
         allowed = self._allowed_transform_starts(snapshot["messages"], prior_count)
         planned = self._planned_transform_starts(
             snapshot["messages"],
