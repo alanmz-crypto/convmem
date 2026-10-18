@@ -39,6 +39,27 @@ def _claude_record(
     return record
 
 
+def _claude_metadata_record(rtype: str, session_id: str = "sess-abc-123") -> dict:
+    return {"type": rtype, "sessionId": session_id}
+
+
+def _new_format_metadata_prefix(session_id: str = "sess-abc-123") -> list[dict]:
+    """Prefix shape seen on 2026-10+ Claude Code transcripts (14+ rows)."""
+    rows: list[dict] = [
+        _claude_metadata_record("ai-title", session_id),
+        _claude_metadata_record("agent-name", session_id),
+        _claude_metadata_record("mode", session_id),
+        _claude_metadata_record("permission-mode", session_id),
+        _claude_metadata_record("atis-latch", session_id),
+        _claude_metadata_record("last-prompt", session_id),
+    ]
+    rows.extend(
+        _claude_metadata_record("file-history-snapshot", session_id)
+        for _ in range(9)
+    )
+    return rows
+
+
 class TestClaudeSessionJsonl(unittest.TestCase):
     def _write_claude_transcript(self, tmp: Path, rows: list[dict]) -> Path:
         root = tmp / ".claude" / "projects" / "my-project-slug"
@@ -61,6 +82,40 @@ class TestClaudeSessionJsonl(unittest.TestCase):
                 return_value=Path(tmp),
             ):
                 self.assertTrue(is_claude_session_jsonl(path))
+
+    def test_is_claude_session_jsonl_detects_long_metadata_prefix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_claude_transcript(
+                Path(tmp),
+                _new_format_metadata_prefix()
+                + [
+                    _claude_record(rtype="system", content=""),
+                    _claude_record(rtype="user", content="after metadata"),
+                ],
+            )
+            with mock.patch(
+                "adapters.claude_session_jsonl.Path.home",
+                return_value=Path(tmp),
+            ):
+                self.assertTrue(is_claude_session_jsonl(path))
+            messages = parse(str(path))
+            self.assertEqual(len(messages), 1)
+            self.assertEqual(messages[0]["content"], "after metadata")
+
+    def test_is_claude_session_jsonl_rejects_non_session_under_projects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / ".claude" / "projects" / "slug"
+            root.mkdir(parents=True)
+            path = root / "notes.jsonl"
+            path.write_text(
+                json.dumps({"role": "user", "content": "cursor-shaped"}) + "\n",
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "adapters.claude_session_jsonl.Path.home",
+                return_value=Path(tmp),
+            ):
+                self.assertFalse(is_claude_session_jsonl(path))
 
     def test_is_claude_session_jsonl_rejects_neighbours(self):
         with tempfile.TemporaryDirectory() as tmp:

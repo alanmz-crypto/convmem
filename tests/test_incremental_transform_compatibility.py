@@ -21,6 +21,7 @@ from incremental_checkpoint_migration import (
     dry_run_migration,
     publish_migration,
 )
+from incremental_jsonl_codex_admission import make_uuid7
 from incremental_jsonl_production import ProductionBoundary
 from incremental_transform_contract import (
     CHECKPOINT_VERSION_V1,
@@ -76,6 +77,76 @@ def _downgrade_checkpoint_to_legacy_v1(
         adapter_contract_version=coord.format_spec.adapter_contract_version,
     )
     ckpt_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+
+def _admitted_rollout_multi_chunk(sessions_root: Path, admitted: datetime) -> Path:
+    from tests.test_incremental_jsonl_codex_admission import _meta_for, _write_rollout
+
+    uid_obj = make_uuid7(int(admitted.timestamp() * 1000) + 10_000)
+    uid = str(uid_obj)
+    uuid_dt = datetime.fromtimestamp((uid_obj.int >> 80) / 1000.0, tz=timezone.utc)
+    local = datetime.fromtimestamp((uid_obj.int >> 80) / 1000.0)
+    return _write_rollout(
+        sessions_root,
+        uid,
+        filename_local=local,
+        session_meta=_meta_for(uid, uuid_dt),
+        extra_lines=12,
+    )
+
+
+def _legacy_v1_transform_fingerprint(
+    coord: incremental_jsonl.IncrementalJsonlCoordinator,
+    *,
+    legacy_producer_revision: str,
+) -> str:
+    return compute_legacy_v1_transform_fingerprint(
+        chunk_size=coord.chunk_size,
+        overlap=coord.overlap,
+        min_confidence=coord.min_confidence,
+        models=coord.models,
+        embed_dimension=coord.embed_dimension,
+        implementation_revision=legacy_producer_revision,
+        adapter_format=coord.format_spec.format_id,
+        adapter_contract_version=coord.format_spec.adapter_contract_version,
+    )
+
+
+def _coordinator_as_legacy_v1_runtime(
+    coord: incremental_jsonl.IncrementalJsonlCoordinator,
+    *,
+    legacy_producer_revision: str,
+) -> incremental_jsonl.IncrementalJsonlCoordinator:
+    coord.transform_v2 = False
+    coord.transform_descriptor = None
+    coord.transform_fingerprint = _legacy_v1_transform_fingerprint(
+        coord, legacy_producer_revision=legacy_producer_revision
+    )
+    return coord
+
+
+def _production_boundary_and_cfg(
+    tmp_path: Path,
+    sessions: Path,
+    admitted: datetime,
+    *,
+    allow_full_rebuild: bool,
+    max_transform_chunks_per_run: int = 20,
+) -> tuple[ProductionBoundary, dict]:
+    cfg = _production_cfg(
+        tmp_path,
+        sessions,
+        admitted,
+        allow_full_rebuild=allow_full_rebuild,
+    )
+    cfg["index"]["incremental_jsonl"]["codex_rollout_admission"][
+        "max_transform_chunks_per_run"
+    ] = max_transform_chunks_per_run
+    cfg_path = tmp_path / "config.toml"
+    _write_user_config(cfg_path, cfg, allow_full_rebuild=allow_full_rebuild)
+    source = _admitted_rollout_multi_chunk(sessions, admitted)
+    boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
+    return boundary, cfg
 
 
 def _migration_plan(
@@ -251,9 +322,284 @@ def test_legacy_v1_checkpoint_refuses_migration_required(
     sessions.mkdir(parents=True)
     admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
     source = _admitted_rollout(sessions, admitted)
-    cfg = _production_cfg(tmp_path, sessions, admitted)
+    cfg = _production_cfg(tmp_path, sessions, admitted, allow_full_rebuild=False)
     cfg_path = tmp_path / "config.toml"
-    _write_user_config(cfg_path, cfg)
+    _write_user_config(cfg_path, cfg, allow_full_rebuild=False)
+    monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
+    install_fakes(monkeypatch)
+    build_calls = install_build_chunk_tracker(monkeypatch)
+    boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
+    coord = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    )
+    coord.run()
+    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="a" * 64)
+    build_calls.clear()
+    result = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert result.outcome == "migration_required"
+    assert result.counters.total == 0
+    assert not build_calls
+
+
+def test_legacy_v1_checkpoint_rebuilds_when_full_rebuild_allowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("CONVMEM_INCREMENTAL_ROOT", str(tmp_path))
+    sessions = _sessions_root(tmp_path)
+    sessions.mkdir(parents=True)
+    admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    boundary, cfg = _production_boundary_and_cfg(
+        tmp_path, sessions, admitted, allow_full_rebuild=True
+    )
+    source = boundary.source
+    install_fakes(monkeypatch)
+    build_calls = install_build_chunk_tracker(monkeypatch)
+    legacy_rev = "a" * 64
+    import chroma_write_store
+
+    monkeypatch.setattr(
+        chroma_write_store,
+        "current_implementation_revision",
+        lambda: legacy_rev,
+        raising=False,
+    )
+    legacy_coord = _coordinator_as_legacy_v1_runtime(
+        incremental_jsonl.IncrementalJsonlCoordinator(
+            boundary,
+            source,
+            cfg=cfg,
+            enabled=True,
+            chunk_size=4,
+            overlap=0,
+            min_confidence=0.6,
+            embed_dimension=8,
+            processed={},
+        ),
+        legacy_producer_revision=legacy_rev,
+    )
+    assert legacy_coord.run().outcome == "committed"
+    v1_payload = json.loads(
+        (legacy_coord.state_dir / "checkpoint.json").read_text(encoding="utf-8")
+    )
+    assert int(v1_payload.get("version") or 0) == CHECKPOINT_VERSION
+    assert v1_payload.get("transform_descriptor") is None
+    assert v1_payload.get("transform_fingerprint") == _legacy_v1_transform_fingerprint(
+        legacy_coord, legacy_producer_revision=legacy_rev
+    )
+    assert int(v1_payload.get("record_count") or 0) >= 8
+    build_calls.clear()
+    rebuilt = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert rebuilt.outcome == "committed"
+    assert rebuilt.mode == "full_rebuild_fallback"
+    assert rebuilt.fallback_reason == "transform_fingerprint_changed"
+    assert rebuilt.counters.total > 0
+    assert build_calls
+    assert _checkpoint_version(legacy_coord.state_dir) == CHECKPOINT_VERSION_V2
+    v2_checkpoint = json.loads(
+        (legacy_coord.state_dir / "checkpoint.json").read_text(encoding="utf-8")
+    )
+    assert v2_checkpoint.get("transform_descriptor")
+    rebuild_coord = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    )
+    assert v2_checkpoint.get("transform_fingerprint") == rebuild_coord.transform_fingerprint
+    build_calls.clear()
+    unchanged = rebuild_coord.run()
+    assert unchanged.outcome == "unchanged"
+    assert unchanged.counters.total == 0
+    assert not build_calls
+    prior_count = int(v2_checkpoint["record_count"])
+    with source.open("ab") as handle:
+        for index in range(prior_count, prior_count + 4):
+            handle.write(codex_rollout_record(index))
+    build_calls.clear()
+    appended = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert appended.outcome == "committed"
+    assert appended.counters.total > 0
+    assert build_calls
+
+
+def test_multi_chunk_fingerprint_rebuild_allowed_respects_frontier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("CONVMEM_INCREMENTAL_ROOT", str(tmp_path))
+    sessions = _sessions_root(tmp_path)
+    sessions.mkdir(parents=True)
+    admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    boundary, cfg = _production_boundary_and_cfg(
+        tmp_path, sessions, admitted, allow_full_rebuild=True
+    )
+    source = boundary.source
+    install_fakes(monkeypatch)
+    build_calls = install_build_chunk_tracker(monkeypatch)
+    first = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    )
+    assert first.run().outcome == "committed"
+    stale_fingerprint = "f" * 64
+    build_calls.clear()
+    rebuilt = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+        transform_fingerprint=stale_fingerprint,
+    ).run()
+    assert rebuilt.outcome == "committed"
+    assert rebuilt.mode == "full_rebuild_fallback"
+    assert rebuilt.counters.total > 0
+    assert build_calls
+    build_calls.clear()
+    assert (
+        incremental_jsonl.IncrementalJsonlCoordinator(
+            boundary,
+            source,
+            cfg=cfg,
+            enabled=True,
+            chunk_size=4,
+            overlap=0,
+            min_confidence=0.6,
+            embed_dimension=8,
+            processed={},
+        ).run().outcome
+        == "unchanged"
+    )
+    assert not build_calls
+
+
+def test_full_rebuild_chunk_cap_refuses_multi_chunk_v1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    sessions = _sessions_root(tmp_path)
+    sessions.mkdir(parents=True)
+    admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    boundary, cfg = _production_boundary_and_cfg(
+        tmp_path,
+        sessions,
+        admitted,
+        allow_full_rebuild=True,
+    )
+    source = boundary.source
+    install_fakes(monkeypatch)
+    build_calls = install_build_chunk_tracker(monkeypatch)
+    legacy_rev = "c" * 64
+    import chroma_write_store
+
+    monkeypatch.setattr(
+        chroma_write_store,
+        "current_implementation_revision",
+        lambda: legacy_rev,
+        raising=False,
+    )
+    legacy_coord = _coordinator_as_legacy_v1_runtime(
+        incremental_jsonl.IncrementalJsonlCoordinator(
+            boundary,
+            source,
+            cfg=cfg,
+            enabled=True,
+            chunk_size=4,
+            overlap=0,
+            min_confidence=0.6,
+            embed_dimension=8,
+            processed={},
+        ),
+        legacy_producer_revision=legacy_rev,
+    )
+    assert legacy_coord.run().outcome == "committed"
+    cfg["index"]["incremental_jsonl"]["codex_rollout_admission"][
+        "max_transform_chunks_per_run"
+    ] = 1
+    build_calls.clear()
+    refused = incremental_jsonl.IncrementalJsonlCoordinator(
+        boundary,
+        source,
+        cfg=cfg,
+        enabled=True,
+        chunk_size=4,
+        overlap=0,
+        min_confidence=0.6,
+        embed_dimension=8,
+        processed={},
+    ).run()
+    assert refused.outcome == "transform_chunk_cap"
+    assert refused.counters.total == 0
+    assert not build_calls
+    assert _checkpoint_version(legacy_coord.state_dir) == CHECKPOINT_VERSION
+
+
+def test_pending_v1_transaction_refused_when_full_rebuild_allowed_c7(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    sessions = _sessions_root(tmp_path)
+    sessions.mkdir(parents=True)
+    admitted = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    source = _admitted_rollout(sessions, admitted)
+    cfg = _production_cfg(tmp_path, sessions, admitted, allow_full_rebuild=True)
+    cfg_path = tmp_path / "config.toml"
+    _write_user_config(cfg_path, cfg, allow_full_rebuild=True)
     monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
     install_fakes(monkeypatch)
     boundary = ProductionBoundary(cfg, source, config_path=cfg_path)
@@ -269,19 +615,31 @@ def test_legacy_v1_checkpoint_refuses_migration_required(
         processed={},
     )
     coord.run()
-    _downgrade_checkpoint_to_legacy_v1(coord, legacy_producer_revision="a" * 64)
-    result = incremental_jsonl.IncrementalJsonlCoordinator(
-        boundary,
-        source,
-        cfg=cfg,
-        enabled=True,
-        chunk_size=4,
-        overlap=0,
-        min_confidence=0.6,
-        embed_dimension=8,
-        processed={},
-    ).run()
-    assert result.outcome == "migration_required"
+    (coord.state_dir / "transaction.json").write_text(
+        json.dumps(
+            {
+                "version": TRANSACTION_VERSION,
+                "transaction_id": "0" * 32,
+                "phase": "PREPARING",
+                "source_path": coord.path_key,
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        incremental_jsonl.IncrementalJsonlError, match="v1 transaction requires original runtime"
+    ):
+        incremental_jsonl.IncrementalJsonlCoordinator(
+            boundary,
+            source,
+            cfg=cfg,
+            enabled=True,
+            chunk_size=4,
+            overlap=0,
+            min_confidence=0.6,
+            embed_dimension=8,
+            processed={},
+        ).run()
 
 
 def test_production_codex_v1_migrates_then_continues_without_rebuild(
