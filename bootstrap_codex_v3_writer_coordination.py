@@ -98,12 +98,13 @@ def validate_child_deferral_signal(
         raise BootstrapWriterCoordinationError("coordination_deferral_operation_mismatch")
     signal_rev = int(signal.authority_revision)
     auth_rev = int(authority.revision)
-    if signal_rev != auth_rev:
-        # Terminal publication bumps revision; a valid child deferral may carry the
-        # pre-terminal revision while authority is already TERMINAL.
-        if not (authority.terminal and signal_rev + 1 == auth_rev):
-            raise BootstrapWriterCoordinationError("coordination_deferral_revision_mismatch")
+    if signal_rev < 1 or signal_rev > auth_rev:
+        raise BootstrapWriterCoordinationError("coordination_deferral_revision_mismatch")
     if authority.terminal:
+        return
+    if signal_rev < auth_rev:
+        if not authority.reservation_active:
+            raise BootstrapWriterCoordinationError("coordination_deferral_without_reservation")
         return
     if not authority.reservation_active:
         raise BootstrapWriterCoordinationError("coordination_deferral_without_reservation")

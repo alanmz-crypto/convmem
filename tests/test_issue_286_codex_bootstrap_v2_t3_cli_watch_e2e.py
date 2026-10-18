@@ -101,7 +101,7 @@ def test_fabricated_deferral_revision_mismatch_after_terminal_refuses_requeue(
         publish_terminal_authority(state_dir, grant, receipt_digest="a" * 64)
     authority = load_authority(state_dir)
     assert authority is not None and authority.terminal
-    fabricated_revision = int(authority.revision) - 5
+    fabricated_revision = int(authority.revision) + 1
     signal = CoordinationDeferralSignal(path, grant["operation_id"], fabricated_revision)
     err = watch.IndexSubprocessError(
         signal.to_stderr_line(),
@@ -142,6 +142,56 @@ def test_real_child_deferral_after_terminal_authority_still_requeues(
     )
     breaker = CircuitBreakerState(tmp_path / "cb-term-race.json")
     breaker_path = tmp_path / "cb-term-race.json"
+    breaker_path.write_text(json.dumps({"paths": {}, "global": {}}), encoding="utf-8")
+    before = breaker_path.read_bytes()
+    scheduler = DebounceScheduler(debounce_seconds=30.0)
+    scheduler.note(path)
+    forget = watch._record_ready_path_failure(
+        path, err, breaker=breaker, verbose=False, cfg=cfg
+    )
+    assert forget is False
+    assert breaker_path.read_bytes() == before
+    assert not breaker.has_refusal_quarantine_for_path(path)
+    assert scheduler.pending_count() == 1
+    assert path not in scheduler.ready()
+
+
+def test_real_child_deferral_after_multi_progress_terminal_still_requeues(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import config
+    from bootstrap_codex_v2_authority import publish_authority_progress
+    from tests.fixtures.issue_286_t2_owner_context import t2_owner_context
+
+    source, cfg, grant, state_dir = t3_bundle(tmp_path, monkeypatch)
+    claim_active_reservation(state_dir, grant)
+    path = str(source.resolve())
+    monkeypatch.setattr(config, "CONFIG_PATH", tmp_path / "config.toml")
+    env = os.environ.copy()
+    env["CONVMEM_CONFIG"] = str(config.CONFIG_PATH)
+    proc = _run_index_child(path, env=env)
+    assert proc.returncode == COORDINATION_DEFERRAL_EXIT
+    authority = load_authority(state_dir)
+    assert authority is not None
+    deferral_revision = int(authority.revision)
+    with t2_owner_context(state_dir):
+        publish_authority_progress(
+            state_dir, grant, progress={"checkpoint_digest": "c" * 64}
+        )
+        publish_authority_progress(
+            state_dir, grant, progress={"prepared_lineage_digest": "d" * 64}
+        )
+        publish_terminal_authority(state_dir, grant, receipt_digest="e" * 64)
+    terminal = load_authority(state_dir)
+    assert terminal is not None and terminal.terminal
+    assert int(terminal.revision) >= deferral_revision + 3
+    err = watch.IndexSubprocessError(
+        (proc.stderr or "").strip(),
+        returncode=proc.returncode,
+        stderr=proc.stderr or "",
+    )
+    breaker = CircuitBreakerState(tmp_path / "cb-multi-progress.json")
+    breaker_path = tmp_path / "cb-multi-progress.json"
     breaker_path.write_text(json.dumps({"paths": {}, "global": {}}), encoding="utf-8")
     before = breaker_path.read_bytes()
     scheduler = DebounceScheduler(debounce_seconds=30.0)

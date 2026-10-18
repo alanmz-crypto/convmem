@@ -183,6 +183,29 @@ def test_fabricated_revision_after_terminal_refused(
         publish_terminal_authority(state_dir, grant, receipt_digest="d" * 64)
     authority = load_authority(state_dir)
     assert authority is not None
-    signal = CoordinationDeferralSignal(path, grant["operation_id"], int(authority.revision) - 3)
+    signal = CoordinationDeferralSignal(path, grant["operation_id"], int(authority.revision) + 1)
     with pytest.raises(Exception, match="revision_mismatch"):
         validate_child_deferral_signal(signal, launched_path=path, cfg=cfg)
+
+
+def test_terminal_accepts_deferral_revision_behind_multi_progress(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from bootstrap_codex_v2_authority import publish_authority_progress, publish_terminal_authority
+    from tests.fixtures.issue_286_t2_owner_context import t2_owner_context
+    from tests.fixtures.issue_286_t3_fixture import claim_active_reservation, t3_bundle
+
+    source, cfg, grant, state_dir = t3_bundle(tmp_path, monkeypatch)
+    claim_active_reservation(state_dir, grant)
+    path = str(source.resolve())
+    authority = load_authority(state_dir)
+    assert authority is not None
+    child_revision = int(authority.revision)
+    with t2_owner_context(state_dir):
+        publish_authority_progress(state_dir, grant, progress={"checkpoint_digest": "f" * 64})
+        publish_authority_progress(state_dir, grant, progress={"rollback_digest": "0" * 64})
+        publish_terminal_authority(state_dir, grant, receipt_digest="1" * 64)
+    terminal = load_authority(state_dir)
+    assert terminal is not None and int(terminal.revision) > child_revision + 1
+    signal = CoordinationDeferralSignal(path, grant["operation_id"], child_revision)
+    validate_child_deferral_signal(signal, launched_path=path, cfg=cfg)
