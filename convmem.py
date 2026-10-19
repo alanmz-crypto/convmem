@@ -2232,6 +2232,15 @@ def main():
     app()
 
 
+def _register_expand_cli() -> None:
+    from chunk_expand import register_expand_cli
+
+    register_expand_cli(app)
+
+
+_register_expand_cli()
+
+
 if __name__ == "__main__":
     main()
 
@@ -2241,12 +2250,3 @@ if __name__ == "__main__":
 # fingerprint-pad-0
 # fingerprint-pad-1
 # fingerprint-pad-2
-
-
-def _register_expand_cli() -> None:
-    from chunk_expand import register_expand_cli
-
-    register_expand_cli(app)
-
-
-_register_expand_cli()
