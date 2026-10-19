@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -12,8 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
-from chroma_store import SUMMARIES
-from ingest import _chunk_date, _path_is_excluded, load_processed, render_chunk
+from chunk_render import chunk_date, load_processed, path_is_excluded, render_chunk
 from provenance_binding import envelope_from_unit
 
 DEFAULT_MAX_CHARS = 20_000
@@ -57,7 +55,7 @@ _REDACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 
 
 @dataclass(frozen=True)
-class ExpandResult:
+class ExpandResult:  # pylint: disable=too-many-instance-attributes
     """Outcome of a single expand request."""
 
     record_id: str
@@ -222,17 +220,15 @@ def _find_window_by_sha(
 
 
 def _is_excluded_source(cfg: Mapping[str, Any], path_key: str) -> bool:
-    processed_path = str(cfg.get("index", {}).get("processed_log") or "")
-    if processed_path:
-        processed = load_processed(processed_path)
-        if _path_is_excluded(processed, path_key):
-            return True
-    try:
-        from watch import is_excluded_from_index
+    from config import load_config
 
-        return bool(is_excluded_from_index(path_key))
-    except ImportError:
+    processed_path = str(cfg.get("index", {}).get("processed_log") or "")
+    if not processed_path:
+        processed_path = str(load_config().get("index", {}).get("processed_log") or "")
+    if not processed_path:
         return False
+    processed = load_processed(processed_path)
+    return path_is_excluded(processed, path_key)
 
 
 def _format_supported(fmt: str | None) -> bool:
@@ -246,15 +242,10 @@ def _format_supported(fmt: str | None) -> bool:
 
 
 def _get_summary_row(store: Any, summary_id: str) -> dict | None:
-    col = store._collection(SUMMARIES)
-    res = col.get(ids=[summary_id], include=["metadatas", "documents"])
-    ids = res.get("ids") or []
-    if not ids:
-        return None
-    metas = res.get("metadatas") or [{}]
-    meta = dict(metas[0] or {})
-    meta["id"] = ids[0]
-    return meta
+    getter = getattr(store, "get_summary", None)
+    if callable(getter):
+        return getter(summary_id)
+    return None
 
 
 def _find_summary_meta(store: Any, source_path: str, start_offset: int) -> dict | None:
@@ -433,7 +424,7 @@ def _render_window(
             )
             if recovery_note:
                 warning = f"{recovery_note} {warning}"
-    date = _chunk_date(window)
+    date = chunk_date(window)
     resolved_tool = tool or TOOL_BY_FORMAT.get(fmt or "", fmt or "")
     return ExpandResult(
         record_id="",
@@ -613,25 +604,11 @@ def register_expand_cli(typer_app) -> None:
             raise typer.Exit(1)
 
 
-def print_expanded_search_hits(results: list[dict]) -> None:
-    """CLI helper: expand each search hit id to stdout."""
-
-    import typer
-
-    for r in results:
-        hit_id = (r.get("id") or "").strip()
-        if not hit_id:
-            continue
-        typer.echo("")
-        typer.echo(format_expand_output(expand_record(hit_id)))
-
-
 __all__ = [
     "DEFAULT_MAX_CHARS",
     "ExpandResult",
     "expand_record",
     "format_expand_output",
-    "print_expanded_search_hits",
     "register_expand_cli",
     "redact_secrets",
     "truncate_text",

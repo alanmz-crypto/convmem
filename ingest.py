@@ -23,6 +23,14 @@ from pathlib import Path
 
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
 from atomic_files import atomic_write_text
+from chunk_render import (
+    chunk_date as _chunk_date,
+    load_processed,
+    path_is_excluded as _path_is_excluded,
+    processed_path_str as _processed_path_str,
+    render_chunk,
+    render_chunk_message_views,
+)
 from chroma_write_store import production_chroma_write_session, production_writer_boundary
 from config import load_config
 from distill import (
@@ -178,16 +186,6 @@ def sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
-def load_processed(path: str) -> dict:
-    p = Path(path)
-    if not p.exists():
-        return {}
-    try:
-        return json.loads(p.read_text())
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"processed.json corrupt at {p}: {e}") from e
-
-
 def save_processed(path: str, data: dict) -> None:
     p = Path(path)
     atomic_write_text(p, json.dumps(data, indent=2), encoding="utf-8")
@@ -254,41 +252,6 @@ def chunk_messages(messages: list[dict], size: int, overlap: int) -> list[dict]:
     return chunks
 
 
-def render_chunk(messages: list[dict], total_budget: int = 10000) -> str:
-    """Render a chunk for summarization within a bounded character budget.
-
-    A per-message share of the budget is computed so the summarizer sees
-    breadth across all turns in the chunk rather than a single huge
-    head-truncated message.
-    """
-    if not messages:
-        return ""
-    return "\n".join(render_chunk_message_views(messages, total_budget=total_budget))
-
-
-def render_chunk_message_views(messages: list[dict], total_budget: int = 10000) -> list[str]:
-    """Return each exact per-message view used by :func:`render_chunk`."""
-
-    if not messages:
-        return []
-    per_msg = max(150, total_budget // len(messages))
-    lines = []
-    for message in messages:
-        content = message["content"].strip()
-        if len(content) > per_msg:
-            content = content[:per_msg] + " […]"
-        lines.append(f"{message['role']}: {content}")
-    return lines
-
-
-def _chunk_date(messages: list[dict]) -> str:
-    for m in messages:
-        ts = m.get("timestamp")
-        if ts:
-            return str(ts)[:10]
-    return ""
-
-
 def _chunk_session_meta(messages: list[dict], path: str, tool: str = "") -> dict:
     from open_source import _session_id_from_path
 
@@ -343,10 +306,6 @@ def _files_from_inventory(inventory_path: str) -> list[dict]:
     return records
 
 
-def _processed_path_str(entry_path: str) -> str:
-    return str(Path(entry_path).expanduser().resolve())
-
-
 def _stored_hash_for_path(path_str: str, processed: dict) -> str | None:
     """Return processed.json key (content hash) for a resolved path, if any."""
     for key, entry in processed.items():
@@ -356,16 +315,6 @@ def _stored_hash_for_path(path_str: str, processed: dict) -> str | None:
         if ep and _processed_path_str(ep) == path_str:
             return key
     return None
-
-
-def _path_is_excluded(processed: dict, path_key: str) -> bool:
-    for entry in processed.values():
-        if not isinstance(entry, dict) or not entry.get("excluded"):
-            continue
-        ep = entry.get("path")
-        if ep and _processed_path_str(ep) == path_key:
-            return True
-    return False
 
 
 def _purge_stale_same_path(

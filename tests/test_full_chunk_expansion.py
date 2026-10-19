@@ -152,8 +152,8 @@ def _cursor_line(role: str, text: str) -> str:
     )
 
 
-@pytest.fixture
-def expand_env(tmp_path, monkeypatch):
+@pytest.fixture(name="expand_env")
+def expand_env_bundle(tmp_path, monkeypatch):
     import config
 
     cfg = _cfg(tmp_path)
@@ -557,7 +557,7 @@ def test_max_chars_truncation(expand_env) -> None:
 
 
 def test_mcp_expand_is_read_only_json(expand_env) -> None:
-    cfg, store, home = expand_env
+    _cfg, store, home = expand_env
     path = _cursor_source(
         home,
         [_cursor_line("user", "mcp path")],

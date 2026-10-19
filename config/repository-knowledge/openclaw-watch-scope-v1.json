@@ -212,31 +212,6 @@
       "reason": "exclusion:vcs_caches_build"
     },
     {
-      "path": "AGENTS.md",
-      "class": "include",
-      "reason": "combined-system maintenance file"
-    },
-    {
-      "path": "CITATION.cff",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "LICENSE",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "SYNTHESIS-STATUS.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "adapters/__init__.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -325,6 +300,11 @@
       "path": "agent_run_ledger.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "AGENTS.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
     },
     {
       "path": "ask.py",
@@ -417,7 +397,17 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "chunk_render.py",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "ci/pylint-baseline.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "CITATION.cff",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -673,151 +663,6 @@
     },
     {
       "path": "docs/AGENT-ROLES.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/CHATGPT-PROPOSE-DECISION-BRIEF.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/CHROMA-ACCESS-PATTERN.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/CI-WAIT-WORKFLOW.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/CODEX-DEEPSEEK-VERIFY.md",
-      "class": "include",
-      "reason": "combined-system maintenance file"
-    },
-    {
-      "path": "docs/CONVMEM-TLDR.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/COPILOT-SESSION-ADAPTER.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/CRUSH-DEEPSEEK-BOOTSTRAP.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/CRUSH-QWEN-BOOTSTRAP.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/DEEPSEEK-SESSION-CONTEXT.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/F2a-SCOPING.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/F2b-MONITOR-POLICY.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/F2c-CRUSH-ADAPTER.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/KIRO-SESSION-ADAPTER.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/MILESTONE-F.md",
-      "class": "include",
-      "reason": "combined-system maintenance file"
-    },
-    {
-      "path": "docs/MODEL-WORKFLOW.md",
-      "class": "include",
-      "reason": "combined-system maintenance file"
-    },
-    {
-      "path": "docs/PLANNING-PROTOCOL.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/PROPOSE-DECISION-SPEC.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/RECOVER.md",
-      "class": "include",
-      "reason": "combined-system maintenance file"
-    },
-    {
-      "path": "docs/RESEARCH.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/ROADMAP-DRAFT.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/ROADMAP.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/STATUS.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/SYSTEMD-DEPLOY.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/WILLOWYHOLLOW-SESSION-LOOP.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/WILLOWYHOLLOW-TLDR.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/WILLOWYHOLLOW-WEBDEV-GUIDE.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/WORKSPACE-STANDARD.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -1672,17 +1517,17 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/archive/minipc-deploy/deploy-minipc.sh",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/archive/minipc-deploy/MINIPC-DEPLOY.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "docs/archive/minipc-deploy/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/archive/minipc-deploy/deploy-minipc.sh",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -1757,16 +1602,6 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "docs/builder-reference/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/builder-reference/SOURCES.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "docs/builder-reference/arch-patterns-python-builder-digest.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -1817,19 +1652,19 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "docs/builder-reference/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/builder-reference/SOURCES.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/builder-reference/zeller-builder-digest.md",
       "class": "include",
       "reason": "combined-system maintenance file"
-    },
-    {
-      "path": "docs/chatgpt-pack/README-START-HERE.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/chatgpt-pack/README.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
     },
     {
       "path": "docs/chatgpt-pack/brief-snapshot.md",
@@ -1877,12 +1712,87 @@
       "reason": "exclusion:unrelated_material"
     },
     {
+      "path": "docs/chatgpt-pack/README-START-HERE.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/chatgpt-pack/README.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/CHATGPT-PROPOSE-DECISION-BRIEF.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/CHROMA-ACCESS-PATTERN.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/CI-WAIT-WORKFLOW.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/CODEX-DEEPSEEK-VERIFY.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "docs/convmem-orchestration-note-for-models.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/CONVMEM-TLDR.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/COPILOT-SESSION-ADAPTER.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/CRUSH-DEEPSEEK-BOOTSTRAP.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/CRUSH-QWEN-BOOTSTRAP.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/DEEPSEEK-SESSION-CONTEXT.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/engineering-team-retro-2026-07-07.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/F2a-SCOPING.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/F2b-MONITOR-POLICY.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/F2c-CRUSH-ADAPTER.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -2012,12 +1922,12 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "docs/inter-model/CODEX-2026-08-16-FF5-LITERATURE-REVIEW.md",
+      "path": "docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md",
+      "path": "docs/inter-model/CODEX-2026-08-16-FF5-LITERATURE-REVIEW.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -2382,6 +2292,566 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CHATGPT-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CONTINUE-DEEPSEEK-problem-3-mcp-evidence-default-trace-desert.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CONTINUE-DEEPSEEK-problem-4-format-context-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CONTINUE-DEEPSEEK-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CURSOR-round-2-board-decision.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CURSOR-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/DEEPSEEK-R1-next-top2.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/DEEPSEEK-R1-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/GROK-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/KIRO-round2-vote.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/KIRO-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CHATGPT-review-round-2-trace-post-preserve.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CONTINUE-DEEPSEEK-review-round-2-trace-crossref.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-chatgpt-kiro-r1-v4-final.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-chatgpt-pr35-body-banner.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-chatgpt-routing-stale-status.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-kiro-grok-flags.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-kiro-r1-v4-rebase-blocker.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-architecture-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-architecture-round-3-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-architecture-round-4-retrieve-for-ask.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-conflict-disposition-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-execution-plan-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-execution-plan-round-3-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-execution-plan-round-4-retrieve-for-ask.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-executive-approve-go-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-executive-execution-plan-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-executive-redflag-disposition-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-fix-plan-pr35-chatgpt-request-changes.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-partner-chain-round-2-approve-go.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-partner-chain-round-2-exec-revise.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-partner-recheck-fix-plan-approve.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-verification-plan-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-verification-plan-round-3-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-confirm-30fb73c.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-confirm-43b5f33.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-review-grok-redflags-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-review-round-2-trace-blockers.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-review-round-3-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/ALERT-2026-07-15-deepseek-p0-landed.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CHATGPT-opinion.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CHATGPT-stance.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CLAUDE-final-insight.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CLAUDE-opinion.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CLAUDE-stance.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CLAUDE-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CODEX-final-all-views.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CODEX-opinion.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CODEX-synthesis-stance.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CODEX-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CONTINUE-DEEPSEEK-2026-07-15-retrieval-diagnosis.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CONTINUE-DEEPSEEK-problem-1-evidence-domain-scoping.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CONTINUE-DEEPSEEK-problem-2-nested-inter-model.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CONTINUE-DEEPSEEK-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CRUSH-opinion.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CRUSH-stance.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CRUSH-synthesis.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CURSOR-final-synthesis.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CURSOR-opinion.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CURSOR-stance.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CURSOR-top-two-problems-and-plans.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-opinion.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-R1-opinion-v2.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-R1-opinion.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-R1-top2-plan.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-stance.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/KIRO-opinion.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/KIRO-stance.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/KIRO-top2-problems.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CONTINUE-DEEPSEEK-critique-cursor-architecture.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CONTINUE-DEEPSEEK-second-look.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CURSOR-architecture-evidence-and-nested-ingest.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CURSOR-conflict-disposition-evidence-nested.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CURSOR-execution-plan-evidence-and-nested.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CURSOR-partner-signoff-2026-07-15.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/KIRO-review-cursor-architecture.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CHATGPT-review-round-2-trace-post-preserve.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CONTINUE-DEEPSEEK-review-round-2-trace-crossref.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-chatgpt-kiro-r1-v4-final.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-chatgpt-pr35-body-banner.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-chatgpt-routing-stale-status.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-kiro-grok-flags.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-kiro-r1-v4-rebase-blocker.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-architecture-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-conflict-disposition-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-execution-plan-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-executive-approve-go-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-executive-execution-plan-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-executive-redflag-disposition-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-fix-plan-pr35-chatgpt-request-changes.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-partner-chain-round-2-approve-go.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-partner-chain-round-2-exec-revise.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-partner-recheck-fix-plan-approve.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-verification-plan-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/KIRO-confirm-30fb73c.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/KIRO-confirm-43b5f33.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/KIRO-review-grok-redflags-round-2-trace.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/KIRO-review-round-2-trace-blockers.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/CURSOR-architecture-round-3-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/CURSOR-execution-plan-round-3-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/CURSOR-verification-plan-round-3-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/KIRO-review-round-3-source-diversity.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-4-retrieve-for-ask/CURSOR-architecture-round-4-retrieve-for-ask.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-4-retrieve-for-ask/CURSOR-execution-plan-round-4-retrieve-for-ask.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-4-retrieve-for-ask/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/DECISION-REVIEW-GUARDRAILS.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2493,6 +2963,196 @@
     },
     {
       "path": "docs/inter-model/HANDOFF-KIRO-CRUSH-CODEX-2026-07-01-builder-reference.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/context/ORCHESTRATION-FRAMING.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/agent-protocol.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/AGENT-ROLES.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/convmem-lab-LAB.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/lab-reference-NOTES.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/LATEST.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/MODEL-WORKFLOW.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/ORCHESTRATION-FRAMING.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/ROADMAP.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/SYNTHESIS-STATUS.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/WILLOWYHOLLOW-SESSION-LOOP.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/WILLOWYHOLLOW-TLDR.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/HANDOFF.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/LAB-ERRORS-AND-GUARDRAILS.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/ledger-ids.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/RYAN-PROMPT.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/scripts/sync-willowyhollow-audit-index.sh",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/scripts/sync-willowyhollow-findings-index.sh",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/scripts/sync-willowyhollow-handoff.sh",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/TEAM-ROLES-CANONICAL.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/TEAM-ROLES-SPRINT-AUDIT.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/willowyhollow/AUDIT-EXCERPT.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/willowyhollow/FINDINGS-EXCERPT.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/LAB-ERRORS-AND-GUARDRAILS.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/ledger-ids.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/TEAM-ROLES-CANONICAL.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/TEAM-ROLES-SPRINT-AUDIT.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/context/agent-protocol.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/context/MODEL-WORKFLOW.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/context/ORCHESTRATION-FRAMING.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/context/WILLOWYHOLLOW-SESSION-LOOP.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/HANDOFF.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/ledger-ids.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/ORCHESTRATION-TIER-GAP.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/RYAN-PROMPT.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/scripts/convmem-index-prod.sh",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/scripts/sync-willowyhollow-handoff.sh",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/TEAM-CHARTER-2026-07-06.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -2682,6 +3342,71 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/CODEX-2026-07-23-complete-data-backup-copilot-audit.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/EXTRACTION-PROBE.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/IMPLEMENTATION-HANDOFF-1.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/NEUTRAL-CORE-CANDIDATES.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/NEUTRAL-TARGET.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/observe.py.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/PHASED-PATH.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/propose_decision.py.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/restic-ensure-chroma-snapshot.sh",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/SOURCES.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/CHATGPT-HANDOFF.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/CLAUDE-HANDOFF.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/RYAN-PROMPT-CLAUDE-CLOUD-2026-07-12-human-role-token-leverage.txt",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2797,822 +3522,12 @@
       "reason": "exclusion:unrelated_material"
     },
     {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CHATGPT-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CONTINUE-DEEPSEEK-problem-3-mcp-evidence-default-trace-desert.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CONTINUE-DEEPSEEK-problem-4-format-context-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CONTINUE-DEEPSEEK-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CURSOR-round-2-board-decision.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CURSOR-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/DEEPSEEK-R1-next-top2.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/DEEPSEEK-R1-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/GROK-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/KIRO-round2-vote.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/KIRO-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CHATGPT-review-round-2-trace-post-preserve.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CONTINUE-DEEPSEEK-review-round-2-trace-crossref.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-chatgpt-kiro-r1-v4-final.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-chatgpt-pr35-body-banner.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-chatgpt-routing-stale-status.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-kiro-grok-flags.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-ack-kiro-r1-v4-rebase-blocker.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-architecture-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-architecture-round-3-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-architecture-round-4-retrieve-for-ask.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-conflict-disposition-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-execution-plan-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-execution-plan-round-3-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-execution-plan-round-4-retrieve-for-ask.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-executive-approve-go-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-executive-execution-plan-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-executive-redflag-disposition-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-fix-plan-pr35-chatgpt-request-changes.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-partner-chain-round-2-approve-go.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-partner-chain-round-2-exec-revise.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-partner-recheck-fix-plan-approve.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-verification-plan-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/CURSOR-verification-plan-round-3-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-confirm-30fb73c.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-confirm-43b5f33.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-review-grok-redflags-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-review-round-2-trace-blockers.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-review-round-3-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/ALERT-2026-07-15-deepseek-p0-landed.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CHATGPT-opinion.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CHATGPT-stance.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CLAUDE-final-insight.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CLAUDE-opinion.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CLAUDE-stance.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CLAUDE-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CODEX-final-all-views.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CODEX-opinion.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CODEX-synthesis-stance.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CODEX-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CONTINUE-DEEPSEEK-2026-07-15-retrieval-diagnosis.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CONTINUE-DEEPSEEK-problem-1-evidence-domain-scoping.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CONTINUE-DEEPSEEK-problem-2-nested-inter-model.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CONTINUE-DEEPSEEK-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CRUSH-opinion.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CRUSH-stance.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CRUSH-synthesis.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CURSOR-final-synthesis.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CURSOR-opinion.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CURSOR-stance.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/CURSOR-top-two-problems-and-plans.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-R1-opinion-v2.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-R1-opinion.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-R1-top2-plan.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-opinion.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/DEEPSEEK-stance.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/KIRO-opinion.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/KIRO-stance.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/KIRO-top2-problems.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CONTINUE-DEEPSEEK-critique-cursor-architecture.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CONTINUE-DEEPSEEK-second-look.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CURSOR-architecture-evidence-and-nested-ingest.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CURSOR-conflict-disposition-evidence-nested.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CURSOR-execution-plan-evidence-and-nested.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/CURSOR-partner-signoff-2026-07-15.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/KIRO-review-cursor-architecture.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-1-evidence-and-nested/planning/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CHATGPT-review-round-2-trace-post-preserve.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CONTINUE-DEEPSEEK-review-round-2-trace-crossref.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-chatgpt-kiro-r1-v4-final.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-chatgpt-pr35-body-banner.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-chatgpt-routing-stale-status.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-kiro-grok-flags.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-ack-kiro-r1-v4-rebase-blocker.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-architecture-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-conflict-disposition-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-execution-plan-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-executive-approve-go-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-executive-execution-plan-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-executive-redflag-disposition-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-fix-plan-pr35-chatgpt-request-changes.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-partner-chain-round-2-approve-go.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-partner-chain-round-2-exec-revise.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-partner-recheck-fix-plan-approve.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/CURSOR-verification-plan-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/KIRO-confirm-30fb73c.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/KIRO-confirm-43b5f33.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/KIRO-review-grok-redflags-round-2-trace.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/KIRO-review-round-2-trace-blockers.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-2-trace/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/CURSOR-architecture-round-3-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/CURSOR-execution-plan-round-3-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/CURSOR-verification-plan-round-3-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/KIRO-review-round-3-source-diversity.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-3-source-diversity/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-4-retrieve-for-ask/CURSOR-architecture-round-4-retrieve-for-ask.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-4-retrieve-for-ask/CURSOR-execution-plan-round-4-retrieve-for-ask.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/debate-2026-07-15-who-fixes-retrieval/reference/round-4-retrieve-for-ask/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/LAB-ERRORS-AND-GUARDRAILS.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/TEAM-ROLES-CANONICAL.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/TEAM-ROLES-SPRINT-AUDIT.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/context/ORCHESTRATION-FRAMING.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/HANDOFF.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/LAB-ERRORS-AND-GUARDRAILS.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/RYAN-PROMPT.txt",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/TEAM-ROLES-CANONICAL.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/TEAM-ROLES-SPRINT-AUDIT.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/AGENT-ROLES.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/LATEST.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/MODEL-WORKFLOW.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/ORCHESTRATION-FRAMING.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/ROADMAP.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/SYNTHESIS-STATUS.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/WILLOWYHOLLOW-SESSION-LOOP.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/WILLOWYHOLLOW-TLDR.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/agent-protocol.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/convmem-lab-LAB.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/context/lab-reference-NOTES.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/ledger-ids.txt",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/scripts/sync-willowyhollow-audit-index.sh",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/scripts/sync-willowyhollow-findings-index.sh",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/scripts/sync-willowyhollow-handoff.sh",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/willowyhollow/AUDIT-EXCERPT.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/handoff-hitl-orchestration-lab-2026-07-06/willowyhollow/FINDINGS-EXCERPT.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-hitl-2026-07-06/ledger-ids.txt",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/HANDOFF.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/ORCHESTRATION-TIER-GAP.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/RYAN-PROMPT.txt",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/TEAM-CHARTER-2026-07-06.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/context/MODEL-WORKFLOW.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/context/ORCHESTRATION-FRAMING.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/context/WILLOWYHOLLOW-SESSION-LOOP.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/context/agent-protocol.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/ledger-ids.txt",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/scripts/convmem-index-prod.sh",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/handoff-tar-orchestration-approach-2026-07-06/handoff-orchestration-approach-2026-07-06/scripts/sync-willowyhollow-handoff.sh",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/CHATGPT-HANDOFF.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/CLAUDE-HANDOFF.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/CODEX-2026-07-23-complete-data-backup-copilot-audit.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/EXTRACTION-PROBE.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/IMPLEMENTATION-HANDOFF-1.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/NEUTRAL-CORE-CANDIDATES.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/NEUTRAL-TARGET.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/PHASED-PATH.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/SOURCES.txt",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/observe.py.txt",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/propose_decision.py.txt",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/restic-ensure-chroma-snapshot.sh",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "docs/kernel-panic-durability-insight-2026-08-31.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/KIRO-SESSION-ADAPTER.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -3723,6 +3638,21 @@
     },
     {
       "path": "docs/logs/2026-07-06-site-reference-surfaces-shipped.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/MILESTONE-F.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/MODEL-WORKFLOW.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/PLANNING-PROTOCOL.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -3925,6 +3855,36 @@
       "path": "docs/plans/ARCHITECTURE-watch-incremental-index.md",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.conformance.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json.sha256",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.schema.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/artifacts/validate-naturalistic-pre-g6-contract-v2.mjs",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/branching-strategy.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "docs/plans/COMPLETE-DATA-V2-TIER1-WRITER-CENSUS.json",
@@ -4192,6 +4152,51 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/formal/cg2/CG2Authority.tla",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/formal/cg2/CG2Cutover.cfg",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/formal/cg2/CG2DesignA.cfg",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/formal/cg2/CG2Rename.cfg",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/formal/cg2/CG2StaleReconcile.cfg",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/formal/cg2/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/formal/cg2/run-design-a-tlc.sh",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/git-hygiene-baseline.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/plans/incremental_transform_epoch_bump_checklist.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/INVARIANTS-watch-incremental-index.md",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -4342,16 +4347,6 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "docs/plans/VERIFY-RESULTS-complete-data-backup-correction-v2-STUB.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/VERIFY-TEMPLATE.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "docs/plans/VERIFY-agent-run-ledger.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4497,6 +4492,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/VERIFY-RESULTS-complete-data-backup-correction-v2-STUB.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/VERIFY-retrieval-reliability.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4522,6 +4522,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/VERIFY-TEMPLATE.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/VERIFY-verify-every-arc.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4532,77 +4537,12 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.conformance.json",
+      "path": "docs/PROPOSE-DECISION-SPEC.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json.sha256",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.schema.json",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/artifacts/validate-naturalistic-pre-g6-contract-v2.mjs",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/branching-strategy.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/formal/cg2/CG2Authority.tla",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/formal/cg2/CG2Cutover.cfg",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/formal/cg2/CG2DesignA.cfg",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/formal/cg2/CG2Rename.cfg",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/formal/cg2/CG2StaleReconcile.cfg",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/formal/cg2/README.md",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/formal/cg2/run-design-a-tlc.sh",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "docs/plans/git-hygiene-baseline.md",
-      "class": "include",
-      "reason": "combined-system maintenance file"
-    },
-    {
-      "path": "docs/plans/incremental_transform_epoch_bump_checklist.md",
+      "path": "docs/README.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -4612,7 +4552,27 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/RECOVER.md",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/RESEARCH.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/retro-template.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/ROADMAP-DRAFT.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/ROADMAP.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -4627,22 +4587,22 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
-      "path": "docs/site-reference/NOTES.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
-      "path": "docs/site-reference/README.md",
-      "class": "exclude",
-      "reason": "exclusion:unrelated_material"
-    },
-    {
       "path": "docs/site-reference/backup-before-write-gate.md",
       "class": "exclude",
       "reason": "exclusion:unrelated_material"
     },
     {
+      "path": "docs/site-reference/NOTES.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
       "path": "docs/site-reference/php-version-parity.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/site-reference/README.md",
       "class": "exclude",
       "reason": "exclusion:unrelated_material"
     },
@@ -4658,6 +4618,36 @@
     },
     {
       "path": "docs/standing-checks-register.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/STATUS.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/SYSTEMD-DEPLOY.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/WILLOWYHOLLOW-SESSION-LOOP.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/WILLOWYHOLLOW-TLDR.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/WILLOWYHOLLOW-WEBDEV-GUIDE.md",
+      "class": "exclude",
+      "reason": "exclusion:unrelated_material"
+    },
+    {
+      "path": "docs/WORKSPACE-STANDARD.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -5452,6 +5442,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "LICENSE",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "live_diagnosis.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5568,6 +5563,11 @@
     },
     {
       "path": "read_scope.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "README.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6155,6 +6155,11 @@
       "path": "source_reconciler.py",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "SYNTHESIS-STATUS.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "systemd/convmem-chroma-audit.service.example",
@@ -8284,23 +8289,6 @@
   ],
   "entries": [
     {
-      "path": "AGENTS.md",
-      "sha256": "8c5c18f0047b657f017a1f7d7c1006eba292b3aa9360837d679a054d794db6c7",
-      "content_class": "markdown",
-      "parser_mode": "markdown_heading_sections",
-      "adapter_contract_version": "repository_knowledge_v1",
-      "source_type": "repository_knowledge_v1",
-      "required_state": "current",
-      "reviewed_state": "reviewed",
-      "owner": "convmem-maintainers",
-      "freshness_role": "current_guidance",
-      "retrieval_needles": [
-        "AGENTS.md",
-        "AGENTS"
-      ],
-      "sensitivity": "documentation"
-    },
-    {
       "path": "adapters/detect.py",
       "sha256": "58da587fc482831b62fa8d807ef0771e6bd24969101a7c48c9d9e4d77cbd0bab",
       "content_class": "python",
@@ -8352,8 +8340,25 @@
       "sensitivity": "source_code"
     },
     {
+      "path": "AGENTS.md",
+      "sha256": "8c5c18f0047b657f017a1f7d7c1006eba292b3aa9360837d679a054d794db6c7",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "AGENTS.md",
+        "AGENTS"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "chroma_store.py",
-      "sha256": "2e483598cc74c9f2d9f566924808aeda6193570b2bd72748408e38fb488eee12",
+      "sha256": "97bbdbbcaead8e2bd9f780d9147ddd347cecbdf16a684077757ba73be0f270ff",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8387,7 +8392,7 @@
     },
     {
       "path": "chunk_expand.py",
-      "sha256": "d28d62215428bfa1241ab1d898d477fcd2e7a79c6437132b7b7a68d9b126eb20",
+      "sha256": "be852b258f6fe38c3bba9c877c038024b2f39e8a0efa3afd00cbe40f10788239",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8399,6 +8404,23 @@
       "retrieval_needles": [
         "chunk_expand.py",
         "chunk expand"
+      ],
+      "sensitivity": "source_code"
+    },
+    {
+      "path": "chunk_render.py",
+      "sha256": "81fd57d918995cf0c6b60ab65d0dd3e4d17e73eb3408e7bb66f851295c1d66f4",
+      "content_class": "python",
+      "parser_mode": "python_ast_spans",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "chunk_render.py",
+        "chunk render"
       ],
       "sensitivity": "source_code"
     },
@@ -8505,74 +8527,6 @@
       "sensitivity": "source_code"
     },
     {
-      "path": "docs/CODEX-DEEPSEEK-VERIFY.md",
-      "sha256": "60842abd4a37473b627b13338a484bd04f612569a5a643a6aff0abf789658fee",
-      "content_class": "markdown",
-      "parser_mode": "markdown_heading_sections",
-      "adapter_contract_version": "repository_knowledge_v1",
-      "source_type": "repository_knowledge_v1",
-      "required_state": "current",
-      "reviewed_state": "reviewed",
-      "owner": "convmem-maintainers",
-      "freshness_role": "current_guidance",
-      "retrieval_needles": [
-        "docs/CODEX-DEEPSEEK-VERIFY.md",
-        "CODEX DEEPSEEK VERIFY"
-      ],
-      "sensitivity": "documentation"
-    },
-    {
-      "path": "docs/MILESTONE-F.md",
-      "sha256": "e6cf64688c29467c1798b5c9eb32a0e46ae4077283605484ccf842fbb74a8a3c",
-      "content_class": "markdown",
-      "parser_mode": "markdown_heading_sections",
-      "adapter_contract_version": "repository_knowledge_v1",
-      "source_type": "repository_knowledge_v1",
-      "required_state": "current",
-      "reviewed_state": "reviewed",
-      "owner": "convmem-maintainers",
-      "freshness_role": "current_guidance",
-      "retrieval_needles": [
-        "docs/MILESTONE-F.md",
-        "MILESTONE F"
-      ],
-      "sensitivity": "documentation"
-    },
-    {
-      "path": "docs/MODEL-WORKFLOW.md",
-      "sha256": "a0cdd0a460280f1247ad9bb542e7e947ecc30670987d705b95a13431969e234d",
-      "content_class": "markdown",
-      "parser_mode": "markdown_heading_sections",
-      "adapter_contract_version": "repository_knowledge_v1",
-      "source_type": "repository_knowledge_v1",
-      "required_state": "current",
-      "reviewed_state": "reviewed",
-      "owner": "convmem-maintainers",
-      "freshness_role": "current_guidance",
-      "retrieval_needles": [
-        "docs/MODEL-WORKFLOW.md",
-        "MODEL WORKFLOW"
-      ],
-      "sensitivity": "documentation"
-    },
-    {
-      "path": "docs/RECOVER.md",
-      "sha256": "0795b5d8ff103f1bb1ee0775150a2316c9da1d51c91d799a374ae7eab07670f5",
-      "content_class": "markdown",
-      "parser_mode": "markdown_heading_sections",
-      "adapter_contract_version": "repository_knowledge_v1",
-      "source_type": "repository_knowledge_v1",
-      "required_state": "current",
-      "reviewed_state": "reviewed",
-      "owner": "convmem-maintainers",
-      "freshness_role": "current_guidance",
-      "retrieval_needles": [
-        "docs/RECOVER.md",
-        "RECOVER"
-      ],
-      "sensitivity": "documentation"
-    },
-    {
       "path": "docs/builder-reference/hard-parts-builder-digest.md",
       "sha256": "f63bd6f3690e41eb23e0055253582d1a50f25007fa651fe25b472252cc0d6b72",
       "content_class": "markdown",
@@ -8641,6 +8595,23 @@
       "sensitivity": "documentation"
     },
     {
+      "path": "docs/CODEX-DEEPSEEK-VERIFY.md",
+      "sha256": "60842abd4a37473b627b13338a484bd04f612569a5a643a6aff0abf789658fee",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/CODEX-DEEPSEEK-VERIFY.md",
+        "CODEX DEEPSEEK VERIFY"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "docs/inter-model/CODEX-2026-09-21-openclaw-watch-coverage-execute.md",
       "sha256": "beeadc4a7dd5603e5ef2065584cf608973cf1021c7d18adac526222e32f7f618",
       "content_class": "markdown",
@@ -8654,6 +8625,40 @@
       "retrieval_needles": [
         "docs/inter-model/CODEX-2026-09-21-openclaw-watch-coverage-execute.md",
         "CODEX 2026 09 21 openclaw watch coverage execute"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
+      "path": "docs/MILESTONE-F.md",
+      "sha256": "e6cf64688c29467c1798b5c9eb32a0e46ae4077283605484ccf842fbb74a8a3c",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/MILESTONE-F.md",
+        "MILESTONE F"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
+      "path": "docs/MODEL-WORKFLOW.md",
+      "sha256": "a0cdd0a460280f1247ad9bb542e7e947ecc30670987d705b95a13431969e234d",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/MODEL-WORKFLOW.md",
+        "MODEL WORKFLOW"
       ],
       "sensitivity": "documentation"
     },
@@ -8828,6 +8833,23 @@
       "sensitivity": "documentation"
     },
     {
+      "path": "docs/plans/git-hygiene-baseline.md",
+      "sha256": "a48fdfa62e957628e1d77e59ed62371087aa289090f38617a8414541289e098d",
+      "content_class": "markdown",
+      "parser_mode": "markdown_heading_sections",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "docs/plans/git-hygiene-baseline.md",
+        "git hygiene baseline"
+      ],
+      "sensitivity": "documentation"
+    },
+    {
       "path": "docs/plans/INVARIANTS-watch-incremental-index.md",
       "sha256": "4fcf5420e8fb57a3342ead577d80d9cb58ba285f1f66f5e263cb497640717cb4",
       "content_class": "markdown",
@@ -8913,8 +8935,8 @@
       "sensitivity": "documentation"
     },
     {
-      "path": "docs/plans/git-hygiene-baseline.md",
-      "sha256": "a48fdfa62e957628e1d77e59ed62371087aa289090f38617a8414541289e098d",
+      "path": "docs/RECOVER.md",
+      "sha256": "0795b5d8ff103f1bb1ee0775150a2316c9da1d51c91d799a374ae7eab07670f5",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8924,14 +8946,14 @@
       "owner": "convmem-maintainers",
       "freshness_role": "current_guidance",
       "retrieval_needles": [
-        "docs/plans/git-hygiene-baseline.md",
-        "git hygiene baseline"
+        "docs/RECOVER.md",
+        "RECOVER"
       ],
       "sensitivity": "documentation"
     },
     {
       "path": "ingest.py",
-      "sha256": "803bfe02856872f3389ef41567d140114c9aae5558dde294c9dbb61788aaa5e5",
+      "sha256": "6419708a2960f9d0316eb40231bd6b26445295f19da28340c2e44186f4787b47",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
