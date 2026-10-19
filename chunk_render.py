@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Leaf helpers for rendering canonical message chunks (shared by ingest and expand)."""
 
 from __future__ import annotations
