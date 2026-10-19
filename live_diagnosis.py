@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from hermetic_open_guards import install_open_guards, restore_open_guards
-from hermetic_path_guard import PRODUCTION_PREFIXES
+from hermetic_path_guard import PRODUCTION_PREFIXES, share_convmem_worktree_path
 
 _PHASE_ENV = "CONVMEM_LIVE_DIAG_PHASE_PATH"
 _ROOTS_ENV = "CONVMEM_LIVE_DIAG_SCRATCH_ROOTS"
@@ -288,9 +288,14 @@ def teardown_hermetic_guards() -> None:
     _NETWORK_DENIED.clear()
 
 
+
+
+
 def _roots_must_not_include_production(roots: list[Path]) -> None:
     for root in roots:
         resolved = root.resolve()
+        if share_convmem_worktree_path(resolved):
+            continue
         for prefix in PRODUCTION_PREFIXES:
             prod = Path(prefix).expanduser().resolve()
             if resolved == prod or resolved.is_relative_to(prod):

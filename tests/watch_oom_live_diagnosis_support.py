@@ -745,3 +745,17 @@ def bounded_telemetry_append(path: Path, row: dict[str, Any]) -> None:
         raise RuntimeError("telemetry_log_full")
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line)
+
+
+def d1_scratch_base(repo_root: Path) -> Path:
+    """Disk-backed D1 scratch outside masked ~/.local/share/convmem when in a worktree."""
+    share = (Path.home() / ".local/share/convmem").resolve()
+    try:
+        resolved = repo_root.resolve()
+    except OSError:
+        return repo_root / "tests" / ".d1-scratch-arms"
+    worktrees = share / "worktrees"
+    if resolved.is_relative_to(worktrees):
+        digest = hashlib.sha256(str(resolved).encode()).hexdigest()[:16]
+        return Path.home() / ".cache" / "convmem-d1-scratch" / digest
+    return repo_root / "tests" / ".d1-scratch-arms"

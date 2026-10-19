@@ -313,7 +313,22 @@ def _descriptor_metadata_binding(grant: CanaryGrant) -> dict[str, Any]:
         if not stat.S_ISREG(stat_result.st_mode):
             raise CanaryRefused("canary_gate0_source", "metadata is not regular")
         raw = _stable_read_fd(descriptor, stat_result.st_size)
-        digest = _sha256_bytes(raw)
+        if path.name == "session.json":
+            from adapters.kiro_session_jsonl import (
+                load_bounded_session_meta_bytes,
+                semantic_session_meta_digest,
+                validated_kiro_session_identity,
+            )
+
+            try:
+                session_id, workspace = validated_kiro_session_identity(
+                    path.parent, load_bounded_session_meta_bytes(path.parent)
+                )
+                digest = semantic_session_meta_digest(session_id, workspace)
+            except ValueError:
+                digest = _sha256_bytes(raw)
+        else:
+            digest = _sha256_bytes(raw)
         if digest != grant.source.metadata_sha256:
             raise CanaryRefused("canary_gate0_source", "metadata digest mismatch")
         return {
