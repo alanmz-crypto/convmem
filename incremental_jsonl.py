@@ -717,6 +717,19 @@ class IncrementalJsonlCoordinator:
             )
         )
 
+    def _consume_cohort_paid_attempt(self, event: dict[str, object]) -> None:
+        if event.get("provider") != "deepseek":
+            return
+        if self._cohort_ledger is None:
+            from incremental_jsonl_cohort_budget import CohortBudgetError
+
+            raise CohortBudgetError(
+                "cohort_budget_required",
+                "admitted Kiro paid calls require cohort_ledger_path, "
+                "cohort_max_paid_http_attempts, and cohort_operation_id",
+            )
+        self._cohort_ledger.consume_provider_http_attempt(event)
+
     def _build_frontier_with_accounting(
         self,
         messages: list[dict],
@@ -724,23 +737,31 @@ class IncrementalJsonlCoordinator:
         *,
         cache_required_before: int = 0,
     ) -> tuple[list[dict], int]:
-        if self._cohort_ledger is None:
+        if not self.kiro_admitted_live:
             return self._build_frontier(
                 messages,
                 frontier,
                 cache_required_before=cache_required_before,
             )
         import llm
+        from incremental_jsonl_cohort_budget import CohortBudgetError
 
-        with llm.provider_http_accounting(
-            self._cohort_ledger.consume_provider_http_attempt,
-            self._cohort_ledger.report_provider_usage,
-        ):
-            return self._build_frontier(
-                messages,
-                frontier,
-                cache_required_before=cache_required_before,
-            )
+        try:
+            with llm.provider_http_accounting(
+                self._consume_cohort_paid_attempt,
+                self._cohort_ledger.report_provider_usage if self._cohort_ledger else lambda *_: None,
+                attempt_finished=(
+                    self._cohort_ledger.report_provider_attempt_finished
+                    if self._cohort_ledger else None
+                ),
+            ):
+                return self._build_frontier(
+                    messages,
+                    frontier,
+                    cache_required_before=cache_required_before,
+                )
+        except CohortBudgetError as exc:
+            raise IncrementalJsonlError(exc.code, exc.detail) from exc
 
     def _effective_allow_full_rebuild(self) -> bool:
         if self.kiro_admitted_live and self.settings.kiro_session is not None:
@@ -3370,3 +3391,5 @@ def _raise_incremental_retry_refusal(
         "live_route_refused",
         f"{refused}:{digest}" if digest else refused,
     )
+
+# ref: ./incremental_jsonl_cohort_budget.py — durable paid cohort cap before dispatch

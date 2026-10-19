@@ -40,7 +40,7 @@
     "convmem.py:504",
     "convmem.py:547",
     "convmem.py:609",
-    "incremental_jsonl.py:816",
+    "incremental_jsonl.py:837",
     "ingest.py:1251",
     "ingest.py:1290",
     "ingest.py:669",
@@ -93,10 +93,10 @@
     {
       "class": "mutates_units",
       "file": "incremental_jsonl.py",
-      "line": 663,
+      "line": 837,
       "note": "Default-off Kiro JSONL incremental apply; hermetic isolated config and paths only in this Execute.",
       "required_routing": "production_chroma_write_session",
-      "snippet": "return production_chroma_write_session(",
+      "snippet": "lease = production_chroma_write_session(",
       "uses_open_chroma_for_write": false,
       "uses_production_session": true
     },

@@ -23,7 +23,7 @@ class CohortBudgetSettings:
     operation_id: str
 
 
-class CohortBudgetError(RuntimeError):
+class CohortBudgetError(ProviderAttemptBudgetExceeded):
     def __init__(self, code: str, detail: str):
         super().__init__(f"{code}: {detail}")
         self.code = code
@@ -34,9 +34,17 @@ def _atomic_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(path.parent, 0o700)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+    with tmp.open("w", encoding="utf-8") as handle:
+        os.fchmod(handle.fileno(), 0o600)
+        json.dump(payload, handle, sort_keys=True)
+        handle.flush()
+        os.fsync(handle.fileno())
     os.replace(tmp, path)
-    os.chmod(path, 0o600)
+    parent_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
 
 
 def _read_ledger(path: Path) -> dict:
@@ -65,6 +73,7 @@ class CohortBudgetLedger:
     def _acquire_budget_lock(self) -> int:
         import fcntl
 
+        self._lock_path.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(self._lock_path, os.O_CREAT | os.O_RDWR, 0o600)
         fcntl.flock(fd, fcntl.LOCK_EX)
         return fd
@@ -80,6 +89,9 @@ class CohortBudgetLedger:
         _atomic_json(self.settings.ledger_path, payload)
 
     def reserve_paid_http_attempt(self, event: dict[str, object]) -> str:
+        from purge_locks import reject_provider_under_write_scope
+
+        reject_provider_under_write_scope()
         fd = self._acquire_budget_lock()
         try:
             ledger = _read_ledger(self.settings.ledger_path)
@@ -126,6 +138,9 @@ class CohortBudgetLedger:
 
 
     def consume_provider_http_attempt(self, event: dict[str, object]) -> None:
+        # Ollama embed/generate is local and never spends the paid cohort cap.
+        if event.get("provider") != "deepseek":
+            return
         if self._open_reservation is not None:
             raise CohortBudgetError(
                 "cohort_reservation_in_flight",
@@ -133,14 +148,17 @@ class CohortBudgetLedger:
             )
         self._open_reservation = self.reserve_paid_http_attempt(event)
 
+    def report_provider_attempt_finished(self, event: dict[str, object], success: bool) -> None:
+        if event.get("provider") != "deepseek" or self._open_reservation is None:
+            return
+        reservation_id = self._open_reservation
+        self.finalize_reservation(reservation_id, success=success)
+        self._open_reservation = None
+
     def report_provider_usage(
         self, _event: dict[str, object], _usage: dict[str, object]
     ) -> None:
-        if self._open_reservation is None:
-            return
-        reservation_id = self._open_reservation
-        self._open_reservation = None
-        self.finalize_reservation(reservation_id, success=True)
+        """Usage is optional metadata; transport completion settles the attempt."""
 
     def permit_callback(self) -> ProviderAttemptPermit:
         def permit(event: dict[str, object]) -> None:
@@ -166,3 +184,5 @@ class CohortBudgetLedger:
         except Exception:
             finalize(False)
             raise
+
+# ref: ./llm.py, ./incremental_jsonl.py — paid attempt lifecycle and source-locked accounting

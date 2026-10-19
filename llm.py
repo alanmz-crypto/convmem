@@ -37,6 +37,10 @@ _MAX_CHUNK_CHARS = 8000
 
 ProviderAttemptPermit = Callable[[dict[str, object]], None]
 ProviderUsageReporter = Callable[[dict[str, object], dict[str, object]], None]
+ProviderAttemptFinished = Callable[[dict[str, object], bool], None]
+_PROVIDER_ATTEMPT_FINISHED: ContextVar[ProviderAttemptFinished | None] = ContextVar(
+    "provider_attempt_finished", default=None
+)
 _PROVIDER_ATTEMPT_PERMIT: ContextVar[ProviderAttemptPermit | None] = ContextVar(
     "provider_attempt_permit", default=None
 )
@@ -53,14 +57,18 @@ class ProviderAttemptBudgetExceeded(RuntimeError):
 def provider_http_accounting(
     permit: ProviderAttemptPermit,
     usage_reporter: ProviderUsageReporter,
+    *,
+    attempt_finished: ProviderAttemptFinished | None = None,
 ):
     """Install bootstrap-only HTTP accounting without changing ordinary calls."""
 
     permit_token = _PROVIDER_ATTEMPT_PERMIT.set(permit)
     usage_token = _PROVIDER_USAGE_REPORTER.set(usage_reporter)
+    finished_token = _PROVIDER_ATTEMPT_FINISHED.set(attempt_finished)
     try:
         yield
     finally:
+        _PROVIDER_ATTEMPT_FINISHED.reset(finished_token)
         _PROVIDER_USAGE_REPORTER.reset(usage_token)
         _PROVIDER_ATTEMPT_PERMIT.reset(permit_token)
 
@@ -78,6 +86,13 @@ def _permit_provider_http_attempt(
     if permit is not None:
         permit(dict(event))
     return event
+
+
+def _finish_provider_http_attempt(event: dict[str, object], success: bool) -> None:
+    """Settle a completed transport attempt independently of token-usage data."""
+    reporter = _PROVIDER_ATTEMPT_FINISHED.get()
+    if reporter is not None:
+        reporter(dict(event), success)
 
 
 def _report_provider_usage(
@@ -218,15 +233,20 @@ def _post_deepseek(
         "temperature": 0.2,
         "stream": stream,
     }
-    resp = requests.post(
-        f"{base_url.rstrip('/')}/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json=body,
-        timeout=timeout,
-        allow_redirects=False,
-        **({"stream": True} if stream else {}),
-    )
-    resp.raise_for_status()
+    try:
+        resp = requests.post(
+            f"{base_url.rstrip('/')}/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=body,
+            timeout=timeout,
+            allow_redirects=False,
+            **({"stream": True} if stream else {}),
+        )
+        resp.raise_for_status()
+    except Exception:
+        _finish_provider_http_attempt(event, False)
+        raise
+    _finish_provider_http_attempt(event, True)
     setattr(resp, "_convmem_provider_event", event)
     return resp
 
@@ -543,3 +563,5 @@ def summarize(
     if "deepseek-v4" in model:
         model = _resolve_fallback_model(model)
     return _ollama_generate(prompt, model, ollama_host)
+
+# ref: ./incremental_jsonl_cohort_budget.py — transport completion settles paid reservations
