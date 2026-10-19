@@ -27,6 +27,7 @@ from tests.incremental_jsonl_helpers import write_source
 
 
 PAID_EVENT = {"provider": "deepseek", "operation": "generate"}
+OPENAI_PAID_EVENT = {"provider": "openai", "operation": "generate"}
 COHORT_FIELDS = (
     "cohort_ledger_path", "cohort_max_paid_http_attempts", "cohort_operation_id",
 )
@@ -145,6 +146,23 @@ def test_real_deepseek_retry_settles_failure_before_next_permit(tmp_path, monkey
     assert _payload(ledger)["consumed"] == cap
     assert _payload(ledger)["reserved"] == 0
 
+
+
+
+def test_openai_attempt_reserves_and_finalizes_against_cap(tmp_path):
+    ledger = _ledger(tmp_path, cap=1)
+    ledger.consume_provider_http_attempt(OPENAI_PAID_EVENT)
+    assert _payload(ledger)["reserved"] == 1
+    ledger.report_provider_attempt_finished(OPENAI_PAID_EVENT, success=True)
+    payload = _payload(ledger)
+    assert payload["reserved"] == 0
+    assert payload["consumed"] == 1
+
+
+def test_ollama_provider_event_does_not_reserve_paid_cap(tmp_path):
+    ledger = _ledger(tmp_path)
+    ledger.consume_provider_http_attempt({"provider": "ollama", "operation": "generate"})
+    assert not ledger.settings.ledger_path.exists()
 
 def test_unfinished_attempt_is_not_forgiven_by_usage_or_another_permit(tmp_path):
     ledger = _ledger(tmp_path)

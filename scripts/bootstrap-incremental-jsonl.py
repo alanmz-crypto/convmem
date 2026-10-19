@@ -146,6 +146,12 @@ def _resolved_generation(models: dict, role: str) -> dict[str, str]:
                 f"{role} credential is absent from the invoking process"
             )
         base_url = str(models.get("deepseek_base_url", "https://api.deepseek.com"))
+    elif provider == "openai":
+        if not os.environ.get("OPENAI_API_KEY", "").strip():
+            raise BootstrapGrantError(
+                f"{role} credential is absent from the invoking process"
+            )
+        base_url = str(models.get("openai_base_url", "https://api.openai.com"))
     elif provider == "ollama":
         base_url = str(models["ollama_host"])
     else:

@@ -719,7 +719,9 @@ class IncrementalJsonlCoordinator:
         )
 
     def _consume_cohort_paid_attempt(self, event: dict[str, object]) -> None:
-        if event.get("provider") != "deepseek":
+        import llm
+
+        if event.get("provider") not in llm.PAID_PROVIDERS:
             return
         if self._cohort_ledger is None:
             from incremental_jsonl_cohort_budget import CohortBudgetError

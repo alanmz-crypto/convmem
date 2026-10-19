@@ -7502,6 +7502,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_openai_distill_provider.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_openclaw_watch_coverage.py",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -8471,7 +8476,7 @@
     },
     {
       "path": "config.example.toml",
-      "sha256": "824aae92d737cc059887bd4783774ae4d60717db112734882298b5305be98a51",
+      "sha256": "dc059d4311fd871ec501ecfef45bb3a90ec956917890bab69ef430d5e03717f5",
       "content_class": "toml",
       "parser_mode": "toml_table_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8998,7 +9003,7 @@
     },
     {
       "path": "ingest.py",
-      "sha256": "45a87c4a7df41f9265786346223e1018ad359660e46ac0d771b546762553a21e",
+      "sha256": "6850a28ceb793d3820fe3df9f455d6b7dd08f5871072852cca5e68cc93b4ef1b",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

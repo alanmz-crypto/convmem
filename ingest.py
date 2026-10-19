@@ -902,6 +902,10 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
                 deepseek_base_url=models.get(
                     "deepseek_base_url", "https://api.deepseek.com"
                 ),
+                openai_base_url=models.get(
+                    "openai_base_url", "https://api.openai.com"
+                ),
+                reasoning_effort=models.get("distill_reasoning_effort"),
             )
             _bump_counter(counters, "distill_success")
             break

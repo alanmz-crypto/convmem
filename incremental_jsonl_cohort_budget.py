@@ -138,8 +138,10 @@ class CohortBudgetLedger:
 
 
     def consume_provider_http_attempt(self, event: dict[str, object]) -> None:
-        # Ollama embed/generate is local and never spends the paid cohort cap.
-        if event.get("provider") != "deepseek":
+        # Local Ollama and other non-paid providers never spend the cohort cap.
+        import llm
+
+        if event.get("provider") not in llm.PAID_PROVIDERS:
             return
         if self._open_reservation is not None:
             raise CohortBudgetError(
@@ -149,7 +151,9 @@ class CohortBudgetLedger:
         self._open_reservation = self.reserve_paid_http_attempt(event)
 
     def report_provider_attempt_finished(self, event: dict[str, object], success: bool) -> None:
-        if event.get("provider") != "deepseek" or self._open_reservation is None:
+        import llm
+
+        if event.get("provider") not in llm.PAID_PROVIDERS or self._open_reservation is None:
             return
         reservation_id = self._open_reservation
         self.finalize_reservation(reservation_id, success=success)
