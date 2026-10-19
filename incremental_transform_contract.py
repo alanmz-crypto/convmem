@@ -149,6 +149,9 @@ def build_transform_descriptor(
         "dedupe_contract": DEDUPE_CONTRACT,
         "prepared_payload_contract": PREPARED_PAYLOAD_CONTRACT,
     }
+    distill_reasoning_effort = models.get("distill_reasoning_effort")
+    if distill_reasoning_effort:
+        body["distill_reasoning_effort"] = distill_reasoning_effort
     digest = _sha(FINGERPRINT_SCHEME + ":" + _canonical_json(body))
     return TransformDescriptor(
         scheme=FINGERPRINT_SCHEME,

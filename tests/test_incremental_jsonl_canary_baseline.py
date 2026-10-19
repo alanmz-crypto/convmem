@@ -26,7 +26,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
     # Refreshed for issue #308 inter-model provenance rejection sidecar (2026-10-12).
-    "ingest.py": "803bfe02856872f3389ef41567d140114c9aae5558dde294c9dbb61788aaa5e5",
+    # Refreshed for OpenAI distill provider wiring (openai_base_url, reasoning_effort).
+    "ingest.py": "f34b0ea9fffa21024c6455941a5d8216458b7ea253786e83e60a1a9ee634815f",
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.

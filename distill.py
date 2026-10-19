@@ -91,6 +91,9 @@ def distill_with_response(
     model: str,
     ollama_host: str,
     deepseek_base_url: str = "https://api.deepseek.com",
+    *,
+    openai_base_url: str = "https://api.openai.com",
+    reasoning_effort: str | None = None,
 ) -> tuple[list[dict], str]:
     """Extract knowledge units and retain the provider response for binding."""
     from purge_locks import reject_provider_under_write_scope
@@ -100,7 +103,15 @@ def distill_with_response(
     # Pass the configured model straight through; llm.generate owns the
     # provider fallback (warn-once / CONVMEM_FAIL_ON_FALLBACK) so the
     # distillation path can no longer swap silently.
-    raw = generate(prompt, model, ollama_host, deepseek_base_url, timeout=120)
+    raw = generate(
+        prompt,
+        model,
+        ollama_host,
+        deepseek_base_url,
+        openai_base_url=openai_base_url,
+        reasoning_effort=reasoning_effort,
+        timeout=120,
+    )
     return safe_json_parse(raw), raw
 
 
@@ -109,6 +120,9 @@ def distill(
     model: str,
     ollama_host: str,
     deepseek_base_url: str = "https://api.deepseek.com",
+    *,
+    openai_base_url: str = "https://api.openai.com",
+    reasoning_effort: str | None = None,
 ) -> list[dict]:
     """Extract knowledge units from a conversation chunk."""
 
@@ -117,6 +131,8 @@ def distill(
         model,
         ollama_host,
         deepseek_base_url,
+        openai_base_url=openai_base_url,
+        reasoning_effort=reasoning_effort,
     )
     return units
 

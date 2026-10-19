@@ -4,6 +4,7 @@ Embeddings always run locally via Ollama (nomic-embed-text).
 
 Summarization provider is inferred from the model name:
   - a name containing "deepseek-v4" -> DeepSeek API (needs DEEPSEEK_API_KEY)
+  - a name starting with "gpt-"     -> OpenAI API (needs OPENAI_API_KEY; never Ollama)
   - anything else                   -> local Ollama model
 
 This keeps the system local-first while leaving a one-line switch to the
@@ -35,8 +36,14 @@ Conversation:
 # Cap chunk text fed to the summarizer to keep latency and context bounded.
 _MAX_CHUNK_CHARS = 8000
 
+PAID_PROVIDERS = frozenset({"deepseek", "openai"})
+
 ProviderAttemptPermit = Callable[[dict[str, object]], None]
 ProviderUsageReporter = Callable[[dict[str, object], dict[str, object]], None]
+ProviderAttemptFinished = Callable[[dict[str, object], bool], None]
+_PROVIDER_ATTEMPT_FINISHED: ContextVar[ProviderAttemptFinished | None] = ContextVar(
+    "provider_attempt_finished", default=None
+)
 _PROVIDER_ATTEMPT_PERMIT: ContextVar[ProviderAttemptPermit | None] = ContextVar(
     "provider_attempt_permit", default=None
 )
@@ -49,18 +56,27 @@ class ProviderAttemptBudgetExceeded(RuntimeError):
     """Raised before transport when a bootstrap HTTP-attempt cap is exhausted."""
 
 
+class ModelFallbackError(RuntimeError):
+    """Raised when a configured remote model cannot run (missing API key or
+    ``CONVMEM_FAIL_ON_FALLBACK=1`` forbids silent local degrade)."""
+
+
 @contextmanager
 def provider_http_accounting(
     permit: ProviderAttemptPermit,
     usage_reporter: ProviderUsageReporter,
+    *,
+    attempt_finished: ProviderAttemptFinished | None = None,
 ):
     """Install bootstrap-only HTTP accounting without changing ordinary calls."""
 
     permit_token = _PROVIDER_ATTEMPT_PERMIT.set(permit)
     usage_token = _PROVIDER_USAGE_REPORTER.set(usage_reporter)
+    finished_token = _PROVIDER_ATTEMPT_FINISHED.set(attempt_finished)
     try:
         yield
     finally:
+        _PROVIDER_ATTEMPT_FINISHED.reset(finished_token)
         _PROVIDER_USAGE_REPORTER.reset(usage_token)
         _PROVIDER_ATTEMPT_PERMIT.reset(permit_token)
 
@@ -78,6 +94,13 @@ def _permit_provider_http_attempt(
     if permit is not None:
         permit(dict(event))
     return event
+
+
+def _finish_provider_http_attempt(event: dict[str, object], success: bool) -> None:
+    """Settle a completed transport attempt independently of token-usage data."""
+    reporter = _PROVIDER_ATTEMPT_FINISHED.get()
+    if reporter is not None:
+        reporter(dict(event), success)
 
 
 def _report_provider_usage(
@@ -105,6 +128,20 @@ def _report_provider_usage(
         reporter(dict(event), local_usage)
 
 
+def _is_openai_model(model: str) -> bool:
+    return model.startswith("gpt-")
+
+
+def _require_openai_key(model: str) -> str:
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise ModelFallbackError(
+            f"model {model!r} needs OPENAI_API_KEY (unset); "
+            "OpenAI models never fall back to a local Ollama model"
+        )
+    return api_key
+
+
 def resolve_generation_binding(model: str) -> dict[str, object]:
     """Describe the provider/model path selected by the generation contract.
 
@@ -127,6 +164,14 @@ def resolve_generation_binding(model: str) -> dict[str, object]:
             "requested_model": requested,
             "resolved_model": os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b"),
             "fallback": True,
+        }
+    if _is_openai_model(requested):
+        has_key = bool(os.environ.get("OPENAI_API_KEY"))
+        return {
+            "provider": "openai",
+            "requested_model": requested,
+            "resolved_model": requested,
+            "fallback": not has_key,
         }
     return {
         "provider": "ollama",
@@ -218,15 +263,64 @@ def _post_deepseek(
         "temperature": 0.2,
         "stream": stream,
     }
-    resp = requests.post(
-        f"{base_url.rstrip('/')}/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json=body,
-        timeout=timeout,
-        allow_redirects=False,
-        **({"stream": True} if stream else {}),
+    try:
+        resp = requests.post(
+            f"{base_url.rstrip('/')}/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=body,
+            timeout=timeout,
+            allow_redirects=False,
+            **({"stream": True} if stream else {}),
+        )
+        resp.raise_for_status()
+    except Exception:
+        _finish_provider_http_attempt(event, False)
+        raise
+    _finish_provider_http_attempt(event, True)
+    setattr(resp, "_convmem_provider_event", event)
+    return resp
+
+
+def _post_openai(
+    prompt: str,
+    model: str,
+    base_url: str,
+    api_key: str,
+    *,
+    stream: bool,
+    timeout: float,
+    reasoning_effort: str | None = None,
+) -> requests.Response:
+    """POST an OpenAI chat completion; raise on non-2xx."""
+    event = _permit_provider_http_attempt(
+        provider="openai",
+        operation="generate_stream" if stream else "generate",
+        model=model,
+        base_url=base_url,
     )
-    resp.raise_for_status()
+    body: dict = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": stream,
+    }
+    if reasoning_effort:
+        body["reasoning_effort"] = reasoning_effort
+    else:
+        body["temperature"] = 0.2
+    try:
+        resp = requests.post(
+            f"{base_url.rstrip('/')}/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=body,
+            timeout=timeout,
+            allow_redirects=False,
+            **({"stream": True} if stream else {}),
+        )
+        resp.raise_for_status()
+    except Exception:
+        _finish_provider_http_attempt(event, False)
+        raise
+    _finish_provider_http_attempt(event, True)
     setattr(resp, "_convmem_provider_event", event)
     return resp
 
@@ -284,6 +378,49 @@ def _deepseek_generate(
         try:
             resp = _post_deepseek(
                 prompt, model, base_url, api_key, stream=False, timeout=timeout
+            )
+            data = resp.json()
+            event = getattr(resp, "_convmem_provider_event", {})
+            _report_provider_usage(event, data)
+            return data["choices"][0]["message"]["content"].strip()
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.HTTPError,
+        ) as exc:
+            _deepseek_retry_decision(
+                exc,
+                attempt=attempt,
+                effective=effective,
+                retry_backoff=retry_backoff,
+                label="generate",
+            )
+    raise RuntimeError("unreachable: retry loop must return or raise")
+
+
+def _openai_generate(
+    prompt: str,
+    model: str,
+    base_url: str,
+    *,
+    reasoning_effort: str | None = None,
+    timeout: float = 300,
+    max_attempts: int = 2,
+    retry_backoff: float = 1.0,
+) -> str:
+    """Non-streaming OpenAI completion with a bounded transient retry."""
+    api_key = _require_openai_key(model)
+    effective = max(1, int(max_attempts))
+    for attempt in range(1, effective + 1):
+        try:
+            resp = _post_openai(
+                prompt,
+                model,
+                base_url,
+                api_key,
+                stream=False,
+                timeout=timeout,
+                reasoning_effort=reasoning_effort,
             )
             data = resp.json()
             event = getattr(resp, "_convmem_provider_event", {})
@@ -434,10 +571,72 @@ def _deepseek_generate_stream(
             )
 
 
-class ModelFallbackError(RuntimeError):
-    """Raised when a ``deepseek-v4`` model would silently fall back to a local
-    model (no ``DEEPSEEK_API_KEY``) but ``CONVMEM_FAIL_ON_FALLBACK=1`` forbids
-    the silent degrade. Opt-in fail-closed; default behavior is warn-and-continue."""
+def _openai_generate_stream(  # pylint: disable=too-many-arguments
+    prompt: str,
+    model: str,
+    base_url: str,
+    *,
+    reasoning_effort: str | None = None,
+    stop: threading.Event | None = None,
+    timeout: float | None = None,
+    connection_timeout: float = 10,
+    max_attempts: int = 2,
+    retry_backoff: float = 1.0,
+) -> Iterator[str]:
+    """Stream OpenAI completion tokens with a bounded transient retry."""
+    api_key = _require_openai_key(model)
+    effective = max(1, int(max_attempts))
+    for attempt in range(1, effective + 1):
+        yielded_any = False
+        try:
+            resp = _post_openai(
+                prompt,
+                model,
+                base_url,
+                api_key,
+                stream=True,
+                timeout=connection_timeout or 0,
+                reasoning_effort=reasoning_effort,
+            )
+            final_usage: dict[str, object] = {}
+            for line in resp.iter_lines(decode_unicode=True):
+                _check_stream_stop(stop, timeout)
+                if not line or not line.startswith("data: "):
+                    continue
+                payload = line[6:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    data = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                choices = data.get("choices") or []
+                if isinstance(data.get("usage"), dict):
+                    final_usage = dict(data["usage"])
+                if not choices:
+                    continue
+                delta = choices[0].get("delta") or {}
+                content = delta.get("content") or ""
+                if content:
+                    yielded_any = True
+                    yield content
+            if final_usage:
+                event = getattr(resp, "_convmem_provider_event", {})
+                _report_provider_usage(event, final_usage)
+            return
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.HTTPError,
+        ) as exc:
+            _deepseek_retry_decision(
+                exc,
+                attempt=attempt,
+                effective=effective,
+                retry_backoff=retry_backoff,
+                label="stream",
+                yielded_any=yielded_any,
+            )
 
 
 # Best-effort "warn once per process" so watch/refine don't spam the journal on
@@ -472,12 +671,14 @@ def _resolve_fallback_model(configured_model: str) -> str:
     return fallback
 
 
-def generate_stream(
+def generate_stream(  # pylint: disable=too-many-arguments
     prompt: str,
     model: str,
     ollama_host: str,
     deepseek_base_url: str = "https://api.deepseek.com",
     *,
+    openai_base_url: str = "https://api.openai.com",
+    reasoning_effort: str | None = None,
     timeout: float | None = None,
 ) -> Iterator[str]:
     """Yield synthesis tokens. Raises TimeoutError when wall-clock limit hits."""
@@ -499,6 +700,16 @@ def generate_stream(
                 )
                 return
             model = _resolve_fallback_model(model)
+        if _is_openai_model(model):
+            yield from _openai_generate_stream(
+                prompt,
+                model,
+                openai_base_url,
+                reasoning_effort=reasoning_effort,
+                stop=stop,
+                timeout=timeout,
+            )
+            return
         yield from _ollama_generate_stream(
             prompt, model, ollama_host, stop=stop, timeout=timeout
         )
@@ -507,12 +718,14 @@ def generate_stream(
             timer.cancel()
 
 
-def generate(
+def generate(  # pylint: disable=too-many-arguments
     prompt: str,
     model: str,
     ollama_host: str,
     deepseek_base_url: str = "https://api.deepseek.com",
     *,
+    openai_base_url: str = "https://api.openai.com",
+    reasoning_effort: str | None = None,
     timeout: float = 300,
 ) -> str:
     """Provider-aware text generation (summarization, distillation, etc.)."""
@@ -523,6 +736,14 @@ def generate(
                 prompt, model, deepseek_base_url, timeout=timeout
             )
         model = _resolve_fallback_model(model)
+    if _is_openai_model(model):
+        return _openai_generate(
+            prompt,
+            model,
+            openai_base_url,
+            reasoning_effort=reasoning_effort,
+            timeout=timeout,
+        )
     return _ollama_generate(prompt, model, ollama_host, timeout=timeout)
 
 
@@ -531,6 +752,8 @@ def summarize(
     model: str,
     ollama_host: str,
     deepseek_base_url: str = "https://api.deepseek.com",
+    *,
+    openai_base_url: str = "https://api.openai.com",
 ) -> str:
     """Summarize a conversation chunk into 3 sentences + a Keywords line."""
     from purge_locks import reject_provider_under_write_scope
@@ -542,4 +765,6 @@ def summarize(
         return _deepseek_generate(prompt, model, deepseek_base_url, timeout=120)
     if "deepseek-v4" in model:
         model = _resolve_fallback_model(model)
+    if _is_openai_model(model):
+        return _openai_generate(prompt, model, openai_base_url, timeout=120)
     return _ollama_generate(prompt, model, ollama_host)

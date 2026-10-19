@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from llm import ProviderAttemptBudgetExceeded
+from llm import PAID_PROVIDERS, ProviderAttemptBudgetExceeded
 
 GRANT_FIELDS = frozenset(
     {
@@ -68,7 +68,7 @@ _POSITIVE_INT_FIELDS = (
     "max_recovery_invocations",
 )
 _PROVIDER_ATTEMPT_EVENT_FIELDS = ("provider", "operation", "model", "base_url")
-_BOOTSTRAP_HTTP_PROVIDERS = frozenset({"deepseek", "ollama"})
+_BOOTSTRAP_HTTP_PROVIDERS = frozenset({"deepseek", "ollama", "openai"})
 
 
 class BootstrapGrantError(ValueError):
@@ -107,7 +107,7 @@ def _provider_attempt_paid_cap_consumed(row: dict[str, Any]) -> bool:
 
 
 def _new_provider_attempt_paid_cap_consumed(event: dict[str, object]) -> bool:
-    return event["provider"] == "deepseek"
+    return event["provider"] in PAID_PROVIDERS
 
 
 def canonical_json(value: Any) -> str:

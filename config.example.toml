@@ -39,6 +39,8 @@ distill_model     = "deepseek-v4-flash"
 ollama_host       = "http://localhost:11434"
 rerank_model      = "BAAI/bge-reranker-v2-m3"
 deepseek_base_url = "https://api.deepseek.com"
+# openai_base_url = "https://api.openai.com"
+# distill_reasoning_effort = "max"  # optional; included in transform fingerprint when set
 
 [distill]
 min_confidence = 0.6
