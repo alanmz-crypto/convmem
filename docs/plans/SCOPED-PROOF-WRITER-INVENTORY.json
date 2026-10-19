@@ -37,10 +37,10 @@
     {
       "coverage_status": "shadow_observed",
       "disposition": "mediated_native",
-      "entrypoint": "incremental_jsonl.py:663",
+      "entrypoint": "incremental_jsonl.py:838",
       "owner": "production_chroma_write_session",
-      "route_id": "incremental_jsonl.py:663",
-      "shadow_inventory_ref": "incremental_jsonl.py:663"
+      "route_id": "incremental_jsonl.py:838",
+      "shadow_inventory_ref": "incremental_jsonl.py:838"
     },
     {
       "coverage_status": "shadow_observed",

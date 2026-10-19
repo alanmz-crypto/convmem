@@ -768,3 +768,5 @@ def summarize(
     if _is_openai_model(model):
         return _openai_generate(prompt, model, openai_base_url, timeout=120)
     return _ollama_generate(prompt, model, ollama_host)
+
+# ref: ./incremental_jsonl_cohort_budget.py — transport completion settles paid reservations

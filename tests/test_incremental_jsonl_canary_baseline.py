@@ -21,13 +21,16 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 watcher-child --now.
     # Refreshed for issue #286 watcher child-event forwarding.
     # Refreshed for issue #286 commit digest reuse phase-timing event.
-    "watch.py": "29b00777ec7648665b5e4f9d65129f1cbcb93267ba37ec1d446bebb206860efd",
+    # Refreshed for issue #286 Kiro incremental selected-session sidecar forwarding.
+    # Refreshed for issue #286 Kiro semantic revalidate + cohort budget wiring.
+    # Refreshed for OpenAI distill provider merge + PAID_PROVIDERS cohort cap.
+    "watch_kiro_paths.py": "f1ef8e600226bb239ababd71f696c7b022a15c2a1714c89d5e1907cdac40741d",
+    "watch.py": "0a3f9f23dd192dc9aa30d46ee6b61ae5a5c6a6b9701bac8e70760d0a9edd5214",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
     # Refreshed for issue #308 inter-model provenance rejection sidecar (2026-10-12).
-    # Refreshed for OpenAI distill provider wiring (openai_base_url, reasoning_effort).
-    "ingest.py": "f34b0ea9fffa21024c6455941a5d8216458b7ea253786e83e60a1a9ee634815f",
+    "ingest.py": "6850a28ceb793d3820fe3df9f455d6b7dd08f5871072852cca5e68cc93b4ef1b",
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.
@@ -41,8 +44,11 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 v1 checkpoint full-rebuild when allow_full_rebuild.
     # Refreshed for issue #286 full-rebuild Codex admission frontier fix.
     # Refreshed for issue #286 commit digest reuse (slice 1).
+    # Refreshed for issue #286 Kiro incremental v2 routing and policy guards.
+    # Refreshed for issue #286 corrective 2: fail-closed paid cohort accounting.
+    # Refreshed for issue #286 corrective 4: checkpoint sidecar identity guard.
     # Refreshed for issue #286 scoped proof shadow observer wiring.
-    "incremental_jsonl.py": "317c2e5c3204a0b504463a2eb84211bb6663ecdf32c4c1d205e0e3b2c8e31e06",
+    "incremental_jsonl.py": "2ef62294b18de8dc0723b842e79c1625f48b026eb8b3b403e470b10a57680c95",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

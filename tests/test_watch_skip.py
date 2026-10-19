@@ -98,11 +98,13 @@ class FlushPathHashTests(unittest.TestCase):
             file_hash = sha256_file(str(path))
             processed = {file_hash: {"path": str(path.resolve())}}
             mock_index = mock.Mock()
-            with mock.patch("ingest.load_processed", return_value=processed):
-                with mock.patch("ingest.sha256_file", wraps=sha256_file):
-                    self.assertIsNone(
-                        flush_path(str(path), index_fn=mock_index, verbose=False)
-                    )
+            cfg = {"index": {"processed_log": str(Path(td) / "processed.json")}}
+            with mock.patch("config.load_config", return_value=cfg):
+                with mock.patch("ingest.load_processed", return_value=processed):
+                    with mock.patch("ingest.sha256_file", wraps=sha256_file):
+                        self.assertIsNone(
+                            flush_path(str(path), index_fn=mock_index, verbose=False)
+                        )
             mock_index.assert_not_called()
 
     def test_flush_path_reindexes_when_hash_changed(self):
@@ -114,8 +116,10 @@ class FlushPathHashTests(unittest.TestCase):
             )
             processed = {"stalehash": {"path": str(path.resolve())}}
             mock_index = mock.Mock(return_value={"files_processed": 1})
-            with mock.patch("ingest.load_processed", return_value=processed):
-                result = flush_path(str(path), index_fn=mock_index, verbose=False)
+            cfg = {"index": {"processed_log": str(Path(td) / "processed.json")}}
+            with mock.patch("config.load_config", return_value=cfg):
+                with mock.patch("ingest.load_processed", return_value=processed):
+                    result = flush_path(str(path), index_fn=mock_index, verbose=False)
             mock_index.assert_called_once()
             self.assertIsNotNone(result)
 

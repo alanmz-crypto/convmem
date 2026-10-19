@@ -37,6 +37,10 @@ from bootstrap_safety import (  # pylint: disable=wrong-import-position
     sha256_file,
     validate_grant,
 )
+from incremental_jsonl_formats import get_format_spec  # pylint: disable=wrong-import-position
+from incremental_transform_contract import (  # pylint: disable=wrong-import-position
+    build_transform_descriptor,
+)
 from bootstrap_supersession import (  # pylint: disable=wrong-import-position
     activate_bootstrap_supersession,
     bootstrap_mutation_inventory,
@@ -192,13 +196,33 @@ def _effective_binding(cfg: dict, config_path: Path) -> dict[str, Any]:
         "summarize": summarize,
         "distill": distilled,
         "embedding": embedding,
-        "transform_fingerprint": compute_transform_fingerprint(
-            chunk_size=chunk_size,
-            overlap=overlap,
-            min_confidence=min_confidence,
-            models=models,
-            embed_dimension=int(embed_dimension or 0),
-            implementation_revision=str(implementation),
+        **(
+            {
+                "transform_fingerprint": build_transform_descriptor(
+                    chunk_size=chunk_size,
+                    overlap=overlap,
+                    min_confidence=min_confidence,
+                    models=models,
+                    embed_dimension=int(embed_dimension or 0),
+                    adapter_format=get_format_spec("jsonl_kiro_session").format_id,
+                    adapter_contract_version=get_format_spec(
+                        "jsonl_kiro_session"
+                    ).adapter_contract_version,
+                ).digest,
+                "fingerprint_scheme": "semantic-v2",
+            }
+            if incremental_jsonl_settings(cfg).kiro_session is not None
+            else {
+                "transform_fingerprint": compute_transform_fingerprint(
+                    chunk_size=chunk_size,
+                    overlap=overlap,
+                    min_confidence=min_confidence,
+                    models=models,
+                    embed_dimension=int(embed_dimension or 0),
+                    implementation_revision=str(implementation),
+                ),
+                "fingerprint_scheme": "implementation-v1",
+            }
         ),
     }
 

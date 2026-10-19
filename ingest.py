@@ -531,8 +531,13 @@ def watch_skip_reason(
             return "excluded"
 
     if processed_log is None:
-        cfg = load_config()
-        processed_log = cfg["index"]["processed_log"]
+        if cfg is not None:
+            processed_log = cfg["index"]["processed_log"]
+        elif processed is not None:
+            processed_log = None
+        else:
+            cfg = load_config()
+            processed_log = cfg["index"]["processed_log"]
 
     if file_hash is None:
         try:
@@ -542,7 +547,9 @@ def watch_skip_reason(
 
     from inter_model_rejections import inter_model_rejection_matches
 
-    if inter_model_rejection_matches(processed_log, path_str, file_hash):
+    if processed_log is not None and inter_model_rejection_matches(
+        processed_log, path_str, file_hash
+    ):
         return "inter_model_rejected"
 
     path_known_hash = _stored_hash_for_path(path_str, processed)
@@ -1392,9 +1399,18 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     # ``index --file`` path when either identity changes, so the generic
     # content-hash shortcut must not discard that request.
     if not force_reindex and file_hash in processed and fmt != "repository_knowledge_v1":
-        if verbose:
-            print(f"  [skip] unchanged {Path(path).name}")
-        return "skipped", 0, 0, 0, 0
+        from config import incremental_jsonl_settings
+        from incremental_jsonl_kiro_admission import selected_kiro_path
+
+        incremental_settings = incremental_jsonl_settings(cfg)
+        if not selected_kiro_path(
+            path_key=path_key,
+            live_sources=incremental_settings.live_sources,
+            detected_format=fmt,
+        ):
+            if verbose:
+                print(f"  [skip] unchanged {Path(path).name}")
+            return "skipped", 0, 0, 0, 0
 
     tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
     chroma_dir = idx["chroma_dir"]

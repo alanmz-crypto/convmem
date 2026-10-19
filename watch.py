@@ -28,6 +28,8 @@ from watch_circuit_breaker import (
     parse_live_route_refused,
 )
 
+from watch_kiro_paths import expand_selected_kiro_session_meta_paths
+
 _LIVE_ROUTE_REFUSED_EXIT = 91
 
 
@@ -618,7 +620,10 @@ def path_in_watch_roots(path: Path | str, watch_paths: list[str]) -> bool:
     return False
 
 
-def queue_paths_from_fs_event(event) -> list[str]:  # noqa: ANN001
+
+
+
+def queue_paths_from_fs_event(event, *, cfg: dict | None = None) -> list[str]:  # noqa: ANN001
     """Return watch paths to queue for a filesystem event (C4a intake)."""
     from watchdog.events import (
         FileClosedEvent,
@@ -635,12 +640,14 @@ def queue_paths_from_fs_event(event) -> list[str]:  # noqa: ANN001
     if isinstance(event, (FileOpenedEvent, FileClosedNoWriteEvent)):
         return []
     if isinstance(event, FileMovedEvent):
-        return [event.dest_path, event.src_path]
+        paths = [event.dest_path, event.src_path]
+        return expand_selected_kiro_session_meta_paths(cfg or {}, paths) if cfg else paths
     if isinstance(
         event,
         (FileCreatedEvent, FileModifiedEvent, FileClosedEvent, FileDeletedEvent),
     ):
-        return [event.src_path]
+        paths = [event.src_path]
+        return expand_selected_kiro_session_meta_paths(cfg or {}, paths) if cfg else paths
     return []
 
 
@@ -869,7 +876,7 @@ def run_watch(  # pylint: disable=too-many-locals,broad-exception-caught
 
     class Handler(FileSystemEventHandler):
         def on_any_event(self, event: FileSystemEvent) -> None:
-            queued = queue_paths_from_fs_event(event)
+            queued = queue_paths_from_fs_event(event, cfg=cfg)
             if not queued:
                 return
             with _batch_lock:
