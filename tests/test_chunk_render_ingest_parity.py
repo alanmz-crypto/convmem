@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Parity between chunk_render helpers and ingest's pinned renderer."""
 
 from __future__ import annotations
