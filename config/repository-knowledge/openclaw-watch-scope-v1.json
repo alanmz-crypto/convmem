@@ -8387,7 +8387,7 @@
     },
     {
       "path": "chunk_expand.py",
-      "sha256": "9575bca25441e01313bb4dbe31526e0fce20e71a4b73608be2f98bf82beea4be",
+      "sha256": "d28d62215428bfa1241ab1d898d477fcd2e7a79c6437132b7b7a68d9b126eb20",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8489,7 +8489,7 @@
     },
     {
       "path": "convmem.py",
-      "sha256": "daaf359b19d42bbe5c1766e7dcd959b95b15f6757dd0e117ce290bf5a4a231fe",
+      "sha256": "49e00e862eee5119072656bfea914725c4957b234b14a5a2525b3fb6b20dcf18",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8965,7 +8965,7 @@
     },
     {
       "path": "mcp_server.py",
-      "sha256": "f9ac448cf8ecbb9c8822f327a79a7af753685458ea1cd71e0dbed9c0fae85cb3",
+      "sha256": "2b58eac1724a99b5935de99c7016160d33805ac6c419d8355e70fd45a41de431",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

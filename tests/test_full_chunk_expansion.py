@@ -408,6 +408,51 @@ def test_excluded_source_still_expands(expand_env) -> None:
     assert "archived from re-indexing" in (result.warning or "").lower()
 
 
+def test_not_session_custom_doc_tool(expand_env, tmp_path) -> None:
+    cfg, store, _home = expand_env
+    path = tmp_path / "AGENTS.md"
+    path.write_text("# Agents\n\nProject rules.\n", encoding="utf-8")
+    resolved = str(path.resolve())
+    meta = {
+        "id": "unit-butsaba-scout",
+        "title": "butsaba-scout Inventory",
+        "source_path": resolved,
+        "start_offset": 0,
+        "tool": "butsaba-scout",
+    }
+    store.add_unit("unit-butsaba-scout", "inventory", [0.1] * 8, meta)
+    result = expand_record("unit-butsaba-scout", cfg=cfg)
+    assert result.status == "not_session"
+    assert result.tool == "butsaba-scout"
+    assert result.source_path == resolved
+
+
+def test_recover_exact_when_stored_offsets_stale(expand_env) -> None:
+    from chunk_expand import _render_window
+
+    _cfg, _store, home = expand_env
+    path = _cursor_source(
+        home,
+        [
+            _cursor_line("user", "anchor one"),
+            _cursor_line("assistant", "anchor two"),
+        ],
+    )
+    messages = get_parser(path)(str(path))
+    expected_sha = hashlib.sha256(render_chunk(messages[0:2]).encode()).hexdigest()
+    result = _render_window(
+        source_path=str(path),
+        start=0,
+        end=99,
+        tool="cursor",
+        expected_sha=expected_sha,
+    )
+    assert result.status == "exact"
+    assert result.start_offset == 0
+    assert result.end_offset == 1
+    assert "stale" in (result.warning or "").lower()
+
+
 def test_not_session_inter_model_doc(expand_env, tmp_path) -> None:
     cfg, store, _home = expand_env
     path = tmp_path / "docs" / "inter-model" / "handoff.md"

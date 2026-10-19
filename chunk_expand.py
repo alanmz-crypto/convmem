@@ -34,6 +34,9 @@ _NON_SESSION_TOOLS = frozenset({"inter-model", "repository-knowledge", "ryan"})
 _NON_SESSION_FORMATS = frozenset(
     {"inter_model_doc", "repository_knowledge_v1", "kiro_steering"}
 )
+_SESSION_INDEX_TOOLS = frozenset(
+    {"cursor", "codex", "claude", "kiro", "copilot", "crush", "continue"}
+)
 
 _REDACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b"), "[REDACTED]"),
@@ -168,7 +171,54 @@ def _is_non_session_hit(meta: Mapping[str, Any], path_key: str) -> bool:
     if tool in _NON_SESSION_TOOLS:
         return True
     fmt = detect_format(Path(path_key))
-    return fmt in _NON_SESSION_FORMATS
+    if fmt in _NON_SESSION_FORMATS:
+        return True
+    if tool and tool not in _SESSION_INDEX_TOOLS and not _format_supported(fmt):
+        return True
+    return False
+
+
+def _max_window_span(selection: Mapping[str, Any]) -> int:
+    raw = selection.get("chunk_size")
+    try:
+        size = int(raw)
+    except (TypeError, ValueError):
+        size = 0
+    if size > 0:
+        return min(max(size + 4, size), 512)
+    return 64
+
+
+def _chunk_sha(window: list[dict]) -> str:
+    return hashlib.sha256(render_chunk(window).encode("utf-8")).hexdigest()
+
+
+def _find_window_by_sha(
+    messages: list[dict],
+    expected_sha: str,
+    *,
+    session_id: str | None,
+    max_span: int,
+) -> tuple[int, int] | None:
+    if not expected_sha or not messages:
+        return None
+    if session_id:
+        indices = [i for i, m in enumerate(messages) if m.get("session_id") == session_id]
+        if not indices:
+            return None
+        lo, hi = indices[0], indices[-1]
+    else:
+        lo, hi = 0, len(messages) - 1
+    span_cap = max(1, min(max_span, hi - lo + 1))
+    for start in range(lo, hi + 1):
+        end_limit = min(hi, start + span_cap - 1)
+        for end in range(start, end_limit + 1):
+            window = messages[start : end + 1]
+            if session_id and not all(m.get("session_id") == session_id for m in window):
+                continue
+            if _chunk_sha(window) == expected_sha:
+                return start, end
+    return None
 
 
 def _is_excluded_source(cfg: Mapping[str, Any], path_key: str) -> bool:
@@ -245,6 +295,8 @@ def _render_window(
     end: int,
     tool: str,
     expected_sha: str,
+    session_id: str | None = None,
+    max_window_span: int = 64,
 ) -> ExpandResult:
     path = Path(source_path)
     fmt = detect_format(path)
@@ -303,26 +355,75 @@ def _render_window(
             message=f"Failed to parse source: {exc}",
         )
 
-    if start < 0 or end < start or end >= len(messages):
-        return ExpandResult(
-            record_id="",
-            status="unsupported format",
-            source_path=source_path,
-            tool=tool,
-            format=fmt or "",
-            start_offset=start,
-            end_offset=end,
-            message=(
-                "Message offsets are out of range for the parsed source "
-                f"({len(messages)} messages)."
-            ),
+    recovery_note = ""
+    in_range = 0 <= start <= end < len(messages)
+    located: tuple[int, int] | None = None
+    if expected_sha:
+        if not in_range:
+            located = _find_window_by_sha(
+                messages,
+                expected_sha,
+                session_id=session_id,
+                max_span=max_window_span,
+            )
+        elif _chunk_sha(messages[start : end + 1]) != expected_sha:
+            located = _find_window_by_sha(
+                messages,
+                expected_sha,
+                session_id=session_id,
+                max_span=max_window_span,
+            )
+    if located:
+        start, end = located
+        in_range = True
+        recovery_note = (
+            "Located chunk by indexed content hash; stored message offsets "
+            "were stale for this source."
         )
+    elif not in_range:
+        if start >= len(messages):
+            return ExpandResult(
+                record_id="",
+                status="stale_offsets",
+                source_path=source_path,
+                tool=tool,
+                format=fmt or "",
+                start_offset=start,
+                end_offset=end,
+                message=(
+                    "Indexed message offsets are beyond the current parsed "
+                    f"source ({len(messages)} messages)."
+                ),
+            )
+        if start < len(messages):
+            end = len(messages) - 1
+            in_range = True
+            recovery_note = (
+                "Source file shorter than indexed span; showing available "
+                "messages."
+            )
+        else:
+            return ExpandResult(
+                record_id="",
+                status="unsupported format",
+                source_path=source_path,
+                tool=tool,
+                format=fmt or "",
+                start_offset=start,
+                end_offset=end,
+                message=(
+                    "Message offsets are out of range for the parsed source "
+                    f"({len(messages)} messages)."
+                ),
+            )
 
     window = messages[start : end + 1]
     text = render_chunk(window)
     live_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
     status = "exact"
-    warning = ""
+    warning = recovery_note
+    if recovery_note and "shorter than indexed" in recovery_note:
+        status = "drifted"
     if expected_sha:
         if live_sha != expected_sha:
             status = "drifted"
@@ -330,6 +431,8 @@ def _render_window(
                 "Source file changed since indexing; rendered text may differ "
                 "from the distilled unit."
             )
+            if recovery_note:
+                warning = f"{recovery_note} {warning}"
     date = _chunk_date(window)
     resolved_tool = tool or TOOL_BY_FORMAT.get(fmt or "", fmt or "")
     return ExpandResult(
@@ -392,6 +495,7 @@ def expand_record(
                 message="This hit is not a session transcript chunk; open the source path.",
             )
 
+        selection = _selection_parameters(meta)
         start, end = _bounds_from_meta(meta)
         if start is None:
             return ExpandResult(
@@ -400,6 +504,16 @@ def expand_record(
                 source_path=path_key,
                 message="Could not resolve chunk start_offset for this hit.",
             )
+
+        if end is None:
+            end = _coerce_int(selection.get("chunk_end"))
+        if end is None:
+            order = selection.get("message_order")
+            if isinstance(order, list) and order:
+                ends = [_coerce_int(item) for item in order]
+                ends = [item for item in ends if item is not None]
+                if ends:
+                    end = max(ends)
 
         if end is None and kind_or_err == "unit":
             summary = _find_summary_meta(store, path_key, start)
@@ -433,12 +547,15 @@ def expand_record(
                 expected_sha = _expected_chunk_sha(summary)
 
         tool = str(meta.get("tool") or "")
+        session_id = str(meta.get("session_id") or "").strip() or None
         rendered = _render_window(
             source_path=path_key,
             start=start,
             end=end,
             tool=tool,
             expected_sha=expected_sha,
+            session_id=session_id if (detect_format(Path(path_key)) == "sqlite_crush") else None,
+            max_window_span=_max_window_span(selection),
         )
         body = rendered.text
         if redact:
@@ -487,7 +604,12 @@ def register_expand_cli(typer_app) -> None:
         """Re-render the source conversation window for an indexed unit or chunk."""
         result = expand_record(record_id, max_chars=max_chars, redact=not no_redact)
         typer.echo(format_expand_output(result))
-        if result.status in ("not_found", "not_session", "unsupported format"):
+        if result.status in (
+            "not_found",
+            "not_session",
+            "unsupported format",
+            "stale_offsets",
+        ):
             raise typer.Exit(1)
 
 
