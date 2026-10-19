@@ -71,6 +71,20 @@ def semantic_session_meta_digest(session_id: str, workspace_directory: str) -> s
     return hashlib.sha256(_canonical_json(body).encode("utf-8")).hexdigest()
 
 
+
+
+def session_meta_digest_for_dir(session_dir: Path) -> str | None:
+    """Semantic session.json digest for revalidation (matches parse_complete_prefix)."""
+    meta_path = session_dir / "session.json"
+    if not meta_path.is_file() or meta_path.is_symlink():
+        return None
+    try:
+        raw_meta = load_bounded_session_meta_bytes(session_dir)
+        session_id, workspace = validated_kiro_session_identity(session_dir, raw_meta)
+    except ValueError:
+        return None
+    return semantic_session_meta_digest(session_id, workspace)
+
 def load_bounded_session_meta_bytes(session_dir: Path) -> bytes:
     session_json = session_dir / "session.json"
     if not session_json.is_file() or session_json.is_symlink():

@@ -145,10 +145,38 @@ def _parse_kiro_session_policy_table(
             "kiro_rebuild_forbidden",
             "kiro_session.allow_full_rebuild must be false in this slice",
         )
+    cohort_ledger_path = raw_kiro.get("cohort_ledger_path")
+    cohort_max = raw_kiro.get("cohort_max_paid_http_attempts")
+    cohort_operation_id = raw_kiro.get("cohort_operation_id")
+    if cohort_max is not None:
+        if type(cohort_max) is not int or cohort_max < 1:  # pylint: disable=unidiomatic-typecheck
+            raise IncrementalJsonlConfigError(
+                "invalid_kiro_cohort_max",
+                "kiro_session.cohort_max_paid_http_attempts must be a positive integer",
+            )
+        if not cohort_operation_id or not isinstance(cohort_operation_id, str):
+            raise IncrementalJsonlConfigError(
+                "kiro_cohort_operation_required",
+                "kiro_session.cohort_operation_id is required when cohort cap is set",
+            )
+        if not cohort_ledger_path or not isinstance(cohort_ledger_path, str):
+            raise IncrementalJsonlConfigError(
+                "kiro_cohort_ledger_required",
+                "kiro_session.cohort_ledger_path is required when cohort cap is set",
+            )
+        _canonical_config_path(cohort_ledger_path, label="kiro_session.cohort_ledger_path")
+    elif cohort_operation_id or cohort_ledger_path:
+        raise IncrementalJsonlConfigError(
+            "kiro_cohort_incomplete",
+            "kiro_session cohort settings require cap, operation_id, and ledger_path together",
+        )
     return KiroSessionPolicySettings(
         max_transform_chunks_per_run=max_chunks,
         max_source_bytes=max_bytes,
         allow_full_rebuild=False,
+        cohort_ledger_path=str(cohort_ledger_path) if cohort_ledger_path else None,
+        cohort_max_paid_http_attempts=cohort_max,
+        cohort_operation_id=str(cohort_operation_id) if cohort_operation_id else None,
     )
 
 def _parse_codex_rollout_admission_table(

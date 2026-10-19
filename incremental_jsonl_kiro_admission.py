@@ -14,6 +14,9 @@ class KiroSessionPolicySettings:
     max_transform_chunks_per_run: int
     max_source_bytes: int
     allow_full_rebuild: bool
+    cohort_ledger_path: str | None = None
+    cohort_max_paid_http_attempts: int | None = None
+    cohort_operation_id: str | None = None
 
 
 def kiro_admitted_live(

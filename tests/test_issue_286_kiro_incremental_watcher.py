@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from watch import expand_selected_kiro_session_meta_paths
+from watch_kiro_paths import expand_selected_kiro_session_meta_paths
 from watch_circuit_breaker import CircuitBreakerState
 
 

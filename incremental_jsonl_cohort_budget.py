@@ -60,6 +60,7 @@ class CohortBudgetLedger:
     def __init__(self, settings: CohortBudgetSettings):
         self.settings = settings
         self._lock_path = settings.ledger_path.with_suffix(".lock")
+        self._open_reservation: str | None = None
 
     def _acquire_budget_lock(self) -> int:
         import fcntl
@@ -122,6 +123,24 @@ class CohortBudgetLedger:
             self._persist(ledger)
         finally:
             self._release_budget_lock(fd)
+
+
+    def consume_provider_http_attempt(self, event: dict[str, object]) -> None:
+        if self._open_reservation is not None:
+            raise CohortBudgetError(
+                "cohort_reservation_in_flight",
+                "prior HTTP reservation was not finalized",
+            )
+        self._open_reservation = self.reserve_paid_http_attempt(event)
+
+    def report_provider_usage(
+        self, _event: dict[str, object], _usage: dict[str, object]
+    ) -> None:
+        if self._open_reservation is None:
+            return
+        reservation_id = self._open_reservation
+        self._open_reservation = None
+        self.finalize_reservation(reservation_id, success=True)
 
     def permit_callback(self) -> ProviderAttemptPermit:
         def permit(event: dict[str, object]) -> None:

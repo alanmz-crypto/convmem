@@ -22,12 +22,14 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 watcher child-event forwarding.
     # Refreshed for issue #286 commit digest reuse phase-timing event.
     # Refreshed for issue #286 Kiro incremental selected-session sidecar forwarding.
-    "watch.py": "58d8ce124bac3f16330853f17b67fa075d0de54b938a27af8e067645177f428b",
+    # Refreshed for issue #286 Kiro semantic revalidate + cohort budget wiring.
+    "watch_kiro_paths.py": "f1ef8e600226bb239ababd71f696c7b022a15c2a1714c89d5e1907cdac40741d",
+    "watch.py": "0a3f9f23dd192dc9aa30d46ee6b61ae5a5c6a6b9701bac8e70760d0a9edd5214",
     # Refreshed for issue #308 flush_path processed_log pass-through (2026-10-12).
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
     # Refreshed for issue #308 inter-model provenance rejection sidecar (2026-10-12).
-    "ingest.py": "45d8ff05780a403b3956a40d5a71133aabe93c2b7413133a2d7d16553b5a0a61",
+    "ingest.py": "45a87c4a7df41f9265786346223e1018ad359660e46ac0d771b546762553a21e",
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.
@@ -42,7 +44,7 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 full-rebuild Codex admission frontier fix.
     # Refreshed for issue #286 commit digest reuse (slice 1).
     # Refreshed for issue #286 Kiro incremental v2 routing and policy guards.
-    "incremental_jsonl.py": "503161fe5a24aca0ef397769064dc125ef2442e7adcaa1de53c89fbdf616fe3e",
+    "incremental_jsonl.py": "97cfbebbb4c2d0a4ad31940e33beb36aff32ca62c8e75ade72c70c537f3bb979",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

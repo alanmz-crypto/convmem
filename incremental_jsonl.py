@@ -688,7 +688,59 @@ class IncrementalJsonlCoordinator:
         self._run_started = 0.0
         self._lock: SourceAdvisoryLock | None = None
         self._max_units_in_flight = 0
+        self._cohort_ledger = self._init_cohort_ledger()
 
+    @property
+    def cohort_budget_enabled(self) -> bool:
+        return self._cohort_ledger is not None
+
+    def _init_cohort_ledger(self):
+        policy = self.settings.kiro_session
+        if not self.kiro_admitted_live or policy is None:
+            return None
+        if (
+            policy.cohort_max_paid_http_attempts is None
+            or not policy.cohort_ledger_path
+            or not policy.cohort_operation_id
+        ):
+            return None
+        from incremental_jsonl_cohort_budget import (
+            CohortBudgetLedger,
+            CohortBudgetSettings,
+        )
+
+        return CohortBudgetLedger(
+            CohortBudgetSettings(
+                ledger_path=Path(policy.cohort_ledger_path),
+                max_paid_http_attempts=int(policy.cohort_max_paid_http_attempts),
+                operation_id=str(policy.cohort_operation_id),
+            )
+        )
+
+    def _build_frontier_with_accounting(
+        self,
+        messages: list[dict],
+        frontier: int,
+        *,
+        cache_required_before: int = 0,
+    ) -> tuple[list[dict], int]:
+        if self._cohort_ledger is None:
+            return self._build_frontier(
+                messages,
+                frontier,
+                cache_required_before=cache_required_before,
+            )
+        import llm
+
+        with llm.provider_http_accounting(
+            self._cohort_ledger.consume_provider_http_attempt,
+            self._cohort_ledger.report_provider_usage,
+        ):
+            return self._build_frontier(
+                messages,
+                frontier,
+                cache_required_before=cache_required_before,
+            )
 
     def _effective_allow_full_rebuild(self) -> bool:
         if self.kiro_admitted_live and self.settings.kiro_session is not None:
@@ -944,24 +996,13 @@ class IncrementalJsonlCoordinator:
                 raise SourceCaptureError("validated_prefix_mutated", "selected prefix changed")
             digest = None
             if self.format_spec.session_meta_path:
-                sibling = self.source.parent / self.format_spec.session_meta_path
-                if sibling.is_file() and not sibling.is_symlink():
-                    if self.kiro_admitted_live:
-                        from adapters.kiro_session_jsonl import (
-                            load_bounded_session_meta_bytes,
-                            semantic_session_meta_digest,
-                            validated_kiro_session_identity,
-                        )
+                if self.format_spec.format_id == ELIGIBLE_FORMAT:
+                    from adapters.kiro_session_jsonl import session_meta_digest_for_dir
 
-                        try:
-                            raw_meta = load_bounded_session_meta_bytes(sibling.parent)
-                            session_id, workspace = validated_kiro_session_identity(
-                                sibling.parent, raw_meta
-                            )
-                            digest = semantic_session_meta_digest(session_id, workspace)
-                        except ValueError:
-                            digest = None
-                    else:
+                    digest = session_meta_digest_for_dir(self.source.parent)
+                else:
+                    sibling = self.source.parent / self.format_spec.session_meta_path
+                    if sibling.is_file() and not sibling.is_symlink():
                         digest = _sha(sibling.read_bytes())
             if digest != snapshot["session_meta_digest"]:
                 raise SourceCaptureError("source_identity_changed", "session metadata changed")
@@ -2703,7 +2744,7 @@ class IncrementalJsonlCoordinator:
                 except IncrementalJsonlError:
                     prior_count = 0
                 frontier = frontier_start(prior_count, self.chunk_size, self.overlap)
-                prepared, reused = self._build_frontier(
+                prepared, reused = self._build_frontier_with_accounting(
                     snapshot["messages"],
                     frontier,
                     cache_required_before=frontier,
@@ -3086,7 +3127,7 @@ class IncrementalJsonlCoordinator:
                 )
             )
             try:
-                prepared, reused = self._build_frontier(
+                prepared, reused = self._build_frontier_with_accounting(
                     snapshot["messages"],
                     frontier,
                     cache_required_before=cache_required_before,

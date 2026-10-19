@@ -531,8 +531,13 @@ def watch_skip_reason(
             return "excluded"
 
     if processed_log is None:
-        cfg = load_config()
-        processed_log = cfg["index"]["processed_log"]
+        if cfg is not None:
+            processed_log = cfg["index"]["processed_log"]
+        elif processed is not None:
+            processed_log = None
+        else:
+            cfg = load_config()
+            processed_log = cfg["index"]["processed_log"]
 
     if file_hash is None:
         try:
@@ -542,7 +547,9 @@ def watch_skip_reason(
 
     from inter_model_rejections import inter_model_rejection_matches
 
-    if inter_model_rejection_matches(processed_log, path_str, file_hash):
+    if processed_log is not None and inter_model_rejection_matches(
+        processed_log, path_str, file_hash
+    ):
         return "inter_model_rejected"
 
     path_known_hash = _stored_hash_for_path(path_str, processed)
