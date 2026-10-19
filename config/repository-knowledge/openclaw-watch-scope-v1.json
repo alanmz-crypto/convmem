@@ -412,6 +412,16 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "chunk_expand.py",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "chunk_render.py",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "ci/pylint-baseline.json",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6757,6 +6767,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_chunk_render_ingest_parity.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_ci_contract.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7023,6 +7038,11 @@
     },
     {
       "path": "tests/test_file_generation_validate.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_full_chunk_expansion.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -8388,7 +8408,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "2e483598cc74c9f2d9f566924808aeda6193570b2bd72748408e38fb488eee12",
+      "sha256": "97bbdbbcaead8e2bd9f780d9147ddd347cecbdf16a684077757ba73be0f270ff",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8417,6 +8437,40 @@
       "retrieval_needles": [
         "chroma_write_store.py",
         "chroma write store"
+      ],
+      "sensitivity": "source_code"
+    },
+    {
+      "path": "chunk_expand.py",
+      "sha256": "be852b258f6fe38c3bba9c877c038024b2f39e8a0efa3afd00cbe40f10788239",
+      "content_class": "python",
+      "parser_mode": "python_ast_spans",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "chunk_expand.py",
+        "chunk expand"
+      ],
+      "sensitivity": "source_code"
+    },
+    {
+      "path": "chunk_render.py",
+      "sha256": "abe9b105ebbbfcc5e59b304627c89403948a459ee0c4e1396097978cd6643184",
+      "content_class": "python",
+      "parser_mode": "python_ast_spans",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "chunk_render.py",
+        "chunk render"
       ],
       "sensitivity": "source_code"
     },
@@ -8507,7 +8561,7 @@
     },
     {
       "path": "convmem.py",
-      "sha256": "daaf359b19d42bbe5c1766e7dcd959b95b15f6757dd0e117ce290bf5a4a231fe",
+      "sha256": "49e00e862eee5119072656bfea914725c4957b234b14a5a2525b3fb6b20dcf18",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8983,7 +9037,7 @@
     },
     {
       "path": "mcp_server.py",
-      "sha256": "f9ac448cf8ecbb9c8822f327a79a7af753685458ea1cd71e0dbed9c0fae85cb3",
+      "sha256": "2b58eac1724a99b5935de99c7016160d33805ac6c419d8355e70fd45a41de431",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
