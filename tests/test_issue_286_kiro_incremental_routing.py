@@ -102,7 +102,8 @@ def test_missing_kiro_policy_refuses_before_route(tmp_path: Path, monkeypatch: p
     with pytest.raises(config.IncrementalJsonlConfigError, match="kiro_rebuild_forbidden"):
         config.incremental_jsonl_settings(cfg)
     cfg["index"]["incremental_jsonl"].pop("kiro_session")
-    with pytest.raises(config.IncrementalJsonlConfigError, match="kiro_policy_required"):
+    # test_config reloads config; resolve the class held by the raising module.
+    with pytest.raises(incremental_jsonl.IncrementalJsonlConfigError, match="kiro_policy_required"):
         incremental_jsonl.maybe_route_incremental(
             cfg=cfg,
             idx=cfg["index"],
@@ -138,3 +139,5 @@ def test_isolated_kiro_uses_transform_v2_descriptor(tmp_path: Path, monkeypatch:
     assert coord.transform_descriptor is not None
     assert coord.codex_admitted_live is False
     assert coord.kiro_admitted_live is False
+
+# ref: ../incremental_jsonl.py, ./test_config.py — exception identity after config reload
