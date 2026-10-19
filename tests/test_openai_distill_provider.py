@@ -1,5 +1,7 @@
 """Hermetic tests for OpenAI distill routing (Arc Codex, gpt-* models)."""
 
+# pylint: disable=protected-access
+
 from __future__ import annotations
 
 import json
@@ -160,7 +162,7 @@ def test_openai_missing_key_fail_closed(monkeypatch) -> None:
     )
     with pytest.raises(llm.ModelFallbackError, match="OPENAI_API_KEY"):
         llm.generate("p", "gpt-6-luna", "http://h")
-    assert ollama_calls == []
+    assert not ollama_calls
 
 
 def test_openai_write_scope_refused(monkeypatch) -> None:
@@ -197,11 +199,11 @@ def test_resolve_generation_binding_openai() -> None:
 
 def test_distill_provenance_binding(monkeypatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-    monkeypatch.setattr(
-        distill,
-        "generate",
-        lambda *_a, **_k: '[{"type":"pattern","title":"t","summary":"s","keywords":["k"],"confidence":0.9,"domain":"general"}]',
+    sample_unit = (
+        '[{"type":"pattern","title":"t","summary":"s",'
+        '"keywords":["k"],"confidence":0.9,"domain":"general"}]'
     )
+    monkeypatch.setattr(distill, "generate", lambda *_a, **_k: sample_unit)
     units, _raw = distill.distill_with_response("chunk", "gpt-6-luna", "http://h")
     assert units
     binding = llm.resolve_generation_binding("gpt-6-luna")
