@@ -373,7 +373,7 @@ def test_missing_source_file(expand_env) -> None:
     assert result.status == "missing"
 
 
-def test_excluded_source_refused(expand_env) -> None:
+def test_excluded_source_still_expands(expand_env) -> None:
     cfg, store, home = expand_env
     path = _cursor_source(
         home,
@@ -403,8 +403,68 @@ def test_excluded_source_refused(expand_env) -> None:
         encoding="utf-8",
     )
     result = expand_record("unit-excluded", cfg=cfg)
-    assert result.status == "excluded"
-    assert "refused" in result.message.lower()
+    assert result.status == "exact"
+    assert "secret" in result.text
+    assert "archived from re-indexing" in (result.warning or "").lower()
+
+
+def test_not_session_inter_model_doc(expand_env, tmp_path) -> None:
+    cfg, store, _home = expand_env
+    path = tmp_path / "docs" / "inter-model" / "handoff.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("# Handoff\n\nBody.\n", encoding="utf-8")
+    resolved = str(path.resolve())
+    meta = {
+        "id": "unit-inter-model",
+        "title": "Handoff",
+        "source_path": resolved,
+        "start_offset": 0,
+        "tool": "inter-model",
+    }
+    store.add_unit("unit-inter-model", "handoff", [0.1] * 8, meta)
+    result = expand_record("unit-inter-model", cfg=cfg)
+    assert result.status == "not_session"
+    assert result.source_path == resolved
+    assert "not a session transcript" in result.message.lower()
+
+
+def test_exact_kiro_legacy_sqlite(expand_env) -> None:
+    import sqlite3
+
+    cfg, store, home = expand_env
+    db_path = home / ".local" / "share" / "kiro-cli" / "data.sqlite3"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "conversation_id": "c1",
+        "history": [
+            {
+                "user": {"content": {"Prompt": {"prompt": "kiro sqlite user"}}},
+                "assistant": {
+                    "Response": {"content": "kiro sqlite assistant"},
+                },
+            }
+        ],
+    }
+    conn = sqlite3.connect(db_path)
+    conn.execute("CREATE TABLE conversations_v2 (value TEXT)")
+    conn.execute("INSERT INTO conversations_v2 VALUES (?)", (json.dumps(payload),))
+    conn.commit()
+    conn.close()
+    path = db_path.resolve()
+    assert detect_format(path) == "sqlite_kiro"
+    messages = get_parser(path)(str(path))
+    _seed_unit(
+        store,
+        unit_id="unit-kiro-sqlite",
+        source_path=str(path),
+        start=0,
+        end=1,
+        window=messages[0:2],
+        tool="kiro",
+    )
+    result = expand_record("unit-kiro-sqlite", cfg=cfg)
+    assert result.status == "exact"
+    assert "kiro sqlite user" in result.text
 
 
 def test_redaction_toggle(expand_env) -> None:

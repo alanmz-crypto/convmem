@@ -412,6 +412,11 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "chunk_expand.py",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
       "path": "ci/pylint-baseline.json",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4226,7 +4231,6 @@
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
-
     {
       "path": "docs/plans/SCOPED-PROOF-WRITER-INVENTORY.json",
       "class": "unrelated",
@@ -5387,7 +5391,6 @@
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
-
     {
       "path": "incremental_mutation_proof.py",
       "class": "unrelated",
@@ -5853,7 +5856,6 @@
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
-
     {
       "path": "scripts/generate_scoped_proof_writer_inventory.py",
       "class": "unrelated",
@@ -7020,6 +7022,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_full_chunk_expansion.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_git_hooks.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7194,13 +7201,11 @@
       "class": "include",
       "reason": "combined-system maintenance file"
     },
-
     {
       "path": "tests/test_issue_286_commit_digest_reuse.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
-
     {
       "path": "tests/test_issue_286_scoped_proof_shadow.py",
       "class": "unrelated",
@@ -8377,6 +8382,23 @@
       "retrieval_needles": [
         "chroma_write_store.py",
         "chroma write store"
+      ],
+      "sensitivity": "source_code"
+    },
+    {
+      "path": "chunk_expand.py",
+      "sha256": "9575bca25441e01313bb4dbe31526e0fce20e71a4b73608be2f98bf82beea4be",
+      "content_class": "python",
+      "parser_mode": "python_ast_spans",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "chunk_expand.py",
+        "chunk expand"
       ],
       "sensitivity": "source_code"
     },

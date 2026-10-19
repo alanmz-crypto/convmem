@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import re
@@ -27,7 +28,12 @@ _EXPAND_JSONL_FORMATS = frozenset(
         "jsonl_claude_session",
     }
 )
-_EXPAND_SQLITE_FORMATS = frozenset({"sqlite_crush"})
+_EXPAND_SQLITE_FORMATS = frozenset({"sqlite_crush", "sqlite_kiro"})
+
+_NON_SESSION_TOOLS = frozenset({"inter-model", "repository-knowledge", "ryan"})
+_NON_SESSION_FORMATS = frozenset(
+    {"inter_model_doc", "repository_knowledge_v1", "kiro_steering"}
+)
 
 _REDACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b"), "[REDACTED]"),
@@ -157,6 +163,14 @@ def _bounds_from_meta(meta: Mapping[str, Any]) -> tuple[int | None, int | None]:
     return start, end
 
 
+def _is_non_session_hit(meta: Mapping[str, Any], path_key: str) -> bool:
+    tool = str(meta.get("tool") or "").strip().lower()
+    if tool in _NON_SESSION_TOOLS:
+        return True
+    fmt = detect_format(Path(path_key))
+    return fmt in _NON_SESSION_FORMATS
+
+
 def _is_excluded_source(cfg: Mapping[str, Any], path_key: str) -> bool:
     processed_path = str(cfg.get("index", {}).get("processed_log") or "")
     if processed_path:
@@ -245,8 +259,8 @@ def _render_window(
             end_offset=end,
             message=(
                 "Full-chunk expansion supports JSONL session adapters "
-                "(Cursor, Codex, Claude, Kiro, Copilot) and Crush SQLite when "
-                "message offsets match ingest."
+                "(Cursor, Codex, Claude, Kiro, Copilot), Kiro legacy SQLite, "
+                "and Crush SQLite when message offsets match ingest."
             ),
         )
 
@@ -342,11 +356,11 @@ def expand_record(
     """Expand a knowledge-unit id or chunk-summary id to indexed source text."""
 
     from config import load_config
-    from serving_index_repository import open_serving_index_repository
+    from chroma_store import open_chroma_for_verify
 
     live_cfg = dict(cfg or load_config())
-    with open_serving_index_repository(live_cfg) as repo:
-        store = repo.legacy_store()
+    chroma_dir = str(live_cfg.get("index", {}).get("chroma_dir") or "")
+    with contextlib.closing(open_chroma_for_verify(chroma_dir)) as store:
         meta, kind_or_err = _resolve_binding(store, record_id)
         if meta is None:
             return ExpandResult(
@@ -364,12 +378,18 @@ def expand_record(
             )
 
         path_key = str(Path(source_path).expanduser().resolve())
-        if _is_excluded_source(live_cfg, path_key):
+        archived_note = _is_excluded_source(live_cfg, path_key)
+
+        if _is_non_session_hit(meta, path_key):
+            tool = str(meta.get("tool") or "")
+            fmt = detect_format(Path(path_key)) or ""
             return ExpandResult(
                 record_id=record_id,
-                status="excluded",
+                status="not_session",
                 source_path=path_key,
-                message="Source is soft-excluded from indexing; expansion refused.",
+                tool=tool,
+                format=fmt,
+                message="This hit is not a session transcript chunk; open the source path.",
             )
 
         start, end = _bounds_from_meta(meta)
@@ -386,6 +406,18 @@ def expand_record(
             if summary:
                 end = _coerce_int(summary.get("end_offset"))
         if end is None:
+            if _is_non_session_hit(meta, path_key):
+                tool = str(meta.get("tool") or "")
+                fmt = detect_format(Path(path_key)) or ""
+                return ExpandResult(
+                    record_id=record_id,
+                    status="not_session",
+                    source_path=path_key,
+                    tool=tool,
+                    format=fmt,
+                    start_offset=start,
+                    message="This hit is not a session transcript chunk; open the source path.",
+                )
             return ExpandResult(
                 record_id=record_id,
                 status="not_found",
@@ -412,6 +444,10 @@ def expand_record(
         if redact:
             body = redact_secrets(body)
         body, truncated = truncate_text(body, max_chars)
+        warning = rendered.warning
+        if archived_note:
+            archive_msg = "Source archived from re-indexing."
+            warning = f"{warning} {archive_msg}".strip() if warning else archive_msg
         return ExpandResult(
             record_id=record_id,
             status=rendered.status,
@@ -422,7 +458,7 @@ def expand_record(
             end_offset=rendered.end_offset,
             date=rendered.date,
             text=body,
-            warning=rendered.warning,
+            warning=warning,
             truncated=truncated,
             message=rendered.message,
         )
@@ -451,7 +487,7 @@ def register_expand_cli(typer_app) -> None:
         """Re-render the source conversation window for an indexed unit or chunk."""
         result = expand_record(record_id, max_chars=max_chars, redact=not no_redact)
         typer.echo(format_expand_output(result))
-        if result.status in ("not_found", "excluded", "unsupported format"):
+        if result.status in ("not_found", "not_session", "unsupported format"):
             raise typer.Exit(1)
 
 
