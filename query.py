@@ -9,8 +9,9 @@ Reranking: Step 6 (query_units only).
 from __future__ import annotations
 
 import json
-import sys
+import os
 import re
+import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -835,6 +836,11 @@ def render_search_results(results: list[dict], *, units: bool = True) -> None:
         console.print(panel)
         if i < len(results):
             console.print()
+
+    if os.environ.get("CONVMEM_SEARCH_EXPAND") == "1" and results:
+        from chunk_expand import print_expanded_search_hits
+
+        print_expanded_search_hits(results)
 
 
 def _citation_block(c: dict) -> Group:
