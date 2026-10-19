@@ -334,6 +334,19 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
     def count_summaries(self) -> int:
         return self._collection(SUMMARIES).count()
 
+    def get_summary(self, summary_id: str) -> dict | None:
+        """Fetch a single conversation summary by id, or None if missing."""
+        res = self._collection(SUMMARIES).get(
+            ids=[summary_id], include=["metadatas", "documents"]
+        )
+        ids = res.get("ids") or []
+        if not ids:
+            return None
+        metas = res.get("metadatas") or [{}]
+        meta = dict(metas[0] or {})
+        meta["id"] = ids[0]
+        return meta
+
     def summaries_metadata(self) -> list[dict]:
         col = self._collection(SUMMARIES)
         res = col.get(include=["metadatas"])

@@ -50,7 +50,7 @@ from open_source import citation_open_meta, run_open
 app = typer.Typer(add_completion=False, help="Search your past AI conversations.")
 
 _SUBCOMMANDS = {
-    "index", "stats", "search", "ask", "open", "add", "verify", "related",
+    "index", "stats", "search", "expand", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
     "unresolved", "tldr", "work", "agent-run", "scope", "shadow-inventory", "shadow-activate",
     "shadow-rollback", "shadow-canary", "writer-census-start",
@@ -2224,6 +2224,11 @@ def main():
     argv = sys.argv[1:]
     if argv and not argv[0].startswith("-") and argv[0] not in _SUBCOMMANDS:
         sys.argv = [sys.argv[0], "search"] + argv
+        argv = sys.argv[1:]
+    if argv and argv[0] == "search" and "--expand" in argv:
+        os.environ["CONVMEM_SEARCH_EXPAND"] = "1"
+        filtered = [tok for tok in sys.argv if tok != "--expand"]
+        sys.argv = filtered
     app()
 
 
@@ -2236,3 +2241,12 @@ if __name__ == "__main__":
 # fingerprint-pad-0
 # fingerprint-pad-1
 # fingerprint-pad-2
+
+
+def _register_expand_cli() -> None:
+    from chunk_expand import register_expand_cli
+
+    register_expand_cli(app)
+
+
+_register_expand_cli()

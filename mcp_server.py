@@ -800,6 +800,23 @@ def search_fast(query: str, top_k: int = 5, domain: str = "", site: str = "", cr
 
 
 @mcp.tool()
+def expand(
+    record_id: str,
+    max_chars: int = 20000,
+    no_redact: bool = False,
+) -> str:
+    """Read-only: expand a unit or chunk-summary id to the original source window."""
+    from chunk_expand import expand_record
+
+    result = expand_record(
+        record_id,
+        max_chars=max_chars,
+        redact=not no_redact,
+    )
+    return json.dumps(result.to_dict(), indent=2)
+
+
+@mcp.tool()
 def search(query: str, top_k: int = 5, domain: str = "", site: str = "", cross_domain: bool = False) -> str:
     """Search the knowledge corpus for relevant units. Returns scored results."""
     _apply_shell_roots_brief_boundary_sync()
