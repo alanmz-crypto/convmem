@@ -4227,6 +4227,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/SCOPED-PROOF-WRITER-INVENTORY.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/SHADOW-WRITER-CENSUS.json",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5392,6 +5397,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "incremental_mutation_proof.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "incremental_retry_state.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5848,6 +5858,11 @@
     },
     {
       "path": "scripts/generate-site-reference.sh",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "scripts/generate_scoped_proof_writer_inventory.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -7217,6 +7232,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_issue_286_scoped_proof_shadow.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_issue_286_stage2_corrective12.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8363,7 +8383,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "14f792ace510159f08941237cede220b2865a105141d59079165e9bf47a69b37",
+      "sha256": "2e483598cc74c9f2d9f566924808aeda6193570b2bd72748408e38fb488eee12",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8414,7 +8434,7 @@
     },
     {
       "path": "config.py",
-      "sha256": "aab85109735c9ddb583149b97422471001e02684ff4a69ad9d9fd7a3e68c919c",
+      "sha256": "3bcfdd5aed6ba56995c42a977dc3cb453fc24f8d9a8741d0507454d3246df1e1",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

@@ -65,6 +65,7 @@ class IncrementalJsonlSettings:  # pylint: disable=too-many-instance-attributes
     embed_dimension: int | None = None
     codex_rollout_admission: CodexRolloutAdmissionSettings | None = None
     kiro_session: KiroSessionPolicySettings | None = None
+    mutation_proof_observer: str = "off"
 
 
 def _canonical_config_path(raw: str, *, label: str) -> Path:
@@ -581,6 +582,7 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
             state_dir=default_state,
             allow_full_rebuild=False,
             table_present=False,
+            mutation_proof_observer="off",
         )
     if not isinstance(table, dict):
         raise IncrementalJsonlConfigError(
@@ -640,6 +642,14 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
             "invalid_embed_dimension",
             "index.incremental_jsonl.embed_dimension must be a positive integer",
         )
+
+    observer = table.get("mutation_proof_observer", "off")
+    if observer not in ("off", "shadow"):
+        raise IncrementalJsonlConfigError(
+            "invalid_mutation_proof_observer",
+            "index.incremental_jsonl.mutation_proof_observer must be off or shadow",
+        )
+
     codex_admission = _parse_codex_rollout_admission_table(
         table.get("codex_rollout_admission"),
         enabled=bool(enabled),
@@ -664,6 +674,7 @@ def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJson
         embed_dimension=embed_dimension,
         codex_rollout_admission=codex_admission,
         kiro_session=kiro_policy,
+        mutation_proof_observer=str(observer),
     )
 
 
@@ -726,3 +737,5 @@ def load_config(path: Path | str | None = None) -> dict:
 
 if __name__ == "__main__":
     print(json.dumps(load_config(), indent=2))
+
+# ref: ./incremental_jsonl.py — consumes Kiro policy and shadow observer settings

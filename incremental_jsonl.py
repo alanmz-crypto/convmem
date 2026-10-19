@@ -540,6 +540,7 @@ class IncrementalJsonlCoordinator:
         self.cfg = cfg or self._load_isolated_config()
         settings = incremental_jsonl_settings(self.cfg)
         self.settings = settings
+        self.mutation_proof_observer = settings.mutation_proof_observer
         self.enabled = bool(settings.enabled if cfg is not None else enabled)
         self.fault = fault or (lambda _point: None)
         self.last_failure_code = ""
@@ -2495,14 +2496,57 @@ class IncrementalJsonlCoordinator:
                                 self._write_transaction(tx_payload)
                         else:
                             self._require_rollback_authority(rollback_authority_sha256)
-                        with phase_span("apply"):
-                            chunks, units, events, keep_summaries, keep_units = (
-                                self._apply_prepared(prepared)
+                        from incremental_mutation_proof import shadow_proof_attempt
+
+                        full_compare = "not_reached"
+                        shadow_session = None
+                        with self._session() as chroma_session:
+                            with shadow_proof_attempt(
+                                mode=self.mutation_proof_observer,
+                                state_dir=self.state_dir,
+                                transaction_id=transaction_id,
+                                source_path=self.path_key,
+                                source_identity=self.source_id,
+                                generation=generation,
+                                prepared=prepared,
+                                store=chroma_session.store,
+                                chroma_dir=str(chroma_session.store.chroma_dir),
+                                coordinator_revision=self.coordinator_implementation_revision,
+                            ) as shadow_session:
+                                if (
+                                    shadow_session is not None
+                                    and rollback_authority_sha256 is not None
+                                ):
+                                    shadow_session.context.rollback_sha256 = (
+                                        rollback_authority_sha256
+                                    )
+                                with phase_span("apply"):
+                                    chunks, units, events, keep_summaries, keep_units = (
+                                        self._apply_prepared(prepared)
+                                    )
+                                if rollback_authority_sha256 is not None:
+                                    self._require_rollback_authority(rollback_authority_sha256)
+                                try:
+                                    with phase_span("verify_non_source"):
+                                        self._verify_non_source_collections(
+                                            attempt_non_source
+                                        )
+                                    full_compare = "equal"
+                                except IncrementalJsonlError as exc:
+                                    if exc.code == "non_source_isolation_changed":
+                                        full_compare = "changed"
+                                    raise
+                        if shadow_session is not None:
+                            phases["scoped_proof_observer"] = round(
+                                float(shadow_session.observer_seconds), 6
                             )
-                        if rollback_authority_sha256 is not None:
-                            self._require_rollback_authority(rollback_authority_sha256)
-                        with phase_span("verify_non_source"):
-                            self._verify_non_source_collections(attempt_non_source)
+                            try:
+                                shadow_session.finalize(
+                                    full_result=full_compare,
+                                    phases=phases,
+                                )
+                            except OSError:
+                                pass
                         self._revalidate_live_prefix(snapshot)
                         with phase_span("projection_fingerprint"):
                             projection_fingerprint = self._projection_fingerprint()
