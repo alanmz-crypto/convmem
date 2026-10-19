@@ -25,7 +25,7 @@ class IncrementalFormatSpec:
 _KIRO = IncrementalFormatSpec(
     format_id="jsonl_kiro_session",
     adapter_module="adapters.kiro_session_jsonl",
-    adapter_contract_version="kiro-complete-prefix-v1",
+    adapter_contract_version="kiro-complete-prefix-v2",
     tool="kiro",
     parse_complete_prefix=kiro_session_jsonl.parse_complete_prefix,
     snapshot_basename="messages.jsonl",

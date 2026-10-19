@@ -23,7 +23,7 @@ from tests.incremental_jsonl_helpers import write_source
 
 def test_kiro_is_only_default_eligible_format() -> None:
     assert ELIGIBLE_FORMAT == "jsonl_kiro_session"
-    assert ADAPTER_CONTRACT_VERSION == "kiro-complete-prefix-v1"
+    assert ADAPTER_CONTRACT_VERSION == "kiro-complete-prefix-v2"
     assert CHECKPOINT_VERSION == 1
 
 

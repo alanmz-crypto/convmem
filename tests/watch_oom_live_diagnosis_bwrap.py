@@ -85,6 +85,12 @@ def build_bwrap_command(
     ]
     for empty, target in production_convmem_mask_ro_binds(scratch_root):
         cmd.extend(["--ro-bind", empty, target])
+    prod_share = (Path.home() / ".local/share/convmem").resolve()
+    chdir = str(repo_root)
+    if repo_root.is_relative_to(prod_share / "worktrees"):
+        wt_mount = "/tmp/convmem-worktree-repo"
+        cmd.extend(["--ro-bind", str(repo_root), wt_mount])
+        chdir = wt_mount
     cmd.extend(
         [
             "--bind",
@@ -94,7 +100,7 @@ def build_bwrap_command(
             str(source_path),
             str(source_path),
             "--chdir",
-            str(repo_root),
+            chdir,
         ]
     )
     for bind_path in external_ro_binds or ():

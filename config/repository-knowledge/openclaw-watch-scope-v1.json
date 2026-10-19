@@ -4226,7 +4226,6 @@
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
-
     {
       "path": "docs/plans/SCOPED-PROOF-WRITER-INVENTORY.json",
       "class": "unrelated",
@@ -5373,6 +5372,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "incremental_jsonl_cohort_budget.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "incremental_jsonl_formats.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5383,11 +5387,15 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "incremental_jsonl_kiro_admission.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "incremental_jsonl_production.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
-
     {
       "path": "incremental_mutation_proof.py",
       "class": "unrelated",
@@ -5853,7 +5861,6 @@
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
-
     {
       "path": "scripts/generate_scoped_proof_writer_inventory.py",
       "class": "unrelated",
@@ -7194,13 +7201,36 @@
       "class": "include",
       "reason": "combined-system maintenance file"
     },
-
     {
       "path": "tests/test_issue_286_commit_digest_reuse.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
-
+    {
+      "path": "tests/test_issue_286_kiro_incremental_budget.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_codex_regression.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_routing.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_sidecar.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_watcher.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
     {
       "path": "tests/test_issue_286_scoped_proof_shadow.py",
       "class": "unrelated",
@@ -8262,6 +8292,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "watch_kiro_paths.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "watch_source_paths.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8399,7 +8434,7 @@
     },
     {
       "path": "config.py",
-      "sha256": "2fb69474b4b9fd638d9b1dadb8b8fc8f27d48bf4683380b4df86b6be9f3913a5",
+      "sha256": "3bcfdd5aed6ba56995c42a977dc3cb453fc24f8d9a8741d0507454d3246df1e1",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8909,7 +8944,7 @@
     },
     {
       "path": "ingest.py",
-      "sha256": "803bfe02856872f3389ef41567d140114c9aae5558dde294c9dbb61788aaa5e5",
+      "sha256": "45a87c4a7df41f9265786346223e1018ad359660e46ac0d771b546762553a21e",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -9504,7 +9539,7 @@
     },
     {
       "path": "tests/test_watch_skip.py",
-      "sha256": "52ff10655821b67d43e29d4d1c3ea7c9720a9e9809613cae5bf095a1d5f96c6c",
+      "sha256": "87200fa2cf57934d9c77e0f2410394d9d76ec199b890349233766d41770a58a1",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -9538,7 +9573,7 @@
     },
     {
       "path": "watch.py",
-      "sha256": "29b00777ec7648665b5e4f9d65129f1cbcb93267ba37ec1d446bebb206860efd",
+      "sha256": "0a3f9f23dd192dc9aa30d46ee6b61ae5a5c6a6b9701bac8e70760d0a9edd5214",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
