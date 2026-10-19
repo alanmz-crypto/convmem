@@ -16,7 +16,6 @@ import pytest
 
 from chroma_store import SUMMARIES, UNITS
 from complete_data_restore import classify_scoped_shadow_diagnostic, OUTCOME_ADVISORY
-from config import IncrementalJsonlConfigError, incremental_jsonl_settings
 from incremental_jsonl import IncrementalJsonlCoordinator
 from incremental_mutation_proof import (
     DIAGNOSTIC_SCHEMA,
@@ -115,10 +114,13 @@ def _checkpoint_commit_state(coord: IncrementalJsonlCoordinator) -> str:
 
 
 def test_config_rejects_scoped_observer() -> None:
-    with pytest.raises(IncrementalJsonlConfigError):
-        incremental_jsonl_settings(
+    import config
+
+    with pytest.raises(config.IncrementalJsonlConfigError) as excinfo:
+        config.incremental_jsonl_settings(
             {"index": {"incremental_jsonl": {"enabled": True, "mutation_proof_observer": "scoped"}}}
         )
+    assert excinfo.value.code == "invalid_mutation_proof_observer"
 
 
 def test_c_sh1_sc1_off_shadow_parity_under_observer_failure(
