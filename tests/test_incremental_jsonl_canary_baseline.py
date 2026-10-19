@@ -45,7 +45,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 commit digest reuse (slice 1).
     # Refreshed for issue #286 Kiro incremental v2 routing and policy guards.
     # Refreshed for issue #286 corrective 2: fail-closed paid cohort accounting.
-    "incremental_jsonl.py": "2bebdf2fe5ad88db5d844d09542fd89c098cd7842442e41be0cb0741ea9b4be0",
+    # Refreshed for issue #286 corrective 4: checkpoint sidecar identity guard.
+    "incremental_jsonl.py": "5299ba3a9835b4a344b97ac7c0c603babbf386528def06f46adbf93acfe20360",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

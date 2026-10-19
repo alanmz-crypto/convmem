@@ -2532,6 +2532,8 @@ class IncrementalJsonlCoordinator:
                                 self.coordinator_implementation_revision
                             ),
                         }
+                        if self.kiro_admitted_live:
+                            checkpoint["session_meta_digest"] = snapshot["session_meta_digest"]
                         if self.transform_v2 and self.transform_descriptor is not None:
                             checkpoint.update(
                                 descriptor_to_checkpoint_fields(self.transform_descriptor)
@@ -2876,10 +2878,28 @@ class IncrementalJsonlCoordinator:
             transaction_id=pending_tx,
         )
 
+    def _kiro_checkpoint_identity_refusal(self, checkpoint: dict | None) -> str | None:
+        """Bind admitted Kiro reuse to the checkpoint's effective sidecar identity."""
+        if (
+            self.kiro_admitted_live
+            and self.format_spec.format_id == ELIGIBLE_FORMAT
+            and checkpoint is not None
+        ):
+            from adapters.kiro_session_jsonl import session_meta_digest_for_dir
+
+            if checkpoint.get("session_meta_digest") != session_meta_digest_for_dir(
+                self.source.parent
+            ):
+                return "rebuild_required:source_identity_changed"
+        return None
+
     def _unchanged_prereturn_refusal(
         self, checkpoint: dict | None, snapshot: dict
     ) -> str | None:
         """Guards shared by the pre-capture shortcut and the full-path unchanged return."""
+        identity_refusal = self._kiro_checkpoint_identity_refusal(checkpoint)
+        if identity_refusal:
+            return identity_refusal
         if self.codex_admitted_live:
             if (
                 checkpoint is not None
@@ -2949,6 +2969,9 @@ class IncrementalJsonlCoordinator:
             return None
         if self.bootstrap_existing:
             return None
+        identity_refusal = self._kiro_checkpoint_identity_refusal(checkpoint)
+        if identity_refusal:
+            return self._refusal(identity_refusal, fallback="source_identity_changed")
         try:
             fd = open_source_readonly(self.source)
             try:
@@ -3393,3 +3416,4 @@ def _raise_incremental_retry_refusal(
     )
 
 # ref: ./incremental_jsonl_cohort_budget.py — durable paid cohort cap before dispatch
+# ref: ./adapters/kiro_session_jsonl.py — effective sidecar identity guards checkpoint reuse
