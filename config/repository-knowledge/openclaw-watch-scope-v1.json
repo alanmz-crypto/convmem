@@ -6972,6 +6972,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_expand_cli_registration.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_export_compaction.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8561,7 +8566,7 @@
     },
     {
       "path": "convmem.py",
-      "sha256": "49e00e862eee5119072656bfea914725c4957b234b14a5a2525b3fb6b20dcf18",
+      "sha256": "65ac6f6a91ca4e1b33a2c7c6618430ab7e38d704be0c89c5bc18d0288ae8ba01",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
