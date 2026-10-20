@@ -513,11 +513,8 @@ def validate_rollback_processed_semantics(
         return
     if preimage:
         return
-    if summaries or units:
-        raise IncrementalJsonlError(
-            "rollback_processed_authority_invalid",
-            "empty processed preimage with prior rows",
-        )
+    # Empty processed at capture is allowed without an embedded checkpoint even when
+    # row snapshots exist (crash after apply, before processed publish).
     if bootstrap_existing:
         return
 
