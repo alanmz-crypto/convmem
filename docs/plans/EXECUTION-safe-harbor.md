@@ -1,5 +1,11 @@
 # Execution Plan — Safe Harbor
 
+**ON HOLD — Ryan, 2026-10-19.** Historical grants and next-step instructions below
+do not authorize continuation. The reviewed initializer scope remains at `c46fbc6`;
+implementation has not been granted or begun. Resume only on Ryan's explicit
+instruction, starting with [STATUS](STATUS-safe-harbor.md). This hold changes no
+reviewed contract and authorizes no live operation.
+
 > **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** Section 19 records the bounded read-only deployment preflight/drafting grant. [ROLLOUT](ROLLOUT-safe-harbor.md) returns findings and the conditional procedure. No deployment, service change or backup/restore operation is authorized.
 
 ## 1. Source, authority and goal
@@ -10,11 +16,11 @@
 
 ```text
 Planning Status
-Phase:        T1–T5 merged; operational procedure drafted
+Phase:        ON HOLD; T1–T5 merged, initializer scope reviewed
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Codex operational drafting; Kiro later review; Ryan live gate
-Authority:    Ryan read-only preflight/draft grant (section 19); no live changes
+Lanes:        None active; Ryan explicit resume required
+Authority:    Ryan hold (2026-10-19); prior grants do not authorize continuation
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -1080,7 +1086,7 @@ live/original source comparison against bound facts and apply-time backend
 rechecking are explicit contract/evidence obligations, not completed tests.
 There are no remaining scope-decision conditions from that review.
 
-**Next decision:** Ryan may grant Cursor the bounded isolated initializer
+**Deferred until explicit owner resume:** Ryan may grant Cursor the bounded isolated initializer
 implementation/evidence in this section, with Codex supervision and results
 returned for independent review. No such implementation grant has been received.
 PR creation, live operations and deployment remain separate. Recovery inputs stay

@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-17
+**Updated:** 2026-10-19
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,17 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Safe Harbor — initializer scope PASS; implementation decision next (2026-10-17):**
-  PR #394 is tree-identical to the accepted candidate; [VERIFY closeout](../plans/VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping)
-  records hosted CI and Ryan's exact-tip outage exception.
-  Kiro PASSed bounded readiness evidence at `f45b051`, with coverage corrected in
-  the same session. Codex drafted [the initializer scope](../plans/EXECUTION-safe-harbor.md#22-bounded-legacy-source-initialization--proposed-scope-not-a-grant).
-  Ryan retained the CPU tripwire warning and allowed static planning/review.
-  Kiro PASSed the initializer scope and three-clarification delta at `c46fbc6`.
-  **Next lane: Ryan**, for a bounded isolated Cursor implementation/evidence grant;
-  recovery/loss-window facts remain open for live apply. The proposal is unimplemented.
-  [STATUS](../plans/STATUS-safe-harbor.md) carries results and current gates.
-  No implementation, PR, service change, live backup/restore or deployment is granted.
+- **Arc Safe Harbor — ON HOLD by Ryan (2026-10-19):**
+  Saved on `feat/2026-10-15-safe-harbor-rollout-evidence`; start with
+  [STATUS](../plans/STATUS-safe-harbor.md) for the resume checkpoint.
+  T1–T5 are merged; readiness and initializer-scope reviews are complete at their
+  pinned subjects. The initializer is unimplemented; no reviewer return is pending.
+  **Next lane: Ryan, explicit resume only.** Do not advance planning, review,
+  implementation or live work during the hold. Preserve the warning and existing
+  recovery/live gates. Revisit before maintenance that depends on those guarantees.
 
 - **Arc Codex / issue #286 — Codex rollout admission merged, default off;
   Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
