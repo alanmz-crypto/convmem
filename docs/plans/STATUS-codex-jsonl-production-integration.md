@@ -75,6 +75,9 @@ Key invariants:
 | Commit cost | PR #404 (`07117ed`) removed the redundant full Chroma scan from incremental commits. |
 | Kiro exact-source route | PR #406 (`adcf5b3`) added opt-in Kiro v2 routing, semantic session identity, source-scoped paid-call accounting, and a crash-safe cohort budget. It is merged but no Kiro source is selected in the current live configuration. |
 | Live configuration | Read-only check on 2026-10-19 found `[index.incremental_jsonl].enabled = true` and `live_sources = []`. The watcher is enabled and active for other configured work; this pause does not alter it. |
+| Kiro Stage 1 packet | Codex Astra preserved a read-only, spending-`NO-GO` packet at `0b00e6a` on `docs/2026-10-20-issue-286-kiro-stage1-packet`. It is based on current `origin/main`, has no PR, and is frozen during this hold. It found that Kiro cohort accounting shadows bootstrap per-source accounting and that the canary meter does not measure actual paid attempts. |
+| Codex bootstrap implementation | The separate existing-rollout bootstrap remains preserved at `f91b958` on `fix/2026-10-18-issue-286-codex-bootstrap`. It is unmerged, has no PR, is seven `origin/main` commits behind, and remains incomplete at mandatory V6 before T4–T5. Do not rebase or resume it during this hold. |
+| Outstanding live evidence | The Oct 13 Codex transaction `46313d437ae4446282a752270770c614` remains `recovery_unproven`; writer isolation, a native new-session control, fresh backups, and an operational cohort ledger remain unproved or unmaterialized. |
 | Prior bootstrap authority | Every earlier proposal, digest, backup binding, and execution grant is historical or stale. None may be reused after the code and live-state changes above. |
 
 ## 4. Completion State
@@ -88,6 +91,8 @@ Key invariants:
 | Transform compatibility | Merged through PR #399 (`9be0a4f`) | Complete; migration remains separately governed |
 | Incremental commit cost | Merged through PR #404 (`07117ed`) | Complete |
 | Kiro v2 exact-source implementation | Merged through PR #406 (`adcf5b3`) with exact identity and hard paid-call budget | Implementation complete; live proof remains |
+| Kiro Stage 1 review packet | Preserved at `0b00e6a`, exact-main based, spending `NO-GO` | Frozen; refresh after resume and after accounting/recovery prerequisites change |
+| Codex existing-rollout bootstrap | Preserved at `f91b958`, unmerged and seven main commits behind | Frozen at V6; re-integrate only after explicit resume |
 | Live Kiro proof and activation | **PAUSED by Ryan on 2026-10-19**; no selected Kiro source | Explicit resume decision, then fresh evidence and authority |
 
 ## 5. Your Role
@@ -97,6 +102,12 @@ do not prepare or execute another bootstrap, provider call, source enrollment,
 config/runtime promotion, migration, or watcher change. Do not regenerate an
 old proposal in place and do not reuse any prior exact grant, backup binding,
 source digest, or budget.
+
+Preservation includes both unmerged remote branches named above. Their local and
+remote refs match. Neither has an open PR. The Kiro packet is current-main based
+but its mutable measurements age while held; the Codex bootstrap branch is not
+current-main based and must be integrated deliberately after resume. Do not
+combine, rebase, review, or advance either branch while the hold remains.
 
 When Ryan explicitly resumes the arc, begin from current `origin/main` and
 current live state. Re-measure every mutable identity and produce fresh review
@@ -111,16 +122,20 @@ the remaining work is a live proof and later activation decision.
    runtime, live config, watcher state, exact source prefix and sidecar identity,
    embedding dimension, provider binding, paid-attempt ledger, and mutation
    inventory.
-3. Create fresh complete-data local and offsite backup evidence under a new,
+3. Reconcile the preserved branches: refresh or supersede the Kiro Stage 1
+   packet; integrate the Codex bootstrap branch onto then-current main only if
+   that workstream is resumed. Resolve the Kiro per-source/cohort accounting
+   composition and actual-attempt measurement gaps before any spending review.
+4. Create fresh complete-data local and offsite backup evidence under a new,
    separately reviewed backup authority. Historical backup IDs are readiness
    evidence only and cannot authorize a new run.
-4. Prepare one new exact-source proposal and review packet. Kiro reviews route
+5. Prepare one new exact-source proposal and review packet. Kiro reviews route
    and bootstrap assumptions; Copilot audits safety and isolation on the same
    revision.
-5. Ryan decides a new exact one-shot grant. If granted, execute only its named
+6. Ryan decides a new exact one-shot grant. If granted, execute only its named
    source, runtime, config, dimension, and paid-call budget and return measured
    call, coverage, lineage, recovery, and isolation evidence.
-6. Any continuing enrollment, runtime/config promotion, migration, or watcher
+7. Any continuing enrollment, runtime/config promotion, migration, or watcher
    change remains a later, separate Ryan decision.
 
 ## 7. Hard Stops
@@ -259,6 +274,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-17 | Cursor | Implemented the Stage 2 prerequisite failure-cache and repository-knowledge inventory refresh on `fix/2026-10-17-repository-manifest-failure-cache`. Live config and watcher remain untouched. |
 | 2026-10-19 | Ryan / Sol | Paused Arc Codex after PRs #396, #399, #404, and #406 merged; implementation is preserved on `main`, no Kiro source is selected, and resume requires fresh state and authority. |
+| 2026-10-19 | Sol | Reconciled saved work: pause and Kiro packet branches are current-main based and pushed; the separate Codex bootstrap branch is pushed but seven main commits behind, frozen at V6, and must be deliberately integrated after resume. |
 
 ## TL;DR
 
@@ -266,6 +282,8 @@ Keep this document a current-state snapshot, not a session diary.
   PR #406 (`adcf5b3`).
 - Arc Codex is paused before live Kiro proof or activation. Current config has
   no selected Kiro source; the active watcher was not changed.
+- The read-only Kiro packet (`0b00e6a`) and unfinished Codex bootstrap branch
+  (`f91b958`) are both pushed and explicitly frozen; neither has an open PR.
 - Resume requires Ryan's explicit decision and entirely fresh source, runtime,
   config, backup, budget, review, and execution authority.
 

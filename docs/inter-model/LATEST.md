@@ -43,6 +43,11 @@ cross-arc snapshot and the linked arc brief below.
   opt-in Kiro v2 route with a crash-safe paid-call budget in PR #406
   (`adcf5b3`) are on `main`. Current live config has no selected Kiro source.
   Ryan placed further Arc Codex work on hold before live proof or activation.
+  Saved work is remote and frozen: the current-main Kiro Stage 1 packet at
+  `0b00e6a` is review-only and spending `NO-GO`; the separate Codex bootstrap
+  branch at `f91b958` is unmerged, seven main commits behind, and incomplete at
+  mandatory V6. Neither branch has an open PR. The packet also identifies an
+  unresolved accounting composition gap and an attempt-metering gap.
   **Resume only after an explicit Ryan decision**, then re-measure current
   source/runtime/config/backup/budget state and prepare a fresh same-revision
   Kiro/Copilot packet. Never reuse earlier grants or proposals. See the
