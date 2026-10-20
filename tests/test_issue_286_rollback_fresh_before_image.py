@@ -40,8 +40,20 @@ def _deny_network(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(socket, "create_connection", denied)
     monkeypatch.setattr(socket, "getaddrinfo", denied)
-    monkeypatch.setattr(socket.socket, "connect", denied)
-    monkeypatch.setattr(socket.socket, "connect_ex", denied)
+
+    # Patch the socket class, not unbound socket.socket.connect descriptors, so
+    # pytest teardown cannot leave process-global connect hooks for later modules.
+    _base_socket = socket.socket
+
+    class _DeniedSocket(_base_socket):  # type: ignore[misc,valid-type]
+        def connect(self, *_args, **_kwargs):
+            denied()
+
+        def connect_ex(self, *_args, **_kwargs):
+            denied()
+            return 1
+
+    monkeypatch.setattr(socket, "socket", _DeniedSocket)
 
 
 def _coordinator(boundary, source, *, processed=None, fault=None):
