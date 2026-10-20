@@ -61,6 +61,65 @@ class ModelFallbackError(RuntimeError):
     ``CONVMEM_FAIL_ON_FALLBACK=1`` forbids silent local degrade)."""
 
 
+def _compose_provider_usage_nested(
+    inner: ProviderUsageReporter,
+    outer: ProviderUsageReporter | None,
+) -> ProviderUsageReporter:
+    if outer is None:
+        return inner
+
+    def composed(event: dict[str, object], usage: dict[str, object]) -> None:
+        inner(event, usage)
+        outer(event, usage)
+
+    return composed
+
+
+def _compose_provider_attempt_finished_nested(
+    inner: ProviderAttemptFinished | None,
+    outer: ProviderAttemptFinished | None,
+) -> ProviderAttemptFinished | None:
+    if inner is None and outer is None:
+        return None
+
+    def composed(event: dict[str, object], success: bool) -> None:
+        if inner is not None:
+            inner(event, success)
+        if outer is not None:
+            outer(event, success)
+
+    return composed
+
+
+def _compose_provider_permit_nested(
+    inner: ProviderAttemptPermit,
+    inner_finished: ProviderAttemptFinished | None,
+    outer: ProviderAttemptPermit | None,
+    outer_finished: ProviderAttemptFinished | None,
+) -> ProviderAttemptPermit:
+    if outer is None:
+        return inner
+
+    def composed(event: dict[str, object]) -> None:
+        ev = dict(event)
+        settled: list[ProviderAttemptFinished | None] = []
+        try:
+            inner(ev)
+            settled.append(inner_finished)
+        except Exception:
+            raise
+        try:
+            outer(ev)
+            settled.append(outer_finished)
+        except Exception:
+            for finished in settled:
+                if finished is not None:
+                    finished(ev, False)
+            raise
+
+    return composed
+
+
 @contextmanager
 def provider_http_accounting(
     permit: ProviderAttemptPermit,
@@ -70,9 +129,34 @@ def provider_http_accounting(
 ):
     """Install bootstrap-only HTTP accounting without changing ordinary calls."""
 
-    permit_token = _PROVIDER_ATTEMPT_PERMIT.set(permit)
-    usage_token = _PROVIDER_USAGE_REPORTER.set(usage_reporter)
-    finished_token = _PROVIDER_ATTEMPT_FINISHED.set(attempt_finished)
+    outer_permit = _PROVIDER_ATTEMPT_PERMIT.get()
+    outer_usage = _PROVIDER_USAGE_REPORTER.get()
+    outer_finished = _PROVIDER_ATTEMPT_FINISHED.get()
+    nested = (
+        outer_permit is not None
+        or outer_usage is not None
+        or outer_finished is not None
+    )
+    if not nested:
+        active_permit = permit
+        active_usage = usage_reporter
+        active_finished = attempt_finished
+    else:
+        active_permit = _compose_provider_permit_nested(
+            permit,
+            attempt_finished,
+            outer_permit,
+            outer_finished,
+        )
+        active_usage = _compose_provider_usage_nested(usage_reporter, outer_usage)
+        active_finished = _compose_provider_attempt_finished_nested(
+            attempt_finished,
+            outer_finished,
+        )
+
+    permit_token = _PROVIDER_ATTEMPT_PERMIT.set(active_permit)
+    usage_token = _PROVIDER_USAGE_REPORTER.set(active_usage)
+    finished_token = _PROVIDER_ATTEMPT_FINISHED.set(active_finished)
     try:
         yield
     finally:
