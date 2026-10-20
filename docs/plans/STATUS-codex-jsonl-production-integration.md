@@ -1,5 +1,7 @@
 # Arc Brief — Kiro JSONL Incremental Production Integration
 
+**ON HOLD — Ryan, 2026-10-19.** Preserve the existing branch and evidence; do not resume implementation, tests, or V6 work until Ryan explicitly resumes this task. The earlier T1–T5 grant remains scope history, not permission to work during this hold. A1 remains parked, A2 stopped, and all operational/PR prohibitions remain in force.
+
 > **Arc: Codex. Every model working on this arc must read this file first.**
 > State the product goal, your role, current system state, and next action before
 > doing substantive work.
@@ -108,6 +110,8 @@ Key invariants:
 
 ## 4. Completion State
 
+- **ON HOLD by Ryan (2026-10-19).** Tested code remains `0b68bad9c43f6c182d8efac0cf02b65170f01913`; latest pre-hold documentation was `ed98b4b94ca59c42b28e47207aba7a5e22294e99`. Full T3 remains incomplete; T4–T5 are not implemented.
+- Final metadata evidence is also preserved locally under `/home/lauer/Projects/convmem/.git/arc-codex-286-hold/2026-10-19/` with a SHA-256 manifest. The published VERIFY contains the result summaries; raw metadata is a private local copy, not part of the remote branch.
 - Ordinary admitted Codex routing exists; existing-source bootstrap support is
   the missing capability for A1. Neither full rebuild nor direct coordinator
   invocation is an authorized substitute.
@@ -127,7 +131,9 @@ Key invariants:
 
 ## 5. Your Role
 
-**Cursor next:** close **mandatory V6** production-route exit-91 proof with **CONVMEM_INCREMENTAL_ROOT retained** (harness design), then **T4** bounded-prefix coordinator execution per the corrective plan; T5 remains after T4; no live v2 execution.
+**Current role: preservation only.** Ryan has placed this work on hold. No lane should start implementation or tests.
+
+**After Ryan explicitly resumes:** Cursor first closes mandatory V6 production-route exit-91 proof with **CONVMEM_INCREMENTAL_ROOT retained**, then T4 bounded-prefix execution/recovery and T5 integrated verification. Preserve the external sandbox requirement; no live v2 execution.
 
 **Kiro:** exact-tip implementation review after Cursor's evidence handoff.
 **Codex:** upstream planning/authority handoff; no implementation or self-review
@@ -140,6 +146,7 @@ of those operations is granted by the Cursor implementation authorization.
 
 ## 6. Remaining gates
 
+0. **Ryan explicitly resumes the held task.** No automatic restart or scheduled reminder is configured.
 1. Close **mandatory V6** production-route proof harness (**ROOT retained**), then T4–T5 per [VERIFY](VERIFY-issue-286-codex-bootstrap-corrective.md); T3 remains **INCOMPLETE** until V6 runs.
 2. Obtain exact-tip independent implementation review. PR creation, PR-native
    review triggers, merge and runtime/writer rollout remain separate gates.
@@ -227,6 +234,7 @@ Keep this document a current-state snapshot, not a session diary.
 
 ### Update Log
 
+- 2026-10-19 | Codex | Recorded Ryan’s hold; preserved the pushed implementation and final metadata evidence; resume begins with mandatory V6 before T4–T5.
 - 2026-10-18 | Cursor | Docs reconciliation: rerun4 metadata at `0b68bad`; guard 15 / inner 54; V6 NOT RUN; full T3 incomplete.
 - 2026-10-18 | Cursor | T2 COMPLETE: unconditional owner lock; bwrap 87 passed at `1dc1eff`.
 
@@ -303,3 +311,5 @@ Keep this document a current-state snapshot, not a session diary.
 
 <!-- ref: ./ARCHITECTURE-issue-286-codex-bootstrap-corrective.md, ./EXECUTION-issue-286-codex-bootstrap-corrective.md, ./VERIFY-issue-286-codex-bootstrap-corrective.md, ../inter-model/CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md — current A1 plan and gates -->
 <!-- src: /tmp/convmem-286-free-window-20261018/A1-dry-run-packet.md, /tmp/convmem-286-free-window-20261018/A2-report.json, /tmp/convmem-286-free-window-20261018/a3-baseline.json — dated operational evidence -->
+
+<!-- src: /home/lauer/Projects/convmem/.git/arc-codex-286-hold/2026-10-19/manifest.json — preserved private metadata evidence -->

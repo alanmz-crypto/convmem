@@ -1,15 +1,17 @@
 # [Arc Codex #286] Cursor Execute — existing Codex rollout bootstrap
 
+**ON HOLD — Ryan, 2026-10-19.** Preserve the existing branch and evidence; do not resume implementation, tests, or V6 work until Ryan explicitly resumes this task. The earlier T1–T5 grant remains scope history, not permission to work during this hold. A1 remains parked, A2 stopped, and all operational/PR prohibitions remain in force.
+
 **Date:** 2026-10-18. **Author:** Codex. **For:** Cursor implementation lane.
 **Authorization:** Ryan explicitly authorized Cursor T1–T5 implementation and hermetic verification of reviewed revision `942390001bca407c1c28e9972c443ee7612e1c1b`, incorporating Kiro's non-blocking precision notes, with existing operational prohibitions retained.
 
 ## Resume state
 
-- **State:** `T3_INCOMPLETE_V6_GAP` — T1 complete (`ec11b10`), T2 complete (`1dc1eff`), isolation fix at `0b68bad9c43f6c182d8efac0cf02b65170f01913` (guard **15**, inner T3 subset **54**); **V6 mandatory proof NOT RUN**; T4–T5 parked.
+- **State:** `ON_HOLD_BY_RYAN` (resume point: `T3_INCOMPLETE_V6_GAP`) — T1 complete (`ec11b10`), T2 complete (`1dc1eff`), isolation fix at `0b68bad9c43f6c182d8efac0cf02b65170f01913` (guard **15**, inner T3 subset **54**); **V6 mandatory proof NOT RUN**; T4–T5 parked.
 - **Reviewed plan branch:** `plan/2026-10-18-issue-286-codex-bootstrap-corrective`.
 - **Reviewed plan SHA:** `942390001bca407c1c28e9972c443ee7612e1c1b`.
 - **Code baseline:** `483373f1cef2142847fcd9c276196593a72a0ecf`.
-- **Implementation branch:** `fix/2026-10-18-issue-286-codex-bootstrap` (worktree active; Kiro planning checkout separate).
+- **Implementation branch:** `fix/2026-10-18-issue-286-codex-bootstrap` (worktree preserved and inactive; Kiro planning checkout separate).
 - **Planning push status:** reviewed plan is on origin; this handoff is delivered on the same planning branch. Use the exact handoff commit supplied by Ryan/Codex when picking up.
 - **PR:** not opened; no PR authority.
 - **Ryan GATE before T1:** satisfied by the grant above, subject to startup protocol and scope/baseline checks. Production gates remain closed.
@@ -81,9 +83,9 @@ Kiro's reported doctor PASS during direction review does not diagnose A2's earli
 
 Stop for exact-tip independent review. Return the implementation branch and full SHA, push status, T1–T5 evidence/results, the VERIFY path, and remaining live gates with owners. Do not claim live readiness from hermetic PASS. No PR or review-trigger comment is authorized here; obtain the applicable later grant before entering that lifecycle.
 
-**Next lane now:** Design/run **mandatory V6** production-route proof harness with **CONVMEM_INCREMENTAL_ROOT retained**; then T4 under existing Ryan T1–T5 grant (no new grant for implementation already authorized). **Resume state:** `T3_INCOMPLETE_V6_GAP`.
+**Next lane now:** Ryan decides when to resume. **After explicit resume:** Cursor addresses mandatory V6 with **CONVMEM_INCREMENTAL_ROOT retained**, then T4–T5 within the existing scope. **Current state:** `ON_HOLD_BY_RYAN`; technical resume point `T3_INCOMPLETE_V6_GAP`.
 
-**TL;DR:** [Arc Codex] Ryan authorizes Cursor's reviewed T1–T5 implementation and hermetic verification, including Kiro's precision notes. All production and PR prohibitions remain; A1 is parked and A2 is stopped.
+**TL;DR:** [Arc Codex] ON HOLD by Ryan as of 2026-10-19. The saved T1–T5 scope resumes only on Ryan’s explicit instruction, beginning with the unresolved V6 proof. A1 is parked; A2 is stopped; all production and PR prohibitions remain.
 
 <!-- src: ../plans/EXECUTION-issue-286-codex-bootstrap-corrective.md — reviewed at 942390001bca407c1c28e9972c443ee7612e1c1b -->
 <!-- ref: ../plans/VERIFY-issue-286-codex-bootstrap-corrective.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — execution evidence and routing -->

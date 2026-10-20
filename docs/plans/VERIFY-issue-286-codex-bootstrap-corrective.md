@@ -1,5 +1,7 @@
 # [Arc Codex #286] Verification stub — existing Codex rollout bootstrap
 
+**ON HOLD — Ryan, 2026-10-19.** Preserve the existing branch and evidence; do not resume implementation, tests, or V6 work until Ryan explicitly resumes this task. The earlier T1–T5 grant remains scope history, not permission to work during this hold. A1 remains parked, A2 stopped, and all operational/PR prohibitions remain in force.
+
 **T3 hermetic evidence status (2026-10-18):** Prior PASS rows through `1723dd0` / `4a99eba` (**55** inner tests) are **WITHDRAWN — host isolation leak**. Isolation fix **committed+pushed** at tested code `0b68bad9c43f6c182d8efac0cf02b65170f01913`; guarded rerun4: **guard 15** + **inner T3 subset 54** PASS; **full T3 INCOMPLETE** (mandatory V6 production-route proof **NOT RUN**).
 
 **State:** T1 **COMPLETE** (`ec11b10d`). T2 **COMPLETE** (`1dc1eff`). **T3 INCOMPLETE** (V5 subset green at `0b68bad9c43f6c182d8efac0cf02b65170f01913`; **V6 mandatory proof NOT RUN**). V7–V8 **NOT RUN** (T4–T5 parked). v2 live execution **closed**. `LIVE_READINESS=NO_GO`.

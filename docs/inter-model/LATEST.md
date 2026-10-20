@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-18
+**Updated:** 2026-10-19
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,13 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex / issue #286 — T3 INCOMPLETE; isolation fix at `0b68bad9c43f6c182d8efac0cf02b65170f01913` (2026-10-18):**
-  T1 `ec11b10`, T2 `1dc1eff`. Guarded rerun4: **15** guard + **54** inner T3 subset PASS
-  (`issue_286_guarded_pytest_launcher.py`); prior **55** withdrawn. **V6 production-route
-  proof NOT RUN** (mandatory; ROOT retained). **Next:** V6 harness design, then T4 under
-  existing T1–T5 grant. [Execute handoff](CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md),
-  [VERIFY](../plans/VERIFY-issue-286-codex-bootstrap-corrective.md). A1 parked; A2 stopped.
-  No production/provider/deployment/PR authority. [STATUS](../plans/STATUS-codex-jsonl-production-integration.md).
+- **Arc Codex / issue #286 — ON HOLD by Ryan (2026-10-19):**
+  Preserve branch `fix/2026-10-18-issue-286-codex-bootstrap`; no implementation or
+  tests until Ryan explicitly resumes. Tested code `0b68bad9c43f6c182d8efac0cf02b65170f01913`:
+  15 guard + 54 inner T3 subset passed; prior 55 withdrawn after the host leak.
+  Full T3 remains incomplete: mandatory V6 production-route proof is NOT RUN
+  with ROOT retained. **Resume point:** V6, then T4–T5. A1 parked; A2 stopped.
+  No production/provider/deployment/PR authority. No scheduled restart.
+  [Current hold and resume brief](../plans/STATUS-codex-jsonl-production-integration.md),
+  [VERIFY](../plans/VERIFY-issue-286-codex-bootstrap-corrective.md),
+  [Execute scope](CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md).
 
 - **cpu_tripwire fix live on runtime, PR #398 open (2026-10-17, Kiro):** `convmem doctor`
   was exiting 1 on a benign Typora userspace crash because the CPU tripwire FAILed on any
@@ -296,4 +299,4 @@ its existing archive/reference location. Use
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
 
-<!-- ref: ./CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md — authorized Cursor implementation route -->
+<!-- ref: ./CODEX-2026-10-18-issue-286-codex-bootstrap-corrective-execute.md — held Cursor implementation route; Ryan resume required -->
