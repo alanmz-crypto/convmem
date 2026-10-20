@@ -190,9 +190,19 @@ Codex rollouts (separate track):
    Oct 13 transaction `46313d43…` (`recovery_unproven`). Fold their repair into the
    real-data converter slice (dry run, per-source grant, coordinator source lock).
 5. **Next actions (pick in order; each needs its own Ryan grant):**
-   - Luna max pilot: Ryan adds `OPENAI_API_KEY` (project key with a monthly cap) to
-     `~/.config/convmem/env.systemd` and `~/.zshrc`; Claude runs a direct-API pilot on the 24 study
-     chunks; then the one-line `distill_model` config change.
+   - **Done 2026-10-19 22:30:** distill switched live to `gpt-6-luna` at `xhigh` (the API rejects
+     "max"); summarize stays Flash; key in `env.systemd` (not yet `~/.zshrc`, so shell `convmem index`
+     distill fails closed); backup `config.toml.pre-luna-distill-2026-10-19`. Shadow observer also on
+     (`mutation_proof_observer = "shadow"`, backup `config.toml.pre-shadow-observer-2026-10-19`).
+   - **In flight (2026-10-20):** Kiro Stage 1 packet (Astra, `docs/2026-10-20-issue-286-kiro-stage1-packet`
+     `0b00e6a`): Kiro packet PASS-with-conditions C1/C2, spending NO-GO. Nested paid-call accounting
+     fix (Cursor, `fix/2026-10-20-nested-provider-accounting` `35b661c`; Claude real-path probe PASS):
+     next Copilot audit, Kiro, PR. Crush ritual single-flight (`fix/2026-10-20-crush-ritual-single-flight`
+     `dcdcf45`, verified): PR, then copy only the hook file (don't run deploy-agent-protocol.sh).
+     Oct 13 wedge (Claude CLI packet `70adb23`; Kiro review on `kiro/2026-10-20-issue-286-oct13-wedge-review`):
+     evidence PASS, rollback/snapshot recovered from restic; scratch proof with `3e705e4` grantable (must
+     read vectors); live archive-move (R1-B) held; **unattributed Oct 17 00:24:44 transaction writer is a
+     HARD Stage 1 blocker** (clear by attribution E1 or owner-lock + audit fence E2).
    - Turn on the shadow observer (`mutation_proof_observer = "shadow"`) and measure its overhead
      against the ≤5 s median budget; Kiro GS-1..GS-4 feed the later scoped-proof evidence.
    - Kiro Stage 1 packet (Kiro's verdict: spending FAIL until listed sessions, a created cohort
